@@ -4,6 +4,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+# Every client the builder can target. build.CLIENT_ADAPTERS holds one adapter
+# per entry; tests/test_build.py keeps the two in step.
+CLIENTS: tuple[str, ...] = ("claude", "agy", "openclaw")
+
 
 @dataclass(frozen=True)
 class Plugin:
@@ -18,6 +22,7 @@ class Plugin:
     description: str
     category: str
     source_dir: Path  # plugins/<directory>
+    clients: tuple[str, ...] = CLIENTS  # the clients this plugin ships for
 
 
 @dataclass

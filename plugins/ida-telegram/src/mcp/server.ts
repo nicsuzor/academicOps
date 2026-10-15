@@ -5,6 +5,8 @@ import { QuestionBroker } from "../telegram/questions.js";
 import { processReplyOverflow } from "../telegram/overflow.js";
 import { formatMarkdownToEntities, normalizeReaction } from "../telegram/format.js";
 import { TelegramBotClient } from "../telegram/bot.js";
+import { sanitizeChannelMeta } from "../telegram/inbound.js";
+import { splitVoiceTier2Quotes } from "../telegram/voice.js";
 import { PermissionRelay } from "./permissions.js";
 
 export class StdioMcpServer {
@@ -33,8 +35,8 @@ export class StdioMcpServer {
       jsonrpc: "2.0",
       method: "notifications/claude/channel",
       params: {
-        content,
-        meta,
+        content: String(content),
+        meta: sanitizeChannelMeta(meta),
       },
     };
     process.stdout.write(JSON.stringify(notification) + "\n");
@@ -164,14 +166,34 @@ export class StdioMcpServer {
       const text = (args.text as string) || "";
       const detail = args.detail as string | undefined;
       const chatId = (args.chat_id as number) || defaultChatId;
-      const isVoice = !!args.voice;
       const replyTo = args.reply_to as number | undefined;
       const feedback = args.feedback !== false;
 
+      // FR-7.1: Determine whether voice reply is requested explicitly or via voice_replies setting
+      let isVoice = false;
+      if (typeof args.voice === "boolean") {
+        isVoice = args.voice;
+      } else if (this.config.voiceReplies === "always") {
+        isVoice = true;
+      } else if (this.config.voiceReplies === "mirror" && this.bot?.isLastInboundVoice(chatId)) {
+        isVoice = true;
+      }
+
+      // FR-7.2 & FR-7.3: For voice replies, Tier 2 quotes go behind Details along with Tier 3
+      let effectiveText = text;
+      let effectiveDetail = detail;
+      if (isVoice) {
+        const { tier1Text, tier2Quotes } = splitVoiceTier2Quotes(text);
+        if (tier2Quotes) {
+          effectiveText = tier1Text;
+          effectiveDetail = detail ? `${tier2Quotes}\n\n---\n\n${detail}` : tier2Quotes;
+        }
+      }
+
       // 1. Process overflow
       const overflowRes = processReplyOverflow({
-        text,
-        detail,
+        text: effectiveText,
+        detail: effectiveDetail,
         maxChatChars: this.config.maxChatChars,
       });
 
@@ -189,12 +211,30 @@ export class StdioMcpServer {
           chatId,
           formatted,
           detailsId,
+          buttons: args.buttons as Array<{ label: string; callback_data?: string; url?: string; web_app?: string }> | undefined,
           voice: isVoice,
           replyTo,
           feedback,
           review: args.review as { repo: string; pr?: number } | undefined,
         });
-        return { success: true, messageId: sendRes?.messageId, detailsId };
+
+        const out: Record<string, unknown> = {
+          success: true,
+          messageId: sendRes?.messageId,
+        };
+        if (detailsId !== undefined) {
+          out.detailsId = detailsId;
+        }
+        if (sendRes?.voiceSent !== undefined) {
+          out.voiceSent = sendRes.voiceSent;
+        }
+        if (sendRes?.voiceMessageId !== undefined) {
+          out.voiceMessageId = sendRes.voiceMessageId;
+        }
+        if (sendRes?.voiceError !== undefined) {
+          out.voiceError = sendRes.voiceError;
+        }
+        return out;
       }
 
       return { success: true, preview: formatted.plainText, detailsId };
@@ -229,24 +269,30 @@ export class StdioMcpServer {
         return { success: false, error: "No questions provided" };
       }
 
-      const q = questions[0];
-      const result = await this.broker.askUser({
-        question: q.question,
-        header: q.header,
-        options: q.options,
-        multiSelect: q.multiSelect,
-        allowOther: q.allowOther,
-        chatId: defaultChatId,
-      });
+      const postedIds: string[] = [];
+      for (const q of questions) {
+        const result = await this.broker.askUser({
+          question: q.question,
+          header: q.header,
+          options: q.options,
+          multiSelect: q.multiSelect,
+          allowOther: q.allowOther,
+          chatId: defaultChatId,
+        });
+        postedIds.push(result.questionId);
 
-      if (this.bot) {
-        const card = this.broker.renderQuestionCard(result.questionId);
-        if (card) {
-          await this.bot.sendQuestionCard(defaultChatId, result.questionId, card);
+        if (this.bot) {
+          const card = this.broker.renderQuestionCard(result.questionId);
+          if (card) {
+            await this.bot.sendQuestionCard(defaultChatId, result.questionId, card);
+          }
         }
       }
 
-      return result.message;
+      if (postedIds.length === 1) {
+        return `Question ${postedIds[0]} posted to Nic. Do not assume an answer; continue other work or end your turn.`;
+      }
+      return `Questions ${postedIds.join(", ")} posted to Nic. Do not assume an answer; continue other work or end your turn.`;
     }
 
     if (name === "anchor") {

@@ -26,10 +26,11 @@ from typing import Any
 from build.clients import agy as agy_client
 from build.clients import claude as claude_client
 from build.clients import openclaw as openclaw_client
-from build.context import BuildContext, Plugin
+from build.context import CLIENTS, BuildContext, Plugin
 from build.errors import BuildError
 from build.manifest import merge_one_level, render_template, template_stem
 from build.marketplace import (
+    generate_agy_dist,
     generate_cowork_dist,
     generate_local_marketplace,
     generate_openclaw_dist,
@@ -73,6 +74,7 @@ def discover_plugins(
                 description=declared[directory]["description"],
                 category=declared[directory]["category"],
                 source_dir=source_dir,
+                clients=tuple(declared[directory].get("clients", CLIENTS)),
             )
         )
     return plugins
@@ -157,9 +159,7 @@ def _build_plugin_client(
     version: str,
     owner: dict[str, Any],
 ) -> Path:
-    adapter = CLIENT_ADAPTERS.get(client)
-    if adapter is None:
-        raise BuildError(f"unknown client {client!r} — expected one of {sorted(CLIENT_ADAPTERS)}")
+    adapter = CLIENT_ADAPTERS[client]  # build_all has checked the client
 
     build_dir = dist_root / f"{plugin.marketplace_name}-{client}"
     if build_dir.exists():
@@ -241,6 +241,11 @@ def build_all(
     plugins: list[str] | None = None,
     version: str | None = None,
 ) -> dict[str, list[Path]]:
+    for client in clients:
+        if client not in CLIENT_ADAPTERS:
+            raise BuildError(
+                f"unknown client {client!r} — expected one of {sorted(CLIENT_ADAPTERS)}"
+            )
     marketplace_path = marketplace_path or (project_root / "build" / "marketplace.toml")
     decl = load_marketplace_toml(marketplace_path)
     resolved_version = version or get_current_version(project_root)
@@ -254,6 +259,13 @@ def build_all(
             stage_dir = stage_root / plugin.directory
             _stage_plugin(plugin, stage_dir, resolved_version)
             for client in clients:
+                if client not in plugin.clients:
+                    # A dist left from before the plugin dropped this client
+                    # would still be published and installed.
+                    shutil.rmtree(
+                        dist_root / f"{plugin.marketplace_name}-{client}", ignore_errors=True
+                    )
+                    continue
                 build_dir = _build_plugin_client(
                     plugin, client, stage_dir, dist_root, resolved_version, decl["owner"]
                 )
@@ -266,6 +278,8 @@ def build_all(
         generate_production_marketplace(decl, resolved_version, dist_root)
         generate_cowork_dist(decl, resolved_version, dist_root)
         generate_openclaw_dist(decl, resolved_version, dist_root)
+    if "agy" in clients:
+        generate_agy_dist(decl, dist_root)
 
     generate_image_metadata(project_root, resolved_version, dist_root, built)
 
@@ -280,8 +294,8 @@ def main() -> None:
     parser.add_argument(
         "--clients",
         nargs="+",
-        default=["claude", "agy", "openclaw"],
-        choices=["claude", "agy", "openclaw"],
+        default=list(CLIENTS),
+        choices=list(CLIENTS),
     )
     parser.add_argument("--version", action="store_true", help="Print the current version and exit")
     parser.add_argument(

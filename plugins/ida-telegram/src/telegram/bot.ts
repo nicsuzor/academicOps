@@ -1,5 +1,5 @@
 import { PluginConfig } from "../config.js";
-import { FormattedMessage } from "./format.js";
+import { FormattedMessage, formatMarkdownToEntities } from "./format.js";
 import { parseInboundUpdate, TelegramUpdate } from "./inbound.js";
 import { QuestionBroker } from "./questions.js";
 import { FeedbackManager } from "./feedback.js";
@@ -9,20 +9,35 @@ import { acquireHostLock, releaseHostLock, calculate409Backoff } from "../role.j
 import { hostname } from "node:os";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 const execFileAsync = promisify(execFile);
 
+export interface ReplyButtonOption {
+  label: string;
+  callback_data?: string;
+  url?: string;
+  web_app?: string;
+}
+
 export interface SendReplyOptions {
   chatId: number;
   formatted: FormattedMessage;
   detailsId?: string;
+  buttons?: ReplyButtonOption[];
   voice?: boolean;
   replyTo?: number;
   feedback?: boolean;
   review?: { repo: string; pr?: number };
+}
+
+export interface SendReplyResult {
+  messageId: number;
+  voiceSent?: boolean;
+  voiceMessageId?: number;
+  voiceError?: string;
 }
 
 export class TelegramBotClient {
@@ -35,6 +50,7 @@ export class TelegramBotClient {
   private lastUpdateId = 0;
   private conflictCount = 0;
   private lastAlertTime = 0;
+  private lastInboundWasVoiceByChat = new Map<number, boolean>();
 
   constructor(
     config: PluginConfig,
@@ -50,8 +66,13 @@ export class TelegramBotClient {
     this.emitChannelEvent = emitChannelEvent;
   }
 
+  public isLastInboundVoice(chatId: number): boolean {
+    return this.lastInboundWasVoiceByChat.get(chatId) === true;
+  }
+
   private async callApi(method: string, payload: Record<string, unknown>): Promise<any> {
-    const url = `https://api.telegram.org/bot${this.config.botToken}/${method}`;
+    const baseUrl = this.config.apiBaseUrl || "https://api.telegram.org";
+    const url = `${baseUrl}/bot${this.config.botToken}/${method}`;
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -59,6 +80,42 @@ export class TelegramBotClient {
     });
     const json = await res.json();
     return json;
+  }
+
+  private async callVoiceApi(
+    chatId: number,
+    oggBuffer: Buffer,
+    options: {
+      caption?: string;
+      captionEntities?: unknown[];
+      replyTo?: number;
+      inlineKeyboard?: Array<Array<Record<string, unknown>>>;
+    }
+  ): Promise<any> {
+    const baseUrl = this.config.apiBaseUrl || "https://api.telegram.org";
+    const url = `${baseUrl}/bot${this.config.botToken}/sendVoice`;
+    const formData = new FormData();
+    formData.append("chat_id", String(chatId));
+    formData.append("voice", new Blob([oggBuffer], { type: "audio/ogg" }), "reply.ogg");
+
+    if (options.caption !== undefined) {
+      formData.append("caption", options.caption);
+    }
+    if (options.captionEntities && options.captionEntities.length > 0) {
+      formData.append("caption_entities", JSON.stringify(options.captionEntities));
+    }
+    if (options.replyTo) {
+      formData.append("reply_parameters", JSON.stringify({ message_id: options.replyTo }));
+    }
+    if (options.inlineKeyboard && options.inlineKeyboard.length > 0) {
+      formData.append("reply_markup", JSON.stringify({ inline_keyboard: options.inlineKeyboard }));
+    }
+
+    const res = await fetch(url, {
+      method: "POST",
+      body: formData,
+    });
+    return await res.json();
   }
 
   public async setReaction(chatId: number, messageId: number, emoji: string): Promise<boolean> {
@@ -74,11 +131,29 @@ export class TelegramBotClient {
     }
   }
 
-  public async sendReply(opts: SendReplyOptions): Promise<{ messageId: number } | null> {
-    const { chatId, formatted, detailsId, voice, replyTo, feedback, review } = opts;
+  public async sendReply(opts: SendReplyOptions): Promise<SendReplyResult | null> {
+    const { chatId, formatted, detailsId, buttons, voice, replyTo, feedback, review } = opts;
 
     // Build inline keyboard
     const inlineKeyboard: Array<Array<Record<string, unknown>>> = [];
+
+    // Custom decision / action buttons (vertical rows, recommendation first per FR-1.1 / FR-2.2)
+    if (buttons && buttons.length > 0) {
+      for (const b of buttons) {
+        const btnObj: Record<string, unknown> = { text: b.label };
+        if (b.callback_data) {
+          btnObj.callback_data = b.callback_data;
+        } else if (b.url) {
+          btnObj.url = b.url;
+        } else if (b.web_app) {
+          btnObj.web_app = { url: b.web_app };
+        } else {
+          btnObj.callback_data = `action:${b.label}`;
+        }
+        inlineKeyboard.push([btnObj]);
+      }
+    }
+
     const actionRow: Array<Record<string, unknown>> = [];
 
     // Feedback buttons
@@ -109,21 +184,90 @@ export class TelegramBotClient {
       ]);
     }
 
-    // Check voice out
-    if (voice && this.config.voiceSpeakCmd) {
-      try {
-        const spoken = prepareVoiceText(formatted.plainText);
-        const tempText = join(tmpdir(), `voice_out_${Date.now()}.txt`);
-        const tempOgg = join(tmpdir(), `voice_out_${Date.now()}.ogg`);
-        writeFileSync(tempText, spoken, "utf-8");
+    let voiceError: string | undefined;
 
-        await execFileAsync(this.config.voiceSpeakCmd, [tempText, tempOgg]);
+    // Check voice out (FR-7)
+    if (voice) {
+      if (!this.config.voiceSpeakCmd) {
+        voiceError = "VOICE_SPEAK_CMD is not configured";
+      } else {
+        const stamp = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const tempText = join(tmpdir(), `voice_out_${stamp}.txt`);
+        const tempOgg = join(tmpdir(), `voice_out_${stamp}.ogg`);
+        try {
+          const spoken = prepareVoiceText(formatted.plainText);
+          writeFileSync(tempText, spoken, "utf-8");
 
-        // If caption fits under 1024, attach caption to sendVoice
-        // Otherwise send voice then send text separately
-        // (Note: in test / dry-run, fallback to text)
-      } catch (e) {
-        console.error("Voice TTS failed, falling back to text:", e);
+          await execFileAsync(this.config.voiceSpeakCmd, [tempText, tempOgg]);
+
+          if (!existsSync(tempOgg)) {
+            throw new Error(`TTS script did not produce output file: ${tempOgg}`);
+          }
+          const oggBuffer = readFileSync(tempOgg);
+          if (oggBuffer.byteLength === 0) {
+            throw new Error(`TTS script produced an empty audio file: ${tempOgg}`);
+          }
+
+          // FR-7.3: If caption fits under 1024 UTF-16 code units, attach caption and entities to sendVoice.
+          // Otherwise send voice first, then send text message separately.
+          if (formatted.plainText.length <= 1024) {
+            const voiceRes = await this.callVoiceApi(chatId, oggBuffer, {
+              caption: formatted.plainText,
+              captionEntities: formatted.entities,
+              replyTo,
+              inlineKeyboard,
+            });
+            if (voiceRes?.ok && voiceRes?.result) {
+              return {
+                messageId: voiceRes.result.message_id,
+                voiceSent: true,
+              };
+            }
+            throw new Error(voiceRes?.description || "Telegram sendVoice API call failed");
+          } else {
+            const voiceRes = await this.callVoiceApi(chatId, oggBuffer, {
+              replyTo,
+            });
+            if (!voiceRes?.ok || !voiceRes?.result) {
+              throw new Error(voiceRes?.description || "Telegram sendVoice API call failed");
+            }
+            const voiceMessageId: number = voiceRes.result.message_id;
+
+            const textPayload: Record<string, unknown> = {
+              chat_id: chatId,
+              text: formatted.plainText,
+              entities: formatted.entities,
+            };
+            if (inlineKeyboard.length > 0) {
+              textPayload.reply_markup = { inline_keyboard: inlineKeyboard };
+            }
+
+            let textRes = await this.callApi("sendMessage", textPayload);
+            if (!textRes?.ok || !textRes?.result) {
+              textRes = await this.callApi("sendMessage", {
+                chat_id: chatId,
+                text: formatted.plainText,
+                reply_markup: inlineKeyboard.length > 0 ? { inline_keyboard: inlineKeyboard } : undefined,
+              });
+            }
+
+            return {
+              messageId: textRes?.result?.message_id ?? voiceMessageId,
+              voiceMessageId,
+              voiceSent: true,
+            };
+          }
+        } catch (e) {
+          voiceError = e instanceof Error ? e.message : String(e);
+          console.error("Voice TTS failed, falling back to text:", e);
+        } finally {
+          try {
+            if (existsSync(tempText)) unlinkSync(tempText);
+            if (existsSync(tempOgg)) unlinkSync(tempOgg);
+          } catch {
+            // Ignore temp cleanup errors
+          }
+        }
       }
     }
 
@@ -143,6 +287,9 @@ export class TelegramBotClient {
 
     const res = await this.callApi("sendMessage", payload);
     if (res.ok && res.result) {
+      if (voice) {
+        return { messageId: res.result.message_id, voiceSent: false, voiceError };
+      }
       return { messageId: res.result.message_id };
     }
 
@@ -154,6 +301,9 @@ export class TelegramBotClient {
     });
 
     if (fallbackRes.ok && fallbackRes.result) {
+      if (voice) {
+        return { messageId: fallbackRes.result.message_id, voiceSent: false, voiceError };
+      }
       return { messageId: fallbackRes.result.message_id };
     }
 
@@ -161,12 +311,18 @@ export class TelegramBotClient {
   }
 
   public async sendQuestionCard(chatId: number, qid: string, card: { text: string; buttons: Array<{ text: string; callbackData: string }> }) {
+    const formatted = formatMarkdownToEntities(card.text);
     const inline_keyboard = card.buttons.map((b) => [{ text: b.text, callback_data: b.callbackData }]);
-    return await this.callApi("sendMessage", {
+    const res = await this.callApi("sendMessage", {
       chat_id: chatId,
-      text: card.text,
+      text: formatted.plainText,
+      entities: formatted.entities,
       reply_markup: { inline_keyboard },
     });
+    if (res?.ok && res?.result?.message_id) {
+      this.broker.setMessageId(qid, res.result.message_id);
+    }
+    return res;
   }
 
   public async sendPermissionCard(permId: string, toolName: string, input: Record<string, unknown>) {
@@ -204,12 +360,42 @@ export class TelegramBotClient {
   }
 
   public async editMessage(chatId: number, messageId: number, text: string, replyMarkup?: Record<string, unknown>) {
+    const formatted = formatMarkdownToEntities(text);
     return await this.callApi("editMessageText", {
       chat_id: chatId,
       message_id: messageId,
-      text,
+      text: formatted.plainText,
+      entities: formatted.entities,
       reply_markup: replyMarkup,
     });
+  }
+
+  public async registerCommands(): Promise<boolean> {
+    if (!this.config.isPrimary || this.config.botCommands.length === 0) {
+      return false;
+    }
+
+    let allOk = true;
+    for (const chatId of this.config.allowFrom) {
+      const res = await this.callApi("setMyCommands", {
+        commands: this.config.botCommands,
+        scope: { type: "chat", chat_id: chatId },
+      });
+      if (!res?.ok) {
+        allOk = false;
+      }
+    }
+    return allOk;
+  }
+
+  public async getRegisteredCommands(chatId: number): Promise<Array<{ command: string; description: string }>> {
+    const res = await this.callApi("getMyCommands", {
+      scope: { type: "chat", chat_id: chatId },
+    });
+    if (res?.ok && Array.isArray(res.result)) {
+      return res.result;
+    }
+    return [];
   }
 
   public async startPolling() {
@@ -223,6 +409,8 @@ export class TelegramBotClient {
       console.error(`[ida-telegram] Cannot acquire host lock: ${lock.reason}. Exiting.`);
       return;
     }
+
+    await this.registerCommands();
 
     this.isRunning = true;
 
@@ -270,12 +458,36 @@ export class TelegramBotClient {
   }
 
   private async handleUpdate(update: TelegramUpdate) {
-    // 1. If inbound message from Nic, immediately set 👀 reaction (FR-9)
+    // 1. If inbound message from Nic, immediately set 👀 reaction (FR-9) and record voice-vs-text for FR-7.1 mirror
     if (update.message?.from?.id && this.config.allowFrom.includes(update.message.from.id)) {
+      const isInboundVoice = Boolean(update.message.voice || update.message.audio);
+      this.lastInboundWasVoiceByChat.set(update.message.chat.id, isInboundVoice);
       await this.setReaction(update.message.chat.id, update.message.message_id, "👀");
     }
 
-    // 2. Handle Callback Queries (Buttons)
+    // 2. Check if message is a reply to a force_reply "✏️ Other" question prompt
+    if (
+      update.message?.from?.id &&
+      this.config.allowFrom.includes(update.message.from.id) &&
+      update.message.reply_to_message &&
+      update.message.text
+    ) {
+      const pendingQ = this.broker.findQuestionByPromptMessageId(update.message.reply_to_message.message_id);
+      if (pendingQ) {
+        const res = await this.broker.resolveAnswer(pendingQ.id, "other", update.message.text);
+        if (res) {
+          const targetMsgId = pendingQ.messageId || update.message.reply_to_message.message_id;
+          await this.editMessage(update.message.chat.id, targetMsgId, res.cardText, { inline_keyboard: [] });
+          this.emitChannelEvent(
+            `Question answered: ${res.channelEvent.choice}`,
+            res.channelEvent as unknown as Record<string, unknown>
+          );
+        }
+        return;
+      }
+    }
+
+    // 3. Handle Callback Queries (Buttons)
     if (update.callback_query) {
       const cb = update.callback_query;
       const data = cb.data || "";
@@ -287,11 +499,43 @@ export class TelegramBotClient {
       if (data.startsWith("q:")) {
         const parts = data.split(":");
         const qid = parts[1];
-        const optIdx = parts[3] === "done" ? "done" : parseInt(parts[3], 10);
+        const action = parts[3];
+        const q = this.broker.getQuestion(qid);
 
+        if (action === "other") {
+          if (cb.message) {
+            const promptTitle = q?.header || q?.question || qid;
+            const promptRes = await this.callApi("sendMessage", {
+              chat_id: cb.message.chat.id,
+              text: `✏️ Reply to this message with your answer for: ${promptTitle}`,
+              reply_parameters: { message_id: cb.message.message_id },
+              reply_markup: { force_reply: true, selective: true },
+            });
+            if (promptRes?.ok && promptRes?.result?.message_id) {
+              this.broker.setPromptMessageId(qid, promptRes.result.message_id);
+            }
+          }
+          return;
+        }
+
+        if (q?.multiSelect && action !== "done") {
+          const optIdx = parseInt(action, 10);
+          const updatedCard = this.broker.toggleOption(qid, optIdx);
+          if (updatedCard && cb.message) {
+            const inline_keyboard = updatedCard.buttons.map((b) => [{ text: b.text, callback_data: b.callbackData }]);
+            await this.callApi("editMessageReplyMarkup", {
+              chat_id: cb.message.chat.id,
+              message_id: cb.message.message_id,
+              reply_markup: { inline_keyboard },
+            });
+          }
+          return;
+        }
+
+        const optIdx = action === "done" ? "done" : parseInt(action, 10);
         const res = await this.broker.resolveAnswer(qid, optIdx);
         if (res && cb.message) {
-          await this.editMessage(cb.message.chat.id, cb.message.message_id, res.cardText);
+          await this.editMessage(cb.message.chat.id, cb.message.message_id, res.cardText, { inline_keyboard: [] });
           this.emitChannelEvent(
             `Question answered: ${res.channelEvent.choice}`,
             res.channelEvent as unknown as Record<string, unknown>
@@ -363,13 +607,43 @@ export class TelegramBotClient {
         await this.editMessage(
           cb.message.chat.id,
           cb.message.message_id,
-          `${cb.message.text}\n\n*${outcomeText}*`
+          `${cb.message.text}\n\n*${outcomeText}*`,
+          { inline_keyboard: [] }
         );
+        return;
+      }
+
+      // Custom action / decision buttons on reply cards (FR-1.1 / FR-8)
+      if (cb.message && this.config.allowFrom.includes(cb.from.id)) {
+        const kbRows = cb.message.reply_markup?.inline_keyboard || [];
+        const matchedBtn = kbRows.flat().find((b) => b.callback_data === data);
+        const label = matchedBtn?.text || data;
+        const splitIdx = data.indexOf(":");
+        const callbackPrefix = splitIdx !== -1 ? data.substring(0, splitIdx) : data;
+        const originalText = cb.message.text || "";
+
+        await this.editMessage(
+          cb.message.chat.id,
+          cb.message.message_id,
+          `${originalText}\n\nSelected: ${label} ✅`,
+          { inline_keyboard: [] }
+        );
+
+        this.emitChannelEvent(`tapped ${label}`, {
+          event: "button_tap",
+          callback_id: cb.id,
+          callback_prefix: callbackPrefix,
+          payload: data,
+          label,
+          target_message_id: String(cb.message.message_id),
+          chat_id: String(cb.message.chat.id),
+          user_id: String(cb.from.id),
+        });
         return;
       }
     }
 
-    // 3. Voice Notes
+    // 4. Voice Notes
     if (update.message?.voice || update.message?.audio) {
       const voice = update.message.voice || update.message.audio;
       const fileId = voice?.file_id;
@@ -380,9 +654,12 @@ export class TelegramBotClient {
           // Download file info
           const fileInfoRes = await this.callApi("getFile", { file_id: fileId });
           const filePath = fileInfoRes.result?.file_path;
-          const downloadUrl = `https://api.telegram.org/file/bot${this.config.botToken}/${filePath}`;
+          const baseUrl = this.config.apiBaseUrl || "https://api.telegram.org";
+          const downloadUrl = `${baseUrl}/file/bot${this.config.botToken}/${filePath}`;
 
-          const localAudioPath = join(this.config.stateDir, "inbox", `voice_${Date.now()}.ogg`);
+          const inboxDir = join(this.config.stateDir, "inbox");
+          mkdirSync(inboxDir, { recursive: true });
+          const localAudioPath = join(inboxDir, `voice_${Date.now()}.ogg`);
           const res = await fetch(downloadUrl);
           const buf = await res.arrayBuffer();
           writeFileSync(localAudioPath, Buffer.from(buf));
@@ -400,7 +677,11 @@ export class TelegramBotClient {
             replyToMessageId: update.message.reply_to_message?.message_id,
           });
 
-          this.emitChannelEvent(voiceEvent.content, voiceEvent.meta);
+          this.emitChannelEvent(voiceEvent.content, {
+            ...voiceEvent.meta,
+            chat_id: String(update.message.chat.id),
+            user_id: update.message.from?.id !== undefined ? String(update.message.from.id) : undefined,
+          });
           return;
         } catch (e) {
           const failEvent = buildVoiceInEvent({
@@ -408,16 +689,42 @@ export class TelegramBotClient {
             duration,
             messageId: update.message.message_id,
           });
-          this.emitChannelEvent(failEvent.content, failEvent.meta);
+          this.emitChannelEvent(failEvent.content, {
+            ...failEvent.meta,
+            chat_id: String(update.message.chat.id),
+            user_id: update.message.from?.id !== undefined ? String(update.message.from.id) : undefined,
+          });
           return;
         }
       }
     }
 
-    // 4. General Inbound (text, reactions, commands)
+    // 5. General Inbound (text, attachments, reactions, commands)
     const event = parseInboundUpdate(update, this.config.allowFrom);
     if (event) {
+      if (event.event === "attachment" && event.meta.file_id && this.config.botToken) {
+        try {
+          const fileInfoRes = await this.callApi("getFile", { file_id: event.meta.file_id });
+          const filePath = fileInfoRes?.result?.file_path;
+          if (filePath) {
+            const baseUrl = this.config.apiBaseUrl || "https://api.telegram.org";
+            const downloadUrl = `${baseUrl}/file/bot${this.config.botToken}/${filePath}`;
+            const inboxDir = join(this.config.stateDir, "inbox");
+            const { mkdirSync } = await import("node:fs");
+            mkdirSync(inboxDir, { recursive: true });
+            const baseName = event.meta.file_name || filePath.split("/").pop() || `file_${Date.now()}`;
+            const localPath = join(inboxDir, `${Date.now()}_${baseName}`);
+            const res = await fetch(downloadUrl);
+            const buf = await res.arrayBuffer();
+            writeFileSync(localPath, Buffer.from(buf));
+            event.meta.attachment_path = localPath;
+          }
+        } catch {
+          // Proceed with emitting attachment event even if download fails
+        }
+      }
       this.emitChannelEvent(event.content, event.meta);
     }
   }
 }
+

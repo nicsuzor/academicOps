@@ -62,6 +62,19 @@ Identify the chart's core objective (the action or decision it enables) and read
 4. **Annotations**: Contextual commentary (`--preset sticky`).
 5. **Connectors**: Solid flows or dashed telemetry (`--curved`, `--stroke-style dashed`).
 
+### Hierarchies: nest first, arrow last
+
+A tree (outline, taxonomy, claim structure, org chart) reads best when containment carries the hierarchy and arrows are rare. Rings, radii, sunbursts and evenly spaced fans read as spiderweb and hide the levels they were meant to show.
+
+- **Headlines, not boxes, for the top levels.** The root and each major group are one sentence in large type (two to three sizes above the leaves), with white space around it. Size carries rank; a reader sees the structure from across the room.
+- **Panels for groups, columns for sub-groups, small boxes for leaves.** Each group is a plain panel led by its headline; its sub-groups are columns inside it with their own headline; leaves pack beneath their column in reading order. Nesting replaces parent-child arrows entirely.
+- **Arrows only for moves between groups, each labelled.** Draw a connector only where one group hands something to another, and write the inference on it in words. Route by grid position: side to side between neighbours, over the top across a row, through the gap between rows, round the margin when rows are far apart.
+- **Uneven density on purpose.** Headline claims get room; detail is packed small. Even spacing is what makes a generated layout look mechanical.
+- **Size boxes to the text.** Wrap at `(width - 28) / (font * 0.62)` characters for Virgil and set widths to the longest line. The CLI render draws bound text unwrapped, so text fit is checked from the stored lines, not from the picture.
+- **Five colours at most**, bound to the kind of node. Finer status goes in the text as a prefix. Group identity goes on captions and borders, not fills.
+- **Free layouts (clusters, mind maps) need relax-then-repair.** Push overlapping boxes apart with a weak spring to each parent, then test every arrow's real polyline (both segments of a curved arrow) against every unrelated box and nudge offenders off the chord, re-relaxing each round. Curve arrows with a control point 12% of the chord off-centre, capped at 60 px.
+- **Generate from source data**, keep ids stable by slugging node titles, and validate with `pkb-excalidraw check` plus an own segment-versus-box check: the CLI `arrows-check` tests chords and reports false positives on routed or curved arrows.
+
 ### CLI tools and invariants
 
 `pkb-excalidraw` is the preferred way to read and edit `.excalidraw` files; use it before reading or writing the JSON directly, because its mutations refuse to save a file that fails validation. Run `pkb-excalidraw --help` for the full command set.

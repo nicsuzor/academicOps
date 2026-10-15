@@ -46,6 +46,7 @@ Then assemble the steps:
 - Wire `needs` edges only where one unit genuinely requires another's output.
 - Mint multi-task cuts using `pkb.decompose_task`.
 - Write tasks with status `queued` immediately.
+- Close every task written from a composite workflow with an appendix section listing that workflow's component tasks in execution order.
 
 ```markdown
 ## Goal
@@ -71,6 +72,10 @@ Then assemble the steps:
 ## Report
 
 [ Any special reporting requirements; default should be to update the task record with evidence next to each acceptance criterion: an item is ticked only with evidence of that item itself; any other item stays unticked with its limit stated. Workers should not add timestamped logs or other ephemeral data to the task record. Rewrite the record rather than appending information, and delete any temporary notes or logs, any outdated or incorrect information, and any irrelevant instructions or steps. Leave only current state. ]
+
+## Appendix: Component tasks
+
+[ Present only when written from a composite workflow. List that workflow's component tasks in sequence, each with its role or deliverable. ]
 ```
 
 ### Mint QA follow-up when required
@@ -95,6 +100,7 @@ Where the project finish template calls for QA review:
 - Leave out methods, command scripts, tool names, runtime hints, notes on the worker's limits, summaries of linked notes (point to them instead), provenance, changelogs, session narratives, counts, SHAs and history.
 - Change an existing task only for a defect you can point to in its text; otherwise leave it as written.
 - A skill may be a step, even the only step: write `invoke /<skill-name>` and leave its implementation to the skill. A workflow template is never a step; its steps are.
+- Close every task written from a composite workflow with an appendix section listing that workflow's component tasks in sequence.
 - Do not create standalone decision tasks or file questions as tasks.
 
 ## 4. Report

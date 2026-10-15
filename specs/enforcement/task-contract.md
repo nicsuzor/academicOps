@@ -73,7 +73,13 @@ this contract does not restate.
   [spec-partial-work-tight-loop-delivery.md](../polecat/spec-partial-work-tight-loop-delivery.md#the-partial-terminal-state)
   (the existing terminal status in the canonical taxonomy -- a partial handback
   is a legal terminal outcome, not a failure; that spec owns partial
-  semantics, which this bullet does not restate). A worker whose deliverable
+  semantics, which this bullet does not restate). `/pull` mandates invoking
+  `/dump` for the final handover and for logging results at the end of every
+  job, whatever its release status (`done`, `partial`, `review`, `failed`,
+  `cancelled`, or `in_progress`), and `/dump`'s `release_task` body update
+  includes an Argdown proof (per [`premise-check`](../../plugins/ida/skills/premise-check/SKILL.md))
+  that supports a complete and valid answer to each original direction given or
+  question posed. A worker whose deliverable
   is a PR releases its task `review` once the PR is open and exits; the
   repository merges it and `/reconcile` writes `done` on the merge, which
   unblocks dependent follow-ups (QA, deploy); `partial` is reserved strictly for the
@@ -81,8 +87,6 @@ this contract does not restate.
   abandonment is garbage-collected (H10): incentive-first, this machinery is the
   backstop, not the mechanism agents are expected to lean on. Its floor is the
   task server predicate -- the contract is only as strong as that floor.
-  This is Layer 2's instantiation of the universal task-boundary contract --
-  the field-by-field shape, the substance-over-form review requirement, and
-  the grandfather cutover policy live once, canonically, in
-  [evidence-contract.md](evidence-contract.md); this bullet does not restate
-  them.
+  The completion claim meets the [evidence contract](evidence-contract.md).
+  Its required fields are checked for presence only, and only on tasks created
+  after the check shipped.

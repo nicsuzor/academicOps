@@ -1,8 +1,10 @@
 import { join } from "node:path";
 import { homedir } from "node:os";
+import { resolveBotCommands, type TelegramBotCommand } from "./telegram/commands.js";
 
 export interface PluginConfig {
   botToken: string;
+  apiBaseUrl: string;
   role: string;
   isPrimary: boolean;
   allowFrom: number[];
@@ -15,6 +17,7 @@ export interface PluginConfig {
   socketPath: string;
   githubToken?: string;
   miniAppUrl?: string;
+  botCommands: TelegramBotCommand[];
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
@@ -33,6 +36,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
 
   return {
     botToken: env.TELEGRAM_BOT_TOKEN || "",
+    apiBaseUrl: (env.TELEGRAM_API_BASE_URL || "https://api.telegram.org").replace(/\/+$/, ""),
     role,
     isPrimary,
     allowFrom,
@@ -45,5 +49,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
     socketPath,
     githubToken: env.GITHUB_TOKEN,
     miniAppUrl: env.MINI_APP_URL,
+    botCommands: resolveBotCommands(env.TELEGRAM_BOT_COMMANDS),
   };
 }

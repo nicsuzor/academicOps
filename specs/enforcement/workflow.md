@@ -67,11 +67,10 @@ workflow is the only differentiator; there is no separate research path.
    inside it at steps 3-4.
 
 Steps 3, 4, and 5 all read and produce claims in the same shape: see
-[evidence-contract.md](evidence-contract.md), the canonical universal
-task-boundary contract -- every load-bearing claim at each step carries
-checkable evidence or a stated failure reason, and the reviewer checks the
-actual criterion was met, not merely that the right fields were filled in (see
-[Substance over form](evidence-contract.md#substance-over-form)).
+[evidence-contract.md](evidence-contract.md): every load-bearing claim at each
+step carries checkable evidence or a stated failure reason. At steps 3 and 4
+the reviewer opens each pointer, confirms it supports its claim, and checks
+that the acceptance criterion itself was met.
 
 ### Two signatures at the sign-off boundary
 

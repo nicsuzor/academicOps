@@ -45,6 +45,11 @@ async function main() {
     resolvePermissionRelay: (id: string, decision: "allow" | "deny") => {
       permRelay.resolve(id, decision);
     },
+    editTelegramCard: async (chatId: number, messageId: number, text: string) => {
+      if (bot) {
+        await bot.editMessage(chatId, messageId, text, { inline_keyboard: [] });
+      }
+    },
   };
 
   // Start Mini App HTTP loopback server
@@ -70,24 +75,27 @@ async function main() {
         try {
           const req = JSON.parse(line);
           if (req.type === "ask_user") {
-            const q = req.questions[0];
-            const result = await broker.askUser({
-              question: q.question,
-              header: q.header,
-              options: q.options,
-              multiSelect: q.multiSelect,
-              allowOther: q.allowOther,
-              chatId: config.allowFrom[0],
-            });
+            const postedIds: string[] = [];
+            for (const q of req.questions || []) {
+              const result = await broker.askUser({
+                question: q.question,
+                header: q.header,
+                options: q.options,
+                multiSelect: q.multiSelect,
+                allowOther: q.allowOther,
+                chatId: config.allowFrom[0],
+              });
+              postedIds.push(result.questionId);
 
-            if (bot) {
-              const card = broker.renderQuestionCard(result.questionId);
-              if (card && config.allowFrom[0]) {
-                await bot.sendQuestionCard(config.allowFrom[0], result.questionId, card);
+              if (bot) {
+                const card = broker.renderQuestionCard(result.questionId);
+                if (card && config.allowFrom[0]) {
+                  await bot.sendQuestionCard(config.allowFrom[0], result.questionId, card);
+                }
               }
             }
 
-            client.write(JSON.stringify({ status: "ok", questionId: result.questionId }) + "\n");
+            client.write(JSON.stringify({ status: "ok", questionId: postedIds[0], questionIds: postedIds }) + "\n");
           }
         } catch {
           client.write(JSON.stringify({ error: "malformed request" }) + "\n");

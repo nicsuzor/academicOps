@@ -18,9 +18,9 @@ Finalize session work and provide a structured handover before exit.
 
 ### 2. Release Claimed Tasks
 
-For each claimed task (releasing child tasks first), call `pkb.release_task` (the `services` MCP server's code-mode interface: `listToolFiles` → `readToolFile("servers/pkb.pyi")` → `executeToolCode` calling `pkb.release_task(...)`) with the appropriate terminal status:
+For each claimed task (releasing child tasks first), update the task body (`pkb.update_body` or `pkb.update_task`) so its `## Report` section records the outcome and includes an Argdown proof (written per the `premise-check` skill) that supports a complete and valid answer to each original direction given or question posed, then call `pkb.release_task` (the `services` MCP server's code-mode interface: `listToolFiles` → `readToolFile("servers/pkb.pyi")` → `executeToolCode` calling `pkb.release_task(...)`) with the appropriate terminal status:
 
-- `done`: All acceptance criteria are fully met with verified evidence recorded in the task's Report section: quoted output, `file:line` citations, counts, and the specimen run where requested. A worker whose deliverable is a PR releases `review` instead (below). An empty, template, or bare-assertion report is released as `partial`.
+- `done`: All acceptance criteria are fully met with verified evidence recorded in the task's Report section: quoted output, `file:line` citations, counts, the specimen run where requested, and an Argdown proof supporting a complete and valid answer to each original direction given or question posed. A worker whose deliverable is a PR releases `review` instead (below). An empty, template, or bare-assertion report is released as `partial`.
 - `partial`: The worker's own acceptance items remain unfinished -- a scope seam, an external dependency, or a missing tool. Never release as `partial` because a dependent follow-up (QA, merge, deploy) remains to run. A follow-up task carries the remainder; record it under Next.
 - `review`: Either the worker's PR is open and awaits merge by the repository (record `pr_url`; do not wait for CI, review or merge; `/reconcile` writes `done` on the merge), or the worker needs help to finish the task. Help is transient, never a waiting state: a worker hands back on the record, documenting what help is needed in `reason`, and never addresses or escalates to the user. Any reconcile pass reading a `review` task transitions it immediately.
 - `failed`: The task cannot be completed and has reached a terminal failure. Document failure evidence and root cause.
@@ -28,15 +28,20 @@ For each claimed task (releasing child tasks first), call `pkb.release_task` (th
 - `in_progress`: Use only if an active successor session is immediately continuing work.
 - Wire a `needs` edge from the blocked task to represent dependencies (FR:334).
 
-Task report format:
+Task report format (for the `release_task` body update in `## Report` and the session task summary):
 
-```markdown
+````markdown
 ### Task: <task-id> (<title>) -- <status>
 
 - **Update**: [1-3 sentences on work completed and remaining]
 - **Output**: [Branch, commit SHA, PR link, or artifact path]
 - **Next**: [Clear instructions for successor agent]
+- **Proof**:
+
+```argdown
+<Argdown proof per the premise-check skill supporting a complete and valid answer to each original direction given or question posed>
 ```
+````
 
 If the release tool is unavailable, record the failure trace and list claimed task IDs in the final report.
 

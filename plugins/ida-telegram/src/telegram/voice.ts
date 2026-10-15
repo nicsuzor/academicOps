@@ -10,28 +10,33 @@ export interface VoiceInEventInput {
 export interface VoiceChannelEvent {
   event: "voice";
   content: string;
-  meta: {
-    voice: boolean;
-    duration?: number;
-    audio_path?: string;
-    message_id: number;
-    reply_to_message_id?: number;
-    transcript_error?: string;
-  };
+  meta: Record<string, string>;
 }
 
 export function buildVoiceInEvent(input: VoiceInEventInput): VoiceChannelEvent {
+  const baseMeta: Record<string, string> = {
+    event: "voice",
+    voice: "true",
+    message_id: String(input.messageId),
+  };
+
+  if (input.duration !== undefined) {
+    baseMeta.duration = String(input.duration);
+  }
+  if (input.audioPath !== undefined) {
+    baseMeta.audio_path = input.audioPath;
+  }
+  if (input.replyToMessageId !== undefined) {
+    baseMeta.reply_to_message_id = String(input.replyToMessageId);
+  }
+
   if (input.error || !input.transcript) {
     const errorMsg = input.error || "unknown transcription failure";
     return {
       event: "voice",
       content: `Voice note received; transcription failed: ${errorMsg}`,
       meta: {
-        voice: true,
-        duration: input.duration,
-        audio_path: input.audioPath,
-        message_id: input.messageId,
-        reply_to_message_id: input.replyToMessageId,
+        ...baseMeta,
         transcript_error: errorMsg,
       },
     };
@@ -40,13 +45,7 @@ export function buildVoiceInEvent(input: VoiceInEventInput): VoiceChannelEvent {
   return {
     event: "voice",
     content: input.transcript,
-    meta: {
-      voice: true,
-      duration: input.duration,
-      audio_path: input.audioPath,
-      message_id: input.messageId,
-      reply_to_message_id: input.replyToMessageId,
-    },
+    meta: baseMeta,
   };
 }
 
@@ -85,3 +84,23 @@ export function prepareVoiceText(markdown: string): string {
 
   return text;
 }
+
+export function splitVoiceTier2Quotes(markdown: string): { tier1Text: string; tier2Quotes: string } {
+  const lines = markdown.split("\n");
+  const tier1Lines: string[] = [];
+  const tier2Lines: string[] = [];
+
+  for (const line of lines) {
+    if (line.trim().startsWith(">")) {
+      tier2Lines.push(line);
+    } else {
+      tier1Lines.push(line);
+    }
+  }
+
+  return {
+    tier1Text: tier1Lines.join("\n").trim(),
+    tier2Quotes: tier2Lines.join("\n").trim(),
+  };
+}
+

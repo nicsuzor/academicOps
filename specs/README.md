@@ -5,7 +5,9 @@
 - [ARCHITECTURE.md](ARCHITECTURE.md) -- repository layout, plugin boundaries, hook set, build stages.
 - [build-and-install.md](build-and-install.md) -- local install and release pipeline.
 - [transcript-pipeline.md](transcript-pipeline.md) -- session-transcript ingestion, normalization, and output.
+- [otel-tracing.md](otel-tracing.md) -- unified OpenTelemetry tracing to the `academicOps` Phoenix project, span attribute schema, cross-surface correlation, and single-emitter architecture.
 - [meta/doc-taxonomy.md](meta/doc-taxonomy.md) -- the five document kinds and where each lives.
+- [meta/writing-specs.md](meta/writing-specs.md) -- the spec template and the rules every spec follows.
 - [meta/naming-and-decisions.md](meta/naming-and-decisions.md) -- task naming, filename standards, and graph-relationship decision representation.
 
 ## Agents
@@ -23,6 +25,7 @@
 - [enforcement/workflow.md](enforcement/workflow.md) -- the five-step workflow shape and review-depth call.
 - [enforcement/sign-off.md](enforcement/sign-off.md) -- release-unit-scale sign-off.
 - [enforcement/evidence-contract.md](enforcement/evidence-contract.md) -- the universal claim-evidence shape.
+- [enforcement/evidence-contract-enforcement.md](enforcement/evidence-contract-enforcement.md) -- the reminders, gate and escalation that hold agents to the evidence contract.
 - [enforcement/auto-mode-classifier.md](enforcement/auto-mode-classifier.md) -- Claude Code auto-mode classifier design and cost model.
 
 ## Polecat

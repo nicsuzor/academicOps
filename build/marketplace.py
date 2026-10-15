@@ -14,9 +14,12 @@
     name = "aops"           # marketplace name; ships as dist/<name>-<client>
     description = "..."
     category = "productivity"
+    clients = ["claude", "openclaw"]  # optional; omitted means every client
 
 `name`, `description`, `owner`, and `plugins` are all required top-level keys.
 Every `[[plugins]]` entry requires `directory`, `name`, `description`, `category`.
+`clients` limits the plugin to the listed clients: a build for any other client
+skips it and deletes a stale dist/<name>-<client>, so nothing installs it there.
 """
 
 import json
@@ -26,6 +29,7 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
+from build.context import CLIENTS
 from build.errors import BuildError
 from build.tree import ignore
 
@@ -45,6 +49,17 @@ def load_marketplace_toml(path: Path) -> dict[str, Any]:
         for key in _REQUIRED_PLUGIN:
             if key not in entry:
                 raise BuildError(f"{path}: [[plugins]] entry missing '{key}': {entry}")
+        if "clients" in entry:
+            listed = entry["clients"]
+            if (
+                not isinstance(listed, list)
+                or not listed
+                or any(client not in CLIENTS for client in listed)
+            ):
+                raise BuildError(
+                    f"{path}: [[plugins]] '{entry['directory']}' has clients {listed!r}; "
+                    f"expected a non-empty list drawn from {list(CLIENTS)}"
+                )
     return data
 
 
@@ -204,3 +219,33 @@ def generate_openclaw_dist(decl: dict[str, Any], version: str, dist_root: Path) 
         json.dumps(data, indent=2) + "\n", encoding="utf-8"
     )
     return openclaw_root
+
+
+def generate_agy_dist(decl: dict[str, Any], dist_root: Path) -> Path:
+    """dist/plugins/ — Antigravity's native multi-plugin directory.
+
+    When `agy plugin install <dir-or-repo-url>` is given a root directory, its
+    `installFromDirectory` checks `<dir>/plugins/` before falling back to
+    `isBulkDirectory(<dir>)`. Without `dist/plugins/<name>`, bulk installation
+    against the distribution root iterates all `<name>-agy`, `<name>-claude`,
+    and `<name>-openclaw` directories in alphabetical order, and `claudeHandler`
+    imports `<name>-claude` and `<name>-openclaw` over `<name>-agy` because all
+    three declare `"name": "<name>"`. Populating `dist/plugins/<name>` from the
+    built `<name>-agy` artifacts causes `agy plugin install` against the bare
+    distribution root to install only the `agy` plugins.
+    """
+    agy_root = dist_root / "plugins"
+    if agy_root.exists():
+        shutil.rmtree(agy_root)
+    agy_root.mkdir(parents=True)
+
+    for entry in decl["plugins"]:
+        name = entry["name"]
+        src = dist_root / f"{name}-agy"
+        if not src.exists():
+            continue
+
+        dst = agy_root / name
+        shutil.copytree(src, dst, ignore=ignore())
+
+    return agy_root

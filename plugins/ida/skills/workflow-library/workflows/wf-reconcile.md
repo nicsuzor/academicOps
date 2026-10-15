@@ -18,7 +18,7 @@ Maintains truth over the task graph: establishes facts about in-flight work and 
 2. **Reconcile pull requests**: Match closed pull requests to tasks by structured indicators (`pr_url`, body task ID, recorded branch, `polecat/` prefix, exact title).
    - **Merged PRs**: Write `status: done` unconditionally on an observed merged PR (`pr_url`, merge timestamp, branch). Do not re-judge acceptance criteria.
    - **Closed without merge**: Surface for routing; never auto-complete or auto-requeue.
-   - **Open PRs**: A `review` task whose PR is still open is waiting on the repository to merge it. Leave it until the PR merges or closes.
+   - **Open PRs**: Read review and check state with `gh pr view <n> --repo <owner/repo> --json state,isDraft,mergedAt,reviewDecision,statusCheckRollup`. `reviewDecision: CHANGES_REQUESTED` or a failing check in `statusCheckRollup` routes the task to `queued` or a follow-up task, never `done` or `review`. Otherwise, a `review` task whose PR is still open is waiting on the repository to merge it; leave it until the PR merges or closes.
 3. **The Review Lifecycle**: Apart from a task waiting on its open PR (step 2), `review` means a worker needs help to finish the task; it is transient, never a waiting state. Under the bazaar model, any pass reading a `review` task owns the outcome in that pass and mints any needed tasks; nothing is deferred to a later sweep or the original dispatcher. Bring the record to reality and take exactly one outcome:
    - `ready` or `queued`: not finished properly, an agent can finish it.
    - `partial` plus a new review task queued for an agent, wired so the source cannot complete before it (source `depends_on` it).
