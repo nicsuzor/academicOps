@@ -35,6 +35,8 @@
 - [polecat/spec-partial-work-tight-loop-delivery.md](polecat/spec-partial-work-tight-loop-delivery.md) -- the `partial` terminal state and partial-work doctrine.
 - [polecat/spec-base-ref-resolution.md](polecat/spec-base-ref-resolution.md) -- how `resolve_isolated_workspace()` picks the commit a worker's isolated clone diverges from.
 - [polecat/spec-image-staleness-detection.md](polecat/spec-image-staleness-detection.md) -- detecting and surfacing a stale baked plugin payload against a bind-mounted workspace.
+- [polecat/spec-observability.md](polecat/spec-observability.md) -- real-time monitoring across MCP and host-launcher dispatch surfaces.
+- [polecat/spec-silent-failure-detection.md](polecat/spec-silent-failure-detection.md) -- launch preflight, exit-time task guard, durable `run.json` harvest, and immediate orphan detection for polecat workers.
 
 ## Tools
 
