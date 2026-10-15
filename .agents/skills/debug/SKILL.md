@@ -1,6 +1,6 @@
 ---
 name: debug
-description: Drive and audit a real framework run — choose an execution surface, dispatch a worker, spin up a polecat container under tmux for live interaction, and pull authoritative telemetry from the Phoenix span store via the `services` MCP proxy. Use when asked to debug a polecat, run a polecat container interactively, attach to a polecat session, check container or session logs, establish what a session actually did, or verify that a change to plugins, hooks, `lib/`, or skills actually fires inside a real container rather than merely being installed in the image. Covers both clients, `claude` and `agy`. Not the standard for scoring the run itself — that is `dogfood`.
+description: Drive and audit a real framework run — choose an execution surface, dispatch a worker, spin up a polecat container under tmux for live interaction, and pull authoritative telemetry from the Phoenix span store via the `services` MCP proxy. Use when asked to debug a polecat, investigate what broke a container or client mechanism (such as authentication, a token, or a service), run a polecat container interactively, attach to a polecat session, check container or session logs, establish what a session actually did, or verify that a change to plugins, hooks, `lib/`, or skills actually fires inside a real container rather than merely being installed in the image. Covers both clients, `claude` and `agy`. Not the standard for scoring the run itself — that is `dogfood`.
 ---
 
 # Driving a framework run
@@ -62,7 +62,14 @@ itself a framework failure, and that is the finding.
 Before recording that anything passed or failed, name the observation that
 discriminates it from the alternative explanation; where none was made, file
 `undetermined` rather than a verdict. A silent agent is equally consistent with
-work finished and unreported.
+work finished and unreported. When asked what broke a mechanism (such as
+authentication, a token, or a service), examine why the mechanism stopped
+working across its full lifecycle — prior failing session logs and traces, token
+expiry and refresh, state transitions, and write-back persistence on read-only
+mounts — rather than testing only whether a fresh one-shot startup check
+succeeds. A passing one-shot startup probe eliminates only initial boot or login
+on current state; it does not refute a reported failure or satisfy the ask until
+the run examines why the token or mechanism stopped working.
 
 On completion: claim the record, review the output against those criteria, and
 write your assessment onto it. Check that the worker updated its own task
