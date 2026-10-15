@@ -352,11 +352,15 @@ export class TelegramBotClient {
       ]);
     }
 
-    return await this.callApi("sendMessage", {
+    const res = await this.callApi("sendMessage", {
       chat_id: defaultChatId,
       text: summary,
       reply_markup: { inline_keyboard },
     });
+    if (res?.ok && res?.result?.message_id) {
+      this.permRelay.setMessageInfo(permId, defaultChatId, res.result.message_id, summary);
+    }
+    return res;
   }
 
   public async editMessage(chatId: number, messageId: number, text: string, replyMarkup?: Record<string, unknown>) {

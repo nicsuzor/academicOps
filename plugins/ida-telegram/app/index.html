@@ -30,12 +30,17 @@
       <!-- Questions View -->
       <section id="view-questions" class="view">
         <div id="questions-list"></div>
+        <div class="card voice-hint-card">
+          <p class="voice-hint muted">🎙 Prefer to talk? To answer by voice, send a voice note in chat.</p>
+        </div>
       </section>
 
       <!-- Review View -->
       <section id="view-review" class="view">
-        <div id="review-content" class="card">
-          <p class="muted">No pending permissions or PR diffs waiting for review.</p>
+        <div id="review-content">
+          <div class="card">
+            <p class="muted">No pending permissions or PR diffs waiting for review.</p>
+          </div>
         </div>
       </section>
 
@@ -48,6 +53,39 @@
             <span class="label">Task ID:</span>
             <span id="anchor-task" class="mono">-</span>
           </div>
+          <div class="meta-row">
+            <span class="label">Uptime:</span>
+            <span id="anchor-uptime" class="mono">0s</span>
+          </div>
+
+          <div class="anchor-section">
+            <h3>Waiting On</h3>
+            <ul id="anchor-waiting-on" class="anchor-list">
+              <li class="muted">None</li>
+            </ul>
+          </div>
+
+          <div class="anchor-section">
+            <h3>Running Delegations</h3>
+            <ul id="anchor-delegations" class="anchor-list">
+              <li class="muted">None</li>
+            </ul>
+          </div>
+
+          <div class="anchor-section">
+            <h3>Pending Questions</h3>
+            <ul id="anchor-questions" class="anchor-list">
+              <li class="muted">None</li>
+            </ul>
+          </div>
+
+          <div class="anchor-section">
+            <h3>Recent Turns</h3>
+            <div id="anchor-turns" class="turns-list">
+              <p class="muted">No recent turns recorded.</p>
+            </div>
+          </div>
+
           <div class="gauge-container">
             <div class="label-row">
               <span>Context Window</span>
