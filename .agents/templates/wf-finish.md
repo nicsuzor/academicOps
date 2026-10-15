@@ -23,7 +23,8 @@ Specifies how tasks in `nicsuzor/academicOps` finish. All individual task change
 - **Releases to main**: A PR from `dev` into `main` merges only on explicit release approval.
 - **Commit trailer**: Commits must carry `Task: <task-id>` (and `Epic: <epic-id>` if applicable).
 - **QA review**:
-  - **Required**: For any changes touching plugins, hooks, skills, agents, runtimes, or scripts. `/reify` mints a follow-up verifying task.
+  - **Required**: For any changes touching plugins, hooks, skills, agents, runtimes, or scripts, except for low-risk internal changes below. `/reify` mints a follow-up verifying task.
+  - **Low-risk internal changes (chiefly bugfixes)**: Get no separate verification run. Instead, the finish step looks for a blocked task waiting on the fix (`blocks` or inbound `depends_on` / `needs`). If a blocked dependent exists, mint a follow-up task (`depends_on: [<blocked-task-id>]`) that judges the fix by reviewing that blocked task's next run once it runs. Where no blocked dependent exists, mint no verification follow-up task; the fix finishes without a separate verification run.
   - **None**: For pure documentation, notes, or prompt triage changes with no functional impact.
 
 ## Worker Completion Checklist
@@ -37,10 +38,17 @@ Before marking `status: done`, the worker must:
 
 ## Follow-up QA Task Specification
 
-Where QA is required, the verifying task runs independently on a clean checkout:
+Where QA is required for standard changes, the verifying task runs independently on a clean checkout:
 
 - **Title**: `QA: <primary task title>`
 - **Parent**: Same parent as primary task
 - **Depends on**: `[<primary-task-id>]`
 - **Workflow**: Composes independent verification workflow
 - **Goal**: Independently verify PR changes on clean checkout against literal acceptance criteria. Once verified, merge the PR to `dev`.
+
+### Low-risk internal bugfixes (next-run review)
+
+When the task is a low-risk internal change, chiefly a bugfix, mint no separate verification run on the fix task. Instead, look for a blocked task waiting on the fix (`blocks` or inbound `depends_on` / `needs`):
+
+- **Blocked dependent exists**: Mint a follow-up task (`Title`: `QA next run: <primary task title>`, same parent, `Depends on`: `[<blocked-task-id>]`, status `queued`) that judges the fix by reviewing that blocked task's next run once it runs.
+- **No blocked dependent exists**: Mint no verification follow-up task; the fix finishes on its PR without a separate verification run.
