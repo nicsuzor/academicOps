@@ -14,9 +14,12 @@
     name = "aops"           # marketplace name; ships as dist/<name>-<client>
     description = "..."
     category = "productivity"
+    clients = ["claude", "openclaw"]  # optional; omitted means every client
 
 `name`, `description`, `owner`, and `plugins` are all required top-level keys.
 Every `[[plugins]]` entry requires `directory`, `name`, `description`, `category`.
+`clients` limits the plugin to the listed clients: a build for any other client
+skips it and deletes a stale dist/<name>-<client>, so nothing installs it there.
 """
 
 import json
@@ -26,6 +29,7 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
+from build.context import CLIENTS
 from build.errors import BuildError
 from build.tree import ignore
 
@@ -45,6 +49,17 @@ def load_marketplace_toml(path: Path) -> dict[str, Any]:
         for key in _REQUIRED_PLUGIN:
             if key not in entry:
                 raise BuildError(f"{path}: [[plugins]] entry missing '{key}': {entry}")
+        if "clients" in entry:
+            listed = entry["clients"]
+            if (
+                not isinstance(listed, list)
+                or not listed
+                or any(client not in CLIENTS for client in listed)
+            ):
+                raise BuildError(
+                    f"{path}: [[plugins]] '{entry['directory']}' has clients {listed!r}; "
+                    f"expected a non-empty list drawn from {list(CLIENTS)}"
+                )
     return data
 
 
