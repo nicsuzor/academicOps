@@ -498,8 +498,16 @@ export class TelegramBotClient {
       const cb = update.callback_query;
       const data = cb.data || "";
 
-      // Answer callback query toast
-      await this.callApi("answerCallbackQuery", { callback_query_id: cb.id });
+      // Answer callback query toast (FR-3.2: "Noted 👍" for fb:up)
+      if (data === "fb:up") {
+        await this.callApi("answerCallbackQuery", { callback_query_id: cb.id, text: "Noted 👍" });
+      } else {
+        await this.callApi("answerCallbackQuery", { callback_query_id: cb.id });
+      }
+
+      if (data === "noop") {
+        return;
+      }
 
       // Questions callback: q:<qid>:<qi>:<oi>
       if (data.startsWith("q:")) {
@@ -556,11 +564,15 @@ export class TelegramBotClient {
           messageId: cb.message.message_id,
           messageExcerpt: cb.message.text || "",
         });
+        const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
+          cb.message.reply_markup?.inline_keyboard,
+          [[{ text: "👍 saved", callback_data: "noop" }]]
+        );
         await this.callApi("editMessageReplyMarkup", {
           chat_id: cb.message.chat.id,
           message_id: cb.message.message_id,
           reply_markup: {
-            inline_keyboard: [[{ text: "👍 saved", callback_data: "noop" }]],
+            inline_keyboard: updatedKeyboard,
           },
         });
         return;
@@ -568,10 +580,27 @@ export class TelegramBotClient {
 
       if (data === "fb:down" && cb.message) {
         const critiqueKeyboard = this.feedbackManager.getDownvoteCritiqueKeyboard(cb.message.message_id);
+        const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
+          cb.message.reply_markup?.inline_keyboard,
+          critiqueKeyboard
+        );
         await this.callApi("editMessageReplyMarkup", {
           chat_id: cb.message.chat.id,
           message_id: cb.message.message_id,
-          reply_markup: { inline_keyboard: critiqueKeyboard },
+          reply_markup: { inline_keyboard: updatedKeyboard },
+        });
+        return;
+      }
+
+      if ((data === "fb:cancel" || data.startsWith("fb:cancel:")) && cb.message) {
+        const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
+          cb.message.reply_markup?.inline_keyboard,
+          [this.feedbackManager.getInitialFeedbackButtons()]
+        );
+        await this.callApi("editMessageReplyMarkup", {
+          chat_id: cb.message.chat.id,
+          message_id: cb.message.message_id,
+          reply_markup: { inline_keyboard: updatedKeyboard },
         });
         return;
       }
@@ -585,11 +614,15 @@ export class TelegramBotClient {
           critique,
         });
 
+        const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
+          cb.message.reply_markup?.inline_keyboard,
+          [[{ text: `Critique saved: ${critique}`, callback_data: "noop" }]]
+        );
         await this.callApi("editMessageReplyMarkup", {
           chat_id: cb.message.chat.id,
           message_id: cb.message.message_id,
           reply_markup: {
-            inline_keyboard: [[{ text: `Critique saved: ${critique}`, callback_data: "noop" }]],
+            inline_keyboard: updatedKeyboard,
           },
         });
 
@@ -716,7 +749,6 @@ export class TelegramBotClient {
             const baseUrl = this.config.apiBaseUrl || "https://api.telegram.org";
             const downloadUrl = `${baseUrl}/file/bot${this.config.botToken}/${filePath}`;
             const inboxDir = join(this.config.stateDir, "inbox");
-            const { mkdirSync } = await import("node:fs");
             mkdirSync(inboxDir, { recursive: true });
             const baseName = event.meta.file_name || filePath.split("/").pop() || `file_${Date.now()}`;
             const localPath = join(inboxDir, `${Date.now()}_${baseName}`);
