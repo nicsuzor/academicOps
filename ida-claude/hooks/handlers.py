@@ -16,7 +16,16 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from dispatch import HookContext, Result, block, load_message_pair, refuse, warn
+from dispatch import (
+    HookContext,
+    Result,
+    _merge,
+    _run_handler,
+    block,
+    load_message_pair,
+    refuse,
+    warn,
+)
 from premise_check_gate import (
     is_channel_reply_tool,
     is_foreground_dispatch,
@@ -555,72 +564,6 @@ def _prepare_tracer_data(ctx: HookContext) -> dict[str, Any]:
     return data
 
 
-def user_prompt_submit(ctx: HookContext) -> Result | None:
-    """Tracer hook handler for canonical UserPromptSubmit, Claude Code side."""
-    if claude_code_tracer is None or ctx.client != "claude":
-        return None
-    try:
-        data = _prepare_tracer_data(ctx)
-        config = claude_code_tracer.discover_config(data)
-        if config is not None:
-            claude_code_tracer.handle_user_prompt_submit(data, config)
-    except Exception as exc:
-        log.warning("claude_code_tracer user_prompt_submit failed: %s", exc)
-    return None
-
-
-def pre_tool(ctx: HookContext) -> Result | None:
-    if claude_code_tracer is None or ctx.client != "claude":
-        return None
-    try:
-        data = _prepare_tracer_data(ctx)
-        config = claude_code_tracer.discover_config(data)
-        if config is not None:
-            claude_code_tracer.handle_pre_tool(data, config)
-    except Exception as exc:
-        log.warning("claude_code_tracer pre_tool failed: %s", exc)
-    return None
-
-
-def post_tool(ctx: HookContext) -> Result | None:
-    if claude_code_tracer is None or ctx.client != "claude":
-        return None
-    try:
-        data = _prepare_tracer_data(ctx)
-        config = claude_code_tracer.discover_config(data)
-        if config is not None:
-            claude_code_tracer.handle_post_tool(data, config)
-    except Exception as exc:
-        log.warning("claude_code_tracer post_tool failed: %s", exc)
-    return None
-
-
-def post_tool_failure(ctx: HookContext) -> Result | None:
-    if claude_code_tracer is None or ctx.client != "claude":
-        return None
-    try:
-        data = _prepare_tracer_data(ctx)
-        config = claude_code_tracer.discover_config(data)
-        if config is not None:
-            claude_code_tracer.handle_post_tool_failure(data, config)
-    except Exception as exc:
-        log.warning("claude_code_tracer post_tool_failure failed: %s", exc)
-    return None
-
-
-def stop(ctx: HookContext) -> Result | None:
-    if claude_code_tracer is None or ctx.client != "claude":
-        return None
-    try:
-        data = _prepare_tracer_data(ctx)
-        config = claude_code_tracer.discover_config(data)
-        if config is not None:
-            claude_code_tracer.handle_stop(data, config)
-    except Exception as exc:
-        log.warning("claude_code_tracer stop failed: %s", exc)
-    return None
-
-
 def _run_claude_tracer(ctx: HookContext, handler_name: str) -> None:
     if claude_code_tracer is None or ctx.client != "claude":
         return
@@ -631,46 +574,6 @@ def _run_claude_tracer(ctx: HookContext, handler_name: str) -> None:
             getattr(claude_code_tracer, handler_name)(data, config)
     except Exception as exc:
         log.warning("claude_code_tracer %s failed: %s", handler_name, exc)
-
-
-def subagent_stop(ctx: HookContext) -> Result | None:
-    _run_claude_tracer(ctx, "handle_subagent_stop")
-    return None
-
-
-def stop_failure(ctx: HookContext) -> Result | None:
-    _run_claude_tracer(ctx, "handle_stop_failure")
-    return None
-
-
-def permission_request(ctx: HookContext) -> Result | None:
-    _run_claude_tracer(ctx, "handle_permission_request")
-    return None
-
-
-def permission_denied(ctx: HookContext) -> Result | None:
-    _run_claude_tracer(ctx, "handle_permission_denied")
-    return None
-
-
-def notification(ctx: HookContext) -> Result | None:
-    _run_claude_tracer(ctx, "handle_notification")
-    return None
-
-
-def pre_compact(ctx: HookContext) -> Result | None:
-    _run_claude_tracer(ctx, "handle_pre_compact")
-    return None
-
-
-def post_compact(ctx: HookContext) -> Result | None:
-    _run_claude_tracer(ctx, "handle_post_compact")
-    return None
-
-
-def session_end(ctx: HookContext) -> Result | None:
-    _run_claude_tracer(ctx, "handle_session_end")
-    return None
 
 
 def agy_user_prompt_submit(ctx: HookContext) -> Result | None:
@@ -725,20 +628,93 @@ def agy_stop(ctx: HookContext) -> Result | None:
     return None
 
 
-HANDLERS: dict[str, list] = {
-    "SessionStart": [session_start],
-    "UserPromptSubmit": [
-        user_prompt_submit,
-        agy_user_prompt_submit,
+def user_prompt_submit(ctx: HookContext) -> Result | None:
+    """Single entry-point handler for canonical UserPromptSubmit."""
+    _run_claude_tracer(ctx, "handle_user_prompt_submit")
+    agy_user_prompt_submit(ctx)
+    steps = (
         search_the_pkb,
         honesty_on_peer_message,
         rule_against_hearsay,
         premise_check_arm,
-    ],
-    "PreToolUse": [h for h in (pre_tool, agy_pre_tool, premise_check_handler) if h is not None],
-    "PostToolUse": [post_tool, agy_post_tool, rule_against_hearsay, premise_check_arm],
+    )
+    return _merge([_run_handler(step, ctx) for step in steps])
+
+
+def pre_tool(ctx: HookContext) -> Result | None:
+    """Single entry-point handler for canonical PreToolUse."""
+    _run_claude_tracer(ctx, "handle_pre_tool")
+    agy_pre_tool(ctx)
+    return _run_handler(premise_check_handler, ctx)
+
+
+def post_tool(ctx: HookContext) -> Result | None:
+    """Single entry-point handler for canonical PostToolUse."""
+    _run_claude_tracer(ctx, "handle_post_tool")
+    agy_post_tool(ctx)
+    steps = (rule_against_hearsay, premise_check_arm)
+    return _merge([_run_handler(step, ctx) for step in steps])
+
+
+def post_tool_failure(ctx: HookContext) -> Result | None:
+    _run_claude_tracer(ctx, "handle_post_tool_failure")
+    return None
+
+
+def stop(ctx: HookContext) -> Result | None:
+    """Single entry-point handler for canonical Stop."""
+    _run_claude_tracer(ctx, "handle_stop")
+    agy_stop(ctx)
+    return _run_handler(premise_check_handler, ctx)
+
+
+def subagent_stop(ctx: HookContext) -> Result | None:
+    _run_claude_tracer(ctx, "handle_subagent_stop")
+    return None
+
+
+def stop_failure(ctx: HookContext) -> Result | None:
+    _run_claude_tracer(ctx, "handle_stop_failure")
+    return None
+
+
+def permission_request(ctx: HookContext) -> Result | None:
+    _run_claude_tracer(ctx, "handle_permission_request")
+    return None
+
+
+def permission_denied(ctx: HookContext) -> Result | None:
+    _run_claude_tracer(ctx, "handle_permission_denied")
+    return None
+
+
+def notification(ctx: HookContext) -> Result | None:
+    _run_claude_tracer(ctx, "handle_notification")
+    return None
+
+
+def pre_compact(ctx: HookContext) -> Result | None:
+    _run_claude_tracer(ctx, "handle_pre_compact")
+    return None
+
+
+def post_compact(ctx: HookContext) -> Result | None:
+    _run_claude_tracer(ctx, "handle_post_compact")
+    return None
+
+
+def session_end(ctx: HookContext) -> Result | None:
+    _run_claude_tracer(ctx, "handle_session_end")
+    return None
+
+
+HANDLERS: dict[str, list] = {
+    "SessionStart": [session_start],
+    "UserPromptSubmit": [user_prompt_submit],
+    "PreToolUse": [pre_tool],
+    "PostToolUse": [post_tool],
     "PostToolUseFailure": [post_tool_failure],
-    "Stop": [stop, agy_stop, premise_check_handler],
+    "Stop": [stop],
     "SubagentStop": [subagent_stop],
     "StopFailure": [stop_failure],
     "PermissionRequest": [permission_request],

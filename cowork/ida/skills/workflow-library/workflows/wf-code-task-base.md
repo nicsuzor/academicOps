@@ -26,6 +26,8 @@ tags: [base, task, code, composite]
 
 Cut the chain after stage 2: stages 1--2 form one task; stage 3 is a second task that `needs` the first, so a fresh worker picks it up with no shared context.
 
+For a low-risk internal change, chiefly a bugfix, omit the separate stage 3 verification run on the fix task. Instead, look for a blocked task waiting on the fix (`blocks` or inbound `needs` / `depends_on`): if a blocked dependent exists, mint a follow-up task (`needs: [<blocked-task-id>]`) that judges the fix by reviewing that blocked task's next run once it runs; where no blocked dependent exists, mint no verification follow-up task.
+
 ## Output contract
 
 - Stage 1--2 task: for code, tests with their red failure traces; for instruction text, the run that followed it; a green full-suite run, and the open PR with its URL on the task record.

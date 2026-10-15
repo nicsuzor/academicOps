@@ -251,23 +251,23 @@ def _merge(results: list[Result | None]) -> Result | None:
         if len(refuses) == 1:
             return refuses[0]
         merged_inject = "\n\n".join(r.inject_text for r in refuses if r.inject_text)
-        user_texts = [r.user_text for r in refuses if r.user_text]
-        merged_user = "\n\n".join(user_texts) if user_texts else None
+        user_texts = [r.user_text.strip() for r in refuses if r.user_text and r.user_text.strip()]
+        merged_user = " ".join(user_texts) if user_texts else None
         return Result(merged_inject, merged_user, Kind.REFUSE)
     blocks = [r for r in present if r.kind is Kind.BLOCK]
     if blocks:
         if len(blocks) == 1:
             return blocks[0]
         merged_inject = "\n\n".join(b.inject_text for b in blocks if b.inject_text)
-        user_texts = [b.user_text for b in blocks if b.user_text]
-        merged_user = "\n\n".join(user_texts) if user_texts else None
+        user_texts = [b.user_text.strip() for b in blocks if b.user_text and b.user_text.strip()]
+        merged_user = " ".join(user_texts) if user_texts else None
         return Result(merged_inject, merged_user, Kind.BLOCK)
     if present:
         if len(present) == 1:
             return present[0]
         merged_inject = "\n\n".join(r.inject_text for r in present if r.inject_text)
-        user_texts = [r.user_text for r in present if r.user_text]
-        merged_user = "\n\n".join(user_texts) if user_texts else None
+        user_texts = [r.user_text.strip() for r in present if r.user_text and r.user_text.strip()]
+        merged_user = " ".join(user_texts) if user_texts else None
         return Result(merged_inject, merged_user, Kind.ADVISE)
     return None
 

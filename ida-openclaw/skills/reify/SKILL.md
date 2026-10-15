@@ -82,18 +82,22 @@ Then assemble the steps:
 
 Where the project finish template calls for QA review:
 
-1. Mint an independent follow-up task with status `queued`.
-2. Title: `QA: <primary task title>`.
-3. Set parent to the primary task's parent.
-4. Wire dependency: `needs: [<primary_task_id>]` so the QA task stays blocked until the primary task is `done`.
-5. Record the QA task ID in the primary task's `follow_up_tasks`.
-6. Compose the designated QA template (`wf-qa`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the merged deliverable and claims against literal acceptance criteria; a reviewer that changes code delivers it through the finish template and hands off for independent review.
+- **Low-risk internal changes (chiefly bugfixes)**: Test whether the task is a low-risk internal change, chiefly a bugfix. If so, it gets no separate verification run. Instead, look for a blocked task waiting on the fix (`blocks` or inbound `needs` / `depends_on`):
+  - **Blocked dependent exists**: Mint a follow-up task with status `queued`, same parent as the primary task, and `needs: [<blocked_task_id>]` that judges the fix by reviewing that blocked task's next run once it runs. Record the follow-up ID in the primary task's `follow_up_tasks`.
+  - **No blocked dependent exists**: Mint no verification follow-up task; the fix finishes without a separate verification run.
+- **Other changes requiring QA**:
+  1. Mint an independent follow-up task with status `queued`.
+  2. Title: `QA: <primary task title>`.
+  3. Set parent to the primary task's parent.
+  4. Wire dependency: `needs: [<primary_task_id>]` so the QA task stays blocked until the primary task is `done`.
+  5. Record the QA task ID in the primary task's `follow_up_tasks`.
+  6. Compose the designated QA template (`wf-qa`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the merged deliverable and claims against literal acceptance criteria; a reviewer that changes code delivers it through the finish template and hands off for independent review.
 
 ### Requirements for writing tasks
 
 - Give the worker the end state and the bounds; leave the method to it.
 - Never quote or record the user's words verbatim in Goal, Context, or instructions. Make sense of asks in context, link them to prior context, recompose into a clear logical structure, and cite message ids.
-- State the Goal and each criterion over the whole class the request covers: "the user's messages", not a named person's or today's channels and formats. Instances the request names are cases to test, not the boundary of the work.
+- State the Goal and each criterion over the whole class the request covers: "the user's messages", not a named person's or today's channels and formats. Instances the request names are cases to test, not the boundary of the work. When asked what broke a mechanism (such as authentication, a token, or a service), compose the debugging workflow and preserve the full failure question in Acceptance so the run examines why the mechanism or token stopped working across its lifecycle rather than narrowing to a single startup symptom.
 - Every heading is a prompt for you to fill, and there is no slot for restrictions or exclusions: say what has to be done, not what shouldn't.
 - Keep each task under 150 words. Include only what the worker cannot find for itself.
 - Assume the worker could run anywhere; never reference local paths, tools, or conventions.

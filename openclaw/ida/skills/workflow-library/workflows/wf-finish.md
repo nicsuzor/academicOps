@@ -22,7 +22,8 @@ Defines the universal baseline contract for how tasks finish when a repository l
 - **Merge**: The repository's own CI and merge policy merges the PR, never the worker. `/reconcile` writes `done` when the PR merges, which unblocks the follow-ups.
 - **Commit trailer**: Commits must include `Task: <task-id>` (and `Epic: <epic-id>` if applicable).
 - **QA review**:
-  - **Functional changes** (code, schema, or runtime changes): Require independent QA. `/reify` mints a follow-up verifying task dependent on the implementation task.
+  - **Functional changes** (code, schema, or runtime changes): Require independent QA, except for low-risk internal changes below. `/reify` mints a follow-up verifying task dependent on the implementation task.
+  - **Low-risk internal changes (chiefly bugfixes)**: Get no separate verification run. Instead, the finish step looks for a blocked task waiting on the fix (`blocks` or inbound `needs` / `depends_on`). If a blocked dependent exists, mint a follow-up task (`needs: [<blocked-task-id>]`) that judges the fix by reviewing that blocked task's next run once it runs. Where no blocked dependent exists, mint no verification follow-up task; the fix finishes without a separate verification run.
   - **Documentation, notes, or trivial chore changes**: No QA follow-up required unless explicitly requested in the task objective.
 
 ## Worker Completion Checklist
@@ -36,10 +37,17 @@ The implementation worker satisfies these obligations, then exits:
 
 ## Follow-up QA Task Specification
 
-When QA review is required, `/reify` mints a follow-up task with:
+When QA review is required for standard functional changes, `/reify` mints a follow-up task with:
 
 - **Title**: `QA: <primary task title>`
 - **Parent**: Same parent as primary task (or `part_of` edge per FQ1)
 - **Needs**: `[<primary-task-id>]` (hard blocking dependency)
 - **Workflow**: Composes independent verification workflow
 - **Goal**: Independently verify the merged deliverable and claims against literal acceptance criteria in a clean context. A reviewer that changes code delivers it through this finish template and hands off for independent review by filing a follow-up QA task.
+
+### Low-risk internal bugfixes (next-run review)
+
+When the task is a low-risk internal change, chiefly a bugfix, mint no separate verification run on the fix task. Instead, look for a blocked task waiting on the fix (`blocks` or inbound `needs` / `depends_on`):
+
+- **Blocked dependent exists**: Mint a follow-up task (`Title`: `QA next run: <primary task title>`, same parent, `Needs`: `[<blocked-task-id>]`, status `queued`) that judges the fix by reviewing that blocked task's next run once it runs.
+- **No blocked dependent exists**: Mint no verification follow-up task; the fix finishes on its PR without a separate verification run.
