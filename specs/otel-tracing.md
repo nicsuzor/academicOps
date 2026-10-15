@@ -65,7 +65,7 @@ All spans ingested into the `academicOps` Phoenix project conform to the followi
 Spans inside `academicOps` correlate across three mechanisms:
 
 1. **Intra-session turn hierarchy and hook-process parenting**:
-   - `plugins/ida/hooks/claude_code_tracer.py` creates a per-turn `claude-code-turn` (`CHAIN`) root span at turn start, persists `trace_id` and `root_span_id` in its per-session state file, and parents all `LLM`, `TOOL`, and `AGENT` spans in the turn under that root span. Turn extraction anchors on the transcript byte/line offset recorded at `UserPromptSubmit` so turns triggered by injected `<channel>`, `<cross-session-message>`, or `<task-notification>` envelopes emit all `LLM` spans and populate `output.value` on `claude-code-turn`.
+   - `plugins/ida/hooks/claude_code_tracer.py` creates a per-turn `claude-code-turn` (`CHAIN`) root span at turn start, persists `trace_id` and `root_span_id` in its per-session state file, and parents all `LLM`, `TOOL`, and `AGENT` spans in the turn under that root span. Which transcript entries belong to a turn, and what its root carries as output, is set out in [Claude Code Hook Tracer: Turn Boundaries and Turn Output](#claude-code-hook-tracer-turn-boundaries-and-turn-output).
    - `plugins/ida/hooks/premise_check_verdict.py` reads `trace_id` and `root_span_id` from the session state file so `premise_check_verdict` (`aops-verdict-hooks`) spans share the active turn's `trace_id` and parent under `claude-code-turn`.
    - `plugins/rbg/hooks/evaluator_otel_trace.py` likewise resolves its parent context from the active turn's session state file rather than relying on `claude-native` exporting a process-wide `TRACEPARENT`. Because `evaluator_otel_trace.py` writes OTLP JSON spans to `COPE_EVALUATOR_OTEL_TRACE_PATH` for collector ingestion or batch replay, reading the turn context from the state file ensures rule-evaluation spans attach to the turn tree even after `claude-native` is retired.
 2. **Peer-session and worker correlation**:
@@ -99,6 +99,41 @@ traces/phx:
   processors: [memory_limiter, transform/promote_resource, batch]
   exporters: [otlp/phoenix, debug]
 ```
+
+## Claude Code Hook Tracer: Turn Boundaries and Turn Output
+
+A turn is everything Claude Code does in answer to one prompt that fired `UserPromptSubmit`: a typed prompt, a skill or custom slash command, or an injected `<task-notification>`, `<channel>`, or `<cross-session-message>`. Claude Code writes those prompts to the transcript in three shapes — a `type: user` entry with string content, the same with `isMeta: true` (`<channel>` and `<cross-session-message>`), or a `type: attachment` entry of `attachment.type: queued_command` (a prompt that arrives while a turn is running) — so the turn boundary cannot be read from the prompt entry alone.
+
+### Rules
+
+1. `UserPromptSubmit` opens the turn and records the transcript's byte length as the turn's `transcript_offset`.
+2. A turn's entries are the transcript entries written from `transcript_offset` on.
+3. Entries from `transcript_offset` that precede the first prompt entry, in any of the three shapes, belong to the previous turn and are not read into this turn.
+4. A turn's entries end at the next typed prompt or `queued_command` entry; `isMeta` entries inside a turn (skill bodies, caveats) do not end it.
+5. The human-message count seeds `turn_number` only when the session state is new (a `claude --resume`); it never selects a turn's entries.
+6. A turn opened without `UserPromptSubmit` (by `PreToolUse`) anchors at the start of the last typed or queued prompt already in the transcript.
+7. A hook fired inside an in-process subagent never opens a turn; between turns, its tool spans go to the turn the last `Stop` closed.
+8. `Stop` waits up to `FINAL_RESPONSE_WAIT_S` (3 s) for an assistant entry carrying `last_assistant_message` to reach the transcript, then emits every `LLM` span of the turn not yet emitted.
+9. `Stop` sets the turn root's `output.value` to `last_assistant_message`; without one, to the output of the turn's last `LLM` span.
+10. `Stop` keeps the closed turn in session state; the next `UserPromptSubmit`, a `Stop` that follows a blocked `Stop`, or `SessionEnd` emits into that turn's trace any of its `LLM` spans written after it closed.
+
+### Output Contract
+
+| Span                         | Contract                                                                                                                                                                                                        |
+| :--------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `claude-code-turn` (`CHAIN`) | One per `UserPromptSubmit`. `input.value` is the `UserPromptSubmit` prompt. `output.value` is the turn's final answer (Rule 9); empty only for a turn that Claude Code answered with no assistant entry at all. |
+| `claude/<model>` (`LLM`)     | Exactly one per API response (`message.id`) in the turn's entries, parented under the turn root, with span id derived from `message.id`, in the turn's trace even when written after `Stop` (Rule 10).          |
+
+### Acceptance Criteria
+
+Tests replay a real Claude Code transcript (`tests/fixtures/claude_transcripts/`) through the hooks in the order Claude Code fires them, with each turn's final response written after `Stop` fires.
+
+| Criterion                                                                                                                                                                              | Test (`tests/test_claude_code_tracer_turn_boundaries.py`)             |
+| :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------- |
+| The fixtures hold a typed prompt, an idle `<task-notification>`, an `isMeta` `<channel>` and `<cross-session-message>`, and a typed prompt after an injected one.                      | `test_fixture_holds_every_prompt_shape`                               |
+| Every turn, of every shape, has one `LLM` span per API response and a non-empty root `output.value` equal to its final answer, with final responses written after `Stop`.              | `test_every_turn_has_one_llm_span_per_response_and_its_final_answer`  |
+| A final response written while `Stop` waits is emitted at `Stop`, for each prompt shape.                                                                                               | `test_final_response_flushed_while_stop_waits_is_sent_at_stop`        |
+| A `<task-notification>` arriving mid-turn as a `queued_command` attachment opens a turn holding its own `LLM` spans; the interrupted turn keeps its spans and a non-empty root output. | `test_notification_arriving_mid_turn_opens_a_turn_with_its_llm_spans` |
 
 ## Emitter Architecture and Component Responsibilities
 

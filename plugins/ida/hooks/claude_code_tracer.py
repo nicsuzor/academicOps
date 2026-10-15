@@ -888,6 +888,72 @@ def _count_human_messages(transcript_path: str) -> int:
         return 0
 
 
+def _opens_turn(entry: dict) -> bool:
+    """True for a transcript entry that carries a prompt Claude Code answers.
+
+    A superset of ``_is_human_message``: also the ``isMeta`` string prompts
+    that injected ``<channel>`` and ``<cross-session-message>`` turns are
+    written as, and the ``queued_command`` attachment that a
+    ``<task-notification>`` or other queued prompt is written as when it
+    arrives while a turn is running. Local slash-command and bash-mode
+    entries are excluded, as in ``_is_human_message``.
+    """
+    if entry.get("type") == "attachment":
+        attachment = entry.get("attachment") or {}
+        return attachment.get("type") == "queued_command"
+    if entry.get("type") != "user" or entry.get("isCompactSummary"):
+        return False
+    content = entry.get("message", {}).get("content", "")
+    if not isinstance(content, str):
+        return False
+    return not content.lstrip().startswith(_LOCAL_COMMAND_PREFIXES)
+
+
+def _prompt_text(entry: dict) -> str:
+    """Prompt text of an entry for which ``_opens_turn`` is True."""
+    if entry.get("type") == "attachment":
+        prompt = (entry.get("attachment") or {}).get("prompt", "")
+        return prompt if isinstance(prompt, str) else json.dumps(prompt)
+    return entry.get("message", {}).get("content", "")
+
+
+def _transcript_size(transcript_path: str | None) -> int:
+    """Byte length of the transcript: the anchor a turn opened at UserPromptSubmit reads from."""
+    if not transcript_path:
+        return 0
+    try:
+        return os.path.getsize(transcript_path)
+    except OSError:
+        return 0
+
+
+def _last_prompt_offset(transcript_path: str | None) -> int:
+    """Byte offset of the last typed or queued prompt already in the transcript.
+
+    The anchor for a turn opened without UserPromptSubmit, whose prompt has
+    already been written by the time any other hook fires.
+    """
+    if not transcript_path:
+        return 0
+    offset = last = 0
+    try:
+        with open(transcript_path, "rb") as fh:
+            for raw in fh:
+                try:
+                    entry = json.loads(raw)
+                except ValueError:
+                    entry = {}
+                if isinstance(entry, dict) and (
+                    _is_human_message(entry)
+                    or (entry.get("type") == "attachment" and _opens_turn(entry))
+                ):
+                    last = offset
+                offset += len(raw)
+    except OSError:
+        return 0
+    return last
+
+
 def _next_turn_number(state: dict, prior_human_count: int) -> int:
     """Return the next turn number and store it on *state*.
 
@@ -961,7 +1027,7 @@ def _usage_total(usage: dict) -> int:
 
 def _extract_llm_spans_for_turn(
     transcript_path: str,
-    human_count_at_start: int,
+    start_offset: int,
     trace_id_hex: str,
     root_span_id_hex: str,
     stop_at_next_prompt: bool = True,
@@ -969,15 +1035,19 @@ def _extract_llm_spans_for_turn(
     """
     Extract LLM spans from transcript entries that belong to this turn.
 
-    A turn starts after the `human_count_at_start`-th human message and ends
-    at the next human message (or end of transcript).  Scanning stops as soon
-    as a second human message is seen while in_turn is True — those subsequent
-    turns belong to their own traces.  Human messages that follow one another
-    with no assistant entry between them are one prompt block, not a turn
-    boundary: prompts queued mid-turn and released by Esc are written that way
-    and answered by one response. With ``stop_at_next_prompt=False`` it does
-    not stop: a subagent's sidechain transcript is one conversation, and a
-    later prompt in it (a SendMessage continuation) is just the next input.
+    The turn's entries are those written from byte ``start_offset`` on: the
+    transcript's size when UserPromptSubmit opened the turn. The turn opens
+    at the first entry from there that ``_opens_turn``; entries before it are
+    the previous turn's late-flushed tail and are skipped. When no such entry
+    is there, every entry from the offset is in the turn. The turn ends at
+    the next typed or queued prompt (or end of transcript): scanning stops
+    there, since later turns belong to their own traces. Prompt entries that
+    follow one another with no assistant entry between them are one prompt
+    block, not a turn boundary: prompts queued mid-turn and released by Esc
+    are written that way and answered by one response, and a skill prompt is
+    followed by its ``isMeta`` body. With ``stop_at_next_prompt=False`` it
+    does not stop: a subagent's sidechain transcript is one conversation, and
+    a later prompt in it (a SendMessage continuation) is just the next input.
     Uses actual timestamps from the transcript.
 
     For each LLM call we use the immediately-preceding message as the input:
@@ -1017,9 +1087,21 @@ def _extract_llm_spans_for_turn(
     """
     spans = []
     try:
-        lines = Path(transcript_path).read_text().splitlines()
-        human_count = 0
-        in_turn = False
+        with open(transcript_path, "rb") as fh:
+            fh.seek(start_offset)
+            lines = fh.read().decode("utf-8", errors="replace").splitlines()
+        entries = []
+        for line in lines:
+            if not line.strip():
+                continue
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(entry, dict):
+                entries.append(entry)
+        first_open = next((i for i, e in enumerate(entries) if _opens_turn(e)), None)
+        in_turn = first_open is None
         # True from the turn's first prompt until its first assistant entry.
         in_prompt_block = False
         prompt_block_text = ""
@@ -1157,26 +1239,24 @@ def _extract_llm_spans_for_turn(
             group_stop_reason = ""
             group_input_snapshot = {}
 
-        for line in lines:
-            if not line.strip():
-                continue
-            try:
-                entry = json.loads(line)
-            except json.JSONDecodeError:
+        for i, entry in enumerate(entries):
+            if first_open is not None and i < first_open:
                 continue
 
             entry_type = entry.get("type", "")
 
-            # ── Human message: marks the start of this turn ──────────────────
-            if _is_human_message(entry):
-                _flush_group()
-                human_count += 1
-                if in_turn and stop_at_next_prompt and not in_prompt_block:
-                    # Next user turn has started — stop here.  Its spans belong
-                    # to a different trace.
-                    break
-                if human_count > human_count_at_start:
-                    human_text = entry.get("message", {}).get("content", "")
+            # ── Prompt entry: opens this turn ────────────────────────────────
+            if _opens_turn(entry):
+                opens = not in_turn or in_prompt_block
+                if not opens and (_is_human_message(entry) or entry_type == "attachment"):
+                    if stop_at_next_prompt:
+                        # Next turn has started — stop here.  Its spans belong
+                        # to a different trace.
+                        break
+                    opens = True
+                if opens:
+                    _flush_group()
+                    human_text = _prompt_text(entry)
                     if in_prompt_block:
                         human_text = f"{prompt_block_text}\n\n{human_text}"
                     in_turn = True
@@ -2022,9 +2102,11 @@ def _emit_pending_llm_spans(
 
     (_, _, _, _, _, _, SpanKind, _, _, _) = _otel_imports()
 
+    if "transcript_offset" not in current_trace:
+        current_trace["transcript_offset"] = _last_prompt_offset(transcript_path)
     all_llm_spans = _extract_llm_spans_for_turn(
         transcript_path,
-        current_trace.get("human_count_at_start", 0),
+        current_trace["transcript_offset"],
         current_trace["trace_id"],
         current_trace["root_span_id"],
     )
@@ -2072,6 +2154,62 @@ def _emit_pending_llm_spans(
     )
 
     current_trace["emitted_llm_span_count"] = emitted + len(new_spans)
+
+
+# Upper bound on how long Stop waits for the turn's final response to reach
+# the transcript. Claude Code awaits the transcript write before running a
+# tool, but not before Stop hooks, so a final text response can still be
+# queued when Stop fires.
+FINAL_RESPONSE_WAIT_S = 3.0
+_FINAL_RESPONSE_POLL_S = 0.05
+
+
+def _final_response_written(transcript_path: str, start_offset: int, final_text: str) -> bool:
+    """True once the turn's last LLM span carries *final_text*."""
+    want = _truncate(final_text).strip()[:200]
+    spans = _extract_llm_spans_for_turn(transcript_path, start_offset, "0" * 32, "0" * 16)
+    if not spans:
+        return False
+    return want in (spans[-1]["attributes"].get("llm.output_messages.0.message.content") or "")
+
+
+def _wait_for_final_response(
+    transcript_path: str | None,
+    current_trace: dict | None,
+    final_text: str,
+) -> None:
+    """Block until *final_text* (Stop's ``last_assistant_message``) is in the turn's transcript.
+
+    Gives up after ``FINAL_RESPONSE_WAIT_S``; a response flushed later is
+    sent by ``_emit_closed_turn_tail``.
+    """
+    if not (transcript_path and current_trace and final_text.strip()):
+        return
+    offset = current_trace.get("transcript_offset")
+    if offset is None:
+        offset = _last_prompt_offset(transcript_path)
+    deadline = time.monotonic() + FINAL_RESPONSE_WAIT_S
+    while not _final_response_written(transcript_path, offset, final_text):
+        if time.monotonic() >= deadline:
+            log.debug("Final response not in transcript after %ss", FINAL_RESPONSE_WAIT_S)
+            return
+        time.sleep(_FINAL_RESPONSE_POLL_S)
+
+
+def _emit_closed_turn_tail(state: dict, config: dict) -> None:
+    """Send the LLM spans of the last Stop-closed turn that reached the transcript after Stop.
+
+    Stop keeps the closed turn on ``state["closed_trace"]``; its spans go out
+    into its own trace, under its own root, which is not re-sent.
+    """
+    closed = state.get("closed_trace")
+    if not closed or state.get("current_trace"):
+        return
+    state["current_trace"] = closed
+    try:
+        _emit_pending_llm_spans(state, closed.get("transcript_path"), config)
+    finally:
+        state.pop("current_trace", None)
 
 
 def _agent_span_id(tool_use_id: str) -> str:
@@ -2469,6 +2607,8 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
     # Use the cached transcript path from state so that any mid-session
     # project-dir changes (e.g. gh pr create writing to a worktree dir) do
     # not silently redirect us to a shadow transcript file.
+    _emit_closed_turn_tail(state, config)
+    state.pop("closed_trace", None)
     if state.get("current_trace"):
         transcript_path = _get_cached_transcript_path(data, state, session_id)
         _emit_pending_llm_spans(state, transcript_path, config)
@@ -2477,10 +2617,9 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
         state.pop("transcript_path", None)
         state.pop("pending_tools", None)
 
-    # Count human messages for LLM span extraction.
-    # UserPromptSubmit fires before Claude processes the prompt, so the new
-    # message is not yet in the transcript — human_count_at_start equals the
-    # current count (the new prompt will become count+1 in the transcript).
+    # UserPromptSubmit fires before the prompt is written to the transcript,
+    # so the turn's entries are those from the transcript's current end on.
+    # The human-message count only seeds turn numbering on a resume.
     # Resolve and immediately cache the transcript path for this new turn.
     transcript_path = _get_cached_transcript_path(data, state, session_id)
     current_human_count = _count_human_messages(transcript_path) if transcript_path else 0
@@ -2524,7 +2663,7 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
         "parent_span_id": parent_span_id,
         "turn_start_ns": now_ns,
         "turn_number": turn_number,
-        "human_count_at_start": current_human_count,
+        "transcript_offset": _transcript_size(transcript_path),
         "prompt_preview": _truncate(prompt) if prompt else "",
     }
 
@@ -2580,8 +2719,9 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
 
     # Fallback: create a trace if UserPromptSubmit has not set one yet.
     # This handles cases where the hook isn't registered or fires before the
-    # UserPromptSubmit event is available.
-    if not state.get("current_trace"):
+    # UserPromptSubmit event is available. A background subagent that
+    # outlives its turn opens none: its tools belong to the turn Stop closed.
+    if not state.get("current_trace") and not (_subagent_id(data) and state.get("closed_trace")):
         transcript_path = _get_cached_transcript_path(data, state, session_id)
         current_human_count = _count_human_messages(transcript_path) if transcript_path else 0
         prompt_preview = _get_latest_human_message(transcript_path) if transcript_path else ""
@@ -2593,11 +2733,9 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
             "root_span_id": _new_span_id(),
             "turn_start_ns": now_ns,
             "turn_number": turn_number,
-            # human_count_at_start is one less than the current count so that
-            # _extract_llm_spans_for_turn finds entries where count > this value,
-            # i.e. entries belonging to the NEW turn whose prompt is the
-            # current_human_count-th human message.
-            "human_count_at_start": max(0, current_human_count - 1),
+            # The prompt is already in the transcript, so the turn reads
+            # from where that prompt starts.
+            "transcript_offset": _last_prompt_offset(transcript_path),
             "prompt_preview": _truncate(prompt_preview) if prompt_preview else "",
         }
 
@@ -2787,14 +2925,16 @@ def _finish_tool_call(
             log.warning("No state found for session %s in %s", session_id, event)
             return
 
-        current_trace = state.get("current_trace")
+        subagent_id = _subagent_id(data)
+        current_trace = state.get("current_trace") or (
+            state.get("closed_trace") if subagent_id else None
+        )
         if not current_trace:
             log.debug("No current trace for session %s in %s", session_id, event)
             return
 
         tool_name = data.get("tool_name", "unknown")
         data_tool_input = data.get("tool_input")
-        subagent_id = _subagent_id(data)
         current_tool, pending_key = _find_pending_tool_entry(
             state,
             tool_name,
@@ -2944,10 +3084,24 @@ def handle_stop(data: dict, config: dict) -> None:
         )
         return
     end_ns = time.time_ns()
+    final_text = data.get("last_assistant_message") or ""
+
+    # Outside the lock: other hooks of the session must not wait on the flush.
+    peek = _load_state(session_id)
+    _wait_for_final_response(
+        _get_cached_transcript_path(data, peek, session_id),
+        peek.get("current_trace") or peek.get("closed_trace"),
+        final_text,
+    )
 
     with _session_lock(session_id):
         state = _load_state(session_id)
         if not state.get("current_trace"):
+            # A Stop hook blocked the previous Stop and the turn went on: its
+            # further responses belong to the turn that Stop closed.
+            if state.get("closed_trace"):
+                _emit_closed_turn_tail(state, config)
+                _save_state(session_id, state)
             log.debug("No active trace for session %s at stop", session_id)
             return
 
@@ -2956,9 +3110,12 @@ def handle_stop(data: dict, config: dict) -> None:
         # Emit the final LLM span(s) — the last response has no tool call after it,
         # so handle_post_tool never got the chance to emit it.
         _emit_pending_llm_spans(state, transcript_path, config)
+        if final_text:
+            state["current_trace"]["last_llm_output"] = _truncate(final_text)
 
         _complete_turn(state, config, transcript_path, end_ns)
 
+        state["closed_trace"] = {**state["current_trace"], "transcript_path": transcript_path}
         _end_turn(session_id, state)
 
     _cleanup_stale_states()
@@ -3220,6 +3377,7 @@ def handle_session_end(data: dict, config: dict) -> None:
     end_ns = time.time_ns()
     with _session_lock(session_id):
         state = _load_state(session_id)
+        _emit_closed_turn_tail(state, config)
         if state.get("current_trace"):
             transcript_path = _get_cached_transcript_path(data, state, session_id)
             _emit_pending_llm_spans(state, transcript_path, config)
