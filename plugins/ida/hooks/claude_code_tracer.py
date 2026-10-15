@@ -2217,14 +2217,6 @@ def _emit_pending_llm_spans(
     del sent[:-_EMITTED_MESSAGE_IDS_KEPT]
 
 
-# Upper bound on how long Stop waits for the turn's final response to reach
-# the transcript. Claude Code awaits the transcript write before running a
-# tool, but not before Stop hooks, so a final text response can still be
-# queued when Stop fires.
-FINAL_RESPONSE_WAIT_S = 3.0
-_FINAL_RESPONSE_POLL_S = 0.05
-
-
 def _final_response_written(transcript_path: str, start_offset: int, final_text: str) -> bool:
     """True once the turn's last LLM span carries *final_text*."""
     want = _truncate(final_text).strip()[:200]
@@ -2234,27 +2226,33 @@ def _final_response_written(transcript_path: str, start_offset: int, final_text:
     return want in (spans[-1]["attributes"].get("llm.output_messages.0.message.content") or "")
 
 
-def _wait_for_final_response(
-    transcript_path: str | None,
-    current_trace: dict | None,
-    final_text: str,
+def _finish_closed_turn(
+    state: dict,
+    config: dict,
+    end_ns: int | None = None,
+    final_text: str = "",
 ) -> None:
-    """Block until *final_text* (Stop's ``last_assistant_message``) is in the turn's transcript.
+    """Send the root of a turn a queued prompt closed, once that turn has ended.
 
-    Gives up after ``FINAL_RESPONSE_WAIT_S``; a response flushed later is
-    sent by ``_emit_closed_turn_tail``.
+    UserPromptSubmit for a prompt queued mid-turn fires before the running
+    turn's final answer exists, so that turn's root waits on the closed turn
+    (``root_pending``) for the Stop that ends it, the next close, or SessionEnd.
     """
-    if not (transcript_path and current_trace and final_text.strip()):
+    closed = state.get("closed_trace")
+    if not closed or not closed.get("root_pending"):
         return
-    offset = current_trace.get("transcript_offset")
-    if offset is None:
-        offset = _last_prompt_offset(transcript_path)
-    deadline = time.monotonic() + FINAL_RESPONSE_WAIT_S
-    while not _final_response_written(transcript_path, offset, final_text):
-        if time.monotonic() >= deadline:
-            log.debug("Final response not in transcript after %ss", FINAL_RESPONSE_WAIT_S)
-            return
-        time.sleep(_FINAL_RESPONSE_POLL_S)
+    if final_text:
+        closed["last_llm_output"] = _truncate(final_text)
+    current = state.get("current_trace")
+    state["current_trace"] = closed
+    try:
+        _complete_turn(state, config, closed.get("transcript_path"), end_ns or closed["end_ns"])
+    finally:
+        if current is None:
+            state.pop("current_trace", None)
+        else:
+            state["current_trace"] = current
+    closed["root_pending"] = False
 
 
 def _emit_closed_turn_tail(state: dict, config: dict) -> None:
@@ -2753,13 +2751,16 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
     if state.get("current_trace"):
         transcript_path = _get_cached_transcript_path(data, state, session_id)
         _emit_pending_llm_spans(state, transcript_path, config)
-        _complete_turn(state, config, transcript_path, now_ns)
+        _finish_closed_turn(state, config)
         # A prompt queued while this turn runs fires UserPromptSubmit before
-        # the turn's own last responses are written; they go to this turn.
+        # the turn's own last responses are written; they, and its root,
+        # go out once the turn ends.
         state["closed_trace"] = {
             **state["current_trace"],
             "transcript_path": transcript_path,
             "closed_by": "prompt",
+            "root_pending": True,
+            "end_ns": now_ns,
         }
         # Clear the cached path and any lingering pending tools so the new turn starts clean
         state.pop("transcript_path", None)
@@ -3234,14 +3235,6 @@ def handle_stop(data: dict, config: dict) -> None:
     end_ns = time.time_ns()
     final_text = data.get("last_assistant_message") or ""
 
-    # Outside the lock: other hooks of the session must not wait on the flush.
-    peek = _load_state(session_id)
-    _wait_for_final_response(
-        _get_cached_transcript_path(data, peek, session_id),
-        peek.get("current_trace"),
-        final_text,
-    )
-
     with _session_lock(session_id):
         state = _load_state(session_id)
         if not state.get("current_trace"):
@@ -3257,12 +3250,15 @@ def handle_stop(data: dict, config: dict) -> None:
             # This Stop ends the turn a queued prompt interrupted; the queued
             # prompt's turn has not started, and stays open.
             _emit_closed_turn_tail(state, config)
+            _finish_closed_turn(state, config, end_ns, final_text)
+            closed["final_text"] = final_text
             _save_state(session_id, state)
             return
 
         # The turn closed before this one can still have responses landing;
         # this Stop replaces it as the closed turn.
         _emit_closed_turn_tail(state, config)
+        _finish_closed_turn(state, config)
 
         # Emit the final LLM span(s) — the last response has no tool call after it,
         # so handle_post_tool never got the chance to emit it.
@@ -3540,6 +3536,7 @@ def handle_session_end(data: dict, config: dict) -> None:
         state = _load_state(session_id)
         _emit_closed_turn_tail(state, config)
         _emit_unwritten_final_response(state, config)
+        _finish_closed_turn(state, config, end_ns)
         if state.get("current_trace"):
             transcript_path = _get_cached_transcript_path(data, state, session_id)
             _emit_pending_llm_spans(state, transcript_path, config)

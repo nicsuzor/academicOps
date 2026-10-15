@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import json
 import sys
-import threading
 from pathlib import Path
 from unittest.mock import patch
 
@@ -184,9 +183,8 @@ def test_fixture_holds_every_prompt_shape():
     assert sorted(e["origin"]["kind"] for e in meta) == ["channel", "peer"]
 
 
-def test_every_turn_has_one_llm_span_per_response_and_its_final_answer(tracer_env, monkeypatch):
-    """Final responses reach the transcript only after Stop has given up waiting."""
-    monkeypatch.setattr(cct, "FINAL_RESPONSE_WAIT_S", 0.0, raising=False)
+def test_every_turn_has_one_llm_span_per_response_and_its_final_answer(tracer_env):
+    """Final responses reach the transcript only after Stop."""
     lines = _lines("injected_turns.jsonl")
     turns = _turns(lines)
     transcript = tracer_env / "session.jsonl"
@@ -199,38 +197,41 @@ def test_every_turn_has_one_llm_span_per_response_and_its_final_answer(tracer_en
 
 
 @pytest.mark.parametrize("shape", sorted(PROMPT_SHAPES))
-def test_final_response_flushed_while_stop_waits_is_sent_at_stop(tracer_env, shape):
-    """Stop waits for the final response and sends its LLM span before the next prompt."""
+def test_final_response_written_after_stop_is_sent_into_its_turn_by_the_next_prompt(
+    tracer_env, shape
+):
+    """Claude Code writes a turn's final response after the Stop hooks have run."""
     lines = _lines("injected_turns.jsonl")
-    start, end = next(
-        (s, e)
-        for s, e in _turns(lines)
+    turns = _turns(lines)
+    k = next(
+        i
+        for i, (s, _) in enumerate(turns)
         if _prompt_text(_entry(lines[s])).startswith(PROMPT_SHAPES[shape])
     )
+    (start, end), (next_start, _) = turns[k], turns[k + 1]
     turn = lines[start:end]
     final = start + _final_start(turn)
     transcript = tracer_env / "session.jsonl"
-    with transcript.open("w") as fh:
-        fh.writelines(lines[:start])
-
-    def flush_final() -> None:
-        with transcript.open("a") as fh:
-            fh.writelines(lines[final:end])
-
+    transcript.write_text("".join(lines[:start]))
     exporter = _CollectingExporter()
     with patch.object(cct, "_create_exporter", return_value=exporter):
         _hook(cct.handle_user_prompt_submit, transcript, prompt=_prompt_text(_entry(lines[start])))
         with transcript.open("a") as fh:
             fh.writelines(lines[start:final])
-        timer = threading.Timer(0.3, flush_final)
-        timer.start()
         _hook(cct.handle_stop, transcript, last_assistant_message=_final_text(turn))
-        timer.join()
-        sent_at_stop = list(exporter.spans)
+        (root,) = [sp for sp in exporter.spans if sp.name == "claude-code-turn"]
+        assert root.attributes["output.value"] == _final_text(turn)
+        with transcript.open("a") as fh:
+            fh.writelines(lines[final:end])
+        prompt = _prompt_text(_entry(lines[next_start]))
+        _hook(cct.handle_user_prompt_submit, transcript, prompt=prompt)
 
-    ((root, llm_ids),) = _by_trace(_with(sent_at_stop))
-    assert llm_ids == sorted(_response_ids(turn))
-    assert root.attributes["output.value"] == _final_text(turn)
+    in_turn = sorted(
+        sp.attributes["llm.message.id"]
+        for sp in exporter.spans
+        if sp.context.trace_id == root.context.trace_id and "llm.message.id" in sp.attributes
+    )
+    assert in_turn == sorted(_response_ids(turn))
 
 
 def _with(spans) -> _CollectingExporter:
@@ -239,9 +240,8 @@ def _with(spans) -> _CollectingExporter:
     return exporter
 
 
-def test_notification_arriving_mid_turn_opens_a_turn_with_its_llm_spans(tracer_env, monkeypatch):
+def test_notification_arriving_mid_turn_opens_a_turn_with_its_llm_spans(tracer_env):
     """The ``queued_command`` attachment fires UserPromptSubmit while the previous turn runs."""
-    monkeypatch.setattr(cct, "FINAL_RESPONSE_WAIT_S", 0.0, raising=False)
     lines = _lines("midturn_notification.jsonl")
     turns = _turns(lines)
     kinds = [_entry(lines[s]).get("type") for s, _ in turns]
@@ -324,11 +324,43 @@ def test_prompt_queued_during_a_turn_leaves_that_turns_responses_in_its_own_trac
     assert len(every_id) == len(set(every_id))
 
 
-def test_final_response_never_written_is_sent_from_stop_payload_at_session_end(
-    tracer_env, monkeypatch
-):
+def test_turn_closed_by_a_prompt_typed_before_its_answer_keeps_its_answer(tracer_env):
+    """The second prompt's UserPromptSubmit fires before the first turn's answer exists.
+
+    The Stop that follows ends the first turn: the second prompt is written
+    only after it.
+    """
+    lines = _lines("typed_prompt_queued_before_answer.jsonl")
+    (t1, t2), (_, t2_end), *_ = _turns(lines)
+    first, second = lines[t1:t2], lines[t2:t2_end]
+    first_final, second_final = t1 + _final_start(first), t2 + _final_start(second)
+    transcript = tracer_env / "session.jsonl"
+    transcript.write_text("".join(lines[:t1]))
+    exporter = _CollectingExporter()
+
+    def write(a: int, b: int) -> None:
+        with transcript.open("a") as fh:
+            fh.writelines(lines[a:b])
+
+    with patch.object(cct, "_create_exporter", return_value=exporter):
+        _hook(cct.handle_user_prompt_submit, transcript, prompt=_prompt_text(_entry(lines[t1])))
+        write(t1, first_final)
+        _hook(cct.handle_user_prompt_submit, transcript, prompt=_prompt_text(_entry(lines[t2])))
+        _hook(cct.handle_stop, transcript, last_assistant_message=_final_text(first))
+        write(first_final, second_final)
+        _hook(cct.handle_stop, transcript, last_assistant_message=_final_text(second))
+        write(second_final, t2_end)
+        _hook(cct.handle_session_end, transcript)
+
+    (r1, ids1), (r2, ids2) = _by_trace(exporter)
+    assert r1.attributes["output.value"] == _final_text(first)
+    assert ids1 == sorted(_response_ids(first))
+    assert r2.attributes["output.value"] == _final_text(second)
+    assert ids2 == sorted(_response_ids(second))
+
+
+def test_final_response_never_written_is_sent_from_stop_payload_at_session_end(tracer_env):
     """Claude Code can exit before writing the last turn's response."""
-    monkeypatch.setattr(cct, "FINAL_RESPONSE_WAIT_S", 0.0, raising=False)
     lines = _lines("injected_turns.jsonl")
     start, end = _turns(lines)[0]
     turn = lines[start:end]
@@ -356,9 +388,7 @@ def test_final_response_never_written_is_sent_from_stop_payload_at_session_end(
     assert root.attributes["output.value"] == _final_text(turn)
 
 
-def test_live_hook_order_of_a_mid_turn_notification_with_late_final_responses(
-    tracer_env, monkeypatch
-):
+def test_live_hook_order_of_a_mid_turn_notification_with_late_final_responses(tracer_env):
     """Hook order of the session the fixture comes from.
 
     The ``queued_command`` attachment is written before its UserPromptSubmit
@@ -366,7 +396,6 @@ def test_live_hook_order_of_a_mid_turn_notification_with_late_final_responses(
     after its Stop gave up and after the next prompt was queued; the last
     turn's response is never written.
     """
-    monkeypatch.setattr(cct, "FINAL_RESPONSE_WAIT_S", 0.0, raising=False)
     lines = _lines("midturn_notification_late_final.jsonl")
     (m1, m2), (_, queued), (_, last_prompt), (last, end) = _turns(lines)
     assert _entry(lines[queued]).get("type") == "attachment"
