@@ -1064,9 +1064,14 @@ def _extract_llm_spans_for_turn(
     trace_id_hex: str,
     root_span_id_hex: str,
     stop_at_next_prompt: bool = True,
+    end_at_prompt_from: int | None = None,
 ) -> list[dict]:
     """
     Extract LLM spans from transcript entries that belong to this turn.
+
+    With ``end_at_prompt_from``, the turn also ends at the first prompt entry
+    written at or after that byte offset: the anchor of the turn opened after
+    this one, whose prompt block this turn must not read.
 
     The turn's entries are those written from byte ``start_offset`` on: the
     transcript's size when UserPromptSubmit opened the turn. The turn opens
@@ -1122,17 +1127,23 @@ def _extract_llm_spans_for_turn(
     try:
         with open(transcript_path, "rb") as fh:
             fh.seek(start_offset)
-            lines = fh.read().decode("utf-8", errors="replace").splitlines()
+            raw_lines = fh.read().splitlines(keepends=True)
         entries = []
-        for line in lines:
-            if not line.strip():
+        offset = start_offset
+        for raw in raw_lines:
+            line_offset, offset = offset, offset + len(raw)
+            if not raw.strip():
                 continue
             try:
-                entry = json.loads(line)
+                entry = json.loads(raw.decode("utf-8", errors="replace"))
             except json.JSONDecodeError:
                 continue
-            if isinstance(entry, dict):
-                entries.append(entry)
+            if not isinstance(entry, dict):
+                continue
+            if end_at_prompt_from is not None and line_offset >= end_at_prompt_from:
+                if _opens_turn(entry):
+                    break
+            entries.append(entry)
         first_open = next((i for i, e in enumerate(entries) if _opens_turn(e)), None)
         in_turn = first_open is None
         # True from the turn's first prompt until its first assistant entry.
@@ -2120,6 +2131,7 @@ def _emit_pending_llm_spans(
     transcript_path: str | None,
     config: dict,
     hold_open: bool = False,
+    end_at_prompt_from: int | None = None,
 ) -> None:
     """Emit any new LLM spans from the transcript that haven't been sent yet.
 
@@ -2146,6 +2158,7 @@ def _emit_pending_llm_spans(
         current_trace["transcript_offset"],
         current_trace["trace_id"],
         current_trace["root_span_id"],
+        end_at_prompt_from=end_at_prompt_from,
     )
 
     by_tool_call = current_trace.setdefault("llm_span_by_tool_call", {})
@@ -2256,7 +2269,12 @@ def _emit_closed_turn_tail(state: dict, config: dict) -> None:
     current = state.get("current_trace")
     state["current_trace"] = closed
     try:
-        _emit_pending_llm_spans(state, closed.get("transcript_path"), config)
+        _emit_pending_llm_spans(
+            state,
+            closed.get("transcript_path"),
+            config,
+            end_at_prompt_from=current.get("transcript_offset") if current else None,
+        )
     finally:
         if current is None:
             state.pop("current_trace", None)
