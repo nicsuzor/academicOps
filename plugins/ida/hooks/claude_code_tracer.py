@@ -3090,18 +3090,13 @@ def handle_stop(data: dict, config: dict) -> None:
     peek = _load_state(session_id)
     _wait_for_final_response(
         _get_cached_transcript_path(data, peek, session_id),
-        peek.get("current_trace") or peek.get("closed_trace"),
+        peek.get("current_trace"),
         final_text,
     )
 
     with _session_lock(session_id):
         state = _load_state(session_id)
         if not state.get("current_trace"):
-            # A Stop hook blocked the previous Stop and the turn went on: its
-            # further responses belong to the turn that Stop closed.
-            if state.get("closed_trace"):
-                _emit_closed_turn_tail(state, config)
-                _save_state(session_id, state)
             log.debug("No active trace for session %s at stop", session_id)
             return
 

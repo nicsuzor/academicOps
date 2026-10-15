@@ -115,7 +115,7 @@ A turn is everything Claude Code does in answer to one prompt that fired `UserPr
 7. A hook fired inside an in-process subagent never opens a turn; between turns, its tool spans go to the turn the last `Stop` closed.
 8. `Stop` waits up to `FINAL_RESPONSE_WAIT_S` (3 s) for an assistant entry carrying `last_assistant_message` to reach the transcript, then emits every `LLM` span of the turn not yet emitted.
 9. `Stop` sets the turn root's `output.value` to `last_assistant_message`; without one, to the output of the turn's last `LLM` span.
-10. `Stop` keeps the closed turn in session state; the next `UserPromptSubmit`, a `Stop` that follows a blocked `Stop`, or `SessionEnd` emits into that turn's trace any of its `LLM` spans written after it closed.
+10. `Stop` keeps the closed turn in session state; the next `UserPromptSubmit` or `SessionEnd` emits into that turn's trace any of its `LLM` spans written after it closed.
 
 ### Output Contract
 
