@@ -6,6 +6,7 @@ import { processReplyOverflow } from "../telegram/overflow.js";
 import { formatMarkdownToEntities, normalizeReaction } from "../telegram/format.js";
 import { TelegramBotClient } from "../telegram/bot.js";
 import { sanitizeChannelMeta } from "../telegram/inbound.js";
+import { splitVoiceTier2Quotes } from "../telegram/voice.js";
 import { PermissionRelay } from "./permissions.js";
 
 export class StdioMcpServer {
@@ -165,14 +166,34 @@ export class StdioMcpServer {
       const text = (args.text as string) || "";
       const detail = args.detail as string | undefined;
       const chatId = (args.chat_id as number) || defaultChatId;
-      const isVoice = !!args.voice;
       const replyTo = args.reply_to as number | undefined;
       const feedback = args.feedback !== false;
 
+      // FR-7.1: Determine whether voice reply is requested explicitly or via voice_replies setting
+      let isVoice = false;
+      if (typeof args.voice === "boolean") {
+        isVoice = args.voice;
+      } else if (this.config.voiceReplies === "always") {
+        isVoice = true;
+      } else if (this.config.voiceReplies === "mirror" && this.bot?.isLastInboundVoice(chatId)) {
+        isVoice = true;
+      }
+
+      // FR-7.2 & FR-7.3: For voice replies, Tier 2 quotes go behind Details along with Tier 3
+      let effectiveText = text;
+      let effectiveDetail = detail;
+      if (isVoice) {
+        const { tier1Text, tier2Quotes } = splitVoiceTier2Quotes(text);
+        if (tier2Quotes) {
+          effectiveText = tier1Text;
+          effectiveDetail = detail ? `${tier2Quotes}\n\n---\n\n${detail}` : tier2Quotes;
+        }
+      }
+
       // 1. Process overflow
       const overflowRes = processReplyOverflow({
-        text,
-        detail,
+        text: effectiveText,
+        detail: effectiveDetail,
         maxChatChars: this.config.maxChatChars,
       });
 
@@ -196,7 +217,24 @@ export class StdioMcpServer {
           feedback,
           review: args.review as { repo: string; pr?: number } | undefined,
         });
-        return { success: true, messageId: sendRes?.messageId, detailsId };
+
+        const out: Record<string, unknown> = {
+          success: true,
+          messageId: sendRes?.messageId,
+        };
+        if (detailsId !== undefined) {
+          out.detailsId = detailsId;
+        }
+        if (sendRes?.voiceSent !== undefined) {
+          out.voiceSent = sendRes.voiceSent;
+        }
+        if (sendRes?.voiceMessageId !== undefined) {
+          out.voiceMessageId = sendRes.voiceMessageId;
+        }
+        if (sendRes?.voiceError !== undefined) {
+          out.voiceError = sendRes.voiceError;
+        }
+        return out;
       }
 
       return { success: true, preview: formatted.plainText, detailsId };
