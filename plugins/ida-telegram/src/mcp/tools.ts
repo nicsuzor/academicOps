@@ -54,6 +54,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        turn_id: { type: "string", description: "Turn ID for correlating the async answer event" },
         questions: {
           type: "array",
           items: {
@@ -74,6 +75,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
               },
               multiSelect: { type: "boolean" },
               allowOther: { type: "boolean" },
+              turn_id: { type: "string" },
             },
             required: ["question", "options"],
           },
@@ -92,6 +94,15 @@ export const MCP_TOOLS: ToolDefinition[] = [
         task_id: { type: "string", description: "Current PKB task ID" },
         waiting_on: { type: "array", items: { type: "string" } },
         delegations: { type: "array", items: { type: "string" } },
+        context_tokens: {
+          type: "object",
+          description: "Context window token usage",
+          properties: {
+            used_tokens: { type: "integer" },
+            total_tokens: { type: "integer" },
+            percentage: { type: "number" },
+          },
+        },
       },
       required: ["focus"],
     },

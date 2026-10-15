@@ -44,6 +44,8 @@ async function main() {
   }
 
   const toolInput = payload.tool_input || payload.toolInput || {};
+  const turnId = payload.turn_id || payload.turnId || payload.tool_use_id || payload.session_id;
+  const transcriptPath = payload.transcript_path || payload.transcriptPath;
   const questions = toolInput.questions || [
     {
       question: toolInput.question || "Input requested",
@@ -58,6 +60,8 @@ async function main() {
     client.write(
       JSON.stringify({
         type: "ask_user",
+        turn_id: turnId,
+        transcript_path: transcriptPath,
         questions,
       }) + "\n"
     );
@@ -78,9 +82,15 @@ async function main() {
       // Ignore parse failure
     }
 
+    const reason = `Question ${qid} posted to Nic over Telegram. Do not assume an answer; continue other work or end your turn.`;
     const output = {
-      decision: "deny",
-      reason: `Question ${qid} posted to Nic over Telegram. Do not assume an answer; continue other work or end your turn.`,
+      decision: "block",
+      reason,
+      hookSpecificOutput: {
+        hookEventName: "PreToolUse",
+        permissionDecision: "deny",
+        permissionDecisionReason: reason,
+      },
     };
     process.stdout.write(JSON.stringify(output) + "\n");
     process.exit(0);

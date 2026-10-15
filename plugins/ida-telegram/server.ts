@@ -75,6 +75,9 @@ async function main() {
         try {
           const req = JSON.parse(line);
           if (req.type === "ask_user") {
+            if (typeof req.transcript_path === "string" && req.transcript_path) {
+              store.setAnchor({ transcriptPath: req.transcript_path });
+            }
             const postedIds: string[] = [];
             for (const q of req.questions || []) {
               const result = await broker.askUser({
@@ -84,6 +87,7 @@ async function main() {
                 multiSelect: q.multiSelect,
                 allowOther: q.allowOther,
                 chatId: config.allowFrom[0],
+                turnId: q.turnId || req.turn_id,
               });
               postedIds.push(result.questionId);
 
@@ -96,6 +100,9 @@ async function main() {
             }
 
             client.write(JSON.stringify({ status: "ok", questionId: postedIds[0], questionIds: postedIds }) + "\n");
+          } else if (req.type === "statusline" && req.payload) {
+            const contextTokens = store.ingestStatusLine(req.payload);
+            client.write(JSON.stringify({ status: "ok", contextTokens }) + "\n");
           }
         } catch {
           client.write(JSON.stringify({ error: "malformed request" }) + "\n");

@@ -131,7 +131,13 @@ async function loadAnchor() {
       document.getElementById("anchor-task").textContent = data.taskId || "-";
       document.getElementById("q-badge").textContent = data.pendingQuestions || 0;
 
-      const pct = data.contextTokens?.percentage || 0;
+      const ct = data.contextTokens;
+      const pct =
+        typeof ct?.percentage === "number"
+          ? ct.percentage
+          : ct?.usedTokens && ct?.totalTokens
+            ? Math.min(100, Math.round((ct.usedTokens / ct.totalTokens) * 100))
+            : 0;
       document.getElementById("anchor-pct").textContent = `${pct}%`;
       document.getElementById("anchor-gauge").style.width = `${pct}%`;
     }

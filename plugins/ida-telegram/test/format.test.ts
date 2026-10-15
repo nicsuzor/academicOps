@@ -39,6 +39,20 @@ describe("Progressive disclosure: Format and Entities", () => {
     );
   });
 
+  test("groups consecutive >! lines into a single expandable_blockquote entity", () => {
+    const text = "**Summary**\n\n>! Line one with `code`\n>! Line two with **bold**\n>! Line three\n\nFooter";
+    const { plainText, entities } = formatMarkdownToEntities(text);
+
+    const expQuotes = entities.filter((e) => e.type === "expandable_blockquote");
+    expect(expQuotes.length).toBe(1);
+    expect(plainText.slice(expQuotes[0].offset, expQuotes[0].offset + expQuotes[0].length)).toBe(
+      "Line one with code\nLine two with bold\nLine three"
+    );
+
+    const stdQuotes = entities.filter((e) => e.type === "blockquote");
+    expect(stdQuotes.length).toBe(0);
+  });
+
   test("formats markdown tables: pre if <= 36 cols, stacked cards if > 36 cols", () => {
     const narrowTable = "| Col A | Col B |\n|---|---|\n| 1 | 2 |";
     const wideTable =

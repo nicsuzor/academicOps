@@ -42,6 +42,18 @@ export class StdioMcpServer {
     process.stdout.write(JSON.stringify(notification) + "\n");
   }
 
+  public emitPermissionDecision(requestId: string, behavior: "allow" | "deny") {
+    const notification = {
+      jsonrpc: "2.0",
+      method: "notifications/claude/channel/permission",
+      params: {
+        request_id: String(requestId),
+        behavior,
+      },
+    };
+    process.stdout.write(JSON.stringify(notification) + "\n");
+  }
+
   public async handleMessage(msg: Record<string, unknown>): Promise<Record<string, unknown> | null> {
     const { id, method, params } = msg;
 
@@ -71,6 +83,7 @@ export class StdioMcpServer {
             tools: {},
             experimental: {
               "claude/channel": {},
+              "claude/channel/permission": {},
             },
           },
           serverInfo: {
@@ -111,7 +124,7 @@ export class StdioMcpServer {
 
       const toolParams = params as { name: string; arguments?: Record<string, unknown> };
       const toolName = toolParams.name;
-      const args = toolParams.arguments || {};
+      const args = { ...(toolParams.arguments || {}), _rpcId: id };
 
       try {
         const result = await this.executeTool(toolName, args);
@@ -134,22 +147,31 @@ export class StdioMcpServer {
       }
     }
 
-    // Permission request from Claude Code channel relay
-    if (method === "claude/channel/permission") {
-      const p = params as { id: string; tool_name: string; tool_input: Record<string, unknown> };
-      // Forward permission prompt to Telegram with Review button
-      if (this.bot) {
-        await this.bot.sendPermissionCard(p.id, p.tool_name, p.tool_input);
-      }
-      // Hold permission resolution until Nic approves in chat or Mini App
-      const decision = await new Promise<"allow" | "deny">((resolve) => {
-        this.permRelay.register(p.id, p.tool_name, p.tool_input, resolve);
-      });
-      return {
-        jsonrpc: "2.0",
-        id,
-        result: { decision },
+    // Claude Code channel permission request notification (notifications/claude/channel/permission_request)
+    if (method === "notifications/claude/channel/permission_request" || method === "claude/channel/permission") {
+      const p = (params || {}) as {
+        request_id?: string;
+        id?: string;
+        tool_name: string;
+        description?: string;
+        input_preview?: string;
+        tool_input?: Record<string, unknown>;
       };
+      const reqId = p.request_id || p.id || "perm_unknown";
+      const toolInput: Record<string, unknown> = p.tool_input || {
+        ...(p.description ? { description: p.description } : {}),
+        ...(p.input_preview ? { input_preview: p.input_preview } : {}),
+      };
+
+      this.permRelay.register(reqId, p.tool_name, toolInput, (decision) => {
+        this.emitPermissionDecision(reqId, decision);
+      });
+
+      if (this.bot) {
+        await this.bot.sendPermissionCard(reqId, p.tool_name, toolInput, p.description, p.input_preview);
+      }
+
+      return null;
     }
 
     return {
@@ -257,12 +279,15 @@ export class StdioMcpServer {
     }
 
     if (name === "ask_user") {
+      const topTurnId = (args.turn_id as string | undefined) || (args.turnId as string | undefined) || (args._rpcId !== undefined ? `turn_${args._rpcId}` : undefined);
       const questions = (args.questions as Array<{
         question: string;
         header?: string;
         options: Array<{ label: string; description?: string }>;
         multiSelect?: boolean;
         allowOther?: boolean;
+        turn_id?: string;
+        turnId?: string;
       }>) || [];
 
       if (questions.length === 0) {
@@ -277,6 +302,7 @@ export class StdioMcpServer {
           options: q.options,
           multiSelect: q.multiSelect,
           allowOther: q.allowOther,
+          turnId: q.turn_id || q.turnId || topTurnId,
           chatId: defaultChatId,
         });
         postedIds.push(result.questionId);
@@ -300,12 +326,35 @@ export class StdioMcpServer {
       const taskId = args.task_id as string | undefined;
       const waitingOn = args.waiting_on as string[] | undefined;
       const delegations = args.delegations as string[] | undefined;
+      const rawCtx = (args.context_tokens || args.contextTokens) as
+        | {
+            used_tokens?: number;
+            total_tokens?: number;
+            usedTokens?: number;
+            totalTokens?: number;
+            percentage?: number;
+          }
+        | undefined;
+
+      let contextTokens: { usedTokens: number; totalTokens: number; percentage: number } | undefined;
+      if (rawCtx) {
+        const usedTokens = rawCtx.usedTokens ?? rawCtx.used_tokens ?? 0;
+        const totalTokens = rawCtx.totalTokens ?? rawCtx.total_tokens ?? 200000;
+        const percentage =
+          typeof rawCtx.percentage === "number"
+            ? rawCtx.percentage
+            : totalTokens > 0
+              ? Math.min(100, Math.round((usedTokens / totalTokens) * 100))
+              : 0;
+        contextTokens = { usedTokens, totalTokens, percentage };
+      }
 
       this.store.setAnchor({
         focus,
         taskId,
         waitingOn,
         delegations,
+        ...(contextTokens ? { contextTokens } : {}),
       });
 
       return { success: true, focus };
