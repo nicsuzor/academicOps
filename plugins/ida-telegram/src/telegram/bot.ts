@@ -1,4 +1,4 @@
-import { PluginConfig } from "../config.js";
+import { DEFAULT_MINI_APP_URL, PluginConfig } from "../config.js";
 import { FormattedMessage, formatMarkdownToEntities } from "./format.js";
 import { parseInboundUpdate, TelegramUpdate } from "./inbound.js";
 import { QuestionBroker } from "./questions.js";
@@ -162,11 +162,13 @@ export class TelegramBotClient {
       actionRow.push({ text: "👎", callback_data: "fb:down" });
     }
 
+    const miniAppBaseUrl = (this.config.miniAppUrl || DEFAULT_MINI_APP_URL).replace(/\/+$/, "");
+
     // Mini App Details button
-    if (detailsId && this.config.miniAppUrl) {
+    if (detailsId) {
       actionRow.push({
         text: "🔍 Details",
-        web_app: { url: `${this.config.miniAppUrl}/app/index.html?d=${detailsId}` },
+        web_app: { url: `${miniAppBaseUrl}/app/index.html?d=${detailsId}` },
       });
     }
 
@@ -175,11 +177,11 @@ export class TelegramBotClient {
     }
 
     // Review PR button
-    if (review && this.config.miniAppUrl) {
+    if (review) {
       inlineKeyboard.push([
         {
           text: `🔍 Review diff (${review.repo}#${review.pr || ""})`,
-          web_app: { url: `${this.config.miniAppUrl}/app/index.html?tab=review` },
+          web_app: { url: `${miniAppBaseUrl}/app/index.html?tab=review` },
         },
       ]);
     }
