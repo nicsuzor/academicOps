@@ -22,7 +22,7 @@ This file is the umbrella. The individual designs are
 [image staleness detection](spec-image-staleness-detection.md),
 [partial-work delivery](spec-partial-work-tight-loop-delivery.md),
 [interactive tmux driving](tmux-interactive-driving.md), and
-[observability across dispatch surfaces](spec-observability.md).
+[observability across dispatch surfaces](../observability/observability.md).
 
 ## Giving Effect
 
