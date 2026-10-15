@@ -465,5 +465,90 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
       rmSync(stateDir, { recursive: true, force: true });
     }
   });
+
+  test("FR-6.1: first voice message on a fresh state directory creates inbox/ and transcribes", async () => {
+    const { TelegramBotClient } = await import("../src/telegram/bot.js");
+    const { QuestionBroker } = await import("../src/telegram/questions.js");
+    const { FeedbackManager } = await import("../src/telegram/feedback.js");
+    const { PermissionRelay } = await import("../src/mcp/permissions.js");
+    const { mkdtempSync, rmSync, writeFileSync, chmodSync, existsSync, readdirSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { tmpdir } = await import("node:os");
+
+    const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-voice-fresh-"));
+    const scriptDir = mkdtempSync(join(tmpdir(), "ida-tg-voice-scripts-"));
+    const transcribeScript = join(scriptDir, "transcribe.sh");
+    writeFileSync(transcribeScript, `#!/bin/sh\necho "Transcribed fresh voice note"\n`, "utf-8");
+    chmodSync(transcribeScript, 0o755);
+
+    const config = {
+      botToken: "test-token",
+      apiBaseUrl: "https://api.telegram.org",
+      role: "primary",
+      isPrimary: true,
+      allowFrom: [8860530746],
+      maxChatChars: 1200,
+      voiceReplies: "off" as const,
+      voiceTranscribeCmd: transcribeScript,
+      voiceSpeakCmd: "",
+      port: 8093,
+      stateDir,
+      socketPath: join(stateDir, "hook.sock"),
+      miniAppUrl: "https://ida.example.ts.net",
+      botCommands: [],
+    };
+
+    const broker = new QuestionBroker(stateDir);
+    const feedback = new FeedbackManager(stateDir);
+    const permRelay = new PermissionRelay();
+
+    const emittedEvents: Array<{ content: string; meta: Record<string, unknown> }> = [];
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: string | URL | Request) => {
+      const urlStr = String(url);
+      if (urlStr.includes("/file/bot")) {
+        return new Response(new Uint8Array([0x4f, 0x67, 0x67, 0x53]), { status: 200 });
+      }
+      const method = urlStr.split("/").pop() || "";
+      if (method === "getFile") {
+        return new Response(JSON.stringify({ ok: true, result: { file_path: "voice/fresh.ogg" } }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ ok: true, result: true }), { status: 200 });
+    }) as typeof fetch;
+
+    try {
+      expect(existsSync(join(stateDir, "inbox"))).toBe(false);
+
+      const bot = new TelegramBotClient(config, broker, feedback, permRelay, (content, meta) => {
+        emittedEvents.push({ content, meta });
+      });
+
+      await (bot as any).handleUpdate({
+        update_id: 25,
+        message: {
+          message_id: 401,
+          date: 1700000100,
+          chat: { id: 8860530746, type: "private" },
+          from: { id: 8860530746, is_bot: false, first_name: "Nic" },
+          voice: { file_id: "vf_fresh_1", duration: 8 },
+        },
+      });
+
+      expect(existsSync(join(stateDir, "inbox"))).toBe(true);
+      const inboxFiles = readdirSync(join(stateDir, "inbox")).filter((f) => f.endsWith(".ogg"));
+      expect(inboxFiles.length).toBe(1);
+
+      expect(emittedEvents.length).toBe(1);
+      expect(emittedEvents[0].content).toBe("Transcribed fresh voice note");
+      expect(emittedEvents[0].meta.voice).toBe("true");
+      expect(emittedEvents[0].meta.transcript_error).toBeUndefined();
+      expect(emittedEvents[0].meta.audio_path).toBe(join(stateDir, "inbox", inboxFiles[0]));
+    } finally {
+      globalThis.fetch = origFetch;
+      rmSync(stateDir, { recursive: true, force: true });
+      rmSync(scriptDir, { recursive: true, force: true });
+    }
+  });
 });
+
 
