@@ -79,9 +79,10 @@ this contract does not restate.
   `cancelled`, or `in_progress`), and `/dump`'s `release_task` body update
   includes an Argdown proof (per [`premise-check`](../../plugins/ida/skills/premise-check/SKILL.md))
   that supports a complete and valid answer to each original direction given or
-  question posed. A worker whose own deliverable
-  is complete releases its task `done`, even when a follow-up that depends on it
-  (QA, merge, deploy) is still to run; `partial` is reserved strictly for the
+  question posed. A worker whose deliverable
+  is a PR releases its task `review` once the PR is open and exits; the
+  repository merges it and `/reconcile` writes `done` on the merge, which
+  unblocks dependent follow-ups (QA, deploy); `partial` is reserved strictly for the
   worker's own unfinished acceptance items. Only silent, undisclosed
   abandonment is garbage-collected (H10): incentive-first, this machinery is the
   backstop, not the mechanism agents are expected to lean on. Its floor is the
