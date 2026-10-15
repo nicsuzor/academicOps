@@ -115,25 +115,31 @@ A turn is everything Claude Code does in answer to one prompt that fired `UserPr
 7. A hook fired inside an in-process subagent never opens a turn; between turns, its tool spans go to the turn the last `Stop` closed.
 8. `Stop` waits up to `FINAL_RESPONSE_WAIT_S` (3 s) for an assistant entry carrying `last_assistant_message` to reach the transcript, then emits every `LLM` span of the turn not yet emitted.
 9. `Stop` sets the turn root's `output.value` to `last_assistant_message`; without one, to the output of the turn's last `LLM` span.
-10. `Stop` keeps the closed turn in session state; the next `UserPromptSubmit` or `SessionEnd` emits into that turn's trace any of its `LLM` spans written after it closed.
+10. The turn last closed, by `Stop` or by a `UserPromptSubmit` that fired while it ran, stays in session state; the next `UserPromptSubmit` or `SessionEnd`, or a `Stop` under Rule 11, emits into that turn's trace any of its `LLM` spans written after it closed.
+11. A `Stop` that finds no prompt entry from the open turn's `transcript_offset`, after a `UserPromptSubmit` closed the previous turn while it ran, ends that previous turn: its later `LLM` spans go to its trace and the open turn stays open.
+12. Each API response (`message.id`) is emitted as an `LLM` span once per session, into the first turn that reads it.
+13. At `SessionEnd`, when the last `Stop`-closed turn's `last_assistant_message` never reached the transcript, the tracer emits one `LLM` span for it under that turn's root, with `aops.llm.source = "stop.last_assistant_message"`, `output.value` set to that message, and no token counts or `llm.message.id`.
 
 ### Output Contract
 
-| Span                         | Contract                                                                                                                                                                                                        |
-| :--------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `claude-code-turn` (`CHAIN`) | One per `UserPromptSubmit`. `input.value` is the `UserPromptSubmit` prompt. `output.value` is the turn's final answer (Rule 9); empty only for a turn that Claude Code answered with no assistant entry at all. |
-| `claude/<model>` (`LLM`)     | Exactly one per API response (`message.id`) in the turn's entries, parented under the turn root, with span id derived from `message.id`, in the turn's trace even when written after `Stop` (Rule 10).          |
+| Span                                | Contract                                                                                                                                                                                                        |
+| :---------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `claude-code-turn` (`CHAIN`)        | One per `UserPromptSubmit`. `input.value` is the `UserPromptSubmit` prompt. `output.value` is the turn's final answer (Rule 9); empty only for a turn that Claude Code answered with no assistant entry at all. |
+| `claude/<model>` (`LLM`)            | Exactly one per API response (`message.id`) in the turn's entries, parented under the turn root, with span id derived from `message.id`, in the turn's trace even when written after `Stop` (Rules 10–12).      |
+| `claude/unwritten-response` (`LLM`) | At most one per session, for a final response that never reached the transcript (Rule 13).                                                                                                                      |
 
 ### Acceptance Criteria
 
 Tests replay a real Claude Code transcript (`tests/fixtures/claude_transcripts/`) through the hooks in the order Claude Code fires them, with each turn's final response written after `Stop` fires.
 
-| Criterion                                                                                                                                                                              | Test (`tests/test_claude_code_tracer_turn_boundaries.py`)             |
-| :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------- |
-| The fixtures hold a typed prompt, an idle `<task-notification>`, an `isMeta` `<channel>` and `<cross-session-message>`, and a typed prompt after an injected one.                      | `test_fixture_holds_every_prompt_shape`                               |
-| Every turn, of every shape, has one `LLM` span per API response and a non-empty root `output.value` equal to its final answer, with final responses written after `Stop`.              | `test_every_turn_has_one_llm_span_per_response_and_its_final_answer`  |
-| A final response written while `Stop` waits is emitted at `Stop`, for each prompt shape.                                                                                               | `test_final_response_flushed_while_stop_waits_is_sent_at_stop`        |
-| A `<task-notification>` arriving mid-turn as a `queued_command` attachment opens a turn holding its own `LLM` spans; the interrupted turn keeps its spans and a non-empty root output. | `test_notification_arriving_mid_turn_opens_a_turn_with_its_llm_spans` |
+| Criterion                                                                                                                                                                              | Test (`tests/test_claude_code_tracer_turn_boundaries.py`)                       |
+| :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------ |
+| The fixtures hold a typed prompt, an idle `<task-notification>`, an `isMeta` `<channel>` and `<cross-session-message>`, and a typed prompt after an injected one.                      | `test_fixture_holds_every_prompt_shape`                                         |
+| Every turn, of every shape, has one `LLM` span per API response and a non-empty root `output.value` equal to its final answer, with final responses written after `Stop`.              | `test_every_turn_has_one_llm_span_per_response_and_its_final_answer`            |
+| A final response written while `Stop` waits is emitted at `Stop`, for each prompt shape.                                                                                               | `test_final_response_flushed_while_stop_waits_is_sent_at_stop`                  |
+| A `<task-notification>` arriving mid-turn as a `queued_command` attachment opens a turn holding its own `LLM` spans; the interrupted turn keeps its spans and a non-empty root output. | `test_notification_arriving_mid_turn_opens_a_turn_with_its_llm_spans`           |
+| A typed prompt queued while a `<task-notification>` turn runs leaves that turn's later responses in its own trace, opens a turn of its own, and no response is emitted twice.          | `test_prompt_queued_during_a_turn_leaves_that_turns_responses_in_its_own_trace` |
+| A final response that never reaches the transcript is emitted at `SessionEnd` from `last_assistant_message` under its turn's root.                                                     | `test_final_response_never_written_is_sent_from_stop_payload_at_session_end`    |
 
 ## Emitter Architecture and Component Responsibilities
 

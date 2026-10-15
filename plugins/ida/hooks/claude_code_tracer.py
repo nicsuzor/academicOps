@@ -2078,6 +2078,10 @@ def _build_and_export_spans(
 # ---------------------------------------------------------------------------
 
 
+# How many sent response ids the session state remembers for de-duplication.
+_EMITTED_MESSAGE_IDS_KEPT = 500
+
+
 def _emit_pending_llm_spans(
     state: dict,
     transcript_path: str | None,
@@ -2129,12 +2133,21 @@ def _emit_pending_llm_spans(
             "",
         )
 
-    if not new_spans:
+    # A response is sent once per session: a turn closed early by a queued
+    # prompt and the turn after it can both read it.
+    sent = state.setdefault("emitted_message_ids", [])
+    unsent = [
+        sp
+        for sp in new_spans
+        if not sp["force_span_id"] or sp["attributes"]["llm.message.id"] not in sent
+    ]
+    if not unsent:
+        current_trace["emitted_llm_span_count"] = emitted + len(new_spans)
         return
 
     known_parents = _known_span_parents(current_trace)
     span_parents = current_trace.setdefault("span_parents", {})
-    for sp in new_spans:
+    for sp in unsent:
         sp["kind"] = SpanKind.CLIENT
         if sp["force_span_id"]:
             span_parents[sp["span_id_hex"]] = sp["parent_span_id_hex"]
@@ -2145,7 +2158,7 @@ def _emit_pending_llm_spans(
         config=config,
         session_id=phoenix_session_id,
         username=state.get("username", "unknown"),
-        span_records=new_spans,
+        span_records=unsent,
         agent_id=agent_id,
         parent_session_id=parent_session_id,
         agent_name=state.get("agent_name"),
@@ -2154,6 +2167,8 @@ def _emit_pending_llm_spans(
     )
 
     current_trace["emitted_llm_span_count"] = emitted + len(new_spans)
+    sent.extend(sp["attributes"]["llm.message.id"] for sp in unsent if sp["force_span_id"])
+    del sent[:-_EMITTED_MESSAGE_IDS_KEPT]
 
 
 # Upper bound on how long Stop waits for the turn's final response to reach
@@ -2203,13 +2218,89 @@ def _emit_closed_turn_tail(state: dict, config: dict) -> None:
     into its own trace, under its own root, which is not re-sent.
     """
     closed = state.get("closed_trace")
-    if not closed or state.get("current_trace"):
+    if not closed:
         return
+    current = state.get("current_trace")
     state["current_trace"] = closed
     try:
         _emit_pending_llm_spans(state, closed.get("transcript_path"), config)
     finally:
-        state.pop("current_trace", None)
+        if current is None:
+            state.pop("current_trace", None)
+        else:
+            state["current_trace"] = current
+
+
+def _has_prompt_from(transcript_path: str | None, start_offset: int) -> bool:
+    """True when a prompt entry (``_opens_turn``) was written at or after *start_offset*."""
+    if not transcript_path:
+        return False
+    try:
+        with open(transcript_path, "rb") as fh:
+            fh.seek(start_offset)
+            for raw in fh:
+                try:
+                    entry = json.loads(raw)
+                except ValueError:
+                    continue
+                if isinstance(entry, dict) and _opens_turn(entry):
+                    return True
+    except OSError:
+        return False
+    return False
+
+
+def _emit_unwritten_final_response(state: dict, config: dict) -> None:
+    """At SessionEnd, send the closed turn's final response if it never reached the transcript.
+
+    Claude Code can exit without writing a turn's last response. The span is
+    built from Stop's ``last_assistant_message`` and carries no token counts
+    or ``llm.message.id``; ``aops.llm.source`` marks where it came from.
+    """
+    closed = state.get("closed_trace") or {}
+    final_text = closed.get("final_text") or ""
+    transcript_path = closed.get("transcript_path")
+    if not final_text.strip() or not transcript_path:
+        return
+    if _final_response_written(transcript_path, closed.get("transcript_offset", 0), final_text):
+        return
+
+    import hashlib
+
+    (_, _, _, _, _, _, SpanKind, _, _, _) = _otel_imports()
+    now_ns = time.time_ns()
+    output = _truncate(final_text)
+    record = {
+        "trace_id_hex": closed["trace_id"],
+        "span_id_hex": hashlib.sha256(f"final:{closed['root_span_id']}".encode()).hexdigest()[:16],
+        "parent_span_id_hex": closed["root_span_id"],
+        "name": "claude/unwritten-response",
+        "kind": SpanKind.CLIENT,
+        "start_ns": now_ns,
+        "end_ns": now_ns,
+        "attributes": {
+            "openinference.span.kind": "LLM",
+            "llm.system": "anthropic",
+            "llm.output_messages.0.message.role": "assistant",
+            "llm.output_messages.0.message.content": output,
+            "output.value": output,
+            "output.mime_type": "text/plain",
+            "aops.llm.source": "stop.last_assistant_message",
+        },
+        "force_span_id": True,
+    }
+    phoenix_session_id, agent_id, parent_session_id = _resolve_agent_and_parent_ids(state)
+    _build_and_export_spans(
+        config=config,
+        session_id=phoenix_session_id,
+        username=state.get("username", "unknown"),
+        span_records=[record],
+        agent_id=agent_id,
+        parent_session_id=parent_session_id,
+        agent_name=state.get("agent_name"),
+        cwd=state.get("cwd"),
+        known_parents=closed.get("span_parents", {}),
+    )
 
 
 def _agent_span_id(tool_use_id: str) -> str:
@@ -2613,6 +2704,13 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
         transcript_path = _get_cached_transcript_path(data, state, session_id)
         _emit_pending_llm_spans(state, transcript_path, config)
         _complete_turn(state, config, transcript_path, now_ns)
+        # A prompt queued while this turn runs fires UserPromptSubmit before
+        # the turn's own last responses are written; they go to this turn.
+        state["closed_trace"] = {
+            **state["current_trace"],
+            "transcript_path": transcript_path,
+            "closed_by": "prompt",
+        }
         # Clear the cached path and any lingering pending tools so the new turn starts clean
         state.pop("transcript_path", None)
         state.pop("pending_tools", None)
@@ -3102,6 +3200,16 @@ def handle_stop(data: dict, config: dict) -> None:
 
         transcript_path = _get_cached_transcript_path(data, state, session_id)
 
+        closed = state.get("closed_trace") or {}
+        if closed.get("closed_by") == "prompt" and not _has_prompt_from(
+            transcript_path, state["current_trace"].get("transcript_offset", 0)
+        ):
+            # This Stop ends the turn a queued prompt interrupted; the queued
+            # prompt's turn has not started, and stays open.
+            _emit_closed_turn_tail(state, config)
+            _save_state(session_id, state)
+            return
+
         # Emit the final LLM span(s) — the last response has no tool call after it,
         # so handle_post_tool never got the chance to emit it.
         _emit_pending_llm_spans(state, transcript_path, config)
@@ -3110,7 +3218,11 @@ def handle_stop(data: dict, config: dict) -> None:
 
         _complete_turn(state, config, transcript_path, end_ns)
 
-        state["closed_trace"] = {**state["current_trace"], "transcript_path": transcript_path}
+        state["closed_trace"] = {
+            **state["current_trace"],
+            "transcript_path": transcript_path,
+            "final_text": final_text,
+        }
         _end_turn(session_id, state)
 
     _cleanup_stale_states()
@@ -3373,6 +3485,7 @@ def handle_session_end(data: dict, config: dict) -> None:
     with _session_lock(session_id):
         state = _load_state(session_id)
         _emit_closed_turn_tail(state, config)
+        _emit_unwritten_final_response(state, config)
         if state.get("current_trace"):
             transcript_path = _get_cached_transcript_path(data, state, session_id)
             _emit_pending_llm_spans(state, transcript_path, config)
