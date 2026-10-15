@@ -31,9 +31,7 @@ handlers_spec.loader.exec_module(handlers)
 
 
 def test_user_prompt_submit_registered_in_handlers():
-    """Verify that user_prompt_submit and agy_user_prompt_submit are wired to UserPromptSubmit."""
-    assert "UserPromptSubmit" in handlers.HANDLERS
-    registered = handlers.HANDLERS["UserPromptSubmit"]
-    assert handlers.user_prompt_submit in registered
-    assert handlers.agy_user_prompt_submit in registered
+    """Verify that user_prompt_submit is the single handler wired to UserPromptSubmit."""
+    assert handlers.HANDLERS["UserPromptSubmit"] == [handlers.user_prompt_submit]
+    assert hasattr(handlers, "agy_user_prompt_submit")
     assert hasattr(handlers, "search_the_pkb"), "search_the_pkb lives in the ida plugin"

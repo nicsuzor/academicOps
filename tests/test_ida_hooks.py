@@ -50,10 +50,8 @@ def clean_gate_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 
 
 def test_hearsay_registered_on_user_prompt_submit_and_post_tool_use():
-    assert "UserPromptSubmit" in handlers.HANDLERS
-    assert handlers.rule_against_hearsay in handlers.HANDLERS["UserPromptSubmit"]
-    assert "PostToolUse" in handlers.HANDLERS
-    assert handlers.rule_against_hearsay in handlers.HANDLERS["PostToolUse"]
+    assert handlers.HANDLERS["UserPromptSubmit"] == [handlers.user_prompt_submit]
+    assert handlers.HANDLERS["PostToolUse"] == [handlers.post_tool]
     assert "PostToolBatch" not in handlers.HANDLERS
 
 
@@ -470,7 +468,7 @@ def test_merge_combines_multiple_refusals():
     assert merged is not None
     assert merged.kind is Kind.REFUSE
     assert "first reason\n\nsecond reason" == merged.inject_text
-    assert "user 1\n\nuser 2" == merged.user_text
+    assert "user 1 user 2" == merged.user_text
 
 
 def test_merge_combines_multiple_advisories():
@@ -482,7 +480,7 @@ def test_merge_combines_multiple_advisories():
     assert merged is not None
     assert merged.kind is Kind.ADVISE
     assert "first note\n\nsecond note" == merged.inject_text
-    assert "user 1\n\nuser 2" == merged.user_text
+    assert "user 1 user 2" == merged.user_text
 
 
 @pytest.mark.parametrize(
@@ -662,3 +660,76 @@ def test_dispatch_honesty_reaches_all_agents_on_peer_message(
             expected_honesty in step.get("ephemeralMessage", "")
             for step in data.get("injectSteps", [])
         )
+
+
+def test_each_hook_event_registers_single_handler():
+    """Every hook event in HANDLERS runs through a single registered hook handler."""
+    for event, registered in handlers.HANDLERS.items():
+        assert len(registered) == 1, f"{event} registered {len(registered)} handlers: {registered}"
+
+
+def test_peer_message_prompt_yields_single_user_prompt_submit_output(
+    staged_hooks: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Replaying a peer-message prompt yields one UserPromptSubmit output carrying both the reminder and the gate notice, and no empty output."""
+    import os
+
+    gate_dir = tmp_path / "gate"
+    gate_dir.mkdir(parents=True, exist_ok=True)
+    env = dict(os.environ)
+    env["AOPS_PREMISE_GATE_DIR"] = str(gate_dir)
+
+    sara_checkin_prompt = (
+        '<cross-session-message from="uds:/tmp/cc-socks/118.sock" from-name="sara-1015-1338" from-mode="prompting">\n'
+        "Check-in ~22:0xZ: both reviews of the observability spec PR approve it. https://github.com/nicsuzor/academicOps/pull/2938 (to dev) now waits only on merge.\n\n"
+        "- **Alignment, aops_01ea867b (done):** PASS. US-1 at `specs/observability/observability.md:12-20` (AC-1.1–1.5) covers tonight's thread: how /reify composed tasks, how workers ran them, how supervisors received reports and caught mistakes, and pivots from session.id and verdict.id.\n"
+        "- **Rules, aops_0bd385f0 (done):** APPROVE, posted on the PR at https://github.com/nicsuzor/academicOps/pull/2938#issuecomment-6202742967. The PR adds 109 lines and deletes 430, a net cut of 321. The spec has no links, implementation names or personal names. All 3 CI checks pass.\n"
+        "- **Still running, 8 polecats:** dotfiles_c782766f, aops_59789df6, dotfiles_f2046116, aops_5c58fe03, aops_4e8bf75c, dotfiles_4ef13887, aops_3ffd32e4, aops_40ad3d18. None has released.\n"
+        "- **Unacknowledged requests:** none. Pauli answered all six of tonight's reify requests.\n\n"
+        "```argdown\n"
+        "===\n"
+        "title: Sara check-in ~22:00Z\n"
+        "author: sara\n"
+        "date: 2026-10-15\n"
+        "abstract: Both reviews of PR #2938 pass; eight polecats running; no unacknowledged requests.\n"
+        "granularity:\n"
+        "  level: micro\n"
+        '  floor: "Accept task-record verdicts with pointers and container listings as leaf nodes."\n'
+        "model:\n"
+        "  mode: strict\n"
+        "===\n\n"
+        "[Outcome]: PR academicOps#2938 has passed its alignment and rules reviews and awaits merge; eight tasks are still running; no peer request is unacknowledged.\n\n"
+        "<Checkin>: Released review records and the container list establish the state.\n\n"
+        '(1) [Alignment]: aops_01ea867b `status: done`, "Verdict: PASS (APPROVE) on PR #2938", US-1 at `observability.md:12-20`. {basis: "reported-by", pointer: "pkb aops_01ea867b released 2026-10-15T21:39:35Z"}\n'
+        '(2) [Rules]: aops_0bd385f0 `status: done`, review posted `issuecomment-6202742967`, "APPROVE", CI `Lint/Type Check/Pytest: SUCCESS`. {basis: "reported-by", pointer: "pkb aops_0bd385f0 released 2026-10-15T21:35:43Z"}\n'
+        '-- Form check: each verdict cites PR lines and acceptance items, so both reviews pass and the PR awaits merge only {uses: [1, 2], basis: "theory", pointer: "premise-check"} --\n'
+        "(3) [PR ready]\n"
+        '(4) [Running]: polecat_list_containers shows 8 task containers `running`, and every matching task is `in_progress`. {basis: "observed", pointer: "polecat_list_containers all:true"}\n'
+        '-- Roll-up {uses: [3, 4], basis: "theory", pointer: "Sara: Status"} --\n'
+        "(5) [Outcome]\n"
+        "```\n"
+        "</cross-session-message>"
+    )
+    payload = {
+        "hook_event_name": "UserPromptSubmit",
+        "agent_type": "ida:ida",
+        "session_id": "ff3bf890-046e-4d33-bc94-a4e33ac70e43",
+        "prompt": sara_checkin_prompt,
+    }
+    proc = subprocess.run(
+        [sys.executable, str(staged_hooks / "dispatch.py"), "claude", "UserPromptSubmit"],
+        input=json.dumps(payload),
+        text=True,
+        capture_output=True,
+        timeout=15,
+        cwd=str(staged_hooks),
+        env=env,
+    )
+    assert proc.returncode == 0, proc.stderr
+    data = json.loads(proc.stdout)
+    system_message = data.get("systemMessage", "")
+    assert "\n" not in system_message
+    assert system_message == (
+        "Reminded to use `premise-check` when replying to a peer message. "
+        "Premise-check gate armed by claim-59204fc6."
+    )
