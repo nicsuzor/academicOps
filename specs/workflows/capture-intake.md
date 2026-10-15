@@ -10,19 +10,18 @@ tags: [spec, workflow, capture, intake, pkb, q]
 
 Capture front ends commit raw notes into the PKB with no processing at capture time -- they are
 supplied by the installer, and not this spec's concern. What
-has no owner is pickup: turning a landed capture into a graph node. Today that only happens by
-hand, at `/daily` step 1.5, when a `/daily` run happens to occur. This spec designs the standing
-route that picks pickup up automatically, and the one PKB write capability it needs that does not
-exist yet: converting a capture into a task in place.
+has no owner is pickup: turning a landed capture into a graph node. This spec defines the standing
+route that picks up captures in `notes/mobile-captures/`, classifies each capture, and converts
+task-like captures into tasks in place.
 
 ## Coverage
 
-| Piece                                                                        | State                                                  |
-| ---------------------------------------------------------------------------- | ------------------------------------------------------ |
-| Capture front ends land raw notes in `notes/mobile-captures/` (`type: note`) | Installer-supplied                                     |
-| Manual triage (Task / Note / Expand / Discard) at `/daily` step 1.5          | Built -- remains the fallback this route defers to     |
-| Standing, automated pickup context                                           | **Not built -- this spec's target shape**              |
-| PKB write that moves, renames and retypes a document while keeping its ID    | **Not built -- blocks the Task disposition (see Gap)** |
+| Piece                                                                                          | State                                                               |
+| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Capture front ends land raw notes in `notes/mobile-captures/` (`type: note`)                   | Installer-supplied                                                  |
+| Manual triage (Task / Note / Expand / Discard) at `/daily` step 1.5                            | Built -- remains the fallback this route defers to                  |
+| Standing, automated pickup context in `/q`                                                     | Built (`plugins/ida/skills/q/SKILL.md`)                             |
+| PKB write that moves, renames and retypes a document while keeping its ID (`convert_document`) | Built in `nicsuzor/mem#659` (requires MCP `tools/list` publication) |
 
 ## The unprocessed marker
 
@@ -42,25 +41,28 @@ unambiguously pending). There is no window to track. `/daily` step 1.5 triages b
 whatever is in the directory -- and finds fewer captures because this route has already cleared the
 confident ones.
 
-## Routing procedure (target shape)
+## Routing procedure
 
 **Grain:** one capture note is one unit of judgment, matching `/reconcile`'s per-task grain.
 
-**Owner:** `ida:q` -- the existing Stage 1 Intake & Capture skill already does exactly this job for
-a natural-language ask (classify, parent, search-and-adopt, densify, value at intake per [R1](graph-valuation.md#3-r1----placement-at-intake-q)). This route
+**Owner:** `ida:q` -- the Stage 1 Intake & Capture skill (`plugins/ida/skills/q/SKILL.md`) owns
+capture intake (classify, parent, search-and-adopt, densify, value at intake per [R1](graph-valuation.md#3-r1----placement-at-intake-q)). This route
 invokes it; it does not reimplement classification, parenting, or valuation logic. One canonical
 owner, per the same constraint `/reconcile`'s spec states for closure-loop logic.
 
-**The interactive/headless gap.** `/q` assumes a user is present to disambiguate: unclear
-classification or an ambiguous parent is worked out with `AskUserQuestion`. A capture note picked
-up headlessly has nobody watching -- that call would hang. `/q` needs a second
-invocation context for this, alongside its implicit interactive one, on the same pattern
-`/reconcile` already uses for its three contexts (input subset changes, procedure does not):
+**Dictation and homophones:** Mobile captures are often dictated by voice (`[[quick-babf1cd6]]`).
+Before judging a capture's meaning or treating it as ambiguous, read it for phonetic or homophone
+transcription errors in context.
 
-| Context                | Owner | Behaviour when classification/parenting is unclear                           |
-| ---------------------- | ----- | ---------------------------------------------------------------------------- |
-| Interactive (today)    | `/q`  | Asks, via `AskUserQuestion`.                                                 |
-| Automated pickup (new) | `/q`  | Does not guess. Leaves the capture note untouched and moves to the next one. |
+**The interactive/headless gap.** Interactive `/q` disambiguates unclear classification or an
+ambiguous parent with `AskUserQuestion`. A capture note picked up headlessly has nobody watching,
+so `/q` exposes two invocation contexts on the same pattern `/reconcile` uses (input subset changes,
+procedure does not):
+
+| Context          | Owner | Behaviour when classification/parenting is unclear                           |
+| ---------------- | ----- | ---------------------------------------------------------------------------- |
+| Interactive      | `/q`  | Asks, via `AskUserQuestion`.                                                 |
+| Automated pickup | `/q`  | Does not guess. Leaves the capture note untouched and moves to the next one. |
 
 This is the answer to "what does the step do when a capture cannot be routed": nothing forced. The
 note stays put, `/daily` step 1.5's existing manual triage is still there for it. No
@@ -70,47 +72,53 @@ defers to it rather than duplicating it.
 **Per-capture disposition**, once classification is confident enough to proceed without asking:
 
 - **Task.** The capture becomes the task in place: the same file and the same ID, moved out of
-  `notes/mobile-captures/` into the task location, renamed to a task filename, and given task
-  frontmatter (`type: task`, status, parent). `/q` then parents, densifies and values it at intake
-  per [R1](graph-valuation.md#3-r1----placement-at-intake-q) as it would a task it created. No new file is created and no note is left behind. If
-  search-and-adopt finds an existing task that already carries the ask, the capture is folded into
-  that task (`pkb__update_body`) and deleted under the gate below, as with Note.
+  `notes/mobile-captures/` into `tasks/`, renamed to a task filename, and given task frontmatter
+  (`type: task`, `status`, `parent`, `project`, `links`). Invoke
+  `convert_document(id=<capture-id>, type="task", status="ready"|"inbox")` to retype and relocate
+  the document while pinning its ID, then invoke `update_task` and `update_body` to set a verb-led
+  imperative `title`, minimal task body, parent container, and R1 valuation edges
+  ([R1](graph-valuation.md#3-r1----placement-at-intake-q)). No second file is created and no note
+  is left behind in `notes/mobile-captures/`. If search-and-adopt finds an existing task that
+  already carries the ask, fold the capture into that task (`update_body`) and delete the capture
+  under the gate below, as with Note.
 - **Note.** Not an actionable ask -- resolve a destination: an existing canonical topic
   note (synthesize in via
-  `pkb__update_body`) or a new one (`pkb__create(type="knowledge", ...)`), never left as an
+  `update_body`) or a new one (`create(type="knowledge", ...)`), never left as an
   unparented capture.
 - **Expand.** Not a fourth destination type -- maps to the Task path with
-  `classification: probe`, reusing `/q`'s existing uncertainty classification rather than inventing
-  a new one.
+  `classification: probe` (`convert_document` followed by `update_task(classification="probe", ...)`
+  and `update_body`), reusing `/q`'s existing uncertainty classification rather than inventing a new
+  one. When expanding an existing note directly, synthesize into that note (`update_body`) and
+  delete the capture under the gate below.
 - **Discard.** Neither an actionable ask nor a durable proposition. No destination to write or
-  verify -- delete outright. This is the one disposition that skips the gate below, because there
-  is nothing written elsewhere for it to protect.
+  verify -- delete outright via `delete`. This is the one disposition that skips the gate below,
+  because there is nothing written elsewhere for it to protect.
 
 **Before deleting a capture folded into another node** (Note, or Task folded into an existing
 task), the destination write has succeeded and any external references are reparented. Only then
-`pkb__delete` the source capture note. A failed destination write halts on that capture and leaves
+`delete` the source capture note. A failed destination write halts on that capture and leaves
 it in place -- same abort semantics as the hygiene route, never a retry against a different
 destination in the same pass.
 
-## Gap: no PKB write converts a document in place
+## In-place conversion primitive (`convert_document`)
 
-The Task disposition needs one PKB write that, on an existing document ID, does all of: move the
-file to another directory, rename it, and replace its frontmatter type -- keeping the ID and
-reindexing. No tool on the PKB MCP surface does this. Of its 35 tools, only `pkb_create` takes a
-placement parameter (`dir`: "Override subdirectory placement"), and only at creation. No update
-tool (`pkb_update_task`, `pkb_batch_update`, `pkb_apply_consolidation_batch`, `pkb_update_body`,
-`pkb_edit_body`) takes a path, directory or filename. `pkb_batch_merge` keeps a canonical ID but
-archives the source file, so it cannot turn a capture into a task either. Whether
-`pkb_update_task` accepts a `type` key has not been tested, and it would leave the file in
-`notes/mobile-captures/` -- still reading as unprocessed -- if it did.
+The Task and Expand dispositions use `convert_document` (`nicsuzor/mem#659`) to convert an existing
+capture ID in place:
 
-Triage does not work around this with raw git or filesystem edits of the PKB repo, and does not
-fall back to creating a new task and deleting the capture. Until the PKB tool exists, a capture
-classified as Task or Expand stays in `notes/mobile-captures/`; Note and Discard proceed.
+1. Pin the existing document `id` explicitly in frontmatter so renaming the file preserves identity.
+2. Replace `type` with `"task"` (and set initial `status`, defaulting to `"inbox"` or `"ready"`).
+3. Move and rename the file out of `notes/mobile-captures/` into `tasks/<id>-<slug>.md` (and on a
+   subsequent `update_task(title=...)`, keep the filename slug aligned with the task title).
+4. Re-index the node in the PKB graph under the same ID.
+
+Triage does not work around an unavailable or failing `convert_document` tool with raw git or
+filesystem edits of the PKB repo, and does not fall back to creating a new task and deleting the
+capture. If `convert_document` is unavailable or returns an error, any capture classified as Task
+or Expand stays untouched in `notes/mobile-captures/`.
 
 ## Trigger
 
-Invoked as an automated pickup context: routing a capture is judgment work belonging to `ida:q`. That lands with whichever task builds `/q`'s Automated pickup context, since there is nothing to invoke before it exists.
+Invoked as `/q`'s headless capture-intake context: routing a capture is judgment work belonging to `ida:q`.
 
 ## Out of scope
 
@@ -122,10 +130,12 @@ Invoked as an automated pickup context: routing a capture is judgment work belon
 
 ## Landing milestones
 
-- **M0 -- PKB in-place conversion.** The PKB service gains the write described under Gap.
-- **M1 -- `/q` gains the Automated pickup context.** Documented in `plugins/ida/skills/q/SKILL.md`
-  as an invocation-contexts table on the pattern above; falls through instead of asking.
-- **M2 -- Wired to automated pickup.** A real invocation of the automated pickup context.
-- **M3 -- First live run confirms real writes.** Before automated pickup is trusted unattended, one manual run must be confirmed
-  to have converted a real capture into a task in place (same ID, file now outside
-  `notes/mobile-captures/`) and to have exercised `pkb__delete` on a real capture, not only reads.
+- **M0 -- PKB in-place conversion (`nicsuzor/mem#659`).** `convert_document` moves, renames, and
+  retypes a capture in place while keeping its ID.
+- **M1 -- `/q` gains the Automated pickup context (`plugins/ida/skills/q/SKILL.md`).** Classifies
+  each capture, converts task-like captures in place via `convert_document` + `update_task` /
+  `update_body`, and leaves uncertain captures untouched instead of asking.
+- **M2 -- Wired to automated pickup.** Standing invocation of the automated pickup context.
+- **M3 -- First live run confirms real writes.** Before automated pickup is trusted unattended, one
+  run must confirm a real capture converted into a task in place (same ID, file now outside
+  `notes/mobile-captures/`) and `delete` exercised on a real capture.
