@@ -61,10 +61,8 @@ def staged_hooks(tmp_path: Path) -> Path:
 
 
 def test_search_the_pkb_registered_in_handlers():
-    """Verify that search_the_pkb is wired to UserPromptSubmit."""
-    assert "UserPromptSubmit" in handlers.HANDLERS
-    registered = handlers.HANDLERS["UserPromptSubmit"]
-    assert handlers.search_the_pkb in registered
+    """Verify that UserPromptSubmit registers the single user_prompt_submit handler."""
+    assert handlers.HANDLERS["UserPromptSubmit"] == [handlers.user_prompt_submit]
 
 
 def test_user_prompt_submit_pkb_search_success():
