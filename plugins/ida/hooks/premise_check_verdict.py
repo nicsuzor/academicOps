@@ -85,12 +85,25 @@ def emit_verdict_span(
     if title:
         record["attributes"]["premise_check.title"] = title
 
+    surface = "claude-code"
+    if os.environ.get("GITHUB_ACTIONS"):
+        surface = "github-actions"
+    elif state and state.get("surface") == "agy":
+        surface = "agy"
+    elif os.environ.get("ANTIGRAVITY_CLI") or os.environ.get("GEMINI_CLI"):
+        surface = "agy"
+
+    record["attributes"]["service.name"] = "aops-verdict-hooks"
+    record["attributes"]["aops.surface"] = surface
+
     username = os.environ.get("USER", os.environ.get("USERNAME", "unknown"))
     exported = tracer_mod._build_and_export_spans(
         config=config,
         session_id=phoenix_session_id,
         username=username,
         span_records=[record],
+        service_name="aops-verdict-hooks",
+        surface=surface,
     )
     return exported is True
 

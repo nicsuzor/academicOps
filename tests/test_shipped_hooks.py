@@ -263,9 +263,21 @@ def _run_shipped_hook(
     # stderr output into these runs that the field never produces — and the
     # silence assertions would be measuring the test runner, not the hook.
     env.pop("VIRTUAL_ENV", None)
-    # Route any OTel telemetry generated during shipped hook runs to the dedicated test project
-    env.setdefault("PHOENIX_PROJECT_NAME", "academicOps-test")
-    env.setdefault("OTEL_SERVICE_NAME", "academicOps-test")
+    for k in (
+        "GENAI_ENGINE_TRACE_ENDPOINT",
+        "GENAI_ENGINE_API_KEY",
+        "GENAI_ENGINE_TRACE_PROTOCOL",
+        "GENAI_ENGINE_TASK_ID",
+        "OTEL_EXPORTER_OTLP_ENDPOINT",
+        "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
+        "OTEL_EXPORTER_OTLP_HEADERS",
+        "OTEL_EXPORTER_OTLP_TRACES_HEADERS",
+        "OTEL_EXPORTER_OTLP_PROTOCOL",
+        "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL",
+        "PHOENIX_PROJECT_NAME",
+        "OTEL_SERVICE_NAME",
+    ):
+        env.pop(k, None)
     for key, value in (env_overrides or {}).items():
         if value is None:
             env.pop(key, None)

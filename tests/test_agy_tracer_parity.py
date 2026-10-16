@@ -428,3 +428,50 @@ def test_long_turn_llm_span_attributes_stay_within_otel_128_limit(tmp_path: Path
         assert attrs.get("openinference.span.kind") == "LLM"
         assert "input.value" in attrs
         assert "output.value" in attrs
+
+
+def test_agy_tracer_passes_service_name_and_surface(tmp_path: Path):
+    transcript = tmp_path / "transcript.jsonl"
+    transcript.write_text("", encoding="utf-8")
+    state_store: dict[str, dict] = {}
+
+    def load_state(sid: str) -> dict:
+        return json.loads(json.dumps(state_store.get(sid, {})))
+
+    def save_state(sid: str, st: dict) -> None:
+        state_store[sid] = json.loads(json.dumps(st))
+
+    def delete_state(sid: str) -> None:
+        state_store.pop(sid, None)
+
+    export_kwargs: dict = {}
+
+    def mock_export(config, session_id, username, span_records, **kwargs):
+        nonlocal export_kwargs
+        export_kwargs = dict(kwargs)
+
+    session_id = "session-agy-attrs"
+    config = {"endpoint": "localhost:4317", "project_name": "academicOps"}
+
+    with (
+        patch("agy_tracer._load_state", side_effect=load_state),
+        patch("agy_tracer._save_state", side_effect=save_state),
+        patch("agy_tracer._delete_state", side_effect=delete_state),
+        patch("agy_tracer._build_and_export_spans", side_effect=mock_export),
+        patch("agy_tracer._session_lock"),
+    ):
+        _append_jsonl(transcript, {"step_index": 0, "type": "USER_INPUT", "content": "Hello"})
+        agy_tracer.handle_pre_invocation(
+            {"conversationId": session_id, "invocationNum": 1, "transcriptPath": str(transcript)},
+            config,
+        )
+        _append_jsonl(
+            transcript, {"step_index": 1, "source": "MODEL", "type": "GENERIC", "content": "Done"}
+        )
+        agy_tracer.handle_stop(
+            {"conversationId": session_id, "transcriptPath": str(transcript)},
+            config,
+        )
+
+    assert export_kwargs.get("service_name") == "aops-agy-hooks"
+    assert export_kwargs.get("surface") == "agy"
