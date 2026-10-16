@@ -66,11 +66,13 @@ def test_agent_job_checks_tracer_status_after_the_agent(workflow, job, steps):
         if str(s.get("uses", "")).startswith("anthropics/claude-code-action")
     )
     status_steps = [
-        s
-        for i, s in enumerate(steps)
-        if i > last_agent and "tracer_error" in str(s.get("run", ""))
+        s for i, s in enumerate(steps) if i > last_agent and "tracer_error" in str(s.get("run", ""))
     ]
     assert status_steps, f"{workflow}:{job} has no step checking tracer_error after the agent"
     for s in status_steps:
-        assert s.get("if") == "always()", f"{workflow}:{job} tracer status check step must run if: always()"
-        assert "::warning::" in s.get("run", ""), f"{workflow}:{job} tracer status check step must emit a ::warning::"
+        assert s.get("if") == "always()", (
+            f"{workflow}:{job} tracer status check step must run if: always()"
+        )
+        assert "::warning::" in s.get("run", ""), (
+            f"{workflow}:{job} tracer status check step must emit a ::warning::"
+        )

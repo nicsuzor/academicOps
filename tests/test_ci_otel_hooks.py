@@ -262,9 +262,7 @@ def test_hook_wrapper_rejected_export_leaves_marker_and_exits_zero(tmp_path):
 
 def test_hook_wrapper_success_leaves_no_marker(tmp_path):
     _run(tmp_path, _CONFIGURED)
-    (tmp_path / "otel" / "claude_code_tracer.py").write_text(
-        "import sys\nsys.exit(0)\n"
-    )
+    (tmp_path / "otel" / "claude_code_tracer.py").write_text("import sys\nsys.exit(0)\n")
 
     proc = subprocess.run(
         [str(tmp_path / "otel" / "hook.sh"), "pre_tool"],

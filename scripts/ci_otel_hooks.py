@@ -15,7 +15,10 @@ to no hooks with a ``::warning::``, and the hook wrapper always exits 0.
 The Access token never enters settings.json, which claude-code-action logs on
 a second invocation in the same job. It lives in ``hook.sh`` (mode 0700),
 which exports the configuration and runs a private copy of the tracer, so a
-branch checkout during the run can't change the tracer.
+branch checkout during the run can't change the tracer. Note that mode 0700
+does not stop a same-user agent from reading GENAI_ENGINE_API_KEY in hook.sh,
+as the agent runs as the same OS user. When the collector is unreachable,
+each tool call hook incurs a ~4s latency cost from OTel export timeouts.
 
 Usage (stdlib only, so any runner python3 can run it):
 
@@ -84,7 +87,9 @@ def _load_base(path: str | None) -> dict:
     try:
         return json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
-        print(f"::warning::Failed to load base settings from {path} ({exc}); ignoring base settings.")
+        print(
+            f"::warning::Failed to load base settings from {path} ({exc}); ignoring base settings."
+        )
         return {}
 
 
@@ -121,9 +126,15 @@ def _hook_script(python: str, tracer: Path, project: str) -> str:
         if value:
             lines.append(f"export {var}={shlex.quote(value)}")
     lines.append('MARKER="${0%/*}/tracer_error"')
-    lines.append('TMP_OUT=$(mktemp "${TMPDIR:-/tmp}/otel_out.XXXXXX" 2>/dev/null || echo "${0%/*}/.tracer_out.$$")')
-    lines.append('TMP_ERR=$(mktemp "${TMPDIR:-/tmp}/otel_err.XXXXXX" 2>/dev/null || echo "${0%/*}/.tracer_err.$$")')
-    lines.append(f'{shlex.quote(python)} {shlex.quote(str(tracer))} "$1" > "$TMP_OUT" 2> "$TMP_ERR"')
+    lines.append(
+        'TMP_OUT=$(mktemp "${TMPDIR:-/tmp}/otel_out.XXXXXX" 2>/dev/null || echo "${0%/*}/.tracer_out.$$")'
+    )
+    lines.append(
+        'TMP_ERR=$(mktemp "${TMPDIR:-/tmp}/otel_err.XXXXXX" 2>/dev/null || echo "${0%/*}/.tracer_err.$$")'
+    )
+    lines.append(
+        f'{shlex.quote(python)} {shlex.quote(str(tracer))} "$1" > "$TMP_OUT" 2> "$TMP_ERR"'
+    )
     lines.append("STATUS=$?")
     lines.append("if [ $STATUS -ne 0 ]; then")
     lines.append('    echo "Tracer failed for event \'$1\' (exit status $STATUS):" >> "$MARKER"')
