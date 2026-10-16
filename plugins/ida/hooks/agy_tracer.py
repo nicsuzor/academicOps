@@ -912,44 +912,10 @@ def handle_stop(data: dict, config: dict) -> None:
         if agent_name:
             chain_attrs["agent.name"] = agent_name
 
-        total_prompt = 0
-        total_completion = 0
-        total_cache = 0
-        all_reported = True
-        has_tokens = False
-
-        other_records: list[dict[str, Any]] = []
-        for span in llm_spans:
-            other_records.append(span)
-            s_attrs = span.get("attributes", {})
-            if "llm.token_count.prompt" in s_attrs:
-                has_tokens = True
-                total_prompt += s_attrs["llm.token_count.prompt"]
-                total_completion += s_attrs["llm.token_count.completion"]
-                total_cache += s_attrs.get("llm.token_count.prompt_details.cache_read", 0)
-                if s_attrs.get("llm.token_count.type") != "reported":
-                    all_reported = False
-
-        if has_tokens:
-            chain_attrs["llm.token_count.prompt"] = total_prompt
-            chain_attrs["llm.token_count.completion"] = total_completion
-            chain_attrs["llm.token_count.total"] = total_prompt + total_completion
-            if total_cache > 0:
-                chain_attrs["llm.token_count.prompt_details.cache_read"] = total_cache
-                chain_attrs["llm.token_count.prompt_details.cache_write"] = 0
-            est_type = "reported" if all_reported else "estimated"
-            est_method = (
-                "reported: antigravity conversation db steps payload"
-                if all_reported
-                else "estimated: character length ratio"
-            )
-            chain_attrs["llm.token_count.type"] = est_type
-            chain_attrs["llm.token_count.provenance"] = est_type
-            chain_attrs["llm.token_count.estimate_method"] = est_method
-            chain_attrs["llm.token_count.estimation_method"] = est_method
-            chain_attrs["token_count.type"] = est_type
-            chain_attrs["token_count.provenance"] = est_type
-            chain_attrs["token_count.estimate_method"] = est_method
+        # Token counts stay on the LLM spans only: Phoenix's cumulative counts
+        # add a span's own tokens to its descendants', so totals on the CHAIN
+        # root would count every turn twice.
+        other_records: list[dict[str, Any]] = list(llm_spans)
 
         # Emit CHAIN span
         chain_span = {

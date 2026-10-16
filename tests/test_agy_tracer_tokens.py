@@ -212,14 +212,12 @@ def test_handle_stop_accumulates_and_preserves_token_counts(tmp_path: Path):
     chain_span = exported_records[0]
     llm_span = exported_records[1]
 
-    # Verify chain span received accumulated token counts
-    assert "llm.token_count.prompt" in chain_span["attributes"]
-    assert "llm.token_count.completion" in chain_span["attributes"]
-    assert "llm.token_count.total" in chain_span["attributes"]
-    assert chain_span["attributes"]["llm.token_count.type"] in ("reported", "estimated")
-    assert "llm.token_count.estimate_method" in chain_span["attributes"]
+    # CHAIN root carries no token counts: Phoenix sums descendants into the
+    # root's cumulative count, so a root total would double-count the turn.
+    assert not any(k.startswith("llm.token_count.") for k in chain_span["attributes"])
+    assert not any(k.startswith("token_count.") for k in chain_span["attributes"])
 
-    # Verify LLM span retained token counts (NOT deleted!)
+    # LLM span is the single carrier of the turn's token counts
     assert "llm.token_count.prompt" in llm_span["attributes"]
     assert "llm.token_count.completion" in llm_span["attributes"]
     assert "llm.token_count.total" in llm_span["attributes"]
