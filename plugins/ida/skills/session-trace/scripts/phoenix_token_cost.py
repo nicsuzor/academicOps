@@ -22,7 +22,8 @@ the bill. Gemini spans (``gemini-*``) carry no token counts and are counted as c
 
 The task column is recovered from ``TOOL`` spans -- ``claim_task`` / ``release_task`` /
 ``get_task`` / ``update_task`` / ``append`` calls whose ``input.value`` names an id -- because
-``task.id`` / ``tag.task_id`` on every span are the constant ``academicOps``. A session
+the tracer drops ``task.id`` / ``tag.task_id`` when equal to the project name or not a
+valid task id (leaving them unset on spans for sessions without an active task). A session
 that touched several tasks lists them all (claim/release first); a session with none
 prints ``unknown``. ``--by task`` splits a session's spend across the tasks it touched,
 attributing each LLM call to the task most recently claimed/read before it.
