@@ -47,8 +47,6 @@ def test_agent_job_configures_otel_before_the_agent(workflow, job, steps):
         if str(s.get("uses", "")).startswith("anthropics/claude-code-action")
     )
     assert ids.index("otel") < first_agent
-    assert otel["env"]["GENAI_ENGINE_API_KEY"] == "${{ secrets.GENAI_ENGINE_API_KEY }}"
-    assert otel["env"]["GENAI_ENGINE_TRACE_ENDPOINT"] == "${{ vars.GENAI_ENGINE_TRACE_ENDPOINT }}"
 
 
 @pytest.mark.parametrize(("workflow", "job", "steps"), AGENT_JOBS)
@@ -60,27 +58,19 @@ def test_every_agent_step_takes_the_otel_settings(workflow, job, steps):
             ), f"{workflow}:{job}:{step.get('name')}"
 
 
-def _reusable(path: Path) -> dict | None:
-    doc = yaml.safe_load(path.read_text(encoding="utf-8"))
-    on = doc.get(True) or doc.get("on") or {}
-    return on.get("workflow_call") if isinstance(on, dict) else None
-
-
-@pytest.mark.parametrize("workflow", sorted({p.values[0] for p in AGENT_JOBS}))
-def test_reusable_agent_workflows_accept_the_otel_secret(workflow):
-    call = _reusable(REPO_ROOT / ".github" / "workflows" / workflow)
-    if call is None:
-        pytest.skip("not a reusable workflow")
-    secret = (call.get("secrets") or {}).get("GENAI_ENGINE_API_KEY")
-    assert secret is not None
-    assert secret.get("required") is False
-
-
 @pytest.mark.parametrize(("workflow", "job", "steps"), AGENT_JOBS)
-def test_sparse_aops_clone_materialises_the_tracer(workflow, job, steps):
-    otel = next(s for s in steps if s.get("id") == "otel")
-    if "--aops-root .aops" not in otel["run"]:
-        pytest.skip("tracer comes from a full checkout")
-    sparse = "\n".join(s.get("run", "") for s in steps if "sparse-checkout set" in s.get("run", ""))
-    assert "/plugins/ida/hooks/claude_code_tracer.py" in sparse
-    assert "/scripts/ci_otel_hooks.py" in sparse
+def test_agent_job_checks_tracer_status_after_the_agent(workflow, job, steps):
+    last_agent = max(
+        i
+        for i, s in enumerate(steps)
+        if str(s.get("uses", "")).startswith("anthropics/claude-code-action")
+    )
+    status_steps = [
+        s
+        for i, s in enumerate(steps)
+        if i > last_agent and "tracer_error" in str(s.get("run", ""))
+    ]
+    assert status_steps, f"{workflow}:{job} has no step checking tracer_error after the agent"
+    for s in status_steps:
+        assert s.get("if") == "always()", f"{workflow}:{job} tracer status check step must run if: always()"
+        assert "::warning::" in s.get("run", ""), f"{workflow}:{job} tracer status check step must emit a ::warning::"

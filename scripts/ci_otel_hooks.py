@@ -120,7 +120,23 @@ def _hook_script(python: str, tracer: Path, project: str) -> str:
     for var, value in exports.items():
         if value:
             lines.append(f"export {var}={shlex.quote(value)}")
-    lines.append(f'{shlex.quote(python)} {shlex.quote(str(tracer))} "$1" || true')
+    lines.append('MARKER="${0%/*}/tracer_error"')
+    lines.append('TMP_OUT=$(mktemp "${TMPDIR:-/tmp}/otel_out.XXXXXX" 2>/dev/null || echo "${0%/*}/.tracer_out.$$")')
+    lines.append('TMP_ERR=$(mktemp "${TMPDIR:-/tmp}/otel_err.XXXXXX" 2>/dev/null || echo "${0%/*}/.tracer_err.$$")')
+    lines.append(f'{shlex.quote(python)} {shlex.quote(str(tracer))} "$1" > "$TMP_OUT" 2> "$TMP_ERR"')
+    lines.append("STATUS=$?")
+    lines.append("if [ $STATUS -ne 0 ]; then")
+    lines.append('    echo "Tracer failed for event \'$1\' (exit status $STATUS):" >> "$MARKER"')
+    lines.append('    cat "$TMP_ERR" >> "$MARKER"')
+    lines.append('    cat "$TMP_OUT" >> "$MARKER"')
+    lines.append('elif grep -q "OTel span export failed" "$TMP_ERR" "$TMP_OUT" 2>/dev/null; then')
+    lines.append('    echo "Tracer export failed for event \'$1\':" >> "$MARKER"')
+    lines.append('    cat "$TMP_ERR" >> "$MARKER"')
+    lines.append('    cat "$TMP_OUT" >> "$MARKER"')
+    lines.append("fi")
+    lines.append('cat "$TMP_OUT"')
+    lines.append('cat "$TMP_ERR" >&2')
+    lines.append('rm -f "$TMP_OUT" "$TMP_ERR"')
     lines.append("exit 0")
     return "\n".join(lines) + "\n"
 

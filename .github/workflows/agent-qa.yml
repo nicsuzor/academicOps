@@ -387,6 +387,14 @@ jobs:
       #   - non-skip path: steps.decision.outputs.failed is the script's own
       #     fail-closed verdict (true for a real CHANGES_REQUESTED *and* for an
       #     agent that ran but delivered no verdict — both must redden the check).
+      - name: Check OTel tracer status
+        if: always()
+        run: |
+          if [ -s "$RUNNER_TEMP/aops-otel/tracer_error" ]; then
+            echo "::warning::OTel tracing encountered runtime errors:"
+            cat "$RUNNER_TEMP/aops-otel/tracer_error"
+          fi
+
       - name: Final check and hard-fail
         if: always()
         run: |
