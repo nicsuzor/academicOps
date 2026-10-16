@@ -81,7 +81,11 @@ RUN_ENV = (
 def _load_base(path: str | None) -> dict:
     if not path:
         return {}
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+    try:
+        return json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        print(f"::warning::Failed to load base settings from {path} ({exc}); ignoring base settings.")
+        return {}
 
 
 def _tracer_python(out_dir: Path, python: str | None) -> str:

@@ -84,6 +84,27 @@ def test_unconfigured_keeps_base_settings(tmp_path):
     assert _settings(tmp_path) == {"env": {"CLAUDE_CODE_ENABLE_TELEMETRY": "1"}}
 
 
+def test_missing_base_settings_file_warns_and_passes_base_unchanged(tmp_path):
+    missing = tmp_path / "nonexistent.json"
+    proc = _run(tmp_path, {}, "--base-settings", str(missing))
+
+    assert proc.returncode == 0, proc.stderr
+    assert "::warning::" in proc.stdout
+    assert "Traceback" not in proc.stderr
+    assert _settings(tmp_path) == {}
+
+
+def test_invalid_json_base_settings_file_warns_and_passes_base_unchanged(tmp_path):
+    invalid = tmp_path / "invalid.json"
+    invalid.write_text("{not valid json")
+    proc = _run(tmp_path, {}, "--base-settings", str(invalid))
+
+    assert proc.returncode == 0, proc.stderr
+    assert "::warning::" in proc.stdout
+    assert "Traceback" not in proc.stderr
+    assert _settings(tmp_path) == {}
+
+
 def test_configured_registers_tracer_for_every_traced_event(tmp_path):
     proc = _run(tmp_path, _CONFIGURED)
 
