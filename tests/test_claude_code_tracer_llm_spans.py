@@ -758,13 +758,10 @@ def test_every_hook_tracer_llm_span_carries_llm_provider_anthropic(tracer_env):
         _hook(cct.handle_stop, str(transcript))
 
     llm_spans = [
-        sp
-        for sp in exporter.spans
-        if (sp.attributes or {}).get("openinference.span.kind") == "LLM"
+        sp for sp in exporter.spans if (sp.attributes or {}).get("openinference.span.kind") == "LLM"
     ]
     assert len(llm_spans) == 1
     for sp in llm_spans:
         attrs = sp.attributes or {}
         assert attrs.get("llm.provider") == "anthropic"
         assert attrs.get("llm.system") == "anthropic"
-
