@@ -135,6 +135,78 @@ def test_discover_config_sanitizes_task_id():
         assert cfg["task_id"] == "task-456"
 
 
+def test_discover_config_resolves_polecat_target_task():
+    with patch.dict(
+        "os.environ",
+        {
+            "GENAI_ENGINE_API_KEY": "test-key",
+            "GENAI_ENGINE_TRACE_ENDPOINT": "http://localhost:4317",
+            "POLECAT_TARGET_TASK": "aops_940d9db2",
+        },
+        clear=True,
+    ):
+        cfg = claude_code_tracer.discover_config()
+        assert cfg is not None
+        assert cfg["task_id"] == "aops_940d9db2"
+
+    with patch.dict(
+        "os.environ",
+        {
+            "GENAI_ENGINE_API_KEY": "test-key",
+            "GENAI_ENGINE_TRACE_ENDPOINT": "http://localhost:4317",
+            "POLECAT_TASK": "aops_7b1b67fe",
+        },
+        clear=True,
+    ):
+        cfg = claude_code_tracer.discover_config()
+        assert cfg is not None
+        assert cfg["task_id"] == "aops_7b1b67fe"
+
+    # When GENAI_ENGINE_TASK_ID is set to placeholder 'ns', POLECAT_TARGET_TASK still resolves
+    with patch.dict(
+        "os.environ",
+        {
+            "GENAI_ENGINE_API_KEY": "test-key",
+            "GENAI_ENGINE_TRACE_ENDPOINT": "http://localhost:4317",
+            "GENAI_ENGINE_TASK_ID": "ns",
+            "POLECAT_TARGET_TASK": "aops_940d9db2",
+        },
+        clear=True,
+    ):
+        cfg = claude_code_tracer.discover_config()
+        assert cfg is not None
+        assert cfg["task_id"] == "aops_940d9db2"
+
+    # AOPS_TASK_ID takes precedence over POLECAT_TARGET_TASK
+    with patch.dict(
+        "os.environ",
+        {
+            "GENAI_ENGINE_API_KEY": "test-key",
+            "GENAI_ENGINE_TRACE_ENDPOINT": "http://localhost:4317",
+            "AOPS_TASK_ID": "task-123",
+            "POLECAT_TARGET_TASK": "aops_940d9db2",
+        },
+        clear=True,
+    ):
+        cfg = claude_code_tracer.discover_config()
+        assert cfg is not None
+        assert cfg["task_id"] == "task-123"
+
+    # Explicit data payload takes precedence over environment variables
+    with patch.dict(
+        "os.environ",
+        {
+            "GENAI_ENGINE_API_KEY": "test-key",
+            "GENAI_ENGINE_TRACE_ENDPOINT": "http://localhost:4317",
+            "POLECAT_TARGET_TASK": "aops_940d9db2",
+        },
+        clear=True,
+    ):
+        cfg = claude_code_tracer.discover_config({"task_id": "task-789"})
+        assert cfg is not None
+        assert cfg["task_id"] == "task-789"
+
+
 def test_build_and_export_spans_sets_attributes():
     mock_span = MagicMock()
     mock_span.get_span_context.return_value = MagicMock(trace_id=1, span_id=2)

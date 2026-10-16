@@ -464,16 +464,33 @@ def discover_config(data: dict | None = None) -> dict | None:
 
     project_name = resolve_project_name(data)
 
-    task_id = (
-        (data.get("task_id") if data and isinstance(data, dict) else None)
-        or os.environ.get("AOPS_TASK_ID", "").strip()
-        or os.environ.get("GENAI_ENGINE_TASK_ID", "").strip()
-        or ""
+    task_id_candidates: list[Any] = []
+    if data and isinstance(data, dict):
+        if "task_id" in data:
+            task_id_candidates.append(data["task_id"])
+        if "taskId" in data:
+            task_id_candidates.append(data["taskId"])
+    task_id_candidates.extend(
+        [
+            os.environ.get("AOPS_TASK_ID"),
+            os.environ.get("POLECAT_TARGET_TASK"),
+            os.environ.get("POLECAT_TASK"),
+            os.environ.get("GENAI_ENGINE_TASK_ID"),
+        ]
     )
-    if task_id:
-        canon_task = resolve_canonical_project(task_id)
-        if task_id == project_name or canon_task == project_name or not is_valid_task_id(task_id):
-            task_id = ""
+
+    task_id = ""
+    for candidate in task_id_candidates:
+        if not candidate or not isinstance(candidate, str):
+            continue
+        c = candidate.strip()
+        if not c:
+            continue
+        canon_task = resolve_canonical_project(c)
+        if c == project_name or canon_task == project_name or not is_valid_task_id(c):
+            continue
+        task_id = c
+        break
 
     cwd = resolve_cwd(data)
     agent_name = resolve_agent_name(data, cwd=cwd)

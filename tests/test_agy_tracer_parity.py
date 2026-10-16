@@ -428,3 +428,33 @@ def test_long_turn_llm_span_attributes_stay_within_otel_128_limit(tmp_path: Path
         assert attrs.get("openinference.span.kind") == "LLM"
         assert "input.value" in attrs
         assert "output.value" in attrs
+
+
+def test_agy_tracer_discover_config_resolves_polecat_target_task():
+    with patch.dict(
+        "os.environ",
+        {
+            "GENAI_ENGINE_API_KEY": "test-key",
+            "GENAI_ENGINE_TRACE_ENDPOINT": "http://localhost:4317",
+            "POLECAT_TARGET_TASK": "aops_940d9db2",
+        },
+        clear=True,
+    ):
+        cfg = agy_tracer.discover_config()
+        assert cfg is not None
+        assert cfg["task_id"] == "aops_940d9db2"
+
+    # When GENAI_ENGINE_TASK_ID is set to placeholder 'ns', POLECAT_TARGET_TASK still resolves
+    with patch.dict(
+        "os.environ",
+        {
+            "GENAI_ENGINE_API_KEY": "test-key",
+            "GENAI_ENGINE_TRACE_ENDPOINT": "http://localhost:4317",
+            "GENAI_ENGINE_TASK_ID": "ns",
+            "POLECAT_TARGET_TASK": "aops_940d9db2",
+        },
+        clear=True,
+    ):
+        cfg = agy_tracer.discover_config()
+        assert cfg is not None
+        assert cfg["task_id"] == "aops_940d9db2"

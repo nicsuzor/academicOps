@@ -61,6 +61,8 @@ def ensure_test_environment(monkeypatch, tmp_path):
         "AOPS_SESSION_STATE_DIR",
         "AOPS_SRC_DIR",
         "AOPS_TASK_ID",
+        "POLECAT_TARGET_TASK",
+        "POLECAT_TASK",
         "PKB_MCP_URL",
         "PKB_MCP_HEADERS",
         "PKB_MCP_TOKEN",
