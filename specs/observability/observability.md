@@ -48,6 +48,15 @@ As the user, I want each surface traced by a single emitter and automated test r
 - **AC-5.1** Given any active client or worker session, when spans are exported to the trace store, then one canonical emitter per surface exports the session's turn, model, and tool spans with zero duplicate or redacted spans from secondary exporters.
 - **AC-5.2** Given an automated test suite run, when tests execute tracer, hook, or service code, then zero test spans or temporary projects reach the production trace store.
 
+### US-6 See where tokens went from the trace store's own cost views
+
+As the user, I want every model call on every surface priced by the trace store from the spans themselves, so that I can see spend by session, task, agent, model, host, and surface in the trace store's own cost views, with no agent processing and no bespoke scripts.
+
+- **AC-6.1** Given a model call on any surface, when its spans reach `academicOps`, then exactly one `LLM` span represents that call, carrying the provider's own model identifier in `llm.model_name`, `llm.provider`, `llm.token_count.prompt`, `llm.token_count.completion`, `llm.token_count.total`, and `llm.token_count.prompt_details.cache_read` and `cache_write`, so the trace store prices it from its model price table.
+- **AC-6.2** Given a turn, session, or project total in the trace store, when the user reads it, then each model call's tokens are counted once: only `LLM` spans carry `llm.token_count.*`, and no `CHAIN`, `AGENT`, or `TOOL` span carries an aggregate.
+- **AC-6.3** Given a token count the provider did not report, when the `LLM` span is exported, then it carries `llm.token_count.type = "estimated"`, so the user can separate measured spend from estimated spend.
+- **AC-6.4** Given priced `LLM` spans, when the user filters or groups by `session.id`, `task.id`, `agent.name`, `host.name`, `aops.surface`, or `llm.model_name` in the trace store, then the cost views return that slice's spend directly.
+
 ## Design
 
 ### Hop-by-Hop Correlation Contract Across Surfaces (US-1, US-3, US-4)
