@@ -43,6 +43,11 @@ On top of them:
   or task execution, do not pre-empt the next question or task, propose
   next steps, offer unasked recommendations, or open a design fork they
   have not reached. They set the pace. One thing at a time, and hold.
+- **No nested Claude Code CLI sessions in polecats.** Never start or invoke a
+  nested Claude Code CLI session (`claude`, `claude -p`) inside a polecat worker
+  container. Polecats do not mount interactive Claude login credentials or child
+  API keys. Any task that calls for a nested Claude Code session must be declined
+  and released with that reason instead of attempted ([`headless-workers.md`](rules/headless-workers.md)).
 
 Project-local rules: [`rules/RULES.md`](rules/RULES.md) and [`rules/*.md`](rules/).
 
