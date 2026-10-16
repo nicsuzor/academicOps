@@ -225,9 +225,7 @@ def test_handle_stop_accumulates_and_preserves_token_counts(tmp_path: Path):
     assert "llm.token_count.estimate_method" in llm_span["attributes"]
 
 
-def build_mock_gen_metadata_payload(
-    model_name: str, last_step_index: int | None = None
-) -> bytes:
+def build_mock_gen_metadata_payload(model_name: str, last_step_index: int | None = None) -> bytes:
     """Constructs protobuf payload matching Antigravity gen_metadata data structure:
     Field 1 (bytes) ->
         Sub-tag 19 (bytes): model_name
@@ -235,9 +233,8 @@ def build_mock_gen_metadata_payload(
     """
     kv_items = []
     if last_step_index is not None:
-        kv_payload = (
-            _encode_len_delimited(1, b"last_step_index")
-            + _encode_len_delimited(2, str(last_step_index).encode("utf-8"))
+        kv_payload = _encode_len_delimited(1, b"last_step_index") + _encode_len_delimited(
+            2, str(last_step_index).encode("utf-8")
         )
         kv_items.append(_encode_len_delimited(20, kv_payload))
     f1_payload = _encode_len_delimited(19, model_name.encode("utf-8")) + b"".join(kv_items)
@@ -257,7 +254,12 @@ def test_model_extractor_reported_from_sqlite(tmp_path: Path):
     conn.close()
 
     transcript_path = (
-        tmp_path / "brain" / "test-model-session" / ".system_generated" / "logs" / "transcript.jsonl"
+        tmp_path
+        / "brain"
+        / "test-model-session"
+        / ".system_generated"
+        / "logs"
+        / "transcript.jsonl"
     )
     transcript_path.parent.mkdir(parents=True, exist_ok=True)
     transcript_path.write_text("")
@@ -290,7 +292,12 @@ def test_model_extractor_none_when_unavailable():
 
 def test_extract_llm_spans_for_turn_agy_carries_real_model_and_provider(tmp_path: Path):
     transcript = (
-        tmp_path / "brain" / "test_session_model" / ".system_generated" / "logs" / "transcript.jsonl"
+        tmp_path
+        / "brain"
+        / "test_session_model"
+        / ".system_generated"
+        / "logs"
+        / "transcript.jsonl"
     )
     transcript.parent.mkdir(parents=True, exist_ok=True)
     conv_dir = tmp_path / "conversations"
@@ -301,7 +308,9 @@ def test_extract_llm_spans_for_turn_agy_carries_real_model_and_provider(tmp_path
     cur = conn.cursor()
     cur.execute("CREATE TABLE steps (idx INTEGER PRIMARY KEY, step_payload BLOB)")
     cur.execute("CREATE TABLE gen_metadata (idx INTEGER PRIMARY KEY, data BLOB, size INTEGER)")
-    token_payload = build_mock_usage_payload(fresh_prompt=500, cached=100, completion=50, thoughts=15)
+    token_payload = build_mock_usage_payload(
+        fresh_prompt=500, cached=100, completion=50, thoughts=15
+    )
     model_payload = build_mock_gen_metadata_payload("gemini-3.8-flash", last_step_index=0)
     cur.execute("INSERT INTO steps VALUES (?, ?)", (1, token_payload))
     cur.execute("INSERT INTO gen_metadata VALUES (?, ?, ?)", (0, model_payload, len(model_payload)))
@@ -337,7 +346,12 @@ def test_extract_llm_spans_for_turn_agy_carries_real_model_and_provider(tmp_path
 
 def test_extract_llm_spans_for_turn_agy_when_no_model_found(tmp_path: Path):
     transcript = (
-        tmp_path / "brain" / "test_session_nomodel" / ".system_generated" / "logs" / "transcript.jsonl"
+        tmp_path
+        / "brain"
+        / "test_session_nomodel"
+        / ".system_generated"
+        / "logs"
+        / "transcript.jsonl"
     )
     transcript.parent.mkdir(parents=True, exist_ok=True)
 
@@ -367,4 +381,3 @@ def test_extract_llm_spans_for_turn_agy_when_no_model_found(tmp_path: Path):
     assert attrs["llm.provider"] == "google"
     assert "llm.model_name" not in attrs
     assert attrs.get("llm.model_name") != "gemini-pro-agent"
-
