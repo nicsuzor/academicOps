@@ -20,12 +20,13 @@ from typing import Any
 log = logging.getLogger("orchestrate.agy_tracer")
 
 try:
-    from token_extractor import resolve_gemini_tokens
+    from token_extractor import resolve_gemini_model, resolve_gemini_tokens
 except ImportError:
     try:
-        from .token_extractor import resolve_gemini_tokens
+        from .token_extractor import resolve_gemini_model, resolve_gemini_tokens
     except Exception:
         resolve_gemini_tokens = None
+        resolve_gemini_model = None
 
 from claude_code_tracer import (
     _build_and_export_spans,
@@ -374,11 +375,20 @@ def _extract_llm_spans_for_turn_agy(
 
                     attrs: dict[str, Any] = {
                         "openinference.span.kind": "LLM",
-                        "llm.model_name": "gemini-pro-agent",
+                        "llm.provider": "google",
                         "input.value": last_input_value,
                         "input.mime_type": last_input_mime,
                         "llm.output_messages.0.message.role": "assistant",
                     }
+                    if resolve_gemini_model is not None:
+                        model_id = resolve_gemini_model(
+                            session_id=session_id,
+                            transcript_path=transcript_path,
+                            step_index=step_index,
+                            reported_model=entry.get("model") or entry.get("model_name"),
+                        )
+                        if model_id:
+                            attrs["llm.model_name"] = model_id
                     bounded_msgs = step_input_messages[-MAX_INPUT_MESSAGES_PER_SPAN:]
                     for i, m in enumerate(bounded_msgs):
                         attrs[f"llm.input_messages.{i}.message.role"] = m["role"]
