@@ -725,3 +725,43 @@ def test_prompts_queued_mid_turn_and_released_by_esc_keep_their_llm_spans(tracer
     assert "E-Q2" in prompt
     (bash,) = [sp for sp in in_turn if sp.attributes.get("tool.call_id") == "toolu_2"]
     assert bash.parent.span_id == llm["msg_2"].context.span_id
+
+
+def test_every_hook_tracer_llm_span_carries_llm_provider_anthropic(tracer_env):
+    """Every LLM span emitted by the hook tracer carries llm.provider = 'anthropic'
+    beside llm.system = 'anthropic' (specs/observability/observability.md US-6, AC-6.1)."""
+    transcript = tracer_env / "session.jsonl"
+    transcript.write_text("")
+    _hook(cct.handle_user_prompt_submit, str(transcript), prompt="hello")
+    entries = [
+        _human("hello", "2026-10-08T00:00:00.000Z"),
+        _assistant(
+            "msg_1",
+            "2026-10-08T00:00:01.000Z",
+            {"type": "text", "text": "world"},
+            _usage(10),
+            "end_turn",
+        ),
+    ]
+    _write(transcript, entries)
+
+    # 1. Extracted spans check
+    extracted = _extract(str(transcript))
+    assert len(extracted) == 1
+    for sp in extracted:
+        assert sp["attributes"].get("llm.provider") == "anthropic"
+        assert sp["attributes"].get("llm.system") == "anthropic"
+
+    # 2. Hook lifecycle export check
+    exporter = _CollectingExporter()
+    with patch.object(cct, "_create_exporter", return_value=exporter):
+        _hook(cct.handle_stop, str(transcript))
+
+    llm_spans = [
+        sp for sp in exporter.spans if (sp.attributes or {}).get("openinference.span.kind") == "LLM"
+    ]
+    assert len(llm_spans) == 1
+    for sp in llm_spans:
+        attrs = sp.attributes or {}
+        assert attrs.get("llm.provider") == "anthropic"
+        assert attrs.get("llm.system") == "anthropic"
