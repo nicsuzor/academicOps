@@ -1081,6 +1081,7 @@ def _extract_llm_spans_for_turn(
             attrs: dict[str, Any] = {
                 "openinference.span.kind": "LLM",
                 "llm.system": "anthropic",
+                "llm.provider": "anthropic",
                 "llm.model_name": group_model,
                 "llm.token_count.prompt": input_tokens + cache_read + cache_create,
                 "llm.token_count.completion": output_tokens,
