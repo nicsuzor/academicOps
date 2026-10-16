@@ -182,16 +182,56 @@ def extract_prompt_query(prompt: str) -> str:
     return re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", text).strip()
 
 
-def _resolve_mcp_headers() -> dict[str, str]:
-    """HTTP headers for the PKB endpoint, from the environment only.
+def _resolve_mcp_headers(mcp_url: str | None = None) -> dict[str, str]:
+    """HTTP headers for the PKB endpoint, from environment and session client configs.
 
-    `PKB_MCP_HEADERS` is a JSON object of header name to value.
-    `CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET` together supply the
-    Cloudflare Access service-token headers. A malformed `PKB_MCP_HEADERS` is
-    logged and ignored, never silently swallowed.
+    Resolves headers first from session configuration files (e.g. Claude Code's
+    `.claude.json` or Antigravity's `mcp_config.json` under `services`), then
+    overrides with any environment variables (`PKB_MCP_HEADERS`, `CF_ACCESS_CLIENT_ID`,
+    `CF_ACCESS_CLIENT_SECRET`).
+
+    A malformed `PKB_MCP_HEADERS` is logged and ignored.
     """
-    headers: dict[str, str] = {}
+    config_headers: dict[str, str] = {}
+    target_url = mcp_url or os.environ.get("PKB_MCP_URL")
 
+    candidates: list[Path] = []
+    claude_config_dir = os.environ.get("CLAUDE_CONFIG_DIR")
+    if claude_config_dir:
+        candidates.append(Path(claude_config_dir) / ".claude.json")
+    home_env = os.environ.get("HOME")
+    if home_env:
+        home = Path(home_env)
+        candidates.append(home / ".claude.json")
+        candidates.append(home / ".claude" / ".claude.json")
+        candidates.append(home / ".gemini" / "config" / "mcp_config.json")
+        candidates.append(home / ".gemini" / "antigravity-cli" / "mcp_config.json")
+        candidates.append(home / ".gemini" / "antigravity-cli" / "settings.json")
+
+    for path in candidates:
+        if not path.is_file():
+            continue
+        try:
+            cfg = json.loads(path.read_text(encoding="utf-8"))
+            mcp_servers = cfg.get("mcpServers") or {}
+            if not isinstance(mcp_servers, dict):
+                continue
+            for srv_name, server in mcp_servers.items():
+                if not isinstance(server, dict):
+                    continue
+                srv_url = server.get("url") or server.get("serverUrl") or ""
+                matches = srv_name == "services"
+                if target_url and srv_url:
+                    matches = matches or (target_url.rstrip("/") == str(srv_url).rstrip("/"))
+                if matches:
+                    srv_headers = server.get("headers")
+                    if isinstance(srv_headers, dict):
+                        for k, v in srv_headers.items():
+                            config_headers.setdefault(str(k), str(v))
+        except Exception as exc:
+            log.debug("Failed to read MCP config from %s: %s", path, exc)
+
+    env_headers_dict: dict[str, str] = {}
     env_headers = os.environ.get("PKB_MCP_HEADERS")
     if env_headers:
         try:
@@ -200,16 +240,18 @@ def _resolve_mcp_headers() -> dict[str, str]:
             log.warning("PKB_MCP_HEADERS is not valid JSON, ignoring it: %s", exc)
         else:
             if isinstance(parsed, dict):
-                headers.update({str(k): str(v) for k, v in parsed.items()})
+                env_headers_dict.update({str(k): str(v) for k, v in parsed.items()})
             else:
                 log.warning("PKB_MCP_HEADERS is not a JSON object, ignoring it")
 
     cf_id = os.environ.get("CF_ACCESS_CLIENT_ID")
     cf_secret = os.environ.get("CF_ACCESS_CLIENT_SECRET")
     if cf_id and cf_secret:
-        headers.setdefault("CF-Access-Client-Id", cf_id)
-        headers.setdefault("CF-Access-Client-Secret", cf_secret)
+        env_headers_dict.setdefault("CF-Access-Client-Id", cf_id)
+        env_headers_dict.setdefault("CF-Access-Client-Secret", cf_secret)
 
+    headers = dict(config_headers)
+    headers.update(env_headers_dict)
     return headers
 
 
@@ -246,7 +288,7 @@ def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
         log.warning("PKB_MCP_URL not found for UserPromptSubmit hook")
         return None
 
-    headers = _resolve_mcp_headers()
+    headers = _resolve_mcp_headers(mcp_url)
     return _search_via_fastmcp_client(mcp_url, query, headers)
 
 

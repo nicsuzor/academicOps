@@ -36,11 +36,11 @@ from dispatch import HookContext, load_message_pair  # type: ignore[import-not-f
 
 
 @pytest.fixture(autouse=True)
-def no_ambient_pkb_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
+def no_ambient_pkb_credentials(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Keep the developer's real PKB credentials out of every test.
 
-    With credentials in the environment the hook takes the authenticated HTTP
-    path, so tests of the CLI path would silently test the wrong branch.
+    With credentials in the environment or user config files the hook would
+    read real host credentials instead of testing with clean state.
     """
     for var in (
         "PKB_MCP_URL",
@@ -48,8 +48,10 @@ def no_ambient_pkb_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
         "PKB_MCP_TOKEN",
         "CF_ACCESS_CLIENT_ID",
         "CF_ACCESS_CLIENT_SECRET",
+        "CLAUDE_CONFIG_DIR",
     ):
         monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
 
 
 @pytest.fixture
@@ -388,18 +390,275 @@ def test_resolve_mcp_headers_reads_environment():
         }
 
 
-def test_resolve_mcp_headers_ignores_client_config_files(tmp_path: Path):
-    """Headers come from the environment only, never from a client's own config file."""
-    (tmp_path / ".claude.json").write_text(
-        json.dumps({"mcpServers": {"s": {"url": "https://x", "headers": {"A": "b"}}}}),
+def test_resolve_mcp_headers_reads_claude_json(tmp_path: Path):
+    """Headers are loaded from ~/.claude.json when present."""
+    claude_json = tmp_path / ".claude.json"
+    claude_json.write_text(
+        json.dumps(
+            {
+                "mcpServers": {
+                    "services": {
+                        "url": "https://mcp.example.com",
+                        "headers": {
+                            "CF-Access-Client-Id": "id-claude",
+                            "CF-Access-Client-Secret": "sec-claude",
+                        },
+                    }
+                }
+            }
+        ),
         encoding="utf-8",
     )
     with patch.dict(os.environ, {"HOME": str(tmp_path)}, clear=True):
-        assert handlers._resolve_mcp_headers() == {}
+        assert handlers._resolve_mcp_headers("https://mcp.example.com") == {
+            "CF-Access-Client-Id": "id-claude",
+            "CF-Access-Client-Secret": "sec-claude",
+        }
 
 
-def test_resolve_mcp_headers_logs_malformed_json(caplog):
-    with patch.dict(os.environ, {"PKB_MCP_HEADERS": "{not json"}, clear=True):
+def test_resolve_mcp_headers_reads_claude_dot_claude_json(tmp_path: Path):
+    """Headers are loaded from ~/.claude/.claude.json when present."""
+    claude_dir = tmp_path / ".claude"
+    claude_dir.mkdir(parents=True)
+    claude_json = claude_dir / ".claude.json"
+    claude_json.write_text(
+        json.dumps(
+            {
+                "mcpServers": {
+                    "services": {
+                        "url": "https://mcp.example.com",
+                        "headers": {
+                            "CF-Access-Client-Id": "id-dot-claude",
+                            "CF-Access-Client-Secret": "sec-dot-claude",
+                        },
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    with patch.dict(os.environ, {"HOME": str(tmp_path)}, clear=True):
+        assert handlers._resolve_mcp_headers("https://mcp.example.com") == {
+            "CF-Access-Client-Id": "id-dot-claude",
+            "CF-Access-Client-Secret": "sec-dot-claude",
+        }
+
+
+def test_resolve_mcp_headers_reads_claude_config_dir(tmp_path: Path):
+    """Headers are loaded from $CLAUDE_CONFIG_DIR/.claude.json when set."""
+    config_dir = tmp_path / "custom_claude_config"
+    config_dir.mkdir(parents=True)
+    claude_json = config_dir / ".claude.json"
+    claude_json.write_text(
+        json.dumps(
+            {
+                "mcpServers": {
+                    "services": {
+                        "url": "https://mcp.example.com",
+                        "headers": {"X-Custom-Auth": "tok-custom"},
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    with patch.dict(
+        os.environ,
+        {"CLAUDE_CONFIG_DIR": str(config_dir), "HOME": str(tmp_path / "nonexistent")},
+        clear=True,
+    ):
+        assert handlers._resolve_mcp_headers("https://mcp.example.com") == {
+            "X-Custom-Auth": "tok-custom"
+        }
+
+
+def test_resolve_mcp_headers_reads_agy_config(tmp_path: Path):
+    """Headers are loaded from ~/.gemini/config/mcp_config.json for agy sessions."""
+    gemini_cfg_dir = tmp_path / ".gemini" / "config"
+    gemini_cfg_dir.mkdir(parents=True)
+    mcp_cfg = gemini_cfg_dir / "mcp_config.json"
+    mcp_cfg.write_text(
+        json.dumps(
+            {
+                "mcpServers": {
+                    "services": {
+                        "serverUrl": "https://mcp.example.com",
+                        "headers": {
+                            "CF-Access-Client-Id": "id-agy",
+                            "CF-Access-Client-Secret": "sec-agy",
+                        },
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    with patch.dict(os.environ, {"HOME": str(tmp_path)}, clear=True):
+        assert handlers._resolve_mcp_headers("https://mcp.example.com") == {
+            "CF-Access-Client-Id": "id-agy",
+            "CF-Access-Client-Secret": "sec-agy",
+        }
+
+
+def test_resolve_mcp_headers_environment_takes_precedence(tmp_path: Path):
+    """Environment credentials override client configuration credentials."""
+    claude_json = tmp_path / ".claude.json"
+    claude_json.write_text(
+        json.dumps(
+            {
+                "mcpServers": {
+                    "services": {
+                        "url": "https://mcp.example.com",
+                        "headers": {
+                            "CF-Access-Client-Id": "config-id",
+                            "CF-Access-Client-Secret": "config-sec",
+                        },
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    with patch.dict(
+        os.environ,
+        {
+            "HOME": str(tmp_path),
+            "CF_ACCESS_CLIENT_ID": "env-id",
+            "CF_ACCESS_CLIENT_SECRET": "env-sec",
+        },
+        clear=True,
+    ):
+        headers = handlers._resolve_mcp_headers("https://mcp.example.com")
+        assert headers["CF-Access-Client-Id"] == "env-id"
+        assert headers["CF-Access-Client-Secret"] == "env-sec"
+
+
+def test_hook_sends_credentials_held_by_session(tmp_path: Path):
+    """UserPromptSubmit hook search_the_pkb sends credentials held by the session's client config."""
+    claude_json = tmp_path / ".claude.json"
+    claude_json.write_text(
+        json.dumps(
+            {
+                "mcpServers": {
+                    "services": {
+                        "url": "https://mcp.suzor.com/mcp",
+                        "headers": {
+                            "CF-Access-Client-Id": "sess-client-id",
+                            "CF-Access-Client-Secret": "sess-client-secret",
+                        },
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        raw={"prompt": "what is our architecture?"},
+        hooks_dir=PKB_HOOKS,
+        agent_type="ida:ida",
+    )
+    with (
+        patch.dict(
+            os.environ,
+            {"HOME": str(tmp_path), "PKB_MCP_URL": "https://mcp.suzor.com/mcp"},
+            clear=True,
+        ),
+        patch.object(
+            handlers, "_search_via_fastmcp_client", return_value="Found architecture spec"
+        ) as mock_search,
+    ):
+        res = handlers.search_the_pkb(ctx)
+        assert res is not None
+        assert "Found architecture spec" in res.inject_text
+        mock_search.assert_called_once_with(
+            "https://mcp.suzor.com/mcp",
+            "what is our architecture?",
+            {
+                "CF-Access-Client-Id": "sess-client-id",
+                "CF-Access-Client-Secret": "sess-client-secret",
+            },
+        )
+
+
+def test_hook_fails_loudly_when_search_fails_without_credentials(tmp_path: Path):
+    """When no credentials are in session config/env and search fails (e.g. portal rejection), hook raises the error."""
+    from mcp import ErrorData, McpError
+
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        raw={"prompt": "what is the status?"},
+        hooks_dir=PKB_HOOKS,
+        agent_type="ida:ida",
+    )
+    with (
+        patch.dict(
+            os.environ,
+            {"HOME": str(tmp_path), "PKB_MCP_URL": "https://pkb.example.com"},
+            clear=True,
+        ),
+        patch.object(
+            handlers,
+            "_search_via_fastmcp_client",
+            side_effect=McpError(
+                ErrorData(code=-32603, message="Server returned an error response")
+            ),
+        ) as mock_search,
+    ):
+        with pytest.raises(McpError, match="Server returned an error response"):
+            handlers.search_the_pkb(ctx)
+        # Confirms the unauthenticated call was attempted without an assumed precondition
+        mock_search.assert_called_once_with("https://pkb.example.com", "what is the status?", {})
+
+
+def test_dispatch_fails_loudly_when_search_fails_without_credentials(
+    staged_hooks: Path, tmp_path: Path
+):
+    """End-to-end dispatch surfaces MCP failure in hook output when search fails without credentials."""
+    env = dict(os.environ)
+    env["HOME"] = str(tmp_path)
+    env["PKB_MCP_URL"] = "http://127.0.0.1:9"  # Unreachable port ensures connection failure
+    for var in (
+        "PKB_MCP_HEADERS",
+        "PKB_MCP_TOKEN",
+        "POLECAT_MCP_TOKEN",
+        "CF_ACCESS_CLIENT_ID",
+        "CF_ACCESS_CLIENT_SECRET",
+        "CLAUDE_CONFIG_DIR",
+    ):
+        env.pop(var, None)
+
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(staged_hooks / "dispatch.py"),
+            "claude",
+            "UserPromptSubmit",
+        ],
+        input=json.dumps({"hook_event_name": "UserPromptSubmit", "prompt": "check status"}),
+        text=True,
+        capture_output=True,
+        timeout=60,
+        cwd=str(staged_hooks),
+        env=env,
+    )
+    assert proc.returncode == 0
+    assert "search_the_pkb" in proc.stderr
+    assert "failed with" in proc.stderr
+    data = json.loads(proc.stdout)
+    content = data.get("hookSpecificOutput", {}).get("additionalContext", "")
+    assert "search_the_pkb" in content
+    assert "failed with" in content
+
+
+def test_resolve_mcp_headers_logs_malformed_json(caplog, tmp_path: Path):
+    with patch.dict(
+        os.environ,
+        {"HOME": str(tmp_path), "PKB_MCP_HEADERS": "{not json"},
+        clear=True,
+    ):
         with caplog.at_level("WARNING"):
             assert handlers._resolve_mcp_headers() == {}
     assert any("PKB_MCP_HEADERS" in r.getMessage() for r in caplog.records)

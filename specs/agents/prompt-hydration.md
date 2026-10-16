@@ -27,7 +27,11 @@ Hydration is restricted strictly to user prompts:
 
 Search queries are dispatched to the PKB endpoint (`PKB_MCP_URL`):
 
-- **Header Resolution:** `_resolve_mcp_headers()` reads request headers from the hook's environment only: `PKB_MCP_HEADERS` (a JSON object) and the Cloudflare Access pair `CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET`. It never reads a client's own config file. A malformed `PKB_MCP_HEADERS` is logged and ignored.
-- **Authenticated search:** When headers are present, the query runs in-process via `fastmcp.Client` over `StreamableHttpTransport`, calling `pkb_search`. Connect and call together are bounded by `_SEARCH_TIMEOUT_SECONDS` (5 seconds). A failure is logged and the turn proceeds without hydration; there is no second transport.
-- **Unauthenticated search:** When no headers are configured, the hook invokes the `fastmcp` or `mcp` CLI via `subprocess.run`, with the same timeout.
+- **Header Resolution:** `_resolve_mcp_headers()` resolves authentication headers from the process environment and the session's client configuration:
+  - _Environment:_ `PKB_MCP_HEADERS` (a JSON object) and the Cloudflare Access pair `CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET`. A malformed `PKB_MCP_HEADERS` is logged and ignored.
+  - _Session Client Configurations:_ When environment variables do not supply credentials, the hook inspects the session's client MCP configs for the `services` MCP server entry (or any server matching `PKB_MCP_URL`):
+    - Claude Code: `$CLAUDE_CONFIG_DIR/.claude.json`, `~/.claude.json`, `~/.claude/.claude.json`.
+    - Antigravity (`agy`): `~/.gemini/config/mcp_config.json`, `~/.gemini/antigravity-cli/mcp_config.json`, `~/.gemini/antigravity-cli/settings.json`.
+      Headers defined in the environment take precedence over client config files.
+- **In-Process HTTP Search:** The query runs in-process via `fastmcp.Client` over `StreamableHttpTransport` with the resolved headers (or empty headers if none are found), calling `pkb_search`. Connect and call together are bounded by `_SEARCH_TIMEOUT_SECONDS` (5 seconds). The hook does not test an assumed precondition on headers. Any HTTP, network, authentication, or transport error from the endpoint surfaces as a loud hook failure; there is no unauthenticated CLI retry or fallback transport.
 - **Injection Budget:** Output is bounded by `_MAX_INJECT_CHARS` (8000 characters) and injected as advisory context inside `<academicOps PKB search results>` XML tags.
