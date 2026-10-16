@@ -168,19 +168,41 @@ def test_verdict_script_records_without_session_flag(tmp_path):
 
     verdict = IDA / "skills" / "premise-check" / "scripts" / "verdict.py"
     bash_env = {k: v for k, v in env.items() if k != "CLAUDE_ENV_FILE"}
-    run = subprocess.run(
-        [
-            "bash",
-            "-c",
-            f'. "{env_file}" && "{sys.executable}" "{verdict}" '
-            '--report r1 --verdict PASS --reason "holds"',
-        ],
-        capture_output=True,
-        text=True,
-        env=bash_env,
-        cwd=tmp_path,
-        timeout=60,
-    )
+
+    import http.server
+    import threading
+
+    class _TraceHandler(http.server.BaseHTTPRequestHandler):
+        def do_POST(self):
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"")
+
+        def log_message(self, *args):
+            pass
+
+    server = http.server.HTTPServer(("127.0.0.1", 0), _TraceHandler)
+    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+    server_thread.start()
+    try:
+        bash_env["OTEL_EXPORTER_OTLP_ENDPOINT"] = f"http://127.0.0.1:{server.server_port}"
+        bash_env["OTEL_EXPORTER_OTLP_PROTOCOL"] = "http/protobuf"
+        run = subprocess.run(
+            [
+                "bash",
+                "-c",
+                f'. "{env_file}" && "{sys.executable}" "{verdict}" '
+                '--report r1 --verdict PASS --reason "holds"',
+            ],
+            capture_output=True,
+            text=True,
+            env=bash_env,
+            cwd=tmp_path,
+            timeout=60,
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
     assert run.returncode == 0, run.stderr
     out = json.loads(run.stdout)
     assert out["disarmed"] is True
