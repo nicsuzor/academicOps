@@ -106,4 +106,3 @@ To eliminate telemetry loss and transcript parsing races, the hook tracer (`plug
    - `Stop` / `StopFailure`: Captures `last_assistant_message` directly from the hook payload (supporting string, content block list, or dictionary formats), stores it in `last_llm_output`, emits the completed `CHAIN` turn root span with non-empty `output.value`, and clears turn state via `_end_turn`.
    - `PermissionRequest` / `PermissionDenied` / `Notification` / `PostCompact`: Emit child `CHAIN` spans under the active turn root directly from event payload attributes.
    - `SessionEnd`: Closes any remaining unclosed turn root span and deletes session state.
-
