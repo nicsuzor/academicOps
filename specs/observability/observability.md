@@ -33,6 +33,8 @@ As the user, I want task-graph and container-dispatch MCP service calls to attac
 
 - **AC-3.1** Given a client or worker session invoking an upstream MCP service directly or through a gateway, when the service handles the request, then the service span shares the caller's `trace_id`, parents under the caller's tool span, carries the caller's `session.id`, records the transport connection ID separately in `mcp.session_id`, and stamps `task.id` whenever the call targets a task.
 - **AC-3.2** Given an MCP request arriving without an explicit client session identifier, when the service exports its span, then the transport connection ID is recorded in `mcp.session_id` and `session.id` remains unset.
+- **AC-3.3** Given a client session on any surface calling any MCP tool, when the call leaves the client, then it carries the caller's `session.id`. A client that can rewrite tool arguments (Claude Code's `PreToolUse` hook, which receives `session_id`, `agent_id`, and `prompt_id`) supplies it mechanically, as the reserved `_session` argument object. A client that cannot do so learns its own `session.id` at session start and supplies `_session` by instruction. The service side of this contract, including binding, gateway connections, and refusal of unattributed writes, is the PKB server's `caller-session` spec in `nicsuzor/mem`.
+- **AC-3.4** Given a gateway that multiplexes several client sessions over one upstream connection, when it relays a call, then it forwards the caller's `_session` values upstream as the `x-session-id` header, together with the caller's `traceparent`. It never lets one caller's id carry over to another caller's call.
 
 ### US-4 Observe live and exited worker containers across dispatch routes
 
