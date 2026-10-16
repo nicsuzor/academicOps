@@ -17,7 +17,7 @@ Method, in brief (the script docstring has the full account):
 
 - `LLM` spans: `llm.model_name`, `llm.token_count.prompt` (includes cache tokens), `.completion`, `.prompt_details.cache_read`, `.prompt_details.cache_write`. Fresh input is `prompt - cache_read - cache_write`.
 - Exact re-emissions (same `session.id`, `start_time`, `output.value`; about a sixth of Opus spans) are collapsed before summing.
-- `session.id` is the unit; subagents inherit it. `task.id` / `tag.task_id` are the constant `academicOps`, so the task column comes from `TOOL` spans (`claim_task`, `release_task`, `get_task`, `update_task`, `append`, ...) whose `input.value` names an id. `--by task` attributes each LLM call to the task most recently claimed, else read, before it.
+- `session.id` is the unit; subagents inherit it. The tracer drops task IDs matching the project name or placeholders, so sessions without an explicit task do not stamp `task.id`; the task column is recovered from `TOOL` spans (`claim_task`, `release_task`, `get_task`, `update_task`, `append`, ...) whose `input.value` names an id. `--by task` attributes each LLM call to the task most recently claimed, else read, before it.
 - Agent/role is a label: `--labels` file, else the name the session printed in a `ListAgents` call, else the channel it fronts, else its first human prompt in the window.
 - Gemini spans carry no token counts and appear as calls only. Unpriced models cost 0 and are named in the footer.
 - Prices are Anthropic list prices per million tokens (cache read 0.1x input, 5-minute cache write 1.25x). Claude Code subscription usage is not invoiced at these rates; the USD column is comparable spend, not a bill.
