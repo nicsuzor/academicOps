@@ -32,7 +32,6 @@ Search queries are dispatched to the PKB endpoint (`PKB_MCP_URL`):
   - _Session Client Configurations:_ When environment variables do not supply credentials, the hook inspects the session's client MCP configs for the `services` MCP server entry (or any server matching `PKB_MCP_URL`):
     - Claude Code: `$CLAUDE_CONFIG_DIR/.claude.json`, `~/.claude.json`, `~/.claude/.claude.json`.
     - Antigravity (`agy`): `~/.gemini/config/mcp_config.json`, `~/.gemini/antigravity-cli/mcp_config.json`, `~/.gemini/antigravity-cli/settings.json`.
-    Headers defined in the environment take precedence over client config files.
+      Headers defined in the environment take precedence over client config files.
 - **In-Process HTTP Search:** The query runs in-process via `fastmcp.Client` over `StreamableHttpTransport` with the resolved headers (or empty headers if none are found), calling `pkb_search`. Connect and call together are bounded by `_SEARCH_TIMEOUT_SECONDS` (5 seconds). The hook does not test an assumed precondition on headers. Any HTTP, network, authentication, or transport error from the endpoint surfaces as a loud hook failure; there is no unauthenticated CLI retry or fallback transport.
 - **Injection Budget:** Output is bounded by `_MAX_INJECT_CHARS` (8000 characters) and injected as advisory context inside `<academicOps PKB search results>` XML tags.
-
