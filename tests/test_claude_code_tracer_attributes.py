@@ -177,13 +177,14 @@ def test_build_and_export_spans_sets_attributes():
         patch.object(claude_code_tracer, "_otel_imports", return_value=otel_mock),
         patch.object(claude_code_tracer, "_create_exporter", return_value=MagicMock()),
     ):
+        test_cwd = str(REPO_ROOT / "tests")
         claude_code_tracer._build_and_export_spans(
             config=config,
             session_id="test-session-123",
             username="test-user",
             span_records=records,
             agent_name="sara",
-            cwd="/workspace/project",
+            cwd=test_cwd,
         )
 
     # Inspect set_attribute calls on the span
@@ -191,8 +192,8 @@ def test_build_and_export_spans_sets_attributes():
 
     assert called_attrs.get("service.name") == "academicOps"
     assert called_attrs.get("agent.name") == "sara"
-    assert called_attrs.get("cwd") == "/workspace/project"
-    assert called_attrs.get("project.dir") == "/workspace"
+    assert called_attrs.get("cwd") == test_cwd
+    assert called_attrs.get("project.dir") == str(REPO_ROOT)
     assert called_attrs.get("aops.repo") == "academicOps"
     assert called_attrs.get("aops.surface") == "claude-code"
     assert called_attrs.get("project.name") == "academicOps"

@@ -75,6 +75,7 @@ def ensure_test_environment(monkeypatch, tmp_path):
         "PHOENIX_PROJECT_NAME",
         "OTEL_SERVICE_NAME",
         "OTEL_RESOURCE_ATTRIBUTES",
+        "GITHUB_ACTIONS",
     }
     for key in list(os.environ.keys()):
         if key.startswith("AOPS_GATE_FILE_") or key in scrub_keys:
