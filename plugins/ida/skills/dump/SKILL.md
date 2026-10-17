@@ -18,9 +18,9 @@ Finalize session work and provide a structured handover before exit.
 
 ### 2. Release Claimed Tasks
 
-For each claimed task (releasing child tasks first), update the task body (`pkb.update_body` or `pkb.update_task`) so its `## Report` section records the outcome and includes an Argdown proof (written per the `premise-check` skill) that supports a complete and valid answer to each original direction given or question posed, then call `pkb.release_task` (the `services` MCP server's code-mode interface: `listToolFiles` → `readToolFile("servers/pkb.pyi")` → `executeToolCode` calling `pkb.release_task(...)`) with the appropriate terminal status:
+For each claimed task (releasing child tasks first), update the task body (`pkb.update_body` or `pkb.update_task`) so its `## Report` section records the outcome and ends in the handback proof: the `argument` block the `premise-check` skill specifies. Its `Asked` lines carry the task's frozen ask ids -- `<task id>/AC<n>` for each acceptance criterion, plus any `tg-<id>` the task records -- and every load-bearing premise carries its basis. Then call `pkb.release_task` (the `services` MCP server's code-mode interface: `listToolFiles` → `readToolFile("servers/pkb.pyi")` → `executeToolCode` calling `pkb.release_task(...)`) with the appropriate terminal status:
 
-- `done`: All acceptance criteria are fully met with verified evidence recorded in the task's Report section: quoted output, `file:line` citations, counts, the specimen run where requested, and an Argdown proof supporting a complete and valid answer to each original direction given or question posed. A worker whose deliverable is a PR releases `review` instead (below). An empty, template, or bare-assertion report is released as `partial`.
+- `done`: All acceptance criteria are fully met with verified evidence recorded in the task's Report section: quoted output, `file:line` citations, counts, the specimen run where requested, and an `argument` block that answers every ask id. A worker whose deliverable is a PR releases `review` instead (below). An empty, template, or bare-assertion report is released as `partial`.
 - `partial`: The worker's own acceptance items remain unfinished -- a scope seam, an external dependency, or a missing tool. Never release as `partial` because a dependent follow-up (QA, merge, deploy) remains to run. A follow-up task carries the remainder; record it under Next.
 - `review`: Either the worker's PR is open and awaits merge by the repository (record `pr_url`; do not wait for CI, review or merge; `/reconcile` writes `done` on the merge), or the worker needs help to finish the task. Help is transient, never a waiting state: a worker hands back on the record, documenting what help is needed in `reason`, and never addresses or escalates to the user. Any reconcile pass reading a `review` task transitions it immediately.
 - `failed`: The task cannot be completed and has reached a terminal failure. Document failure evidence and root cause.
@@ -38,10 +38,12 @@ Task report format (for the `release_task` body update in `## Report` and the se
 - **Next**: [Clear instructions for successor agent]
 - **Proof**:
 
-```argdown
-<Argdown proof per the premise-check skill supporting a complete and valid answer to each original direction given or question posed>
+```argument
+<the premise-check argument block, asked by the task's ask ids>
 ```
 ````
+
+The status above is the task's release status. PASS, REVISE and FAIL are the checker's verdict on this argument, recorded by whoever checks it under `## Premise-Check Verdict`; a worker never writes a verdict on its own report.
 
 If the release tool is unavailable, record the failure trace and list claimed task IDs in the final report.
 
@@ -52,14 +54,14 @@ Compile the overall session outcome:
 ```markdown
 ## Handover: <agent> <session-id>
 
-1. **Task**: Restatement of original objective and scope.
+1. **Task**: Task id and title.
 2. **Summary**: Concise synthesis of findings and modifications.
-3. **Verdict & Safeguards**:
-   - VERDICT: <PASS | PARTIAL | FAIL | BLOCKED | NEEDS-PRINCIPAL>
-   - GATE: <the acceptance criterion tested, and observed result against it>
+3. **Status & Safeguards**:
+   - STATUS: <release status: done | partial | review | failed | cancelled | in_progress>
+   - GATE: <the acceptance criterion id tested, and observed result against it>
    - CONFIDENCE: <high | med | low> + <what single check would falsify this>
    - CONFOUND CHECK: <did a clean-room/differential control run? result? -- or "NOT RUN">
 4. **Output**: <branch + commit SHA> | <PR or artifact link>
-5. **Receipts** (Report Argument): The load-bearing claims as a report argument, written per the `premise-check` skill.
+5. **Argument**: The `argument` block recorded under the task's `## Report`.
 6. **Limitations**: Unresolved items, out-of-scope elements, and verbatim error outputs.
 ```

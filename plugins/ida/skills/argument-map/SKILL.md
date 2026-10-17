@@ -18,7 +18,7 @@ Produce three things:
 
 ## Reconstruct
 
-- **Extract first with `ida:argument-extraction`.** It sets the Argdown output contract: titles, chained Toulmin blocks with warrants in the inference bar, `{basis, pointer, source}` metadata, assumed premises (`{basis: "assumed", reason}`), and the parser loop. Then reconstruct on top of what it produces.
+- **Extract first with `ida:argument-extraction`.** It sets the Argdown output contract: titles, argument blocks with warrants in the inference bar, `{basis, pointer, source}` metadata, assumed premises (`{basis: "assumed", reason}`), and the parser loop. Then reconstruct on top of what it produces.
 - **Follow the text's own structure.** Put the thesis first, then one Argdown section per part of the text, in the text's order. A reader checks a map against the text, so the map should match it.
 - **Reconstruct charitably.** Build the strongest valid version of each step. Where validity needs a premise the author never states, add it with `{basis: "assumed", reason: "..."}` and tag it `#missing`; where the missing link is the inference rule itself, write it in the `-- Warrant --` bar with `basis: "assumed"`.
 - **Read claims at the strength the evidence can carry.** When the wording overstates (for example "veto" where the evidence shows "sometimes limits"), narrow your label but keep the author's words verbatim in `source`. Record the narrower reading as a decision.
@@ -40,9 +40,9 @@ Produce three things:
 
 When the map's job is to lock a text's structure (parts, chapters, sections), rebuild the source as a tree and draw it as panels.
 
-- **Headings are the outline.** One Argdown heading per part, chapter, section and sub-section, in the text's order. Each claim rests on at most three children, written as nested relation lists; a child with more reasons gets an intermediate claim, which is the next heading. Objections are attack children; the reply is an attack child of the objection.
+- **Headings are the outline.** One Argdown heading per part, chapter, section and sub-section, in the text's order. Each claim's children are written as nested relation lists and chosen by `ida:argument-extraction`'s relevance rule; a run that splits becomes intermediate claims, each the next heading. Objections are attack children; the reply is an attack child of the objection.
 - **Premise-conclusion blocks only at the warrant level**, where evidence and theory are checked against the step they license.
-- **Lint before drawing.** `references/tree_lint.py` exports the tree from the Argdown JSON and reports any claim with more than three supports, numbering breaks and orphans.
+- **Lint before drawing.** `references/tree_lint.py` exports the tree from the Argdown JSON and reports numbering breaks and orphans.
 - **Draw with `references/gen_panels.py`**: one overview (root headline, a row of chapter panels per part, sections as columns, reasons as small boxes, arrows only for moves between chapters from a links file) and one canvas per chapter with its warrant blocks beside the panel. Drawing rules are the diagram skill's.
 
 ## Check before delivering

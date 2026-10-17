@@ -49,6 +49,10 @@ Then assemble the steps:
 - Close every task with an appendix section listing the workflow templates and skills it was composed from.
 
 ```markdown
+## Ask
+
+[ The frozen referent: the asker's own words, copied once at creation, one question per line, each led by its message id where it has one (`tg-<message id>`). ]
+
 ## Goal
 
 [ Concise description of the purpose of the task, describing the end state of this unit of work (not the whole objective), naming the repository or project and the objective. Recompose the ask into a clear logical structure; never quote the user's words verbatim. ]
@@ -59,7 +63,7 @@ Then assemble the steps:
 
 ## Acceptance
 
-[ Write each Acceptance item so that it requires evidence sufficient to prove the criterion has been met in substance. Verifiable evidence must be recorded on the task because the task record is the only thing that comes back. Criteria name outcomes and the evidence that proves them, not where something is wired or how it is invoked. ]
+[ Number the items `AC1`, `AC2`, ...; each item's id is `<task id>/AC<n>`, the ask id the worker's report argument answers. Write each Acceptance item so that it requires evidence sufficient to prove the criterion has been met in substance. Verifiable evidence must be recorded on the task because the task record is the only thing that comes back. Criteria name outcomes and the evidence that proves them, not where something is wired or how it is invoked. ]
 
 ## Instructions
 
@@ -71,7 +75,7 @@ Then assemble the steps:
 
 ## Report
 
-[ Any special reporting requirements; default should be to update the task record with evidence next to each acceptance criterion: an item is ticked only with evidence of that item itself; any other item stays unticked with its limit stated. Workers should not add timestamped logs or other ephemeral data to the task record. Rewrite the record rather than appending information, and delete any temporary notes or logs, any outdated or incorrect information, and any irrelevant instructions or steps. Leave only current state. ]
+[ Any special reporting requirements; default should be the `/dump` handback, with evidence next to each acceptance criterion: an item is ticked only with evidence of that item itself; any other item stays unticked with its limit stated. Workers should not add timestamped logs or other ephemeral data to the task record. Rewrite the record rather than appending information, and delete any temporary notes or logs, any outdated or incorrect information, and any irrelevant instructions or steps; `## Ask` and the wording and numbers of the criteria stay as written. Leave only current state. ]
 
 ## Appendix: Sources
 
@@ -96,13 +100,14 @@ Where the project finish template calls for QA review:
 ### Requirements for writing tasks
 
 - Give the worker the end state and the bounds; leave the method to it.
+- Record the asker's own words once, in `## Ask`, with their ids, and never rewrite them: the task carries the ask as an immutable referent that the worker's argument answers. The no-verbatim rule below governs the rest of the body, not `## Ask`.
 - Never quote or record the user's words verbatim in Goal, Context, or instructions. Make sense of asks in context, link them to prior context, recompose into a clear logical structure, and cite message ids.
 - State the Goal and each criterion over the whole class the request covers: "the user's messages", not a named person's or today's channels and formats. Instances the request names are cases to test, not the boundary of the work. When asked what broke a mechanism (such as authentication, a token, or a service), compose the debugging workflow and preserve the full failure question in Acceptance so the run examines why the mechanism or token stopped working across its lifecycle rather than narrowing to a single startup symptom.
 - Every heading is a prompt for you to fill, and there is no slot for restrictions or exclusions: say what has to be done, not what shouldn't.
-- Keep each task under 150 words. Include only what the worker cannot find for itself.
+- Keep each task under 150 words, `## Ask` aside. Include only what the worker cannot find for itself.
 - Assume the worker could run anywhere; never reference local paths, tools, or conventions.
 - Leave out methods, command scripts, tool names, runtime hints, notes on the worker's limits, summaries of linked notes (point to them instead), provenance, changelogs, session narratives, counts, SHAs and history.
-- Change an existing task only for a defect you can point to in its text; otherwise leave it as written.
+- Change an existing task only for a defect you can point to in its text; otherwise leave it as written. Never rewrite its `## Ask` or renumber its criteria: a new criterion takes the next number, and no number is reused.
 - A skill may be a step, even the only step: write `invoke /<skill-name>` and leave its implementation to the skill. A workflow template is never a step; its steps are.
 - Close every task with an appendix section listing the workflow templates and skills it was composed from.
 - Do not create standalone decision tasks or file questions as tasks.
