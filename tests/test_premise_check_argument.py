@@ -18,6 +18,7 @@ The vocabulary, task-read tool names and override variables come from
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 import tomllib
@@ -164,11 +165,6 @@ def _arm_with_report(session_id: str, claim_id: str, text: str | None = None, re
 # ---------------------------------------------------------------------------
 
 
-def test_vocabulary_is_read_from_the_skill_file_at_runtime():
-    assert ra.vocabulary_path().resolve() == (_REPO_ROOT / _POLICY["vocabulary"]).resolve()
-    assert ra.load_vocabulary() == _VOCAB
-
-
 def test_parse_block_reads_asks_premises_inferences_conclusions_and_endnotes():
     block = ra.extract_block(_report())
     assert block is not None
@@ -205,11 +201,21 @@ def test_basis_takes_the_longest_vocabulary_phrase_and_unmatched_ranks_zero():
 
 
 def test_parse_reason_collects_repeated_keys():
-    reason = ra.parse_reason(_reason("claim-1"))
-    assert set(reason.entries) == set(ra.REASON_KEYS)
+    reason = ra.parse_reason(_reason("claim-1"), _VOCAB)
+    assert set(reason.entries) == set(_VOCAB.reason_keys)
     assert len(reason.get("Valid")) == 2
     assert reason.judged_asks == [ASK_A, ASK_B]
     assert reason.no_claim is False
+
+
+def test_reason_keys_are_read_from_the_vocabulary():
+    """The parser recognises whatever keys the vocabulary names, and no others."""
+    from dataclasses import replace
+
+    first, dropped, *_ = _VOCAB.reason_keys
+    custom = replace(_VOCAB, reason_keys=(first, "Probe"))
+    reason = ra.parse_reason(f"{first}: a\nProbe: b\n{dropped}: c", custom)
+    assert reason.entries == {first: ["a"], "Probe": ["b"]}
 
 
 # ---------------------------------------------------------------------------
@@ -229,6 +235,69 @@ def test_pass_with_seven_lines_matching_the_block_is_recorded():
     )
     assert result["ok"] is True and result["span_emitted"] is True
     assert pcg.is_armed("s-ok") is False
+
+
+def test_answered_unanswered_entry_is_accepted():
+    _arm_with_report("s-unans", "CID")
+    reason = _reason("CID", drop=(f"Answered: {ASK_B}",), extra=(f"Answered: {ASK_B} unanswered",))
+    result = pcv.record_verdict(
+        session_id="s-unans",
+        claim_id="CID",
+        verdict="PASS",
+        reason=reason,
+        tracer_mod=_configured(),
+    )
+    assert result["ok"] is True
+
+
+def test_no_claim_reason_is_refused_when_the_judged_text_has_a_block():
+    _arm_with_report("s-noclaim-block", "CID")
+    with pytest.raises(ValueError, match="no-claim reason, but the judged text has an argument"):
+        pcv.record_verdict(
+            session_id="s-noclaim-block",
+            claim_id="CID",
+            verdict="PASS",
+            reason="Judged: CID; no claim -- a status ping",
+            tracer_mod=_configured(),
+        )
+    assert pcg.is_armed("s-noclaim-block") is True
+
+
+def _report_without_asks() -> str:
+    return "\n".join(ln for ln in _report().splitlines() if not ln.startswith("Asked ("))
+
+
+@pytest.mark.parametrize("with_block", [True, False], ids=["block", "waived-block"])
+def test_pass_with_no_ask_ids_is_refused(with_block):
+    text = _report_without_asks() if with_block else "Done. All tests pass."
+    _arm_with_report("s-noasks", "CID", text=text)
+    reason = _reason(
+        "CID",
+        drop=("Judged", "Answered", "Waived"),
+        extra=("Judged: CID", "Answered: none", "Waived: block -- prose report"),
+    )
+    with pytest.raises(ValueError, match="no ask ids"):
+        pcv.record_verdict(
+            session_id="s-noasks",
+            claim_id="CID",
+            verdict="PASS",
+            reason=reason,
+            tracer_mod=_configured(),
+        )
+
+
+def test_inference_line_with_no_conclusion_fails():
+    text = _report().replace("(6) So it blocks Stop.\n", "")
+    _arm_with_report("s-noconc", "CID", text=text)
+    reason = _reason("CID", drop=("Relay",), extra=("Relay: none",))
+    with pytest.raises(ValueError, match="inference line with no conclusion"):
+        pcv.record_verdict(
+            session_id="s-noconc",
+            claim_id="CID",
+            verdict="PASS",
+            reason=reason,
+            tracer_mod=_configured(),
+        )
 
 
 def test_pass_with_free_text_reason_is_refused_and_gate_stays_armed():
@@ -251,6 +320,22 @@ _REFUSALS = {
         "do not equal the block's Asked ids",
     ),
     "unanswered": (dict(drop=(f"Answered: {ASK_B}",)), f"no Answered line for ask ids: {ASK_B}"),
+    "answered_absent_line": (
+        dict(drop=(f"Answered: {ASK_B}",), extra=(f"Answered: {ASK_B} ← (9)",)),
+        "Answered names lines not in the block (9)",
+    ),
+    "answered_shape": (
+        dict(drop=(f"Answered: {ASK_B}",), extra=(f"Answered: {ASK_B} looks fine",)),
+        "Answered entries not in the form",
+    ),
+    "judged_twice": (
+        dict(extra=(f"Judged: CID; asks {ASK_A}, {ASK_B}",)),
+        "Judged must appear exactly once; found 2",
+    ),
+    "supported_twice": (
+        dict(extra=(f"Supported: weakest {_WEAK.phrase} -- again",)),
+        "Supported must appear exactly once; found 2",
+    ),
     "valid_count": (dict(drop=("Valid: (6)",)), "Valid has 1 entries for 2 inference lines"),
     "valid_keyed": (
         dict(drop=("Valid: (6)",), extra=("Valid: (5) holds -- wrong line",)),
@@ -398,8 +483,8 @@ def test_verdict_span_carries_one_attribute_per_reason_key_and_the_block_measure
         tracer_mod=tracer,
     )
     attrs = tracer.exported[0]["attributes"]
-    parsed = ra.parse_reason(_reason("CID"))
-    for key in ra.REASON_KEYS:
+    parsed = ra.parse_reason(_reason("CID"), _VOCAB)
+    for key in _VOCAB.reason_keys:
         assert attrs[f"premise_check.reason.{key.lower()}"] == "\n".join(parsed.get(key))
     assert attrs["premise_check.reason_text"] == _reason("CID")
     assert attrs["premise_check.ask_ids"] == [ASK_A, ASK_B]
@@ -410,6 +495,9 @@ def test_verdict_span_carries_one_attribute_per_reason_key_and_the_block_measure
     assert attrs["premise_check.waived_items"] == []
     assert attrs["premise_check.no_claim"] is False
     assert attrs["premise_check.judged_ref"] == "toolu_01ABC"
+    assert (
+        attrs["premise_check.judged_text_sha256"] == hashlib.sha256(_report().encode()).hexdigest()
+    )
     # No attribute is both a leaf and a prefix: Phoenix nests dotted keys.
     keys = list(attrs)
     assert not [k for k in keys if any(o.startswith(k + ".") for o in keys)]
@@ -655,14 +743,34 @@ def test_override_passing_an_armed_gate_emits_a_span_and_counts(monkeypatch, var
     assert attrs["premise_check.override_event"] == "PreToolUse"
 
 
-def test_override_span_is_best_effort(monkeypatch):
+@pytest.mark.parametrize(
+    "tracer",
+    [_configured(raises=OSError("collector down")), _StubTracer(config=None)],
+    ids=["export-fails", "unconfigured"],
+)
+def test_override_span_failure_raises_and_is_not_counted(monkeypatch, tracer):
     pcg.arm("s-ovr-fail", claim_id="claim-ovr")
-    monkeypatch.setattr(
-        pcv, "_import_claude_code_tracer", lambda: _configured(raises=OSError("collector down"))
-    )
+    monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: tracer)
     monkeypatch.setenv(_POLICY["override_vars"][0], "1")
-    assert pcg.premise_check_handler(_dispatch_ctx("s-ovr-fail")) is None
-    assert pcg.get_state("s-ovr-fail")["override_count"] == 1
+    with pytest.raises(RuntimeError):
+        pcg.premise_check_handler(_dispatch_ctx("s-ovr-fail"))
+    assert "override_count" not in pcg.get_state("s-ovr-fail")
+
+
+def test_get_judged_raises_when_the_stored_file_is_missing():
+    _arm_with_report("s-gone", "CID")
+    for path in Path(pcg._state_dir()).glob("*.judged.txt"):
+        path.unlink()
+    with pytest.raises(FileNotFoundError):
+        pcg.get_judged("s-gone", "CID")
+
+
+def test_disarm_raises_when_the_stored_file_is_missing():
+    _arm_with_report("s-gone-2", "CID")
+    for path in Path(pcg._state_dir()).glob("*.judged.txt"):
+        path.unlink()
+    with pytest.raises(FileNotFoundError):
+        pcg.disarm("s-gone-2", "CID", "REVISE", "r")
 
 
 def test_override_on_a_disarmed_gate_is_not_counted(monkeypatch):

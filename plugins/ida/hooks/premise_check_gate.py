@@ -24,7 +24,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import logging
 import os
 import re
 import shlex
@@ -35,8 +34,6 @@ from pathlib import Path
 from typing import Any
 
 from dispatch import HookContext, Result, block, refuse, warn
-
-log = logging.getLogger(__name__)
 
 
 def _now() -> str:
@@ -235,15 +232,17 @@ def arm(
 
 
 def get_judged(session_id: str, claim_id: str) -> tuple[str | None, str | None]:
-    """The judged text and its reference stored when ``claim_id`` armed the gate."""
+    """The judged text and its reference stored when ``claim_id`` armed the gate.
+
+    (None, None) when the arm stored nothing; an entry naming a file that is
+    gone raises FileNotFoundError.
+    """
     entry = (_load_state(session_id).get("judged") or {}).get(claim_id)
     if not entry:
         return None, None
     text = None
     if entry.get("file"):
-        path = _state_dir() / entry["file"]
-        if path.is_file():
-            text = path.read_text(encoding="utf-8")
+        text = (_state_dir() / entry["file"]).read_text(encoding="utf-8")
     return text, entry.get("ref")
 
 
@@ -264,10 +263,7 @@ def disarm(
     judged = state.get("judged") or {}
     entry = judged.pop(claim_id, None)
     if entry and entry.get("file"):
-        try:
-            (_state_dir() / entry["file"]).unlink()
-        except OSError:
-            pass
+        (_state_dir() / entry["file"]).unlink()
     state["judged"] = judged
 
     if claim_ids:
@@ -471,28 +467,25 @@ def _is_override_active() -> bool:
 def _count_override(ctx: HookContext, variable: str) -> None:
     """Count an override that let an armed gate pass a blocked action.
 
-    The count lives in gate state; the span is best-effort and never changes
-    what the gate does.
+    The ``premise_check_override`` span is exported first and the count saved
+    only after it; an unconfigured tracer or a failed export raises, as the
+    verdict span does.
     """
+    import premise_check_verdict as pcv
+
     state = _load_state(ctx.session_id)
     count = int(state.get("override_count") or 0) + 1
+    pcv.emit_override_span(
+        pcv._import_claude_code_tracer(),
+        ctx.session_id,
+        str(state.get("claim_id") or ""),
+        ctx.tool or "",
+        ctx.event,
+        variable,
+        count,
+    )
     state["override_count"] = count
     _save_state(ctx.session_id, state)
-    claim_id = str(state.get("claim_id") or "")
-    try:
-        import premise_check_verdict as pcv
-
-        pcv.emit_override_span(
-            pcv._import_claude_code_tracer(),
-            ctx.session_id,
-            claim_id,
-            ctx.tool or "",
-            ctx.event,
-            variable,
-            count,
-        )
-    except Exception as exc:
-        log.warning("premise_check_override span not emitted: %r", exc)
 
 
 # ---------------------------------------------------------------------------

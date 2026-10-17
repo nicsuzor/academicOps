@@ -1,6 +1,17 @@
 # Closed vocabularies for report arguments and checker reasons. The skill text
 # and the verdict recorder both read this file; it is the single source.
 
+# The keys of the checker's reason, one per line, in the order the skill lists them.
+reason_keys = [
+  "Judged",
+  "Valid",
+  "Supported",
+  "Answered",
+  "Sufficient",
+  "Waived",
+  "Relay",
+]
+
 # Items a checker may list under `Waived:`. Anything else is not a format item.
 format_items = [
   "block",
@@ -17,11 +28,11 @@ defect_tags = ["#missing", "#scope-drift", "#conflict", "#unanswered", "#undercu
 # Basis phrases a premise line ends with, written in words. `rank` orders
 # strength: a derived claim carries the lowest rank among its premises. A
 # premise whose basis matches no phrase counts at rank 0. `term` is the
-# machine vocabulary carried into span attributes and Argdown exports.
+# machine vocabulary carried into span attributes only.
 [[basis]]
 phrase = "rule"
 term = "theory"
-rank = 3
+rank = 2
 
 [[basis]]
 phrase = "I read it"

@@ -3,7 +3,7 @@
 
 The grammar is closed and defined by the premise-check skill:
 ``references/report-form.md`` (the block) and ``references/checker-reason.md``
-(the seven keyed lines). Everything here is a format or presence check over that
+(the keyed lines, whose keys ``vocabulary.toml`` names). Everything here is a format or presence check over that
 grammar -- line shapes, ids, numbers, and matches against the closed vocabularies
 in ``references/vocabulary.toml``. Nothing here classifies what a line means.
 
@@ -19,17 +19,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-# The seven keys of the checker's reason, in the order the skill lists them.
-REASON_KEYS: tuple[str, ...] = (
-    "Judged",
-    "Valid",
-    "Supported",
-    "Answered",
-    "Sufficient",
-    "Waived",
-    "Relay",
-)
-
 # A separator / inference marker: ``--`` as committed, ``—`` as typed live.
 _DASH = r"(?:--|—)"
 _SEPARATOR = re.compile(rf"\s{_DASH}\s")
@@ -40,10 +29,11 @@ _INFERENCE = re.compile(rf"^{_DASH}\s.*\s{_DASH}$|^{_DASH}\s{_DASH}$")
 _ENDNOTE = re.compile(r"^\[(?P<key>[A-Za-z0-9]+)\]\s+(?P<pointer>.+)$")
 _ANSWERS = re.compile(r"^Answers\s*:\s*(?P<rest>.*)$")
 _TRAILING_MARKERS = re.compile(r"(?:\s*\[[A-Za-z0-9]+\])+\s*$")
-_REASON_LINE = re.compile(rf"^\s*(?P<key>{'|'.join(REASON_KEYS)})\s*:\s?(?P<value>.*)$")
 _LINE_REF = re.compile(r"\((?P<n>\d+)\)")
 _ARROW = re.compile(r"←|<-")
 _VALID_ENTRY = re.compile(r"^\((?P<n>\d+)\)\s+(?P<word>holds|fails)\b(?P<rest>.*)$")
+_ANSWERED_LINE = re.compile(r"^(?P<id>[^\s:]+):?\s*(?:←|<-)\s*\((?P<n>\d+)\)\s*$")
+_ANSWERED_NONE = re.compile(r"^(?P<id>[^\s:]+):?\s+unanswered\s*$")
 _TAG = re.compile(r"#[A-Za-z0-9_-]+")
 _JUDGED_ASKS = re.compile(r";\s*asks?\b\s*(?P<asks>.*)$")
 _JUDGED_NO_CLAIM = re.compile(rf";\s*no claim\b(?:\s*{_DASH}\s*(?P<what>.*))?\s*$")
@@ -63,6 +53,7 @@ class Basis:
 
 @dataclass(frozen=True)
 class Vocabulary:
+    reason_keys: tuple[str, ...]
     basis: tuple[Basis, ...]
     format_items: tuple[str, ...]
     defect_tags: tuple[str, ...]
@@ -88,6 +79,7 @@ def load_vocabulary(path: Path | None = None) -> Vocabulary:
         for b in data["basis"]
     )
     return Vocabulary(
+        reason_keys=tuple(str(k) for k in data["reason_keys"]),
         basis=basis,
         format_items=tuple(str(x) for x in data["format_items"]),
         defect_tags=tuple(str(x) for x in data["defect_tags"]),
@@ -250,11 +242,19 @@ class Reason:
         judged = self.get("Judged")
         return len(judged) == 1 and bool(_JUDGED_NO_CLAIM.search(judged[0]))
 
-    def answered_ids(self) -> list[str]:
-        out: list[str] = []
+    def answered(self) -> list[tuple[str, int | None] | None]:
+        """Each Answered entry as (ask id, line) or (ask id, None) for unanswered.
+
+        None marks an entry in neither form.
+        """
+        out: list[tuple[str, int | None] | None] = []
         for entry in self.get("Answered"):
-            token = entry.strip().split()[0] if entry.strip() else ""
-            out.append(token.rstrip(":,;"))
+            if m := _ANSWERED_LINE.match(entry.strip()):
+                out.append((m.group("id"), int(m.group("n"))))
+            elif m := _ANSWERED_NONE.match(entry.strip()):
+                out.append((m.group("id"), None))
+            else:
+                out.append(None)
         return out
 
     def valid_entries(self) -> list[re.Match[str] | None]:
@@ -286,10 +286,12 @@ class Reason:
         return match_basis(text, vocab)
 
 
-def parse_reason(text: str) -> Reason:
+def parse_reason(text: str, vocab: Vocabulary) -> Reason:
+    keys = "|".join(re.escape(k) for k in vocab.reason_keys)
+    line_re = re.compile(rf"^\s*(?P<key>{keys})\s*:\s?(?P<value>.*)$")
     reason = Reason()
     for line in (text or "").splitlines():
-        if m := _REASON_LINE.match(line):
+        if m := line_re.match(line):
             reason.entries.setdefault(m.group("key"), []).append(m.group("value").strip())
     return reason
 
@@ -313,12 +315,21 @@ def relay_refs(entry: str) -> list[int]:
 def pass_failures(reason: Reason, block: Argument | None, vocab: Vocabulary) -> list[str]:
     """Every check a PASS reason fails, per the skill's "What the recorder refuses"."""
     if reason.no_claim and set(reason.entries) == {"Judged"}:
+        if block is not None:
+            return [
+                "a no-claim reason, but the judged text has an argument block: "
+                "judge the block with the full reason"
+            ]
         return []
 
     failures: list[str] = []
-    missing = [k for k in REASON_KEYS if not reason.get(k)]
+    missing = [k for k in vocab.reason_keys if not reason.get(k)]
     if missing:
         failures.append(f"missing keyed lines: {', '.join(missing)}")
+    for key in ("Judged", "Supported"):
+        count = len(reason.get(key))
+        if count > 1:
+            failures.append(f"{key} must appear exactly once; found {count}")
 
     judged_asks = reason.judged_asks
     if block is not None:
@@ -328,8 +339,30 @@ def pass_failures(reason: Reason, block: Argument | None, vocab: Vocabulary) -> 
                 f"Asked ids {sorted(set(block.asks))}"
             )
     ask_ids = block.asks if block is not None else judged_asks
-    answered = set(reason.answered_ids())
-    unanswered = [a for a in ask_ids if a not in answered]
+    if not ask_ids:
+        failures.append(
+            "no ask ids: the block has no Asked lines and Judged names none"
+            if block is not None
+            else "no ask ids: Judged names none"
+        )
+    answered = reason.answered()
+    malformed_answers = [
+        e for e, a in zip(reason.get("Answered"), answered, strict=True) if a is None
+    ]
+    if malformed_answers:
+        failures.append(
+            "Answered entries not in the form '<ask id> ← (n)' or '<ask id> unanswered': "
+            + "; ".join(repr(e) for e in malformed_answers)
+        )
+    if block is not None:
+        named = {a[1] for a in answered if a and a[1] is not None}
+        absent = sorted(named - set(block.lines))
+        if absent:
+            failures.append(
+                f"Answered names lines not in the block ({', '.join(map(str, absent))})"
+            )
+    answered_ids = {a[0] for a in answered if a}
+    unanswered = [a for a in ask_ids if a not in answered_ids]
     if unanswered:
         failures.append(f"no Answered line for ask ids: {', '.join(unanswered)}")
 
@@ -344,12 +377,18 @@ def pass_failures(reason: Reason, block: Argument | None, vocab: Vocabulary) -> 
     if fails:
         failures.append(f"Valid says fails for ({'), ('.join(fails)})")
     if block is not None:
+        orphans = [inf.text for inf in block.inferences if inf.conclusion is None]
+        if orphans:
+            failures.append(
+                "inference line with no conclusion line after it: "
+                + "; ".join(repr(t) for t in orphans)
+            )
         if len(reason.get("Valid")) != len(block.inferences):
             failures.append(
                 f"Valid has {len(reason.get('Valid'))} entries for "
                 f"{len(block.inferences)} inference lines"
             )
-        elif all(inf.conclusion is not None for inf in block.inferences):
+        elif not orphans:
             keyed = sorted(int(m.group("n")) for m in valid if m)
             expected = sorted(int(inf.conclusion or 0) for inf in block.inferences)
             if keyed != expected:
@@ -411,7 +450,7 @@ def span_attributes(reason: Reason, block: Argument | None, vocab: Vocabulary) -
     can expand them with ``json_each``.
     """
     attrs: dict[str, Any] = {}
-    for key in REASON_KEYS:
+    for key in vocab.reason_keys:
         entries = reason.get(key)
         if entries:
             attrs[f"premise_check.reason.{key.lower()}"] = "\n".join(entries)

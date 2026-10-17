@@ -626,6 +626,9 @@ def test_handler_override(monkeypatch, var):
     session_id = "sess-gate-7"
     pcg.arm(session_id, claim_id="claim-10")
     monkeypatch.setenv(var, "1")
+    monkeypatch.setattr(
+        pcv, "_import_claude_code_tracer", lambda: _StubTracer(config={"endpoint": "http://x"})
+    )
 
     assert pcg.premise_check_handler(_agent_dispatch_ctx(session_id)) is None
 

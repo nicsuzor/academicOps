@@ -2,7 +2,7 @@
 """Record a premise-check verdict, emit its OpenTelemetry span, and disarm the gate.
 
 A verdict is one token (PASS, REVISE, FAIL) and the checker's reason. A PASS
-reason must carry the seven keyed lines of the skill's checker reason and pass
+reason must carry every keyed line of the skill's checker reason and pass
 the mechanical cross-checks against the judged text the gate stored at arm
 time; REVISE and FAIL take any reason. The reason may come from a file or stdin
 so that free text stays off the command line, where harness guards scan it.
@@ -14,6 +14,7 @@ an unacknowledged export raises, and the gate stays armed.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -181,7 +182,7 @@ def judge_reason(token: str, reason: str, judged_text: str | None) -> dict[str, 
     failed check when a PASS reason is refused.
     """
     vocab = ra.load_vocabulary()
-    parsed = ra.parse_reason(reason)
+    parsed = ra.parse_reason(reason, vocab)
     block_text = ra.extract_block(judged_text)
     block = ra.parse_block(block_text, vocab) if block_text is not None else None
     if token == "PASS":
@@ -228,6 +229,9 @@ def record_verdict(
     judged_text, judged_ref = get_judged(session_id, cid)
     attributes = judge_reason(token, reason, judged_text)
     attributes["premise_check.judged_ref"] = judged_ref or ""
+    attributes["premise_check.judged_text_sha256"] = (
+        hashlib.sha256(judged_text.encode("utf-8")).hexdigest() if judged_text is not None else ""
+    )
 
     clean_title = (title or "").strip() or None
     verification_id = mint_verification_id(cid, token, reason, title=clean_title)
