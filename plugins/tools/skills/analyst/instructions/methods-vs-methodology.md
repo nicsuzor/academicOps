@@ -12,12 +12,12 @@ Separate conceptual research design from technical implementation. `METHODOLOGY.
 
 ## Routing guide
 
-| Content                                                                | Target document           | Example                                                                                        |
-| ---------------------------------------------------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------- |
-| **Why**: Question, design, validity, assumptions, conceptual variables | `METHODOLOGY.md`          | Difference-in-differences design to measure policy impact, assuming parallel trends.           |
-| **How**: Algorithms, parameters, estimators, step-by-step procedures   | `methods/<name>.md`       | `PanelOLS` via `linearmodels`, entity/time effects, clustered SEs, parallel trend plot script. |
-| **Data provenance & schema**: Sources, access, storage format          | `data/README.md`          | Ingestion cadence, table definitions, raw storage partitions.                                  |
-| **Column-level computations**: Specific formula, null handling         | Schema doc (`schema.yml`) | SQL logic or definition for an individual mart column.                                         |
+| Content | Target document | Example |
+| - | - | - |
+| **Why**: Question, design, validity, assumptions, conceptual variables | `METHODOLOGY.md` | Difference-in-differences design to measure policy impact, assuming parallel trends. |
+| **How**: Algorithms, parameters, estimators, step-by-step procedures | `methods/<name>.md` | `PanelOLS` via `linearmodels`, entity/time effects, clustered SEs, parallel trend plot script. |
+| **Data provenance & schema**: Sources, access, storage format | `data/README.md` | Ingestion cadence, table definitions, raw storage partitions. |
+| **Column-level computations**: Specific formula, null handling | Schema doc (`schema.yml`) | SQL logic or definition for an individual mart column. |
 
 ## Methods file template (`methods/<method_name>.md`)
 

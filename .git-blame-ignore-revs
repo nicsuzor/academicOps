@@ -1,0 +1,5 @@
+# Bulk formatting commits. `git config blame.ignoreRevsFile .git-blame-ignore-revs`
+# applies this locally; GitHub's blame view reads it automatically.
+
+# style: reformat markdown with compact tables
+cc238f1edf3d214270e27f03066fcb38cbb025d8

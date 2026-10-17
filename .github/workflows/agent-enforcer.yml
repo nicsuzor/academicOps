@@ -433,6 +433,14 @@ jobs:
               -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
           fi
 
+      - name: Check OTel tracer status
+        if: always()
+        run: |
+          if [ -s "$RUNNER_TEMP/aops-otel/tracer_error" ]; then
+            echo "::warning::OTel tracing encountered runtime errors:"
+            cat "$RUNNER_TEMP/aops-otel/tracer_error"
+          fi
+
       - name: Final check and hard-fail
         if: always()
         run: |

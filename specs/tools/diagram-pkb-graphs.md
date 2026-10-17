@@ -16,11 +16,11 @@ The contract for how an agent using `tools:diagram` turns a PKB graph selection 
 
 ## Division of labour
 
-| Owner                                                                                                                                       | Provides                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| ------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| mem, [`nicsuzor/mem` `specs/graph-visualisation-export.md`](https://github.com/nicsuzor/mem/blob/main/specs/graph-visualisation-export.md)  | Edge and node data (weights, `weight_valid`, justification, `layer`, feeder and onward counts, outside-selection counts); closure and trace selection; the truncation flag; full, untruncated card text; a valid, non-overlapping, deterministic default placement; edit-preserving merge into an existing canvas; the round trip (diff, sync); the route for presentation edits that are not data changes; element primitives and audits ([`specs/excalidraw-tooling.md`](https://github.com/nicsuzor/mem/blob/main/specs/excalidraw-tooling.md)); rendering to PNG and SVG; the career-set test fixture. |
-| this skill                                                                                                                                  | The procedure below; layout; the kind and state encoding; the weight-to-width scale; labels, legend, headings, badges and title elements.                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| overwhelm-dashboard, [`specs/view-force-layered.md`](https://github.com/nicsuzor/overwhelm-dashboard/blob/main/specs/view-force-layered.md) | The interactive force view of the same data. It adopts the encoding table and weight-to-width scale defined here; this spec is canonical where they diverge.                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Owner | Provides |
+| - | - |
+| mem, [`nicsuzor/mem` `specs/graph-visualisation-export.md`](https://github.com/nicsuzor/mem/blob/main/specs/graph-visualisation-export.md) | Edge and node data (weights, `weight_valid`, justification, `layer`, feeder and onward counts, outside-selection counts); closure and trace selection; the truncation flag; full, untruncated card text; a valid, non-overlapping, deterministic default placement; edit-preserving merge into an existing canvas; the round trip (diff, sync); the route for presentation edits that are not data changes; element primitives and audits ([`specs/excalidraw-tooling.md`](https://github.com/nicsuzor/mem/blob/main/specs/excalidraw-tooling.md)); rendering to PNG and SVG; the career-set test fixture. |
+| this skill | The procedure below; layout; the kind and state encoding; the weight-to-width scale; labels, legend, headings, badges and title elements. |
+| overwhelm-dashboard, [`specs/view-force-layered.md`](https://github.com/nicsuzor/overwhelm-dashboard/blob/main/specs/view-force-layered.md) | The interactive force view of the same data. It adopts the encoding table and weight-to-width scale defined here; this spec is canonical where they diverge. |
 
 Nothing here restates a mem requirement. Where a rule below depends on one, it cites the mem requirement id (`GV-…`).
 
@@ -52,15 +52,15 @@ Nothing here restates a mem requirement. Where a rule below depends on one, it c
 
 - **DG-W1 Weight-to-width scale [now].** A `contributes_to` arrow's stroke width comes from its numeric weight on this scale, in scene units at 100% zoom. The scale is binned so that any value in [0, 1] maps, including derived products (DG-W4).
 
-  | Numeric weight | Width              | Vocabulary term at that value |
-  | -------------- | ------------------ | ----------------------------- |
-  | ≥ 0.95         | 8                  | certain (1.00)                |
-  | 0.80 to < 0.95 | 6                  | probable (0.85)               |
-  | 0.65 to < 0.80 | 4.5                | expected (0.75)               |
-  | 0.40 to < 0.65 | 3                  | fifty-fifty (0.50)            |
-  | 0.20 to < 0.40 | 2                  | uncertain (0.25)              |
-  | 0.05 to < 0.20 | 1.25               | improbable (0.15)             |
-  | < 0.05         | 0.75, muted colour | impossible (0.00)             |
+  | Numeric weight | Width | Vocabulary term at that value |
+  | - | - | - |
+  | ≥ 0.95 | 8 | certain (1.00) |
+  | 0.80 to < 0.95 | 6 | probable (0.85) |
+  | 0.65 to < 0.80 | 4.5 | expected (0.75) |
+  | 0.40 to < 0.65 | 3 | fifty-fifty (0.50) |
+  | 0.20 to < 0.40 | 2 | uncertain (0.25) |
+  | 0.05 to < 0.20 | 1.25 | improbable (0.15) |
+  | < 0.05 | 0.75, muted colour | impossible (0.00) |
 
   Test: in the scene JSON, for every pair of fixture arrows with different valid terms, the arrow with the higher weight is wider.
 - **DG-W2 Term labels and legend [now].** Each `contributes_to` arrow carries a bound label with its verbal term as stored. A legend on the canvas lists each term, its numeric value and its width.
@@ -73,16 +73,16 @@ Nothing here restates a mem requirement. Where a rule below depends on one, it c
 
 - **DG-K1 Kind encoding table [now].** Each kind has a distinct combination of shape, fill colour and fill pattern. No two kinds share both shape and fill; no two share both shape and pattern, so kind survives greyscale. Fill colours are skill palette roles.
 
-  | Kind (layer) | Shape                    | Fill colour | Fill pattern |
-  | ------------ | ------------------------ | ----------- | ------------ |
-  | work         | rectangle, sharp corners | none        | none         |
-  | channel      | rectangle, rounded       | info        | hachure      |
-  | stakeholder  | ellipse                  | info        | hachure      |
-  | audience     | ellipse                  | success     | cross-hatch  |
-  | resource     | rectangle, rounded       | success     | solid        |
-  | future       | diamond                  | emphasis    | solid        |
-  | goal         | ellipse                  | emphasis    | solid        |
-  | guard        | rectangle, sharp corners | muted       | cross-hatch  |
+  | Kind (layer) | Shape | Fill colour | Fill pattern |
+  | - | - | - | - |
+  | work | rectangle, sharp corners | none | none |
+  | channel | rectangle, rounded | info | hachure |
+  | stakeholder | ellipse | info | hachure |
+  | audience | ellipse | success | cross-hatch |
+  | resource | rectangle, rounded | success | solid |
+  | future | diamond | emphasis | solid |
+  | goal | ellipse | emphasis | solid |
+  | guard | rectangle, sharp corners | muted | cross-hatch |
 
   A layer the configuration defines but this table does not gets a rounded rectangle with no fill and a text badge naming the layer, and the agent reports it. The skill ships this table and the DG-W1 scale as one reference file in its own directory; this spec is the contract that file implements. An on-canvas legend shows each kind present.
 - **DG-K2 State channel [now].** State uses border style, border colour and a status badge. Kind uses none of these, except the layer badge that DG-K1 and DG-K6 add. `ready`: solid border, no badge. `inbox`: dashed border, badge "inbox". `done`: muted border and text, reduced fill opacity, badge "done". Any other status: solid border, badge naming the status. A node with no status has a solid border and no badge.

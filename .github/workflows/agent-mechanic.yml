@@ -458,6 +458,14 @@ jobs:
           if-no-files-found: ignore
           retention-days: 30
 
+      - name: Check OTel tracer status
+        if: always()
+        run: |
+          if [ -s "$RUNNER_TEMP/aops-otel/tracer_error" ]; then
+            echo "::warning::OTel tracing encountered runtime errors:"
+            cat "$RUNNER_TEMP/aops-otel/tracer_error"
+          fi
+
       # ──────────────────────────────────────────────────────────────────────
       # Post terminal mechanic-status
       #

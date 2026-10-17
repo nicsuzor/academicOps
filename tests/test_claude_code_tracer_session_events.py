@@ -161,77 +161,27 @@ def test_exported_tool_span_is_redacted(tracer_env, exporter, monkeypatch):
     assert SECRET not in span.attributes["output.value"]
 
 
-def test_llm_span_input_redacts_prompt_and_tool_output(tmp_path, monkeypatch):
-    """The LLM span after a tool call carries the tool output as its input,
-    and the first LLM span carries the prompt; both are redacted."""
+def test_turn_root_redacts_prompt_and_stop_output(tracer_env, exporter, monkeypatch):
+    """The turn root CHAIN span carries prompt as input.value and last assistant message
+    as output.value; both are redacted."""
     monkeypatch.setenv("GH_TOKEN", SECRET)
-    usage = {"input_tokens": 1, "output_tokens": 1}
-
-    def assistant(msg_id, block):
-        return {
-            "type": "assistant",
-            "timestamp": "2026-10-08T08:00:01.000Z",
-            "message": {"id": msg_id, "model": "m", "content": [block], "usage": usage},
-        }
-
-    entries = [
-        {"type": "user", "message": {"role": "user", "content": f"use token {SECRET}"}},
-        assistant("msg_1", {"type": "tool_use", "id": "toolu_1", "name": "Bash", "input": {}}),
-        {
-            "type": "user",
-            "message": {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "tool_result",
-                        "tool_use_id": "toolu_1",
-                        "content": f"GH_TOKEN={SECRET}",
-                    },
-                ],
-            },
-        },
-        assistant("msg_2", {"type": "text", "text": "done"}),
-    ]
-    transcript = tmp_path / "t.jsonl"
-    transcript.write_text("\n".join(json.dumps(e) for e in entries) + "\n")
-
-    spans = cct._extract_llm_spans_for_turn(str(transcript), 0, "0" * 31 + "1", "00000000000000aa")
-    prompt_span, tool_span = (s["attributes"] for s in spans)
-    assert prompt_span["llm.input_messages.0.message.role"] == "user"
-    assert tool_span["llm.input_messages.0.message.role"] == "tool"
-    for attrs in (prompt_span, tool_span):
-        assert SECRET not in attrs["input.value"]
-        assert "<REDACTED_SECRET>" in attrs["input.value"]
-        assert SECRET not in attrs["llm.input_messages.0.message.content"]
+    _hook(cct.handle_user_prompt_submit, tracer_env, prompt=f"use token {SECRET}")
+    _hook(cct.handle_stop, tracer_env, last_assistant_message=f"done with {SECRET}")
+    (span,) = exporter.named("claude-code-turn")
+    assert SECRET not in span.attributes["input.value"]
+    assert "<REDACTED_SECRET>" in span.attributes["input.value"]
+    assert SECRET not in span.attributes["output.value"]
+    assert "<REDACTED_SECRET>" in span.attributes["output.value"]
 
 
-def test_llm_span_input_redacts_a_secret_cut_by_the_preview_limit(tmp_path, monkeypatch):
-    """Redaction runs before the 500-character preview cut, so no prefix of
-    the secret survives."""
+def test_turn_root_redacts_a_secret_cut_by_the_preview_limit(tracer_env, exporter, monkeypatch):
+    """Redaction runs before the preview cut, so no prefix of the secret survives."""
     monkeypatch.setenv("GH_TOKEN", SECRET)
     prompt = "x" * 490 + SECRET
-    transcript = tmp_path / "t.jsonl"
-    transcript.write_text(
-        json.dumps({"type": "user", "message": {"role": "user", "content": prompt}})
-        + "\n"
-        + json.dumps(
-            {
-                "type": "assistant",
-                "timestamp": "2026-10-08T08:00:01.000Z",
-                "message": {
-                    "id": "msg_1",
-                    "model": "m",
-                    "content": [{"type": "text", "text": "ok"}],
-                    "usage": {"input_tokens": 1, "output_tokens": 1},
-                },
-            },
-        )
-        + "\n",
-    )
-    (span,) = cct._extract_llm_spans_for_turn(
-        str(transcript), 0, "0" * 31 + "1", "00000000000000aa"
-    )
-    assert SECRET[:10] not in span["attributes"]["input.value"]
+    _hook(cct.handle_user_prompt_submit, tracer_env, prompt=prompt)
+    _hook(cct.handle_stop, tracer_env, last_assistant_message="ok")
+    (span,) = exporter.named("claude-code-turn")
+    assert SECRET[:10] not in span.attributes["input.value"]
 
 
 # --- turn_number across turns -------------------------------------------------

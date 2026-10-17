@@ -16,8 +16,7 @@ supplied by the installer.
 
 ## The failure mode
 
-A polecat container gets its plugin payload -- skills, hooks, agents, MCP wrappers
--- **baked into the image at build time**, while the code under test is
+A polecat container gets its plugin payload -- skills, hooks, agents, MCP wrappers -- **baked into the image at build time**, while the code under test is
 **bind-mounted at launch** (`/workspace`). These are two different delivery paths,
 and only one of them updates when a file is edited
 ([polecat-system.md](polecat-system.md), Guarantees 5 and 6).
@@ -102,23 +101,23 @@ image is unknown, and the constraint is to warn on evidence, not on ignorance.
 `evaluate_staleness()` compares that against a workspace baseline, which differs
 by dispatch mode:
 
-| Dispatch mode                    | Workspace baseline                                                          |
-| -------------------------------- | --------------------------------------------------------------------------- |
-| `-d <path>` (direct mount)       | `git -C <path> rev-parse HEAD`, plus `git status --porcelain` for dirtiness |
-| `-p` / `--base` (isolated clone) | the `base_sha` resolved by `resolve_isolated_workspace()` -- never dirty    |
-| default (no `-d`, no `--base`)   | same as `-p`: the resolved base, which is the upstream tracking HEAD        |
+| Dispatch mode | Workspace baseline |
+| - | - |
+| `-d <path>` (direct mount) | `git -C <path> rev-parse HEAD`, plus `git status --porcelain` for dirtiness |
+| `-p` / `--base` (isolated clone) | the `base_sha` resolved by `resolve_isolated_workspace()` -- never dirty |
+| default (no `-d`, no `--base`) | same as `-p`: the resolved base, which is the upstream tracking HEAD |
 
 SHA comparison is prefix-tolerant in both directions, so a short SHA on either
 side still matches.
 
-| Image source | Workspace state                                          | State                     | Output                       |
-| ------------ | -------------------------------------------------------- | ------------------------- | ---------------------------- |
-| `local`      | commit matches, clean                                    | `FRESH_LOCAL_BUILD`       | Plugin build report, proceed |
-| `local`      | commit differs, image is at or past the release baseline | `FRESH_LOCAL_BUILD`       | Plugin build report, proceed |
-| `local`      | commit differs, image predates the release baseline      | `STALE_LOCAL_BUILD`       | Plugin build report, proceed |
-| `local`      | commit matches, tree dirty                               | `DIRTY_WORKSPACE_UNBAKED` | Plugin build report, proceed |
-| `remote`     | commit matches                                           | `FRESH_REMOTE_BUILD`      | Plugin build report, proceed |
-| `remote`     | commit differs                                           | `REMOTE_RELEASE_RUN`      | Plugin build report, proceed |
+| Image source | Workspace state | State | Output |
+| - | - | - | - |
+| `local` | commit matches, clean | `FRESH_LOCAL_BUILD` | Plugin build report, proceed |
+| `local` | commit differs, image is at or past the release baseline | `FRESH_LOCAL_BUILD` | Plugin build report, proceed |
+| `local` | commit differs, image predates the release baseline | `STALE_LOCAL_BUILD` | Plugin build report, proceed |
+| `local` | commit matches, tree dirty | `DIRTY_WORKSPACE_UNBAKED` | Plugin build report, proceed |
+| `remote` | commit matches | `FRESH_REMOTE_BUILD` | Plugin build report, proceed |
+| `remote` | commit differs | `REMOTE_RELEASE_RUN` | Plugin build report, proceed |
 
 `DIRTY_WORKSPACE_UNBAKED` fires only where the workspace is dirty and the image
 was _not_ built dirty: an image stamped `aops.build_dirty=1` already contains
@@ -212,8 +211,7 @@ Workspace commit: f31ebcf7
 `FORWARDED_ENV`, so their values reach the container through the `docker`
 process's own environment rather than on argv): `AOPS_IMAGE_PROVENANCE` (the full
 record as JSON),
-`AOPS_IMAGE_STALE` (`0`/`1`), `AOPS_IMAGE_PLUGINS_VERSION`, and -- only when stale
--- `AOPS_IMAGE_STALENESS_WARNING`.
+`AOPS_IMAGE_STALE` (`0`/`1`), `AOPS_IMAGE_PLUGINS_VERSION`, and -- only when stale -- `AOPS_IMAGE_STALENESS_WARNING`.
 
 `plugins/aops/hooks/handlers.py` reads them, falling back to
 `/home/worker/.aops-image-metadata.json`, and appends the version to the session
