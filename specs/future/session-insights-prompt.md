@@ -12,7 +12,7 @@ tags: [prompt-template, observability, session-insights]
 command exists in this repository, and the `transcript_parser.py` that earlier
 drafts credited with pre-computing `user_prompt_count` and `timeline_events`
 does not exist either. The design is a Claude subagent launched with this
-template plus a session transcript, emitting the JSON directly — no Python glue.
+template plus a session transcript, emitting the JSON directly -- no Python glue.
 The consuming design is [sleep-cycle.md](../agents/sleep-cycle.md), whose first
 phase backfills one insight object per session; the pipeline metrics contract
 is
@@ -38,7 +38,7 @@ tail so the static body stays cacheable across every session it runs on.
 ## The prompt
 
 Extract structured insights from the session transcript provided with this
-message. Output one JSON object and nothing else — no prose, no code fences.
+message. Output one JSON object and nothing else -- no prose, no code fences.
 
 ## Output
 
@@ -151,40 +151,40 @@ timezone.
 
 ## Judgment calls the shape does not carry
 
-**`outcome`** — `success` when every goal was met with nothing blocking;
+**`outcome`** -- `success` when every goal was met with nothing blocking;
 `partial` when some were met, or met with unresolved issues; `failure` when
 blockers prevented completion. A user who had to correct the work rates
 `partial` at best. Explicit "done" or "working" from the user rates `success`.
 
-**`user_mood`** — user satisfaction inferred from tone, `-1.0` to `1.0`.
+**`user_mood`** -- user satisfaction inferred from tone, `-1.0` to `1.0`.
 `1.0` effusive praise; `0.5` satisfied, task closed without friction; `0.0`
-neutral, task-focused exchanges only — this is the default; `-0.5` corrections
+neutral, task-focused exchanges only -- this is the default; `-0.5` corrections
 and mild frustration; `-1.0` explicit anger or repeated failure. Read
 corrections, repeat requests, and sarcasm as negative; thanks, praise, and
 collaborative tone as positive.
 
-**`skill_compliance`** — `suggested` is every skill the session was told to use,
+**`skill_compliance`** -- `suggested` is every skill the session was told to use,
 `invoked` is every skill actually run, and `compliance_rate` is
 `len(invoked) / len(suggested)`, or `1.0` when nothing was suggested. The
 transcript markers:
 
-| Field       | Marker                                        |
-| ----------- | --------------------------------------------- |
+| Field | Marker |
+| - | - |
 | `suggested` | a hydrator line of the form `**Skill(s)**: X` |
-| `suggested` | a router suggestion in a system message       |
-| `suggested` | an explicit user request, `/skillname`        |
-| `invoked`   | 🔧 Skill invoked: followed by the skill name  |
-| `invoked`   | Launching skill: followed by the skill name   |
-| `invoked`   | a Skill tool call                             |
+| `suggested` | a router suggestion in a system message |
+| `suggested` | an explicit user request, `/skillname` |
+| `invoked` | 🔧 Skill invoked: followed by the skill name |
+| `invoked` | Launching skill: followed by the skill name |
+| `invoked` | a Skill tool call |
 
-**`conversation_flow`** — quote user prompts verbatim; summarise agent turns in
+**`conversation_flow`** -- quote user prompts verbatim; summarise agent turns in
 one or two sentences.
 
-**`user_prompts`** — for each user prompt, the agent message immediately
+**`user_prompts`** -- for each user prompt, the agent message immediately
 preceding it, then the prompt itself verbatim. The preceding turn is what makes
 the prompt interpretable later.
 
-**`framework_reflections`** — collect every `## Framework Reflection` and
+**`framework_reflections`** -- collect every `## Framework Reflection` and
 `### Session Handover` block in the transcript, in both main-agent and subagent
 entries; a session may hold several. From a Framework Reflection, map its
 labelled fields onto the object keys of the same name, reading `Followed: Yes`

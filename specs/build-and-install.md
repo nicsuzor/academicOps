@@ -21,21 +21,21 @@ The root `Makefile` is the single entry point. `build/marketplace.toml` is the
 source of truth for the plugin set it installs -- one entry per plugin directory
 under `plugins/`, mirroring the table in `ARCHITECTURE.md`.
 
-| Target               | Effect                                                                                                           |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `make build`         | Assembles `dist/` for every plugin, clients (Claude, agy, openclaw) and channels (cowork, openclaw).             |
-| `make install-dev`   | `build`, then registers `dist/` as the local `aops` marketplace and installs every plugin from it (`aops@aops`). |
-| `make uninstall-dev` | Removes the local marketplace and its installs, then restores the released `academicOps` marketplace.            |
-| `make install`       | Registers `nicsuzor/academicOps@dist` as the `academicOps` marketplace and installs every plugin from it.        |
-| `make test`          | `uv run pytest tests/`.                                                                                          |
-| `make lint`          | `ruff check .`.                                                                                                  |
-| `make format`        | `ruff format .` + `dprint fmt`.                                                                                  |
-| `make clean`         | Removes `dist/`.                                                                                                 |
-| `make clean-plugins` | Prunes stale plugin caches and Cowork packages via `scripts/clean_plugins.py`.                                   |
-| `make docker`        | Alias for `make docker-build`.                                                                                   |
-| `make docker-build`  | `make build`, then `docker build --build-arg AOPS_DIST_SOURCE=local` from this checkout's own `dist/`.           |
-| `make docker-shell`  | `docker-build`, then an interactive shell in the image.                                                          |
-| `make docker-push`   | Pushes the built image to `ghcr.io/nicsuzor/aops-crew`.                                                          |
+| Target | Effect |
+| - | - |
+| `make build` | Assembles `dist/` for every plugin, clients (Claude, agy, openclaw) and channels (cowork, openclaw). |
+| `make install-dev` | `build`, then registers `dist/` as the local `aops` marketplace and installs every plugin from it (`aops@aops`). |
+| `make uninstall-dev` | Removes the local marketplace and its installs, then restores the released `academicOps` marketplace. |
+| `make install` | Registers `nicsuzor/academicOps@dist` as the `academicOps` marketplace and installs every plugin from it. |
+| `make test` | `uv run pytest tests/`. |
+| `make lint` | `ruff check .`. |
+| `make format` | `ruff format .` + `dprint fmt`. |
+| `make clean` | Removes `dist/`. |
+| `make clean-plugins` | Prunes stale plugin caches and Cowork packages via `scripts/clean_plugins.py`. |
+| `make docker` | Alias for `make docker-build`. |
+| `make docker-build` | `make build`, then `docker build --build-arg AOPS_DIST_SOURCE=local` from this checkout's own `dist/`. |
+| `make docker-shell` | `docker-build`, then an interactive shell in the image. |
+| `make docker-push` | Pushes the built image to `ghcr.io/nicsuzor/aops-crew`. |
 
 `aops` (dev, local-directory source) and `academicOps` (release, GitHub-source)
 are separate marketplace names specifically so one install can never silently

@@ -15,14 +15,14 @@ Your terminal act on this surface is a posted review, so the review STATE is you
 
 These variables are set in the job environment by `agent-qa.yml`. Read them with `$VAR` in Bash -- do not hardcode values:
 
-| Variable         | Meaning                                     |
-| ---------------- | ------------------------------------------- |
-| `$PR_NUMBER`     | PR number in `$REPO`                        |
-| `$REPO`          | `owner/repo` (e.g. `nicsuzor/academicOps`)  |
-| `$HEAD_SHA`      | Exact PR head SHA this verification targets |
-| `$AGENT_NAME`    | `qa` (status context prefix)                |
-| `$GH_TOKEN`      | Bot PAT -- already set; `gh` uses it        |
-| `$GITHUB_RUN_ID` | Actions run ID for status target_url        |
+| Variable | Meaning |
+| - | - |
+| `$PR_NUMBER` | PR number in `$REPO` |
+| `$REPO` | `owner/repo` (e.g. `nicsuzor/academicOps`) |
+| `$HEAD_SHA` | Exact PR head SHA this verification targets |
+| `$AGENT_NAME` | `qa` (status context prefix) |
+| `$GH_TOKEN` | Bot PAT -- already set; `gh` uses it |
+| `$GITHUB_RUN_ID` | Actions run ID for status target_url |
 
 Verify the diff at `$HEAD_SHA` specifically (`gh pr diff "$PR_NUMBER"`), and post your review against that SHA. The workflow derives the `qa-status` commit status from your review STATE (APPROVED → success, CHANGES_REQUESTED → failure), so a verdict review is mandatory -- see Output Format.
 

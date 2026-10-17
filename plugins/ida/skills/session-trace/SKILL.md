@@ -24,11 +24,11 @@ Method, in brief (the script docstring has the full account):
 
 ## Span Data Reference
 
-| Kind    | Target Fields                                                                   |
-| ------- | ------------------------------------------------------------------------------- |
-| `TOOL`  | `tool.name`, `input.value`, `output.value`, `tool.json_schema`                  |
-| `LLM`   | `llm.model_name`, `llm.token_count.*`, `llm.prompt_details.*`                   |
-| `AGENT` | `agent.name`, `input.value` (dispatch prompt), `output.value` (status ack)      |
+| Kind | Target Fields |
+| - | - |
+| `TOOL` | `tool.name`, `input.value`, `output.value`, `tool.json_schema` |
+| `LLM` | `llm.model_name`, `llm.token_count.*`, `llm.prompt_details.*` |
+| `AGENT` | `agent.name`, `input.value` (dispatch prompt), `output.value` (status ack) |
 | `CHAIN` | `claude-code-turn` turn root, prompt in `input.value`, result in `output.value` |
 
 Output produces `<session-id>.trace.json` (`full` forest with `roots` and `orphans`) and `<session-id>.trace.controller.json` (`controller` summary). In controller exports, `session_*` fields aggregate all subagent work, while `controller_*` fields isolate the root turn.
