@@ -112,7 +112,7 @@ def test_failed_export_fails_verdict_and_leaves_gate_armed(outcome, tmp_path, mo
             pcv.record_verdict(
                 session_id="sess-flow",
                 claim_id="c",
-                verdict="PASS",
+                verdict="REVISE",
                 reason="v",
                 tracer_mod=claude_code_tracer,
             )

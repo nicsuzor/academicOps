@@ -1,11 +1,11 @@
 ---
 name: argument-audit
-description: Formally audit and stress-test a scholarly, legal, policy, or qualitative argument using Chained Toulmin Argdown -- identifying logical gaps, hidden assumptions, overclaiming (scope and construct drift), methodological mismatches, and under-explored rival explanations at a controlled granularity floor. Use for "audit this argument", "check if this argument holds up", "find the gaps in this chapter/thesis", "evaluate argument strength", or "what assumptions are missing". Not for reconstruction alone (use argument-extraction), for a readable map page with open issues (use argument-map), or for agent handback reports (use premise-check).
+description: Formally audit and stress-test a scholarly, legal, policy, or qualitative argument over its Argdown reconstruction -- identifying logical gaps, hidden assumptions, overclaiming (scope and construct drift), methodological mismatches, and under-explored rival explanations at a controlled granularity floor. Use for "audit this argument", "check if this argument holds up", "find the gaps in this chapter/thesis", "evaluate argument strength", or "what assumptions are missing". Not for reconstruction alone (use argument-extraction), for a readable map page with open issues (use argument-map), or for agent handback reports (use premise-check).
 ---
 
 # Argument Audit
 
-Evaluate whether a scholarly, qualitative, mixed-methods, or policy argument is formally made out by stress-testing its **Chained Toulmin** structure against five diagnostic checks: **Term & Scope Alignment**, **Method-to-Construct Validity**, **Warrant & Backing Fit**, **The Contrast Test (Rival Explanations)**, and **Macro-Remedy Coherence**.
+Evaluate whether a scholarly, qualitative, mixed-methods, or policy argument is formally made out by stress-testing its premise-and-warrant structure against five diagnostic checks: **Term & Scope Alignment**, **Method-to-Construct Validity**, **Warrant & Backing Fit**, **The Contrast Test (Rival Explanations)**, and **Macro-Remedy Coherence**.
 
 ## When to Use
 
@@ -24,11 +24,11 @@ Before auditing, lock the abstraction level so the evaluation stays targeted and
 - **`meso` (Chapter / Paper Audit - Default)**: Audit how section claims, methods, primary evidence, and theoretical warrants combine to establish the chapter/paper thesis. Floor: accept peer-reviewed citations (`basis: "theory"`) and raw descriptive statistics (`basis: "observed"`) as leaf nodes unless their scope mismatches the warrant.
 - **`micro` (Hinge Inference / Research Design Audit)**: Deep-dive into 1 to 3 load-bearing inferences (for example, RQ -> Method -> Empirical Finding -> Causal Claim). Floor: raw observations and verbatim quotes.
 
-### 2. Reconstruct or Normalise into Chained Toulmin
+### 2. Reconstruct or Normalise into Argument Blocks
 
-If the input is prose or a flat tree (such as `+` bullet hierarchies that mix methods, data, and theory as sibling nodes), first normalise the target claims into **Chained Toulmin** blocks:
+If the input is prose or a flat tree (such as `+` bullet hierarchies that mix methods, data, and theory as sibling nodes), first normalise the target claims into the argument blocks `argument-extraction` specifies, premises chosen by its relevance rule:
 
-- Put only **observations, sample bounds, or prior sub-conclusions** in numbered premises `(1)`, `(2)` (max 2 to 3 per inference bar).
+- Put only **observations, sample bounds, or prior sub-conclusions** in numbered premises `(1)`, `(2)`.
 - Put the **theoretical principle, methodological rule, or causal mechanism** in the inference bar: `-- Warrant: <rule> {uses: [1, 2], basis: "...", pointer: "..."} --`.
 - Separate epistemic layers into stacked inference bars inside the block:
   1. **Observational Step**: Raw Data + Method/Sample Bound -> _Empirical Pattern_
@@ -89,7 +89,7 @@ At the chapter or thesis level, compare the **diagnosed bottleneck** against the
 
 Deliver two outputs:
 
-1. **Annotated Chained Toulmin Argdown**: Containing the reconstructed argument with `#missing`, `#scope-drift`, `#method-gap`, `#unanswered`, and `#conflict` nodes placed at the exact inference bars where they occur.
+1. **Annotated Argdown**: Containing the reconstructed argument with `#missing`, `#scope-drift`, `#method-gap`, `#unanswered`, and `#conflict` nodes placed at the exact inference bars where they occur.
 2. **Triage & Remediation Table**: For every identified gap, recommend the lowest-friction scholarly fix across three options:
    - **Option 1 - Re-scope / Qualify (Zero new data)**: Narrow the claim or qualifier so it matches what the existing method and data already prove.
    - **Option 2 - Bridge via Theory / Literature (Citation fix)**: Supply the unstated warrant or behavioural bridge from existing scholarship.

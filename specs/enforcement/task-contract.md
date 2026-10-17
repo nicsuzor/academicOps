@@ -77,9 +77,9 @@ this contract does not restate.
   `/dump` for the final handover and for logging results at the end of every
   job, whatever its release status (`done`, `partial`, `review`, `failed`,
   `cancelled`, or `in_progress`), and `/dump`'s `release_task` body update
-  includes an Argdown proof (per [`premise-check`](../../plugins/ida/skills/premise-check/SKILL.md))
-  that supports a complete and valid answer to each original direction given or
-  question posed. A worker whose deliverable
+  includes a report argument (per [`premise-check`](../../plugins/ida/skills/premise-check/SKILL.md))
+  whose conclusion answers each original direction given or question posed by
+  its ask id. A worker whose deliverable
   is a PR releases its task `review` once the PR is open and exits; the
   repository merges it and `/reconcile` writes `done` on the merge, which
   unblocks dependent follow-ups (QA, deploy); `partial` is reserved strictly for the

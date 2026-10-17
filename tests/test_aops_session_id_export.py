@@ -192,7 +192,7 @@ def test_verdict_script_records_without_session_flag(tmp_path):
                 "bash",
                 "-c",
                 f'. "{env_file}" && "{sys.executable}" "{verdict}" '
-                '--report r1 --verdict PASS --reason "holds"',
+                '--report r1 --verdict REVISE --reason "holds"',
             ],
             capture_output=True,
             text=True,
@@ -207,7 +207,7 @@ def test_verdict_script_records_without_session_flag(tmp_path):
     out = json.loads(run.stdout)
     assert out["disarmed"] is True
     assert pcg.is_armed(SESSION) is False
-    assert pcg.get_state(SESSION)["last_verdict"]["verdict"] == "PASS"
+    assert pcg.get_state(SESSION)["last_verdict"]["verdict"] == "REVISE"
 
 
 @pytest.fixture(autouse=True)

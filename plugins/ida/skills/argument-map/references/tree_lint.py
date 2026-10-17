@@ -86,11 +86,9 @@ for r in under:
             nodes[f]["parent"] = c[-1]
             nodes[f]["rel"] = "undercut"
             nodes[c[-1]]["attackers"].append(f)
-viol = [(t, len(nodes[t]["children"])) for t in nodes if len(nodes[t]["children"]) > 3]
 report = dict(
     statements=len(titled),
     relations=len(rels),
-    violations=viol,
     roots=[t for t in nodes if not nodes[t]["parent"] and not out[t]],
     levels=dict(collections.Counter(n["level"] for n in nodes.values())),
     tags=dict(collections.Counter(tg for n in nodes.values() for tg in n["tags"])),

@@ -5,7 +5,10 @@ the repo root; ACA_DATA and AOPS_SESSIONS are always redirected into
 `tmp_path` so no test can write into a developer's real data vault.
 """
 
+import fcntl
 import os
+import shutil
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -13,8 +16,57 @@ import pytest
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
+def _run_root(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """The temp directory every xdist worker of this run shares.
+
+    Under xdist each worker's basetemp is `<run>/popen-gwN`; without it the
+    basetemp is the run directory itself.
+    """
+    basetemp = tmp_path_factory.getbasetemp()
+    return basetemp.parent if os.environ.get("PYTEST_XDIST_WORKER") else basetemp
+
+
+@pytest.fixture(scope="session")
+def shared_uv_cache(tmp_path_factory) -> Path:
+    """One uv cache for the whole run, shared by every worker and test.
+
+    Kept inside the run's temp directory rather than the host cache, which a
+    sandboxed run (macOS Seatbelt) cannot write. uv locks its cache, so
+    concurrent workers share it safely and each wheel is fetched once per run.
+    """
+    cache = _run_root(tmp_path_factory) / "uv_cache"
+    cache.mkdir(exist_ok=True)
+    return cache
+
+
+@pytest.fixture(scope="session")
+def build_once(tmp_path_factory) -> Callable[[str, Callable[[Path], object]], Path]:
+    """Build a directory once per run, shared by every xdist worker.
+
+    `build_once(name, build)` returns `<run>/<name>`, calling `build(path)` to
+    fill it only if no worker has completed it yet. A worker that finds another
+    mid-build waits on the lock. A build that raised leaves no completion
+    marker, so the next caller starts it again from empty.
+    """
+    root = _run_root(tmp_path_factory)
+
+    def _build(name: str, build: Callable[[Path], object]) -> Path:
+        target = root / name
+        done = root / f"{name}.done"
+        with open(root / f"{name}.lock", "w") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            if not done.exists():
+                shutil.rmtree(target, ignore_errors=True)
+                target.mkdir()
+                build(target)
+                done.touch()
+        return target
+
+    return _build
+
+
 @pytest.fixture(autouse=True)
-def ensure_test_environment(monkeypatch, tmp_path):
+def ensure_test_environment(monkeypatch, tmp_path, shared_uv_cache):
     """Ensure ACA_DATA is set and directories exist for all tests.
 
     This provides a fallback test environment if ACA_DATA is not set externally.
@@ -37,9 +89,7 @@ def ensure_test_environment(monkeypatch, tmp_path):
 
     # Redirect UV cache to prevent PermissionError in a host-level uv cache
     # This is required for hooks to run successfully under macOS Seatbelt
-    uv_cache = tmp_path / "uv_cache"
-    uv_cache.mkdir(parents=True, exist_ok=True)
-    monkeypatch.setenv("UV_CACHE_DIR", str(uv_cache))
+    monkeypatch.setenv("UV_CACHE_DIR", str(shared_uv_cache))
 
     # Strip any leaked host environment variables that hardcode paths or route OTel telemetry
     #

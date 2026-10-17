@@ -733,3 +733,82 @@ def test_peer_message_prompt_yields_single_user_prompt_submit_output(
         "Reminded to use `premise-check` when replying to a peer message. "
         "Premise-check gate armed by claim-59204fc6."
     )
+
+
+# ---------------------------------------------------------------------------
+# agy: recorded hook payload shapes
+# ---------------------------------------------------------------------------
+
+_AGY_PAYLOADS = json.loads(
+    (REPO_ROOT / "tests" / "fixtures" / "agy_hook_payloads.json").read_text(encoding="utf-8")
+)
+
+
+@pytest.mark.parametrize(
+    ("event", "payload"),
+    [
+        ("PreToolUse", "pre_tool_invoke_subagent"),
+        ("PostToolUse", "post_tool_invoke_subagent"),
+        ("PostToolUse", "post_tool_wait"),
+    ],
+)
+def test_normalize_reads_agy_nested_tool_call(event: str, payload: str, tmp_path: Path):
+    from dispatch import normalize
+
+    raw = _AGY_PAYLOADS[payload]
+    ctx = normalize("agy", event, raw, tmp_path)
+    assert ctx.tool == raw["toolCall"]["name"]
+    assert ctx.tool_input == raw["toolCall"]["args"]
+
+
+def _session_start_parts(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    monkeypatch.delenv("CLAUDE_ENV_FILE", raising=False)
+    ctx = HookContext(client="claude", event="SessionStart", session_id="claude-sess")
+    result = handlers.session_start(ctx)
+    assert result is not None
+    return result.inject_text.split("\n\n")
+
+
+@pytest.fixture
+def pointer_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    state = tmp_path / "session_pointer"
+    monkeypatch.setenv("AOPS_SESSION_POINTER_DIR", str(state))
+    return state
+
+
+def test_agy_first_pre_invocation_delivers_the_session_start_pointer_once(
+    pointer_state: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    from dispatch import normalize
+
+    parts = _session_start_parts(monkeypatch)
+
+    first = handlers.user_prompt_submit(
+        normalize("agy", "UserPromptSubmit", _AGY_PAYLOADS["pre_invocation_first"], tmp_path)
+    )
+    assert first is not None
+    assert first.inject_text in parts
+
+    for later in ("pre_invocation_later", "pre_invocation_next_turn"):
+        ctx = normalize("agy", "UserPromptSubmit", _AGY_PAYLOADS[later], tmp_path)
+        assert handlers.user_prompt_submit(ctx) is None
+
+
+def test_agy_pointer_is_per_conversation(pointer_state: Path, tmp_path: Path):
+    from dispatch import normalize
+
+    one = dict(_AGY_PAYLOADS["pre_invocation_first"])
+    other = dict(one, conversationId="agy-conv-2")
+    assert handlers.user_prompt_submit(normalize("agy", "UserPromptSubmit", one, tmp_path))
+    assert handlers.user_prompt_submit(normalize("agy", "UserPromptSubmit", other, tmp_path))
+
+
+def test_claude_user_prompt_submit_carries_no_session_start_pointer(
+    pointer_state: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    from dispatch import normalize
+
+    parts = _session_start_parts(monkeypatch)
+    raw = {"session_id": "claude-sess", "prompt": "hello"}
+    result = handlers.user_prompt_submit(normalize("claude", "UserPromptSubmit", raw, tmp_path))
+    assert result is None or not set(result.inject_text.split("\n\n")) & set(parts)

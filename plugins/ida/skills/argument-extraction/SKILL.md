@@ -1,11 +1,11 @@
 ---
 name: argument-extraction
-description: Extract and reconstruct the argument a text or draft makes -- main conclusion, chained premises, warrants, and evidence traceability -- and emit it as parser-valid Chained Toulmin Argdown at a controlled level of granularity. Use for "extract the argument", "map the argument", "reconstruct the reasoning", "argdown this". Not for evaluating the argument (use argument-audit), for a readable map with gaps tagged (use argument-map), or for agent handback reports (use premise-check).
+description: Extract and reconstruct the argument a text or draft makes -- main conclusion, chained premises, warrants, and evidence traceability -- and emit it as parser-valid Argdown with warrants in the inference bar at a controlled level of granularity. Use for "extract the argument", "map the argument", "reconstruct the reasoning", "argdown this". Not for evaluating the argument (use argument-audit), for a readable map with gaps tagged (use argument-map), or for agent handback reports (use premise-check).
 ---
 
 # Argument Extraction
 
-Reconstruct what a text argues into parser-valid **Chained Toulmin Argdown**, preserving the author's framing while making every inference step, warrant, and source trace explicit without evaluate-on-the-fly editorialising.
+Reconstruct what a text argues into parser-valid **Argdown**, preserving the author's framing while making every inference step, warrant, and source trace explicit without evaluate-on-the-fly editorialising.
 
 ## When to Use
 
@@ -13,13 +13,13 @@ Reconstruct what a text argues into parser-valid **Chained Toulmin Argdown**, pr
 - Converting unstructured prose or flat mind-maps into a hierarchical, non-flat Argdown model
 - Preparing a faithfully traced reconstruction before running `argument-audit` or `premise-check`
 
-## Core Representation: Chained Toulmin
+## Core Representation
 
-To prevent "flat laundry lists" (where 5 to 7 premises are dumped above a single line), every argument block follows three structural rules:
+Every argument block follows three structural rules:
 
-1. **Grounds in numbered premises (`(1)`, `(2)`)**: Put only observations, empirical findings, established sub-claims, or scope conditions in numbered lines. Cap each inference step at **2 (at most 3) co-dependent premises**.
+1. **Grounds in numbered premises (`(1)`, `(2)`)**: Put only observations, empirical findings, established sub-claims, or scope conditions in numbered lines. **Relevance rule:** every premise on an inference is a condition of its warrant, and there is no premise count. Avoid laundry lists: a long run of premises under one warrant usually hides several steps (a method-to-finding step and a finding-to-mechanism step, say), so split them with an intermediate conclusion and a second bar.
 2. **Warrants in the inference bar (`-- Warrant --`)**: Place the licensing rule, theoretical principle, causal mechanism, or methodological rule inside the Argdown inference line (`-- Warrant statement {uses: [1, 2], basis: "...", pointer: "..."} --`). Never mix warrants into the numbered premise list as flat siblings of the data.
-3. **Depth via chained staircases, not wide lists**: When reasoning moves across epistemic layers (for example, _Method/Observation -> Empirical Pattern -> Causal Mechanism -> Normative Conclusion_), stack up to 3 `-- Warrant --` bars inside one `<Argument>` block, or chain distinct `<Argument>` blocks by reusing a conclusion's `[Title]` as Premise `(1)` of the downstream block.
+3. **Depth via chained steps, not wide lists**: When reasoning moves across epistemic layers (for example, _Method/Observation -> Empirical Pattern -> Causal Mechanism -> Normative Conclusion_), stack `-- Warrant --` bars inside one `<Argument>` block, or chain distinct `<Argument>` blocks by reusing a conclusion's `[Title]` as Premise `(1)` of the downstream block.
 
 ## Procedure
 
@@ -37,7 +37,7 @@ Once a premise hits the declared `floor`, stop recursing: record its `{basis, po
 
 Write one top-level titled statement (`[Title]: text`) expressing the primary claim the text exists to establish in clear, direct modern English. Because the verbatim quote appears in `source`, do not copy archaic or convoluted wording into the statement text.
 
-### 3. Reconstruct Each Line of Support as a Chained Toulmin Block
+### 3. Reconstruct Each Line of Support as an Argument Block
 
 For each distinct line of reasoning supporting the main conclusion (or supporting an intermediate chapter/section claim):
 
@@ -118,6 +118,5 @@ model:
 
 ## Gotchas
 
-- **Never dump 4+ premises above one bar**: If you have 4 premises, you have at least two distinct inference steps (for example, a method-to-finding step and a finding-to-mechanism step). Split them with an intermediate conclusion and a second `-- Warrant --` bar.
 - **Do not confuse Backing with Grounds**: Literature that justifies _why a warrant holds_ belongs in the `-- Warrant {basis: "theory", pointer: "..."} --` line (or in a child argument concluding that warrant if contested), not as a numbered sibling premise next to empirical data.
 - **Preserve authorial voice in `source`, clarity in prose**: Statement text should be crisp, modern declarative prose; `source` holds the exact verbatim quote.
