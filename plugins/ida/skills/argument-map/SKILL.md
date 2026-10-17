@@ -54,7 +54,15 @@ When the map's job is to lock a text's structure (parts, chapters, sections), re
 - **It answers the ask.** Re-read the original ask and check that the page answers it.
 - **The map is readable.** Ensure you check the visual renderings, not just the Argdown source. Revise the layout, labels, and colors until the output is clear and legible.
 
+## Rebuild from source
+
+Rebuild the Excalidraw canvases, SVGs, and overview page directly from the Argdown source or PKB note:
+
+```bash
+python3 plugins/ida/skills/argument-map/scripts/render.py <source-path-or-note-id> [--out <dir>]
+```
+
 ## Record
 
 - **One home.** Keep the Argdown source and the decisions (narrowed readings, merges, dropped views) in the map's PKB note, one line per decision.
-- **Rebuild, don't patch.** Rebuild the page from the source. Do not hand-edit the derived renders.
+- **Rebuild, don't patch.** Rebuild the page from the source using the renderer. Do not hand-edit the derived renders.
