@@ -233,11 +233,11 @@ five-field schema `ts` (ISO 8601, microsecond UTC), `client` (`claude`|`agy`),
 path above names a host directory you cannot reach. What you can reach is each
 client's own state root:
 
-| Whose conversation               | Where it lands inside the container                                                                                           |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Yours, under `claude`            | `$CLAUDE_CONFIG_DIR/projects/<slugified-cwd>/<session-uuid>.jsonl`, else `~/.claude/projects/...`                             |
+| Whose conversation | Where it lands inside the container |
+| - | - |
+| Yours, under `claude` | `$CLAUDE_CONFIG_DIR/projects/<slugified-cwd>/<session-uuid>.jsonl`, else `~/.claude/projects/...` |
 | A worker you spawned via `Agent` | `<the same project dir>/<your-session-uuid>/subagents/agent-*.jsonl`, with a `.meta.json` beside it naming the agent that ran |
-| An `agy` worker you launched     | `~/.gemini/antigravity-cli/brain/<conversation-id>/.system_generated/logs/transcript.jsonl` and `transcript_full.jsonl`       |
+| An `agy` worker you launched | `~/.gemini/antigravity-cli/brain/<conversation-id>/.system_generated/logs/transcript.jsonl` and `transcript_full.jsonl` |
 
 `$AOPS_SESSION_STATE_DIR` names the host-mounted directory, so
 `polecat-session-hooks.jsonl` sits beside your own transcript and is readable

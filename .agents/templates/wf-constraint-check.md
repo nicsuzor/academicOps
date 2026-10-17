@@ -25,13 +25,13 @@ Check when the composed template(s) declare a `## Constraints`, `## Critical Rul
 
 ## Constraint Types
 
-| Kind            | Contains                   | How to verify                         |
-| --------------- | -------------------------- | ------------------------------------- |
-| Sequencing      | "X must complete before Y" | Step order in the plan                |
-| After-each-step | "After X: do Y"            | Post-action step present              |
-| Always-true     | Invariants                 | No step violates them                 |
-| Never-do        | Prohibited actions         | No step matches                       |
-| Conditional     | "If X then Y"              | Condition triggers the action in-plan |
+| Kind | Contains | How to verify |
+| - | - | - |
+| Sequencing | "X must complete before Y" | Step order in the plan |
+| After-each-step | "After X: do Y" | Post-action step present |
+| Always-true | Invariants | No step violates them |
+| Never-do | Prohibited actions | No step matches |
+| Conditional | "If X then Y" | Condition triggers the action in-plan |
 
 ## Process
 

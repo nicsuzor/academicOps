@@ -9,12 +9,12 @@ sorting spans, or trusting a span's `duration_ms`.
 Searching `session.id` with a `trace_id` returns `{"data":[],"next_cursor":null}`
 silently, which reads as "telemetry not retained" and is not.
 
-| Identifier       | Shape                       | Example                                | Query pattern                                                       |
-| ---------------- | --------------------------- | -------------------------------------- | ------------------------------------------------------------------- |
-| **`trace_id`**   | 32 hex chars, **no dashes** | `c75f0a20a67140e791244eb5dfa64be5`     | `WHERE trace_id = '<32_HEX>'` — resolve to `session.id`, then pivot |
-| **`session.id`** | 36 chars, **dashed UUID**   | `22ec8f3e-72c1-4b15-9988-123456789abc` | `WHERE JSON_EXTRACT(attributes, '$.session.id') = '<UUID>'`         |
-| **session slug** | 6–8 hex chars               | `22ec8f3e`                             | `WHERE JSON_EXTRACT(attributes, '$.session.id') LIKE '%<slug>%'`    |
-| **`span_id`**    | 16 hex chars, **no dashes** | `a1b2c3d4e5f60718`                     | `WHERE span_id = '<16_HEX>'`                                        |
+| Identifier | Shape | Example | Query pattern |
+| - | - | - | - |
+| **`trace_id`** | 32 hex chars, **no dashes** | `c75f0a20a67140e791244eb5dfa64be5` | `WHERE trace_id = '<32_HEX>'` -- resolve to `session.id`, then pivot |
+| **`session.id`** | 36 chars, **dashed UUID** | `22ec8f3e-72c1-4b15-9988-123456789abc` | `WHERE JSON_EXTRACT(attributes, '$.session.id') = '<UUID>'` |
+| **session slug** | 6–8 hex chars | `22ec8f3e` | `WHERE JSON_EXTRACT(attributes, '$.session.id') LIKE '%<slug>%'` |
+| **`span_id`** | 16 hex chars, **no dashes** | `a1b2c3d4e5f60718` | `WHERE span_id = '<16_HEX>'` |
 
 A query returning 0 rows is a reason to re-check the identifier's shape, never
 by itself a finding that telemetry was dropped.
@@ -38,7 +38,7 @@ given span.
 
 `turn_number` (and `arthur.turn_number`) is scoped per tracer-state file and
 resets at that file's init, so every subagent has its own counter sharing the
-parent's `session.id` — the numbers overlap and repeat within one exported
+parent's `session.id` -- the numbers overlap and repeat within one exported
 session. In practice it has been observed to take only the values 1 or 2: a
 hook-ordering artifact, not a genuine per-turn counter. Never
 sort or discriminate on it. Sort by `start_time` for session-wide chronology.

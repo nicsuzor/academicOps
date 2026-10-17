@@ -125,14 +125,14 @@ flowchart LR
 
 **Roles** (each a single owner, so no routine is implemented twice):
 
-| Role                | Owner                                                                          | Reads                            | Writes                                                              |
-| ------------------- | ------------------------------------------------------------------------------ | -------------------------------- | ------------------------------------------------------------------- |
-| Placement at intake | `/q` (`plugins/ida/skills/q/SKILL.md`)                                         | graph search, the input          | node, edges at `set_by: agent-proposed`, `due` + `deadline_class`   |
-| Email placement     | correspondence sweep, module C (PKB-tier template `wf-email-sweep`) → `/q`     | mailbox, graph                   | through `/q` only                                                   |
-| Densify             | pauli, run by universal template `wf-densify`                                  | flow outputs (`stake`), edges    | edge proposals (`set_by: agent-proposed`)                           |
-| Target pricing      | pauli, run by universal template `wf-price-targets`                            | targets, their contributors      | writes approximate target worth directly, leaves `intent` untouched |
-| Deadline upkeep     | `/reconcile` (`plugins/ida/skills/workflow-library/workflows/wf-reconcile.md`) | `due`, class, history, sent mail | class transitions per R5                                            |
-| Retirement          | `/reconcile` for source-stated closures; pauli for direct instructions         | input, world facts               | `status: cancelled` + reason                                        |
+| Role | Owner | Reads | Writes |
+| - | - | - | - |
+| Placement at intake | `/q` (`plugins/ida/skills/q/SKILL.md`) | graph search, the input | node, edges at `set_by: agent-proposed`, `due` + `deadline_class` |
+| Email placement | correspondence sweep, module C (PKB-tier template `wf-email-sweep`) → `/q` | mailbox, graph | through `/q` only |
+| Densify | pauli, run by universal template `wf-densify` | flow outputs (`stake`), edges | edge proposals (`set_by: agent-proposed`) |
+| Target pricing | pauli, run by universal template `wf-price-targets` | targets, their contributors | writes approximate target worth directly, leaves `intent` untouched |
+| Deadline upkeep | `/reconcile` (`plugins/ida/skills/workflow-library/workflows/wf-reconcile.md`) | `due`, class, history, sent mail | class transitions per R5 |
+| Retirement | `/reconcile` for source-stated closures; pauli for direct instructions | input, world facts | `status: cancelled` + reason |
 
 pauli estimates target worth and edge weights, leaving `intent` untouched. Corrections are made directly on the graph.
 
@@ -230,7 +230,7 @@ siblings is one row for their container, not one row each.
 **The batch table** (one message, at most 50 rows):
 
 | # | Work | → Target (worth) | Label | Proposed quantum | Probability | Effect | Why (one sentence) |
-| - | ---- | ---------------- | ----- | ---------------- | ----------- | ------ | ------------------ |
+| - | - | - | - | - | - | - | - |
 
 **Proposal and direct write.** Agents write proposals directly with `set_by: agent-proposed`.
 
@@ -263,11 +263,11 @@ Covers S5, S13, U14, U15, G11, FR:424-426.
 
 **Classes:**
 
-| Class  | Meaning                                                                    | Who may set it                                                    |
-| ------ | -------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `fake` | Someone wrote a date; no loss lands on it                                  | default for every captured date (FQ18)                            |
-| `soft` | the date was accepted; slipping it has a cost but can be negotiated        | an agent, citing explicit acceptance or sent mail that accepts it |
-| `hard` | A real loss lands on the date (a round closes, a legal or employment duty) | the principal; or the soft-to-hard rule below                     |
+| Class | Meaning | Who may set it |
+| - | - | - |
+| `fake` | Someone wrote a date; no loss lands on it | default for every captured date (FQ18) |
+| `soft` | the date was accepted; slipping it has a cost but can be negotiated | an agent, citing explicit acceptance or sent mail that accepts it |
+| `hard` | A real loss lands on the date (a round closes, a legal or employment duty) | the principal; or the soft-to-hard rule below |
 
 **Capture rule.** A new date is `fake` unless one of these holds:
 
@@ -334,12 +334,12 @@ position or a display order.
 Covers U20, S11, and the attention rules already in `plugins/ida/agents/ida.md:120-125`. The brief
 sets no budget; the figures below are proposed (K2).
 
-| Channel         | Budget                                     | Content                                                                                                                                       |
-| --------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Routine notice  | 1 per week                                 | summary of direct graph pricing and densify changes                                                                                           |
-| Priority ask    | ≤ 1 per day, in the daily digest           | a proposed `hard` date within 14 days; or a new opportunity whose `gain` or `loss_averted` would place it in the top 20 under the current key |
-| In conversation | 0 valuation questions                      | ida's one-question cap is unchanged; valuation never uses it                                                                                  |
-| Notices         | 1 line each in the digest, no reply needed | soft→hard hardenings, retirements from source statements                                                                                      |
+| Channel | Budget | Content |
+| - | - | - |
+| Routine notice | 1 per week | summary of direct graph pricing and densify changes |
+| Priority ask | ≤ 1 per day, in the daily digest | a proposed `hard` date within 14 days; or a new opportunity whose `gain` or `loss_averted` would place it in the top 20 under the current key |
+| In conversation | 0 valuation questions | ida's one-question cap is unchanged; valuation never uses it |
+| Notices | 1 line each in the digest, no reply needed | soft→hard hardenings, retirements from source statements |
 
 **The ask queue.** Every item that would otherwise interrupt the principal goes into one queue: ambiguous
 placements, "no target fits", proposed hard dates further out, and pricing for new targets. Items
@@ -356,28 +356,28 @@ keeps pauli's rule "never raise the same non-blocking concern twice"
 
 ## 9. Skills and workflows that change
 
-| File                                                                                                                                                | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `plugins/ida/skills/q/SKILL.md`                                                                                                                     | Steps 4-6 are replaced by R1. Description :4 changes from "wire contributes_to/depends_on" to "wire what it serves, propose values". :18 becomes the FR §5.1 edge contract with `set_by: agent-proposed`. :19 keeps `needs` and drops `soft_depends_on` and `supersedes`. :23 keeps effort and adds dates with class (R5). :24: the default `intent` of 3 is removed, and the line goes entirely if FQ10 drops the field. A headless context is added (R1). |
-| `plugins/ida/agents/pauli.md`                                                                                                                       | :104 "two-axis model (target severity magnitude vs contributing edge weight probability)" becomes: pauli drafts link proposals and estimates target prices directly, leaving intent untouched. :23 "carry … severity magnitude" becomes "carry worth".                                                                                                                                                                                                      |
-| `plugins/ida/agents/ida.md`                                                                                                                         | Adds that valuation asks reach the attention queue through routine notice and the digest (R7). The one-question cap :125 is unchanged.                                                                                                                                                                                                                                                                                                                      |
-| `plugins/ida/skills/remember/SKILL.md`                                                                                                              | :22 "carry only graph weights and severity" becomes "carry only worth". :37 "a wikilink … is a real graph edge" is qualified as not read by the flow, pending FQ23. :45 `/pkb:q` becomes `/ida:q`.                                                                                                                                                                                                                                                          |
-| `plugins/ida/skills/remember/references/consolidation.md`                                                                                           | Adds a weekly densify stage that runs `wf-densify` (R3).                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `plugins/ida/skills/workflow-library/workflows/wf-reconcile.md`                                                                                     | Adds deadline upkeep (R5) and source-stated retirement (R6). :49 reserved fields add `deadline_class: hard` and target worth.                                                                                                                                                                                                                                                                                                                               |
-| `plugins/ida/skills/decide/SKILL.md`                                                                                                                | Draws open items from the daily note (which carries ask queue items from reconcile per R7).                                                                                                                                                                                                                                                                                                                                                                 |
-| `plugins/ida/skills/decompose/SKILL.md`                                                                                                             | :21 and :30: probes wire `settles` and options wire `alternative` (FQ8). `depends_on` becomes `needs`; `soft_depends_on` becomes `supports` at the default quantum.                                                                                                                                                                                                                                                                                         |
-| `plugins/ida/skills/reify/SKILL.md`, `plugins/ida/skills/dispatch/SKILL.md`                                                                         | `depends_on` becomes `needs` in :20, :43, :79-80 and dispatch :14. Readiness keeps its meaning (FR:517).                                                                                                                                                                                                                                                                                                                                                    |
-| `plugins/ida/skills/pull/SKILL.md`, `plugins/ida/skills/dump/SKILL.md`                                                                              | "wire directed `blocks` edges" becomes "wire a `needs` edge from the blocked task" (FR:334).                                                                                                                                                                                                                                                                                                                                                                |
-| `plugins/ida/skills/workflow-library/SKILL.md` and templates `wf-escalated-approval`, `wf-research-and-implement`, `wf-code-task-base`, `wf-finish` | `depends_on` becomes `needs` in the skill and the first three templates. The parent in `wf-finish` follows FQ1.                                                                                                                                                                                                                                                                                                                                             |
-| New universal template `wf-densify` (in `plugins/ida/skills/workflow-library/workflows/`)                                                           | R3 as an outline: pool, ordering, granularity, table, reply grammar, readback, exit criteria.                                                                                                                                                                                                                                                                                                                                                               |
-| New universal template `wf-price-targets` (same directory)                                                                                          | R4 as an outline.                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| PKB-tier template `wf-weight-repair`                                                                                                                | Retired in favour of `wf-densify`. Its granularity rule, correction tests and "measure from the source of record" rule move across.                                                                                                                                                                                                                                                                                                                         |
-| PKB-tier template `wf-email-sweep`                                                                                                                  | Module C gains R2 steps 1-6.                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| PKB note _Email Triage Workflow Patterns & Guardrails_                                                                                              | Adds the `opportunity` class, the date rule (R2.4) and the no-weight-from-sender rule (R2.5).                                                                                                                                                                                                                                                                                                                                                               |
-| PKB spec _Standing-Weight Elicitation Instrument_                                                                                                   | Superseded by R4 and FR §5.6. Agents estimate and write target worth directly with evidence; stored worth has no decay.                                                                                                                                                                                                                                                                                                                                     |
-| `.agents/skills/triage/SKILL.md`                                                                                                                    | :219-220 "raise the `stated_weight`" becomes "add a row to the next densify batch".                                                                                                                                                                                                                                                                                                                                                                         |
-| `specs/meta/naming-and-decisions.md`                                                                                                                | :150 densify text changes to the FR edge contract. :68-76 option nodes become `alternative` edges.                                                                                                                                                                                                                                                                                                                                                          |
-| `specs/workflows/capture-intake.md`, `specs/workflows/research-decomposition.md`, `specs/enforcement/task-contract.md`                              | References to "valued at intake" now point to R1. The stale `brief` skill references (`specs/enforcement/task-contract.md:43`, `specs/workflows/research-decomposition.md:30`) are corrected to `/q`.                                                                                                                                                                                                                                                       |
+| File | Change |
+| - | - |
+| `plugins/ida/skills/q/SKILL.md` | Steps 4-6 are replaced by R1. Description :4 changes from "wire contributes_to/depends_on" to "wire what it serves, propose values". :18 becomes the FR §5.1 edge contract with `set_by: agent-proposed`. :19 keeps `needs` and drops `soft_depends_on` and `supersedes`. :23 keeps effort and adds dates with class (R5). :24: the default `intent` of 3 is removed, and the line goes entirely if FQ10 drops the field. A headless context is added (R1). |
+| `plugins/ida/agents/pauli.md` | :104 "two-axis model (target severity magnitude vs contributing edge weight probability)" becomes: pauli drafts link proposals and estimates target prices directly, leaving intent untouched. :23 "carry … severity magnitude" becomes "carry worth". |
+| `plugins/ida/agents/ida.md` | Adds that valuation asks reach the attention queue through routine notice and the digest (R7). The one-question cap :125 is unchanged. |
+| `plugins/ida/skills/remember/SKILL.md` | :22 "carry only graph weights and severity" becomes "carry only worth". :37 "a wikilink … is a real graph edge" is qualified as not read by the flow, pending FQ23. :45 `/pkb:q` becomes `/ida:q`. |
+| `plugins/ida/skills/remember/references/consolidation.md` | Adds a weekly densify stage that runs `wf-densify` (R3). |
+| `plugins/ida/skills/workflow-library/workflows/wf-reconcile.md` | Adds deadline upkeep (R5) and source-stated retirement (R6). :49 reserved fields add `deadline_class: hard` and target worth. |
+| `plugins/ida/skills/decide/SKILL.md` | Draws open items from the daily note (which carries ask queue items from reconcile per R7). |
+| `plugins/ida/skills/decompose/SKILL.md` | :21 and :30: probes wire `settles` and options wire `alternative` (FQ8). `depends_on` becomes `needs`; `soft_depends_on` becomes `supports` at the default quantum. |
+| `plugins/ida/skills/reify/SKILL.md`, `plugins/ida/skills/dispatch/SKILL.md` | `depends_on` becomes `needs` in :20, :43, :79-80 and dispatch :14. Readiness keeps its meaning (FR:517). |
+| `plugins/ida/skills/pull/SKILL.md`, `plugins/ida/skills/dump/SKILL.md` | "wire directed `blocks` edges" becomes "wire a `needs` edge from the blocked task" (FR:334). |
+| `plugins/ida/skills/workflow-library/SKILL.md` and templates `wf-escalated-approval`, `wf-research-and-implement`, `wf-code-task-base`, `wf-finish` | `depends_on` becomes `needs` in the skill and the first three templates. The parent in `wf-finish` follows FQ1. |
+| New universal template `wf-densify` (in `plugins/ida/skills/workflow-library/workflows/`) | R3 as an outline: pool, ordering, granularity, table, reply grammar, readback, exit criteria. |
+| New universal template `wf-price-targets` (same directory) | R4 as an outline. |
+| PKB-tier template `wf-weight-repair` | Retired in favour of `wf-densify`. Its granularity rule, correction tests and "measure from the source of record" rule move across. |
+| PKB-tier template `wf-email-sweep` | Module C gains R2 steps 1-6. |
+| PKB note _Email Triage Workflow Patterns & Guardrails_ | Adds the `opportunity` class, the date rule (R2.4) and the no-weight-from-sender rule (R2.5). |
+| PKB spec _Standing-Weight Elicitation Instrument_ | Superseded by R4 and FR §5.6. Agents estimate and write target worth directly with evidence; stored worth has no decay. |
+| `.agents/skills/triage/SKILL.md` | :219-220 "raise the `stated_weight`" becomes "add a row to the next densify batch". |
+| `specs/meta/naming-and-decisions.md` | :150 densify text changes to the FR edge contract. :68-76 option nodes become `alternative` edges. |
+| `specs/workflows/capture-intake.md`, `specs/workflows/research-decomposition.md`, `specs/enforcement/task-contract.md` | References to "valued at intake" now point to R1. The stale `brief` skill references (`specs/enforcement/task-contract.md:43`, `specs/workflows/research-decomposition.md:30`) are corrected to `/q`. |
 
 **Unchanged** (read in full; nothing to change): agy, axioms, craft, hydrate, learn,
 premise-check, session-trace, strategic-review, strategize, verify; templates `wf-fact-check`, `wf-qa`,
@@ -434,27 +434,27 @@ on the mem build.
 
 Each test can be checked by an observer reading the graph or a transcript.
 
-| #   | Criterion                             | Test (observable)                                                                                                                                                                                                                          | Traces to     |
-| --- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- |
-| A1  | `/q` writes only proposals            | Run `/q` on three fixture asks. `get_task` on each new node shows every outgoing edge with `label`, `effect`, a justification and `set_by: agent-proposed`. None shows `set_by: nic`, `intent`, `severity` or target worth.                | S7, U9, R1    |
-| A2  | A bare idea carries nothing           | `/q` on an idea that names no target. The node has a container and no other edge. Flow `gain` and `loss_averted` are both 0.                                                                                                               | U9, I7        |
-| A3  | An opportunity is one node            | Fingerprint every other node's fields before and after `/q` on an opportunity. Only the new node and its own edges differ.                                                                                                                 | U10, I9       |
-| A4  | The circular stays quiet              | Replay calibration case 1 (the "Dear Friends" Copyright Plus forward) through R2. It is classed `reference`, or captured with `deadline_class: fake` and no edge above the default quantum. It is not in the top 50 under any display key. | U1, U15       |
-| A5  | No worth from a sender                | Two fixture emails, identical except the sender (a strategic contact versus an unknown). They produce identical edge proposals.                                                                                                            | FR:498, U1    |
-| A6  | Densify batch shape                   | One `wf-densify` run produces one message with ≤ 50 rows, sorted by reach in descending order, each row carrying every column.                                                                                                             | S7, U20       |
-| A7  | Densify writes proposals directly     | One `wf-densify` run writes edge proposals as `agent-proposed` without pausing for sign-off. The readback is in the transcript.                                                                                                            | U20, R3       |
-| A8  | Silence approves nothing              | Leave a batch unanswered for 14 days. No edge in it changed `set_by`, and the batch is withdrawn.                                                                                                                                          | U20           |
-| A9  | Unapproved means default              | Before approval, the flow output for a row's source equals its output with that edge's quantum set to the default.                                                                                                                         | FR:474, S7    |
-| A10 | Target pricing by agent estimation    | Agents work out approximate target worth and write it directly to the target node with evidence, leaving `intent` untouched.                                                                                                               | S14, R4       |
-| A11 | Dates default to fake                 | `/q` on an input with a date and no acceptance gives `deadline_class: fake`, and the cliff lane does not surface it.                                                                                                                       | S5, U15, I17  |
-| A12 | Soft hardens on the second extension  | Fixture: soft date, extended once, then again. After the second extension the class is `hard`, `deadline_history` has two entries, and the next digest has one line about it. After the first extension the class is still `soft`.         | S5, G11, K1   |
-| A13 | Fake never hardens                    | Extend a `fake` date three times. The class is still `fake`.                                                                                                                                                                               | S5            |
-| A14 | One input retires                     | A statement says "drop X". X reads `cancelled` with a `not ripe:` reason, and no other node's fields changed. X's flow pull is zero on the next run.                                                                                       | S6, U19, I9   |
-| A15 | Nothing retires by age                | Over a 30-day replay of sleep-cycle and reconcile runs on a fixture graph, no opportunity is cancelled without a quoted statement.                                                                                                         | S6            |
-| A16 | Budget held                           | Over one week of transcripts there is ≤ 1 sitting, ≤ 7 priority asks, 0 in-conversation valuation questions, and no queue item presented twice.                                                                                            | R7, K2        |
-| A17 | Weights explain themselves            | Ask "why does X carry this?" for 5 nodes. Each answer names priced targets and routes matching X's `stake` map.                                                                                                                            | U18, I12      |
-| A18 | Harms are wired, not netted           | `/q` on work that advances one target and endangers another. It produces two edges, one `helps` and one `harms`, and the flow output shows both figures non-zero.                                                                          | S12, S16, I15 |
-| A19 | Every changed file changed as §9 says | Diff of the implementation PR against §9: every row is present, and no unlisted skill changed.                                                                                                                                             | this spec     |
+| # | Criterion | Test (observable) | Traces to |
+| - | - | - | - |
+| A1 | `/q` writes only proposals | Run `/q` on three fixture asks. `get_task` on each new node shows every outgoing edge with `label`, `effect`, a justification and `set_by: agent-proposed`. None shows `set_by: nic`, `intent`, `severity` or target worth. | S7, U9, R1 |
+| A2 | A bare idea carries nothing | `/q` on an idea that names no target. The node has a container and no other edge. Flow `gain` and `loss_averted` are both 0. | U9, I7 |
+| A3 | An opportunity is one node | Fingerprint every other node's fields before and after `/q` on an opportunity. Only the new node and its own edges differ. | U10, I9 |
+| A4 | The circular stays quiet | Replay calibration case 1 (the "Dear Friends" Copyright Plus forward) through R2. It is classed `reference`, or captured with `deadline_class: fake` and no edge above the default quantum. It is not in the top 50 under any display key. | U1, U15 |
+| A5 | No worth from a sender | Two fixture emails, identical except the sender (a strategic contact versus an unknown). They produce identical edge proposals. | FR:498, U1 |
+| A6 | Densify batch shape | One `wf-densify` run produces one message with ≤ 50 rows, sorted by reach in descending order, each row carrying every column. | S7, U20 |
+| A7 | Densify writes proposals directly | One `wf-densify` run writes edge proposals as `agent-proposed` without pausing for sign-off. The readback is in the transcript. | U20, R3 |
+| A8 | Silence approves nothing | Leave a batch unanswered for 14 days. No edge in it changed `set_by`, and the batch is withdrawn. | U20 |
+| A9 | Unapproved means default | Before approval, the flow output for a row's source equals its output with that edge's quantum set to the default. | FR:474, S7 |
+| A10 | Target pricing by agent estimation | Agents work out approximate target worth and write it directly to the target node with evidence, leaving `intent` untouched. | S14, R4 |
+| A11 | Dates default to fake | `/q` on an input with a date and no acceptance gives `deadline_class: fake`, and the cliff lane does not surface it. | S5, U15, I17 |
+| A12 | Soft hardens on the second extension | Fixture: soft date, extended once, then again. After the second extension the class is `hard`, `deadline_history` has two entries, and the next digest has one line about it. After the first extension the class is still `soft`. | S5, G11, K1 |
+| A13 | Fake never hardens | Extend a `fake` date three times. The class is still `fake`. | S5 |
+| A14 | One input retires | A statement says "drop X". X reads `cancelled` with a `not ripe:` reason, and no other node's fields changed. X's flow pull is zero on the next run. | S6, U19, I9 |
+| A15 | Nothing retires by age | Over a 30-day replay of sleep-cycle and reconcile runs on a fixture graph, no opportunity is cancelled without a quoted statement. | S6 |
+| A16 | Budget held | Over one week of transcripts there is ≤ 1 sitting, ≤ 7 priority asks, 0 in-conversation valuation questions, and no queue item presented twice. | R7, K2 |
+| A17 | Weights explain themselves | Ask "why does X carry this?" for 5 nodes. Each answer names priced targets and routes matching X's `stake` map. | U18, I12 |
+| A18 | Harms are wired, not netted | `/q` on work that advances one target and endangers another. It produces two edges, one `helps` and one `harms`, and the flow output shows both figures non-zero. | S12, S16, I15 |
+| A19 | Every changed file changed as §9 says | Diff of the implementation PR against §9: every row is present, and no unlisted skill changed. | this spec |
 
 ## 12. Settled decisions
 
@@ -500,15 +500,15 @@ All questions K1–K11 are settled under the product-grade workflow redesign:
 
 ## 14. Traceability
 
-| Requirement     | Brief / stories                                                                         |
-| --------------- | --------------------------------------------------------------------------------------- |
-| R1 placement    | S2, S7, S12, I7, I9, U8-U11, U13                                                        |
-| R2 email        | U1, U15, S5, S7                                                                         |
-| R3 densify      | S7, U20, B "densify routine in batches of fifty"                                        |
-| R4 pricing      | S14, S12, S16, U20                                                                      |
-| R5 deadlines    | S5, S13, I11, I17, U14, U15, G11                                                        |
-| R6 ripeness     | S6, U19, I9, G10                                                                        |
-| 7.3 decisions   | U12, I10                                                                                |
-| 7.4 explanation | U18, I12                                                                                |
-| R7 budget       | U20, S11                                                                                |
-| §9, §13         | brief "Existing work this would supersede"; common expectations "names what is removed" |
+| Requirement | Brief / stories |
+| - | - |
+| R1 placement | S2, S7, S12, I7, I9, U8-U11, U13 |
+| R2 email | U1, U15, S5, S7 |
+| R3 densify | S7, U20, B "densify routine in batches of fifty" |
+| R4 pricing | S14, S12, S16, U20 |
+| R5 deadlines | S5, S13, I11, I17, U14, U15, G11 |
+| R6 ripeness | S6, U19, I9, G10 |
+| 7.3 decisions | U12, I10 |
+| 7.4 explanation | U18, I12 |
+| R7 budget | U20, S11 |
+| §9, §13 | brief "Existing work this would supersede"; common expectations "names what is removed" |
