@@ -37,7 +37,7 @@ Reviewers select 3-4 relevant lenses (e.g. Scope discipline, Self-consistency, A
 Synthesize reviewer outputs into a unified findings table:
 
 | Reviewer | Issue | Feedback | Severity |
-| -------- | ----- | -------- | -------- |
+| - | - | - | - |
 
 - Collapse concordant findings across reviewers into a single row that keeps each reviewer's own severity; where they differ, state the severity adopted and why.
 - Give the fit verdict its own row (`FIT`/`MISFIT`), even when concordant with other rows.

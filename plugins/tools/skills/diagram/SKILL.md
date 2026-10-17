@@ -11,15 +11,15 @@ Mermaid and Excalidraw diagramming standards, layout routing, and visual invaria
 
 Identify the chart's core objective (the action or decision it enables) and reader context before drawing.
 
-| Reader question          | Layout family         | Guidance                                           |
-| ------------------------ | --------------------- | -------------------------------------------------- |
-| "What do I do next?"     | Containment + state   | Group by navigation paths; emphasize active items. |
-| "How does this work?"    | Flow / sequence       | Directional arrows; default to Mermaid.            |
-| "Where does this fit?"   | Containment / nesting | Boundary nesting up to ~3 levels deep.             |
-| "How do these compare?"  | Matrix / grid         | Uniform grid with comparable cells.                |
-| "What changed / is off?" | Anomaly / comparison  | Highlight outliers without data smoothing.         |
-| "When does this happen?" | Timeline              | Position strictly encodes chronological time.      |
-| "What is central here?"  | Radial / hub          | Focal node centered with balanced spokes.          |
+| Reader question | Layout family | Guidance |
+| - | - | - |
+| "What do I do next?" | Containment + state | Group by navigation paths; emphasize active items. |
+| "How does this work?" | Flow / sequence | Directional arrows; default to Mermaid. |
+| "Where does this fit?" | Containment / nesting | Boundary nesting up to ~3 levels deep. |
+| "How do these compare?" | Matrix / grid | Uniform grid with comparable cells. |
+| "What changed / is off?" | Anomaly / comparison | Highlight outliers without data smoothing. |
+| "When does this happen?" | Timeline | Position strictly encodes chronological time. |
+| "What is central here?" | Radial / hub | Focal node centered with balanced spokes. |
 
 ### Visual channel rules
 
@@ -46,13 +46,13 @@ Identify the chart's core objective (the action or decision it enables) and read
 
 ### Aesthetic defaults
 
-| Property      | Value             | Rationale                      |
-| ------------- | ----------------- | ------------------------------ |
-| `roughness`   | `2`               | Sketch aesthetic               |
-| `fontFamily`  | `1` (Virgil)      | Hand-drawn typeface            |
-| `fillStyle`   | `"hachure"`       | Sketch hatching                |
-| `strokeStyle` | `"solid"`         | Consistent hand-drawn stroke   |
-| Background    | White (`#ffffff`) | High contrast and printability |
+| Property | Value | Rationale |
+| - | - | - |
+| `roughness` | `2` | Sketch aesthetic |
+| `fontFamily` | `1` (Virgil) | Hand-drawn typeface |
+| `fillStyle` | `"hachure"` | Sketch hatching |
+| `strokeStyle` | `"solid"` | Consistent hand-drawn stroke |
+| Background | White (`#ffffff`) | High contrast and printability |
 
 ### Layered composition
 
@@ -152,13 +152,13 @@ Reconcile user canvas edits with `diff` and `sync` back to markdown frontmatter 
 
 ## Palette
 
-| Role               | Hex                      | Role               | Hex                      |
-| ------------------ | ------------------------ | ------------------ | ------------------------ |
-| Emphasis / headers | `#c9b458` (gold)         | Error / blocked    | `#ff6666` (soft red)     |
-| Success / active   | `#8fbc8f` (soft green)   | Text / labels      | `#1a1a1a` (primary dark) |
-| Active accent      | `#76c893` (bright green) | De-emphasized text | `#888888` (muted)        |
-| Info / links       | `#7a9fbf` (soft blue)    | Borders / arrows   | `#404040` (charcoal)     |
-| Warning / queued   | `#ffa500` (orange)       | Completed fills    | `#252525` (surface)      |
+| Role | Hex | Role | Hex |
+| - | - | - | - |
+| Emphasis / headers | `#c9b458` (gold) | Error / blocked | `#ff6666` (soft red) |
+| Success / active | `#8fbc8f` (soft green) | Text / labels | `#1a1a1a` (primary dark) |
+| Active accent | `#76c893` (bright green) | De-emphasized text | `#888888` (muted) |
+| Info / links | `#7a9fbf` (soft blue) | Borders / arrows | `#404040` (charcoal) |
+| Warning / queued | `#ffa500` (orange) | Completed fills | `#252525` (surface) |
 
 - Maximum 4--6 colors per diagram.
 - Opacity: 10--35% for fills with `#1a1a1a` text; 4.5:1 minimum contrast.

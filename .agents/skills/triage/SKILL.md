@@ -7,11 +7,11 @@ description: "Triage a corpus, classify, and dispatch outputs. Three modes: retr
 
 # /triage — triage a corpus, classify, dispatch
 
-| Mode    | Corpus                              | Primary output                 |
-| ------- | ----------------------------------- | ------------------------------ |
-| `retro` | Session transcripts (one at a time) | GitHub issues filed via `gh`   |
-| `trend` | Many sessions / audit files         | Trend report + recommendations |
-| `sweep` | Open GitHub issues                  | PKB tasks, fix-epics, closures |
+| Mode | Corpus | Primary output |
+| - | - | - |
+| `retro` | Session transcripts (one at a time) | GitHub issues filed via `gh` |
+| `trend` | Many sessions / audit files | Trend report + recommendations |
+| `sweep` | Open GitHub issues | PKB tasks, fix-epics, closures |
 
 **Read [`references/forensic-scope.md`](references/forensic-scope.md) before
 starting any mode.** Its in-scope/out-of-scope split and its anonymisation clause
@@ -133,9 +133,9 @@ format:
 
 ## Objectives Verdict
 
-| Objective | Verdict                                      | Evidence |
-| --------- | -------------------------------------------- | -------- |
-| [obj 1]   | ANSWERED / PARTIALLY ANSWERED / UNANSWERABLE | [why]    |
+| Objective | Verdict | Evidence |
+| - | - | - |
+| [obj 1] | ANSWERED / PARTIALLY ANSWERED / UNANSWERABLE | [why] |
 
 ## Individual Assessments
 
@@ -163,15 +163,15 @@ Triage open issues on `nicsuzor/academicOps`, at most 20 per cycle.
 Fetch the open issues, taking the focal issue first where one is named, and
 classify each:
 
-| Disposition             | Criterion                                             | Action                                                                                   | Label                   |
-| ----------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------- |
-| `close-as-stale`        | >90d old, no activity, or describes retired behavior. | Close issue with explanatory comment.                                                    | `triaged-stale`         |
-| `consolidate-duplicate` | Describes the same underlying problem.                | Merge details into canonical issue; close duplicate with cross-link comment (`#N`).      | `triaged-duplicate`     |
-| `aggregate`             | Multiple issues sharing one root cause/fix surface.   | Fold into one `fix-epic` task (leave queued); close source issues with pointer comments. | `triaged-aggregate`     |
-| `evidence-bump`         | Accumulates evidence for a related open issue/epic.   | Leave open; add comment citing canonical issue (`#N`).                                   | `triaged-evidence-bump` |
-| `single-task`           | Atomic task (AC clear, ≤3 files, obvious fix).        | File polecat task with `Closes #N`.                                                      | `triaged-single`        |
-| `fix-epic`              | Multi-step, multi-file, or design-required work.      | Create epic task, leave at `inbox` for the user to brief.                                | `triaged-epic`          |
-| `defer`                 | Real but blocked or low-criticality.                  | Apply defer label and revisit-by date.                                                   | `triaged-defer`         |
+| Disposition | Criterion | Action | Label |
+| - | - | - | - |
+| `close-as-stale` | >90d old, no activity, or describes retired behavior. | Close issue with explanatory comment. | `triaged-stale` |
+| `consolidate-duplicate` | Describes the same underlying problem. | Merge details into canonical issue; close duplicate with cross-link comment (`#N`). | `triaged-duplicate` |
+| `aggregate` | Multiple issues sharing one root cause/fix surface. | Fold into one `fix-epic` task (leave queued); close source issues with pointer comments. | `triaged-aggregate` |
+| `evidence-bump` | Accumulates evidence for a related open issue/epic. | Leave open; add comment citing canonical issue (`#N`). | `triaged-evidence-bump` |
+| `single-task` | Atomic task (AC clear, ≤3 files, obvious fix). | File polecat task with `Closes #N`. | `triaged-single` |
+| `fix-epic` | Multi-step, multi-file, or design-required work. | Create epic task, leave at `inbox` for the user to brief. | `triaged-epic` |
+| `defer` | Real but blocked or low-criticality. | Apply defer label and revisit-by date. | `triaged-defer` |
 
 Apply low blast-radius dispositions autonomously. Gate only on an ambiguous
 classification, an add-or-escalate enforcement proposal (step 2 below), or a hard

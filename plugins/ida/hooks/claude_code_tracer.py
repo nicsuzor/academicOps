@@ -108,6 +108,12 @@ def resolve_canonical_project(project: str | None, config: dict | None = None) -
     if not project_str:
         return project
 
+    if project_str in DEFAULT_CANONICAL_ALIASES:
+        return DEFAULT_CANONICAL_ALIASES[project_str]
+    for k, v in DEFAULT_CANONICAL_ALIASES.items():
+        if k.lower() == project_str.lower():
+            return v
+
     projects = config.get("projects", {}) if config else {}
     if isinstance(projects, dict) and project_str in projects:
         return project_str
@@ -233,57 +239,36 @@ def resolve_project_from_dir(cwd: str) -> str:
     return ""
 
 
+def resolve_checkout_root(cwd: str | None = None) -> str:
+    """Resolve the git checkout root directory from cwd, or return cwd."""
+    if not cwd:
+        return ""
+    try:
+        p = Path(cwd).resolve()
+        for parent in (p, *p.parents):
+            if (parent / ".git").exists():
+                return str(parent)
+    except Exception:
+        pass
+    return str(Path(cwd).resolve()) if cwd else ""
+
+
 def resolve_project_name(
     data: dict | None = None,
     project: str = "",
     config: dict | None = None,
 ) -> str:
-    """Resolve project name from environment, config, hook payload cwd, or starting dirname.
-
-    Priority:
-    1. Explicit project if non-empty and not 'default'
-    2. PHOENIX_PROJECT_NAME env var (ignoring 'default')
-    3. OTEL_SERVICE_NAME env var (ignoring 'default')
-    4. service.name attribute in OTEL_RESOURCE_ATTRIBUTES env var (ignoring 'default')
-    5. Git repo / worktree resolution from hook payload cwd or CLAUDE_PROJECT_DIR or current working directory
-    6. Directory basename fallback or 'default'
-
-    Any resolved project name is automatically mapped to its canonical slug if defined
-    in polecat.yaml aliases or default canonical aliases.
+    """Resolve project name to the single Phoenix project 'academicOps',
+    honoring explicit overrides (or non-default PHOENIX_PROJECT_NAME)
+    and never deriving project name from directory or cwd.
     """
-    raw_name = ""
     if project and project.strip() and project.strip().lower() != "default":
-        raw_name = project.strip()
-    elif (
+        return project.strip()
+    if (
         env_phoenix := os.environ.get("PHOENIX_PROJECT_NAME", "").strip()
     ) and env_phoenix.lower() != "default":
-        raw_name = env_phoenix
-    elif (
-        env_service := os.environ.get("OTEL_SERVICE_NAME", "").strip()
-    ) and env_service.lower() != "default":
-        raw_name = env_service
-    elif env_res := os.environ.get("OTEL_RESOURCE_ATTRIBUTES", "").strip():
-        for pair in env_res.split(","):
-            if "=" in pair:
-                k, v = pair.split("=", 1)
-                if k.strip() == "service.name" and v.strip() and v.strip().lower() != "default":
-                    raw_name = v.strip()
-                    break
-    if not raw_name:
-        # Directory resolution
-        cwd = resolve_cwd(data)
-        if cwd:
-            raw_name = resolve_project_from_dir(cwd)
-            if not raw_name:
-                name = Path(cwd).resolve().name
-                if name and name not in ("/", "\\", "."):
-                    raw_name = name
-
-    if not raw_name:
-        raw_name = "default"
-
-    canonical = resolve_canonical_project(raw_name, config=config)
-    return canonical or raw_name
+        return env_phoenix
+    return "academicOps"
 
 
 def resolve_cwd(data: dict | None = None, state: dict | None = None) -> str:
@@ -464,16 +449,33 @@ def discover_config(data: dict | None = None) -> dict | None:
 
     project_name = resolve_project_name(data)
 
-    task_id = (
-        (data.get("task_id") if data and isinstance(data, dict) else None)
-        or os.environ.get("AOPS_TASK_ID", "").strip()
-        or os.environ.get("GENAI_ENGINE_TASK_ID", "").strip()
-        or ""
+    task_id_candidates: list[Any] = []
+    if data and isinstance(data, dict):
+        if "task_id" in data:
+            task_id_candidates.append(data["task_id"])
+        if "taskId" in data:
+            task_id_candidates.append(data["taskId"])
+    task_id_candidates.extend(
+        [
+            os.environ.get("AOPS_TASK_ID"),
+            os.environ.get("POLECAT_TARGET_TASK"),
+            os.environ.get("POLECAT_TASK"),
+            os.environ.get("GENAI_ENGINE_TASK_ID"),
+        ]
     )
-    if task_id:
-        canon_task = resolve_canonical_project(task_id)
-        if task_id == project_name or canon_task == project_name or not is_valid_task_id(task_id):
-            task_id = ""
+
+    task_id = ""
+    for candidate in task_id_candidates:
+        if not candidate or not isinstance(candidate, str):
+            continue
+        c = candidate.strip()
+        if not c:
+            continue
+        canon_task = resolve_canonical_project(c)
+        if c == project_name or canon_task == project_name or not is_valid_task_id(c):
+            continue
+        task_id = c
+        break
 
     cwd = resolve_cwd(data)
     agent_name = resolve_agent_name(data, cwd=cwd)
@@ -1399,6 +1401,8 @@ def _build_and_export_spans(
     agent_name: str | None = None,
     cwd: str | None = None,
     known_parents: dict[str, str | None] | None = None,
+    service_name: str | None = None,
+    surface: str | None = None,
 ) -> bool:
     """Create spans from records and export via OTLP gRPC (with fallbacks).
 
@@ -1474,8 +1478,26 @@ def _build_and_export_spans(
                 return bool(self._target.force_flush(timeout_millis))
             return True
 
-    service_name = config.get("service_name") or config.get("project_name") or "academicOps"
-    project_name = config.get("project_name") or "academicOps"
+    if service_name is None:
+        service_name = config.get("service_name")
+    if not service_name:
+        if env_srv := os.environ.get("OTEL_SERVICE_NAME", "").strip():
+            if env_srv.lower() != "default":
+                service_name = env_srv
+    if not service_name:
+        service_name = "aops-claude-hooks"
+
+    if surface is None:
+        surface = config.get("surface") or config.get("aops.surface")
+    if not surface:
+        if os.environ.get("GITHUB_ACTIONS"):
+            surface = "github-actions"
+        elif service_name == "aops-agy-hooks":
+            surface = "agy"
+        else:
+            surface = "claude-code"
+
+    project_name = config.get("project_name") or resolve_project_name()
     task_id = config.get("task_id", "")
     if task_id and not is_valid_task_id(task_id):
         task_id = ""
@@ -1485,6 +1507,18 @@ def _build_and_export_spans(
     if cwd is None:
         cwd = config.get("cwd") or resolve_cwd()
 
+    project_dir = resolve_checkout_root(cwd) if cwd else ""
+    repo = ""
+    if cwd:
+        raw_repo = resolve_project_from_dir(cwd)
+        if raw_repo:
+            canon_repo = resolve_canonical_project(raw_repo) or raw_repo
+            repo = (
+                "academicOps"
+                if canon_repo.lower() in ("aops", "academicops", "academic_ops")
+                else canon_repo
+            )
+
     try:
         host_name = socket.gethostname()
     except Exception:
@@ -1492,10 +1526,15 @@ def _build_and_export_spans(
 
     resource_attrs = {
         "service.name": service_name,
+        "aops.surface": surface,
         "openinference.project.name": project_name,
         "project.name": project_name,
         "session.id": session_id,
     }
+    if repo:
+        resource_attrs["aops.repo"] = repo
+    if project_dir:
+        resource_attrs["project.dir"] = project_dir
     if agent_id:
         resource_attrs["agent.id"] = agent_id
         resource_attrs["subagent.id"] = agent_id
@@ -1512,7 +1551,6 @@ def _build_and_export_spans(
         resource_attrs["agent.name"] = agent_name
     if cwd:
         resource_attrs["cwd"] = cwd
-        resource_attrs["project.dir"] = cwd
     github_attrs = _github_resource_attrs()
     resource_attrs.update(github_attrs)
 
@@ -1612,7 +1650,12 @@ def _build_and_export_spans(
                 pass
 
             span.set_attribute("service.name", service_name)
+            span.set_attribute("aops.surface", surface)
             span.set_attribute("session.id", session_id)
+            if repo:
+                span.set_attribute("aops.repo", repo)
+            if project_dir:
+                span.set_attribute("project.dir", project_dir)
             if agent_name:
                 span.set_attribute("agent.name", agent_name)
             if agent_id:
@@ -1624,7 +1667,6 @@ def _build_and_export_spans(
                 span.set_attribute("user.id", username)
             if cwd:
                 span.set_attribute("cwd", cwd)
-                span.set_attribute("project.dir", cwd)
             span.set_attribute("project.name", project_name)
             span.set_attribute("openinference.project.name", project_name)
             if task_id:

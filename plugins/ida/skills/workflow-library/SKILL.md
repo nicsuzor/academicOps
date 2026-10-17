@@ -11,11 +11,11 @@ Manage composable workflow templates (`type: template`) across three resolution 
 
 Resolution order is **Project > PKB > Universal**. Higher tiers shadow lower tiers completely; never merge text across tiers.
 
-| Tier         | Location                                            | Enumeration                                                                |
-| ------------ | --------------------------------------------------- | -------------------------------------------------------------------------- |
-| 1. Project   | PKB templates whose `project` is the task's project | `pkb.list_tasks(type="template", project=<project>, include_done=True)`    |
-| 2. PKB       | PKB templates with no `project`                     | `pkb.list_tasks(type="template", include_done=True)`, keep `project: null` |
-| 3. Universal | `${CLAUDE_SKILL_DIR}/workflows/`                    | `Glob ${CLAUDE_SKILL_DIR}/workflows/*.md`                                  |
+| Tier | Location | Enumeration |
+| - | - | - |
+| 1. Project | PKB templates whose `project` is the task's project | `pkb.list_tasks(type="template", project=<project>, include_done=True)` |
+| 2. PKB | PKB templates with no `project` | `pkb.list_tasks(type="template", include_done=True)`, keep `project: null` |
+| 3. Universal | `${CLAUDE_SKILL_DIR}/workflows/` | `Glob ${CLAUDE_SKILL_DIR}/workflows/*.md` |
 
 The project is the `project` field of the task being composed for, or the project the caller names. With neither, the project tier is empty. Templates scoped to any other project are out of scope.
 

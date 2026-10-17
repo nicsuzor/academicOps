@@ -32,14 +32,14 @@ rule was followed.
 
 ## Admission criteria -- a rule belongs in the classifier iff _all_ hold
 
-| # | Criterion                             | The question to ask                                                                                                                               | If it fails                                                                                                 |
-| - | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| 1 | **Judgment-requiring**                | Would a deterministic check need brittle heuristics / regex-for-meaning and false-positive?                                                       | A clean path/AST/flag check works → use `policy_enforcer` or a pre-commit hook, not the classifier.         |
-| 2 | **Per-action observable**             | Is the violation visible in {user messages + the proposed tool call + its parameters} alone, without the agent's reasoning or prior tool outputs? | Only observable across the session or in the agent's prose → enforcer subagent / IDA / review.              |
-| 3 | **Pre-execution is the right moment** | Does catching it _before_ the call beats warning _after_?                                                                                         | Post-hoc is fine or better → PostToolUse / enforcer / review.                                               |
-| 4 | **Not already covered**               | Is it un-caught by any cheaper, reliable mechanism today?                                                                                         | Already caught → don't duplicate (`single-source-of-truth`).                                                |
-| 5 | **Evidence of recurrence**            | Are agents demonstrably _not_ already good at this (≥3 cited recurrences, or explicit user direction)?                                            | No evidence → premature; log it, don't add it.                                                              |
-| 6 | **Survives the denial-cost test**     | Will it fire _rarely and precisely_, and hand the agent a clear safer path on the first denial?                                                   | Fires often / no clean alternative → it will kill autonomous sessions (see Cost model). Redesign or reject. |
+| # | Criterion | The question to ask | If it fails |
+| - | - | - | - |
+| 1 | **Judgment-requiring** | Would a deterministic check need brittle heuristics / regex-for-meaning and false-positive? | A clean path/AST/flag check works → use `policy_enforcer` or a pre-commit hook, not the classifier. |
+| 2 | **Per-action observable** | Is the violation visible in {user messages + the proposed tool call + its parameters} alone, without the agent's reasoning or prior tool outputs? | Only observable across the session or in the agent's prose → enforcer subagent / IDA / review. |
+| 3 | **Pre-execution is the right moment** | Does catching it _before_ the call beats warning _after_? | Post-hoc is fine or better → PostToolUse / enforcer / review. |
+| 4 | **Not already covered** | Is it un-caught by any cheaper, reliable mechanism today? | Already caught → don't duplicate (`single-source-of-truth`). |
+| 5 | **Evidence of recurrence** | Are agents demonstrably _not_ already good at this (≥3 cited recurrences, or explicit user direction)? | No evidence → premature; log it, don't add it. |
+| 6 | **Survives the denial-cost test** | Will it fire _rarely and precisely_, and hand the agent a clear safer path on the first denial? | Fires often / no clean alternative → it will kill autonomous sessions (see Cost model). Redesign or reject. |
 
 ## Cost model -- the constraints that shape every rule
 

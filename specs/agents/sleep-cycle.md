@@ -77,13 +77,13 @@ not pushed by capture.
 
 ## Named consumers
 
-| Consumer        | Reads                                     | Promotion trigger                     |
-| --------------- | ----------------------------------------- | ------------------------------------- |
-| Session start   | `MEMORY.md`, `CLAUDE.md`, env             | Agent behaviour patterns, conventions |
-| PKB search      | `knowledge/`, `memories/`                 | Recurring questions with no answer    |
-| Framework files | index files, specs, axioms                | Framework behaviour changes           |
-| Daily note      | Focus section, task tree, recommendations | Task status, project progress         |
-| Task graph      | Task frontmatter, dependencies            | Status, completion, blocking changes  |
+| Consumer | Reads | Promotion trigger |
+| - | - | - |
+| Session start | `MEMORY.md`, `CLAUDE.md`, env | Agent behaviour patterns, conventions |
+| PKB search | `knowledge/`, `memories/` | Recurring questions with no answer |
+| Framework files | index files, specs, axioms | Framework behaviour changes |
+| Daily note | Focus section, task tree, recommendations | Task status, project progress |
+| Task graph | Task frontmatter, dependencies | Status, completion, blocking changes |
 
 ## Constraints on the cycle
 

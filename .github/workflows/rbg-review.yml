@@ -82,6 +82,14 @@ jobs:
           claude_args: "--model sonnet --agent rbg"
           show_full_output: true
 
+      - name: Check OTel tracer status
+        if: always()
+        run: |
+          if [ -s "$RUNNER_TEMP/aops-otel/tracer_error" ]; then
+            echo "::warning::OTel tracing encountered runtime errors:"
+            cat "$RUNNER_TEMP/aops-otel/tracer_error"
+          fi
+
       - name: Remove Label
         # Always remove the label at the end, whether success or failure,
         # so it can be re-applied later to trigger another review.

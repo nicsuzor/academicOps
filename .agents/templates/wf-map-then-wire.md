@@ -16,9 +16,6 @@ tags:
 - incremental-rollout
 title: wf-map-then-wire
 type: template
----
-
----
 requires: [wf-verification, wf-escalated-approval]
 pairs-with: [wf-handover, wf-design-conversation]
 recommends: [wf-self-test]

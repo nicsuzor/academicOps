@@ -280,6 +280,14 @@ jobs:
           if-no-files-found: ignore
           retention-days: 30
 
+      - name: Check OTel tracer status
+        if: always()
+        run: |
+          if [ -s "$RUNNER_TEMP/aops-otel/tracer_error" ]; then
+            echo "::warning::OTel tracing encountered runtime errors:"
+            cat "$RUNNER_TEMP/aops-otel/tracer_error"
+          fi
+
       # Post terminal responder-status. The merge gate does NOT require this status
       # (§4.2 — informational only); it exists for diagnostics and the SHA-skip check.
       - name: Post terminal responder-status

@@ -16,11 +16,11 @@ task-like captures into tasks in place.
 
 ## Coverage
 
-| Piece                                                                                          | State                                                               |
-| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Capture front ends land raw notes in `notes/mobile-captures/` (`type: note`)                   | Installer-supplied                                                  |
-| Manual triage (Task / Note / Expand / Discard) at `/daily` step 1.5                            | Built -- remains the fallback this route defers to                  |
-| Standing, automated pickup context in `/q`                                                     | Built (`plugins/ida/skills/q/SKILL.md`)                             |
+| Piece | State |
+| - | - |
+| Capture front ends land raw notes in `notes/mobile-captures/` (`type: note`) | Installer-supplied |
+| Manual triage (Task / Note / Expand / Discard) at `/daily` step 1.5 | Built -- remains the fallback this route defers to |
+| Standing, automated pickup context in `/q` | Built (`plugins/ida/skills/q/SKILL.md`) |
 | PKB write that moves, renames and retypes a document while keeping its ID (`convert_document`) | Built in `nicsuzor/mem#659` (requires MCP `tools/list` publication) |
 
 ## The unprocessed marker
@@ -59,10 +59,10 @@ ambiguous parent with `AskUserQuestion`. A capture note picked up headlessly has
 so `/q` exposes two invocation contexts on the same pattern `/reconcile` uses (input subset changes,
 procedure does not):
 
-| Context          | Owner | Behaviour when classification/parenting is unclear                           |
-| ---------------- | ----- | ---------------------------------------------------------------------------- |
-| Interactive      | `/q`  | Asks, via `AskUserQuestion`.                                                 |
-| Automated pickup | `/q`  | Does not guess. Leaves the capture note untouched and moves to the next one. |
+| Context | Owner | Behaviour when classification/parenting is unclear |
+| - | - | - |
+| Interactive | `/q` | Asks, via `AskUserQuestion`. |
+| Automated pickup | `/q` | Does not guess. Leaves the capture note untouched and moves to the next one. |
 
 This is the answer to "what does the step do when a capture cannot be routed": nothing forced. The
 note stays put, `/daily` step 1.5's existing manual triage is still there for it. No

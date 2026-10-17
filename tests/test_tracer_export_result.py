@@ -94,7 +94,7 @@ def test_missing_exporter_is_reported():
 
 
 @pytest.mark.parametrize("outcome", ["failure", "raise"])
-def test_failed_export_flows_through_to_span_emitted(outcome, tmp_path, monkeypatch):
+def test_failed_export_fails_verdict_and_leaves_gate_armed(outcome, tmp_path, monkeypatch):
     import premise_check_gate as pcg
     import premise_check_verdict as pcv
 
@@ -108,13 +108,13 @@ def test_failed_export_flows_through_to_span_emitted(outcome, tmp_path, monkeypa
         patch.object(claude_code_tracer, "_load_state", return_value={}),
         patch.object(claude_code_tracer, "_create_exporter", return_value=_FakeExporter(outcome)),
     ):
-        result = pcv.record_verdict(
-            session_id="sess-flow",
-            claim_id="c",
-            verdict="PASS",
-            reason="v",
-            tracer_mod=claude_code_tracer,
-        )
+        with pytest.raises(RuntimeError):
+            pcv.record_verdict(
+                session_id="sess-flow",
+                claim_id="c",
+                verdict="PASS",
+                reason="v",
+                tracer_mod=claude_code_tracer,
+            )
 
-    assert result["span_emitted"] is False
-    assert result["span_error"] is None
+    assert pcg.is_armed("sess-flow") is True

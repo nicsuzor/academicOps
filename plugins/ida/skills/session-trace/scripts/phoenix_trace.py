@@ -180,6 +180,12 @@ def resolve_canonical_project(
     if not project_str:
         return project
 
+    if project_str in DEFAULT_CANONICAL_ALIASES:
+        return DEFAULT_CANONICAL_ALIASES[project_str]
+    for k, v in DEFAULT_CANONICAL_ALIASES.items():
+        if k.lower() == project_str.lower():
+            return v
+
     projects = config.get("projects", {}) if config else {}
     if isinstance(projects, dict) and project_str in projects:
         return project_str
