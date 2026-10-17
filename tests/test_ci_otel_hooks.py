@@ -157,10 +157,10 @@ def test_hook_wrapper_exports_config_and_run_identity(tmp_path):
     }
 
 
-def test_project_defaults_to_github_actions(tmp_path):
+def test_project_defaults_to_academic_ops(tmp_path):
     _run(tmp_path, _CONFIGURED)
 
-    assert "PHOENIX_PROJECT_NAME=github-actions" in (tmp_path / "otel" / "hook.sh").read_text()
+    assert "PHOENIX_PROJECT_NAME=academicOps" in (tmp_path / "otel" / "hook.sh").read_text()
 
 
 def test_hook_wrapper_never_fails_the_agent(tmp_path):
