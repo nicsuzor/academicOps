@@ -25,6 +25,19 @@ Before checking rules one by one, and from the request alone, before reading the
 
 Record this assessment in the `### Proportion Assessment` section of your output.
 
+## Published Surface and Visibility Review
+
+When reviewing a candidate publication, pull request, candidate commit, or trust-boundary transition:
+
+1. Inspect the full published surface:
+   - Modified file contents and diffs
+   - Commit messages and trailers
+   - Titles, descriptions, and summaries
+   - Review comments and replies
+2. Evaluate against destination visibility under `data-boundaries`:
+   - Thoroughly inspect the published surface against governing axioms (`data-boundaries`), verifying that published text carries nothing its destination's audience is not entitled to.
+   - For private destinations, verify internal references comply with surface-specific authorization.
+
 ## Apply Each Axiom to the Artifact
 
 The axioms are written as rules for an agent's own conduct. Apply each one to the artifact as well: the artifact breaks an axiom when what it builds, configures or instructs would, once running, do what the axiom forbids an agent to do.
