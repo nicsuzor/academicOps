@@ -22,12 +22,12 @@ As the user, I want each agent reminded of the contract at the moment it writes 
 
 ## Reminders
 
-| Moment                               | Agents    | Reminder                                                                              |
-| ------------------------------------ | --------- | ------------------------------------------------------------------------------------- |
-| Session start, resume and compaction | All       | One line: reports follow `premise-check`, written in its shape and checked on receipt |
-| A peer message arrives               | All       | Your reply is a report; write it per the skill                                        |
-| A report arrives                     | Ida, Sara | Check it per the skill before you act on it, reply or dispatch                        |
-| Gate refusal or `Stop` block         | Ida, Sara | At most two lines naming the claim id and the skill; one line for the user            |
+| Moment | Agents | Reminder |
+| - | - | - |
+| Session start, resume and compaction | All | One line: reports follow `premise-check`, written in its shape and checked on receipt |
+| A peer message arrives | All | Your reply is a report; write it per the skill |
+| A report arrives | Ida, Sara | Check it per the skill before you act on it, reply or dispatch |
+| Gate refusal or `Stop` block | Ida, Sara | At most two lines naming the claim id and the skill; one line for the user |
 
 A report arrives as a foreground subagent's result, a background subagent's notification, a peer message, or a task record whose `## Report` section has no `## Premise-Check Verdict` beside it. Each harness carries these moments on its own hook events; the event map is in [ARCHITECTURE.md](../ARCHITECTURE.md).
 

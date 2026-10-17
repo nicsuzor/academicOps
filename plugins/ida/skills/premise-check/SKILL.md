@@ -34,12 +34,12 @@ Take observed premises with a pointer as given: never open a pointer or redo the
 
 Run four tests on every inference line:
 
-| Test           | Passes when                                                                                             | Failure looks like                                                                                                  |
-| -------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| **Valid**      | The premises meet every condition of the warrant, and the conclusion is no wider than they are.         | A condition no line supplies; a defeater "not tried" that would change the next action; scope drift.                |
-| **Supported**  | Each premise's basis can bear the step's stakes. A conclusion is only as strong as its weakest premise. | A _worker reported, unchecked_ or _assumed_ premise carrying a high-stakes step; "PASS" claimed with no verdict id. |
-| **Answered**   | The final conclusion answers each ask id, or says it has no answer.                                     | The conclusion answers a narrower or different question than the `Asked` lines.                                     |
-| **Sufficient** | Materiality, sufficiency and necessity settle each step (below).                                        | A complex, unbacked warrant on a high-stakes step accepted without one level of decomposition.                      |
+| Test | Passes when | Failure looks like |
+| - | - | - |
+| **Valid** | The premises meet every condition of the warrant, and the conclusion is no wider than they are. | A condition no line supplies; a defeater "not tried" that would change the next action; scope drift. |
+| **Supported** | Each premise's basis can bear the step's stakes. A conclusion is only as strong as its weakest premise. | A _worker reported, unchecked_ or _assumed_ premise carrying a high-stakes step; "PASS" claimed with no verdict id. |
+| **Answered** | The final conclusion answers each ask id, or says it has no answer. | The conclusion answers a narrower or different question than the `Asked` lines. |
+| **Sufficient** | Materiality, sufficiency and necessity settle each step (below). | A complex, unbacked warrant on a high-stakes step accepted without one level of decomposition. |
 
 Proportionality, in order:
 

@@ -25,14 +25,14 @@ Answers: <ask id> ← (6); <ask id>: none
 
 ## Line shapes
 
-| Line       | Shape                                                                                     |
-| ---------- | ----------------------------------------------------------------------------------------- |
-| Ask        | `Asked (<id>): <words>`. Id: `tg-<message id>`, or `<task id>/AC<n>`. No spaces in an id. |
-| Premise    | `(n) <statement>. -- <basis phrase>[ <note>][ [x]...]`                                    |
-| Inference  | Starts `--`, ends `--`. Warrant first, then `Unless:` and its status.                     |
-| Conclusion | The numbered line directly after an inference line. Starts `So`. Carries no basis.        |
-| Answers    | `Answers:` then `<id> ← (n)` or `<id>: none`, separated by `;`.                           |
-| Endnote    | `[x] <pointer>`. Pointers live only here.                                                 |
+| Line | Shape |
+| - | - |
+| Ask | `Asked (<id>): <words>`. Id: `tg-<message id>`, or `<task id>/AC<n>`. No spaces in an id. |
+| Premise | `(n) <statement>. -- <basis phrase>[ <note>][ [x]...]` |
+| Inference | Starts `--`, ends `--`. Warrant first, then `Unless:` and its status. |
+| Conclusion | The numbered line directly after an inference line. Starts `So`. Carries no basis. |
+| Answers | `Answers:` then `<id> ← (n)` or `<id>: none`, separated by `;`. |
+| Endnote | `[x] <pointer>`. Pointers live only here. |
 
 Basis phrases come from [`vocabulary.toml`](vocabulary.toml). A note may follow the phrase after `;` or `:` -- `worker reported, verdict verdict-842af6cb`, `I read it: the policy note says so; not attempted here`.
 

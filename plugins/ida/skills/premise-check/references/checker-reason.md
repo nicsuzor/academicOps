@@ -16,15 +16,15 @@ Relay: "<sentence you will send up>" ← (n), (m)
 Relay: none
 ```
 
-| Key          | Entries                                                                                                  |
-| ------------ | -------------------------------------------------------------------------------------------------------- |
-| `Judged`     | Exactly one. The claim id the gate named, then every ask id in the block.                                |
-| `Valid`      | One per inference line, keyed by the conclusion it yields. `holds`, or `fails` and a defect tag.         |
-| `Supported`  | One. The weakest basis phrase among all premises.                                                        |
-| `Answered`   | One per ask id: the line that answers it, or `unanswered`.                                               |
-| `Sufficient` | One or more, keyed by conclusion: which proportionality test settled each material step.                 |
-| `Waived`     | `none`, or one per waived breach, starting with a format item from [`vocabulary.toml`](vocabulary.toml). |
-| `Relay`      | `none`, or one per sentence you will send up, naming the lines it restates.                              |
+| Key | Entries |
+| - | - |
+| `Judged` | Exactly one. The claim id the gate named, then every ask id in the block. |
+| `Valid` | One per inference line, keyed by the conclusion it yields. `holds`, or `fails` and a defect tag. |
+| `Supported` | One. The weakest basis phrase among all premises. |
+| `Answered` | One per ask id: the line that answers it, or `unanswered`. |
+| `Sufficient` | One or more, keyed by conclusion: which proportionality test settled each material step. |
+| `Waived` | `none`, or one per waived breach, starting with a format item from [`vocabulary.toml`](vocabulary.toml). |
+| `Relay` | `none`, or one per sentence you will send up, naming the lines it restates. |
 
 ## What the recorder refuses
 
