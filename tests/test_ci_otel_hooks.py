@@ -84,6 +84,27 @@ def test_unconfigured_keeps_base_settings(tmp_path):
     assert _settings(tmp_path) == {"env": {"CLAUDE_CODE_ENABLE_TELEMETRY": "1"}}
 
 
+def test_missing_base_settings_file_warns_and_passes_base_unchanged(tmp_path):
+    missing = tmp_path / "nonexistent.json"
+    proc = _run(tmp_path, {}, "--base-settings", str(missing))
+
+    assert proc.returncode == 0, proc.stderr
+    assert "::warning::" in proc.stdout
+    assert "Traceback" not in proc.stderr
+    assert _settings(tmp_path) == {}
+
+
+def test_invalid_json_base_settings_file_warns_and_passes_base_unchanged(tmp_path):
+    invalid = tmp_path / "invalid.json"
+    invalid.write_text("{not valid json")
+    proc = _run(tmp_path, {}, "--base-settings", str(invalid))
+
+    assert proc.returncode == 0, proc.stderr
+    assert "::warning::" in proc.stdout
+    assert "Traceback" not in proc.stderr
+    assert _settings(tmp_path) == {}
+
+
 def test_configured_registers_tracer_for_every_traced_event(tmp_path):
     proc = _run(tmp_path, _CONFIGURED)
 
@@ -159,8 +180,26 @@ def test_hook_wrapper_exports_config_and_run_identity(tmp_path):
 
 def test_project_defaults_to_academic_ops(tmp_path):
     _run(tmp_path, _CONFIGURED)
+    hook_sh = tmp_path / "otel" / "hook.sh"
 
-    assert "PHOENIX_PROJECT_NAME=academicOps" in (tmp_path / "otel" / "hook.sh").read_text()
+    probe = tmp_path / "probe.py"
+    probe.write_text(
+        "import json, os, sys\n"
+        "print(json.dumps({'project': os.environ.get('PHOENIX_PROJECT_NAME')}))\n"
+    )
+    (tmp_path / "otel" / "claude_code_tracer.py").write_text(probe.read_text())
+
+    proc = subprocess.run(
+        [str(hook_sh), "stop"],
+        input='{"session_id": "x"}',
+        env={"PATH": os.environ["PATH"]},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert proc.returncode == 0, proc.stderr
+    assert json.loads(proc.stdout)["project"] == "academicOps"
 
 
 def test_hook_wrapper_never_fails_the_agent(tmp_path):
@@ -177,6 +216,66 @@ def test_hook_wrapper_never_fails_the_agent(tmp_path):
     )
 
     assert proc.returncode == 0
+
+
+def test_hook_wrapper_tracer_error_leaves_marker_and_exits_zero(tmp_path):
+    _run(tmp_path, _CONFIGURED)
+    (tmp_path / "otel" / "claude_code_tracer.py").write_text(
+        "import sys\nsys.stderr.write('Tracer crash occurred\\n')\nsys.exit(2)\n"
+    )
+
+    proc = subprocess.run(
+        [str(tmp_path / "otel" / "hook.sh"), "post_tool"],
+        input="{}",
+        env={"PATH": os.environ["PATH"]},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert proc.returncode == 0
+    marker = tmp_path / "otel" / "tracer_error"
+    assert marker.exists()
+    assert "Tracer crash occurred" in marker.read_text()
+
+
+def test_hook_wrapper_rejected_export_leaves_marker_and_exits_zero(tmp_path):
+    _run(tmp_path, _CONFIGURED)
+    (tmp_path / "otel" / "claude_code_tracer.py").write_text(
+        "import sys\nprint('ERROR: OTel span export failed: 403 Forbidden', file=sys.stderr)\nsys.exit(0)\n"
+    )
+
+    proc = subprocess.run(
+        [str(tmp_path / "otel" / "hook.sh"), "stop"],
+        input="{}",
+        env={"PATH": os.environ["PATH"]},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert proc.returncode == 0
+    marker = tmp_path / "otel" / "tracer_error"
+    assert marker.exists()
+    assert "OTel span export failed" in marker.read_text()
+
+
+def test_hook_wrapper_success_leaves_no_marker(tmp_path):
+    _run(tmp_path, _CONFIGURED)
+    (tmp_path / "otel" / "claude_code_tracer.py").write_text("import sys\nsys.exit(0)\n")
+
+    proc = subprocess.run(
+        [str(tmp_path / "otel" / "hook.sh"), "pre_tool"],
+        input="{}",
+        env={"PATH": os.environ["PATH"]},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert proc.returncode == 0
+    marker = tmp_path / "otel" / "tracer_error"
+    assert not marker.exists()
 
 
 def test_configured_merges_hooks_into_base_settings(tmp_path):
