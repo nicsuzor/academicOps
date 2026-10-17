@@ -42,7 +42,7 @@ _ANY_BASIS = ra.load_vocabulary().basis[0].phrase
 
 
 def _pass_reason(claim_id: str) -> str:
-    """A PASS reason with all seven keyed lines, for judged text with no argument block."""
+    """A PASS reason with all seven keyed lines, for judged text with no argdown block."""
     return "\n".join(
         [
             f"Judged: {claim_id}; asks tg-1",

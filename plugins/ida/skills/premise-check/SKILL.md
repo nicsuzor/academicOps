@@ -11,18 +11,18 @@ A report that rests on evidence ends in an argument whose final conclusion answe
 
 ## Writing the argument
 
-End the report with one `argument` block in the form in [`references/report-form.md`](references/report-form.md).
+End the report with one fenced `argdown` block in the form in [`references/report-form.md`](references/report-form.md).
 
-1. **The ask at the top**, in the asker's own words, one question per `Asked` line, each with the immutable id the report form defines. Copy the ask you were given; never restate it as your own title.
+1. **The ask at the top**, in the asker's own words, one question per `asks` entry, each under the immutable id the report form defines. Copy the ask you were given; never restate it as your own title.
 2. **Numbered premises**, each ending with its basis in words, one of the phrases in [`references/vocabulary.toml`](references/vocabulary.toml). A premise about outside state quotes the value that decides it (`state: MERGED`, `0 hits`).
-3. **Pointers as lettered endnotes** -- paths, lines, span ids, task ids, PRs. Never inline.
-4. **The inference line** states the warrant as a rule that could be false on its own, then `Unless:` naming what would defeat the step and whether it is ruled out by a numbered line, not ruled out, or not tried.
+3. **Pointers as lettered endnotes** under `notes` -- paths, lines, span ids, task ids, PRs -- marked `^a` in the line. Never inline.
+4. **The inference line** states the warrant as a rule that could be false on its own, then `Unless:` naming what would defeat the step and, after `;`, whether it is ruled out by a numbered line, not ruled out, or not tried.
 5. **Write in what is missing** as a numbered line marked _assumed, not checked here_, and put the qualifier it buys in the conclusion ("so, most likely, …").
 6. **Chain** each conclusion into the next step as a numbered line. Join independent findings only through an explicit "and both" step.
-7. **Answer the asks by id** on the `Answers` line. An ask with no answer says so.
+7. **Answer the asks by id** under `answers`. An ask with no answer says `none`.
 8. **Relay upward** only sentences that name the line they restate. A sentence with no line does not go.
 9. **No premise count.** Group premises by the relevance rule in `argument-extraction`; avoid laundry lists.
-10. **Keep machine vocabulary out of the lines.** Basis terms and Argdown attributes belong to tools; the reader sees words.
+10. **Keep machine vocabulary out of the lines.** No `{...}` attributes on a statement; the reader sees words.
 
 Match the conclusion to what the premises can carry: a ranking needs a comparison over the alternatives; a negative or "cannot" needs a failed attempt with its error, or a search with its query, scope and count; a causal or universal claim needs a mechanism or narrows; "should" needs a stated warrant.
 

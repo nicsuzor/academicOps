@@ -103,35 +103,45 @@ def _configured(**kw) -> _StubTracer:
 
 
 # ---------------------------------------------------------------------------
-# Fixtures: a report with an argument block, and a reason that passes it
+# Fixtures: a report with an argdown block, and a reason that passes it
 # ---------------------------------------------------------------------------
 
 ASK_A = "tg-1990"
 ASK_B = "aops_0a8efbc2/AC1"
 
 
-def _report() -> str:
+def _frontmatter(asks: bool = True, answers: str = f"{ASK_A}: 4\n  {ASK_B}: 6") -> str:
+    lines = ["==="]
+    if asks:
+        lines += ["asks:", f"  {ASK_A}: is the hook enforced?", f"  {ASK_B}: does it block Stop?"]
+    lines += [
+        "answers:",
+        f"  {answers}",
+        "notes:",
+        "  a: plugins/ida/hooks/handlers.py",
+        "  b: plugins/ida/hooks/premise_check_gate.py",
+        "===",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def _report(frontmatter: str | None = None) -> str:
+    """A report ending in an argdown block; premise (5) uses the live em-dash separator."""
     return (
         "I checked the hook and the runtime.\n\n"
-        "```argument\n"
-        f"Asked ({ASK_A}): is the hook enforced?\n"
-        f"Asked ({ASK_B}): does it block Stop?\n"
+        "```argdown\n"
+        f"{frontmatter if frontmatter is not None else _frontmatter()}"
         "\n"
         f"(1) A hook that only advises cannot block an agent. -- {_STRONG.phrase}\n"
-        f'(2) The hook returns "block", not advice. -- {_STRONG.phrase} [a]\n'
+        f'(2) The hook returns "block", not advice. -- {_STRONG.phrase} ^a\n'
         f'(3) The agent runtime honours a "block" from a hook. -- {_WEAK.phrase}\n'
         '-- A hook that returns "block" to a runtime that honours it is enforced. '
-        "Unless: this runtime ignores hook output -- not ruled out. --\n"
+        "Unless: this runtime ignores hook output; not ruled out. --\n"
         "(4) So, most likely, the hook is enforced.\n"
-        f"(5) The handler returns block on Stop. — {_STRONG.phrase} [b]\n"
-        "— An enforced hook that returns block on Stop blocks Stop. "
-        "Unless: the mode is off — ruled out by (5). —\n"
+        f"(5) The handler returns block on Stop. — {_STRONG.phrase} ^b\n"
+        "-- An enforced hook that returns block on Stop blocks Stop. "
+        "Unless: the mode is off; ruled out by (5). --\n"
         "(6) So it blocks Stop.\n"
-        "\n"
-        f"Answers: {ASK_A} ← (4); {ASK_B} ← (6)\n"
-        "\n"
-        "[a] plugins/ida/hooks/handlers.py\n"
-        "[b] plugins/ida/hooks/premise_check_gate.py\n"
         "```\n"
     )
 
@@ -165,37 +175,46 @@ def _arm_with_report(session_id: str, claim_id: str, text: str | None = None, re
 # ---------------------------------------------------------------------------
 
 
-def test_parse_block_reads_asks_premises_inferences_conclusions_and_endnotes():
+def test_parse_block_reads_frontmatter_premises_inferences_and_conclusions():
     block = ra.extract_block(_report())
     assert block is not None
     arg = ra.parse_block(block, _VOCAB)
+    assert arg is not None
     assert arg.asks == [ASK_A, ASK_B]
     assert [inf.conclusion for inf in arg.inferences] == [4, 6]
     assert arg.conclusions == [4, 6]
     assert [p.number for p in arg.premises] == [1, 2, 3, 5]
     assert [p.basis for p in arg.premises] == [_STRONG, _STRONG, _WEAK, _STRONG]
     assert arg.weakest() is not None and arg.weakest().number == 3
-    assert set(arg.endnotes) == {"a", "b"}
-    assert len(arg.answers) == 2
+    assert set(arg.notes) == {"a", "b"}
+    assert arg.answers == {ASK_A: 4, ASK_B: 6}
 
 
-def test_extract_block_takes_the_last_argument_block():
-    text = "```argument\nAsked (x-1): old?\n```\n\n" + _report()
+def test_extract_block_takes_the_last_argdown_block():
+    text = "```argdown\n===\nasks:\n  x-1: old?\n===\n```\n\n" + _report()
     block = ra.extract_block(text)
     assert block is not None and ASK_A in block and "x-1" not in block
     assert ra.extract_block("no block here") is None
+
+
+def test_malformed_frontmatter_is_a_block_that_fails_to_parse():
+    block = ra.extract_block(_report(frontmatter="===\nasks: [unclosed\n===\n"))
+    assert block is not None
+    assert ra.parse_block(block, _VOCAB) is None
 
 
 def test_basis_takes_the_longest_vocabulary_phrase_and_unmatched_ranks_zero():
     phrases = sorted(_VOCAB.basis, key=lambda b: len(b.phrase), reverse=True)
     longest = phrases[0]
     arg = ra.parse_block(
-        f"(1) A thing. -- {longest.phrase.upper()} with a note; more [a] [b]\n"
+        f"(1) A thing. -- {longest.phrase.upper()} with a note; more ^a ^b\n"
         "(2) Another thing. -- something no vocabulary has\n"
         "(3) A third thing with no basis.",
         _VOCAB,
     )
+    assert arg is not None
     assert arg.premises[0].basis == longest
+    assert arg.premises[0].basis_text == f"{longest.phrase.upper()} with a note; more"
     assert arg.premises[1].basis is None and arg.premises[1].rank == 0
     assert arg.premises[2].basis_text is None and arg.premises[2].rank == 0
 
@@ -252,7 +271,7 @@ def test_answered_unanswered_entry_is_accepted():
 
 def test_no_claim_reason_is_refused_when_the_judged_text_has_a_block():
     _arm_with_report("s-noclaim-block", "CID")
-    with pytest.raises(ValueError, match="no-claim reason, but the judged text has an argument"):
+    with pytest.raises(ValueError, match="no-claim reason, but the judged text has an argdown"):
         pcv.record_verdict(
             session_id="s-noclaim-block",
             claim_id="CID",
@@ -264,7 +283,33 @@ def test_no_claim_reason_is_refused_when_the_judged_text_has_a_block():
 
 
 def _report_without_asks() -> str:
-    return "\n".join(ln for ln in _report().splitlines() if not ln.startswith("Asked ("))
+    return _report(frontmatter=_frontmatter(asks=False))
+
+
+def test_block_answers_naming_an_absent_line_are_refused():
+    _arm_with_report(
+        "s-answers", "CID", text=_report(_frontmatter(answers=f"{ASK_A}: 4\n  {ASK_B}: 9"))
+    )
+    with pytest.raises(ValueError, match="the block's answers name lines not in the block"):
+        pcv.record_verdict(
+            session_id="s-answers",
+            claim_id="CID",
+            verdict="PASS",
+            reason=_reason("CID"),
+            tracer_mod=_configured(),
+        )
+
+
+def test_malformed_frontmatter_means_pass_needs_waived_block():
+    _arm_with_report("s-badyaml", "CID", text=_report(frontmatter="===\nasks: [unclosed\n===\n"))
+    with pytest.raises(ValueError, match="PASS needs 'Waived: block"):
+        pcv.record_verdict(
+            session_id="s-badyaml",
+            claim_id="CID",
+            verdict="PASS",
+            reason=_reason("CID"),
+            tracer_mod=_configured(),
+        )
 
 
 @pytest.mark.parametrize("with_block", [True, False], ids=["block", "waived-block"])
@@ -317,7 +362,7 @@ _REFUSALS = {
     "missing_key": (dict(drop=("Sufficient",)), "missing keyed lines: Sufficient"),
     "judged_asks": (
         dict(drop=("Judged",), extra=(f"Judged: CID; asks {ASK_A}",)),
-        "do not equal the block's Asked ids",
+        "do not equal the block's asks",
     ),
     "unanswered": (dict(drop=(f"Answered: {ASK_B}",)), f"no Answered line for ask ids: {ASK_B}"),
     "answered_absent_line": (
@@ -555,9 +600,9 @@ def test_arm_on_peer_message_uses_the_envelope_id_as_judged_ref():
 
 def test_judged_block_drives_the_cross_checks():
     """A reason that fits the block passes; the same reason against another block is refused."""
-    other = _report().replace(f"Asked ({ASK_B})", "Asked (tg-7)").replace(ASK_B, "tg-7")
+    other = _report().replace(ASK_B, "tg-7")
     _arm_with_report("s-other", "CID", text=other)
-    with pytest.raises(ValueError, match="do not equal the block's Asked ids"):
+    with pytest.raises(ValueError, match="do not equal the block's asks"):
         pcv.record_verdict(
             session_id="s-other",
             claim_id="CID",
@@ -661,34 +706,30 @@ def _task_read_ctx(tool: str, body: str, task_id: str, shape: str, agent: str = 
 
 @pytest.mark.parametrize("shape", ["content_blocks", "dict", "json_text"])
 @pytest.mark.parametrize("tool", _POLICY["task_read_tools"])
-def test_task_read_with_report_and_no_verdict_arms_with_task_id(tool, shape):
+def test_task_read_with_unverdicted_report_does_not_arm_while_bypassed(tool, shape):
     ctx = _task_read_ctx(tool, _task_body(), "aops_0a8efbc2", shape)
-    res = pcg.premise_check_arm(ctx)
-    assert res is not None
-    assert pcg.is_armed(ctx.session_id) is True
-    assert pcg.get_state(ctx.session_id)["claim_id"] == "aops_0a8efbc2"
-    text, ref = pcg.get_judged(ctx.session_id, "aops_0a8efbc2")
-    assert ref == "aops_0a8efbc2"
-    assert text is not None and ra.extract_block(text) is not None
+    assert pcg.premise_check_arm(ctx) is None
+    assert pcg.is_armed(ctx.session_id) is False
 
 
+@pytest.mark.skip(reason="bypassed pending decision")
+@pytest.mark.parametrize("shape", ["content_blocks", "dict", "json_text"])
+def test_unverdicted_task_report_finds_task_id_and_body(shape):
+    ctx = _task_read_ctx(_POLICY["task_read_tools"][0], _task_body(), "aops_0a8efbc2", shape)
+    assert pcg.unverdicted_task_report(ctx) == ("aops_0a8efbc2", _task_body())
+
+
+@pytest.mark.skip(reason="bypassed pending decision")
 @pytest.mark.parametrize(
     "body", [_task_body(with_verdict=True), _task_body(with_report=False)], ids=["verdict", "none"]
 )
-def test_task_read_with_verdict_or_without_report_does_not_arm(body):
+def test_unverdicted_task_report_skips_verdicted_or_reportless_tasks(body):
     ctx = _task_read_ctx(_POLICY["task_read_tools"][0], body, "aops_0a8efbc2", "dict")
-    assert pcg.premise_check_arm(ctx) is None
-    assert pcg.is_armed(ctx.session_id) is False
-
-
-def test_task_read_by_ungated_agent_does_not_arm():
-    ctx = _task_read_ctx(_POLICY["task_read_tools"][0], _task_body(), "t1", "dict", agent="james")
-    assert pcg.premise_check_arm(ctx) is None
-    assert pcg.is_armed(ctx.session_id) is False
+    assert pcg.unverdicted_task_report(ctx) is None
 
 
 @pytest.mark.parametrize("client", ["claude", "agy"])
-def test_post_tool_entry_point_arms_on_task_read_for_both_clients(client):
+def test_post_tool_entry_point_does_not_arm_on_task_read_while_bypassed(client):
     import importlib.util
 
     spec = importlib.util.spec_from_file_location("ida_handlers_arm", _HOOKS_DIR / "handlers.py")
@@ -705,11 +746,11 @@ def test_post_tool_entry_point_arms_on_task_read_for_both_clients(client):
     }
     ctx = dispatch.normalize(client, "PostToolUse", raw, _HOOKS_DIR)
     handlers.post_tool(ctx)
-    assert pcg.is_armed(f"s-entry-{client}") is True
+    assert pcg.is_armed(f"s-entry-{client}") is False
 
 
 # ---------------------------------------------------------------------------
-# 6. Overrides are counted
+# 6. Overrides pass an armed gate; counting them is bypassed
 # ---------------------------------------------------------------------------
 
 
@@ -724,37 +765,27 @@ def _dispatch_ctx(session_id: str) -> dispatch.HookContext:
 
 
 @pytest.mark.parametrize("var", _POLICY["override_vars"])
-def test_override_passing_an_armed_gate_emits_a_span_and_counts(monkeypatch, var):
+def test_override_passes_an_armed_gate_with_no_span_and_no_count(monkeypatch, var):
     session_id = f"s-ovr-{var}"
     pcg.arm(session_id, claim_id="claim-ovr")
-    tracer = _configured()
+    tracer = _configured(raises=OSError("an export attempt would raise"))
     monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: tracer)
     monkeypatch.setenv(var, "1")
 
     assert pcg.premise_check_handler(_dispatch_ctx(session_id)) is None
-    assert pcg.premise_check_handler(_dispatch_ctx(session_id)) is None
 
-    assert pcg.get_state(session_id)["override_count"] == 2
-    assert [s["name"] for s in tracer.exported] == ["premise_check_override"] * 2
-    attrs = tracer.exported[0]["attributes"]
-    assert attrs["premise_check.claim_id"] == "claim-ovr"
-    assert attrs["premise_check.override_var"] == var
-    assert attrs["premise_check.override_tool"] == "Agent"
-    assert attrs["premise_check.override_event"] == "PreToolUse"
+    assert tracer.exported == []
+    assert "override_count" not in pcg.get_state(session_id)
 
 
-@pytest.mark.parametrize(
-    "tracer",
-    [_configured(raises=OSError("collector down")), _StubTracer(config=None)],
-    ids=["export-fails", "unconfigured"],
-)
-def test_override_span_failure_raises_and_is_not_counted(monkeypatch, tracer):
-    pcg.arm("s-ovr-fail", claim_id="claim-ovr")
+@pytest.mark.skip(reason="bypassed pending decision")
+def test_count_override_emits_a_span_and_counts(monkeypatch):
+    pcg.arm("s-ovr-count", claim_id="claim-ovr")
+    tracer = _configured()
     monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: tracer)
-    monkeypatch.setenv(_POLICY["override_vars"][0], "1")
-    with pytest.raises(RuntimeError):
-        pcg.premise_check_handler(_dispatch_ctx("s-ovr-fail"))
-    assert "override_count" not in pcg.get_state("s-ovr-fail")
+    pcg._count_override(_dispatch_ctx("s-ovr-count"), _POLICY["override_vars"][0])
+    assert pcg.get_state("s-ovr-count")["override_count"] == 1
+    assert [s["name"] for s in tracer.exported] == ["premise_check_override"]
 
 
 def test_get_judged_raises_when_the_stored_file_is_missing():

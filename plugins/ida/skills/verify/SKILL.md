@@ -65,6 +65,6 @@ Emit the report using `/dump`'s handback envelope and record it on the task reco
    - CONFIDENCE: <high | med | low> + <what single check would falsify this>
    - CONFOUND CHECK: <clean-room/differential control result, or "NOT RUN">
 4. **Output**: <branch + commit SHA> | <PR or artifact link>
-5. **Argument**: The `argument` block recorded under the task's `## Report`, asked by the task's ask ids.
+5. **Argument**: The `argdown` block recorded under the task's `## Report`, asked by the task's ask ids.
 6. **Limitations**: Unresolved items, out-of-scope elements, and verbatim error outputs.
 ```

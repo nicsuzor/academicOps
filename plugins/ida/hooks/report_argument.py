@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Structural parser for the report ``argument`` block and the checker's keyed reason.
+"""Structural parser for the report's ``argdown`` block and the checker's keyed reason.
 
 The grammar is closed and defined by the premise-check skill:
 ``references/report-form.md`` (the block) and ``references/checker-reason.md``
-(the keyed lines, whose keys ``vocabulary.toml`` names). Everything here is a format or presence check over that
-grammar -- line shapes, ids, numbers, and matches against the closed vocabularies
-in ``references/vocabulary.toml``. Nothing here classifies what a line means.
+(the keyed lines, whose keys ``vocabulary.toml`` names). Everything here is a
+format or presence check over that grammar -- the YAML frontmatter, line shapes,
+ids, numbers, and matches against the closed vocabularies in
+``references/vocabulary.toml``. Nothing here classifies what a line means.
 
 The vocabulary is read from the skill's ``vocabulary.toml`` at runtime; this
 module keeps no copy of it.
@@ -19,16 +20,18 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-# A separator / inference marker: ``--`` as committed, ``—`` as typed live.
+import yaml
+
+# A premise's basis separator, and the no-claim separator in a reason:
+# ``--`` as committed, ``—`` as typed live.
 _DASH = r"(?:--|—)"
 _SEPARATOR = re.compile(rf"\s{_DASH}\s")
-_FENCE_OPEN = re.compile(r"^\s*(?P<fence>`{3,}|~{3,})\s*argument\s*$")
-_ASK = re.compile(r"^Asked\s*\((?P<id>[^)\s]+)\)\s*:\s*(?P<words>.*)$")
+_FENCE_OPEN = re.compile(r"^\s*(?P<fence>`{3,}|~{3,})\s*argdown\s*$")
+_FRONTMATTER_FENCE = "==="
 _NUMBERED = re.compile(r"^\((?P<n>\d+)\)\s*(?P<text>.*)$")
-_INFERENCE = re.compile(rf"^{_DASH}\s.*\s{_DASH}$|^{_DASH}\s{_DASH}$")
-_ENDNOTE = re.compile(r"^\[(?P<key>[A-Za-z0-9]+)\]\s+(?P<pointer>.+)$")
-_ANSWERS = re.compile(r"^Answers\s*:\s*(?P<rest>.*)$")
-_TRAILING_MARKERS = re.compile(r"(?:\s*\[[A-Za-z0-9]+\])+\s*$")
+# Argdown takes an inference line only in ASCII: ``-- ... --``.
+_INFERENCE = re.compile(r"^--\s.*\s--$|^--\s--$")
+_TRAILING_MARKERS = re.compile(r"(?:\s*\^[A-Za-z]+)+\s*$")
 _LINE_REF = re.compile(r"\((?P<n>\d+)\)")
 _ARROW = re.compile(r"←|<-")
 _VALID_ENTRY = re.compile(r"^\((?P<n>\d+)\)\s+(?P<word>holds|fails)\b(?P<rest>.*)$")
@@ -110,7 +113,7 @@ def match_format_item(text: str, vocab: Vocabulary) -> str | None:
 
 
 # ---------------------------------------------------------------------------
-# The argument block
+# The argdown block
 # ---------------------------------------------------------------------------
 
 
@@ -139,8 +142,10 @@ class Argument:
     premises: list[Premise] = field(default_factory=list)
     inferences: list[Inference] = field(default_factory=list)
     conclusions: list[int] = field(default_factory=list)
-    answers: list[str] = field(default_factory=list)
-    endnotes: dict[str, str] = field(default_factory=dict)
+    # ask id -> the line that answers it, None for ``none``, or the raw value
+    # when it is neither.
+    answers: dict[str, int | str | None] = field(default_factory=dict)
+    notes: dict[str, str] = field(default_factory=dict)
 
     def weakest(self) -> Premise | None:
         if not self.premises:
@@ -149,7 +154,7 @@ class Argument:
 
 
 def extract_block(text: str | None) -> str | None:
-    """Body of the last ```argument fenced block in ``text``, or None."""
+    """Body of the last ```argdown fenced block in ``text``, or None."""
     if not text:
         return None
     lines = text.splitlines()
@@ -181,16 +186,51 @@ def _premise_basis(text: str) -> str | None:
     return _TRAILING_MARKERS.sub("", tail).strip()
 
 
-def parse_block(block: str, vocab: Vocabulary) -> Argument:
+def _split_frontmatter(lines: list[str]) -> tuple[str | None, list[str]] | None:
+    """(YAML text or None, body lines); None when a frontmatter fence is unclosed."""
+    start = next((i for i, ln in enumerate(lines) if ln.strip()), None)
+    if start is None or lines[start].strip() != _FRONTMATTER_FENCE:
+        return None, lines
+    for end in range(start + 1, len(lines)):
+        if lines[end].strip() == _FRONTMATTER_FENCE:
+            return "\n".join(lines[start + 1 : end]), lines[end + 1 :]
+    return None
+
+
+def _answer_value(value: Any) -> int | str | None:
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    text = str(value).strip()
+    if text.lower() == "none":
+        return None
+    return int(text) if text.isdigit() else text
+
+
+def parse_block(block: str, vocab: Vocabulary) -> Argument | None:
+    """Parse an argdown block; None when its YAML frontmatter fails to parse."""
+    split = _split_frontmatter(block.splitlines())
+    if split is None:
+        return None
+    frontmatter, body = split
     arg = Argument()
-    raw = [ln.strip() for ln in block.splitlines()]
+    if frontmatter is not None:
+        try:
+            data = yaml.safe_load(frontmatter)
+        except yaml.YAMLError:
+            return None
+        data = {} if data is None else data
+        if not isinstance(data, dict):
+            return None
+        sections = {k: data.get(k) or {} for k in ("asks", "answers", "notes")}
+        if not all(isinstance(v, dict) for v in sections.values()):
+            return None
+        arg.asks = [str(k) for k in sections["asks"]]
+        arg.answers = {str(k): _answer_value(v) for k, v in sections["answers"].items()}
+        arg.notes = {str(k): str(v) for k, v in sections["notes"].items()}
+
     after_inference: Inference | None = None
-    for line in raw:
+    for line in (ln.strip() for ln in body):
         if not line:
-            continue
-        if m := _ASK.match(line):
-            arg.asks.append(m.group("id"))
-            after_inference = None
             continue
         if _INFERENCE.match(line):
             after_inference = Inference(text=line, conclusion=None)
@@ -209,11 +249,6 @@ def parse_block(block: str, vocab: Vocabulary) -> Argument:
             after_inference = None
             continue
         after_inference = None
-        if m := _ANSWERS.match(line):
-            arg.answers.extend(p.strip() for p in m.group("rest").split(";") if p.strip())
-            continue
-        if m := _ENDNOTE.match(line):
-            arg.endnotes[m.group("key")] = m.group("pointer")
     return arg
 
 
@@ -317,7 +352,7 @@ def pass_failures(reason: Reason, block: Argument | None, vocab: Vocabulary) -> 
     if reason.no_claim and set(reason.entries) == {"Judged"}:
         if block is not None:
             return [
-                "a no-claim reason, but the judged text has an argument block: "
+                "a no-claim reason, but the judged text has an argdown block: "
                 "judge the block with the full reason"
             ]
         return []
@@ -336,12 +371,12 @@ def pass_failures(reason: Reason, block: Argument | None, vocab: Vocabulary) -> 
         if sorted(set(judged_asks)) != sorted(set(block.asks)):
             failures.append(
                 f"Judged ask ids {sorted(set(judged_asks))} do not equal the block's "
-                f"Asked ids {sorted(set(block.asks))}"
+                f"asks {sorted(set(block.asks))}"
             )
     ask_ids = block.asks if block is not None else judged_asks
     if not ask_ids:
         failures.append(
-            "no ask ids: the block has no Asked lines and Judged names none"
+            "no ask ids: the block's frontmatter has no asks and Judged names none"
             if block is not None
             else "no ask ids: Judged names none"
         )
@@ -360,6 +395,17 @@ def pass_failures(reason: Reason, block: Argument | None, vocab: Vocabulary) -> 
         if absent:
             failures.append(
                 f"Answered names lines not in the block ({', '.join(map(str, absent))})"
+            )
+    if block is not None:
+        bad = sorted(str(v) for v in block.answers.values() if isinstance(v, str))
+        if bad:
+            failures.append(f"the block's answers are not a line number or none: {', '.join(bad)}")
+        named_by_block = {v for v in block.answers.values() if isinstance(v, int)}
+        missing_lines = sorted(named_by_block - set(block.lines))
+        if missing_lines:
+            failures.append(
+                "the block's answers name lines not in the block "
+                f"({', '.join(map(str, missing_lines))})"
             )
     answered_ids = {a[0] for a in answered if a}
     unanswered = [a for a in ask_ids if a not in answered_ids]
@@ -421,7 +467,9 @@ def pass_failures(reason: Reason, block: Argument | None, vocab: Vocabulary) -> 
             f"({', '.join(vocab.format_items)}): " + "; ".join(repr(e) for e in bad_waived)
         )
     if block is None and "block" not in reason.waived_items(vocab):
-        failures.append("the judged text has no argument block: PASS needs 'Waived: block -- ...'")
+        failures.append(
+            "the judged text has no argdown block that parses: PASS needs 'Waived: block -- ...'"
+        )
 
     for entry in reason.get("Relay"):
         if _is_none(entry):

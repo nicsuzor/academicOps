@@ -31,17 +31,17 @@ Relay: none
 For PASS the recorder checks, and refuses on any miss:
 
 - all seven keys are present, with exactly one `Judged` and one `Supported`;
-- `Judged` names at least one ask id, and its ask ids equal the `Asked` ids in the block;
+- `Judged` names at least one ask id, and its ask ids equal the `asks` ids in the block, and every line the block's `answers` names exists;
 - every ask id has an `Answered` line that names a line of the block (`← (n)`) or says `unanswered`;
 - `Valid` has one entry per inference line, every inference line is followed by its conclusion, and no entry says `fails`;
 - the `Supported` phrase has the lowest rank among the block's premises;
 - every `Waived` entry starts with a format item;
 - every `Relay` line names lines that exist in the block.
 
-With no `argument` block in the judged text, the block cross-checks cannot run: PASS then needs `Waived: block -- ...` and the remaining checks run against the reason alone.
+With no `argdown` block in the judged text, or one whose frontmatter does not parse, the block cross-checks cannot run: PASS then needs `Waived: block -- ...` and the remaining checks run against the reason alone.
 
 REVISE and FAIL are recorded with any reason; write the keyed lines you have, because they are what the sender fixes against.
 
 ## A message that makes no claim
 
-A harness notice or a status ping carries no argument. Record PASS with one line, `Judged: <claim id>; no claim -- <what the message is>`. The recorder accepts it only when the judged text has no `argument` block, and marks the verdict as no-claim in telemetry.
+A harness notice or a status ping carries no argument. Record PASS with one line, `Judged: <claim id>; no claim -- <what the message is>`. The recorder accepts it only when the judged text has no `argdown` block, and marks the verdict as no-claim in telemetry.

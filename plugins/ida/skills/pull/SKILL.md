@@ -21,7 +21,7 @@ Claim and execute a queued PKB task, directing subagents to deliver against stat
 
 ### 3. Consolidate Findings
 
-- Write the handback proof `/dump` records under `## Report`: the `premise-check` `argument` block, asked by the task's frozen ask ids, with the basis of every load-bearing premise.
+- Write the handback proof `/dump` records under `## Report`: the `premise-check` `argdown` block, asked by the task's frozen ask ids, with the basis of every load-bearing premise.
 
 ### 4. Validate Against Criteria
 

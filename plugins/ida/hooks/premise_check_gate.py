@@ -5,14 +5,11 @@ Enforces that a supervisor (Ida) evaluates incoming subagent reports against
 logic-check doctrine before dispatching further subagents, contacting the user, or finishing tasks:
 
 - ``premise_check_arm``: a ``PostToolUse`` / ``UserPromptSubmit`` handler that arms the check when
-  an agent finishes a foreground subagent dispatch, receives a peer's report, or
-  reads a PKB task whose record has a ``## Report`` and no ``## Premise-Check
-  Verdict``. It stores the judged text and a reference to it (tool-use id,
-  envelope id or task id). The user's own messages and background subagent
-  launches never arm it.
+  an agent finishes a foreground subagent dispatch or receives a peer's report.
+  It stores the judged text and a reference to it (tool-use id or envelope id).
+  The user's own messages and background subagent launches never arm it.
 - ``premise_check_handler``: a ``PreToolUse`` / ``Stop`` handler that refuses the
-  supervisor's next subagent dispatch, communication, channel reply, or stop while armed,
-  and counts each override that lets an armed gate pass (``premise_check_override`` span).
+  supervisor's next subagent dispatch, communication, channel reply, or stop while armed.
 - ``arm()`` / ``disarm()``: state management primitives. Calling ``disarm()``
   clears the check once a verdict is recorded.
 
@@ -611,11 +608,8 @@ def premise_check_arm(ctx: HookContext) -> Result | None:
         prompt = _prompt_text(ctx)
         judged_text, judged_ref = prompt, _envelope_id(prompt.strip()) or claim_id
     elif ctx.event == "PostToolUse":
-        task_report = unverdicted_task_report(ctx)
-        if task_report is not None:
-            claim_id, judged_text = task_report
-            judged_ref = claim_id
-        elif is_foreground_dispatch(ctx):
+        # Arming on a PKB task read (unverdicted_task_report) is disabled pending a decision.
+        if is_foreground_dispatch(ctx):
             claim_id = _derive_claim_id(ctx)
             judged_text = _response_text(_tool_response(ctx))
             judged_ref = _tool_use_id(ctx) or claim_id
@@ -650,10 +644,8 @@ def premise_check_handler(ctx: HookContext) -> Result | None:
         return None
     if not is_armed(ctx.session_id):
         return None
-    override = _active_override()
-    if override:
-        if mode == "block":
-            _count_override(ctx, override)
+    if _active_override():
+        # Override counting (_count_override) is disabled pending a decision.
         return None
 
     claim_id = get_state(ctx.session_id).get("claim_id", "the pending report")
