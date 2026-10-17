@@ -178,7 +178,7 @@ def test_hook_wrapper_exports_config_and_run_identity(tmp_path):
     }
 
 
-def test_project_defaults_to_github_actions(tmp_path):
+def test_project_defaults_to_academic_ops(tmp_path):
     _run(tmp_path, _CONFIGURED)
     hook_sh = tmp_path / "otel" / "hook.sh"
 
@@ -199,7 +199,7 @@ def test_project_defaults_to_github_actions(tmp_path):
     )
 
     assert proc.returncode == 0, proc.stderr
-    assert json.loads(proc.stdout)["project"] == "github-actions"
+    assert json.loads(proc.stdout)["project"] == "academicOps"
 
 
 def test_hook_wrapper_never_fails_the_agent(tmp_path):
