@@ -39,7 +39,7 @@ In probabalistic enforcement, we have to match the impact of regulation to the r
 
 The enforcement register is structured in 4 columns:
 
-1. **Rule / nudge** -- The short-form linked reference to the rule (e.g. `[Axiom: Data Boundaries](../../lib/axioms/data-boundaries.md)` or `[Persona: Ida](../../plugins/ida/agents/ida.md)`) paired with the operative obligation or steering intent.
+1. **Rule / nudge** -- The short-form linked reference to the rule (e.g. `[Axiom: Data Boundaries](../../plugins/rbg/axioms/data-boundaries.md)` or `[Persona: Ida](../../plugins/ida/agents/ida.md)`) paired with the operative obligation or steering intent.
 2. **Mechanism** -- The carrier category from the controlled vocabulary.
 3. **Severity** -- The escalation index within the mechanism.
 4. **Detail** -- The pinpoint verification reference (`path:line` + operative snippet, handler function, or CI workflow) and operational state flags (`[DISABLED]`, `[MAP DRIFT]`).
@@ -71,6 +71,10 @@ An **agent personality** defines conduct, judgment register, and disposition: wh
 - **Binding a skill to a personality is a deliberate, documented exception**, for exactly two reasons: **earmarking** (the skill depends on that personality's judgment register) or **permission control** (grants restricted to force a workflow split, keeping reviewer ≠ executor).
 - The three review registers above name **lenses a review must apply**, not exclusive executors. Which agent carries a lens is a dispatch decision.
 - **Review lenses bind artifacts by consequence**: The rule-compliance lens (`rbg`) evaluates target artifacts by what they build, configure, or instruct once running: an artifact breaks an axiom when its runtime consequence would violate what axioms forbid an agent to do. Mechanisms that substitute deterministic techniques (path globs, author allowlists, AST shape heuristics) for qualitative judgment fail `judgment-non-delegable`.
+
+### Published surface and repo visibility review
+
+The rule-compliance review lens (`rbg`, coordinated via `strategic-review` or `wf-rbg`) evaluates everything candidate changes publish across the trust boundary (diffs, commit messages and trailers, PR title and body, review replies) against destination repository visibility under `data-boundaries`. On public destinations, this enforces strict exclusion of personal identifiers, private host/project names, deployment-only agent names, PKB note/task/session IDs, commit trailers, and live telemetry before merge, comment, or push.
 
 ## Design principles
 

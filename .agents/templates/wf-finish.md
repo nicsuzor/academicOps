@@ -21,7 +21,7 @@ Specifies how tasks in `nicsuzor/academicOps` finish. All individual task change
 - **Delivery mechanism**: Open a pull request targeting `dev` (`gh pr create --base dev --fill`).
 - **Merging to dev**: Merge on green. Where QA is required, the follow-up verifying task reviews the PR and merges it to `dev` upon successful verification.
 - **Releases to main**: A PR from `dev` into `main` merges only on explicit release approval.
-- **Commit trailer**: Commits must carry `Task: <task-id>` (and `Epic: <epic-id>` if applicable).
+- **Commit messages and trailers**: Commits to public repositories must never carry PKB IDs or `Task:`, `Epic:`, or `Claude-Session:` trailers (`data-boundaries`). Task linkage is maintained in the private task record, not in public repository commits.
 - **QA review**:
   - **Required**: For any changes touching plugins, hooks, skills, agents, runtimes, or scripts, except for low-risk internal changes below. `/reify` mints a follow-up verifying task.
   - **Low-risk internal changes (chiefly bugfixes)**: Get no separate verification run. Instead, the finish step looks for a blocked task waiting on the fix (`blocks` or inbound `depends_on` / `needs`). If a blocked dependent exists, mint a follow-up task (`depends_on: [<blocked-task-id>]`) that judges the fix by reviewing that blocked task's next run once it runs. Where no blocked dependent exists, mint no verification follow-up task; the fix finishes without a separate verification run.
