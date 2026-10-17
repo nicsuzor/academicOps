@@ -2,40 +2,36 @@
 
 ## [0.10.20](https://github.com/nicsuzor/academicOps/compare/v0.10.19...v0.10.20) (2026-10-17)
 
-
 ### Features
 
-* **ida:** add wf-quick-fix universal workflow template ([09b0e69](https://github.com/nicsuzor/academicOps/commit/09b0e692c7a849ca1e24c61bb9ba930f329b46ed))
-* **ida:** add wf-quick-fix universal workflow template ([ad1cbd9](https://github.com/nicsuzor/academicOps/commit/ad1cbd9c571dd3a48b37b59615dd65dba1a087f7))
-* **tracer:** set llm.provider to anthropic on Claude hook LLM spans ([bfa62b3](https://github.com/nicsuzor/academicOps/commit/bfa62b3554810ba932e374c27d637a592908cae3))
-* **tracer:** set llm.provider to anthropic on Claude hook LLM spans ([51a1f4e](https://github.com/nicsuzor/academicOps/commit/51a1f4e1c58652e5ecffbabf2252730e1f950896))
-* **tracer:** set real Gemini model id and llm.provider on agy LLM spans ([6b82296](https://github.com/nicsuzor/academicOps/commit/6b82296cfba438fdadd2bfe442f7c867405d9121))
-* **tracer:** set real Gemini model id and llm.provider on agy LLM spans ([ad42b32](https://github.com/nicsuzor/academicOps/commit/ad42b322380934b3e00d286d7c195d01937768d0))
-
+- **ida:** add wf-quick-fix universal workflow template ([09b0e69](https://github.com/nicsuzor/academicOps/commit/09b0e692c7a849ca1e24c61bb9ba930f329b46ed))
+- **ida:** add wf-quick-fix universal workflow template ([ad1cbd9](https://github.com/nicsuzor/academicOps/commit/ad1cbd9c571dd3a48b37b59615dd65dba1a087f7))
+- **tracer:** set llm.provider to anthropic on Claude hook LLM spans ([bfa62b3](https://github.com/nicsuzor/academicOps/commit/bfa62b3554810ba932e374c27d637a592908cae3))
+- **tracer:** set llm.provider to anthropic on Claude hook LLM spans ([51a1f4e](https://github.com/nicsuzor/academicOps/commit/51a1f4e1c58652e5ecffbabf2252730e1f950896))
+- **tracer:** set real Gemini model id and llm.provider on agy LLM spans ([6b82296](https://github.com/nicsuzor/academicOps/commit/6b82296cfba438fdadd2bfe442f7c867405d9121))
+- **tracer:** set real Gemini model id and llm.provider on agy LLM spans ([ad42b32](https://github.com/nicsuzor/academicOps/commit/ad42b322380934b3e00d286d7c195d01937768d0))
 
 ### Bug Fixes
 
-* **ida:** fail and escalate task on quick-fix destination test failure ([bd3bf21](https://github.com/nicsuzor/academicOps/commit/bd3bf214832715136be4072c4cf5a4b9e6871419))
-* **premise-check:** fail verdicts whose span fails ([02b106d](https://github.com/nicsuzor/academicOps/commit/02b106da5612b35917823d2008d22570f052272a))
-* **premise-check:** fail verdicts whose span fails ([591d5c2](https://github.com/nicsuzor/academicOps/commit/591d5c2940bb1fb3ed4f8967835bf9320a5772db))
-* **tests:** prevent CI runner env leakage and make checkout root test portable ([dcaa1ac](https://github.com/nicsuzor/academicOps/commit/dcaa1aca384bcbf5c382c9b6ad6512d2528ee265))
-* **tracer:** stop agy turn roots double-counting tokens; add spend story to observability spec ([146dcb4](https://github.com/nicsuzor/academicOps/commit/146dcb44ce5633fcbdec551a0381370ae5ab721b))
-* **tracer:** stop agy turn roots double-counting tokens; spec spend story ([ee74a3f](https://github.com/nicsuzor/academicOps/commit/ee74a3f1f9b15d6b5de2f2c0888c1ad7a04ed37e))
-* **tracing:** resolve POLECAT_TARGET_TASK and POLECAT_TASK in discover_config ([0f54df1](https://github.com/nicsuzor/academicOps/commit/0f54df11a13980033f20910926882147606c341c))
-* **tracing:** set task.id on polecat worker spans ([333583f](https://github.com/nicsuzor/academicOps/commit/333583fff3bca490f5ac80f50b2b41d5b1d92b98))
-
+- **ida:** fail and escalate task on quick-fix destination test failure ([bd3bf21](https://github.com/nicsuzor/academicOps/commit/bd3bf214832715136be4072c4cf5a4b9e6871419))
+- **premise-check:** fail verdicts whose span fails ([02b106d](https://github.com/nicsuzor/academicOps/commit/02b106da5612b35917823d2008d22570f052272a))
+- **premise-check:** fail verdicts whose span fails ([591d5c2](https://github.com/nicsuzor/academicOps/commit/591d5c2940bb1fb3ed4f8967835bf9320a5772db))
+- **tests:** prevent CI runner env leakage and make checkout root test portable ([dcaa1ac](https://github.com/nicsuzor/academicOps/commit/dcaa1aca384bcbf5c382c9b6ad6512d2528ee265))
+- **tracer:** stop agy turn roots double-counting tokens; add spend story to observability spec ([146dcb4](https://github.com/nicsuzor/academicOps/commit/146dcb44ce5633fcbdec551a0381370ae5ab721b))
+- **tracer:** stop agy turn roots double-counting tokens; spec spend story ([ee74a3f](https://github.com/nicsuzor/academicOps/commit/ee74a3f1f9b15d6b5de2f2c0888c1ad7a04ed37e))
+- **tracing:** resolve POLECAT_TARGET_TASK and POLECAT_TASK in discover_config ([0f54df1](https://github.com/nicsuzor/academicOps/commit/0f54df11a13980033f20910926882147606c341c))
+- **tracing:** set task.id on polecat worker spans ([333583f](https://github.com/nicsuzor/academicOps/commit/333583fff3bca490f5ac80f50b2b41d5b1d92b98))
 
 ### Documentation
 
-* **tracer:** correct task.id docstrings to match tracer validation ([a5734a7](https://github.com/nicsuzor/academicOps/commit/a5734a780b65e1003f8f1b18f7e0022883ba5b1c))
-* **tracer:** correct task.id docstrings to match tracer validation ([0900701](https://github.com/nicsuzor/academicOps/commit/0900701faebee1bfc47af9f1c14f97f2bc57546c))
-
+- **tracer:** correct task.id docstrings to match tracer validation ([a5734a7](https://github.com/nicsuzor/academicOps/commit/a5734a780b65e1003f8f1b18f7e0022883ba5b1c))
+- **tracer:** correct task.id docstrings to match tracer validation ([0900701](https://github.com/nicsuzor/academicOps/commit/0900701faebee1bfc47af9f1c14f97f2bc57546c))
 
 ### Miscellaneous
 
-* **format:** compact markdown tables everywhere ([82a02b6](https://github.com/nicsuzor/academicOps/commit/82a02b633f831ea3c026ec0bc297ea1b2864b0a6))
-* **format:** compact ragged markdown tables via dprint markdown 0.26.0 ([d31b2a6](https://github.com/nicsuzor/academicOps/commit/d31b2a6e1baae6528b7d8df8931b8f64eae6a7d6))
-* ignore the compact-table reformat in git blame ([d8e3e91](https://github.com/nicsuzor/academicOps/commit/d8e3e91743541b162f14547771877b6200235f72))
+- **format:** compact markdown tables everywhere ([82a02b6](https://github.com/nicsuzor/academicOps/commit/82a02b633f831ea3c026ec0bc297ea1b2864b0a6))
+- **format:** compact ragged markdown tables via dprint markdown 0.26.0 ([d31b2a6](https://github.com/nicsuzor/academicOps/commit/d31b2a6e1baae6528b7d8df8931b8f64eae6a7d6))
+- ignore the compact-table reformat in git blame ([d8e3e91](https://github.com/nicsuzor/academicOps/commit/d8e3e91743541b162f14547771877b6200235f72))
 
 ## [0.10.19](https://github.com/nicsuzor/academicOps/compare/v0.10.18...v0.10.19) (2026-10-15)
 
