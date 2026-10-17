@@ -77,6 +77,6 @@ As the user, I want my directions to reach a worker as I gave them, so that an a
 - **Load-bearing claim:** a claim the reader would act on, or that a conclusion rests on.
 - **Pointer:** an identifier a reader can open: a commit and line, a span id, a PR or task id, a resolving URL. A pinpoint is best. A command counts as evidence only when its output is the evidence, and then the output is quoted.
 - **Basis:** how the writer knows the claim. The vocabulary is the skill's.
-- **Ask id:** the immutable id an ask travels under, from the asker to the final answer: `tg-<message id>` or `<task id>/AC<n>`.
+- **Ask id:** the immutable id an ask travels under, from the asker to the final answer. Its form is defined in the `premise-check` skill.
 - **Report format:** the report shape, basis vocabulary, verdict tokens and checker's reason are defined once, in the `premise-check` skill.
 - **Task-record handback:** a worker's handback written to its task record's `## Report` section. It is a report like any other: the agent that reads it checks it with the task id as claim id, and writes the verdict back to the task record under `## Premise-Check Verdict`.
