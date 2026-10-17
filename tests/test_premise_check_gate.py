@@ -1095,6 +1095,42 @@ def test_format_verdict_command_prints_absolute_paths():
         assert proj_path.is_dir(), f"project path does not exist: {proj_path}"
 
 
+def _make_stub_tracer_dir(target_dir: Path) -> Path:
+    stub_dir = target_dir / "stub_tracer"
+    stub_dir.mkdir(parents=True, exist_ok=True)
+    (stub_dir / "claude_code_tracer.py").write_text(
+        '"""Stub tracer for out-of-process CLI tests."""\n'
+        "def discover_config(data=None):\n"
+        '    return {"endpoint": "http://test-collector:4318", "project_name": "test"}\n'
+        "def _new_trace_id():\n"
+        '    return "1" * 32\n'
+        "def _new_span_id():\n"
+        '    return "2" * 16\n'
+        "def _load_state(session_id):\n"
+        "    return {}\n"
+        "def _truncate(value):\n"
+        "    return str(value)\n"
+        "def _build_tool_span_record(**kwargs):\n"
+        "    return {\n"
+        '        "trace_id_hex": kwargs["trace_id"],\n'
+        '        "span_id_hex": "2" * 16,\n'
+        '        "parent_span_id_hex": kwargs["root_span_id"],\n'
+        '        "name": kwargs["tool_name"],\n'
+        '        "kind": None,\n'
+        '        "start_ns": kwargs["start_ns"],\n'
+        '        "end_ns": kwargs["end_ns"],\n'
+        '        "attributes": {\n'
+        '            "openinference.span.kind": "TOOL",\n'
+        '            "tool.name": kwargs["tool_name"],\n'
+        "        },\n"
+        '        "force_span_id": False,\n'
+        "    }\n"
+        "def _build_and_export_spans(**kwargs):\n"
+        "    return True\n"
+    )
+    return stub_dir
+
+
 def test_printed_command_runs_from_different_cwd_under_claude_code_and_agy(tmp_path):
     import os
     import subprocess
@@ -1158,6 +1194,7 @@ def test_printed_command_runs_from_different_cwd_under_claude_code_and_agy(tmp_p
         pcg.arm(session_id, claim_id=claim_id)
         assert pcg.is_armed(session_id) is True
 
+        stub_dir = _make_stub_tracer_dir(tmp_path)
         run_tokens = shlex.split(
             cmd.replace("<PASS|REVISE|FAIL>", "PASS").replace(
                 "<why>", f"Verified under {client} from outside cwd"
@@ -1168,7 +1205,11 @@ def test_printed_command_runs_from_different_cwd_under_claude_code_and_agy(tmp_p
             cwd=outside_dir,
             capture_output=True,
             text=True,
-            env={**os.environ, "AOPS_PREMISE_GATE_DIR": str(gate_dir)},
+            env={
+                **os.environ,
+                "AOPS_PREMISE_GATE_DIR": str(gate_dir),
+                "PYTHONPATH": f"{stub_dir}:{hooks_dir}",
+            },
         )
         assert res_verdict.returncode == 0, (
             f"{client} verdict command failed from outside dir:\n{res_verdict.stderr}"
@@ -1221,6 +1262,7 @@ def test_printed_command_runs_with_relative_hooks_dir_from_plugin_cwd(tmp_path, 
     outside_dir.mkdir(parents=True, exist_ok=True)
     pcg.arm(session_id, claim_id=claim_id)
 
+    stub_dir = _make_stub_tracer_dir(tmp_path)
     run_tokens = shlex.split(
         cmd.replace("<PASS|REVISE|FAIL>", "PASS").replace(
             "<why>", "Verified relative hooks_dir resolution"
@@ -1231,7 +1273,11 @@ def test_printed_command_runs_with_relative_hooks_dir_from_plugin_cwd(tmp_path, 
         cwd=outside_dir,
         capture_output=True,
         text=True,
-        env={**os.environ, "AOPS_PREMISE_GATE_DIR": str(gate_dir)},
+        env={
+            **os.environ,
+            "AOPS_PREMISE_GATE_DIR": str(gate_dir),
+            "PYTHONPATH": f"{stub_dir}:{build_dir / 'hooks'}",
+        },
     )
     assert res.returncode == 0, f"execution failed:\n{res.stderr}"
     assert "PASS" in res.stdout
