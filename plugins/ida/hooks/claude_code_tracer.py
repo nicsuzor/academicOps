@@ -1245,7 +1245,8 @@ def _truncate(value: Any) -> str:
         os.environ.get("GH_TOKEN"),
         os.environ.get("GITHUB_TOKEN"),
         os.environ.get("AOPS_BOT_GH_TOKEN"),
-        os.environ.get("PKB_MCP_TOKEN"),
+        os.environ.get("DISPATCHER_MCP_TOKEN"),
+        os.environ.get("WORKER_MCP_TOKEN"),
     ]
     # Add any env vars ending in API_KEY or starting with CF_ACCESS_
     for k, v in os.environ.items():
