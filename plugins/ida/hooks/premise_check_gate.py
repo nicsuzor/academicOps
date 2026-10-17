@@ -5,10 +5,14 @@ Enforces that a supervisor (Ida) evaluates incoming subagent reports against
 logic-check doctrine before dispatching further subagents, contacting the user, or finishing tasks:
 
 - ``premise_check_arm``: a ``PostToolUse`` / ``UserPromptSubmit`` handler that arms the check when
-  an agent finishes a foreground subagent dispatch or receives a peer's report.
-  The user's own messages and background subagent launches never arm it.
+  an agent finishes a foreground subagent dispatch, receives a peer's report, or
+  reads a PKB task whose record has a ``## Report`` and no ``## Premise-Check
+  Verdict``. It stores the judged text and a reference to it (tool-use id,
+  envelope id or task id). The user's own messages and background subagent
+  launches never arm it.
 - ``premise_check_handler``: a ``PreToolUse`` / ``Stop`` handler that refuses the
-  supervisor's next subagent dispatch, communication, channel reply, or stop while armed.
+  supervisor's next subagent dispatch, communication, channel reply, or stop while armed,
+  and counts each override that lets an armed gate pass (``premise_check_override`` span).
 - ``arm()`` / ``disarm()``: state management primitives. Calling ``disarm()``
   clears the check once a verdict is recorded.
 
@@ -20,6 +24,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import re
 import shlex
@@ -30,6 +35,8 @@ from pathlib import Path
 from typing import Any
 
 from dispatch import HookContext, Result, block, refuse, warn
+
+log = logging.getLogger(__name__)
 
 
 def _now() -> str:
@@ -181,8 +188,26 @@ def get_state(session_id: str) -> dict[str, Any]:
     return _load_state(session_id)
 
 
-def arm(session_id: str, claim_id: str | None = None) -> None:
-    """Arm the premise check for a session until a verdict disarms it."""
+def _judged_path(session_id: str, claim_id: str) -> Path:
+    safe_session = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", session_id or "default")
+    safe_claim = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", claim_id)[:60]
+    digest = hashlib.sha256(claim_id.encode("utf-8")).hexdigest()[:8]
+    return _state_dir() / f"{safe_session}.{safe_claim}-{digest}.judged.txt"
+
+
+def arm(
+    session_id: str,
+    claim_id: str | None = None,
+    judged_text: str | None = None,
+    judged_ref: str | None = None,
+) -> None:
+    """Arm the premise check for a session until a verdict disarms it.
+
+    ``judged_text`` is the report the verdict will judge; it is stored beside
+    the state file so the recorder can cross-check the reason against its
+    ``argument`` block. ``judged_ref`` names where that text came from: the
+    tool-use id of a subagent result, the id of a peer envelope, or a task id.
+    """
     state = _load_state(session_id)
     cid = claim_id or state.get("claim_id") or "unnamed-claim"
     state["armed"] = True
@@ -193,7 +218,29 @@ def arm(session_id: str, claim_id: str | None = None) -> None:
         claim_ids.append(cid)
     state["claim_ids"] = claim_ids
     state["armed_at"] = _now()
+    if judged_text is not None or judged_ref:
+        judged = state.get("judged") or {}
+        entry: dict[str, Any] = {"ref": judged_ref or cid}
+        if judged_text is not None:
+            path = _judged_path(session_id, cid)
+            path.write_text(judged_text, encoding="utf-8")
+            entry["file"] = path.name
+        judged[cid] = entry
+        state["judged"] = judged
     _save_state(session_id, state)
+
+
+def get_judged(session_id: str, claim_id: str) -> tuple[str | None, str | None]:
+    """The judged text and its reference stored when ``claim_id`` armed the gate."""
+    entry = (_load_state(session_id).get("judged") or {}).get(claim_id)
+    if not entry:
+        return None, None
+    text = None
+    if entry.get("file"):
+        path = _state_dir() / entry["file"]
+        if path.is_file():
+            text = path.read_text(encoding="utf-8")
+    return text, entry.get("ref")
 
 
 def disarm(
@@ -210,6 +257,14 @@ def disarm(
     if claim_id in claim_ids:
         claim_ids.remove(claim_id)
     state["claim_ids"] = claim_ids
+    judged = state.get("judged") or {}
+    entry = judged.pop(claim_id, None)
+    if entry and entry.get("file"):
+        try:
+            (_state_dir() / entry["file"]).unlink()
+        except OSError:
+            pass
+    state["judged"] = judged
 
     if claim_ids:
         state["armed"] = True
@@ -328,7 +383,7 @@ def format_verdict_command(
     quoted_claim = shlex.quote(claim_id)
     cmd = (
         f"uv run --project {quoted_project} python3 {quoted_script}"
-        f' --claim {quoted_claim} --verdict <PASS|REVISE|FAIL> --reason "<why>"'
+        f" --claim {quoted_claim} --verdict <PASS|REVISE|FAIL> --reason-file <path>"
     )
     if not os.environ.get("AOPS_SESSION_ID") and session_id:
         cmd += f" --session {shlex.quote(session_id)}"
@@ -387,16 +442,157 @@ def _derive_claim_id(ctx: HookContext) -> str:
     return "claim-unnamed"
 
 
-def _is_override_active() -> bool:
-    for var in (
-        "PREMISE_CHECK_OVERRIDE",
-        "PREMISE_CHECK_GATE_OVERRIDE",
-        "AOP_FORCE",
-        "AOP_OVERRIDE",
-    ):
+_OVERRIDE_VARS = (
+    "PREMISE_CHECK_OVERRIDE",
+    "PREMISE_CHECK_GATE_OVERRIDE",
+    "AOP_FORCE",
+    "AOP_OVERRIDE",
+)
+
+
+def _active_override() -> str | None:
+    """The first override variable set truthy, or None."""
+    for var in _OVERRIDE_VARS:
         if os.environ.get(var, "").strip().lower() in ("1", "true", "yes"):
-            return True
-    return False
+            return var
+    return None
+
+
+def _is_override_active() -> bool:
+    return _active_override() is not None
+
+
+def _count_override(ctx: HookContext, variable: str) -> None:
+    """Count an override that let an armed gate pass a blocked action.
+
+    The count lives in gate state; the span is best-effort and never changes
+    what the gate does.
+    """
+    state = _load_state(ctx.session_id)
+    count = int(state.get("override_count") or 0) + 1
+    state["override_count"] = count
+    _save_state(ctx.session_id, state)
+    claim_id = str(state.get("claim_id") or "")
+    try:
+        import premise_check_verdict as pcv
+
+        pcv.emit_override_span(
+            pcv._import_claude_code_tracer(),
+            ctx.session_id,
+            claim_id,
+            ctx.tool or "",
+            ctx.event,
+            variable,
+            count,
+        )
+    except Exception as exc:
+        log.warning("premise_check_override span not emitted: %r", exc)
+
+
+# ---------------------------------------------------------------------------
+# What arrived: the judged text and its reference
+# ---------------------------------------------------------------------------
+
+_TASK_READ_TOOL = "get_task"
+_REPORT_HEADING = re.compile(r"^##\s+Report\s*$", re.MULTILINE)
+_VERDICT_HEADING = re.compile(r"^##\s+Premise-Check Verdict\s*$", re.MULTILINE)
+
+
+def is_task_read_tool(tool_name: str) -> bool:
+    """True for the PKB task-read tool under any MCP server prefix."""
+    if not tool_name:
+        return False
+    if tool_name.split("__")[-1] == _TASK_READ_TOOL:
+        return True
+    return tool_name == _TASK_READ_TOOL or tool_name.endswith(
+        (f"_{_TASK_READ_TOOL}", f".{_TASK_READ_TOOL}")
+    )
+
+
+def _tool_input(ctx: HookContext) -> dict[str, Any]:
+    tool_input = ctx.raw.get("tool_input") or ctx.raw.get("toolInput") or {}
+    return tool_input if isinstance(tool_input, dict) else {}
+
+
+def _tool_response(ctx: HookContext) -> Any:
+    return ctx.raw.get("tool_response", ctx.raw.get("toolResponse"))
+
+
+def _response_text(value: Any) -> str:
+    """Plain text of a tool response: a string, content blocks, or a result mapping."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        return "\n".join(t for t in (_response_text(v) for v in value) if t)
+    if isinstance(value, dict):
+        for key in ("content", "text", "result", "output"):
+            if key in value:
+                return _response_text(value[key])
+    return json.dumps(value)
+
+
+def _task_record(value: Any) -> dict[str, Any] | None:
+    """The task mapping (one with a ``body``) inside a task-read response."""
+    if isinstance(value, dict):
+        if isinstance(value.get("body"), str):
+            return value
+        for key in ("structuredContent", "result", "task", "content", "text"):
+            if key in value:
+                found = _task_record(value[key])
+                if found:
+                    return found
+        return None
+    if isinstance(value, list):
+        for item in value:
+            found = _task_record(item)
+            if found:
+                return found
+        return None
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except ValueError:
+            return {"body": value}
+        return _task_record(parsed) if isinstance(parsed, (dict, list)) else None
+    return None
+
+
+def unverdicted_task_report(ctx: HookContext) -> tuple[str, str] | None:
+    """(task id, body) when a PKB task read returned a report with no verdict section."""
+    if ctx.event != "PostToolUse" or not is_task_read_tool(ctx.tool):
+        return None
+    record = _task_record(_tool_response(ctx))
+    if not record:
+        return None
+    body = record["body"]
+    if not _REPORT_HEADING.search(body) or _VERDICT_HEADING.search(body):
+        return None
+    tool_input = _tool_input(ctx)
+    task_id = str(record.get("id") or tool_input.get("id") or tool_input.get("task_id") or "")
+    if not task_id:
+        return None
+    return task_id, body
+
+
+def _tool_use_id(ctx: HookContext) -> str:
+    return str(ctx.raw.get("tool_use_id") or ctx.raw.get("tool_call_id") or ctx.raw.get("id") or "")
+
+
+def _envelope_id(prompt: str) -> str | None:
+    match = re.search(r"<([a-zA-Z0-9_\-]+)([^>]*)>", prompt)
+    if not match:
+        return None
+    id_match = re.search(
+        r'\b(?:id|report_id|claim_id|verification_id|task_id)=["\']([^"\']+)["\']',
+        match.group(2),
+    )
+    if id_match:
+        cid = id_match.group(1).strip()
+        if cid and re.match(r"^[a-zA-Z0-9_\-\.:]+$", cid):
+            return cid
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -412,14 +608,24 @@ def premise_check_arm(ctx: HookContext) -> Result | None:
     if ctx.event == "UserPromptSubmit":
         if not is_peer_report(ctx):
             return None
+        claim_id = _derive_claim_id(ctx)
+        prompt = _prompt_text(ctx)
+        judged_text, judged_ref = prompt, _envelope_id(prompt.strip()) or claim_id
     elif ctx.event == "PostToolUse":
-        if not is_foreground_dispatch(ctx):
+        task_report = unverdicted_task_report(ctx)
+        if task_report is not None:
+            claim_id, judged_text = task_report
+            judged_ref = claim_id
+        elif is_foreground_dispatch(ctx):
+            claim_id = _derive_claim_id(ctx)
+            judged_text = _response_text(_tool_response(ctx))
+            judged_ref = _tool_use_id(ctx) or claim_id
+        else:
             return None
     else:
         return None
 
-    claim_id = _derive_claim_id(ctx)
-    arm(ctx.session_id, claim_id=claim_id)
+    arm(ctx.session_id, claim_id=claim_id, judged_text=judged_text, judged_ref=judged_ref)
     inject = (
         f"Premise-check gate armed by {claim_id}; record a verdict per the `premise-check` skill.\n"
         f"{format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id)}"
@@ -443,9 +649,12 @@ def premise_check_handler(ctx: HookContext) -> Result | None:
     )
     if mode == "off":
         return None
-    if _is_override_active():
-        return None
     if not is_armed(ctx.session_id):
+        return None
+    override = _active_override()
+    if override:
+        if mode == "block":
+            _count_override(ctx, override)
         return None
 
     claim_id = get_state(ctx.session_id).get("claim_id", "the pending report")

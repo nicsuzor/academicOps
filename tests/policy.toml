@@ -50,6 +50,26 @@ honest_output_enabled = true
 # No handler is permitted to return a blocking disposition on agy.
 allow_blocking_agy = false
 
+[premise_check]
+# The closed vocabulary (basis phrases, format items, defect tags) the verdict
+# recorder reads at runtime, relative to the repository root.
+vocabulary = "plugins/ida/skills/premise-check/references/vocabulary.toml"
+# PKB task-read tool names as they appear in Claude Code transcripts; a read of
+# a task carrying a `## Report` and no verdict through any of them arms the gate.
+task_read_tools = [
+  "mcp__pkb__get_task",
+  "mcp__pkb__pkb__get_task",
+  "mcp__services__pkb__get_task",
+  "mcp__plugin_aops_services__pkb__get_task",
+]
+# Variables that let an armed gate pass a blocked action; each use is counted.
+override_vars = [
+  "PREMISE_CHECK_OVERRIDE",
+  "PREMISE_CHECK_GATE_OVERRIDE",
+  "AOP_FORCE",
+  "AOP_OVERRIDE",
+]
+
 [plugins.dependencies]
 # Dependencies required for OpenTelemetry span emission by plugin hooks and scripts (e.g. premise-check verdict)
 otel_packages = [

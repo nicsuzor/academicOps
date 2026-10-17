@@ -1,6 +1,19 @@
 # Closed vocabularies for report arguments and checker reasons. The skill text
 # and the verdict recorder both read this file; it is the single source.
 
+# Items a checker may list under `Waived:`. Anything else is not a format item.
+format_items = [
+  "block",
+  "numbering",
+  "endnotes",
+  "basis wording",
+  "ask wording",
+  "layout",
+]
+
+# Defect tags a `Valid:` entry may carry after `fails`.
+defect_tags = ["#missing", "#scope-drift", "#conflict", "#unanswered", "#undercut"]
+
 # Basis phrases a premise line ends with, written in words. `rank` orders
 # strength: a derived claim carries the lowest rank among its premises. A
 # premise whose basis matches no phrase counts at rank 0. `term` is the
@@ -39,16 +52,3 @@ rank = 1
 phrase = "assumed, not checked here"
 term = "assumed"
 rank = 0
-
-# Items a checker may list under `Waived:`. Anything else is not a format item.
-format_items = [
-  "block",
-  "numbering",
-  "endnotes",
-  "basis wording",
-  "ask wording",
-  "layout",
-]
-
-# Defect tags a `Valid:` entry may carry after `fails`.
-defect_tags = ["#missing", "#scope-drift", "#conflict", "#unanswered", "#undercut"]
