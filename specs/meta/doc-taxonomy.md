@@ -20,9 +20,11 @@ Process templates are instructions too, and live in `plugins/<plugin>/workflows/
 
 **Shipped instructions are generic.** Anything under `plugins/` reaches every user, so it carries no person, no organisation, no named collaborator, no address, no timezone, and no local path. Where a procedure needs those, it states what the value is _for_ and leaves the value to the reader's own PKB, which overrides the shipped copy. A generic template a user extends is a feature; a personal workflow shipped to everyone is a defect.
 
+**Public repository commits and instructions carry no PKB identifiers.** Instructions, templates, and procedures governing commits to public repositories must never direct agents to include PKB note, task, or session IDs, or trailers like `Task:` or `Claude-Session:`. Task tracking belongs strictly on the private task graph and in private task records, never in public commit history.
+
 ## Specs -- for devs and auditors
 
-Live in `specs/<subsystem>/<name>.md` at the academicOps root. A spec states the intended behaviour of one feature of any designed subsystem, this repo's own build, packaging and release tooling included. Step-by-step procedure for a human contributor, with no design to state, lives in `CONTRIBUTING.md`.
+Live in `specs/<subsystem>/<name>.md` at the academicOps root. A spec states the intended behaviour of one feature of any designed subsystem, this repo's own build, packaging and release tooling included. Step-by-step procedure for a human contributor, with no design to state, lives in `CONTRIBUTING.md`. Specs in public repositories must never carry PKB IDs, private domain names, host names, or personal user names.
 
 How to write one: [`writing-specs.md`](writing-specs.md).
 
