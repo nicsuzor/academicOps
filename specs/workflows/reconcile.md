@@ -19,12 +19,12 @@ yet cover.
 The procedure's scope is tasks and the pull requests they resolve against. Four closure gaps exist;
 one is covered.
 
-| Gap                                                                                    | State                                 |
-| -------------------------------------------------------------------------------------- | ------------------------------------- |
-| GH issue closed via `Closes #N` → PKB task carrying `gates_on` for it                  | Not built -- forward-issue leg, below |
-| Closed-not-merged PR that was legitimately superseded                                  | Built                                 |
-| Manual `gh issue close` with `state_reason: not_planned` or `duplicate`                | Not built -- forward-issue leg, below |
-| PKB task done → GH issue comment/close beyond the native `Closes #N` commit convention | Not built -- reverse direction, M3    |
+| Gap | State |
+| - | - |
+| GH issue closed via `Closes #N` → PKB task carrying `gates_on` for it | Not built -- forward-issue leg, below |
+| Closed-not-merged PR that was legitimately superseded | Built |
+| Manual `gh issue close` with `state_reason: not_planned` or `duplicate` | Not built -- forward-issue leg, below |
+| PKB task done → GH issue comment/close beyond the native `Closes #N` commit convention | Not built -- reverse direction, M3 |
 
 ## Design constraints
 

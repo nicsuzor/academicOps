@@ -164,12 +164,12 @@ When this verification workflow is triggered:
 2. **Execute Live Runs**: Dispatch each prompt to a clean, isolated `/brief` invocation.
 3. **Independent Evaluation**: An independent evaluator assesses the generated task body against the locked pass criteria.
 4. **Compile Verdict Table**:
-   | Case ID | Shape                                                                                                             | Verdict (PASS / FAIL / ESCALATE) | Receipts / Cited Gap |
-   | ------- | ----------------------------------------------------------------------------------------------------------------- | -------------------------------- | -------------------- |
-   | Case 1  | No-cut (brief/SKILL.md: "Default: no cut")                                                                        |                                  |                      |
-   | Case 2  | Genuine fork (brief/SKILL.md: "an unresolved fork sits inside the chunk")                                         |                                  |                      |
-   | Case 3  | Review obligation as acceptance criterion (brief/SKILL.md: "a different owner, authority, or evaluator")          |                                  |                      |
-   | Case 4  | Halt on dead premise (brief/SKILL.md: "the unit is not briefable... stop")                                        |                                  |                      |
-   | Case 5  | Multi-template composition (brief/SKILL.md: "Enumerate the workflow components available")                        |                                  |                      |
-   | Case 6  | One-way-door change gated as acceptance criterion (brief/SKILL.md Must NOT: no speculative review/sign-off nodes) |                                  |                      |
+   | Case ID | Shape | Verdict (PASS / FAIL / ESCALATE) | Receipts / Cited Gap |
+   | - | - | - | - |
+   | Case 1 | No-cut (brief/SKILL.md: "Default: no cut") |  |  |
+   | Case 2 | Genuine fork (brief/SKILL.md: "an unresolved fork sits inside the chunk") |  |  |
+   | Case 3 | Review obligation as acceptance criterion (brief/SKILL.md: "a different owner, authority, or evaluator") |  |  |
+   | Case 4 | Halt on dead premise (brief/SKILL.md: "the unit is not briefable... stop") |  |  |
+   | Case 5 | Multi-template composition (brief/SKILL.md: "Enumerate the workflow components available") |  |  |
+   | Case 6 | One-way-door change gated as acceptance criterion (brief/SKILL.md Must NOT: no speculative review/sign-off nodes) |  |  |
 5. **TDD Remedy Loop**: For any FAIL, apply red-before-green discipline, design structural remedies (not prose-only), and verify the full suite passes without regression.

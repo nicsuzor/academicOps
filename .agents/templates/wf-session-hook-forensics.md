@@ -41,17 +41,17 @@ Reconstruct session events from hook logs to diagnose gate failures, state trans
 
 Each line is a JSON object. Hook logs are local-only (not synced to a shared repo). Key fields:
 
-| Field                | Type        | Description                                                                                                                                          |
-| -------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `session_id`         | string      | Full session UUID                                                                                                                                    |
-| `session_short_hash` | string      | First 8 chars of the UUID                                                                                                                            |
-| `hook_event`         | string      | `SessionStart`, `PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `Stop`, `SubagentStart`, `SubagentStop`, `SessionEnd`, `PreCompact`, `Notification` |
-| `logged_at`          | string      | ISO 8601 timestamp                                                                                                                                   |
-| `exit_code`          | int         | 0=allow, 1=warn, 2=block                                                                                                                             |
-| `cwd`                | string      | Working directory at time of event                                                                                                                   |
-| `tool_name`          | string/null | Tool that triggered the event (`PreToolUse`/`PostToolUse`)                                                                                           |
-| `subagent_type`      | string/null | Agent type (`SubagentStart`/`SubagentStop`)                                                                                                          |
-| `output`             | object/null | The gate verdict and messages — the single most important field for forensics                                                                        |
+| Field | Type | Description |
+| - | - | - |
+| `session_id` | string | Full session UUID |
+| `session_short_hash` | string | First 8 chars of the UUID |
+| `hook_event` | string | `SessionStart`, `PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `Stop`, `SubagentStart`, `SubagentStop`, `SessionEnd`, `PreCompact`, `Notification` |
+| `logged_at` | string | ISO 8601 timestamp |
+| `exit_code` | int | 0=allow, 1=warn, 2=block |
+| `cwd` | string | Working directory at time of event |
+| `tool_name` | string/null | Tool that triggered the event (`PreToolUse`/`PostToolUse`) |
+| `subagent_type` | string/null | Agent type (`SubagentStart`/`SubagentStop`) |
+| `output` | object/null | The gate verdict and messages — the single most important field for forensics |
 
 ### The `output` field
 

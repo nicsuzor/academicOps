@@ -38,12 +38,12 @@ A process for creating and maintaining a flat, diagnostically useful enforcement
 
 The deliverable is a **single flat markdown table** with exactly 4 columns:
 
-| Column           | Definition                                                    | Rules & Constraints                                                                                  |
-| :--------------- | :------------------------------------------------------------ | :--------------------------------------------------------------------------------------------------- |
-| **Rule / nudge** | The operative obligation, constraint, or steering affordance. | One row per `(rule or nudge) × (mechanism that carries it)`. Logically accurate, explaining intent.  |
-| **Mechanism**    | The category/carrier kind.                                    | Drawn strictly from the 10-term controlled vocabulary below.                                         |
-| **Severity**     | The escalation index within the mechanism.                    | Drawn strictly from the severity index below.                                                        |
-| **Detail**       | Pinpoint reference and operative evidence.                    | Verifiable file pointer (`path:line` + operative quote, hook event + handler, or CI workflow + job). |
+| Column | Definition | Rules & Constraints |
+| :- | :- | :- |
+| **Rule / nudge** | The operative obligation, constraint, or steering affordance. | One row per `(rule or nudge) × (mechanism that carries it)`. Logically accurate, explaining intent. |
+| **Mechanism** | The category/carrier kind. | Drawn strictly from the 10-term controlled vocabulary below. |
+| **Severity** | The escalation index within the mechanism. | Drawn strictly from the severity index below. |
+| **Detail** | Pinpoint reference and operative evidence. | Verifiable file pointer (`path:line` + operative quote, hook event + handler, or CI workflow + job). |
 
 ### Mechanism Controlled Vocabulary (10 Terms)
 

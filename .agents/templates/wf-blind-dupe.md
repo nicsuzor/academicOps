@@ -79,9 +79,9 @@ Record evaluation findings into the PKB or project task graph using `remember` o
 
 ## 📊 Evaluation Scoring Matrix
 
-| Metric          | Score 1.0 (Optimal)                | Score 0.5 (Partial)                    | Score 0.0 (Failure)             |
-| :-------------- | :--------------------------------- | :------------------------------------- | :------------------------------ |
-| **Precision**   | 0 false positives                  | Minor non-PKB edits included           | Hallucinated non-existent nodes |
-| **Recall**      | 100% created & updated nodes found | Found created nodes, missed updates    | Missed all nodes                |
-| **Attribution** | Exact subagent ID & task rationale | Correct node, missing subagent lineage | Incorrect attribution           |
-| **Navigation**  | Used transcript logs directly      | Relied on git log or broad search      | Stuck / failed search           |
+| Metric | Score 1.0 (Optimal) | Score 0.5 (Partial) | Score 0.0 (Failure) |
+| :- | :- | :- | :- |
+| **Precision** | 0 false positives | Minor non-PKB edits included | Hallucinated non-existent nodes |
+| **Recall** | 100% created & updated nodes found | Found created nodes, missed updates | Missed all nodes |
+| **Attribution** | Exact subagent ID & task rationale | Correct node, missing subagent lineage | Incorrect attribution |
+| **Navigation** | Used transcript logs directly | Relied on git log or broad search | Stuck / failed search |
