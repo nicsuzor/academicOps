@@ -40,7 +40,7 @@ A report arrives as a foreground subagent's result, a background subagent's noti
 The gate is procedural friction that never evaluates substance, the exception [enforcement.md](enforcement.md) authorises.
 
 - **Scope:** Ida and Sara.
-- **Arms:** when an incoming message carries a report: a cross-session message, a teammate message, or the notification that a background subagent or worker has finished. A foreground subagent's result is the agent's own tool output and leaves the gate as it was.
+- **Arms:** when an incoming message carries a report: a cross-session message, a teammate message, or the notification that a background subagent or worker has finished (including when unwrapped from outer channel envelopes). A foreground subagent's result is the agent's own tool output and leaves the gate as it was. User prompts and queries never arm it.
 - **Holds:** while armed, it refuses dispatch tools, messaging tools, `AskUserQuestion`, `Dump` and channel reply tools, and blocks `Stop` once per stop chain.
 - **Disarms:** on a successfully recorded verdict (PASS, REVISE or FAIL, with a reason, and acknowledged OTel span emission) through the skill's verdict script. The command it offers carries no pre-filled verdict. A failed or unconfigured span emission exits non-zero and leaves the gate armed.
 - **Records:** each verdict emits one span, `premise_check_verdict`, with the claim id, verification id, verdict and reason. Span emission failures halt loudly without fallback.

@@ -68,4 +68,4 @@ When verifying an incoming report, accept `observed` and `exhaustively-searched`
 uv run --project <plugin-dir> python3 <plugin-dir>/skills/premise-check/scripts/verdict.py --claim <claim_id> --verdict <PASS|REVISE|FAIL> --reason "<why>" [--title "<short_title>"]
 ```
 
-Use `--reason-file <path>` (or `-`) for multiline reasons.
+Use `--reason-file <path>` (or `-` for stdin) for multiline reasons; only `--reason-file <path>` keeps the reason off the command line.

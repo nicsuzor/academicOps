@@ -259,9 +259,21 @@ def _prompt_text(ctx: HookContext) -> str:
     return str(prompt or "")
 
 
+def _strip_channel_wrapper(text: str) -> str:
+    """Unwrap outer or leading <channel> envelope if present."""
+    s = text.strip()
+    m = re.match(r"^<channel\b[^>]*>(.*)</channel>$", s, re.DOTALL)
+    if m:
+        s = m.group(1).strip()
+    m = re.match(r"^<channel\b[^>]*>.*?</channel>\s*(.*)$", s, re.DOTALL)
+    if m and m.group(1):
+        s = m.group(1).strip()
+    return s
+
+
 def is_peer_report(ctx: HookContext) -> bool:
     """True when an incoming prompt is another agent's report, not the user's message."""
-    text = _prompt_text(ctx).lstrip()
+    text = _strip_channel_wrapper(_prompt_text(ctx))
     return text.startswith(_PEER_ENVELOPES)
 
 
@@ -336,8 +348,12 @@ def format_verdict_command(
 
 
 def _derive_claim_id(ctx: HookContext) -> str:
-    prompt = _prompt_text(ctx).strip()
-    match = re.search(r"<([a-zA-Z0-9_\-]+)([^>]*)>(.*?)(?:</\1>|$)", prompt, re.DOTALL)
+    prompt = _strip_channel_wrapper(_prompt_text(ctx))
+    match = re.match(
+        r"<(cross-session-message|teammate-message|task-notification)([^>]*)>(.*?)(?:</\1>|$)",
+        prompt,
+        re.DOTALL,
+    )
     if match:
         attrs = match.group(2)
         id_match = re.search(
