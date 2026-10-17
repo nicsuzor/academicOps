@@ -1,0 +1,13 @@
+{
+  "pr_number": 201,
+  "author": "agent-worker",
+  "title": "feat(ida): calibrate prompt instructions",
+  "files": [
+    "plugins/ida/agents/ida.md",
+    "specs/agents/reify.md"
+  ],
+  "expected_tier": 2,
+  "expected_labels": [
+    "triage:needs-judgment"
+  ]
+}

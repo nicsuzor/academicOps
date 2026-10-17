@@ -1,0 +1,13 @@
+{
+  "pr_number": 303,
+  "author": "nicsuzor",
+  "title": "feat: principal architectural draft",
+  "files": [
+    "specs/example.md"
+  ],
+  "expected_tier": 3,
+  "expected_labels": [
+    "criticality:critical",
+    "triage:needs-judgment"
+  ]
+}
