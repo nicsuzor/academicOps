@@ -37,8 +37,8 @@ The gate is procedural friction that never evaluates substance, the exception [e
 - **Scope:** Ida and Sara.
 - **Arms:** when a report arrives, never when a subagent is launched, and never on the user's own messages.
 - **Holds:** while armed, it refuses dispatch tools, messaging tools, `AskUserQuestion`, `Dump` and channel reply tools, and blocks `Stop` once per stop chain.
-- **Disarms:** on a recorded verdict (PASS, REVISE or FAIL, with a reason) through the skill's verdict script. The command it offers carries no pre-filled verdict.
-- **Records:** each verdict emits one span, `premise_check_verdict`, with the claim id, verification id, verdict and reason.
+- **Disarms:** on a successfully recorded verdict (PASS, REVISE or FAIL, with a reason, and acknowledged OTel span emission) through the skill's verdict script. The command it offers carries no pre-filled verdict. A failed or unconfigured span emission exits non-zero and leaves the gate armed.
+- **Records:** each verdict emits one span, `premise_check_verdict`, with the claim id, verification id, verdict and reason. Span emission failures halt loudly without fallback.
 - **Configuration:** `PREMISE_CHECK_GATE_MODE` is `block` by default, or `warn` or `off`. A truthy `PREMISE_CHECK_OVERRIDE`, `PREMISE_CHECK_GATE_OVERRIDE`, `AOP_FORCE` or `AOP_OVERRIDE` disables the gate. Gate state is a per-session file under `AOPS_PREMISE_CHECK_DIR`, by default `aops_premise_check/` in the system temp directory.
 
 Container-worker handbacks are read from the task record, so no report arrives and the gate does not arm. Nothing yet covers that route.

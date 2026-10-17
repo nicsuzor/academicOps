@@ -249,13 +249,14 @@ def test_build_and_export_spans_sets_attributes():
         patch.object(claude_code_tracer, "_otel_imports", return_value=otel_mock),
         patch.object(claude_code_tracer, "_create_exporter", return_value=MagicMock()),
     ):
+        test_cwd = str(REPO_ROOT / "tests")
         claude_code_tracer._build_and_export_spans(
             config=config,
             session_id="test-session-123",
             username="test-user",
             span_records=records,
             agent_name="sara",
-            cwd="/workspace/project",
+            cwd=test_cwd,
         )
 
     # Inspect set_attribute calls on the span
@@ -263,10 +264,124 @@ def test_build_and_export_spans_sets_attributes():
 
     assert called_attrs.get("service.name") == "academicOps"
     assert called_attrs.get("agent.name") == "sara"
-    assert called_attrs.get("cwd") == "/workspace/project"
-    assert called_attrs.get("project.dir") == "/workspace/project"
+    assert called_attrs.get("cwd") == test_cwd
+    assert called_attrs.get("project.dir") == str(REPO_ROOT)
+    assert called_attrs.get("aops.repo") == "academicOps"
+    assert called_attrs.get("aops.surface") == "claude-code"
+    assert called_attrs.get("project.name") == "academicOps"
+    assert called_attrs.get("openinference.project.name") == "academicOps"
     assert "task.id" not in called_attrs
     assert "tag.task_id" not in called_attrs
+
+
+def test_build_and_export_spans_defaults_service_name_and_surface():
+    mock_span = MagicMock()
+    mock_span.get_span_context.return_value = MagicMock(trace_id=1, span_id=2)
+    mock_tracer = MagicMock()
+    mock_tracer.start_span.return_value = mock_span
+    mock_provider = MagicMock()
+    mock_provider.get_tracer.return_value = mock_tracer
+
+    otel_mock = (
+        MagicMock(),
+        MagicMock(),
+        MagicMock(return_value=mock_provider),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+    )
+
+    config = {
+        "endpoint": "localhost:4317",
+    }
+    records = [
+        {
+            "name": "test-span",
+            "start_ns": 1000,
+            "end_ns": 2000,
+            "trace_id_hex": "0123456789abcdef0123456789abcdef",
+            "span_id_hex": "0123456789abcdef",
+            "attributes": {},
+        }
+    ]
+
+    with (
+        patch.object(claude_code_tracer, "_otel_imports", return_value=otel_mock),
+        patch.object(claude_code_tracer, "_create_exporter", return_value=MagicMock()),
+    ):
+        claude_code_tracer._build_and_export_spans(
+            config=config,
+            session_id="test-session-456",
+            username="test-user",
+            span_records=records,
+            agent_name="ida",
+            cwd=str(REPO_ROOT),
+        )
+
+    called_attrs = {call[0][0]: call[0][1] for call in mock_span.set_attribute.call_args_list}
+    assert called_attrs.get("service.name") == "aops-claude-hooks"
+    assert called_attrs.get("aops.surface") == "claude-code"
+    assert called_attrs.get("aops.repo") == "academicOps"
+    assert called_attrs.get("project.dir") == str(REPO_ROOT)
+    assert called_attrs.get("project.name") == "academicOps"
+    assert called_attrs.get("openinference.project.name") == "academicOps"
+
+
+def test_build_and_export_spans_detects_ci_surface():
+    mock_span = MagicMock()
+    mock_span.get_span_context.return_value = MagicMock(trace_id=1, span_id=2)
+    mock_tracer = MagicMock()
+    mock_tracer.start_span.return_value = mock_span
+    mock_provider = MagicMock()
+    mock_provider.get_tracer.return_value = mock_tracer
+
+    otel_mock = (
+        MagicMock(),
+        MagicMock(),
+        MagicMock(return_value=mock_provider),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+    )
+
+    config = {
+        "endpoint": "localhost:4317",
+    }
+    records = [
+        {
+            "name": "test-span",
+            "start_ns": 1000,
+            "end_ns": 2000,
+            "trace_id_hex": "0123456789abcdef0123456789abcdef",
+            "span_id_hex": "0123456789abcdef",
+            "attributes": {},
+        }
+    ]
+
+    with (
+        patch.object(claude_code_tracer, "_otel_imports", return_value=otel_mock),
+        patch.object(claude_code_tracer, "_create_exporter", return_value=MagicMock()),
+        patch.dict("os.environ", {"GITHUB_ACTIONS": "true"}),
+    ):
+        claude_code_tracer._build_and_export_spans(
+            config=config,
+            session_id="test-session-ci",
+            username="test-user",
+            span_records=records,
+            cwd=str(REPO_ROOT),
+        )
+
+    called_attrs = {call[0][0]: call[0][1] for call in mock_span.set_attribute.call_args_list}
+    assert called_attrs.get("service.name") == "aops-claude-hooks"
+    assert called_attrs.get("aops.surface") == "github-actions"
 
 
 def test_resolve_project_name_ignores_default_env_var(tmp_path):
@@ -283,9 +398,9 @@ def test_resolve_project_name_ignores_default_env_var(tmp_path):
         },
         clear=True,
     ):
-        # 'default' must be ignored and fallback to cwd / git resolution
+        # 'default' must be ignored and fallback to academicOps (never directory name)
         resolved = claude_code_tracer.resolve_project_name(data={"cwd": str(repo_dir)})
-        assert resolved == "my-repo"
+        assert resolved == "academicOps"
 
 
 def test_resolve_project_name_routes_to_custom_and_test_project():
@@ -297,17 +412,29 @@ def test_resolve_project_name_routes_to_custom_and_test_project():
         resolved = claude_code_tracer.resolve_project_name()
         assert resolved == "academicOps-test"
 
-    with patch.dict(
-        "os.environ",
-        {"OTEL_SERVICE_NAME": "academicOps-test"},
-        clear=True,
-    ):
-        resolved = claude_code_tracer.resolve_project_name()
-        assert resolved == "academicOps-test"
-
     # Explicit non-default project argument takes precedence
     resolved = claude_code_tracer.resolve_project_name(project="custom-proj")
     assert resolved == "custom-proj"
+
+
+def test_resolve_canonical_project_normalizes_aops():
+    assert claude_code_tracer.resolve_canonical_project("aops") == "academicOps"
+    assert claude_code_tracer.resolve_canonical_project("academicops") == "academicOps"
+    assert claude_code_tracer.resolve_canonical_project("academicOps") == "academicOps"
+    assert claude_code_tracer.resolve_canonical_project("aops-task1") == "academicOps-task1"
+
+
+def test_resolve_checkout_root(tmp_path):
+    repo = tmp_path / "my-repo"
+    sub = repo / "a" / "b" / "c"
+    sub.mkdir(parents=True)
+    (repo / ".git").mkdir()
+
+    assert claude_code_tracer.resolve_checkout_root(str(sub)) == str(repo)
+    assert claude_code_tracer.resolve_checkout_root(str(repo)) == str(repo)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    assert claude_code_tracer.resolve_checkout_root(str(outside)) == str(outside)
 
 
 def test_resolve_project_from_git_worktree(tmp_path):

@@ -38,6 +38,16 @@ Components come from three sources:
 | Universal               | `plugins/ida/skills/workflow-library/workflows/*.md`                                    |
 | Personal knowledge base | PKB documents carrying `type: template` and no `project`                                |
 
+### Universal templates
+
+Universal baseline templates in `plugins/ida/skills/workflow-library/workflows/` include:
+
+- `wf-code-task-base`: Foundation for standard code-change tasks (test-first build, PR, independent review).
+- `wf-finish`: Universal fallback finish policy (PR into base development branch, QA review).
+- `wf-quick-fix`: Shortened route for simple, uncontroversial project changes (repository-allowed shortened PR or merge route, review exemption when unit and destination tests pass).
+- `wf-reconcile`: Universal graph reconciliation and task truth-maintenance procedure.
+- `wf-tdd`: Test-driven development red-green-refactor cycle.
+
 **How they go together is the composing agent's judgment, not a rule here.** Which components a task needs, how they combine, and how much process the work warrants are worked out at composition time, against the task in hand.
 
 ## Authoring a component
