@@ -19,6 +19,7 @@ Covers:
 from __future__ import annotations
 
 import importlib.util
+import json
 import shlex
 import sys
 from pathlib import Path
@@ -1341,3 +1342,35 @@ def test_printed_command_independent_of_env_vars(monkeypatch, tmp_path):
     script_path = Path(script_tokens[0])
     assert script_path.is_absolute()
     assert script_path.is_file()
+
+
+# ---------------------------------------------------------------------------
+# agy: recorded hook payload shapes
+# ---------------------------------------------------------------------------
+
+_AGY_PAYLOADS = json.loads(
+    (_REPO_ROOT / "tests" / "fixtures" / "agy_hook_payloads.json").read_text(encoding="utf-8")
+)
+
+
+@pytest.fixture
+def agy_ida(monkeypatch):
+    """The gated agent's identity, supplied the one way normalize() reads it on agy."""
+    monkeypatch.delenv("CLAUDE_AGENT_NAME", raising=False)
+    monkeypatch.delenv("AGY_AGENT_NAME", raising=False)
+    monkeypatch.setenv("AOPS_AGENT_NAME", "ida")
+
+
+def test_agy_invoke_subagent_is_a_gated_tool_on_pre_tool_use(agy_ida):
+    ctx = dispatch.normalize(
+        "agy", "PreToolUse", _AGY_PAYLOADS["pre_tool_invoke_subagent"], _HOOKS_DIR
+    )
+    assert pcg._is_blocked_tool(ctx.tool) is True
+
+
+@pytest.mark.parametrize("payload", ["post_tool_invoke_subagent", "post_tool_wait"])
+def test_agy_dispatch_receipt_and_wait_do_not_arm(agy_ida, payload):
+    ctx = dispatch.normalize("agy", "PostToolUse", _AGY_PAYLOADS[payload], _HOOKS_DIR)
+    assert ctx.agent_type == "ida"
+    assert pcg.premise_check_arm(ctx) is None
+    assert pcg.is_armed(ctx.session_id) is False

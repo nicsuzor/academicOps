@@ -55,6 +55,10 @@ _PEER_ENVELOPES = ("<cross-session-message", "<teammate-message", "<task-notific
 # Tools that dispatch subagents (arming the check)
 _DISPATCH_TOOLS = ["Agent", "Task", "invoke_subagent"]
 
+# Dispatch tools that are never foreground: agy's invoke_subagent returns a
+# creation receipt, and the subagent's report arrives later as a message.
+_ASYNC_DISPATCH_TOOLS = frozenset(["invoke_subagent"])
+
 # Tools that reach the user directly. Matched on the full name or the last
 # ``__`` segment, case-insensitively.
 _CHANNEL_REPLY_TOOLS = frozenset(
@@ -323,6 +327,8 @@ def is_peer_report(ctx: HookContext) -> bool:
 def is_foreground_dispatch(ctx: HookContext) -> bool:
     """True when a PostToolUse event is a foreground subagent dispatch."""
     if ctx.event != "PostToolUse" or ctx.tool not in _DISPATCH_TOOLS:
+        return False
+    if ctx.tool in _ASYNC_DISPATCH_TOOLS:
         return False
     tool_input = ctx.raw.get("tool_input") or ctx.raw.get("toolInput") or {}
     if not isinstance(tool_input, dict):
