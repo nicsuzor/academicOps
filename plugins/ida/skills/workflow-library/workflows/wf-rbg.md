@@ -24,7 +24,7 @@ Universal rule-compliance review gate: evaluates an artifact, specification, des
 
 The invoking workflow provides:
 
-1. **Target artifact** -- the document, specification, design proposal, code diff, or decision under review.
+1. **Target artifact** -- the document, specification, design proposal, code diff, or decision under review. For candidate publications, commits, PRs, or trust-boundary transitions, this covers the full published surface: diffs, full file contents, metadata, commit messages and trailers, titles and descriptions, and review comments and replies, alongside the destination repository's visibility (public or private).
 2. **Context and intent** -- commission objective, task acceptance criteria, or parent task context.
 3. **Rule sources** -- assembled in priority order:
    - Framework axioms: the `rbg:axioms` skill (inviolable baseline).
@@ -35,7 +35,7 @@ The invoking workflow provides:
 
 1. **Assemble active rules** -- load governing axioms and project rules before judging; never rule from memory.
 2. **Judge proportion first** -- state the smallest mechanism meeting the request across its class before reading the artifact; reject excess machinery under `proportionate`.
-3. **Evaluate against rules** -- test the artifact against governing axioms (categorical imperative, closure, data boundaries, fail-fast, full observability, honest epistemics, non-delegable qualitative judgment, single source of truth).
+3. **Evaluate against rules** -- test the artifact against governing axioms (categorical imperative, closure, data boundaries, fail-fast, full observability, honest epistemics, non-delegable qualitative judgment, single source of truth). For candidate publications and trust-boundary transitions, evaluate the full published surface against destination repository visibility under `data-boundaries`.
 4. **Determine required changes vs suggested improvements**:
    - A _Required Change_ names a rule violation, its likelihood and consequence, and costs less than the failure it prevents.
    - Anything else is a _Suggested Improvement_. Where the work exceeds the request, require less, not more.
