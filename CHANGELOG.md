@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.10.21](https://github.com/nicsuzor/academicOps/compare/v0.10.20...v0.10.21) (2026-10-17)
+
+
+### Bug Fixes
+
+* **ci:** address PR [#2803](https://github.com/nicsuzor/academicOps/issues/2803) strategic review follow-ups for CI OTel hooks ([1335e26](https://github.com/nicsuzor/academicOps/commit/1335e261988fdbf06f7efee711be5793a0b059ad))
+* **tests:** provide stub tracer for out-of-process premise-check verd… ([470e04a](https://github.com/nicsuzor/academicOps/commit/470e04ac58cbb3e32c1224ac8911ca7c59ca2ed9))
+* **tests:** provide stub tracer for out-of-process premise-check verdict CLI tests ([a241f29](https://github.com/nicsuzor/academicOps/commit/a241f294d9f4ab93321544fe10327ddc976c28ab))
+* **tracer:** emit turn root output atomically from hook payload ([e415cd0](https://github.com/nicsuzor/academicOps/commit/e415cd0830513eece01c7c7744f2727762905f89))
+
 ## [0.10.20](https://github.com/nicsuzor/academicOps/compare/v0.10.19...v0.10.20) (2026-10-17)
 
 ### Features
