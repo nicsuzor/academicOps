@@ -914,21 +914,6 @@ def _iso_to_ns(ts: str) -> int:
         return time.time_ns()
 
 
-_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
-
-
-def _iso_to_ns(ts: str) -> int:
-    """Convert ISO 8601 timestamp string to nanoseconds."""
-    try:
-        dt = datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(UTC)
-        # Integer arithmetic: dt.timestamp() * 1e9 loses sub-microsecond
-        # precision and can floor a millisecond timestamp to the one before.
-        delta = dt - _EPOCH
-        return (delta.days * 86_400 + delta.seconds) * 1_000_000_000 + delta.microseconds * 1_000
-    except Exception:
-        return time.time_ns()
-
-
 # ---------------------------------------------------------------------------
 # OpenTelemetry imports (lazy)
 # ---------------------------------------------------------------------------
@@ -2218,84 +2203,6 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
 
     state.setdefault("pending_tools", {})[pending_key] = pending_entry
     _save_state(session_id, state)
-
-
-def _pending_tool_key(data: dict, tool_name: str) -> str:
-    """Pending-tools key of a non-Agent tool call.
-
-    A subagent's calls are keyed apart from the main thread's, so a subagent
-    Bash and a main-thread Bash pending together do not overwrite each other.
-    """
-    agent_id = _subagent_id(data)
-    return f"{tool_name}@{agent_id}" if agent_id else tool_name
-
-
-def _find_pending_tool_entry(
-    state: dict,
-    tool_name: str,
-    data_tool_input: Any,
-    pending_key: str | None = None,
-) -> tuple[dict, str]:
-    """Return (pending_entry, pending_key) for the given tool.
-
-    For Agent/Task tools, parallel calls each get a compound key
-    ``"{tool_name}#{span_id}"``.  We find the right entry by matching
-    ``tool_input``; if no match, fall back to the first entry with the right
-    prefix so single-agent sessions and legacy state files still work.
-
-    For all other tools the key is *pending_key* (``_pending_tool_key``),
-    defaulting to ``tool_name``.
-    """
-    pending = state.get("pending_tools", {})
-    prefix = f"{tool_name}#"
-
-    if tool_name in ("Agent", "Task"):
-        # Pass 1: exact tool_input match
-        if data_tool_input is not None:
-            for k, v in pending.items():
-                if k.startswith(prefix) and v.get("tool_input") == data_tool_input:
-                    return v, k
-        # Pass 2: any entry with this tool's prefix (single-agent / legacy key)
-        for k, v in pending.items():
-            if k.startswith(prefix) or k == tool_name:
-                return v, k
-        return {}, tool_name
-
-    key = pending_key or tool_name
-    return pending.get(key, {}), key
-
-
-def _find_active_agent_span_id(
-    state: dict,
-    current_pending_key: str,
-    tool_name: str,
-) -> str | None:
-    """Return the pre_allocated_span_id of the innermost pending Agent/Task call.
-
-    When an inline subagent (e.g. Explore) makes tool calls within the parent
-    session, those calls appear in pending_tools alongside the Agent entry.
-    This detects that situation and returns the Agent's span_id so the sub-tool
-    is correctly parented under the Agent span rather than the CHAIN root.
-    For nested agents, the most-recently-started one wins (innermost parent).
-
-    An Agent/Task call is never parented under another pending Agent/Task
-    call: parallel Agent calls in one session are siblings, and two of them
-    finishing together would otherwise name each other as parent.
-    """
-    if tool_name in ("Agent", "Task"):
-        return None
-    pending = state.get("pending_tools", {})
-    best_start_ns = -1
-    best_span_id: str | None = None
-    for k, v in pending.items():
-        if k == current_pending_key:
-            continue  # don't self-reference
-        base_tool = k.split("#")[0] if "#" in k else k
-        if base_tool in ("Agent", "Task") and v.get("pre_allocated_span_id"):
-            if v.get("start_ns", 0) > best_start_ns:
-                best_start_ns = v["start_ns"]
-                best_span_id = v["pre_allocated_span_id"]
-    return best_span_id
 
 
 def handle_post_tool(data: dict, config: dict) -> None:
