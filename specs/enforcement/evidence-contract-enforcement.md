@@ -59,10 +59,21 @@ The recorder holds the checker to the [checker's reason](../../plugins/ida/skill
 
 Four measures are queryable in Phoenix from the verdict and override span attributes:
 
-1. Defect-tag rate per inference line.
-2. Strength distribution: the weakest basis of each judged report.
-3. The contents of `Waived`.
-4. Override count.
+1. Defect-tag rate per inference line: sum of `premise_check.defect_tag_count` over sum of `premise_check.inference_count`, on `premise_check_verdict` spans.
+2. Strength distribution: count of `premise_check_verdict` spans by `premise_check.verdict` and `premise_check.weakest_basis_term`.
+3. The contents of `Waived`: count of each entry of the `premise_check.waived_items` array.
+4. Override count: count of `premise_check_override` spans by `premise_check.override_var` and `premise_check.override_tool`.
+
+Each is one SQL query over the project's spans, for example measure 1:
+
+```sql
+SELECT sum(CAST(s.attributes->>'$.premise_check.defect_tag_count' AS INTEGER)) * 1.0
+     / nullif(sum(CAST(s.attributes->>'$.premise_check.inference_count' AS INTEGER)), 0)
+FROM spans s JOIN traces t ON s.trace_rowid = t.id JOIN projects p ON t.project_rowid = p.id
+WHERE p.name = '<project>' AND s.name = 'premise_check_verdict'
+```
+
+Measure 3 expands the array with `json_each(s.attributes->'$.premise_check.waived_items')`.
 
 ## Escalation
 
