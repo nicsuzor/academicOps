@@ -16,7 +16,7 @@ Coordinate multi-agent review across expert lenses and synthesize findings into 
 
 ### 1. Gather Context
 
-Load the artifact, its diff (for PRs), and relevant quality standards. If originating from a brief, verify against its acceptance criteria and evidence requirements.
+Load the artifact, its diff (for PRs), commit messages and trailers, PR title and body, and review replies. Determine destination repository visibility (public or private) and relevant quality standards. If originating from a brief, verify against its acceptance criteria and evidence requirements.
 
 ### 2. Strategic Fit Check
 
@@ -24,9 +24,9 @@ Before implementation detail is reviewed, the strategic-fit reviewer (TypeName `
 
 ### 3. Deploy Parallel Reviewers
 
-Dispatch all three reviewers concurrently via `invoke_subagent` in a single message with neutral prompts: the artifact and its acceptance criteria, with no lenses or verdict scale of your own. Each reviewer returns its verdict on its own definition's scale.
+Dispatch all three reviewers concurrently via `invoke_subagent` in a single message with neutral prompts: provide the full published surface (diff, commit messages and trailers, PR title and body, review replies), the destination's visibility, and its acceptance criteria, with no lenses or verdict scale of your own. Each reviewer returns its verdict on its own definition's scale.
 
-- **Rule compliance** (TypeName `rbg`): Axiom and rule compliance.
+- **Rule compliance** (TypeName `rbg`): Axiom and rule compliance, evaluating published text against destination repository visibility under `data-boundaries`.
 - **Strategic fit** (TypeName `pauli`): Strategic Fit Check (step 2).
 - **Quality** (TypeName `marsha`): Runtime quality, user ask satisfaction, and excellence.
 
@@ -47,6 +47,6 @@ Synthesize reviewer outputs into a unified findings table:
 ### 5. Action and Reporting
 
 - **Default**: Return the synthesis table and overall verdict to the caller.
-- **`comment`**: Post the reconciled feedback to the PR review or task note.
-- **`fix`**: Apply `FIX` and `TRIVIAL` remedies immediately.
+- **`comment`**: Run the `data-boundaries` check against destination visibility before posting; then post reconciled feedback to the PR review or task note.
+- **`fix`**: Run the `data-boundaries` check against destination visibility before pushing; apply `FIX` and `TRIVIAL` remedies immediately.
 - Write the final verdict and evidence to the artifact's task record.
