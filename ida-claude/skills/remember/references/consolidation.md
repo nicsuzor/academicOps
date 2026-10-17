@@ -31,8 +31,8 @@ Without a focus, stages run in order as listed below.
 
 ### Content Boundaries
 
-| Destination note                                                                               | Retained in task body                                            | Discarded                                                    |
-| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------ |
+| Destination note | Retained in task body | Discarded |
+| - | - | - |
 | Models, architectures, decisions, empirical findings, API constraints, contacts, external URLs | Goal, completed checklist, PR/commit links, destination pointers | Debug traces, retry loops, terminal logs, routine timestamps |
 
 ### Extraction Verification

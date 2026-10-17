@@ -20,12 +20,13 @@ from typing import Any
 log = logging.getLogger("orchestrate.agy_tracer")
 
 try:
-    from token_extractor import resolve_gemini_tokens
+    from token_extractor import resolve_gemini_model, resolve_gemini_tokens
 except ImportError:
     try:
-        from .token_extractor import resolve_gemini_tokens
+        from .token_extractor import resolve_gemini_model, resolve_gemini_tokens
     except Exception:
         resolve_gemini_tokens = None
+        resolve_gemini_model = None
 
 from claude_code_tracer import (
     _build_and_export_spans,
@@ -208,6 +209,8 @@ def _export_tool_span_agy(
         parent_session_id=parent_session_id,
         agent_name=state.get("agent_name") or config.get("agent_name"),
         cwd=state.get("cwd") or config.get("cwd"),
+        service_name="aops-agy-hooks",
+        surface="agy",
     )
 
 
@@ -374,11 +377,20 @@ def _extract_llm_spans_for_turn_agy(
 
                     attrs: dict[str, Any] = {
                         "openinference.span.kind": "LLM",
-                        "llm.model_name": "gemini-pro-agent",
+                        "llm.provider": "google",
                         "input.value": last_input_value,
                         "input.mime_type": last_input_mime,
                         "llm.output_messages.0.message.role": "assistant",
                     }
+                    if resolve_gemini_model is not None:
+                        model_id = resolve_gemini_model(
+                            session_id=session_id,
+                            transcript_path=transcript_path,
+                            step_index=step_index,
+                            reported_model=entry.get("model") or entry.get("model_name"),
+                        )
+                        if model_id:
+                            attrs["llm.model_name"] = model_id
                     bounded_msgs = step_input_messages[-MAX_INPUT_MESSAGES_PER_SPAN:]
                     for i, m in enumerate(bounded_msgs):
                         attrs[f"llm.input_messages.{i}.message.role"] = m["role"]
@@ -563,6 +575,7 @@ def _init_turn_state_agy(
         "turn_prompt": turn_prompt,
         "prompt_preview": _truncate(turn_prompt) if turn_prompt else "",
     }
+    state["surface"] = "agy"
     state["pending_tools"] = {}
     state.setdefault("deferred_tool_spans", [])
     state.setdefault("emitted_llm_steps", [])
@@ -912,44 +925,10 @@ def handle_stop(data: dict, config: dict) -> None:
         if agent_name:
             chain_attrs["agent.name"] = agent_name
 
-        total_prompt = 0
-        total_completion = 0
-        total_cache = 0
-        all_reported = True
-        has_tokens = False
-
-        other_records: list[dict[str, Any]] = []
-        for span in llm_spans:
-            other_records.append(span)
-            s_attrs = span.get("attributes", {})
-            if "llm.token_count.prompt" in s_attrs:
-                has_tokens = True
-                total_prompt += s_attrs["llm.token_count.prompt"]
-                total_completion += s_attrs["llm.token_count.completion"]
-                total_cache += s_attrs.get("llm.token_count.prompt_details.cache_read", 0)
-                if s_attrs.get("llm.token_count.type") != "reported":
-                    all_reported = False
-
-        if has_tokens:
-            chain_attrs["llm.token_count.prompt"] = total_prompt
-            chain_attrs["llm.token_count.completion"] = total_completion
-            chain_attrs["llm.token_count.total"] = total_prompt + total_completion
-            if total_cache > 0:
-                chain_attrs["llm.token_count.prompt_details.cache_read"] = total_cache
-                chain_attrs["llm.token_count.prompt_details.cache_write"] = 0
-            est_type = "reported" if all_reported else "estimated"
-            est_method = (
-                "reported: antigravity conversation db steps payload"
-                if all_reported
-                else "estimated: character length ratio"
-            )
-            chain_attrs["llm.token_count.type"] = est_type
-            chain_attrs["llm.token_count.provenance"] = est_type
-            chain_attrs["llm.token_count.estimate_method"] = est_method
-            chain_attrs["llm.token_count.estimation_method"] = est_method
-            chain_attrs["token_count.type"] = est_type
-            chain_attrs["token_count.provenance"] = est_type
-            chain_attrs["token_count.estimate_method"] = est_method
+        # Token counts stay on the LLM spans only: Phoenix's cumulative counts
+        # add a span's own tokens to its descendants', so totals on the CHAIN
+        # root would count every turn twice.
+        other_records: list[dict[str, Any]] = list(llm_spans)
 
         # Emit CHAIN span
         chain_span = {
@@ -974,6 +953,8 @@ def handle_stop(data: dict, config: dict) -> None:
             parent_session_id=parent_session_id,
             agent_name=agent_name or config.get("agent_name"),
             cwd=state.get("cwd") or config.get("cwd"),
+            service_name="aops-agy-hooks",
+            surface="agy",
         )
 
         _end_turn_agy(session_id, state)

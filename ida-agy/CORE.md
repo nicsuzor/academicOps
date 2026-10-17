@@ -17,30 +17,30 @@ The framework defines six specialized agent types in the `ida` plugin:
 
 The canonical mapping of project slugs to their GitHub repositories (`owner/repo`). Every git clone, `gh` CLI invocation, and project lookup resolves from this registry:
 
-| Project Slug           | Repository                     | Aliases             | Description / Notes                                                   |
-| :--------------------- | :----------------------------- | :------------------ | :-------------------------------------------------------------------- |
-| `aops`                 | `nicsuzor/academicOps`         | `academicOps`       | academicOps framework                                                 |
-| `automod`              | `nicsuzor/automod`             |                     | Content moderation research                                           |
-| `brain`                | `nicsuzor/brain`               |                     | Personal knowledge base (ACA_DATA)                                    |
-| `buttermilk`           | `qut-dmrc/buttermilk`          |                     | Buttermilk research toolkit                                           |
-| `dotfiles`             | `nicsuzor/dotfiles`            |                     | Shell config, scripts, system setup                                   |
-| `explorations`         | `nicsuzor/explorations`        |                     | Experimental projects and prototypes                                  |
-| `ida`                  | `nicsuzor/ida`                 |                     | Ida personal assistant and orchestrator                               |
-| `jr`                   | `nicsuzor/junior`              | `junior`            | Coordination and junior scratch space                                 |
-| `labeler`              | `nicsuzor/labeler`             |                     | CLI label maker printer tool                                          |
-| `mem`                  | `nicsuzor/mem`                 |                     | Rust CLI tools (aops, pkb binaries)                                   |
-| `omcp`                 | `nicsuzor/omcp`                |                     | Outlook MCP server (email & calendar)                                 |
-| `overwhelm-dashboard`  | `nicsuzor/overwhelm-dashboard` | `overwhelm`         | Overwhelm dashboard -- SvelteKit PKB visualization                    |
-| `sessions`             | `nicsuzor/sessions`            |                     | academicOps state files and session configs                           |
-| `tja`                  | `nicsuzor/explorations`        | `trans-journalists` | Trans journalists analysis (subdir `tja/` in explorations)            |
-| `tox`                  | `nicsuzor/tox`                 |                     | Toxicity detection model bias analysis                                |
-| `wikijuris`            | `nicsuzor/wikijuris`           |                     | WikiJuris collaborative legal knowledge wiki                          |
-| `writing`              | `nicsuzor/writing`             |                     | Personal academic writing workspace                                   |
-| `zotmcp`               | `nicsuzor/zotmcp`              |                     | MCP server for Zotero library                                         |
-| `qut`                  | `nicsuzor/explorations`        | `QUT`               | QUT employment obligations (subdir in explorations; `is_repo: false`) |
-| `teaching`             | `nicsuzor/explorations`        |                     | QUT teaching (sub-project of qut; `is_repo: false`)                   |
-| `research-supervision` | `nicsuzor/explorations`        | `supervision`       | QUT research/HDR supervision (sub-project of qut; `is_repo: false`)   |
-| `service`              | `nicsuzor/explorations`        |                     | Academic service (sub-project of qut; `is_repo: false`)               |
-| `admin`                | `nicsuzor/explorations`        |                     | Academic admin (sub-project of qut; `is_repo: false`)                 |
-| `engagement`           | `nicsuzor/explorations`        |                     | Engagement & public comms (sub-project of qut; `is_repo: false`)      |
-| `personal`             | _None_                         |                     | Personal life, home, side projects (`is_repo: false`)                 |
+| Project Slug | Repository | Aliases | Description / Notes |
+| :- | :- | :- | :- |
+| `aops` | `nicsuzor/academicOps` | `academicOps` | academicOps framework |
+| `automod` | `nicsuzor/automod` |  | Content moderation research |
+| `brain` | `nicsuzor/brain` |  | Personal knowledge base (ACA_DATA) |
+| `buttermilk` | `qut-dmrc/buttermilk` |  | Buttermilk research toolkit |
+| `dotfiles` | `nicsuzor/dotfiles` |  | Shell config, scripts, system setup |
+| `explorations` | `nicsuzor/explorations` |  | Experimental projects and prototypes |
+| `ida` | `nicsuzor/ida` |  | Ida personal assistant and orchestrator |
+| `jr` | `nicsuzor/junior` | `junior` | Coordination and junior scratch space |
+| `labeler` | `nicsuzor/labeler` |  | CLI label maker printer tool |
+| `mem` | `nicsuzor/mem` |  | Rust CLI tools (aops, pkb binaries) |
+| `omcp` | `nicsuzor/omcp` |  | Outlook MCP server (email & calendar) |
+| `overwhelm-dashboard` | `nicsuzor/overwhelm-dashboard` | `overwhelm` | Overwhelm dashboard -- SvelteKit PKB visualization |
+| `sessions` | `nicsuzor/sessions` |  | academicOps state files and session configs |
+| `tja` | `nicsuzor/explorations` | `trans-journalists` | Trans journalists analysis (subdir `tja/` in explorations) |
+| `tox` | `nicsuzor/tox` |  | Toxicity detection model bias analysis |
+| `wikijuris` | `nicsuzor/wikijuris` |  | WikiJuris collaborative legal knowledge wiki |
+| `writing` | `nicsuzor/writing` |  | Personal academic writing workspace |
+| `zotmcp` | `nicsuzor/zotmcp` |  | MCP server for Zotero library |
+| `qut` | `nicsuzor/explorations` | `QUT` | QUT employment obligations (subdir in explorations; `is_repo: false`) |
+| `teaching` | `nicsuzor/explorations` |  | QUT teaching (sub-project of qut; `is_repo: false`) |
+| `research-supervision` | `nicsuzor/explorations` | `supervision` | QUT research/HDR supervision (sub-project of qut; `is_repo: false`) |
+| `service` | `nicsuzor/explorations` |  | Academic service (sub-project of qut; `is_repo: false`) |
+| `admin` | `nicsuzor/explorations` |  | Academic admin (sub-project of qut; `is_repo: false`) |
+| `engagement` | `nicsuzor/explorations` |  | Engagement & public comms (sub-project of qut; `is_repo: false`) |
+| `personal` | _None_ |  | Personal life, home, side projects (`is_repo: false`) |

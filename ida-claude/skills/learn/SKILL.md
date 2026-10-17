@@ -17,14 +17,18 @@ Perform root-cause analysis on systemic failure classes using session execution 
    - Ground findings in observable runtime mechanisms shown in the trace (or session log if the surface does not emit traces): failing tool invocations, unexpected tool error payloads, schema mismatches, hook blocks, timeout spikes.
    - Describe what the session attempted and where execution broke down. The runtime execution record is the evidence; do not inspect source files or name responsible code lines.
    - Address the class of failure rather than proximate mistakes. Focus on mechanisms and contracts rather than speculating on agent psychology or internal states.
-3. **Determine scope**:
+3. **Generalise the instance**: when the ask names one instance, take both steps below yourself, even if the instance is already fixed.
+   - _General bug_: name the mechanism that produced the instance and will produce more like it.
+   - _Verification miss_: name the check that should have caught the instance before it reached the user, and why it passed or did not run.
+4. **Determine scope** of each finding:
    - _Project_: Project-specific configuration, workflow templates, or repository guidelines.
    - _User/PKB_: User preferences, habits, or personal knowledge base.
    - _Framework_: Universal axioms, agent roles, or core tooling.
-4. **File an issue**:
-   - Search existing issues within the owning repository for the error class before creating a new one to avoid duplicate reports. Target the remote repository directly by name (`owner/repo`) for both search and creation rather than relying on a local checkout.
+5. **File issues**:
+   - File the general bug and the verification miss as separate issues, each in its owning repository.
+   - For each, search existing issues within the owning repository for the error class before creating a new one to avoid duplicate reports. Target the remote repository directly by name (`owner/repo`) for both search and creation rather than relying on a local checkout.
    - Ground the issue description in the execution record (tool calls, error payloads, latencies). Strip personal names, credentials, file paths containing sensitive usernames, and raw environment details.
-5. **No direct fixes**:
+6. **No direct fixes**:
    - Diagnose only; do not propose fixes, select enforcement mechanisms, or open tasks to implement remedies. Findings serve as evidence for the framework enforcement loop (`specs/enforcement/enforcement.md`).
 
 ## Output
@@ -33,5 +37,6 @@ Return a markdown report containing:
 
 - **Evidence**: Session ID, relevant OTel span IDs (or session log excerpts if the surface does not emit traces), and execution excerpts (tool calls, error payloads, latencies).
 - **Root cause**: The systemic defect in execution flow, contract, or mechanism demonstrated by the execution record.
+- **Verification miss**: The check that should have caught the instance, and why it did not.
 - **Impact estimate**: Projected frequency and severity.
-- **Artifact**: Link to the filed GitHub issue or PKB reference.
+- **Artifacts**: Links to the general-bug issue and the verification-miss issue.

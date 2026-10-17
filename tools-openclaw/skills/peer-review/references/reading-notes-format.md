@@ -38,12 +38,12 @@ status: initial-read | re-read | drafting | submitted
 Text: `{path}` ({N} lines via `pdftotext -layout`).
 
 | Section | Lines | Notes |
-| ------- | ----- | ----- |
+| - | - | - |
 
 ## Criteria
 
 | # | Criterion | Weight | Sub-elements |
-| - | --------- | ------ | ------------ |
+| - | - | - | - |
 
 ## Factual Read-Along (Per Criterion)
 

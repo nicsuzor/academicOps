@@ -4,15 +4,15 @@ Empirical findings and adjudications governing the craft standard. Cite relevant
 
 ## Measured Findings
 
-| Finding                                           | Measurement                                                 | Source                                  |
-| ------------------------------------------------- | ----------------------------------------------------------- | --------------------------------------- |
-| Curated skills raise task pass rates              | 33.9% -> 50.5% (+16.6pp) across 87 tasks                    | SkillsBench, arXiv:2602.12670           |
-| Small skills outperform sprawling ones            | 1-3 focused modules (+19.0pp) vs 4+ modules (+10.1pp)       | SkillsBench                             |
-| Self-generated skills degrade performance         | up to -11.5pp vs no skill                                   | SkillsBench                             |
-| Positive imperatives outperform negative rules    | Significantly higher compliance on affirmative instructions | IFEval, arXiv:2507.22462                |
-| Attention across long context is U-shaped         | Reliable recall at start and end; misses in middle          | Lost in the Middle, arXiv:2307.03172    |
-| Instruction hierarchy privileges system/developer | Injection resistance requires privileged placement          | Instruction Hierarchy, arXiv:2404.13208 |
-| Reason clauses improve generalization             | Functional "why" maps rules to pre-trained concepts         | arXiv:2310.00492                        |
+| Finding | Measurement | Source |
+| - | - | - |
+| Curated skills raise task pass rates | 33.9% -> 50.5% (+16.6pp) across 87 tasks | SkillsBench, arXiv:2602.12670 |
+| Small skills outperform sprawling ones | 1-3 focused modules (+19.0pp) vs 4+ modules (+10.1pp) | SkillsBench |
+| Self-generated skills degrade performance | up to -11.5pp vs no skill | SkillsBench |
+| Positive imperatives outperform negative rules | Significantly higher compliance on affirmative instructions | IFEval, arXiv:2507.22462 |
+| Attention across long context is U-shaped | Reliable recall at start and end; misses in middle | Lost in the Middle, arXiv:2307.03172 |
+| Instruction hierarchy privileges system/developer | Injection resistance requires privileged placement | Instruction Hierarchy, arXiv:2404.13208 |
+| Reason clauses improve generalization | Functional "why" maps rules to pre-trained concepts | arXiv:2310.00492 |
 
 ## Format Limits
 
