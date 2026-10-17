@@ -27,7 +27,7 @@ Answers: <ask id> ← (6); <ask id>: none
 
 | Line | Shape |
 | - | - |
-| Ask | `Asked (<id>): <words>`. Id: `tg-<message id>`, or `<task id>/AC<n>`. No spaces in an id. |
+| Ask | `Asked (<id>): <words>`. Id: `<channel>-<message id>` (`tg-2008`), or `<task id>/AC<n>`. No spaces in an id. |
 | Premise | `(n) <statement>. -- <basis phrase>[ <note>][ [x]...]` |
 | Inference | Starts `--`, ends `--`. Warrant first, then `Unless:` and its status. |
 | Conclusion | The numbered line directly after an inference line. Starts `So`. Carries no basis. |

@@ -51,7 +51,7 @@ Then assemble the steps:
 ```markdown
 ## Ask
 
-[ The frozen referent: the asker's own words, copied once at creation, one question per line, each led by its message id where it has one (`tg-<message id>`). ]
+[ The frozen referent: the asker's own words, copied once at creation, one question per line, each led by its message id where it has one, in the ask-id form the `premise-check` report form defines. ]
 
 ## Goal
 
@@ -63,7 +63,7 @@ Then assemble the steps:
 
 ## Acceptance
 
-[ Number the items `AC1`, `AC2`, ...; each item's id is `<task id>/AC<n>`, the ask id the worker's report argument answers. Write each Acceptance item so that it requires evidence sufficient to prove the criterion has been met in substance. Verifiable evidence must be recorded on the task because the task record is the only thing that comes back. Criteria name outcomes and the evidence that proves them, not where something is wired or how it is invoked. ]
+[ Number the items `AC1`, `AC2`, ...; each number gives the item its ask id (per the `premise-check` report form), which the worker's report argument answers. Write each Acceptance item so that it requires evidence sufficient to prove the criterion has been met in substance. Verifiable evidence must be recorded on the task because the task record is the only thing that comes back. Criteria name outcomes and the evidence that proves them, not where something is wired or how it is invoked. ]
 
 ## Instructions
 

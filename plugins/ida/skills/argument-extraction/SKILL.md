@@ -17,7 +17,7 @@ Reconstruct what a text argues into parser-valid **Argdown**, preserving the aut
 
 Every argument block follows three structural rules:
 
-1. **Grounds in numbered premises (`(1)`, `(2)`)**: Put only observations, empirical findings, established sub-claims, or scope conditions in numbered lines. Every premise on an inference is a condition of its warrant. Avoid laundry lists: a long run of premises under one warrant usually hides several steps (a method-to-finding step and a finding-to-mechanism step, say), so split them with an intermediate conclusion and a second bar.
+1. **Grounds in numbered premises (`(1)`, `(2)`)**: Put only observations, empirical findings, established sub-claims, or scope conditions in numbered lines. **Relevance rule:** every premise on an inference is a condition of its warrant, and there is no premise count. Avoid laundry lists: a long run of premises under one warrant usually hides several steps (a method-to-finding step and a finding-to-mechanism step, say), so split them with an intermediate conclusion and a second bar.
 2. **Warrants in the inference bar (`-- Warrant --`)**: Place the licensing rule, theoretical principle, causal mechanism, or methodological rule inside the Argdown inference line (`-- Warrant statement {uses: [1, 2], basis: "...", pointer: "..."} --`). Never mix warrants into the numbered premise list as flat siblings of the data.
 3. **Depth via chained steps, not wide lists**: When reasoning moves across epistemic layers (for example, _Method/Observation -> Empirical Pattern -> Causal Mechanism -> Normative Conclusion_), stack `-- Warrant --` bars inside one `<Argument>` block, or chain distinct `<Argument>` blocks by reusing a conclusion's `[Title]` as Premise `(1)` of the downstream block.
 

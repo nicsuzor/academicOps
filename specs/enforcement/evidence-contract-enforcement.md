@@ -31,6 +31,8 @@ As the user, I want each agent reminded of the contract at the moment it writes 
 
 A report arrives as a foreground subagent's result, a background subagent's notification, a peer message, or a task record whose `## Report` section has no `## Premise-Check Verdict` beside it. Each harness carries these moments on its own hook events; the event map is in [ARCHITECTURE.md](../ARCHITECTURE.md).
 
+On agy the session-start line arrives with the first `PreInvocation` of each conversation. agy's hook payloads name no agent and carry no report: a subagent's reply arrives as a message file that starts a new turn. So the Ida and Sara reminders and the gate do not run on agy.
+
 ## The premise-check gate
 
 The gate is procedural friction, the exception [enforcement.md](enforcement.md) authorises. It and the verdict recorder check form and consistency; every semantic judgement stays with the checking agent.
@@ -48,6 +50,8 @@ A container worker hands back through its task record. When Ida or Sara reads th
 ## The verdict recorder
 
 The recorder holds the checker to the [checker's reason](../../plugins/ida/skills/premise-check/references/checker-reason.md). It gates the checker's reason, never the author's report.
+
+The report argument it reads is the skill's plain `argument` block, not Argdown. The lines a human reads carry the basis in words and pointers as endnotes, with no Argdown attributes, and Argdown cannot carry that block as written: bracketed text such as the `[a]` endnote markers is Argdown statement-title syntax, and Argdown has no syntax for the ask or answer lines. Argdown stays the format for extracting third-party arguments (`argument-extraction`) and for any machine export generated from the block.
 
 - **PASS:** refused unless the reason carries the seven keyed lines and passes every mechanical cross-check the skill lists under "What the recorder refuses", run against the judged text the gate stored.
 - **No claim:** a one-line `Judged: <claim id>; no claim -- ...` reason is accepted for PASS and the verdict is marked no-claim.
@@ -79,7 +83,7 @@ Measure 3 expands the array with `json_each(s.attributes->'$.premise_check.waive
 
 Each level is built only when verdict telemetry shows the level below it rubber-stamping, with PASS near 100% and REVISE rare.
 
-That trigger has fired on the reminders and gate alone: the verdict baseline of 15 October 2026 is 352 PASS and 14 REVISE. The level it builds is level B: the verdict recorder above, which gates the checker's reason. Level B is distinct from the author-side parse gate in step 2 below, which stays unbuilt.
+Level B, the verdict recorder above, is built: it gates the checker's reason. It is distinct from the author-side parse gate in step 2 below, which is not built.
 
 Further steps, in order, each built only when the same trigger fires on the level below:
 

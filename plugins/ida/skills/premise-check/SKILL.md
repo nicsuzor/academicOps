@@ -13,15 +13,15 @@ A report that rests on evidence ends in an argument whose final conclusion answe
 
 End the report with one `argument` block in the form in [`references/report-form.md`](references/report-form.md).
 
-1. **The ask at the top**, in the asker's own words, one question per `Asked` line, each with an immutable id: `tg-<message id>`, or `<task id>/AC<n>`. Copy the ask you were given; never restate it as your own title.
-2. **Numbered premises**, each ending with its basis in words: _rule_ · _I read it_ · _I did it_ · _attempted, failed_ · _worker reported, verdict …_ · _worker reported, unchecked_ · _assumed, not checked here_. A premise about outside state quotes the value that decides it (`state: MERGED`, `0 hits`).
+1. **The ask at the top**, in the asker's own words, one question per `Asked` line, each with the immutable id the report form defines. Copy the ask you were given; never restate it as your own title.
+2. **Numbered premises**, each ending with its basis in words, one of the phrases in [`references/vocabulary.toml`](references/vocabulary.toml). A premise about outside state quotes the value that decides it (`state: MERGED`, `0 hits`).
 3. **Pointers as lettered endnotes** -- paths, lines, span ids, task ids, PRs. Never inline.
 4. **The inference line** states the warrant as a rule that could be false on its own, then `Unless:` naming what would defeat the step and whether it is ruled out by a numbered line, not ruled out, or not tried.
 5. **Write in what is missing** as a numbered line marked _assumed, not checked here_, and put the qualifier it buys in the conclusion ("so, most likely, …").
 6. **Chain** each conclusion into the next step as a numbered line. Join independent findings only through an explicit "and both" step.
 7. **Answer the asks by id** on the `Answers` line. An ask with no answer says so.
 8. **Relay upward** only sentences that name the line they restate. A sentence with no line does not go.
-9. **No premise count.** Every premise on an inference line is a condition of its rule. Avoid laundry lists: a long run of premises under one rule usually hides several steps, and splitting them makes each rule checkable.
+9. **No premise count.** Group premises by the relevance rule in `argument-extraction`; avoid laundry lists.
 10. **Keep machine vocabulary out of the lines.** Basis terms and Argdown attributes belong to tools; the reader sees words.
 
 Match the conclusion to what the premises can carry: a ranking needs a comparison over the alternatives; a negative or "cannot" needs a failed attempt with its error, or a search with its query, scope and count; a causal or universal claim needs a mechanism or narrows; "should" needs a stated warrant.
@@ -52,7 +52,7 @@ A format breach that leaves the step judgeable is waived and listed; one that hi
 ## Recording the verdict
 
 - **PASS** -- every inference holds, every ask is answered or honestly unanswered, and the weakest basis can bear the stakes.
-- **REVISE** -- name the line, the defect tag (`#missing`, `#scope-drift`, `#conflict`, `#unanswered`, `#undercut`) and what would fix it. Return it to the sender.
+- **REVISE** -- name the line, the defect tag from the vocabulary, and what would fix it. Return it to the sender.
 - **FAIL** -- the conclusion does not answer the ask.
 
 Write the reason as the seven keyed lines in [`references/checker-reason.md`](references/checker-reason.md) -- Judged · Valid · Supported · Answered · Sufficient · Waived · Relay -- and record it:
