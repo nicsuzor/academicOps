@@ -38,7 +38,7 @@ import sys
 from pathlib import Path
 
 TRACER_RELPATH = Path("plugins") / "ida" / "hooks" / "claude_code_tracer.py"
-DEFAULT_PROJECT = "github-actions"
+DEFAULT_PROJECT = "academicOps"
 
 # Versions locked in uv.lock; the tracer needs nothing else.
 TRACER_DEPS = (

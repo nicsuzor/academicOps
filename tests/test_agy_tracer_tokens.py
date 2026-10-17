@@ -212,16 +212,172 @@ def test_handle_stop_accumulates_and_preserves_token_counts(tmp_path: Path):
     chain_span = exported_records[0]
     llm_span = exported_records[1]
 
-    # Verify chain span received accumulated token counts
-    assert "llm.token_count.prompt" in chain_span["attributes"]
-    assert "llm.token_count.completion" in chain_span["attributes"]
-    assert "llm.token_count.total" in chain_span["attributes"]
-    assert chain_span["attributes"]["llm.token_count.type"] in ("reported", "estimated")
-    assert "llm.token_count.estimate_method" in chain_span["attributes"]
+    # CHAIN root carries no token counts: Phoenix sums descendants into the
+    # root's cumulative count, so a root total would double-count the turn.
+    assert not any(k.startswith("llm.token_count.") for k in chain_span["attributes"])
+    assert not any(k.startswith("token_count.") for k in chain_span["attributes"])
 
-    # Verify LLM span retained token counts (NOT deleted!)
+    # LLM span is the single carrier of the turn's token counts
     assert "llm.token_count.prompt" in llm_span["attributes"]
     assert "llm.token_count.completion" in llm_span["attributes"]
     assert "llm.token_count.total" in llm_span["attributes"]
     assert llm_span["attributes"]["llm.token_count.type"] in ("reported", "estimated")
     assert "llm.token_count.estimate_method" in llm_span["attributes"]
+
+
+def build_mock_gen_metadata_payload(model_name: str, last_step_index: int | None = None) -> bytes:
+    """Constructs protobuf payload matching Antigravity gen_metadata data structure:
+    Field 1 (bytes) ->
+        Sub-tag 19 (bytes): model_name
+        Sub-tag 20 (bytes): key-value submessage with last_step_index
+    """
+    kv_items = []
+    if last_step_index is not None:
+        kv_payload = _encode_len_delimited(1, b"last_step_index") + _encode_len_delimited(
+            2, str(last_step_index).encode("utf-8")
+        )
+        kv_items.append(_encode_len_delimited(20, kv_payload))
+    f1_payload = _encode_len_delimited(19, model_name.encode("utf-8")) + b"".join(kv_items)
+    return _encode_len_delimited(1, f1_payload)
+
+
+def test_model_extractor_reported_from_sqlite(tmp_path: Path):
+    conv_dir = tmp_path / "conversations"
+    conv_dir.mkdir(parents=True, exist_ok=True)
+    db_file = conv_dir / "test-model-session.db"
+    conn = sqlite3.connect(db_file)
+    cur = conn.cursor()
+    cur.execute("CREATE TABLE gen_metadata (idx INTEGER PRIMARY KEY, data BLOB, size INTEGER)")
+    payload = build_mock_gen_metadata_payload("gemini-3.8-flash", last_step_index=0)
+    cur.execute("INSERT INTO gen_metadata VALUES (?, ?, ?)", (0, payload, len(payload)))
+    conn.commit()
+    conn.close()
+
+    transcript_path = (
+        tmp_path
+        / "brain"
+        / "test-model-session"
+        / ".system_generated"
+        / "logs"
+        / "transcript.jsonl"
+    )
+    transcript_path.parent.mkdir(parents=True, exist_ok=True)
+    transcript_path.write_text("")
+
+    result = token_extractor.resolve_gemini_model(
+        session_id="test-model-session",
+        transcript_path=transcript_path,
+        step_index=1,
+    )
+    assert result == "gemini-3.8-flash"
+
+
+def test_model_extractor_from_reported_model():
+    result = token_extractor.resolve_gemini_model(
+        session_id="nonexistent-session",
+        transcript_path="/nonexistent/path/transcript.jsonl",
+        reported_model="gemini-2.5-pro",
+    )
+    assert result == "gemini-2.5-pro"
+
+
+def test_model_extractor_none_when_unavailable():
+    result = token_extractor.resolve_gemini_model(
+        session_id="nonexistent-session",
+        transcript_path="/nonexistent/path/transcript.jsonl",
+        step_index=99,
+    )
+    assert result is None
+
+
+def test_extract_llm_spans_for_turn_agy_carries_real_model_and_provider(tmp_path: Path):
+    transcript = (
+        tmp_path
+        / "brain"
+        / "test_session_model"
+        / ".system_generated"
+        / "logs"
+        / "transcript.jsonl"
+    )
+    transcript.parent.mkdir(parents=True, exist_ok=True)
+    conv_dir = tmp_path / "conversations"
+    conv_dir.mkdir(parents=True, exist_ok=True)
+    db_file = conv_dir / "test_session_model.db"
+
+    conn = sqlite3.connect(db_file)
+    cur = conn.cursor()
+    cur.execute("CREATE TABLE steps (idx INTEGER PRIMARY KEY, step_payload BLOB)")
+    cur.execute("CREATE TABLE gen_metadata (idx INTEGER PRIMARY KEY, data BLOB, size INTEGER)")
+    token_payload = build_mock_usage_payload(
+        fresh_prompt=500, cached=100, completion=50, thoughts=15
+    )
+    model_payload = build_mock_gen_metadata_payload("gemini-3.8-flash", last_step_index=0)
+    cur.execute("INSERT INTO steps VALUES (?, ?)", (1, token_payload))
+    cur.execute("INSERT INTO gen_metadata VALUES (?, ?, ?)", (0, model_payload, len(model_payload)))
+    conn.commit()
+    conn.close()
+
+    entries = [
+        {"type": "USER_INPUT", "content": "What is the capital of France?"},
+        {
+            "step_index": 1,
+            "source": "MODEL",
+            "type": "PLANNER_RESPONSE",
+            "status": "DONE",
+            "content": "Paris",
+        },
+    ]
+    transcript.write_text("\n".join(json.dumps(e) for e in entries) + "\n")
+
+    spans = agy_tracer._extract_llm_spans_for_turn_agy(
+        transcript_path=str(transcript),
+        human_count_at_start=0,
+        trace_id_hex="0123456789abcdef0123456789abcdef",
+        root_span_id_hex="0123456789abcdef",
+        session_id="test_session_model",
+    )
+
+    assert len(spans) == 1
+    attrs = spans[0]["attributes"]
+    assert attrs["openinference.span.kind"] == "LLM"
+    assert attrs["llm.model_name"] == "gemini-3.8-flash"
+    assert attrs["llm.provider"] == "google"
+
+
+def test_extract_llm_spans_for_turn_agy_when_no_model_found(tmp_path: Path):
+    transcript = (
+        tmp_path
+        / "brain"
+        / "test_session_nomodel"
+        / ".system_generated"
+        / "logs"
+        / "transcript.jsonl"
+    )
+    transcript.parent.mkdir(parents=True, exist_ok=True)
+
+    entries = [
+        {"type": "USER_INPUT", "content": "Ping"},
+        {
+            "step_index": 1,
+            "source": "MODEL",
+            "type": "PLANNER_RESPONSE",
+            "status": "DONE",
+            "content": "Pong",
+        },
+    ]
+    transcript.write_text("\n".join(json.dumps(e) for e in entries) + "\n")
+
+    spans = agy_tracer._extract_llm_spans_for_turn_agy(
+        transcript_path=str(transcript),
+        human_count_at_start=0,
+        trace_id_hex="0123456789abcdef0123456789abcdef",
+        root_span_id_hex="0123456789abcdef",
+        session_id="test_session_nomodel",
+    )
+
+    assert len(spans) == 1
+    attrs = spans[0]["attributes"]
+    assert attrs["openinference.span.kind"] == "LLM"
+    assert attrs["llm.provider"] == "google"
+    assert "llm.model_name" not in attrs
+    assert attrs.get("llm.model_name") != "gemini-pro-agent"
