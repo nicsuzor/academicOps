@@ -678,9 +678,7 @@ def _new_span_id() -> str:
 def _session_lock(session_id: str):
     """Exclusive per-session file lock.
 
-    Serialises concurrent handle_post_tool / handle_post_tool_failure
-    processes so that _emit_pending_llm_spans reads a consistent
-    emitted_llm_span_count and never emits the same LLM span twice.
+    Serialises concurrent hook executions so state updates are thread/process safe.
     This is necessary because Claude Code can run multiple tools in parallel,
     which causes multiple PostToolUse hook processes to fire concurrently.
     """
@@ -695,11 +693,6 @@ def _session_lock(session_id: str):
             yield
         finally:
             fcntl.flock(fh, fcntl.LOCK_UN)
-
-
-# ---------------------------------------------------------------------------
-# Transcript helpers
-# ---------------------------------------------------------------------------
 
 
 def _is_real_transcript(path: str) -> bool:
@@ -921,377 +914,19 @@ def _iso_to_ns(ts: str) -> int:
         return time.time_ns()
 
 
-def _tool_result_text(content: list) -> str:
-    """Extract readable text from a tool_result content list."""
-    parts = []
-    for item in content:
-        if not isinstance(item, dict):
-            continue
-        if item.get("type") == "tool_result":
-            inner = item.get("content", "")
-            if isinstance(inner, str):
-                parts.append(inner)
-            elif isinstance(inner, list):
-                for rc in inner:
-                    if isinstance(rc, dict) and rc.get("type") == "text":
-                        parts.append(rc.get("text", ""))
-    return "\n".join(parts)
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 
 
-def _llm_span_id(message_id: str) -> str:
-    """Span id for the LLM span of one API response, derived from its message.id.
-
-    Deterministic so a tool span can name the LLM call that issued it as its
-    parent without the two hooks sharing anything but the transcript.
-    """
-    import hashlib
-
-    return hashlib.sha256(f"llm:{message_id}".encode()).hexdigest()[:16]
-
-
-def _usage_total(usage: dict) -> int:
-    return sum(
-        usage.get(k, 0) or 0
-        for k in (
-            "input_tokens",
-            "cache_read_input_tokens",
-            "cache_creation_input_tokens",
-            "output_tokens",
-        )
-    )
-
-
-def _extract_llm_spans_for_turn(
-    transcript_path: str,
-    human_count_at_start: int,
-    trace_id_hex: str,
-    root_span_id_hex: str,
-    stop_at_next_prompt: bool = True,
-) -> list[dict]:
-    """
-    Extract LLM spans from transcript entries that belong to this turn.
-
-    A turn starts after the `human_count_at_start`-th human message and ends
-    at the next human message (or end of transcript).  Scanning stops as soon
-    as a second human message is seen while in_turn is True — those subsequent
-    turns belong to their own traces.  Human messages that follow one another
-    with no assistant entry between them are one prompt block, not a turn
-    boundary: prompts queued mid-turn and released by Esc are written that way
-    and answered by one response. With ``stop_at_next_prompt=False`` it does
-    not stop: a subagent's sidechain transcript is one conversation, and a
-    later prompt in it (a SendMessage continuation) is just the next input.
-    Uses actual timestamps from the transcript.
-
-    For each LLM call we use the immediately-preceding message as the input:
-      - First call in turn  → the human prompt (text/plain)
-      - Subsequent calls    → the tool result(s) that preceded them (application/json)
-
-    Output is the assistant's text response when present; otherwise the
-    tool_use blocks serialised as JSON so the span always has an output value.
-
-    **Grouping by message.id**
-
-    Claude Code (with extended thinking enabled) splits a single API response
-    across multiple consecutive transcript entries that share the same
-    ``message.id`` — one entry per block type (thinking / text / tool_use).
-    Each entry duplicates the input-side token counts.  We MUST group these
-    entries and emit exactly one LLM span per API response, otherwise:
-
-      * Prompt tokens are reported N× too high (once per entry).
-      * "Thinking-only" entries produce empty, noisy spans.
-      * Intermediate text (the entry with ``type=text`` that precedes a tool
-        call) becomes its own orphaned 8-token span instead of being part of
-        the single span for that API call.
-
-    Grouping strategy:
-      - Usage         → the fullest snapshot in the group (largest token total).
-                        Every entry repeats the usage of the whole response, so
-                        summing per entry would count it once per block; on
-                        older harness versions earlier snapshots are partial.
-      - Text output   → concatenate all ``text`` blocks from any entry.
-      - Tool output   → JSON of tool_use blocks from the last entry (fall-back
-                        when no text is present).
-      - Timing        → first entry's timestamp to last entry's timestamp.
-      - Span id       → derived from message.id (``_llm_span_id``), recorded as
-                        ``llm.message.id``; each record also lists the
-                        ``tool_call_ids`` it issued so tool spans can be
-                        parented under it.
-    """
-    spans = []
+def _iso_to_ns(ts: str) -> int:
+    """Convert ISO 8601 timestamp string to nanoseconds."""
     try:
-        lines = Path(transcript_path).read_text().splitlines()
-        human_count = 0
-        in_turn = False
-        # True from the turn's first prompt until its first assistant entry.
-        in_prompt_block = False
-        prompt_block_text = ""
-
-        # Tracks the input for the *next* LLM call we encounter
-        last_input_value = ""
-        last_input_mime = "text/plain"
-        last_input_role = "user"
-        last_input_content = ""
-        last_input_tool_call_id = ""
-
-        # Accumulator for the current message.id group
-        current_group_id: str | None = None
-        group_message_id: str = ""  # real message.id; "" when the entry had none
-        group_usage: dict = {}
-        group_text_parts: list = []
-        group_tool_use_parts: list = []
-        group_model: str = "claude"
-        group_ts: str = ""
-        group_last_ts: str = ""
-        group_stop_reason: str = ""
-        group_input_snapshot: dict = {}  # last_input* captured at group start
-
-        def _flush_group() -> None:
-            """Emit one LLM span for the accumulated group, if non-empty."""
-            nonlocal current_group_id, group_message_id, group_usage
-            nonlocal group_text_parts, group_tool_use_parts, group_model, group_ts, group_last_ts
-            nonlocal group_input_snapshot, group_stop_reason
-
-            if not current_group_id:
-                return
-
-            usage = group_usage
-            input_tokens = usage.get("input_tokens", 0)
-            cache_read = usage.get("cache_read_input_tokens", 0)
-            cache_create = usage.get("cache_creation_input_tokens", 0)
-            output_tokens = usage.get("output_tokens", 0)
-
-            if group_text_parts:
-                output_value = _truncate("".join(group_text_parts))
-                output_mime = "text/plain"
-            elif group_tool_use_parts:
-                output_value = _truncate(json.dumps(group_tool_use_parts))
-                output_mime = "application/json"
-            else:
-                output_value = ""
-                output_mime = "text/plain"
-
-            # Per OpenInference spec, message.content carries text only; tool calls
-            # go in structured tool_calls attributes (not serialised into content).
-            output_message_content = (
-                _truncate("".join(group_text_parts)) if group_text_parts else None
-            )
-
-            start_ns = _iso_to_ns(group_ts)
-            end_ns = max(_iso_to_ns(group_last_ts or group_ts), start_ns)
-
-            snap = group_input_snapshot
-            attrs: dict[str, Any] = {
-                "openinference.span.kind": "LLM",
-                "llm.system": "anthropic",
-                "llm.provider": "anthropic",
-                "llm.model_name": group_model,
-                "llm.token_count.prompt": input_tokens + cache_read + cache_create,
-                "llm.token_count.completion": output_tokens,
-                "llm.token_count.total": input_tokens + cache_read + cache_create + output_tokens,
-                "llm.token_count.prompt_details.cache_read": cache_read,
-                "llm.token_count.prompt_details.cache_write": cache_create,
-                "llm.input_messages.0.message.role": snap.get("role", "user"),
-                "llm.input_messages.0.message.content": snap.get("content", ""),
-                "input.value": snap.get("value", ""),
-                "input.mime_type": snap.get("mime", "text/plain"),
-                "llm.output_messages.0.message.role": "assistant",
-                "output.value": output_value,
-                "output.mime_type": output_mime,
-            }
-            if output_message_content:
-                attrs["llm.output_messages.0.message.content"] = output_message_content
-            if group_message_id:
-                attrs["llm.message.id"] = group_message_id
-
-            # Structured tool_calls attributes (OpenInference spec)
-            for i, tc in enumerate(group_tool_use_parts):
-                attrs[f"llm.output_messages.0.message.tool_calls.{i}.tool_call.id"] = tc.get(
-                    "id", ""
-                )
-                attrs[f"llm.output_messages.0.message.tool_calls.{i}.tool_call.function.name"] = (
-                    tc.get("name", "")
-                )
-                attrs[
-                    f"llm.output_messages.0.message.tool_calls.{i}.tool_call.function.arguments"
-                ] = _truncate(json.dumps(tc.get("input", {})))
-
-            # tool_call_id on input message when input is a tool result
-            if snap.get("tool_call_id"):
-                attrs["llm.input_messages.0.message.tool_call_id"] = snap["tool_call_id"]
-
-            # Map stop_reason to OpenInference llm.finish_reason
-            _FINISH_REASON_MAP = {"end_turn": "stop", "max_tokens": "length"}
-            finish_reason = _FINISH_REASON_MAP.get(group_stop_reason, group_stop_reason)
-            if finish_reason:
-                attrs["llm.finish_reason"] = finish_reason
-
-            spans.append(
-                {
-                    "trace_id_hex": trace_id_hex,
-                    "span_id_hex": (
-                        _llm_span_id(group_message_id) if group_message_id else _new_span_id()
-                    ),
-                    "parent_span_id_hex": root_span_id_hex,
-                    "name": f"claude/{group_model}",
-                    "kind": None,
-                    "start_ns": start_ns,
-                    "end_ns": end_ns,
-                    "attributes": attrs,
-                    "force_span_id": bool(group_message_id),
-                    # Without a message.id the span id is fresh on every
-                    # re-extraction, so a tool parented to it would dangle.
-                    "tool_call_ids": (
-                        [tc["id"] for tc in group_tool_use_parts if tc.get("id")]
-                        if group_message_id
-                        else []
-                    ),
-                },
-            )
-
-            # Reset accumulator
-            current_group_id = None
-            group_message_id = ""
-            group_usage = {}
-            group_text_parts = []
-            group_tool_use_parts = []
-            group_model = "claude"
-            group_ts = ""
-            group_last_ts = ""
-            group_stop_reason = ""
-            group_input_snapshot = {}
-
-        for line in lines:
-            if not line.strip():
-                continue
-            try:
-                entry = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-
-            entry_type = entry.get("type", "")
-
-            # ── Human message: marks the start of this turn ──────────────────
-            if _is_human_message(entry):
-                _flush_group()
-                human_count += 1
-                if in_turn and stop_at_next_prompt and not in_prompt_block:
-                    # Next user turn has started — stop here.  Its spans belong
-                    # to a different trace.
-                    break
-                if human_count > human_count_at_start:
-                    human_text = entry.get("message", {}).get("content", "")
-                    if in_prompt_block:
-                        human_text = f"{prompt_block_text}\n\n{human_text}"
-                    in_turn = True
-                    in_prompt_block = True
-                    prompt_block_text = human_text
-                    last_input_value = json.dumps(
-                        {"role": "user", "content": _truncate(human_text)[:500]},
-                    )
-                    last_input_mime = "application/json"
-                    last_input_role = "user"
-                    last_input_content = _truncate(human_text)
-                    last_input_tool_call_id = ""
-                continue
-
-            if not in_turn:
-                continue
-
-            # ── Tool result (user message with list content) ──────────────────
-            if entry_type == "user":
-                # A tool can finish before its response has streamed its next
-                # tool_use block, so a tool result may sit between two records
-                # of one message.id; keep that group open. Groups without a
-                # real message.id are keyed by object id and must not span it.
-                if not group_message_id:
-                    _flush_group()
-                content = entry.get("message", {}).get("content", "")
-                if isinstance(content, list):
-                    text = _tool_result_text(content)
-                    payload = text if text else json.dumps(content)
-                    # Extract tool_use_id from first tool_result for message.tool_call_id
-                    tool_use_id = ""
-                    for item in content:
-                        if isinstance(item, dict) and item.get("type") == "tool_result":
-                            tool_use_id = item.get("tool_use_id", "")
-                            break
-                    last_input_value = json.dumps(
-                        {"role": "tool", "content": _truncate(payload)[:500]},
-                    )
-                    last_input_mime = "application/json"
-                    last_input_role = "tool"
-                    last_input_content = _truncate(payload)
-                    last_input_tool_call_id = tool_use_id
-                continue
-
-            # ── Non-assistant entries (progress, system, …) ───────────────────
-            if entry_type != "assistant":
-                continue
-            in_prompt_block = False
-
-            msg = entry.get("message", {})
-            usage = msg.get("usage", {})
-            if not usage:
-                continue
-
-            # Falls back to the entry's object id, as a string: this is only ever a
-            # grouping key compared against `current_group_id`, which is `str | None`.
-            msg_id = msg.get("id", "") or str(id(entry))
-            model = msg.get("model", "claude")
-            content_blocks = msg.get("content", [])
-            ts = entry.get("timestamp", "")
-            stop_reason = msg.get("stop_reason", "")
-
-            # ── Start a new group or extend the current one ───────────────────
-            if msg_id != current_group_id:
-                _flush_group()
-                current_group_id = msg_id
-                group_message_id = msg.get("id", "") or ""
-                group_usage = usage
-                group_text_parts = []
-                group_tool_use_parts = []
-                group_model = model
-                group_ts = ts
-                group_stop_reason = stop_reason
-                # Snapshot the input context at the start of this API call
-                group_input_snapshot = {
-                    "role": last_input_role,
-                    "content": last_input_content,
-                    "value": last_input_value,
-                    "mime": last_input_mime,
-                    "tool_call_id": last_input_tool_call_id,
-                }
-            else:
-                # Extending the group: last non-empty stop_reason wins
-                if stop_reason:
-                    group_stop_reason = stop_reason
-
-            # Keep the fullest usage snapshot and extend the time window
-            if _usage_total(usage) > _usage_total(group_usage):
-                group_usage = usage
-            if ts:
-                group_last_ts = ts
-            for block in content_blocks:
-                if not isinstance(block, dict):
-                    continue
-                if block.get("type") == "text":
-                    group_text_parts.append(block.get("text", ""))
-                elif block.get("type") == "tool_use":
-                    group_tool_use_parts.append(
-                        {
-                            "id": block.get("id", ""),
-                            "name": block.get("name", ""),
-                            "input": block.get("input", {}),
-                        },
-                    )
-
-        _flush_group()
-
-    except Exception as e:
-        log.warning("Failed to extract LLM spans: %s", e)
-        raise
-
-    return spans
+        dt = datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(UTC)
+        # Integer arithmetic: dt.timestamp() * 1e9 loses sub-microsecond
+        # precision and can floor a millisecond timestamp to the one before.
+        delta = dt - _EPOCH
+        return (delta.days * 86_400 + delta.seconds) * 1_000_000_000 + delta.microseconds * 1_000
+    except Exception:
+        return time.time_ns()
 
 
 # ---------------------------------------------------------------------------
@@ -1626,6 +1261,30 @@ def _truncate(value: Any) -> str:
     if len(encoded) > _MAX_ATTR_BYTES:
         s = encoded[:_MAX_ATTR_BYTES].decode("utf-8", errors="ignore") + "...[truncated]"
     return s
+
+
+def _format_assistant_message(msg: Any) -> str:
+    """Format the assistant message payload from Stop/StopFailure hook into text."""
+    if not msg:
+        return ""
+    if isinstance(msg, str):
+        return msg
+    if isinstance(msg, dict):
+        if "content" in msg:
+            return _format_assistant_message(msg["content"])
+        if msg.get("type") == "text" and "text" in msg:
+            return str(msg["text"])
+        if "text" in msg and isinstance(msg["text"], str):
+            return msg["text"]
+        return json.dumps(msg)
+    if isinstance(msg, (list, tuple)):
+        parts = []
+        for item in msg:
+            formatted = _format_assistant_message(item)
+            if formatted:
+                parts.append(formatted)
+        return "".join(parts) if parts else json.dumps(msg)
+    return str(msg)
 
 
 # ---------------------------------------------------------------------------
@@ -2041,82 +1700,6 @@ def _build_and_export_spans(
 # ---------------------------------------------------------------------------
 
 
-def _emit_pending_llm_spans(
-    state: dict,
-    transcript_path: str | None,
-    config: dict,
-    hold_open: bool = False,
-) -> None:
-    """Emit any new LLM spans from the transcript that haven't been sent yet.
-
-    With ``hold_open`` (mid-turn callers), the turn's last LLM span is not
-    emitted: its response may still be streaming tool_use blocks, and a span is
-    never re-emitted once counted. It goes out on a later call or at Stop.
-
-    Called from handle_post_tool (real-time, after each tool response) and
-    handle_stop (catches the final LLM response after the last tool call).
-    Updates state.current_trace in-place so the caller must save state afterwards,
-    including ``llm_span_by_tool_call`` (tool_use id -> span id of the LLM call
-    that issued it), which _finish_tool_call uses to parent tool spans.
-    """
-    current_trace = state.get("current_trace")
-    if not current_trace or not transcript_path:
-        return
-
-    (_, _, _, _, _, _, SpanKind, _, _, _) = _otel_imports()
-
-    all_llm_spans = _extract_llm_spans_for_turn(
-        transcript_path,
-        current_trace.get("human_count_at_start", 0),
-        current_trace["trace_id"],
-        current_trace["root_span_id"],
-    )
-
-    by_tool_call = current_trace.setdefault("llm_span_by_tool_call", {})
-    for sp in all_llm_spans:
-        for tool_call_id in sp.get("tool_call_ids", []):
-            by_tool_call[tool_call_id] = sp["span_id_hex"]
-
-    emitted = current_trace.get("emitted_llm_span_count", 0)
-    emittable = all_llm_spans[:-1] if hold_open else all_llm_spans
-    new_spans = emittable[emitted:]
-
-    # Always keep last_llm_output in sync with the last known assistant message,
-    # even if there are no new spans to emit (e.g. all were emitted by post_tool
-    # and the final text response was already the last one processed).
-    if all_llm_spans:
-        current_trace["last_llm_output"] = all_llm_spans[-1]["attributes"].get(
-            "output.value",
-            "",
-        )
-
-    if not new_spans:
-        return
-
-    known_parents = _known_span_parents(current_trace)
-    span_parents = current_trace.setdefault("span_parents", {})
-    for sp in new_spans:
-        sp["kind"] = SpanKind.CLIENT
-        if sp["force_span_id"]:
-            span_parents[sp["span_id_hex"]] = sp["parent_span_id_hex"]
-
-    phoenix_session_id, agent_id, parent_session_id = _resolve_agent_and_parent_ids(state)
-
-    _build_and_export_spans(
-        config=config,
-        session_id=phoenix_session_id,
-        username=state.get("username", "unknown"),
-        span_records=new_spans,
-        agent_id=agent_id,
-        parent_session_id=parent_session_id,
-        agent_name=state.get("agent_name"),
-        cwd=state.get("cwd"),
-        known_parents=known_parents,
-    )
-
-    current_trace["emitted_llm_span_count"] = emitted + len(new_spans)
-
-
 def _agent_span_id(tool_use_id: str) -> str:
     """Span id of the Agent/Task tool span that a tool_use id dispatched."""
     import hashlib
@@ -2127,144 +1710,37 @@ def _agent_span_id(tool_use_id: str) -> str:
 def _subagent_record(
     state: dict,
     agent_id: str,
-    agent_type: Any,
-    main_transcript_path: str | None,
-    agent_transcript_path: str | None = None,
+    agent_type: Any = None,
 ) -> dict | None:
-    """Return the tracing record of in-process subagent *agent_id*, creating it on first use.
-
-    Records live on the session state, not the turn, so a subagent that
-    outlives its turn (background dispatch, SendMessage continuation) keeps
-    its emitted-span count and is never re-emitted. Each holds:
-
-    - ``transcript_path``: the subagent's sidechain transcript,
-      ``<main transcript stem>/subagents/agent-<agent_id>.jsonl``.
-    - ``trace_id`` / ``agent_span_id``: the trace and Agent tool span it
-      nests under. ``agent-<agent_id>.meta.json`` beside the transcript names
-      the dispatching ``toolUseId``; the Agent span id is derived from it as
-      at PreToolUse. Without it, the innermost pending Agent call, then the
-      turn root.
-    - ``emitted_llm_span_count`` / ``llm_span_by_tool_call``: as on the turn.
-
-    Returns None when there is no turn to nest a new record under.
-    """
+    """Return the tracing record of in-process subagent *agent_id*, creating it on first use."""
     subagents = state.setdefault("subagents", {})
     record = subagents.get(agent_id)
     if record is None:
         current_trace = state.get("current_trace")
         if not current_trace:
             return None
-        transcript_path = agent_transcript_path
-        if not transcript_path and main_transcript_path:
-            transcript_path = str(
-                Path(main_transcript_path).with_suffix("") / "subagents" / f"agent-{agent_id}.jsonl"
-            )
-        tool_use_id = ""
-        if transcript_path:
-            meta = Path(transcript_path).with_suffix(".meta.json")
-            try:
-                tool_use_id = str(json.loads(meta.read_text()).get("toolUseId") or "")
-            except (OSError, ValueError) as e:
-                log.debug("No subagent meta for %s at %s: %s", agent_id, meta, e)
-        agent_span_id = (
-            _agent_span_id(tool_use_id)
-            if tool_use_id
-            else _find_active_agent_span_id(state, "", "")
-        )
         record = {
             "agent_type": str(agent_type or ""),
-            "transcript_path": transcript_path or "",
-            "tool_use_id": tool_use_id,
             "trace_id": current_trace["trace_id"],
-            "agent_span_id": agent_span_id or current_trace["root_span_id"],
-            "emitted_llm_span_count": 0,
-            "llm_span_by_tool_call": {},
+            "agent_span_id": _find_active_agent_span_id(state, "", "")
+            or current_trace["root_span_id"],
         }
         subagents[agent_id] = record
-    if agent_transcript_path:
-        record["transcript_path"] = agent_transcript_path
     if agent_type and not record.get("agent_type"):
         record["agent_type"] = str(agent_type)
     return record
 
 
-def _emit_pending_subagent_llm_spans(
-    state: dict,
-    agent_id: str,
-    record: dict,
-    config: dict,
-    hold_open: bool = False,
-) -> None:
-    """Emit the subagent's LLM spans not yet sent, nested under its Agent span.
-
-    The subagent's API calls are in its sidechain transcript, never in the
-    main one, so ``_emit_pending_llm_spans`` cannot see them. ``hold_open``
-    as there. The spans carry the subagent's ``agent_id`` and name.
-    """
-    transcript_path = record.get("transcript_path")
-    if not transcript_path or not Path(transcript_path).is_file():
-        log.debug("No sidechain transcript for subagent %s at %r", agent_id, transcript_path)
-        return
-
-    (_, _, _, _, _, _, SpanKind, _, _, _) = _otel_imports()
-
-    all_llm_spans = _extract_llm_spans_for_turn(
-        transcript_path,
-        0,
-        record["trace_id"],
-        record["agent_span_id"],
-        stop_at_next_prompt=False,
-    )
-    by_tool_call = record.setdefault("llm_span_by_tool_call", {})
-    for sp in all_llm_spans:
-        for tool_call_id in sp.get("tool_call_ids", []):
-            by_tool_call[tool_call_id] = sp["span_id_hex"]
-
-    emitted = record.get("emitted_llm_span_count", 0)
-    emittable = all_llm_spans[:-1] if hold_open else all_llm_spans
-    new_spans = emittable[emitted:]
-    if not new_spans:
-        return
-
-    current_trace = state.get("current_trace") or {}
-    same_trace = current_trace.get("trace_id") == record["trace_id"]
-    known_parents = _known_span_parents(current_trace) if same_trace else {}
-    for sp in new_spans:
-        sp["kind"] = SpanKind.CLIENT
-        if same_trace and sp["force_span_id"]:
-            current_trace.setdefault("span_parents", {})[sp["span_id_hex"]] = sp[
-                "parent_span_id_hex"
-            ]
-
-    phoenix_session_id = _phoenix_session_id(state)
-    _build_and_export_spans(
-        config=config,
-        session_id=phoenix_session_id,
-        username=state.get("username", "unknown"),
-        span_records=new_spans,
-        agent_id=agent_id,
-        parent_session_id=phoenix_session_id,
-        agent_name=_subagent_name(record.get("agent_type")),
-        cwd=state.get("cwd"),
-        known_parents=known_parents,
-    )
-
-    record["emitted_llm_span_count"] = emitted + len(new_spans)
-
-
 def _complete_turn(
     state: dict,
     config: dict,
-    transcript_path: str | None,
     end_ns: int,
     failure: dict[str, str] | None = None,
 ) -> None:
     """Send the CHAIN root span for the current turn's trace.
 
-    LLM spans are emitted in real-time from _emit_pending_llm_spans (called
-    from handle_post_tool and handle_stop), so they do not need to be re-sent
-    here.  The root span's output.value is taken from the last LLM output
-    already tracked in state.
+    The root span's output.value is taken from the last LLM output (captured
+    atomically from the Stop / StopFailure hook payload or prior tool turn).
 
     ``failure`` carries ``error.type`` and ``error.message`` for a turn that
     ended in StopFailure; the root span then gets ERROR status.
@@ -2508,26 +1984,13 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
     if resolved_agent:
         state["agent_name"] = resolved_agent
 
-    # Complete the previous turn's trace if one is in progress.
-    # Use the cached transcript path from state so that any mid-session
-    # project-dir changes (e.g. gh pr create writing to a worktree dir) do
-    # not silently redirect us to a shadow transcript file.
+    # Complete the previous turn's trace if one is in progress (unclosed turn fallback).
     if state.get("current_trace"):
-        transcript_path = _get_cached_transcript_path(data, state, session_id)
-        _emit_pending_llm_spans(state, transcript_path, config)
-        _complete_turn(state, config, transcript_path, now_ns)
-        # Clear the cached path and any lingering pending tools so the new turn starts clean
-        state.pop("transcript_path", None)
+        _complete_turn(state, config, now_ns)
         state.pop("pending_tools", None)
 
-    # Count human messages for LLM span extraction.
-    # UserPromptSubmit fires before Claude processes the prompt, so the new
-    # message is not yet in the transcript — human_count_at_start equals the
-    # current count (the new prompt will become count+1 in the transcript).
-    # Resolve and immediately cache the transcript path for this new turn.
     transcript_path = _get_cached_transcript_path(data, state, session_id)
     current_human_count = _count_human_messages(transcript_path) if transcript_path else 0
-
     turn_number = _next_turn_number(state, current_human_count)
 
     parent_trace_id = None
@@ -2567,11 +2030,108 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
         "parent_span_id": parent_span_id,
         "turn_start_ns": now_ns,
         "turn_number": turn_number,
-        "human_count_at_start": current_human_count,
         "prompt_preview": _truncate(prompt) if prompt else "",
     }
 
     _save_state(session_id, state)
+
+
+def _get_latest_human_message(transcript_path: str) -> str:
+    """Return the text of the most recent human message in the transcript."""
+    try:
+        last = ""
+        for line in Path(transcript_path).read_text().splitlines():
+            if not line.strip():
+                continue
+            try:
+                entry = json.loads(line)
+                if _is_human_message(entry):
+                    content = entry.get("message", {}).get("content", "")
+                    if isinstance(content, str):
+                        last = content
+            except json.JSONDecodeError:
+                pass
+        return last
+    except Exception:
+        return ""
+
+
+def _pending_tool_key(data: dict, tool_name: str) -> str:
+    """Pending-tools key of a non-Agent tool call.
+
+    A subagent's calls are keyed apart from the main thread's, so a subagent
+    Bash and a main-thread Bash pending together do not overwrite each other.
+    """
+    agent_id = _subagent_id(data)
+    return f"{tool_name}@{agent_id}" if agent_id else tool_name
+
+
+def _find_pending_tool_entry(
+    state: dict,
+    tool_name: str,
+    data_tool_input: Any,
+    pending_key: str | None = None,
+) -> tuple[dict, str]:
+    """Return (pending_entry, pending_key) for the given tool.
+
+    For Agent/Task tools, parallel calls each get a compound key
+    ``"{tool_name}#{span_id}"``.  We find the right entry by matching
+    ``tool_input``; if no match, fall back to the first entry with the right
+    prefix so single-agent sessions and legacy state files still work.
+
+    For all other tools the key is *pending_key* (``_pending_tool_key``),
+    defaulting to ``tool_name``.
+    """
+    pending = state.get("pending_tools", {})
+    prefix = f"{tool_name}#"
+
+    if tool_name in ("Agent", "Task"):
+        # Pass 1: exact tool_input match
+        if data_tool_input is not None:
+            for k, v in pending.items():
+                if k.startswith(prefix) and v.get("tool_input") == data_tool_input:
+                    return v, k
+        # Pass 2: any entry with this tool's prefix (single-agent / legacy key)
+        for k, v in pending.items():
+            if k.startswith(prefix) or k == tool_name:
+                return v, k
+        return {}, tool_name
+
+    key = pending_key or tool_name
+    return pending.get(key, {}), key
+
+
+def _find_active_agent_span_id(
+    state: dict,
+    current_pending_key: str,
+    tool_name: str,
+) -> str | None:
+    """Return the pre_allocated_span_id of the innermost pending Agent/Task call.
+
+    When an inline subagent (e.g. Explore) makes tool calls within the parent
+    session, those calls appear in pending_tools alongside the Agent entry.
+    This detects that situation and returns the Agent's span_id so the sub-tool
+    is correctly parented under the Agent span rather than the CHAIN root.
+    For nested agents, the most-recently-started one wins (innermost parent).
+
+    An Agent/Task call is never parented under another pending Agent/Task
+    call: parallel Agent calls in one session are siblings, and two of them
+    finishing together would otherwise name each other as parent.
+    """
+    if tool_name in ("Agent", "Task"):
+        return None
+    pending = state.get("pending_tools", {})
+    best_start_ns = -1
+    best_span_id: str | None = None
+    for k, v in pending.items():
+        if k == current_pending_key:
+            continue  # don't self-reference
+        base_tool = k.split("#")[0] if "#" in k else k
+        if base_tool in ("Agent", "Task") and v.get("pre_allocated_span_id"):
+            if v.get("start_ns", 0) > best_start_ns:
+                best_start_ns = v["start_ns"]
+                best_span_id = v["pre_allocated_span_id"]
+    return best_span_id
 
 
 def handle_pre_tool(data: dict, config: dict) -> None:
@@ -2622,8 +2182,6 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
         state["agent_name"] = resolved_agent
 
     # Fallback: create a trace if UserPromptSubmit has not set one yet.
-    # This handles cases where the hook isn't registered or fires before the
-    # UserPromptSubmit event is available.
     if not state.get("current_trace"):
         transcript_path = _get_cached_transcript_path(data, state, session_id)
         current_human_count = _count_human_messages(transcript_path) if transcript_path else 0
@@ -2636,11 +2194,6 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
             "root_span_id": _new_span_id(),
             "turn_start_ns": now_ns,
             "turn_number": turn_number,
-            # human_count_at_start is one less than the current count so that
-            # _extract_llm_spans_for_turn finds entries where count > this value,
-            # i.e. entries belonging to the NEW turn whose prompt is the
-            # current_human_count-th human message.
-            "human_count_at_start": max(0, current_human_count - 1),
             "prompt_preview": _truncate(prompt_preview) if prompt_preview else "",
         }
 
@@ -2650,28 +2203,10 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
         "start_ns": now_ns,
     }
 
-    # For Agent/Task tool calls, pre-allocate the span ID so any INLINE
-    # subagent activity (tool calls that land in this same session's
-    # pending_tools while the Agent/Task call is still open — see
-    # _find_active_agent_span_id) is parented under the Agent span rather
-    # than the CHAIN root. Genuinely out-of-process subagents (dispatched via
-    # the Agent/Task tool as a separate Claude process) get their own,
-    # distinct session id and state file — confirmed empirically: 25 distinct
-    # per-subagent state files observed in ~/.claude/tracer/, none sharing
-    # the dispatching session's id — so they cannot be nested by trace here.
-    # They are grouped instead via the shared "session.id" span attribute
-    # (resolve_session_id(..., prefer_env=True), sourced from
-    # $AOPS_SESSION_ID). A prior side-channel mechanism attempted trace-level
-    # nesting for this case (a pending_agent JSON file written here, claimed
-    # by the subagent's first hook) but never once succeeded across 29
-    # historical state files, leaving 21 orphaned side-channel files; removed.
     current_trace = state.get("current_trace")
     if tool_name in ("Agent", "Task") and current_trace:
         agent_span_id = _new_span_id()
-        tuid = str(data.get("tool_use_id") or "")
-        transcript_path = state.get("transcript_path")
-        if not tuid and transcript_path:
-            tuid = _find_tool_use_id(transcript_path, tool_name, tool_input) or ""
+        tuid = str(data.get("tool_use_id") or data.get("toolUseId") or "")
         if tuid:
             agent_span_id = _agent_span_id(tuid)
 
@@ -2682,26 +2217,6 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
 
     state.setdefault("pending_tools", {})[pending_key] = pending_entry
     _save_state(session_id, state)
-
-
-def _get_latest_human_message(transcript_path: str) -> str:
-    """Return the text of the most recent human message in the transcript."""
-    try:
-        last = ""
-        for line in Path(transcript_path).read_text().splitlines():
-            if not line.strip():
-                continue
-            try:
-                entry = json.loads(line)
-                if _is_human_message(entry):
-                    content = entry.get("message", {}).get("content", "")
-                    if isinstance(content, str):
-                        last = content
-            except json.JSONDecodeError:
-                pass
-        return last
-    except Exception:
-        return ""
 
 
 def _pending_tool_key(data: dict, tool_name: str) -> str:
@@ -2852,37 +2367,17 @@ def _finish_tool_call(
         # span keeps a fresh id.
         pre_allocated_span_id = None if is_failure else current_tool.get("pre_allocated_span_id")
 
-        # Resolve the transcript path from the state cached at UserPromptSubmit
-        # time, not the (potentially stale or redirected) path in this payload.
-        transcript_path = _get_cached_transcript_path(data, state, session_id)
-        # Under the lock so parallel hooks read the latest
-        # emitted_llm_span_count and never double-emit. Run before the tool
-        # span is built: it maps this tool call to the LLM call that issued it.
-        _emit_pending_llm_spans(state, transcript_path, config, hold_open=True)
-
         tool_call_id = data.get("tool_use_id") or data.get("tool_call_id") or data.get("id")
         subagent = (
-            _subagent_record(state, subagent_id, data.get("agent_type"), transcript_path)
-            if subagent_id
-            else None
+            _subagent_record(state, subagent_id, data.get("agent_type")) if subagent_id else None
         )
         trace_id = current_trace["trace_id"]
         if subagent_id and subagent is not None:
-            # A subagent's tool call: parent precedence is the subagent LLM
-            # call that issued it, then the Agent span it runs under.
-            _emit_pending_subagent_llm_spans(state, subagent_id, subagent, config, hold_open=True)
             trace_id = subagent["trace_id"]
-            parent_span_id = (
-                subagent["llm_span_by_tool_call"].get(str(tool_call_id or ""))
-                or subagent["agent_span_id"]
-            )
+            parent_span_id = subagent["agent_span_id"]
         else:
-            # Parent precedence: a still-pending Agent/Task (inline subagent
-            # pattern), then the LLM call whose response issued this tool_use,
-            # then the CHAIN root.
             parent_span_id = (
                 _find_active_agent_span_id(state, pending_key, tool_name)
-                or current_trace.get("llm_span_by_tool_call", {}).get(str(tool_call_id or ""))
                 or current_trace["root_span_id"]
             )
         span_record = _build_tool_span_record(
@@ -2899,9 +2394,6 @@ def _finish_tool_call(
             tool_call_id=tool_call_id,
         )
 
-        # The Agent tool's response names the subagent it ran. Label the Agent
-        # span with it, and once the subagent has finished, send its last LLM
-        # spans: its final response is followed by no tool call of its own.
         dispatched_id = (
             str(tool_response.get("agentId") or "")
             if tool_name in ("Agent", "Task") and isinstance(tool_response, dict)
@@ -2910,20 +2402,11 @@ def _finish_tool_call(
         if dispatched_id:
             span_record["attributes"]["agent.id"] = dispatched_id
             span_record["attributes"]["subagent.id"] = dispatched_id
-            dispatched = _subagent_record(
+            _subagent_record(
                 state,
                 dispatched_id,
                 tool_response.get("agentType") or (tool_input or {}).get("subagent_type"),
-                transcript_path,
             )
-            if dispatched is not None:
-                _emit_pending_subagent_llm_spans(
-                    state,
-                    dispatched_id,
-                    dispatched,
-                    config,
-                    hold_open=tool_response.get("status") != "completed",
-                )
 
         known_parents = _known_span_parents(current_trace)
         if span_record["force_span_id"]:
@@ -2990,17 +2473,21 @@ def handle_stop(data: dict, config: dict) -> None:
 
     with _session_lock(session_id):
         state = _load_state(session_id)
-        if not state.get("current_trace"):
+        current_trace = state.get("current_trace")
+        if not current_trace:
             log.debug("No active trace for session %s at stop", session_id)
             return
 
-        transcript_path = _get_cached_transcript_path(data, state, session_id)
+        last_message = (
+            data.get("last_assistant_message")
+            or data.get("lastAssistantMessage")
+            or data.get("message")
+            or ""
+        )
+        if last_message:
+            current_trace["last_llm_output"] = _truncate(_format_assistant_message(last_message))
 
-        # Emit the final LLM span(s) — the last response has no tool call after it,
-        # so handle_post_tool never got the chance to emit it.
-        _emit_pending_llm_spans(state, transcript_path, config)
-
-        _complete_turn(state, config, transcript_path, end_ns)
+        _complete_turn(state, config, end_ns)
 
         _end_turn(session_id, state)
 
@@ -3008,37 +2495,15 @@ def handle_stop(data: dict, config: dict) -> None:
 
 
 def handle_subagent_stop(data: dict, config: dict) -> None:
-    """Handle SubagentStop: send the subagent's LLM spans not yet sent.
-
-    Its final response is followed by no tool call, so no PostToolUse sends
-    it. A background subagent can finish after the turn that dispatched it;
-    its record still names that turn's trace.
-    """
+    """Handle SubagentStop."""
     session_id = resolve_session_id(data, "session_id")
     agent_id = _subagent_id(data)
     if session_id is None or agent_id is None:
         log.warning(
-            "handle_subagent_stop: payload lacks 'session_id' or 'agent_id' — skipping span emission",
+            "handle_subagent_stop: payload lacks 'session_id' or 'agent_id' — skipping",
         )
         return
-
-    with _session_lock(session_id):
-        state = _load_state(session_id)
-        if not state:
-            log.debug("No state for session %s at subagent stop", session_id)
-            return
-        record = _subagent_record(
-            state,
-            agent_id,
-            data.get("agent_type"),
-            _get_cached_transcript_path(data, state, session_id),
-            agent_transcript_path=data.get("agent_transcript_path"),
-        )
-        if record is None:
-            log.debug("No trace to nest subagent %s under at subagent stop", agent_id)
-            return
-        _emit_pending_subagent_llm_spans(state, agent_id, record, config)
-        _save_state(session_id, state)
+    log.debug("handle_subagent_stop: session %s agent %s finished", session_id, agent_id)
 
 
 def _end_turn(session_id: str, state: dict) -> None:
@@ -3076,19 +2541,20 @@ def handle_stop_failure(data: dict, config: dict) -> None:
             log.debug("No active trace for session %s at stop failure", session_id)
             return
 
-        transcript_path = _get_cached_transcript_path(data, state, session_id)
-        _emit_pending_llm_spans(state, transcript_path, config)
-
         error_type = str(data.get("error") or "unknown")
-        last_message = data.get("last_assistant_message") or ""
+        last_message = (
+            data.get("last_assistant_message")
+            or data.get("lastAssistantMessage")
+            or data.get("message")
+            or ""
+        )
         if last_message:
-            current_trace["last_llm_output"] = _truncate(last_message)
+            current_trace["last_llm_output"] = _truncate(_format_assistant_message(last_message))
         elif not current_trace.get("last_llm_output"):
             current_trace["last_llm_output"] = f"(Stop failed: {error_type})"
         _complete_turn(
             state,
             config,
-            transcript_path,
             end_ns,
             failure={
                 "error.type": error_type,
@@ -3264,9 +2730,7 @@ def handle_session_end(data: dict, config: dict) -> None:
     with _session_lock(session_id):
         state = _load_state(session_id)
         if state.get("current_trace"):
-            transcript_path = _get_cached_transcript_path(data, state, session_id)
-            _emit_pending_llm_spans(state, transcript_path, config)
-            _complete_turn(state, config, transcript_path, end_ns)
+            _complete_turn(state, config, end_ns)
         _delete_state(session_id)
 
 
