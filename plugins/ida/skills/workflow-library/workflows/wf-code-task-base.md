@@ -23,7 +23,7 @@ tags: [base, task, code, composite]
    - **Rejected** -- the approach is wrong, the PR is out of proportion to what the task asks (see the `proportionate` axiom), or it cannot be salvaged: close the PR with the review as the closing comment, and set the implementation task to `cancelled` with the reason.
    - **Extensive revisions** -- the PR is sound in direction but needs more than in-place fixes: file a fix follow-up task that names each required change and `needs` the review task, leave the PR open, and link the follow-up from the review.
    - **Handoff for review** -- the reviewer pushed fixes or modified code on the PR: post the review and changes to the PR, file an independent QA follow-up task that `needs` this review task so a fresh independent reviewer verifies the modified PR, leave the PR open, and release this review task as `partial`. A reviewer that changes code or pushes fixes must never merge or mark merge-ready.
-   - **Mergeable** -- the review is clean with no reviewer code changes, checks are green, and GitHub reports the PR mergeable: post a merge recommendation on the PR citing the green checks and the review, and release the review task as `merge_ready`. Do not merge.
+   - **Mergeable** -- the review is clean with no reviewer code changes, checks are green, and GitHub reports the PR mergeable: post a merge recommendation on the PR citing the green checks and the review. For Tier 1 PRs (`triage:auto-mergeable`), merge autonomously (`gh pr merge --squash`) and release the task as `done`. For Tier 2 (`triage:needs-judgment`) and Tier 3 (`criticality:critical`) PRs, post receipts and leave the PR open for reviewer sign-off, releasing the task as `done`. Do not release to `review` for a human merge gate.
 
 ## Composition
 
@@ -35,7 +35,7 @@ For a low-risk internal change, chiefly a bugfix, omit the separate stage 4 veri
 
 - Stage 1 task: the design -- the governing spec it cites, or the new spec, or the plan -- committed or on the task record, and the independent check's verdict.
 - Stage 2--3 task: for each changed behaviour of code that executes, its test with the red failure trace; the evidence for each other criterion; a green full-suite run; and the open PR with its URL on the task record.
-- Stage 4 task: the review posted on the PR, any in-place fix commits, and one verdict carried out -- PR closed and implementation task `cancelled`, a fix follow-up task filed, a handoff follow-up task filed with the review task released as `partial`, or a merge recommendation posted with the review task released as `merge_ready`.
+- Stage 4 task: the review posted on the PR, any in-place fix commits, and one verdict carried out -- PR closed and implementation task `cancelled`, a fix follow-up task filed, a handoff follow-up task filed with the review task released as `partial`, or on a mergeable verdict: Tier 1 PR merged and task released as `done`; Tier 2/3 PR left open with receipts and task released as `done`.
 
 ## When to include
 

@@ -88,3 +88,18 @@ Two flows, deliberately separated as witness and judge, so the volume and direct
 2. **Improve the framework** (used to be the `triage` skill's sweep mode; currently N/A) -- a detached pass over the accumulated issue queue on a cadence the user sets, proposing a mechanism only where recurrence or explicit direction justifies it.
 
 A single incident that is a **bug** is fixed immediately from one report. A single incident that may qualify for an **escalation proposal** is logged and waits for the pattern.
+
+## PR Risk Taxonomy Enforcement
+
+Pull request review and merge authority is governed by a three-tier risk taxonomy (canonical: [[kb_48809ad0]], amended in [[aops_a7366995]]):
+
+| Tier | Name | Labels | Merge Authority | Carrier Mechanism |
+| :- | :- | :- | :- | :- |
+| **Tier 1** | Autonomous QA-Merge | `triage:auto-mergeable` | Independent QA worker merges autonomously on verified pass (`gh pr merge --squash`) | `.github/workflows/pr-pipeline.yml:triage-risk`, `wf-finish.md`, `wf-code-task-base.md`, `wf-qa.md` |
+| **Tier 2** | Operational & Behavioral Gate | `triage:needs-judgment` | Reviewer sign-off required; QA worker posts receipts and leaves PR open | `.github/workflows/pr-pipeline.yml:triage-risk`, `wf-finish.md`, `wf-code-task-base.md`, `wf-qa.md` |
+| **Tier 3** | Critical Hazard & Public Gate | `criticality:critical`, `triage:needs-judgment` | Exclusive principal review and merge; agents strictly forbidden from merging | `.github/workflows/pr-pipeline.yml:triage-risk`, `wf-finish.md`, `wf-code-task-base.md`, `wf-qa.md` |
+
+Enforcement operates through two coordinated mechanisms:
+
+1. **Structural CI Classification (`process` → `routing`)**: `.github/workflows/pr-pipeline.yml` runs `scripts/classify_pr_risk.py` on pull request events, classifying modified file paths and author metadata against policy in `tests/policy.toml`, applying triage labels.
+2. **Workflow Merge Gates (`instructions` → `imperative`)**: Finish and QA templates (`wf-finish.md`, `wf-code-task-base.md`, `wf-qa.md`, `reify/SKILL.md`) direct QA workers to merge Tier 1 PRs upon an independent verified pass, and to post receipts while leaving Tier 2 and Tier 3 PRs open for reviewer/principal sign-off. In accordance with the review lifecycle rules ([[aops_204898b2]]), QA tasks complete as `done` and never rest or release into `review` for human merge gates.

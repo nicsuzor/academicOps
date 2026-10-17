@@ -19,6 +19,9 @@ Universal QA gate: assemble criteria, evaluate independently, return a per-crite
    - **Criterion** -- verbatim from step 1.
    - **Status** -- `MET` or `UNMET`. A criterion that can't be checked is `UNMET` with the reason recorded, never skipped or assumed.
    - **Evidence** -- pinpoint citation: `file:line`, command output, or the visual region a viewer would look at.
+4. **PR Risk Tier Action**:
+   - For Tier 1 PRs (`triage:auto-mergeable`): when all criteria are `MET` and checks pass, merge the PR autonomously via `gh pr merge --squash` and release the QA task as `done`.
+   - For Tier 2 (`triage:needs-judgment`) and Tier 3 (`criticality:critical`) PRs: post the itemized receipt to the PR, leave the PR open for reviewer sign-off, and release the QA task as `done`. Never release to `review` for a human merge gate.
 
 ## Output contract
 
