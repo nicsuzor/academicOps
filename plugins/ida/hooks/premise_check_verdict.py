@@ -21,13 +21,10 @@ from premise_check_gate import disarm, get_state, is_armed, mint_verification_id
 VERDICTS: tuple[str, ...] = ("PASS", "REVISE", "FAIL")
 
 
-def _import_claude_code_tracer() -> Any | None:
-    try:
-        import claude_code_tracer  # type: ignore[import-not-found]
+def _import_claude_code_tracer() -> Any:
+    import claude_code_tracer  # type: ignore[import-not-found]
 
-        return claude_code_tracer
-    except ImportError:
-        return None
+    return claude_code_tracer
 
 
 def emit_verdict_span(
@@ -43,12 +40,12 @@ def emit_verdict_span(
     """Ship one TOOL span for this verdict via claude_code_tracer's pipeline.
 
     Returns True only when the OTLP exporter reported SUCCESS for the span;
-    False when tracing is unconfigured or the export was not acknowledged.
+    raises RuntimeError when tracing is unconfigured or the export was not acknowledged.
     """
     if config is None:
         config = tracer_mod.discover_config()
     if config is None:
-        return False
+        raise RuntimeError("premise_check_verdict: tracing is not configured (no OTel endpoint)")
 
     now_ns = time.time_ns()
     trace_id = tracer_mod._new_trace_id()
@@ -105,7 +102,9 @@ def emit_verdict_span(
         service_name="aops-verdict-hooks",
         surface=surface,
     )
-    return exported is True
+    if exported is not True:
+        raise RuntimeError("premise_check_verdict: OTel span export failed")
+    return True
 
 
 def record_verdict(
@@ -116,7 +115,7 @@ def record_verdict(
     title: str | None = None,
     tracer_mod: Any | None = None,
 ) -> dict[str, Any]:
-    """Validate, emit the span (best-effort), and disarm the premise check."""
+    """Validate, emit the span, and disarm the premise check."""
     cid = (claim_id or "").strip()
     if not cid:
         raise ValueError("a verdict needs a report id; got none")
@@ -145,22 +144,15 @@ def record_verdict(
     if tracer_mod is None:
         tracer_mod = _import_claude_code_tracer()
 
-    span_emitted = False
-    span_error: str | None = None
-    if tracer_mod is not None:
-        try:
-            span_emitted = emit_verdict_span(
-                tracer_mod,
-                session_id,
-                cid,
-                token,
-                reason,
-                verification_id=verification_id,
-                title=clean_title,
-            )
-        except Exception as exc:
-            span_error = repr(exc)
-            print(f"premise_check_verdict: span emission failed: {exc!r}", file=sys.stderr)
+    emit_verdict_span(
+        tracer_mod,
+        session_id,
+        cid,
+        token,
+        reason,
+        verification_id=verification_id,
+        title=clean_title,
+    )
 
     disarm(
         session_id,
@@ -176,8 +168,8 @@ def record_verdict(
         "verification_id": verification_id,
         "claim_id": cid,
         "verdict": token,
-        "span_emitted": span_emitted,
-        "span_error": span_error,
+        "span_emitted": True,
+        "span_error": None,
         "disarmed": True,
     }
     if clean_title:
@@ -249,18 +241,11 @@ def main(argv: list[str] | None = None) -> int:
             reason=text,
             title=args.title,
         )
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, RuntimeError, ImportError) as exc:
         print(f"premise_check_verdict: {exc}", file=sys.stderr)
         return 1
 
     print(json.dumps(result))
-    if not result["span_emitted"]:
-        detail = f": {result['span_error']}" if result.get("span_error") else ""
-        print(
-            "premise_check_verdict: verdict recorded locally (premise check disarmed) but no "
-            f"OTel span was emitted -- tracing endpoint not configured or export failed{detail}",
-            file=sys.stderr,
-        )
     return 0
 
 
