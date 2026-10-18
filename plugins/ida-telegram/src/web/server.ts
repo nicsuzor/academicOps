@@ -1,7 +1,7 @@
 import { serve } from "bun";
 import { handleApiRequest, WebContext } from "./routes.js";
-import { join } from "node:path";
-import { existsSync, readFileSync } from "node:fs";
+import { join, resolve, sep } from "node:path";
+import { readFileSync, statSync } from "node:fs";
 
 export function startWebServer(ctx: WebContext, appDir: string) {
   const port = ctx.config.port || 8093;
@@ -19,14 +19,16 @@ export function startWebServer(ctx: WebContext, appDir: string) {
       }
 
       // 2. Static Mini App routes: /app/*
-      if (path.startsWith("/app")) {
+      if (path === "/app" || path.startsWith("/app/")) {
         let subPath = path.substring("/app".length);
         if (subPath === "" || subPath === "/") {
           subPath = "/index.html";
         }
 
-        const filePath = join(appDir, subPath);
-        if (existsSync(filePath)) {
+        // Confine to appDir: reject traversal (e.g. "/app../x") and non-files.
+        const root = resolve(appDir);
+        const filePath = resolve(join(root, subPath));
+        if (filePath.startsWith(root + sep) && statSync(filePath, { throwIfNoEntry: false })?.isFile()) {
           const content = readFileSync(filePath);
           let contentType = "text/plain";
           if (filePath.endsWith(".html")) contentType = "text/html; charset=utf-8";
