@@ -20,7 +20,7 @@ As the user, I want each agent reminded of the contract at the moment it writes 
 - Each reminder fires once, at its moment, and is a line or two long.
 - Ida and Sara cannot dispatch, message, reply on a channel or stop while a report that arrived as an incoming message awaits a verdict.
 - Agents judge each report. Parsers and presence checks confirm well-formedness only, under [enforcement.md](enforcement.md)'s governing principle.
-- **AC-1.1** Given Ida or Sara with no report awaiting a verdict, when a cross-session message, a teammate message or a background subagent's or worker's completion notification arrives, then the agent's next dispatch, message, channel reply or `Stop` is refused until it records a verdict.
+- **AC-1.1** Given Ida or Sara with no report awaiting a verdict, when a cross-session message, a teammate message or a background subagent's or worker's completion notification arrives, then the agent's next dispatch, message or channel reply is refused until it records a verdict, and its first `Stop` is blocked.
 - **AC-1.2** Given Ida or Sara with no report awaiting a verdict, when a foreground subagent returns its result, a background subagent is launched, or any other of the agent's own tool calls completes, then the agent's next dispatch goes through.
 - **AC-1.3** Given Ida or Sara with no report awaiting a verdict, when the user's own message arrives, typed or over a channel, then the agent's next dispatch goes through.
 
