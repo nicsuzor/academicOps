@@ -55,7 +55,7 @@ Maintains truth over the task graph: establishes facts about in-flight work and 
 - Must not annotate a body with status changes without mutating frontmatter `status`.
 - Must not use `batch_update` for status mutations or demotions.
 - Must not prune, re-plan, or restructure (delegate repositioning to `/q`).
-- Must not write `focus_score`, `intent`, `priority`, or `severity`.
+- Must not write `intent`, `priority`, or `severity`.
 - Must not promote `inbox` or `ready` work into `queued`.
 - Must not append unowned sections to the daily note outside `## With you`.
 - Must not write items with unverified or insufficient evidence to the daily note.
