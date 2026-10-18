@@ -10,9 +10,9 @@ Covers:
    fails the verdict call and leaves the gate armed.
 4. premise_check_handler refuses the next dispatch, message or stop while
    armed, allows it once disarmed, and respects mode=warn/off and overrides.
-5. premise_check_arm arms only for the gated agents (ida, sara): after a
-   dispatch batch, or on an incoming peer report -- never on the user's own
-   messages.
+5. premise_check_arm arms only for the gated agents (ida, sara), and only on
+   an incoming peer or worker report -- never on the agent's own outgoing tool
+   calls, subagent dispatches included, and never on the user's own messages.
 """
 
 from __future__ import annotations
@@ -630,87 +630,52 @@ def test_handler_refuses_channel_reply_tools_while_armed(tool):
 
 
 # ---------------------------------------------------------------------------
-# 6. Arming the check on foreground PostToolUse (never PostToolBatch or background)
+# 6. The agent's own outgoing tool calls never arm the check
 # ---------------------------------------------------------------------------
 
+_OUTGOING_CALLS = [
+    ("Agent", {"description": "verify the claim"}),
+    ("Agent", {"description": "verify the claim", "run_in_background": False}),
+    ("Agent", {"description": "background worker", "run_in_background": True}),
+    ("Task", {"description": "research X"}),
+    ("invoke_subagent", {"prompt": "research X"}),
+    ("SendMessage", {"to": "twin-a", "message": "status?"}),
+    ("Bash", {"command": "ls"}),
+]
 
-def test_arm_handler_ignores_post_tool_batch():
-    session_id = "sess-batch-ignored"
+
+@pytest.mark.parametrize("tool,tool_input", _OUTGOING_CALLS)
+def test_outgoing_post_tool_use_leaves_check_disarmed(tool, tool_input):
+    session_id = f"sess-out-{tool}-{sorted(tool_input.items())}"
+    ctx = dispatch.HookContext(
+        client="claude",
+        event="PostToolUse",
+        tool=tool,
+        session_id=session_id,
+        agent_type="ida:ida",
+        raw={"tool_input": tool_input},
+    )
+    handlers = _load_plugin_module("ida_handlers_gate", _HOOKS_DIR / "handlers.py")
+    handlers.post_tool(ctx)
+    assert pcg.is_armed(session_id) is False
+    assert pcg.premise_check_arm(ctx) is None
+    assert pcg.is_armed(session_id) is False
+    assert pcg.premise_check_handler(_agent_dispatch_ctx(session_id)) is None
+
+
+@pytest.mark.parametrize("tool,tool_input", _OUTGOING_CALLS)
+def test_outgoing_post_tool_batch_leaves_check_disarmed(tool, tool_input):
+    session_id = f"sess-batch-{tool}-{sorted(tool_input.items())}"
     ctx = dispatch.HookContext(
         client="claude",
         event="PostToolBatch",
         session_id=session_id,
         agent_type="ida:ida",
-        tool_calls=({"tool_name": "Agent", "tool_input": {"description": "verify the claim"}},),
+        tool_calls=({"tool_name": tool, "tool_input": tool_input},),
     )
     assert pcg.premise_check_arm(ctx) is None
     assert pcg.is_armed(session_id) is False
-
-
-@pytest.mark.parametrize("bg_val", [None, False, "false", "0", ""])
-def test_arm_handler_fires_on_foreground_post_tool_use_for_scoped_agent(bg_val):
-    session_id = f"sess-fg-{bg_val}"
-    tool_input: dict[str, Any] = {"description": "verify the claim"}
-    if bg_val is not None:
-        tool_input["run_in_background"] = bg_val
-    ctx = dispatch.HookContext(
-        client="claude",
-        event="PostToolUse",
-        tool="Agent",
-        session_id=session_id,
-        agent_type="ida:ida",
-        raw={"tool_input": tool_input},
-    )
-    res = pcg.premise_check_arm(ctx)
-    assert res is not None
-    assert res.kind == dispatch.Kind.ADVISE
-    assert len(res.inject_text.splitlines()) <= 2
-    assert "verify the claim" in res.inject_text
-    assert "premise-check" in res.inject_text
-    assert pcg.is_armed(session_id) is True
-    assert pcg.get_state(session_id)["claim_id"] == "verify the claim"
-
-
-@pytest.mark.parametrize("bg_val", [True, "true", "True", "1", "yes", 1])
-def test_arm_handler_ignores_background_post_tool_use(bg_val):
-    session_id = f"sess-bg-{bg_val}"
-    ctx = dispatch.HookContext(
-        client="claude",
-        event="PostToolUse",
-        tool="Agent",
-        session_id=session_id,
-        agent_type="ida:ida",
-        raw={"tool_input": {"description": "background worker", "run_in_background": bg_val}},
-    )
-    assert pcg.premise_check_arm(ctx) is None
-    assert pcg.is_armed(session_id) is False
-
-
-def test_arm_handler_ignores_non_dispatch_post_tool_use():
-    session_id = "sess-open-2"
-    ctx = dispatch.HookContext(
-        client="claude",
-        event="PostToolUse",
-        tool="Bash",
-        session_id=session_id,
-        agent_type="ida:ida",
-    )
-    assert pcg.premise_check_arm(ctx) is None
-    assert pcg.is_armed(session_id) is False
-
-
-def test_arm_handler_ignores_non_scoped_agent_type():
-    session_id = "sess-open-3"
-    ctx = dispatch.HookContext(
-        client="claude",
-        event="PostToolUse",
-        tool="Agent",
-        session_id=session_id,
-        agent_type="aops:james",
-        raw={"tool_input": {"description": "subtask"}},
-    )
-    assert pcg.premise_check_arm(ctx) is None
-    assert pcg.is_armed(session_id) is False
+    assert pcg.premise_check_handler(_agent_dispatch_ctx(session_id)) is None
 
 
 # ---------------------------------------------------------------------------
@@ -721,16 +686,11 @@ def test_arm_handler_ignores_non_scoped_agent_type():
 def test_end_to_end_claim_blocks_next_dispatch_until_verdicted():
     session_id = "sess-e2e"
 
-    # A foreground subagent finishes and returns to Ida.
-    fg_ctx = dispatch.HookContext(
-        client="claude",
-        event="PostToolUse",
-        tool="Agent",
-        session_id=session_id,
-        agent_type="ida:ida",
-        raw={"tool_input": {"description": "researched X"}},
+    # A worker's report arrives at Ida.
+    report_ctx = _prompt_ctx(
+        session_id, '<task-notification id="researched-X">worker finished</task-notification>'
     )
-    arm_res = pcg.premise_check_arm(fg_ctx)
+    arm_res = pcg.premise_check_arm(report_ctx)
     assert arm_res is not None
     assert pcg.is_armed(session_id) is True
 
@@ -741,7 +701,7 @@ def test_end_to_end_claim_blocks_next_dispatch_until_verdicted():
     # The verdict script runs and disarms the check.
     pcv.record_verdict(
         session_id=session_id,
-        claim_id="researched X",
+        claim_id="researched-X",
         verdict="PASS",
         reason="The report's evidence supports its conclusion.",
         tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
@@ -779,6 +739,8 @@ def test_arm_handler_arms_on_peer_report(prompt):
     session_id = "sess-peer"
     pcg.premise_check_arm(_prompt_ctx(session_id, prompt))
     assert pcg.is_armed(session_id) is True
+    res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
+    assert res is not None and res.kind == dispatch.Kind.REFUSE
 
 
 @pytest.mark.parametrize(
@@ -795,6 +757,7 @@ def test_arm_handler_ignores_the_users_own_messages(prompt):
     session_id = "sess-user"
     pcg.premise_check_arm(_prompt_ctx(session_id, prompt))
     assert pcg.is_armed(session_id) is False
+    assert pcg.premise_check_handler(_agent_dispatch_ctx(session_id)) is None
 
 
 def test_users_message_does_not_disarm_a_pending_check():

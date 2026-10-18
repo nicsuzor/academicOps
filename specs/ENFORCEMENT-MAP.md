@@ -41,7 +41,7 @@ Measures in place that enforce the [evidence contract](enforcement/evidence-cont
 | Session-wide one-line pointer | `SessionStart` (startup, resume, compact) | All agents | Reminder |
 | Reply-format reminder (`honesty.md`) on a peer envelope | `UserPromptSubmit`, peer envelope | All agents | Reminder |
 | Check reminder (`hearsay.md`) on a peer envelope or foreground subagent result | `UserPromptSubmit` (peer envelope), `PostToolUse` on `Agent` | Ida, Sara | Reminder |
-| Gate arms on a peer envelope or foreground subagent result | `UserPromptSubmit` (peer envelope), `PostToolUse` on `Agent` | Ida, Sara | Friction |
+| Gate arms on an incoming peer message or completion notification, not on a foreground subagent result | `UserPromptSubmit` (peer or task-notification envelope) | Ida, Sara | Friction |
 | Gate refuses `Agent`, `Task`, `invoke_subagent`, `SendMessage`, `AskUserQuestion`, `Dump`, channel replies | `PreToolUse` | Ida, Sara | Refuse |
 | Gate blocks `Stop` once per chain | `Stop` | Ida, Sara | Block |
 | Gate messages two lines (agent: claim and skill, then the verdict command with no pre-filled verdict) and one line (user, no command) | `premise_check_handler`, `premise_check_arm` | Ida, Sara | Friction |
