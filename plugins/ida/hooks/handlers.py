@@ -251,14 +251,17 @@ def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
 
 
 def search_the_pkb(ctx: HookContext) -> Result | None:
-    """Ground every prompt in the PKB before the agent acts on it.
+    """Ground user prompts in the PKB before Ida acts on them.
 
     Returns the output of `pkb search {prompt:200}` wrapped in
     `<academicOps PKB search results>` tags when matches are found;
-    otherwise returns None. Peer reports are skipped so they trigger
-    hearsay and premise check gates instead of hydrating from the PKB.
+    otherwise returns None. Only runs for Ida sessions, skipping slash
+    commands and peer reports.
     """
     if is_peer_report(ctx):
+        return None
+
+    if ctx.agent_type and not _is_ida(ctx):
         return None
 
     raw_prompt = ctx.raw.get("prompt")
@@ -269,7 +272,7 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
     prompt_str = str(raw_prompt or "").strip()
 
     query = extract_prompt_query(prompt_str)
-    if query:
+    if query and not query.startswith("/"):
         output = _run_pkb_search(query, cwd=ctx.cwd)
         if output:
             msg = f"<academicOps PKB search results>\n{output}\n</academicOps PKB search results>"
@@ -338,22 +341,25 @@ def _format_session_metadata(ctx: HookContext) -> str:
     session_id = ctx.session_id or ctx.raw.get("session_id") or ctx.raw.get("conversationId") or ""
     cwd = ctx.cwd or ctx.raw.get("cwd") or ""
 
-    pkb_version = os.environ.get("PKB_VERSION") or ctx.raw.get("pkb_version") or "unknown"
+    parts = []
+    if session_id and session_id != "unknown":
+        parts.append(f"session: {_scrub(session_id)}")
+    parts.append(f"time: {time_str}")
+    if hostname and hostname != "unknown":
+        parts.append(f"host: {_scrub(hostname)}")
+    if cwd and cwd != "unknown":
+        parts.append(f"cwd: {_scrub(cwd)}")
 
-    parts = [
-        f"session: {_scrub(session_id)}" if session_id else "session: unknown",
-        f"time: {time_str}",
-        f"host: {_scrub(hostname)}" if hostname else "host: unknown",
-        f"cwd: {_scrub(cwd)}" if cwd else "cwd: unknown",
-    ]
-    parts.append(f"pkb: {_scrub(pkb_version)}")
+    pkb_version = os.environ.get("PKB_VERSION") or ctx.raw.get("pkb_version")
+    if pkb_version and pkb_version != "unknown":
+        parts.append(f"pkb: {_scrub(pkb_version)}")
 
     plugin_ver = (
         os.environ.get("AOPS_IMAGE_PLUGINS_VERSION")
         or ctx.raw.get("plugins")
         or ctx.raw.get("plugins_version")
     )
-    if plugin_ver:
+    if plugin_ver and plugin_ver != "unknown":
         parts.append(f"plugins: {_scrub(str(plugin_ver))}")
 
     otel_endpoint = (
@@ -361,11 +367,12 @@ def _format_session_metadata(ctx: HookContext) -> str:
         or os.environ.get("BETA_TRACING_ENDPOINT")
         or os.environ.get("GENAI_ENGINE_TRACE_ENDPOINT")
     )
-    if otel_endpoint:
-        service_name = os.environ.get("OTEL_SERVICE_NAME") or "unknown"
-        parts.append(f"tracing: {_scrub(otel_endpoint)} (service: {_scrub(service_name)})")
-    else:
-        parts.append("tracing: unconfigured")
+    if otel_endpoint and otel_endpoint != "unconfigured":
+        service_name = os.environ.get("OTEL_SERVICE_NAME")
+        if service_name and service_name != "unknown":
+            parts.append(f"tracing: {_scrub(otel_endpoint)} (service: {_scrub(service_name)})")
+        else:
+            parts.append(f"tracing: {_scrub(otel_endpoint)}")
 
     return " | ".join(parts)
 
@@ -483,7 +490,6 @@ def session_start(ctx: HookContext) -> Result | None:
     """Handle SessionStart for Claude Code and SessionStart for agy."""
     metadata = _format_session_metadata(ctx)
     parts = [
-        "aops hook: Session started.",
         metadata,
         "Reports follow `premise-check`: written in its shape and checked on receipt.",
     ]

@@ -733,3 +733,93 @@ def test_peer_message_prompt_yields_single_user_prompt_submit_output(
         "Reminded to use `premise-check` when replying to a peer message. "
         "Premise-check gate armed by claim-59204fc6."
     )
+
+
+def test_session_start_metadata_never_prints_unknown_or_unconfigured_values(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """SessionStart metadata never prints ': unknown', 'tracing: unconfigured', or 'aops hook: Session started.'."""
+    # Ensure no versions or tracing in env
+    for var in (
+        "PKB_VERSION",
+        "OTEL_EXPORTER_OTLP_ENDPOINT",
+        "BETA_TRACING_ENDPOINT",
+        "GENAI_ENGINE_TRACE_ENDPOINT",
+        "OTEL_SERVICE_NAME",
+        "AOPS_IMAGE_PLUGINS_VERSION",
+    ):
+        monkeypatch.delenv(var, raising=False)
+
+    ctx = HookContext(
+        client="claude",
+        event="SessionStart",
+        hooks_dir=IDA_HOOKS,
+    )
+    res = handlers.session_start(ctx)
+    assert res is not None
+    inject = res.inject_text
+
+    # Must pass test 2 and 4: no unknown values or unconfigured noise or banner
+    assert "aops hook: Session started." not in inject
+    assert "pkb: unknown" not in inject
+    assert "service: unknown" not in inject
+    assert "tracing: unconfigured" not in inject
+    assert ": unknown" not in inject
+
+    # Must retain required premise-check pointer
+    assert "Reports follow `premise-check`: written in its shape and checked on receipt." in inject
+
+    # When pkb_version is known, it is included
+    monkeypatch.setenv("PKB_VERSION", "0.4.2")
+    res_pkb = handlers.session_start(ctx)
+    assert res_pkb is not None
+    assert "pkb: 0.4.2" in res_pkb.inject_text
+
+    # When tracing endpoint is set without service, only endpoint is included (no service: unknown)
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "https://otel.example.com")
+    res_trace = handlers.session_start(ctx)
+    assert res_trace is not None
+    assert "tracing: https://otel.example.com" in res_trace.inject_text
+    assert "(service: unknown)" not in res_trace.inject_text
+
+    # When service name is also set, service is included
+    monkeypatch.setenv("OTEL_SERVICE_NAME", "academicOps")
+    res_svc = handlers.session_start(ctx)
+    assert res_svc is not None
+    assert "tracing: https://otel.example.com (service: academicOps)" in res_svc.inject_text
+
+
+@pytest.mark.parametrize(
+    "agent", ["sara", "pauli", "james", "marsha", "rbg", "worker", "aops:james"]
+)
+def test_search_the_pkb_skips_non_ida_agents(agent: str):
+    """search_the_pkb only runs for Ida; other agents never execute prompt search."""
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        raw={"prompt": "what did we decide about the build?"},
+        hooks_dir=IDA_HOOKS,
+        agent_type=agent,
+    )
+    with patch.object(handlers, "_run_pkb_search") as mock_search:
+        res = handlers.search_the_pkb(ctx)
+        assert res is None
+        mock_search.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "slash_cmd", ["/ida:pull aops_a58d71a8", "/dump", "/pull 123", "/q something", "  /help  "]
+)
+def test_search_the_pkb_skips_slash_commands(slash_cmd: str):
+    """search_the_pkb never searches the PKB for slash commands."""
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        raw={"prompt": slash_cmd},
+        hooks_dir=IDA_HOOKS,
+        agent_type="ida:ida",
+    )
+    with patch.object(handlers, "_run_pkb_search") as mock_search:
+        res = handlers.search_the_pkb(ctx)
+        assert res is None
+        mock_search.assert_not_called()

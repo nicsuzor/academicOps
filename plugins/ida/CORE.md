@@ -32,15 +32,7 @@ The canonical mapping of project slugs to their GitHub repositories (`owner/repo
 | `omcp` | `nicsuzor/omcp` |  | Outlook MCP server (email & calendar) |
 | `overwhelm-dashboard` | `nicsuzor/overwhelm-dashboard` | `overwhelm` | Overwhelm dashboard -- SvelteKit PKB visualization |
 | `sessions` | `nicsuzor/sessions` |  | academicOps state files and session configs |
-| `tja` | `nicsuzor/explorations` | `trans-journalists` | Trans journalists analysis (subdir `tja/` in explorations) |
 | `tox` | `nicsuzor/tox` |  | Toxicity detection model bias analysis |
 | `wikijuris` | `nicsuzor/wikijuris` |  | WikiJuris collaborative legal knowledge wiki |
 | `writing` | `nicsuzor/writing` |  | Personal academic writing workspace |
 | `zotmcp` | `nicsuzor/zotmcp` |  | MCP server for Zotero library |
-| `qut` | `nicsuzor/explorations` | `QUT` | QUT employment obligations (subdir in explorations; `is_repo: false`) |
-| `teaching` | `nicsuzor/explorations` |  | QUT teaching (sub-project of qut; `is_repo: false`) |
-| `research-supervision` | `nicsuzor/explorations` | `supervision` | QUT research/HDR supervision (sub-project of qut; `is_repo: false`) |
-| `service` | `nicsuzor/explorations` |  | Academic service (sub-project of qut; `is_repo: false`) |
-| `admin` | `nicsuzor/explorations` |  | Academic admin (sub-project of qut; `is_repo: false`) |
-| `engagement` | `nicsuzor/explorations` |  | Engagement & public comms (sub-project of qut; `is_repo: false`) |
-| `personal` | _None_ |  | Personal life, home, side projects (`is_repo: false`) |

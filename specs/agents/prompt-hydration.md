@@ -22,6 +22,8 @@ Hydration is restricted strictly to user prompts:
 - **Interactive Console Inputs:** Plain text prompts submitted by the user are searched directly.
 - **Channel Inputs (Telegram):** Prompts that begin with a `<channel source="..." user="...">...</channel>` envelope are unwrapped by `extract_prompt_query()`; a typed prompt that merely mentions such a tag is searched as typed. The inner user text is stripped of ANSI escape sequences and whitespace, with the first 200 characters sent as the search query.
 - **Peer Agent Reports:** Prompts beginning with peer envelopes (`<cross-session-message`, `<teammate-message`, `<task-notification`) are explicitly skipped. Peer reports are claims to be checked under the premise-check gate, not user requests to be grounded in PKB search results.
+- **Slash Commands:** Explicit slash commands (prompts beginning with `/`) are skipped; they are directives rather than freeform user requests to be grounded in PKB search.
+- **Agent Scope:** Hydration runs exclusively for Ida (the sole agent that interacts with the user). Subagents, dispatchers (Sara), memory custodians (Pauli), and headless polecat workers do not execute prompt hydration.
 
 ### Transport and Authentication
 
