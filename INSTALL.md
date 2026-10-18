@@ -45,9 +45,10 @@ launchd environment, not the agent's shell). Set one of:
 
 **Check it is working.** A grounded turn carries
 `<academicOps PKB search results>` in its hook context. A failing one carries
-`aops hooks: handler 'search_the_pkb' failed with ...`. The MCP client reports
-an HTTP 401 as `MCPError(-32603, 'Server returned an error response')`; seen
-on every prompt, that means the hook has no valid credential.
+`aops hooks: handler 'search_the_pkb' failed with ...`. An HTTP 401 or 403
+surfaces as an authorisation refusal naming `PKB_MCP_HEADERS` and
+`CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET`; seen on every prompt, that
+means the hook has no valid credential.
 
 **Find the cause.** From where the client runs, send the MCP `initialize`
 request with the headers the hook would send (add `-H` for each), and read the

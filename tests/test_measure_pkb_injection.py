@@ -45,6 +45,7 @@ def test_measure_backend_authenticates_with_hook_headers():
         patch.dict(
             measure_pkb_injection.PROMPT_FAMILIES, {"test_family": ["test prompt"]}, clear=True
         ),
+        patch.dict(measure_pkb_injection.FAMILY_KEYWORDS, {"test_family": ["test"]}, clear=True),
     ):
         asyncio.run(measure_pkb_injection.measure_backend(repeats=1))
 

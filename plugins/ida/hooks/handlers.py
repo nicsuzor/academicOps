@@ -212,13 +212,100 @@ def _resolve_mcp_headers() -> dict[str, str]:
     return headers
 
 
+resolve_mcp_headers = _resolve_mcp_headers
+
+
+def _handle_mcp_search_error(exc: Exception, mcp_url: str, captured_status: list[int]) -> None:
+    # 1. Authorisation refusal (HTTP 401 or 403)
+    status: int | None = None
+    if 401 in captured_status:
+        status = 401
+    elif 403 in captured_status:
+        status = 403
+    elif hasattr(exc, "response") and getattr(exc.response, "status_code", None) in (401, 403):
+        status = exc.response.status_code
+    elif hasattr(exc, "status_code") and exc.status_code in (401, 403):
+        status = exc.status_code
+    elif "401" in str(exc):
+        status = 401
+    elif "403" in str(exc):
+        status = 403
+
+    if status in (401, 403):
+        raise RuntimeError(
+            f"the PKB endpoint refused authorisation (HTTP {status}); "
+            "check PKB_MCP_HEADERS or CF_ACCESS_CLIENT_ID and CF_ACCESS_CLIENT_SECRET"
+        ) from exc
+
+    # 2. Timeout
+    if isinstance(exc, TimeoutError) or "timeout" in type(exc).__name__.lower():
+        raise TimeoutError(
+            f"the PKB endpoint did not answer within {_SEARCH_TIMEOUT_SECONDS} seconds"
+        ) from exc
+
+    # 3. Unreachable endpoint
+    exc_str = str(exc).lower()
+    exc_type = type(exc).__name__.lower()
+    if (
+        isinstance(exc, (ConnectionRefusedError, ConnectionError, OSError))
+        or "connect" in exc_type
+        or "unreachable" in exc_str
+        or "connection refused" in exc_str
+        or "failed to connect" in exc_str
+        or "all connection attempts failed" in exc_str
+        or "name or service not known" in exc_str
+        or "nodename nor servname provided" in exc_str
+    ):
+        raise RuntimeError(f"the PKB endpoint is unreachable ({mcp_url})") from exc
+
+    # 4. Otherwise re-raise
+    raise exc
+
+
 async def _call_pkb_search(mcp_url: str, query: str, headers: dict[str, str]) -> str | None:
     from fastmcp import Client
     from fastmcp.client.transports import StreamableHttpTransport
 
-    transport = StreamableHttpTransport(mcp_url, headers=headers)
-    async with Client(transport=transport) as client:
-        res = await client.call_tool("pkb_search", {"query": query})
+    captured_status: list[int] = []
+
+    try:
+        import fastmcp.client.transports.http as fastmcp_http
+
+        client_factory = getattr(fastmcp_http, "create_mcp_http_client", None)
+    except (ImportError, AttributeError):
+        client_factory = None
+
+    def make_client(
+        headers: dict[str, str] | None = None,
+        timeout: Any = None,
+        auth: Any = None,
+        **kwargs: Any,
+    ) -> Any:
+        kwargs.pop("follow_redirects", None)
+        if client_factory is not None:
+            client = client_factory(headers=headers, timeout=timeout, auth=auth, **kwargs)
+        else:
+            import httpx
+
+            client = httpx.AsyncClient(headers=headers, timeout=timeout, auth=auth, **kwargs)
+
+        async def capture_response(response: Any) -> None:
+            captured_status.append(response.status_code)
+
+        client.event_hooks.setdefault("response", []).append(capture_response)
+        return client
+
+    try:
+        transport = StreamableHttpTransport(
+            mcp_url,
+            headers=headers,
+            httpx_client_factory=make_client,
+        )
+        async with Client(transport=transport) as client:
+            res = await client.call_tool("pkb_search", {"query": query})
+    except Exception as exc:
+        _handle_mcp_search_error(exc, mcp_url, captured_status)
+
     texts = [item.text if hasattr(item, "text") else str(item) for item in res.content]
     out = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", "\n".join(texts)).strip()
     return _cap_output(out) if out else None
@@ -230,9 +317,16 @@ def _search_via_fastmcp_client(mcp_url: str, query: str, headers: dict[str, str]
     The whole connect-and-call is bounded by `_SEARCH_TIMEOUT_SECONDS`. Any
     failure is raised so the hook fails loudly rather than falling back.
     """
-    return asyncio.run(
-        asyncio.wait_for(_call_pkb_search(mcp_url, query, headers), timeout=_SEARCH_TIMEOUT_SECONDS)
-    )
+    try:
+        return asyncio.run(
+            asyncio.wait_for(
+                _call_pkb_search(mcp_url, query, headers), timeout=_SEARCH_TIMEOUT_SECONDS
+            )
+        )
+    except TimeoutError as exc:
+        raise TimeoutError(
+            f"the PKB endpoint did not answer within {_SEARCH_TIMEOUT_SECONDS} seconds"
+        ) from exc
 
 
 def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
