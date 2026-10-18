@@ -21,7 +21,7 @@ In-session rule checking on two operational layers:
 
 Rules are loaded and merged across three layers (earlier layers cannot be overridden):
 
-1. **Layer 1:** Shipped `axioms/` (inviolable baseline).
+1. **Layer 1:** The `axioms` skill's files, `skills/axioms/` (inviolable baseline).
 2. **Layer 2:** `$CWD/.agents/rules/*.md` (project-local).
 3. **Layer 3:** `$ACA_DATA/.agents/rules/*.md` (user-scoped).
 
@@ -59,5 +59,6 @@ Point the agent environment at `COPE_EVALUATOR_URL=http://127.0.0.1:8099/v1/labe
 ## Dependencies
 
 - `hooks/dispatch.py`: Hook dispatcher runtime.
-- `axioms/`: Layer 1 baseline rules.
+- `agents/rbg.md`: the rbg agent (the Judge).
+- `skills/axioms/`: the `axioms` skill; its files are the Layer 1 baseline rules.
 - External or local Reflexes/CoPE or OpenAI-compatible classifier endpoint.

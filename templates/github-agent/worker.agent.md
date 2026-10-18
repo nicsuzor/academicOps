@@ -36,7 +36,7 @@ If any tool or API call fails, follow the Anti-Silent-Failure protocol. See `.gi
    explaining what blocked you. Do not guess.
 
 6. **Don't ask permission for in-scope work** (`exercise-authority` Edge 2 -- see
-   `plugins/rbg/axioms/exercise-authority.md`). Decisions inside the issue's acceptance criteria
+   `plugins/rbg/skills/axioms/exercise-authority.md`). Decisions inside the issue's acceptance criteria
    are yours: library choice, naming, test layout, sensible refactor. Just
    do them. Workflow-required actions (commit, push, open the PR) are
    non-askable for a passing build on a feature branch -- asking is the
@@ -52,7 +52,7 @@ Repo conventions -- language, tooling, test layout, commit format -- are in
 
 ## What NOT to Modify
 
-- `plugins/rbg/axioms/` -- inviolable framework axioms
+- `plugins/rbg/skills/axioms/` -- inviolable framework axioms
 - `.agents/rules/` -- project-local rules
 - `.github/workflows/` -- CI pipeline (unless the issue specifically targets it)
 

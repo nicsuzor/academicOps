@@ -22,13 +22,13 @@ templates/              Build-time file templates, GitHub Actions workflow
 scripts/                Repo tooling, not shipped in any plugin.
 plugins/                Plugin sources. Only what a client needs.
   ida/                  ida -- the interactive face, and the only agent that
-                        talks to the user; james, marsha, sara, pauli (the
-                        PKB graph agent) and rbg; PKB, workflow, review and
+                        talks to the user; james, marsha, sara and pauli
+                        (the PKB graph agent); PKB, workflow, review and
                         premise-check skills; session, PKB-search, tracing
                         and premise-check hooks.
-  rbg/                  Rule enforcement: the axioms, an advisory
-                        turn-by-turn evaluator plus a stop-side rule-check
-                        gate.
+  rbg/                  Rule enforcement: the rbg agent, the axioms skill,
+                        an advisory turn-by-turn evaluator plus a stop-side
+                        rule-check gate.
   tools/                Domain research skills.
   aops-debug/           Debug plugin that dumps raw hook payloads.
   ida-telegram/         Ida's custom Telegram channel and Mini App plugin.
@@ -48,8 +48,8 @@ source of truth for the built plugin set.
 
 | Directory | Owns |
 | - | - |
-| `plugins/ida` | ida (`plugins/ida/agents/ida.md`) -- the interactive face and the only agent that talks to the user; james, marsha, sara, rbg, and pauli (`plugins/ida/agents/pauli.md`) -- the PKB graph agent for memory, planning, decomposition, and graph writes; capture, memory, decomposition, dispatch, workflow-library, review, and premise-check skills; session, PKB-search, tracing, and premise-check hooks. |
-| `plugins/rbg` | Rule enforcement: the axioms (`plugins/rbg/axioms/`), an advisory turn-by-turn evaluator plus a stop-side rule-check gate. The rbg agent itself is `plugins/ida/agents/rbg.md`. |
+| `plugins/ida` | ida (`plugins/ida/agents/ida.md`) -- the interactive face and the only agent that talks to the user; james, marsha, sara, and pauli (`plugins/ida/agents/pauli.md`) -- the PKB graph agent for memory, planning, decomposition, and graph writes; capture, memory, decomposition, dispatch, workflow-library, review, and premise-check skills; session, PKB-search, tracing, and premise-check hooks. |
+| `plugins/rbg` | Rule enforcement: the rbg agent (`plugins/rbg/agents/rbg.md`), the `axioms` skill whose files are the axioms (`plugins/rbg/skills/axioms/`), an advisory turn-by-turn evaluator plus a stop-side rule-check gate. |
 | `plugins/tools` | Domain research skills (data analysis, document conversion, diagramming, peer review, project scaffolding). |
 | `plugins/aops-debug` | Debug plugin that dumps raw hook payloads. |
 | `plugins/ida-telegram` | Ida's custom Telegram channel and Mini App plugin: stdio MCP channel server, progressive disclosure with expandable blockquotes, async question broker, feedback trace collection, Mini App (Details, Review, Questions, Anchor), voice notes, and role-gated polling. |
