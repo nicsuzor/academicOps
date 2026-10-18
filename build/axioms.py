@@ -1,4 +1,4 @@
-"""Parse `trigger: always_on` frontmatter out of a plugin's shipped axioms/*.md.
+"""Parse `trigger: always_on` frontmatter out of a plugin's shipped axioms skill (skills/axioms/*.md).
 
 Shared by both client adapters — parsing frontmatter is not client-specific.
 What gets emitted from the parsed result (axioms.jsonl vs rules/*.md) is
@@ -8,6 +8,10 @@ client-specific and stays in build/clients/.
 import re
 from pathlib import Path
 from typing import Any
+
+# The axioms ship as the files of a skill, so any agent can load them from the
+# skill's own directory on every client.
+AXIOMS_SUBDIR = Path("skills") / "axioms"
 
 _FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n(.*)$", re.DOTALL)
 

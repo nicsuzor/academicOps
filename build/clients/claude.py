@@ -14,7 +14,7 @@ from pathlib import Path
 import yaml
 
 from build.agents import resolve_client_agents
-from build.axioms import load_always_on_axioms
+from build.axioms import AXIOMS_SUBDIR, load_always_on_axioms
 from build.context import BuildContext
 from build.errors import BuildError
 from build.tools import (
@@ -46,7 +46,7 @@ def adapt(build_dir: Path, ctx: BuildContext) -> None:
 
     _adapt_agents(build_dir)
 
-    always_on = load_always_on_axioms(build_dir / "axioms")
+    always_on = load_always_on_axioms(build_dir / AXIOMS_SUBDIR)
     if always_on:
         jsonl_path = build_dir / "axioms.jsonl"
         with jsonl_path.open("w", encoding="utf-8") as f:

@@ -689,7 +689,7 @@ def test_axioms_always_on_wired_per_client(built):
 
 def test_axioms_raw_dir_shipped_both_clients(built):
     for client in ("claude", "agy"):
-        axioms_dir = built / f"fixture-alpha-{client}" / "axioms"
+        axioms_dir = built / f"fixture-alpha-{client}" / "skills" / "axioms"
         assert (axioms_dir / "always-on-rule.md").is_file()
         assert (axioms_dir / "reference-rule.md").is_file()
 

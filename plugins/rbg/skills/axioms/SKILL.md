@@ -7,7 +7,7 @@ description: Provides the axioms that govern agent behavior from universal, user
 
 Axioms are packaged in three layers:
 
-1. Universal axioms: provided by this plugin's `axioms/` subdirectory.
+1. Universal axioms: every `*.md` file in this skill's own directory except `SKILL.md` and `README.md`. Read them all; `README.md` indexes them.
 2. Project local axioms: `$CWD/.agents/rules/*.md`.
 3. User-specific axioms: stored in the `pkb`; use the MCP tool to search for 'type: axiom'.
 

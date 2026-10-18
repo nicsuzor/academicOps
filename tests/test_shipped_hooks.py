@@ -932,8 +932,8 @@ def test_every_axiom_is_live_in_the_built_clients(pristine_dist, tmp_path, monke
     marked anything else ships as reading material that no session is given, so
     a misspelt marker silently drops the axiom.
     """
-    source = _REPO_ROOT / "plugins" / "rbg" / "axioms"
-    slugs = {p.stem for p in source.glob("*.md")} - {"README"}
+    source = _REPO_ROOT / "plugins" / "rbg" / "skills" / "axioms"
+    slugs = {p.stem for p in source.glob("*.md")} - {"README", "SKILL"}
     assert "proportionate" in slugs
 
     jsonl = (pristine_dist / "rbg-claude" / "axioms.jsonl").read_text(encoding="utf-8")

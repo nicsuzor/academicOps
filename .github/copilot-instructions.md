@@ -30,7 +30,7 @@ uv run basedpyright
 ```
 academicOps/
 ├── .agents/           # Rules for agents working ON this repo (READ-ONLY reference)
-│   ├── rules/        # RULES.md (project-specific rules; axioms live in plugins/rbg/axioms/)
+│   ├── rules/        # RULES.md (project-specific rules; axioms live in plugins/rbg/skills/axioms/)
 │   └── skills/       # Meta skills for this repo's own dev workflow
 ├── .github/
 │   ├── agents/       # Agent prompts (enforcer, mechanic, qa, pre-admission-responder)
@@ -41,7 +41,7 @@ academicOps/
 │   └── py/            # Shared Python helpers
 ├── build/              # Build system (build.py, install.py, client adapters)
 ├── plugins/            # Plugin sources: aops, pkb, ida, rbg, ts, tools
-│   └── rbg/axioms/    # The axioms (single source of truth)
+│   └── rbg/skills/axioms/  # The axioms (single source of truth)
 ├── tests/              # Test suite, mirroring the source structure
 └── specs/              # Design specifications
 ```
@@ -67,7 +67,7 @@ Use descriptive messages. Include task ID if working on a tracked task:
 Closes: <task-id>
 ```
 
-### Key Principles (from `plugins/rbg/axioms/`)
+### Key Principles (from `plugins/rbg/skills/axioms/`)
 
 - **`do-one-thing`**: Complete the assigned task, nothing more. No scope creep.
 - **`halt-on-failure`**: No workarounds. If something fails, stop and report. Never use `--no-verify`, `--force`, or skip flags.
