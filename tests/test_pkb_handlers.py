@@ -32,7 +32,12 @@ handlers = importlib.util.module_from_spec(handlers_spec)
 sys.modules["pkb_handlers"] = handlers
 handlers_spec.loader.exec_module(handlers)
 
-from dispatch import HookContext, load_message_pair  # type: ignore[import-not-found]
+from dispatch import (  # type: ignore[import-not-found]
+    HookContext,
+    _run_handler,
+    load_message_pair,
+    render,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -509,3 +514,145 @@ def test_search_via_fastmcp_client_is_bounded_by_timeout():
         with pytest.raises(TimeoutError):
             handlers._search_via_fastmcp_client("https://x", "q", {"A": "b"})
         assert time.monotonic() - start < 5
+
+
+@pytest.fixture
+def http_status_server():
+    import http.server
+    import threading
+
+    status_to_return = [200]
+
+    class MockHandler(http.server.BaseHTTPRequestHandler):
+        def do_POST(self):
+            self.send_response(status_to_return[0])
+            self.end_headers()
+            self.wfile.write(b"Mock response")
+
+        def log_message(self, *args):
+            pass
+
+    server = http.server.HTTPServer(("127.0.0.1", 0), MockHandler)
+    port = server.server_address[1]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+
+    def set_status(code: int) -> str:
+        status_to_return[0] = code
+        return f"http://127.0.0.1:{port}"
+
+    try:
+        yield set_status
+    finally:
+        server.shutdown()
+
+
+def test_search_the_pkb_injected_message_on_401(staged_hooks: Path, http_status_server):
+    """AC-4.1: HTTP 401 produces an injected message saying the endpoint refused authorisation and naming credential variables."""
+    url = http_status_server(401)
+    env = dict(os.environ)
+    env["PKB_MCP_URL"] = url
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(staged_hooks / "dispatch.py"),
+            "claude",
+            "UserPromptSubmit",
+        ],
+        input=json.dumps({"hook_event_name": "UserPromptSubmit", "prompt": "check status"}),
+        text=True,
+        capture_output=True,
+        timeout=10,
+        cwd=str(staged_hooks),
+        env=env,
+    )
+    assert proc.returncode == 0
+    data = json.loads(proc.stdout)
+    injected = data.get("hookSpecificOutput", {}).get("additionalContext", "")
+    assert injected.startswith("aops hooks: handler 'search_the_pkb' failed")
+    assert "refused authorisation" in injected
+    assert "401" in injected
+    assert "PKB_MCP_HEADERS" in injected
+    assert "CF_ACCESS_CLIENT_ID" in injected
+    assert "CF_ACCESS_CLIENT_SECRET" in injected
+
+
+def test_search_the_pkb_injected_message_on_403(staged_hooks: Path, http_status_server):
+    """AC-4.1: HTTP 403 produces an injected message saying the endpoint refused authorisation and naming credential variables."""
+    url = http_status_server(403)
+    env = dict(os.environ)
+    env["PKB_MCP_URL"] = url
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(staged_hooks / "dispatch.py"),
+            "claude",
+            "UserPromptSubmit",
+        ],
+        input=json.dumps({"hook_event_name": "UserPromptSubmit", "prompt": "check status"}),
+        text=True,
+        capture_output=True,
+        timeout=10,
+        cwd=str(staged_hooks),
+        env=env,
+    )
+    assert proc.returncode == 0
+    data = json.loads(proc.stdout)
+    injected = data.get("hookSpecificOutput", {}).get("additionalContext", "")
+    assert injected.startswith("aops hooks: handler 'search_the_pkb' failed")
+    assert "refused authorisation" in injected
+    assert "403" in injected
+    assert "PKB_MCP_HEADERS" in injected
+    assert "CF_ACCESS_CLIENT_ID" in injected
+    assert "CF_ACCESS_CLIENT_SECRET" in injected
+
+
+def test_search_the_pkb_injected_message_on_unreachable(staged_hooks: Path):
+    """AC-4.2: Unreachable endpoint produces an injected message saying the endpoint is unreachable."""
+    env = dict(os.environ)
+    env["PKB_MCP_URL"] = "http://127.0.0.1:9"
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(staged_hooks / "dispatch.py"),
+            "claude",
+            "UserPromptSubmit",
+        ],
+        input=json.dumps({"hook_event_name": "UserPromptSubmit", "prompt": "check status"}),
+        text=True,
+        capture_output=True,
+        timeout=10,
+        cwd=str(staged_hooks),
+        env=env,
+    )
+    assert proc.returncode == 0
+    data = json.loads(proc.stdout)
+    injected = data.get("hookSpecificOutput", {}).get("additionalContext", "")
+    assert injected.startswith("aops hooks: handler 'search_the_pkb' failed")
+    assert "unreachable" in injected
+
+
+def test_search_the_pkb_injected_message_on_timeout():
+    """AC-4.2: Endpoint timeout produces an injected message saying the endpoint did not answer within 5 seconds."""
+    import asyncio
+
+    async def stall(*_args, **_kwargs):
+        await asyncio.sleep(30)
+
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        raw={"prompt": "check status"},
+        hooks_dir=PKB_HOOKS,
+        agent_type="ida:ida",
+    )
+    with (
+        patch.dict("os.environ", {"PKB_MCP_URL": "https://pkb.example.com"}),
+        patch.object(handlers, "_call_pkb_search", stall),
+        patch.object(handlers, "_SEARCH_TIMEOUT_SECONDS", 0.1),
+    ):
+        res = _run_handler(handlers.search_the_pkb, ctx)
+        rendered = render("claude", "UserPromptSubmit", res)
+        injected = rendered.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert injected.startswith("aops hooks: handler 'search_the_pkb' failed")
+        assert "did not answer within" in injected or "timed out" in injected
