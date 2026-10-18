@@ -50,59 +50,429 @@ def test_resolve_cwd_priority(tmp_path):
         assert claude_code_tracer.resolve_cwd({}, {}) == str((tmp_path / "from_env").resolve())
 
 
+import agy_tracer
+
+
 def test_resolve_agent_name_sources(tmp_path):
-    # 1. Payload agent
+    # 1. Payload fields
     assert claude_code_tracer.resolve_agent_name(data={"agent": "sara"}) == "sara"
     assert claude_code_tracer.resolve_agent_name(data={"agent_name": "marsha"}) == "marsha"
     assert claude_code_tracer.resolve_agent_name(data={"agent_type": "plugin:rbg"}) == "rbg"
+    assert claude_code_tracer.resolve_agent_name(data={"subagent_type": "pauli"}) == "pauli"
+    assert claude_code_tracer.resolve_agent_name(data={"role": "planner"}) == "planner"
 
-    # 2. State agent_name
-    assert claude_code_tracer.resolve_agent_name(state={"agent_name": "sara"}) == "sara"
-
-    # 3. Environment variable
-    with patch.dict("os.environ", {"CLAUDE_AGENT_NAME": "james"}):
+    # 2. Environment variable AOPS_AGENT_NAME (one env var only)
+    with patch.dict("os.environ", {"AOPS_AGENT_NAME": "james"}, clear=True):
         assert claude_code_tracer.resolve_agent_name() == "james"
 
-    # 4. .claude/settings.json in cwd
+    # 3. Payload takes precedence over AOPS_AGENT_NAME
+    with patch.dict("os.environ", {"AOPS_AGENT_NAME": "james"}):
+        assert claude_code_tracer.resolve_agent_name(data={"agent": "sara"}) == "sara"
+
+    # 4. Old env vars ignored
+    with patch.dict(
+        "os.environ",
+        {"CLAUDE_AGENT_NAME": "james", "AGENT_NAME": "james", "AGY_AGENT_NAME": "james"},
+        clear=True,
+    ):
+        assert claude_code_tracer.resolve_agent_name() == ""
+
+
+def test_resolve_agent_name_no_settings_scan_or_heuristics(tmp_path):
+    # Settings file must NOT be scanned
     local_dir = tmp_path / "project"
     claude_dir = local_dir / ".claude"
     claude_dir.mkdir(parents=True)
-    settings_file = claude_dir / "settings.json"
-    settings_file.write_text(json.dumps({"agent": "pauli"}), encoding="utf-8")
+    (claude_dir / "settings.json").write_text(json.dumps({"agent": "pauli"}), encoding="utf-8")
+    with patch.dict("os.environ", {}, clear=True):
+        assert claude_code_tracer.resolve_agent_name(cwd=str(local_dir)) == ""
 
-    assert claude_code_tracer.resolve_agent_name(cwd=str(local_dir)) == "pauli"
-
-
-def test_resolve_agent_name_does_not_climb_when_local_claude_exists(tmp_path):
-    parent_dir = tmp_path / "workspace"
-    parent_claude = parent_dir / ".claude"
-    parent_claude.mkdir(parents=True)
-    (parent_claude / "settings.json").write_text(json.dumps({"agent": "ida"}), encoding="utf-8")
-
-    child_dir = parent_dir / "dispatch"
-    child_claude = child_dir / ".claude"
-    child_claude.mkdir(parents=True)
-    # child has .claude but no agent in settings
-    (child_claude / "settings.json").write_text(json.dumps({}), encoding="utf-8")
-
-    # Because child_dir has a local .claude, it must NOT climb to parent_dir and inherit "ida"
-    # Instead, the directory heuristic matches "dispatch" -> "sara"
-    resolved = claude_code_tracer.resolve_agent_name(cwd=str(child_dir))
-    assert resolved == "sara"
-
-
-def test_resolve_agent_name_directory_heuristics(tmp_path):
+    # Directory heuristics must NOT apply
     dispatch_dir = tmp_path / "dispatch"
     dispatch_dir.mkdir()
-    assert claude_code_tracer.resolve_agent_name(cwd=str(dispatch_dir)) == "sara"
-
     ida_dir = tmp_path / "ida"
     ida_dir.mkdir()
-    assert claude_code_tracer.resolve_agent_name(cwd=str(ida_dir)) == "ida"
-
     james_dir = tmp_path / "james"
     james_dir.mkdir()
-    assert claude_code_tracer.resolve_agent_name(cwd=str(james_dir)) == "james"
+    with patch.dict("os.environ", {}, clear=True):
+        assert claude_code_tracer.resolve_agent_name(cwd=str(dispatch_dir)) == ""
+        assert claude_code_tracer.resolve_agent_name(cwd=str(ida_dir)) == ""
+        assert claude_code_tracer.resolve_agent_name(cwd=str(james_dir)) == ""
+
+    # Unnamed returns empty string, never defaults to "ida"
+    with patch.dict("os.environ", {}, clear=True):
+        assert claude_code_tracer.resolve_agent_name() == ""
+        assert claude_code_tracer.resolve_agent_name(data={}) == ""
+
+
+def test_claude_tracer_named_session(tmp_path):
+    transcript = tmp_path / "transcript.jsonl"
+    transcript.write_text(json.dumps({"type": "human", "text": "hello"}) + "\n", encoding="utf-8")
+    state_store: dict[str, dict] = {}
+    exported_records: list[dict] = []
+    exported_kwargs: list[dict] = []
+
+    session_id = "session-claude-named"
+    config = {"endpoint": "localhost:4317"}
+
+    with (
+        patch("claude_code_tracer._load_state", side_effect=lambda sid: state_store.get(sid, {})),
+        patch(
+            "claude_code_tracer._save_state",
+            side_effect=lambda sid, st: state_store.update({sid: st}),
+        ),
+        patch(
+            "claude_code_tracer._delete_state", side_effect=lambda sid: state_store.pop(sid, None)
+        ),
+        patch(
+            "claude_code_tracer._build_and_export_spans",
+            side_effect=lambda config, session_id, username, span_records, **kwargs: (
+                exported_records.extend(span_records),
+                exported_kwargs.append(kwargs),
+            ),
+        ),
+        patch("claude_code_tracer._session_lock"),
+        patch.dict("os.environ", {}, clear=True),
+    ):
+        claude_code_tracer.handle_user_prompt_submit(
+            {
+                "session_id": session_id,
+                "prompt": "hello",
+                "agent_name": "sara",
+                "transcript_path": str(transcript),
+            },
+            config,
+        )
+        assert state_store[session_id].get("agent_name") == "sara"
+
+        claude_code_tracer.handle_stop(
+            {
+                "session_id": session_id,
+                "transcript_path": str(transcript),
+                "last_assistant_message": "done",
+            },
+            config,
+        )
+
+    assert len(exported_records) > 0
+    chain_span = exported_records[0]
+    assert chain_span["attributes"].get("agent.name") == "sara"
+    assert exported_kwargs[0].get("agent_name") == "sara"
+
+
+def test_claude_tracer_env_only_session(tmp_path):
+    transcript = tmp_path / "transcript.jsonl"
+    transcript.write_text(json.dumps({"type": "human", "text": "hello"}) + "\n", encoding="utf-8")
+    state_store: dict[str, dict] = {}
+    exported_records: list[dict] = []
+    exported_kwargs: list[dict] = []
+
+    session_id = "session-claude-env"
+    config = {"endpoint": "localhost:4317"}
+
+    with (
+        patch("claude_code_tracer._load_state", side_effect=lambda sid: state_store.get(sid, {})),
+        patch(
+            "claude_code_tracer._save_state",
+            side_effect=lambda sid, st: state_store.update({sid: st}),
+        ),
+        patch(
+            "claude_code_tracer._delete_state", side_effect=lambda sid: state_store.pop(sid, None)
+        ),
+        patch(
+            "claude_code_tracer._build_and_export_spans",
+            side_effect=lambda config, session_id, username, span_records, **kwargs: (
+                exported_records.extend(span_records),
+                exported_kwargs.append(kwargs),
+            ),
+        ),
+        patch("claude_code_tracer._session_lock"),
+        patch.dict("os.environ", {"AOPS_AGENT_NAME": "james"}, clear=True),
+    ):
+        claude_code_tracer.handle_user_prompt_submit(
+            {"session_id": session_id, "prompt": "hello", "transcript_path": str(transcript)},
+            config,
+        )
+        # Session state must NOT store the env var
+        assert "agent_name" not in state_store[session_id]
+
+        claude_code_tracer.handle_stop(
+            {
+                "session_id": session_id,
+                "transcript_path": str(transcript),
+                "last_assistant_message": "done",
+            },
+            config,
+        )
+
+    assert len(exported_records) > 0
+    chain_span = exported_records[0]
+    assert chain_span["attributes"].get("agent.name") == "james"
+    assert exported_kwargs[0].get("agent_name") == "james"
+
+
+def test_claude_tracer_unnamed_session(tmp_path):
+    transcript = tmp_path / "transcript.jsonl"
+    transcript.write_text(json.dumps({"type": "human", "text": "hello"}) + "\n", encoding="utf-8")
+    state_store: dict[str, dict] = {}
+    exported_records: list[dict] = []
+    exported_kwargs: list[dict] = []
+
+    session_id = "session-claude-unnamed"
+    config = {"endpoint": "localhost:4317"}
+
+    with (
+        patch("claude_code_tracer._load_state", side_effect=lambda sid: state_store.get(sid, {})),
+        patch(
+            "claude_code_tracer._save_state",
+            side_effect=lambda sid, st: state_store.update({sid: st}),
+        ),
+        patch(
+            "claude_code_tracer._delete_state", side_effect=lambda sid: state_store.pop(sid, None)
+        ),
+        patch(
+            "claude_code_tracer._build_and_export_spans",
+            side_effect=lambda config, session_id, username, span_records, **kwargs: (
+                exported_records.extend(span_records),
+                exported_kwargs.append(kwargs),
+            ),
+        ),
+        patch("claude_code_tracer._session_lock"),
+        patch.dict("os.environ", {}, clear=True),
+    ):
+        claude_code_tracer.handle_user_prompt_submit(
+            {"session_id": session_id, "prompt": "hello", "transcript_path": str(transcript)},
+            config,
+        )
+        assert "agent_name" not in state_store[session_id]
+
+        claude_code_tracer.handle_stop(
+            {
+                "session_id": session_id,
+                "transcript_path": str(transcript),
+                "last_assistant_message": "done",
+            },
+            config,
+        )
+
+    assert len(exported_records) > 0
+    chain_span = exported_records[0]
+    # No span or resource carries agent.name
+    assert "agent.name" not in chain_span["attributes"]
+    assert not exported_kwargs[0].get("agent_name")
+
+
+def test_agy_tracer_named_session(tmp_path):
+    transcript = tmp_path / "transcript.jsonl"
+    entries = [
+        {"step_index": 0, "type": "USER_INPUT", "content": "Explain OTel"},
+        {
+            "step_index": 1,
+            "source": "MODEL",
+            "type": "PLANNER_RESPONSE",
+            "status": "DONE",
+            "content": "Done",
+        },
+    ]
+    transcript.write_text("\n".join(json.dumps(e) for e in entries) + "\n", encoding="utf-8")
+    state_store: dict[str, dict] = {}
+    exported_records: list[dict] = []
+    exported_kwargs: list[dict] = []
+
+    session_id = "session-agy-named"
+    config = {"endpoint": "localhost:4317"}
+
+    with (
+        patch("agy_tracer._load_state", side_effect=lambda sid: state_store.get(sid, {})),
+        patch("agy_tracer._save_state", side_effect=lambda sid, st: state_store.update({sid: st})),
+        patch("agy_tracer._delete_state", side_effect=lambda sid: state_store.pop(sid, None)),
+        patch(
+            "agy_tracer._build_and_export_spans",
+            side_effect=lambda config, session_id, username, span_records, **kwargs: (
+                exported_records.extend(span_records),
+                exported_kwargs.append(kwargs),
+            ),
+        ),
+        patch("agy_tracer._session_lock"),
+        patch.dict("os.environ", {}, clear=True),
+    ):
+        agy_tracer.handle_pre_invocation(
+            {
+                "conversationId": session_id,
+                "invocationNum": 0,
+                "agent_name": "sara",
+                "transcriptPath": str(transcript),
+            },
+            config,
+        )
+        assert state_store[session_id].get("agent_name") == "sara"
+
+        agy_tracer.handle_stop(
+            {"conversationId": session_id, "transcriptPath": str(transcript)},
+            config,
+        )
+
+    assert len(exported_records) > 0
+    chain_span = exported_records[0]
+    assert chain_span["attributes"].get("agent.name") == "sara"
+    assert exported_kwargs[0].get("agent_name") == "sara"
+
+
+def test_agy_tracer_env_only_session(tmp_path):
+    transcript = tmp_path / "transcript.jsonl"
+    entries = [
+        {"step_index": 0, "type": "USER_INPUT", "content": "Explain OTel"},
+        {
+            "step_index": 1,
+            "source": "MODEL",
+            "type": "PLANNER_RESPONSE",
+            "status": "DONE",
+            "content": "Done",
+        },
+    ]
+    transcript.write_text("\n".join(json.dumps(e) for e in entries) + "\n", encoding="utf-8")
+    state_store: dict[str, dict] = {}
+    exported_records: list[dict] = []
+    exported_kwargs: list[dict] = []
+
+    session_id = "session-agy-env"
+    config = {"endpoint": "localhost:4317"}
+
+    with (
+        patch("agy_tracer._load_state", side_effect=lambda sid: state_store.get(sid, {})),
+        patch("agy_tracer._save_state", side_effect=lambda sid, st: state_store.update({sid: st})),
+        patch("agy_tracer._delete_state", side_effect=lambda sid: state_store.pop(sid, None)),
+        patch(
+            "agy_tracer._build_and_export_spans",
+            side_effect=lambda config, session_id, username, span_records, **kwargs: (
+                exported_records.extend(span_records),
+                exported_kwargs.append(kwargs),
+            ),
+        ),
+        patch("agy_tracer._session_lock"),
+        patch.dict("os.environ", {"AOPS_AGENT_NAME": "james"}, clear=True),
+    ):
+        agy_tracer.handle_pre_invocation(
+            {"conversationId": session_id, "invocationNum": 0, "transcriptPath": str(transcript)},
+            config,
+        )
+        assert "agent_name" not in state_store[session_id]
+
+        agy_tracer.handle_stop(
+            {"conversationId": session_id, "transcriptPath": str(transcript)},
+            config,
+        )
+
+    assert len(exported_records) > 0
+    chain_span = exported_records[0]
+    assert chain_span["attributes"].get("agent.name") == "james"
+    assert exported_kwargs[0].get("agent_name") == "james"
+
+
+def test_agy_tracer_unnamed_session(tmp_path):
+    transcript = tmp_path / "transcript.jsonl"
+    entries = [
+        {"step_index": 0, "type": "USER_INPUT", "content": "Explain OTel"},
+        {
+            "step_index": 1,
+            "source": "MODEL",
+            "type": "PLANNER_RESPONSE",
+            "status": "DONE",
+            "content": "Done",
+        },
+    ]
+    transcript.write_text("\n".join(json.dumps(e) for e in entries) + "\n", encoding="utf-8")
+    state_store: dict[str, dict] = {}
+    exported_records: list[dict] = []
+    exported_kwargs: list[dict] = []
+
+    session_id = "session-agy-unnamed"
+    config = {"endpoint": "localhost:4317"}
+
+    with (
+        patch("agy_tracer._load_state", side_effect=lambda sid: state_store.get(sid, {})),
+        patch("agy_tracer._save_state", side_effect=lambda sid, st: state_store.update({sid: st})),
+        patch("agy_tracer._delete_state", side_effect=lambda sid: state_store.pop(sid, None)),
+        patch(
+            "agy_tracer._build_and_export_spans",
+            side_effect=lambda config, session_id, username, span_records, **kwargs: (
+                exported_records.extend(span_records),
+                exported_kwargs.append(kwargs),
+            ),
+        ),
+        patch("agy_tracer._session_lock"),
+        patch.dict("os.environ", {}, clear=True),
+    ):
+        agy_tracer.handle_pre_invocation(
+            {"conversationId": session_id, "invocationNum": 0, "transcriptPath": str(transcript)},
+            config,
+        )
+        assert "agent_name" not in state_store[session_id]
+
+        agy_tracer.handle_stop(
+            {"conversationId": session_id, "transcriptPath": str(transcript)},
+            config,
+        )
+
+    assert len(exported_records) > 0
+    chain_span = exported_records[0]
+    assert "agent.name" not in chain_span["attributes"]
+    assert not exported_kwargs[0].get("agent_name")
+
+
+def test_unnamed_session_subagent_spans_retain_naming():
+    mock_span = MagicMock()
+    mock_span.get_span_context.return_value = MagicMock(trace_id=1, span_id=2)
+    mock_tracer = MagicMock()
+    mock_tracer.start_span.return_value = mock_span
+    mock_provider = MagicMock()
+    mock_provider.get_tracer.return_value = mock_tracer
+
+    otel_mock = (
+        MagicMock(),
+        MagicMock(),
+        MagicMock(return_value=mock_provider),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+    )
+
+    config = {
+        "endpoint": "localhost:4317",
+    }
+    records = [
+        {
+            "name": "Task",
+            "start_ns": 1000,
+            "end_ns": 2000,
+            "trace_id_hex": "0123456789abcdef0123456789abcdef",
+            "span_id_hex": "0123456789abcdef",
+            "attributes": {
+                "openinference.span.kind": "AGENT",
+                "agent.name": "coder",
+            },
+        }
+    ]
+
+    with (
+        patch.object(claude_code_tracer, "_otel_imports", return_value=otel_mock),
+        patch.object(claude_code_tracer, "_create_exporter", return_value=MagicMock()),
+    ):
+        claude_code_tracer._build_and_export_spans(
+            config=config,
+            session_id="test-session-subagent",
+            username="test-user",
+            span_records=records,
+            agent_name="",
+            cwd=str(REPO_ROOT),
+        )
+
+    called_attrs = {call[0][0]: call[0][1] for call in mock_span.set_attribute.call_args_list}
+    assert called_attrs.get("agent.name") == "coder"
 
 
 def test_discover_config_sanitizes_task_id():
