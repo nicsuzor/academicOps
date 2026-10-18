@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.10.23](https://github.com/nicsuzor/academicOps/compare/v0.10.22...v0.10.23) (2026-10-18)
+
+
+### Features
+
+* **reify:** reconcile task body length with inlined template steps ([#2998](https://github.com/nicsuzor/academicOps/issues/2998)) ([16780ea](https://github.com/nicsuzor/academicOps/commit/16780eab324fe4b308f10fc2dfb0e243d2a3398d))
+* **skills:** pass sub-project signal on note creation from PKB artefacts ([#2982](https://github.com/nicsuzor/academicOps/issues/2982)) ([173ae48](https://github.com/nicsuzor/academicOps/commit/173ae481828ce1ff77507af5b50c5d3ef36797c9))
+
+
+### Bug Fixes
+
+* **ida-telegram:** group consecutive blockquotes into single multi-line entity ([#2977](https://github.com/nicsuzor/academicOps/issues/2977)) ([343a7c9](https://github.com/nicsuzor/academicOps/commit/343a7c98a92397fd3e92a1d5a1ead569aed98b93))
+* **rbg:** make rbg self-contained in the rbg plugin, axioms as rbg:axioms ([#3000](https://github.com/nicsuzor/academicOps/issues/3000)) ([976f799](https://github.com/nicsuzor/academicOps/commit/976f799958acef6c26dd9182c79a9a2cabb68b64))
+* **tracer:** shared agent name resolver without defaults ([#2994](https://github.com/nicsuzor/academicOps/issues/2994)) ([e6bed85](https://github.com/nicsuzor/academicOps/commit/e6bed85f4c27ff2b825279ea079c1007030e475c))
+
+
+### Documentation
+
+* **ida:** rewrite prompt-hydration spec around authenticated HTTP search ([#2997](https://github.com/nicsuzor/academicOps/issues/2997)) ([d937b82](https://github.com/nicsuzor/academicOps/commit/d937b8263cfe6efd39745fff68fecbcc9d94f6a5))
+* **premise-check:** forbid receipt-only peer messages ([#2979](https://github.com/nicsuzor/academicOps/issues/2979)) ([788bb55](https://github.com/nicsuzor/academicOps/commit/788bb55c061589503d43e749135ff4b2ffa16197))
+* **specs:** add telegram mini app dashboard integration spec ([#2996](https://github.com/nicsuzor/academicOps/issues/2996)) ([9878b9f](https://github.com/nicsuzor/academicOps/commit/9878b9f93703a8124056f205d536d66d20256aa6))
+
 ## [0.10.22](https://github.com/nicsuzor/academicOps/compare/v0.10.21...v0.10.22) (2026-10-18)
 
 ### Features
