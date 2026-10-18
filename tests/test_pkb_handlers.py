@@ -47,8 +47,10 @@ def no_ambient_pkb_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
         "PKB_MCP_HEADERS",
         "DISPATCHER_MCP_TOKEN",
         "WORKER_MCP_TOKEN",
-        "CF_ACCESS_CLIENT_ID",
-        "CF_ACCESS_CLIENT_SECRET",
+        "WORKER_MCP_TOKEN_ID",
+        "WORKER_MCP_TOKEN_SECRET",
+        "DISPATCHER_MCP_TOKEN_ID",
+        "DISPATCHER_MCP_TOKEN_SECRET",
     ):
         monkeypatch.delenv(var, raising=False)
 
@@ -380,13 +382,71 @@ def test_resolve_mcp_headers_reads_environment():
 
     with patch.dict(
         os.environ,
-        {"CF_ACCESS_CLIENT_ID": "id123", "CF_ACCESS_CLIENT_SECRET": "sec456"},
+        {"WORKER_MCP_TOKEN_ID": "id123", "WORKER_MCP_TOKEN_SECRET": "sec456"},
         clear=True,
     ):
         assert handlers._resolve_mcp_headers() == {
             "CF-Access-Client-Id": "id123",
             "CF-Access-Client-Secret": "sec456",
         }
+
+
+def test_resolve_mcp_headers_falls_back_to_dispatcher_pair():
+    """With no worker pair set, the dispatcher pair supplies the Access headers."""
+    with patch.dict(
+        os.environ,
+        {"DISPATCHER_MCP_TOKEN_ID": "did", "DISPATCHER_MCP_TOKEN_SECRET": "dsec"},
+        clear=True,
+    ):
+        assert handlers._resolve_mcp_headers() == {
+            "CF-Access-Client-Id": "did",
+            "CF-Access-Client-Secret": "dsec",
+        }
+
+
+def test_resolve_mcp_headers_prefers_worker_pair():
+    """The worker pair, which has no polecat dispatch access, wins over the dispatcher pair."""
+    with patch.dict(
+        os.environ,
+        {
+            "WORKER_MCP_TOKEN_ID": "wid",
+            "WORKER_MCP_TOKEN_SECRET": "wsec",
+            "DISPATCHER_MCP_TOKEN_ID": "did",
+            "DISPATCHER_MCP_TOKEN_SECRET": "dsec",
+        },
+        clear=True,
+    ):
+        assert handlers._resolve_mcp_headers() == {
+            "CF-Access-Client-Id": "wid",
+            "CF-Access-Client-Secret": "wsec",
+        }
+
+
+def test_resolve_mcp_headers_ignores_half_a_pair():
+    """An id without its secret is not a credential; the next pair is used instead."""
+    with patch.dict(
+        os.environ,
+        {
+            "WORKER_MCP_TOKEN_ID": "wid",
+            "DISPATCHER_MCP_TOKEN_ID": "did",
+            "DISPATCHER_MCP_TOKEN_SECRET": "dsec",
+        },
+        clear=True,
+    ):
+        assert handlers._resolve_mcp_headers() == {
+            "CF-Access-Client-Id": "did",
+            "CF-Access-Client-Secret": "dsec",
+        }
+
+
+def test_resolve_mcp_headers_does_not_read_retired_cf_access_names():
+    """CF_ACCESS_CLIENT_* are not the canonical names and are not read."""
+    with patch.dict(
+        os.environ,
+        {"CF_ACCESS_CLIENT_ID": "id123", "CF_ACCESS_CLIENT_SECRET": "sec456"},
+        clear=True,
+    ):
+        assert handlers._resolve_mcp_headers() == {}
 
 
 def test_resolve_mcp_headers_ignores_client_config_files(tmp_path: Path):
@@ -462,8 +522,10 @@ def test_dispatch_http_failure_surfaces_error_in_hook_output(staged_hooks: Path)
         "PKB_MCP_HEADERS",
         "DISPATCHER_MCP_TOKEN",
         "WORKER_MCP_TOKEN",
-        "CF_ACCESS_CLIENT_ID",
-        "CF_ACCESS_CLIENT_SECRET",
+        "WORKER_MCP_TOKEN_ID",
+        "WORKER_MCP_TOKEN_SECRET",
+        "DISPATCHER_MCP_TOKEN_ID",
+        "DISPATCHER_MCP_TOKEN_SECRET",
     ):
         env.pop(var, None)
 

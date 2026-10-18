@@ -40,8 +40,11 @@ launchd environment, not the agent's shell). Set one of:
 
 - `PKB_MCP_HEADERS` -- a JSON object of HTTP headers, e.g.
   `{"Authorization": "Bearer <token>"}`
-- `CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET` -- a Cloudflare Access
-  service token
+- `WORKER_MCP_TOKEN_ID` and `WORKER_MCP_TOKEN_SECRET` -- a Cloudflare Access
+  service token without polecat dispatch access, the default
+- `DISPATCHER_MCP_TOKEN_ID` and `DISPATCHER_MCP_TOKEN_SECRET` -- the
+  dispatcher's Cloudflare Access service token, used only when the worker pair
+  is absent
 
 **Check it is working.** A grounded turn carries
 `<academicOps PKB search results>` in its hook context. A failing one carries

@@ -52,7 +52,7 @@ As an operator, I want a failed search reported to the agent with the reason the
 | Variable | Contents | Sent as |
 | - | - | - |
 | `PKB_MCP_HEADERS` | JSON object of header name to value, e.g. `{"Authorization": "Bearer <token>"}` | Each pair as an HTTP header. Malformed JSON is logged and ignored. |
-| `CF_ACCESS_CLIENT_ID` + `CF_ACCESS_CLIENT_SECRET` | A Cloudflare Access service token, both halves | `CF-Access-Client-Id` and `CF-Access-Client-Secret` headers |
+| `WORKER_MCP_TOKEN_ID` + `WORKER_MCP_TOKEN_SECRET`, else `DISPATCHER_MCP_TOKEN_ID` + `DISPATCHER_MCP_TOKEN_SECRET` | A Cloudflare Access service token, both halves. The worker pair is the default because it has no polecat dispatch access; the dispatcher pair is used only when the worker pair is absent. | `CF-Access-Client-Id` and `CF-Access-Client-Secret` headers |
 
 The hook runs as its own process, launched by the client with the client's environment. A credential that the client itself holds for its own MCP connection (for example an OAuth token for the same gateway) is not visible to the hook; the operator supplies the hook's credential separately in the environment the client is launched from.
 
