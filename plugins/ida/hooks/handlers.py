@@ -181,13 +181,23 @@ def extract_prompt_query(prompt: str) -> str:
     return re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", text).strip()
 
 
+# Cloudflare Access service-token pairs, in order of preference. The worker
+# pair comes first because it has no polecat dispatch access (Nic, tg 2369).
+_ACCESS_TOKEN_PAIRS = (
+    ("WORKER_MCP_TOKEN_ID", "WORKER_MCP_TOKEN_SECRET"),
+    ("DISPATCHER_MCP_TOKEN_ID", "DISPATCHER_MCP_TOKEN_SECRET"),
+)
+
+
 def _resolve_mcp_headers() -> dict[str, str]:
     """HTTP headers for the PKB endpoint, from the environment only.
 
     `PKB_MCP_HEADERS` is a JSON object of header name to value.
-    `CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET` together supply the
-    Cloudflare Access service-token headers. A malformed `PKB_MCP_HEADERS` is
-    logged and ignored, never silently swallowed.
+    A Cloudflare Access service-token pair supplies the Access headers: the
+    worker pair `WORKER_MCP_TOKEN_ID` / `WORKER_MCP_TOKEN_SECRET` by default,
+    because it has no polecat dispatch access, else the dispatcher pair
+    `DISPATCHER_MCP_TOKEN_ID` / `DISPATCHER_MCP_TOKEN_SECRET`. A malformed
+    `PKB_MCP_HEADERS` is logged and ignored, never silently swallowed.
     """
     headers: dict[str, str] = {}
 
@@ -203,11 +213,13 @@ def _resolve_mcp_headers() -> dict[str, str]:
             else:
                 log.warning("PKB_MCP_HEADERS is not a JSON object, ignoring it")
 
-    cf_id = os.environ.get("CF_ACCESS_CLIENT_ID")
-    cf_secret = os.environ.get("CF_ACCESS_CLIENT_SECRET")
-    if cf_id and cf_secret:
-        headers.setdefault("CF-Access-Client-Id", cf_id)
-        headers.setdefault("CF-Access-Client-Secret", cf_secret)
+    for id_var, secret_var in _ACCESS_TOKEN_PAIRS:
+        cf_id = os.environ.get(id_var)
+        cf_secret = os.environ.get(secret_var)
+        if cf_id and cf_secret:
+            headers.setdefault("CF-Access-Client-Id", cf_id)
+            headers.setdefault("CF-Access-Client-Secret", cf_secret)
+            break
 
     return headers
 

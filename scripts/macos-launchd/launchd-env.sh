@@ -40,8 +40,10 @@
 # Expected in ~/.env.local. Set whichever the endpoint accepts.
 [ -n "$PKB_MCP_HEADERS" ] && launchctl setenv PKB_MCP_HEADERS "$PKB_MCP_HEADERS"
 [ -n "$DISPATCHER_MCP_TOKEN" ] && launchctl setenv DISPATCHER_MCP_TOKEN "$DISPATCHER_MCP_TOKEN"
-[ -n "$CF_ACCESS_CLIENT_ID" ] && launchctl setenv CF_ACCESS_CLIENT_ID "$CF_ACCESS_CLIENT_ID"
-[ -n "$CF_ACCESS_CLIENT_SECRET" ] && launchctl setenv CF_ACCESS_CLIENT_SECRET "$CF_ACCESS_CLIENT_SECRET"
+[ -n "$WORKER_MCP_TOKEN_ID" ] && launchctl setenv WORKER_MCP_TOKEN_ID "$WORKER_MCP_TOKEN_ID"
+[ -n "$WORKER_MCP_TOKEN_SECRET" ] && launchctl setenv WORKER_MCP_TOKEN_SECRET "$WORKER_MCP_TOKEN_SECRET"
+[ -n "$DISPATCHER_MCP_TOKEN_ID" ] && launchctl setenv DISPATCHER_MCP_TOKEN_ID "$DISPATCHER_MCP_TOKEN_ID"
+[ -n "$DISPATCHER_MCP_TOKEN_SECRET" ] && launchctl setenv DISPATCHER_MCP_TOKEN_SECRET "$DISPATCHER_MCP_TOKEN_SECRET"
 
 # --- Git configuration ---
 # Sourced from ~/.env as AOPS_GIT_CONFIG_GLOBAL. Forwarded to launchd without
