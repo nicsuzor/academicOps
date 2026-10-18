@@ -38,6 +38,10 @@
 - [polecat/spec-observability.md](polecat/spec-observability.md) -- real-time monitoring across MCP and host-launcher dispatch surfaces.
 - [polecat/spec-silent-failure-detection.md](polecat/spec-silent-failure-detection.md) -- launch preflight, exit-time task guard, durable `run.json` harvest, and immediate orphan detection for polecat workers.
 
+## Telegram
+
+- [telegram/mini-app-dashboard-integration.md](telegram/mini-app-dashboard-integration.md) -- integration plan and interface specification for serving the Telegram Mini App from the overwhelm dashboard with dynamic state and bi-directional communication.
+
 ## Tools
 
 - [tools/diagram-pkb-graphs.md](tools/diagram-pkb-graphs.md) -- how an agent using `tools:diagram` draws a PKB graph selection as a layered Excalidraw map: procedure, layout, kind and state encoding, weight-to-width scale, gap badges.
