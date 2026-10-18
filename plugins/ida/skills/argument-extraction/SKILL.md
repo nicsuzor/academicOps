@@ -116,10 +116,6 @@ model:
   +> [Core Thesis]
 ```
 
-## Example
-
-`references/example-mill-on-liberty.argdown`: Mill, _On Liberty_, ch. II, the four-grounds recapitulation, at `meso` granularity.
-
 ## Gotchas
 
 - **Never dump 4+ premises above one bar**: If you have 4 premises, you have at least two distinct inference steps (for example, a method-to-finding step and a finding-to-mechanism step). Split them with an intermediate conclusion and a second `-- Warrant --` bar.
