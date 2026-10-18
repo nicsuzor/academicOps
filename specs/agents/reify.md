@@ -30,6 +30,16 @@ progress when verification is skipped. This is deliberate: enforcement here woul
 need a gate that can read evidence, which is a larger design than this one, and
 the failure mode of a missed checkpoint is recoverable.
 
+## Task body length and step inlining
+
+Task bodies are strictly concise: 50–150 words for atomic tasks, and up to 300 words for multi-stage composite workflows.
+
+Step inlining is interpretive, not mechanical transcription:
+
+- Workflow templates (`wf-*`) cannot be invoked by workers. Each composed template stage, obligation, and quality gate is interpreted into a concise numbered imperative step in Instructions.
+- Inlining distills the required outcome or verification checkpoint for each stage; it omits narrative prose, rationale, background explanations, and implementation methods the worker can determine for itself.
+- Every composed template stage and finish obligation is represented as a concrete step so no required process or gate is lost, while staying strictly within the 300-word ceiling for composite workflows (or 150 words for atomic tasks).
+
 ## Context gathering
 
 | Tier | Source | Role |
