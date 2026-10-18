@@ -181,13 +181,13 @@ client never sends.
 
 ## Fitness rubric
 
-| Dimension               | Excellence looks like                                                                                        | Failure signal                                                            |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
-| Discriminator integrity | A planted bug whose catching test is never written fails the stop as an illegal gap, or is visibly deferred. | A green draft ships with a silent bugged AC and the gate passes.          |
-| No-rig discipline       | Clause 3 is enforced by self-cert + honesty floor + reviewer audit.                                          | An implementer built a regex or keyword coverage gate.                    |
-| No orphans              | Every `partial` has a live continue task; the loop-closer files one where missing.                           | A `partial` survives a `/daily` cycle with no continue task, un-surfaced. |
-| Load relief             | Draft partials stay out of the merge queue; sprawl stays bounded.                                            | Draft sprawl accumulates.                                                 |
-| Invariant preservation  | No path, on any surface, by which a `partial` reaches the escalated approval queue.                          | Any such path exists.                                                     |
+| Dimension | Excellence looks like | Failure signal |
+| - | - | - |
+| Discriminator integrity | A planted bug whose catching test is never written fails the stop as an illegal gap, or is visibly deferred. | A green draft ships with a silent bugged AC and the gate passes. |
+| No-rig discipline | Clause 3 is enforced by self-cert + honesty floor + reviewer audit. | An implementer built a regex or keyword coverage gate. |
+| No orphans | Every `partial` has a live continue task; the loop-closer files one where missing. | A `partial` survives a `/daily` cycle with no continue task, un-surfaced. |
+| Load relief | Draft partials stay out of the merge queue; sprawl stays bounded. | Draft sprawl accumulates. |
+| Invariant preservation | No path, on any surface, by which a `partial` reaches the escalated approval queue. | Any such path exists. |
 
 ## Residual risk
 

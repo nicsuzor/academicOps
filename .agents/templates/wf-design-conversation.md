@@ -15,9 +15,6 @@ tags:
 - medium-agnostic
 title: wf-design-conversation
 type: template
----
-
----
 requires: [wf-escalated-approval]
 pairs-with: [wf-verification, wf-handover, wf-fact-check]
 recommends: [wf-self-test]

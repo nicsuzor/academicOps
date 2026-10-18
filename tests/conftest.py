@@ -41,11 +41,7 @@ def ensure_test_environment(monkeypatch, tmp_path):
     uv_cache.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("UV_CACHE_DIR", str(uv_cache))
 
-    # Route any OTel telemetry generated during tests to the dedicated test project
-    monkeypatch.setenv("PHOENIX_PROJECT_NAME", "academicOps-test")
-    monkeypatch.setenv("OTEL_SERVICE_NAME", "academicOps-test")
-
-    # Strip any leaked host environment variables that hardcode paths (e.g. from polecat sessions)
+    # Strip any leaked host environment variables that hardcode paths or route OTel telemetry
     #
     # NOTE: POLECAT_HOME is deliberately NOT scrubbed here.
     # Some test fixtures spawn a polecat subprocess and then assert against
@@ -62,11 +58,28 @@ def ensure_test_environment(monkeypatch, tmp_path):
         "AOPS_SRC_DIR",
         "AOPS_TASK_ID",
         "CLAUDE_CONFIG_DIR",
+        "POLECAT_TARGET_TASK",
+        "POLECAT_TASK",
         "PKB_MCP_URL",
         "PKB_MCP_HEADERS",
-        "PKB_MCP_TOKEN",
+        "DISPATCHER_MCP_TOKEN",
+        "WORKER_MCP_TOKEN",
         "CF_ACCESS_CLIENT_ID",
         "CF_ACCESS_CLIENT_SECRET",
+        "GENAI_ENGINE_TRACE_ENDPOINT",
+        "GENAI_ENGINE_API_KEY",
+        "GENAI_ENGINE_TRACE_PROTOCOL",
+        "GENAI_ENGINE_TASK_ID",
+        "OTEL_EXPORTER_OTLP_ENDPOINT",
+        "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
+        "OTEL_EXPORTER_OTLP_HEADERS",
+        "OTEL_EXPORTER_OTLP_TRACES_HEADERS",
+        "OTEL_EXPORTER_OTLP_PROTOCOL",
+        "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL",
+        "PHOENIX_PROJECT_NAME",
+        "OTEL_SERVICE_NAME",
+        "OTEL_RESOURCE_ATTRIBUTES",
+        "GITHUB_ACTIONS",
     }
     for key in list(os.environ.keys()):
         if key.startswith("AOPS_GATE_FILE_") or key in scrub_keys:

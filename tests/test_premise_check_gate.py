@@ -6,8 +6,8 @@ Covers:
    never disarms the gate.
 2. record_verdict() emits a TOOL span (via a stubbed claude_code_tracer)
    carrying the token and the reason, and disarms the gate.
-3. record_verdict() still disarms when the tracer is unconfigured, but reports
-   span_emitted=False -- telemetry and "the check ran" are separable.
+3. A failed span emission (unconfigured tracer or unacknowledged export)
+   fails the verdict call and leaves the gate armed.
 4. premise_check_handler refuses the next dispatch, message or stop while
    armed, allows it once disarmed, and respects mode=warn/off and overrides.
 5. premise_check_arm arms only for the gated agents (ida, sara): after a
@@ -147,7 +147,7 @@ def test_record_verdict_normalises_token_case():
         claim_id="claim-1",
         verdict="revise",
         reason="r",
-        tracer_mod=_StubTracer(config=None),
+        tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
     )
     assert result["verdict"] == "REVISE"
 
@@ -189,7 +189,9 @@ def test_cli_reads_reason_from_stdin(monkeypatch, capsys):
 
     session_id = "sess-cli-stdin"
     pcg.arm(session_id, claim_id="claim-1")
-    monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: None)
+    monkeypatch.setattr(
+        pcv, "_import_claude_code_tracer", lambda: _StubTracer(config={"endpoint": "http://x"})
+    )
     reason = "Worker says it ran git push to the branch; the PR link backs that."
     monkeypatch.setattr("sys.stdin", io.StringIO(reason))
 
@@ -207,7 +209,9 @@ def test_cli_reads_reason_from_stdin(monkeypatch, capsys):
 def test_cli_reads_reason_from_file(tmp_path, monkeypatch):
     session_id = "sess-cli-file"
     pcg.arm(session_id, claim_id="claim-1")
-    monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: None)
+    monkeypatch.setattr(
+        pcv, "_import_claude_code_tracer", lambda: _StubTracer(config={"endpoint": "http://x"})
+    )
     reason_file = tmp_path / "reason.txt"
     reason_file.write_text("Claims follow from the cited evidence.\n", encoding="utf-8")
 
@@ -233,7 +237,9 @@ def test_cli_reads_reason_from_file(tmp_path, monkeypatch):
 def test_cli_accepts_inline_reason(monkeypatch):
     session_id = "sess-cli-inline"
     pcg.arm(session_id, claim_id="claim-1")
-    monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: None)
+    monkeypatch.setattr(
+        pcv, "_import_claude_code_tracer", lambda: _StubTracer(config={"endpoint": "http://x"})
+    )
 
     rc = pcv.main(
         [
@@ -258,7 +264,9 @@ def test_cli_records_verdict_with_distinct_verification_id_and_title(capsys, mon
     session_id = "sess-cli-title"
     claim_id = "claim-3a4b5c6d"
     pcg.arm(session_id, claim_id=claim_id)
-    monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: None)
+    monkeypatch.setattr(
+        pcv, "_import_claude_code_tracer", lambda: _StubTracer(config={"endpoint": "http://x"})
+    )
 
     rc = pcv.main(
         [
@@ -291,7 +299,9 @@ def test_cli_records_verdict_with_distinct_verification_id_and_title(capsys, mon
 def test_cli_rejects_free_text_as_the_verdict(monkeypatch):
     session_id = "sess-cli-bad"
     pcg.arm(session_id, claim_id="claim-1")
-    monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: None)
+    monkeypatch.setattr(
+        pcv, "_import_claude_code_tracer", lambda: _StubTracer(config={"endpoint": "http://x"})
+    )
 
     with pytest.raises(SystemExit):
         pcv.main(
@@ -320,7 +330,7 @@ def test_record_verdict_by_id_clears_gate():
         claim_id=report_id,
         verdict="PASS",
         reason="Logic holds against the original ask.",
-        tracer_mod=_StubTracer(config=None),
+        tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
     )
     assert result["ok"] is True
     assert result["claim_id"] == report_id
@@ -363,7 +373,9 @@ def test_cli_refuses_wrong_report_id_and_exits_one(capsys, monkeypatch):
     session_id = "sess-cli-wrong"
     report_id = "report-real-123"
     pcg.arm(session_id, claim_id=report_id)
-    monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: None)
+    monkeypatch.setattr(
+        pcv, "_import_claude_code_tracer", lambda: _StubTracer(config={"endpoint": "http://x"})
+    )
 
     rc = pcv.main(
         [
@@ -385,7 +397,9 @@ def test_cli_refuses_wrong_report_id_and_exits_one(capsys, monkeypatch):
 
 def test_cli_refuses_unknown_report_id_when_not_armed(capsys, monkeypatch):
     session_id = "sess-cli-not-armed"
-    monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: None)
+    monkeypatch.setattr(
+        pcv, "_import_claude_code_tracer", lambda: _StubTracer(config={"endpoint": "http://x"})
+    )
 
     rc = pcv.main(
         [
@@ -405,39 +419,99 @@ def test_cli_refuses_unknown_report_id_when_not_armed(capsys, monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# 4. Telemetry and "the check ran" are separable
+# 4. Failed span emission halts loudly and leaves gate armed (no fallbacks)
 # ---------------------------------------------------------------------------
 
 
-def test_record_verdict_disarms_even_when_tracer_unconfigured():
+def test_record_verdict_fails_and_stays_armed_when_tracer_unconfigured():
     session_id = "sess-unconfigured"
     pcg.arm(session_id, claim_id="claim-3")
 
-    tracer = _StubTracer(config=None)  # discover_config() -> None, silent no-op
+    tracer = _StubTracer(config=None)
 
-    result = pcv.record_verdict(
-        session_id=session_id, claim_id="claim-3", verdict="PASS", reason="r", tracer_mod=tracer
-    )
+    with pytest.raises(RuntimeError, match="tracing is not configured"):
+        pcv.record_verdict(
+            session_id=session_id, claim_id="claim-3", verdict="PASS", reason="r", tracer_mod=tracer
+        )
 
-    assert result["span_emitted"] is False
-    assert result["span_error"] is None
     assert tracer.exported == []
-    assert pcg.is_armed(session_id) is False  # still disarmed: the check ran locally
+    assert pcg.is_armed(session_id) is True
 
 
-def test_record_verdict_reports_unacknowledged_export_as_not_emitted():
+def test_record_verdict_fails_and_stays_armed_on_unacknowledged_export():
     session_id = "sess-export-failed"
     pcg.arm(session_id, claim_id="claim-4")
 
     tracer = _StubTracer(config={"endpoint": "http://collector:4317"}, export_ok=False)
 
-    result = pcv.record_verdict(
-        session_id=session_id, claim_id="claim-4", verdict="PASS", reason="r", tracer_mod=tracer
+    with pytest.raises(RuntimeError, match="span export failed"):
+        pcv.record_verdict(
+            session_id=session_id, claim_id="claim-4", verdict="PASS", reason="r", tracer_mod=tracer
+        )
+
+    assert len(tracer.exported) == 1
+    assert pcg.is_armed(session_id) is True
+
+
+def test_cli_verdict_fails_and_stays_armed_when_span_emission_fails(monkeypatch):
+    session_id = "sess-cli-span-fail"
+    pcg.arm(session_id, claim_id="claim-cli-fail")
+    tracer = _StubTracer(config={"endpoint": "http://collector:4317"}, export_ok=False)
+    monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: tracer)
+
+    rc = pcv.main(
+        [
+            "--report",
+            "claim-cli-fail",
+            "--verdict",
+            "PASS",
+            "--reason",
+            "all good",
+            "--session",
+            session_id,
+        ]
     )
 
-    assert len(tracer.exported) == 1  # the export was attempted
-    assert result["span_emitted"] is False
-    assert pcg.is_armed(session_id) is False  # the check still ran locally
+    assert rc != 0
+    assert pcg.is_armed(session_id) is True
+
+
+def test_cli_verdict_succeeds_and_disarms_when_span_emission_succeeds(monkeypatch):
+    session_id = "sess-cli-span-success"
+    pcg.arm(session_id, claim_id="claim-cli-success")
+    tracer = _StubTracer(config={"endpoint": "http://collector:4317"}, export_ok=True)
+    monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: tracer)
+
+    rc = pcv.main(
+        [
+            "--report",
+            "claim-cli-success",
+            "--verdict",
+            "PASS",
+            "--reason",
+            "all good",
+            "--session",
+            session_id,
+        ]
+    )
+
+    assert rc == 0
+    assert pcg.is_armed(session_id) is False
+
+
+def test_import_claude_code_tracer_raises_when_missing(monkeypatch):
+    import builtins
+
+    real_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "claude_code_tracer":
+            raise ImportError("No module named 'claude_code_tracer'")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+    with pytest.raises(ImportError):
+        pcv._import_claude_code_tracer()
 
 
 # ---------------------------------------------------------------------------
@@ -670,7 +744,7 @@ def test_end_to_end_claim_blocks_next_dispatch_until_verdicted():
         claim_id="researched X",
         verdict="PASS",
         reason="The report's evidence supports its conclusion.",
-        tracer_mod=_StubTracer(config=None),
+        tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
     )
 
     # Now the dispatch is permitted.
@@ -963,7 +1037,7 @@ def test_verified_outgoing_message_id_accepted_as_incoming_claim_id_upstream():
         verdict="PASS",
         reason="Downstream worker verified test suite.",
         title="worker-done",
-        tracer_mod=_StubTracer(config=None),
+        tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
     )
     verification_id = downstream_result["verification_id"]
     assert verification_id.startswith("verdict-")
@@ -994,7 +1068,7 @@ def test_verified_outgoing_message_id_accepted_as_incoming_claim_id_upstream():
         verdict="PASS",
         reason="Supervisor verified downstream report.",
         title="supervisor-accept",
-        tracer_mod=_StubTracer(config=None),
+        tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
     )
     assert upstream_result["ok"] is True
     assert upstream_result["claim_id"] == verification_id
@@ -1019,6 +1093,42 @@ def test_format_verdict_command_prints_absolute_paths():
         proj_path = Path(tokens[proj_idx])
         assert proj_path.is_absolute(), f"project path must be absolute, got: {proj_path}"
         assert proj_path.is_dir(), f"project path does not exist: {proj_path}"
+
+
+def _make_stub_tracer_dir(target_dir: Path) -> Path:
+    stub_dir = target_dir / "stub_tracer"
+    stub_dir.mkdir(parents=True, exist_ok=True)
+    (stub_dir / "claude_code_tracer.py").write_text(
+        '"""Stub tracer for out-of-process CLI tests."""\n'
+        "def discover_config(data=None):\n"
+        '    return {"endpoint": "http://test-collector:4318", "project_name": "test"}\n'
+        "def _new_trace_id():\n"
+        '    return "1" * 32\n'
+        "def _new_span_id():\n"
+        '    return "2" * 16\n'
+        "def _load_state(session_id):\n"
+        "    return {}\n"
+        "def _truncate(value):\n"
+        "    return str(value)\n"
+        "def _build_tool_span_record(**kwargs):\n"
+        "    return {\n"
+        '        "trace_id_hex": kwargs["trace_id"],\n'
+        '        "span_id_hex": "2" * 16,\n'
+        '        "parent_span_id_hex": kwargs["root_span_id"],\n'
+        '        "name": kwargs["tool_name"],\n'
+        '        "kind": None,\n'
+        '        "start_ns": kwargs["start_ns"],\n'
+        '        "end_ns": kwargs["end_ns"],\n'
+        '        "attributes": {\n'
+        '            "openinference.span.kind": "TOOL",\n'
+        '            "tool.name": kwargs["tool_name"],\n'
+        "        },\n"
+        '        "force_span_id": False,\n'
+        "    }\n"
+        "def _build_and_export_spans(**kwargs):\n"
+        "    return True\n"
+    )
+    return stub_dir
 
 
 def test_printed_command_runs_from_different_cwd_under_claude_code_and_agy(tmp_path):
@@ -1084,6 +1194,7 @@ def test_printed_command_runs_from_different_cwd_under_claude_code_and_agy(tmp_p
         pcg.arm(session_id, claim_id=claim_id)
         assert pcg.is_armed(session_id) is True
 
+        stub_dir = _make_stub_tracer_dir(tmp_path)
         run_tokens = shlex.split(
             cmd.replace("<PASS|REVISE|FAIL>", "PASS").replace(
                 "<why>", f"Verified under {client} from outside cwd"
@@ -1094,7 +1205,11 @@ def test_printed_command_runs_from_different_cwd_under_claude_code_and_agy(tmp_p
             cwd=outside_dir,
             capture_output=True,
             text=True,
-            env={**os.environ, "AOPS_PREMISE_GATE_DIR": str(gate_dir)},
+            env={
+                **os.environ,
+                "AOPS_PREMISE_GATE_DIR": str(gate_dir),
+                "PYTHONPATH": f"{stub_dir}:{hooks_dir}",
+            },
         )
         assert res_verdict.returncode == 0, (
             f"{client} verdict command failed from outside dir:\n{res_verdict.stderr}"
@@ -1147,6 +1262,7 @@ def test_printed_command_runs_with_relative_hooks_dir_from_plugin_cwd(tmp_path, 
     outside_dir.mkdir(parents=True, exist_ok=True)
     pcg.arm(session_id, claim_id=claim_id)
 
+    stub_dir = _make_stub_tracer_dir(tmp_path)
     run_tokens = shlex.split(
         cmd.replace("<PASS|REVISE|FAIL>", "PASS").replace(
             "<why>", "Verified relative hooks_dir resolution"
@@ -1157,7 +1273,11 @@ def test_printed_command_runs_with_relative_hooks_dir_from_plugin_cwd(tmp_path, 
         cwd=outside_dir,
         capture_output=True,
         text=True,
-        env={**os.environ, "AOPS_PREMISE_GATE_DIR": str(gate_dir)},
+        env={
+            **os.environ,
+            "AOPS_PREMISE_GATE_DIR": str(gate_dir),
+            "PYTHONPATH": f"{stub_dir}:{build_dir / 'hooks'}",
+        },
     )
     assert res.returncode == 0, f"execution failed:\n{res.stderr}"
     assert "PASS" in res.stdout

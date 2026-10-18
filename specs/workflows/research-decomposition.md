@@ -40,13 +40,13 @@ Formality maps to mode: seedling = light, forest = standard or thorough.
 The conceptual review workflow selects from these instead of its general registry. A standard
 research review selects 3–4 plus self-consistency as a background check.
 
-| Lens                     | Research-specific question                                                                                                                                                             |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Methodological coherence | Is the research design valid? Do analytical choices follow from the question? Is the methodology appropriate for the epistemological stance?                                           |
-| Literature awareness     | Is the lit review scoped to the actual question? Are foundational works cited? Is there awareness of adjacent fields that may have addressed similar questions with different methods? |
-| Ethics and governance    | Is IRB/ethics approval planned? Is data governance specified? What about consent, anonymisation, data retention? Are there dual-use concerns?                                          |
-| Feasibility              | Are academic timelines realistic? Is data access validated, not assumed? Are collaborator commitments confirmed? Does the scope fit the intended publication venue?                    |
-| Assumption hygiene       | Are methodological assumptions distinguished from empirical ones? Are there untested assumptions about data availability or participant recruitment?                                   |
+| Lens | Research-specific question |
+| - | - |
+| Methodological coherence | Is the research design valid? Do analytical choices follow from the question? Is the methodology appropriate for the epistemological stance? |
+| Literature awareness | Is the lit review scoped to the actual question? Are foundational works cited? Is there awareness of adjacent fields that may have addressed similar questions with different methods? |
+| Ethics and governance | Is IRB/ethics approval planned? Is data governance specified? What about consent, anonymisation, data retention? Are there dual-use concerns? |
+| Feasibility | Are academic timelines realistic? Is data access validated, not assumed? Are collaborator commitments confirmed? Does the scope fit the intended publication venue? |
+| Assumption hygiene | Are methodological assumptions distinguished from empirical ones? Are there untested assumptions about data availability or participant recruitment? |
 
 ## Primitives
 
@@ -54,17 +54,17 @@ Semantic labels on existing task types. No new task types, no schema changes.
 The universal composite `wf-research-output` (`plugins/ida/skills/workflow-library/workflows/`)
 carries these as stages by contract; it is the operational home, this table the vocabulary.
 
-| Primitive           | Purpose                                    | Maps to       |
-| ------------------- | ------------------------------------------ | ------------- |
-| **probe**           | Resolve an unknown before planning further | `learn`       |
-| **lit-review**      | Systematic examination of existing work    | `learn`       |
-| **methodology**     | Design and justify analytical approach     | `task`        |
-| **ethics**          | IRB, consent, data governance              | `task` + gate |
-| **data-collection** | Gathering primary or secondary data        | `task`        |
-| **analysis**        | Running the actual analysis                | `task`        |
-| **writing**         | Manuscript, presentation, or report        | `task`        |
-| **pilot**           | Small-scale test of feasibility            | `task`        |
-| **collaboration**   | Gate requiring another person's input      | `task` + gate |
+| Primitive | Purpose | Maps to |
+| - | - | - |
+| **probe** | Resolve an unknown before planning further | `learn` |
+| **lit-review** | Systematic examination of existing work | `learn` |
+| **methodology** | Design and justify analytical approach | `task` |
+| **ethics** | IRB, consent, data governance | `task` + gate |
+| **data-collection** | Gathering primary or secondary data | `task` |
+| **analysis** | Running the actual analysis | `task` |
+| **writing** | Manuscript, presentation, or report | `task` |
+| **pilot** | Small-scale test of feasibility | `task` |
+| **collaboration** | Gate requiring another person's input | `task` + gate |
 
 ### Default sequencing
 

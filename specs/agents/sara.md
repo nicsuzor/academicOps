@@ -13,18 +13,18 @@ tags: [spec, polecat, architecture, supervisor]
 
 The supervisor is the framework's delegate-and-verify process: a stateless tick that
 selects or creates work, dispatches it to workers, evaluates the results, and persists
-state for the next tick. It operates at every scale — a single epic, a multi-epic
-release, or conversational orchestration of background workers — using the same
+state for the next tick. It operates at every scale -- a single epic, a multi-epic
+release, or conversational orchestration of background workers -- using the same
 discipline at each.
 
 ## User Story
 
 As a researcher delegating work to agents, I want a single supervision process I
-invoke — never hand-rolled — that decides for me when a piece of work should run as a
+invoke -- never hand-rolled -- that decides for me when a piece of work should run as a
 quick local subagent in my session and when it should be dispatched as a polecat
 (isolated workspace, background, full lifecycle), and that guarantees every delegated
-piece of work leaves a trace I can inspect — a task record, a transcript, and a
-recorded verdict — so that work is proven before it is trusted and nothing is ever
+piece of work leaves a trace I can inspect -- a task record, a transcript, and a
+recorded verdict -- so that work is proven before it is trusted and nothing is ever
 fire-and-forgotten.
 
 ## Routing: Surface and Cadence
@@ -33,7 +33,7 @@ Routing is a cadence-and-placement choice over one unified worker contract
 ([[specs/enforcement/task-contract.md]]); the user does not have to specify. The
 orchestrator picks the surface (in-session subagent | polecat | agent team) and
 the cadence (wait vs fire-and-forget) for latency and isolation convenience;
-eligibility and deliverable shape are surface-agnostic — the deliverable is
+eligibility and deliverable shape are surface-agnostic -- the deliverable is
 whatever output URL the assembled workflow specifies. A literature review and a
 code change are the same contract with different assembled workflows.
 
@@ -60,7 +60,7 @@ requirement, not yet implemented.
 Every delegation MUST leave an inspectable trace; nothing is fire-and-forgotten:
 
 - **Task record**: every dispatch is recorded on a PKB task (status, assignee,
-  dispatch note, and on completion the evidence + output URL — the PR URL where
+  dispatch note, and on completion the evidence + output URL -- the PR URL where
   the surface is code).
 - **Transcript**: the worker's run is retained and locatable (polecat lifecycle
   events at `$POLECAT_HOME/transcripts/<task-id>.jsonl`; session transcripts under
@@ -73,7 +73,7 @@ Every delegation MUST leave an inspectable trace; nothing is fire-and-forgotten:
 
 Supervision covers:
 
-- Epic-level orchestration (one PKB epic — an epic is just a task with children —
+- Epic-level orchestration (one PKB epic -- an epic is just a task with children --
   state in the epic body)
 - Portfolio/release supervision (many epics, state in the release task body)
 - Conversational orchestration of background workers (e.g. "don't get involved
@@ -86,23 +86,23 @@ the task body, so any instance can resume from where a prior one left off.
 
 Every supervisor tick performs the same four concerns:
 
-| Concern      | What it does                                 | Who decides          |
-| ------------ | -------------------------------------------- | -------------------- |
-| **Select**   | Choose which tasks to work on next           | Agent (LLM judgment) |
-| **Dispatch** | Send tasks to workers (routing rules above)  | Polecat or subagent  |
-| **Evaluate** | Judge whether worker output is acceptable    | Agent (LLM judgment) |
-| **Persist**  | Record state for recovery across invocations | Task body (PKB)      |
+| Concern | What it does | Who decides |
+| - | - | - |
+| **Select** | Choose which tasks to work on next | Agent (LLM judgment) |
+| **Dispatch** | Send tasks to workers (routing rules above) | Polecat or subagent |
+| **Evaluate** | Judge whether worker output is acceptable | Agent (LLM judgment) |
+| **Persist** | Record state for recovery across invocations | Task body (PKB) |
 
 Evaluation yields one of four outcomes: **Accept** (meets criteria, move on),
-**Accept-partial** (the handed-back `partial` chunk passes its clauses — see
-[[specs/polecat/spec-partial-work-tight-loop-delivery.md]] §3 — refused choices
+**Accept-partial** (the handed-back `partial` chunk passes its clauses -- see
+[[specs/polecat/spec-partial-work-tight-loop-delivery.md]] §3 -- refused choices
 are surfaced as decisions and continue tasks carry the remainder; the supervisor
 accepts the chunk and routes the remainder rather than treating it as Revise or
 Fail), **Revise** (specific problems found, create a new worker task with
 feedback), or **Fail** (fundamental issues or retry budget exhausted, escalate to
 a human).
 
-The supervisor stays responsible for the work until it reaches a terminal state — it
+The supervisor stays responsible for the work until it reaches a terminal state -- it
 does not fire-and-forget. Responsibility is not polling: a tick is woken by a worker
 terminating or by a bound the supervisor set at dispatch, and it establishes state by
 reading durable evidence, never by asking a running worker how it is going.
@@ -114,12 +114,12 @@ queued → in_progress → done (deliverable accepted)
                 │
                 ├→ review (transient: worker needs help; moved on by reconcile)
                 ├→ partial (terminal: chunk handed back, remainder carried by
-                │           continue tasks — see
+                │           continue tasks -- see
                 │           [[specs/polecat/spec-partial-work-tight-loop-delivery.md]] §4)
                 └→ failed (terminal: execution aborted, invalid premise, or unrecoverable error)
 ```
 
-`done` means the deliverable was accepted — evidence + output URL recorded on the
+`done` means the deliverable was accepted -- evidence + output URL recorded on the
 PKB task; a merged PR is the code-surface instance of this.
 
 The canonical status set is the PKB taxonomy's, mirrored in this repository
@@ -128,10 +128,10 @@ that set without extensions (`partial` and `failed` are part of it).
 
 ## Related
 
-- [[specs/polecat/polecat-system.md]] — Isolated task workspaces and the delivery
+- [[specs/polecat/polecat-system.md]] -- Isolated task workspaces and the delivery
   guarantees the supervisor dispatches onto
-- `plugins/ida/skills/pull/SKILL.md` — The operative skill: claiming a unit,
+- `plugins/ida/skills/pull/SKILL.md` -- The operative skill: claiming a unit,
   working it, and carrying it to a terminal state.
-- `plugins/aops/skills/polecat/SKILL.md` — The launcher that puts a worker in front of a unit.
+- `plugins/aops/skills/polecat/SKILL.md` -- The launcher that puts a worker in front of a unit.
   It launches containers; it makes no eligibility or ordering decision about which
   of an epic's children go next.

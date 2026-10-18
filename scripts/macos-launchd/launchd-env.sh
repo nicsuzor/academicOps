@@ -39,7 +39,7 @@
 # --- PKB endpoint credentials (read by the ida UserPromptSubmit hook) ---
 # Expected in ~/.env.local. Set whichever the endpoint accepts.
 [ -n "$PKB_MCP_HEADERS" ] && launchctl setenv PKB_MCP_HEADERS "$PKB_MCP_HEADERS"
-[ -n "$PKB_MCP_TOKEN" ] && launchctl setenv PKB_MCP_TOKEN "$PKB_MCP_TOKEN"
+[ -n "$DISPATCHER_MCP_TOKEN" ] && launchctl setenv DISPATCHER_MCP_TOKEN "$DISPATCHER_MCP_TOKEN"
 [ -n "$CF_ACCESS_CLIENT_ID" ] && launchctl setenv CF_ACCESS_CLIENT_ID "$CF_ACCESS_CLIENT_ID"
 [ -n "$CF_ACCESS_CLIENT_SECRET" ] && launchctl setenv CF_ACCESS_CLIENT_SECRET "$CF_ACCESS_CLIENT_SECRET"
 

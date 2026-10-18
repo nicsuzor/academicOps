@@ -12,12 +12,12 @@ is visible to other sessions, and carries its own audit trail.
 The hydrator emits four components, and the main agent executes them without
 making further routing decisions:
 
-| Component       | Content                                                                                                                                 |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Intent          | What the user actually wants, stated plainly                                                                                            |
-| Workflow        | The selected template from the workflow catalog, plus its quality gate                                                                  |
+| Component | Content |
+| - | - |
+| Intent | What the user actually wants, stated plainly |
+| Workflow | The selected template from the workflow catalog, plus its quality gate |
 | Execution steps | The workflow interpreted for _this_ request as concrete numbered steps, `CHECKPOINT:`-prefixed where the workflow mandates verification |
-| Guardrails      | The constraints the selected workflow imposes                                                                                           |
+| Guardrails | The constraints the selected workflow imposes |
 
 The workflow catalog is `plugins/ida/skills/workflow-library/workflows/` and its `wf-*.md`
 templates. Selection is interpretive, not mechanical: the hydrator reads the
@@ -32,12 +32,12 @@ the failure mode of a missed checkpoint is recoverable.
 
 ## Context gathering
 
-| Tier | Source                     | Role                                                            |
-| ---- | -------------------------- | --------------------------------------------------------------- |
-| 1    | PKB, via `aops:hydrate`    | Primary -- semantic search for related knowledge and open tasks |
-| 2    | Framework specs and axioms | Secondary -- the principles that bind this work                 |
-| 3    | GitHub / web search        | Tertiary -- only when internal sources are insufficient         |
-| 4    | Session transcripts        | Last resort -- very recent context not yet written anywhere     |
+| Tier | Source | Role |
+| - | - | - |
+| 1 | PKB, via `aops:hydrate` | Primary -- semantic search for related knowledge and open tasks |
+| 2 | Framework specs and axioms | Secondary -- the principles that bind this work |
+| 3 | GitHub / web search | Tertiary -- only when internal sources are insufficient |
+| 4 | Session transcripts | Last resort -- very recent context not yet written anywhere |
 
 Tiers 1–2 run inside the hydrator against a budget of roughly 450 tokens of
 retained context. Tiers 3–4 are never run by the hydrator; they are emitted as

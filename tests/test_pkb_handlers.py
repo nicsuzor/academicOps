@@ -45,7 +45,8 @@ def no_ambient_pkb_credentials(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) 
     for var in (
         "PKB_MCP_URL",
         "PKB_MCP_HEADERS",
-        "PKB_MCP_TOKEN",
+        "DISPATCHER_MCP_TOKEN",
+        "WORKER_MCP_TOKEN",
         "CF_ACCESS_CLIENT_ID",
         "CF_ACCESS_CLIENT_SECRET",
         "CLAUDE_CONFIG_DIR",
@@ -718,7 +719,8 @@ def test_dispatch_http_failure_surfaces_error_in_hook_output(staged_hooks: Path)
     env["PKB_MCP_URL"] = "http://127.0.0.1:9"  # Unreachable port ensures HTTP connection failure
     for var in (
         "PKB_MCP_HEADERS",
-        "PKB_MCP_TOKEN",
+        "DISPATCHER_MCP_TOKEN",
+        "WORKER_MCP_TOKEN",
         "CF_ACCESS_CLIENT_ID",
         "CF_ACCESS_CLIENT_SECRET",
     ):

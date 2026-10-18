@@ -22,18 +22,18 @@ manuscript draft. Author and reviewer are separate identities; no agent reviews 
 The reviewer selects lenses by artifact type. Each lens is one evaluation perspective with a core
 question.
 
-| Lens                        | Applies to         | Core question                                         |
-| --------------------------- | ------------------ | ----------------------------------------------------- |
-| **Self-consistency**        | Everything         | Does it practice what it preaches?                    |
-| Strategic alignment         | Specs, designs     | Does this fit the larger vision?                      |
-| Assumption hygiene          | Plans, proposals   | Are load-bearing assumptions identified and testable? |
-| Scope discipline            | Everything         | Is it building for now or for hypothetical futures?   |
-| Cross-reference consistency | Specs, docs        | Does it contradict existing work?                     |
-| Attribution                 | Intellectual work  | Is the intellectual debt acknowledged?                |
-| Methodological coherence    | Research, analysis | Does the method match the question?                   |
-| Literature awareness        | Research, academic | Is it building on or reinventing existing work?       |
-| Ethics and governance       | Research, data     | Are ethical obligations addressed?                    |
-| Feasibility                 | Plans, proposals   | Can this actually be done with available resources?   |
+| Lens | Applies to | Core question |
+| - | - | - |
+| **Self-consistency** | Everything | Does it practice what it preaches? |
+| Strategic alignment | Specs, designs | Does this fit the larger vision? |
+| Assumption hygiene | Plans, proposals | Are load-bearing assumptions identified and testable? |
+| Scope discipline | Everything | Is it building for now or for hypothetical futures? |
+| Cross-reference consistency | Specs, docs | Does it contradict existing work? |
+| Attribution | Intellectual work | Is the intellectual debt acknowledged? |
+| Methodological coherence | Research, analysis | Does the method match the question? |
+| Literature awareness | Research, academic | Is it building on or reinventing existing work? |
+| Ethics and governance | Research, data | Are ethical obligations addressed? |
+| Feasibility | Plans, proposals | Can this actually be done with available resources? |
 
 Selection rules:
 
@@ -79,11 +79,11 @@ I'm accepting the risk because X"). The reviewer records the override and stops 
 
 ## Formality gradient
 
-| Level        | Lenses                               | Review loop                           | Venue                                | When to use                                              |
-| ------------ | ------------------------------------ | ------------------------------------- | ------------------------------------ | -------------------------------------------------------- |
-| **Light**    | 1-2 (self-consistency as background) | Single pass, no iteration             | In-session or issue comment          | Quick checks, small changes, early exploration           |
-| **Standard** | 3-4                                  | Convergence-based                     | Pull request                         | Most specs, plans, proposals                             |
-| **Thorough** | 4+ (consider multi-model review)     | Convergence-based + explicit sign-off | Pull request with multiple reviewers | Foundational specs, grant applications, research designs |
+| Level | Lenses | Review loop | Venue | When to use |
+| - | - | - | - | - |
+| **Light** | 1-2 (self-consistency as background) | Single pass, no iteration | In-session or issue comment | Quick checks, small changes, early exploration |
+| **Standard** | 3-4 | Convergence-based | Pull request | Most specs, plans, proposals |
+| **Thorough** | 4+ (consider multi-model review) | Convergence-based + explicit sign-off | Pull request with multiple reviewers | Foundational specs, grant applications, research designs |
 
 ## Orchestration
 

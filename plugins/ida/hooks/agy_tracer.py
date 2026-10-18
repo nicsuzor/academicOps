@@ -209,6 +209,8 @@ def _export_tool_span_agy(
         parent_session_id=parent_session_id,
         agent_name=state.get("agent_name") or config.get("agent_name"),
         cwd=state.get("cwd") or config.get("cwd"),
+        service_name="aops-agy-hooks",
+        surface="agy",
     )
 
 
@@ -573,6 +575,7 @@ def _init_turn_state_agy(
         "turn_prompt": turn_prompt,
         "prompt_preview": _truncate(turn_prompt) if turn_prompt else "",
     }
+    state["surface"] = "agy"
     state["pending_tools"] = {}
     state.setdefault("deferred_tool_spans", [])
     state.setdefault("emitted_llm_steps", [])
@@ -950,6 +953,8 @@ def handle_stop(data: dict, config: dict) -> None:
             parent_session_id=parent_session_id,
             agent_name=agent_name or config.get("agent_name"),
             cwd=state.get("cwd") or config.get("cwd"),
+            service_name="aops-agy-hooks",
+            surface="agy",
         )
 
         _end_turn_agy(session_id, state)

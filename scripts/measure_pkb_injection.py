@@ -168,7 +168,8 @@ def measure_hook_overhead(repeats: int) -> dict:
         if k
         not in (
             "PKB_MCP_HEADERS",
-            "PKB_MCP_TOKEN",
+            "DISPATCHER_MCP_TOKEN",
+            "WORKER_MCP_TOKEN",
             "CF_ACCESS_CLIENT_ID",
             "CF_ACCESS_CLIENT_SECRET",
         )
