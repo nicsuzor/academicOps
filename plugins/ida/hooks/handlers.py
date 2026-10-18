@@ -72,9 +72,8 @@ _SEARCH_TIMEOUT_SECONDS = 5
 
 # Same measurement run: payload size for 5 results was 3.5-6.4KB (p95). This
 # hook fires on every single UserPromptSubmit -- the highest-frequency
-# injection point in the framework -- and had no ceiling of its own,
-# inheriting whatever the `pkb` CLI's default result count/format produced.
-# Set well above the measured p95 so normal output is never touched; it only
+# injection point in the framework -- and has no ceiling of its own beyond
+# the backend's default result count and format. Set well above the measured p95 so normal output is never touched; it only
 # bites if the backend's output grows unexpectedly large.
 _MAX_INJECT_CHARS = 8000
 _TRUNCATION_MARKER = "\n[...truncated, output exceeded injection budget...]"
@@ -652,8 +651,7 @@ def post_tool(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical PostToolUse."""
     _run_claude_tracer(ctx, "handle_post_tool")
     agy_post_tool(ctx)
-    steps = (rule_against_hearsay, premise_check_arm)
-    return _merge([_run_handler(step, ctx) for step in steps])
+    return _run_handler(rule_against_hearsay, ctx)
 
 
 def post_tool_failure(ctx: HookContext) -> Result | None:

@@ -77,7 +77,7 @@ A tree (outline, taxonomy, claim structure, org chart) reads best when containme
 
 ### CLI tools and invariants
 
-`pkb-excalidraw` is the preferred way to read and edit `.excalidraw` files; use it before reading or writing the JSON directly, because its mutations refuse to save a file that fails validation. Run `pkb-excalidraw --help` for the full command set.
+`pkb-excalidraw` is the preferred way to read and edit `.excalidraw` files; use it before reading or writing the JSON directly, because its mutations refuse to save a file that fails validation. Run `pkb-excalidraw --help` for the full command set. When creating a PKB note derived from an Excalidraw canvas (via `pkb.create`), pass the canvas's PKB-relative path as `source` (e.g. `<subproject>/<canvas>.excalidraw`), or set `parent` to a node whose file lives in that directory, so the home-directory placement rule files the note in that sub-project directory.
 
 ```bash
 pkb-excalidraw FILE [summary | map | nodes | edges | style | check | overlap | arrows-check]

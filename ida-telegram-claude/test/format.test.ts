@@ -39,6 +39,47 @@ describe("Progressive disclosure: Format and Entities", () => {
     );
   });
 
+  test("groups consecutive >! lines into a single expandable_blockquote entity per spec_7a9caca5 FR-1.2", () => {
+    const text = "**Header**\n\n>! Line 1 **bold**\n>! Line 2 `code`\n>! Line 3\n\nNormal text";
+    const { plainText, entities } = formatMarkdownToEntities(text);
+
+    const expQuotes = entities.filter((e) => e.type === "expandable_blockquote");
+    expect(expQuotes.length).toBe(1);
+    const expQuote = expQuotes[0];
+    expect(plainText.slice(expQuote.offset, expQuote.offset + expQuote.length)).toBe(
+      "Line 1 bold\nLine 2 code\nLine 3"
+    );
+
+    // Nested entities inside the multi-line expandable blockquote
+    const bold = entities.find((e) => e.type === "bold" && e.offset > expQuote.offset);
+    expect(bold).toBeDefined();
+    expect(plainText.slice(bold!.offset, bold!.offset + bold!.length)).toBe("bold");
+
+    const code = entities.find((e) => e.type === "code" && e.offset > expQuote.offset);
+    expect(code).toBeDefined();
+    expect(plainText.slice(code!.offset, code!.offset + code!.length)).toBe("code");
+  });
+
+  test("groups consecutive standard > lines into a single blockquote entity per spec_7a9caca5 FR-1.2", () => {
+    const text = "> Line 1\n> Line 2\n\nBody";
+    const { plainText, entities } = formatMarkdownToEntities(text);
+
+    const quotes = entities.filter((e) => e.type === "blockquote");
+    expect(quotes.length).toBe(1);
+    expect(plainText.slice(quotes[0].offset, quotes[0].offset + quotes[0].length)).toBe("Line 1\nLine 2");
+  });
+
+  test("correctly calculates blockquote offsets when preceding text contains code blocks or inline markdown", () => {
+    const text = "```javascript\nconsole.log('hello');\n```\n>! Multi-line quote 1\n>! Multi-line quote 2";
+    const { plainText, entities } = formatMarkdownToEntities(text);
+
+    const expQuotes = entities.filter((e) => e.type === "expandable_blockquote");
+    expect(expQuotes.length).toBe(1);
+    expect(plainText.slice(expQuotes[0].offset, expQuotes[0].offset + expQuotes[0].length)).toBe(
+      "Multi-line quote 1\nMulti-line quote 2"
+    );
+  });
+
   test("formats markdown tables: pre if <= 36 cols, stacked cards if > 36 cols", () => {
     const narrowTable = "| Col A | Col B |\n|---|---|\n| 1 | 2 |";
     const wideTable =

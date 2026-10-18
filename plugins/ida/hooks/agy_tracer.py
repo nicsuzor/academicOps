@@ -39,6 +39,8 @@ from claude_code_tracer import (
     _save_state,
     _session_lock,
     _truncate,
+    resolve_agent_name,
+    resolve_client_agent_name,
     resolve_session_id,
 )
 from claude_code_tracer import discover_config as discover_config  # re-exported for handlers.py
@@ -207,7 +209,9 @@ def _export_tool_span_agy(
         span_records=[span_record],
         agent_id=agent_id,
         parent_session_id=parent_session_id,
-        agent_name=state.get("agent_name") or config.get("agent_name"),
+        agent_name=state.get("agent_name")
+        or config.get("agent_name", "")
+        or resolve_agent_name(data),
         cwd=state.get("cwd") or config.get("cwd"),
         service_name="aops-agy-hooks",
         surface="agy",
@@ -483,18 +487,9 @@ def _init_turn_state_agy(
         os.environ.get("USERNAME", "unknown"),
     )
     state["cwd"] = data.get("cwd") or state.get("cwd") or os.getcwd()
-    agent_name = (
-        data.get("agent_name")
-        or data.get("agent_type")
-        or data.get("agent")
-        or data.get("role")
-        or state.get("agent_name")
-        or os.environ.get("AGY_AGENT_NAME")
-        or os.environ.get("AOPS_AGENT_NAME")
-        or ""
-    )
-    if agent_name:
-        state["agent_name"] = agent_name
+    client_agent = resolve_client_agent_name(data)
+    if client_agent:
+        state["agent_name"] = client_agent
 
     transcript_path = _resolve_transcript_path_agy(data, state, session_id)
     if transcript_path:
@@ -898,16 +893,7 @@ def handle_stop(data: dict, config: dict) -> None:
             data,
             "conversationId",
         )
-        agent_name = (
-            data.get("agent_name")
-            or data.get("agent_type")
-            or data.get("agent")
-            or data.get("role")
-            or state.get("agent_name")
-            or os.environ.get("AGY_AGENT_NAME")
-            or os.environ.get("AOPS_AGENT_NAME")
-            or ""
-        )
+        agent_name = state.get("agent_name") or resolve_agent_name(data)
 
         chain_attrs: dict[str, Any] = {
             "openinference.span.kind": "AGENT" if ct.get("parent_span_id") else "CHAIN",
@@ -951,7 +937,7 @@ def handle_stop(data: dict, config: dict) -> None:
             span_records=records,
             agent_id=agent_id,
             parent_session_id=parent_session_id,
-            agent_name=agent_name or config.get("agent_name"),
+            agent_name=agent_name or config.get("agent_name", ""),
             cwd=state.get("cwd") or config.get("cwd"),
             service_name="aops-agy-hooks",
             surface="agy",

@@ -1,6 +1,6 @@
 """Three-layer rule loading for cope's evaluator.
 
-Layer 1 ``axioms/`` (the plugin's own injected copy of ``lib/axioms/`` — the
+Layer 1 ``skills/axioms/`` (the plugin's own injected copy of ``lib/axioms/`` — the
 floor) is loaded first; layer 2 ``$CWD/.agents/rules/*.md`` (project-local)
 and layer 3 ``$ACA_DATA/.agents/rules/*.md`` (user-scoped) can only ADD new
 slugs, never override one already claimed by an earlier layer — a later
@@ -184,8 +184,8 @@ def _layers(plugin_root: Path, cwd: Path) -> list[_Layer]:
     reference documents as well as policies, and only a policy can be
     classified. What differs per layer is what deserves reporting.
 
-    Layer 1 is the plugin's own shipped ``axioms/``, whose non-rule files are a
-    known, curated set (``README.md``, ``AXIOMS-REVIEW.md``) that nobody in the
+    Layer 1 is the plugin's own shipped ``skills/axioms/``, whose non-rule files are a
+    known, curated set (``SKILL.md``, ``README.md``, ``AXIOMS-REVIEW.md``) that nobody in the
     session can act on — naming them every tool call would be noise. Layers 2
     and 3 belong to the project and the user, who can act: a file skipped there
     is named, because a rule that quietly stops being evaluated is worse than
@@ -198,7 +198,7 @@ def _layers(plugin_root: Path, cwd: Path) -> list[_Layer]:
     mistake and stays silent.
     """
     layers = [
-        _Layer(1, plugin_root / "axioms", report_skips=False, absent_note=None),
+        _Layer(1, plugin_root / "skills" / "axioms", report_skips=False, absent_note=None),
         _Layer(2, cwd / ".agents" / "rules", report_skips=True, absent_note=None),
     ]
     aca_data = os.environ.get("ACA_DATA")

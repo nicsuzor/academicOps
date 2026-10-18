@@ -12,6 +12,7 @@ Author or verify report arguments using the standardised **Chained Toulmin Argdo
 - Ending an evidence-backed subagent or task report with a verifiable handback argument concluding `[Outcome]`
 - Auditing an incoming report from a subagent or workflow step before accepting its claim or passing it upstream
 - Recording a formal `PASS`, `REVISE`, or `FAIL` verdict on a report claim
+- Messaging peers: a message carries something the receiver acts on or is not sent; a message that only confirms receipt is not sent
 
 ## Standardised Chained Toulmin Shape
 
@@ -54,6 +55,7 @@ model:
   - _Rankings / comparisons_ require explicit comparison premises covering the alternatives.
   - _Negatives / absences / capabilities_ require `basis: "exhaustively-searched"`, `"attempted-and-failed"`, or `"method-bounded"` stating the exact search boundary or instrument limit.
   - _Causal / universal claims_ require an explicit mechanism in the `-- Warrant --` bar and a conclusion scope no wider than the premises' scope.
+- **Actionable peer messages**: A message carries something the receiver acts on or is not sent; a message that only confirms receipt is not sent.
 
 ## Formal Check and Granularity Stopping Rules
 

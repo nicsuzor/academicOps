@@ -4,7 +4,7 @@ This file is the single source of truth (SSoT) for the roles of all framework ag
 
 ## Agent Roles
 
-The framework defines six specialized agent types in the `ida` plugin:
+The framework defines six specialized agent types, five in the `ida` plugin and `rbg` in the `rbg` plugin:
 
 - **`ida`**: The chaos gremlin and strategic face of the framework. The only agent trusted to speak directly to the user. Protects user attention and working memory, discusses direction, captures ideas, coordinates execution, and checks reports up the chain against original asks (`/premise-check`).
 - **`james`**: Lead executor for units of work. Coordinates subagents in parallel, critically evaluates returned work against acceptance criteria, validates deliverables against literal requirements, and delivers verified results.

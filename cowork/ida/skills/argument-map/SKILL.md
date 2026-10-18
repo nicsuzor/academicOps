@@ -57,4 +57,5 @@ When the map's job is to lock a text's structure (parts, chapters, sections), re
 ## Record
 
 - **One home.** Keep the Argdown source and the decisions (narrowed readings, merges, dropped views) in the map's PKB note, one line per decision.
+- **Pass the sub-project signal.** When creating the note with `pkb.create`, pass the source artefact's PKB-relative path as `source` (e.g. `<subproject>/<canvas>.excalidraw`), or set `parent` to a node whose file lives in that sub-project directory. Under the home-directory placement rule, passing an existing file path as `source` routes the note into that sub-project directory rather than falling back to `notes/`.
 - **Rebuild, don't patch.** Rebuild the page from the source. Do not hand-edit the derived renders.

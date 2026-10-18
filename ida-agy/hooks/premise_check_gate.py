@@ -4,9 +4,9 @@
 Enforces that a supervisor (Ida) evaluates incoming subagent reports against
 logic-check doctrine before dispatching further subagents, contacting the user, or finishing tasks:
 
-- ``premise_check_arm``: a ``PostToolUse`` / ``UserPromptSubmit`` handler that arms the check when
-  an agent finishes a foreground subagent dispatch or receives a peer's report.
-  The user's own messages and background subagent launches never arm it.
+- ``premise_check_arm``: a ``UserPromptSubmit`` handler that arms the check when
+  a peer's or worker's report arrives. The agent's own outgoing tool calls,
+  subagent dispatches included, and the user's own messages never arm it.
 - ``premise_check_handler``: a ``PreToolUse`` / ``Stop`` handler that refuses the
   supervisor's next subagent dispatch, communication, channel reply, or stop while armed.
 - ``arm()`` / ``disarm()``: state management primitives. Calling ``disarm()``
@@ -45,7 +45,7 @@ _GATED_AGENT_TYPES = ["ida:ida", "ida", "ida:sara", "sara"]
 # the user's own message, which is an ask, not a claim to check.
 _PEER_ENVELOPES = ("<cross-session-message", "<teammate-message", "<task-notification")
 
-# Tools that dispatch subagents (arming the check)
+# Tools that dispatch subagents
 _DISPATCH_TOOLS = ["Agent", "Task", "invoke_subagent"]
 
 # Tools that reach the user directly. Matched on the full name or the last
@@ -336,55 +336,29 @@ def format_verdict_command(
 
 
 def _derive_claim_id(ctx: HookContext) -> str:
-    if ctx.event == "UserPromptSubmit":
-        prompt = _prompt_text(ctx).strip()
-        match = re.search(r"<([a-zA-Z0-9_\-]+)([^>]*)>(.*?)(?:</\1>|$)", prompt, re.DOTALL)
-        if match:
-            attrs = match.group(2)
-            id_match = re.search(
-                r'\b(?:id|report_id|claim_id|verification_id|task_id)=["\']([^"\']+)["\']',
-                attrs,
-            )
-            if id_match:
-                cid = id_match.group(1).strip()
-                if cid and re.match(r"^[a-zA-Z0-9_\-\.:]+$", cid):
-                    return cid
-
-            title_match = re.search(
-                r'\b(?:title|short_title|slug)=["\']([^"\']+)["\']',
-                attrs,
-            )
-            title = title_match.group(1).strip() if title_match else None
-            return build_id("claim", prompt, title=title)
-
-        prompt_snippet = prompt.strip()
-        if prompt_snippet:
-            return build_id("claim", prompt_snippet)
-        return build_id("claim", uuid.uuid4().hex)
-
-    for call in ctx.tool_calls:
-        if call.get("tool_name") in _DISPATCH_TOOLS:
-            tool_input = call.get("tool_input") or {}
-            desc = str(tool_input.get("description") or tool_input.get("prompt") or "").strip()
-            if desc:
-                return desc[:80]
-            call_id = call.get("tool_use_id") or ""
-            if call_id:
-                return str(call_id)
-
-    if ctx.tool in _DISPATCH_TOOLS:
-        tool_input = ctx.raw.get("tool_input") or ctx.raw.get("toolInput") or {}
-        if isinstance(tool_input, dict):
-            desc = str(tool_input.get("description") or tool_input.get("prompt") or "").strip()
-            if desc:
-                return desc[:80]
-        call_id = (
-            ctx.raw.get("tool_call_id") or ctx.raw.get("id") or ctx.raw.get("tool_use_id") or ""
+    prompt = _prompt_text(ctx).strip()
+    match = re.search(r"<([a-zA-Z0-9_\-]+)([^>]*)>(.*?)(?:</\1>|$)", prompt, re.DOTALL)
+    if match:
+        attrs = match.group(2)
+        id_match = re.search(
+            r'\b(?:id|report_id|claim_id|verification_id|task_id)=["\']([^"\']+)["\']',
+            attrs,
         )
-        if call_id:
-            return str(call_id)
+        if id_match:
+            cid = id_match.group(1).strip()
+            if cid and re.match(r"^[a-zA-Z0-9_\-\.:]+$", cid):
+                return cid
 
-    return "claim-unnamed"
+        title_match = re.search(
+            r'\b(?:title|short_title|slug)=["\']([^"\']+)["\']',
+            attrs,
+        )
+        title = title_match.group(1).strip() if title_match else None
+        return build_id("claim", prompt, title=title)
+
+    if prompt:
+        return build_id("claim", prompt)
+    return build_id("claim", uuid.uuid4().hex)
 
 
 def _is_override_active() -> bool:
@@ -405,17 +379,11 @@ def _is_override_active() -> bool:
 
 
 def premise_check_arm(ctx: HookContext) -> Result | None:
-    """PostToolUse/UserPromptSubmit handler: arm the premise check."""
+    """UserPromptSubmit handler: arm the premise check on an incoming report."""
     if ctx.agent_type not in _GATED_AGENT_TYPES:
         return None
 
-    if ctx.event == "UserPromptSubmit":
-        if not is_peer_report(ctx):
-            return None
-    elif ctx.event == "PostToolUse":
-        if not is_foreground_dispatch(ctx):
-            return None
-    else:
+    if ctx.event != "UserPromptSubmit" or not is_peer_report(ctx):
         return None
 
     claim_id = _derive_claim_id(ctx)

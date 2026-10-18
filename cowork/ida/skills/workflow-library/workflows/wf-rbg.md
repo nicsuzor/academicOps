@@ -27,7 +27,7 @@ The invoking workflow provides:
 1. **Target artifact** -- the document, specification, design proposal, code diff, or decision under review.
 2. **Context and intent** -- commission objective, task acceptance criteria, or parent task context.
 3. **Rule sources** -- assembled in priority order:
-   - Framework axioms: `plugins/rbg/axioms/` (inviolable baseline).
+   - Framework axioms: the `rbg:axioms` skill (inviolable baseline).
    - Project-local rules: `$CWD/.agents/rules/`.
    - Account-scoped rules: read from active PKB rules.
 

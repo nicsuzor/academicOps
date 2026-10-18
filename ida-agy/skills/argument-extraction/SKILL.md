@@ -79,12 +79,16 @@ Ensure the output is strict, parser-valid Argdown:
 - Escape literal underscores inside statement text as `\_`, and never leave unescaped `[` `]` `<` `>` inside statement prose (escapes do not apply inside quoted `source` strings).
 - Run `npx -y @argdown/cli json --logParserErrors --throwExceptions <file>.argdown <outdir>`. On a syntax error, inspect the parser message, correct the syntax, and retry (at most 3 attempts; if still invalid, halt and report the error). Then read the JSON and confirm every argument appears with its premises and reaches the main conclusion, through a relation or through a conclusion title reused as a premise of another argument.
 
+### 7. Record in PKB
+
+When saving an extracted argument to a PKB note (via `pkb.create`), pass the source artefact's PKB-relative path as `source` (e.g. `<subproject>/<artefact>`), or set `parent` to a node whose file lives in that sub-project directory. Under the home-directory placement rule, this files the note in that sub-project directory.
+
 ## Output Template
 
 ```argdown
 ===
 title: Author, Work (Year), section analysed
-source: Edition, URI, or document identifier
+source: PKB-relative path, edition, URI, or document identifier
 granularity:
   level: meso
   floor: "Accept cited theoretical literature and summary empirical metrics as leaf nodes."

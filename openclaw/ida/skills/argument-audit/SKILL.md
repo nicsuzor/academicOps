@@ -94,3 +94,5 @@ Deliver two outputs:
    - **Option 1 - Re-scope / Qualify (Zero new data)**: Narrow the claim or qualifier so it matches what the existing method and data already prove.
    - **Option 2 - Bridge via Theory / Literature (Citation fix)**: Supply the unstated warrant or behavioural bridge from existing scholarship.
    - **Option 3 - Empirical / Methodological Check (Data fix)**: Run a specific cross-tab, hold a confounder constant, or audit a subsample to defeat an `_> #unanswered` rival explanation.
+
+When saving an audit to a PKB note (via `pkb.create`), pass the audited artefact's PKB-relative path as `source` (or parent to a node whose file lives in that sub-project directory) so the note lands in that sub-project directory under the home-directory placement rule.

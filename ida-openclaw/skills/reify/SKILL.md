@@ -26,7 +26,7 @@ Call `/hydrate` on the objective, or on the task if you were given an id.
 
 Call `/workflow-library` to weave together every workflow relevant to the task in context. The composed workflow draws on two kinds of component, and they enter the Instructions differently:
 
-- **Workflow templates** (`type: template`, including every `wf-*`): the worker cannot invoke them. Read each one and write its steps into the Instructions. Where a template names a stage or a class of workflow rather than a step, resolve it to the matching templates and write their steps in too.
+- **Workflow templates** (`type: template`, including every `wf-*`): the worker cannot invoke them. Read each one and interpret its stages into concise numbered imperative steps in the Instructions. Where a template names a stage or a class of workflow rather than a step, resolve it to the matching templates and write their steps in too. Do not copy narrative paragraphs, rationale, or explanatory prose from templates.
 - **Skills**: the worker invokes them. Write `invoke /<skill-name>` as the step and leave its contents where the skill is maintained.
 
 Then assemble the steps:
@@ -63,7 +63,7 @@ Then assemble the steps:
 
 ## Instructions
 
-[ Each step the worker must follow, drawn only from the composed workflow templates. The workflow templates are the only source of truth for instructions, obligations, and required processes. Add none of your own, because the workflow is where that judgement is maintained. The last step is the finish template's finish: deliver, record the evidence, release the task, and exit. ]
+[ Each step the worker must follow, drawn only from the composed workflow templates. The workflow templates are the only source of truth for instructions, obligations, and required processes. Interpret each stage into a concise numbered imperative step for this task; add none of your own, and omit narrative prose, rationale, and method details. The last step is the finish template's finish: deliver, record the evidence, release the task, and exit. ]
 
 ## Output
 
@@ -99,7 +99,8 @@ Where the project finish template calls for QA review:
 - Never quote or record the user's words verbatim in Goal, Context, or instructions. Make sense of asks in context, link them to prior context, recompose into a clear logical structure, and cite message ids.
 - State the Goal and each criterion over the whole class the request covers: "the user's messages", not a named person's or today's channels and formats. Instances the request names are cases to test, not the boundary of the work. When asked what broke a mechanism (such as authentication, a token, or a service), compose the debugging workflow and preserve the full failure question in Acceptance so the run examines why the mechanism or token stopped working across its lifecycle rather than narrowing to a single startup symptom.
 - Every heading is a prompt for you to fill, and there is no slot for restrictions or exclusions: say what has to be done, not what shouldn't.
-- Keep each task under 150 words. Include only what the worker cannot find for itself.
+- Keep each task strictly concise: 50–150 words for atomic tasks, up to 300 words for multi-stage composite workflows. Include only what the worker cannot find for itself.
+- Interpret workflow template stages into concise numbered imperative steps; never paste template narrative, rationale, or explanatory background.
 - Assume the worker could run anywhere; never reference local paths, tools, or conventions.
 - Leave out methods, command scripts, tool names, runtime hints, notes on the worker's limits, summaries of linked notes (point to them instead), provenance, changelogs, session narratives, counts, SHAs and history.
 - Change an existing task only for a defect you can point to in its text; otherwise leave it as written.

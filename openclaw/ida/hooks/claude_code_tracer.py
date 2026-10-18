@@ -332,97 +332,32 @@ def is_valid_task_id(task_id: str) -> bool:
     return False
 
 
-def resolve_agent_name(
-    data: dict | None = None,
-    state: dict | None = None,
-    cwd: str | None = None,
-) -> str:
-    """Resolve the agent name for this session.
-
-    Priority:
-    1. Hook payload agent / agent_name / agent_type / subagent_type
-    2. Cached session state agent_name
-    3. CLAUDE_AGENT_NAME, AOPS_AGENT_NAME, AGENT_NAME env vars
-    4. .claude/settings.json or settings.local.json in cwd (or parent dirs up to .git boundary)
-    5. Directory name heuristics (e.g. ida -> ida, dispatch -> sara)
-    6. Fallback to plugin agent id ('ida')
-    """
+def resolve_client_agent_name(data: dict | None = None) -> str:
+    """Extract agent name reported in client hook payload, if present."""
     if data and isinstance(data, dict):
-        for k in ("agent", "agent_name", "subagent_type"):
+        for k in ("agent_name", "agent", "agent_type", "subagent_type", "role"):
             val = str(data.get(k) or "").strip()
             if val:
-                return val
-        if data.get("agent_type"):
-            val = str(data["agent_type"]).strip()
-            if ":" in val:
-                val = val.split(":", 1)[1]
-            if val:
-                return val
+                if ":" in val:
+                    val = val.split(":", 1)[1].strip()
+                if val:
+                    return val
+    return ""
 
-    if state and isinstance(state, dict):
-        cached = str(state.get("agent_name") or "").strip()
-        if cached:
-            return cached
 
-    for env_var in ("CLAUDE_AGENT_NAME", "AOPS_AGENT_NAME", "AGENT_NAME"):
-        env_val = os.environ.get(env_var, "").strip()
-        if env_val:
-            return env_val
+def resolve_agent_name(
+    data: dict | None = None,
+    *args: Any,
+    **kwargs: Any,
+) -> str:
+    """Resolve agent name: client-reported payload field(s), then AOPS_AGENT_NAME env var, else empty string.
 
-    resolved_cwd = cwd or resolve_cwd(data, state)
-    if resolved_cwd:
-        curr = Path(resolved_cwd)
-        # Check current dir .claude settings
-        for settings_name in ("settings.json", "settings.local.json"):
-            s_file = curr / ".claude" / settings_name
-            if s_file.is_file():
-                try:
-                    s_data = json.loads(s_file.read_text(encoding="utf-8"))
-                    agent_val = str(
-                        s_data.get("agent")
-                        or s_data.get("agent_name")
-                        or s_data.get("agent_type")
-                        or ""
-                    ).strip()
-                    if agent_val:
-                        if ":" in agent_val:
-                            agent_val = agent_val.split(":", 1)[1]
-                        return agent_val
-                except Exception:
-                    pass
-
-        # If current dir had a .claude folder, do not climb up to parent .claude folders
-        has_local_claude = (curr / ".claude").is_dir()
-        if not has_local_claude:
-            for p in curr.parents:
-                for settings_name in ("settings.json", "settings.local.json"):
-                    s_file = p / ".claude" / settings_name
-                    if s_file.is_file():
-                        try:
-                            s_data = json.loads(s_file.read_text(encoding="utf-8"))
-                            agent_val = str(
-                                s_data.get("agent")
-                                or s_data.get("agent_name")
-                                or s_data.get("agent_type")
-                                or ""
-                            ).strip()
-                            if agent_val:
-                                if ":" in agent_val:
-                                    agent_val = agent_val.split(":", 1)[1]
-                                return agent_val
-                        except Exception:
-                            pass
-                if (p / ".git").exists():
-                    break
-
-        if curr.name in ("dispatch", "sara") or "dispatch" in curr.parts or "sara" in curr.parts:
-            return "sara"
-        elif curr.name == "ida" or "ida" in curr.parts:
-            return "ida"
-        elif curr.name == "james" or "james" in curr.parts:
-            return "james"
-
-    return "ida"
+    No settings-file scan, directory heuristics, or default fallback.
+    """
+    client_name = resolve_client_agent_name(data)
+    if client_name:
+        return client_name
+    return os.environ.get("AOPS_AGENT_NAME", "").strip()
 
 
 def discover_config(data: dict | None = None) -> dict | None:
@@ -478,7 +413,7 @@ def discover_config(data: dict | None = None) -> dict | None:
         break
 
     cwd = resolve_cwd(data)
-    agent_name = resolve_agent_name(data, cwd=cwd)
+    agent_name = resolve_agent_name(data)
 
     cfg = {
         "api_key": api_key,
@@ -1751,12 +1686,7 @@ def _complete_turn(
     username = state.get("username", "unknown")
     phoenix_session_id, agent_id, parent_session_id = _resolve_agent_and_parent_ids(state)
     cwd = state.get("cwd") or resolve_cwd(None, state)
-    agent_name = (
-        state.get("agent_name")
-        or os.environ.get("CLAUDE_AGENT_NAME")
-        or os.environ.get("AOPS_AGENT_NAME")
-        or resolve_agent_name(None, state, cwd)
-    )
+    agent_name = state.get("agent_name") or resolve_agent_name()
     root_attrs: dict[str, Any] = {
         "openinference.span.kind": "CHAIN",
         "session.id": phoenix_session_id,
@@ -1966,9 +1896,9 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
     resolved_cwd = resolve_cwd(data, state)
     if resolved_cwd:
         state["cwd"] = resolved_cwd
-    resolved_agent = resolve_agent_name(data, state, state.get("cwd"))
-    if resolved_agent:
-        state["agent_name"] = resolved_agent
+    client_agent = resolve_client_agent_name(data)
+    if client_agent:
+        state["agent_name"] = client_agent
 
     # Complete the previous turn's trace if one is in progress (unclosed turn fallback).
     if state.get("current_trace"):
@@ -2163,9 +2093,9 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
     resolved_cwd = resolve_cwd(data, state)
     if resolved_cwd and not state.get("cwd"):
         state["cwd"] = resolved_cwd
-    resolved_agent = resolve_agent_name(data, state, state.get("cwd"))
-    if resolved_agent and not state.get("agent_name"):
-        state["agent_name"] = resolved_agent
+    client_agent = resolve_client_agent_name(data)
+    if client_agent and not state.get("agent_name"):
+        state["agent_name"] = client_agent
 
     # Fallback: create a trace if UserPromptSubmit has not set one yet.
     if not state.get("current_trace"):
