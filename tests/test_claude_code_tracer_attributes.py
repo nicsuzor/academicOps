@@ -830,3 +830,110 @@ def test_resolve_cwd_from_agy_workspace_paths(tmp_path):
 
     data_snake = {"workspace_paths": [ws]}
     assert claude_code_tracer.resolve_cwd(data_snake) == str(Path(ws).resolve())
+
+
+def _run_claude_turn(tmp_path, env):
+    transcript = tmp_path / "transcript.jsonl"
+    transcript.write_text(json.dumps({"type": "human", "text": "hello"}) + "\n", encoding="utf-8")
+    state_store: dict[str, dict] = {}
+    exported_records: list[dict] = []
+    exported_usernames: list = []
+    session_id = "session-claude-user"
+    config = {"endpoint": "localhost:4317"}
+
+    with (
+        patch("claude_code_tracer._load_state", side_effect=lambda sid: state_store.get(sid, {})),
+        patch(
+            "claude_code_tracer._save_state",
+            side_effect=lambda sid, st: state_store.update({sid: st}),
+        ),
+        patch(
+            "claude_code_tracer._delete_state", side_effect=lambda sid: state_store.pop(sid, None)
+        ),
+        patch(
+            "claude_code_tracer._build_and_export_spans",
+            side_effect=lambda config, session_id, username, span_records, **kwargs: (
+                exported_records.extend(span_records),
+                exported_usernames.append(username),
+            ),
+        ),
+        patch("claude_code_tracer._session_lock"),
+        patch.dict("os.environ", env, clear=True),
+    ):
+        claude_code_tracer.handle_user_prompt_submit(
+            {"session_id": session_id, "prompt": "hello", "transcript_path": str(transcript)},
+            config,
+        )
+        claude_code_tracer.handle_stop(
+            {
+                "session_id": session_id,
+                "transcript_path": str(transcript),
+                "last_assistant_message": "done",
+            },
+            config,
+        )
+    return exported_records, exported_usernames
+
+
+def test_claude_tracer_omits_user_id_without_username(tmp_path):
+    # Cloud containers set neither USER nor USERNAME; no "unknown" placeholder.
+    records, usernames = _run_claude_turn(tmp_path, {})
+    assert records
+    assert "user.id" not in records[0]["attributes"]
+    assert all(not u for u in usernames)
+
+
+def test_claude_tracer_omits_user_id_for_empty_user(tmp_path):
+    records, usernames = _run_claude_turn(tmp_path, {"USER": ""})
+    assert "user.id" not in records[0]["attributes"]
+    assert all(not u for u in usernames)
+
+
+def test_claude_tracer_sets_user_id_from_env(tmp_path):
+    records, usernames = _run_claude_turn(tmp_path, {"USER": "nic"})
+    assert records[0]["attributes"].get("user.id") == "nic"
+    assert usernames and all(u == "nic" for u in usernames)
+
+
+def test_agy_tracer_omits_user_id_without_username(tmp_path):
+    transcript = tmp_path / "transcript.jsonl"
+    entries = [
+        {"step_index": 0, "type": "USER_INPUT", "content": "Explain OTel"},
+        {
+            "step_index": 1,
+            "source": "MODEL",
+            "type": "PLANNER_RESPONSE",
+            "status": "DONE",
+            "content": "Done",
+        },
+    ]
+    transcript.write_text("\n".join(json.dumps(e) for e in entries) + "\n", encoding="utf-8")
+    state_store: dict[str, dict] = {}
+    exported_usernames: list = []
+    session_id = "session-agy-user"
+    config = {"endpoint": "localhost:4317"}
+
+    with (
+        patch("agy_tracer._load_state", side_effect=lambda sid: state_store.get(sid, {})),
+        patch("agy_tracer._save_state", side_effect=lambda sid, st: state_store.update({sid: st})),
+        patch("agy_tracer._delete_state", side_effect=lambda sid: state_store.pop(sid, None)),
+        patch(
+            "agy_tracer._build_and_export_spans",
+            side_effect=lambda config, session_id, username, span_records, **kwargs: (
+                exported_usernames.append(username)
+            ),
+        ),
+        patch("agy_tracer._session_lock"),
+        patch.dict("os.environ", {}, clear=True),
+    ):
+        agy_tracer.handle_pre_invocation(
+            {"conversationId": session_id, "invocationNum": 0, "transcriptPath": str(transcript)},
+            config,
+        )
+        agy_tracer.handle_stop(
+            {"conversationId": session_id, "transcriptPath": str(transcript)},
+            config,
+        )
+
+    assert exported_usernames
+    assert all(not u for u in exported_usernames)
