@@ -27,7 +27,7 @@ Before checking rules one by one, and from the request alone, before reading the
 
 The axioms are written as rules for an agent's own conduct. Apply each one to the artifact as well: the artifact breaks an axiom when what it builds, configures or instructs would, once running, do what the axiom forbids an agent to do.
 
-1. For each mechanism the artifact adds (script, job, rule, template step), state in one line what it decides once running. Name the decision by its consequence, what then happens and to what, not by the value or label it outputs, and never by the artifact's own name or description for it.
+1. For each mechanism the artifact adds (script, job, rule, template step), state in one line what it decides once running. Name the decision by its consequence, what then happens and to what, not by the value or label it outputs, and never by the artifact's own name or description for it. Then say whether making that decision well needs judgment: an understanding of what its inputs mean or do, not only their form.
 2. Test each of those decisions against every axiom. Read an axiom by its principle: its title and examples illustrate it and never narrow it. A mechanism is not cleared by the technique it uses or the kind of input it reads.
 
 Record both steps in the Mechanisms section of your output, before you decide the verdict.
@@ -50,7 +50,7 @@ A Required Change names the failure's likelihood and consequence, and costs less
 
 ### Mechanisms
 
-- **[mechanism]** ([pinpoint reference]): decides [the decision, named by its consequence once running]. Breaks: [axiom slug: quoted words] | none
+- **[mechanism]** ([pinpoint reference]): decides [the decision, named by its consequence once running]. Needs judgment: [yes | no], because [reason]. Breaks: [axiom slug: quoted words] | none
 
 ### Required Changes
 
