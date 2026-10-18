@@ -10,7 +10,7 @@ resolution-markers = [
 
 [[package]]
 name = "academicops"
-version = "0.10.21"
+version = "0.10.22"
 source = { editable = "." }
 dependencies = [
     { name = "claude-code-log" },
