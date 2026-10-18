@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.10.22](https://github.com/nicsuzor/academicOps/compare/v0.10.21...v0.10.22) (2026-10-18)
+
+
+### Features
+
+* **pauli:** state agent-price rule in pauli agent definition ([#2898](https://github.com/nicsuzor/academicOps/issues/2898)) ([e1ac324](https://github.com/nicsuzor/academicOps/commit/e1ac32454ca75543bb83a58380f8cddfac66ff6d))
+
+
+### Bug Fixes
+
+* **ci:** remove duplicate function definitions in claude_code_tracer and format CHANGELOG.md ([3ccdef5](https://github.com/nicsuzor/academicOps/commit/3ccdef5f96047fa138b4667a055b40a212b4597e))
+* **ida-telegram:** 404 on stat errors, disable Bun dev error pages, follow symlinks ([1e3acd7](https://github.com/nicsuzor/academicOps/commit/1e3acd73a214d8b081762bf1f21c9e2a5e22fb66))
+* **ida-telegram:** confine Mini App static files to app dir ([190c5f3](https://github.com/nicsuzor/academicOps/commit/190c5f3940781931927c978784d064a8ea457fa0))
+* **ida-telegram:** confine Mini App static files to app dir ([b33bc02](https://github.com/nicsuzor/academicOps/commit/b33bc020ae98567317e3103e8e464cdd07343726))
+
+
+### Code Refactoring
+
+* **mcp:** rename PKB_MCP_TOKEN and POLECAT_MCP_TOKEN to DISPATCHER_MCP_TOKEN and WORKER_MCP_TOKEN ([1170f61](https://github.com/nicsuzor/academicOps/commit/1170f61c9f6e9cfc290df67623c6ba8c4ce0f277))
+
+
+### Documentation
+
+* **workflows:** drop legacy focus_score from wf-reconcile must-not list ([#2978](https://github.com/nicsuzor/academicOps/issues/2978)) ([f062a9e](https://github.com/nicsuzor/academicOps/commit/f062a9e8ecde8c12856473c7483285b80dc5364f))
+
 ## [0.10.21](https://github.com/nicsuzor/academicOps/compare/v0.10.20...v0.10.21) (2026-10-17)
 
 ### Bug Fixes
