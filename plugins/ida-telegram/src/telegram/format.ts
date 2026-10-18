@@ -22,31 +22,26 @@ export interface FormattedMessage {
 }
 
 export function formatMarkdownToEntities(markdown: string): FormattedMessage {
-  const entities: TelegramEntity[] = [];
+  interface QuoteBlock {
+    type: "blockquote" | "expandable_blockquote";
+    startInOut: number;
+    endInOut: number;
+  }
+
+  const quoteBlocks: QuoteBlock[] = [];
+  const lines = markdown.split("\n");
+  let currentQuoteType: "blockquote" | "expandable_blockquote" | null = null;
+  let quoteStartOffset = 0;
   let out = "";
 
-  // Process line by line to handle blockquotes first
-  const lines = markdown.split("\n");
-  let inStdQuote = false;
-  let inExpQuote = false;
-  let quoteStartOffset = 0;
-
   function closeQuote() {
-    if (inStdQuote) {
-      entities.push({
-        type: "blockquote",
-        offset: quoteStartOffset,
-        length: out.length - quoteStartOffset,
+    if (currentQuoteType !== null) {
+      quoteBlocks.push({
+        type: currentQuoteType,
+        startInOut: quoteStartOffset,
+        endInOut: out.length,
       });
-      inStdQuote = false;
-    }
-    if (inExpQuote) {
-      entities.push({
-        type: "expandable_blockquote",
-        offset: quoteStartOffset,
-        length: out.length - quoteStartOffset,
-      });
-      inExpQuote = false;
+      currentQuoteType = null;
     }
   }
 
@@ -55,38 +50,36 @@ export function formatMarkdownToEntities(markdown: string): FormattedMessage {
     const sep = i > 0 ? "\n" : "";
 
     if (rawLine.startsWith(">!")) {
-      if (!inExpQuote) {
+      if (currentQuoteType !== "expandable_blockquote") {
         closeQuote();
-        inExpQuote = true;
+        currentQuoteType = "expandable_blockquote";
         quoteStartOffset = out.length + sep.length;
       }
-      const lineContent = rawLine.substring(2).trimStart();
+      const lineContent = rawLine.replace(/^>!\s?/, "");
       out += sep + lineContent;
-      continue;
     } else if (rawLine.startsWith(">")) {
-      if (!inStdQuote) {
+      if (currentQuoteType !== "blockquote") {
         closeQuote();
-        inStdQuote = true;
+        currentQuoteType = "blockquote";
         quoteStartOffset = out.length + sep.length;
       }
-      const lineContent = rawLine.substring(1).trimStart();
+      const lineContent = rawLine.replace(/^>\s?/, "");
       out += sep + lineContent;
-      continue;
     } else {
-      if (inStdQuote || inExpQuote) {
-        closeQuote();
-      }
+      closeQuote();
       out += sep + rawLine;
     }
   }
   closeQuote();
 
-  // Now scan inline markup in `out`
-  // We handle ```pre```, `code`, **bold**, *italic*, [link](url)
+  const outToClean = new Array(out.length + 1);
   let cleanText = "";
   let idx = 0;
+  const entities: TelegramEntity[] = [];
 
   while (idx < out.length) {
+    outToClean[idx] = cleanText.length;
+
     // 1. Triple backticks (pre)
     if (out.startsWith("```", idx)) {
       const endPre = out.indexOf("```", idx + 3);
@@ -107,7 +100,12 @@ export function formatMarkdownToEntities(markdown: string): FormattedMessage {
           length: code.length,
           language: lang || undefined,
         });
-        idx = endPre + 3;
+        const nextIdx = endPre + 3;
+        for (let k = idx; k < nextIdx; k++) {
+          outToClean[k] = startOffset;
+        }
+        outToClean[nextIdx] = cleanText.length;
+        idx = nextIdx;
         continue;
       }
     }
@@ -124,7 +122,12 @@ export function formatMarkdownToEntities(markdown: string): FormattedMessage {
           offset: startOffset,
           length: code.length,
         });
-        idx = endCode + 1;
+        const nextIdx = endCode + 1;
+        for (let k = idx; k < nextIdx; k++) {
+          outToClean[k] = startOffset;
+        }
+        outToClean[nextIdx] = cleanText.length;
+        idx = nextIdx;
         continue;
       }
     }
@@ -141,7 +144,12 @@ export function formatMarkdownToEntities(markdown: string): FormattedMessage {
           offset: startOffset,
           length: boldText.length,
         });
-        idx = endBold + 2;
+        const nextIdx = endBold + 2;
+        for (let k = idx; k < nextIdx; k++) {
+          outToClean[k] = startOffset;
+        }
+        outToClean[nextIdx] = cleanText.length;
+        idx = nextIdx;
         continue;
       }
     }
@@ -162,7 +170,12 @@ export function formatMarkdownToEntities(markdown: string): FormattedMessage {
             length: linkText.length,
             url: linkUrl,
           });
-          idx = closeParen + 1;
+          const nextIdx = closeParen + 1;
+          for (let k = idx; k < nextIdx; k++) {
+            outToClean[k] = startOffset;
+          }
+          outToClean[nextIdx] = cleanText.length;
+          idx = nextIdx;
           continue;
         }
       }
@@ -180,54 +193,40 @@ export function formatMarkdownToEntities(markdown: string): FormattedMessage {
           offset: startOffset,
           length: italicText.length,
         });
-        idx = endItalic + 1;
+        const nextIdx = endItalic + 1;
+        for (let k = idx; k < nextIdx; k++) {
+          outToClean[k] = startOffset;
+        }
+        outToClean[nextIdx] = cleanText.length;
+        idx = nextIdx;
         continue;
       }
     }
 
+    outToClean[idx] = cleanText.length;
     cleanText += out[idx];
     idx++;
+    outToClean[idx] = cleanText.length;
   }
+  outToClean[out.length] = cleanText.length;
 
-  // Shift blockquote entity lengths based on stripped markdown characters in quotes
-  // Simple re-scan for quotes in cleanText
-  const finalEntities: TelegramEntity[] = [];
-  const linesClean = cleanText.split("\n");
-  let runningOffset = 0;
-
-  for (let i = 0; i < lines.length && i < linesClean.length; i++) {
-    const rawLine = lines[i];
-    const cleanLine = linesClean[i];
-    const lineLen = cleanLine.length + (i < linesClean.length - 1 ? 1 : 0);
-
-    if (rawLine.startsWith(">!")) {
-      finalEntities.push({
-        type: "expandable_blockquote",
-        offset: runningOffset,
-        length: cleanLine.length,
-      });
-    } else if (rawLine.startsWith(">")) {
-      finalEntities.push({
-        type: "blockquote",
-        offset: runningOffset,
-        length: cleanLine.length,
+  for (const block of quoteBlocks) {
+    const startOffset = outToClean[block.startInOut];
+    const endOffset = outToClean[block.endInOut];
+    if (endOffset > startOffset) {
+      entities.push({
+        type: block.type,
+        offset: startOffset,
+        length: endOffset - startOffset,
       });
     }
-    runningOffset += lineLen;
   }
 
-  // Merge non-quote entities with quote entities
-  for (const ent of entities) {
-    if (ent.type !== "blockquote" && ent.type !== "expandable_blockquote") {
-      finalEntities.push(ent);
-    }
-  }
-
-  finalEntities.sort((a, b) => a.offset - b.offset);
+  entities.sort((a, b) => a.offset - b.offset || b.length - a.length);
 
   return {
     plainText: cleanText,
-    entities: finalEntities,
+    entities,
   };
 }
 
