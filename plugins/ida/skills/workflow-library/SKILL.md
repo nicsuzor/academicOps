@@ -5,7 +5,7 @@ description: List, read, add, edit, and retire workflow templates across project
 
 # Workflow Library
 
-Manage composable workflow templates (`type: template`) across three resolution tiers. Every `pkb.<op>(...)` call below runs through the `services` MCP server's code-mode interface (`listToolFiles` → `readToolFile("servers/pkb.pyi")` → `executeToolCode`), not a directly-invocable flat tool.
+Manage composable workflow templates (`type: template`) across three resolution tiers. Every PKB call below runs through the `services` MCP server's code-mode interface (`portal_codemode_execute` calling `codemode.<pkb_op>(...)`; in agy via `call_mcp_tool` with `ServerName: "services"`, in Claude Code via `mcp__services__portal_codemode_execute`), not a directly-invocable flat tool.
 
 ## Tiers and Resolution
 
@@ -13,8 +13,8 @@ Resolution order is **Project > PKB > Universal**. Higher tiers shadow lower tie
 
 | Tier | Location | Enumeration |
 | - | - | - |
-| 1. Project | PKB templates whose `project` is the task's project | `pkb.list_tasks(type="template", project=<project>, include_done=True)` |
-| 2. PKB | PKB templates with no `project` | `pkb.list_tasks(type="template", include_done=True)`, keep `project: null` |
+| 1. Project | PKB templates whose `project` is the task's project | `codemode.pkb_list_tasks({ type: "template", project: "<project>", include_done: true })` |
+| 2. PKB | PKB templates with no `project` | `codemode.pkb_list_tasks({ type: "template", include_done: true })`, keep `project: null` |
 | 3. Universal | `${CLAUDE_SKILL_DIR}/workflows/` | `Glob ${CLAUDE_SKILL_DIR}/workflows/*.md` |
 
 The project is the `project` field of the task being composed for, or the project the caller names. With neither, the project tier is empty. Templates scoped to any other project are out of scope.
@@ -56,7 +56,7 @@ Resolve the template slug across tiers in precedence order. Output the winning c
 Update existing templates in place.
 
 - **Universal**: Edit the file directly.
-- **PKB**: Pass only the markdown body below the closing `---` to `pkb.update_body` to prevent frontmatter duplication.
+- **PKB**: Pass only the markdown body below the closing `---` to `codemode.pkb_update_body` to prevent frontmatter duplication.
 
 ### preview
 
@@ -69,8 +69,8 @@ Do not ad lib extra requirements or guess at scope; pass any ambiguity in the pr
 
 ### retire
 
-1. Check for tasks governing retirement (`pkb.search`). Halt if unfulfilled dependencies exist.
-2. Delete the artifact (`rm` for universal files, `pkb.delete` for PKB nodes).
+1. Check for tasks governing retirement (`codemode.pkb_search`). Halt if unfulfilled dependencies exist.
+2. Delete the artifact (`rm` for universal files, `codemode.pkb_delete` for PKB nodes).
 3. Name the superseding workflow in the release message or commit.
 
 A template carries only what a composing agent needs to select it and to know the step is finished, the same sufficient-and-no-more standard `/reify` composes to. Inventing exclusions, contraindications, or gates the work does not call for overshoots it. Components sit on one flat spine, not sorted into types; a composite names its stages by contract, which is the level `/decompose` reads, and leaf templates carry the steps, which is the level `/reify` reads. A template stating an obligation that blocks acceptance rather than a process that proceeds conventionally carries a `wf-` prefix, no frontmatter field needed to say so.
