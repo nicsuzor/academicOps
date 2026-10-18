@@ -5,7 +5,7 @@ description: Author or verify an agent handback report argument in standardised 
 
 # Premise Check
 
-Author or verify report arguments using the standardised **Chained Toulmin Argdown** contract so every handback receipt links observed facts to `[Outcome]` through explicit warrants, bounded scopes, and dynamic stopping rules. Argdown syntax and parser validation: `ida:argument-extraction`.
+Author or verify report arguments so every handback receipt links observed facts to `[Outcome]` through explicit warrants, bounded scopes, and stopping rules. Read `ida:argdown-toulmin` first: it sets the grammar, basis vocabulary, observed-value rule, tags, and parser validation.
 
 ## When to Use
 
@@ -14,9 +14,9 @@ Author or verify report arguments using the standardised **Chained Toulmin Argdo
 - Recording a formal `PASS`, `REVISE`, or `FAIL` verdict on a report claim
 - Messaging peers: a message carries something the receiver acts on or is not sent; a message that only confirms receipt is not sent
 
-## Standardised Chained Toulmin Shape
+## Report Shape
 
-End every evidence-backed report with a parser-valid Argdown block concluding `[Outcome]` (the direct answer to the incoming ask):
+End every evidence-backed report with a parser-valid Argdown block concluding `[Outcome]`, the direct answer to the incoming ask:
 
 ```argdown
 ===
@@ -41,29 +41,19 @@ model:
 (3) [Outcome]
 ```
 
-## Authoring Rules
+## Matching Basis to Claim Type
 
-- **No flat premise lists (2-to-3 Premise Cap)**: Never dump 4 or more premises above a single `-- Warrant --` line. Group co-dependent facts (at most 2 to 3 premises) above the specific `-- Warrant --` that licenses their intermediate conclusion, then chain `(3) [Intermediate State]` into the next `-- Warrant --` bar to reach `[Outcome]`.
-- **Metadata schema (`{basis, pointer, source?, reason?}`)**:
-  - `basis`: `"observed"`, `"exhaustively-searched"`, `"attempted-and-failed"`, `"method-bounded"`, `"reported-by"`, `"theory"`, `"stated"`, or `"assumed"`.
-  - `pointer`: Verbatim locator (`owner/repo@sha:path:line`, span/node ID, URL, citation, or exact shell query).
-  - `reason`: For `basis: "assumed"` only, the logical gap the premise or warrant bridges; an assumed item carries no `pointer` or `source`.
-  - Diagnostic tags when flagging issues, written before the `{metadata}`: `#format`, `#missing`, `#scope-drift`, `#method-gap`, `#conflict`, `#unanswered`.
-- **Observed-value rule**: Premises with `basis: "observed"` or `"reported-by"` must quote the deciding field's observed value or verbatim text (`status: MERGED`, `p = 0.004`, `66% unavailable`) inline or in `source` alongside the `pointer`. A bare pointer proves existence only, not content.
-- **Warrants live in the `--` inference bar**: Always write the licensing rule, mechanism, or policy inside `-- Warrant name {uses: [1, 2], basis: "...", pointer: "..."} --`, never as a numbered `#warrant` premise.
-- **Match basis to claim type**:
-  - _Rankings / comparisons_ require explicit comparison premises covering the alternatives.
-  - _Negatives / absences / capabilities_ require `basis: "exhaustively-searched"`, `"attempted-and-failed"`, or `"method-bounded"` stating the exact search boundary or instrument limit.
-  - _Causal / universal claims_ require an explicit mechanism in the `-- Warrant --` bar and a conclusion scope no wider than the premises' scope.
-- **Actionable peer messages**: A message carries something the receiver acts on or is not sent; a message that only confirms receipt is not sent.
+- _Rankings / comparisons_ require explicit comparison premises covering the alternatives.
+- _Negatives / absences / capabilities_ require `basis: "exhaustively-searched"`, `"attempted-and-failed"`, or `"method-bounded"` stating the exact search boundary or instrument limit.
+- _Causal / universal claims_ require an explicit mechanism in the bar and a conclusion scope no wider than the premises' scope.
 
 ## Formal Check and Granularity Stopping Rules
 
 When verifying an incoming report, accept `observed` and `exhaustively-searched` leaf premises with valid pointers and observed values as given (do not re-open files or re-run searches):
 
-1. **Format Kickback (`REVISE` `#format`)**: If a report lacks a parser-valid Chained Toulmin block concluding `[Outcome]`, or dumps 4+ unchained premises into a flat list without connecting warrants, return `REVISE` (`#format`) immediately before checking substance.
-2. **Scope and Middle-Term Check (`REVISE` `#scope-drift`)**: Check that every noun, population, and quantifier in `(3) [Outcome]` is licensed by `(1)-(2)` and the `-- Warrant --`. If the premises prove a local or sample fact (`"in module A"`) but the conclusion states a global claim (`"across the repo"`), return `REVISE` (`#scope-drift`).
-3. **The Contrast Test (`REVISE` `#missing` or `#unanswered`)**: For each load-bearing inference bar, name the nearest plausible world state or rival explanation that would change the conclusion or next action. If the cited evidence in `(1)-(2)` would look identical in that rival state, return `REVISE` (`#missing`), naming the exact step and the unexcluded rival state.
+1. **Format Kickback (`REVISE` `#format`)**: If a report lacks a parser-valid block concluding `[Outcome]`, or breaks the standard's premise cap or warrant placement, return `REVISE` (`#format`) before checking substance.
+2. **Scope Check (`REVISE` `#scope-drift`)**: Run Check A (Term and Scope Alignment) as `ida:argument-audit` defines it on `[Outcome]` and each load-bearing bar.
+3. **Contrast Test (`REVISE` `#unanswered`)**: Run Check D (The Contrast Test) as `ida:argument-audit` defines it on each load-bearing bar, and name the exact step and the unexcluded rival state.
 4. **Relayed Directions Check**: When a premise cites `'direction...' (derived from: ask summary [source:id])`, verify that the direction follows from the cited ask and flag any invented constraints.
 5. **Granularity Floor and Proportionality Stopping Rule**: Hold strictly at `granularity.floor`. Do not demand sub-arguments for obvious definitions, authority-backed rules (`basis: "theory"` or `"reported-by"`), or low-stakes warrants where flipping the warrant would not alter `[Outcome]`. Recurse or kick back only when a material `#missing`, `#scope-drift`, `#conflict`, or `_>` undercut changes the conclusion. Synthesise accepted outcomes upward as `{basis: "reported-by", pointer: "<verdict-id>"}`, preserving pinpoint pointers for material facts.
 

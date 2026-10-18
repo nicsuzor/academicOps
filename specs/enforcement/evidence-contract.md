@@ -63,5 +63,5 @@ As the user, I want my directions to reach a worker as I gave them, so that an a
 
 - **Load-bearing claim:** a claim the reader would act on, or that a conclusion rests on.
 - **Pointer:** an identifier a reader can open: a commit and line, a span id, a PR or task id, a resolving URL. A pinpoint is best. A command counts as evidence only when its output is the evidence, and then the output is quoted.
-- **Basis:** how the writer knows the claim. The vocabulary is the skill's.
-- **Report format:** the report shape, basis vocabulary and verdict tokens are defined once, in the `premise-check` skill. A task handback carries its receipts in that shape.
+- **Basis:** how the writer knows the claim. The vocabulary is defined once, in the `argdown-toulmin` skill.
+- **Report format:** the report shape and verdict tokens are defined once, in the `premise-check` skill, which writes to the `argdown-toulmin` grammar. A task handback carries its receipts in that shape.

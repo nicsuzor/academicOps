@@ -5,7 +5,7 @@ description: Formally audit and stress-test a scholarly, legal, policy, or quali
 
 # Argument Audit
 
-Evaluate whether a scholarly, qualitative, mixed-methods, or policy argument is formally made out by stress-testing its **Chained Toulmin** structure against five diagnostic checks: **Term & Scope Alignment**, **Method-to-Construct Validity**, **Warrant & Backing Fit**, **The Contrast Test (Rival Explanations)**, and **Macro-Remedy Coherence**.
+Evaluate whether a scholarly, qualitative, mixed-methods, or policy argument is formally made out by stress-testing its **Chained Toulmin** structure against five diagnostic checks: **Term & Scope Alignment**, **Method-to-Construct Validity**, **Warrant & Backing Fit**, **The Contrast Test (Rival Explanations)**, and **Macro-Remedy Coherence**. Read `ida:argdown-toulmin` first: it sets the grammar, metadata, tags, granularity levels, and parser validation.
 
 ## When to Use
 
@@ -18,22 +18,11 @@ Evaluate whether a scholarly, qualitative, mixed-methods, or policy argument is 
 
 ### 1. Set the Audit Scope and Granularity Floor
 
-Before auditing, lock the abstraction level so the evaluation stays targeted and does not recurse infinitely:
-
-- **`macro` (Whole Thesis / Book Architecture)**: Audit how part-level and chapter-level conclusions pull up into `[Core Thesis]`, and whether policy/reform chapters match diagnostic chapters. Floor: treat chapter-level empirical findings as given unless internally contradictory.
-- **`meso` (Chapter / Paper Audit - Default)**: Audit how section claims, methods, primary evidence, and theoretical warrants combine to establish the chapter/paper thesis. Floor: accept peer-reviewed citations (`basis: "theory"`) and raw descriptive statistics (`basis: "observed"`) as leaf nodes unless their scope mismatches the warrant.
-- **`micro` (Hinge Inference / Research Design Audit)**: Deep-dive into 1 to 3 load-bearing inferences (for example, RQ -> Method -> Empirical Finding -> Causal Claim). Floor: raw observations and verbatim quotes.
+Before auditing, set the `level` and `floor` so the evaluation stays targeted and does not recurse infinitely. At `macro`, also audit whether policy or reform chapters match the diagnostic chapters. Treat leaves at the floor as given unless they are internally contradictory or their scope mismatches the warrant they feed.
 
 ### 2. Reconstruct or Normalise into Chained Toulmin
 
-If the input is prose or a flat tree (such as `+` bullet hierarchies that mix methods, data, and theory as sibling nodes), first normalise the target claims into **Chained Toulmin** blocks:
-
-- Put only **observations, sample bounds, or prior sub-conclusions** in numbered premises `(1)`, `(2)` (max 2 to 3 per inference bar).
-- Put the **theoretical principle, methodological rule, or causal mechanism** in the inference bar: `-- Warrant: <rule> {uses: [1, 2], basis: "...", pointer: "..."} --`.
-- Separate epistemic layers into stacked inference bars inside the block:
-  1. **Observational Step**: Raw Data + Method/Sample Bound -> _Empirical Pattern_
-  2. **Explanatory Step**: Empirical Pattern + Theoretical Mechanism Warrant -> _Causal / Interpretive Diagnosis_
-  3. **Normative / Policy Step**: Diagnosis + Normative Standard Warrant -> _Evaluative / Reform Claim_
+If the input is prose or a flat tree (such as `+` bullet hierarchies that mix methods, data, and theory as sibling nodes), first normalise the target claims into the standard's blocks, with one inference bar per epistemic layer.
 
 ### 3. Run the 5-Point Formal Sufficiency Audit
 
@@ -45,7 +34,7 @@ Compare the exact nouns, populations, and quantifiers in `(1)-(2)` against the c
 
 - **Quantifier inflation**: Do the premises show `"some"`, a single percentage, or `"can"`, while the conclusion claims `"most"`, `"systematically"`, or `"excludes"`?
 - **Concept / Middle-term shift**: Do the premises measure a **proxy** (a price, an absence from a catalogue, a count) while the conclusion claims a **substantive construct** (exclusion, lost value, harm) without a bridge that links the proxy to the construct?
-- **Action**: Insert the missing bridge as a numbered premise tagged `#missing #scope-drift` with `{basis: "assumed", reason: "..."}` (tags before metadata), or flag the conclusion for qualifier narrowing.
+- **Action**: Insert the missing bridge as a numbered premise tagged `#missing #scope-drift` with `{basis: "assumed", reason: "..."}`, or flag the conclusion for qualifier narrowing.
 
 #### Check B: Method-to-Construct Validity (Observational Equivalence)
 

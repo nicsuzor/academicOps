@@ -18,16 +18,12 @@ Produce three things:
 
 ## Reconstruct
 
-- **Extract first with `ida:argument-extraction`.** It sets the Argdown output contract: titles, chained Toulmin blocks with warrants in the inference bar, `{basis, pointer, source}` metadata, assumed premises (`{basis: "assumed", reason}`), and the parser loop. Then reconstruct on top of what it produces.
+- **Write to `ida:argdown-toulmin`.** It sets the grammar, metadata, relations, tags, and parser validation.
+- **Extract first with `ida:argument-extraction`**, then reconstruct on top of what it produces.
 - **Follow the text's own structure.** Put the thesis first, then one Argdown section per part of the text, in the text's order. A reader checks a map against the text, so the map should match it.
-- **Reconstruct charitably.** Build the strongest valid version of each step. Where validity needs a premise the author never states, add it with `{basis: "assumed", reason: "..."}` and tag it `#missing`; where the missing link is the inference rule itself, write it in the `-- Warrant --` bar with `basis: "assumed"`.
+- **Reconstruct charitably.** Build the strongest valid version of each step, adding as assumed items the premises and warrants validity needs that the author never states.
 - **Read claims at the strength the evidence can carry.** When the wording overstates (for example "veto" where the evidence shows "sometimes limits"), narrow your label but keep the author's words verbatim in `source`. Record the narrower reading as a decision.
-- **Attribute relations correctly.** Support is `+>`, attack is `->`, and undercut is `_>` (it attacks the inference, not a premise). Attach each relation to the argument that concludes or first states the claim, never to one that only borrows it as a premise. Otherwise the map shows links the text never makes.
-- **Tag what is open.** Define the legend in the frontmatter. Keep any categories the author already uses (for example evidence versus theory) as extra tags.
-  - `#missing`: a step you added.
-  - `#needs-evidence`: a load-bearing premise without data or authority.
-  - `#unanswered`: an objection the text raises but does not meet.
-  - `#conflict`: two of the author's claims contradict each other, or a branch falls outside the thesis as stated.
+- **Tag what is open.** Define the legend in the frontmatter. Use `#conflict` also for a branch that falls outside the thesis as stated. Keep any categories the author already uses (for example evidence versus theory) as extra tags.
 - **Leave the author's judgement calls to the author.** Conflicts, scope choices and cut-offs are theirs. Tag each one and state the question it raises.
 
 ## Integrate new material

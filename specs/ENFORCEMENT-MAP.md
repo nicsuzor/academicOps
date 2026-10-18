@@ -34,7 +34,8 @@ Measures in place that enforce the [evidence contract](enforcement/evidence-cont
 
 | Measure | Carrier | Applies to | Severity |
 | - | - | - | - |
-| Report format, basis vocabulary, observed-value rule, contrast test, verdict tokens, verdict command, return | `premise-check` skill | All agents | Guidance |
+| Argdown grammar, basis vocabulary, observed-value rule, tags | `argdown-toulmin` skill | All agents | Guidance |
+| Report format, contrast test, verdict tokens, verdict command, return | `premise-check` skill | All agents | Guidance |
 | Report argument in the task handback and QA review | `/pull`, `/dump`, `/verify` | Task workers, QA reviewers | Guidance |
 | Pointer to `premise-check` (no restated format rules) | `sara.md`, `/pull` §3, `ida.md` | Sara, workers, Ida | Guidance |
 | Ida's role: formal checking and attention protection; substance checks prohibited | `ida.md` | Ida | Guidance |
