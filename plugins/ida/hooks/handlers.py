@@ -72,9 +72,8 @@ _SEARCH_TIMEOUT_SECONDS = 5
 
 # Same measurement run: payload size for 5 results was 3.5-6.4KB (p95). This
 # hook fires on every single UserPromptSubmit -- the highest-frequency
-# injection point in the framework -- and had no ceiling of its own,
-# inheriting whatever the `pkb` CLI's default result count/format produced.
-# Set well above the measured p95 so normal output is never touched; it only
+# injection point in the framework -- and has no ceiling of its own beyond
+# the backend's default result count and format. Set well above the measured p95 so normal output is never touched; it only
 # bites if the backend's output grows unexpectedly large.
 _MAX_INJECT_CHARS = 8000
 _TRUNCATION_MARKER = "\n[...truncated, output exceeded injection budget...]"
