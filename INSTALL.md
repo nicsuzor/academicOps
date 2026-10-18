@@ -30,6 +30,45 @@ before first use -- the full list is in [`README.md`](README.md#configure),
 and each plugin's own `plugins/<dir>/README.md` documents its complete
 surface.
 
+## Prompt hydration credentials
+
+The `ida` plugin's `UserPromptSubmit` hook searches the PKB at `PKB_MCP_URL`
+with every prompt. The hook is a separate process: it cannot use the OAuth
+token the client holds for its own `services` connection, so it needs its own
+credential in the environment the client is launched from (the container or
+launchd environment, not the agent's shell). Set one of:
+
+- `PKB_MCP_HEADERS` -- a JSON object of HTTP headers, e.g.
+  `{"Authorization": "Bearer <token>"}`
+- `CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET` -- a Cloudflare Access
+  service token
+
+**Check it is working.** A grounded turn carries
+`<academicOps PKB search results>` in its hook context. A failing one carries
+`aops hooks: handler 'search_the_pkb' failed with ...`. The MCP client reports
+an HTTP 401 as `MCPError(-32603, 'Server returned an error response')`; seen
+on every prompt, that means the hook has no valid credential.
+
+**Find the cause.** From where the client runs, send the MCP `initialize`
+request with the headers the hook would send (add `-H` for each), and read the
+status:
+
+```bash
+curl -sS -D - -o /dev/null -X POST "$PKB_MCP_URL" \
+  -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"probe","version":"0"}}}'
+```
+
+| Status | Meaning | Fix |
+| - | - | - |
+| `401` with `WWW-Authenticate: Bearer ... error="invalid_token"` | No credential reached the endpoint, or it has expired | Set one of the variables above in the client's launch environment |
+| `403` | Credential sent but not authorised | Grant it access at the gateway |
+| `200` | Endpoint and credential are good | The fault is in the hook or PKB server; read the logged exception |
+| no response | Endpoint unreachable | Check `PKB_MCP_URL` and network reach |
+
+To confirm the PKB itself is up, call `pkb_search` through the client's own
+`services` connection; it authenticates separately from the hook.
+
 ## From source
 
 ```bash

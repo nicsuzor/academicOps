@@ -1,20 +1,12 @@
 #!/usr/bin/env python3
 """Measurement harness for the pkb `UserPromptSubmit` injection hook.
 
-Answers three questions with numbers, not impression, before anyone touches
+Answers two questions with numbers, not impression, before anyone touches
 `plugins/ida/hooks/handlers.py`:
 
-1. **Hook overhead** — the cost `dispatch.py` + `handlers.py` add on top of
-   the search itself: process spawn, module import, string handling. Measured
-   by staging the real hook files with a stub `pkb` binary (instant, fixed
-   output) so the timing isolates hook plumbing from backend/network latency.
-2. **Backend search latency and payload size** — timed directly against the
-   live PKB MCP server at `$PKB_MCP_URL`, the same endpoint the real `pkb`
-   CLI resolves to. There is no `pkb` binary in this execution environment
-   (verified: absent from PATH, cwd, and every plugin's shipped `bin/`, and
-   no source for it anywhere reachable) — see NOTES below. This is the
-   closest faithful proxy available for what a real fire pays.
-3. **Retrieval relevance** on a fixed, versioned prompt set spanning the two
+1. **Backend search latency and payload size** — timed directly against the
+   live PKB MCP server at `$PKB_MCP_URL`, the endpoint the hook searches.
+2. **Retrieval relevance** on a fixed, versioned prompt set spanning the two
    topic families: (A) instruction auditing / plugin
    structure, and (B) agent design / evidence standards. Scoring rule is a
    stated, mechanical keyword-domain match against each prompt's declared
@@ -36,16 +28,11 @@ import argparse
 import asyncio
 import json
 import os
-import shutil
 import statistics
-import subprocess
 import sys
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-
-REPO_ROOT = Path(__file__).resolve().parent.parent
-PKB_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
 
 # --------------------------------------------------------------------------
 # Fixed, versioned prompt set. Both families are turns the user plausibly types;
@@ -135,73 +122,7 @@ def _dist(values: list[float]) -> dict[str, float]:
 
 
 # --------------------------------------------------------------------------
-# 1. Hook overhead: real dispatch.py + handlers.py, stub `pkb` binary.
-# --------------------------------------------------------------------------
-
-
-def measure_hook_overhead(repeats: int) -> dict:
-    tmp = Path(
-        subprocess.run(["mktemp", "-d"], capture_output=True, text=True, check=True).stdout.strip()
-    )
-    hooks_dir = tmp / "hooks"
-    shutil.copytree(PKB_HOOKS, hooks_dir, ignore=shutil.ignore_patterns("__pycache__"))
-
-    # The hook's CLI path runs `fastmcp call`; a stub on PATH stands in for it.
-    stub = tmp / "fastmcp"
-    stub.write_text(
-        "#!/bin/sh\necho '1. Stub result (score: 0.50)'\necho '   stub/doc.md'\n",
-        encoding="utf-8",
-    )
-    stub.chmod(0o755)
-
-    payload = json.dumps(
-        {
-            "hook_event_name": "UserPromptSubmit",
-            "prompt": "measure hook overhead with a stub backend",
-            "cwd": str(tmp),
-        }
-    )
-
-    env = {
-        k: v
-        for k, v in os.environ.items()
-        if k
-        not in (
-            "PKB_MCP_HEADERS",
-            "DISPATCHER_MCP_TOKEN",
-            "WORKER_MCP_TOKEN",
-            "CF_ACCESS_CLIENT_ID",
-            "CF_ACCESS_CLIENT_SECRET",
-        )
-    }
-    env["PATH"] = f"{tmp}{os.pathsep}{env.get('PATH', '')}"
-    env["PKB_MCP_URL"] = "http://stub.invalid/mcp"
-
-    latencies = []
-    try:
-        for _ in range(repeats):
-            t0 = time.perf_counter()
-            proc = subprocess.run(
-                [sys.executable, str(hooks_dir / "dispatch.py"), "claude", "UserPromptSubmit"],
-                input=payload,
-                text=True,
-                capture_output=True,
-                timeout=30,
-                cwd=str(hooks_dir),
-                env=env,
-            )
-            t1 = time.perf_counter()
-            if proc.returncode != 0:
-                raise RuntimeError(f"dispatch.py failed: {proc.stderr}")
-            latencies.append((t1 - t0) * 1000)
-    finally:
-        shutil.rmtree(tmp, ignore_errors=True)
-
-    return {"distribution_ms": _dist(latencies), "raw_ms": latencies}
-
-
-# --------------------------------------------------------------------------
-# 2 & 3. Backend latency, payload size, relevance -- live MCP server.
+# Backend latency, payload size, relevance -- live MCP server.
 # --------------------------------------------------------------------------
 
 
@@ -276,32 +197,28 @@ def summarize_relevance(samples: list[SearchSample]) -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--repeats", type=int, default=3, help="repeats per prompt / hook overhead run")
+    ap.add_argument("--repeats", type=int, default=3, help="repeats per prompt")
     ap.add_argument("--out", type=str, default="", help="write JSON report here (default: stdout)")
-    ap.add_argument("--skip-backend", action="store_true", help="hook-overhead measurement only")
     args = ap.parse_args()
 
     report: dict = {"repeats": args.repeats}
 
-    print("Measuring hook overhead (stub backend, real dispatch.py)...", file=sys.stderr)
-    report["hook_overhead"] = measure_hook_overhead(args.repeats)
+    if "PKB_MCP_URL" not in os.environ:
+        print("PKB_MCP_URL not set; nothing to measure.", file=sys.stderr)
+        return 1
 
-    if not args.skip_backend:
-        if "PKB_MCP_URL" not in os.environ:
-            print("PKB_MCP_URL not set; skipping backend measurement.", file=sys.stderr)
-        else:
-            print("Measuring live backend search latency + relevance...", file=sys.stderr)
-            samples = asyncio.run(measure_backend(args.repeats))
-            latencies = [s.latency_ms for s in samples]
-            payloads = [s.payload_bytes for s in samples]
-            all_scores = [sc for s in samples for sc in s.result_scores]
-            report["backend"] = {
-                "latency_ms": _dist(latencies),
-                "payload_bytes": _dist([float(p) for p in payloads]),
-                "result_score": _dist(all_scores),
-                "relevance_by_family": summarize_relevance(samples),
-                "samples": [asdict(s) for s in samples],
-            }
+    print("Measuring live backend search latency + relevance...", file=sys.stderr)
+    samples = asyncio.run(measure_backend(args.repeats))
+    latencies = [s.latency_ms for s in samples]
+    payloads = [s.payload_bytes for s in samples]
+    all_scores = [sc for s in samples for sc in s.result_scores]
+    report["backend"] = {
+        "latency_ms": _dist(latencies),
+        "payload_bytes": _dist([float(p) for p in payloads]),
+        "result_score": _dist(all_scores),
+        "relevance_by_family": summarize_relevance(samples),
+        "samples": [asdict(s) for s in samples],
+    }
 
     out_text = json.dumps(report, indent=2)
     if args.out:
