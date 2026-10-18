@@ -12,12 +12,14 @@ import { existsSync, unlinkSync, chmodSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 
+import { broadcastSseEvent } from "./src/web/routes.js";
+
 async function main() {
   const config = loadConfig(process.env);
   const store = new PluginStore(config.stateDir);
   const broker = new QuestionBroker(config.stateDir);
   const feedback = new FeedbackManager(config.stateDir);
-  const permRelay = new PermissionRelay();
+  const permRelay = new PermissionRelay(config.stateDir);
 
   let bot: TelegramBotClient | null = null;
 
@@ -46,12 +48,29 @@ async function main() {
     resolvePermissionRelay: (id: string, decision: "allow" | "deny") => {
       permRelay.resolve(id, decision);
     },
-    editTelegramCard: async (chatId: number, messageId: number, text: string) => {
+    editTelegramCard: async (chatId: number, messageId: number, text: string, replyMarkup?: Record<string, unknown>) => {
       if (bot) {
-        await bot.editMessage(chatId, messageId, text, { inline_keyboard: [] });
+        await bot.editMessage(chatId, messageId, text, replyMarkup || { inline_keyboard: [] });
       }
     },
   };
+
+  permRelay.onExpire((item) => {
+    const seq = store.nextSeq("permission_resolved", {
+      permission_id: item.id,
+      outcome: "expired",
+      decision: "expired",
+    });
+    broadcastSseEvent(
+      "permission_resolved",
+      {
+        permission_id: item.id,
+        outcome: "expired",
+        decision: "expired",
+      },
+      seq
+    );
+  });
 
   // Start Mini App HTTP loopback server
   const appDir = join(import.meta.dir, "app");
@@ -122,7 +141,13 @@ async function main() {
       permRelay,
       (content, meta) => {
         mcpServer.emitChannelNotification(content, meta);
-      }
+      },
+      store
+    );
+
+    // Sweep permissions that were left pending before restart
+    await permRelay.sweepRestartCutPermissions((chatId, messageId, text, replyMarkup) =>
+      webContext.editTelegramCard(chatId, messageId, text, replyMarkup)
     );
 
     // Start background polling
