@@ -43,6 +43,7 @@ def built_orchestrate(tmp_path_factory) -> Path:
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
+        clients=CLIENTS,
         plugins=["ida"],
         version=VERSION,
     )
@@ -1198,3 +1199,22 @@ def test_ida_telegram_is_not_built_for_agy():
     decl = load_marketplace_toml(REAL_MARKETPLACE)
     (plugin,) = discover_plugins(PROJECT_ROOT, decl, ["ida-telegram"])
     assert "agy" not in plugin.clients
+
+
+def test_built_dist_holds_every_universal_template_in_source(built_orchestrate: Path) -> None:
+    source_templates_dir = (
+        PROJECT_ROOT / "plugins" / "ida" / "skills" / "workflow-library" / "workflows"
+    )
+    source_templates = {p.name for p in source_templates_dir.glob("*.md")}
+    assert source_templates, "No source workflow templates found"
+
+    decl = load_marketplace_toml(REAL_MARKETPLACE)
+    (plugin,) = discover_plugins(PROJECT_ROOT, decl, ["ida"])
+    for client in plugin.clients:
+        dist_templates_dir = (
+            built_orchestrate / f"ida-{client}" / "skills" / "workflow-library" / "workflows"
+        )
+        assert dist_templates_dir.is_dir()
+        dist_templates = {p.name for p in dist_templates_dir.glob("*.md")}
+        diff = source_templates - dist_templates
+        assert not diff, f"ida-{client} missing templates: {diff}"

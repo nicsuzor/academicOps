@@ -17,7 +17,7 @@ Resolution order is **Project > PKB > Universal**. Higher tiers shadow lower tie
 | 2. PKB | PKB templates with no `project` | `codemode.pkb_list_tasks({ type: "template", include_done: true })`, keep `project: null` |
 | 3. Universal | `${CLAUDE_SKILL_DIR}/workflows/` | `Glob ${CLAUDE_SKILL_DIR}/workflows/*.md` |
 
-The project is the `project` field of the task being composed for, or the project the caller names. With neither, the project tier is empty. Templates scoped to any other project are out of scope.
+The project is the `project` field of the task being composed for, or the project the caller names. With neither, the project tier is empty for composition. Templates scoped to any other project are out of scope for composition, but visible in list mode.
 
 A project template's id is `<project>-<slug>`, so the same slug can exist in several projects. Strip the `<project>-` prefix to get the slug that shadows lower tiers.
 
@@ -29,10 +29,12 @@ Enumerate and read universal templates using file tools (`Glob`, `Read`) rather 
 
 ### list
 
-Enumerate all three tiers live. Return a unified table: **slug \| tier \| coverage \| status**.
+Enumerate every template across all three tiers live. Return a unified table: **slug \| tier \| coverage \| status**.
 
+- Include every universal template file (`${CLAUDE_SKILL_DIR}/workflows/*.md`) and every PKB template from the graph (`codemode.pkb_list_tasks({ type: "template", include_done: true })`).
+- For PKB templates with a `project` field, indicate their project scope in the tier column (e.g. `Project (brain)`). Foreign-project templates are displayed with their project prefix or formatted as `Project (<name>)` in the tier column without altering composition scoping.
 - Extract coverage from `description` in frontmatter, or, if that is missing, from the first sentence of `## What this step does`. Read universal template files directly via `Read`; do not run `Bash` loops.
-- Filter out dated instances (`-*-\d{8}-*`), foreign-project templates, and `status: cancelled`.
+- Filter out dated instances (`-*-\d{8}-*`) and `status: cancelled`. Do not filter out foreign-project templates.
 - Flag shadowed slugs and templates missing coverage lines.
 
 ### view
