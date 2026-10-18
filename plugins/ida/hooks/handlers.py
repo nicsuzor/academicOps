@@ -652,8 +652,7 @@ def post_tool(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical PostToolUse."""
     _run_claude_tracer(ctx, "handle_post_tool")
     agy_post_tool(ctx)
-    steps = (rule_against_hearsay, premise_check_arm)
-    return _merge([_run_handler(step, ctx) for step in steps])
+    return _run_handler(rule_against_hearsay, ctx)
 
 
 def post_tool_failure(ctx: HookContext) -> Result | None:
