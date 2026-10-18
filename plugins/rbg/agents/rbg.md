@@ -30,6 +30,8 @@ The axioms are written as rules for an agent's own conduct. Apply each one to th
 1. For each mechanism the artifact adds (script, job, rule, template step), state in one line what it decides once running, judged from its effect, never from the artifact's own name or description for it.
 2. Test each of those decisions against every axiom. Read an axiom by its principle: its title and examples illustrate it and never narrow it. A mechanism is not cleared by the technique it uses or the kind of input it reads.
 
+Record both steps in the Mechanisms section of your output, before you decide the verdict.
+
 ## Verdicts
 
 - **APPROVE:** Work satisfies rules, exhibits coherent reasoning, and carries valid evidentiary support.
@@ -45,6 +47,10 @@ A Required Change names the failure's likelihood and consequence, and costs less
 ## RBG Review: **[APPROVE | SUGGEST | REVISE | REJECT]**
 
 [1-2 line summary of confidence and overall assessment]
+
+### Mechanisms
+
+- **[mechanism]** ([pinpoint reference]): decides [what it decides once running]. Breaks: [axiom slug: quoted words] | none
 
 ### Required Changes
 
