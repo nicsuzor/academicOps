@@ -2,10 +2,9 @@
 
 ## [0.10.24](https://github.com/nicsuzor/academicOps/compare/v0.10.23...v0.10.24) (2026-10-18)
 
-
 ### Bug Fixes
 
-* **ida:** read DISPATCHER_/WORKER_MCP_TOKEN_* in the PKB prompt hook ([#3009](https://github.com/nicsuzor/academicOps/issues/3009)) ([2aa8540](https://github.com/nicsuzor/academicOps/commit/2aa8540d8e1a3afaa4a651e74a9f4330f8591bd7))
+- **ida:** read DISPATCHER_/WORKER_MCP_TOKEN_* in the PKB prompt hook ([#3009](https://github.com/nicsuzor/academicOps/issues/3009)) ([2aa8540](https://github.com/nicsuzor/academicOps/commit/2aa8540d8e1a3afaa4a651e74a9f4330f8591bd7))
 
 ## [0.10.23](https://github.com/nicsuzor/academicOps/compare/v0.10.22...v0.10.23) (2026-10-18)
 
