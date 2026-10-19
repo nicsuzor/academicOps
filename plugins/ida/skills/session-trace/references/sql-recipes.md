@@ -1,7 +1,6 @@
 # Phoenix SQL recipes
 
-Read [`../../../../lib/telemetry/phoenix-span-store.md`](../../../../lib/telemetry/phoenix-span-store.md)
-first — it holds the identifier-shape table and the `session.id`-vs-`trace_id`
+Read [`span-store.md`](span-store.md) first -- it holds the identifier-shape table and the `session.id`-vs-`trace_id`
 filtering rule every recipe below depends on.
 
 The backend is an allowlisted SQLite database; use JSON extraction (`->>` or
@@ -9,7 +8,7 @@ The backend is an allowlisted SQLite database; use JSON extraction (`->>` or
 `portal_codemode_execute` (`mcp__services__portal_codemode_execute` in Claude
 Code) by calling `codemode.phoenix_execute`.
 
-**A0 — resolve a `trace_id` to its `session.id`.** Then pivot every subsequent
+**A0 -- resolve a `trace_id` to its `session.id`.** Then pivot every subsequent
 query onto `session.id`.
 
 ```sql
@@ -21,7 +20,7 @@ WHERE trace_id = '<32_HEX_TRACE_ID>'
 GROUP BY session_id, project_name
 ```
 
-**A — session discovery and error check.**
+**A -- session discovery and error check.**
 
 ```sql
 SELECT JSON_EXTRACT(attributes, '$.session.id') AS session_id,
@@ -35,7 +34,7 @@ ORDER BY last_seen DESC
 LIMIT 10
 ```
 
-**B — chronological execution.** Add `AND span_kind = 'TOOL'` to audit tool
+**B -- chronological execution.** Add `AND span_kind = 'TOOL'` to audit tool
 calls only; swap the `SUBSTRING(...)` for the bare column to read payloads
 whole.
 
@@ -48,7 +47,7 @@ WHERE JSON_EXTRACT(attributes, '$.session.id') = '<SESSION_UUID>'
 ORDER BY start_time ASC
 ```
 
-**C — errors and tool failures, untruncated.**
+**C -- errors and tool failures, untruncated.**
 
 ```sql
 SELECT span_id, name, span_kind, status_message, latency_ms,
@@ -60,7 +59,7 @@ WHERE JSON_EXTRACT(attributes, '$.session.id') = '<SESSION_UUID>'
 ORDER BY start_time ASC
 ```
 
-**D — tool-call fingerprint.** Proves what the agent actually invoked, against
+**D -- tool-call fingerprint.** Proves what the agent actually invoked, against
 what it claims.
 
 ```sql
@@ -79,7 +78,7 @@ the two zero cases when you write it up. Zero tool calls for an item is
 done". One fuzzy `task_search` returning nothing is a search miss, not proof the
 target does not exist.
 
-**E — token accounting and cache ratio.**
+**E -- token accounting and cache ratio.**
 
 ```sql
 SELECT name,
@@ -92,10 +91,10 @@ WHERE JSON_EXTRACT(attributes, '$.session.id') = '<SESSION_UUID>'
 GROUP BY name
 ```
 
-**F — correlate a spawned subagent's own session.** The child carries no
+**F -- correlate a spawned subagent's own session.** The child carries no
 attribute pointing at the parent. Match its root turn to the exact prompt text
 the parent's `Agent` call sent (visible in the parent's `AGENT` span, Recipe G)
-and to time proximity — the child's first span lands within seconds. A named
+and to time proximity -- the child's first span lands within seconds. A named
 subagent's root turn opens `<teammate-message teammate_id="team-lead">...`, so
 match on the tail of the parent's prompt. Then pull the child's full span list
 with Recipe B.
@@ -110,7 +109,7 @@ WHERE span_kind = 'CHAIN' AND (parent_id IS NULL OR parent_id = '')
 ORDER BY start_time ASC
 ```
 
-**G — dispatch-mode fingerprint.** Read the `AGENT` spans' `output.value` to
+**G -- dispatch-mode fingerprint.** Read the `AGENT` spans' `output.value` to
 tell a named host teammate from a background task from a container.
 
 ```sql
@@ -122,25 +121,25 @@ WHERE JSON_EXTRACT(attributes, '$.session.id') = '<PARENT_SESSION_UUID>'
 ORDER BY start_time ASC
 ```
 
-- **Named teammate (host)** — output is
+- **Named teammate (host)** -- output is
   `{"status": "teammate_spawned", "teammate_id": "<name>@session-<slug>", "agent_type": "...", "tmux_session_name": "...", ...}`
   and it emits `<teammate-message>` turns to the parent. A payload
   `{"type":"idle_notification","idleReason":"available"}` is the teammate bus,
-  which polecat containers cannot reach — so seeing it proves the worker was a
+  which polecat containers cannot reach -- so seeing it proves the worker was a
   named host session, not a container. `available` means only that the agent
   finished its turn with an empty queue; it claims nothing about what got done.
   Its span's duration is spawn latency, not the worker's runtime (see the
   span-store facts read above).
-- **Unnamed background task** — output is
+- **Unnamed background task** -- output is
   `{"isAsync": true, "status": "async_launched", "agentId": "...", "outputFile": "...", "canReadOutputFile": false}`.
   This mode does have an OTel-visible close: search the parent session for
   `attributes->>'input.value' LIKE '%task-notification%'` to find
   `<task-notification><status>completed</status>...<usage><duration_ms>N</duration_ms></usage></task-notification>`.
-- **Polecat container** — writes `$AOPS_SESSIONS/logs/.../run.json`,
+- **Polecat container** -- writes `$AOPS_SESSIONS/logs/.../run.json`,
   `polecat-session-hooks.jsonl`, and container stdout logs. Never emits teammate
   bus messages.
 
-**H — did the agent structurally have the tool it needed?** Before concluding a
+**H -- did the agent structurally have the tool it needed?** Before concluding a
 silent agent "failed to report", check whether it ever called the tool
 reporting requires, and whether its `agent_type` even grants it.
 
@@ -172,5 +171,17 @@ return res
 ```
 
 Inside `phoenix_execute`, the block can `await call_tool("executeSql", {"sql": ...})`
-several times and return one combined object — use it to collapse a multi-query
+several times and return one combined object -- use it to collapse a multi-query
 pass into a single round-trip.
+
+## Gotchas
+
+| Symptom | Cause | Fix |
+| - | - | - |
+| `executeSql` result "exceeds maximum allowed tokens", dumped to a `.txt` file | Query returned too many rows, or unbounded `input.value`/`output.value` columns | Narrow with `SUBSTR(...)` and a tighter `WHERE`/`LIMIT`; if already dumped, read the saved file with `jq` rather than re-querying |
+| `{"data":[],"next_cursor":null}` searching for a session by id | Queried `session.id` with a 32-hex `trace_id` | Resolve via `WHERE trace_id = '<32_HEX>'` (Recipe A0) first |
+| MCP tool calls missing from the agent's response | The agent grepped answers off disk instead of executing tools | `SELECT count(*) FROM spans WHERE span_kind='TOOL' AND attributes->>'session.id'='<UUID>'` |
+| Report asserts items "not done" or "failed" with no tool evidence | Agent assumed the outcome after 0 tool calls or a single search miss | Recipe D: distinguish 0 tool calls (never attempted) from tool executions that failed |
+| Named subagent never returns / repeats `idle_notification` forever | `name` on the `Agent` call spawns a persistent teammate with no OTel-visible exit event (Recipe G) | Do not wait on the tool call; watch the parent for an inbound `<teammate-message>`, and check the child's own session (Recipe F) |
+| Named subagent did real work but never reported it | Its `agent_type`'s allowlist has no `SendMessage` -- the only delivery channel in teammate mode | Recipe H: confirm zero `SendMessage` spans, then check the declared `Tools:` -- a capability gap, not a hang |
+| A container run emits only `CHAIN` spans, with zero `TOOL`/`LLM` spans | Telemetry is not being forwarded from the container | Check the trace endpoint variable in the container's environment |

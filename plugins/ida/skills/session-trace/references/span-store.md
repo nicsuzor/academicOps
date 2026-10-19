@@ -48,3 +48,9 @@ sort or discriminate on it. Sort by `start_time` for session-wide chronology.
 A named-teammate dispatch's `AGENT` span closes in ~150–250 ms, on the spawn
 acknowledgement, and has no OTel-visible close event tied to the teammate's
 actual work. Never read its `duration_ms` as how long the spawned worker ran.
+
+## Timestamps need an offset
+
+`start_time >= '2026-08-19 22:12:00'` fails with `unsupported_syntax`; a time of
+day needs an explicit offset (`'2026-08-19 22:12:00+00:00'`). A bare date is
+accepted and read as UTC.
