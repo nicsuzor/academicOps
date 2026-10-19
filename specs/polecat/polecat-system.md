@@ -166,11 +166,11 @@ The container launcher (`polecat`) and worker image are maintained outside this 
    reaches stdout per invocation: on the seed-verification retry path, aborted
    attempt output is buffered and suppressed so callers never receive
    concatenated streams.
-9. **Nested Claude Code CLI sessions forbidden.** Polecat worker instructions
-   forbid starting nested Claude Code CLI sessions (`claude`, `claude -p`) inside
-   the container. Polecats do not mount interactive Claude login credentials or
-   child API keys; tasks requiring a nested Claude Code session must be declined
-   and released with that reason instead of attempted.
+9. **Nested agent CLI sessions forbidden.** Polecat worker instructions
+   forbid starting nested agent CLI sessions (such as `claude`, `claude -p`, `agy`,
+   or other interactive harnesses) inside the container. Polecats do not mount
+   interactive login credentials or child API keys; tasks requiring a nested agent
+   CLI session must be declined and released with that reason instead of attempted.
 
 ## What `run` does not do
 
@@ -181,6 +181,7 @@ stdout, quiet by default. There is no `start`, `finish`, `crew`, `nuke`, `swarm`
 directory, no workspace that survives past a single invocation, and no claiming,
 PR-filing, or status-setting performed by the CLI itself. Those either don't exist
 or are the invoked agent's own job, driven by the `pull` skill against the PKB
-task graph from inside the container. There is no support for nested Claude Code
-CLI sessions (`claude`, `claude -p`) inside the container; worker instructions
-explicitly forbid them and require declining tasks that call for them.
+task graph from inside the container. There is no support for nested agent
+CLI sessions (such as `claude`, `claude -p`, `agy`, or other interactive harnesses)
+inside the container; worker instructions explicitly forbid them and require declining
+tasks that call for them.
