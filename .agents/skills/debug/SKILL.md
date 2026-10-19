@@ -1,6 +1,6 @@
 ---
 name: debug
-description: Drive and audit a real framework run — choose an execution surface, dispatch a worker, spin up a polecat container under tmux for live interaction, and pull authoritative telemetry from the Phoenix span store via the `services` MCP proxy. Use when asked to debug a polecat, investigate what broke a container or client mechanism (such as authentication, a token, or a service), run a polecat container interactively, attach to a polecat session, check container or session logs, establish what a session actually did, or verify that a change to plugins, hooks, `lib/`, or skills actually fires inside a real container rather than merely being installed in the image. Covers both clients, `claude` and `agy`. Not the standard for scoring the run itself — that is `dogfood`.
+description: Drive and audit a real framework run — choose an execution surface, dispatch a worker, spin up a polecat container under tmux for live interaction, and hand off to `session-trace` for what the run did. Use when asked to debug a polecat, investigate what broke a container or client mechanism (such as authentication, a token, or a service), run a polecat container interactively, attach to a polecat session, check container or session logs, or verify that a change to plugins, hooks, `lib/`, or skills actually fires inside a real container rather than merely being installed in the image. Covers both clients, `claude` and `agy`. Not the standard for scoring the run itself — that is `dogfood`.
 ---
 
 # Driving a framework run
@@ -101,8 +101,8 @@ fails in two directions:
 **Never score a capability on what the agent says.** Ask an agent for a server's
 output and it will grep that output out of any file lying around — including the
 logs, task outputs and transcripts your own probing left behind — and report it
-as though it had made the call. Score the tool-call record instead: Phoenix
-`executeSql` (via `phoenix_execute`), `tool_calls` in agy's
+as though it had made the call. Score the tool-call record instead: the session's Phoenix
+spans (`session-trace`), `tool_calls` in agy's
 `transcript_full.jsonl`, or `tool_use` in claude's session jsonl. That is what
 authoritative MCP verification checks.
 
@@ -173,41 +173,12 @@ sleep 2   # let the client flush its transcript buffer through the bind-mount
 tmux kill-session -t "$TMUX_NAME" 2>/dev/null || true
 ```
 
-## Authoritative telemetry (Phoenix via services MCP)
+## Telemetry
 
-Phoenix is the durable telemetry store: untruncated payload attributes, exact
-millisecond latencies, and full OpenTelemetry span trees, where local markdown
-transcripts truncate tool inputs and outputs at ~300 characters. Phoenix is not
-a separate MCP server; it is reached through the `services` MCP proxy via its
-code-mode interface (`portal_codemode_execute`, or `mcp__services__portal_codemode_execute`).
-
-Call `codemode.phoenix_execute` with an async Python block that invokes Phoenix tools
-via `await call_tool(tool_name, params)`:
-
-- `await call_tool("executeSql", {"sql": "..."})` to query allowlisted SQLite span-store tables.
-- `await call_tool("getSpans", {...})` and `await call_tool("listProjectTraces", {...})` for span/trace enumeration.
-- Discovery: `portal_codemode_search` (filtering for `phoenix`), `phoenix_list_tools`, or `describeSqlSchema`.
-
-Read [`../../../lib/telemetry/phoenix-span-store.md`](../../../lib/telemetry/phoenix-span-store.md)
-before writing any query — it holds the identifier-shape table
-(`trace_id`/`session.id`/slug/`span_id`), the rule to filter on `session.id`
-and never `trace_id`, why `turn_number` is not a reliable counter, and why a
-`teammate_spawned` span's duration is not the worker's runtime. Then read
-[`references/sql-recipes.md`](references/sql-recipes.md) for the query
-recipes (A0 through H) that apply those facts.
-
-### Telemetry invariants specific to this store
-
-- **No parent↔child linking attribute exists.** A spawned subagent's session
-  never carries the parent's id. Correlate by prompt text and time window
-  (Recipe F, in `references/sql-recipes.md`); substring-searching for the
-  parent UUID finds only sessions that _mention_ it in conversation text.
-- **Bare timestamps are rejected.** `start_time >= '2026-08-19 22:12:00'` fails
-  with `unsupported_syntax`; a time of day needs an explicit offset
-  (`'2026-08-19 22:12:00+00:00'`). A bare date is accepted and read as UTC.
-- **A container run emitting only `CHAIN` spans** with zero `TOOL`/`LLM` spans
-  means telemetry is not being forwarded — check
-  `GENAI_ENGINE_TRACE_ENDPOINT` in the container's environment.
+What a run actually did -- its tool calls, model output, errors, latencies and token
+spend -- is read from the Phoenix span store with the `session-trace` skill in the `ida`
+plugin. It assembles a session's transcript with durations and costs, and holds the
+span-store facts and SQL recipes.
 
 ## Host filesystem audit
 
@@ -272,9 +243,8 @@ your report.
    the pane or transcript. A rendered prompt box is not proof of success.
 6. **§4 exercise the changed path** — invoke the specific changed skill, hook,
    or tool call and capture the execution output.
-7. **§5 audit** — `SELECT count(*) FROM spans WHERE JSON_EXTRACT(attributes, '$.session.id') = '<SESSION_UUID>'`
-   in Phoenix via `services` `phoenix_execute`; assert `TOOL` spans exist with `status_code != 'ERROR'`. Then the
-   host filesystem audit above.
+7. **§5 audit** — pull the session's spans with `session-trace` and assert `TOOL`
+   spans exist with `status_code != 'ERROR'`. Then the host filesystem audit above.
 8. **§6 teardown** — `/exit`, `sleep 2`, kill the session.
 
 ## Diagnostic gotchas
