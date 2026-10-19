@@ -27,6 +27,7 @@ from dispatch import (
     warn,
 )
 from premise_check_gate import (
+    _PEER_ENVELOPES,
     is_channel_reply_tool,
     is_foreground_dispatch,
     is_peer_report,
@@ -261,6 +262,47 @@ def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
     return _search_via_fastmcp_client(mcp_url, query, headers)
 
 
+_AGY_USER_REQUEST = re.compile(r"<USER_REQUEST>\s*(.*?)\s*</USER_REQUEST>", re.DOTALL)
+
+
+def _agy_user_prompt(ctx: HookContext) -> str:
+    """The user's text for an agy turn, read from the turn's transcript.
+
+    agy's PreInvocation payload carries no prompt; it names the transcript, whose
+    latest USER_INPUT step is already written when the hook fires, wrapping the
+    typed text in `<USER_REQUEST>` tags. Only the turn's first model invocation
+    (`invocationNum` 0) is grounded, so a turn is searched once. A turn whose
+    latest turn-start step is a SYSTEM_MESSAGE (agy woken by a subagent result)
+    has no user text, and returns "".
+    """
+    if ctx.raw.get("invocationNum", 0) != 0:
+        return ""
+    path = ctx.raw.get("transcriptPath")
+    if not path:
+        return ""
+    turn_start: dict[str, Any] | None = None
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                try:
+                    entry = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(entry, dict) and entry.get("type") in (
+                    "USER_INPUT",
+                    "SYSTEM_MESSAGE",
+                ):
+                    turn_start = entry
+    except OSError as exc:
+        log.warning("agy transcript unreadable for prompt hydration: %s", exc)
+        return ""
+    if not turn_start or turn_start.get("type") != "USER_INPUT":
+        return ""
+    content = str(turn_start.get("content") or "")
+    m = _AGY_USER_REQUEST.search(content)
+    return (m.group(1) if m else content).strip()
+
+
 def search_the_pkb(ctx: HookContext) -> Result | None:
     """Ground every prompt in the PKB before the agent acts on it.
 
@@ -278,6 +320,10 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
     if isinstance(raw_prompt, dict):
         raw_prompt = raw_prompt.get("text") or raw_prompt.get("content") or ""
     prompt_str = str(raw_prompt or "").strip()
+    if not prompt_str and ctx.client == "agy":
+        prompt_str = _agy_user_prompt(ctx)
+        if prompt_str.startswith(_PEER_ENVELOPES):
+            return None
 
     query = extract_prompt_query(prompt_str)
     if query:

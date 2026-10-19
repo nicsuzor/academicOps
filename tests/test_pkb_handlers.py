@@ -571,3 +571,148 @@ def test_search_via_fastmcp_client_is_bounded_by_timeout():
         with pytest.raises(TimeoutError):
             handlers._search_via_fastmcp_client("https://x", "q", {"A": "b"})
         assert time.monotonic() - start < 5
+
+
+# --- agy: the prompt comes from the transcript ------------------------------
+#
+# agy's PreInvocation payload carries no prompt field. Observed live on
+# polecat:latest sha256:72d0649b352d (2026-10-19): payload keys were
+# artifactDirectoryPath, conversationId, initialNumSteps, invocationNum,
+# modelName, transcriptPath, workspacePaths, and the turn's USER_INPUT step
+# was already in transcript.jsonl when the hook fired, its content wrapping
+# the typed text in <USER_REQUEST>...</USER_REQUEST>.
+
+AGY_TYPED = "what are the axioms of academicOps?"
+AGY_USER_INPUT = (
+    f"<USER_REQUEST>\n{AGY_TYPED}\n</USER_REQUEST>\n"
+    "<ADDITIONAL_METADATA>\nThe current local time is: 2026-10-19T02:13:40Z.\n</ADDITIONAL_METADATA>"
+)
+
+
+def _agy_transcript(tmp_path: Path, *entries: dict) -> Path:
+    path = tmp_path / "transcript.jsonl"
+    path.write_text("".join(json.dumps(e) + "\n" for e in entries), encoding="utf-8")
+    return path
+
+
+def _agy_ctx(transcript: Path, invocation_num: int | None = 0) -> HookContext:
+    raw: dict = {"conversationId": "c1", "transcriptPath": str(transcript), "initialNumSteps": 1}
+    if invocation_num is not None:
+        raw["invocationNum"] = invocation_num
+    return HookContext(
+        client="agy", event="UserPromptSubmit", raw=raw, hooks_dir=PKB_HOOKS, cwd="/workspace"
+    )
+
+
+def test_agy_prompt_is_read_from_the_transcript_user_request(tmp_path: Path):
+    transcript = _agy_transcript(
+        tmp_path,
+        {
+            "step_index": 0,
+            "type": "USER_INPUT",
+            "source": "USER_EXPLICIT",
+            "content": AGY_USER_INPUT,
+        },
+    )
+    with patch.object(handlers, "_run_pkb_search", return_value="1. hit") as mock_search:
+        res = handlers.search_the_pkb(_agy_ctx(transcript))
+    mock_search.assert_called_once_with(AGY_TYPED, cwd="/workspace")
+    assert res is not None and "<academicOps PKB search results>" in res.inject_text
+
+
+def test_agy_uses_the_latest_user_input(tmp_path: Path):
+    transcript = _agy_transcript(
+        tmp_path,
+        {
+            "step_index": 0,
+            "type": "USER_INPUT",
+            "content": "<USER_REQUEST>\nold question\n</USER_REQUEST>",
+        },
+        {"step_index": 1, "type": "PLANNER_RESPONSE", "source": "MODEL", "content": "answer"},
+        {"step_index": 2, "type": "USER_INPUT", "content": AGY_USER_INPUT},
+    )
+    with patch.object(handlers, "_run_pkb_search", return_value="1. hit") as mock_search:
+        handlers.search_the_pkb(_agy_ctx(transcript))
+    mock_search.assert_called_once_with(AGY_TYPED, cwd="/workspace")
+
+
+def test_agy_searches_once_per_turn(tmp_path: Path):
+    """Only the turn's first model invocation searches; later invocations do not."""
+    transcript = _agy_transcript(
+        tmp_path, {"step_index": 0, "type": "USER_INPUT", "content": AGY_USER_INPUT}
+    )
+    with patch.object(handlers, "_run_pkb_search", return_value="1. hit") as mock_search:
+        assert handlers.search_the_pkb(_agy_ctx(transcript, invocation_num=1)) is None
+    mock_search.assert_not_called()
+
+
+def test_agy_turn_started_by_system_message_is_not_searched(tmp_path: Path):
+    """A turn woken by a SYSTEM_MESSAGE (e.g. a subagent result) has no user prompt to ground."""
+    transcript = _agy_transcript(
+        tmp_path,
+        {"step_index": 0, "type": "USER_INPUT", "content": AGY_USER_INPUT},
+        {"step_index": 1, "type": "SYSTEM_MESSAGE", "content": "subagent finished"},
+    )
+    with patch.object(handlers, "_run_pkb_search", return_value="1. hit") as mock_search:
+        assert handlers.search_the_pkb(_agy_ctx(transcript)) is None
+    mock_search.assert_not_called()
+
+
+def test_agy_peer_report_in_transcript_is_not_searched(tmp_path: Path):
+    peer = '<USER_REQUEST>\n<cross-session-message from="x">report</cross-session-message>\n</USER_REQUEST>'
+    transcript = _agy_transcript(tmp_path, {"step_index": 0, "type": "USER_INPUT", "content": peer})
+    with patch.object(handlers, "_run_pkb_search", return_value="1. hit") as mock_search:
+        assert handlers.search_the_pkb(_agy_ctx(transcript)) is None
+    mock_search.assert_not_called()
+
+
+def test_agy_missing_transcript_searches_nothing(tmp_path: Path):
+    with patch.object(handlers, "_run_pkb_search", return_value="1. hit") as mock_search:
+        assert handlers.search_the_pkb(_agy_ctx(tmp_path / "absent.jsonl")) is None
+    mock_search.assert_not_called()
+
+
+def test_agy_user_input_without_wrapper_is_used_whole(tmp_path: Path):
+    transcript = _agy_transcript(
+        tmp_path, {"step_index": 0, "type": "USER_INPUT", "content": AGY_TYPED}
+    )
+    with patch.object(handlers, "_run_pkb_search", return_value="1. hit") as mock_search:
+        handlers.search_the_pkb(_agy_ctx(transcript))
+    mock_search.assert_called_once_with(AGY_TYPED, cwd="/workspace")
+
+
+def test_dispatch_agy_preinvocation_reads_prompt_from_transcript(
+    staged_hooks: Path, tmp_path: Path
+):
+    """End to end through dispatch.py with agy's real payload shape: the search runs on the typed text."""
+    transcript = _agy_transcript(
+        tmp_path, {"step_index": 0, "type": "USER_INPUT", "content": AGY_USER_INPUT}
+    )
+    payload = {
+        "artifactDirectoryPath": str(tmp_path),
+        "conversationId": "c1",
+        "initialNumSteps": 1,
+        "invocationNum": 0,
+        "modelName": "m",
+        "transcriptPath": str(transcript),
+        "workspacePaths": ["/workspace"],
+    }
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if not k.startswith(("PKB_MCP", "WORKER_MCP", "DISPATCHER_MCP"))
+    }
+    env["PKB_MCP_URL"] = (
+        "http://127.0.0.1:9"  # unreachable: the failure message proves a search was attempted
+    )
+    proc = subprocess.run(
+        [sys.executable, str(staged_hooks / "dispatch.py"), "agy", "PreInvocation"],
+        input=json.dumps(payload),
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+    )
+    out = json.loads(proc.stdout)
+    message = out["injectSteps"][0]["ephemeralMessage"]
+    assert "search_the_pkb" in message
