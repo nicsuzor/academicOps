@@ -42,18 +42,13 @@ def inject_caller_session(raw: dict[str, Any]) -> dict[str, Any]:
     return {
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",
-            "permissionDecision": "allow",
             "updatedInput": updated_input,
         }
     }
 
 
 def main() -> int:
-    try:
-        raw = json.load(sys.stdin)
-    except Exception:
-        raw = {}
-
+    raw = json.load(sys.stdin)
     output = inject_caller_session(raw)
     if output:
         print(json.dumps(output))

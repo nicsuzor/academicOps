@@ -6,7 +6,6 @@ description: Index of academicOps axioms.
 
 | Slug | Core Principle | Trigger |
 | - | - | - |
-| `caller-session` | Supply the caller session on every MCP call for cross-surface correlation. | always_on |
 | `categorical-imperative` | Justify actions as general rules covering entire classes, never one-off carve-outs. | always_on |
 | `closure` | Decide nothing not derivable from axioms, framework instructions, or user directives. | always_on |
 | `excellence` | Excellence is the standard; compliance is the floor. | always_on |

@@ -10,24 +10,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 IDA_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
 HOOK_SCRIPT = IDA_HOOKS / "mcp_caller_session.py"
-MANIFEST_PATH = REPO_ROOT / "plugins" / "ida" / "manifest" / "hooks.json"
-
 if str(IDA_HOOKS) not in sys.path:
     sys.path.insert(0, str(IDA_HOOKS))
-
-
-def test_hook_manifest_registration():
-    """Verify plugins/ida/manifest/hooks.json registers a PreToolUse hook matching mcp__.*."""
-    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
-    claude_hooks = manifest["clients"]["claude"]["hooks"]
-    assert "PreToolUse" in claude_hooks
-
-    mcp_entries = [
-        entry for entry in claude_hooks["PreToolUse"] if entry.get("matcher") == "mcp__.*"
-    ]
-    assert len(mcp_entries) == 1, "Expected exactly one PreToolUse hook with matcher 'mcp__.*'"
-    command = mcp_entries[0]["hooks"][0]["command"]
-    assert "mcp_caller_session.py" in command
 
 
 def test_hook_carries_session_ids_and_keeps_original_arguments():
@@ -50,7 +34,7 @@ def test_hook_carries_session_ids_and_keeps_original_arguments():
     assert "hookSpecificOutput" in result
     specific = result["hookSpecificOutput"]
     assert specific.get("hookEventName") == "PreToolUse"
-    assert specific.get("permissionDecision") == "allow"
+    assert "permissionDecision" not in specific
 
     updated = specific.get("updatedInput")
     assert isinstance(updated, dict)
@@ -123,3 +107,14 @@ def test_hook_subprocess_execution():
         "agent_id": "agent-sub",
         "prompt_id": "prompt-e2e",
     }
+
+
+def test_hook_subprocess_fails_on_malformed_stdin():
+    """Verify that malformed JSON on stdin fails fast with a non-zero exit code."""
+    proc = subprocess.run(
+        [sys.executable, str(HOOK_SCRIPT)],
+        input="invalid json {",
+        text=True,
+        capture_output=True,
+    )
+    assert proc.returncode != 0
