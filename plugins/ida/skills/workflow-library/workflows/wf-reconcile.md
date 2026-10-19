@@ -38,13 +38,13 @@ Maintains truth over the task graph: establishes facts about in-flight work and 
    - _Premise falsified_: named assumption or precondition no longer holds.
    - _Source-stated retirement_: opportunity's source confirms it is no longer open, or explicit principal instruction ("drop X"). Set `status: cancelled` with reason starting `not ripe:` quoting statement and source.
 9. **Two-step mutation contract**: Write annotation/evidence to markdown body first, then mutate frontmatter `status` via `pkb.update_task` (never `batch_update`), then read back to confirm status.
-10. **Escalate**: Settle items reaching the user under the one-level escalation rule (e.g. review tasks reaching the front agent `ida` at the top of the chain requiring user decision, or open questions/asks needing user choice). When running standalone, write them to today's daily note (PKB note `YYYYMMDD-daily`) in `## With you`. When invoked as part of [[tpl_daily]], return the escalated items to the daily run to fold into `## With you` during its single atomic write. Reconcile owns writing escalated items to `## With you`; it must not append unowned sections outside `## With you`.
+10. **Escalate**: Settle items reaching the user under the one-level escalation rule (e.g. review tasks reaching the front agent `ida` at the top of the chain requiring user decision, or open questions/asks needing user choice). When running standalone, write them to today's daily note (PKB note `YYYYMMDD-daily`) in `## With you`. When invoked as part of an enclosing run (such as the daily note pipeline), return the escalated items to the caller to fold into `## With you` during its single atomic write. Reconcile owns writing escalated items to `## With you`; it must not append unowned sections outside `## With you`.
 
 ## Must not
 
-- Must not run concurrently with another reconcile: maintain single-flight execution (one reconcile at a time; halt or defer if another reconcile is active).
+- Must not run concurrently with another reconcile: maintain single-flight execution (one reconcile at a time; halt immediately if another reconcile is active).
 - Must not move a claimed (`in_progress`) task backwards while an active worker holds it.
-- Must not leave queued agent review tasks undispatched.
+- Must not leave minted agent review tasks in review or unowned (minted review tasks must be queued or dispatched).
 - Must not write `done` on any evidence other than an observed merged PR or a clean finished part of a split task.
 - Must not leave tasks in `review` or route tasks to `review` as a waiting state, except a task whose open PR awaits merge.
 - Must not defer `review` outcomes to a later pass or to the original dispatcher.
