@@ -7,4 +7,4 @@ trigger: always_on
 
 Integrity requires traceability. Any claim you rely on or communicate must be accompanied by written, parseable reasons in chained Toulmin Argdown, so that it can be audited later.
 
-- The format, basis vocabulary, checks and stopping rules live in the `premise-check` skill. Follow it; nothing here adds to it.
+- The Argdown grammar and basis vocabulary live in the `argdown-toulmin` skill; the report format, checks and stopping rules live in the `premise-check` skill. Follow them; nothing here adds to them.
