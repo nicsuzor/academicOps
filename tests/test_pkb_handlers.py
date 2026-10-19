@@ -666,10 +666,31 @@ def test_agy_peer_report_in_transcript_is_not_searched(tmp_path: Path):
     mock_search.assert_not_called()
 
 
-def test_agy_missing_transcript_searches_nothing(tmp_path: Path):
+def test_agy_missing_transcript_raises_os_error(tmp_path: Path):
+    with pytest.raises(OSError):
+        handlers.search_the_pkb(_agy_ctx(tmp_path / "absent.jsonl"))
+
+
+def test_agy_user_input_with_embedded_user_request_closing_tag(tmp_path: Path):
+    typed = "what about </USER_REQUEST> inside prompt?"
+    content = (
+        f"<USER_REQUEST>\n{typed}\n</USER_REQUEST>\n"
+        "<ADDITIONAL_METADATA>\ninfo\n</ADDITIONAL_METADATA>"
+    )
+    transcript = _agy_transcript(
+        tmp_path,
+        {"step_index": 0, "type": "USER_INPUT", "content": content},
+    )
     with patch.object(handlers, "_run_pkb_search", return_value="1. hit") as mock_search:
-        assert handlers.search_the_pkb(_agy_ctx(tmp_path / "absent.jsonl")) is None
-    mock_search.assert_not_called()
+        handlers.search_the_pkb(_agy_ctx(transcript))
+    mock_search.assert_called_once_with(typed, cwd="/workspace")
+
+
+def test_agy_peer_report_is_detected_by_is_peer_report(tmp_path: Path):
+    peer = '<USER_REQUEST>\n<cross-session-message from="worker-1">report</cross-session-message>\n</USER_REQUEST>'
+    transcript = _agy_transcript(tmp_path, {"step_index": 0, "type": "USER_INPUT", "content": peer})
+    ctx = _agy_ctx(transcript)
+    assert handlers.is_peer_report(ctx) is True
 
 
 def test_agy_user_input_without_wrapper_is_used_whole(tmp_path: Path):
