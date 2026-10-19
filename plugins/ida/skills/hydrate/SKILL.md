@@ -9,7 +9,7 @@ Fast disambiguation index. Identify ambiguous terms in an ask, locate matching g
 
 ## Preconditions
 
-Access the PKB strictly through the `services` MCP server's tools (`mcp__services__*` -- code-mode: `listToolFiles` → `readToolFile("servers/pkb.pyi")` → `executeToolCode` calling `pkb.search(...)`). If tools fail, halt and report (`halt-on-failure`); never attempt direct filesystem access.
+Access the PKB strictly through the `services` MCP server's tools (`portal_codemode_execute` calling `codemode.pkb_search(...)`; in agy via `call_mcp_tool` with `ServerName: "services"`, in Claude Code via `mcp__services__portal_codemode_execute`). If tools fail, halt and report (`halt-on-failure`); never attempt direct filesystem access.
 
 ```
 $ARGUMENTS
@@ -19,14 +19,14 @@ $ARGUMENTS
 
 1. **Extract ambiguous terms**: Identify 2-3 terms carrying ambiguity (project names, technical terms, shorthand references).
 2. **Search with varied phrasing**: Run 2-3 phrasing variants per term using MCP search tools.
-   - Run each variant through `pkb.search`; it indexes subtasks as their own documents, so no separate task-listing call is needed to avoid missing open work.
+   - Run each variant through `codemode.pkb_search`; it indexes subtasks as their own documents, so no separate task-listing call is needed to avoid missing open work.
    - Budget approximately six calls; stop when two consecutive queries return no new results.
 3. **Filter to a shortlist**: Retain only hits that directly affect caller planning. Discard generic vocabulary matches.
 4. **Emit flat shortlist**: Group by kind (tasks, knowledge, terms), omitting empty kinds:
    ```markdown
    - `<id>` -- <what it is, <=12 words> -- <relevance to ask>
    ```
-   If a search yields nothing, state the exact queries and scope: `no prior task (pkb.search: '...', 0 hits)`.
+   If a search yields nothing, state the exact queries and scope: `no prior task (codemode.pkb_search: '...', 0 hits)`.
 
 ### Possible Overlap Flag
 

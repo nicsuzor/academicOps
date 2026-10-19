@@ -8,13 +8,13 @@ Consolidation synthesises episodic records into durable knowledge and maintains 
 - **Destination-first persistence**: Write the destination note before modifying or deleting any source task body or episodic note. If the destination write fails, halt immediately.
 - **Halt on tool failure**: When a tool fails, emit `HALT: <tool_name>` and report immediately; never use workarounds or perform destructive partial edits.
 - **Control context volume**: Query slices by `status` or `project` rather than pulling full unindexed graphs.
-- **Invocation is code-mode, not flat tools**: every `pkb.<op>(...)` call below runs inside the `services` MCP server's code-mode interface (`listToolFiles` → `readToolFile("servers/pkb.pyi")` → `executeToolCode`). There is no directly-invocable flat tool named `pkb__<op>` or `pkb-<op>`.
+- **Invocation is code-mode, not flat tools**: every PKB call below runs inside the `services` MCP server's code-mode interface (`portal_codemode_execute` calling `codemode.<pkb_op>(...)`; in agy via `call_mcp_tool` with `ServerName: "services"`, in Claude Code via `mcp__services__portal_codemode_execute`). There is no directly-invocable flat tool named `pkb__<op>` or `pkb-<op>`.
 
 ## Focus
 
 A cycle may be given a focus: a keyword, a topic, or a path. With a focus:
 
-- **Seed the working set**: Union of `pkb.search(query="<focus>")` and a literal search of the brain for the term (`grep -rli "<focus>"`) across notes, memories, tasks, and specs, plus nodes one `[[wikilink]]` hop out from any hit.
+- **Seed the working set**: Union of `codemode.pkb_search({ query: "<focus>" })` and a literal search of the brain for the term (`grep -rli "<focus>"`) across notes, memories, tasks, and specs, plus nodes one `[[wikilink]]` hop out from any hit.
 - **Scope the stages**: Run Stages 3, 4, 5, and 8 over the working set only. Skip transcript mining unless the focus names a session.
 - **Establish current truth before consolidating**: For each claim in the working set, identify its source of record (the live configuration, repository, code, or spec the claim describes) and check the claim against it. A claim the source no longer supports is superseded: replace it in the canonical note; delete or archive nodes whose only content is superseded claims. Where live sources contradict each other, resolve it and state the resolved fact; if it cannot be resolved from evidence, ask rather than filing both. A claim with no reachable source is kept with a low `confidence:` float, never deleted on suspicion.
 - **Report the working set**: The summary lists every node in the working set with its outcome (verified, superseded, merged, deleted, unverifiable).
@@ -24,7 +24,7 @@ Without a focus, stages run in order as listed below.
 ## Knowledge Extraction Method
 
 1. **Cluster siblings**: Group sibling tasks under the same parent to synthesise into one canonical note.
-2. **Find canonical note**: Search with `pkb.search(query="<topic>")`. Augment existing notes via `pkb.update_body` or create via `pkb.create`.
+2. **Find canonical note**: Search with `codemode.pkb_search({ query: "<topic>" })`. Augment existing notes via `codemode.pkb_update_body` or create via `codemode.pkb_create`.
 3. **Persist destination first**: Write durable content to the destination note.
 4. **Rewrite source task body**: Once the destination write succeeds, rewrite the task body in place (<1,500 chars) to its minimal form: Goal, completed checklist, and `## Pointers` with `[[destination-id]]` and PR links. Do not alter status or graph edges.
 5. **Densify links**: Add `[[wikilink]]` pointers from the destination note to peer concepts and Maps of Content.
