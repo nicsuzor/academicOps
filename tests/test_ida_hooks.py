@@ -733,3 +733,99 @@ def test_peer_message_prompt_yields_single_user_prompt_submit_output(
         "Reminded to use `premise-check` when replying to a peer message. "
         "Premise-check gate armed by claim-59204fc6."
     )
+
+
+def test_session_start_metadata_resolves_pkb(monkeypatch: pytest.MonkeyPatch):
+    """pkb resolves to PKB_MCP_URL or PKB_VERSION when configured, not 'unknown'."""
+    monkeypatch.setenv("PKB_MCP_URL", "https://mcp.suzor.com/mcp")
+    monkeypatch.delenv("PKB_VERSION", raising=False)
+    ctx = HookContext(
+        client="claude",
+        event="SessionStart",
+        session_id="s-pkb-test",
+        hooks_dir=IDA_HOOKS,
+    )
+    res = handlers.session_start(ctx)
+    assert res is not None
+    assert "pkb: https://mcp.suzor.com/mcp" in res.inject_text
+    assert "pkb: unknown" not in res.inject_text
+
+    # When PKB_VERSION is set instead
+    monkeypatch.delenv("PKB_MCP_URL", raising=False)
+    monkeypatch.setenv("PKB_VERSION", "1.2.3")
+    res2 = handlers.session_start(ctx)
+    assert res2 is not None
+    assert "pkb: 1.2.3" in res2.inject_text
+
+
+def test_session_start_metadata_resolves_service_name(monkeypatch: pytest.MonkeyPatch):
+    """tracing service resolves to client-specific service name, not 'service: unknown'."""
+    monkeypatch.setenv("GENAI_ENGINE_TRACE_ENDPOINT", "https://otel.suzor.com/v1/traces")
+    monkeypatch.delenv("OTEL_SERVICE_NAME", raising=False)
+    monkeypatch.delenv("OTEL_EXPORTER_OTLP_ENDPOINT", raising=False)
+    monkeypatch.delenv("BETA_TRACING_ENDPOINT", raising=False)
+
+    ctx_claude = HookContext(
+        client="claude",
+        event="SessionStart",
+        session_id="s-svc-claude",
+        hooks_dir=IDA_HOOKS,
+    )
+    res_claude = handlers.session_start(ctx_claude)
+    assert res_claude is not None
+    assert "service: aops-claude-hooks" in res_claude.inject_text
+    assert "service: unknown" not in res_claude.inject_text
+
+    ctx_agy = HookContext(
+        client="agy",
+        event="SessionStart",
+        session_id="s-svc-agy",
+        hooks_dir=IDA_HOOKS,
+    )
+    res_agy = handlers.session_start(ctx_agy)
+    assert res_agy is not None
+    assert "service: aops-agy-hooks" in res_agy.inject_text
+    assert "service: unknown" not in res_agy.inject_text
+
+    # Explicit OTEL_SERVICE_NAME override
+    monkeypatch.setenv("OTEL_SERVICE_NAME", "custom-tracer-service")
+    res_custom = handlers.session_start(ctx_claude)
+    assert res_custom is not None
+    assert "service: custom-tracer-service" in res_custom.inject_text
+
+
+def test_session_start_metadata_resolves_plugin_version(tmp_path: Path):
+    """plugins field prints resolved version from installed plugin manifest."""
+    fake_plugin_root = tmp_path / "fake-plugin"
+    fake_hooks_dir = fake_plugin_root / "hooks"
+    fake_hooks_dir.mkdir(parents=True)
+    manifest_dir = fake_plugin_root / ".claude-plugin"
+    manifest_dir.mkdir(parents=True)
+    (manifest_dir / "plugin.json").write_text(json.dumps({"name": "ida", "version": "0.10.24"}))
+
+    ctx = HookContext(
+        client="claude",
+        event="SessionStart",
+        session_id="s-ver-test",
+        hooks_dir=fake_hooks_dir,
+    )
+    res = handlers.session_start(ctx)
+    assert res is not None
+    assert "plugins: 0.10.24" in res.inject_text
+
+
+def test_session_start_drops_constant_banner():
+    """session_start drops static constant banner 'aops hook: Session started.'."""
+    ctx = HookContext(
+        client="claude",
+        event="SessionStart",
+        session_id="s-banner-test",
+        hooks_dir=IDA_HOOKS,
+    )
+    res = handlers.session_start(ctx)
+    assert res is not None
+    assert "aops hook: Session started." not in res.inject_text
+    assert (
+        "Reports follow `premise-check`: written in its shape and checked on receipt."
+        in res.inject_text
+    )

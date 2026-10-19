@@ -337,6 +337,86 @@ def _scrub(value: object) -> str:
     return " ".join(str(value).split()).replace("|", "")
 
 
+def _resolve_pkb(ctx: HookContext) -> str:
+    """Resolve the PKB endpoint or version."""
+    return (
+        os.environ.get("PKB_MCP_URL")
+        or os.environ.get("PKB_VERSION")
+        or ctx.raw.get("pkb_url")
+        or ctx.raw.get("pkb_version")
+        or ctx.raw.get("pkb")
+        or "unknown"
+    )
+
+
+def _resolve_service_name(ctx: HookContext) -> str:
+    """Resolve the OTel tracing service name for the active client surface."""
+    if env_srv := os.environ.get("OTEL_SERVICE_NAME", "").strip():
+        if env_srv.lower() != "default":
+            return env_srv
+    if ctx.client == "agy":
+        return "aops-agy-hooks"
+    return "aops-claude-hooks"
+
+
+def _resolve_plugin_version(ctx: HookContext) -> str | None:
+    """Resolve the installed plugin version from env, raw context, manifests, or repo metadata."""
+    if ver := os.environ.get("AOPS_IMAGE_PLUGINS_VERSION"):
+        return ver.strip()
+    if ver := ctx.raw.get("plugins") or ctx.raw.get("plugins_version"):
+        return str(ver).strip()
+
+    candidate_roots: list[Path] = []
+    if ctx.hooks_dir:
+        candidate_roots.append(ctx.hooks_dir.parent)
+        candidate_roots.append(ctx.hooks_dir)
+    if env_root := os.environ.get("CLAUDE_PLUGIN_ROOT"):
+        candidate_roots.append(Path(env_root))
+
+    for root in candidate_roots:
+        for manifest_rel in (
+            Path(".claude-plugin") / "plugin.json",
+            Path("plugin.json"),
+        ):
+            manifest_file = root / manifest_rel
+            if manifest_file.exists():
+                try:
+                    data = json.loads(manifest_file.read_text(encoding="utf-8"))
+                    if v := data.get("version"):
+                        return str(v).strip()
+                except Exception:
+                    pass
+
+    for meta_path in (
+        Path("/home/worker/.aops-image-metadata.json"),
+        Path("/home/nic/.aops-image-metadata.json"),
+    ):
+        if meta_path.exists():
+            try:
+                data = json.loads(meta_path.read_text(encoding="utf-8"))
+                version = data.get("aops_version")
+                dist_source = data.get("dist_source") or "local"
+                if version:
+                    return f"{version} ({dist_source}:match)"
+            except Exception:
+                pass
+
+    start_dir = ctx.hooks_dir if ctx.hooks_dir else Path.cwd()
+    cur = start_dir.resolve()
+    for parent in [cur, *cur.parents]:
+        pyproj = parent / "pyproject.toml"
+        if pyproj.exists():
+            try:
+                content = pyproj.read_text(encoding="utf-8")
+                m = re.search(r'(?m)^version\s*=\s*"([^"]+)"', content)
+                if m:
+                    return m.group(1).strip()
+            except Exception:
+                pass
+
+    return None
+
+
 def _format_session_metadata(ctx: HookContext) -> str:
     now = datetime.now().astimezone()
     time_str = now.strftime("%Y-%m-%d %H:%M:%S %z")
@@ -349,23 +429,19 @@ def _format_session_metadata(ctx: HookContext) -> str:
     session_id = ctx.session_id or ctx.raw.get("session_id") or ctx.raw.get("conversationId") or ""
     cwd = ctx.cwd or ctx.raw.get("cwd") or ""
 
-    pkb_version = os.environ.get("PKB_VERSION") or ctx.raw.get("pkb_version") or "unknown"
-
     parts = [
         f"session: {_scrub(session_id)}" if session_id else "session: unknown",
         f"time: {time_str}",
         f"host: {_scrub(hostname)}" if hostname else "host: unknown",
         f"cwd: {_scrub(cwd)}" if cwd else "cwd: unknown",
     ]
-    parts.append(f"pkb: {_scrub(pkb_version)}")
 
-    plugin_ver = (
-        os.environ.get("AOPS_IMAGE_PLUGINS_VERSION")
-        or ctx.raw.get("plugins")
-        or ctx.raw.get("plugins_version")
-    )
+    pkb = _resolve_pkb(ctx)
+    parts.append(f"pkb: {_scrub(pkb)}")
+
+    plugin_ver = _resolve_plugin_version(ctx)
     if plugin_ver:
-        parts.append(f"plugins: {_scrub(str(plugin_ver))}")
+        parts.append(f"plugins: {_scrub(plugin_ver)}")
 
     otel_endpoint = (
         os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
@@ -373,7 +449,7 @@ def _format_session_metadata(ctx: HookContext) -> str:
         or os.environ.get("GENAI_ENGINE_TRACE_ENDPOINT")
     )
     if otel_endpoint:
-        service_name = os.environ.get("OTEL_SERVICE_NAME") or "unknown"
+        service_name = _resolve_service_name(ctx)
         parts.append(f"tracing: {_scrub(otel_endpoint)} (service: {_scrub(service_name)})")
     else:
         parts.append("tracing: unconfigured")
@@ -494,7 +570,6 @@ def session_start(ctx: HookContext) -> Result | None:
     """Handle SessionStart for Claude Code and SessionStart for agy."""
     metadata = _format_session_metadata(ctx)
     parts = [
-        "aops hook: Session started.",
         metadata,
         "Reports follow `premise-check`: written in its shape and checked on receipt.",
     ]
