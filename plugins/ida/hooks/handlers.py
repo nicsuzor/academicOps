@@ -32,6 +32,7 @@ from premise_check_gate import (
     is_peer_report,
     premise_check_arm,
     premise_check_handler,
+    prompt_text,
 )
 
 Handler = Callable[[HookContext], Result | None]
@@ -272,13 +273,7 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
     if is_peer_report(ctx):
         return None
 
-    raw_prompt = ctx.raw.get("prompt")
-    if raw_prompt is None and hasattr(ctx, "prompt"):
-        raw_prompt = ctx.prompt
-    if isinstance(raw_prompt, dict):
-        raw_prompt = raw_prompt.get("text") or raw_prompt.get("content") or ""
-    prompt_str = str(raw_prompt or "").strip()
-
+    prompt_str = prompt_text(ctx)
     query = extract_prompt_query(prompt_str)
     if query:
         output = _run_pkb_search(query, cwd=ctx.cwd)
