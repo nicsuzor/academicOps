@@ -17,7 +17,7 @@ Provides a shortened delivery route for simple, uncontroversial changes to a pro
 ## Scope
 
 - **Eligible**: Simple, uncontroversial changes to a project -- such as isolated bugfixes, minor documentation repairs, small configuration updates, or tight, non-breaking edits.
-- **Ineligible**: Any change that is controversial, architectural, schema-altering, cross-cutting, security-sensitive, lacking automated test coverage, or altering established contracts.
+- **Ineligible**: Any change that is controversial, architectural, schema-altering, cross-cutting, security-sensitive, code that executes without automated test coverage, or altering established contracts.
 
 ## Route Rule
 
@@ -31,7 +31,7 @@ Route delivery through whichever shortened PR or merge process the destination r
 
 A quick fix is exempt from post-hoc review (independent follow-up QA tasks, manual sign-off, or multi-agent review passes) if and only if:
 
-1. **Unit tests**: The change carries unit tests covering the modified behaviour.
+1. **Unit tests**: Where the change touches code that executes, it carries unit tests covering the modified behaviour. Instruction text and docs get no tests.
 2. **Green destination tests**: All test suites on the destination branch or target environment are confirmed green following the merge or rebase.
 
 If both conditions are met, the task concludes upon successful merge and verification without scheduling follow-up review.
@@ -40,11 +40,11 @@ If destination tests fail after merge or rebase, the change has failed: set the 
 
 ## Fallback
 
-Any change falling outside the eligible scope, lacking unit test coverage, failing local test verification prior to delivery, or where the destination repository offers no shortened route, falls back to the repository's standard delivery process: standard pull request into the development branch, full CI verification, and mandatory independent review.
+Any change falling outside the eligible scope, code that executes lacking unit test coverage, failing local test verification prior to delivery, or where the destination repository offers no shortened route, falls back to the repository's standard delivery process: standard pull request into the development branch, full CI verification, and mandatory independent review.
 
 ## Worker Completion Checklist
 
-1. Implement the minimal change and accompanying unit tests.
+1. Implement the minimal change, with unit tests where it touches code that executes; write no test for instruction text or docs.
 2. Verify automated test suite and linters pass locally.
 3. Deliver via the repository's permitted shortened route (e.g. auto-merging PR or direct push).
 4. Verify all destination tests are green after merge or rebase. If destination tests fail, set the task status to `failed` and document the failure logs on the task record so it is escalated; do not repeat or retry the delivery within the same session.
