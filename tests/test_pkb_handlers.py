@@ -32,7 +32,12 @@ handlers = importlib.util.module_from_spec(handlers_spec)
 sys.modules["pkb_handlers"] = handlers
 handlers_spec.loader.exec_module(handlers)
 
-from dispatch import HookContext, load_message_pair  # type: ignore[import-not-found]
+from dispatch import (  # type: ignore[import-not-found]
+    HookContext,
+    _run_handler,
+    load_message_pair,
+    render,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -737,3 +742,371 @@ def test_dispatch_agy_preinvocation_reads_prompt_from_transcript(
     out = json.loads(proc.stdout)
     message = out["injectSteps"][0]["ephemeralMessage"]
     assert "search_the_pkb" in message
+
+
+# --- Direct stdlib HTTP POST prompt hydration tests -------------------------
+
+
+def test_fastmcp_not_imported_by_hook():
+    """AC: fastmcp is no longer imported by the hook."""
+    handlers_path = PKB_HOOKS / "handlers.py"
+    content = handlers_path.read_text(encoding="utf-8")
+    assert "fastmcp" not in content
+
+
+@pytest.fixture
+def http_mcp_server():
+    import http.server
+    import threading
+
+    requests_received = []
+    status_to_return = [200]
+    response_body = [
+        json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "result": {"content": [{"type": "text", "text": "1. Match in PKB"}]},
+            }
+        ).encode("utf-8")
+    ]
+    response_headers = [{"Content-Type": "application/json"}]
+
+    class MockHandler(http.server.BaseHTTPRequestHandler):
+        def do_POST(self):
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length) if content_length > 0 else b""
+            requests_received.append(
+                {
+                    "path": self.path,
+                    "headers": {k.lower(): v for k, v in self.headers.items()},
+                    "body": body,
+                    "json": json.loads(body.decode("utf-8")) if body else None,
+                }
+            )
+            self.send_response(status_to_return[0])
+            for k, v in response_headers[0].items():
+                self.send_header(k, v)
+            self.end_headers()
+            self.wfile.write(response_body[0])
+
+        def log_message(self, *args):
+            pass
+
+    server = http.server.HTTPServer(("127.0.0.1", 0), MockHandler)
+    port = server.server_address[1]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+
+    class Controller:
+        url = f"http://127.0.0.1:{port}"
+        requests = requests_received
+
+        def set_response(self, status=200, body=None, headers=None):
+            status_to_return[0] = status
+            if body is not None:
+                if isinstance(body, str):
+                    body = body.encode("utf-8")
+                elif isinstance(body, dict):
+                    body = json.dumps(body).encode("utf-8")
+                response_body[0] = body
+            if headers is not None:
+                response_headers[0] = headers
+
+    try:
+        yield Controller()
+    finally:
+        server.shutdown()
+
+
+def test_search_the_pkb_sends_one_post_with_headers(http_mcp_server, monkeypatch, tmp_path):
+    """AC: one POST per search carrying x-session-id, active turn traceparent, #3009 tokens, and real user-agent."""
+    tracer_dir = tmp_path / ".claude" / "tracer"
+    tracer_dir.mkdir(parents=True, exist_ok=True)
+    trace_id = "0123456789abcdef0123456789abcdef"
+    span_id = "0123456789abcdef"
+    state_file = tracer_dir / "s123.json"
+    state_file.write_text(
+        json.dumps({"current_trace": {"trace_id": trace_id, "root_span_id": span_id}}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("PKB_MCP_URL", http_mcp_server.url)
+    monkeypatch.setenv("WORKER_MCP_TOKEN_ID", "wid")
+    monkeypatch.setenv("WORKER_MCP_TOKEN_SECRET", "wsec")
+    monkeypatch.delenv("PKB_MCP_TOOL_PREFIX", raising=False)
+
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        session_id="s123",
+        raw={"prompt": "what are the axioms?"},
+        hooks_dir=PKB_HOOKS,
+        agent_type="ida:ida",
+    )
+    res = handlers.search_the_pkb(ctx)
+    assert res is not None
+    assert "<academicOps PKB search results>" in res.inject_text
+    assert len(http_mcp_server.requests) == 1
+
+    req = http_mcp_server.requests[0]
+    assert req["headers"]["x-session-id"] == "s123"
+    assert req["headers"]["traceparent"] == f"00-{trace_id}-{span_id}-01"
+    assert req["headers"]["cf-access-client-id"] == "wid"
+    assert req["headers"]["cf-access-client-secret"] == "wsec"
+    assert not req["headers"]["user-agent"].startswith("Python-urllib")
+    assert "academicOps" in req["headers"]["user-agent"]
+    assert req["headers"]["content-type"] == "application/json"
+    assert "text/event-stream" in req["headers"]["accept"]
+    assert req["json"]["method"] == "tools/call"
+    assert req["json"]["params"]["name"] == "search"
+    assert req["json"]["params"]["arguments"] == {"query": "what are the axioms?"}
+
+
+def test_search_the_pkb_unauthenticated_when_credentials_unset(
+    http_mcp_server, monkeypatch, tmp_path
+):
+    """AC: unauthenticated request when credentials unset; cloud proxy injects them."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("PKB_MCP_URL", http_mcp_server.url)
+    for var in (
+        "PKB_MCP_HEADERS",
+        "WORKER_MCP_TOKEN_ID",
+        "WORKER_MCP_TOKEN_SECRET",
+        "DISPATCHER_MCP_TOKEN_ID",
+        "DISPATCHER_MCP_TOKEN_SECRET",
+    ):
+        monkeypatch.delenv(var, raising=False)
+
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        session_id="s456",
+        raw={"prompt": "prompt query"},
+        hooks_dir=PKB_HOOKS,
+        agent_type="ida:ida",
+    )
+    handlers.search_the_pkb(ctx)
+    assert len(http_mcp_server.requests) == 1
+    req = http_mcp_server.requests[0]
+    assert "cf-access-client-id" not in req["headers"]
+    assert "cf-access-client-secret" not in req["headers"]
+    assert "authorization" not in req["headers"]
+    assert req["headers"]["x-session-id"] == "s456"
+    assert "traceparent" in req["headers"]
+    assert not req["headers"]["user-agent"].startswith("Python-urllib")
+
+
+def test_search_the_pkb_tool_prefix(http_mcp_server, monkeypatch):
+    """AC: tool name uses PKB_MCP_TOOL_PREFIX (pkb_search when prefix is pkb_)."""
+    monkeypatch.setenv("PKB_MCP_URL", http_mcp_server.url)
+    monkeypatch.setenv("PKB_MCP_TOOL_PREFIX", "pkb_")
+
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        raw={"prompt": "prefix test"},
+        hooks_dir=PKB_HOOKS,
+        agent_type="ida:ida",
+    )
+    handlers.search_the_pkb(ctx)
+    assert len(http_mcp_server.requests) == 1
+    assert http_mcp_server.requests[0]["json"]["params"]["name"] == "pkb_search"
+
+
+def test_search_the_pkb_injected_message_on_401(staged_hooks: Path, http_mcp_server):
+    """AC: HTTP 401 injects a message naming refusal, 401, PKB_MCP_HEADERS, and token variables, with red trace recorded."""
+    http_mcp_server.set_response(401, body="Unauthorized")
+    env = dict(os.environ)
+    env["PKB_MCP_URL"] = http_mcp_server.url
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(staged_hooks / "dispatch.py"),
+            "claude",
+            "UserPromptSubmit",
+        ],
+        input=json.dumps({"hook_event_name": "UserPromptSubmit", "prompt": "check status"}),
+        text=True,
+        capture_output=True,
+        timeout=10,
+        cwd=str(staged_hooks),
+        env=env,
+    )
+    assert proc.returncode == 0
+    data = json.loads(proc.stdout)
+    injected = data.get("hookSpecificOutput", {}).get("additionalContext", "")
+    assert injected.startswith("aops hooks: handler 'search_the_pkb' failed")
+    assert "refused authorisation" in injected
+    assert "401" in injected
+    assert "PKB_MCP_HEADERS" in injected
+    assert "WORKER_MCP_TOKEN_ID" in injected
+    assert "WORKER_MCP_TOKEN_SECRET" in injected
+    assert len(http_mcp_server.requests) == 1
+    assert "traceparent" in http_mcp_server.requests[0]["headers"]
+
+
+def test_search_the_pkb_injected_message_on_403(staged_hooks: Path, http_mcp_server):
+    """AC: HTTP 403 injects a message naming refusal, 403, PKB_MCP_HEADERS, and token variables, with red trace recorded."""
+    http_mcp_server.set_response(403, body="Forbidden")
+    env = dict(os.environ)
+    env["PKB_MCP_URL"] = http_mcp_server.url
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(staged_hooks / "dispatch.py"),
+            "claude",
+            "UserPromptSubmit",
+        ],
+        input=json.dumps({"hook_event_name": "UserPromptSubmit", "prompt": "check status"}),
+        text=True,
+        capture_output=True,
+        timeout=10,
+        cwd=str(staged_hooks),
+        env=env,
+    )
+    assert proc.returncode == 0
+    data = json.loads(proc.stdout)
+    injected = data.get("hookSpecificOutput", {}).get("additionalContext", "")
+    assert injected.startswith("aops hooks: handler 'search_the_pkb' failed")
+    assert "refused authorisation" in injected
+    assert "403" in injected
+    assert "PKB_MCP_HEADERS" in injected
+    assert "WORKER_MCP_TOKEN_ID" in injected
+    assert "WORKER_MCP_TOKEN_SECRET" in injected
+    assert len(http_mcp_server.requests) == 1
+    assert "traceparent" in http_mcp_server.requests[0]["headers"]
+
+
+def test_search_the_pkb_injected_message_on_unreachable(staged_hooks: Path):
+    """AC: unreachable endpoint injects message naming unreachable."""
+    env = dict(os.environ)
+    env["PKB_MCP_URL"] = "http://127.0.0.1:9"
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(staged_hooks / "dispatch.py"),
+            "claude",
+            "UserPromptSubmit",
+        ],
+        input=json.dumps({"hook_event_name": "UserPromptSubmit", "prompt": "check status"}),
+        text=True,
+        capture_output=True,
+        timeout=10,
+        cwd=str(staged_hooks),
+        env=env,
+    )
+    assert proc.returncode == 0
+    data = json.loads(proc.stdout)
+    injected = data.get("hookSpecificOutput", {}).get("additionalContext", "")
+    assert injected.startswith("aops hooks: handler 'search_the_pkb' failed")
+    assert "unreachable" in injected
+
+
+def test_search_the_pkb_injected_message_on_timeout():
+    """AC: timeout injects message naming 5s timeout."""
+
+    def slow_post(*_args, **_kwargs):
+        raise TimeoutError("the PKB endpoint did not answer within 5 seconds")
+
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        raw={"prompt": "check status"},
+        hooks_dir=PKB_HOOKS,
+        agent_type="ida:ida",
+    )
+    with (
+        patch.dict("os.environ", {"PKB_MCP_URL": "https://pkb.example.com"}),
+        patch.object(handlers, "_post_mcp_search", slow_post, create=True),
+    ):
+        res = _run_handler(handlers.search_the_pkb, ctx)
+        rendered = render("claude", "UserPromptSubmit", res)
+        injected = rendered.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert injected.startswith("aops hooks: handler 'search_the_pkb' failed")
+        assert "did not answer within 5 seconds" in injected
+
+
+def test_search_the_pkb_session_fallback_and_caching(monkeypatch, tmp_path):
+    """AC: falls back to initialize once if session needed, caching for 24h in tracer state dir."""
+    import http.server
+    import threading
+
+    calls = []
+
+    class SessionServer(http.server.BaseHTTPRequestHandler):
+        def do_POST(self):
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = json.loads(self.rfile.read(content_length).decode("utf-8"))
+            method = body.get("method")
+            session_hdr = self.headers.get("mcp-session-id")
+            calls.append((method, session_hdr))
+
+            if method == "tools/call" and not session_hdr:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"error": "Session required"}')
+            elif method == "initialize":
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("mcp-session-id", "sess-uuid-789")
+                self.end_headers()
+                self.wfile.write(
+                    json.dumps({"jsonrpc": "2.0", "id": body["id"], "result": {}}).encode("utf-8")
+                )
+            elif method == "tools/call" and session_hdr == "sess-uuid-789":
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(
+                    json.dumps(
+                        {
+                            "jsonrpc": "2.0",
+                            "id": body["id"],
+                            "result": {
+                                "content": [{"type": "text", "text": "1. Found with session"}]
+                            },
+                        }
+                    ).encode("utf-8")
+                )
+
+        def log_message(self, *args):
+            pass
+
+    server = http.server.HTTPServer(("127.0.0.1", 0), SessionServer)
+    port = server.server_address[1]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+
+    try:
+        monkeypatch.setenv("HOME", str(tmp_path))
+        monkeypatch.setenv("PKB_MCP_URL", f"http://127.0.0.1:{port}")
+        ctx = HookContext(
+            client="claude",
+            event="UserPromptSubmit",
+            session_id="s1",
+            raw={"prompt": "find notes"},
+            hooks_dir=PKB_HOOKS,
+        )
+        res = handlers.search_the_pkb(ctx)
+        assert res is not None
+        assert "Found with session" in res.inject_text
+        assert calls == [
+            ("tools/call", None),
+            ("initialize", None),
+            ("tools/call", "sess-uuid-789"),
+        ]
+
+        cache_file = tmp_path / ".claude" / "tracer" / "pkb_session_cache.json"
+        assert cache_file.exists()
+        cache_data = json.loads(cache_file.read_text(encoding="utf-8"))
+        assert cache_data["session_id"] == "sess-uuid-789"
+
+        calls.clear()
+        res2 = handlers.search_the_pkb(ctx)
+        assert res2 is not None
+        assert "Found with session" in res2.inject_text
+        assert calls == [("tools/call", "sess-uuid-789")]
+    finally:
+        server.shutdown()
