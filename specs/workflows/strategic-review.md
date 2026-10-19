@@ -54,7 +54,11 @@ Before inspecting code details or prose phrasing, `pauli` (`plugins/ida/agents/p
 
 ### 2. Specialized Reviewer Roles
 
-- **`rbg` (Axioms & Rules)**: Enforces compliance with core framework axioms, project-local rules, permission boundaries, and governance constraints.
+- **`rbg` (Axioms & Rules)**: Enforces compliance with core framework axioms, project-local rules, permission boundaries, and governance constraints. Operates under four core behavioral rules:
+  1. **Judge for Yourself**: Reaches verdicts from the request, artifact, and rules alone without reading prior reviews, PR comments, or prior task reports.
+  2. **Judge Proportion First**: Sizes the smallest mechanism meeting the request across its class before reading artifact internals, rejecting unneeded machinery under `proportionate`.
+  3. **Apply Each Axiom to the Artifact**: Evaluates mechanisms by their runtime consequences, assesses whether the substantive decision requires qualitative judgment, and verifies that mechanisms do not violate axioms (such as delegating qualitative decisions to deterministic path/author/AST heuristics under `judgment-non-delegable`, or introducing silent fallback branches under `no-fallbacks`).
+  4. **Mechanisms Analysis**: Produces a structured `### Mechanisms` section explicitly evaluating each added mechanism's decision, necessity of judgment, and broken axioms before issuing a verdict.
 - **`pauli` (Strategic Fit)**: Tests necessity, parsimony, and precedent -- see the Strategic Fit Check above.
 - **`marsha` (Excellence & Runtime Fitness)**: Probes runtime execution correctness, empirical evidence, test coverage, and end-user fitness.
 
