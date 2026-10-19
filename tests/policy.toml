@@ -69,3 +69,9 @@ override_vars = [
   "AOP_FORCE",
   "AOP_OVERRIDE",
 ]
+
+[rbg.axioms]
+# Aliases mapping alternative names or historical variants to canonical axiom slugs
+aliases = { nondelegablequalitativejudgment = "judgment-non-delegable", qualitativejudgment = "judgment-non-delegable" }
+# Context words or non-axiom markdown words in backticks exempt from axiom checks
+exempt_words = ["cwd"]

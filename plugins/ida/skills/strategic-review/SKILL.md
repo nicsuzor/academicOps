@@ -16,7 +16,7 @@ Coordinate multi-agent review across expert lenses and synthesize findings into 
 
 ### 1. Gather Context
 
-Load the artifact, its diff (for PRs), commit messages and trailers, PR title and body, and review replies. Determine destination repository visibility (public or private) and relevant quality standards. If originating from a brief, verify against its acceptance criteria and evidence requirements.
+Load the artifact, its diff (for PRs), full file contents, metadata, commit messages and trailers, PR title and body, and review replies. Determine destination repository visibility (public or private) and relevant quality standards. If originating from a brief, verify against its acceptance criteria and evidence requirements.
 
 ### 2. Strategic Fit Check
 
@@ -24,7 +24,7 @@ Before implementation detail is reviewed, the strategic-fit reviewer (TypeName `
 
 ### 3. Deploy Parallel Reviewers
 
-Dispatch all three reviewers concurrently via `invoke_subagent` in a single message with neutral prompts: provide the full published surface (diff, commit messages and trailers, PR title and body, review replies), the destination's visibility, and its acceptance criteria, with no lenses or verdict scale of your own. Each reviewer returns its verdict on its own definition's scale.
+Dispatch all three reviewers concurrently via `invoke_subagent` in a single message with neutral prompts: provide the full published surface (diff, full file contents, metadata, commit messages and trailers, PR title and body, review replies), the destination's visibility, and its acceptance criteria, with no lenses or verdict scale of your own. Each reviewer returns its verdict on its own definition's scale.
 
 - **Rule compliance** (TypeName `rbg`): Axiom and rule compliance, evaluating published text against destination repository visibility under `data-boundaries`.
 - **Strategic fit** (TypeName `pauli`): Strategic Fit Check (step 2).
