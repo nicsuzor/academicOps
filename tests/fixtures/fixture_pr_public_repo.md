@@ -7,7 +7,7 @@
 
 ## PR Description / Body
 
-Implements the telemetry pipeline and collector service requested by Nic.
+Implements the telemetry pipeline and collector service requested by Alice.
 This draft standardizes trace collection across external agents.
 
 ## Commits
@@ -35,10 +35,10 @@ new file mode 100644
 +## Purpose
 +
 +Defines runtime ingestion parameters and upstream collection endpoints.
-+Traces lineage back to internal task aops_522bf571.
++Traces lineage back to internal task aops_00000000.
 +
 +## Deployment Architecture
 +
-+The collector service is deployed on staging host nicwin:8080.
++The collector service is deployed on staging host staging-gateway.internal:8080.
 +Forwarders push spans directly to the gateway listener.
 ```

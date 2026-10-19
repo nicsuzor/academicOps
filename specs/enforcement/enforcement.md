@@ -39,7 +39,7 @@ In probabalistic enforcement, we have to match the impact of regulation to the r
 
 The enforcement register is structured in 4 columns:
 
-1. **Rule / nudge** -- The short-form linked reference to the rule (e.g. `[Axiom: Data Boundaries](../../plugins/rbg/axioms/data-boundaries.md)` or `[Persona: Ida](../../plugins/ida/agents/ida.md)`) paired with the operative obligation or steering intent.
+1. **Rule / nudge** -- The short-form linked reference to the rule (e.g. `[Axiom: Data Boundaries](../../plugins/rbg/skills/axioms/data-boundaries.md)` or `[Persona: Ida](../../plugins/ida/agents/ida.md)`) paired with the operative obligation or steering intent.
 2. **Mechanism** -- The carrier category from the controlled vocabulary.
 3. **Severity** -- The escalation index within the mechanism.
 4. **Detail** -- The pinpoint verification reference (`path:line` + operative snippet, handler function, or CI workflow) and operational state flags (`[DISABLED]`, `[MAP DRIFT]`).
