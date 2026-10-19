@@ -104,9 +104,7 @@ def test_user_prompt_submit_truncates_prompt_to_200():
     """Prompt query is truncated to 200 characters when passed to pkb search."""
     long_prompt = "a" * 350
     with (
-        patch.object(
-            handlers, "_search_via_fastmcp_client", return_value="result line"
-        ) as mock_client,
+        patch.object(handlers, "_post_mcp_search", return_value="result line") as mock_client,
         patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
         out = handlers._run_pkb_search(long_prompt)
@@ -118,9 +116,7 @@ def test_user_prompt_submit_strips_ansi_from_prompt():
     """ANSI escape sequences in prompt are stripped before passing to pkb search."""
     ansi_prompt = "\x1b[31mred text\x1b[0m with \x1b[1mbold\x1b[0m"
     with (
-        patch.object(
-            handlers, "_search_via_fastmcp_client", return_value="result line"
-        ) as mock_client,
+        patch.object(handlers, "_post_mcp_search", return_value="result line") as mock_client,
         patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
         out = handlers._run_pkb_search(ansi_prompt)
@@ -138,9 +134,7 @@ def test_run_pkb_search_caps_oversized_output():
     """Output larger than the injection budget is truncated with a marker, regardless of source."""
     huge = "x" * (handlers._MAX_INJECT_CHARS * 2)
     with (
-        patch.object(
-            handlers, "_search_via_fastmcp_client", return_value=handlers._cap_output(huge)
-        ),
+        patch.object(handlers, "_post_mcp_search", return_value=handlers._cap_output(huge)),
         patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
         out = handlers._run_pkb_search("q")
@@ -153,7 +147,7 @@ def test_run_pkb_search_leaves_normal_output_untouched():
     """Output well under the cap passes through byte-for-byte."""
     normal = "1. Some doc (score: 0.08)\n   path/to/doc.md\n   an extract of the match."
     with (
-        patch.object(handlers, "_search_via_fastmcp_client", return_value=normal),
+        patch.object(handlers, "_post_mcp_search", return_value=normal),
         patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
         out = handlers._run_pkb_search("q")
@@ -475,9 +469,7 @@ def test_search_over_http_with_no_auth_headers_set():
     """PKB search uses in-process HTTP client even when no auth headers are set in the environment."""
     with (
         patch.dict("os.environ", {"PKB_MCP_URL": "https://pkb.example.com"}, clear=True),
-        patch.object(
-            handlers, "_search_via_fastmcp_client", return_value="1. Match in PKB"
-        ) as mock_http,
+        patch.object(handlers, "_post_mcp_search", return_value="1. Match in PKB") as mock_http,
     ):
         assert handlers._resolve_mcp_headers() == {}
         out = handlers._run_pkb_search("query text")
@@ -488,7 +480,7 @@ def test_search_over_http_with_no_auth_headers_set():
 def test_run_pkb_search_has_no_subprocess_or_cli_route():
     """_run_pkb_search reaches the PKB over HTTP only and has no CLI or subprocess route."""
     with (
-        patch.object(handlers, "_search_via_fastmcp_client", return_value="result") as mock_http,
+        patch.object(handlers, "_post_mcp_search", return_value="result") as mock_http,
         patch.dict("os.environ", {"PKB_MCP_URL": "https://mcp.example.com"}),
     ):
         out = handlers._run_pkb_search("query text")
@@ -511,7 +503,7 @@ def test_http_failure_surfaces_as_hook_failure_naming_the_error():
         patch.dict("os.environ", {"PKB_MCP_URL": "https://pkb.example.com"}),
         patch.object(
             handlers,
-            "_search_via_fastmcp_client",
+            "_post_mcp_search",
             side_effect=RuntimeError("connection refused to https://pkb.example.com"),
         ),
     ):
@@ -560,21 +552,20 @@ def test_dispatch_http_failure_surfaces_error_in_hook_output(staged_hooks: Path)
     assert "search_the_pkb" in content and "failed with" in content
 
 
-def test_search_via_fastmcp_client_is_bounded_by_timeout():
+def test_post_mcp_search_is_bounded_by_timeout():
     """A stalled backend raises TimeoutError rather than returning None and falling back."""
-    import asyncio
     import time
 
-    async def stall(*_args, **_kwargs):
-        await asyncio.sleep(30)
+    def slow_urlopen(*_args, **_kwargs):
+        raise TimeoutError("timed out")
 
     with (
-        patch.object(handlers, "_call_pkb_search", stall),
+        patch("urllib.request.urlopen", slow_urlopen),
         patch.object(handlers, "_SEARCH_TIMEOUT_SECONDS", 0.2),
     ):
         start = time.monotonic()
         with pytest.raises(TimeoutError):
-            handlers._search_via_fastmcp_client("https://x", "q", {"A": "b"})
+            handlers._post_mcp_search("https://x", "q", {"A": "b"})
         assert time.monotonic() - start < 5
 
 

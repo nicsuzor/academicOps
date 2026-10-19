@@ -155,12 +155,32 @@ async def _one_search(client, prompt: str, family: str) -> SearchSample:
     return sample
 
 
+def _resolve_mcp_headers() -> dict[str, str]:
+    """Resolve MCP headers using the hook's own header resolution logic."""
+    repo_root = Path(__file__).resolve().parent.parent
+    hooks_dir = repo_root / "plugins" / "ida" / "hooks"
+    if str(hooks_dir) not in sys.path:
+        sys.path.insert(0, str(hooks_dir))
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("ida_pkb_handlers", hooks_dir / "handlers.py")
+    if spec and spec.loader:
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        if hasattr(mod, "_resolve_mcp_headers"):
+            return mod._resolve_mcp_headers()
+    return {}
+
+
 async def measure_backend(repeats: int) -> list[SearchSample]:
     from fastmcp import Client  # local import: optional dependency, only needed here
+    from fastmcp.client.transports import StreamableHttpTransport
 
     url = os.environ["PKB_MCP_URL"]
+    headers = _resolve_mcp_headers()
+    transport = StreamableHttpTransport(url, headers=headers)
     samples: list[SearchSample] = []
-    async with Client(url) as client:
+    async with Client(transport=transport) as client:
         # Warm-up call, excluded from the distribution -- first call pays
         # model/index cold-start, which every subsequent real fire does not.
         await client.call_tool("pkb_search", {"query": "warmup", "limit": 1})
