@@ -612,7 +612,7 @@ def test_agy_prompt_is_read_from_the_transcript_user_request(tmp_path: Path):
     )
     with patch.object(handlers, "_run_pkb_search", return_value="1. hit") as mock_search:
         res = handlers.search_the_pkb(_agy_ctx(transcript))
-    mock_search.assert_called_once_with(AGY_TYPED, cwd="/workspace")
+    mock_search.assert_called_once_with(AGY_TYPED, cwd="/workspace", session_id="c1")
     assert res is not None and "<academicOps PKB search results>" in res.inject_text
 
 
@@ -629,7 +629,7 @@ def test_agy_uses_the_latest_user_input(tmp_path: Path):
     )
     with patch.object(handlers, "_run_pkb_search", return_value="1. hit") as mock_search:
         handlers.search_the_pkb(_agy_ctx(transcript))
-    mock_search.assert_called_once_with(AGY_TYPED, cwd="/workspace")
+    mock_search.assert_called_once_with(AGY_TYPED, cwd="/workspace", session_id="c1")
 
 
 def test_agy_searches_once_per_turn(tmp_path: Path):
@@ -679,7 +679,7 @@ def test_agy_user_input_with_embedded_user_request_closing_tag(tmp_path: Path):
     )
     with patch.object(handlers, "_run_pkb_search", return_value="1. hit") as mock_search:
         handlers.search_the_pkb(_agy_ctx(transcript))
-    mock_search.assert_called_once_with(typed, cwd="/workspace")
+    mock_search.assert_called_once_with(typed, cwd="/workspace", session_id="c1")
 
 
 def test_agy_peer_report_is_detected_by_is_peer_report(tmp_path: Path):
@@ -695,7 +695,7 @@ def test_agy_user_input_without_wrapper_is_used_whole(tmp_path: Path):
     )
     with patch.object(handlers, "_run_pkb_search", return_value="1. hit") as mock_search:
         handlers.search_the_pkb(_agy_ctx(transcript))
-    mock_search.assert_called_once_with(AGY_TYPED, cwd="/workspace")
+    mock_search.assert_called_once_with(AGY_TYPED, cwd="/workspace", session_id="c1")
 
 
 def test_dispatch_agy_preinvocation_reads_prompt_from_transcript(
@@ -740,9 +740,21 @@ def test_dispatch_agy_preinvocation_reads_prompt_from_transcript(
 
 def test_fastmcp_not_imported_by_hook():
     """AC: fastmcp is no longer imported by the hook."""
-    handlers_path = PKB_HOOKS / "handlers.py"
-    content = handlers_path.read_text(encoding="utf-8")
-    assert "fastmcp" not in content
+    cmd = [
+        sys.executable,
+        "-c",
+        (
+            "import sys\n"
+            "import handlers\n"
+            "from dispatch import HookContext\n"
+            "ctx = HookContext(client='claude', event='UserPromptSubmit', raw={'prompt': 'test'})\n"
+            "handlers.search_the_pkb(ctx)\n"
+            "imported_fastmcp = [m for m in sys.modules if m.startswith('fastmcp')]\n"
+            "assert not imported_fastmcp, f'fastmcp was imported: {imported_fastmcp}'\n"
+        ),
+    ]
+    res = subprocess.run(cmd, cwd=str(PKB_HOOKS), capture_output=True, text=True)
+    assert res.returncode == 0, f"Subprocess failed:\nstdout: {res.stdout}\nstderr: {res.stderr}"
 
 
 @pytest.fixture
@@ -1101,3 +1113,71 @@ def test_search_the_pkb_session_fallback_and_caching(monkeypatch, tmp_path):
         assert calls == [("tools/call", "sess-uuid-789")]
     finally:
         server.shutdown()
+
+
+def test_parse_mcp_response_raises_on_sse_error():
+    """AC: SSE error lines raise RuntimeError immediately rather than returning None."""
+    raw_sse = 'data: {"error": "Internal server error in search"}\n\n'
+    with pytest.raises(RuntimeError, match="PKB MCP error.*Internal server error"):
+        handlers._parse_mcp_response(raw_sse)
+
+
+def test_post_mcp_search_does_not_initialize_on_404_or_generic_400():
+    """AC: HTTP 404/400 errors without explicit session errors do not attempt initialize."""
+    import http.server
+    import threading
+
+    calls = []
+
+    class Server404(http.server.BaseHTTPRequestHandler):
+        def do_POST(self):
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode("utf-8")
+            calls.append(json.loads(body).get("method"))
+            self.send_response(404)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(b'{"detail": "Not Found"}')
+
+        def log_message(self, *args):
+            pass
+
+    server = http.server.HTTPServer(("127.0.0.1", 0), Server404)
+    port = server.server_address[1]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+
+    try:
+        with pytest.raises(RuntimeError) as exc_info:
+            handlers._post_mcp_search(f"http://127.0.0.1:{port}", "test query")
+        assert "HTTP 404" in str(exc_info.value)
+        assert "Not Found" in str(exc_info.value)
+        assert calls == ["tools/call"]
+    finally:
+        server.shutdown()
+
+
+def test_search_the_pkb_forwards_session_without_mutating_env(monkeypatch):
+    """AC: session_id is forwarded as parameter and os.environ is not mutated."""
+    captured_args = {}
+
+    def mock_post(mcp_url, query, headers=None, session_id=None, traceparent=None):
+        captured_args["session_id"] = session_id
+        captured_args["traceparent"] = traceparent
+        return "1. Result"
+
+    monkeypatch.setattr(handlers, "_post_mcp_search", mock_post)
+    monkeypatch.setenv("PKB_MCP_URL", "http://127.0.0.1:8000")
+    monkeypatch.delenv("AOPS_SESSION_ID", raising=False)
+
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        session_id="session-explicit-123",
+        raw={"prompt": "find notes"},
+        hooks_dir=PKB_HOOKS,
+    )
+    res = handlers.search_the_pkb(ctx)
+    assert res is not None
+    assert captured_args["session_id"] == "session-explicit-123"
+    assert "AOPS_SESSION_ID" not in os.environ

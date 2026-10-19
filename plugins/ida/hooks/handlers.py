@@ -232,7 +232,15 @@ def _tracer_state_dir() -> Path:
     env_dir = os.environ.get("TRACER_STATE_DIR") or os.environ.get("AOPS_TRACER_DIR")
     if env_dir:
         return Path(env_dir)
-    return Path.home() / ".claude" / "tracer"
+    if claude_code_tracer is not None and hasattr(claude_code_tracer, "STATE_DIR"):
+        state_dir = Path(claude_code_tracer.STATE_DIR)
+        if state_dir.is_absolute():
+            try:
+                return Path.home().joinpath(*state_dir.parts[-2:])
+            except Exception:
+                pass
+        return state_dir
+    return Path.home() / ".aops" / "tracer"
 
 
 def _resolve_tracer_traceparent(session_id: str | None = None) -> str:
@@ -298,13 +306,20 @@ def _parse_mcp_response(raw_body: str) -> str | None:
             line = line.strip()
             if line.startswith("data:"):
                 try:
-                    data = json.loads(line[5:].strip())
-                    if "result" in data:
-                        break
+                    payload = json.loads(line[5:].strip())
+                    if isinstance(payload, dict):
+                        if "error" in payload:
+                            raise RuntimeError(f"PKB MCP error: {payload['error']}")
+                        if "result" in payload:
+                            data = payload
+                            break
                 except json.JSONDecodeError:
                     continue
         if data is None:
             return None
+
+    if isinstance(data, dict) and "error" in data:
+        raise RuntimeError(f"PKB MCP error: {data['error']}")
 
     result = data.get("result", {})
     content = result.get("content", [])
@@ -433,19 +448,30 @@ def _post_mcp_search(
         )
 
     session_needed = False
-    if status in (400, 404, 412):
-        session_needed = True
-    elif status == 200:
-        try:
-            parsed = json.loads(body)
-            if "error" in parsed:
-                err_msg = str(parsed["error"]).lower()
-                if "session" in err_msg:
-                    session_needed = True
-                else:
-                    raise RuntimeError(f"PKB MCP error: {parsed['error']}")
-        except json.JSONDecodeError:
-            pass
+    err_obj = None
+
+    try:
+        parsed = json.loads(body)
+        if isinstance(parsed, dict) and "error" in parsed:
+            err_obj = parsed["error"]
+    except json.JSONDecodeError:
+        for line in body.splitlines():
+            line = line.strip()
+            if line.startswith("data:"):
+                try:
+                    payload = json.loads(line[5:].strip())
+                    if isinstance(payload, dict) and "error" in payload:
+                        err_obj = payload["error"]
+                        break
+                except json.JSONDecodeError:
+                    continue
+
+    if err_obj is not None:
+        err_msg = str(err_obj).lower()
+        if "session" in err_msg:
+            session_needed = True
+        elif status == 200:
+            raise RuntimeError(f"PKB MCP error: {err_obj}")
 
     if session_needed:
         new_session = _initialize_mcp_session(mcp_url, req_headers)
@@ -484,6 +510,14 @@ def _run_pkb_search(
         return None
 
     headers = _resolve_mcp_headers()
+    if session_id is not None or traceparent is not None:
+        return _post_mcp_search(
+            mcp_url,
+            query,
+            headers,
+            session_id=session_id,
+            traceparent=traceparent,
+        )
     return _post_mcp_search(mcp_url, query, headers)
 
 
@@ -506,18 +540,12 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
             or ctx.raw.get("session_id")
             or ctx.raw.get("conversationId")
             or os.environ.get("AOPS_SESSION_ID")
-            or ""
+            or None
         )
-        prev_session = os.environ.get("AOPS_SESSION_ID")
-        try:
-            if session_id:
-                os.environ["AOPS_SESSION_ID"] = session_id
+        if session_id:
+            output = _run_pkb_search(query, cwd=ctx.cwd, session_id=session_id)
+        else:
             output = _run_pkb_search(query, cwd=ctx.cwd)
-        finally:
-            if prev_session is not None:
-                os.environ["AOPS_SESSION_ID"] = prev_session
-            elif session_id:
-                os.environ.pop("AOPS_SESSION_ID", None)
         if output:
             msg = f"<academicOps PKB search results>\n{output}\n</academicOps PKB search results>"
             return warn(msg)
