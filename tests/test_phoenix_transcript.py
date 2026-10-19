@@ -208,3 +208,24 @@ def test_agy_tool_action_and_tool_request_output():
     ) == ("services.search")
     assert pt.is_tool_request(json.dumps([{"name": "list_dir", "args": args}]))
     assert not pt.is_tool_request("Let me look.")
+
+
+def test_tool_detail_names_what_a_call_acted_on():
+    code = (
+        "async () => { const a = await codemode.pkb_get_document({ id: 'kb_1', max_bytes: 600 }); }"
+    )
+    agy = {
+        "ServerName": "services",
+        "ToolName": "portal_codemode_execute",
+        "Arguments": {"code": code},
+        "toolAction": "Reading proposal",
+    }
+    assert pt.tool_detail(json.dumps(agy)) == (
+        "services.portal_codemode_execute: pkb_get_document(id=kb_1, max_bytes=600)"
+    )
+    assert pt.tool_detail(json.dumps({"code": code})) == "pkb_get_document(id=kb_1, max_bytes=600)"
+    sql = 'res = await call_tool("executeSql", {"sql": "SELECT 1"})'
+    assert pt.tool_detail(json.dumps({"code": sql})) == "executeSql(sql=SELECT 1)"
+    assert pt.tool_detail(
+        json.dumps({"CommandLine": 'python3 -c "\nprint(1)\n"', "toolAction": "x"})
+    ) == ('python3 -c " print(1) "')
