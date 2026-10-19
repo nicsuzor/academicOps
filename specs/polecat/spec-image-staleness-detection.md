@@ -213,12 +213,11 @@ process's own environment rather than on argv): `AOPS_IMAGE_PROVENANCE` (the ful
 record as JSON),
 `AOPS_IMAGE_STALE` (`0`/`1`), `AOPS_IMAGE_PLUGINS_VERSION`, and -- only when stale -- `AOPS_IMAGE_STALENESS_WARNING`.
 
-`plugins/ida/hooks/handlers.py` reads them, falling back to
-installed plugin manifests (`plugin.json`) and `/home/worker/.aops-image-metadata.json`,
-and displays the resolved fields on the session metadata line:
+`plugins/ida/hooks/handlers.py` reads them, and appends the version to the session
+metadata line:
 
 ```text
-session: session-9317829f | time: 2026-08-29 10:25:00 +1000 | host: polecat-worker-01 | cwd: /workspace | pkb: https://mcp.suzor.com/mcp | plugins: 0.9.1+gf31ebcf7 (local:match) | tracing: http://otel-collector:4318 (service: aops-claude-hooks)
+session: session-9317829f | time: 2026-08-29 10:25:00 +1000 | host: polecat-worker-01 | cwd: /workspace | plugins: 0.9.1+gf31ebcf7 (local:match)
 ```
 
 When stale, it injects the warning into the agent's own context, so the agent

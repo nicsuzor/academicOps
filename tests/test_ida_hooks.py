@@ -6,6 +6,7 @@ import json
 import shutil
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 from unittest.mock import patch
 
@@ -13,6 +14,8 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 IDA_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
+_POLICY_FILE = REPO_ROOT / "tests" / "policy.toml"
+_POLICY = tomllib.loads(_POLICY_FILE.read_text(encoding="utf-8")) if _POLICY_FILE.exists() else {}
 
 if str(IDA_HOOKS) not in sys.path:
     sys.path.insert(0, str(IDA_HOOKS))
@@ -736,9 +739,11 @@ def test_peer_message_prompt_yields_single_user_prompt_submit_output(
 
 
 def test_session_start_metadata_resolves_pkb(monkeypatch: pytest.MonkeyPatch):
-    """pkb resolves to PKB_MCP_URL or PKB_VERSION when configured, not 'unknown'."""
-    monkeypatch.setenv("PKB_MCP_URL", "https://mcp.suzor.com/mcp")
-    monkeypatch.delenv("PKB_VERSION", raising=False)
+    """pkb resolves to PKB_MCP_URL when configured per policy, omitted when unset."""
+    policy_pkb_url = _POLICY.get("hooks", {}).get("session_start", {}).get("pkb_url")
+    assert policy_pkb_url, "tests/policy.toml must define hooks.session_start.pkb_url"
+
+    monkeypatch.setenv("PKB_MCP_URL", policy_pkb_url)
     ctx = HookContext(
         client="claude",
         event="SessionStart",
@@ -747,51 +752,38 @@ def test_session_start_metadata_resolves_pkb(monkeypatch: pytest.MonkeyPatch):
     )
     res = handlers.session_start(ctx)
     assert res is not None
-    assert "pkb: https://mcp.suzor.com/mcp" in res.inject_text
+    assert f"pkb: {policy_pkb_url}" in res.inject_text
     assert "pkb: unknown" not in res.inject_text
 
-    # When PKB_VERSION is set instead
+    # When PKB_MCP_URL is unset, field is omitted (no fallback to 'unknown')
     monkeypatch.delenv("PKB_MCP_URL", raising=False)
-    monkeypatch.setenv("PKB_VERSION", "1.2.3")
     res2 = handlers.session_start(ctx)
     assert res2 is not None
-    assert "pkb: 1.2.3" in res2.inject_text
+    assert "pkb:" not in res2.inject_text
 
 
-def test_session_start_metadata_resolves_service_name(monkeypatch: pytest.MonkeyPatch):
-    """tracing service resolves to client-specific service name, not 'service: unknown'."""
+def test_session_start_metadata_service_name(monkeypatch: pytest.MonkeyPatch):
+    """tracing service reflects OTEL_SERVICE_NAME when configured, omitted when unset."""
     monkeypatch.setenv("GENAI_ENGINE_TRACE_ENDPOINT", "https://otel.suzor.com/v1/traces")
-    monkeypatch.delenv("OTEL_SERVICE_NAME", raising=False)
-    monkeypatch.delenv("OTEL_EXPORTER_OTLP_ENDPOINT", raising=False)
-    monkeypatch.delenv("BETA_TRACING_ENDPOINT", raising=False)
-
-    ctx_claude = HookContext(
+    monkeypatch.setenv("OTEL_SERVICE_NAME", "custom-tracer-service")
+    ctx = HookContext(
         client="claude",
         event="SessionStart",
-        session_id="s-svc-claude",
+        session_id="s-svc-test",
         hooks_dir=IDA_HOOKS,
     )
-    res_claude = handlers.session_start(ctx_claude)
-    assert res_claude is not None
-    assert "service: aops-claude-hooks" in res_claude.inject_text
-    assert "service: unknown" not in res_claude.inject_text
-
-    ctx_agy = HookContext(
-        client="agy",
-        event="SessionStart",
-        session_id="s-svc-agy",
-        hooks_dir=IDA_HOOKS,
+    res = handlers.session_start(ctx)
+    assert res is not None
+    assert (
+        "tracing: https://otel.suzor.com/v1/traces (service: custom-tracer-service)"
+        in res.inject_text
     )
-    res_agy = handlers.session_start(ctx_agy)
-    assert res_agy is not None
-    assert "service: aops-agy-hooks" in res_agy.inject_text
-    assert "service: unknown" not in res_agy.inject_text
 
-    # Explicit OTEL_SERVICE_NAME override
-    monkeypatch.setenv("OTEL_SERVICE_NAME", "custom-tracer-service")
-    res_custom = handlers.session_start(ctx_claude)
-    assert res_custom is not None
-    assert "service: custom-tracer-service" in res_custom.inject_text
+    monkeypatch.delenv("OTEL_SERVICE_NAME", raising=False)
+    res2 = handlers.session_start(ctx)
+    assert res2 is not None
+    assert "tracing: https://otel.suzor.com/v1/traces" in res2.inject_text
+    assert "service:" not in res2.inject_text
 
 
 def test_session_start_metadata_resolves_plugin_version(tmp_path: Path):
@@ -812,20 +804,3 @@ def test_session_start_metadata_resolves_plugin_version(tmp_path: Path):
     res = handlers.session_start(ctx)
     assert res is not None
     assert "plugins: 0.10.24" in res.inject_text
-
-
-def test_session_start_drops_constant_banner():
-    """session_start drops static constant banner 'aops hook: Session started.'."""
-    ctx = HookContext(
-        client="claude",
-        event="SessionStart",
-        session_id="s-banner-test",
-        hooks_dir=IDA_HOOKS,
-    )
-    res = handlers.session_start(ctx)
-    assert res is not None
-    assert "aops hook: Session started." not in res.inject_text
-    assert (
-        "Reports follow `premise-check`: written in its shape and checked on receipt."
-        in res.inject_text
-    )

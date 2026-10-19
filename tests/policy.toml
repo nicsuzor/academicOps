@@ -50,6 +50,9 @@ honest_output_enabled = true
 # No handler is permitted to return a blocking disposition on agy.
 allow_blocking_agy = false
 
+[hooks.session_start]
+pkb_url = "https://mcp.suzor.com/mcp"
+
 [plugins.dependencies]
 # Dependencies required for OpenTelemetry span emission by plugin hooks and scripts (e.g. premise-check verdict)
 otel_packages = [
