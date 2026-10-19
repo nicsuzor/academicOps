@@ -3,14 +3,17 @@ from __future__ import annotations
 """ida hook handlers."""
 
 
-import asyncio
 import json
 import logging
 import os
 import re
+import secrets
 import shlex
 import socket
 import tempfile
+import time
+import urllib.error
+import urllib.request
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
@@ -225,30 +228,278 @@ def _resolve_mcp_headers() -> dict[str, str]:
     return headers
 
 
-async def _call_pkb_search(mcp_url: str, query: str, headers: dict[str, str]) -> str | None:
-    from fastmcp import Client
-    from fastmcp.client.transports import StreamableHttpTransport
+def _tracer_state_dir() -> Path:
+    env_dir = os.environ.get("TRACER_STATE_DIR") or os.environ.get("AOPS_TRACER_DIR")
+    if env_dir:
+        return Path(env_dir)
+    if claude_code_tracer is not None and hasattr(claude_code_tracer, "STATE_DIR"):
+        state_dir = Path(claude_code_tracer.STATE_DIR)
+        if state_dir.is_absolute():
+            try:
+                return Path.home().joinpath(*state_dir.parts[-2:])
+            except Exception:
+                pass
+        return state_dir
+    return Path.home() / ".aops" / "tracer"
 
-    transport = StreamableHttpTransport(mcp_url, headers=headers)
-    async with Client(transport=transport) as client:
-        res = await client.call_tool("pkb_search", {"query": query})
-    texts = [item.text if hasattr(item, "text") else str(item) for item in res.content]
+
+def _resolve_tracer_traceparent(session_id: str | None = None) -> str:
+    """Resolve or generate a W3C traceparent header for the outgoing search request."""
+    if session_id:
+        tracer_file = _tracer_state_dir() / f"{session_id}.json"
+        if tracer_file.is_file():
+            try:
+                data = json.loads(tracer_file.read_text(encoding="utf-8"))
+                cur = data.get("current_trace") or {}
+                trace_id = cur.get("trace_id")
+                span_id = cur.get("root_span_id") or cur.get("span_id")
+                if trace_id and span_id:
+                    return f"00-{trace_id}-{span_id}-01"
+            except Exception as exc:
+                log.debug("Could not read tracer file for session %s: %s", session_id, exc)
+
+    env_tp = os.environ.get("TRACEPARENT")
+    if env_tp and re.match(r"^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$", env_tp):
+        return env_tp
+
+    trace_id = secrets.token_hex(16)
+    span_id = secrets.token_hex(8)
+    return f"00-{trace_id}-{span_id}-01"
+
+
+def _session_cache_path() -> Path:
+    return _tracer_state_dir() / "pkb_session_cache.json"
+
+
+def _get_cached_mcp_session(cache_path: Path | None = None) -> str | None:
+    path = cache_path or _session_cache_path()
+    if path.is_file():
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                ts = data.get("timestamp", 0)
+                if time.time() - float(ts) < 86400:
+                    return data.get("session_id")
+        except Exception as exc:
+            log.debug("Could not read PKB session cache: %s", exc)
+    return None
+
+
+def _save_cached_mcp_session(session_id: str, cache_path: Path | None = None) -> None:
+    path = cache_path or _session_cache_path()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps({"session_id": session_id, "timestamp": time.time()}),
+            encoding="utf-8",
+        )
+    except Exception as exc:
+        log.warning("Could not write PKB session cache: %s", exc)
+
+
+def _parse_mcp_response(raw_body: str) -> str | None:
+    try:
+        data = json.loads(raw_body)
+    except json.JSONDecodeError:
+        data = None
+        for line in raw_body.splitlines():
+            line = line.strip()
+            if line.startswith("data:"):
+                try:
+                    payload = json.loads(line[5:].strip())
+                    if isinstance(payload, dict):
+                        if "error" in payload:
+                            raise RuntimeError(f"PKB MCP error: {payload['error']}")
+                        if "result" in payload:
+                            data = payload
+                            break
+                except json.JSONDecodeError:
+                    continue
+        if data is None:
+            return None
+
+    if isinstance(data, dict) and "error" in data:
+        raise RuntimeError(f"PKB MCP error: {data['error']}")
+
+    result = data.get("result", {})
+    content = result.get("content", [])
+    texts = []
+    for item in content:
+        if isinstance(item, dict):
+            text = item.get("text", "")
+            if text:
+                texts.append(text)
+        else:
+            texts.append(str(item))
+
     out = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", "\n".join(texts)).strip()
     return _cap_output(out) if out else None
 
 
-def _search_via_fastmcp_client(mcp_url: str, query: str, headers: dict[str, str]) -> str | None:
-    """Search the PKB in-process over streamable HTTP with the given headers.
+def _initialize_mcp_session(mcp_url: str, base_headers: dict[str, str]) -> str | None:
+    init_headers = dict(base_headers)
+    init_headers.pop("mcp-session-id", None)
+    init_payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+            "protocolVersion": "2024-11-05",
+            "capabilities": {},
+            "clientInfo": {"name": "academicOps", "version": "0.10"},
+        },
+    }
+    data_bytes = json.dumps(init_payload).encode("utf-8")
+    req = urllib.request.Request(mcp_url, data=data_bytes, headers=init_headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=_SEARCH_TIMEOUT_SECONDS) as resp:
+            sess_id = resp.headers.get("mcp-session-id")
+            if sess_id:
+                _save_cached_mcp_session(sess_id)
+                return sess_id
+    except urllib.error.HTTPError as exc:
+        if exc.code in (401, 403):
+            raise RuntimeError(
+                f"the PKB endpoint refused authorisation (HTTP {exc.code}); check PKB_MCP_HEADERS, WORKER_MCP_TOKEN_ID / WORKER_MCP_TOKEN_SECRET, or DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
+            ) from exc
+        raise RuntimeError(
+            f"the PKB endpoint failed with HTTP {exc.code} during initialize: {exc.reason}"
+        ) from exc
+    except TimeoutError as exc:
+        raise TimeoutError(
+            f"the PKB endpoint did not answer within {_SEARCH_TIMEOUT_SECONDS} seconds"
+        ) from exc
+    except urllib.error.URLError as exc:
+        if isinstance(exc.reason, TimeoutError):
+            raise TimeoutError(
+                f"the PKB endpoint did not answer within {_SEARCH_TIMEOUT_SECONDS} seconds"
+            ) from exc
+        raise RuntimeError(f"the PKB endpoint is unreachable ({mcp_url}): {exc.reason}") from exc
+    return None
 
-    The whole connect-and-call is bounded by `_SEARCH_TIMEOUT_SECONDS`. Any
-    failure is raised so the hook fails loudly rather than falling back.
-    """
-    return asyncio.run(
-        asyncio.wait_for(_call_pkb_search(mcp_url, query, headers), timeout=_SEARCH_TIMEOUT_SECONDS)
-    )
+
+def _post_mcp_search(
+    mcp_url: str,
+    query: str,
+    headers: dict[str, str] | None = None,
+    session_id: str | None = None,
+    traceparent: str | None = None,
+) -> str | None:
+    """Search the PKB over a single streamable-HTTP POST to PKB_MCP_URL."""
+    sess_id = session_id if session_id is not None else (os.environ.get("AOPS_SESSION_ID") or "")
+    tp = traceparent or _resolve_tracer_traceparent(sess_id)
+
+    req_headers: dict[str, str] = {
+        "User-Agent": "academicOps/0.10 (prompt-hydration)",
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream",
+        "x-session-id": sess_id,
+        "traceparent": tp,
+    }
+    if headers:
+        for k, v in headers.items():
+            req_headers[k] = v
+
+    cached_session = _get_cached_mcp_session()
+    if cached_session:
+        req_headers["mcp-session-id"] = cached_session
+
+    prefix = os.environ.get("PKB_MCP_TOOL_PREFIX", "")
+    tool_name = f"{prefix}search"
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+            "name": tool_name,
+            "arguments": {"query": query},
+        },
+    }
+    data_bytes = json.dumps(payload).encode("utf-8")
+
+    def _execute_post(hdrs: dict[str, str]) -> tuple[int, str]:
+        req = urllib.request.Request(mcp_url, data=data_bytes, headers=hdrs, method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=_SEARCH_TIMEOUT_SECONDS) as resp:
+                status = resp.status if hasattr(resp, "status") else resp.getcode()
+                body = resp.read().decode("utf-8", errors="replace")
+                return status, body
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="replace")
+            return exc.code, body
+        except TimeoutError as exc:
+            raise TimeoutError(
+                f"the PKB endpoint did not answer within {_SEARCH_TIMEOUT_SECONDS} seconds"
+            ) from exc
+        except urllib.error.URLError as exc:
+            if isinstance(exc.reason, TimeoutError):
+                raise TimeoutError(
+                    f"the PKB endpoint did not answer within {_SEARCH_TIMEOUT_SECONDS} seconds"
+                ) from exc
+            raise RuntimeError(
+                f"the PKB endpoint is unreachable ({mcp_url}): {exc.reason}"
+            ) from exc
+
+    status, body = _execute_post(req_headers)
+
+    if status in (401, 403):
+        raise RuntimeError(
+            f"the PKB endpoint refused authorisation (HTTP {status}); check PKB_MCP_HEADERS, WORKER_MCP_TOKEN_ID / WORKER_MCP_TOKEN_SECRET, or DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
+        )
+
+    session_needed = False
+    err_obj = None
+
+    try:
+        parsed = json.loads(body)
+        if isinstance(parsed, dict) and "error" in parsed:
+            err_obj = parsed["error"]
+    except json.JSONDecodeError:
+        for line in body.splitlines():
+            line = line.strip()
+            if line.startswith("data:"):
+                try:
+                    payload = json.loads(line[5:].strip())
+                    if isinstance(payload, dict) and "error" in payload:
+                        err_obj = payload["error"]
+                        break
+                except json.JSONDecodeError:
+                    continue
+
+    if err_obj is not None:
+        err_msg = str(err_obj).lower()
+        if "session" in err_msg:
+            session_needed = True
+        elif status == 200:
+            raise RuntimeError(f"PKB MCP error: {err_obj}")
+
+    if session_needed:
+        new_session = _initialize_mcp_session(mcp_url, req_headers)
+        if new_session:
+            req_headers["mcp-session-id"] = new_session
+            status, body = _execute_post(req_headers)
+            if status in (401, 403):
+                raise RuntimeError(
+                    f"the PKB endpoint refused authorisation (HTTP {status}); check PKB_MCP_HEADERS, WORKER_MCP_TOKEN_ID / WORKER_MCP_TOKEN_SECRET, or DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
+                )
+            if status != 200:
+                raise RuntimeError(f"the PKB endpoint failed with HTTP {status}: {body}")
+        else:
+            raise RuntimeError(
+                f"the PKB endpoint requires session initialization but initialize failed: HTTP {status} {body}"
+            )
+    elif status != 200:
+        raise RuntimeError(f"the PKB endpoint failed with HTTP {status}: {body}")
+
+    return _parse_mcp_response(body)
 
 
-def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
+def _run_pkb_search(
+    prompt: str,
+    cwd: str | Path | None = None,
+    session_id: str | None = None,
+    traceparent: str | None = None,
+) -> str | None:
     query = extract_prompt_query(prompt)[:200]
     if not query:
         return None
@@ -259,7 +510,15 @@ def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
         return None
 
     headers = _resolve_mcp_headers()
-    return _search_via_fastmcp_client(mcp_url, query, headers)
+    if session_id is not None or traceparent is not None:
+        return _post_mcp_search(
+            mcp_url,
+            query,
+            headers,
+            session_id=session_id,
+            traceparent=traceparent,
+        )
+    return _post_mcp_search(mcp_url, query, headers)
 
 
 def search_the_pkb(ctx: HookContext) -> Result | None:
@@ -276,7 +535,17 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
     prompt_str = prompt_text(ctx)
     query = extract_prompt_query(prompt_str)
     if query:
-        output = _run_pkb_search(query, cwd=ctx.cwd)
+        session_id = (
+            getattr(ctx, "session_id", None)
+            or ctx.raw.get("session_id")
+            or ctx.raw.get("conversationId")
+            or os.environ.get("AOPS_SESSION_ID")
+            or None
+        )
+        if session_id:
+            output = _run_pkb_search(query, cwd=ctx.cwd, session_id=session_id)
+        else:
+            output = _run_pkb_search(query, cwd=ctx.cwd)
         if output:
             msg = f"<academicOps PKB search results>\n{output}\n</academicOps PKB search results>"
             return warn(msg)

@@ -509,7 +509,7 @@ def test_user_messages_get_pkb_hydration_and_no_hearsay_or_gate(prompt, expected
     with patch.object(handlers, "_run_pkb_search", return_value="1. Match in pkb") as mock_search:
         # 1. PKB search runs with the unwrapped query
         search_res = handlers.search_the_pkb(ctx)
-        mock_search.assert_called_once_with(expected_query, cwd="/workspace")
+        mock_search.assert_called_once_with(expected_query, cwd="/workspace", session_id=session_id)
         assert search_res is not None
         assert "<academicOps PKB search results>" in search_res.inject_text
 
