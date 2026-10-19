@@ -113,7 +113,7 @@ def test_two_emitters_make_one_turn_with_one_tool_call():
     assert [s.kind for s in turn.steps] == ["model", "tool", "model"]
     tool = turn.tool_steps[0]
     assert tool.title == "Bash"
-    assert tool.hint == "List files"
+    assert tool.action == "List files" and tool.hint == "ls"
     assert json.loads(tool.tool_input)["command"] == "ls"
     assert tool.duration_ms == 1250  # earliest start (2.95) to latest end (4.2)
     assert turn.prompt.endswith("Why X?") and turn.reply == "Because Y."
@@ -187,7 +187,45 @@ def test_transcript_and_outline(tmp_path, capsys):
     outline = (tmp_path / "s.outline.md").read_text()
     assert '<a id="t1"></a>' in text and "](#t1)" in text and '<a id="t1-2"></a>' in text
     assert "<details><summary>Input" in text and "<details>" not in outline
-    assert "### 1.1 🧠 claude-opus-5-5" in outline and "### 1.2 🛠 Bash — List files" in outline
+    assert "### 1.1 🧠 claude-opus-5-5" in outline and "1.2 List files: 🛠 Bash · " in outline
+    assert "### 1.2 List files: 🛠 Bash — ls ·" in text
     # (10+5)*5 + (100+20)*25 + (1000+2000)*0.5 + 200*6.25 = 5,825 USD per million tokens
     assert "**Estimated cost:** $0.0058" in text
     assert "transcript:" in capsys.readouterr().out
+
+
+def test_agy_tool_action_and_tool_request_output():
+    args = {
+        "DirectoryPath": "/x/axioms",
+        "toolAction": "Listing axiom files",
+        "toolSummary": "Axiom files",
+    }
+    assert pt.tool_action(json.dumps(args)) == "Listing axiom files"
+    assert pt.tool_hint(json.dumps(args)) == "/x/axioms"
+    assert pt.tool_hint('[TOOL INPUT: Read]\n{"file_path": "/a/b.md"}') == "/a/b.md"
+    assert pt.tool_hint(
+        json.dumps({"ServerName": "services", "ToolName": "search", "toolAction": "x"})
+    ) == ("services.search")
+    assert pt.is_tool_request(json.dumps([{"name": "list_dir", "args": args}]))
+    assert not pt.is_tool_request("Let me look.")
+
+
+def test_tool_detail_names_what_a_call_acted_on():
+    code = (
+        "async () => { const a = await codemode.pkb_get_document({ id: 'kb_1', max_bytes: 600 }); }"
+    )
+    agy = {
+        "ServerName": "services",
+        "ToolName": "portal_codemode_execute",
+        "Arguments": {"code": code},
+        "toolAction": "Reading proposal",
+    }
+    assert pt.tool_detail(json.dumps(agy)) == (
+        "services.portal_codemode_execute: pkb_get_document(id=kb_1, max_bytes=600)"
+    )
+    assert pt.tool_detail(json.dumps({"code": code})) == "pkb_get_document(id=kb_1, max_bytes=600)"
+    sql = 'res = await call_tool("executeSql", {"sql": "SELECT 1"})'
+    assert pt.tool_detail(json.dumps({"code": sql})) == "executeSql(sql=SELECT 1)"
+    assert pt.tool_detail(
+        json.dumps({"CommandLine": 'python3 -c "\nprint(1)\n"', "toolAction": "x"})
+    ) == ('python3 -c " print(1) "')

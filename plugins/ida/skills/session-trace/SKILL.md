@@ -24,8 +24,11 @@ python3 "${CLAUDE_SKILL_DIR}/scripts/phoenix_transcript.py" <session-id | slug |
   - `<slug>.transcript.md` -- the full record: one `## Turn N` per turn, one `### N.M`
     per model or tool call with its duration, tokens and cost, payloads folded in
     `<details>`, nothing truncated.
-  - `<slug>.outline.md` -- the same headers, prompts, model text and replies, without the
-    folded payloads.
+  - `<slug>.outline.md` -- prompts, model calls with their text, and replies; each tool
+    call is one bullet under the model call that made it, labelled with the call's own
+    action summary (agy `toolAction`, Claude Code `description`), with a line beneath
+    naming what it acted on: the calls and literal arguments inside a code-mode block,
+    else the command, path or query.
 
 Read the summary, then the outline for the turns that bear on the question. Open a step's
 payload by its anchor (`grep -n 'id="t5-3"' <slug>.transcript.md`) rather than reading the

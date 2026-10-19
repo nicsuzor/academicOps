@@ -72,6 +72,7 @@ SESSION_PAGE_LIMIT = 100
 HTTP_TIMEOUT = 120
 SLOWEST_STEPS = 10
 HINT_CHARS = 72
+DETAIL_CHARS = 240
 
 EXIT_CONFIG = 2
 EXIT_EMPTY = 1
@@ -264,6 +265,8 @@ class Step:
     spans: list[Span]
     title: str = ""
     hint: str = ""
+    detail: str = ""
+    action: str = ""
     agent: str = ""
     error: str = ""
     model: str = ""
@@ -530,17 +533,121 @@ def cluster_turns(roots: list[Span]) -> list[list[Span]]:
     return clusters
 
 
+# A tool call's own one-line account of itself, carried in its arguments: agy writes
+# toolAction / toolSummary on every call; Claude Code's Bash and Agent take description.
+ACTION_KEYS = ("toolAction", "toolSummary", "description", "Description")
+# The argument that best names a call's target, across clients.
+TARGET_KEYS = (
+    "command",
+    "CommandLine",
+    "file_path",
+    "AbsolutePath",
+    "TargetFile",
+    "notebook_path",
+    "path",
+    "DirectoryPath",
+    "pattern",
+    "Query",
+    "query",
+    "SearchPath",
+    "url",
+    "Url",
+    "prompt",
+)
+INPUT_LABEL_RE = re.compile(r"^\[[^\]\n]+\]\s*\n")
+
+
+def tool_args(value: Any) -> Any:
+    """Parsed tool arguments, with a leading ``[TOOL INPUT: Name]`` label line removed."""
+    if isinstance(value, str):
+        value = INPUT_LABEL_RE.sub("", value.lstrip(), count=1)
+    return parse_json(value)
+
+
+def tool_action(value: Any) -> str:
+    args = tool_args(value)
+    if isinstance(args, dict):
+        for key in ACTION_KEYS:
+            if isinstance(args.get(key), str) and args[key].strip():
+                return one_line(args[key])
+    return ""
+
+
+# Calls made from inside a code-mode block: ``codemode.name({...})`` or
+# ``call_tool("name", {...})``, with the flat object literal that follows.
+CODE_CALL_RE = re.compile(
+    r"""(?:codemode\.(?P<a>[A-Za-z_]\w*)\s*\(|call_tool\(\s*["'](?P<b>[A-Za-z_][\w.-]*)["']\s*,)\s*\{(?P<args>[^{}]*)\}"""
+)
+CODE_ARG_RE = re.compile(
+    r"""\s*["']?(\w+)["']?\s*:\s*("[^"]*"|'[^']*'|-?\d[\d.]*|true|false|null|None|True|False)\s*(?:,|$)"""
+)
+CODE_CALLS_SHOWN = 6
+ARG_VALUE_CHARS = 60
+
+
+def code_calls(code: str) -> str:
+    """``tool(key=value, ...)`` for each call a code-mode block makes, in order.
+
+    Empty when any call passes something other than literals (a variable, a spread, a
+    nested object), since the values that matter would then be missing from the line.
+    """
+    calls: list[str] = []
+    for match in CODE_CALL_RE.finditer(code):
+        name = match.group("a") or match.group("b")
+        text = match.group("args")
+        pairs: list[str] = []
+        pos = 0
+        while pos < len(text):
+            arg = CODE_ARG_RE.match(text, pos)
+            if not arg:
+                if text[pos:].strip():
+                    return ""
+                break
+            value = arg.group(2).strip(chr(34) + chr(39)).strip()
+            if value.startswith("+") or value.endswith("+"):
+                return ""  # a quoted fragment of a concatenation, not a literal
+            pairs.append(f"{arg.group(1)}={one_line(value, ARG_VALUE_CHARS)}")
+            pos = arg.end()
+        calls.append(f"{name}({', '.join(pairs)})")
+    if len(calls) > CODE_CALLS_SHOWN:
+        calls = [*calls[:CODE_CALLS_SHOWN], f"+{len(calls) - CODE_CALLS_SHOWN} more"]
+    return ", ".join(calls)
+
+
+def tool_detail(value: Any) -> str:
+    """What a tool call acted on: the calls inside a code block, a command, a path, a query."""
+    args = tool_args(value)
+    if not isinstance(args, dict):
+        return " ".join(str(args).split()) if isinstance(args, str) else ""
+    inner = parse_json(args.get("Arguments"))
+    code = args.get("code") or (inner.get("code") if isinstance(inner, dict) else None)
+    prefix = ""
+    if isinstance(args.get("ServerName"), str) and isinstance(args.get("ToolName"), str):
+        prefix = f"{args['ServerName']}.{args['ToolName']}"
+    if isinstance(code, str) and code.strip():
+        calls = code_calls(code)
+        body = calls or " ".join(code.split())
+        return f"{prefix}: {body}" if prefix else body
+    if prefix:
+        if isinstance(inner, dict):
+            pairs = ", ".join(
+                f"{k}={one_line(str(v), ARG_VALUE_CHARS)}"
+                for k, v in inner.items()
+                if v not in (None, "")
+            )
+            return f"{prefix}({pairs})"
+        return prefix
+    for key in TARGET_KEYS:
+        if isinstance(args.get(key), str) and args[key].strip():
+            return " ".join(args[key].split())
+    for key, item in args.items():
+        if key not in ACTION_KEYS and isinstance(item, str) and item.strip():
+            return " ".join(item.split())
+    return ""
+
+
 def tool_hint(value: Any) -> str:
-    parsed = parse_json(value)
-    if isinstance(parsed, dict):
-        for key in ("description", "command", "file_path", "pattern", "query", "prompt", "url"):
-            if isinstance(parsed.get(key), str) and parsed[key].strip():
-                return one_line(parsed[key])
-        for item in parsed.values():
-            if isinstance(item, str) and item.strip():
-                return one_line(item)
-        return ""
-    return one_line(value) if isinstance(value, str) else ""
+    return one_line(tool_detail(value))
 
 
 def one_line(text: str, limit: int = HINT_CHARS) -> str:
@@ -597,6 +704,8 @@ def build_tool_steps(
                 spans=group,
                 title=str(first_attr(named, TOOL_NAME_KEYS) or named.get("name") or "tool"),
                 hint=tool_hint(tool_input),
+                detail=tool_detail(tool_input),
+                action=tool_action(tool_input),
                 agent=next(
                     (agent_label(s, session_id) for s in group if agent_label(s, session_id)), ""
                 ),
@@ -852,9 +961,53 @@ def step_heading(step: Step) -> str:
             f"### {step.number} 🧠 {step.title} · {fmt_ms(step.duration_ms)} · "
             f"{fmt_usd(step.cost)}{estimated}{agent}{error}"
         )
-    hint = f" — {escape_cell(step.hint)}" if step.hint else ""
+    return f"### {step.number} {call_label(step)} · {fmt_ms(step.duration_ms)}{agent}{error}"
+
+
+def call_label(step: Step) -> str:
+    """``Action: 🛠 tool — target``, for a step heading."""
     icon = "🛠" if step.kind == "tool" else "▫️"
-    return f"### {step.number} {icon} {step.title}{hint} · {fmt_ms(step.duration_ms)}{agent}{error}"
+    label = f"{icon} {step.title}"
+    if step.hint:
+        label += f" — {escape_cell(step.hint)}"
+    return f"{escape_cell(step.action)}: {label}" if step.action else label
+
+
+def is_tool_request(text: str) -> bool:
+    """Model output that is a JSON list of tool calls (``name`` plus arguments) and nothing else."""
+    parsed = parse_json(text)
+    return (
+        isinstance(parsed, list)
+        and bool(parsed)
+        and all(
+            isinstance(i, dict) and "name" in i and ({"args", "input", "arguments"} & set(i))
+            for i in parsed
+        )
+    )
+
+
+def step_bullet(step: Step) -> list[str]:
+    """A tool call as an outline bullet under the model call that made it, its target beneath."""
+    agent = f" · {step.agent}" if step.agent else ""
+    error = f" · ❌ `{escape_cell(step.error)}`" if step.error else ""
+    icon = "🛠" if step.kind == "tool" else "▫️"
+    label = (
+        f"{escape_cell(step.action)}: {icon} {step.title}"
+        if step.action
+        else f"{icon} {step.title}"
+    )
+    lines = [
+        f'* <a id="{step.anchor}"></a>{step.number} {label} · {fmt_ms(step.duration_ms)}{agent}{error}'
+    ]
+    if step.detail:
+        lines.append(f"  * {code_span(one_line(step.detail, DETAIL_CHARS))}")
+    return lines
+
+
+def code_span(text: str) -> str:
+    ticks = "`" * (max((len(r) for r in re.findall(r"`+", text)), default=0) + 1)
+    pad = " " if text.startswith("`") or text.endswith("`") else ""
+    return f"{ticks}{pad}{text}{pad}{ticks}"
 
 
 def render_step(step: Step, full: bool) -> list[str]:
@@ -862,7 +1015,11 @@ def render_step(step: Step, full: bool) -> list[str]:
     out = [f'<a id="{step.anchor}"></a>', "", step_heading(step), ""]
     if step.kind == "model":
         out += [token_line(step.tokens), ""]
-        if step.text:
+        if step.text and is_tool_request(step.text):
+            # Output that is only tool calls: the calls themselves follow as steps.
+            if full:
+                out += [details("Tool calls requested", render_value(step.text)), ""]
+        elif step.text:
             out += [quote(step.text), ""]
         if step.context and full:
             out += [
@@ -998,7 +1155,11 @@ def render(
             "| - | - | -: | -: |",
         ]
         for step in slowest:
-            what = step.title + (f" — {step.hint}" if step.hint else "")
+            what = (
+                step.title
+                + (f" — {step.action}" if step.action else "")
+                + (f" — {step.hint}" if step.hint and not step.action else "")
+            )
             summary.append(
                 f"| [{step.number}](#{step.anchor}) | {escape_cell(one_line(what))} | "
                 f"{fmt_ms(step.duration_ms)} | {fmt_usd(step.cost) if step.kind == 'model' else ''} |"
@@ -1033,8 +1194,20 @@ def render_body(turns: list[Turn], full: bool) -> list[str]:
             body += [details(f"Prompt ({fmt_n(len(turn.prompt))} chars)", fence(turn.prompt)), ""]
         if turn.prompt and not full:
             body += [quote(turn.prompt), ""]
+        in_list = False
         for step in turn.steps:
+            if not full and step.kind != "model":
+                if not in_list and body and body[-1] != "":
+                    body.append("")
+                body += step_bullet(step)
+                in_list = True
+                continue
+            if in_list:
+                body.append("")
+                in_list = False
             body += render_step(step, full)
+        if in_list:
+            body.append("")
         if turn.reply:
             body += [f"### Turn {turn.index} reply", "", quote(turn.reply), ""]
         if turn.others and full:
