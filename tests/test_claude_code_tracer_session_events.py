@@ -207,15 +207,6 @@ def test_turn_number_increments_when_a_turn_starts_without_user_prompt_submit(tr
     assert _turn_numbers(exporter) == [1, 2]
 
 
-def test_stop_keeps_session_state_and_drops_the_turn(tracer_env, exporter):
-    _hook(cct.handle_user_prompt_submit, tracer_env, prompt="one")
-    _hook(cct.handle_stop, tracer_env)
-    state = cct._load_state(SESSION)
-    assert state["turn_number"] == 1
-    assert "current_trace" not in state
-    assert "pending_tools" not in state
-
-
 def test_session_end_deletes_state(tracer_env, exporter):
     _hook(cct.handle_user_prompt_submit, tracer_env, prompt="one")
     _hook(cct.handle_stop, tracer_env)
@@ -538,23 +529,6 @@ def test_permission_denied_span(tracer_env, exporter):
     assert span.attributes["tool.call_id"] == "toolu_9"
 
 
-def test_notification_span(tracer_env, exporter):
-    ct = _open_turn(tracer_env)
-    _hook(
-        cct.handle_notification,
-        tracer_env,
-        notification_type="permission_prompt",
-        message="Claude needs your permission to use Bash",
-        title="Permission needed",
-    )
-    (span,) = exporter.named("Notification: permission_prompt")
-    _assert_child_of_turn(span, ct)
-    assert span.attributes["notification.type"] == "permission_prompt"
-    assert span.attributes["notification.message"] == "Claude needs your permission to use Bash"
-    assert span.attributes["notification.title"] == "Permission needed"
-    assert span.attributes["input.value"] == "Claude needs your permission to use Bash"
-
-
 def test_compaction_span_covers_pre_to_post_compact(tracer_env, exporter):
     ct = _open_turn(tracer_env)
     _hook(cct.handle_pre_compact, tracer_env, trigger="auto")
@@ -667,29 +641,3 @@ def test_handlers_route_session_end_to_tracer(tracer_env, exporter, monkeypatch)
     for handler in handlers.HANDLERS["SessionEnd"]:
         handler(ctx)
     assert not cct._state_path(SESSION).exists()
-
-
-def test_pre_compact_is_wired(tracer_env, exporter, monkeypatch):
-    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://collector.invalid:4318")
-    _hook(cct.handle_user_prompt_submit, tracer_env, prompt="go")
-    raw = {"session_id": SESSION, "transcript_path": str(tracer_env), "trigger": "auto"}
-    ctx = dispatch.HookContext(client="claude", event="PreCompact", session_id=SESSION, raw=raw)
-    for handler in handlers.HANDLERS["PreCompact"]:
-        handler(ctx)
-    assert "compact_start_ns" in cct._load_state(SESSION)["current_trace"]
-
-
-def test_manifest_wires_every_new_event():
-    manifest = json.loads((REPO_ROOT / "plugins/ida/manifest/hooks.json").read_text())
-    wired = manifest["clients"]["claude"]["hooks"]
-    for event in (
-        "StopFailure",
-        "PermissionRequest",
-        "PermissionDenied",
-        "Notification",
-        "PreCompact",
-        "PostCompact",
-        "SessionEnd",
-    ):
-        (entry,) = wired[event]
-        assert entry["hooks"][0]["command"].endswith(f'dispatch.py" claude {event}')

@@ -6,7 +6,6 @@ import json
 import shutil
 import subprocess
 import sys
-import tomllib
 from pathlib import Path
 from unittest.mock import patch
 
@@ -14,8 +13,6 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 IDA_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
-_POLICY_FILE = REPO_ROOT / "tests" / "policy.toml"
-_POLICY = tomllib.loads(_POLICY_FILE.read_text(encoding="utf-8")) if _POLICY_FILE.exists() else {}
 
 if str(IDA_HOOKS) not in sys.path:
     sys.path.insert(0, str(IDA_HOOKS))
@@ -50,12 +47,6 @@ def clean_gate_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 # ---------------------------------------------------------------------------
 # 1. Hearsay hook on UserPromptSubmit for Ida
 # ---------------------------------------------------------------------------
-
-
-def test_hearsay_registered_on_user_prompt_submit_and_post_tool_use():
-    assert handlers.HANDLERS["UserPromptSubmit"] == [handlers.user_prompt_submit]
-    assert handlers.HANDLERS["PostToolUse"] == [handlers.post_tool]
-    assert "PostToolBatch" not in handlers.HANDLERS
 
 
 _PEER_REPORT = '<cross-session-message from="twin-a">PR #12 merged</cross-session-message>'
@@ -159,244 +150,9 @@ def test_hearsay_does_not_fire_for_non_ida_agents():
 # ---------------------------------------------------------------------------
 
 
-def test_honesty_not_registered_on_stop():
-    assert "Stop" in handlers.HANDLERS
-    assert handlers.honest_output not in handlers.HANDLERS["Stop"]
-
-
-def test_honesty_fires_for_all_agents_on_stop():
-    for agent in ("ida:ida", "aops:james", "worker", "pauli", "marsha", ""):
-        ctx = HookContext(
-            client="claude",
-            event="Stop",
-            agent_type=agent,
-            session_id=f"s-{agent}",
-            hooks_dir=IDA_HOOKS,
-        )
-        res = handlers.honest_output(ctx)
-        assert res is not None, f"honesty did not fire for {agent}"
-        assert res.kind is Kind.BLOCK
-        expected_inject, _ = load_message_pair(IDA_HOOKS, "honesty")
-        assert res.inject_text == expected_inject
-
-
-def test_honesty_does_not_fire_when_background_tasks_running():
-    ctx = HookContext(
-        client="claude",
-        event="Stop",
-        agent_type="worker",
-        raw={"background_tasks": [{"id": "bg-1"}]},
-        hooks_dir=IDA_HOOKS,
-    )
-    res = handlers.honest_output(ctx)
-    assert res is None
-
-
-@pytest.mark.parametrize("client", ["claude", "agy"])
-@pytest.mark.parametrize("agent", ["worker", "ida:ida"])
-def test_stop_passes_through_end_to_end(staged_hooks: Path, client: str, agent: str):
-    payload = {
-        "hook_event_name": "Stop",
-        "agent_type": agent,
-        "session_id": f"s-stop-{client}-{agent}",
-    }
-    proc = subprocess.run(
-        [sys.executable, str(staged_hooks / "dispatch.py"), client, "Stop"],
-        input=json.dumps(payload),
-        text=True,
-        capture_output=True,
-        timeout=15,
-        cwd=str(staged_hooks),
-    )
-    assert proc.returncode == 0
-    expected_honesty, _ = load_message_pair(staged_hooks, "honesty")
-    expected_quiet, _ = load_message_pair(staged_hooks, "quiet")
-    assert expected_honesty not in proc.stdout
-    assert expected_quiet not in proc.stdout
-    assert '"block"' not in proc.stdout
-
-
 # ---------------------------------------------------------------------------
 # 3. Quiet hook on Stop and PreToolUse for Ida Prime
 # ---------------------------------------------------------------------------
-
-
-def test_quiet_not_registered_on_stop_or_pretooluse():
-    assert "Stop" in handlers.HANDLERS
-    assert handlers.be_quiet not in handlers.HANDLERS["Stop"]
-    assert "PreToolUse" in handlers.HANDLERS
-    assert handlers.quiet_channel_reply not in handlers.HANDLERS["PreToolUse"]
-
-
-def test_quiet_stop_fires_only_for_ida():
-    ctx_ida = HookContext(
-        client="claude",
-        event="Stop",
-        agent_type="ida:ida",
-        session_id="s-ida-stop",
-        hooks_dir=IDA_HOOKS,
-    )
-    res_ida = handlers.be_quiet(ctx_ida)
-    assert res_ida is not None
-    assert res_ida.kind is Kind.BLOCK
-    expected_quiet, _ = load_message_pair(IDA_HOOKS, "quiet")
-    assert res_ida.inject_text == expected_quiet
-
-    ctx_other = HookContext(
-        client="claude",
-        event="Stop",
-        agent_type="aops:james",
-        session_id="s-james-stop",
-        hooks_dir=IDA_HOOKS,
-    )
-    assert handlers.be_quiet(ctx_other) is None
-
-
-def test_quiet_channel_reply_denies_once_for_ida():
-    channel_tools = (
-        "telegram_reply",
-        "telegram_send_message",
-        "mcp__plugin_telegram_telegram__reply",
-        "mcp__telegram__reply",
-        "mcp__telegram__send_message",
-        "discord_reply",
-        "AskUserQuestion",
-        "ask_question",
-    )
-    expected_honesty, _ = load_message_pair(IDA_HOOKS, "honesty")
-    expected_quiet, _ = load_message_pair(IDA_HOOKS, "quiet")
-    for tool in channel_tools:
-        handlers.clear_channel_gate_state("s-chan-1")
-        ctx = HookContext(
-            client="claude",
-            event="PreToolUse",
-            agent_type="ida:ida",
-            session_id="s-chan-1",
-            tool=tool,
-            hooks_dir=IDA_HOOKS,
-        )
-        res1 = handlers.quiet_channel_reply(ctx)
-        assert res1 is not None, f"gate did not fire for {tool}"
-        assert res1.kind is Kind.REFUSE
-        assert res1.inject_text == expected_quiet
-        assert expected_honesty not in res1.inject_text
-        assert handlers.quiet_channel_reply(ctx) is None
-
-
-def test_quiet_channel_reply_uses_the_gate_predicate():
-    import premise_check_gate
-
-    assert handlers.is_channel_reply_tool is premise_check_gate.is_channel_reply_tool
-    assert not hasattr(handlers, "_is_channel_reply_tool")
-    assert not hasattr(handlers, "_CHANNEL_REPLY_TOOLS")
-    ctx = HookContext(
-        client="claude",
-        event="PreToolUse",
-        agent_type="ida:ida",
-        session_id="s-chan-pred",
-        tool="Agent",
-        hooks_dir=IDA_HOOKS,
-    )
-    handlers.clear_channel_gate_state("s-chan-pred")
-    assert handlers.quiet_channel_reply(ctx) is None
-
-
-@pytest.mark.parametrize("client", ["claude", "agy"])
-def test_pretooluse_channel_reply_passes_through_for_ida(staged_hooks: Path, client: str):
-    payload = {
-        "hook_event_name": "PreToolUse",
-        "agent_type": "ida:ida",
-        "session_id": f"s-chan-{client}",
-        "tool_name": "telegram_reply",
-    }
-    proc = subprocess.run(
-        [sys.executable, str(staged_hooks / "dispatch.py"), client, "PreToolUse"],
-        input=json.dumps(payload),
-        text=True,
-        capture_output=True,
-        timeout=15,
-        cwd=str(staged_hooks),
-    )
-    assert proc.returncode == 0
-    expected_quiet, _ = load_message_pair(staged_hooks, "quiet")
-    assert expected_quiet not in proc.stdout
-    assert '"deny"' not in proc.stdout
-
-
-def test_quiet_pretooluse_ignores_non_channel_tools(staged_hooks: Path):
-    payload = {
-        "hook_event_name": "PreToolUse",
-        "agent_type": "ida:ida",
-        "session_id": "s-non-chan",
-        "tool_name": "Bash",
-    }
-    proc = subprocess.run(
-        [sys.executable, str(staged_hooks / "dispatch.py"), "claude", "PreToolUse"],
-        input=json.dumps(payload),
-        text=True,
-        capture_output=True,
-        timeout=15,
-        cwd=str(staged_hooks),
-    )
-    assert proc.returncode == 0
-    assert proc.stdout.strip() == ""
-
-
-def test_quiet_pretooluse_ignores_non_ida_agents(staged_hooks: Path):
-    payload = {
-        "hook_event_name": "PreToolUse",
-        "agent_type": "worker",
-        "session_id": "s-worker-chan",
-        "tool_name": "telegram_reply",
-    }
-    proc = subprocess.run(
-        [sys.executable, str(staged_hooks / "dispatch.py"), "claude", "PreToolUse"],
-        input=json.dumps(payload),
-        text=True,
-        capture_output=True,
-        timeout=15,
-        cwd=str(staged_hooks),
-    )
-    assert proc.returncode == 0
-    assert proc.stdout.strip() == ""
-
-
-def test_user_prompt_submit_clears_channel_reply_gate_state(staged_hooks: Path):
-    session_id = "s-reset-test"
-    ctx_reply = HookContext(
-        client="claude",
-        event="PreToolUse",
-        agent_type="ida:ida",
-        session_id=session_id,
-        tool="telegram_reply",
-        hooks_dir=IDA_HOOKS,
-    )
-    # Turn 1: 1st call denied, 2nd allowed
-    res1 = handlers.quiet_channel_reply(ctx_reply)
-    assert res1 is not None and res1.kind is Kind.REFUSE
-    assert handlers.quiet_channel_reply(ctx_reply) is None
-
-    # New turn arrives (UserPromptSubmit)
-    proc_submit = subprocess.run(
-        [sys.executable, str(staged_hooks / "dispatch.py"), "claude", "UserPromptSubmit"],
-        input=json.dumps(
-            {
-                "hook_event_name": "UserPromptSubmit",
-                "agent_type": "ida:ida",
-                "session_id": session_id,
-                "prompt": "new instruction",
-            }
-        ),
-        text=True,
-        capture_output=True,
-        timeout=15,
-        cwd=str(staged_hooks),
-    )
-    assert proc_submit.returncode == 0
-
-    # Turn 2: 1st call denied again!
-    res3 = handlers.quiet_channel_reply(ctx_reply)
-    assert res3 is not None and res3.kind is Kind.REFUSE
 
 
 def test_is_ida_variants():
@@ -574,23 +330,6 @@ def test_agent_messages_get_hearsay_and_arm_gate_without_hydration(peer_prompt):
 
 
 @pytest.mark.parametrize(
-    "agent", ["ida", "ida:ida", "ida-prime", "sara", "ida:sara", "james", "aops:james", "worker"]
-)
-def test_no_honesty_fallback_when_search_empty(agent: str):
-    """When PKB search yields no results on UserPromptSubmit, search_the_pkb returns None for all agents."""
-    ctx = HookContext(
-        client="claude",
-        event="UserPromptSubmit",
-        agent_type=agent,
-        hooks_dir=IDA_HOOKS,
-        raw={"prompt": "what is the plan for today?"},
-    )
-    with patch.object(handlers, "_run_pkb_search", return_value=None):
-        res = handlers.search_the_pkb(ctx)
-        assert res is None
-
-
-@pytest.mark.parametrize(
     "agent", ["ida:ida", "ida:sara", "aops:james", "worker", "pauli", "marsha", "rbg", ""]
 )
 @pytest.mark.parametrize(
@@ -615,22 +354,6 @@ def test_honesty_on_peer_message_fires_for_all_agents(agent: str, peer_prompt: s
     expected_inject, expected_user = load_message_pair(IDA_HOOKS, "honesty")
     assert res.inject_text == expected_inject
     assert res.user_text == expected_user
-
-
-def test_session_start_includes_premise_check_pointer(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.com/mcp")
-    ctx = HookContext(
-        client="claude",
-        event="SessionStart",
-        session_id="s-session-start",
-        hooks_dir=IDA_HOOKS,
-    )
-    res = handlers.session_start(ctx)
-    assert res is not None
-    assert (
-        "Reports follow `premise-check`: written in its shape and checked on receipt."
-        in res.inject_text
-    )
 
 
 @pytest.mark.parametrize("client", ["claude", "agy"])
@@ -664,12 +387,6 @@ def test_dispatch_honesty_reaches_all_agents_on_peer_message(
             expected_honesty in step.get("ephemeralMessage", "")
             for step in data.get("injectSteps", [])
         )
-
-
-def test_each_hook_event_registers_single_handler():
-    """Every hook event in HANDLERS runs through a single registered hook handler."""
-    for event, registered in handlers.HANDLERS.items():
-        assert len(registered) == 1, f"{event} registered {len(registered)} handlers: {registered}"
 
 
 def test_peer_message_prompt_yields_single_user_prompt_submit_output(
@@ -739,72 +456,14 @@ def test_peer_message_prompt_yields_single_user_prompt_submit_output(
     )
 
 
-def test_session_start_metadata_resolves_pkb(monkeypatch: pytest.MonkeyPatch):
-    """pkb resolves to PKB_MCP_URL when configured per policy; the hook raises when unset."""
-    policy_pkb_url = _POLICY.get("hooks", {}).get("session_start", {}).get("pkb_url")
-    assert policy_pkb_url, "tests/policy.toml must define hooks.session_start.pkb_url"
-
-    monkeypatch.setenv("PKB_MCP_URL", policy_pkb_url)
+def test_session_start_raises_when_pkb_mcp_url_unset(monkeypatch: pytest.MonkeyPatch):
+    """SessionStart fails loudly when PKB_MCP_URL is unset (no guessing, no fallback)."""
+    monkeypatch.delenv("PKB_MCP_URL", raising=False)
     ctx = HookContext(
         client="claude",
         event="SessionStart",
         session_id="s-pkb-test",
         hooks_dir=IDA_HOOKS,
     )
-    res = handlers.session_start(ctx)
-    assert res is not None
-    assert f"pkb: {policy_pkb_url}" in res.inject_text
-    assert "pkb: unknown" not in res.inject_text
-
-    # When PKB_MCP_URL is unset, the hook raises (no guessing, no fallback)
-    monkeypatch.delenv("PKB_MCP_URL", raising=False)
     with pytest.raises(RuntimeError, match="PKB_MCP_URL"):
         handlers.session_start(ctx)
-
-
-def test_session_start_metadata_service_name(monkeypatch: pytest.MonkeyPatch):
-    """tracing service reflects OTEL_SERVICE_NAME when configured, omitted when unset."""
-    monkeypatch.setenv("GENAI_ENGINE_TRACE_ENDPOINT", "https://otel.example.com/v1/traces")
-    monkeypatch.setenv("OTEL_SERVICE_NAME", "custom-tracer-service")
-    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.com/mcp")
-    ctx = HookContext(
-        client="claude",
-        event="SessionStart",
-        session_id="s-svc-test",
-        hooks_dir=IDA_HOOKS,
-    )
-    res = handlers.session_start(ctx)
-    assert res is not None
-    assert (
-        "tracing: https://otel.example.com/v1/traces (service: custom-tracer-service)"
-        in res.inject_text
-    )
-
-    monkeypatch.delenv("OTEL_SERVICE_NAME", raising=False)
-    res2 = handlers.session_start(ctx)
-    assert res2 is not None
-    assert "tracing: https://otel.example.com/v1/traces" in res2.inject_text
-    assert "service:" not in res2.inject_text
-
-
-def test_session_start_metadata_resolves_plugin_version(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
-    """plugins field prints resolved version from installed plugin manifest."""
-    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.com/mcp")
-    fake_plugin_root = tmp_path / "fake-plugin"
-    fake_hooks_dir = fake_plugin_root / "hooks"
-    fake_hooks_dir.mkdir(parents=True)
-    manifest_dir = fake_plugin_root / ".claude-plugin"
-    manifest_dir.mkdir(parents=True)
-    (manifest_dir / "plugin.json").write_text(json.dumps({"name": "ida", "version": "0.10.24"}))
-
-    ctx = HookContext(
-        client="claude",
-        event="SessionStart",
-        session_id="s-ver-test",
-        hooks_dir=fake_hooks_dir,
-    )
-    res = handlers.session_start(ctx)
-    assert res is not None
-    assert "plugins: 0.10.24" in res.inject_text

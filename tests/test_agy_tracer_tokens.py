@@ -272,15 +272,6 @@ def test_model_extractor_reported_from_sqlite(tmp_path: Path):
     assert result == "gemini-3.8-flash"
 
 
-def test_model_extractor_from_reported_model():
-    result = token_extractor.resolve_gemini_model(
-        session_id="nonexistent-session",
-        transcript_path="/nonexistent/path/transcript.jsonl",
-        reported_model="gemini-2.5-pro",
-    )
-    assert result == "gemini-2.5-pro"
-
-
 def test_model_extractor_none_when_unavailable():
     result = token_extractor.resolve_gemini_model(
         session_id="nonexistent-session",

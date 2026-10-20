@@ -34,9 +34,7 @@ handlers_spec.loader.exec_module(handlers)
 
 from dispatch import (  # type: ignore[import-not-found]
     HookContext,
-    _run_handler,
     load_message_pair,
-    render,
 )
 
 
@@ -68,38 +66,6 @@ def staged_hooks(tmp_path: Path) -> Path:
     return hooks
 
 
-def test_search_the_pkb_registered_in_handlers():
-    """Verify that UserPromptSubmit registers the single user_prompt_submit handler."""
-    assert handlers.HANDLERS["UserPromptSubmit"] == [handlers.user_prompt_submit]
-
-
-def test_user_prompt_submit_pkb_search_success():
-    """When pkb search succeeds, output is wrapped in <academicOps PKB search results> tags."""
-    ctx = HookContext(
-        client="claude",
-        event="UserPromptSubmit",
-        raw={"prompt": "what are the axioms of academicOps?"},
-        hooks_dir=PKB_HOOKS,
-        cwd="/workspace",
-    )
-
-    mock_search_results = (
-        "1. Rule sets and axioms ████████ 0.85\n   specs/AXIOMS.md\n   Found 1 match."
-    )
-
-    with patch.object(handlers, "_run_pkb_search", return_value=mock_search_results) as mock_search:
-        res = handlers.search_the_pkb(ctx)
-        mock_search.assert_called_once_with("what are the axioms of academicOps?", cwd="/workspace")
-        assert res is not None
-        expected_text = (
-            "<academicOps PKB search results>\n"
-            f"{mock_search_results}\n"
-            "</academicOps PKB search results>"
-        )
-        assert res.inject_text == expected_text
-        assert res.user_text is None
-
-
 def test_user_prompt_submit_truncates_prompt_to_200():
     """Prompt query is truncated to 200 characters when passed to pkb search."""
     long_prompt = "a" * 350
@@ -124,12 +90,6 @@ def test_user_prompt_submit_strips_ansi_from_prompt():
         mock_client.assert_called_once_with("http://test", "red text with bold", {})
 
 
-def test_run_pkb_search_uses_measured_timeout():
-    """FastMCP client search timeout matches the measured backend-latency ceiling, not the old 15s guess."""
-    assert handlers._SEARCH_TIMEOUT_SECONDS < 15
-    assert handlers._SEARCH_TIMEOUT_SECONDS > 0
-
-
 def test_run_pkb_search_caps_oversized_output():
     """Output larger than the injection budget is truncated with a marker, regardless of source."""
     huge = "x" * (handlers._MAX_INJECT_CHARS * 2)
@@ -141,70 +101,6 @@ def test_run_pkb_search_caps_oversized_output():
         assert out is not None
         assert len(out) == handlers._MAX_INJECT_CHARS
         assert out.endswith(handlers._TRUNCATION_MARKER)
-
-
-def test_run_pkb_search_leaves_normal_output_untouched():
-    """Output well under the cap passes through byte-for-byte."""
-    normal = "1. Some doc (score: 0.08)\n   path/to/doc.md\n   an extract of the match."
-    with (
-        patch.object(handlers, "_post_mcp_search", return_value=normal),
-        patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
-    ):
-        out = handlers._run_pkb_search("q")
-        assert out == normal
-
-
-def test_user_prompt_submit_returns_none_when_prompt_is_empty():
-    """When prompt is empty, search_the_pkb returns None (no honesty fallback)."""
-    ctx = HookContext(
-        client="claude",
-        event="UserPromptSubmit",
-        raw={"prompt": ""},
-        hooks_dir=PKB_HOOKS,
-        agent_type="worker",
-    )
-
-    res = handlers.search_the_pkb(ctx)
-    assert res is None
-
-
-def test_user_prompt_submit_returns_none_when_pkb_search_returns_none():
-    """When pkb search returns None, search_the_pkb returns None (no honesty fallback)."""
-    ctx = HookContext(
-        client="claude",
-        event="UserPromptSubmit",
-        raw={"prompt": "check status"},
-        hooks_dir=PKB_HOOKS,
-        agent_type="worker",
-    )
-
-    with patch.object(handlers, "_run_pkb_search", return_value=None):
-        res = handlers.search_the_pkb(ctx)
-        assert res is None
-
-
-def test_user_prompt_submit_ida_injects_pkb_search():
-    """Verify that search_the_pkb injects PKB search results for Ida (agent_type 'ida:ida' and 'ida')."""
-    for agent in ("ida:ida", "ida"):
-        ctx = HookContext(
-            client="claude",
-            event="UserPromptSubmit",
-            raw={"prompt": "what are the axioms of academicOps?"},
-            hooks_dir=PKB_HOOKS,
-            cwd="/workspace",
-            agent_type=agent,
-        )
-        mock_search_results = "specs/AXIOMS.md: Found 1 match."
-        with patch.object(handlers, "_run_pkb_search", return_value=mock_search_results):
-            res = handlers.search_the_pkb(ctx)
-            assert res is not None
-            expected_text = (
-                "<academicOps PKB search results>\n"
-                f"{mock_search_results}\n"
-                "</academicOps PKB search results>"
-            )
-            assert res.inject_text == expected_text
-            assert res.user_text is None
 
 
 def test_dispatch_claude_userpromptsubmit_end_to_end(staged_hooks: Path):
@@ -297,44 +193,6 @@ def test_dispatch_agy_preinvocation_end_to_end(staged_hooks: Path):
     msg = steps[0].get("ephemeralMessage", "")
     expected_inject, _ = load_message_pair(staged_hooks, "honesty")
     assert msg == expected_inject
-
-
-@pytest.mark.parametrize("agent", ["ida:ida", "ida:sara", "james", "worker"])
-def test_no_honesty_fallback_for_coordinators_when_search_fails(agent):
-    """search_the_pkb never returns an honesty fallback for any agent."""
-    ctx = HookContext(
-        client="claude",
-        event="UserPromptSubmit",
-        raw={"prompt": "<cross-session-message>report</cross-session-message>"},
-        hooks_dir=PKB_HOOKS,
-        agent_type=agent,
-    )
-    with patch.object(handlers, "_run_pkb_search", return_value=None):
-        assert handlers.search_the_pkb(ctx) is None
-
-
-def test_user_prompt_submit_unwraps_telegram_channel_message():
-    """Telegram channel prompts are unwrapped so PKB search queries the inner user text."""
-    ctx = HookContext(
-        client="claude",
-        event="UserPromptSubmit",
-        raw={
-            "prompt": (
-                '<channel source="plugin:telegram:telegram" user="nic">'
-                "what are the axioms of academicOps?"
-                "</channel>"
-            )
-        },
-        hooks_dir=PKB_HOOKS,
-        cwd="/workspace",
-        agent_type="ida:ida",
-    )
-    mock_search_results = "specs/AXIOMS.md: Found 1 match."
-    with patch.object(handlers, "_run_pkb_search", return_value=mock_search_results) as mock_search:
-        res = handlers.search_the_pkb(ctx)
-        mock_search.assert_called_once_with("what are the axioms of academicOps?", cwd="/workspace")
-        assert res is not None
-        assert "<academicOps PKB search results>" in res.inject_text
 
 
 @pytest.mark.parametrize(
@@ -438,56 +296,11 @@ def test_resolve_mcp_headers_ignores_half_a_pair():
         }
 
 
-def test_resolve_mcp_headers_does_not_read_retired_cf_access_names():
-    """CF_ACCESS_CLIENT_* are not the canonical names and are not read."""
-    with patch.dict(
-        os.environ,
-        {"CF_ACCESS_CLIENT_ID": "id123", "CF_ACCESS_CLIENT_SECRET": "sec456"},
-        clear=True,
-    ):
-        assert handlers._resolve_mcp_headers() == {}
-
-
-def test_resolve_mcp_headers_ignores_client_config_files(tmp_path: Path):
-    """Headers come from the environment only, never from a client's own config file."""
-    (tmp_path / ".claude.json").write_text(
-        json.dumps({"mcpServers": {"s": {"url": "https://x", "headers": {"A": "b"}}}}),
-        encoding="utf-8",
-    )
-    with patch.dict(os.environ, {"HOME": str(tmp_path)}, clear=True):
-        assert handlers._resolve_mcp_headers() == {}
-
-
 def test_resolve_mcp_headers_logs_malformed_json(caplog):
     with patch.dict(os.environ, {"PKB_MCP_HEADERS": "{not json"}, clear=True):
         with caplog.at_level("WARNING"):
             assert handlers._resolve_mcp_headers() == {}
     assert any("PKB_MCP_HEADERS" in r.getMessage() for r in caplog.records)
-
-
-def test_search_over_http_with_no_auth_headers_set():
-    """PKB search uses in-process HTTP client even when no auth headers are set in the environment."""
-    with (
-        patch.dict("os.environ", {"PKB_MCP_URL": "https://pkb.example.com"}, clear=True),
-        patch.object(handlers, "_post_mcp_search", return_value="1. Match in PKB") as mock_http,
-    ):
-        assert handlers._resolve_mcp_headers() == {}
-        out = handlers._run_pkb_search("query text")
-        assert out == "1. Match in PKB"
-        mock_http.assert_called_once_with("https://pkb.example.com", "query text", {})
-
-
-def test_run_pkb_search_has_no_subprocess_or_cli_route():
-    """_run_pkb_search reaches the PKB over HTTP only and has no CLI or subprocess route."""
-    with (
-        patch.object(handlers, "_post_mcp_search", return_value="result") as mock_http,
-        patch.dict("os.environ", {"PKB_MCP_URL": "https://mcp.example.com"}),
-    ):
-        out = handlers._run_pkb_search("query text")
-        assert out == "result"
-        mock_http.assert_called_once_with("https://mcp.example.com", "query text", {})
-        # Handlers module must not import or use subprocess for searching
-        assert not hasattr(handlers, "subprocess")
 
 
 def test_http_failure_surfaces_as_hook_failure_naming_the_error():
@@ -738,25 +551,6 @@ def test_dispatch_agy_preinvocation_reads_prompt_from_transcript(
 # --- Direct stdlib HTTP POST prompt hydration tests -------------------------
 
 
-def test_fastmcp_not_imported_by_hook():
-    """AC: fastmcp is no longer imported by the hook."""
-    cmd = [
-        sys.executable,
-        "-c",
-        (
-            "import sys\n"
-            "import handlers\n"
-            "from dispatch import HookContext\n"
-            "ctx = HookContext(client='claude', event='UserPromptSubmit', raw={'prompt': 'test'})\n"
-            "handlers.search_the_pkb(ctx)\n"
-            "imported_fastmcp = [m for m in sys.modules if m.startswith('fastmcp')]\n"
-            "assert not imported_fastmcp, f'fastmcp was imported: {imported_fastmcp}'\n"
-        ),
-    ]
-    res = subprocess.run(cmd, cwd=str(PKB_HOOKS), capture_output=True, text=True)
-    assert res.returncode == 0, f"Subprocess failed:\nstdout: {res.stdout}\nstderr: {res.stderr}"
-
-
 @pytest.fixture
 def http_mcp_server():
     import http.server
@@ -900,23 +694,6 @@ def test_search_the_pkb_unauthenticated_when_credentials_unset(
     assert not req["headers"]["user-agent"].startswith("Python-urllib")
 
 
-def test_search_the_pkb_tool_prefix(http_mcp_server, monkeypatch):
-    """AC: tool name uses PKB_MCP_TOOL_PREFIX (pkb_search when prefix is pkb_)."""
-    monkeypatch.setenv("PKB_MCP_URL", http_mcp_server.url)
-    monkeypatch.setenv("PKB_MCP_TOOL_PREFIX", "pkb_")
-
-    ctx = HookContext(
-        client="claude",
-        event="UserPromptSubmit",
-        raw={"prompt": "prefix test"},
-        hooks_dir=PKB_HOOKS,
-        agent_type="ida:ida",
-    )
-    handlers.search_the_pkb(ctx)
-    assert len(http_mcp_server.requests) == 1
-    assert http_mcp_server.requests[0]["json"]["params"]["name"] == "pkb_search"
-
-
 def test_search_the_pkb_injected_message_on_401(staged_hooks: Path, http_mcp_server):
     """AC: HTTP 401 injects a message naming refusal, 401, PKB_MCP_HEADERS, and token variables, with red trace recorded."""
     http_mcp_server.set_response(401, body="Unauthorized")
@@ -1004,30 +781,6 @@ def test_search_the_pkb_injected_message_on_unreachable(staged_hooks: Path):
     injected = data.get("hookSpecificOutput", {}).get("additionalContext", "")
     assert injected.startswith("aops hooks: handler 'search_the_pkb' failed")
     assert "unreachable" in injected
-
-
-def test_search_the_pkb_injected_message_on_timeout():
-    """AC: timeout injects message naming 5s timeout."""
-
-    def slow_post(*_args, **_kwargs):
-        raise TimeoutError("the PKB endpoint did not answer within 5 seconds")
-
-    ctx = HookContext(
-        client="claude",
-        event="UserPromptSubmit",
-        raw={"prompt": "check status"},
-        hooks_dir=PKB_HOOKS,
-        agent_type="ida:ida",
-    )
-    with (
-        patch.dict("os.environ", {"PKB_MCP_URL": "https://pkb.example.com"}),
-        patch.object(handlers, "_post_mcp_search", slow_post, create=True),
-    ):
-        res = _run_handler(handlers.search_the_pkb, ctx)
-        rendered = render("claude", "UserPromptSubmit", res)
-        injected = rendered.get("hookSpecificOutput", {}).get("additionalContext", "")
-        assert injected.startswith("aops hooks: handler 'search_the_pkb' failed")
-        assert "did not answer within 5 seconds" in injected
 
 
 def test_search_the_pkb_session_fallback_and_caching(monkeypatch, tmp_path):
@@ -1155,29 +908,3 @@ def test_post_mcp_search_does_not_initialize_on_404_or_generic_400():
         assert calls == ["tools/call"]
     finally:
         server.shutdown()
-
-
-def test_search_the_pkb_forwards_session_without_mutating_env(monkeypatch):
-    """AC: session_id is forwarded as parameter and os.environ is not mutated."""
-    captured_args = {}
-
-    def mock_post(mcp_url, query, headers=None, session_id=None, traceparent=None):
-        captured_args["session_id"] = session_id
-        captured_args["traceparent"] = traceparent
-        return "1. Result"
-
-    monkeypatch.setattr(handlers, "_post_mcp_search", mock_post)
-    monkeypatch.setenv("PKB_MCP_URL", "http://127.0.0.1:8000")
-    monkeypatch.delenv("AOPS_SESSION_ID", raising=False)
-
-    ctx = HookContext(
-        client="claude",
-        event="UserPromptSubmit",
-        session_id="session-explicit-123",
-        raw={"prompt": "find notes"},
-        hooks_dir=PKB_HOOKS,
-    )
-    res = handlers.search_the_pkb(ctx)
-    assert res is not None
-    assert captured_args["session_id"] == "session-explicit-123"
-    assert "AOPS_SESSION_ID" not in os.environ

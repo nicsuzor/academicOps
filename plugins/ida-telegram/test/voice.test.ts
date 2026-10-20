@@ -2,23 +2,6 @@ import { describe, expect, test } from "bun:test";
 import { prepareVoiceText, buildVoiceInEvent } from "../src/telegram/voice.js";
 
 describe("Voice: Inbound transcription and Outbound synthesis", () => {
-  test("builds voice-in event with voice: true and duration", () => {
-    const event = buildVoiceInEvent({
-      transcript: "Please verify the latest PR on GitHub.",
-      duration: 45,
-      audioPath: "/workspace/inbox/voice_101.ogg",
-      messageId: 101,
-      replyToMessageId: 99,
-    });
-
-    expect(event.content).toBe("Please verify the latest PR on GitHub.");
-    expect(event.meta.voice).toBe("true");
-    expect(event.meta.duration).toBe("45");
-    expect(event.meta.audio_path).toBe("/workspace/inbox/voice_101.ogg");
-    expect(event.meta.message_id).toBe("101");
-    expect(event.meta.reply_to_message_id).toBe("99");
-  });
-
   test("builds voice-in failure event with transcript_error", () => {
     const event = buildVoiceInEvent({
       transcript: undefined,

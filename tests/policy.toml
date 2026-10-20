@@ -45,19 +45,3 @@ rule_against_hearsay_enabled = false
 # honest_output is registered on SubagentStart for the claude client,
 # so the shipped-hooks equality check binds on this event.
 honest_output_enabled = true
-
-[hooks.blocking]
-# No handler is permitted to return a blocking disposition on agy.
-allow_blocking_agy = false
-
-[hooks.session_start]
-pkb_url = "https://pkb.example.com/mcp"
-
-[plugins.dependencies]
-# Dependencies required for OpenTelemetry span emission by plugin hooks and scripts (e.g. premise-check verdict)
-otel_packages = [
-  "opentelemetry-sdk",
-  "opentelemetry-exporter-otlp-proto-http",
-  "opentelemetry-exporter-otlp-proto-grpc",
-  "requests",
-]

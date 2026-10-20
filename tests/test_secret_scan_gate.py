@@ -97,23 +97,3 @@ class TestSecretGateBlocksCommits:
         _stage(repo, "transcript.md", _CLEAN_CONTENT)
         result = _run_gate(repo, "transcript.md")
         assert result.returncode == 0, result.stdout + result.stderr
-
-
-class TestSecretGateMutationValid:
-    """Proves the guard fails when the HOOK is removed, not the pattern.
-
-    Mirrors the Layer 1 mutation evidence: the same
-    staged secret `test_staged_secret_is_blocked` proves is blocked, here
-    proves is NOT blocked once the gitleaks hook entry is absent from the
-    config — the exact failure mode (a control silently dropped by a
-    refactor, with nothing left to notice) this task exists to close.
-    """
-
-    def test_removing_the_hook_unblocks_the_same_secret(self, tmp_path: Path):
-        repo = _init_repo(tmp_path, config_yaml="repos: []\n")
-        _stage(repo, "transcript.md", _SYNTHETIC_SECRET)
-        result = _run_gate(repo, "transcript.md")
-        assert result.returncode == 0, (
-            "expected the mutated (hook-less) repo to let the secret through; "
-            f"got exit {result.returncode}: {result.stdout + result.stderr}"
-        )

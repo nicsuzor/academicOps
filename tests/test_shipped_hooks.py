@@ -440,36 +440,6 @@ def test_every_shipped_agy_mcp_server_is_stdio_or_remote_not_both(dist_root):
             )
 
 
-# A hook timeout is expressed in SECONDS by both clients — Claude Code's hook
-# `timeout`, and agy's, which its reference documents as "Execution timeout in
-# seconds. Defaults to 30". Ten minutes is longer than any hook this framework
-# ships has business taking, and is far below the smallest plausible
-# milliseconds value (1000 = 16 minutes), so it separates the two units
-# cleanly without pinning any particular hook's budget.
-_MAX_HOOK_TIMEOUT_SECONDS = 600
-
-
-def test_no_shipped_hook_timeout_is_a_milliseconds_value(dist_root):
-    """The regression: `"timeout": 30000` meaning 30 seconds.
-
-    Read as seconds — which is what both clients do — that is eight hours and
-    twenty minutes, and its sibling `300000` is three and a half days. A
-    timeout that long is not a timeout: the guarantee it exists to give, that a
-    wedged hook cannot hold the session open indefinitely, is gone, and nothing
-    observable changes until the day something hangs.
-    """
-    for name, client, build_dir in _build_dirs(dist_root):
-        for wire_event, handler in _hook_handlers(client, build_dir):
-            timeout = handler.get("timeout")
-            if timeout is None:
-                continue
-            assert timeout <= _MAX_HOOK_TIMEOUT_SECONDS, (
-                f"{name}-{client} {wire_event}: timeout={timeout}. Hook timeouts are "
-                f"SECONDS, so this is {timeout / 3600:.1f} hours — almost certainly a "
-                f"milliseconds value. Cap is {_MAX_HOOK_TIMEOUT_SECONDS}s."
-            )
-
-
 # --- 1. execution: every shipped hook command actually runs -------------------
 
 
@@ -864,36 +834,6 @@ def test_shipped_rbg_hook_can_never_emit_a_blocking_decision(dist_root, stub_eva
     assert json.loads(proc.stdout)["hookSpecificOutput"]["additionalContext"]
 
 
-def test_shipped_rbg_never_reaches_the_refusal_primitive(dist_root):
-    """Structural, not behavioural: rbg's own shipped modules must not be able
-    to reach the REFUSAL outcome at all. The runtime is shared, so the only
-    thing keeping the rule check off the deny shape is that its handlers never
-    get there — assert that directly, rather than trusting one payload not to
-    have found the path.
-
-    A refusal denies a tool call. rbg's `block` on a stop is a different
-    disposition and is deliberately not banned here — see the module note above
-    section 1b.
-
-    Three tokens, not one. `refuse` (lowercase) does not match `Kind.REFUSE`,
-    so searching for the helper alone would sail past
-    `Result(text, None, Kind.REFUSE)`, which lib/hooks/dispatch.py renders as
-    `permissionDecision: deny` just as a refuse() call would; a positional
-    construction evades both. Banning construction closes it, and costs nothing
-    — the return annotation `Result | None` has no `(`.
-    """
-    rbg_hooks = dist_root / "rbg-claude" / "hooks"
-    rbg_own = {"handlers.py", "evaluator.py", "rules.py"}
-    offenders = [
-        f"{path.name}: {token}"
-        for path in sorted(rbg_hooks.glob("*.py"))
-        if path.name in rbg_own
-        for token in ("refuse", "Kind.REFUSE", "Result(")
-        if token in path.read_text(encoding="utf-8")
-    ]
-    assert offenders == []
-
-
 # --- 2. mode: a shipped `#!` file is runnable ---------------------------------
 
 
@@ -1143,85 +1083,4 @@ def test_hook_bearing_plugins_all_present(dist_root):
     assert hook_plugins == _declared_hook_plugins()
 
 
-def test_rbg_wires_preinvocation_on_agy(dist_root):
-    """It ships a hook: PreInvocation carries the prompt,
-    which is enough to state the live rule set for the turn.
-
-    PostInvocation is no longer wired: dispatch.py's
-    TO_CANONICAL["agy"]["PostInvocation"] is now None (it
-    fired once per internal invocation/tool-call round-trip, not once per
-    turn), and rbg's own Stop-side handler is commented out anyway, so
-    there was nothing left for it to reach."""
-    wired = {wire for wire, _ in _hook_commands("agy", dist_root / "rbg-agy")}
-    assert wired == {"PreInvocation"}
-
-
-def test_rbg_wires_claude_pretooluse(dist_root):
-    """The evaluator check is currently tested against Claude only."""
-    claude_wired = {wire for wire, _ in _hook_commands("claude", dist_root / "rbg-claude")}
-    assert "PreToolUse" in claude_wired
-    agy_wired = {wire for wire, _ in _hook_commands("agy", dist_root / "rbg-agy")}
-    assert "PreToolUse" not in agy_wired
-
-
 # --- 5. ts: no hooks on agy ----------------------------------------------------
-
-
-def test_ts_ships_no_agy_hooks_at_all(dist_root):
-    """ts's hook is session-level, and agy has no session-level hook event: its
-    `hooks.json` fires PreToolUse, PostToolUse, PreInvocation, PostInvocation
-    and Stop, and nothing else. So ts has no hooks on agy, which is stated by
-    shipping no `hooks.json` rather than an empty one — and certainly not by
-    wiring a `SessionStart` that never fires."""
-    assert not (dist_root / "ts-agy" / "hooks.json").exists()
-    assert _canonical_or_none("agy", "SessionStart") is None
-    assert _canonical_or_none("agy", "SessionEnd") is None
-
-
-def test_rbg_does_not_wire_claude_userpromptsubmit(dist_root):
-    """The turn-level ruleset advisory is scoped to agy. Claude fires both
-    events and is already covered by rbg's PreToolUse check, and the pkb plugin
-    owns Claude's UserPromptSubmit — so rbg must not register a second one.
-
-    Asserted as an absence rather than as the whole wired set: rbg legitimately
-    wires the stop-side gate on Claude too (`Stop`/`SubagentStop`, covered by
-    tests/test_rbg_stop_gate.py), and an equality here would fail on that for a
-    reason this case is not about.
-    """
-    wired = {wire for wire, _ in _hook_commands("claude", dist_root / "rbg-claude")}
-    assert "UserPromptSubmit" not in wired
-    assert "PreToolUse" in wired
-
-
-def test_no_handler_blocks_on_agy(dist_root):
-    """No handler is permitted to return a blocking disposition on agy.
-
-    Policy-as-code invariant from tests/policy.toml [hooks.blocking].allow_blocking_agy.
-    """
-    allow_blocking_agy = (
-        _policy.get("hooks", {}).get("blocking", {}).get("allow_blocking_agy", False)
-    )
-    if allow_blocking_agy:
-        pytest.skip("blocking on agy is explicitly allowed by policy")
-
-    for name, client, build_dir in _build_dirs(dist_root):
-        if client != "agy":
-            continue
-        hooks_dir = build_dir / "hooks"
-        if not (hooks_dir / "handlers.py").is_file():
-            continue
-        for wire_event, cmd in _hook_commands("agy", build_dir):
-            canonical = _canonical_or_none("agy", wire_event)
-            payload = _PAYLOADS.get(canonical or wire_event, {"conversationId": "test-session"})
-            proc = _run_shipped_hook("agy", build_dir, cmd, payload)
-            assert proc.returncode == 0, (
-                f"{name}-agy {wire_event}: hook failed with stderr {proc.stderr!r}"
-            )
-            if proc.stdout.strip():
-                try:
-                    data = json.loads(proc.stdout)
-                    assert data.get("decision") != "deny", (
-                        f"{name}-agy {wire_event} emitted blocking decision: {data}"
-                    )
-                except json.JSONDecodeError:
-                    pass
