@@ -29,13 +29,13 @@ fire-and-forgotten.
 
 ## Routing: Surface and Cadence
 
-Routing is a cadence-and-placement choice over one unified worker contract
-([[specs/enforcement/task-contract.md]]); the user does not have to specify. The
-orchestrator picks the surface (in-session subagent | polecat | agent team) and
-the cadence (wait vs fire-and-forget) for latency and isolation convenience;
-eligibility and deliverable shape are surface-agnostic -- the deliverable is
-whatever output URL the assembled workflow specifies. A literature review and a
-code change are the same contract with different assembled workflows.
+Routing is governed by Nic's tg 170 ruling: questions and lookups are answered
+directly by the session that receives them; the full pipeline (Prime → Sara →
+Pauli → dispatch → queue → worker → QA → report) is used only for real code
+changes. For code changes, routing is a cadence-and-placement choice over one
+unified worker contract ([[specs/enforcement/task-contract.md]]); the orchestrator
+picks the surface (in-session subagent | polecat | agent team) and the cadence
+(wait vs fire-and-forget) for latency and isolation convenience.
 
 Placement heuristics:
 
