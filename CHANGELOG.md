@@ -1,5 +1,83 @@
 # Changelog
 
+## [0.10.26](https://github.com/nicsuzor/academicOps/compare/v0.10.25...v0.10.26) (2026-10-20)
+
+
+### Features
+
+* **axioms:** update data-boundaries axiom for published text and repo visibility ([4823111](https://github.com/nicsuzor/academicOps/commit/4823111ca2661f27dd20ff39440dec25e28b9206))
+* **ci:** implement three-tier PR risk taxonomy and QA merge authority ([#2984](https://github.com/nicsuzor/academicOps/issues/2984)) ([e39a2df](https://github.com/nicsuzor/academicOps/commit/e39a2df4be8aea5eec18e3afa86b01ed6f66415c))
+* **dispatch:** use polecat-mcp completion events instead of polling or timers ([2896eb3](https://github.com/nicsuzor/academicOps/commit/2896eb31f638b4183d4a2b99b818574e323567db))
+* **dispatch:** use polecat-mcp completion events instead of polling or timers ([92b2c80](https://github.com/nicsuzor/academicOps/commit/92b2c809d5a03a5147f57008bc2789d3dd1ad257))
+* **ida-telegram:** add list origin fields and close route for Mini App questions ([40bf1cc](https://github.com/nicsuzor/academicOps/commit/40bf1cc496f8fef9b817d92678c1c470ae9a2a95))
+* **ida-telegram:** add list origin fields and close route for Mini App questions ([51a0e1d](https://github.com/nicsuzor/academicOps/commit/51a0e1d5cf0d881123856b7647df84ba17abc807))
+* **ida-telegram:** default reply feedback parameter to false ([95f671c](https://github.com/nicsuzor/academicOps/commit/95f671c7da955406de5df1d57d81c18d25351bce))
+* **ida-telegram:** default reply feedback parameter to false ([82e659e](https://github.com/nicsuzor/academicOps/commit/82e659edd8cb7f81ec45c53737468963acbda25f))
+* **ida-telegram:** give each Telegram persona its own command menu ([aa9b867](https://github.com/nicsuzor/academicOps/commit/aa9b8679c9220aa431f781780c380ba710e0938e))
+* **ida-telegram:** register persona-specific command menus and support bare execution ([d79ba4f](https://github.com/nicsuzor/academicOps/commit/d79ba4fce6b085444c79887939852f3a57633ce0))
+* **ida-telegram:** show recommendation and context on Mini App decisions ([9c99d77](https://github.com/nicsuzor/academicOps/commit/9c99d77f3438ce65b41d450d758f56be97512dc0))
+* **ida-telegram:** show recommendation and context on Mini App decisions ([bf30c9b](https://github.com/nicsuzor/academicOps/commit/bf30c9bf33c05c8c6e24a8bf625c936440aa4f48))
+* **ida:** add proportionality check to Pauli queuing and Ida requests ([53bb859](https://github.com/nicsuzor/academicOps/commit/53bb8594e7263f1d4b7e1d1f99803580e5015d46))
+* **ida:** add proportionality check to Pauli queuing and Ida requests ([b129ca1](https://github.com/nicsuzor/academicOps/commit/b129ca1223754aef0285c1e8d18e20b2a83defad))
+* **ida:** allow generic Ida internal subagents and in-session peers ([c2764dd](https://github.com/nicsuzor/academicOps/commit/c2764dd38c1d1327e25f706c0dbeb5a4cbf880b0))
+* **ida:** allow generic Ida internal subagents and in-session peers ([26c73b1](https://github.com/nicsuzor/academicOps/commit/26c73b1de48f77d1668b09d3eb4a955113566eae))
+* **ida:** consolidate strategic persona and skills ([e3879b9](https://github.com/nicsuzor/academicOps/commit/e3879b9fdd862fbbaf376d9fb28b3b2183f5f547))
+* **ida:** consolidate strategic persona and skills ([41208c8](https://github.com/nicsuzor/academicOps/commit/41208c804f2773a3dfe572d058a3675ec657266e))
+* **ida:** make PKB curation Pauli's first priority ([c2cf1de](https://github.com/nicsuzor/academicOps/commit/c2cf1de7d36126617cf554235a9a293c2720b9c2))
+* **ida:** make PKB curation Pauli's first priority ([f056ced](https://github.com/nicsuzor/academicOps/commit/f056cedb7b89ec809aa23a1760436705520768a8))
+* **ida:** report-argument standard, Level B recorder, gate and telemetry ([#2975](https://github.com/nicsuzor/academicOps/issues/2975)) ([87e8375](https://github.com/nicsuzor/academicOps/commit/87e83757af57d89d91c629c7df52003ae1601c6a))
+* **ida:** separate dispatch from capture in agent definitions ([4c5631e](https://github.com/nicsuzor/academicOps/commit/4c5631ed3800c2c18bd16c619247edb52038db70))
+* **ida:** separate dispatch from capture in agent definitions ([be9ea08](https://github.com/nicsuzor/academicOps/commit/be9ea0892198c291cc4148f0a27b808e586827f4))
+* **install:** clean-plugins on install-dev and switch make install to catalog release ([#3047](https://github.com/nicsuzor/academicOps/issues/3047)) ([27df5c7](https://github.com/nicsuzor/academicOps/commit/27df5c7102f5ccd28ac927ec050ae1e2f120f5ef))
+* **rbg:** review complete published surface against repo visibility ([9a7759e](https://github.com/nicsuzor/academicOps/commit/9a7759e131b5b9132fae7e4a4181a643d2af1f8f))
+* **review:** brief all three reviewers from one shared workflow ([441af88](https://github.com/nicsuzor/academicOps/commit/441af885d08a79f542339096471ad00327bf1934))
+* **review:** brief all three reviewers from one shared workflow ([117fea0](https://github.com/nicsuzor/academicOps/commit/117fea05661eea1589b1699f6c89dc9eae40ae6a))
+* **review:** separate three review roles into modular workflow chunks ([5b45e7e](https://github.com/nicsuzor/academicOps/commit/5b45e7e600ac50ff940c4458050a9af6b46dc855))
+* **review:** separate three review roles into modular workflow chunks ([ce2cee8](https://github.com/nicsuzor/academicOps/commit/ce2cee8c111ab189836836acbc768f3a5846ebd1))
+* **strategic-review:** pass published surface and repo visibility to reviewers ([b04a822](https://github.com/nicsuzor/academicOps/commit/b04a8226e15c873c0e9697643c8e0e17587bc5fd))
+
+
+### Bug Fixes
+
+* **core:** remove error swallowing and silent fallbacks across academicOps ([2cd399d](https://github.com/nicsuzor/academicOps/commit/2cd399de6494b7e17d6f326b543dd56019e391d2))
+* **core:** remove error swallowing and silent fallbacks across academicOps ([bdce073](https://github.com/nicsuzor/academicOps/commit/bdce0732b319d8d2fc7f592049690e8b3c6158ea))
+* **ida-telegram:** address PR review requirements for feedback callbacks ([ed677fa](https://github.com/nicsuzor/academicOps/commit/ed677faa8abfc6167af65179f3db061aa24d0da3))
+* **ida-telegram:** address review requirements by removing heuristics and using explicit fields ([12be827](https://github.com/nicsuzor/academicOps/commit/12be827efc064a354daec681a39cba51e88f5310))
+* **ida-telegram:** eliminate candidate path probing and fallback env per review ([4ed8173](https://github.com/nicsuzor/academicOps/commit/4ed81733241611dad0790995967c8f9f80a966a0))
+* **ida-telegram:** fix voice in and out ([5d3d056](https://github.com/nicsuzor/academicOps/commit/5d3d056cac0c04792d0282b1ba414f86e5e5d87f))
+* **ida-telegram:** fix voice-in cwd/env inheritance and implement Gemini 3.8 Flash TTS voice-out ([2ad3bbc](https://github.com/nicsuzor/academicOps/commit/2ad3bbc52f5372bfa8d598673f954534c91f7c39))
+* **ida-telegram:** require explicit reason when closing questions ([563c4fc](https://github.com/nicsuzor/academicOps/commit/563c4fc8e67bb70f4bd1359d17b79d5ad623aa24))
+* **ida-telegram:** resolve six verification defects in spec_7a9caca5 ([#2932](https://github.com/nicsuzor/academicOps/issues/2932)) ([bb6ebf8](https://github.com/nicsuzor/academicOps/commit/bb6ebf8a963937ec4c5c8be8ad593161d33350a6))
+* **ida:telegram:** read thumbs-down as about failure without asking to classify ([764d953](https://github.com/nicsuzor/academicOps/commit/764d95334fa1e6d42bac80f163b9eff9314f7a34))
+* **ida:telegram:** read thumbs-down as about failure without asking to classify ([bf179e6](https://github.com/nicsuzor/academicOps/commit/bf179e6ed8bbc0eacbdc1310861638cb5c7457ce))
+* **ida:** close [#2811](https://github.com/nicsuzor/academicOps/issues/2811) QA defects in ida/sara split and verdict gate ([#2981](https://github.com/nicsuzor/academicOps/issues/2981)) ([b46e004](https://github.com/nicsuzor/academicOps/commit/b46e0049360c1e66981f1cba49c77e52324fecbc))
+* **ida:** deduplicate taxonomy and comply with process-not-actor ([7b3ee1e](https://github.com/nicsuzor/academicOps/commit/7b3ee1eccd6af0ab9c41f64bdf717d13665443d7))
+* **ida:** enforce hydration and validation in ida hooks ([90b517d](https://github.com/nicsuzor/academicOps/commit/90b517d08a7be84e13ce7c8a9a4a194c17a5e78e))
+* **ida:** refine separate dispatch rule across ida, sara, and pauli to align with role boundaries ([463bce5](https://github.com/nicsuzor/academicOps/commit/463bce5de07235970442be0a1a56b8bda114d36a))
+* **ida:** report inbound failures and degraded outputs instead of workarounds ([#3021](https://github.com/nicsuzor/academicOps/issues/3021), [#3022](https://github.com/nicsuzor/academicOps/issues/3022)) ([1775f05](https://github.com/nicsuzor/academicOps/commit/1775f05813455ce292f946fcfbd68aa2760afd4c))
+* **ida:** report inbound failures and degraded outputs instead of workarounds ([#3021](https://github.com/nicsuzor/academicOps/issues/3021), [#3022](https://github.com/nicsuzor/academicOps/issues/3022)) ([ff3c0fe](https://github.com/nicsuzor/academicOps/commit/ff3c0fea41e9b89c516c22a034a2e8ce088b4bec))
+* **install:** resolve review findings for exception handling, fallback defaults, and synced plugin management ([8cda0d6](https://github.com/nicsuzor/academicOps/commit/8cda0d6c3c9a3f19f60de5aaaf5332672cbae92a))
+* **review:** address rule-compliance and alignment review findings ([757370e](https://github.com/nicsuzor/academicOps/commit/757370e0dc0c7c58a0e662549304a91909dd1e65))
+* **review:** address rule-compliance review findings on modular review roles ([2e4a84b](https://github.com/nicsuzor/academicOps/commit/2e4a84b399824d469fcd4deadd5979bf3bc1f74d))
+
+
+### Documentation
+
+* **specs:** specify per-persona Telegram bot command menus ([750a551](https://github.com/nicsuzor/academicOps/commit/750a55191d6fe77d993688c9a16ff05cc8e6d9f1))
+* stop sending PKB ids and trailers into public repo commits ([0638aa9](https://github.com/nicsuzor/academicOps/commit/0638aa90d14a3b606e7d57cccfdb0120f48b92a9))
+
+
+### CI/CD
+
+* **release:** adapt release-please trigger to release/v1.0-rc0 and target ref_name ([b0c7768](https://github.com/nicsuzor/academicOps/commit/b0c7768b1a7755c59ffc3741642808efbaa44da4))
+
+
+### Tests
+
+* **fixtures:** add public repo PR fixture with data boundaries violations ([7037681](https://github.com/nicsuzor/academicOps/commit/7037681048d009c520a723aa39479074d12df16f))
+* **ida-telegram:** add failing tests for question listing with origin fields and close route ([baa3099](https://github.com/nicsuzor/academicOps/commit/baa30991571d11de41f80a101835a41ae98bd4cb))
+* **rbg:** verify wf-rbg only names shipped axioms ([a303c4a](https://github.com/nicsuzor/academicOps/commit/a303c4afe6edcf20f4e61931fe342f6576c7e763))
+
 ## [0.10.25](https://github.com/nicsuzor/academicOps/compare/v0.10.24...v0.10.25) (2026-10-20)
 
 ### Features
