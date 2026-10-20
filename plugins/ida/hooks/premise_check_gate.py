@@ -377,16 +377,17 @@ def is_peer_report(ctx: HookContext) -> bool:
 
 
 def is_foreground_dispatch(ctx: HookContext) -> bool:
-    """True when a PostToolUse event is a foreground subagent dispatch."""
+    """True when a PostToolUse event returns a foreground subagent's result.
+
+    Claude Code marks a subagent that ran in the foreground and returned with
+    ``status: "completed"``. A launch acknowledgement -- ``async_launched`` (the
+    default when ``run_in_background`` is omitted) or ``teammate_spawned`` --
+    carries no report, so ``tool_input`` cannot tell the two apart.
+    """
     if ctx.event != "PostToolUse" or ctx.tool not in _DISPATCH_TOOLS:
         return False
-    tool_input = ctx.raw.get("tool_input") or ctx.raw.get("toolInput") or {}
-    if not isinstance(tool_input, dict):
-        return True
-    bg = tool_input.get("run_in_background")
-    if isinstance(bg, str):
-        return bg.strip().lower() not in ("true", "1", "yes")
-    return not bool(bg)
+    response = _tool_response(ctx)
+    return isinstance(response, dict) and response.get("status") == "completed"
 
 
 def _hooks_base(hooks_dir: Path | None = None) -> Path:
