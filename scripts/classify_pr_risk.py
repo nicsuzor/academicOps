@@ -1,15 +1,8 @@
-#!/usr/bin/env python3
-"""PR Risk Taxonomy Classifier.
+"""PR risk taxonomy classification and label synchronization.
 
-Implements the three-tier PR risk taxonomy (kb_48809ad0, aops_a7366995):
-- Tier 1 (Low Risk / Autonomous QA-Merge): specs, documentation, type stubs, internal tests, linting.
-  Label: triage:auto-mergeable
-- Tier 2 (Medium Risk / Operational Gate): prompts, governance, reconcile, release workflows, storage sync.
-  Label: triage:needs-judgment
-- Tier 3 (Critical Hazard / Public Gate): scholarly manuscripts, host infra, credentials, human-authored PRs.
-  Labels: criticality:critical, triage:needs-judgment
-
-Enforces Policy-as-Code by loading pattern rules and labels from tests/policy.toml.
+Classifies PR risk into Tier 1 (auto-mergeable), Tier 2 (needs-judgment),
+or Tier 3 (criticality:critical) based on policy in tests/policy.toml.
+Fails closed on any error, missing file, or empty file list.
 """
 
 from __future__ import annotations
@@ -17,39 +10,13 @@ from __future__ import annotations
 import argparse
 import fnmatch
 import json
-import os
 import subprocess
-import sys
 import tomllib
 from collections.abc import Sequence
 from dataclasses import dataclass
-from pathlib import Path, PurePosixPath
-from typing import Any
+from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_POLICY_PATH = REPO_ROOT / "tests" / "policy.toml"
-
-
-def _matches_pattern(filepath: str, pattern: str) -> bool:
-    norm_path = filepath.strip().lstrip("/")
-    norm_pat = pattern.strip().lstrip("/")
-    posix_path = PurePosixPath(norm_path)
-
-    try:
-        if posix_path.match(norm_pat):
-            return True
-    except Exception:
-        pass
-
-    if norm_pat.endswith("/**"):
-        prefix = norm_pat[:-3]
-        if norm_path == prefix or norm_path.startswith(prefix + "/"):
-            return True
-
-    if fnmatch.fnmatch(norm_path, norm_pat) or fnmatch.fnmatch(posix_path.name, norm_pat):
-        return True
-
-    return False
+DEFAULT_POLICY_PATH = Path("tests/policy.toml")
 
 
 @dataclass(frozen=True)
@@ -57,13 +24,6 @@ class PRRiskResult:
     tier: int
     labels: list[str]
     reasons: list[str]
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "tier": self.tier,
-            "labels": self.labels,
-            "reasons": self.reasons,
-        }
 
 
 class PRRiskClassifier:
@@ -73,162 +33,152 @@ class PRRiskClassifier:
         tier2_label: str,
         tier3_labels: list[str],
         tier3_path_patterns: list[str],
-        tier3_authors: list[str],
         tier2_path_patterns: list[str],
         tier1_path_patterns: list[str],
+        bot_authors: list[str],
     ) -> None:
         self.tier1_label = tier1_label
         self.tier2_label = tier2_label
         self.tier3_labels = tier3_labels
         self.tier3_path_patterns = tier3_path_patterns
-        self.tier3_authors = tier3_authors
         self.tier2_path_patterns = tier2_path_patterns
         self.tier1_path_patterns = tier1_path_patterns
+        self.bot_authors = bot_authors
 
     @classmethod
-    def from_policy(cls, policy_dict: dict[str, Any]) -> PRRiskClassifier:
+    def from_policy(cls, policy_dict: dict[str, object]) -> PRRiskClassifier:
+        # Mandatory policy keys without fallbacks: fail loud if missing
         return cls(
-            tier1_label=str(policy_dict.get("tier1_label", "triage:auto-mergeable")),
-            tier2_label=str(policy_dict.get("tier2_label", "triage:needs-judgment")),
-            tier3_labels=list(
-                policy_dict.get("tier3_labels", ["criticality:critical", "triage:needs-judgment"])
-            ),
-            tier3_path_patterns=list(policy_dict.get("tier3_path_patterns", [])),
-            tier3_authors=list(policy_dict.get("tier3_authors", [])),
-            tier2_path_patterns=list(policy_dict.get("tier2_path_patterns", [])),
-            tier1_path_patterns=list(policy_dict.get("tier1_path_patterns", [])),
+            tier1_label=str(policy_dict["tier1_label"]),
+            tier2_label=str(policy_dict["tier2_label"]),
+            tier3_labels=[str(lbl) for lbl in policy_dict["tier3_labels"]],  # type: ignore[union-attr]
+            tier3_path_patterns=[str(p) for p in policy_dict["tier3_path_patterns"]],  # type: ignore[union-attr]
+            tier2_path_patterns=[str(p) for p in policy_dict["tier2_path_patterns"]],  # type: ignore[union-attr]
+            tier1_path_patterns=[str(p) for p in policy_dict["tier1_path_patterns"]],  # type: ignore[union-attr]
+            bot_authors=[str(a) for a in policy_dict["bot_authors"]],  # type: ignore[union-attr]
         )
 
     @classmethod
     def load_from_policy_file(cls, path: Path = DEFAULT_POLICY_PATH) -> PRRiskClassifier:
         if not path.exists():
             raise FileNotFoundError(f"Policy file not found: {path}")
-        data = tomllib.loads(path.read_text(encoding="utf-8"))
+        with path.open("rb") as f:
+            data = tomllib.load(f)
         if "pr_risk" not in data:
             raise KeyError(f"Policy file {path} missing [pr_risk] section")
         return cls.from_policy(data["pr_risk"])
 
+    @staticmethod
+    def _matches_any(file_path: str, patterns: Sequence[str]) -> bool:
+        normalized = file_path.strip()
+        for pat in patterns:
+            if fnmatch.fnmatch(normalized, pat):
+                return True
+            # Support globstar prefix matching if pat ends with /**
+            if pat.endswith("/**"):
+                prefix = pat[:-3]
+                if normalized == prefix or normalized.startswith(prefix + "/"):
+                    return True
+        return False
+
     def classify(self, files: Sequence[str], author: str = "") -> PRRiskResult:
-        reasons: list[str] = []
+        if not files:
+            raise ValueError("No changed files provided for classification")
 
-        # 1. Tier 3 Author check (Human principal / critical authority)
-        if author and author in self.tier3_authors:
-            reasons.append(f"Author '{author}' requires principal review (Tier 3)")
-            return PRRiskResult(tier=3, labels=list(self.tier3_labels), reasons=reasons)
+        # 1. Human author escalation (Tier 3)
+        is_bot = author.endswith("[bot]") or author in self.bot_authors
+        if not is_bot:
+            return PRRiskResult(
+                tier=3,
+                labels=list(self.tier3_labels),
+                reasons=[f"Author '{author}' classified as human author (Tier 3 gate)"],
+            )
 
-        # 2. Tier 3 File check (Scholarly manuscripts, host infra, credentials)
-        tier3_matches: list[str] = []
-        for file in files:
-            for pat in self.tier3_path_patterns:
-                if _matches_pattern(file, pat):
-                    tier3_matches.append(f"{file} matched {pat}")
-                    break
+        # 2. Tier 3 path check
+        tier3_files = [f for f in files if self._matches_any(f, self.tier3_path_patterns)]
+        if tier3_files:
+            return PRRiskResult(
+                tier=3,
+                labels=list(self.tier3_labels),
+                reasons=[f"Matched Tier 3 paths: {tier3_files}"],
+            )
 
-        if tier3_matches:
-            reasons.extend(f"Tier 3 path match: {m}" for m in tier3_matches)
-            return PRRiskResult(tier=3, labels=list(self.tier3_labels), reasons=reasons)
+        # 3. Tier 2 path check
+        tier2_files = [f for f in files if self._matches_any(f, self.tier2_path_patterns)]
+        if tier2_files:
+            return PRRiskResult(
+                tier=2,
+                labels=[self.tier2_label],
+                reasons=[f"Matched Tier 2 paths: {tier2_files}"],
+            )
 
-        # 3. Tier 2 File check (Agent prompts, governance, reconcile, release workflows)
-        tier2_matches: list[str] = []
-        for file in files:
-            for pat in self.tier2_path_patterns:
-                if _matches_pattern(file, pat):
-                    tier2_matches.append(f"{file} matched {pat}")
-                    break
+        # 4. Tier 1 path check: ALL files must match Tier 1 patterns
+        unmatched = [f for f in files if not self._matches_any(f, self.tier1_path_patterns)]
+        if not unmatched:
+            return PRRiskResult(
+                tier=1,
+                labels=[self.tier1_label],
+                reasons=[f"All {len(files)} files matched Tier 1 low-risk allowlist"],
+            )
 
-        if tier2_matches:
-            reasons.extend(f"Tier 2 path match: {m}" for m in tier2_matches)
-            return PRRiskResult(tier=2, labels=[self.tier2_label], reasons=reasons)
-
-        # 4. Tier 1 File check (Allowlisted low-risk specs, docs, stubs, tests)
-        if files:
-            tier1_matches: list[str] = []
-            unmatched: list[str] = []
-            for file in files:
-                matched = False
-                for pat in self.tier1_path_patterns:
-                    if _matches_pattern(file, pat):
-                        tier1_matches.append(file)
-                        matched = True
-                        break
-                if not matched:
-                    unmatched.append(file)
-
-            if not unmatched:
-                reasons.append(f"All {len(files)} files matched Tier 1 low-risk allowlist")
-                return PRRiskResult(tier=1, labels=[self.tier1_label], reasons=reasons)
-            else:
-                reasons.append(
-                    f"Unclassified files outside Tier 1 allowlist: {unmatched[:5]}; defaulting to Tier 2"
-                )
-                return PRRiskResult(tier=2, labels=[self.tier2_label], reasons=reasons)
-
-        # Default empty PR
-        return PRRiskResult(tier=1, labels=[self.tier1_label], reasons=["Empty file list"])
+        # 5. Unclassified paths default to Tier 2 (operational gate)
+        return PRRiskResult(
+            tier=2,
+            labels=[self.tier2_label],
+            reasons=[f"Files outside Tier 1 allowlist: {unmatched}"],
+        )
 
 
-def classify_pr_payload(
-    payload: dict[str, Any], policy_path: Path = DEFAULT_POLICY_PATH
-) -> PRRiskResult:
-    classifier = PRRiskClassifier.load_from_policy_file(policy_path)
-    files = payload.get("files", [])
-    author = payload.get("author", "")
-    return classifier.classify(files=files, author=author)
+def sync_pr_labels(
+    pr_number: int, target_labels: Sequence[str], all_tier_labels: Sequence[str]
+) -> None:
+    """Synchronize PR labels via gh CLI, adding target labels and removing stale tier labels."""
+    view_cmd = ["gh", "pr", "view", str(pr_number), "--json", "labels"]
+    proc = subprocess.run(view_cmd, capture_output=True, text=True, check=True)
+    current_data = json.loads(proc.stdout)
+    current_labels = {lbl["name"] for lbl in current_data.get("labels", [])}
+
+    to_add = [lbl for lbl in target_labels if lbl not in current_labels]
+    to_remove = [
+        lbl for lbl in all_tier_labels if lbl in current_labels and lbl not in target_labels
+    ]
+
+    if not to_add and not to_remove:
+        return
+
+    edit_cmd = ["gh", "pr", "edit", str(pr_number)]
+    if to_add:
+        edit_cmd.extend(["--add-label", ",".join(to_add)])
+    if to_remove:
+        edit_cmd.extend(["--remove-label", ",".join(to_remove)])
+
+    subprocess.run(edit_cmd, check=True)
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Classify PR risk tier and apply triage labels.")
-    parser.add_argument("--fixture", type=Path, help="Path to JSON fixture PR file to classify")
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Classify PR risk tier and synchronize labels.")
+    parser.add_argument("--pr-number", type=int, help="GitHub PR number")
+    parser.add_argument("--author", type=str, default="", help="PR author login")
     parser.add_argument("--files", nargs="*", default=[], help="List of changed file paths")
-    parser.add_argument("--author", default="", help="PR author username")
-    parser.add_argument("--pr-number", help="PR number to label via gh CLI if available")
-    parser.add_argument(
-        "--policy", type=Path, default=DEFAULT_POLICY_PATH, help="Path to policy.toml"
-    )
-    parser.add_argument("--output-json", action="store_true", help="Output result as JSON")
-
+    parser.add_argument("--policy", type=Path, default=DEFAULT_POLICY_PATH, help="Policy TOML file")
     args = parser.parse_args()
 
-    files = list(args.files)
-    author = args.author
-
-    if args.fixture:
-        data = json.loads(args.fixture.read_text(encoding="utf-8"))
-        files = data.get("files", [])
-        author = data.get("author", author)
-
     classifier = PRRiskClassifier.load_from_policy_file(args.policy)
-    result = classifier.classify(files=files, author=author)
+    result = classifier.classify(files=args.files, author=args.author)
 
-    if args.output_json:
-        print(json.dumps(result.to_dict(), indent=2))
-    else:
-        print(f"PR Risk Classification: Tier {result.tier}")
-        print(f"Labels to apply: {', '.join(result.labels)}")
-        for reason in result.reasons:
-            print(f" - Reason: {reason}")
+    print(f"PR Risk Tier: {result.tier}")
+    print(f"Labels: {', '.join(result.labels)}")
+    for r in result.reasons:
+        print(f"  - {r}")
 
-    # If pr-number is passed and GH_TOKEN / gh is available, attempt to apply labels
-    if args.pr_number and result.labels:
-        labels_arg = ",".join(result.labels)
-        cmd = ["gh", "pr", "edit", str(args.pr_number), "--add-label", labels_arg]
-        try:
-            subprocess.run(cmd, check=True, capture_output=True, text=True)
-            print(f"Successfully applied labels [{labels_arg}] to PR #{args.pr_number}")
-        except FileNotFoundError:
-            print(f"gh CLI not installed; skipped remote labeling for PR #{args.pr_number}")
-        except subprocess.CalledProcessError as e:
-            print(f"Warning: Failed to apply labels via gh: {e.stderr}", file=sys.stderr)
-
-    # Set GitHub Actions output if available
-    gh_output = os.environ.get("GITHUB_OUTPUT")
-    if gh_output:
-        with open(gh_output, "a", encoding="utf-8") as f:
-            f.write(f"tier={result.tier}\n")
-            f.write(f"labels={','.join(result.labels)}\n")
-
-    return 0
+    if args.pr_number:
+        all_tier_labels = [
+            classifier.tier1_label,
+            classifier.tier2_label,
+            *classifier.tier3_labels,
+        ]
+        sync_pr_labels(args.pr_number, result.labels, all_tier_labels)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
