@@ -1,4 +1,4 @@
-import { describe, expect, test, afterEach } from "bun:test";
+import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { rmSync, existsSync, mkdtempSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -10,7 +10,11 @@ import { QuestionBroker } from "../src/telegram/questions.js";
 import { PermissionRelay } from "../src/mcp/permissions.js";
 
 describe("Feedback: vote buttons default and opt-in", () => {
-  const testStateDir = mkdtempSync(join(tmpdir(), "ida-telegram-fb-test-"));
+  let testStateDir: string;
+
+  beforeEach(() => {
+    testStateDir = mkdtempSync(join(tmpdir(), "ida-telegram-fb-test-"));
+  });
 
   afterEach(() => {
     if (existsSync(testStateDir)) {
@@ -200,7 +204,7 @@ describe("Feedback: vote buttons default and opt-in", () => {
       update_id: 101,
       callback_query: {
         id: "cb_up_1",
-        from: { id: 8860530746, is_bot: false, first_name: "Nic" },
+        from: { id: 8860530746, is_bot: false, first_name: "User" },
         message: {
           message_id: 501,
           date: 1700000000,
@@ -254,7 +258,7 @@ describe("Feedback: vote buttons default and opt-in", () => {
       update_id: 102,
       callback_query: {
         id: "cb_down_1",
-        from: { id: 8860530746, is_bot: false, first_name: "Nic" },
+        from: { id: 8860530746, is_bot: false, first_name: "User" },
         message: {
           message_id: 502,
           date: 1700000010,
@@ -280,7 +284,7 @@ describe("Feedback: vote buttons default and opt-in", () => {
       update_id: 103,
       callback_query: {
         id: "cb_critique_1",
-        from: { id: 8860530746, is_bot: false, first_name: "Nic" },
+        from: { id: 8860530746, is_bot: false, first_name: "User" },
         message: {
           message_id: 502,
           date: 1700000010,
@@ -295,5 +299,56 @@ describe("Feedback: vote buttons default and opt-in", () => {
     expect(emittedEvents.length).toBe(1);
     expect(emittedEvents[0].meta.event).toBe("feedback_down");
     expect(emittedEvents[0].meta.critique).toBe("Too verbose");
+  });
+
+  test("unauthorized user attempting feedback callback is rejected with Unauthorized and no state changes", async () => {
+    const config = loadConfig({
+      TELEGRAM_BOT_TOKEN: "test-token",
+      IDA_TELEGRAM_ROLE: "primary",
+      ALLOWED_USER_IDS: "8860530746",
+      STATE_DIR: testStateDir,
+      VOICE_REPLIES: "off",
+    });
+
+    const broker = new QuestionBroker(config.stateDir);
+    const permRelay = new PermissionRelay();
+
+    const apiCalls: Array<{ method: string; payload: any }> = [];
+    const emittedEvents: Array<{ content: string; meta: Record<string, unknown> }> = [];
+    const bot = new TelegramBotClient(config, broker, permRelay, (content, meta) => {
+      emittedEvents.push({ content, meta });
+    });
+    (bot as any).callApi = async (method: string, payload: Record<string, unknown>) => {
+      apiCalls.push({ method, payload });
+      return { ok: true, result: true };
+    };
+
+    const initialKeyboard = [
+      [{ text: "👍", callback_data: "fb:up" }, { text: "👎", callback_data: "fb:down" }],
+    ];
+
+    await (bot as any).handleUpdate({
+      update_id: 104,
+      callback_query: {
+        id: "cb_unauth_1",
+        from: { id: 9999999999, is_bot: false, first_name: "UnauthorizedUser" },
+        message: {
+          message_id: 503,
+          date: 1700000020,
+          chat: { id: 9999999999, type: "private" },
+          text: "A message",
+          reply_markup: { inline_keyboard: initialKeyboard },
+        },
+        data: "fb:up",
+      },
+    });
+
+    const answerCall = apiCalls.find((c) => c.method === "answerCallbackQuery");
+    expect(answerCall).toBeDefined();
+    expect(answerCall?.payload.text).toBe("Unauthorized.");
+
+    const editCall = apiCalls.find((c) => c.method === "editMessageReplyMarkup");
+    expect(editCall).toBeUndefined();
+    expect(emittedEvents.length).toBe(0);
   });
 });

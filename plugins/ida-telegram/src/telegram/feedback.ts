@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, appendFileSync, mkdirSync } from "node:fs";
+import { existsSync, appendFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
 export interface FeedbackTrace {
@@ -177,18 +177,5 @@ export class FeedbackManager {
         message_excerpt: input.messageExcerpt,
       },
     };
-  }
-
-  public getTraces(): FeedbackTrace[] {
-    if (!existsSync(this.traceFilePath)) return [];
-    try {
-      const content = readFileSync(this.traceFilePath, "utf-8");
-      return content
-        .split("\n")
-        .filter((l) => l.trim().length > 0)
-        .map((l) => JSON.parse(l));
-    } catch {
-      return [];
-    }
   }
 }

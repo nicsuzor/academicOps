@@ -556,9 +556,7 @@ export class TelegramBotClient {
       const cb = update.callback_query;
       const data = cb.data || "";
 
-      if (data === "fb:up") {
-        await this.callApi("answerCallbackQuery", { callback_query_id: cb.id, text: "Noted 👍" });
-      } else if (!data.startsWith("q:") && !data.startsWith("perm:")) {
+      if (!data.startsWith("q:") && !data.startsWith("perm:") && !data.startsWith("fb:")) {
         await this.callApi("answerCallbackQuery", { callback_query_id: cb.id });
       }
 
@@ -667,80 +665,94 @@ export class TelegramBotClient {
       }
 
       // Feedback callbacks: fb:...
-      if (data === "fb:up" && cb.message) {
-        await this.feedbackManager.handleUpvote({
-          messageId: cb.message.message_id,
-          messageExcerpt: cb.message.text || "",
-        });
-        const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
-          cb.message.reply_markup?.inline_keyboard,
-          [[{ text: "👍 saved", callback_data: "noop" }]]
-        );
-        await this.callApi("editMessageReplyMarkup", {
-          chat_id: cb.message.chat.id,
-          message_id: cb.message.message_id,
-          reply_markup: {
-            inline_keyboard: updatedKeyboard,
-          },
-        });
-        return;
-      }
-
-      if (data === "fb:down" && cb.message) {
-        const critiqueKeyboard = this.feedbackManager.getDownvoteCritiqueKeyboard(cb.message.message_id);
-        const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
-          cb.message.reply_markup?.inline_keyboard,
-          critiqueKeyboard
-        );
-        await this.callApi("editMessageReplyMarkup", {
-          chat_id: cb.message.chat.id,
-          message_id: cb.message.message_id,
-          reply_markup: { inline_keyboard: updatedKeyboard },
-        });
-        return;
-      }
-
-      if ((data === "fb:cancel" || data.startsWith("fb:cancel:")) && cb.message) {
-        const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
-          cb.message.reply_markup?.inline_keyboard,
-          [this.feedbackManager.getInitialFeedbackButtons()]
-        );
-        await this.callApi("editMessageReplyMarkup", {
-          chat_id: cb.message.chat.id,
-          message_id: cb.message.message_id,
-          reply_markup: { inline_keyboard: updatedKeyboard },
-        });
-        return;
-      }
-
-      if (data.startsWith("fb:critique:") && cb.message) {
-        const parts = data.split(":");
-        const critique = parts.slice(3).join(":");
-        const res = await this.feedbackManager.handleCritique({
-          messageId: cb.message.message_id,
-          messageExcerpt: cb.message.text || "",
-          critique,
-        });
-
-        const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
-          cb.message.reply_markup?.inline_keyboard,
-          [[{ text: `Critique saved: ${critique}`, callback_data: "noop" }]]
-        );
-        await this.callApi("editMessageReplyMarkup", {
-          chat_id: cb.message.chat.id,
-          message_id: cb.message.message_id,
-          reply_markup: {
-            inline_keyboard: updatedKeyboard,
-          },
-        });
-
-        if (res.emitsChannelEvent) {
-          this.emitChannelEvent(
-            `Feedback received: ${critique}`,
-            res.channelEvent as unknown as Record<string, unknown>
-          );
+      if (data.startsWith("fb:") && cb.message) {
+        if (!this.config.allowFrom.includes(cb.from.id)) {
+          await this.callApi("answerCallbackQuery", {
+            callback_query_id: cb.id,
+            text: "Unauthorized.",
+          });
+          return;
         }
-        return;
+
+        if (data === "fb:up") {
+          await this.callApi("answerCallbackQuery", { callback_query_id: cb.id, text: "Noted 👍" });
+          await this.feedbackManager.handleUpvote({
+            messageId: cb.message.message_id,
+            messageExcerpt: cb.message.text || "",
+          });
+          const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
+            cb.message.reply_markup?.inline_keyboard,
+            [[{ text: "👍 saved", callback_data: "noop" }]]
+          );
+          await this.callApi("editMessageReplyMarkup", {
+            chat_id: cb.message.chat.id,
+            message_id: cb.message.message_id,
+            reply_markup: {
+              inline_keyboard: updatedKeyboard,
+            },
+          });
+          return;
+        }
+
+        if (data === "fb:down") {
+          await this.callApi("answerCallbackQuery", { callback_query_id: cb.id });
+          const critiqueKeyboard = this.feedbackManager.getDownvoteCritiqueKeyboard(cb.message.message_id);
+          const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
+            cb.message.reply_markup?.inline_keyboard,
+            critiqueKeyboard
+          );
+          await this.callApi("editMessageReplyMarkup", {
+            chat_id: cb.message.chat.id,
+            message_id: cb.message.message_id,
+            reply_markup: { inline_keyboard: updatedKeyboard },
+          });
+          return;
+        }
+
+        if (data === "fb:cancel" || data.startsWith("fb:cancel:")) {
+          await this.callApi("answerCallbackQuery", { callback_query_id: cb.id });
+          const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
+            cb.message.reply_markup?.inline_keyboard,
+            [this.feedbackManager.getInitialFeedbackButtons()]
+          );
+          await this.callApi("editMessageReplyMarkup", {
+            chat_id: cb.message.chat.id,
+            message_id: cb.message.message_id,
+            reply_markup: { inline_keyboard: updatedKeyboard },
+          });
+          return;
+        }
+
+        if (data.startsWith("fb:critique:")) {
+          await this.callApi("answerCallbackQuery", { callback_query_id: cb.id });
+          const parts = data.split(":");
+          const critique = parts.slice(3).join(":");
+          const res = await this.feedbackManager.handleCritique({
+            messageId: cb.message.message_id,
+            messageExcerpt: cb.message.text || "",
+            critique,
+          });
+
+          const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
+            cb.message.reply_markup?.inline_keyboard,
+            [[{ text: `Critique saved: ${critique}`, callback_data: "noop" }]]
+          );
+          await this.callApi("editMessageReplyMarkup", {
+            chat_id: cb.message.chat.id,
+            message_id: cb.message.message_id,
+            reply_markup: {
+              inline_keyboard: updatedKeyboard,
+            },
+          });
+
+          if (res.emitsChannelEvent) {
+            this.emitChannelEvent(
+              `Feedback received: ${critique}`,
+              res.channelEvent as unknown as Record<string, unknown>
+            );
+          }
+          return;
+        }
       }
 
       // Custom action / decision buttons on reply cards (FR-1.1 / FR-8)
