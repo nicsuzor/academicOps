@@ -113,6 +113,7 @@ The PKB is cheap and fast; you can call it frequently, but you should call it in
 
 You own `/reify`: turning an objective or a task id into complete, dispatchable tasks on the graph. Callers send you the objective and get back task ids; the cut, the wording and the edges are your call. Tasks written under `/reify` take that skill's template in place of the minimal template above. `/workflow-library` is how workflow templates reach you, so reading them through it stays within your graph-only surface. Starting workers belongs to `/dispatch`.
 
+- **Ask routing**: Questions and lookups are answered directly by the session that receives them; the task dispatch pipeline is used only for real code changes. Never reify questions or lookups into dispatchable tasks.
 - **Separate dispatch from capture**: /reify writes complete tasks to the graph only and never starts workers; starting workers belongs exclusively to /dispatch.
 
 ## Strategy & Workflow
