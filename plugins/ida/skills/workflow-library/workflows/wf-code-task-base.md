@@ -17,8 +17,8 @@ tags: [base, task, code, composite]
 1. **Design** -- for any change that needs the agent's judgment among alternative implementations; a simple bugfix or a mechanical change skips it. The design states how the feature is expected to work, the user stories it serves, and where the change sits in the wider project, and it ends in an independent check by an agent that did not write it:
    - **The project keeps specs**: the design cites the spec that governs the behaviour and holds the change to it. Where no spec governs it, the spec is written first and independently reviewed; the reviewed spec is the design.
    - **The project keeps no specs**: a plan naming the alternatives, the one chosen and why, and how it fits the project, checked by a different agent.
-2. **Build** -- implement the acceptance criteria, full suite green at the end. Code that executes is built test-first: each behaviour's failing test captured before its code.
-3. **Push and file the PR** -- push the branch and open a pull request against the base branch, its description mapping each acceptance criterion to the evidence that meets it: tests or commits. Record the PR URL on the task and release it as `done`.
+2. **Build** -- implement the acceptance criteria, full suite green at the end. A change to code that executes is built test-first: each changed behaviour's failing test captured before its code. A change that modifies no code that executes adds no test; a criterion it meets is proved by a run or check reported in the PR.
+3. **Push and file the PR** -- push the branch and open a pull request against the base branch, its description mapping each acceptance criterion to the evidence that meets it: a test, a command's output, a fresh agent's run, or a commit. Record the PR URL on the task and release it as `done`.
 4. **Review and verdict** -- in a separate task, by a fresh worker that did not write the code. Run `/strategic-review` on the PR, push fixes for defects small enough to settle in place, and post the review to the PR on GitHub. Then reach exactly one verdict:
    - **Rejected** -- the approach is wrong, the PR is out of proportion to what the task asks (see the `proportionate` axiom), or it cannot be salvaged: close the PR with the review as the closing comment, and set the implementation task to `cancelled` with the reason.
    - **Extensive revisions** -- the PR is sound in direction but needs more than in-place fixes: file a fix follow-up task that names each required change and `needs` the review task, leave the PR open, and link the follow-up from the review.
@@ -34,7 +34,7 @@ For a low-risk internal change, chiefly a bugfix, omit the separate stage 4 veri
 ## Output contract
 
 - Stage 1 task: the design -- the governing spec it cites, or the new spec, or the plan -- committed or on the task record, and the independent check's verdict.
-- Stage 2--3 task: tests with their red failure traces, a green full-suite run, and the open PR with its URL on the task record.
+- Stage 2--3 task: for each changed behaviour of code that executes, its test with the red failure trace; the evidence for each other criterion; a green full-suite run; and the open PR with its URL on the task record.
 - Stage 4 task: the review posted on the PR, any in-place fix commits, and one verdict carried out -- PR closed and implementation task `cancelled`, a fix follow-up task filed, a handoff follow-up task filed with the review task released as `partial`, or a merge recommendation posted with the review task released as `merge_ready`.
 
 ## When to include

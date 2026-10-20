@@ -213,8 +213,7 @@ process's own environment rather than on argv): `AOPS_IMAGE_PROVENANCE` (the ful
 record as JSON),
 `AOPS_IMAGE_STALE` (`0`/`1`), `AOPS_IMAGE_PLUGINS_VERSION`, and -- only when stale -- `AOPS_IMAGE_STALENESS_WARNING`.
 
-`plugins/aops/hooks/handlers.py` reads them, falling back to
-`/home/worker/.aops-image-metadata.json`, and appends the version to the session
+`plugins/ida/hooks/handlers.py` reads them, and appends the version to the session
 metadata line:
 
 ```text

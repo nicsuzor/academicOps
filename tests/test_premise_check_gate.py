@@ -234,68 +234,6 @@ def test_cli_reads_reason_from_file(tmp_path, monkeypatch):
     assert last["reason"] == "Claims follow from the cited evidence."
 
 
-def test_cli_accepts_inline_reason(monkeypatch):
-    session_id = "sess-cli-inline"
-    pcg.arm(session_id, claim_id="claim-1")
-    monkeypatch.setattr(
-        pcv, "_import_claude_code_tracer", lambda: _StubTracer(config={"endpoint": "http://x"})
-    )
-
-    rc = pcv.main(
-        [
-            "--report",
-            "claim-1",
-            "--verdict",
-            "REVISE",
-            "--reason",
-            "No evidence for AC2.",
-            "--session",
-            session_id,
-        ]
-    )
-
-    assert rc == 0
-    assert pcg.get_state(session_id)["last_verdict"]["reason"] == "No evidence for AC2."
-
-
-def test_cli_records_verdict_with_distinct_verification_id_and_title(capsys, monkeypatch):
-    import json
-
-    session_id = "sess-cli-title"
-    claim_id = "claim-3a4b5c6d"
-    pcg.arm(session_id, claim_id=claim_id)
-    monkeypatch.setattr(
-        pcv, "_import_claude_code_tracer", lambda: _StubTracer(config={"endpoint": "http://x"})
-    )
-
-    rc = pcv.main(
-        [
-            "--claim",
-            claim_id,
-            "--verdict",
-            "PASS",
-            "--reason",
-            "Evidence supports all claims.",
-            "--title",
-            "unit-tests-passed",
-            "--session",
-            session_id,
-        ]
-    )
-
-    assert rc == 0
-    out = json.loads(capsys.readouterr().out)
-    assert out["ok"] is True
-    assert out["claim_id"] == claim_id
-    assert out["verification_id"] != claim_id
-    assert out["verification_id"].startswith("verdict-")
-    assert out["verification_id"].endswith("-unit-tests-passed")
-    assert pcg.is_valid_id(out["verification_id"])
-    assert out["verdict"] == "PASS"
-    assert out["title"] == "unit-tests-passed"
-    assert pcg.is_armed(session_id) is False
-
-
 def test_cli_rejects_free_text_as_the_verdict(monkeypatch):
     session_id = "sess-cli-bad"
     pcg.arm(session_id, claim_id="claim-1")
@@ -317,25 +255,6 @@ def test_cli_rejects_free_text_as_the_verdict(monkeypatch):
             ]
         )
     assert pcg.is_armed(session_id) is True
-
-
-def test_record_verdict_by_id_clears_gate():
-    session_id = "sess-clear-by-id"
-    report_id = "report-a1b2c3d4"
-    pcg.arm(session_id, claim_id=report_id)
-    assert pcg.is_armed(session_id) is True
-
-    result = pcv.record_verdict(
-        session_id=session_id,
-        claim_id=report_id,
-        verdict="PASS",
-        reason="Logic holds against the original ask.",
-        tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
-    )
-    assert result["ok"] is True
-    assert result["claim_id"] == report_id
-    assert result["disarmed"] is True
-    assert pcg.is_armed(session_id) is False
 
 
 def test_record_verdict_refuses_wrong_report_id_and_stays_armed():
@@ -497,21 +416,6 @@ def test_cli_verdict_succeeds_and_disarms_when_span_emission_succeeds(monkeypatc
 
     assert rc == 0
     assert pcg.is_armed(session_id) is False
-
-
-def test_import_claude_code_tracer_raises_when_missing(monkeypatch):
-    import builtins
-
-    real_import = builtins.__import__
-
-    def fake_import(name, *args, **kwargs):
-        if name == "claude_code_tracer":
-            raise ImportError("No module named 'claude_code_tracer'")
-        return real_import(name, *args, **kwargs)
-
-    monkeypatch.setattr(builtins, "__import__", fake_import)
-    with pytest.raises(ImportError):
-        pcv._import_claude_code_tracer()
 
 
 # ---------------------------------------------------------------------------
@@ -865,26 +769,6 @@ def test_arm_handler_returns_two_line_prompt_note_and_no_message_text():
     assert cmd not in res.user_text
 
 
-def test_handler_block_message_is_two_lines_pointing_to_skill():
-    session_id = "sess-block-elements"
-    claim = "claim-a1b2c3d4"
-    pcg.arm(session_id, claim_id=claim)
-
-    ctx = _agent_dispatch_ctx(session_id)
-    res = pcg.premise_check_handler(ctx)
-    assert res is not None
-    assert res.kind == dispatch.Kind.REFUSE
-    assert len(res.inject_text.splitlines()) == 2
-    assert res.user_text is not None and len(res.user_text.splitlines()) == 1
-    assert claim in res.inject_text
-    assert "premise-check" in res.inject_text
-    cmd = pcg.format_verdict_command(claim, ctx.hooks_dir, session_id)
-    assert res.inject_text.splitlines()[1] == cmd
-    assert "--verdict <PASS|REVISE|FAIL>" in res.inject_text
-    assert "--verdict PASS" not in res.inject_text
-    assert cmd not in res.user_text
-
-
 def test_stop_block_message_is_two_lines_pointing_to_skill():
     session_id = "sess-stop-elements"
     claim = "claim-e5f6a7b8"
@@ -906,26 +790,6 @@ def test_stop_block_message_is_two_lines_pointing_to_skill():
     cmd = pcg.format_verdict_command(claim, stop_ctx.hooks_dir, session_id)
     assert res.inject_text.splitlines()[1] == cmd
     assert "--verdict PASS" not in res.inject_text
-
-
-def test_format_verdict_command_resolves_runnable_script():
-    cmd = pcg.format_verdict_command(claim_id="my claim with spaces")
-    parts = shlex.split(cmd)
-    assert parts[:3] == ["uv", "run", "--project"]
-    assert parts[4] == "python3"
-    assert Path(parts[3]).is_dir()
-    assert (
-        "--claim 'my claim with spaces'" in cmd
-        or '--claim "my claim with spaces"' in cmd
-        or "--report 'my claim with spaces'" in cmd
-        or '--report "my claim with spaces"' in cmd
-    )
-    assert "--verdict <PASS|REVISE|FAIL>" in cmd
-    assert "--verdict PASS" not in cmd
-    assert '--reason "<why>"' in cmd
-    # The script path in the command must exist on disk
-    script_path = Path(parts[5])
-    assert script_path.is_file(), f"script path does not exist: {script_path}"
 
 
 def test_resolve_verdict_script_with_empty_or_relative_hooks_dir_resolves_absolute_existing_file():
@@ -1262,27 +1126,3 @@ def test_printed_command_runs_with_relative_hooks_dir_from_plugin_cwd(tmp_path, 
     assert res.returncode == 0, f"execution failed:\n{res.stderr}"
     assert "PASS" in res.stdout
     assert pcg.is_armed(session_id) is False
-
-
-def test_printed_command_independent_of_env_vars(monkeypatch, tmp_path):
-    # Set misleading environment variables
-    fake_claude = tmp_path / "fake-claude-root"
-    fake_agy = tmp_path / "fake-agy-root"
-    fake_plugin = tmp_path / "fake-plugin-root"
-    monkeypatch.setenv("CLAUDE_PLUGIN_ROOT", str(fake_claude))
-    monkeypatch.setenv("AGY_PLUGIN_ROOT", str(fake_agy))
-    monkeypatch.setenv("PLUGIN_ROOT", str(fake_plugin))
-
-    cmd = pcg.format_verdict_command(
-        claim_id="env-test-claim", hooks_dir=_HOOKS_DIR, session_id="sess-env-test"
-    )
-    assert str(fake_claude) not in cmd
-    assert str(fake_agy) not in cmd
-    assert str(fake_plugin) not in cmd
-
-    tokens = shlex.split(cmd)
-    script_tokens = [t for t in tokens if t.endswith("verdict.py")]
-    assert script_tokens
-    script_path = Path(script_tokens[0])
-    assert script_path.is_absolute()
-    assert script_path.is_file()

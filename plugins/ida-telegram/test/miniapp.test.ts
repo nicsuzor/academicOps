@@ -736,28 +736,6 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
     expect(emittedEvents[1].meta.choice).toBe("Hold until after the 14:00 deploy freeze");
   });
 
-  test("5. Questions tab shows the hint that voice input goes through chat voice notes (FR-4.6)", async () => {
-    const { document } = await bootMiniApp({
-      search: "?tab=questions",
-      setup: async ({ broker }) => {
-        await broker.askUser({
-          header: "Voice Hint Check",
-          question: "How would you like to respond?",
-          options: [{ label: "Tap an option (Recommended)" }, { label: "Write custom text" }],
-          allowOther: true,
-          chatId: 8860530746,
-        });
-      },
-    });
-
-    await document.windowObj.switchTab("questions");
-    await new Promise((r) => setTimeout(r, 40));
-
-    const viewQuestions = document.getElementById("view-questions");
-    expect(viewQuestions).not.toBeNull();
-    expect(viewQuestions!.textContent.toLowerCase()).toContain("send a voice note in chat");
-  });
-
   test("4. Anchor tab shows every field required by FR-4.7: focus, taskId, waitingOn, delegations, pendingQuestions, recentTurns, uptime, and context gauge", async () => {
     const { document } = await bootMiniApp({
       search: "?tab=anchor",

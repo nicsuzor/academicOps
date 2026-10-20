@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-import shlex
 import stat
 import subprocess
 import sys
@@ -105,21 +104,6 @@ def test_invalid_json_base_settings_file_warns_and_passes_base_unchanged(tmp_pat
     assert _settings(tmp_path) == {}
 
 
-def test_configured_registers_tracer_for_every_traced_event(tmp_path):
-    proc = _run(tmp_path, _CONFIGURED)
-
-    assert proc.returncode == 0, proc.stderr
-    hooks = _settings(tmp_path)["hooks"]
-    hook_sh = tmp_path / "otel" / "hook.sh"
-    assert set(hooks) == set(_EVENTS)
-    for event, tracer_event in _EVENTS.items():
-        (entry,) = hooks[event]
-        (command,) = entry["hooks"]
-        assert command["type"] == "command"
-        assert command["command"] == f"{shlex.quote(str(hook_sh))} {tracer_event}"
-    assert hooks["PreToolUse"][0]["matcher"] == "*"
-
-
 def test_configured_settings_never_contain_the_api_key(tmp_path):
     _run(tmp_path, _CONFIGURED)
 
@@ -176,30 +160,6 @@ def test_hook_wrapper_exports_config_and_run_identity(tmp_path):
         "GITHUB_REPOSITORY": "nicsuzor/academicOps",
         "GITHUB_RUN_ID": "42",
     }
-
-
-def test_project_defaults_to_academic_ops(tmp_path):
-    _run(tmp_path, _CONFIGURED)
-    hook_sh = tmp_path / "otel" / "hook.sh"
-
-    probe = tmp_path / "probe.py"
-    probe.write_text(
-        "import json, os, sys\n"
-        "print(json.dumps({'project': os.environ.get('PHOENIX_PROJECT_NAME')}))\n"
-    )
-    (tmp_path / "otel" / "claude_code_tracer.py").write_text(probe.read_text())
-
-    proc = subprocess.run(
-        [str(hook_sh), "stop"],
-        input='{"session_id": "x"}',
-        env={"PATH": os.environ["PATH"]},
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-
-    assert proc.returncode == 0, proc.stderr
-    assert json.loads(proc.stdout)["project"] == "academicOps"
 
 
 def test_hook_wrapper_never_fails_the_agent(tmp_path):

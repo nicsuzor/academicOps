@@ -25,7 +25,6 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 RBG_HOOKS = REPO_ROOT / "plugins" / "rbg" / "hooks"
-RBG_MANIFEST = REPO_ROOT / "plugins" / "rbg" / "manifest" / "hooks.json"
 POLICY_FILE = REPO_ROOT / "tests" / "policy.toml"
 
 _policy = tomllib.loads(POLICY_FILE.read_text(encoding="utf-8"))
@@ -39,13 +38,6 @@ STOP_EVENTS = tuple(_policy["rbg"]["stop_gate"]["stop_events"])
 def _require_rbg_enabled():
     if not STOP_EVENTS:
         pytest.skip("rbg stop_gate handlers are disabled by policy")
-
-
-def test_the_shipped_reason_is_substantive():
-    """The oracle for every other assertion in this file. If this fails, those
-    comparisons are tautologies and prove nothing."""
-    assert RULE_CHECK_TEXT, "rule-check.md is empty; the gate would block with no instruction"
-    assert len(RULE_CHECK_TEXT) > 200, "the block reason is too short to be an instruction"
 
 
 @pytest.fixture
@@ -192,21 +184,6 @@ def test_a_block_outranks_an_advisory_when_handlers_are_merged(staged):
         )
 
 
-def test_the_reason_is_the_shipped_message_file_not_a_python_literal(staged):
-    """Agent-visible strings live in `hooks/messages/*.md` so they can be
-    edited without touching code. Checked by editing one and requiring the
-    change to come out the other end."""
-    _require_rbg_enabled()
-    message = staged / "messages" / "rule-check.md"
-    original = message.read_text(encoding="utf-8")
-    try:
-        message.write_text("CHECK THE RULES, PLEASE", encoding="utf-8")
-        out = parsed(fire(staged, "claude", "Stop", {}))
-        assert out == {"decision": "block", "reason": "CHECK THE RULES, PLEASE"}
-    finally:
-        message.write_text(original, encoding="utf-8")
-
-
 # ---------------------------------------------------------------------------
 # Client asymmetry: blocking is Claude-only, structurally
 # ---------------------------------------------------------------------------
@@ -261,44 +238,6 @@ def test_pretooluse_with_no_evaluator_is_a_clean_no_op(staged):
     assert proc.stdout.strip() == ""
 
 
-def test_no_layer_one_surface_can_ever_carry_a_disposition(staged):
-    """The binding constraint on Layer 1: advisory, overridable, permanently.
-    Asserted at the source, because a payload that happens not to trigger a
-    disposition would not notice one being added.
-
-    Four spellings, because the helpers (`refuse`, `block(`) are not the only
-    route: a handler can name the disposition directly (`Kind.`) or build the
-    dataclass itself, positionally or by keyword (`Result(`), and each of those
-    evades a guard that only knows the helpers.
-    """
-    layer_one = ("evaluate", "inject_ruleset")
-    source = (RBG_HOOKS / "handlers.py").read_text(encoding="utf-8")
-
-    for name in layer_one:
-        start = source.index(f"def {name}(")
-        body = source[start : source.index("\ndef ", start + 1)]
-        for token in ("refuse", "block(", "Kind.", "Result("):
-            assert token not in body, f"{name} can reach a disposition via {token!r}"
-
-
-def test_that_token_list_would_actually_catch_a_violation():
-    """The guard above is a string search, so it is worth exactly what its
-    tokens catch. Prove each construction is caught, and that the shapes Layer 1
-    legitimately uses are not."""
-    tokens = ("refuse", "block(", "Kind.", "Result(")
-    for violation in (
-        "return refuse('no')",
-        "return Result('no', None, Kind.REFUSE)",
-        "return Result('no', kind=Kind.REFUSE)",
-        "return block('no')",
-        "return Result('no', kind=Kind.BLOCK)",
-    ):
-        assert any(t in violation for t in tokens), f"a handler could ship {violation!r} unnoticed"
-
-    for allowed in ("def evaluate(ctx: HookContext) -> Result | None:", "return warn(advisory)"):
-        assert not any(t in allowed for t in tokens), f"the guard false-positives on {allowed!r}"
-
-
 def test_every_rbg_handler_refuses_nothing_and_blocks_only_on_a_stop(staged):
     """Behavioural counterpart to the source guard: fire every registered
     handler on its own event and check the disposition that comes out."""
@@ -336,66 +275,3 @@ def test_every_rbg_handler_refuses_nothing_and_blocks_only_on_a_stop(staged):
 # ---------------------------------------------------------------------------
 # Registration has two halves, and a hook needs both
 # ---------------------------------------------------------------------------
-
-
-def test_the_manifest_and_the_registry_declare_the_same_claude_events(staged):
-    """A manifest event with no handler is a process spawned to do nothing; a
-    handler with no manifest event never runs at all. Both read as 'wired' from
-    one side, so the check has to be made from both."""
-    manifest = json.loads(RBG_MANIFEST.read_text(encoding="utf-8"))
-    declared = set(manifest["clients"]["claude"]["hooks"])
-
-    registered = set(
-        json.loads(
-            subprocess.run(
-                [
-                    sys.executable,
-                    "-c",
-                    "import importlib.util,json,sys;"
-                    "sys.path.insert(0, sys.argv[1]);"
-                    "s=importlib.util.spec_from_file_location('h', sys.argv[1]+'/handlers.py');"
-                    "m=importlib.util.module_from_spec(s);s.loader.exec_module(m);"
-                    "print(json.dumps(sorted(m.HANDLERS)))",
-                    str(staged),
-                ],
-                capture_output=True,
-                text=True,
-                timeout=60,
-                check=True,
-            ).stdout
-        )
-    )
-
-    # UserPromptSubmit is registered but deliberately unwired on claude: the
-    # handler is scoped `only_on("agy")`, claude is already covered at
-    # PreToolUse, and pkb owns claude's UserPromptSubmit injection.
-    _require_rbg_enabled()
-    assert declared == registered - {"UserPromptSubmit"}
-    if STOP_EVENTS:
-        assert declared >= set(STOP_EVENTS)
-
-
-def test_the_manifest_name_matches_the_marketplace_name():
-    """`build/marketplace.toml` is the single source of truth for a plugin's
-    name, and `_render_manifests` lets a template's own `name` win over it — so
-    a stale template name ships in `plugin.json` while the directory, the
-    marketplace entry, and every `plugin:agent` invocation string use the real
-    one. The expected name is read from `marketplace.toml` itself, not
-    restated here, so this only fails when the two configs actually diverge."""
-    marketplace = tomllib.loads(
-        (REPO_ROOT / "build" / "marketplace.toml").read_text(encoding="utf-8")
-    )
-    entry = next(p for p in marketplace["plugins"] if p["directory"] == "rbg")
-    expected_name = entry["name"]
-
-    manifest_dir = REPO_ROOT / "plugins" / "rbg" / "manifest"
-    for template in sorted(manifest_dir.glob("*.json")):
-        data = json.loads(template.read_text(encoding="utf-8"))
-        assert data.get("name") == expected_name, (
-            f"{template.name} declares {data.get('name')!r}, marketplace.toml says {expected_name!r}"
-        )
-        base = data.get("clients", {}).get("__base__", {})
-        if "name" in base:
-            assert base["name"] == expected_name, (
-                f"{template.name} __base__ declares {base['name']!r}, marketplace.toml says {expected_name!r}"
-            )

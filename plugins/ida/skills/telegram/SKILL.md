@@ -19,8 +19,13 @@ Nic reads on his phone between other commitments. Cognitive load is the binding 
 
 ## Questions
 
+- **Option buttons on every question:** Whenever you ask the user a question, give him option buttons to answer with. Use `ask_user`, or, when the question sits inside a `reply`, pass one `buttons` entry per answer (`reply({ text, buttons: [{ label }] })`). A tap arrives as a `button_tap` channel event.
 - **Asynchronous, always:** Post structured questions using `ask_user({ questions: [{ question, options }] })`. Options must be vertical with Ida's recommendation first (`"(Recommended)"`).
 - **Never wait or assume:** Questions never block or time out. After calling `ask_user`, continue with other ready work or end your turn. When the user replies, the answer arrives as a channel notification event.
+
+## Thumbs Down
+
+- **Act on a 👎 reaction:** When the user adds a 👎 reaction to one of your messages (a `reaction` event whose `added` contains 👎; `target_message_id` names the message), ask what was wrong with it, with option buttons `Too verbose`, `Wrong premise`, `Poor logic`, `Say why`. When the user answers, invoke `/ida:learn` with the critique and that message.
 
 ## Reviews & PRs
 

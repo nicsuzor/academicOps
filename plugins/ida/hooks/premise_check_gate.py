@@ -252,11 +252,63 @@ open_gate = disarm
 is_gate_open = is_disarmed
 
 
-def _prompt_text(ctx: HookContext) -> str:
+_AGY_USER_REQUEST = re.compile(r"<USER_REQUEST>\s*(.*)\s*</USER_REQUEST>", re.DOTALL)
+
+
+def _agy_user_prompt(ctx: HookContext) -> str:
+    """The user's text for an agy turn, read from the turn's transcript.
+
+    agy's PreInvocation payload carries no prompt; it names the transcript, whose
+    latest USER_INPUT step is already written when the hook fires, wrapping the
+    typed text in `<USER_REQUEST>` tags. Only the turn's first model invocation
+    (`invocationNum` 0) is grounded, so a turn is searched once. A turn whose
+    latest turn-start step is a SYSTEM_MESSAGE (agy woken by a subagent result)
+    has no user text, and returns "".
+    """
+    if ctx.raw.get("invocationNum", 0) != 0:
+        return ""
+    path = ctx.transcript_path or ctx.raw.get("transcriptPath")
+    if not path:
+        return ""
+    turn_start: dict[str, Any] | None = None
+    with open(path, encoding="utf-8") as f:
+        lines = f.readlines()
+    for line in reversed(lines):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(entry, dict) and entry.get("type") in (
+            "USER_INPUT",
+            "SYSTEM_MESSAGE",
+        ):
+            turn_start = entry
+            break
+
+    if not turn_start or turn_start.get("type") != "USER_INPUT":
+        return ""
+    content = str(turn_start.get("content") or "")
+    m = _AGY_USER_REQUEST.search(content)
+    return (m.group(1) if m else content).strip()
+
+
+def prompt_text(ctx: HookContext) -> str:
+    """Extract prompt text canonically across Claude Code and agy."""
     prompt = ctx.raw.get("prompt")
+    if prompt is None and hasattr(ctx, "prompt"):
+        prompt = ctx.prompt
     if isinstance(prompt, dict):
         prompt = prompt.get("text") or prompt.get("content") or ""
-    return str(prompt or "")
+    text = str(prompt or "").strip()
+    if not text and ctx.client == "agy":
+        text = _agy_user_prompt(ctx)
+    return text
+
+
+_prompt_text = prompt_text
 
 
 def _strip_channel_wrapper(text: str) -> str:
@@ -273,7 +325,7 @@ def _strip_channel_wrapper(text: str) -> str:
 
 def is_peer_report(ctx: HookContext) -> bool:
     """True when an incoming prompt is another agent's report, not the user's message."""
-    text = _strip_channel_wrapper(_prompt_text(ctx))
+    text = _strip_channel_wrapper(_prompt_text(ctx)).lstrip()
     return text.startswith(_PEER_ENVELOPES)
 
 
