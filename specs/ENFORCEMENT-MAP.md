@@ -34,7 +34,6 @@ Measures in place in agent definitions and instruction files to steer persona be
 
 | Rule | Mechanism | Severity | Detail |
 | - | - | - | - |
-| [Persona: Pauli](../plugins/ida/agents/pauli.md) -- Proportionality check on queuing: quick judgment on effort vs benefit and user ask / strategic fit before queuing tasks or follow-ups. | instructions | imperative | `plugins/ida/agents/pauli.md:51`: Whenever queuing a task, follow-ups included, Pauli makes a quick judgment without investigating on effort vs benefit and user ask/strategic fit; scales down or rejects with reasons. Observation: Pauli rejects or scales down disproportionate tasks with reported reasons without investigating. |
 | [Persona: Ida](../plugins/ida/agents/ida.md) -- Requests to Pauli must state the user's initial ask and the project's strategic fit. | instructions | imperative | `plugins/ida/agents/ida.md:32`: Every request Ida sends to Pauli states the user's initial ask and the project's strategic fit. Observation: Requests sent from Ida to Pauli state the user's initial ask and the project's strategic fit. |
 
 ## Evidence contract
