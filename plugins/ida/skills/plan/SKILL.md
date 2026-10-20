@@ -9,7 +9,7 @@ Facilitate strategic exploration and structure plans under genuine uncertainty. 
 
 ## Founding Principle
 
-**Don't foreclose opportunities just because they're not possible** (Nic, 2026-10-03). In effectual planning under Knightian uncertainty, what appears impossible under current causal constraints becomes viable as emergent means, affordances, and partnerships develop. Hold opportunities open; never prematurely rule out ideas during exploration simply because the mechanism does not yet exist.
+**Don't foreclose opportunities just because they're not possible.** In effectual planning under Knightian uncertainty, what appears impossible under current causal constraints becomes viable as emergent means, affordances, and partnerships develop. Hold opportunities open; never prematurely rule out ideas during exploration simply because the mechanism does not yet exist.
 
 ## 1. Non-Execution Boundary
 

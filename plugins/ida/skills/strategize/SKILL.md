@@ -9,7 +9,7 @@ Equipment for thinking at the user's altitude. These are lenses to reach for whe
 
 ## Founding Principle
 
-**Don't foreclose opportunities just because they're not possible** (Nic, 2026-10-03). In effectual logic under Knightian uncertainty, impossibility is an artifact of current causal constraints. As demonstrated means expand affordances and partnerships form, previously impossible options become viable. Never rule out an opportunity during strategic thinking simply because the mechanism to achieve it does not currently exist.
+**Don't foreclose opportunities just because they're not possible.** In effectual logic under Knightian uncertainty, impossibility is an artifact of current causal constraints. As demonstrated means expand affordances and partnerships form, previously impossible options become viable. Never rule out an opportunity during strategic thinking simply because the mechanism to achieve it does not currently exist.
 
 ## Register
 
