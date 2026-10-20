@@ -10,6 +10,7 @@ export interface PluginConfig {
   apiBaseUrl: string;
   role: string;
   isPrimary: boolean;
+  persona: string;
   allowFrom: number[];
   maxChatChars: number;
   voiceReplies: "off" | "mirror" | "always";
@@ -51,6 +52,25 @@ function readDotEnvFile(envPath: string): Record<string, string> {
   }
 }
 
+export function resolvePersona(rawPersona?: string, stateDir?: string): string {
+  const explicit = (rawPersona || "").trim().toLowerCase();
+  if (explicit) {
+    if (explicit === "pauli" || explicit === "prime") return "prime";
+    if (explicit === "ida" || explicit === "strategic") return "strategic";
+    return explicit;
+  }
+  if (stateDir) {
+    const dir = stateDir.toLowerCase();
+    if (dir.includes("telegram-pauli") || dir.includes("telegram-prime") || dir.endsWith("/prime")) {
+      return "prime";
+    }
+    if (dir.includes("telegram-ida") || dir.includes("telegram-strategic") || dir.endsWith("/strategic")) {
+      return "strategic";
+    }
+  }
+  return "prime";
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
   const stateDir = env.STATE_DIR || join(homedir(), ".claude", "channels", "telegram");
   const fileEnv = readDotEnvFile(join(stateDir, ".env"));
@@ -58,6 +78,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
 
   const role = (mergedEnv.IDA_TELEGRAM_ROLE || "").trim().toLowerCase();
   const isPrimary = role === "primary";
+
+  const rawPersona = mergedEnv.IDA_TELEGRAM_PERSONA || mergedEnv.TELEGRAM_PERSONA || "";
+  const persona = resolvePersona(rawPersona, stateDir);
 
   // Parse allowFrom as comma-separated or space-separated user IDs
   const rawAllowFrom = mergedEnv.ALLOWED_USER_IDS || mergedEnv.TELEGRAM_ALLOW_FROM || "";
@@ -75,6 +98,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
     apiBaseUrl: (mergedEnv.TELEGRAM_API_BASE_URL || "https://api.telegram.org").replace(/\/+$/, ""),
     role,
     isPrimary,
+    persona,
     allowFrom,
     maxChatChars: parseInt(mergedEnv.MAX_CHAT_CHARS || "1200", 10),
     voiceReplies: (mergedEnv.VOICE_REPLIES as "off" | "mirror" | "always") || "mirror",
@@ -85,7 +109,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
     socketPath,
     githubToken: mergedEnv.GITHUB_TOKEN,
     miniAppUrl,
-    botCommands: resolveBotCommands(mergedEnv.TELEGRAM_BOT_COMMANDS),
+    botCommands: resolveBotCommands(persona, mergedEnv.TELEGRAM_BOT_COMMANDS),
     bridgeToken: mergedEnv.IDA_BRIDGE_TOKEN || mergedEnv.BRIDGE_TOKEN,
   };
 }
