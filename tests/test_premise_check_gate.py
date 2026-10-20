@@ -645,6 +645,189 @@ def test_outgoing_post_tool_batch_leaves_check_disarmed(tool, tool_input):
 
 
 # ---------------------------------------------------------------------------
+# 7. The gate arms only when a report or direction arrives
+#
+# Payload shapes follow Claude Code's documented `Agent` tool_response:
+# `completed` for a foreground subagent that returned, `async_launched` for a
+# background launch (the default when `run_in_background` is omitted), and
+# `teammate_spawned` for a named teammate. Notifications follow the harness's
+# `<task-notification>` and `<agent-message>` envelopes.
+# ---------------------------------------------------------------------------
+
+_SPAWN_ACKS = {
+    "teammate_spawned": (
+        {"description": "Why mini app broke again", "prompt": "diagnose", "name": "sara-mini"},
+        {
+            "status": "teammate_spawned",
+            "teammate_id": "sara-mini@session-x",
+            "agent_type": "ida:sara",
+            "prompt": "diagnose",
+        },
+    ),
+    "async_launched_by_default": (
+        {"description": "Fix premise-check gate arming", "prompt": "fix it"},
+        {
+            "isAsync": True,
+            "status": "async_launched",
+            "agentId": "a0000000000000001",
+            "description": "Fix premise-check gate arming",
+            "prompt": "fix it",
+            "outputFile": "/tmp/tasks/a0000000000000001.output",
+            "canReadOutputFile": False,
+        },
+    ),
+    "spawned_text": ({"description": "Why mini app broke again"}, "Spawned successfully."),
+}
+
+
+def _post_tool_ctx(
+    session_id: str, tool_input: dict[str, Any], tool_response: Any, tool: str = "Agent"
+) -> dispatch.HookContext:
+    return dispatch.HookContext(
+        client="claude",
+        event="PostToolUse",
+        tool=tool,
+        session_id=session_id,
+        agent_type="ida:ida",
+        raw={
+            "tool_input": tool_input,
+            "tool_response": tool_response,
+            "tool_use_id": "toolu_spawn",
+        },
+    )
+
+
+@pytest.mark.parametrize("ack", sorted(_SPAWN_ACKS))
+def test_spawn_ack_leaves_gate_unarmed_and_actions_proceed(ack):
+    session_id = f"sess-ack-{ack}"
+    tool_input, tool_response = _SPAWN_ACKS[ack]
+    handlers = _load_plugin_module("ida_handlers_gate", _HOOKS_DIR / "handlers.py")
+
+    assert handlers.post_tool(_post_tool_ctx(session_id, tool_input, tool_response)) is None
+    assert pcg.is_armed(session_id) is False
+
+    for tool in ("Agent", "AskUserQuestion"):
+        ctx = dispatch.HookContext(
+            client="claude",
+            event="PreToolUse",
+            tool=tool,
+            session_id=session_id,
+            agent_type="ida:ida",
+        )
+        assert handlers.pre_tool(ctx) is None, f"{tool} refused after a spawn ack"
+    stop_ctx = dispatch.HookContext(
+        client="claude", event="Stop", session_id=session_id, agent_type="ida:ida"
+    )
+    assert handlers.stop(stop_ctx) is None
+
+
+_BACKGROUND_COMMAND_DONE = (
+    "<task-notification>\n<task-id>b0000001</task-id>\n"
+    "<tool-use-id>toolu_bg_command</tool-use-id>\n"
+    "<output-file>/tmp/tasks/b0000001.output</output-file>\n<status>completed</status>\n"
+    '<summary>Background command "Run the tests" completed (exit code 0)'
+    "</summary>\n</task-notification>"
+)
+_HANDBACK_POINTER = (
+    "<task-notification>\n<task-id>a1b2c3d4e5f600112</task-id>\n"
+    "<status>completed</status>\n"
+    '<summary>Agent "Check the claim" finished</summary>\n'
+    "<result>This agent's report was delivered to you as a message from "
+    '"a1b2c3d4e5f600112" (its SubagentHandback call). Read it there; it is not '
+    "repeated here.\n</result>\n</task-notification>"
+)
+
+
+@pytest.mark.parametrize(
+    "prompt",
+    [_BACKGROUND_COMMAND_DONE, _HANDBACK_POINTER],
+    ids=["background_command", "handback_pointer"],
+)
+def test_notification_without_a_report_leaves_gate_unarmed(prompt):
+    session_id = f"sess-noreport-{abs(hash(prompt))}"
+    assert pcg.premise_check_arm(_prompt_ctx(session_id, prompt)) is None
+    assert pcg.is_armed(session_id) is False
+    assert pcg.premise_check_handler(_agent_dispatch_ctx(session_id)) is None
+
+
+_ARRIVING_REPORTS = {
+    "foreground_result": (
+        "Verify the mini app",
+        {"description": "Verify the mini app", "prompt": "check it"},
+        {
+            "status": "completed",
+            "agentId": "a0000000000000002",
+            "content": [{"type": "text", "text": "The mini app loads; PR #12 fixed it."}],
+            "totalDurationMs": 48211,
+        },
+    ),
+    "background_agent_result": (
+        None,
+        None,
+        "<task-notification>\n<task-id>a7c7c7c7c7c7c7c70</task-id>\n"
+        "<status>completed</status>\n"
+        '<summary>Agent "Diagnose the mini app" finished</summary>\n'
+        "<result>The mini app loads; PR #12 fixed it.</result>\n</task-notification>",
+    ),
+    "subagent_handback": (
+        None,
+        None,
+        '<agent-message from="a1b2c3d4e5f600112">\n[Subagent hand-back] The text below '
+        "is the final report of a subagent this session delegated to.\n"
+        "The mini app loads; PR #12 fixed it.\n</agent-message>",
+    ),
+    "teammate_direction": (
+        None,
+        None,
+        '<teammate-message teammate_id="team-lead">Fix the mini app; '
+        "the mini app loads after PR #12.</teammate-message>",
+    ),
+}
+
+
+@pytest.mark.parametrize("kind", sorted(_ARRIVING_REPORTS))
+def test_arriving_report_or_direction_arms_gate(kind):
+    session_id = f"sess-arrive-{kind}"
+    claim, tool_input, payload = _ARRIVING_REPORTS[kind]
+    if tool_input is not None:
+        handlers = _load_plugin_module("ida_handlers_gate", _HOOKS_DIR / "handlers.py")
+        handlers.post_tool(_post_tool_ctx(session_id, tool_input, payload))
+    else:
+        assert pcg.premise_check_arm(_prompt_ctx(session_id, payload)) is not None
+    assert pcg.is_armed(session_id) is True
+    claim_id = claim or pcg.get_state(session_id)["claim_id"]
+    judged_text, _ = pcg.get_judged(session_id, claim_id)
+    assert "the mini app loads" in judged_text.lower()
+    res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
+    assert res is not None and res.kind == dispatch.Kind.REFUSE
+
+
+def test_spawn_while_claim_pending_keeps_that_claim_and_its_verdict_records():
+    session_id = "sess-pending-spawn"
+    report = '<teammate-message teammate_id="sara" id="why-mini-app">report</teammate-message>'
+    pcg.premise_check_arm(_prompt_ctx(session_id, report))
+    assert pcg.get_state(session_id)["claim_ids"] == ["why-mini-app"]
+
+    handlers = _load_plugin_module("ida_handlers_gate", _HOOKS_DIR / "handlers.py")
+    tool_input, tool_response = _SPAWN_ACKS["async_launched_by_default"]
+    handlers.post_tool(_post_tool_ctx(session_id, tool_input, tool_response))
+
+    state = pcg.get_state(session_id)
+    assert state["claim_id"] == "why-mini-app"
+    assert state["claim_ids"] == ["why-mini-app"]
+
+    result = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="why-mini-app",
+        verdict="PASS",
+        reason=_pass_reason("why-mini-app"),
+        tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
+    )
+    assert result["ok"] is True
+    assert pcg.is_armed(session_id) is False
+
+
+# ---------------------------------------------------------------------------
 # End-to-end: full claim -> refusal -> verdict -> allowed cycle
 # ---------------------------------------------------------------------------
 
