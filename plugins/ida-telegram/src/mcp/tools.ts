@@ -36,6 +36,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
         },
         voice: { type: "boolean", description: "Send tier 1 as a spoken voice note" },
         reply_to: { type: "integer", description: "Telegram message ID to reply to" },
+        feedback: { type: "boolean", description: "Whether to attach 👍/👎 buttons (default false)" },
         review: {
           type: "object",
           description: "Attach PR diff review card",

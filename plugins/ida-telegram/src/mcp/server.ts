@@ -244,6 +244,7 @@ export class StdioMcpServer {
           buttons: args.buttons as Array<{ label: string; callback_data?: string; url?: string; web_app?: string }> | undefined,
           voice: isVoice,
           replyTo,
+          feedback: typeof args.feedback === "boolean" ? args.feedback : undefined,
           review: reviewArg,
         });
 
