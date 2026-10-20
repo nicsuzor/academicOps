@@ -149,6 +149,7 @@ def clear_channel_gate_state(session_id: str | None = None) -> None:
                     pass
 
 
+
 def honest_output(ctx: HookContext) -> Result | None:
     """Remind all agents to present substantiating evidence on stop, blocking once."""
     if ctx.raw.get("background_tasks"):
@@ -949,6 +950,49 @@ def agy_stop(ctx: HookContext) -> Result | None:
     return None
 
 
+def post_tool_degraded_check(ctx: HookContext) -> Result | None:
+    """Detect degraded capability flags in tool results and warn."""
+    tool_resp = ctx.raw.get("tool_response") or ctx.raw.get("toolResponse")
+    if not tool_resp:
+        return None
+
+    if isinstance(tool_resp, str):
+        try:
+            tool_resp = json.loads(tool_resp)
+        except Exception:
+            return None
+
+    if not isinstance(tool_resp, dict):
+        return None
+
+    has_degraded = False
+    details = []
+    if tool_resp.get("voiceSent") is False or tool_resp.get("voiceError"):
+        has_degraded = True
+        err = tool_resp.get("voiceError") or "voiceSent is false"
+        details.append(f"voiceError: {err}")
+
+    for k, v in tool_resp.items():
+        if k.endswith("_error") and v:
+            has_degraded = True
+            details.append(f"{k}: {v}")
+
+    if has_degraded:
+        msg_template, user_template = load_message_pair(ctx.hooks_dir, "degraded_capability")
+        if not msg_template:
+            msg_template = (
+                "Degraded capability failure detected in tool response. Under `halt-on-failure` and `fail-fast`:\n"
+                "- Do not silently swallow this degradation or treat the action as fully successful.\n"
+                "- Required: Report the capability failure verbatim to the user and log an escalation issue/task."
+            )
+        inject_text = f"{msg_template}\n\nDegraded output details:\n" + "\n".join(
+            f"- {d}" for d in details
+        )
+        return warn(inject_text, user_template)
+
+    return None
+
+
 def user_prompt_submit(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical UserPromptSubmit."""
     _run_claude_tracer(ctx, "handle_user_prompt_submit")
@@ -974,7 +1018,11 @@ def post_tool(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical PostToolUse."""
     _run_claude_tracer(ctx, "handle_post_tool")
     agy_post_tool(ctx)
-    return _run_handler(rule_against_hearsay, ctx)
+    steps = (
+        rule_against_hearsay,
+        post_tool_degraded_check,
+    )
+    return _merge([_run_handler(step, ctx) for step in steps])
 
 
 def post_tool_failure(ctx: HookContext) -> Result | None:

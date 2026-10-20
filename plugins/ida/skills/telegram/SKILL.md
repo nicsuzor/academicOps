@@ -37,8 +37,8 @@ Nic reads on his phone between other commitments. Cognitive load is the binding 
 
 ## Voice
 
-- **Voice in:** Spoken voice notes from the user are transcribed automatically before reaching Ida (`voice: true`).
-- **Voice replies:** Set `voice: true` on `reply` when appropriate. Under `voice_replies: mirror` (default), Ida automatically mirrors voice notes with a spoken summary of Tier 1 content while keeping text in the chat caption.
+- **Voice in:** Spoken voice notes from the user are transcribed automatically before reaching Ida (`voice: true`). If transcription fails (`transcript_error`), do not retry transcribing manually via Bash or ask the user to resend as text without reporting the failure. Report the failure and verbatim error immediately in chat and file an escalation issue or task.
+- **Voice replies:** Set `voice: true` on `reply` when appropriate. Under `voice_replies: mirror` (default), Ida automatically mirrors voice notes with a spoken summary of Tier 1 content while keeping text in the chat caption. If the tool result reports a degraded failure (`voiceSent: false`, `voiceError`), report the speech synthesis failure verbatim to the user and log an escalation issue or task; do not silently swallow the degradation.
 
 ## Bot Commands
 
