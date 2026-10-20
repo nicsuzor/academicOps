@@ -650,15 +650,32 @@ def test_arm_handler_arms_on_peer_report(prompt):
 @pytest.mark.parametrize(
     "prompt",
     [
+        '<channel source="plugin:telegram:telegram" chat_id="1" user="nic">\n<cross-session-message from="twin-a">PR #12 is merged.</cross-session-message>\n</channel>',
+        '<channel source="plugin:telegram:telegram" chat_id="1" user="nic">Context</channel>\n<cross-session-message from="twin-a">PR #12 is merged.</cross-session-message>',
+        '<channel source="plugin:telegram:telegram" chat_id="1" user="worker">\n<task-notification>\nworker finished\n</task-notification>\n</channel>',
+    ],
+)
+def test_arm_handler_arms_on_wrapped_peer_report(prompt):
+    session_id = f"sess-mid-peer-{abs(hash(prompt))}"
+    pcg.premise_check_arm(_prompt_ctx(session_id, prompt))
+    assert pcg.is_armed(session_id) is True
+
+
+@pytest.mark.parametrize(
+    "prompt",
+    [
         '<channel source="plugin:telegram:telegram" chat_id="1" user="nic">do the thing</channel>',
         "can you check the release?",
         "what does <task-notification> mean?",
         "check <cross-session-message from='twin'>",
+        '<channel source="plugin:telegram:telegram" chat_id="1" user="nic">what does <task-notification> mean?</channel>',
+        'Preamble text\n<cross-session-message from="twin-a">PR #12 is merged.</cross-session-message>',
+        'Context before <teammate-message teammate_id="worker">done</teammate-message> and trailing text',
         "",
     ],
 )
 def test_arm_handler_ignores_the_users_own_messages(prompt):
-    session_id = "sess-user"
+    session_id = f"sess-user-{abs(hash(prompt))}"
     pcg.premise_check_arm(_prompt_ctx(session_id, prompt))
     assert pcg.is_armed(session_id) is False
     assert pcg.premise_check_handler(_agent_dispatch_ctx(session_id)) is None
