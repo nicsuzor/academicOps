@@ -2,6 +2,7 @@ import { DEFAULT_MINI_APP_URL, PluginConfig } from "../config.js";
 import { FormattedMessage, formatMarkdownToEntities } from "./format.js";
 import { parseInboundUpdate, TelegramUpdate } from "./inbound.js";
 import { QuestionBroker } from "./questions.js";
+import { FeedbackManager } from "./feedback.js";
 import { prepareVoiceText, buildVoiceInEvent } from "./voice.js";
 import { PermissionRelay } from "../mcp/permissions.js";
 import { PluginStore } from "../store.js";
@@ -29,6 +30,7 @@ export interface SendReplyOptions {
   buttons?: ReplyButtonOption[];
   voice?: boolean;
   replyTo?: number;
+  feedback?: boolean;
   review?: { repo: string; pr?: number };
 }
 
@@ -42,6 +44,7 @@ export interface SendReplyResult {
 export class TelegramBotClient {
   private config: PluginConfig;
   private broker: QuestionBroker;
+  private feedbackManager: FeedbackManager;
   private permRelay: PermissionRelay;
   private emitChannelEvent: (content: string, meta: Record<string, unknown>) => void;
   private isRunning = false;
@@ -57,10 +60,12 @@ export class TelegramBotClient {
     broker: QuestionBroker,
     permRelay: PermissionRelay,
     emitChannelEvent: (content: string, meta: Record<string, unknown>) => void,
-    store?: PluginStore
+    store?: PluginStore,
+    feedbackManager?: FeedbackManager
   ) {
     this.config = config;
     this.broker = broker;
+    this.feedbackManager = feedbackManager || new FeedbackManager(config.stateDir);
     this.permRelay = permRelay;
     this.emitChannelEvent = emitChannelEvent;
     this.store = store;
@@ -147,7 +152,7 @@ export class TelegramBotClient {
   }
 
   public async sendReply(opts: SendReplyOptions): Promise<SendReplyResult | null> {
-    const { chatId, formatted, detailsId, buttons, voice, replyTo, review } = opts;
+    const { chatId, formatted, detailsId, buttons, voice, replyTo, feedback, review } = opts;
 
     // Build inline keyboard
     const inlineKeyboard: Array<Array<Record<string, unknown>>> = [];
@@ -170,6 +175,12 @@ export class TelegramBotClient {
     }
 
     const actionRow: Array<Record<string, unknown>> = [];
+
+    // Feedback buttons (default false)
+    if (feedback === true) {
+      actionRow.push({ text: "👍", callback_data: "fb:up" });
+      actionRow.push({ text: "👎", callback_data: "fb:down" });
+    }
 
     const miniAppBaseUrl = (this.config.miniAppUrl || DEFAULT_MINI_APP_URL).replace(/\/+$/, "");
 
@@ -545,7 +556,9 @@ export class TelegramBotClient {
       const cb = update.callback_query;
       const data = cb.data || "";
 
-      if (!data.startsWith("q:") && !data.startsWith("perm:")) {
+      if (data === "fb:up") {
+        await this.callApi("answerCallbackQuery", { callback_query_id: cb.id, text: "Noted 👍" });
+      } else if (!data.startsWith("q:") && !data.startsWith("perm:")) {
         await this.callApi("answerCallbackQuery", { callback_query_id: cb.id });
       }
 
@@ -650,6 +663,83 @@ export class TelegramBotClient {
           `${cb.message.text}\n\n*${outcomeText}*`,
           { inline_keyboard: [] }
         );
+        return;
+      }
+
+      // Feedback callbacks: fb:...
+      if (data === "fb:up" && cb.message) {
+        await this.feedbackManager.handleUpvote({
+          messageId: cb.message.message_id,
+          messageExcerpt: cb.message.text || "",
+        });
+        const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
+          cb.message.reply_markup?.inline_keyboard,
+          [[{ text: "👍 saved", callback_data: "noop" }]]
+        );
+        await this.callApi("editMessageReplyMarkup", {
+          chat_id: cb.message.chat.id,
+          message_id: cb.message.message_id,
+          reply_markup: {
+            inline_keyboard: updatedKeyboard,
+          },
+        });
+        return;
+      }
+
+      if (data === "fb:down" && cb.message) {
+        const critiqueKeyboard = this.feedbackManager.getDownvoteCritiqueKeyboard(cb.message.message_id);
+        const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
+          cb.message.reply_markup?.inline_keyboard,
+          critiqueKeyboard
+        );
+        await this.callApi("editMessageReplyMarkup", {
+          chat_id: cb.message.chat.id,
+          message_id: cb.message.message_id,
+          reply_markup: { inline_keyboard: updatedKeyboard },
+        });
+        return;
+      }
+
+      if ((data === "fb:cancel" || data.startsWith("fb:cancel:")) && cb.message) {
+        const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
+          cb.message.reply_markup?.inline_keyboard,
+          [this.feedbackManager.getInitialFeedbackButtons()]
+        );
+        await this.callApi("editMessageReplyMarkup", {
+          chat_id: cb.message.chat.id,
+          message_id: cb.message.message_id,
+          reply_markup: { inline_keyboard: updatedKeyboard },
+        });
+        return;
+      }
+
+      if (data.startsWith("fb:critique:") && cb.message) {
+        const parts = data.split(":");
+        const critique = parts.slice(3).join(":");
+        const res = await this.feedbackManager.handleCritique({
+          messageId: cb.message.message_id,
+          messageExcerpt: cb.message.text || "",
+          critique,
+        });
+
+        const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
+          cb.message.reply_markup?.inline_keyboard,
+          [[{ text: `Critique saved: ${critique}`, callback_data: "noop" }]]
+        );
+        await this.callApi("editMessageReplyMarkup", {
+          chat_id: cb.message.chat.id,
+          message_id: cb.message.message_id,
+          reply_markup: {
+            inline_keyboard: updatedKeyboard,
+          },
+        });
+
+        if (res.emitsChannelEvent) {
+          this.emitChannelEvent(
+            `Feedback received: ${critique}`,
+            res.channelEvent as unknown as Record<string, unknown>
+          );
+        }
         return;
       }
 
