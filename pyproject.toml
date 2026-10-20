@@ -12,6 +12,7 @@ dependencies = [
   "click>=8.2.0",
   "rich>=13.0.0",
   "psutil>=5.9.0",
+  "packaging>=24.0",
   # Skills dependencies
   "pdfminer-six>=20260107",
   "streamlit>=1.54.0",

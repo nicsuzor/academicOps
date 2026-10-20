@@ -88,10 +88,14 @@ release PR it opens creates the stable `vX.Y.Z` tag. Pushing any `v*` tag fires
    `-beta.N`, …) is a prerelease/"testing" build; a plain `vX.Y.Z` tag is stable.
 2. **Checkout.** The tagged commit, plus the `dist` branch (the publish target)
    and `nicsuzor/aops` (the mirror target) at separate paths.
-3. **Compute version.** The tag, verbatim, with the leading `v` stripped. For a
-   stable tag, the workflow asserts the tag, `pyproject.toml`'s `version`, and
-   `.release-please-manifest.json` all agree, and aborts the release if they
-   don't.
+3. **Compute and validate version.** The tag, verbatim, with the leading `v` stripped.
+   The workflow validates that the version is a valid PEP 440 Python package version
+   (`uv run python -m build.version --validate <version>`), failing closed before any
+   build, publish, or release step if unparseable. `release-please.yml` similarly validates
+   any manual `release_as` input and the committed `pyproject.toml` version before
+   `release-please-action` tags. For a stable tag, the workflow asserts the tag,
+   `pyproject.toml`'s `version`, and `.release-please-manifest.json` all agree, and aborts
+   the release if they don't.
 4. **Build.** `uv run python -m build.build --set-version <version>`.
 5. **Publish to `dist` and `nicsuzor/aops`.** Every built plugin directory under `dist/` is mirrored
    to the root of the `dist` branch (an orphan branch; plugin dirs and
