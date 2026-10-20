@@ -617,7 +617,8 @@ def test_honesty_on_peer_message_fires_for_all_agents(agent: str, peer_prompt: s
     assert res.user_text == expected_user
 
 
-def test_session_start_includes_premise_check_pointer():
+def test_session_start_includes_premise_check_pointer(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.com/mcp")
     ctx = HookContext(
         client="claude",
         event="SessionStart",
@@ -739,7 +740,7 @@ def test_peer_message_prompt_yields_single_user_prompt_submit_output(
 
 
 def test_session_start_metadata_resolves_pkb(monkeypatch: pytest.MonkeyPatch):
-    """pkb resolves to PKB_MCP_URL when configured per policy, omitted when unset."""
+    """pkb resolves to PKB_MCP_URL when configured per policy; the hook raises when unset."""
     policy_pkb_url = _POLICY.get("hooks", {}).get("session_start", {}).get("pkb_url")
     assert policy_pkb_url, "tests/policy.toml must define hooks.session_start.pkb_url"
 
@@ -755,17 +756,17 @@ def test_session_start_metadata_resolves_pkb(monkeypatch: pytest.MonkeyPatch):
     assert f"pkb: {policy_pkb_url}" in res.inject_text
     assert "pkb: unknown" not in res.inject_text
 
-    # When PKB_MCP_URL is unset, field is omitted (no fallback to 'unknown')
+    # When PKB_MCP_URL is unset, the hook raises (no guessing, no fallback)
     monkeypatch.delenv("PKB_MCP_URL", raising=False)
-    res2 = handlers.session_start(ctx)
-    assert res2 is not None
-    assert "pkb:" not in res2.inject_text
+    with pytest.raises(RuntimeError, match="PKB_MCP_URL"):
+        handlers.session_start(ctx)
 
 
 def test_session_start_metadata_service_name(monkeypatch: pytest.MonkeyPatch):
     """tracing service reflects OTEL_SERVICE_NAME when configured, omitted when unset."""
     monkeypatch.setenv("GENAI_ENGINE_TRACE_ENDPOINT", "https://otel.example.com/v1/traces")
     monkeypatch.setenv("OTEL_SERVICE_NAME", "custom-tracer-service")
+    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.com/mcp")
     ctx = HookContext(
         client="claude",
         event="SessionStart",
@@ -786,8 +787,11 @@ def test_session_start_metadata_service_name(monkeypatch: pytest.MonkeyPatch):
     assert "service:" not in res2.inject_text
 
 
-def test_session_start_metadata_resolves_plugin_version(tmp_path: Path):
+def test_session_start_metadata_resolves_plugin_version(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
     """plugins field prints resolved version from installed plugin manifest."""
+    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.com/mcp")
     fake_plugin_root = tmp_path / "fake-plugin"
     fake_hooks_dir = fake_plugin_root / "hooks"
     fake_hooks_dir.mkdir(parents=True)

@@ -28,6 +28,12 @@ import premise_check_gate as pcg
 SESSION = "0b7c2f4e-1d2a-4c55-9e7d-3f1a2b3c4d5e"
 
 
+@pytest.fixture(autouse=True)
+def _pkb_mcp_url(monkeypatch):
+    # SessionStart requires PKB_MCP_URL; conftest scrubs it.
+    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.com/mcp")
+
+
 def _ctx(session_id: str = SESSION) -> dispatch.HookContext:
     return dispatch.HookContext(
         client="claude",
