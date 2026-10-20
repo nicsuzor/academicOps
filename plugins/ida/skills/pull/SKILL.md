@@ -13,6 +13,7 @@ Claim and execute a queued PKB task, directing subagents to deliver against stat
 
 - Call `pkb_claim_task` via the `services` MCP server's code-mode execution tool (`portal_codemode_execute` running `async () => await codemode.pkb_claim_task({ id: "<task_id>", assignee: "<agent-or-role>" })`; in agy call `call_mcp_tool` with `ServerName: "services"`, `ToolName: "portal_codemode_execute"`, and in Claude Code call `mcp__services__portal_codemode_execute`) with your assigned task ID. If missing, locate it via `codemode.pkb_search({ query: "..." })`. If schema discovery is needed, `portal_codemode_search` exposes `async () => await codemode.tools()`.
 - Authority extends strictly to the claimed task and its descendants. If blocked by external dependencies, complete what is possible and release remaining work.
+- **Intake Contract:** On receiving a direction or work brief, the receiving agent must record its own summary stating deliverables as a frozen `## Acceptance` checklist on a PKB task before work starts.
 
 ### 2. Execute and Supervise
 

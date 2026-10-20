@@ -1,1 +1,1 @@
-A report has arrived: check it per the `premise-check` skill before you act on it, reply, or dispatch.
+Incoming report or direction from another agent (hearsay): check it per the `premise-check` skill before acting on it, replying to the user, or dispatching next steps. If this is a direction, summarise it stating deliverables and log as a frozen acceptance checklist on a PKB task before work starts. If it isn't in shape, record `REVISE` (`#format`) and return it to the sender.

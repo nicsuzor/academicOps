@@ -149,7 +149,6 @@ def clear_channel_gate_state(session_id: str | None = None) -> None:
                     pass
 
 
-
 def honest_output(ctx: HookContext) -> Result | None:
     """Remind all agents to present substantiating evidence on stop, blocking once."""
     if ctx.raw.get("background_tasks"):
@@ -1021,6 +1020,7 @@ def post_tool(ctx: HookContext) -> Result | None:
     steps = (
         rule_against_hearsay,
         post_tool_degraded_check,
+        premise_check_arm,
     )
     return _merge([_run_handler(step, ctx) for step in steps])
 

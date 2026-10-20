@@ -201,6 +201,7 @@ def test_dispatch_agy_preinvocation_end_to_end(staged_hooks: Path):
         '<cross-session-message from="twin-a">PR #12 merged</cross-session-message>',
         '<teammate-message teammate_id="worker">done</teammate-message>',
         "<task-notification>worker finished</task-notification>",
+        '<subagent-handback from="worker">subagent finished</subagent-handback>',
     ],
 )
 def test_search_the_pkb_skips_peer_reports(peer_prompt):

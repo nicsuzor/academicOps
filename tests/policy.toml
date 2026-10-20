@@ -69,6 +69,8 @@ override_vars = [
   "AOP_FORCE",
   "AOP_OVERRIDE",
 ]
+armed_indicator = "Premise-check gate armed by"
+direction_checklist_indicator = "frozen acceptance checklist"
 
 [rbg.axioms]
 # Aliases mapping alternative names or historical variants to canonical axiom slugs
