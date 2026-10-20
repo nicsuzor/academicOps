@@ -27,7 +27,11 @@ Ida's custom Telegram channel and Mini App plugin for Claude Code.
   - Voice notes transcribed via pluggable script without spending tool calls.
   - Voice replies via speech synthesis for spoken audio delivery.
 - **Native Bot Commands:**
-  - Registers `/decide`, `/q`, `/mine`, `/reconcile`, `/hydrate`, and `/up` via `setMyCommands` at `botCommandScopeChat` for each `allowFrom` chat on startup, surviving channel restarts and overriding `all_private_chats` defaults.
+  - Registers persona-tailored command menus via `setMyCommands` at `botCommandScopeChat` for each `allowFrom` chat on startup, surviving channel restarts and overriding `all_private_chats` defaults.
+  - Ida Prime registers `/decide`, `/q`, `/mine`, `/reconcile`, `/hydrate`, and `/up`.
+  - Strategic Ida registers `/strategize`, `/remember`, `/decompose`, `/q`, `/hydrate`, and `/up`.
+  - Persona is configured via `IDA_TELEGRAM_PERSONA` / `TELEGRAM_PERSONA` or inferred from `STATE_DIR` (`telegram-pauli` / `telegram-prime` -> `prime`, `telegram-ida` / `telegram-strategic` -> `strategic`).
+  - Custom JSON override via `TELEGRAM_BOT_COMMANDS` overrides persona defaults.
   - Excludes reserved official-plugin commands (`/start`, `/help`, `/status`).
   - Enriches bare menu taps (commands with no arguments) with each command's defined no-argument behavior (`meta.default_action` and `meta.skill`).
 - **Concurrency & Host Locks:**

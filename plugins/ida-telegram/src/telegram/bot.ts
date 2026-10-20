@@ -1,6 +1,7 @@
 import { DEFAULT_MINI_APP_URL, PluginConfig } from "../config.js";
 import { FormattedMessage, formatMarkdownToEntities } from "./format.js";
 import { parseInboundUpdate, TelegramUpdate } from "./inbound.js";
+import { resolveBotCommands } from "./commands.js";
 import { QuestionBroker } from "./questions.js";
 import { FeedbackManager } from "./feedback.js";
 import { prepareVoiceText, buildVoiceInEvent } from "./voice.js";
@@ -430,15 +431,25 @@ export class TelegramBotClient {
     return res;
   }
 
-  public async registerCommands(): Promise<boolean> {
-    if (!this.config.isPrimary || this.config.botCommands.length === 0) {
+  public async registerCommands(persona?: string): Promise<boolean> {
+    if (!this.config.isPrimary) {
+      return false;
+    }
+
+    const commands = persona
+      ? resolveBotCommands(persona)
+      : (this.config.botCommands && this.config.botCommands.length > 0
+          ? this.config.botCommands
+          : resolveBotCommands(this.config.persona));
+
+    if (commands.length === 0) {
       return false;
     }
 
     let allOk = true;
     for (const chatId of this.config.allowFrom) {
       const res = await this.callApi("setMyCommands", {
-        commands: this.config.botCommands,
+        commands,
         scope: { type: "chat", chat_id: chatId },
       });
       if (!res?.ok) {
@@ -842,7 +853,7 @@ export class TelegramBotClient {
     }
 
     // 5. General Inbound (text, attachments, reactions, commands)
-    const event = parseInboundUpdate(update, this.config.allowFrom, (msgId) => this.getMessageExcerpt(msgId));
+    const event = parseInboundUpdate(update, this.config.allowFrom, (msgId) => this.getMessageExcerpt(msgId), this.config.persona);
     if (event) {
       if (event.event === "attachment" && event.meta.file_id && this.config.botToken) {
         try {
