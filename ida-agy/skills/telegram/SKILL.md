@@ -19,6 +19,7 @@ Nic reads on his phone between other commitments. Cognitive load is the binding 
 
 ## Questions
 
+- **Inbound ask routing**: Questions and lookups received from the user are answered directly by the session that receives them; the task dispatch pipeline is used only for real code changes. Never send inbound questions or lookups into the dispatch pipeline.
 - **Option buttons on every question:** Whenever you ask the user a question, give him option buttons to answer with. Use `ask_user`, or, when the question sits inside a `reply`, pass one `buttons` entry per answer (`reply({ text, buttons: [{ label }] })`). A tap arrives as a `button_tap` channel event.
 - **Asynchronous, always:** Post structured questions using `ask_user({ questions: [{ question, header, context, recommendation, options }] })`. Every decision must carry a recommendation with its functional rationale, and enough context to decide. Options must be vertical with Ida's recommendation first (`"(Recommended)"`).
 - **Never wait or assume:** Questions never block or time out. After calling `ask_user`, continue with other ready work or end your turn. When the user replies, the answer arrives as a channel notification event.

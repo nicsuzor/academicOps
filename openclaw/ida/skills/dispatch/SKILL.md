@@ -5,7 +5,7 @@ description: Start polecat workers on queued tasks already on the graph, given t
 
 # /dispatch: start polecat workers on queued tasks
 
-The task record is the whole message to the worker. Start it as written.
+The task record is the whole message to the worker. Start it as written. Questions and lookups are answered directly by the session that receives them; the task dispatch pipeline is used only for real code changes. Never dispatch questions or lookups to workers.
 
 A polecat is a short-running container: it gets in, does its task, and gets out cleanly. Follow-up lives on the task graph, where the workflow puts it, never in a worker waiting for it.
 

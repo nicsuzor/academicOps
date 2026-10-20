@@ -4,9 +4,11 @@
 Enforces that a supervisor (Ida) evaluates incoming subagent reports against
 logic-check doctrine before dispatching further subagents, contacting the user, or finishing tasks:
 
-- ``premise_check_arm``: a ``UserPromptSubmit`` handler that arms the check when
-  a peer's or worker's report arrives. The agent's own outgoing tool calls,
-  subagent dispatches included, and the user's own messages never arm it.
+- ``premise_check_arm``: a ``UserPromptSubmit`` / ``PostToolUse`` handler that arms
+  the check when a report or direction arrives: a peer or worker message, or a
+  foreground subagent's returned result. A spawn acknowledgement, any other of the
+  agent's own tool results, a notice with no report in it, and the user's own
+  messages never arm it.
 - ``premise_check_handler``: a ``PreToolUse`` / ``Stop`` handler that refuses the
   supervisor's next subagent dispatch, communication, channel reply, or stop while armed.
 - ``arm()`` / ``disarm()``: state management primitives. Calling ``disarm()``
@@ -48,6 +50,7 @@ _PEER_ENVELOPES = (
     "<teammate-message",
     "<task-notification",
     "<subagent-handback",
+    "<agent-message",
 )
 
 
@@ -325,6 +328,37 @@ def _agy_turn_start(ctx: HookContext) -> dict[str, Any] | None:
     return None
 
 
+_AGY_MESSAGE = re.compile(
+    r"\[Message\][^\n]*?\bsender=(\S+)[^\n]*?\bcontent=(.*?)\s*(?:</SYSTEM_MESSAGE>\s*)?$",
+    re.DOTALL,
+)
+_AGY_IDLE_RESPONSE = re.compile(
+    r"^Subagent \S+ has gone idle\. This was the subagent's most recent response:\s*(\S.*)$",
+    re.DOTALL,
+)
+
+
+def agy_arrival(content: str) -> str:
+    """The report or direction an agy SYSTEM_MESSAGE delivers, or "" when it delivers none.
+
+    agy starts a SYSTEM_MESSAGE turn for every wake: the session's own command
+    tasks and timers finishing (sender ``<conversation>/task-N``), system
+    notices, stop-hook refusals, and messages from other agents. Only a message
+    whose sender is another agent's conversation, or a system notice quoting an
+    idle subagent's last response, carries a report or direction.
+    """
+    m = _AGY_MESSAGE.search(content)
+    if not m:
+        return ""
+    sender, body = m.group(1), m.group(2).strip()
+    if sender == "system":
+        idle = _AGY_IDLE_RESPONSE.match(body)
+        return body if idle else ""
+    if "/" in sender:
+        return ""
+    return body
+
+
 def _agy_user_prompt(ctx: HookContext) -> str:
     """The user's text for an agy turn, read from the turn's transcript.
 
@@ -376,10 +410,7 @@ def is_peer_report(ctx: HookContext) -> bool:
     if ctx.client == "agy":
         turn_start = _agy_turn_start(ctx)
         if turn_start and turn_start.get("type") == "SYSTEM_MESSAGE":
-            content = str(turn_start.get("content") or "").strip()
-            return content.startswith(_PEER_ENVELOPES) or content.startswith(
-                ("<SYSTEM_MESSAGE", "[Message]")
-            )
+            return bool(agy_arrival(str(turn_start.get("content") or "")))
     raw = _prompt_text(ctx)
     text = _strip_channel_wrapper(raw).lstrip()
     if not text:
@@ -388,18 +419,19 @@ def is_peer_report(ctx: HookContext) -> bool:
 
 
 def is_foreground_dispatch(ctx: HookContext) -> bool:
-    """True when a PostToolUse event is a foreground subagent dispatch."""
+    """True when a PostToolUse event returns a foreground subagent's result.
+
+    Claude Code marks a subagent that ran in the foreground and returned with
+    ``status: "completed"``. A launch acknowledgement -- ``async_launched`` (the
+    default when ``run_in_background`` is omitted) or ``teammate_spawned`` --
+    carries no report, so ``tool_input`` cannot tell the two apart.
+    """
     if ctx.event != "PostToolUse" or ctx.tool not in _DISPATCH_TOOLS:
         return False
     if ctx.client == "agy":
         return False
-    tool_input = ctx.raw.get("tool_input") or ctx.raw.get("toolInput") or {}
-    if not isinstance(tool_input, dict):
-        return True
-    bg = tool_input.get("run_in_background")
-    if isinstance(bg, str):
-        return bg.strip().lower() not in ("true", "1", "yes")
-    return not bool(bg)
+    response = _tool_response(ctx)
+    return isinstance(response, dict) and response.get("status") == "completed"
 
 
 def _hooks_base(hooks_dir: Path | None = None) -> Path:
@@ -491,7 +523,7 @@ def _derive_claim_id(ctx: HookContext) -> str:
             if turn_start:
                 prompt = str(turn_start.get("content") or "").strip()
         match = re.match(
-            r"<(cross-session-message|teammate-message|task-notification|subagent-handback)([^>]*)>(.*?)(?:</\1>|$)",
+            r"<(cross-session-message|teammate-message|task-notification|subagent-handback|agent-message)([^>]*)>(.*?)(?:</\1>|$)",
             prompt,
             re.DOTALL,
         )
@@ -670,6 +702,30 @@ def _envelope_id(prompt: str) -> str | None:
     return None
 
 
+_NOTIFICATION_RESULT = re.compile(r"<result>(.*?)</result>", re.DOTALL)
+_HANDBACK_POINTER = re.compile(
+    r"report was delivered to you as a message from .{0,120}\(its SubagentHandback call\)",
+    re.DOTALL,
+)
+
+
+def carries_report(text: str) -> bool:
+    """False when an arrival only announces or points at a report.
+
+    A task notification carries a report in its ``<result>``; one without (a
+    background command finishing) carries none. A hand-back pointer names the
+    message that carries the report, which arms the gate when it arrives.
+    """
+    body = _strip_channel_wrapper(text).lstrip()
+    if not body:
+        return False
+    if body.startswith("<task-notification"):
+        result = _NOTIFICATION_RESULT.search(body)
+        if not result or not result.group(1).strip():
+            return False
+    return not _HANDBACK_POINTER.search(body)
+
+
 # ---------------------------------------------------------------------------
 # Hook handlers
 # ---------------------------------------------------------------------------
@@ -689,17 +745,22 @@ def premise_check_arm(ctx: HookContext) -> Result | None:
     else:
         return None
 
-    claim_id = _derive_claim_id(ctx)
     if ctx.event == "PostToolUse":
-        judged_text = _response_text(_tool_response(ctx)) or _prompt_text(ctx)
-        judged_ref = _tool_use_id(ctx) or claim_id
+        judged_text = _response_text(_tool_response(ctx))
     else:
-        prompt = _prompt_text(ctx)
-        if not prompt and ctx.client == "agy":
+        judged_text = _prompt_text(ctx)
+        if not judged_text and ctx.client == "agy":
             turn_start = _agy_turn_start(ctx)
             if turn_start:
-                prompt = str(turn_start.get("content") or "").strip()
-        judged_text, judged_ref = prompt, _envelope_id(prompt.strip()) or claim_id
+                judged_text = agy_arrival(str(turn_start.get("content") or ""))
+    if not carries_report(judged_text):
+        return None
+
+    claim_id = _derive_claim_id(ctx)
+    if ctx.event == "PostToolUse":
+        judged_ref = _tool_use_id(ctx) or claim_id
+    else:
+        judged_ref = _envelope_id(judged_text.strip()) or claim_id
     arm(ctx.session_id, claim_id=claim_id, judged_text=judged_text, judged_ref=judged_ref)
     inject = (
         f"Premise-check gate armed by {claim_id}; if this is a direction, summarise it stating deliverables and log as a frozen acceptance checklist on a PKB task; record a verdict per the `premise-check` skill.\n"
