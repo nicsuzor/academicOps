@@ -615,7 +615,10 @@ def test_foreground_post_tool_use_arms_check(tool, tool_input):
         tool=tool,
         session_id=session_id,
         agent_type="ida:ida",
-        raw={"tool_input": tool_input},
+        raw={
+            "tool_input": tool_input,
+            "tool_response": {"status": "completed", "content": [{"type": "text", "text": "X"}]},
+        },
     )
     handlers = _load_plugin_module("ida_handlers_gate", _HOOKS_DIR / "handlers.py")
     res = handlers.post_tool(ctx)
@@ -837,7 +840,8 @@ def test_end_to_end_claim_blocks_next_dispatch_until_verdicted():
 
     # A worker's report arrives at Ida.
     report_ctx = _prompt_ctx(
-        session_id, '<task-notification id="researched-X">worker finished</task-notification>'
+        session_id,
+        '<task-notification id="researched-X"><result>worker finished</result></task-notification>',
     )
     arm_res = pcg.premise_check_arm(report_ctx)
     assert arm_res is not None
@@ -881,7 +885,7 @@ def _prompt_ctx(session_id: str, prompt: str, agent_type: str = "ida:ida") -> di
     [
         '<cross-session-message from="twin-a">PR #12 is merged.</cross-session-message>',
         '<teammate-message teammate_id="worker">done</teammate-message>',
-        "\n  <task-notification>\nworker finished\n</task-notification>",
+        "\n  <task-notification>\n<result>worker finished</result>\n</task-notification>",
         '<subagent-handback from="worker">subagent finished</subagent-handback>',
     ],
 )
@@ -929,7 +933,7 @@ def test_agy_system_message_arms_check(tmp_path: Path):
     [
         '<channel source="plugin:telegram:telegram" chat_id="1" user="nic">\n<cross-session-message from="twin-a">PR #12 is merged.</cross-session-message>\n</channel>',
         '<channel source="plugin:telegram:telegram" chat_id="1" user="nic">Context</channel>\n<cross-session-message from="twin-a">PR #12 is merged.</cross-session-message>',
-        '<channel source="plugin:telegram:telegram" chat_id="1" user="worker">\n<task-notification>\nworker finished\n</task-notification>\n</channel>',
+        '<channel source="plugin:telegram:telegram" chat_id="1" user="worker">\n<task-notification>\n<result>worker finished</result>\n</task-notification>\n</channel>',
     ],
 )
 def test_arm_handler_arms_on_wrapped_peer_report(prompt):
@@ -1000,7 +1004,9 @@ def test_derive_claim_id_generates_short_id_without_message_text():
     assert claim2.startswith("claim-")
     assert pcg.is_valid_id(claim2)
 
-    ctx3 = _prompt_ctx("s3", "\n  <task-notification>\nworker finished\n</task-notification>")
+    ctx3 = _prompt_ctx(
+        "s3", "\n  <task-notification>\n<result>worker finished</result>\n</task-notification>"
+    )
     claim3 = pcg._derive_claim_id(ctx3)
     assert "worker finished" not in claim3
     assert claim3.startswith("claim-")
