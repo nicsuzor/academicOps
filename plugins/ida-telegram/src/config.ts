@@ -94,35 +94,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
   const rawMiniAppUrl = (mergedEnv.MINI_APP_URL || mergedEnv.IDA_WEB_URL || DEFAULT_MINI_APP_URL).trim();
   const miniAppUrl = (rawMiniAppUrl || DEFAULT_MINI_APP_URL).replace(/\/+$/, "");
 
-  let defaultTranscribeCmd = join(homedir(), ".claude", "channels", "telegram", "transcribe.sh");
-  const transcribeCandidates = [
-    join(stateDir, "transcribe.sh"),
-    join(homedir(), ".claude", "channels", "telegram", "transcribe.sh"),
-    "/usr/local/bin/transcribe.sh",
-    join(homedir(), ".local", "bin", "transcribe.sh"),
-  ];
-  for (const cand of transcribeCandidates) {
-    if (existsSync(cand)) {
-      defaultTranscribeCmd = cand;
-      break;
-    }
-  }
+  const defaultTranscribeCmd = join(homedir(), ".claude", "channels", "telegram", "transcribe.sh");
   const voiceTranscribeCmd = mergedEnv.VOICE_TRANSCRIBE_CMD || defaultTranscribeCmd;
 
-  let defaultSpeakCmd = join(homedir(), ".claude", "channels", "telegram", "speak.sh");
-  const bundledSpeak = join(import.meta.dir, "..", "scripts", "speak.sh");
-  const speakCandidates = [
-    join(stateDir, "speak.sh"),
-    join(homedir(), ".claude", "channels", "telegram", "speak.sh"),
-    "/usr/local/bin/speak.sh",
-    bundledSpeak,
-  ];
-  for (const cand of speakCandidates) {
-    if (existsSync(cand)) {
-      defaultSpeakCmd = cand;
-      break;
-    }
-  }
+  const defaultSpeakCmd = join(import.meta.dir, "..", "scripts", "speak.sh");
   const voiceSpeakCmd = mergedEnv.VOICE_SPEAK_CMD || defaultSpeakCmd;
 
   return {

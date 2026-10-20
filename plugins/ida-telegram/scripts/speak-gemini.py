@@ -6,7 +6,7 @@ Usage:
     speak-gemini.py <text-file> <out.ogg>
 
 Environment variables:
-    GEMINI_API_KEY (or GOOGLE_API_KEY): Required Gemini API key.
+    GEMINI_API_KEY: Required Gemini API key.
     GEMINI_API_BASE_URL: Optional API base URL override (default: https://generativelanguage.googleapis.com).
     GEMINI_TTS_VOICE: Optional voice name (default: Aoede).
 """
@@ -45,7 +45,7 @@ def main() -> None:
         sys.stderr.write("Error: input text file is empty\n")
         sys.exit(1)
 
-    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         sys.stderr.write("Error: GEMINI_API_KEY environment variable is missing\n")
         sys.exit(1)
@@ -99,13 +99,11 @@ def main() -> None:
         sys.exit(1)
 
     audio_b64 = None
-    mime_type = "audio/wav"
     parts = candidates[0].get("content", {}).get("parts", [])
     for part in parts:
         inline_data = part.get("inlineData")
         if inline_data and "data" in inline_data:
             audio_b64 = inline_data["data"]
-            mime_type = inline_data.get("mimeType", mime_type)
             break
 
     if not audio_b64:

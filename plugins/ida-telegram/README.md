@@ -33,9 +33,9 @@ Ida's custom Telegram channel and Mini App plugin for Claude Code.
     - Stable working directory & environment inheritance: Child processes run with `cwd` explicitly set to `stateDir` (guaranteed to exist), preventing `getcwd` and `(os error 2)` failures in ephemeral containers, and inherit merged variables from `stateDir/.env` and `process.env`.
   - **Required Environment Variables:**
     - `ASSEMBLY_AI_API_KEY`: API key for AssemblyAI transcription service (used by `transcribe-voice` / `transcribe.sh` for voice-in).
-    - `GEMINI_API_KEY` (or `GOOGLE_API_KEY`): API key for Gemini 3.8 Flash TTS (`gemini-3.8-flash-tts`) speech synthesis (used by `scripts/speak.sh` for voice-out).
-    - `VOICE_TRANSCRIBE_CMD`: Optional path override for transcription command. Defaults to `$STATE_DIR/transcribe.sh`, `~/.claude/channels/telegram/transcribe.sh`, `/usr/local/bin/transcribe.sh`, or `~/.local/bin/transcribe.sh`.
-    - `VOICE_SPEAK_CMD`: Optional path override for speech synthesis command. Defaults to `$STATE_DIR/speak.sh`, `~/.claude/channels/telegram/speak.sh`, `/usr/local/bin/speak.sh`, or the bundled `${CLAUDE_PLUGIN_ROOT}/scripts/speak.sh`.
+    - `GEMINI_API_KEY`: API key for Gemini 3.8 Flash TTS (`gemini-3.8-flash-tts`) speech synthesis (used by `scripts/speak.sh` for voice-out).
+    - `VOICE_TRANSCRIBE_CMD`: Optional path override for transcription command. Defaults to `~/.claude/channels/telegram/transcribe.sh`.
+    - `VOICE_SPEAK_CMD`: Optional path override for speech synthesis command. Defaults to the bundled `${CLAUDE_PLUGIN_ROOT}/scripts/speak.sh`.
     - `GEMINI_TTS_VOICE`: Optional prebuilt voice name for Gemini TTS (default: `Aoede`).
     - `VOICE_REPLIES`: Speech synthesis reply policy: `off`, `mirror`, or `always` (default: `mirror`).
 - **Native Bot Commands:**

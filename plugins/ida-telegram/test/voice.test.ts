@@ -624,6 +624,29 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
     }
   });
 
+  test("loadConfig does not probe candidate paths and uses single canonical defaults", async () => {
+    const { loadConfig } = await import("../src/config.js");
+    const { mkdtempSync, rmSync, writeFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { tmpdir, homedir } = await import("node:os");
+
+    const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-voice-cfg-cand-"));
+    try {
+      // Create fake transcribe.sh and speak.sh in stateDir to test they are ignored
+      writeFileSync(join(stateDir, "transcribe.sh"), "#!/bin/sh\n", { mode: 0o755 });
+      writeFileSync(join(stateDir, "speak.sh"), "#!/bin/sh\n", { mode: 0o755 });
+
+      const cfg = loadConfig({
+        STATE_DIR: stateDir,
+      });
+      expect(cfg.voiceTranscribeCmd).toBe(join(homedir(), ".claude", "channels", "telegram", "transcribe.sh"));
+      expect(cfg.voiceSpeakCmd).toContain("scripts/speak.sh");
+      expect(cfg.voiceSpeakCmd).not.toBe(join(stateDir, "speak.sh"));
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
   test("speak.sh validates arguments, missing file, missing key, and missing ffmpeg", async () => {
     const { mkdtempSync, rmSync, writeFileSync } = await import("node:fs");
     const { join, resolve } = await import("node:path");
@@ -672,6 +695,18 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
       }
       expect(err3).toBeDefined();
       expect(err3.stderr).toContain("GEMINI_API_KEY environment variable is missing");
+
+      // 3b. Missing GEMINI_API_KEY even if GOOGLE_API_KEY is present (no-fallbacks)
+      let err3b: any;
+      try {
+        await execFileAsync(speakScript, [sampleTextFile, join(testDir, "out.ogg")], {
+          env: { PATH: process.env.PATH, GOOGLE_API_KEY: "fallback_key" },
+        });
+      } catch (e) {
+        err3b = e;
+      }
+      expect(err3b).toBeDefined();
+      expect(err3b.stderr).toContain("GEMINI_API_KEY environment variable is missing");
 
       // 4. Missing ffmpeg
       const emptyBinDir = join(testDir, "empty_bin");
