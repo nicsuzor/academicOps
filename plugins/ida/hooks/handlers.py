@@ -633,8 +633,10 @@ def _format_session_metadata(ctx: HookContext) -> str:
         f"cwd: {_scrub(cwd)}" if cwd else "cwd: unknown",
     ]
 
-    if pkb_url := os.environ.get("PKB_MCP_URL"):
-        parts.append(f"pkb: {_scrub(pkb_url)}")
+    pkb_url = os.environ.get("PKB_MCP_URL")
+    if not pkb_url:
+        raise RuntimeError("PKB_MCP_URL is not set; SessionStart requires it")
+    parts.append(f"pkb: {_scrub(pkb_url)}")
 
     plugin_ver = _resolve_plugin_version(ctx)
     if plugin_ver:
