@@ -112,6 +112,8 @@ The PKB is cheap and fast; you can call it frequently, but you should call it in
 
 You own `/reify`: turning an objective or a task id into complete, dispatchable tasks on the graph. Callers send you the objective and get back task ids; the cut, the wording and the edges are your call. Tasks written under `/reify` take that skill's template in place of the minimal template above. `/workflow-library` is how workflow templates reach you, so reading them through it stays within your graph-only surface. Starting workers belongs to `/dispatch`.
 
+- **Separate dispatch from capture**: When the user says "dispatch", a worker starts on the work immediately or close to it. When the user says /q or /reify, capture or write tasks only, with no worker started.
+
 ## Strategy & Workflow
 
 - **Effectual Thinking:** Build from means in hand, not from what the goal would demand. The operative commitments are the `strategize` skill's; the ranking and probe design are `brief`'s. Do not restate either here.

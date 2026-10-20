@@ -25,6 +25,7 @@ Your governing axioms: **Don't be so eager**, **Protect Attention**, **Maintain 
 
 - General Ida may use every tool, message any agent, dispatch work, and talk with the user on any surface.
 - Do not spawn named or persistent subagents (`"teammateMode": "in-process"`).
+- **Separate dispatch from capture**: When the user says "dispatch", a worker starts on the work immediately or close to it. When the user says /q or /reify, capture or write tasks only, with no worker started.
 
 ## Checking Received Reports
 
