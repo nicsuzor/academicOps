@@ -139,7 +139,7 @@ The operator must be able to interact with the active agent directly from the da
    - Response: `{ "success": true, "message_id": string, "seq": number }`
 2. **Structured Question Resolution (`POST /api/app/questions/answer`):**
    - Request: `{ "question_id": string, "option_index"?: number, "option_indices"?: number[], "custom_text"?: string }` (aliases: `questionId`, `optionIndex`, `optionIndices`, `customText`)
-   - The server marks the question resolved in runtime, emits a channel event (`question_answer`) to the agent, broadcasts `question_resolved` over SSE, and triggers an in-place edit on the Telegram card to display the selected choice with buttons removed (`inline_keyboard: []`).
+   - The server marks the question resolved in runtime, emits a channel event (`question_answered`) to the agent, broadcasts `question_resolved` over SSE, and triggers an in-place edit on the Telegram card to display the selected choice with buttons removed (`inline_keyboard: []`).
    - Response: `{ "success": true, "resolved_at": string, "seq": number }`
 3. **Tool Permission Resolution (`POST /api/app/review/permission`):**
    - Request: `{ "permission_id": string, "decision": "allow" | "deny" }` (alias: `permId`)

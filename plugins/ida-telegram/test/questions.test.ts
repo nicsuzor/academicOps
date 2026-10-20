@@ -1,5 +1,8 @@
 import { describe, expect, test, afterEach } from "bun:test";
 import { QuestionBroker } from "../src/telegram/questions.js";
+import { PluginStore } from "../src/store.js";
+import { StdioMcpServer } from "../src/mcp/server.js";
+import { PermissionRelay } from "../src/mcp/permissions.js";
 import { rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -227,7 +230,7 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     });
 
     expect(channelEvents.length).toBe(1);
-    expect(channelEvents[0].meta.event).toBe("question_answer");
+    expect(channelEvents[0].meta.event).toBe("question_answered");
     expect(channelEvents[0].meta.question_id).toBe(q1.id);
     expect(channelEvents[0].meta.choice).toBe("Raise to 2.5x (Recommended)");
 
@@ -310,7 +313,7 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     });
 
     expect(channelEvents.length).toBe(3);
-    expect(channelEvents[2].meta.event).toBe("question_answer");
+    expect(channelEvents[2].meta.event).toBe("question_answered");
     expect(channelEvents[2].meta.question_id).toBe(q3.id);
     expect(channelEvents[2].meta.choice).toBe("Approve v3 layout, but keep font size at 15px");
 
@@ -406,6 +409,219 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     expect(editedCards[0].messageId).toBe(777);
     expect(editedCards[0].text).toContain("Selected: Ship now (Recommended) ✅");
   });
+
+  test("PreToolUse hook on AskUserQuestion posts question to socket and returns a decision Claude Code accepts (block / permissionDecision deny)", async () => {
+    const { createServer } = await import("node:net");
+    const { spawn } = await import("node:child_process");
+    const { mkdirSync } = await import("node:fs");
+
+    mkdirSync(testStateDir, { recursive: true });
+    const socketPath = join(testStateDir, "bridge.sock");
+    let receivedSocketReq: any = null;
+
+    const server = createServer((client) => {
+      let buf = "";
+      client.on("data", (chunk) => {
+        buf += chunk.toString();
+        if (buf.includes("\n")) {
+          receivedSocketReq = JSON.parse(buf.trim());
+          client.write(JSON.stringify({ status: "ok", questionId: "q_hook123", questionIds: ["q_hook123"] }) + "\n");
+        }
+      });
+    });
+
+    await new Promise<void>((resolve) => server.listen(socketPath, () => resolve()));
+
+    try {
+      const hookScript = join(import.meta.dir, "..", "hooks", "ask-user-question.js");
+      const stdout = await new Promise<string>((resolve, reject) => {
+        const proc = spawn("node", [hookScript], {
+          env: {
+            ...process.env,
+            IDA_TELEGRAM_ROLE: "primary",
+            STATE_DIR: testStateDir,
+            SOCKET_PATH: socketPath,
+          },
+        });
+        let out = "";
+        proc.stdout.on("data", (d) => (out += d.toString()));
+        proc.on("error", reject);
+        proc.on("close", () => resolve(out));
+        proc.stdin.write(
+          JSON.stringify({
+            tool_name: "AskUserQuestion",
+            turn_id: "turn_hook_42",
+            tool_input: {
+              questions: [
+                {
+                  question: "Proceed with deployment?",
+                  options: [{ label: "Yes (Recommended)" }, { label: "No" }],
+                },
+              ],
+            },
+          }) + "\n"
+        );
+        proc.stdin.end();
+      });
+
+      expect(receivedSocketReq).not.toBeNull();
+      expect(receivedSocketReq.type).toBe("ask_user");
+
+      const parsed = JSON.parse(stdout.trim());
+      // Claude Code PreToolUse rejects decision: "deny"; valid top-level decisions are "approve" | "block"
+      expect(["approve", "block"]).toContain(parsed.decision);
+      expect(parsed.decision).toBe("block");
+      expect(parsed.reason).toContain("q_hook123");
+      expect(parsed.reason).toContain("posted to the user over Telegram");
+      expect(parsed.reason).not.toContain("Nic");
+      expect(parsed.hookSpecificOutput?.permissionDecision).toBe("deny");
+    } finally {
+      server.close();
+    }
+  });
+
+  test("emits answered questions as question_answered carrying turn_id", async () => {
+    const { StdioMcpServer } = await import("../src/mcp/server.js");
+    const { TelegramBotClient } = await import("../src/telegram/bot.js");
+    const { PluginStore } = await import("../src/store.js");
+    const { PermissionRelay } = await import("../src/mcp/permissions.js");
+
+    const config = {
+      botToken: "test-token",
+      apiBaseUrl: "https://api.telegram.org",
+      role: "primary",
+      allowFrom: [999],
+      stateDir: testStateDir,
+      socketPath: join(testStateDir, "hook.sock"),
+      port: 0,
+      miniAppUrl: "https://ida.example.ts.net",
+      isPrimary: true,
+      maxChatChars: 1200,
+      voiceTranscribeCmd: "",
+      voiceSpeakCmd: "",
+      voiceReplies: "off" as const,
+      botCommands: [],
+    };
+
+    const store = new PluginStore(testStateDir);
+    const broker = new QuestionBroker(testStateDir);
+    const permRelay = new PermissionRelay();
+    const channelEvents: Array<{ content: string; meta: Record<string, unknown> }> = [];
+
+    const bot = new TelegramBotClient(config, broker, permRelay, (content, meta) => {
+      channelEvents.push({ content, meta });
+    });
+    (bot as any).callApi = async () => ({ ok: true, result: { message_id: 301 } });
+
+    const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
+
+    await mcp.handleMessage({
+      jsonrpc: "2.0",
+      id: 77,
+      method: "tools/call",
+      params: {
+        name: "ask_user",
+        arguments: {
+          turn_id: "turn_req_77",
+          questions: [
+            {
+              question: "Deploy hotfix now?",
+              options: [{ label: "Deploy now (Recommended)" }, { label: "Defer" }],
+            },
+          ],
+        },
+      },
+    });
+
+    const pending = broker.getPendingQuestions();
+    expect(pending.length).toBe(1);
+    const q = pending[0];
+
+    await (bot as any).handleUpdate({
+      update_id: 800,
+      callback_query: {
+        id: "cb_800",
+        from: { id: 999, is_bot: false, first_name: "Nic" },
+        message: { message_id: 301, date: 1700000000, chat: { id: 999, type: "private" }, text: "Deploy hotfix now?" },
+        data: `q:${q.id}:0:0`,
+      },
+    });
+
+    expect(channelEvents.length).toBe(1);
+    expect(channelEvents[0].meta.event).toBe("question_answered");
+    expect(channelEvents[0].meta.question_id).toBe(q.id);
+    expect(channelEvents[0].meta.choice).toBe("Deploy now (Recommended)");
+    expect(channelEvents[0].meta.turn_id).toBe("turn_req_77");
+  });
+
+  test("does not fabricate synthetic turn_id when turn_id is omitted", async () => {
+    const broker = new QuestionBroker(testStateDir);
+    const result = await broker.askUser({
+      question: "Continue work?",
+      options: [{ label: "Yes" }, { label: "No" }],
+      chatId: 12345678,
+    });
+    expect(result.message).toContain("posted to the user");
+    expect(result.message).not.toContain("Nic");
+
+    const resolved = await broker.resolveAnswer(result.questionId, 0);
+    expect(resolved).not.toBeNull();
+    expect(resolved!.channelEvent.turn_id).toBeUndefined();
+  });
+
+  test("MCP tools descriptions use 'the user' and omit personal names, and anchor schema has no context_tokens", async () => {
+    const { MCP_TOOLS } = await import("../src/mcp/tools.js");
+    for (const tool of MCP_TOOLS) {
+      expect(tool.description).not.toContain("Nic");
+    }
+    const replyTool = MCP_TOOLS.find((t) => t.name === "reply");
+    expect(replyTool?.description).toContain("the user");
+    const askUserTool = MCP_TOOLS.find((t) => t.name === "ask_user");
+    expect(askUserTool?.description).toContain("the user");
+
+    const anchorTool = MCP_TOOLS.find((t) => t.name === "anchor");
+    expect((anchorTool?.inputSchema.properties as any).context_tokens).toBeUndefined();
+  });
+
+  test("permission_request notification fails fast if request_id or tool_name is missing", async () => {
+    const config = {
+      botToken: "test-token",
+      apiBaseUrl: "https://api.telegram.org",
+      role: "primary",
+      isPrimary: true,
+      allowFrom: [12345678],
+      maxChatChars: 1200,
+      port: 8093,
+      stateDir: testStateDir,
+      socketPath: join(testStateDir, "sock.sock"),
+      voiceReplies: "off" as const,
+      botCommands: [],
+    };
+    const store = new PluginStore(testStateDir);
+    const broker = new QuestionBroker(testStateDir);
+    const permRelay = new PermissionRelay();
+    const mcp = new StdioMcpServer(config, store, broker, null, permRelay);
+
+    // Missing request_id
+    expect(
+      mcp.handleMessage({
+        jsonrpc: "2.0",
+        method: "notifications/claude/channel/permission_request",
+        params: { tool_name: "Bash" },
+      })
+    ).rejects.toThrow();
+
+    // Disproved method name fails fast (not handled as permission)
+    const disprovedRes = await mcp.handleMessage({
+      jsonrpc: "2.0",
+      id: 99,
+      method: "claude/channel/permission",
+      params: { id: "old_perm_1" },
+    });
+    // Should not be recognized as permission handler
+    expect((disprovedRes as any)?.error?.code ?? -32601).toBe(-32601);
+  });
 });
+
 
 

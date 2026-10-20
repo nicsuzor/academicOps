@@ -644,9 +644,15 @@ async function loadAnchor() {
             : '<p class="muted">No recent turns recorded.</p>';
       }
 
-      const pct = data.contextTokens?.percentage || 0;
-      const used = data.contextTokens?.usedTokens;
-      const total = data.contextTokens?.totalTokens;
+      const ct = data.contextTokens;
+      const pct =
+        typeof ct?.percentage === "number"
+          ? ct.percentage
+          : ct?.usedTokens && ct?.totalTokens
+            ? Math.min(100, Math.round((ct.usedTokens / ct.totalTokens) * 100))
+            : 0;
+      const used = ct?.usedTokens;
+      const total = ct?.totalTokens;
       document.getElementById("anchor-pct").textContent =
         used !== undefined && total !== undefined ? `${pct}% (${used} / ${total})` : `${pct}%`;
       document.getElementById("anchor-gauge").style.width = `${pct}%`;
