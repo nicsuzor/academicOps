@@ -69,6 +69,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
       type: "object",
       properties: {
         turn_id: { type: "string", description: "Turn ID for correlating the async answer event" },
+        session_id: { type: "string", description: "Session ID for correlating with the asking session" },
         questions: {
           type: "array",
           items: {
@@ -93,12 +94,33 @@ export const MCP_TOOLS: ToolDefinition[] = [
               multiSelect: { type: "boolean" },
               allowOther: { type: "boolean" },
               turn_id: { type: "string" },
+              session_id: { type: "string" },
             },
             required: ["question", "options"],
           },
         },
       },
       required: ["questions"],
+    },
+  },
+  {
+    name: "close_question",
+    description: "Close a pending question with a stated reason (answered elsewhere, no longer needed, or replaced by a newer question).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        question_id: { type: "string", description: "ID of the pending question to close" },
+        reason: { type: "string", description: "Stated reason for closing the question" },
+      },
+      required: ["question_id", "reason"],
+    },
+  },
+  {
+    name: "list_questions",
+    description: "List every pending Mini App question with its id, text, session, turn, and when it was asked.",
+    inputSchema: {
+      type: "object",
+      properties: {},
     },
   },
   {

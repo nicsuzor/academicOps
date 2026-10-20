@@ -493,6 +493,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
       if (typeof loadAnchor !== "undefined") window.loadAnchor = loadAnchor;
       if (typeof answerQuestion !== "undefined") window.answerQuestion = answerQuestion;
       if (typeof submitQuestion !== "undefined") window.submitQuestion = submitQuestion;
+      if (typeof closeQuestion !== "undefined") window.closeQuestion = closeQuestion;
       if (typeof resolvePermission !== "undefined") window.resolvePermission = resolvePermission;
       if (typeof submitPrReview !== "undefined") window.submitPrReview = submitPrReview;
     `;
@@ -659,6 +660,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
   test("3. Questions tab renders multi-select questions as checkboxes with a submit button, shows header and option descriptions, and accepts free text (FR-4.6)", async () => {
     let multiQid = "";
     let singleQid = "";
+    let closeQid = "";
     const { document, editedCards, emittedEvents } = await bootMiniApp({
       search: "?tab=questions",
       setup: async ({ broker }) => {
@@ -692,6 +694,18 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
         });
         singleQid = q2.questionId;
         broker.setMessageId(singleQid, 702);
+
+        const q3 = await broker.askUser({
+          header: "Stale Decision",
+          question: "Adopt obsolete format?",
+          options: [{ label: "Yes" }, { label: "No" }],
+          multiSelect: false,
+          chatId: 8860530746,
+          turnId: "turn_s3",
+          sessionId: "session_m3",
+        });
+        closeQid = q3.questionId;
+        broker.setMessageId(closeQid, 703);
       },
     });
 
@@ -734,6 +748,20 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
     expect(emittedEvents.length).toBe(2);
     expect(emittedEvents[1].meta.question_id).toBe(singleQid);
     expect(emittedEvents[1].meta.choice).toBe("Hold until after the 14:00 deploy freeze");
+
+    // Close third question with a stated reason (removes from Mini App, edits card, emits event)
+    await document.windowObj.closeQuestion(closeQid, "answered elsewhere");
+    await new Promise((r) => setTimeout(r, 40));
+
+    expect(emittedEvents.length).toBe(3);
+    expect(emittedEvents[2].event).toBe("question_closed");
+    expect(emittedEvents[2].meta.question_id).toBe(closeQid);
+    expect(emittedEvents[2].meta.reason).toBe("answered elsewhere");
+    expect(editedCards.some((c) => c.messageId === 703 && c.text.includes("Closed: answered elsewhere"))).toBe(true);
+
+    // Removed from the Mini App DOM
+    const allCards = document.querySelectorAll(`[data-qid="${closeQid}"]`);
+    expect(allCards.length).toBe(0);
   });
 
   test("4. Anchor tab shows every field required by FR-4.7: focus, taskId, waitingOn, delegations, pendingQuestions, recentTurns, uptime, and context gauge", async () => {

@@ -44,7 +44,8 @@ async function main() {
   }
 
   const toolInput = payload.tool_input || payload.toolInput || {};
-  const turnId = payload.turn_id || payload.turnId || payload.tool_use_id || payload.session_id;
+  const turnId = payload.turn_id || payload.turnId || payload.tool_use_id;
+  const sessionId = payload.session_id || payload.sessionId;
   const questions = toolInput.questions || [
     {
       question: toolInput.question || "Input requested",
@@ -64,6 +65,7 @@ async function main() {
     client.write(
       JSON.stringify({
         type: "ask_user",
+        session_id: sessionId,
         turn_id: turnId,
         questions,
       }) + "\n"
