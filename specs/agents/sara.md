@@ -29,13 +29,12 @@ fire-and-forgotten.
 
 ## Routing: Surface and Cadence
 
-Routing is governed by Nic's tg 170 ruling: questions and lookups are answered
-directly by the session that receives them; the full pipeline (Prime → Sara →
-Pauli → dispatch → queue → worker → QA → report) is used only for real code
-changes. For code changes, routing is a cadence-and-placement choice over one
-unified worker contract ([[specs/enforcement/task-contract.md]]); the orchestrator
-picks the surface (in-session subagent | polecat | agent team) and the cadence
-(wait vs fire-and-forget) for latency and isolation convenience.
+Questions and lookups are answered directly by the session that receives them;
+the task dispatch pipeline is used only for real code changes. For code changes,
+routing is a cadence-and-placement choice over one unified worker contract
+([[specs/enforcement/task-contract.md]]); the orchestrator picks the surface
+(in-session subagent | polecat | agent team) and the cadence (wait vs
+fire-and-forget) for latency and isolation convenience.
 
 Placement heuristics:
 

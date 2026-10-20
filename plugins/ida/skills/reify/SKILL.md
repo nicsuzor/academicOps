@@ -5,7 +5,7 @@ description: Turn an objective, or a task id, into complete dispatchable tasks o
 
 # /reify: compose dispatchable tasks from an objective
 
-The task is the whole message to the worker. Write it once, keep it short, and leave it on the graph for `/dispatch`. Questions and lookups are answered directly by the session that receives them; the full pipeline (Prime → Sara → Pauli → dispatch → queue → worker → QA → report) is used only for real code changes (Nic, tg 170). Never create tasks or compose workflows for questions or lookups.
+The task is the whole message to the worker. Write it once, keep it short, and leave it on the graph for `/dispatch`. Questions and lookups are answered directly by the session that receives them; the task dispatch pipeline is used only for real code changes. Never create tasks or compose workflows for questions or lookups.
 
 A polecat is a short-running container: it gets in, does one unit of work it controls, records the evidence, and gets out cleanly. It never sees the whole objective through. Everything after its unit is a follow-up task on the graph, and the workflow decides what those follow-ups are.
 
