@@ -802,24 +802,25 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
     const { document } = await bootMiniApp({
       search: "?tab=questions",
       setup: async ({ broker }) => {
-        // 1. Explicit context and recommendation fields
+        // 1. Explicit context and recommendation fields with recommended: true
         await broker.askUser({
           header: "RBG Request Brief",
           question: "Should rbg's brief hand it the original request explicitly? Now it only gets a task id inside the branch name.",
           context: "Run 3 had current instructions but departed on step 1: read PR diff before fetching request.",
           recommendation: "Yes, give the request explicitly so proportion can be judged against original intent.",
           options: [
-            { label: "Yes, give the request explicitly", description: "Provides direct request text upfront" },
+            { label: "Yes, give the request explicitly", description: "Provides direct request text upfront", recommended: true },
             { label: "No, leave as is", description: "Keep deriving from branch task ID" },
           ],
           chatId: 8860530746,
           turnId: "turn_rbg_1",
         });
 
-        // 2. Question with markdown expandable blockquote context and recommendation
+        // 2. Question with markdown context, recommendation, and (Recommended) in label
         await broker.askUser({
           header: "Value model weight",
-          question: "Raise `urgency` weight on cliff tasks?\n>! Facts: `aops_5ff43ec0` showed 3 cliff tasks ranked below routine cleanup.",
+          question: "Raise `urgency` weight on cliff tasks?",
+          context: ">! Facts: `aops_5ff43ec0` showed 3 cliff tasks ranked below routine cleanup.",
           recommendation: "Raise to 2.5x to clear cliff tasks before routine work.",
           options: [
             { label: "Raise to 2.5x (Recommended)", description: "Prioritizes due-within-48h tasks immediately" },

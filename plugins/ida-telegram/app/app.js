@@ -298,21 +298,10 @@ async function loadQuestions() {
           const inputType = isMulti ? "checkbox" : "radio";
           const headerHtml = q.header ? `<div class="q-header">${escapeHtml(q.header)}</div>` : "";
 
-          // Extract question title and optional inline context/markdown
-          let qTitle = q.question || "";
-          let qInlineContext = "";
-          const newlineIdx = qTitle.indexOf("\n");
-          if (newlineIdx !== -1) {
-            qInlineContext = qTitle.slice(newlineIdx + 1).trim();
-            qTitle = qTitle.slice(0, newlineIdx).trim();
-          }
-
-          // Context block (explicit field or inline blockquotes/facts)
-          let contextHtml = "";
-          const fullContext = [q.context, qInlineContext].filter(Boolean).join("\n\n");
-          if (fullContext) {
-            contextHtml = `<div class="q-context">${renderMarkdown(fullContext)}</div>`;
-          }
+          // Context block (explicit field)
+          const contextHtml = q.context
+            ? `<div class="q-context">${renderMarkdown(q.context)}</div>`
+            : "";
 
           // Recommendation block
           const recHtml = q.recommendation
@@ -321,14 +310,8 @@ async function loadQuestions() {
 
           const optionsHtml = (q.options || [])
             .map((opt, idx) => {
-              const cleanLabel = opt.label.replace(/\s*\(recommended\)\s*/i, "").trim();
               const isRec = Boolean(
-                opt.recommended ||
-                /\(recommended\)/i.test(opt.label) ||
-                (q.recommendation && (
-                  q.recommendation.toLowerCase().includes(opt.label.toLowerCase()) ||
-                  (cleanLabel.length > 2 && q.recommendation.toLowerCase().includes(cleanLabel.toLowerCase()))
-                ))
+                opt.recommended || /\(recommended\)/i.test(opt.label)
               );
               const recBadge = isRec ? '<span class="rec-badge">Recommended</span>' : "";
               const descHtml = opt.description
@@ -362,7 +345,7 @@ async function loadQuestions() {
           return `
             <div class="card question-card" data-qid="${escapeHtml(q.id)}">
               ${headerHtml}
-              <h3>${formatInlineMarkdown(qTitle)}</h3>
+              <h3>${formatInlineMarkdown(q.question || "")}</h3>
               ${contextHtml}
               ${recHtml}
               <div class="q-options-list">

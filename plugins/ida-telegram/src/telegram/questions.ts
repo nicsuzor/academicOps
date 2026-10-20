@@ -168,11 +168,11 @@ export class QuestionBroker {
     let text = q.header ? `**${q.header}**\n\n` : "";
     text += q.question;
 
-    if (q.context && !q.question.includes(q.context)) {
+    if (q.context) {
       text += `\n\n>! ${q.context}`;
     }
 
-    if (q.recommendation && !q.question.includes(q.recommendation)) {
+    if (q.recommendation) {
       text += `\n\n**Recommendation:** ${q.recommendation}`;
     }
 
