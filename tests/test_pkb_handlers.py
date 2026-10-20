@@ -618,7 +618,7 @@ def http_mcp_server():
 
 
 def test_search_the_pkb_sends_one_post_with_headers(http_mcp_server, monkeypatch, tmp_path):
-    """AC: one POST per search carrying x-session-id, active turn traceparent, #3009 tokens, and real user-agent."""
+    """AC: default tool name is 'pkb_search' when PKB_MCP_TOOL_PREFIX is unset; one POST per search carrying x-session-id, active turn traceparent, #3009 tokens, and real user-agent."""
     tracer_dir = tmp_path / ".claude" / "tracer"
     tracer_dir.mkdir(parents=True, exist_ok=True)
     trace_id = "0123456789abcdef0123456789abcdef"
@@ -657,8 +657,29 @@ def test_search_the_pkb_sends_one_post_with_headers(http_mcp_server, monkeypatch
     assert req["headers"]["content-type"] == "application/json"
     assert "text/event-stream" in req["headers"]["accept"]
     assert req["json"]["method"] == "tools/call"
-    assert req["json"]["params"]["name"] == "search"
+    assert req["json"]["params"]["name"] == "pkb_search"
     assert req["json"]["params"]["arguments"] == {"query": "what are the axioms?"}
+
+
+def test_search_the_pkb_tool_prefix_env_override(http_mcp_server, monkeypatch, tmp_path):
+    """AC: PKB_MCP_TOOL_PREFIX overrides the default 'pkb_' prefix."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("PKB_MCP_URL", http_mcp_server.url)
+    monkeypatch.setenv("PKB_MCP_TOOL_PREFIX", "custom_")
+
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        session_id="s123",
+        raw={"prompt": "what are the axioms?"},
+        hooks_dir=PKB_HOOKS,
+        agent_type="ida:ida",
+    )
+    res = handlers.search_the_pkb(ctx)
+    assert res is not None
+    assert len(http_mcp_server.requests) == 1
+    req = http_mcp_server.requests[0]
+    assert req["json"]["params"]["name"] == "custom_search"
 
 
 def test_search_the_pkb_unauthenticated_when_credentials_unset(
