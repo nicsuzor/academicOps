@@ -88,3 +88,16 @@ Two flows, deliberately separated as witness and judge, so the volume and direct
 2. **Improve the framework** (used to be the `triage` skill's sweep mode; currently N/A) -- a detached pass over the accumulated issue queue on a cadence the user sets, proposing a mechanism only where recurrence or explicit direction justifies it.
 
 A single incident that is a **bug** is fixed immediately from one report. A single incident that may qualify for an **escalation proposal** is logged and waits for the pattern.
+
+## PR Risk Taxonomy Enforcement
+
+Pull request review and merge authority is governed by a three-tier risk taxonomy (canonical: [[kb_48809ad0]], amended in [[aops_a7366995]]). Because evaluating the operational hazard, semantic intent, and blast radius of a change inherently requires qualitative judgment, risk tier classification is executed natively by agentic verification workflows (`wf-finish.md`, `wf-code-task-base.md`, `wf-qa.md`, `reify/SKILL.md`) rather than deterministic CI scripts or path heuristics (`judgment-non-delegable`, `RULES.md#No Shitty NLP and Agentic-First Design`):
+
+| Tier | Category | Scope / Characteristics | Merge Authority | Carrier Mechanism |
+| :- | :- | :- | :- | :- |
+| **Tier 1** | Autonomous QA-Merge | Low-risk changes: pure documentation, specifications, formatting, typing stubs (`.pyi`). | Independent QA worker merges autonomously on verified pass (`gh pr merge --squash`) and releases task as `done`. | `wf-finish.md`, `wf-code-task-base.md`, `wf-qa.md`, `reify/SKILL.md` |
+| **Tier 2** | Operational & Behavioral Gate | Code, workflows, tools, skills, rules, agent definitions, or tests. | Reviewer sign-off required; QA worker verifies, posts structured receipts to the PR, leaves PR open for sign-off, and releases task as `done`. | `wf-finish.md`, `wf-code-task-base.md`, `wf-qa.md`, `reify/SKILL.md` |
+| **Tier 3** | Critical Hazard & Public Gate | Host infrastructure, credentials, manuscripts, public releases, or high external blast radius. | Exclusive principal review and merge; agents strictly forbidden from merging. QA worker verifies, posts receipts, leaves open, and releases task as `done`. | `wf-finish.md`, `wf-code-task-base.md`, `wf-qa.md`, `reify/SKILL.md` |
+
+Enforcement operates through workflow merge gates (`instructions` → `imperative`):
+Finish and QA templates direct QA workers to semantically evaluate PR risk against the taxonomy in a clean context. For verified Tier 1 PRs, QA workers merge autonomously via `gh pr merge --squash` and release the QA task as `done`. For Tier 2 and Tier 3 PRs, QA workers verify claims, post structured receipts to the PR, and leave the PR open for reviewer or principal sign-off. In accordance with headless worker and review lifecycle rules (`.agents/rules/headless-workers.md`, [[aops_204898b2]]), QA tasks complete as `done` with the PR URL recorded on the task record so that `/reconcile` tracks merge without human wait states; no task rests or releases into `review` for human merge gates.
