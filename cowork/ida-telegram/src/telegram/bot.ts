@@ -2,9 +2,9 @@ import { DEFAULT_MINI_APP_URL, PluginConfig } from "../config.js";
 import { FormattedMessage, formatMarkdownToEntities } from "./format.js";
 import { parseInboundUpdate, TelegramUpdate } from "./inbound.js";
 import { QuestionBroker } from "./questions.js";
-import { FeedbackManager } from "./feedback.js";
 import { prepareVoiceText, buildVoiceInEvent } from "./voice.js";
 import { PermissionRelay } from "../mcp/permissions.js";
+import { PluginStore } from "../store.js";
 import { acquireHostLock, releaseHostLock, calculate409Backoff } from "../role.js";
 import { hostname } from "node:os";
 import { execFile } from "node:child_process";
@@ -29,7 +29,6 @@ export interface SendReplyOptions {
   buttons?: ReplyButtonOption[];
   voice?: boolean;
   replyTo?: number;
-  feedback?: boolean;
   review?: { repo: string; pr?: number };
 }
 
@@ -43,7 +42,6 @@ export interface SendReplyResult {
 export class TelegramBotClient {
   private config: PluginConfig;
   private broker: QuestionBroker;
-  private feedbackManager: FeedbackManager;
   private permRelay: PermissionRelay;
   private emitChannelEvent: (content: string, meta: Record<string, unknown>) => void;
   private isRunning = false;
@@ -51,19 +49,24 @@ export class TelegramBotClient {
   private conflictCount = 0;
   private lastAlertTime = 0;
   private lastInboundWasVoiceByChat = new Map<number, boolean>();
+  public store?: PluginStore;
 
   constructor(
     config: PluginConfig,
     broker: QuestionBroker,
-    feedbackManager: FeedbackManager,
     permRelay: PermissionRelay,
-    emitChannelEvent: (content: string, meta: Record<string, unknown>) => void
+    emitChannelEvent: (content: string, meta: Record<string, unknown>) => void,
+    store?: PluginStore
   ) {
     this.config = config;
     this.broker = broker;
-    this.feedbackManager = feedbackManager;
     this.permRelay = permRelay;
     this.emitChannelEvent = emitChannelEvent;
+    this.store = store;
+
+    this.permRelay.setEditCardCallback(async (chatId, messageId, text, replyMarkup) => {
+      await this.editMessage(chatId, messageId, text, replyMarkup || { inline_keyboard: [] });
+    });
   }
 
   public isLastInboundVoice(chatId: number): boolean {
@@ -132,7 +135,7 @@ export class TelegramBotClient {
   }
 
   public async sendReply(opts: SendReplyOptions): Promise<SendReplyResult | null> {
-    const { chatId, formatted, detailsId, buttons, voice, replyTo, feedback, review } = opts;
+    const { chatId, formatted, detailsId, buttons, voice, replyTo, review } = opts;
 
     // Build inline keyboard
     const inlineKeyboard: Array<Array<Record<string, unknown>>> = [];
@@ -155,12 +158,6 @@ export class TelegramBotClient {
     }
 
     const actionRow: Array<Record<string, unknown>> = [];
-
-    // Feedback buttons
-    if (feedback !== false) {
-      actionRow.push({ text: "👍", callback_data: "fb:up" });
-      actionRow.push({ text: "👎", callback_data: "fb:down" });
-    }
 
     const miniAppBaseUrl = (this.config.miniAppUrl || DEFAULT_MINI_APP_URL).replace(/\/+$/, "");
 
@@ -289,6 +286,9 @@ export class TelegramBotClient {
 
     const res = await this.callApi("sendMessage", payload);
     if (res.ok && res.result) {
+      if (this.store && inlineKeyboard.length > 0) {
+        this.store.setLastCard(chatId, res.result.message_id, formatted.plainText);
+      }
       if (voice) {
         return { messageId: res.result.message_id, voiceSent: false, voiceError };
       }
@@ -303,6 +303,9 @@ export class TelegramBotClient {
     });
 
     if (fallbackRes.ok && fallbackRes.result) {
+      if (this.store && inlineKeyboard.length > 0) {
+        this.store.setLastCard(chatId, fallbackRes.result.message_id, formatted.plainText);
+      }
       if (voice) {
         return { messageId: fallbackRes.result.message_id, voiceSent: false, voiceError };
       }
@@ -323,6 +326,9 @@ export class TelegramBotClient {
     });
     if (res?.ok && res?.result?.message_id) {
       this.broker.setMessageId(qid, res.result.message_id);
+      if (this.store) {
+        this.store.setLastCard(chatId, res.result.message_id, card.text);
+      }
     }
     return res;
   }
@@ -361,6 +367,9 @@ export class TelegramBotClient {
     });
     if (res?.ok && res?.result?.message_id) {
       this.permRelay.setMessageInfo(permId, defaultChatId, res.result.message_id, summary);
+      if (this.store) {
+        this.store.setLastCard(defaultChatId, res.result.message_id, summary);
+      }
     }
     return res;
   }
@@ -498,10 +507,7 @@ export class TelegramBotClient {
       const cb = update.callback_query;
       const data = cb.data || "";
 
-      // Answer callback query toast (FR-3.2: "Noted 👍" for fb:up)
-      if (data === "fb:up") {
-        await this.callApi("answerCallbackQuery", { callback_query_id: cb.id, text: "Noted 👍" });
-      } else {
+      if (!data.startsWith("q:") && !data.startsWith("perm:")) {
         await this.callApi("answerCallbackQuery", { callback_query_id: cb.id });
       }
 
@@ -515,6 +521,23 @@ export class TelegramBotClient {
         const qid = parts[1];
         const action = parts[3];
         const q = this.broker.getQuestion(qid);
+
+        if (!q || q.status !== "pending") {
+          await this.callApi("answerCallbackQuery", {
+            callback_query_id: cb.id,
+            text: "Question already resolved.",
+          });
+          if (cb.message) {
+            await this.callApi("editMessageReplyMarkup", {
+              chat_id: cb.message.chat.id,
+              message_id: cb.message.message_id,
+              reply_markup: { inline_keyboard: [] },
+            });
+          }
+          return;
+        }
+
+        await this.callApi("answerCallbackQuery", { callback_query_id: cb.id });
 
         if (action === "other") {
           if (cb.message) {
@@ -558,88 +581,28 @@ export class TelegramBotClient {
         return;
       }
 
-      // Feedback callbacks: fb:...
-      if (data === "fb:up" && cb.message) {
-        await this.feedbackManager.handleUpvote({
-          messageId: cb.message.message_id,
-          messageExcerpt: cb.message.text || "",
-        });
-        const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
-          cb.message.reply_markup?.inline_keyboard,
-          [[{ text: "👍 saved", callback_data: "noop" }]]
-        );
-        await this.callApi("editMessageReplyMarkup", {
-          chat_id: cb.message.chat.id,
-          message_id: cb.message.message_id,
-          reply_markup: {
-            inline_keyboard: updatedKeyboard,
-          },
-        });
-        return;
-      }
-
-      if (data === "fb:down" && cb.message) {
-        const critiqueKeyboard = this.feedbackManager.getDownvoteCritiqueKeyboard(cb.message.message_id);
-        const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
-          cb.message.reply_markup?.inline_keyboard,
-          critiqueKeyboard
-        );
-        await this.callApi("editMessageReplyMarkup", {
-          chat_id: cb.message.chat.id,
-          message_id: cb.message.message_id,
-          reply_markup: { inline_keyboard: updatedKeyboard },
-        });
-        return;
-      }
-
-      if ((data === "fb:cancel" || data.startsWith("fb:cancel:")) && cb.message) {
-        const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
-          cb.message.reply_markup?.inline_keyboard,
-          [this.feedbackManager.getInitialFeedbackButtons()]
-        );
-        await this.callApi("editMessageReplyMarkup", {
-          chat_id: cb.message.chat.id,
-          message_id: cb.message.message_id,
-          reply_markup: { inline_keyboard: updatedKeyboard },
-        });
-        return;
-      }
-
-      if (data.startsWith("fb:critique:") && cb.message) {
-        const parts = data.split(":");
-        const critique = parts.slice(3).join(":");
-        const res = await this.feedbackManager.handleCritique({
-          messageId: cb.message.message_id,
-          messageExcerpt: cb.message.text || "",
-          critique,
-        });
-
-        const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
-          cb.message.reply_markup?.inline_keyboard,
-          [[{ text: `Critique saved: ${critique}`, callback_data: "noop" }]]
-        );
-        await this.callApi("editMessageReplyMarkup", {
-          chat_id: cb.message.chat.id,
-          message_id: cb.message.message_id,
-          reply_markup: {
-            inline_keyboard: updatedKeyboard,
-          },
-        });
-
-        if (res.emitsChannelEvent) {
-          this.emitChannelEvent(
-            `Feedback received: ${critique}`,
-            res.channelEvent as unknown as Record<string, unknown>
-          );
-        }
-        return;
-      }
-
       // Permission callbacks: perm:allow:<id> / perm:deny:<id>
       if (data.startsWith("perm:") && cb.message) {
         const parts = data.split(":");
         const decision = parts[1] as "allow" | "deny";
         const permId = parts[2];
+        const perm = this.permRelay.get(permId);
+
+        if (!perm || perm.status !== "pending") {
+          await this.callApi("answerCallbackQuery", {
+            callback_query_id: cb.id,
+            text: "Permission already resolved or expired.",
+          });
+          await this.editMessage(
+            cb.message.chat.id,
+            cb.message.message_id,
+            `${cb.message.text}\n\n*Already resolved or expired.*`,
+            { inline_keyboard: [] }
+          );
+          return;
+        }
+
+        await this.callApi("answerCallbackQuery", { callback_query_id: cb.id });
         this.permRelay.resolve(permId, decision);
 
         const outcomeText = decision === "allow" ? "Allowed via Telegram ✅" : "Denied ❌";

@@ -93,7 +93,7 @@ def emit_verdict_span(
     record["attributes"]["service.name"] = "aops-verdict-hooks"
     record["attributes"]["aops.surface"] = surface
 
-    username = os.environ.get("USER", os.environ.get("USERNAME", "unknown"))
+    username = os.environ.get("USER") or os.environ.get("USERNAME") or None
     exported = tracer_mod._build_and_export_spans(
         config=config,
         session_id=phoenix_session_id,

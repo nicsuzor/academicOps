@@ -169,7 +169,6 @@ export class StdioMcpServer {
       const detail = args.detail as string | undefined;
       const chatId = (args.chat_id as number) || defaultChatId;
       const replyTo = args.reply_to as number | undefined;
-      const feedback = args.feedback !== false;
 
       // FR-7.1: Determine whether voice reply is requested explicitly or via voice_replies setting
       let isVoice = false;
@@ -222,7 +221,6 @@ export class StdioMcpServer {
           buttons: args.buttons as Array<{ label: string; callback_data?: string; url?: string; web_app?: string }> | undefined,
           voice: isVoice,
           replyTo,
-          feedback,
           review: reviewArg,
         });
 

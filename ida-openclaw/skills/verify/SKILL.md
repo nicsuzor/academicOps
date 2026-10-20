@@ -28,7 +28,7 @@ Render an immediate `FAIL` on:
 - Bad premise or invalidated requirements.
 - Sentinel values or placeholder text in production outputs.
 - Silent exception swallowing without error logging.
-- Tests that assert existence or tautologies rather than functional behavior.
+- Tests that assert existence or tautologies rather than functional behavior, change-detector tests that restate what a file, config or directory holds today, or tests that would still pass with the change's plausible bug introduced.
 - Data that diverges from primary source records.
 - Edits made directly to runtime install directories instead of source repos.
 - Container or Dockerfile changes passed without building the image and showing changed content present in it, or stating plainly that the worker could not build.

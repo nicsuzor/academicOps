@@ -371,6 +371,9 @@ def normalize(client: str, event: str, raw: dict[str, Any], hooks_dir: Path) -> 
         or raw.get("conversationId")
         or raw.get("conversation_id")
         or kwargs.get("session_id", ""),
+        transcript_path=raw.get("transcript_path")
+        or raw.get("transcriptPath")
+        or kwargs.get("transcript_path", ""),
         agent_type=agent_type,
         tool_calls=tool_calls,
         raw=raw,

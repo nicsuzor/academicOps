@@ -19,10 +19,23 @@ export const MCP_TOOLS: ToolDefinition[] = [
         chat_id: { type: "integer", description: "Telegram chat ID (defaults to primary user)" },
         text: { type: "string", description: "Markdown text for chat (tier 1 and 2)" },
         detail: { type: "string", description: "Optional deep markdown for Details page (tier 3)" },
-        buttons: { type: "array", description: "Optional custom inline keyboard buttons" },
+        buttons: {
+          type: "array",
+          description:
+            "Inline option buttons, one per row. Attach one per answer whenever the reply asks Nic a question, recommendation first; a tap arrives as a button_tap channel event.",
+          items: {
+            type: "object",
+            properties: {
+              label: { type: "string" },
+              callback_data: { type: "string" },
+              url: { type: "string" },
+              web_app: { type: "string" },
+            },
+            required: ["label"],
+          },
+        },
         voice: { type: "boolean", description: "Send tier 1 as a spoken voice note" },
         reply_to: { type: "integer", description: "Telegram message ID to reply to" },
-        feedback: { type: "boolean", description: "Whether to attach 👍/👎 buttons (default true)" },
         review: {
           type: "object",
           description: "Attach PR diff review card",

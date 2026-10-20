@@ -45,6 +45,9 @@ export class PluginStore {
   private reviewsFile: string;
   private contextFile: string;
   private startedAt: number;
+  private seq: number = 1;
+  private lastCard: { chatId: number; messageId: number; text: string } | null = null;
+  private changeListeners: Array<(seq: number, type: string, data: any) => void> = [];
 
   constructor(stateDir: string) {
     this.stateDir = stateDir;
@@ -55,6 +58,40 @@ export class PluginStore {
     this.contextFile = join(stateDir, "context.json");
     this.startedAt = Date.now();
     this.initDirs();
+  }
+
+  public getSeq(): number {
+    return this.seq;
+  }
+
+  public nextSeq(type?: string, data?: any): number {
+    this.seq += 1;
+    if (type) {
+      for (const fn of this.changeListeners) {
+        try {
+          fn(this.seq, type, data);
+        } catch {
+          // Ignore listener error
+        }
+      }
+    }
+    return this.seq;
+  }
+
+  public onMutation(listener: (seq: number, type: string, data: any) => void) {
+    this.changeListeners.push(listener);
+    return () => {
+      const idx = this.changeListeners.indexOf(listener);
+      if (idx !== -1) this.changeListeners.splice(idx, 1);
+    };
+  }
+
+  public setLastCard(chatId: number, messageId: number, text: string) {
+    this.lastCard = { chatId, messageId, text };
+  }
+
+  public getLastCard(): { chatId: number; messageId: number; text: string } | null {
+    return this.lastCard;
   }
 
   private initDirs() {
@@ -101,6 +138,7 @@ export class PluginStore {
       updatedAt: new Date().toISOString(),
     };
     writeFileSync(this.anchorFile, JSON.stringify(updated, null, 2), "utf-8");
+    this.nextSeq("anchor", updated);
   }
 
   public getAnchor(): AnchorState | null {
@@ -145,6 +183,7 @@ export class PluginStore {
     });
     const trimmed = turns.slice(-maxTurns);
     writeFileSync(this.turnsFile, JSON.stringify(trimmed, null, 2), "utf-8");
+    this.nextSeq("turn_recorded", { direction, text });
   }
 
   public getRecentTurns(limit = 10): TurnRecord[] {
@@ -182,6 +221,7 @@ export class PluginStore {
     const filtered = existing.filter((r) => r.id !== id);
     filtered.push(entry);
     writeFileSync(this.reviewsFile, JSON.stringify(filtered, null, 2), "utf-8");
+    this.nextSeq("review", entry);
     return entry;
   }
 

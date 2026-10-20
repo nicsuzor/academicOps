@@ -113,5 +113,5 @@ model:
 - Keep each statement (`(1) [Title]: text #tag {metadata}`) on one line, or put its `{metadata}` alone on an indented continuation line. The parser rejects a tag after the metadata.
 - Write inference-bar text without commas, because the parser splits bar text on commas into separate rules.
 - Escape a literal underscore in statement text as `\_`, and keep unescaped `[` `]` `<` `>` out of statement prose. Escapes do not apply inside quoted `source` strings.
-- Validate with `npx -y @argdown/cli json --logParserErrors --throwExceptions <file>.argdown <outdir>`. On a syntax error, fix it from the parser message and retry, at most 3 times; if it still fails, halt and report the error.
+- Validate standalone Argdown files (authored in `argument-extraction`, `argument-audit`, or `argument-map`) with `npx -y @argdown/cli json --logParserErrors --throwExceptions <file>.argdown <outdir>`. Handback receipts and handover reports (`dump`, `premise-check`) follow syntax rules directly without invoking an external parser CLI or writing test scripts. On a syntax error in standalone files, fix it from the parser message and retry, at most 3 times; if it still fails, halt and report the error.
 - Then read the JSON and confirm every argument appears with its premises and reaches the main conclusion, through a relation or a conclusion title reused as a premise.

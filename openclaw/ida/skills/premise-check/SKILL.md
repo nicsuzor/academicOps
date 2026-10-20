@@ -16,7 +16,7 @@ Author or verify report arguments so every handback receipt links observed facts
 
 ## Report Shape
 
-End every evidence-backed report with a parser-valid Argdown block concluding `[Outcome]`, the direct answer to the incoming ask:
+End every evidence-backed report with a parser-valid Argdown block concluding `[Outcome]`, the direct answer to the incoming ask. Handback receipts follow the syntax rules directly; do not run an external parser CLI or write a test script to validate the block during handback:
 
 ```argdown
 ===

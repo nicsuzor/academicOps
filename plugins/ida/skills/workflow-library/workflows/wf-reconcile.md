@@ -21,16 +21,16 @@ Maintains truth over the task graph: establishes facts about in-flight work and 
    - **Open PRs**: Read review and check state with `gh pr view <n> --repo <owner/repo> --json state,isDraft,mergedAt,reviewDecision,statusCheckRollup`. `reviewDecision: CHANGES_REQUESTED` or a failing check in `statusCheckRollup` routes the task to `queued` or a follow-up task, never `done` or `review`. Otherwise, a `review` task whose PR is still open is waiting on the repository to merge it; leave it until the PR merges or closes.
 3. **The Review Lifecycle**: Apart from a task waiting on its open PR (step 2), `review` means a worker needs help to finish the task; it is transient, never a waiting state. Under the bazaar model, any pass reading a `review` task owns the outcome in that pass and mints any needed tasks; nothing is deferred to a later sweep or the original dispatcher. Bring the record to reality and take exactly one outcome:
    - `ready` or `queued`: not finished properly, an agent can finish it.
-   - `partial` plus a new review task queued for an agent, wired so the source cannot complete before it (source `depends_on` it).
+   - `partial` plus a new review task queued for an agent, wired so the source cannot complete before it (source `depends_on` it). Dispatch or queue the review task so it does not sit idle.
    - `done` plus a queued follow-up task (clean split of partly-finished work).
    - `failed`: terminal failure with documented root cause.
      Nothing is left in `review`.
-4. **Settle decisions before escalation**: Escalation is one level per hop on the record, never jumping tiers. Each agent escalates at most one level; only the front agent at the top of the chain speaks outside the framework. Settle open decisions yourself first where record or reversible judgment allows. If an unrecorded fact, external commitment, or reserved field forces escalation, reduce to a single one-line question in `reason`, queue a review task for the next escalation level, wire `depends_on`, and transition source task to `partial` (outcome 2).
+4. **Settle decisions before escalation**: Escalation is one level per hop on the record, never jumping tiers. Each agent escalates at most one level; only the front agent at the top of the chain speaks outside the framework. Settle open decisions yourself first where record or reversible judgment allows. If an unrecorded fact, external commitment, or reserved field forces escalation, reduce to a single one-line question in `reason`, queue a review task for the next escalation level, wire `depends_on`, dispatch or queue it, and transition source task to `partial` (outcome 2).
 5. **Check returned work on the papers**: Verify the account of returned work on the record before deciding what reaches the user:
    - _Chain of evidence_: verify `pr_url`, `completion_evidence`, or named artifact exists.
    - _Soundness_: verify cited evidence actually answers acceptance criteria. If insufficient, return to `ready`/`queued` or `partial` with an agent review task (outcome 1 or 2); never escalate unproven claims to the user.
    - _Liveness_: verify question is still live; discard moot items settled by events.
-6. **Aged tasks and stale claims**: Stale `in_progress` tasks with no live claim (>24h unmodified) reset to `queued`. Rot (>14d in `ready`/`queued`) demotes to `status: inbox`. Never route aged items to `review`.
+6. **Reset stale claims**: Stale `in_progress` tasks with no live claim (>24h unmodified without active session or worker) reset to `queued`. Never move a claimed task backwards while an active worker holds it.
 7. **Demote affected tasks**: Set unblocked dependents, siblings of landed work, rot (>14d in `ready`/`queued`), and invalidated assumption nodes to `status: inbox` with explanatory annotations.
 8. **Cancel on world-facts**: Cancel only on affirmative evidence recorded in the node body:
    - _Referent destroyed_: target artifact was deleted, verified across checkouts and refs.
@@ -38,10 +38,13 @@ Maintains truth over the task graph: establishes facts about in-flight work and 
    - _Premise falsified_: named assumption or precondition no longer holds.
    - _Source-stated retirement_: opportunity's source confirms it is no longer open, or explicit principal instruction ("drop X"). Set `status: cancelled` with reason starting `not ripe:` quoting statement and source.
 9. **Two-step mutation contract**: Write annotation/evidence to markdown body first, then mutate frontmatter `status` via `pkb.update_task` (never `batch_update`), then read back to confirm status.
-10. **Daily note integration**: Every reconcile pass writes items that have reached the user under the one-level escalation rule (e.g. review tasks reaching the front agent `ida` at the top of the chain requiring user decision, or open questions/asks needing user choice) to today's daily note (PKB note `YYYYMMDD-daily`) in the named section `## With you`. For each item reaching the user, write a concise entry with its title, pointers (task ID, PR URL, artifact), and clear choice. Reconcile owns writing escalated items to `## With you`; it must not append unowned sections outside `## With you`.
+10. **Escalate**: Settle items reaching the user under the one-level escalation rule (e.g. review tasks reaching the front agent `ida` at the top of the chain requiring user decision, or open questions/asks needing user choice). When running standalone, write them to today's daily note (PKB note `YYYYMMDD-daily`) in `## With you`. When invoked as part of an enclosing run (such as the daily note pipeline), return the escalated items to the caller to fold into `## With you` during its single atomic write. Reconcile owns writing escalated items to `## With you`; it must not append unowned sections outside `## With you`.
 
 ## Must not
 
+- Must not run concurrently with another reconcile: maintain single-flight execution (one reconcile at a time; halt immediately if another reconcile is active).
+- Must not move a claimed (`in_progress`) task backwards while an active worker holds it.
+- Must not leave minted agent review tasks in review or unowned (minted review tasks must be queued or dispatched).
 - Must not write `done` on any evidence other than an observed merged PR or a clean finished part of a split task.
 - Must not leave tasks in `review` or route tasks to `review` as a waiting state, except a task whose open PR awaits merge.
 - Must not defer `review` outcomes to a later pass or to the original dispatcher.

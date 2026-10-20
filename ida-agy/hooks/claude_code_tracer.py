@@ -1315,7 +1315,7 @@ def _known_span_parents(current_trace: dict) -> dict[str, str | None]:
 def _build_and_export_spans(
     config: dict,
     session_id: str,
-    username: str,
+    username: str | None,
     span_records: list[dict],
     agent_id: str | None = None,
     parent_session_id: str | None = None,
@@ -1683,16 +1683,17 @@ def _complete_turn(
     # turns, which are NOT nested inside the dispatching session's trace (see
     # the comment on the Agent/Task branch in handle_pre_tool). Subagent and
     # parent are connected instead via the shared "session.id" attribute.
-    username = state.get("username", "unknown")
+    username = state.get("username")
     phoenix_session_id, agent_id, parent_session_id = _resolve_agent_and_parent_ids(state)
     cwd = state.get("cwd") or resolve_cwd(None, state)
     agent_name = state.get("agent_name") or resolve_agent_name()
     root_attrs: dict[str, Any] = {
         "openinference.span.kind": "CHAIN",
         "session.id": phoenix_session_id,
-        "user.id": username,
         "turn_number": turn_number,
     }
+    if username:
+        root_attrs["user.id"] = username
     if agent_id:
         root_attrs["agent.id"] = agent_id
         root_attrs["subagent.id"] = agent_id
@@ -1887,10 +1888,7 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
             prefer_env=True,
         )
         state["session_start_ns"] = now_ns
-        state["username"] = os.environ.get(
-            "USER",
-            os.environ.get("USERNAME", "unknown"),
-        )
+        state["username"] = os.environ.get("USER") or os.environ.get("USERNAME") or None
         state["turn_number"] = 0
 
     resolved_cwd = resolve_cwd(data, state)
@@ -2084,10 +2082,7 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
             prefer_env=True,
         )
         state["session_start_ns"] = now_ns
-        state["username"] = os.environ.get(
-            "USER",
-            os.environ.get("USERNAME", "unknown"),
-        )
+        state["username"] = os.environ.get("USER") or os.environ.get("USERNAME") or None
         state["turn_number"] = 0
 
     resolved_cwd = resolve_cwd(data, state)
@@ -2258,7 +2253,7 @@ def _finish_tool_call(
             state,
             data,
         )
-        username = state.get("username", "unknown")
+        username = state.get("username")
         agent_name = (
             _subagent_name(subagent.get("agent_type"))
             if subagent is not None
@@ -2442,7 +2437,7 @@ def _emit_event_span(
     _build_and_export_spans(
         config=config,
         session_id=phoenix_session_id,
-        username=state.get("username", "unknown"),
+        username=state.get("username"),
         span_records=[
             {
                 "trace_id_hex": current_trace["trace_id"],

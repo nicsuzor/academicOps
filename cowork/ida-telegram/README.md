@@ -14,10 +14,8 @@ Ida's custom Telegram channel and Mini App plugin for Claude Code.
   - `ask_user` tool and `PreToolUse` hook for `AskUserQuestion`.
   - Vertical numbered keyboard options with recommendation first.
   - Never blocks or assumes answers; delivers answers as channel notification events upon reply.
-- **Feedback & Learning:**
-  - Inline `👍` and `👎` on replies.
-  - Upvotes recorded to trace sinks without waking the agent.
-  - Downvotes prompt critique tags (`Too verbose`, `Wrong premise`, etc.) and emit a single `feedback_down` event to invoke `/ida:learn`.
+- **Option Buttons:**
+  - `reply` takes `buttons` (one per row) for the answers to a question asked in the reply; a tap edits the card to `Selected: <label> ✅` and emits a `button_tap` channel event.
 - **Mini App Security, Details, Review, Questions & Anchor:**
   - Loopback-only Bun HTTP server (`127.0.0.1:<port>`) serving `/app/*` and `/api/app/*`.
   - Telegram `initData` HMAC-SHA256 validation with 1-hour expiration and `allowFrom` whitelist check.

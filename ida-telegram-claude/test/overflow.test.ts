@@ -77,7 +77,6 @@ describe("Progressive disclosure: Overflow handling", () => {
     const { TelegramBotClient } = await import("../src/telegram/bot.js");
     const { PluginStore } = await import("../src/store.js");
     const { QuestionBroker } = await import("../src/telegram/questions.js");
-    const { FeedbackManager } = await import("../src/telegram/feedback.js");
     const { PermissionRelay } = await import("../src/mcp/permissions.js");
     const { mkdtempSync, rmSync } = await import("node:fs");
     const { join } = await import("node:path");
@@ -94,7 +93,6 @@ describe("Progressive disclosure: Overflow handling", () => {
 
     const store = new PluginStore(config.stateDir);
     const broker = new QuestionBroker(config.stateDir);
-    const feedback = new FeedbackManager(config.stateDir);
     const permRelay = new PermissionRelay();
 
     const apiCalls: Array<{ method: string; body: any }> = [];
@@ -107,7 +105,7 @@ describe("Progressive disclosure: Overflow handling", () => {
     }) as typeof fetch;
 
     try {
-      const bot = new TelegramBotClient(config, broker, feedback, permRelay, () => {});
+      const bot = new TelegramBotClient(config, broker, permRelay, () => {});
       const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
 
       const resp = await mcp.handleMessage({
@@ -152,7 +150,6 @@ describe("Progressive disclosure: Overflow handling", () => {
     const { TelegramBotClient } = await import("../src/telegram/bot.js");
     const { PluginStore } = await import("../src/store.js");
     const { QuestionBroker } = await import("../src/telegram/questions.js");
-    const { FeedbackManager } = await import("../src/telegram/feedback.js");
     const { PermissionRelay } = await import("../src/mcp/permissions.js");
     const { mkdtempSync, rmSync, writeFileSync } = await import("node:fs");
     const { join } = await import("node:path");
@@ -171,7 +168,6 @@ describe("Progressive disclosure: Overflow handling", () => {
 
     const store = new PluginStore(config.stateDir);
     const broker = new QuestionBroker(config.stateDir);
-    const feedback = new FeedbackManager(config.stateDir);
     const permRelay = new PermissionRelay();
 
     const apiCalls: Array<{ method: string; body: any }> = [];
@@ -184,7 +180,7 @@ describe("Progressive disclosure: Overflow handling", () => {
     }) as typeof fetch;
 
     try {
-      const bot = new TelegramBotClient(config, broker, feedback, permRelay, () => {});
+      const bot = new TelegramBotClient(config, broker, permRelay, () => {});
       const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
 
       const resp = await mcp.handleMessage({
@@ -218,7 +214,6 @@ describe("Progressive disclosure: Overflow handling", () => {
     const { TelegramBotClient } = await import("../src/telegram/bot.js");
     const { PluginStore } = await import("../src/store.js");
     const { QuestionBroker } = await import("../src/telegram/questions.js");
-    const { FeedbackManager } = await import("../src/telegram/feedback.js");
     const { PermissionRelay } = await import("../src/mcp/permissions.js");
     const { mkdtempSync, rmSync } = await import("node:fs");
     const { join } = await import("node:path");
@@ -235,7 +230,6 @@ describe("Progressive disclosure: Overflow handling", () => {
 
     const store = new PluginStore(config.stateDir);
     const broker = new QuestionBroker(config.stateDir);
-    const feedback = new FeedbackManager(config.stateDir);
     const permRelay = new PermissionRelay();
 
     const apiCalls: Array<{ method: string; body: any }> = [];
@@ -248,7 +242,7 @@ describe("Progressive disclosure: Overflow handling", () => {
     }) as typeof fetch;
 
     try {
-      const bot = new TelegramBotClient(config, broker, feedback, permRelay, () => {});
+      const bot = new TelegramBotClient(config, broker, permRelay, () => {});
       const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
 
       const resp = await mcp.handleMessage({
@@ -275,7 +269,7 @@ describe("Progressive disclosure: Overflow handling", () => {
       const flatButtons = (apiCalls[0].body.reply_markup?.inline_keyboard || []).flat();
       const detailsButton = flatButtons.find((b: any) => b.text === "🔍 Details");
       expect(detailsButton).toBeUndefined();
-      expect(flatButtons.map((b: any) => b.text)).toEqual(["👍", "👎"]);
+      expect(flatButtons).toEqual([]);
     } finally {
       globalThis.fetch = origFetch;
       rmSync(stateDir, { recursive: true, force: true });

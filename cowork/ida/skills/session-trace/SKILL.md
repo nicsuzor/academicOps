@@ -1,49 +1,64 @@
 ---
 name: session-trace
-description: Export OpenTelemetry spans from Arize Phoenix to inspect session execution, tool calls, errors, latencies, token usage, or subagent dispatches. Use when reviewing session performance or resolving truncated values from transcripts. Not for live tails.
+description: Read what a past session actually did from the Arize Phoenix span store -- assemble a readable markdown transcript with step durations, token usage and cost, answer "how did this decision get made", or query spans for tool calls, errors, latencies, token spend and subagent dispatches. Use when asked how or why an agent decided something, what a session or worker really ran, where time or tokens went, or to resolve values a local transcript truncated. Not for live tails, or for launching and driving a run.
 ---
 
 # Session Trace
 
-Export OpenTelemetry spans from Phoenix for post-hoc session auditing. Phoenix retains untruncated tool calls, token usage, and subagent trees.
+Phoenix keeps every span whole: untruncated tool inputs and outputs, model output, token
+counts and millisecond latencies. Read it rather than a session's own account of itself.
 
-## Quick Start
+## Transcript: how did this decision get made
 
-Phoenix is reached through the services MCP proxy (portal_codemode_search / portal_codemode_execute), like the PKB.
+```bash
+python3 "${CLAUDE_SKILL_DIR}/scripts/phoenix_transcript.py" <session-id | slug | trace-id> --out <dir>/<slug>.transcript.md
+```
 
-## Token Cost by Session / Task
+- Configuration is flags or environment: `--base-url` or `$PHOENIX_BASE_URL` /
+  `$PHOENIX_COLLECTOR_ENDPOINT` (the Phoenix HTTP root, e.g. `http://phoenix:6006`), and
+  `--project` or `$PHOENIX_PROJECT_NAME`. Spans already fetched another way render with
+  `--from-file spans.json`.
+- One paged fetch on `session.id`; a thousand-span session takes seconds.
+- It writes two files and prints the summary (totals, per-turn table, cost by model,
+  slowest steps, errors):
+  - `<slug>.transcript.md` -- the full record: one `## Turn N` per turn, one `### N.M`
+    per model or tool call with its duration, tokens and cost, payloads folded in
+    `<details>`, nothing truncated.
+  - `<slug>.outline.md` -- prompts, model calls with their text, and replies; each tool
+    call is one bullet under the model call that made it, labelled with the call's own
+    action summary (agy `toolAction`, Claude Code `description`), with a line beneath
+    naming what it acted on: the calls and literal arguments inside a code-mode block,
+    else the command, path or query.
 
-Method, in brief (the script docstring has the full account):
+Read the summary, then the outline for the turns that bear on the question. Open a step's
+payload by its anchor (`grep -n 'id="t5-3"' <slug>.transcript.md`) rather than reading the
+whole transcript, because that is where the cost goes. Answer with the turn and step
+anchors where the decision was made, and hand back the transcript path.
 
-- `LLM` spans: `llm.model_name`, `llm.token_count.prompt` (includes cache tokens), `.completion`, `.prompt_details.cache_read`, `.prompt_details.cache_write`. Fresh input is `prompt - cache_read - cache_write`.
-- Exact re-emissions (same `session.id`, `start_time`, `output.value`; about a sixth of Opus spans) are collapsed before summing.
-- `session.id` is the unit; subagents inherit it. The tracer drops task IDs matching the project name or placeholders, so sessions without an explicit task do not stamp `task.id`; the task column is recovered from `TOOL` spans (`claim_task`, `release_task`, `get_task`, `update_task`, `append`, ...) whose `input.value` names an id. `--by task` attributes each LLM call to the task most recently claimed, else read, before it.
-- Agent/role is a label: `--labels` file, else the name the session printed in a `ListAgents` call, else the channel it fronts, else its first human prompt in the window.
-- Gemini spans carry no token counts and appear as calls only. Unpriced models cost 0 and are named in the footer.
-- Prices are Anthropic list prices per million tokens (cache read 0.1x input, 5-minute cache write 1.25x). Claude Code subscription usage is not invoiced at these rates; the USD column is comparable spend, not a bill.
+To find the session: a full id, a slug, or a trace id all resolve. Given only a task or a
+time, find the session with Recipe A or F in [references/sql-recipes.md](references/sql-recipes.md).
 
-## Span Data Reference
+## Other exports
 
-| Kind | Target Fields |
-| - | - |
-| `TOOL` | `tool.name`, `input.value`, `output.value`, `tool.json_schema` |
-| `LLM` | `llm.model_name`, `llm.token_count.*`, `llm.prompt_details.*` |
-| `AGENT` | `agent.name`, `input.value` (dispatch prompt), `output.value` (status ack) |
-| `CHAIN` | `claude-code-turn` turn root, prompt in `input.value`, result in `output.value` |
+- `scripts/phoenix_trace.py <session-id>` -- the span forest as JSON (`full`, with
+  `roots` and `orphans`) and a controller view. Check `meta.session_error_count`,
+  `orphans`, `meta.trace_contamination` (traces shared with other sessions), and rank
+  `subagents[]` by `collapsed_span_count` for the expensive branches.
+- `scripts/phoenix_token_cost.py --since <time>` -- spend ranked across sessions, or
+  `--by task`. Prices are list prices per million tokens; the dollar column is
+  comparable spend, not an invoice. Gemini spans may carry no token counts.
 
-Output produces `<session-id>.trace.json` (`full` forest with `roots` and `orphans`) and `<session-id>.trace.controller.json` (`controller` summary). In controller exports, `session_*` fields aggregate all subagent work, while `controller_*` fields isolate the root turn.
+## Ad-hoc queries
 
-## Review Checklist
+The span store is also reachable through the `services` MCP proxy:
+`portal_codemode_execute` calling `codemode.phoenix_execute` with an async Python block
+that runs `await call_tool("executeSql", {"sql": ...})` (several per block is fine). Read
+[references/span-store.md](references/span-store.md) before writing a query, then take
+the recipe from [references/sql-recipes.md](references/sql-recipes.md).
 
-1. **Errors**: Check `meta.session_error_count` and inspect spans with `status_code == "ERROR"`.
-2. **Orphans**: Review `orphans` array for unattached spans.
-3. **Contamination**: Check `meta.trace_contamination` to verify no cross-session span mixing.
-4. **Token spend**: Compare `prompt` vs `cache_read` in `meta.session_token_totals`.
-5. **Subagents**: Rank `subagents[]` by `collapsed_span_count` to identify expensive execution branches.
-6. **Large payloads**: Inspect spans with high `input_chars` or `output_chars` in full export.
+## Constraints
 
-## Key Constraints
-
-- Filter on `session.id`, never `trace_id` (a trace can span multiple sessions).
-- Root `CHAIN` spans have null parent IDs. Subagent spans carry `agent.id` and the root `session.id`.
-- Match short session slugs (e.g. `413914d7`) to find the full UUID.
+- Filter on `session.id`, never `trace_id`: one trace can hold several sessions.
+- Subagents share the dispatching session's `session.id`; a spawned worker session
+  carries no attribute naming its parent (Recipe F correlates them).
+- Score what a session did on its tool-call spans, not on what its report says.

@@ -205,7 +205,7 @@ def _export_tool_span_agy(
     _build_and_export_spans(
         config=config,
         session_id=phoenix_session_id,
-        username=state.get("username", "unknown"),
+        username=state.get("username"),
         span_records=[span_record],
         agent_id=agent_id,
         parent_session_id=parent_session_id,
@@ -482,10 +482,7 @@ def _init_turn_state_agy(
         prefer_env=True,
     )
     state["session_start_ns"] = state.get("session_start_ns") or now_ns
-    state["username"] = os.environ.get(
-        "USER",
-        os.environ.get("USERNAME", "unknown"),
-    )
+    state["username"] = os.environ.get("USER") or os.environ.get("USERNAME") or None
     state["cwd"] = data.get("cwd") or state.get("cwd") or os.getcwd()
     client_agent = resolve_client_agent_name(data)
     if client_agent:
@@ -933,7 +930,7 @@ def handle_stop(data: dict, config: dict) -> None:
         _build_and_export_spans(
             config=config,
             session_id=phoenix_session_id,
-            username=state.get("username", "unknown"),
+            username=state.get("username"),
             span_records=records,
             agent_id=agent_id,
             parent_session_id=parent_session_id,
