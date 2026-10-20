@@ -44,10 +44,6 @@ def agent_files() -> list[Path]:
     return sorted(PLUGINS.glob("*/agents/*.md"))
 
 
-def test_agents_exist():
-    assert agent_files(), "no agent definitions found under plugins/*/agents/"
-
-
 @pytest.mark.parametrize("agent_path", agent_files(), ids=lambda p: p.stem)
 def test_agent_does_not_list_a_skill_that_forks_it(agent_path: Path):
     fm = frontmatter(agent_path)

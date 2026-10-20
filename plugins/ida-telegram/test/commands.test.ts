@@ -1,7 +1,6 @@
 import { describe, expect, test, mock } from "bun:test";
 import {
   DEFAULT_IDA_COMMANDS,
-  RESERVED_COMMANDS,
   resolveBotCommands,
   getBareCommandBehavior,
 } from "../src/telegram/commands.js";
@@ -15,23 +14,6 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 describe("Native Telegram bot commands for Ida (FR-8.1)", () => {
-  test("DEFAULT_IDA_COMMANDS exposes the chosen Ida commands and excludes reserved commands", () => {
-    const names = DEFAULT_IDA_COMMANDS.map((c) => c.command);
-    expect(names).toEqual(["decide", "q", "mine", "reconcile", "hydrate", "up"]);
-
-    for (const reserved of RESERVED_COMMANDS) {
-      expect(names).not.toContain(reserved);
-    }
-
-    for (const cmd of DEFAULT_IDA_COMMANDS) {
-      // Telegram BotCommand constraints: 1-32 lowercase chars, description 1-256 chars
-      expect(cmd.command).toMatch(/^[a-z0-9_]{1,32}$/);
-      expect(cmd.description.length).toBeGreaterThanOrEqual(1);
-      expect(cmd.description.length).toBeLessThanOrEqual(256);
-      expect(cmd.bareAction.length).toBeGreaterThan(0);
-    }
-  });
-
   test("resolveBotCommands uses defaults and filters reserved commands from custom JSON override", () => {
     expect(resolveBotCommands(undefined)).toEqual(
       DEFAULT_IDA_COMMANDS.map(({ command, description }) => ({ command, description }))

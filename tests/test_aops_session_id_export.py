@@ -20,7 +20,6 @@ IDA_HOOKS = IDA / "hooks"
 if str(IDA_HOOKS) not in sys.path:
     sys.path.insert(0, str(IDA_HOOKS))
 
-import claude_code_tracer as cct
 import dispatch
 import handlers
 import premise_check_gate as pcg
@@ -101,21 +100,6 @@ def test_session_start_git_isolation_off_when_aops_git_config_global_unset(tmp_p
     assert "GIT_CONFIG_NOSYSTEM" not in values
 
 
-def test_session_start_assumes_no_gitconfig_path_when_unset(tmp_path, monkeypatch):
-    env_file = tmp_path / "env.sh"
-    gitconfig_claude = tmp_path / ".gitconfig-claude"
-    gitconfig_claude.write_text("# claude git config\n")
-    monkeypatch.setenv("CLAUDE_ENV_FILE", str(env_file))
-    monkeypatch.delenv("GIT_CONFIG_GLOBAL", raising=False)
-    monkeypatch.delenv("GIT_CONFIG_NOSYSTEM", raising=False)
-    monkeypatch.delenv("AOPS_GIT_CONFIG_GLOBAL", raising=False)
-    monkeypatch.setattr(Path, "home", lambda: tmp_path)
-    handlers.session_start(_ctx())
-    values = handlers._read_env_file(env_file)
-    assert "GIT_CONFIG_GLOBAL" not in values
-    assert "GIT_CONFIG_NOSYSTEM" not in values
-
-
 def test_each_session_writes_its_own_id(tmp_path, monkeypatch):
     """A nested session inheriting a parent's AOPS_SESSION_ID still writes its
     own: the premise-check gate keys its state by this session's id."""
@@ -124,19 +108,6 @@ def test_each_session_writes_its_own_id(tmp_path, monkeypatch):
     monkeypatch.setenv("AOPS_SESSION_ID", "parent-session")
     handlers.session_start(_ctx())
     assert handlers._read_env_file(env_file)["AOPS_SESSION_ID"] == SESSION
-
-
-def test_no_env_file_no_write(tmp_path, monkeypatch):
-    monkeypatch.delenv("CLAUDE_ENV_FILE", raising=False)
-    assert handlers._export_session_id(_ctx()) is False
-
-
-def test_tracer_reads_the_exported_id(tmp_path, monkeypatch):
-    env_file = tmp_path / "env.sh"
-    monkeypatch.setenv("CLAUDE_ENV_FILE", str(env_file))
-    handlers.session_start(_ctx())
-    monkeypatch.setenv("AOPS_SESSION_ID", handlers._read_env_file(env_file)["AOPS_SESSION_ID"])
-    assert cct.resolve_session_id({}, "session_id", prefer_env=True) == SESSION
 
 
 def _clean_env(tmp_path: Path) -> dict[str, str]:

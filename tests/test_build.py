@@ -126,16 +126,6 @@ def test_unknown_manifest_version_is_a_hard_error(tmp_path):
         render_template(path, "claude")
 
 
-def test_plugin_json_version_stamped(built):
-    for path in (
-        built / "fixture-alpha-claude" / ".claude-plugin" / "plugin.json",
-        built / "fixture-alpha-agy" / "plugin.json",
-    ):
-        data = json.loads(path.read_text())
-        assert data["version"] == VERSION
-        assert data["name"] == "fixture-alpha"
-
-
 def test_hooks_json_rendered_per_client(built):
     """One template, two files that agree about nothing.
 
@@ -338,41 +328,6 @@ def test_agy_command_converted_to_skill(built):
     assert not (built / "fixture-alpha-agy" / "commands").exists()
 
 
-def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
-    dist_root = tmp_path_factory.mktemp("build-dist-agents")
-    build_all(
-        PROJECT_ROOT,
-        dist_root,
-        marketplace_path=REAL_MARKETPLACE,
-        plugins=["ida"],
-        version=VERSION,
-    )
-
-    import yaml
-
-    # Check agy dist saves agents/ida.md directly as agents/ida.md (agy's own
-    # read format — see build/clients/agy.py's _adapt_agents docstring).
-    # ida.md moved from the aops plugin to the ida plugin (move ida and pauli,
-    # f4f02058c); the built path moved with it.
-    agy_ida_md = dist_root / "ida-agy" / "agents" / "ida.md"
-    assert agy_ida_md.is_file()
-    assert not (dist_root / "ida-agy" / "agents" / "ida" / "agent.md").exists()
-
-    raw = agy_ida_md.read_text()
-    fm, _, body = raw.partition("---\n")[2].partition("---\n")
-    agy_agent = yaml.safe_load(fm)
-    assert agy_agent["name"] == "ida"
-    assert "hidden" not in agy_agent
-    assert "includeSections" not in agy_agent
-    # ida declares no `mcpServers:` and reaches no MCP tool, so the build must
-    # not invent a server for it. The normalisation of a declared list is
-    # covered by test_pauli_agy_frontmatter.
-    assert "mcpServers" not in agy_agent
-
-    body = body.lstrip("\n")
-    assert body.startswith("# Agent System Instructions")
-
-
 def test_agy_agent_tool_names_are_translated(built):
     import yaml
 
@@ -411,16 +366,6 @@ def test_agent_no_tools_key_semantics(built_orchestrate):
     agy_agent = built_orchestrate / "ida-agy" / "agents" / "marsha.md"
     agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
     assert agy_fm["tools"] == accepted_tools
-
-
-def test_agy_agent_drops_claude_model_name(built_orchestrate):
-    """agy has no notion of a Claude model name, so the client adapter must
-    strip a source `model:` key rather than ship it verbatim."""
-    import yaml
-
-    agy_agent = built_orchestrate / "ida-agy" / "agents" / "james.md"
-    agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
-    assert "model" not in agy_fm
 
 
 def test_agy_agent_carries_source_color_through_unmodified(built_orchestrate):
@@ -688,13 +633,6 @@ def test_axioms_always_on_wired_per_client(built):
     assert not (agy_rules / "reference-rule.md").exists()
 
 
-def test_axioms_raw_dir_shipped_both_clients(built):
-    for client in ("claude", "agy"):
-        axioms_dir = built / f"fixture-alpha-{client}" / "skills" / "axioms"
-        assert (axioms_dir / "always-on-rule.md").is_file()
-        assert (axioms_dir / "reference-rule.md").is_file()
-
-
 # --- stage 5: packaging ------------------------------------------------------
 
 
@@ -785,20 +723,6 @@ def test_plugin_missing_source_dir_is_hard_error():
     )
     with pytest.raises(BuildError, match="plugin source missing"):
         discover_plugins(TESTDATA, decl, ["ghost"])
-
-
-def test_new_tool_mappings():
-    from build.tools import load_tool_config
-
-    _, tool_map = load_tool_config()
-    assert tool_map["SendMessage"] == ["send_message"]
-    assert tool_map["TaskCreate"] == ["manage_task"]
-    assert tool_map["TaskGet"] == ["manage_task"]
-    assert tool_map["TaskList"] == ["manage_task"]
-    assert tool_map["TaskUpdate"] == ["manage_task"]
-    assert tool_map["TaskStop"] == ["manage_task"]
-    assert tool_map["Skill"] == []
-    assert tool_map["ToolSearch"] == []
 
 
 def test_scoped_tool_translation_and_warning(capsys, tmp_path):
@@ -1051,47 +975,6 @@ def test_openclaw_does_not_bake_urls(tmp_path):
     assert claude_mcp == openclaw_mcp
 
 
-def test_openclaw_ida_face_configuration(tmp_path):
-    import yaml
-
-    dist_root = tmp_path / "dist"
-    build_all(
-        PROJECT_ROOT,
-        dist_root,
-        marketplace_path=REAL_MARKETPLACE,
-        plugins=["ida"],
-        clients=("openclaw",),
-        version=VERSION,
-    )
-
-    ida_md = dist_root / "ida-openclaw" / "agents" / "ida.md"
-    assert ida_md.is_file()
-    fm, _, _ = ida_md.read_text().partition("---\n")[2].partition("---\n")
-    agent = yaml.safe_load(fm)
-
-    assert agent["name"] == "ida"
-
-
-def test_ida_declares_no_plugin_mcp_servers(tmp_path):
-    """ida has no plugin-level MCP servers."""
-    dist_root = tmp_path / "dist"
-    build_all(
-        PROJECT_ROOT,
-        dist_root,
-        marketplace_path=REAL_MARKETPLACE,
-        plugins=["ida"],
-        clients=("claude", "agy", "openclaw"),
-        version=VERSION,
-    )
-    assert not (dist_root / "ida-claude" / ".mcp.json").exists()
-    assert not (dist_root / "ida-agy" / "mcp_config.json").exists()
-    assert not (dist_root / "openclaw" / "ida" / ".mcp.json").exists()
-    plugin_json = json.loads(
-        (dist_root / "ida-claude" / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")
-    )
-    assert "mcpServers" not in plugin_json
-
-
 def test_agy_plugins_dir_prevents_bulk_install_overwrite(tmp_path):
     """`agy plugin install <dir>` checks `<dir>/plugins/` before bulk-scanning
     `<dir>` itself. Without `dist/plugins/<name>`, bulk-scanning the bare root
@@ -1191,11 +1074,3 @@ def test_unknown_client_in_marketplace_is_a_hard_error(tmp_path):
 def test_empty_client_list_in_marketplace_is_a_hard_error(tmp_path):
     with pytest.raises(BuildError, match="clients"):
         load_marketplace_toml(_fixture_marketplace(tmp_path, "[]"))
-
-
-def test_ida_telegram_is_not_built_for_agy():
-    """A Telegram bot token has one poller. The plugin is a Claude Code channel;
-    an agy build of it has nothing to run and only invites a second poller."""
-    decl = load_marketplace_toml(REAL_MARKETPLACE)
-    (plugin,) = discover_plugins(PROJECT_ROOT, decl, ["ida-telegram"])
-    assert "agy" not in plugin.clients

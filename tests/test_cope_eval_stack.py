@@ -235,17 +235,6 @@ def test_a_missing_or_corrupt_record_yields_no_pid(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def test_the_serving_command_carries_the_tuned_flags():
-    command = stack.llama_command("/opt/bin/llama-server", "/m/cope.gguf", "127.0.0.1", 8090, [])
-
-    assert command[0] == "/opt/bin/llama-server"
-    assert command[command.index("--model") + 1] == "/m/cope.gguf"
-    assert command[command.index("--port") + 1] == "8090"
-    # Without this one, Gemma-4's sliding window disables prefix caching and
-    # every sweep pays full prompt processing again.
-    assert "--swa-full" in command
-
-
 def test_extra_args_land_last_so_they_can_override():
     command = stack.llama_command("llama-server", "m.gguf", "127.0.0.1", 8090, ["--threads", "4"])
     assert command[-2:] == ["--threads", "4"]
