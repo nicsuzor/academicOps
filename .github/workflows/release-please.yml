@@ -5,12 +5,13 @@ on:
     inputs:
       release_as:
         description: "Override next version (e.g. 1.2.4)"
-        required: true
+        required: false
         type: string
 
   push:
     branches:
       - dev
+      - release/v1.0-rc0
 
 permissions:
   contents: write
@@ -28,6 +29,7 @@ jobs:
           token: ${{ secrets.AOPS_DIST_PAT }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+          target-branch: ${{ github.ref_name }}
           release-as: ${{ inputs.release_as}}
 
       - name: Checkout PR branch
