@@ -4,6 +4,10 @@
 CLI surface (`~/.claude/plugins/`):
   - cache/*/*/<version>/ dirs not referenced by installed_plugins.json
   - .install-manifests/<plugin>@<marketplace>.json whose marketplace dir is gone
+  - uninstalls every aops plugin from @academicOps
+  - disables claude.ai-synced copies (~/.claude/plugins/synced/<org>_<user>/<name>~g2)
+  - strips enabledPlugins in ~/.claude/settings*.json absent from dist/.claude-plugin/marketplace.json or naming @academicOps
+  - empties ~/.claude/plugins/.trash/
 
 Desktop GUI surface (`~/Library/Application Support/Claude/
 local-agent-mode-sessions/<account>/<surface>/rpm/`):
@@ -15,7 +19,9 @@ from __future__ import annotations
 
 import json
 import shutil
+import subprocess
 from pathlib import Path
+from typing import Any
 
 STALE_PLUGIN_NAMES = {
     "aops",
@@ -38,16 +44,35 @@ def get_aops_plugin_names() -> set[str]:
     toml_path = Path(__file__).resolve().parent.parent / "build" / "marketplace.toml"
     if toml_path.exists():
         data = tomllib.loads(toml_path.read_text(encoding="utf-8"))
-        return {p["name"] for p in data["plugins"]}
-    return set()
+        return {p["name"] for p in data.get("plugins", [])}
+    return {"ida", "rbg", "tools", "aops-debug", "ida-telegram"}
 
 
-def is_aops_plugin(p: dict) -> bool:
-    name = p.get("name", "")
-    mp_name = p.get("marketplaceName", "")
-    display = p.get("displayName", "")
+def get_dist_plugin_names() -> set[str]:
+    dist_manifest = (
+        Path(__file__).resolve().parent.parent / "dist" / ".claude-plugin" / "marketplace.json"
+    )
+    if dist_manifest.exists():
+        try:
+            data = json.loads(dist_manifest.read_text(encoding="utf-8"))
+            return {p["name"] for p in data.get("plugins", [])}
+        except Exception:
+            pass
+    return get_aops_plugin_names()
+
+
+def is_aops_plugin(p: dict[str, Any]) -> bool:
+    name = str(p.get("name", ""))
+    mp_name = str(p.get("marketplaceName", ""))
+    display = str(p.get("displayName", ""))
     all_names = get_aops_plugin_names() | STALE_PLUGIN_NAMES
-    if name in all_names or name.startswith("aops-") or name.startswith("aops_"):
+    base_name = name.split("~")[0]
+    if (
+        base_name in all_names
+        or name in all_names
+        or name.startswith("aops-")
+        or name.startswith("aops_")
+    ):
         return True
     if mp_name in {"academicOps", "academicOps-cowork", "aops"}:
         return True
@@ -56,8 +81,169 @@ def is_aops_plugin(p: dict) -> bool:
     return False
 
 
-def clean_cli() -> None:
-    root = Path.home() / ".claude/plugins"
+def uninstall_academicops_plugins(root: Path) -> None:
+    """Uninstall every aops plugin from @academicOps and prune associated cache/manifests."""
+    reg = root / "installed_plugins.json"
+    data: dict[str, Any] = (
+        json.loads(reg.read_text(encoding="utf-8")) if reg.exists() else {"plugins": {}}
+    )
+    plugins: dict[str, Any] = data.get("plugins", {})
+    stale_keys = [
+        k for k in plugins if k.endswith("@academicOps") or k.split("@")[-1] == "academicOps"
+    ]
+
+    claude_bin = shutil.which("claude")
+    if claude_bin and stale_keys:
+        for key in stale_keys:
+            for scope in ("user", "local", "project"):
+                subprocess.run(
+                    [claude_bin, "plugin", "uninstall", "--scope", scope, key],
+                    capture_output=True,
+                    check=False,
+                )
+
+    if reg.exists():
+        try:
+            data = json.loads(reg.read_text(encoding="utf-8"))
+            plugins = data.get("plugins", {})
+            remaining = [
+                k
+                for k in plugins
+                if k.endswith("@academicOps") or k.split("@")[-1] == "academicOps"
+            ]
+            if remaining:
+                for k in remaining:
+                    del plugins[k]
+                reg.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+                print(f"  uninstalled {len(remaining)} plugin(s) from @academicOps in {reg.name}")
+        except Exception:
+            pass
+
+    manifests = root / ".install-manifests"
+    if manifests.exists():
+        for m in manifests.glob("*@academicOps.json"):
+            m.unlink(missing_ok=True)
+            print(f"  removed manifest {m.name}")
+
+    cache = root / "cache" / "academicOps"
+    if cache.exists():
+        shutil.rmtree(cache, ignore_errors=True)
+        print("  removed cache/academicOps")
+
+    known_mp = root / "known_marketplaces.json"
+    if known_mp.exists():
+        try:
+            mp_data = json.loads(known_mp.read_text(encoding="utf-8"))
+            if "academicOps" in mp_data:
+                del mp_data["academicOps"]
+                known_mp.write_text(json.dumps(mp_data, indent=2) + "\n", encoding="utf-8")
+                print("  removed academicOps from known_marketplaces.json")
+        except Exception:
+            pass
+
+
+def disable_synced_plugins(root: Path, settings_dir: Path) -> None:
+    """Make exactly one copy of each plugin load per surface by disabling claude.ai-synced copies."""
+    synced_root = root / "synced"
+    synced_plugins: set[str] = set()
+    if synced_root.exists():
+        for p in synced_root.glob("*/*"):
+            name = p.stem.split("~")[0]
+            if is_aops_plugin({"name": name}):
+                synced_plugins.add(name)
+
+    all_aops = get_aops_plugin_names() | synced_plugins
+    claude_bin = shutil.which("claude")
+    if claude_bin:
+        for p in sorted(all_aops):
+            subprocess.run(
+                [claude_bin, "plugin", "disable", f"{p}@synced"],
+                capture_output=True,
+                check=False,
+            )
+
+    for filename in ("settings.json", "settings.local.json"):
+        spath = settings_dir / filename
+        if not spath.exists():
+            continue
+        try:
+            sdata = json.loads(spath.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        enabled = sdata.setdefault("enabledPlugins", {})
+        if isinstance(enabled, dict):
+            updated = False
+            for p in sorted(all_aops):
+                key = f"{p}@synced"
+                if enabled.get(key) is not False:
+                    enabled[key] = False
+                    updated = True
+            if updated:
+                spath.write_text(json.dumps(sdata, indent=2) + "\n", encoding="utf-8")
+                print(f"  disabled synced aops plugins in {filename}")
+
+
+def clean_settings(settings_dir: Path, dist_plugins: set[str] | None = None) -> None:
+    """Strip enabledPlugins entries absent from dist/.claude-plugin/marketplace.json or naming @academicOps."""
+    if dist_plugins is None:
+        dist_plugins = get_dist_plugin_names()
+
+    for filename in ("settings.json", "settings.local.json"):
+        spath = settings_dir / filename
+        if not spath.exists():
+            continue
+        try:
+            sdata = json.loads(spath.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+
+        updated = False
+        enabled = sdata.get("enabledPlugins")
+        if isinstance(enabled, dict):
+            cleaned: dict[str, Any] = {}
+            for key, val in enabled.items():
+                if "@academicOps" in key:
+                    continue
+                plugin_name = key.split("@")[0]
+                if plugin_name not in dist_plugins:
+                    continue
+                cleaned[key] = val
+
+            if cleaned != enabled:
+                sdata["enabledPlugins"] = cleaned
+                updated = True
+
+        extra_mp = sdata.get("extraKnownMarketplaces")
+        if isinstance(extra_mp, dict) and "academicOps" in extra_mp:
+            del extra_mp["academicOps"]
+            updated = True
+
+        if updated:
+            spath.write_text(json.dumps(sdata, indent=2) + "\n", encoding="utf-8")
+            print(f"  stripped stale plugin entries from {filename}")
+
+
+def clean_trash(root: Path) -> None:
+    """Empty ~/.claude/plugins/.trash/."""
+    trash = root / ".trash"
+    trash.mkdir(parents=True, exist_ok=True)
+    for item in trash.iterdir():
+        if item.is_dir():
+            shutil.rmtree(item, ignore_errors=True)
+        else:
+            item.unlink(missing_ok=True)
+    print("  emptied .trash/")
+
+
+def clean_cli(root: Path | None = None, settings_dir: Path | None = None) -> None:
+    root = root or (Path.home() / ".claude/plugins")
+    settings_dir = settings_dir or (Path.home() / ".claude")
+
+    uninstall_academicops_plugins(root)
+    clean_trash(root)
+    disable_synced_plugins(root, settings_dir)
+    clean_settings(settings_dir)
+
     reg = root / "installed_plugins.json"
     data = json.load(open(reg)) if reg.exists() else {"plugins": {}}
     active = {
@@ -96,7 +282,6 @@ def get_cowork_bases() -> list[Path]:
         Path.home() / "Library/Application Support/Claude/local-agent-mode-sessions",
         Path.home() / ".config/Claude/local-agent-mode-sessions",
     ]
-    # Check WSL Windows path if running in WSL
     wsl_users = Path("/mnt/c/Users")
     if wsl_users.exists():
         for user_dir in wsl_users.iterdir():
@@ -106,12 +291,12 @@ def get_cowork_bases() -> list[Path]:
     return [b for b in bases if b.exists()]
 
 
-def clean_gui() -> None:
-    bases = get_cowork_bases()
+def clean_gui(bases: list[Path] | None = None) -> None:
+    if bases is None:
+        bases = get_cowork_bases()
     if not bases:
         return
     for base in bases:
-        # 1. Clean from rpm/manifest.json
         for manifest in base.rglob("rpm/manifest.json"):
             with open(manifest) as f:
                 data = json.load(f)
@@ -129,7 +314,6 @@ def clean_gui() -> None:
                     json.dump(data, f, indent=2)
                 print(f"  updated Cowork {manifest.relative_to(base)} ({len(drop)} entry(ies))")
 
-        # 2. Clean orphaned plugin directories in rpm/
         for rpm_dir in base.rglob("rpm"):
             if not rpm_dir.is_dir():
                 continue
@@ -142,7 +326,6 @@ def clean_gui() -> None:
                             shutil.rmtree(item)
                             print(f"  removed orphan Cowork package {item.relative_to(base)}")
 
-        # 3. Clean session-level plugin data
         for data_dir in base.rglob(".claude/plugins/data"):
             if not data_dir.is_dir():
                 continue
