@@ -122,8 +122,8 @@ uninstall-dev: install
 install: clean-plugins
 	@command claude plugin marketplace remove $(LOCAL_MARKETPLACE) >/dev/null 2>&1 || true
 	@command claude plugin marketplace remove academicOps >/dev/null 2>&1 || true
-	@uv run python -c "import json, pathlib; p = pathlib.Path.home() / '.claude/plugins/known_marketplaces.json'; data = json.loads(p.read_text()) if p.exists() else {}; [data.pop(k, None) for k in ('$(LOCAL_MARKETPLACE)', 'academicOps')]; p.write_text(json.dumps(data, indent=2)) if p.exists() else None" 2>/dev/null || true
-	@uv run python -m build.install uninstall >/dev/null 2>&1 || true
+	@uv run python scripts/clean_plugins.py --remove-marketplaces $(LOCAL_MARKETPLACE) academicOps
+	@uv run python -m build.install uninstall
 	@echo "Install the aops plugins from the claude.ai org catalog in the app."
 
 # --- Maintenance ---

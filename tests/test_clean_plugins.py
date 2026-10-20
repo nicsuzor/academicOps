@@ -172,10 +172,51 @@ def test_clean_settings(tmp_path):
     assert "aops" in updated["extraKnownMarketplaces"]
 
 
-def test_disable_synced_plugins(tmp_path, monkeypatch):
+def test_remove_marketplaces(tmp_path):
+    plugins_root = tmp_path / "plugins"
+    plugins_root.mkdir()
+    known_mp = plugins_root / "known_marketplaces.json"
+    known_mp.write_text(
+        json.dumps(
+            {
+                "academicOps": {"source": "git"},
+                "aops": {"source": "directory"},
+                "other": {"source": "git"},
+            }
+        )
+    )
+
+    from scripts.clean_plugins import remove_marketplaces
+
+    remove_marketplaces(plugins_root, ("academicOps", "aops"))
+
+    updated = json.loads(known_mp.read_text())
+    assert "academicOps" not in updated
+    assert "aops" not in updated
+    assert "other" in updated
+
+
+def test_get_aops_plugin_names_raises_if_missing(tmp_path, monkeypatch):
+    from scripts import clean_plugins
+
+    monkeypatch.setattr(
+        clean_plugins.Path,
+        "resolve",
+        lambda self: tmp_path / "nonexistent" / "file.py",
+    )
+    import pytest
+
+    with pytest.raises(FileNotFoundError, match="Authoritative marketplace definition missing"):
+        clean_plugins.get_aops_plugin_names()
+
+
+def test_disable_synced_plugins_dev_active(tmp_path, monkeypatch):
     plugins_root = tmp_path / "plugins"
     synced_dir = plugins_root / "synced" / "org_user" / "ida~g2"
     synced_dir.mkdir(parents=True)
+
+    known_mp = plugins_root / "known_marketplaces.json"
+    known_mp.write_text(json.dumps({"aops": {"source": "directory"}}))
 
     settings_dir = tmp_path / ".claude"
     settings_dir.mkdir()
@@ -187,3 +228,32 @@ def test_disable_synced_plugins(tmp_path, monkeypatch):
 
     updated = json.loads(settings_file.read_text())
     assert updated["enabledPlugins"]["ida@synced"] is False
+
+
+def test_disable_synced_plugins_release_channel(tmp_path, monkeypatch):
+    plugins_root = tmp_path / "plugins"
+    synced_dir = plugins_root / "synced" / "org_user" / "ida~g2"
+    synced_dir.mkdir(parents=True)
+
+    settings_dir = tmp_path / ".claude"
+    settings_dir.mkdir()
+    settings_file = settings_dir / "settings.json"
+    settings_file.write_text(json.dumps({"enabledPlugins": {"ida@synced": False}}))
+
+    monkeypatch.setattr("scripts.clean_plugins.get_aops_plugin_names", lambda: {"ida"})
+    disable_synced_plugins(plugins_root, settings_dir)
+
+    updated = json.loads(settings_file.read_text())
+    assert "ida@synced" not in updated["enabledPlugins"]
+
+
+def test_clean_settings_raises_on_corrupt_json(tmp_path):
+    settings_dir = tmp_path / ".claude"
+    settings_dir.mkdir()
+    settings_file = settings_dir / "settings.json"
+    settings_file.write_text("{corrupt json")
+
+    import pytest
+
+    with pytest.raises(json.JSONDecodeError):
+        clean_settings(settings_dir, {"ida"})
