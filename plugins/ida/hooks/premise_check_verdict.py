@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
 """Record a premise-check verdict, emit its OpenTelemetry span, and disarm the gate.
 
-A verdict is one token (PASS, REVISE, FAIL) and a free-text reason. The reason
-may come from a file or stdin so that free text stays off the command line,
-where harness guards scan it.
+A verdict is one token (PASS, REVISE, FAIL) and the checker's reason. A PASS
+reason must carry every keyed line of the skill's checker reason and pass
+the mechanical cross-checks against the judged text the gate stored at arm
+time; REVISE and FAIL take any reason. The reason may come from a file or stdin
+so that free text stays off the command line, where harness guards scan it.
+
+A verdict is recorded only once its span is exported: an unconfigured tracer or
+an unacknowledged export raises, and the gate stays armed.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -16,7 +22,8 @@ import time
 from pathlib import Path
 from typing import Any
 
-from premise_check_gate import disarm, get_state, is_armed, mint_verification_id
+import report_argument as ra
+from premise_check_gate import disarm, get_judged, get_state, is_armed, mint_verification_id
 
 VERDICTS: tuple[str, ...] = ("PASS", "REVISE", "FAIL")
 
@@ -27,21 +34,26 @@ def _import_claude_code_tracer() -> Any:
     return claude_code_tracer
 
 
-def emit_verdict_span(
+def _surface(state: dict[str, Any] | None) -> str:
+    if os.environ.get("GITHUB_ACTIONS"):
+        return "github-actions"
+    if state and state.get("surface") == "agy":
+        return "agy"
+    if os.environ.get("ANTIGRAVITY_CLI") or os.environ.get("GEMINI_CLI"):
+        return "agy"
+    return "claude-code"
+
+
+def _export_tool_span(
     tracer_mod: Any,
     session_id: str,
-    claim_id: str,
-    verdict: str,
-    reason: str,
-    verification_id: str = "",
-    title: str | None = None,
-    config: dict[str, Any] | None = None,
-) -> bool:
-    """Ship one TOOL span for this verdict via claude_code_tracer's pipeline.
-
-    Returns True only when the OTLP exporter reported SUCCESS for the span;
-    raises RuntimeError when tracing is unconfigured or the export was not acknowledged.
-    """
+    tool_name: str,
+    tool_input: dict[str, Any],
+    tool_response: dict[str, Any],
+    attributes: dict[str, Any],
+    config: dict[str, Any] | None,
+) -> None:
+    """Ship one TOOL span through claude_code_tracer's pipeline, or raise RuntimeError."""
     if config is None:
         config = tracer_mod.discover_config()
     if config is None:
@@ -58,15 +70,8 @@ def emit_verdict_span(
         trace_id = current_trace["trace_id"]
         parent_span_id = current_trace["root_span_id"]
 
-    tool_input: dict[str, Any] = {"claim_id": claim_id, "verdict": verdict, "reason": reason}
-    if title:
-        tool_input["title"] = title
-    tool_response: dict[str, Any] = {"status": "recorded"}
-    if verification_id:
-        tool_response["verification_id"] = verification_id
-
     record = tracer_mod._build_tool_span_record(
-        tool_name="premise_check_verdict",
+        tool_name=tool_name,
         tool_input=tool_input,
         tool_response=tool_response,
         start_ns=now_ns,
@@ -74,37 +79,120 @@ def emit_verdict_span(
         trace_id=trace_id,
         root_span_id=parent_span_id,
     )
-    record["attributes"]["premise_check.claim_id"] = claim_id
-    record["attributes"]["premise_check.verdict"] = verdict
-    record["attributes"]["premise_check.reason"] = tracer_mod._truncate(reason)
-    if verification_id:
-        record["attributes"]["premise_check.verification_id"] = verification_id
-    if title:
-        record["attributes"]["premise_check.title"] = title
-
-    surface = "claude-code"
-    if os.environ.get("GITHUB_ACTIONS"):
-        surface = "github-actions"
-    elif state and state.get("surface") == "agy":
-        surface = "agy"
-    elif os.environ.get("ANTIGRAVITY_CLI") or os.environ.get("GEMINI_CLI"):
-        surface = "agy"
-
+    surface = _surface(state)
+    record["attributes"].update(attributes)
     record["attributes"]["service.name"] = "aops-verdict-hooks"
     record["attributes"]["aops.surface"] = surface
 
     username = os.environ.get("USER") or os.environ.get("USERNAME") or None
-    exported = tracer_mod._build_and_export_spans(
-        config=config,
-        session_id=phoenix_session_id,
-        username=username,
-        span_records=[record],
-        service_name="aops-verdict-hooks",
-        surface=surface,
-    )
+    try:
+        exported = tracer_mod._build_and_export_spans(
+            config=config,
+            session_id=phoenix_session_id,
+            username=username,
+            span_records=[record],
+            service_name="aops-verdict-hooks",
+            surface=surface,
+        )
+    except Exception as exc:
+        raise RuntimeError(f"premise_check_verdict: OTel span export failed: {exc!r}") from exc
     if exported is not True:
         raise RuntimeError("premise_check_verdict: OTel span export failed")
+
+
+def emit_verdict_span(
+    tracer_mod: Any,
+    session_id: str,
+    claim_id: str,
+    verdict: str,
+    reason: str,
+    verification_id: str = "",
+    title: str | None = None,
+    config: dict[str, Any] | None = None,
+    attributes: dict[str, Any] | None = None,
+) -> bool:
+    """Ship one TOOL span for this verdict via claude_code_tracer's pipeline.
+
+    Returns True when the OTLP exporter reported SUCCESS for the span; raises
+    RuntimeError when tracing is unconfigured or the export was not acknowledged.
+    """
+    tool_input: dict[str, Any] = {"claim_id": claim_id, "verdict": verdict, "reason": reason}
+    if title:
+        tool_input["title"] = title
+    tool_response: dict[str, Any] = {"status": "recorded"}
+    if verification_id:
+        tool_response["verification_id"] = verification_id
+
+    attrs: dict[str, Any] = {
+        "premise_check.claim_id": claim_id,
+        "premise_check.verdict": verdict,
+        "premise_check.reason_text": tracer_mod._truncate(reason),
+    }
+    if verification_id:
+        attrs["premise_check.verification_id"] = verification_id
+    if title:
+        attrs["premise_check.title"] = title
+    attrs.update(attributes or {})
+
+    _export_tool_span(
+        tracer_mod,
+        session_id,
+        "premise_check_verdict",
+        tool_input,
+        tool_response,
+        attrs,
+        config,
+    )
     return True
+
+
+def emit_override_span(
+    tracer_mod: Any,
+    session_id: str,
+    claim_id: str,
+    tool: str,
+    event: str,
+    variable: str,
+    override_count: int,
+) -> bool:
+    """Ship one ``premise_check_override`` span; raises like ``emit_verdict_span``."""
+    attrs = {
+        "premise_check.claim_id": claim_id,
+        "premise_check.override_var": variable,
+        "premise_check.override_tool": tool,
+        "premise_check.override_event": event,
+        "premise_check.override_count": override_count,
+    }
+    _export_tool_span(
+        tracer_mod,
+        session_id,
+        "premise_check_override",
+        {"claim_id": claim_id, "tool": tool, "event": event, "variable": variable},
+        {"status": "passed"},
+        attrs,
+        None,
+    )
+    return True
+
+
+def judge_reason(token: str, reason: str, judged_text: str | None) -> dict[str, Any]:
+    """Parse the reason against the judged block; for PASS, refuse on any failed check.
+
+    Returns the verdict's span attributes. Raises ValueError naming every
+    failed check when a PASS reason is refused.
+    """
+    vocab = ra.load_vocabulary()
+    parsed = ra.parse_reason(reason, vocab)
+    block_text = ra.extract_block(judged_text)
+    block = ra.parse_block(block_text, vocab) if block_text is not None else None
+    if token == "PASS":
+        failures = ra.pass_failures(parsed, block, vocab)
+        if failures:
+            raise ValueError(
+                "PASS refused -- the reason fails the recorder's checks "
+                "(see the premise-check skill's checker reason):\n- " + "\n- ".join(failures)
+            )
+    return ra.span_attributes(parsed, block, vocab)
 
 
 def record_verdict(
@@ -138,6 +226,13 @@ def record_verdict(
             f"unknown or mismatched report id {cid!r}; gate is armed for {expected_id!r}"
         )
 
+    judged_text, judged_ref = get_judged(session_id, cid)
+    attributes = judge_reason(token, reason, judged_text)
+    attributes["premise_check.judged_ref"] = judged_ref or ""
+    attributes["premise_check.judged_text_sha256"] = (
+        hashlib.sha256(judged_text.encode("utf-8")).hexdigest() if judged_text is not None else ""
+    )
+
     clean_title = (title or "").strip() or None
     verification_id = mint_verification_id(cid, token, reason, title=clean_title)
 
@@ -152,6 +247,7 @@ def record_verdict(
         reason,
         verification_id=verification_id,
         title=clean_title,
+        attributes=attributes,
     )
 
     disarm(
@@ -171,6 +267,7 @@ def record_verdict(
         "span_emitted": True,
         "span_error": None,
         "disarmed": True,
+        "no_claim": bool(attributes.get("premise_check.no_claim")),
     }
     if clean_title:
         result["title"] = clean_title
@@ -212,7 +309,7 @@ def main(argv: list[str] | None = None) -> int:
         help="Optional short title for the verification.",
     )
     reason = parser.add_mutually_exclusive_group(required=True)
-    reason.add_argument("--reason", help="Why, in free text.")
+    reason.add_argument("--reason", help="The checker's reason, inline.")
     reason.add_argument(
         "--reason-file",
         help="Read the reason from this file, or from stdin when '-'.",

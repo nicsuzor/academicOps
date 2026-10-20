@@ -137,23 +137,26 @@ _PAYLOADS: dict[str, dict] = {
 }
 
 
-@pytest.fixture(scope="module")
-def dist_root(tmp_path_factory) -> Path:
+def _build_real_plugins(root: Path) -> None:
+    build_all(_REPO_ROOT, root, marketplace_path=_MARKETPLACE, version=_VERSION)
+
+
+@pytest.fixture(scope="session")
+def dist_root(build_once) -> Path:
     """The real plugins, really built — every plugin, both clients.
 
     This is the tree the execution tests run hooks out of, and rbg's hook has
     nothing to do unless at least one rule is live —
     `test_every_axiom_is_live_in_the_built_clients` holds that the shipped
     axioms are. Assertions about what the build EMITS use `pristine_dist`,
-    because executing hooks dirties this tree.
+    because executing hooks dirties this tree. Built once per run and shared
+    by every worker, so each plugin's `.venv/` is created once, not per worker.
     """
-    root = tmp_path_factory.mktemp("shipped-dist")
-    build_all(_REPO_ROOT, root, marketplace_path=_MARKETPLACE, version=_VERSION)
-    return root
+    return build_once("shipped-dist", _build_real_plugins)
 
 
-@pytest.fixture(scope="module")
-def pristine_dist(tmp_path_factory) -> Path:
+@pytest.fixture(scope="session")
+def pristine_dist(build_once) -> Path:
     """A build nothing has executed out of.
 
     The cleanliness assertions are about what the BUILD emits. They get their
@@ -162,9 +165,7 @@ def pristine_dist(tmp_path_factory) -> Path:
     tree they run in, and asserting on that tree would measure CPython's
     bytecode cache rather than the builder.
     """
-    root = tmp_path_factory.mktemp("pristine-dist")
-    build_all(_REPO_ROOT, root, marketplace_path=_MARKETPLACE, version=_VERSION)
-    return root
+    return build_once("pristine-dist", _build_real_plugins)
 
 
 def _marketplace_names() -> list[str]:

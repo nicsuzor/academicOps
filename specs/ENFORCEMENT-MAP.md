@@ -42,11 +42,14 @@ Measures in place that enforce the [evidence contract](enforcement/evidence-cont
 | Session-wide one-line pointer | `SessionStart` (startup, resume, compact) | All agents | Reminder |
 | Reply-format reminder (`honesty.md`) on a peer envelope | `UserPromptSubmit`, peer envelope | All agents | Reminder |
 | Check reminder (`hearsay.md`) on a peer envelope or foreground subagent result | `UserPromptSubmit` (peer envelope), `PostToolUse` on `Agent` | Ida, Sara | Reminder |
-| Gate arms on an incoming peer message or completion notification, not on a foreground subagent result | `UserPromptSubmit` (peer or task-notification envelope) | Ida, Sara | Friction |
+| Gate arms on an incoming peer message or completion notification, storing judged text and reference | `UserPromptSubmit` (peer or task-notification envelope) | Ida, Sara | Friction |
+| Gate arms on a PKB task read with a `## Report` and no `## Premise-Check Verdict` | `PostToolUse` of PKB task read tool | Ida, Sara | [DISABLED] Friction; bypassed in code pending a decision |
 | Gate refuses `Agent`, `Task`, `invoke_subagent`, `SendMessage`, `AskUserQuestion`, `Dump`, channel replies | `PreToolUse` | Ida, Sara | Refuse |
 | Gate blocks `Stop` once per chain | `Stop` | Ida, Sara | Block |
-| Gate messages two lines (agent: claim and skill, then the verdict command with no pre-filled verdict) and one line (user, no command) | `premise_check_handler`, `premise_check_arm` | Ida, Sara | Friction |
-| Verdict recording and span | `verdict.py`, `premise_check_verdict.py` | Ida, Sara | Record |
+| Gate messages two lines (claim and skill, then the verdict command with no pre-filled verdict) and one line (user, no command) | `premise_check_handler`, `premise_check_arm` | Ida, Sara | Friction |
+| Enforcement level B: the recorder refuses PASS unless the reason carries the seven keyed lines and passes mechanical cross-checks against the judged block; no-claim reason accepted and marked; REVISE and FAIL take any reason | `record_verdict` in `plugins/ida/hooks/premise_check_verdict.py`, run by `skills/premise-check/scripts/verdict.py` | Ida, Sara | Required gate |
+| Verdict recording and span emission carrying one attribute per reason line, ask ids, weakest basis, inference count, defect tags, no-claim flag and judged-text reference | `premise_check_verdict.py` | Ida, Sara | Observability |
+| Count each override that lets an armed gate pass a blocked action | `premise_check_handler` span `premise_check_override` | Ida, Sara | [DISABLED] Observability; bypassed in code pending a decision |
 | Gate modes and override variables | Environment | Ida, Sara | Config |
 | No named or persistent subagents for middle-level agents | Settings files (dotfiles, outside this repo); expected `"teammateMode": "in-process"` | Ida, Prime, Sara, Pauli | Prevention |
 | `release_task` required fields, presence-only, on tasks created after the check shipped | PKB server | Task workers | Prevention |

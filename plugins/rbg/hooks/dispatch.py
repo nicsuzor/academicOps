@@ -33,6 +33,9 @@ class HookContext:
     transcript_path: str = ""
     cwd: str = ""
     hook_event_name: str = ""
+    # The tool call's arguments: Claude Code's ``tool_input``, agy's
+    # ``toolCall.args``. Empty on events that carry no tool call.
+    tool_input: dict[str, Any] = field(default_factory=dict)
     # PostToolBatch only: every tool call in the resolved batch, each a
     # ``{tool_name, tool_input, tool_use_id, tool_response}`` mapping. Empty on
     # every other event, so a handler can read it without guarding the event.
@@ -332,8 +335,13 @@ def render(client: str, event: str, result: Result | None) -> dict:
 
 
 def normalize(client: str, event: str, raw: dict[str, Any], hooks_dir: Path) -> HookContext:
-    tool_input = raw.get("tool_input")
-    command = tool_input.get("command", "") if isinstance(tool_input, dict) else ""
+    # agy nests the tool call: ``{"toolCall": {"name": ..., "args": {...}}}``
+    # on PreToolUse and PostToolUse. Its PostToolUse carries no tool result.
+    tool_call = raw.get("toolCall")
+    tool_call = tool_call if isinstance(tool_call, dict) else {}
+    tool_input = raw.get("tool_input") or raw.get("toolInput") or tool_call.get("args")
+    tool_input = tool_input if isinstance(tool_input, dict) else {}
+    command = tool_input.get("command", "")
     raw_calls = raw.get("tool_calls")
     tool_calls = (
         tuple(c for c in raw_calls if isinstance(c, dict)) if isinstance(raw_calls, list) else ()
@@ -364,7 +372,11 @@ def normalize(client: str, event: str, raw: dict[str, Any], hooks_dir: Path) -> 
     kwargs.update(
         client=client,
         event=event,
-        tool=raw.get("tool_name") or raw.get("toolName") or kwargs.get("tool", ""),
+        tool=raw.get("tool_name")
+        or raw.get("toolName")
+        or tool_call.get("name")
+        or kwargs.get("tool", ""),
+        tool_input=tool_input,
         command=command,
         cwd=cwd or kwargs.get("cwd", ""),
         session_id=raw.get("session_id")
