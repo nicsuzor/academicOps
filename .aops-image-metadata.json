@@ -1,18 +1,18 @@
 {
   "schema_version": "1.0",
-  "aops_version": "1.0-rc0.1",
+  "aops_version": "1.0-rc1",
   "dist_source": "local",
   "commit_sha": "7e22eb90b436dd0d1479962b170494cbf5d91996",
   "short_sha": "7e22eb90",
   "is_dirty": true,
   "dist_ref": "dev",
   "repo_url": "https://github.com/nicsuzor/academicOps.git",
-  "built_at": "2026-10-20T08:19:57Z",
+  "built_at": "2026-10-20T08:54:55Z",
   "plugins": {
-    "ida": "1.0-rc0.1",
-    "rbg": "1.0-rc0.1",
-    "tools": "1.0-rc0.1",
-    "aops-debug": "1.0-rc0.1",
-    "ida-telegram": "1.0-rc0.1"
+    "ida": "1.0-rc1",
+    "rbg": "1.0-rc1",
+    "tools": "1.0-rc1",
+    "aops-debug": "1.0-rc1",
+    "ida-telegram": "1.0-rc1"
   }
 }
