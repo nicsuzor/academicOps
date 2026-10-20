@@ -95,7 +95,7 @@ Where the project finish template calls for QA review:
   3. Set parent to the primary task's parent.
   4. Wire dependency: `needs: [<primary_task_id>]` so the QA task stays blocked until the primary task is `done`.
   5. Record the QA task ID in the primary task's `follow_up_tasks`.
-  6. Compose the designated QA template (`wf-qa`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the deliverable and claims against literal acceptance criteria; for Tier 1 PRs (`triage:auto-mergeable`), merge to base branch on a verified pass; for Tier 2 (`triage:needs-judgment`) and Tier 3 (`criticality:critical`) PRs, post verification receipts to the PR and leave open for reviewer sign-off without releasing to review. A reviewer that changes code delivers it through the finish template and hands off for independent review.
+  6. Compose the designated QA template (`wf-qa`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the deliverable and claims against literal acceptance criteria; in tiered repositories, confirm tier against the taxonomy; for verified Tier 1 PRs (`triage:auto-mergeable`) with no higher-tier labels, merge to base branch on a verified pass; for Tier 2 (`triage:needs-judgment`), Tier 3 (`criticality:critical`), or unlabelled PRs, post verification receipts to the PR and leave open for reviewer sign-off without releasing to review. A reviewer that changes code delivers it through the finish template and hands off for independent review.
 
 ### Requirements for writing tasks
 

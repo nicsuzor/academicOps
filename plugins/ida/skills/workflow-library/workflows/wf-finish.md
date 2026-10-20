@@ -18,12 +18,13 @@ Defines the universal baseline contract for how tasks finish when a repository l
 ## Finish Policy
 
 - **Target branch**: Common unprotected version or development branch where configured; repository default branch (`main` or `master`) if no intermediate branch exists.
-- **Delivery mechanism**: Open a pull request (not a draft) targeting the base branch. CI classifies the PR risk tier (`triage:auto-mergeable`, `triage:needs-judgment`, or `criticality:critical`). Never push directly to protected default branches.
+- **Delivery mechanism**: Open a pull request (not a draft) targeting the base branch. In repositories where CI applies risk tier labels (`triage:auto-mergeable`, `triage:needs-judgment`, `criticality:critical`), merge authority is governed by tier below. In repositories without CI risk tier labelling, or where a PR is unlabelled, workers do not merge autonomously. Never push directly to protected default branches.
 - **Merge authority by PR risk tier**:
-  - **Tier 1 (Autonomous QA-Merge / `triage:auto-mergeable`)**: A fresh QA worker independently verifies claims and test suite in a clean context. On a verified pass, the QA worker merges the PR autonomously via `gh pr merge --squash`. Once merged, the QA task is released as `done`.
+  - The QA worker independently evaluates tier membership against the taxonomy: a label can raise the tier but never lower it. Any Tier 2 (`triage:needs-judgment`) or Tier 3 (`criticality:critical`) label, or unlabelled PR, strictly blocks autonomous merge.
+  - **Tier 1 (Autonomous QA-Merge / `triage:auto-mergeable`)**: A fresh QA worker independently verifies claims and test suite in a clean context, confirming the PR strictly falls within Tier 1 scope with no higher tier labels. On a verified pass, the QA worker merges the PR autonomously via `gh pr merge --squash`. Once merged, the QA task is released as `done`.
   - **Tier 2 (Operational Gate / `triage:needs-judgment`)**: A fresh QA worker independently verifies claims, runs tests, and posts receipts to the PR as a structured review comment. The QA worker does not merge, leaving the PR open for reviewer sign-off. The QA task is released as `done`. No task rests or releases in `review` for a human merge gate.
   - **Tier 3 (Critical Hazard & Public Gate / `criticality:critical`)**: Gated on principal review and merge; agents are forbidden from merging. QA workers independently verify and post receipts, leaving the PR open, and release the QA task as `done`.
-- **Merge**: For Tier 1 PRs, QA worker merges upon verified pass. For Tier 2 and Tier 3 PRs, reviewer sign-off merges the PR; QA worker verifies, posts receipts, and leaves the PR open. `/reconcile` writes `done` when the PR merges, which unblocks follow-ups.
+- **Merge**: For verified Tier 1 PRs in tiered repositories, QA worker merges upon verified pass. For Tier 2, Tier 3, unlabelled PRs, or repositories without risk tiers, reviewer sign-off merges the PR; QA worker verifies, posts receipts, and leaves the PR open. `/reconcile` writes `done` when the PR merges, which unblocks follow-ups.
 - **Commit trailer**: Commits must include `Task: <task-id>` (and `Epic: <epic-id>` if applicable).
 - **QA review**:
   - **Functional changes** (code, schema, or runtime changes): Require independent QA, except for low-risk internal changes below. `/reify` mints a follow-up verifying task dependent on the implementation task.
@@ -47,7 +48,7 @@ When QA review is required for standard functional changes, `/reify` mints a fol
 - **Parent**: Same parent as primary task (or `part_of` edge per FQ1)
 - **Needs**: `[<primary-task-id>]` (hard blocking dependency)
 - **Workflow**: Composes independent verification workflow
-- **Goal**: Independently verify the deliverable and claims against literal acceptance criteria in a clean context. For Tier 1 PRs (`triage:auto-mergeable`), merge to base branch on a verified pass. For Tier 2 (`triage:needs-judgment`) and Tier 3 (`criticality:critical`) PRs, post verification receipts to the PR and leave open for reviewer sign-off. Never release to `review` for a human merge gate; release as `done` with receipts. A reviewer that changes code delivers it through this finish template and hands off for independent review by filing a follow-up QA task.
+- **Goal**: Independently verify the deliverable and claims against literal acceptance criteria in a clean context. In tiered repositories, confirm tier membership against the taxonomy: a label can raise tier but never lower it. For verified Tier 1 PRs (`triage:auto-mergeable`) with no higher-tier labels, merge to base branch on a verified pass. For Tier 2 (`triage:needs-judgment`), Tier 3 (`criticality:critical`), or unlabelled PRs, post verification receipts to the PR and leave open for reviewer sign-off. Never release to `review` for a human merge gate; release as `done` with receipts. A reviewer that changes code delivers it through this finish template and hands off for independent review by filing a follow-up QA task.
 
 ### Low-risk internal bugfixes (next-run review)
 
