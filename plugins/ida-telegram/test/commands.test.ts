@@ -9,7 +9,6 @@ import { parseInboundUpdate, type TelegramUpdate } from "../src/telegram/inbound
 import { TelegramBotClient } from "../src/telegram/bot.js";
 import { loadConfig } from "../src/config.js";
 import { QuestionBroker } from "../src/telegram/questions.js";
-import { FeedbackManager } from "../src/telegram/feedback.js";
 import { PermissionRelay } from "../src/mcp/permissions.js";
 import { mkdtempSync } from "node:fs";
 import { join } from "node:path";
@@ -89,11 +88,10 @@ describe("Native Telegram bot commands for Ida (FR-8.1)", () => {
 
     try {
       const broker = new QuestionBroker(stateDir);
-      const feedback = new FeedbackManager(stateDir);
       const permRelay = new PermissionRelay();
 
       // First instance starts and registers commands
-      const bot1 = new TelegramBotClient(config, broker, feedback, permRelay, () => {});
+      const bot1 = new TelegramBotClient(config, broker, permRelay, () => {});
       await bot1.registerCommands();
 
       expect(apiCalls.filter((c) => c.method === "setMyCommands").length).toBe(2);
@@ -103,7 +101,7 @@ describe("Native Telegram bot commands for Ida (FR-8.1)", () => {
       });
 
       // Simulate channel restart with a fresh TelegramBotClient instance and verify via getMyCommands
-      const bot2 = new TelegramBotClient(config, broker, feedback, permRelay, () => {});
+      const bot2 = new TelegramBotClient(config, broker, permRelay, () => {});
       await bot2.registerCommands();
       const menuAfterRestart = await bot2.getRegisteredCommands(8860530746);
 

@@ -55,7 +55,6 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
     const { TelegramBotClient } = await import("../src/telegram/bot.js");
     const { PluginStore } = await import("../src/store.js");
     const { QuestionBroker } = await import("../src/telegram/questions.js");
-    const { FeedbackManager } = await import("../src/telegram/feedback.js");
     const { PermissionRelay } = await import("../src/mcp/permissions.js");
     const { mkdtempSync, rmSync, writeFileSync, chmodSync } = await import("node:fs");
     const { join } = await import("node:path");
@@ -90,7 +89,6 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
 
     const store = new PluginStore(stateDir);
     const broker = new QuestionBroker(stateDir);
-    const feedback = new FeedbackManager(stateDir);
     const permRelay = new PermissionRelay();
 
     const apiCalls: Array<{ method: string; body: any; isMultipart: boolean }> = [];
@@ -117,7 +115,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
     }) as typeof fetch;
 
     try {
-      const bot = new TelegramBotClient(config, broker, feedback, permRelay, () => {});
+      const bot = new TelegramBotClient(config, broker, permRelay, () => {});
       const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
 
       const resp = await mcp.handleMessage({
@@ -131,7 +129,6 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
             text: "**This is a voice reply.**\n• First bullet with `code`.\n>! Tier 2 evidence quote that goes behind Details.",
             detail: "## Tier 3 Detail\nExtra context.",
             voice: true,
-            feedback: true,
           },
         },
       });
@@ -157,7 +154,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
       const captionEntities = JSON.parse(voiceCall.body.caption_entities);
       expect(captionEntities.some((e: any) => e.type === "bold")).toBe(true);
 
-      // Inline keyboard has feedback + Details button
+      // Inline keyboard has the Details button
       const replyMarkup = JSON.parse(voiceCall.body.reply_markup);
       const flatButtons = replyMarkup.inline_keyboard.flat();
       expect(flatButtons.some((b: any) => b.text === "🔍 Details")).toBe(true);
@@ -177,7 +174,6 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
     const { TelegramBotClient } = await import("../src/telegram/bot.js");
     const { PluginStore } = await import("../src/store.js");
     const { QuestionBroker } = await import("../src/telegram/questions.js");
-    const { FeedbackManager } = await import("../src/telegram/feedback.js");
     const { PermissionRelay } = await import("../src/mcp/permissions.js");
     const { mkdtempSync, rmSync, writeFileSync, chmodSync } = await import("node:fs");
     const { join } = await import("node:path");
@@ -207,7 +203,6 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
 
     const store = new PluginStore(stateDir);
     const broker = new QuestionBroker(stateDir);
-    const feedback = new FeedbackManager(stateDir);
     const permRelay = new PermissionRelay();
 
     const apiCalls: Array<{ method: string; body: any }> = [];
@@ -228,7 +223,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
     }) as typeof fetch;
 
     try {
-      const bot = new TelegramBotClient(config, broker, feedback, permRelay, () => {});
+      const bot = new TelegramBotClient(config, broker, permRelay, () => {});
       const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
 
       const longTier1 = "**Headline**: " + "A".repeat(1050);
@@ -242,6 +237,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
             chat_id: 8860530746,
             text: longTier1,
             voice: true,
+            buttons: [{ label: "Go ahead (Recommended)" }, { label: "Hold" }],
           },
         },
       });
@@ -267,7 +263,6 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
     const { TelegramBotClient } = await import("../src/telegram/bot.js");
     const { PluginStore } = await import("../src/store.js");
     const { QuestionBroker } = await import("../src/telegram/questions.js");
-    const { FeedbackManager } = await import("../src/telegram/feedback.js");
     const { PermissionRelay } = await import("../src/mcp/permissions.js");
     const { mkdtempSync, rmSync } = await import("node:fs");
     const { join } = await import("node:path");
@@ -295,7 +290,6 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
 
     const store = new PluginStore(stateDir);
     const broker = new QuestionBroker(stateDir);
-    const feedback = new FeedbackManager(stateDir);
     const permRelay = new PermissionRelay();
 
     const apiCalls: Array<{ method: string; body: any }> = [];
@@ -308,7 +302,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
     }) as typeof fetch;
 
     try {
-      const bot = new TelegramBotClient(config, broker, feedback, permRelay, () => {});
+      const bot = new TelegramBotClient(config, broker, permRelay, () => {});
       const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
 
       const resp = await mcp.handleMessage({
@@ -343,7 +337,6 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
     const { TelegramBotClient } = await import("../src/telegram/bot.js");
     const { PluginStore } = await import("../src/store.js");
     const { QuestionBroker } = await import("../src/telegram/questions.js");
-    const { FeedbackManager } = await import("../src/telegram/feedback.js");
     const { PermissionRelay } = await import("../src/mcp/permissions.js");
     const { mkdtempSync, rmSync, writeFileSync, chmodSync } = await import("node:fs");
     const { join } = await import("node:path");
@@ -377,7 +370,6 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
 
     const store = new PluginStore(stateDir);
     const broker = new QuestionBroker(stateDir);
-    const feedback = new FeedbackManager(stateDir);
     const permRelay = new PermissionRelay();
 
     const apiCalls: Array<{ method: string }> = [];
@@ -396,7 +388,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
     }) as typeof fetch;
 
     try {
-      const bot = new TelegramBotClient(config, broker, feedback, permRelay, () => {});
+      const bot = new TelegramBotClient(config, broker, permRelay, () => {});
       const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
 
       // 1. Simulate inbound voice note from Nic
@@ -469,7 +461,6 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
   test("FR-6.1: first voice message on a fresh state directory creates inbox/ and transcribes", async () => {
     const { TelegramBotClient } = await import("../src/telegram/bot.js");
     const { QuestionBroker } = await import("../src/telegram/questions.js");
-    const { FeedbackManager } = await import("../src/telegram/feedback.js");
     const { PermissionRelay } = await import("../src/mcp/permissions.js");
     const { mkdtempSync, rmSync, writeFileSync, chmodSync, existsSync, readdirSync } = await import("node:fs");
     const { join } = await import("node:path");
@@ -499,7 +490,6 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
     };
 
     const broker = new QuestionBroker(stateDir);
-    const feedback = new FeedbackManager(stateDir);
     const permRelay = new PermissionRelay();
 
     const emittedEvents: Array<{ content: string; meta: Record<string, unknown> }> = [];
@@ -519,7 +509,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
     try {
       expect(existsSync(join(stateDir, "inbox"))).toBe(false);
 
-      const bot = new TelegramBotClient(config, broker, feedback, permRelay, (content, meta) => {
+      const bot = new TelegramBotClient(config, broker, permRelay, (content, meta) => {
         emittedEvents.push({ content, meta });
       });
 
