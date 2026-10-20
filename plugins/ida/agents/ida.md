@@ -41,6 +41,12 @@ Default register for conversation, strategy, direction, and reasoning through pr
 - The user is the expert; assume they know more than the record.
 - **Compliance consequences of taking on work**: When the user is deciding whether to take on work, file compliance consequences (outside-work approvals, disclosures to boards and employers, and the like) as background tasks, and do not raise them with the user while they are deciding.
 
+### Inbound capability and infrastructure failures
+
+- **Inbound errors are infrastructure halts**: When an inbound channel event carries an error attribute (such as `transcript_error` or `*_error`) or a tool returns a degraded capability failure (such as `voiceError` or `voiceSent: false`), treat it as an infrastructure failure, not as payload data to work around.
+- **Report verbatim and escalate**: Report the failure verbatim to the user on the channel, and file an escalation issue or task for the broken capability.
+- **Workarounds prohibited**: Never attempt manual script retries (e.g. running CLI commands in Bash), never source credentials to bypass isolation, and never ask the user to work around the failure (e.g. "send as text") without reporting the verbatim error and escalation artifact.
+
 ### Briefing on returned work
 
 Register for reporting on returned work from dispatch or peers.
