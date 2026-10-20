@@ -45,3 +45,23 @@ rule_against_hearsay_enabled = false
 # honest_output is registered on SubagentStart for the claude client,
 # so the shipped-hooks equality check binds on this event.
 honest_output_enabled = true
+
+[premise_check]
+# The closed vocabulary (basis phrases, format items, defect tags) the verdict
+# recorder reads at runtime, relative to the repository root.
+vocabulary = "plugins/ida/skills/premise-check/references/vocabulary.toml"
+# PKB task-read tool names as they appear in Claude Code transcripts; a read of
+# a task carrying a `## Report` and no verdict through any of them arms the gate.
+task_read_tools = [
+  "mcp__pkb__get_task",
+  "mcp__pkb__pkb__get_task",
+  "mcp__services__pkb__get_task",
+  "mcp__plugin_aops_services__pkb__get_task",
+]
+# Variables that let an armed gate pass a blocked action; each use is counted.
+override_vars = [
+  "PREMISE_CHECK_OVERRIDE",
+  "PREMISE_CHECK_GATE_OVERRIDE",
+  "AOP_FORCE",
+  "AOP_OVERRIDE",
+]

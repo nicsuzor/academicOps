@@ -768,12 +768,17 @@ def _export_session_id(ctx: HookContext) -> bool:
     return True
 
 
+PREMISE_CHECK_POINTER = (
+    "Reports follow `premise-check`: written in its shape and checked on receipt."
+)
+
+
 def session_start(ctx: HookContext) -> Result | None:
     """Handle SessionStart for Claude Code and SessionStart for agy."""
     metadata = _format_session_metadata(ctx)
     parts = [
         metadata,
-        "Reports follow `premise-check`: written in its shape and checked on receipt.",
+        PREMISE_CHECK_POINTER,
     ]
     user_parts = [metadata]
     stale_warning = os.environ.get("AOPS_IMAGE_STALENESS_WARNING") or ctx.raw.get(
@@ -804,6 +809,34 @@ def session_start(ctx: HookContext) -> Result | None:
         user_parts.append(files_str)
 
     return warn("\n\n".join(parts), "\n\n".join(user_parts))
+
+
+def _session_pointer_dir() -> Path:
+    override = os.environ.get("AOPS_SESSION_POINTER_DIR")
+    path = Path(override) if override else Path(tempfile.gettempdir()) / "aops_session_pointer"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def agy_session_pointer(ctx: HookContext) -> Result | None:
+    """Deliver the session-start pointer on agy, once per conversation.
+
+    The agy hooks are wired without SessionStart, so the pointer rides on the
+    first PreInvocation that reaches this conversation. ``invocationNum``
+    restarts at 0 on every turn and ``initialNumSteps`` starts above 1 in IDE
+    conversations, so neither marks the first one; a marker file keyed by the
+    conversation id does.
+    """
+    if ctx.client != "agy" or not ctx.session_id:
+        return None
+    safe_session = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", ctx.session_id)
+    marker = _session_pointer_dir() / f"{safe_session}.delivered"
+    try:
+        with marker.open("x", encoding="utf-8") as f:
+            f.write(datetime.now().astimezone().isoformat())
+    except FileExistsError:
+        return None
+    return warn(PREMISE_CHECK_POINTER)
 
 
 def honesty_on_peer_message(ctx: HookContext) -> Result | None:
@@ -921,6 +954,7 @@ def user_prompt_submit(ctx: HookContext) -> Result | None:
     _run_claude_tracer(ctx, "handle_user_prompt_submit")
     agy_user_prompt_submit(ctx)
     steps = (
+        agy_session_pointer,
         search_the_pkb,
         honesty_on_peer_message,
         rule_against_hearsay,
