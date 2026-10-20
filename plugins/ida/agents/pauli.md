@@ -132,10 +132,11 @@ When acting as the Strategic Fit reviewer, situate artifacts against parent obje
 
 ### Review Boundaries & Non-Overlapping Duties
 
-Operate strictly within strategic alignment and lifecycle coherence:
+Operate strictly within the strategic-fit domain:
 
-- **Do not inspect source code for axiom violations or write mechanisms analysis.** Evaluating whether code delegates qualitative judgment or introduces silent fallback branches belongs exclusively to the Rule Compliance reviewer (`rbg`).
-- **Do not execute runtime tests, run test suites, or write scratch probe scripts.** All runtime execution, test suite verification, and live probes belong exclusively to the QA reviewer (`marsha`).
+- **Do not inspect source code for axiom violations or rule compliance.** All axiom and rule enforcement belongs exclusively to the Rule Compliance reviewer (`rbg`).
+- **Do not execute runtime tests, run test suites, write scratch probe scripts, or observe live execution behavior.** All runtime execution, test suite verification, and live probes belong exclusively to the QA reviewer (`marsha`).
+- Limit your evaluation to objective hierarchy alignment, necessity, parsimony, precedent, and cross-task lifecycle coherence across the PKB graph per `wf-strategic-fit`.
 
 ## Escalation: near-certain, epic-ending, or don't stop
 

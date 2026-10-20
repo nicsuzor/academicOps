@@ -20,11 +20,9 @@ Universal QA review gate: empirical runtime verification ("running things"). Ass
 
 ## Input contract
 
-The invoking workflow provides:
+Draws its brief from the shared review briefing in `wf-review`. Additional role-specific inputs:
 
-1. **Target artifact** -- the file, diff, PR branch, or implementation under review.
-2. **Acceptance criteria** -- explicit requirements and evidence obligations from the commission.
-3. **Test surface** -- test commands, test suites, or execution harnesses.
+- **Test surface** -- test commands, test suites, or execution harnesses.
 
 ## Procedure
 
