@@ -65,7 +65,7 @@ Update existing templates in place.
 Simulate composition for a stated objective at one of two depths. Never write tasks or mutate the graph; mark the output as a non-minted preview.
 
 - **stage depth** (what `/decompose` asks for): return the composite that covers this class of work as its ordered stages, each with its input and output contract, unresolved. A stage whose filling is a choice among methods, frames or venues stays a named slot; do not pick for it or expand it into steps.
-- **step depth** (what `/reify` asks for): resolve each stage to the templates and skills that fill it across the tiers and combine their steps into one logical sequence (e.g. test-first where code executes, build, then QA). Show the assembled steps and the resulting task brief shape.
+- **step depth** (what `/reify` asks for): resolve each stage to the templates and skills that fill it across the tiers and combine their steps into one logical sequence (e.g. test-first where the change modifies code that executes, build, then QA). Show the assembled steps and the resulting task brief shape.
 
 Do not ad lib extra requirements or guess at scope; pass any ambiguity in the prompt through to the preview.
 
