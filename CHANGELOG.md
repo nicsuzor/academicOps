@@ -1,5 +1,44 @@
 # Changelog
 
+## [0.10.25](https://github.com/nicsuzor/academicOps/compare/v0.10.24...v0.10.25) (2026-10-20)
+
+
+### Features
+
+* **ida-telegram:** drop 👍/👎 reply buttons; option buttons on questions ([18f5561](https://github.com/nicsuzor/academicOps/commit/18f5561b72b064c52eb1cc08898f3e1de57aa36b))
+* **ida-telegram:** drop 👍/👎 reply buttons; option buttons on questions ([198e510](https://github.com/nicsuzor/academicOps/commit/198e5101b0b621753cf9d35908f435a7010320cb))
+* **ida:telegram:** act on a 👎 reaction ([3b5a1a4](https://github.com/nicsuzor/academicOps/commit/3b5a1a4b9777fc21390470e8ecde3607297ff78d))
+* **ida:telegram:** act on a 👎 reaction instead of a 👎 button ([e5b268e](https://github.com/nicsuzor/academicOps/commit/e5b268e79e22141d7a2a8ce5d691bddb6e3c7755))
+* **ida:telegram:** keep thumbs down as an instruction ([1e2f700](https://github.com/nicsuzor/academicOps/commit/1e2f700aa6399fe11664363a22094d968079aec2))
+* **ida:** file compliance consequences as background tasks in decision conversations ([#2987](https://github.com/nicsuzor/academicOps/issues/2987)) ([492af1f](https://github.com/nicsuzor/academicOps/commit/492af1faf176b878ae7b102dd37732dee66b5ad6))
+* **ida:** hydrate prompts via direct stdlib HTTP POST to PKB ([#3018](https://github.com/nicsuzor/academicOps/issues/3018)) ([c0a825f](https://github.com/nicsuzor/academicOps/commit/c0a825f71529cd42cefd5c25d280c71fc2d8a8f3))
+* **observability:** add caller session to MCP calls for Claude Code and agy ([#2976](https://github.com/nicsuzor/academicOps/issues/2976)) ([b534436](https://github.com/nicsuzor/academicOps/commit/b5344369152d79a2db52f91afbc1a70ace5da606))
+* **telegram:** implement mini app channel bridge and update dashboard spec ([#3004](https://github.com/nicsuzor/academicOps/issues/3004)) ([d09b875](https://github.com/nicsuzor/academicOps/commit/d09b8751a0d65c5cedaa72d87b6bfbd506be55cb))
+* **workflow-library:** show every template across all tiers in list mode ([#2986](https://github.com/nicsuzor/academicOps/issues/2986)) ([55e75f9](https://github.com/nicsuzor/academicOps/commit/55e75f9afe8073a7b5cd6916fd38070b78ce123d))
+
+
+### Bug Fixes
+
+* **dump:** deliver commits only where task Output names and remove fragment ([#2980](https://github.com/nicsuzor/academicOps/issues/2980)) ([6ba545c](https://github.com/nicsuzor/academicOps/commit/6ba545ca3ce687fba474cfbdecf8b3bb5605a3f2))
+* **hooks:** SessionStart raises when PKB_MCP_URL is unset ([#3026](https://github.com/nicsuzor/academicOps/issues/3026)) ([c67611c](https://github.com/nicsuzor/academicOps/commit/c67611cee3c61c7f85872554ec6fefaf292836f7))
+* **ida:** hydrate agy prompts from the turn transcript ([#3014](https://github.com/nicsuzor/academicOps/issues/3014)) ([e67ceea](https://github.com/nicsuzor/academicOps/commit/e67ceeaa85e4db6df80487ab891078b102ce8379))
+* **ida:** make SessionStart startup line fields meaningful ([4b452c0](https://github.com/nicsuzor/academicOps/commit/4b452c02ce2f1261cbe26357a482ded546a3e0c9))
+* **ida:** make SessionStart startup line fields meaningful ([057da51](https://github.com/nicsuzor/academicOps/commit/057da51e19bf2afd685a2c4dacd05610a435458c))
+* **ida:** remove fallbacks and comply with review requirements on PR [#3015](https://github.com/nicsuzor/academicOps/issues/3015) ([45fe612](https://github.com/nicsuzor/academicOps/commit/45fe612b6c3f25d58baf9253c1b4d93697b871be))
+* **rbg:** axioms bind artifacts — evaluate mechanisms by effect and consequence ([#3017](https://github.com/nicsuzor/academicOps/issues/3017)) ([d3bf20b](https://github.com/nicsuzor/academicOps/commit/d3bf20bb83732a240c847ea8b009b8203ccd53da))
+* **reconcile:** enforce single-flight, protect claimed tasks, and clarify escalation ([#2969](https://github.com/nicsuzor/academicOps/issues/2969)) ([73eb586](https://github.com/nicsuzor/academicOps/commit/73eb586e22f561eeba0ee7abb4b62a3aa4a30b17))
+* **skills:** update PKB code-mode interface and clarify handover Argdown requirements ([#3007](https://github.com/nicsuzor/academicOps/issues/3007)) ([affdea5](https://github.com/nicsuzor/academicOps/commit/affdea55cba8281d507054391573b764fda8635f))
+* **tests:** a test must catch a nameable defect; stop workflows requiring tests for unchanged code ([0a5bcef](https://github.com/nicsuzor/academicOps/commit/0a5bcefafa773c2bce818feb520f033cbe4d2fa2))
+* **tests:** a test must catch a nameable defect; stop workflows requiring tests for unchanged code ([b927eca](https://github.com/nicsuzor/academicOps/commit/b927eca5d2b78c9ff2d6d4c37381a9060278573d))
+* **tests:** replace private endpoint URLs in tests with example.com ([#3025](https://github.com/nicsuzor/academicOps/issues/3025)) ([09fdca7](https://github.com/nicsuzor/academicOps/commit/09fdca7ecd39d3d193e5729691e1b9e2daad5137))
+* **tracer:** omit user.id instead of exporting "unknown" ([#3008](https://github.com/nicsuzor/academicOps/issues/3008)) ([06078c6](https://github.com/nicsuzor/academicOps/commit/06078c6a5d85db65d2ee75241713697894ea2b99))
+
+
+### Tests
+
+* **build:** delete change-detector test of the dist template inventory ([81253f1](https://github.com/nicsuzor/academicOps/commit/81253f113bfefeea4d233bf7d7f9d6af5a6e78e9))
+* delete echo, mirror and tautological tests ([#3027](https://github.com/nicsuzor/academicOps/issues/3027)) ([edbf044](https://github.com/nicsuzor/academicOps/commit/edbf04411e4c81065861e1a274dbfe2c1db985f4))
+
 ## [0.10.24](https://github.com/nicsuzor/academicOps/compare/v0.10.23...v0.10.24) (2026-10-18)
 
 ### Bug Fixes
