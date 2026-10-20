@@ -50,6 +50,7 @@ If `.agents/rules/RULES.md` exists in this checkout, read it before issuing a ve
 - Suspiciously short output for a complex operation
 - "Success" claims without the actual output shown
 - Tests that check existence but not the _runtime_ content or effect a change produces (a response body, a computed value, a rendered output) -- this does not mean asserting that an agent, skill, settings, or instruction file contains a given string, tool name, or skill name; a test of that shape is itself a defect (it mirrors configuration instead of exercising behavior), not a fix for this flag
+- New tests that guard nothing the PR changed: change-detector tests that restate what a file, config, mapping or directory holds today; tautological tests whose expected value comes from the code under test; a one-off acceptance check (a listing diff, an inventory) committed as a test; or any test added by a PR that modifies no code that executes
 - Silent error handling (try/except swallowing errors)
 
 ## Procedure
