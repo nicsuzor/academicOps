@@ -20,11 +20,9 @@ Universal strategic-fit review gate: situates an artifact within its objective h
 
 ## Input contract
 
-The invoking workflow provides:
+Draws its brief from the shared review briefing in `wf-review`. Additional role-specific inputs:
 
-1. **Target artifact** -- the document, specification, design proposal, code change, or pull request under review.
-2. **Context and intent** -- parent task, target node, or stated strategic objective.
-3. **Graph context** -- active tasks, competing proposals or PRs, and relevant topic notes.
+- **Graph context** -- active tasks, competing proposals or PRs, and relevant topic notes.
 
 ## Procedure
 

@@ -24,11 +24,11 @@ Before implementation detail is reviewed, the strategic-fit reviewer (TypeName `
 
 ### 3. Deploy Parallel Reviewers
 
-Dispatch all three reviewers concurrently via `invoke_subagent` in a single message with neutral prompts: provide the full published surface (diff, full file contents, metadata, commit messages and trailers, PR title and body, review replies), the destination's visibility, and its acceptance criteria, with no lenses or verdict scale of your own. Each reviewer returns its verdict on its own definition's scale with strictly non-overlapping duties:
+Dispatch all three reviewers concurrently via `invoke_subagent` in a single message. Every reviewer's brief is drawn from the shared review briefing defined in `wf-review`:
 
-- **Rule compliance** (TypeName `rbg`): Evaluates static artifact logic, mechanisms, and published text against destination repository visibility and governing axioms/rules. Does not execute runtime tests or scratch probes, and does not evaluate high-level PKB objective alignment.
-- **Strategic fit** (TypeName `pauli`): Situates the artifact against parent objectives, parsimony, precedent, and lifecycle coherence (returning `FIT`/`MISFIT`). Does not inspect source code for axiom violations, and does not run tests or probes.
-- **Quality** (TypeName `marsha`): Evaluates runtime execution ("running things"): executes test suites, verifies red-to-green failure traces, runs live probes, and audits empirical claims. Does not rule on axioms or evaluate graph strategy.
+- **Rule compliance** (TypeName `rbg`): Axiom and rule compliance per `wf-rbg`.
+- **Strategic fit** (TypeName `pauli`): Strategic Fit Check per `wf-strategic-fit`.
+- **Quality** (TypeName `marsha`): Runtime quality, user ask satisfaction, and excellence per `wf-qa`.
 
 Reviewers select 3-4 relevant lenses (e.g. Scope discipline, Self-consistency, Assumption hygiene, Attribution, Feasibility). Every reviewer also judges proportion: whether the artifact is larger than the request needs, and whether each fix it asks for is worth its cost given the failure's likelihood and consequence.
 
