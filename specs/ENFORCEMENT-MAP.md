@@ -60,6 +60,6 @@ Measures in place that enforce the [evidence contract](enforcement/evidence-cont
 | Verdict recording and span emission carrying one attribute per reason line, ask ids, weakest basis, inference count, defect tags, no-claim flag and judged-text reference | `premise_check_verdict.py` | Ida, Sara | Observability |
 | Count each override that lets an armed gate pass a blocked action | `premise_check_handler` span `premise_check_override` | Ida, Sara | [DISABLED] Observability; bypassed in code pending a decision |
 | Gate modes and override variables | Environment | Ida, Sara | Config |
-| No named or persistent subagents for middle-level agents | Settings files (dotfiles, outside this repo); expected `"teammateMode": "in-process"` | Ida, Prime, Sara, Pauli | Prevention |
+| No named or persistent subagents for middle-level agents | Prime-only instructions (`prime/CLAUDE.md` in `nicsuzor/ida`), settings files (dotfiles, outside this repo); expected `"teammateMode": "in-process"` | Prime, Sara, Pauli | Prevention |
 | `release_task` required fields, presence-only, on tasks created after the check shipped | PKB server | Task workers | Prevention |
 | Substance check: the reviewer opens each pointer and confirms it supports its claim | [Workflow](enforcement/workflow.md) steps 3-4, `/verify` | QA reviewers | Verdict (agentic) |
