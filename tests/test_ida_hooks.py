@@ -6,6 +6,7 @@ import json
 import shutil
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 from unittest.mock import patch
 
@@ -13,6 +14,8 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 IDA_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
+_POLICY_FILE = REPO_ROOT / "tests" / "policy.toml"
+_POLICY = tomllib.loads(_POLICY_FILE.read_text(encoding="utf-8")) if _POLICY_FILE.exists() else {}
 
 if str(IDA_HOOKS) not in sys.path:
     sys.path.insert(0, str(IDA_HOOKS))
@@ -733,3 +736,71 @@ def test_peer_message_prompt_yields_single_user_prompt_submit_output(
         "Reminded to use `premise-check` when replying to a peer message. "
         "Premise-check gate armed by claim-59204fc6."
     )
+
+
+def test_session_start_metadata_resolves_pkb(monkeypatch: pytest.MonkeyPatch):
+    """pkb resolves to PKB_MCP_URL when configured per policy, omitted when unset."""
+    policy_pkb_url = _POLICY.get("hooks", {}).get("session_start", {}).get("pkb_url")
+    assert policy_pkb_url, "tests/policy.toml must define hooks.session_start.pkb_url"
+
+    monkeypatch.setenv("PKB_MCP_URL", policy_pkb_url)
+    ctx = HookContext(
+        client="claude",
+        event="SessionStart",
+        session_id="s-pkb-test",
+        hooks_dir=IDA_HOOKS,
+    )
+    res = handlers.session_start(ctx)
+    assert res is not None
+    assert f"pkb: {policy_pkb_url}" in res.inject_text
+    assert "pkb: unknown" not in res.inject_text
+
+    # When PKB_MCP_URL is unset, field is omitted (no fallback to 'unknown')
+    monkeypatch.delenv("PKB_MCP_URL", raising=False)
+    res2 = handlers.session_start(ctx)
+    assert res2 is not None
+    assert "pkb:" not in res2.inject_text
+
+
+def test_session_start_metadata_service_name(monkeypatch: pytest.MonkeyPatch):
+    """tracing service reflects OTEL_SERVICE_NAME when configured, omitted when unset."""
+    monkeypatch.setenv("GENAI_ENGINE_TRACE_ENDPOINT", "https://otel.suzor.com/v1/traces")
+    monkeypatch.setenv("OTEL_SERVICE_NAME", "custom-tracer-service")
+    ctx = HookContext(
+        client="claude",
+        event="SessionStart",
+        session_id="s-svc-test",
+        hooks_dir=IDA_HOOKS,
+    )
+    res = handlers.session_start(ctx)
+    assert res is not None
+    assert (
+        "tracing: https://otel.suzor.com/v1/traces (service: custom-tracer-service)"
+        in res.inject_text
+    )
+
+    monkeypatch.delenv("OTEL_SERVICE_NAME", raising=False)
+    res2 = handlers.session_start(ctx)
+    assert res2 is not None
+    assert "tracing: https://otel.suzor.com/v1/traces" in res2.inject_text
+    assert "service:" not in res2.inject_text
+
+
+def test_session_start_metadata_resolves_plugin_version(tmp_path: Path):
+    """plugins field prints resolved version from installed plugin manifest."""
+    fake_plugin_root = tmp_path / "fake-plugin"
+    fake_hooks_dir = fake_plugin_root / "hooks"
+    fake_hooks_dir.mkdir(parents=True)
+    manifest_dir = fake_plugin_root / ".claude-plugin"
+    manifest_dir.mkdir(parents=True)
+    (manifest_dir / "plugin.json").write_text(json.dumps({"name": "ida", "version": "0.10.24"}))
+
+    ctx = HookContext(
+        client="claude",
+        event="SessionStart",
+        session_id="s-ver-test",
+        hooks_dir=fake_hooks_dir,
+    )
+    res = handlers.session_start(ctx)
+    assert res is not None
+    assert "plugins: 0.10.24" in res.inject_text
