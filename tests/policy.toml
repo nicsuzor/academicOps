@@ -51,7 +51,7 @@ honest_output_enabled = true
 allow_blocking_agy = false
 
 [hooks.session_start]
-pkb_url = "https://mcp.suzor.com/mcp"
+pkb_url = "https://pkb.example.com/mcp"
 
 [plugins.dependencies]
 # Dependencies required for OpenTelemetry span emission by plugin hooks and scripts (e.g. premise-check verdict)

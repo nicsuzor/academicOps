@@ -764,7 +764,7 @@ def test_session_start_metadata_resolves_pkb(monkeypatch: pytest.MonkeyPatch):
 
 def test_session_start_metadata_service_name(monkeypatch: pytest.MonkeyPatch):
     """tracing service reflects OTEL_SERVICE_NAME when configured, omitted when unset."""
-    monkeypatch.setenv("GENAI_ENGINE_TRACE_ENDPOINT", "https://otel.suzor.com/v1/traces")
+    monkeypatch.setenv("GENAI_ENGINE_TRACE_ENDPOINT", "https://otel.example.com/v1/traces")
     monkeypatch.setenv("OTEL_SERVICE_NAME", "custom-tracer-service")
     ctx = HookContext(
         client="claude",
@@ -775,14 +775,14 @@ def test_session_start_metadata_service_name(monkeypatch: pytest.MonkeyPatch):
     res = handlers.session_start(ctx)
     assert res is not None
     assert (
-        "tracing: https://otel.suzor.com/v1/traces (service: custom-tracer-service)"
+        "tracing: https://otel.example.com/v1/traces (service: custom-tracer-service)"
         in res.inject_text
     )
 
     monkeypatch.delenv("OTEL_SERVICE_NAME", raising=False)
     res2 = handlers.session_start(ctx)
     assert res2 is not None
-    assert "tracing: https://otel.suzor.com/v1/traces" in res2.inject_text
+    assert "tracing: https://otel.example.com/v1/traces" in res2.inject_text
     assert "service:" not in res2.inject_text
 
 
