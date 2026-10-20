@@ -167,6 +167,13 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "::notice title=Version::$VERSION"
 
+      - name: Validate Python package version
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          echo "Validating Python package version: $VERSION"
+          uv run python -m build.version --validate "$VERSION"
+
       - name: Assert version coherence (stable tag only)
         # G2 — fail closed if the tag, the committed pyproject version, and the
         # release-please manifest disagree. Guards against a hand-pushed or
