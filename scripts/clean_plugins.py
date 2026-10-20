@@ -113,10 +113,8 @@ def clean_gui() -> None:
     for base in bases:
         # 1. Clean from rpm/manifest.json
         for manifest in base.rglob("rpm/manifest.json"):
-            try:
-                data = json.load(open(manifest))
-            except Exception:
-                continue
+            with open(manifest) as f:
+                data = json.load(f)
             keep, drop = [], []
             for p in data.get("plugins", []):
                 (drop if is_aops_plugin(p) else keep).append(p)
@@ -127,7 +125,8 @@ def clean_gui() -> None:
                         shutil.rmtree(plugin_dir)
                         print(f"  removed Cowork {plugin_dir.relative_to(base)}")
                 data["plugins"] = keep
-                json.dump(data, open(manifest, "w"), indent=2)
+                with open(manifest, "w") as f:
+                    json.dump(data, f, indent=2)
                 print(f"  updated Cowork {manifest.relative_to(base)} ({len(drop)} entry(ies))")
 
         # 2. Clean orphaned plugin directories in rpm/
@@ -138,13 +137,10 @@ def clean_gui() -> None:
                 if item.is_dir() and item.name.startswith("plugin_"):
                     manifest_file = item / ".claude-plugin" / "plugin.json"
                     if manifest_file.exists():
-                        try:
-                            pdata = json.loads(manifest_file.read_text(encoding="utf-8"))
-                            if is_aops_plugin(pdata):
-                                shutil.rmtree(item)
-                                print(f"  removed orphan Cowork package {item.relative_to(base)}")
-                        except Exception:
-                            pass
+                        pdata = json.loads(manifest_file.read_text(encoding="utf-8"))
+                        if is_aops_plugin(pdata):
+                            shutil.rmtree(item)
+                            print(f"  removed orphan Cowork package {item.relative_to(base)}")
 
         # 3. Clean session-level plugin data
         for data_dir in base.rglob(".claude/plugins/data"):

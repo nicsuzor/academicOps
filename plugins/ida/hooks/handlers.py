@@ -571,19 +571,11 @@ def quiet_channel_reply(ctx: HookContext) -> Result | None:
 
     state_path = _channel_gate_state_path(ctx.session_id)
     if state_path.exists():
-        try:
-            data = json.loads(state_path.read_text(encoding="utf-8"))
-            if data.get("blocked_once"):
-                return None
-        except Exception:
-            pass
+        data = json.loads(state_path.read_text(encoding="utf-8"))
+        if data.get("blocked_once"):
+            return None
 
-    try:
-        state_path.write_text(
-            json.dumps({"blocked_once": True, "tool": ctx.tool}), encoding="utf-8"
-        )
-    except Exception:
-        pass
+    state_path.write_text(json.dumps({"blocked_once": True, "tool": ctx.tool}), encoding="utf-8")
 
     quiet_inject, quiet_user = load_message_pair(ctx.hooks_dir, "quiet")
 
