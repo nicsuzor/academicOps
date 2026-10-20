@@ -328,6 +328,37 @@ def _agy_turn_start(ctx: HookContext) -> dict[str, Any] | None:
     return None
 
 
+_AGY_MESSAGE = re.compile(
+    r"\[Message\][^\n]*?\bsender=(\S+)[^\n]*?\bcontent=(.*?)\s*(?:</SYSTEM_MESSAGE>\s*)?$",
+    re.DOTALL,
+)
+_AGY_IDLE_RESPONSE = re.compile(
+    r"^Subagent \S+ has gone idle\. This was the subagent's most recent response:\s*(\S.*)$",
+    re.DOTALL,
+)
+
+
+def agy_arrival(content: str) -> str:
+    """The report or direction an agy SYSTEM_MESSAGE delivers, or "" when it delivers none.
+
+    agy starts a SYSTEM_MESSAGE turn for every wake: the session's own command
+    tasks and timers finishing (sender ``<conversation>/task-N``), system
+    notices, stop-hook refusals, and messages from other agents. Only a message
+    whose sender is another agent's conversation, or a system notice quoting an
+    idle subagent's last response, carries a report or direction.
+    """
+    m = _AGY_MESSAGE.search(content)
+    if not m:
+        return ""
+    sender, body = m.group(1), m.group(2).strip()
+    if sender == "system":
+        idle = _AGY_IDLE_RESPONSE.match(body)
+        return body if idle else ""
+    if "/" in sender:
+        return ""
+    return body
+
+
 def _agy_user_prompt(ctx: HookContext) -> str:
     """The user's text for an agy turn, read from the turn's transcript.
 
@@ -379,10 +410,7 @@ def is_peer_report(ctx: HookContext) -> bool:
     if ctx.client == "agy":
         turn_start = _agy_turn_start(ctx)
         if turn_start and turn_start.get("type") == "SYSTEM_MESSAGE":
-            content = str(turn_start.get("content") or "").strip()
-            return content.startswith(_PEER_ENVELOPES) or content.startswith(
-                ("<SYSTEM_MESSAGE", "[Message]")
-            )
+            return bool(agy_arrival(str(turn_start.get("content") or "")))
     raw = _prompt_text(ctx)
     text = _strip_channel_wrapper(raw).lstrip()
     if not text:
@@ -724,7 +752,7 @@ def premise_check_arm(ctx: HookContext) -> Result | None:
         if not judged_text and ctx.client == "agy":
             turn_start = _agy_turn_start(ctx)
             if turn_start:
-                judged_text = str(turn_start.get("content") or "").strip()
+                judged_text = agy_arrival(str(turn_start.get("content") or ""))
     if not carries_report(judged_text):
         return None
 
