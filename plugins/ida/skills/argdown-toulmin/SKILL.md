@@ -19,7 +19,7 @@ How an argument is written. Every Argdown document follows this standard.
 - **Premises** are numbered `(1)`, `(2)` and hold only grounds: observations, findings, sample bounds, scope conditions, or prior conclusions.
 - **Warrant in the inference bar**: `-- Name: warrant text {uses: [1, 2], basis: "...", pointer: "..."} --`. The warrant is the rule, principle, mechanism, or method that licenses the step. A warrant is never a numbered premise.
 - **Backing** (what shows the warrant holds) goes in the bar's metadata. A warrant that needs its own support gets a child argument concluding it.
-- **At most 3 premises per bar, ideally 2.** Four premises are at least two steps: split them with an intermediate conclusion and a second bar.
+- **Relevance rule:** every premise on an inference is a condition of its warrant, and there is no premise count. A long run of premises under one warrant usually hides several steps (a method-to-finding step and a finding-to-mechanism step, say); split them with an intermediate conclusion and a second bar.
 - **One bar per epistemic layer**: observation and method to pattern, pattern and mechanism to diagnosis, diagnosis and normative standard to evaluation.
 - **Chain, don't widen.** Stack up to 3 bars in one block. Beyond that, start a new argument whose premise `(1)` reuses the upstream conclusion's title.
 

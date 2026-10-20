@@ -571,19 +571,11 @@ def quiet_channel_reply(ctx: HookContext) -> Result | None:
 
     state_path = _channel_gate_state_path(ctx.session_id)
     if state_path.exists():
-        try:
-            data = json.loads(state_path.read_text(encoding="utf-8"))
-            if data.get("blocked_once"):
-                return None
-        except Exception:
-            pass
+        data = json.loads(state_path.read_text(encoding="utf-8"))
+        if data.get("blocked_once"):
+            return None
 
-    try:
-        state_path.write_text(
-            json.dumps({"blocked_once": True, "tool": ctx.tool}), encoding="utf-8"
-        )
-    except Exception:
-        pass
+    state_path.write_text(json.dumps({"blocked_once": True, "tool": ctx.tool}), encoding="utf-8")
 
     quiet_inject, quiet_user = load_message_pair(ctx.hooks_dir, "quiet")
 
@@ -768,12 +760,17 @@ def _export_session_id(ctx: HookContext) -> bool:
     return True
 
 
+PREMISE_CHECK_POINTER = (
+    "Reports follow `premise-check`: written in its shape and checked on receipt."
+)
+
+
 def session_start(ctx: HookContext) -> Result | None:
     """Handle SessionStart for Claude Code and SessionStart for agy."""
     metadata = _format_session_metadata(ctx)
     parts = [
         metadata,
-        "Reports follow `premise-check`: written in its shape and checked on receipt.",
+        PREMISE_CHECK_POINTER,
     ]
     user_parts = [metadata]
     stale_warning = os.environ.get("AOPS_IMAGE_STALENESS_WARNING") or ctx.raw.get(
@@ -804,6 +801,34 @@ def session_start(ctx: HookContext) -> Result | None:
         user_parts.append(files_str)
 
     return warn("\n\n".join(parts), "\n\n".join(user_parts))
+
+
+def _session_pointer_dir() -> Path:
+    override = os.environ.get("AOPS_SESSION_POINTER_DIR")
+    path = Path(override) if override else Path(tempfile.gettempdir()) / "aops_session_pointer"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def agy_session_pointer(ctx: HookContext) -> Result | None:
+    """Deliver the session-start pointer on agy, once per conversation.
+
+    The agy hooks are wired without SessionStart, so the pointer rides on the
+    first PreInvocation that reaches this conversation. ``invocationNum``
+    restarts at 0 on every turn and ``initialNumSteps`` starts above 1 in IDE
+    conversations, so neither marks the first one; a marker file keyed by the
+    conversation id does.
+    """
+    if ctx.client != "agy" or not ctx.session_id:
+        return None
+    safe_session = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", ctx.session_id)
+    marker = _session_pointer_dir() / f"{safe_session}.delivered"
+    try:
+        with marker.open("x", encoding="utf-8") as f:
+            f.write(datetime.now().astimezone().isoformat())
+    except FileExistsError:
+        return None
+    return warn(PREMISE_CHECK_POINTER)
 
 
 def honesty_on_peer_message(ctx: HookContext) -> Result | None:
@@ -916,11 +941,55 @@ def agy_stop(ctx: HookContext) -> Result | None:
     return None
 
 
+def post_tool_degraded_check(ctx: HookContext) -> Result | None:
+    """Detect degraded capability flags in tool results and warn."""
+    tool_resp = ctx.raw.get("tool_response") or ctx.raw.get("toolResponse")
+    if not tool_resp:
+        return None
+
+    if isinstance(tool_resp, str):
+        try:
+            tool_resp = json.loads(tool_resp)
+        except Exception:
+            return None
+
+    if not isinstance(tool_resp, dict):
+        return None
+
+    has_degraded = False
+    details = []
+    if tool_resp.get("voiceSent") is False or tool_resp.get("voiceError"):
+        has_degraded = True
+        err = tool_resp.get("voiceError") or "voiceSent is false"
+        details.append(f"voiceError: {err}")
+
+    for k, v in tool_resp.items():
+        if k.endswith("_error") and v:
+            has_degraded = True
+            details.append(f"{k}: {v}")
+
+    if has_degraded:
+        msg_template, user_template = load_message_pair(ctx.hooks_dir, "degraded_capability")
+        if not msg_template:
+            msg_template = (
+                "Degraded capability failure detected in tool response. Under `halt-on-failure` and `fail-fast`:\n"
+                "- Do not silently swallow this degradation or treat the action as fully successful.\n"
+                "- Required: Report the capability failure verbatim to the user and log an escalation issue/task."
+            )
+        inject_text = f"{msg_template}\n\nDegraded output details:\n" + "\n".join(
+            f"- {d}" for d in details
+        )
+        return warn(inject_text, user_template)
+
+    return None
+
+
 def user_prompt_submit(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical UserPromptSubmit."""
     _run_claude_tracer(ctx, "handle_user_prompt_submit")
     agy_user_prompt_submit(ctx)
     steps = (
+        agy_session_pointer,
         search_the_pkb,
         honesty_on_peer_message,
         rule_against_hearsay,
@@ -940,7 +1009,12 @@ def post_tool(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical PostToolUse."""
     _run_claude_tracer(ctx, "handle_post_tool")
     agy_post_tool(ctx)
-    return _run_handler(rule_against_hearsay, ctx)
+    steps = (
+        rule_against_hearsay,
+        post_tool_degraded_check,
+        premise_check_arm,
+    )
+    return _merge([_run_handler(step, ctx) for step in steps])
 
 
 def post_tool_failure(ctx: HookContext) -> Result | None:

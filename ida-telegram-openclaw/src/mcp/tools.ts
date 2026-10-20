@@ -12,7 +12,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
   {
     name: "reply",
     description:
-      "Send a message to Nic over Telegram with progressive disclosure, expandable blockquotes, and Details button.",
+      "Send a message to the user over Telegram with progressive disclosure, expandable blockquotes, and Details button.",
     inputSchema: {
       type: "object",
       properties: {
@@ -36,6 +36,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
         },
         voice: { type: "boolean", description: "Send tier 1 as a spoken voice note" },
         reply_to: { type: "integer", description: "Telegram message ID to reply to" },
+        feedback: { type: "boolean", description: "Whether to attach 👍/👎 buttons (default false)" },
         review: {
           type: "object",
           description: "Attach PR diff review card",
@@ -63,10 +64,12 @@ export const MCP_TOOLS: ToolDefinition[] = [
   },
   {
     name: "ask_user",
-    description: "Post an asynchronous question to Nic over Telegram with vertical choice buttons.",
+    description: "Post an asynchronous question to the user over Telegram with vertical choice buttons.",
     inputSchema: {
       type: "object",
       properties: {
+        turn_id: { type: "string", description: "Turn ID for correlating the async answer event" },
+        session_id: { type: "string", description: "Session ID for correlating with the asking session" },
         questions: {
           type: "array",
           items: {
@@ -74,6 +77,8 @@ export const MCP_TOOLS: ToolDefinition[] = [
             properties: {
               question: { type: "string" },
               header: { type: "string" },
+              context: { type: "string", description: "Background context, evidence, or pointers bearing on the decision" },
+              recommendation: { type: "string", description: "Concrete recommendation with functional rationale" },
               options: {
                 type: "array",
                 items: {
@@ -81,18 +86,41 @@ export const MCP_TOOLS: ToolDefinition[] = [
                   properties: {
                     label: { type: "string" },
                     description: { type: "string" },
+                    recommended: { type: "boolean" },
                   },
                   required: ["label"],
                 },
               },
               multiSelect: { type: "boolean" },
               allowOther: { type: "boolean" },
+              turn_id: { type: "string" },
+              session_id: { type: "string" },
             },
             required: ["question", "options"],
           },
         },
       },
       required: ["questions"],
+    },
+  },
+  {
+    name: "close_question",
+    description: "Close a pending question with a stated reason (answered elsewhere, no longer needed, or replaced by a newer question).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        question_id: { type: "string", description: "ID of the pending question to close" },
+        reason: { type: "string", description: "Stated reason for closing the question" },
+      },
+      required: ["question_id", "reason"],
+    },
+  },
+  {
+    name: "list_questions",
+    description: "List every pending Mini App question with its id, text, session, turn, and when it was asked.",
+    inputSchema: {
+      type: "object",
+      properties: {},
     },
   },
   {

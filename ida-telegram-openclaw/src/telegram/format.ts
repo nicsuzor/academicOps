@@ -22,63 +22,108 @@ export interface FormattedMessage {
 }
 
 export function formatMarkdownToEntities(markdown: string): FormattedMessage {
-  interface QuoteBlock {
-    type: "blockquote" | "expandable_blockquote";
-    startInOut: number;
-    endInOut: number;
-  }
-
-  const quoteBlocks: QuoteBlock[] = [];
-  const lines = markdown.split("\n");
-  let currentQuoteType: "blockquote" | "expandable_blockquote" | null = null;
-  let quoteStartOffset = 0;
+  const entities: TelegramEntity[] = [];
   let out = "";
 
+  // Process line by line to group consecutive blockquotes (> and >!)
+  const lines = markdown.split("\n");
+  let inStdQuote = false;
+  let inExpQuote = false;
+  let quoteStartOffset = 0;
+  const quoteSpans: Array<{
+    type: "blockquote" | "expandable_blockquote";
+    outStart: number;
+    outEnd: number;
+  }> = [];
+
   function closeQuote() {
-    if (currentQuoteType !== null) {
-      quoteBlocks.push({
-        type: currentQuoteType,
-        startInOut: quoteStartOffset,
-        endInOut: out.length,
-      });
-      currentQuoteType = null;
+    if (inStdQuote) {
+      if (quoteStartOffset !== -1 && out.length > quoteStartOffset) {
+        quoteSpans.push({
+          type: "blockquote",
+          outStart: quoteStartOffset,
+          outEnd: out.length,
+        });
+      }
+      inStdQuote = false;
+      quoteStartOffset = -1;
+    }
+    if (inExpQuote) {
+      if (quoteStartOffset !== -1 && out.length > quoteStartOffset) {
+        quoteSpans.push({
+          type: "expandable_blockquote",
+          outStart: quoteStartOffset,
+          outEnd: out.length,
+        });
+      }
+      inExpQuote = false;
+      quoteStartOffset = -1;
     }
   }
 
   for (let i = 0; i < lines.length; i++) {
     const rawLine = lines[i];
-    const sep = i > 0 ? "\n" : "";
 
     if (rawLine.startsWith(">!")) {
-      if (currentQuoteType !== "expandable_blockquote") {
+      if (!inExpQuote) {
         closeQuote();
-        currentQuoteType = "expandable_blockquote";
-        quoteStartOffset = out.length + sep.length;
+        inExpQuote = true;
+        quoteStartOffset = -1;
       }
-      const lineContent = rawLine.replace(/^>!\s?/, "");
-      out += sep + lineContent;
+      const lineContent = rawLine.substring(2).trimStart();
+      if (quoteStartOffset === -1) {
+        if (lineContent.length > 0) {
+          quoteStartOffset = out.length + (out.length > 0 ? 1 : 0);
+          out += (out.length > 0 ? "\n" : "") + lineContent;
+        }
+      } else {
+        out += "\n" + lineContent;
+      }
+      continue;
     } else if (rawLine.startsWith(">")) {
-      if (currentQuoteType !== "blockquote") {
-        closeQuote();
-        currentQuoteType = "blockquote";
-        quoteStartOffset = out.length + sep.length;
+      const lineContent = rawLine.substring(1).trimStart();
+      if (inExpQuote) {
+        if (quoteStartOffset === -1) {
+          if (lineContent.length > 0) {
+            quoteStartOffset = out.length + (out.length > 0 ? 1 : 0);
+            out += (out.length > 0 ? "\n" : "") + lineContent;
+          }
+        } else {
+          out += "\n" + lineContent;
+        }
+      } else {
+        if (!inStdQuote) {
+          closeQuote();
+          inStdQuote = true;
+          quoteStartOffset = -1;
+        }
+        if (quoteStartOffset === -1) {
+          if (lineContent.length > 0) {
+            quoteStartOffset = out.length + (out.length > 0 ? 1 : 0);
+            out += (out.length > 0 ? "\n" : "") + lineContent;
+          }
+        } else {
+          out += "\n" + lineContent;
+        }
       }
-      const lineContent = rawLine.replace(/^>\s?/, "");
-      out += sep + lineContent;
+      continue;
     } else {
-      closeQuote();
+      if (inStdQuote || inExpQuote) {
+        closeQuote();
+      }
+      const sep = i > 0 ? "\n" : "";
       out += sep + rawLine;
     }
   }
   closeQuote();
 
-  const outToClean = new Array(out.length + 1);
+  // Scan inline markup in `out` while tracking `out` -> `cleanText` UTF-16 offsets
   let cleanText = "";
   let idx = 0;
-  const entities: TelegramEntity[] = [];
+  const outToCleanOffset = new Array<number>(out.length + 1);
 
   while (idx < out.length) {
-    outToClean[idx] = cleanText.length;
+    outToCleanOffset[idx] = cleanText.length;
 
     // 1. Triple backticks (pre)
     if (out.startsWith("```", idx)) {
@@ -100,12 +145,10 @@ export function formatMarkdownToEntities(markdown: string): FormattedMessage {
           length: code.length,
           language: lang || undefined,
         });
-        const nextIdx = endPre + 3;
-        for (let k = idx; k < nextIdx; k++) {
-          outToClean[k] = startOffset;
+        for (let k = idx + 1; k <= endPre + 3; k++) {
+          outToCleanOffset[k] = cleanText.length;
         }
-        outToClean[nextIdx] = cleanText.length;
-        idx = nextIdx;
+        idx = endPre + 3;
         continue;
       }
     }
@@ -122,12 +165,10 @@ export function formatMarkdownToEntities(markdown: string): FormattedMessage {
           offset: startOffset,
           length: code.length,
         });
-        const nextIdx = endCode + 1;
-        for (let k = idx; k < nextIdx; k++) {
-          outToClean[k] = startOffset;
+        for (let k = idx + 1; k <= endCode + 1; k++) {
+          outToCleanOffset[k] = cleanText.length;
         }
-        outToClean[nextIdx] = cleanText.length;
-        idx = nextIdx;
+        idx = endCode + 1;
         continue;
       }
     }
@@ -144,12 +185,10 @@ export function formatMarkdownToEntities(markdown: string): FormattedMessage {
           offset: startOffset,
           length: boldText.length,
         });
-        const nextIdx = endBold + 2;
-        for (let k = idx; k < nextIdx; k++) {
-          outToClean[k] = startOffset;
+        for (let k = idx + 1; k <= endBold + 2; k++) {
+          outToCleanOffset[k] = cleanText.length;
         }
-        outToClean[nextIdx] = cleanText.length;
-        idx = nextIdx;
+        idx = endBold + 2;
         continue;
       }
     }
@@ -170,12 +209,10 @@ export function formatMarkdownToEntities(markdown: string): FormattedMessage {
             length: linkText.length,
             url: linkUrl,
           });
-          const nextIdx = closeParen + 1;
-          for (let k = idx; k < nextIdx; k++) {
-            outToClean[k] = startOffset;
+          for (let k = idx + 1; k <= closeParen + 1; k++) {
+            outToCleanOffset[k] = cleanText.length;
           }
-          outToClean[nextIdx] = cleanText.length;
-          idx = nextIdx;
+          idx = closeParen + 1;
           continue;
         }
       }
@@ -193,36 +230,32 @@ export function formatMarkdownToEntities(markdown: string): FormattedMessage {
           offset: startOffset,
           length: italicText.length,
         });
-        const nextIdx = endItalic + 1;
-        for (let k = idx; k < nextIdx; k++) {
-          outToClean[k] = startOffset;
+        for (let k = idx + 1; k <= endItalic + 1; k++) {
+          outToCleanOffset[k] = cleanText.length;
         }
-        outToClean[nextIdx] = cleanText.length;
-        idx = nextIdx;
+        idx = endItalic + 1;
         continue;
       }
     }
 
-    outToClean[idx] = cleanText.length;
     cleanText += out[idx];
     idx++;
-    outToClean[idx] = cleanText.length;
   }
-  outToClean[out.length] = cleanText.length;
+  outToCleanOffset[out.length] = cleanText.length;
 
-  for (const block of quoteBlocks) {
-    const startOffset = outToClean[block.startInOut];
-    const endOffset = outToClean[block.endInOut];
-    if (endOffset > startOffset) {
+  for (const span of quoteSpans) {
+    const start = outToCleanOffset[span.outStart] ?? 0;
+    const end = outToCleanOffset[span.outEnd] ?? cleanText.length;
+    if (end > start) {
       entities.push({
-        type: block.type,
-        offset: startOffset,
-        length: endOffset - startOffset,
+        type: span.type,
+        offset: start,
+        length: end - start,
       });
     }
   }
 
-  entities.sort((a, b) => a.offset - b.offset || b.length - a.length);
+  entities.sort((a, b) => a.offset - b.offset);
 
   return {
     plainText: cleanText,

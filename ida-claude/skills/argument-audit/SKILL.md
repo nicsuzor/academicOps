@@ -30,7 +30,7 @@ Apply these five formal checks to every load-bearing inference bar above your gr
 
 #### Check A: Term and Scope Alignment (Overclaiming & Middle-Term Drift)
 
-Compare the exact nouns, populations, and quantifiers in `(1)-(2)` against the conclusion `(3)`:
+Compare the exact nouns, populations, and quantifiers in the premises against the conclusion:
 
 - **Quantifier inflation**: Do the premises show `"some"`, a single percentage, or `"can"`, while the conclusion claims `"most"`, `"systematically"`, or `"excludes"`?
 - **Concept / Middle-term shift**: Do the premises measure a **proxy** (a price, an absence from a catalogue, a count) while the conclusion claims a **substantive construct** (exclusion, lost value, harm) without a bridge that links the proxy to the construct?
@@ -57,12 +57,12 @@ Inspect the `-- Warrant --` line and its cited `basis: "theory"` backing:
 
 #### Check D: The Contrast Test (Under-Explored Rival Explanations)
 
-For every causal or interpretive warrant, ask: **"What is the nearest plausible alternative explanation or world state in which the cited evidence `(1)-(2)` would look weak or identical?"**
+For every causal or interpretive warrant, ask: **"What is the nearest plausible alternative explanation or world state in which the cited evidence would look weak or identical?"**
 
 - Classic rival families: _a change in demand vs. a change in cost_, _substitution vs. exclusion_, _a gap in the instrument vs. a real absence_.
 - If the argument does not exclude or bound that rival explanation, add an explicit undercut node:
   ```argdown
-  [Rival Explanation: <name>]: <State the rival mechanism that produces the same data (1)-(2)>. #unanswered {basis: "assumed", reason: "Unexcluded by current evidence"}
+  [Rival Explanation: <name>]: <State the rival mechanism that produces the same data>. #unanswered {basis: "assumed", reason: "Unexcluded by current evidence"}
     _> <Target Argument>
   ```
 - Then specify the **Rebuttal-Defeater**: what specific sub-analysis, control variable, or qualitative check would defeat `- [Rival Explanation]`.

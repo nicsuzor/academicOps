@@ -306,6 +306,89 @@ export function handleApiRequest(req: Request, ctx: WebContext): Response | Prom
     })();
   }
 
+  if (
+    (path === "/api/app/questions/close" || path.match(/^\/api\/app\/questions\/([^/]+)\/close$/)) &&
+    req.method === "POST"
+  ) {
+    return (async () => {
+      try {
+        let body: any = {};
+        try {
+          body = await req.json();
+        } catch {
+          // Empty body ok
+        }
+        const pathMatch = path.match(/^\/api\/app\/questions\/([^/]+)\/close$/);
+        const questionId = pathMatch ? pathMatch[1] : (body.question_id || body.questionId || body.id);
+        const rawReason = body.reason || body.stated_reason || body.statedReason;
+        const reason = typeof rawReason === "string" ? rawReason.trim() : "";
+
+        if (!questionId) {
+          return new Response(JSON.stringify({ error: "Missing question_id" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        if (!reason) {
+          return new Response(JSON.stringify({ error: "Missing reason: closing a question requires an explicit stated reason" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        const result = await ctx.broker.closeQuestion(questionId, reason);
+        if (!result) {
+          return new Response(JSON.stringify({ error: "Question not found or not pending" }), {
+            status: 404,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        if (ctx.editTelegramCard && result.question.chatId && result.question.messageId) {
+          await ctx.editTelegramCard(result.question.chatId, result.question.messageId, result.cardText, { inline_keyboard: [] });
+        }
+
+        ctx.emitChannelEvent(
+          result.channelEvent.event,
+          `Question closed: ${result.channelEvent.reason}`,
+          result.channelEvent as unknown as Record<string, unknown>
+        );
+
+        const seq = ctx.store.nextSeq("question_closed", {
+          question_id: questionId,
+          reason: result.channelEvent.reason,
+          turn_id: result.channelEvent.turn_id,
+          session_id: result.channelEvent.session_id,
+        });
+        broadcastSseEvent("question_closed", {
+          question_id: questionId,
+          reason: result.channelEvent.reason,
+          turn_id: result.channelEvent.turn_id,
+          session_id: result.channelEvent.session_id,
+        }, seq);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            closed_at: result.question.closedAt,
+            closure: result,
+            seq,
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      } catch (e) {
+        return new Response(JSON.stringify({ error: String(e) }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+    })();
+  }
+
   // 6. Anchor: GET /api/app/anchor
   if (path === "/api/app/anchor" && req.method === "GET") {
     const anchor = ctx.store.getAnchor() || {
@@ -341,7 +424,7 @@ export function handleApiRequest(req: Request, ctx: WebContext): Response | Prom
   if (path === "/api/app/stop" && req.method === "POST") {
     return (async () => {
       try {
-        let reason = "Nic asks you to stop and report";
+        let reason = "The user asks you to stop and report";
         let chatId: number | undefined;
         let messageId: number | undefined;
 

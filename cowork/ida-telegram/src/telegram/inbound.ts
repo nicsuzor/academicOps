@@ -78,7 +78,8 @@ export function sanitizeChannelMeta(raw: Record<string, unknown>): Record<string
 export function parseInboundUpdate(
   update: TelegramUpdate,
   allowFrom: number[],
-  getExcerpt?: TargetExcerptFetcher
+  getExcerpt?: TargetExcerptFetcher,
+  persona?: string
 ): InboundChannelEvent | null {
   // 1. Text / Media Message
   if (update.message) {
@@ -98,7 +99,7 @@ export function parseInboundUpdate(
       const cmdName = normalizeCommandName(rawCmdToken);
       const cmd = `/${cmdName}`;
       const args = parts.slice(1).join(" ").trim();
-      const cmdSpec = getBareCommandBehavior(cmdName);
+      const cmdSpec = getBareCommandBehavior(cmdName, persona);
 
       const meta: Record<string, string> = {
         event: "bot_command",

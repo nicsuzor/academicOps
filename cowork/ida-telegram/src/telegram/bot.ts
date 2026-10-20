@@ -1,7 +1,9 @@
 import { DEFAULT_MINI_APP_URL, PluginConfig } from "../config.js";
 import { FormattedMessage, formatMarkdownToEntities } from "./format.js";
 import { parseInboundUpdate, TelegramUpdate } from "./inbound.js";
+import { resolveBotCommands } from "./commands.js";
 import { QuestionBroker } from "./questions.js";
+import { FeedbackManager } from "./feedback.js";
 import { prepareVoiceText, buildVoiceInEvent } from "./voice.js";
 import { PermissionRelay } from "../mcp/permissions.js";
 import { PluginStore } from "../store.js";
@@ -29,6 +31,7 @@ export interface SendReplyOptions {
   buttons?: ReplyButtonOption[];
   voice?: boolean;
   replyTo?: number;
+  feedback?: boolean;
   review?: { repo: string; pr?: number };
 }
 
@@ -42,6 +45,7 @@ export interface SendReplyResult {
 export class TelegramBotClient {
   private config: PluginConfig;
   private broker: QuestionBroker;
+  private feedbackManager: FeedbackManager;
   private permRelay: PermissionRelay;
   private emitChannelEvent: (content: string, meta: Record<string, unknown>) => void;
   private isRunning = false;
@@ -50,16 +54,19 @@ export class TelegramBotClient {
   private lastAlertTime = 0;
   private lastInboundWasVoiceByChat = new Map<number, boolean>();
   public store?: PluginStore;
+  private messageExcerpts = new Map<number, string>();
 
   constructor(
     config: PluginConfig,
     broker: QuestionBroker,
     permRelay: PermissionRelay,
     emitChannelEvent: (content: string, meta: Record<string, unknown>) => void,
-    store?: PluginStore
+    store?: PluginStore,
+    feedbackManager?: FeedbackManager
   ) {
     this.config = config;
     this.broker = broker;
+    this.feedbackManager = feedbackManager || new FeedbackManager(config.stateDir);
     this.permRelay = permRelay;
     this.emitChannelEvent = emitChannelEvent;
     this.store = store;
@@ -73,6 +80,18 @@ export class TelegramBotClient {
     return this.lastInboundWasVoiceByChat.get(chatId) === true;
   }
 
+  private recordMessageExcerpt(messageId: number | undefined, text: string | undefined) {
+    if (messageId === undefined || !text) return;
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    const excerpt = trimmed.length > 160 ? `${trimmed.slice(0, 157)}...` : trimmed;
+    this.messageExcerpts.set(messageId, excerpt);
+  }
+
+  public getMessageExcerpt(messageId: number): string | undefined {
+    return this.messageExcerpts.get(messageId);
+  }
+
   private async callApi(method: string, payload: Record<string, unknown>): Promise<any> {
     const baseUrl = this.config.apiBaseUrl || "https://api.telegram.org";
     const url = `${baseUrl}/bot${this.config.botToken}/${method}`;
@@ -81,8 +100,7 @@ export class TelegramBotClient {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    const json = await res.json();
-    return json;
+    return await res.json();
   }
 
   private async callVoiceApi(
@@ -135,7 +153,7 @@ export class TelegramBotClient {
   }
 
   public async sendReply(opts: SendReplyOptions): Promise<SendReplyResult | null> {
-    const { chatId, formatted, detailsId, buttons, voice, replyTo, review } = opts;
+    const { chatId, formatted, detailsId, buttons, voice, replyTo, feedback, review } = opts;
 
     // Build inline keyboard
     const inlineKeyboard: Array<Array<Record<string, unknown>>> = [];
@@ -158,6 +176,12 @@ export class TelegramBotClient {
     }
 
     const actionRow: Array<Record<string, unknown>> = [];
+
+    // Feedback buttons (default false)
+    if (feedback === true) {
+      actionRow.push({ text: "👍", callback_data: "fb:up" });
+      actionRow.push({ text: "👎", callback_data: "fb:down" });
+    }
 
     const miniAppBaseUrl = (this.config.miniAppUrl || DEFAULT_MINI_APP_URL).replace(/\/+$/, "");
 
@@ -195,9 +219,15 @@ export class TelegramBotClient {
         const tempOgg = join(tmpdir(), `voice_out_${stamp}.ogg`);
         try {
           const spoken = prepareVoiceText(formatted.plainText);
-          writeFileSync(tempText, spoken, "utf-8");
+          if (!existsSync(this.config.stateDir)) {
+            mkdirSync(this.config.stateDir, { recursive: true });
+          }
 
-          await execFileAsync(this.config.voiceSpeakCmd, [tempText, tempOgg]);
+          await execFileAsync(this.config.voiceSpeakCmd, [tempText, tempOgg], {
+            timeout: 60000,
+            cwd: this.config.stateDir,
+            env: { ...process.env, ...(this.config.env || {}) },
+          });
 
           if (!existsSync(tempOgg)) {
             throw new Error(`TTS script did not produce output file: ${tempOgg}`);
@@ -217,6 +247,7 @@ export class TelegramBotClient {
               inlineKeyboard,
             });
             if (voiceRes?.ok && voiceRes?.result) {
+              this.recordMessageExcerpt(voiceRes.result.message_id, formatted.plainText);
               return {
                 messageId: voiceRes.result.message_id,
                 voiceSent: true,
@@ -250,8 +281,10 @@ export class TelegramBotClient {
               });
             }
 
+            const finalMessageId = textRes?.result?.message_id ?? voiceMessageId;
+            this.recordMessageExcerpt(finalMessageId, formatted.plainText);
             return {
-              messageId: textRes?.result?.message_id ?? voiceMessageId,
+              messageId: finalMessageId,
               voiceMessageId,
               voiceSent: true,
             };
@@ -289,6 +322,7 @@ export class TelegramBotClient {
       if (this.store && inlineKeyboard.length > 0) {
         this.store.setLastCard(chatId, res.result.message_id, formatted.plainText);
       }
+      this.recordMessageExcerpt(res.result.message_id, formatted.plainText);
       if (voice) {
         return { messageId: res.result.message_id, voiceSent: false, voiceError };
       }
@@ -306,6 +340,7 @@ export class TelegramBotClient {
       if (this.store && inlineKeyboard.length > 0) {
         this.store.setLastCard(chatId, fallbackRes.result.message_id, formatted.plainText);
       }
+      this.recordMessageExcerpt(fallbackRes.result.message_id, formatted.plainText);
       if (voice) {
         return { messageId: fallbackRes.result.message_id, voiceSent: false, voiceError };
       }
@@ -329,19 +364,31 @@ export class TelegramBotClient {
       if (this.store) {
         this.store.setLastCard(chatId, res.result.message_id, card.text);
       }
+      this.recordMessageExcerpt(res.result.message_id, formatted.plainText);
     }
     return res;
   }
 
-  public async sendPermissionCard(permId: string, toolName: string, input: Record<string, unknown>) {
+  public async sendPermissionCard(
+    permId: string,
+    toolName: string,
+    input: Record<string, unknown>,
+    description?: string,
+    inputPreview?: string
+  ) {
     const defaultChatId = this.config.allowFrom[0];
     if (!defaultChatId) return;
 
     let summary = `Permission request: *${toolName}*`;
-    if (toolName === "Bash") {
-      summary += `\n\`\`\`bash\n${input.command || ""}\n\`\`\``;
-    } else if (toolName === "Edit" || toolName === "Write") {
-      summary += `\nTarget: \`${input.file_path || input.target_file || ""}\``;
+    if (description) {
+      summary += `\n${description}`;
+    }
+    if (toolName === "Bash" && input.command) {
+      summary += `\n\`\`\`bash\n${input.command}\n\`\`\``;
+    } else if ((toolName === "Edit" || toolName === "Write") && (input.file_path || input.target_file)) {
+      summary += `\nTarget: \`${input.file_path || input.target_file}\``;
+    } else if (inputPreview) {
+      summary += `\n\`\`\`\n${inputPreview}\n\`\`\``;
     }
 
     const inline_keyboard: Array<Array<Record<string, unknown>>> = [
@@ -370,30 +417,45 @@ export class TelegramBotClient {
       if (this.store) {
         this.store.setLastCard(defaultChatId, res.result.message_id, summary);
       }
+      this.recordMessageExcerpt(res.result.message_id, summary);
     }
     return res;
   }
 
   public async editMessage(chatId: number, messageId: number, text: string, replyMarkup?: Record<string, unknown>) {
     const formatted = formatMarkdownToEntities(text);
-    return await this.callApi("editMessageText", {
+    const res = await this.callApi("editMessageText", {
       chat_id: chatId,
       message_id: messageId,
       text: formatted.plainText,
       entities: formatted.entities,
       reply_markup: replyMarkup,
     });
+    if (res?.ok) {
+      this.recordMessageExcerpt(messageId, formatted.plainText);
+    }
+    return res;
   }
 
-  public async registerCommands(): Promise<boolean> {
-    if (!this.config.isPrimary || this.config.botCommands.length === 0) {
+  public async registerCommands(persona?: string): Promise<boolean> {
+    if (!this.config.isPrimary) {
+      return false;
+    }
+
+    const commands = persona
+      ? resolveBotCommands(persona)
+      : (this.config.botCommands && this.config.botCommands.length > 0
+          ? this.config.botCommands
+          : resolveBotCommands(this.config.persona));
+
+    if (commands.length === 0) {
       return false;
     }
 
     let allOk = true;
     for (const chatId of this.config.allowFrom) {
       const res = await this.callApi("setMyCommands", {
-        commands: this.config.botCommands,
+        commands,
         scope: { type: "chat", chat_id: chatId },
       });
       if (!res?.ok) {
@@ -473,7 +535,11 @@ export class TelegramBotClient {
   }
 
   private async handleUpdate(update: TelegramUpdate) {
-    // 1. If inbound message from Nic, immediately set 👀 reaction (FR-9) and record voice-vs-text for FR-7.1 mirror
+    if (update.message?.message_id && (update.message.text || update.message.caption)) {
+      this.recordMessageExcerpt(update.message.message_id, update.message.text || update.message.caption);
+    }
+
+    // 1. If inbound message from user, immediately set 👀 reaction (FR-9) and record voice-vs-text for FR-7.1 mirror
     if (update.message?.from?.id && this.config.allowFrom.includes(update.message.from.id)) {
       const isInboundVoice = Boolean(update.message.voice || update.message.audio);
       this.lastInboundWasVoiceByChat.set(update.message.chat.id, isInboundVoice);
@@ -507,7 +573,7 @@ export class TelegramBotClient {
       const cb = update.callback_query;
       const data = cb.data || "";
 
-      if (!data.startsWith("q:") && !data.startsWith("perm:")) {
+      if (!data.startsWith("q:") && !data.startsWith("perm:") && !data.startsWith("fb:")) {
         await this.callApi("answerCallbackQuery", { callback_query_id: cb.id });
       }
 
@@ -615,6 +681,97 @@ export class TelegramBotClient {
         return;
       }
 
+      // Feedback callbacks: fb:...
+      if (data.startsWith("fb:") && cb.message) {
+        if (!this.config.allowFrom.includes(cb.from.id)) {
+          await this.callApi("answerCallbackQuery", {
+            callback_query_id: cb.id,
+            text: "Unauthorized.",
+          });
+          return;
+        }
+
+        if (data === "fb:up") {
+          await this.callApi("answerCallbackQuery", { callback_query_id: cb.id, text: "Noted 👍" });
+          await this.feedbackManager.handleUpvote({
+            messageId: cb.message.message_id,
+            messageExcerpt: cb.message.text || "",
+          });
+          const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
+            cb.message.reply_markup?.inline_keyboard,
+            [[{ text: "👍 saved", callback_data: "noop" }]]
+          );
+          await this.callApi("editMessageReplyMarkup", {
+            chat_id: cb.message.chat.id,
+            message_id: cb.message.message_id,
+            reply_markup: {
+              inline_keyboard: updatedKeyboard,
+            },
+          });
+          return;
+        }
+
+        if (data === "fb:down") {
+          await this.callApi("answerCallbackQuery", { callback_query_id: cb.id });
+          const critiqueKeyboard = this.feedbackManager.getDownvoteCritiqueKeyboard(cb.message.message_id);
+          const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
+            cb.message.reply_markup?.inline_keyboard,
+            critiqueKeyboard
+          );
+          await this.callApi("editMessageReplyMarkup", {
+            chat_id: cb.message.chat.id,
+            message_id: cb.message.message_id,
+            reply_markup: { inline_keyboard: updatedKeyboard },
+          });
+          return;
+        }
+
+        if (data === "fb:cancel" || data.startsWith("fb:cancel:")) {
+          await this.callApi("answerCallbackQuery", { callback_query_id: cb.id });
+          const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
+            cb.message.reply_markup?.inline_keyboard,
+            [this.feedbackManager.getInitialFeedbackButtons()]
+          );
+          await this.callApi("editMessageReplyMarkup", {
+            chat_id: cb.message.chat.id,
+            message_id: cb.message.message_id,
+            reply_markup: { inline_keyboard: updatedKeyboard },
+          });
+          return;
+        }
+
+        if (data.startsWith("fb:critique:")) {
+          await this.callApi("answerCallbackQuery", { callback_query_id: cb.id });
+          const parts = data.split(":");
+          const critique = parts.slice(3).join(":");
+          const res = await this.feedbackManager.handleCritique({
+            messageId: cb.message.message_id,
+            messageExcerpt: cb.message.text || "",
+            critique,
+          });
+
+          const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
+            cb.message.reply_markup?.inline_keyboard,
+            [[{ text: `Critique saved: ${critique}`, callback_data: "noop" }]]
+          );
+          await this.callApi("editMessageReplyMarkup", {
+            chat_id: cb.message.chat.id,
+            message_id: cb.message.message_id,
+            reply_markup: {
+              inline_keyboard: updatedKeyboard,
+            },
+          });
+
+          if (res.emitsChannelEvent) {
+            this.emitChannelEvent(
+              `Feedback received: ${critique}`,
+              res.channelEvent as unknown as Record<string, unknown>
+            );
+          }
+          return;
+        }
+      }
+
       // Custom action / decision buttons on reply cards (FR-1.1 / FR-8)
       if (cb.message && this.config.allowFrom.includes(cb.from.id)) {
         const kbRows = cb.message.reply_markup?.inline_keyboard || [];
@@ -666,9 +823,11 @@ export class TelegramBotClient {
           const buf = await res.arrayBuffer();
           writeFileSync(localAudioPath, Buffer.from(buf));
 
-          // Run transcription script
+          // Run transcription script with stateDir cwd and merged env
           const { stdout } = await execFileAsync(this.config.voiceTranscribeCmd, [localAudioPath], {
             timeout: 120000,
+            cwd: this.config.stateDir,
+            env: { ...process.env, ...(this.config.env || {}) },
           });
 
           const voiceEvent = buildVoiceInEvent({
@@ -702,7 +861,7 @@ export class TelegramBotClient {
     }
 
     // 5. General Inbound (text, attachments, reactions, commands)
-    const event = parseInboundUpdate(update, this.config.allowFrom);
+    const event = parseInboundUpdate(update, this.config.allowFrom, (msgId) => this.getMessageExcerpt(msgId), this.config.persona);
     if (event) {
       if (event.event === "attachment" && event.meta.file_id && this.config.botToken) {
         try {

@@ -935,32 +935,10 @@ def _create_exporter(
     headers: dict | None = None,
     protocol: str = "",
 ) -> Any:
-    """Create an OTel span exporter. Fails safe if modules are missing or initialization fails."""
+    """Create an OTel span exporter. Raises on initialization failure."""
     prefer_http = protocol in ("http/protobuf", "http/json", "http")
 
-    if not prefer_http:
-        try:
-            from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
-                OTLPSpanExporter as GRPCSpanExporter,
-            )
-
-            insecure = not endpoint.startswith("https://")
-            log.debug(
-                "Initializing OTLP gRPC span exporter for endpoint %s (insecure=%s)",
-                endpoint,
-                insecure,
-            )
-            return GRPCSpanExporter(
-                endpoint=endpoint,
-                headers=headers if headers else None,
-                insecure=insecure,
-                timeout=_EXPORT_TIMEOUT_S,
-            )
-        except Exception as e:
-            log.debug("gRPC exporter unavailable (%s), trying HTTP fallback", e)
-
-    # HTTP Exporter
-    try:
+    if prefer_http:
         from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
             OTLPSpanExporter as HTTPSpanExporter,
         )
@@ -972,16 +950,23 @@ def _create_exporter(
             timeout=_EXPORT_TIMEOUT_S,
             **_proxy_http_kwargs(endpoint),
         )
-    except Exception as e:
-        log.debug("HTTP exporter unavailable (%s), trying Console fallback", e)
 
-    try:
-        from opentelemetry.sdk.trace.export import ConsoleSpanExporter
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+        OTLPSpanExporter as GRPCSpanExporter,
+    )
 
-        return ConsoleSpanExporter()
-    except Exception as e:
-        log.debug("Console exporter unavailable (%s)", e)
-        return None
+    insecure = not endpoint.startswith("https://")
+    log.debug(
+        "Initializing OTLP gRPC span exporter for endpoint %s (insecure=%s)",
+        endpoint,
+        insecure,
+    )
+    return GRPCSpanExporter(
+        endpoint=endpoint,
+        headers=headers if headers else None,
+        insecure=insecure,
+        timeout=_EXPORT_TIMEOUT_S,
+    )
 
 
 # ---------------------------------------------------------------------------

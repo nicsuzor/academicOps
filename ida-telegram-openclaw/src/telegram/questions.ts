@@ -5,24 +5,39 @@ import { randomBytes } from "node:crypto";
 export interface QuestionOption {
   label: string;
   description?: string;
+  recommended?: boolean;
 }
 
 export interface QuestionPayload {
   question: string;
   header?: string;
+  context?: string;
+  recommendation?: string;
   options: QuestionOption[];
   multiSelect?: boolean;
   allowOther?: boolean;
   turnId?: string;
+  turn_id?: string;
+  sessionId?: string;
+  session_id?: string;
+  text?: string;
   chatId?: number;
 }
 
 export interface StoredQuestion extends QuestionPayload {
   id: string;
+  text: string;
   createdAt: string;
-  status: "pending" | "answered";
+  created_at: string;
+  status: "pending" | "answered" | "closed";
+  sessionId?: string;
+  session_id?: string;
+  turnId?: string;
+  turn_id?: string;
   selectedOptions?: number[];
   answeredChoice?: string;
+  closedReason?: string;
+  closedAt?: string;
   messageId?: number;
   promptMessageId?: number;
 }
@@ -38,16 +53,32 @@ export interface QuestionCard {
 }
 
 export interface QuestionAnswerEvent {
-  event: "question_answer";
+  event: "question_answered";
   question_id: string;
   question: string;
   choice: string;
   turn_id?: string;
+  session_id?: string;
+}
+
+export interface QuestionClosedEvent {
+  event: "question_closed";
+  question_id: string;
+  question: string;
+  reason: string;
+  turn_id?: string;
+  session_id?: string;
 }
 
 export interface ResolveAnswerResult {
   cardText: string;
   channelEvent: QuestionAnswerEvent;
+  question: StoredQuestion;
+}
+
+export interface CloseQuestionResult {
+  cardText: string;
+  channelEvent: QuestionClosedEvent;
   question: StoredQuestion;
 }
 
@@ -68,6 +99,13 @@ export class QuestionBroker {
         const raw = readFileSync(this.questionsFilePath, "utf-8");
         const list: StoredQuestion[] = JSON.parse(raw);
         for (const q of list) {
+          if (!q.text && q.question) q.text = q.question;
+          if (!q.created_at && q.createdAt) q.created_at = q.createdAt;
+          if (!q.createdAt && q.created_at) q.createdAt = q.created_at;
+          if (!q.turn_id && q.turnId) q.turn_id = q.turnId;
+          if (!q.turnId && q.turn_id) q.turnId = q.turn_id;
+          if (!q.session_id && q.sessionId) q.session_id = q.sessionId;
+          if (!q.sessionId && q.session_id) q.sessionId = q.session_id;
           this.questions.set(q.id, q);
         }
       } catch {
@@ -90,12 +128,21 @@ export class QuestionBroker {
     message: string;
   }> {
     const id = "q_" + randomBytes(4).toString("hex");
+    const turnId = payload.turnId || payload.turn_id;
+    const sessionId = payload.sessionId || payload.session_id;
+    const text = payload.text || payload.question;
+    const createdAt = new Date().toISOString();
     const stored: StoredQuestion = {
       ...payload,
       id,
-      createdAt: new Date().toISOString(),
+      text,
+      question: text,
+      createdAt,
+      created_at: createdAt,
       status: "pending",
       selectedOptions: [],
+      ...(turnId ? { turnId, turn_id: turnId } : {}),
+      ...(sessionId ? { sessionId, session_id: sessionId } : {}),
     };
 
     this.questions.set(id, stored);
@@ -104,7 +151,7 @@ export class QuestionBroker {
     return {
       questionId: id,
       status: "posted",
-      message: `Question ${id} posted to Nic. Do not assume an answer; continue other work or end your turn.`,
+      message: `Question ${id} posted to the user. Do not assume an answer; continue other work or end your turn.`,
     };
   }
 
@@ -162,6 +209,14 @@ export class QuestionBroker {
 
     let text = q.header ? `**${q.header}**\n\n` : "";
     text += q.question;
+
+    if (q.context) {
+      text += `\n\n>! ${q.context}`;
+    }
+
+    if (q.recommendation) {
+      text += `\n\n**Recommendation:** ${q.recommendation}`;
+    }
 
     if (q.options.some((opt) => opt.description)) {
       const optionLines = q.options.map((opt, idx) =>
@@ -248,11 +303,42 @@ export class QuestionBroker {
     const headerPrefix = q.header ? `**${q.header}**\n\n` : "";
     const cardText = `${headerPrefix}${formattedQuestion}\n\nSelected: ${choice} ✅`;
     const channelEvent: QuestionAnswerEvent = {
-      event: "question_answer",
+      event: "question_answered",
       question_id: id,
       question: q.question,
       choice,
-      turn_id: q.turnId,
+      ...(q.turnId || q.turn_id ? { turn_id: q.turnId || q.turn_id } : {}),
+      ...(q.sessionId || q.session_id ? { session_id: q.sessionId || q.session_id } : {}),
+    };
+
+    return { cardText, channelEvent, question: q };
+  }
+
+  public async closeQuestion(id: string, reason: string): Promise<CloseQuestionResult | null> {
+    const trimmedReason = reason?.trim();
+    if (!trimmedReason) {
+      throw new Error("Missing reason: closing a question requires an explicit stated reason");
+    }
+    const q = this.questions.get(id);
+    if (!q || q.status !== "pending") return null;
+
+    q.status = "closed";
+    q.closedReason = trimmedReason;
+    q.closedAt = new Date().toISOString();
+    this.saveState();
+
+    const qLines = q.question.split("\n");
+    qLines[0] = `**${qLines[0]}**`;
+    const formattedQuestion = qLines.join("\n");
+    const headerPrefix = q.header ? `**${q.header}**\n\n` : "";
+    const cardText = `${headerPrefix}${formattedQuestion}\n\nClosed: ${trimmedReason}`;
+    const channelEvent: QuestionClosedEvent = {
+      event: "question_closed",
+      question_id: id,
+      question: q.question,
+      reason: trimmedReason,
+      ...(q.turnId || q.turn_id ? { turn_id: q.turnId || q.turn_id } : {}),
+      ...(q.sessionId || q.session_id ? { session_id: q.sessionId || q.session_id } : {}),
     };
 
     return { cardText, channelEvent, question: q };

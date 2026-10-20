@@ -1,6 +1,9 @@
 import { describe, expect, test, mock } from "bun:test";
 import {
   DEFAULT_IDA_COMMANDS,
+  PRIME_COMMANDS,
+  STRATEGIC_COMMANDS,
+  PERSONA_COMMANDS,
   resolveBotCommands,
   getBareCommandBehavior,
 } from "../src/telegram/commands.js";
@@ -165,4 +168,149 @@ describe("Native Telegram bot commands for Ida (FR-8.1)", () => {
     expect(event?.meta.skill).toBe("ida:decide");
     expect(event?.meta.default_action).toBe(getBareCommandBehavior("/decide")?.bareAction);
   });
+
+  test("Prime and strategic personas each have distinct command menus suited to their roles", () => {
+    const primeCmds = resolveBotCommands("prime");
+    const strategicCmds = resolveBotCommands("strategic");
+
+    expect(primeCmds.map((c) => c.command)).toEqual([
+      "decide",
+      "q",
+      "mine",
+      "reconcile",
+      "hydrate",
+      "up",
+    ]);
+
+    expect(strategicCmds.map((c) => c.command)).toEqual([
+      "strategize",
+      "remember",
+      "decompose",
+      "q",
+      "hydrate",
+      "up",
+    ]);
+  });
+
+  test("registerCommands registers Prime commands for prime persona and Strategic commands for strategic persona", async () => {
+    const stateDirPrime = mkdtempSync(join(tmpdir(), "ida-tg-prime-"));
+    const stateDirStrategic = mkdtempSync(join(tmpdir(), "ida-tg-strategic-"));
+
+    const configPrime = loadConfig({
+      TELEGRAM_BOT_TOKEN: "test-token",
+      IDA_TELEGRAM_ROLE: "primary",
+      IDA_TELEGRAM_PERSONA: "prime",
+      TELEGRAM_ALLOW_FROM: "8860530746",
+      STATE_DIR: stateDirPrime,
+    });
+
+    const configStrategic = loadConfig({
+      TELEGRAM_BOT_TOKEN: "test-token",
+      IDA_TELEGRAM_ROLE: "primary",
+      IDA_TELEGRAM_PERSONA: "strategic",
+      TELEGRAM_ALLOW_FROM: "8860530746",
+      STATE_DIR: stateDirStrategic,
+    });
+
+    const registeredPayloads: Record<string, any> = {};
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = mock(async (url: string | URL | Request, init?: RequestInit) => {
+      const urlStr = String(url);
+      const method = urlStr.split("/").pop() || "";
+      const payload = init?.body ? JSON.parse(String(init.body)) : {};
+
+      if (method === "setMyCommands") {
+        const firstCmd = (payload.commands as any[])[0]?.command;
+        registeredPayloads[firstCmd] = payload;
+        return new Response(JSON.stringify({ ok: true, result: true }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ ok: true, result: [] }), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    try {
+      const brokerPrime = new QuestionBroker(stateDirPrime);
+      const brokerStrategic = new QuestionBroker(stateDirStrategic);
+      const permRelay = new PermissionRelay();
+
+      const botPrime = new TelegramBotClient(configPrime, brokerPrime, permRelay, () => {});
+      await botPrime.registerCommands();
+
+      const botStrategic = new TelegramBotClient(configStrategic, brokerStrategic, permRelay, () => {});
+      await botStrategic.registerCommands();
+
+      expect(registeredPayloads["decide"]).toBeDefined();
+      expect(registeredPayloads["decide"].commands.map((c: any) => c.command)).toEqual([
+        "decide",
+        "q",
+        "mine",
+        "reconcile",
+        "hydrate",
+        "up",
+      ]);
+
+      expect(registeredPayloads["strategize"]).toBeDefined();
+      expect(registeredPayloads["strategize"].commands.map((c: any) => c.command)).toEqual([
+        "strategize",
+        "remember",
+        "decompose",
+        "q",
+        "hydrate",
+        "up",
+      ]);
+    } finally {
+      globalThis.fetch = origFetch;
+    }
+  });
+
+  test("persona inferred from STATE_DIR when IDA_TELEGRAM_PERSONA is unset", () => {
+    const configPauli = loadConfig({
+      STATE_DIR: "/home/nic/.claude/channels/telegram-pauli",
+    });
+    expect(configPauli.persona).toBe("prime");
+    expect(configPauli.botCommands.map((c) => c.command)).toEqual([
+      "decide",
+      "q",
+      "mine",
+      "reconcile",
+      "hydrate",
+      "up",
+    ]);
+
+    const configIda = loadConfig({
+      STATE_DIR: "/home/nic/.claude/channels/telegram-ida",
+    });
+    expect(configIda.persona).toBe("strategic");
+    expect(configIda.botCommands.map((c) => c.command)).toEqual([
+      "strategize",
+      "remember",
+      "decompose",
+      "q",
+      "hydrate",
+      "up",
+    ]);
+  });
+
+  test("strategic bare command reaches Ida with defined no-argument behavior", () => {
+    const allowFrom = [8860530746];
+    for (const cmdSpec of STRATEGIC_COMMANDS) {
+      const update: TelegramUpdate = {
+        update_id: 205,
+        message: {
+          message_id: 305,
+          date: Date.now(),
+          chat: { id: 8860530746, type: "private" },
+          from: { id: 8860530746, is_bot: false, first_name: "Nic" },
+          text: `/${cmdSpec.command}`,
+        },
+      };
+
+      const event = parseInboundUpdate(update, allowFrom);
+      expect(event).not.toBeNull();
+      expect(event?.event).toBe("bot_command");
+      expect(event?.meta.command).toBe(`/${cmdSpec.command}`);
+      expect(event?.meta.skill).toBe(cmdSpec.skill);
+      expect(event?.meta.default_action).toBe(cmdSpec.bareAction);
+    }
+  });
 });
+

@@ -1,71 +1,64 @@
 ---
 name: premise-check
-description: Author or verify an agent handback report argument in standardised Chained Toulmin Argdown -- enforcing basis vocabulary, the ask as main conclusion, non-flat inference chains, contrast testing, granularity stopping rules, and verdict recording. Use when receiving a subagent report, passing verified claims up the chain, or authoring handback receipts. Not a fact check or requirement review, and not for extracting a text's argument (use argument-extraction).
+description: Write or check the argument at the end of an evidence-backed report -- standard-form premises with their basis in words, warrants with their defeaters, the asker's questions answered by id -- and record the checker's verdict with its seven-line reason. Use when handing back a report, receiving one from a subagent, worker or peer, or relaying a checked claim upward. Not a fact check or requirement review, and not for extracting the argument of a text (use argument-extraction).
 ---
 
 # Premise Check
 
-Author or verify report arguments so every handback receipt links observed facts to `[Outcome]` through explicit warrants, bounded scopes, and stopping rules. Read `ida:argdown-toulmin` first: it sets the grammar, basis vocabulary, observed-value rule, tags, and parser validation.
+A report that rests on evidence ends in an argument whose final conclusion answers the asker's questions. The writer lays it out so each step can be judged from the report alone; the checker judges every step and records why.
 
-## When to Use
+**Standing rule: a format breach is waivable; an untested inference never passes.**
 
-- Ending an evidence-backed subagent or task report with a verifiable handback argument concluding `[Outcome]`
-- Auditing an incoming report from a subagent or workflow step before accepting its claim or passing it upstream
-- Recording a formal `PASS`, `REVISE`, or `FAIL` verdict on a report claim
-- Messaging peers: a message carries something the receiver acts on or is not sent; a message that only confirms receipt is not sent
+## Writing the argument
 
-## Report Shape
+End the report with one fenced `argdown` block in the form in [`references/report-form.md`](references/report-form.md).
 
-End every evidence-backed report with a parser-valid Argdown block concluding `[Outcome]`, the direct answer to the incoming ask. Handback receipts follow the syntax rules directly; do not run an external parser CLI or write a test script to validate the block during handback:
+1. **The ask at the top**, in the asker's own words, one question per `asks` entry, each under the immutable id the report form defines. Copy the ask you were given; never restate it as your own title.
+2. **Numbered premises**, each ending with its basis in words, one of the phrases in [`references/vocabulary.toml`](references/vocabulary.toml). A premise about outside state quotes the value that decides it (`state: MERGED`, `0 hits`).
+3. **Pointers as lettered endnotes** under `notes` -- paths, lines, span ids, task ids, PRs -- marked `^a` in the line. Never inline.
+4. **The inference line** states the warrant as a rule that could be false on its own, then `Unless:` naming what would defeat the step and, after `;`, whether it is ruled out by a numbered line, not ruled out, or not tried.
+5. **Write in what is missing** as a numbered line marked _assumed, not checked here_, and put the qualifier it buys in the conclusion ("so, most likely, …").
+6. **Chain** each conclusion into the next step as a numbered line. Join independent findings only through an explicit "and both" step.
+7. **Answer the asks by id** under `answers`. An ask with no answer says `none`.
+8. **Relay upward** only sentences that name the line they restate. A sentence with no line does not go.
+9. **No premise count.** Group premises by the relevance rule in `argument-extraction`; avoid laundry lists.
+10. **Keep machine vocabulary out of the lines.** No `{...}` attributes on a statement; the reader sees words.
 
-```argdown
-===
-title: Incoming ask summary
-author: agent-name
-date: 2026-10-14
-abstract: One-sentence outcome in plain prose.
-granularity:
-  level: micro
-  floor: "Accept pinpoint observed values and bounded search counts with verbatim pointers as leaf nodes."
-model:
-  mode: strict
-===
+Match the conclusion to what the premises can carry: a ranking needs a comparison over the alternatives; a negative or "cannot" needs a failed attempt with its error, or a search with its query, scope and count; a causal or universal claim needs a mechanism or narrows; "should" needs a stated warrant.
 
-[Outcome]: Direct, scope-matched answer to the ask.
+Self-check before sending, as the checker will.
 
-<Verification>: How the evidence establishes the outcome.
+## Checking a received report
 
-(1) [Pinpoint Fact]: Stated finding with deciding value (`status: MERGED`). {basis: "observed", pointer: "owner/repo@sha:path:line"}
-(2) [Search Bound]: Bounded negative or scope finding (`0 hits`). {basis: "exhaustively-searched", pointer: "rg 'pattern' path/ -> 0 hits"}
--- Warrant: Why (1) and (2) together rule out alternatives and establish (3) {uses: [1, 2], basis: "reported-by", pointer: "doc-or-rule-id"} --
-(3) [Outcome]
-```
+Take observed premises with a pointer as given: never open a pointer or redo the work. Everything else -- warrants, steps, scope, the fit between rule and case -- you judge. When a ruling turns on a fact the report lacks, send it back naming the missing premise.
 
-## Matching Basis to Claim Type
+Run four tests on every inference line:
 
-- _Rankings / comparisons_ require explicit comparison premises covering the alternatives.
-- _Negatives / absences / capabilities_ require `basis: "exhaustively-searched"`, `"attempted-and-failed"`, or `"method-bounded"` stating the exact search boundary or instrument limit.
-- _Causal / universal claims_ require an explicit mechanism in the bar and a conclusion scope no wider than the premises' scope.
+| Test | Passes when | Failure looks like |
+| - | - | - |
+| **Valid** | The premises meet every condition of the warrant, and the conclusion is no wider than they are. | A condition no line supplies; a defeater "not tried" that would change the next action; scope drift. |
+| **Supported** | Each premise's basis can bear the step's stakes. A conclusion is only as strong as its weakest premise. | A _worker reported, unchecked_ or _assumed_ premise carrying a high-stakes step; "PASS" claimed with no verdict id. |
+| **Answered** | The final conclusion answers each ask id, or says it has no answer. | The conclusion answers a narrower or different question than the `Asked` lines. |
+| **Sufficient** | Materiality, sufficiency and necessity settle each step (below). | A complex, unbacked warrant on a high-stakes step accepted without one level of decomposition. |
 
-## Formal Check and Granularity Stopping Rules
+Proportionality, in order:
 
-When verifying an incoming report, accept `observed` and `exhaustively-searched` leaf premises with valid pointers and observed values as given (do not re-open files or re-run searches):
+1. **Materiality** -- examine a step only if changing its conclusion would change what the reader does next.
+2. **Sufficiency** -- accept a warrant as stated when it is obvious, backed by a cited rule or verdict, or carries a claim cheap to reverse. Send back for one level of decomposition only when it is complex, unbacked and high-stakes. `worker reported` premises get the same test: a report carries a verdict id or is weighed as unchecked.
+3. **Necessity** -- reject only when the objection would change this conclusion; phrasing or a preferred route is not a rejection.
 
-1. **Format Kickback (`REVISE` `#format`)**: If a report lacks a parser-valid block concluding `[Outcome]`, or breaks the standard's premise cap or warrant placement, return `REVISE` (`#format`) before checking substance.
-2. **Scope Check (`REVISE` `#scope-drift`)**: Run Check A (Term and Scope Alignment) as `ida:argument-audit` defines it on `[Outcome]` and each load-bearing bar.
-3. **Contrast Test (`REVISE` `#unanswered`)**: Run Check D (The Contrast Test) as `ida:argument-audit` defines it on each load-bearing bar, and name the exact step and the unexcluded rival state.
-4. **Relayed Directions Check**: When a premise cites `'direction...' (derived from: ask summary [source:id])`, verify that the direction follows from the cited ask and flag any invented constraints.
-5. **Granularity Floor and Proportionality Stopping Rule**: Hold strictly at `granularity.floor`. Do not demand sub-arguments for obvious definitions, authority-backed rules (`basis: "theory"` or `"reported-by"`), or low-stakes warrants where flipping the warrant would not alter `[Outcome]`. Recurse or kick back only when a material `#missing`, `#scope-drift`, `#conflict`, or `_>` undercut changes the conclusion. Synthesise accepted outcomes upward as `{basis: "reported-by", pointer: "<verdict-id>"}`, preserving pinpoint pointers for material facts.
+A format breach that leaves the step judgeable is waived and listed; one that hides a step is a REVISE.
 
-## Recording the Verdict
+## Recording the verdict
 
-- **PASS**: `[Outcome]` directly answers the ask with no material `#missing`, `#scope-drift`, undercut (`_>`), `#conflict` (`><`), or `#unanswered`.
-- **REVISE**: Specify the exact step (`(n)` or `-- Warrant --`), the tag (`#format`, `#missing`, `#scope-drift`, `#conflict`, `#unanswered`), and the unexcluded world state or scope narrowing needed. Return to sender; never pass hedged or unchecked claims upstream.
-- **FAIL**: `[Outcome]` does not answer the incoming ask.
-- **Harness notices**: Record `PASS` (`"harness notice"`) on automated system notices; proceed normally on scheduled `/loop` wakeups.
+- **PASS** -- every inference holds, every ask is answered or honestly unanswered, and the weakest basis can bear the stakes.
+- **REVISE** -- name the line, the defect tag from the vocabulary, and what would fix it. Return it to the sender.
+- **FAIL** -- the conclusion does not answer the ask.
+
+Write the reason as the seven keyed lines in [`references/checker-reason.md`](references/checker-reason.md) -- Judged · Valid · Supported · Answered · Sufficient · Waived · Relay -- and record it:
 
 ```bash
-uv run --project <plugin-dir> python3 <plugin-dir>/skills/premise-check/scripts/verdict.py --claim <claim_id> --verdict <PASS|REVISE|FAIL> --reason "<why>" [--title "<short_title>"]
+uv run --project <plugin-dir> python3 <plugin-dir>/skills/premise-check/scripts/verdict.py --claim <claim_id> --verdict <PASS|REVISE|FAIL> --reason-file <path>
 ```
 
-Use `--reason-file <path>` (or `-`) for multiline reasons.
+The recorder refuses a PASS whose reason misses a test line or an ask id, or contradicts the block. A harness notice or other message that makes no claim takes the one-line no-claim reason. For a handback read from a task record, the claim id is the task id; after recording, add `## Premise-Check Verdict` to the task with the verification id and verdict.

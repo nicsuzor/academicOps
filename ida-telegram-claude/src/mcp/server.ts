@@ -43,6 +43,18 @@ export class StdioMcpServer {
     process.stdout.write(JSON.stringify(notification) + "\n");
   }
 
+  public emitPermissionDecision(requestId: string, behavior: "allow" | "deny") {
+    const notification = {
+      jsonrpc: "2.0",
+      method: "notifications/claude/channel/permission",
+      params: {
+        request_id: String(requestId),
+        behavior,
+      },
+    };
+    process.stdout.write(JSON.stringify(notification) + "\n");
+  }
+
   public async handleMessage(msg: Record<string, unknown>): Promise<Record<string, unknown> | null> {
     const { id, method, params } = msg;
 
@@ -72,6 +84,7 @@ export class StdioMcpServer {
             tools: {},
             experimental: {
               "claude/channel": {},
+              "claude/channel/permission": {},
             },
           },
           serverInfo: {
@@ -135,23 +148,33 @@ export class StdioMcpServer {
       }
     }
 
-    // Permission request from Claude Code channel relay
-    if (method === "claude/channel/permission") {
-      const p = params as { id: string; tool_name: string; tool_input: Record<string, unknown> };
-      const decisionPromise = new Promise<"allow" | "deny">((resolve) => {
-        this.permRelay.register(p.id, p.tool_name, p.tool_input, resolve);
-      });
-      // Forward permission prompt to Telegram with Review button
-      if (this.bot) {
-        await this.bot.sendPermissionCard(p.id, p.tool_name, p.tool_input);
-      }
-      // Hold permission resolution until Nic approves in chat or Mini App
-      const decision = await decisionPromise;
-      return {
-        jsonrpc: "2.0",
-        id,
-        result: { decision },
+    // Claude Code channel permission request notification (notifications/claude/channel/permission_request)
+    if (method === "notifications/claude/channel/permission_request") {
+      const p = (params || {}) as {
+        request_id?: string;
+        tool_name?: string;
+        description?: string;
+        input_preview?: string;
+        tool_input?: Record<string, unknown>;
       };
+      if (!p.request_id || !p.tool_name) {
+        throw new Error("Malformed permission_request notification: missing request_id or tool_name");
+      }
+      const reqId = p.request_id;
+      const toolInput: Record<string, unknown> = p.tool_input || {
+        ...(p.description ? { description: p.description } : {}),
+        ...(p.input_preview ? { input_preview: p.input_preview } : {}),
+      };
+
+      this.permRelay.register(reqId, p.tool_name, toolInput, (decision) => {
+        this.emitPermissionDecision(reqId, decision);
+      });
+
+      if (this.bot) {
+        await this.bot.sendPermissionCard(reqId, p.tool_name, toolInput, p.description, p.input_preview);
+      }
+
+      return null;
     }
 
     return {
@@ -221,6 +244,7 @@ export class StdioMcpServer {
           buttons: args.buttons as Array<{ label: string; callback_data?: string; url?: string; web_app?: string }> | undefined,
           voice: isVoice,
           replyTo,
+          feedback: typeof args.feedback === "boolean" ? args.feedback : undefined,
           review: reviewArg,
         });
 
@@ -263,12 +287,23 @@ export class StdioMcpServer {
     }
 
     if (name === "ask_user") {
+      const topTurnId = (args.turn_id as string | undefined) || (args.turnId as string | undefined);
+      const topSessionId =
+        (args.session_id as string | undefined) ||
+        (args.sessionId as string | undefined) ||
+        ((args._session as any)?.session_id as string | undefined);
       const questions = (args.questions as Array<{
         question: string;
         header?: string;
-        options: Array<{ label: string; description?: string }>;
+        context?: string;
+        recommendation?: string;
+        options: Array<{ label: string; description?: string; recommended?: boolean }>;
         multiSelect?: boolean;
         allowOther?: boolean;
+        turn_id?: string;
+        turnId?: string;
+        session_id?: string;
+        sessionId?: string;
       }>) || [];
 
       if (questions.length === 0) {
@@ -280,9 +315,13 @@ export class StdioMcpServer {
         const result = await this.broker.askUser({
           question: q.question,
           header: q.header,
+          context: q.context,
+          recommendation: q.recommendation,
           options: q.options,
           multiSelect: q.multiSelect,
           allowOther: q.allowOther,
+          turnId: q.turn_id || q.turnId || topTurnId,
+          sessionId: q.session_id || q.sessionId || topSessionId,
           chatId: defaultChatId,
         });
         postedIds.push(result.questionId);
@@ -297,9 +336,37 @@ export class StdioMcpServer {
       }
 
       if (postedIds.length === 1) {
-        return `Question ${postedIds[0]} posted to Nic. Do not assume an answer; continue other work or end your turn.`;
+        return `Question ${postedIds[0]} posted to the user. Do not assume an answer; continue other work or end your turn.`;
       }
-      return `Questions ${postedIds.join(", ")} posted to Nic. Do not assume an answer; continue other work or end your turn.`;
+      return `Questions ${postedIds.join(", ")} posted to the user. Do not assume an answer; continue other work or end your turn.`;
+    }
+
+    if (name === "close_question") {
+      const questionId = (args.question_id as string) || (args.questionId as string) || (args.id as string);
+      const reason = typeof args.reason === "string" ? args.reason.trim() : "";
+      if (!questionId) {
+        return { success: false, error: "Missing question_id" };
+      }
+      if (!reason) {
+        return { success: false, error: "Missing reason: closing a question requires an explicit stated reason" };
+      }
+      const result = await this.broker.closeQuestion(questionId, reason);
+      if (!result) {
+        return { success: false, error: "Question not found or not pending" };
+      }
+      if (this.bot && result.question.chatId && result.question.messageId) {
+        await this.bot.editMessage(result.question.chatId, result.question.messageId, result.cardText, { inline_keyboard: [] });
+      }
+      this.emitChannelNotification(`Question closed: ${result.channelEvent.reason}`, {
+        event: result.channelEvent.event,
+        ...result.channelEvent,
+      });
+      return { success: true, question_id: questionId, reason: result.channelEvent.reason };
+    }
+
+    if (name === "list_questions") {
+      const pending = this.broker.getPendingQuestions();
+      return { success: true, count: pending.length, questions: pending };
     }
 
     if (name === "anchor") {

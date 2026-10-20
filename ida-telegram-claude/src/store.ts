@@ -24,16 +24,18 @@ export interface StoredReview {
   createdAt: string;
 }
 
+export interface ContextTokensUsage {
+  usedTokens: number;
+  totalTokens: number;
+  percentage: number;
+}
+
 export interface AnchorState {
   focus: string;
   taskId?: string;
   waitingOn?: string[];
   delegations?: string[];
-  contextTokens?: {
-    usedTokens: number;
-    totalTokens: number;
-    percentage: number;
-  };
+  contextTokens?: ContextTokensUsage;
   updatedAt: string;
 }
 
@@ -121,14 +123,15 @@ export class PluginStore {
     if (!existsSync(filePath)) return null;
     try {
       return JSON.parse(readFileSync(filePath, "utf-8"));
-    } catch {
+    } catch (err) {
+      console.warn(`[ida-telegram] Failed to read details page ${id}:`, err);
       return null;
     }
   }
 
   public setAnchor(state: Partial<AnchorState>) {
     this.initDirs();
-    const current = this.getAnchor() || {
+    const current = this.getStoredAnchor() || {
       focus: "Initializing",
       updatedAt: new Date().toISOString(),
     };
@@ -141,36 +144,45 @@ export class PluginStore {
     this.nextSeq("anchor", updated);
   }
 
-  public getAnchor(): AnchorState | null {
-    let anchor: AnchorState | null = null;
-    if (existsSync(this.anchorFile)) {
-      try {
-        anchor = JSON.parse(readFileSync(this.anchorFile, "utf-8"));
-      } catch {
-        anchor = null;
-      }
+  private getStoredAnchor(): AnchorState | null {
+    if (!existsSync(this.anchorFile)) return null;
+    try {
+      return JSON.parse(readFileSync(this.anchorFile, "utf-8"));
+    } catch (err) {
+      console.warn(`[ida-telegram] Failed to read anchor file:`, err);
+      return null;
     }
-    if (!anchor && existsSync(this.contextFile)) {
-      anchor = {
-        focus: "Standing by",
-        updatedAt: new Date().toISOString(),
+  }
+
+  public getAnchor(): AnchorState | null {
+    const stored = this.getStoredAnchor();
+    const liveContext = this.resolveContextTokens();
+    if (!stored && !liveContext && !existsSync(this.contextFile)) return null;
+    const base: AnchorState = stored || {
+      focus: "Standing by",
+      updatedAt: new Date().toISOString(),
+    };
+    if (liveContext) {
+      return {
+        ...base,
+        contextTokens: liveContext,
       };
     }
-    if (anchor && !anchor.contextTokens && existsSync(this.contextFile)) {
+    if (!base.contextTokens && existsSync(this.contextFile)) {
       try {
         const ctxData = JSON.parse(readFileSync(this.contextFile, "utf-8"));
         if (ctxData && typeof ctxData.percentage === "number") {
-          anchor.contextTokens = {
+          base.contextTokens = {
             usedTokens: Number(ctxData.usedTokens || 0),
             totalTokens: Number(ctxData.totalTokens || 0),
             percentage: Number(ctxData.percentage),
           };
         }
-      } catch {
-        // Ignore malformed context file
+      } catch (err) {
+        console.warn(`[ida-telegram] Failed to read context file:`, err);
       }
     }
-    return anchor;
+    return base;
   }
 
   public recordTurn(direction: "in" | "out", text: string, maxTurns = 10) {
@@ -233,5 +245,85 @@ export class PluginStore {
     } catch {
       return [];
     }
+  }
+
+  public readContextFromTranscript(filePath: string): ContextTokensUsage | null {
+    if (!filePath || !existsSync(filePath)) return null;
+    let content: string;
+    try {
+      content = readFileSync(filePath, "utf-8");
+    } catch (err) {
+      console.warn(`[ida-telegram] Failed to read transcript file at ${filePath}:`, err);
+      return null;
+    }
+
+    const lines = content.split("\n");
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      let entry: any;
+      try {
+        entry = JSON.parse(line);
+      } catch (err) {
+        console.warn(`[ida-telegram] Malformed JSONL line in transcript ${filePath}:`, err);
+        continue;
+      }
+
+      const cw = entry?.context_window;
+      if (cw && typeof cw === "object") {
+        const totalTokens =
+          typeof cw.context_window_size === "number" && cw.context_window_size > 0
+            ? cw.context_window_size
+            : undefined;
+
+        let usedTokens = 0;
+        if (cw.current_usage && typeof cw.current_usage === "object") {
+          const cu = cw.current_usage;
+          usedTokens =
+            (Number(cu.input_tokens) || 0) +
+            (Number(cu.output_tokens) || 0) +
+            (Number(cu.cache_creation_input_tokens) || 0) +
+            (Number(cu.cache_read_input_tokens) || 0);
+        } else if (typeof cw.total_input_tokens === "number") {
+          usedTokens = (Number(cw.total_input_tokens) || 0) + (Number(cw.total_output_tokens) || 0);
+        }
+
+        if (totalTokens !== undefined && totalTokens > 0) {
+          const percentage =
+            typeof cw.used_percentage === "number"
+              ? Math.round(cw.used_percentage)
+              : Math.min(100, Math.round((usedTokens / totalTokens) * 100));
+          return { usedTokens, totalTokens, percentage };
+        }
+      }
+
+      const usage = entry?.message?.usage || entry?.usage;
+      if (usage && typeof usage === "object") {
+        const usedTokens =
+          (Number(usage.input_tokens) || 0) +
+          (Number(usage.output_tokens) || 0) +
+          (Number(usage.cache_creation_input_tokens) || 0) +
+          (Number(usage.cache_read_input_tokens) || 0);
+
+        const totalTokens =
+          typeof entry?.context_window_size === "number" && entry.context_window_size > 0
+            ? entry.context_window_size
+            : typeof entry?.message?.context_window_size === "number" && entry.message.context_window_size > 0
+              ? entry.message.context_window_size
+              : undefined;
+
+        if (usedTokens > 0 && totalTokens !== undefined && totalTokens > 0) {
+          const percentage = Math.min(100, Math.round((usedTokens / totalTokens) * 100));
+          return { usedTokens, totalTokens, percentage };
+        }
+      }
+    }
+    return null;
+  }
+
+  public resolveContextTokens(explicitTranscriptPath?: string): ContextTokensUsage | null {
+    const transcriptPath = explicitTranscriptPath || process.env.CLAUDE_TRANSCRIPT_PATH;
+    if (!transcriptPath) return null;
+    return this.readContextFromTranscript(transcriptPath);
   }
 }
