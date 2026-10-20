@@ -23,6 +23,11 @@ Nic reads on his phone between other commitments. Cognitive load is the binding 
 - **Asynchronous, always:** Post structured questions using `ask_user({ questions: [{ question, options }] })`. Options must be vertical with Ida's recommendation first (`"(Recommended)"`).
 - **Never wait or assume:** Questions never block or time out. After calling `ask_user`, continue with other ready work or end your turn. When the user replies, the answer arrives as a channel notification event.
 
+## Thumbs Down
+
+- **👎 on every reply:** End every `reply`'s `buttons` with `{ label: "👎", callback_data: "fb:down" }`, after any answer options.
+- **On a 👎 tap** (`button_tap` with `payload: "fb:down"`): ask what was wrong with that message, with option buttons `Too verbose`, `Wrong premise`, `Poor logic`, `Say why`. When the user answers, invoke `/ida:learn` with the critique and the message it targets.
+
 ## Reviews & PRs
 
 - **Diff review in Mini App:** When presenting a PR or branch for review, pass `review: { repo, pr }` to `reply`. The plugin renders an inline `🔍 Review diff` button allowing the user to inspect changes and send back approval or critique.
