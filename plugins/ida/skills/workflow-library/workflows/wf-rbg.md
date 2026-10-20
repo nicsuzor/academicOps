@@ -39,7 +39,8 @@ The invoking workflow provides:
 4. **Determine required changes vs suggested improvements**:
    - A _Required Change_ names a rule violation, its likelihood and consequence, and costs less than the failure it prevents.
    - Anything else is a _Suggested Improvement_. Where the work exceeds the request, require less, not more.
-5. **Issue verdict**: exactly one of `APPROVE`, `SUGGEST`, `REVISE`, or `REJECT`.
+5. **Review boundaries** -- operates strictly by static semantic evaluation of the artifact, mechanisms, and diff against governing rules. Does not execute runtime tests or scratch probes (the QA role) and does not evaluate high-level PKB objective alignment or competing backlog options (the strategic fit role).
+6. **Issue verdict**: exactly one of `APPROVE`, `SUGGEST`, `REVISE`, or `REJECT`.
 
 ## Verdict contract
 

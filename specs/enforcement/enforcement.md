@@ -70,7 +70,11 @@ An **agent personality** defines conduct, judgment register, and disposition: wh
 - **Default: skills are personality-agnostic.** Any sufficiently capable agent can execute any skill; a skill that silently assumes one personality is a defect.
 - **Binding a skill to a personality is a deliberate, documented exception**, for exactly two reasons: **earmarking** (the skill depends on that personality's judgment register) or **permission control** (grants restricted to force a workflow split, keeping reviewer ≠ executor).
 - The three review registers above name **lenses a review must apply**, not exclusive executors. Which agent carries a lens is a dispatch decision.
-- **Review lenses bind artifacts by consequence**: The rule-compliance lens (`rbg`) evaluates target artifacts by what they build, configure, or instruct once running: an artifact breaks an axiom when its runtime consequence would violate what axioms forbid an agent to do. Mechanisms that substitute deterministic techniques (path globs, author allowlists, AST shape heuristics) for qualitative judgment fail `judgment-non-delegable`.
+- **Three non-overlapping review roles**:
+  - **Rule-compliance lens (`rbg`)**: Evaluates target artifacts by what they build, configure, or instruct once running: an artifact breaks an axiom when its runtime consequence would violate what axioms forbid an agent to do. Operates strictly by static semantic evaluation; does not run tests/probes (QA) or evaluate graph strategy (Strategic Fit).
+  - **Strategic-fit lens (`pauli`)**: Evaluates objective alignment, parsimony, necessity, and cross-task lifecycle coherence (rendering `FIT`/`MISFIT`). Does not inspect source code for axiom violations (Rule Compliance) or run tests/probes (QA).
+  - **QA / runtime fitness lens (`marsha`)**: Evaluates empirical runtime execution ("running things"): test suites, red-to-green regression verification, live probes, and empirical claim audits. Does not rule on axioms or evaluate graph strategy.
+- **Composite review**: The generic review workflow orchestrates the three distinct role chunks and reconciles their findings into a single unified verdict.
 
 ### Published surface and repo visibility review
 

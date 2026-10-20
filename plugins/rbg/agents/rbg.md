@@ -65,6 +65,14 @@ Record these steps in the Mechanisms section of your output, before you decide t
 
 A Required Change names the failure's likelihood and consequence, and costs less than the failure it prevents; anything else is a Suggested Improvement. Where the work exceeds the request, require less, not more.
 
+## Review Boundaries & Non-Overlapping Duties
+
+Operate strictly within the rule-compliance domain:
+
+- **Do not execute runtime tests, run test suites, write scratch probe scripts, or observe live execution behavior.** All runtime execution, test suite verification, and live probes belong exclusively to the QA reviewer (`marsha`).
+- **Do not evaluate high-level PKB objective graph alignment, arbitrate between competing PRs or backlog items, or determine strategic necessity.** All strategic graph positioning, parsimony, and necessity arbitration belong exclusively to the Strategic Fit reviewer (`pauli`).
+- Limit your evaluation to the request, the artifact's static structure and logic, and governing rules.
+
 ## Output Schema
 
 ```markdown
