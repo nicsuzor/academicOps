@@ -23,6 +23,7 @@ export interface PluginConfig {
   miniAppUrl: string;
   botCommands: TelegramBotCommand[];
   bridgeToken?: string;
+  env?: Record<string, string>;
 }
 
 function readDotEnvFile(envPath: string): Record<string, string> {
@@ -93,6 +94,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
   const rawMiniAppUrl = (mergedEnv.MINI_APP_URL || mergedEnv.IDA_WEB_URL || DEFAULT_MINI_APP_URL).trim();
   const miniAppUrl = (rawMiniAppUrl || DEFAULT_MINI_APP_URL).replace(/\/+$/, "");
 
+  const defaultTranscribeCmd = join(homedir(), ".claude", "channels", "telegram", "transcribe.sh");
+  const voiceTranscribeCmd = mergedEnv.VOICE_TRANSCRIBE_CMD || defaultTranscribeCmd;
+
+  const defaultSpeakCmd = join(import.meta.dir, "..", "scripts", "speak.sh");
+  const voiceSpeakCmd = mergedEnv.VOICE_SPEAK_CMD || defaultSpeakCmd;
+
   return {
     botToken: mergedEnv.TELEGRAM_BOT_TOKEN || "",
     apiBaseUrl: (mergedEnv.TELEGRAM_API_BASE_URL || "https://api.telegram.org").replace(/\/+$/, ""),
@@ -102,8 +109,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
     allowFrom,
     maxChatChars: parseInt(mergedEnv.MAX_CHAT_CHARS || "1200", 10),
     voiceReplies: (mergedEnv.VOICE_REPLIES as "off" | "mirror" | "always") || "mirror",
-    voiceTranscribeCmd: mergedEnv.VOICE_TRANSCRIBE_CMD || join(homedir(), ".claude", "channels", "telegram", "transcribe.sh"),
-    voiceSpeakCmd: mergedEnv.VOICE_SPEAK_CMD || join(homedir(), ".claude", "channels", "telegram", "speak.sh"),
+    voiceTranscribeCmd,
+    voiceSpeakCmd,
     port: parseInt(mergedEnv.PORT || "8093", 10),
     stateDir,
     socketPath,
@@ -111,6 +118,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
     miniAppUrl,
     botCommands: resolveBotCommands(persona, mergedEnv.TELEGRAM_BOT_COMMANDS),
     bridgeToken: mergedEnv.IDA_BRIDGE_TOKEN || mergedEnv.BRIDGE_TOKEN,
+    env: mergedEnv as Record<string, string>,
   };
 }
 

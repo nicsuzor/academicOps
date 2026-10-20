@@ -219,9 +219,15 @@ export class TelegramBotClient {
         const tempOgg = join(tmpdir(), `voice_out_${stamp}.ogg`);
         try {
           const spoken = prepareVoiceText(formatted.plainText);
-          writeFileSync(tempText, spoken, "utf-8");
+          if (!existsSync(this.config.stateDir)) {
+            mkdirSync(this.config.stateDir, { recursive: true });
+          }
 
-          await execFileAsync(this.config.voiceSpeakCmd, [tempText, tempOgg]);
+          await execFileAsync(this.config.voiceSpeakCmd, [tempText, tempOgg], {
+            timeout: 60000,
+            cwd: this.config.stateDir,
+            env: { ...process.env, ...(this.config.env || {}) },
+          });
 
           if (!existsSync(tempOgg)) {
             throw new Error(`TTS script did not produce output file: ${tempOgg}`);
@@ -817,9 +823,11 @@ export class TelegramBotClient {
           const buf = await res.arrayBuffer();
           writeFileSync(localAudioPath, Buffer.from(buf));
 
-          // Run transcription script
+          // Run transcription script with stateDir cwd and merged env
           const { stdout } = await execFileAsync(this.config.voiceTranscribeCmd, [localAudioPath], {
             timeout: 120000,
+            cwd: this.config.stateDir,
+            env: { ...process.env, ...(this.config.env || {}) },
           });
 
           const voiceEvent = buildVoiceInEvent({
