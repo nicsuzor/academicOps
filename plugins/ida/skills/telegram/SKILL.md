@@ -25,7 +25,7 @@ Nic reads on his phone between other commitments. Cognitive load is the binding 
 
 ## Thumbs Down
 
-- **Act on a 👎 reaction:** When the user adds a 👎 reaction to one of your messages (a `reaction` event whose `added` contains 👎; `target_message_id` names the message), ask what was wrong with it, with option buttons `Too verbose`, `Wrong premise`, `Poor logic`, `Say why`. When the user answers, invoke `/ida:learn` with the critique and that message.
+- **Act on a 👎 reaction:** When the user adds a 👎 reaction to a message (a `reaction` event whose `added` contains 👎; `target_message_id` names the message), treat it as feedback on substance -- the failure or blocker the message reported -- not on how the message was written. Act directly on the reported failure (investigate, fix, unblock, or replan) without asking the user to classify the reaction or critique the wording.
 
 ## Reviews & PRs
 
