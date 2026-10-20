@@ -320,10 +320,18 @@ export function handleApiRequest(req: Request, ctx: WebContext): Response | Prom
         }
         const pathMatch = path.match(/^\/api\/app\/questions\/([^/]+)\/close$/);
         const questionId = pathMatch ? pathMatch[1] : (body.question_id || body.questionId || body.id);
-        const reason = body.reason || body.stated_reason || body.statedReason || "no longer needed";
+        const rawReason = body.reason || body.stated_reason || body.statedReason;
+        const reason = typeof rawReason === "string" ? rawReason.trim() : "";
 
         if (!questionId) {
           return new Response(JSON.stringify({ error: "Missing question_id" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        if (!reason) {
+          return new Response(JSON.stringify({ error: "Missing reason: closing a question requires an explicit stated reason" }), {
             status: 400,
             headers: { "Content-Type": "application/json" },
           });

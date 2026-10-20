@@ -315,10 +315,13 @@ export class QuestionBroker {
   }
 
   public async closeQuestion(id: string, reason: string): Promise<CloseQuestionResult | null> {
+    const trimmedReason = reason?.trim();
+    if (!trimmedReason) {
+      throw new Error("Missing reason: closing a question requires an explicit stated reason");
+    }
     const q = this.questions.get(id);
     if (!q || q.status !== "pending") return null;
 
-    const trimmedReason = reason?.trim() || "no longer needed";
     q.status = "closed";
     q.closedReason = trimmedReason;
     q.closedAt = new Date().toISOString();

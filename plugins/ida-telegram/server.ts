@@ -120,7 +120,15 @@ async function main() {
             client.write(JSON.stringify({ status: "ok", questionId: postedIds[0], questionIds: postedIds }) + "\n");
           } else if (req.type === "close_question") {
             const questionId = req.question_id || req.questionId || req.id;
-            const reason = req.reason || "no longer needed";
+            const reason = typeof req.reason === "string" ? req.reason.trim() : "";
+            if (!questionId) {
+              client.write(JSON.stringify({ status: "error", error: "Missing question_id" }) + "\n");
+              return;
+            }
+            if (!reason) {
+              client.write(JSON.stringify({ status: "error", error: "Missing reason: closing a question requires an explicit stated reason" }) + "\n");
+              return;
+            }
             const result = await broker.closeQuestion(questionId, reason);
             if (result && bot && result.question.chatId && result.question.messageId) {
               await bot.editMessage(result.question.chatId, result.question.messageId, result.cardText, { inline_keyboard: [] });

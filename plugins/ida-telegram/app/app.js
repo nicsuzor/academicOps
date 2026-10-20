@@ -379,14 +379,18 @@ async function loadQuestions() {
 
 async function closeQuestion(qid, reason) {
   try {
-    const promptReason =
-      reason ||
-      (typeof prompt === "function" ? prompt("Reason for closing this question (e.g. answered elsewhere, no longer needed, replaced by a newer question):") : "") ||
-      "no longer needed";
+    let promptReason = reason;
+    if (!promptReason && typeof prompt === "function") {
+      promptReason = prompt("Reason for closing this question (e.g. answered elsewhere, no longer needed, replaced by a newer question):");
+    }
+    const trimmed = typeof promptReason === "string" ? promptReason.trim() : "";
+    if (!trimmed) {
+      return;
+    }
     const res = await fetch("/api/app/questions/close", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question_id: qid, reason: promptReason }),
+      body: JSON.stringify({ question_id: qid, reason: trimmed }),
     });
     if (res.ok) {
       await loadQuestions();

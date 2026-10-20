@@ -343,9 +343,12 @@ export class StdioMcpServer {
 
     if (name === "close_question") {
       const questionId = (args.question_id as string) || (args.questionId as string) || (args.id as string);
-      const reason = (args.reason as string) || "no longer needed";
+      const reason = typeof args.reason === "string" ? args.reason.trim() : "";
       if (!questionId) {
         return { success: false, error: "Missing question_id" };
+      }
+      if (!reason) {
+        return { success: false, error: "Missing reason: closing a question requires an explicit stated reason" };
       }
       const result = await this.broker.closeQuestion(questionId, reason);
       if (!result) {

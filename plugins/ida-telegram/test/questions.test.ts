@@ -771,6 +771,67 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     expect(emittedEvents[0].meta.turn_id).toBe("turn_close_test");
     expect(emittedEvents[0].meta.session_id).toBe("session_close_test");
   });
+
+  test("closing a pending question without a reason is rejected with 400 Bad Request and broker throws", async () => {
+    const { handleApiRequest } = await import("../src/web/routes.js");
+    const { createSessionToken } = await import("../src/web/auth.js");
+
+    const broker = new QuestionBroker(testStateDir);
+    const store = new PluginStore(testStateDir);
+
+    const posted = await broker.askUser({
+      question: "Reject without reason test",
+      options: [{ label: "A" }],
+      chatId: 999,
+    });
+
+    // 1. Broker throws on empty or whitespace reason
+    await expect(broker.closeQuestion(posted.questionId, "")).rejects.toThrow("Missing reason");
+    await expect(broker.closeQuestion(posted.questionId, "   ")).rejects.toThrow("Missing reason");
+
+    // 2. HTTP route returns 400 Bad Request
+    const sessionSecret = "super-secret-session-key";
+    const token = createSessionToken(999, sessionSecret, 3600);
+    const req = new Request("http://127.0.0.1:8093/api/app/questions/close", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: `ida_session=${token}`,
+      },
+      body: JSON.stringify({
+        question_id: posted.questionId,
+        reason: "   ",
+      }),
+    });
+
+    const resp = await handleApiRequest(req, {
+      store,
+      broker,
+      config: {
+        botToken: "test-token",
+        allowFrom: [999],
+        stateDir: testStateDir,
+        socketPath: join(testStateDir, "hook.sock"),
+        port: 8093,
+        miniAppUrl: "https://ida.example.ts.net",
+        isPrimary: true,
+        maxChatChars: 1200,
+        voiceTranscribeCmd: "",
+        voiceSpeakCmd: "",
+        voiceReplies: "off",
+        botCommands: [],
+      },
+      sessionSecret,
+      emitChannelEvent: () => {},
+    } as any);
+
+    expect(resp.status).toBe(400);
+    const data = await resp.json();
+    expect(data.error).toContain("Missing reason");
+
+    // Question remains pending
+    expect(broker.getPendingQuestions().length).toBe(1);
+  });
 });
 
 
