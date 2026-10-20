@@ -404,7 +404,7 @@ def _post_mcp_search(
     if cached_session:
         req_headers["mcp-session-id"] = cached_session
 
-    prefix = os.environ.get("PKB_MCP_TOOL_PREFIX", "")
+    prefix = os.environ.get("PKB_MCP_TOOL_PREFIX", "pkb_")
     tool_name = f"{prefix}search"
     payload = {
         "jsonrpc": "2.0",
