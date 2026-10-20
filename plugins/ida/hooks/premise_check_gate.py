@@ -40,10 +40,16 @@ def _now() -> str:
 # Agent profiles this check applies to: the manager (ida) and the dispatcher (sara)
 _GATED_AGENT_TYPES = ["ida:ida", "ida", "ida:sara", "sara"]
 
-# Envelopes the harness wraps around a report from another agent. Anything
+# Envelopes the harness wraps around a report or direction from another agent. Anything
 # else arriving on UserPromptSubmit -- a channel message or a typed prompt -- is
 # the user's own message, which is an ask, not a claim to check.
-_PEER_ENVELOPES = ("<cross-session-message", "<teammate-message", "<task-notification")
+_PEER_ENVELOPES = (
+    "<cross-session-message",
+    "<teammate-message",
+    "<task-notification",
+    "<subagent-handback",
+)
+
 
 # Tools that dispatch subagents
 _DISPATCH_TOOLS = ["Agent", "Task", "invoke_subagent"]
@@ -302,22 +308,12 @@ is_gate_open = is_disarmed
 _AGY_USER_REQUEST = re.compile(r"<USER_REQUEST>\s*(.*)\s*</USER_REQUEST>", re.DOTALL)
 
 
-def _agy_user_prompt(ctx: HookContext) -> str:
-    """The user's text for an agy turn, read from the turn's transcript.
-
-    agy's PreInvocation payload carries no prompt; it names the transcript, whose
-    latest USER_INPUT step is already written when the hook fires, wrapping the
-    typed text in `<USER_REQUEST>` tags. Only the turn's first model invocation
-    (`invocationNum` 0) is grounded, so a turn is searched once. A turn whose
-    latest turn-start step is a SYSTEM_MESSAGE (agy woken by a subagent result)
-    has no user text, and returns "".
-    """
+def _agy_turn_start(ctx: HookContext) -> dict[str, Any] | None:
     if ctx.raw.get("invocationNum", 0) != 0:
-        return ""
+        return None
     path = ctx.transcript_path or ctx.raw.get("transcriptPath")
     if not path:
-        return ""
-    turn_start: dict[str, Any] | None = None
+        return None
     with open(path, encoding="utf-8") as f:
         lines = f.readlines()
     for line in reversed(lines):
@@ -332,12 +328,24 @@ def _agy_user_prompt(ctx: HookContext) -> str:
             "USER_INPUT",
             "SYSTEM_MESSAGE",
         ):
-            turn_start = entry
-            break
+            return entry
+    return None
 
+
+def _agy_user_prompt(ctx: HookContext) -> str:
+    """The user's text for an agy turn, read from the turn's transcript.
+
+    agy's PreInvocation payload carries no prompt; it names the transcript, whose
+    latest USER_INPUT step is already written when the hook fires, wrapping the
+    typed text in `<USER_REQUEST>` tags. Only the turn's first model invocation
+    (`invocationNum` 0) is grounded, so a turn is searched once. A turn whose
+    latest turn-start step is a SYSTEM_MESSAGE (agy woken by a subagent result)
+    has no user text, and returns "".
+    """
+    turn_start = _agy_turn_start(ctx)
     if not turn_start or turn_start.get("type") != "USER_INPUT":
         return ""
-    content = str(turn_start.get("content") or "")
+    content = str(turn_start.get("content") or "").strip()
     m = _AGY_USER_REQUEST.search(content)
     return (m.group(1) if m else content).strip()
 
@@ -371,14 +379,26 @@ def _strip_channel_wrapper(text: str) -> str:
 
 
 def is_peer_report(ctx: HookContext) -> bool:
-    """True when an incoming prompt is another agent's report, not the user's message."""
-    text = _strip_channel_wrapper(_prompt_text(ctx)).lstrip()
+    """True when an incoming prompt is another agent's report or direction, not the user's message."""
+    if ctx.client == "agy":
+        turn_start = _agy_turn_start(ctx)
+        if turn_start and turn_start.get("type") == "SYSTEM_MESSAGE":
+            content = str(turn_start.get("content") or "").strip()
+            return content.startswith(_PEER_ENVELOPES) or content.startswith(
+                ("<SYSTEM_MESSAGE", "[Message]")
+            )
+    raw = _prompt_text(ctx)
+    text = _strip_channel_wrapper(raw).lstrip()
+    if not text:
+        return False
     return text.startswith(_PEER_ENVELOPES)
 
 
 def is_foreground_dispatch(ctx: HookContext) -> bool:
     """True when a PostToolUse event is a foreground subagent dispatch."""
     if ctx.event != "PostToolUse" or ctx.tool not in _DISPATCH_TOOLS:
+        return False
+    if ctx.client == "agy":
         return False
     tool_input = ctx.raw.get("tool_input") or ctx.raw.get("toolInput") or {}
     if not isinstance(tool_input, dict):
@@ -447,10 +467,38 @@ def format_verdict_command(
 
 
 def _derive_claim_id(ctx: HookContext) -> str:
+    if ctx.event == "PostToolUse":
+        for call in ctx.tool_calls:
+            if call.get("tool_name") in _DISPATCH_TOOLS:
+                tool_input = call.get("tool_input") or {}
+                desc = str(tool_input.get("description") or tool_input.get("prompt") or "").strip()
+                if desc:
+                    return desc[:80]
+                call_id = call.get("tool_use_id") or ""
+                if call_id:
+                    return str(call_id)
+
+        if ctx.tool in _DISPATCH_TOOLS:
+            tool_input = ctx.raw.get("tool_input") or ctx.raw.get("toolInput") or {}
+            if isinstance(tool_input, dict):
+                desc = str(tool_input.get("description") or tool_input.get("prompt") or "").strip()
+                if desc:
+                    return desc[:80]
+            call_id = (
+                ctx.raw.get("tool_call_id") or ctx.raw.get("id") or ctx.raw.get("tool_use_id") or ""
+            )
+            if call_id:
+                return str(call_id)
+        raise RuntimeError("Dispatch tool call lacks identifier and description metadata")
+
     if ctx.event == "UserPromptSubmit":
-        prompt = _strip_channel_wrapper(_prompt_text(ctx))
+        prompt = _strip_channel_wrapper(_prompt_text(ctx)).strip()
+        if not prompt and ctx.client == "agy":
+            turn_start = _agy_turn_start(ctx)
+            if turn_start:
+                prompt = str(turn_start.get("content") or "").strip()
         match = re.match(
-            r"<(cross-session-message|teammate-message|task-notification)([^>]*)>(.*?)(?:</\1>|$)",
+            r"<(cross-session-message|teammate-message|task-notification|subagent-handback)([^>]*)>(.*?)(?:</\1>|$)",
             prompt,
             re.DOTALL,
         )
@@ -476,29 +524,7 @@ def _derive_claim_id(ctx: HookContext) -> str:
             return build_id("claim", prompt)
         return build_id("claim", uuid.uuid4().hex)
 
-    for call in ctx.tool_calls:
-        if call.get("tool_name") in _DISPATCH_TOOLS:
-            tool_input = call.get("tool_input") or {}
-            desc = str(tool_input.get("description") or tool_input.get("prompt") or "").strip()
-            if desc:
-                return desc[:80]
-            call_id = call.get("tool_use_id") or ""
-            if call_id:
-                return str(call_id)
-
-    if ctx.tool in _DISPATCH_TOOLS:
-        tool_input = ctx.raw.get("tool_input") or ctx.raw.get("toolInput") or {}
-        if isinstance(tool_input, dict):
-            desc = str(tool_input.get("description") or tool_input.get("prompt") or "").strip()
-            if desc:
-                return desc[:80]
-        call_id = (
-            ctx.raw.get("tool_call_id") or ctx.raw.get("id") or ctx.raw.get("tool_use_id") or ""
-        )
-        if call_id:
-            return str(call_id)
-
-    return "claim-unnamed"
+    raise RuntimeError(f"Cannot derive claim_id for event {ctx.event}")
 
 
 _OVERRIDE_VARS = (
@@ -657,19 +683,33 @@ def _envelope_id(prompt: str) -> str | None:
 
 
 def premise_check_arm(ctx: HookContext) -> Result | None:
-    """UserPromptSubmit handler: arm the premise check on an incoming report."""
+    """UserPromptSubmit or PostToolUse handler: arm the premise check on an incoming report or direction."""
     if ctx.agent_type not in _GATED_AGENT_TYPES:
         return None
 
-    if ctx.event != "UserPromptSubmit" or not is_peer_report(ctx):
+    if ctx.event == "UserPromptSubmit":
+        if not is_peer_report(ctx):
+            return None
+    elif ctx.event == "PostToolUse":
+        if not is_foreground_dispatch(ctx):
+            return None
+    else:
         return None
 
     claim_id = _derive_claim_id(ctx)
-    prompt = _prompt_text(ctx)
-    judged_text, judged_ref = prompt, _envelope_id(prompt.strip()) or claim_id
+    if ctx.event == "PostToolUse":
+        judged_text = _response_text(_tool_response(ctx)) or _prompt_text(ctx)
+        judged_ref = _tool_use_id(ctx) or claim_id
+    else:
+        prompt = _prompt_text(ctx)
+        if not prompt and ctx.client == "agy":
+            turn_start = _agy_turn_start(ctx)
+            if turn_start:
+                prompt = str(turn_start.get("content") or "").strip()
+        judged_text, judged_ref = prompt, _envelope_id(prompt.strip()) or claim_id
     arm(ctx.session_id, claim_id=claim_id, judged_text=judged_text, judged_ref=judged_ref)
     inject = (
-        f"Premise-check gate armed by {claim_id}; record a verdict per the `premise-check` skill.\n"
+        f"Premise-check gate armed by {claim_id}; if this is a direction, summarise it stating deliverables and log as a frozen acceptance checklist on a PKB task; record a verdict per the `premise-check` skill.\n"
         f"{format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id)}"
     )
     user_msg = f"Premise-check gate armed by {claim_id}."

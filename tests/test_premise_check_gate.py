@@ -21,6 +21,7 @@ import importlib.util
 import json
 import shlex
 import sys
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +32,8 @@ _PLUGIN_ROOT = _REPO_ROOT / "plugins" / "ida"
 _HOOKS_DIR = _PLUGIN_ROOT / "hooks"
 if str(_HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(_HOOKS_DIR))
+
+_POLICY = tomllib.loads((_REPO_ROOT / "tests" / "policy.toml").read_text(encoding="utf-8"))
 
 import dispatch
 import premise_check_gate as pcg
@@ -569,18 +572,22 @@ def test_handler_refuses_channel_reply_tools_while_armed(tool):
 # 6. The agent's own outgoing tool calls never arm the check
 # ---------------------------------------------------------------------------
 
-_OUTGOING_CALLS = [
-    ("Agent", {"description": "verify the claim"}),
-    ("Agent", {"description": "verify the claim", "run_in_background": False}),
+_OUTGOING_NON_DISPATCH_CALLS = [
     ("Agent", {"description": "background worker", "run_in_background": True}),
-    ("Task", {"description": "research X"}),
-    ("invoke_subagent", {"prompt": "research X"}),
+    ("Agent", {"description": "background worker", "run_in_background": "true"}),
     ("SendMessage", {"to": "twin-a", "message": "status?"}),
     ("Bash", {"command": "ls"}),
 ]
 
+_FOREGROUND_DISPATCH_CALLS = [
+    ("Agent", {"description": "verify the claim"}),
+    ("Agent", {"description": "verify the claim", "run_in_background": False}),
+    ("Task", {"description": "research X"}),
+    ("invoke_subagent", {"prompt": "research X"}),
+]
 
-@pytest.mark.parametrize("tool,tool_input", _OUTGOING_CALLS)
+
+@pytest.mark.parametrize("tool,tool_input", _OUTGOING_NON_DISPATCH_CALLS)
 def test_outgoing_post_tool_use_leaves_check_disarmed(tool, tool_input):
     session_id = f"sess-out-{tool}-{sorted(tool_input.items())}"
     ctx = dispatch.HookContext(
@@ -599,7 +606,30 @@ def test_outgoing_post_tool_use_leaves_check_disarmed(tool, tool_input):
     assert pcg.premise_check_handler(_agent_dispatch_ctx(session_id)) is None
 
 
-@pytest.mark.parametrize("tool,tool_input", _OUTGOING_CALLS)
+@pytest.mark.parametrize("tool,tool_input", _FOREGROUND_DISPATCH_CALLS)
+def test_foreground_post_tool_use_arms_check(tool, tool_input):
+    session_id = f"sess-fg-{tool}-{sorted(tool_input.items())}"
+    ctx = dispatch.HookContext(
+        client="claude",
+        event="PostToolUse",
+        tool=tool,
+        session_id=session_id,
+        agent_type="ida:ida",
+        raw={"tool_input": tool_input},
+    )
+    handlers = _load_plugin_module("ida_handlers_gate", _HOOKS_DIR / "handlers.py")
+    res = handlers.post_tool(ctx)
+    assert res is not None
+    assert pcg.is_armed(session_id) is True
+    res_arm = pcg.premise_check_arm(ctx)
+    assert res_arm is not None
+    assert res_arm.kind == dispatch.Kind.ADVISE
+    assert _POLICY["premise_check"]["armed_indicator"] in res_arm.inject_text
+    refuse_res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
+    assert refuse_res is not None and refuse_res.kind == dispatch.Kind.REFUSE
+
+
+@pytest.mark.parametrize("tool,tool_input", _OUTGOING_NON_DISPATCH_CALLS)
 def test_outgoing_post_tool_batch_leaves_check_disarmed(tool, tool_input):
     session_id = f"sess-batch-{tool}-{sorted(tool_input.items())}"
     ctx = dispatch.HookContext(
@@ -669,14 +699,46 @@ def _prompt_ctx(session_id: str, prompt: str, agent_type: str = "ida:ida") -> di
         '<cross-session-message from="twin-a">PR #12 is merged.</cross-session-message>',
         '<teammate-message teammate_id="worker">done</teammate-message>',
         "\n  <task-notification>\nworker finished\n</task-notification>",
+        '<subagent-handback from="worker">subagent finished</subagent-handback>',
     ],
 )
 def test_arm_handler_arms_on_peer_report(prompt):
-    session_id = "sess-peer"
-    pcg.premise_check_arm(_prompt_ctx(session_id, prompt))
+    session_id = f"sess-peer-{abs(hash(prompt))}"
+    res = pcg.premise_check_arm(_prompt_ctx(session_id, prompt))
+    assert res is not None
     assert pcg.is_armed(session_id) is True
-    res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
-    assert res is not None and res.kind == dispatch.Kind.REFUSE
+    assert _POLICY["premise_check"]["direction_checklist_indicator"] in res.inject_text
+    refuse_res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
+    assert refuse_res is not None and refuse_res.kind == dispatch.Kind.REFUSE
+
+
+def test_agy_system_message_arms_check(tmp_path: Path):
+    transcript = tmp_path / "transcript.jsonl"
+    transcript.write_text(
+        json.dumps({"step_index": 0, "type": "USER_INPUT", "content": "initial"})
+        + "\n"
+        + json.dumps(
+            {
+                "step_index": 1,
+                "type": "SYSTEM_MESSAGE",
+                "content": "<SYSTEM_MESSAGE>subagent finished</SYSTEM_MESSAGE>",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    session_id = "sess-agy-sys"
+    ctx = dispatch.HookContext(
+        client="agy",
+        event="UserPromptSubmit",
+        session_id=session_id,
+        agent_type="ida:ida",
+        transcript_path=str(transcript),
+        raw={"invocationNum": 0, "transcriptPath": str(transcript)},
+    )
+    res = pcg.premise_check_arm(ctx)
+    assert res is not None
+    assert pcg.is_armed(session_id) is True
 
 
 @pytest.mark.parametrize(

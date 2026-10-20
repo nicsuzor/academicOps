@@ -34,8 +34,10 @@ from dispatch import HookContext, Kind, load_message_pair  # type: ignore[import
 
 _POLICY_FILE = REPO_ROOT / "tests" / "policy.toml"
 _policy = tomllib.loads(_POLICY_FILE.read_text(encoding="utf-8")) if _POLICY_FILE.exists() else {}
-_DEGRADED_KEYS = _policy.get("hooks", {}).get("degraded_capability", {}).get(
-    "degraded_keys", ["voiceError", "transcript_error"]
+_DEGRADED_KEYS = (
+    _policy.get("hooks", {})
+    .get("degraded_capability", {})
+    .get("degraded_keys", ["voiceError", "transcript_error"])
 )
 
 

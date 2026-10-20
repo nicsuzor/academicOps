@@ -18,6 +18,7 @@ A task is ready when its status is `queued`, it has no open `needs` edges or inc
 - A QA follow-up stays queued until its hard dependency completes; it is not ready yet.
 - A task that folds follow-ups into itself is not ready: send it to `/reify` to be cut.
 - Send a task that is unready or underspecified to `/reify` with its id, because writing and rewriting tasks is that skill's job. Dispatch the rest.
+- **Intake Contract:** On receiving a direction or work brief, the receiving agent must record its own summary stating deliverables as a frozen `## Acceptance` checklist on a PKB task before work starts.
 
 ## 2. Start the workers
 
