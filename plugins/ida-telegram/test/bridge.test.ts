@@ -9,7 +9,6 @@ import { startWebServer } from "../src/web/server.js";
 import { createSessionToken } from "../src/web/auth.js";
 import type { PluginConfig } from "../src/config.js";
 import { TelegramBotClient } from "../src/telegram/bot.js";
-import { FeedbackManager } from "../src/telegram/feedback.js";
 
 describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration.md)", () => {
   const botToken = "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11";
@@ -34,7 +33,6 @@ describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration
     const store = new PluginStore(testStateDir);
     const broker = new QuestionBroker(testStateDir);
     const permRelay = new PermissionRelay(testStateDir);
-    const feedback = new FeedbackManager(testStateDir);
 
     const config: PluginConfig = {
       botToken,
@@ -59,7 +57,7 @@ describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration
     const editedCards: Array<{ chatId: number; messageId: number; text: string; replyMarkup?: any }> = [];
     const apiCalls: Array<{ method: string; params: any }> = [];
 
-    const bot = new TelegramBotClient(config, broker, feedback, permRelay, (content, meta) => {
+    const bot = new TelegramBotClient(config, broker, permRelay, (content, meta) => {
       emittedEvents.push({ event: meta?.event as string || "channel", content, meta: meta || {} });
     });
 

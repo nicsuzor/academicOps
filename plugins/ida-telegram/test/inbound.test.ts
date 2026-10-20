@@ -181,7 +181,6 @@ describe("Inbound completeness: Updates routing and parsing", () => {
     const { TelegramBotClient } = await import("../src/telegram/bot.js");
     const { PluginStore } = await import("../src/store.js");
     const { QuestionBroker } = await import("../src/telegram/questions.js");
-    const { FeedbackManager } = await import("../src/telegram/feedback.js");
     const { PermissionRelay } = await import("../src/mcp/permissions.js");
     const { handleApiRequest } = await import("../src/web/routes.js");
     const { createSessionToken } = await import("../src/web/auth.js");
@@ -208,7 +207,6 @@ describe("Inbound completeness: Updates routing and parsing", () => {
 
     const store = new PluginStore(stateDir);
     const broker = new QuestionBroker(stateDir);
-    const feedback = new FeedbackManager(stateDir);
     const permRelay = new PermissionRelay();
 
     const emittedNotifications: Array<Record<string, unknown>> = [];
@@ -227,7 +225,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
     };
 
     try {
-      const bot = new TelegramBotClient(config, broker, feedback, permRelay, (content, meta) => {
+      const bot = new TelegramBotClient(config, broker, permRelay, (content, meta) => {
         mcpServer.emitChannelNotification(content, meta);
       });
       (bot as any).callApi = async () => ({ ok: true, result: { message_id: 500, file_path: "voice/file.ogg" } });
@@ -314,7 +312,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
         },
       });
 
-      // 6. Feedback critique
+      // 6. Custom option button tap
       await (bot as any).handleUpdate({
         update_id: 6,
         callback_query: {
@@ -326,7 +324,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
             chat: { id: 12345678, type: "private" },
             text: "Some reply",
           },
-          data: "fb:critique:205:Too verbose",
+          data: "decide:pr420:merge",
         },
       });
 
@@ -396,7 +394,6 @@ describe("Inbound completeness: Updates routing and parsing", () => {
   test("FR-9: sets 👀 reaction on every inbound allowFrom message on arrival, and sets no reaction on disallowed users, callback_query, or message_reaction", async () => {
     const { TelegramBotClient } = await import("../src/telegram/bot.js");
     const { QuestionBroker } = await import("../src/telegram/questions.js");
-    const { FeedbackManager } = await import("../src/telegram/feedback.js");
     const { PermissionRelay } = await import("../src/mcp/permissions.js");
     const { mkdtempSync, rmSync, writeFileSync, chmodSync } = await import("node:fs");
     const { join } = await import("node:path");
@@ -425,7 +422,6 @@ describe("Inbound completeness: Updates routing and parsing", () => {
     };
 
     const broker = new QuestionBroker(stateDir);
-    const feedback = new FeedbackManager(stateDir);
     const permRelay = new PermissionRelay();
 
     const reactionCalls: Array<{ chat_id: unknown; message_id: unknown; reaction: unknown }> = [];
@@ -451,7 +447,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
     }) as typeof fetch;
 
     try {
-      const bot = new TelegramBotClient(config, broker, feedback, permRelay, () => {});
+      const bot = new TelegramBotClient(config, broker, permRelay, () => {});
 
       // 1. Plain text message from allowFrom user
       await (bot as any).handleUpdate({
@@ -553,7 +549,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
             chat: { id: 12345678, type: "private" },
             text: "First message",
           },
-          data: "fb:up",
+          data: "decide:pr420:merge",
         },
       });
 

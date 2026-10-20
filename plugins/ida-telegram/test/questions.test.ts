@@ -90,7 +90,6 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     const { StdioMcpServer } = await import("../src/mcp/server.js");
     const { TelegramBotClient } = await import("../src/telegram/bot.js");
     const { PluginStore } = await import("../src/store.js");
-    const { FeedbackManager } = await import("../src/telegram/feedback.js");
     const { PermissionRelay } = await import("../src/mcp/permissions.js");
 
     const config = {
@@ -110,14 +109,13 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
 
     const store = new PluginStore(testStateDir);
     const broker = new QuestionBroker(testStateDir);
-    const feedback = new FeedbackManager(testStateDir);
     const permRelay = new PermissionRelay();
     const channelEvents: Array<{ content: string; meta: Record<string, unknown> }> = [];
 
     const apiCalls: Array<{ method: string; payload: Record<string, unknown> }> = [];
     let nextMessageId = 100;
 
-    const bot = new TelegramBotClient(config, broker, feedback, permRelay, (content, meta) => {
+    const bot = new TelegramBotClient(config, broker, permRelay, (content, meta) => {
       channelEvents.push({ content, meta });
     });
 
@@ -206,7 +204,7 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     const resultCardCall = apiCalls[apiCalls.length - 1];
     expect(resultCardCall.method).toBe("sendMessage");
     const resultKb = (resultCardCall.payload.reply_markup as any).inline_keyboard as Array<Array<any>>;
-    // Custom decision buttons appear on the result card alongside Details, Review diff, and feedback buttons
+    // Custom decision buttons appear on the result card alongside Details and Review diff buttons
     expect(resultKb.flat().some((b) => b.text === "Merge PR #418 (Recommended)" && b.callback_data === "decide:pr418:merge")).toBe(true);
     expect(resultKb.flat().some((b) => b.text === "🔍 Details")).toBe(true);
     expect(resultKb.flat().some((b) => b.text.includes("🔍 Review diff"))).toBe(true);
