@@ -52,29 +52,3 @@ jobs:
     uses: ./.github/workflows/pytest.yml
     permissions:
       contents: read
-
-  triage-risk:
-    name: Triage PR Risk
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v5
-
-      - name: Classify PR Risk Tier and Apply Labels
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
-        run: |
-          BASE_REF="origin/${{ github.base_ref }}"
-          CHANGED_FILES=$(git diff --name-only "$BASE_REF"...HEAD)
-          uv run python scripts/classify_pr_risk.py --pr-number "$PR_NUMBER" --author "$PR_AUTHOR" --files $CHANGED_FILES
-
