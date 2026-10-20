@@ -216,6 +216,32 @@ body {
   margin-bottom: 4px;
 }
 
+.q-context {
+  margin: 8px 0 10px 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--text-color);
+}
+
+.q-context details {
+  margin-top: 4px;
+}
+
+.q-recommendation {
+  margin: 8px 0 12px 0;
+  padding: 8px 12px;
+  background: rgba(36, 129, 204, 0.08);
+  border-left: 3px solid var(--button-color);
+  border-radius: 4px;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--text-color);
+}
+
+.q-recommendation strong {
+  color: var(--button-color);
+}
+
 .q-options-list {
   display: flex;
   flex-direction: column;

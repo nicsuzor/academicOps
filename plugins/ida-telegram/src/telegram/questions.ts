@@ -5,11 +5,14 @@ import { randomBytes } from "node:crypto";
 export interface QuestionOption {
   label: string;
   description?: string;
+  recommended?: boolean;
 }
 
 export interface QuestionPayload {
   question: string;
   header?: string;
+  context?: string;
+  recommendation?: string;
   options: QuestionOption[];
   multiSelect?: boolean;
   allowOther?: boolean;
@@ -164,6 +167,14 @@ export class QuestionBroker {
 
     let text = q.header ? `**${q.header}**\n\n` : "";
     text += q.question;
+
+    if (q.context && !q.question.includes(q.context)) {
+      text += `\n\n>! ${q.context}`;
+    }
+
+    if (q.recommendation && !q.question.includes(q.recommendation)) {
+      text += `\n\n**Recommendation:** ${q.recommendation}`;
+    }
 
     if (q.options.some((opt) => opt.description)) {
       const optionLines = q.options.map((opt, idx) =>

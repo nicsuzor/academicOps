@@ -98,6 +98,8 @@ async function main() {
               const result = await broker.askUser({
                 question: q.question,
                 header: q.header,
+                context: q.context,
+                recommendation: q.recommendation,
                 options: q.options,
                 multiSelect: q.multiSelect,
                 allowOther: q.allowOther,

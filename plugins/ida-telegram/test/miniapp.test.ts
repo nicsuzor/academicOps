@@ -797,4 +797,75 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
     // Context gauge
     expect(document.getElementById("anchor-pct")?.textContent).toContain("42%");
   });
+
+  test("5. Decision rendered in the Mini App shows its recommendation and context (FR-4.6)", async () => {
+    const { document } = await bootMiniApp({
+      search: "?tab=questions",
+      setup: async ({ broker }) => {
+        // 1. Explicit context and recommendation fields
+        await broker.askUser({
+          header: "RBG Request Brief",
+          question: "Should rbg's brief hand it the original request explicitly? Now it only gets a task id inside the branch name.",
+          context: "Run 3 had current instructions but departed on step 1: read PR diff before fetching request.",
+          recommendation: "Yes, give the request explicitly so proportion can be judged against original intent.",
+          options: [
+            { label: "Yes, give the request explicitly", description: "Provides direct request text upfront" },
+            { label: "No, leave as is", description: "Keep deriving from branch task ID" },
+          ],
+          chatId: 8860530746,
+          turnId: "turn_rbg_1",
+        });
+
+        // 2. Question with markdown expandable blockquote context and recommendation
+        await broker.askUser({
+          header: "Value model weight",
+          question: "Raise `urgency` weight on cliff tasks?\n>! Facts: `aops_5ff43ec0` showed 3 cliff tasks ranked below routine cleanup.",
+          recommendation: "Raise to 2.5x to clear cliff tasks before routine work.",
+          options: [
+            { label: "Raise to 2.5x (Recommended)", description: "Prioritizes due-within-48h tasks immediately" },
+            { label: "Keep at 1.5x", description: "Preserve current focus balance" },
+          ],
+          chatId: 8860530746,
+          turnId: "turn_cliff_2",
+        });
+
+        // 3. Question without any recommendation
+        await broker.askUser({
+          header: "Survey",
+          question: "Which timezone are you in?",
+          options: [
+            { label: "UTC+10 (AEST)" },
+            { label: "UTC+1 (BST)" },
+          ],
+          chatId: 8860530746,
+          turnId: "turn_neutral_3",
+        });
+      },
+    });
+
+    await document.windowObj.switchTab("questions");
+    await new Promise((r) => setTimeout(r, 40));
+
+    const qList = document.getElementById("questions-list");
+    expect(qList).not.toBeNull();
+    const text = qList!.textContent;
+
+    // Decision 1: Context and recommendation are rendered
+    expect(text).toContain("Run 3 had current instructions but departed on step 1: read PR diff before fetching request.");
+    expect(text).toContain("Yes, give the request explicitly so proportion can be judged against original intent.");
+    expect(qList!.querySelector(".q-recommendation")).not.toBeNull();
+    expect(qList!.querySelector(".q-context")).not.toBeNull();
+
+    // Decision 2: Markdown context and recommendation are rendered
+    expect(text).toContain("Facts: aops_5ff43ec0 showed 3 cliff tasks ranked below routine cleanup.");
+    expect(text).toContain("Raise to 2.5x to clear cliff tasks before routine work.");
+
+    // Decision 3: Neutral question does NOT falsely mark option 0 as Recommended
+    const surveyCard = Array.from(qList!.querySelectorAll(".question-card")).find((card) =>
+      card.textContent.includes("Which timezone are you in?")
+    );
+    expect(surveyCard).toBeDefined();
+    expect(surveyCard!.querySelector(".rec-badge")).toBeNull();
+  });
 });
+
