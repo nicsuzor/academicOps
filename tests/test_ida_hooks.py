@@ -467,3 +467,105 @@ def test_session_start_raises_when_pkb_mcp_url_unset(monkeypatch: pytest.MonkeyP
     )
     with pytest.raises(RuntimeError, match="PKB_MCP_URL"):
         handlers.session_start(ctx)
+
+
+def test_session_start_includes_premise_check_pointer(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.com/mcp")
+    ctx = HookContext(
+        client="claude",
+        event="SessionStart",
+        session_id="s-session-start",
+        hooks_dir=IDA_HOOKS,
+    )
+    res = handlers.session_start(ctx)
+    assert res is not None
+    assert (
+        "Reports follow `premise-check`: written in its shape and checked on receipt."
+        in res.inject_text
+    )
+
+
+# ---------------------------------------------------------------------------
+# agy: recorded hook payload shapes
+# ---------------------------------------------------------------------------
+
+_AGY_PAYLOADS = json.loads(
+    (REPO_ROOT / "tests" / "fixtures" / "agy_hook_payloads.json").read_text(encoding="utf-8")
+)
+
+
+@pytest.mark.parametrize(
+    ("event", "payload"),
+    [
+        ("PreToolUse", "pre_tool_invoke_subagent"),
+        ("PostToolUse", "post_tool_invoke_subagent"),
+        ("PostToolUse", "post_tool_wait"),
+    ],
+)
+def test_normalize_reads_agy_nested_tool_call(event: str, payload: str, tmp_path: Path):
+    from dispatch import normalize
+
+    raw = _AGY_PAYLOADS[payload]
+    ctx = normalize("agy", event, raw, tmp_path)
+    assert ctx.tool == raw["toolCall"]["name"]
+    assert ctx.tool_input == raw["toolCall"]["args"]
+
+
+def _session_start_parts(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    monkeypatch.delenv("CLAUDE_ENV_FILE", raising=False)
+    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.com/mcp")
+    ctx = HookContext(client="claude", event="SessionStart", session_id="claude-sess")
+    result = handlers.session_start(ctx)
+    assert result is not None
+    return result.inject_text.split("\n\n")
+
+
+@pytest.fixture
+def pointer_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    state = tmp_path / "session_pointer"
+    monkeypatch.setenv("AOPS_SESSION_POINTER_DIR", str(state))
+    return state
+
+
+def test_agy_first_pre_invocation_delivers_the_session_start_pointer_once(
+    pointer_state: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    from dispatch import normalize
+
+    parts = _session_start_parts(monkeypatch)
+    tfile = tmp_path / "transcript.jsonl"
+    tfile.touch()
+
+    payload_first = dict(_AGY_PAYLOADS["pre_invocation_first"], transcriptPath=str(tfile))
+    first = handlers.user_prompt_submit(
+        normalize("agy", "UserPromptSubmit", payload_first, IDA_HOOKS)
+    )
+    assert first is not None
+    assert first.inject_text in parts
+
+    for later in ("pre_invocation_later", "pre_invocation_next_turn"):
+        payload_later = dict(_AGY_PAYLOADS[later], transcriptPath=str(tfile))
+        ctx = normalize("agy", "UserPromptSubmit", payload_later, IDA_HOOKS)
+        assert handlers.user_prompt_submit(ctx) is None
+
+
+def test_agy_pointer_is_per_conversation(pointer_state: Path, tmp_path: Path):
+    from dispatch import normalize
+
+    tfile = tmp_path / "transcript.jsonl"
+    tfile.touch()
+    one = dict(_AGY_PAYLOADS["pre_invocation_first"], transcriptPath=str(tfile))
+    other = dict(one, conversationId="agy-conv-2")
+    assert handlers.user_prompt_submit(normalize("agy", "UserPromptSubmit", one, IDA_HOOKS))
+    assert handlers.user_prompt_submit(normalize("agy", "UserPromptSubmit", other, IDA_HOOKS))
+
+
+def test_claude_user_prompt_submit_carries_no_session_start_pointer(
+    pointer_state: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    from dispatch import normalize
+
+    parts = _session_start_parts(monkeypatch)
+    raw = {"session_id": "claude-sess", "prompt": "hello"}
+    result = handlers.user_prompt_submit(normalize("claude", "UserPromptSubmit", raw, IDA_HOOKS))
+    assert result is None or not set(result.inject_text.split("\n\n")) & set(parts)

@@ -18,12 +18,16 @@ Produce three things:
 
 ## Reconstruct
 
-- **Write to `ida:argdown-toulmin`.** It sets the grammar, metadata, relations, tags, and parser validation.
-- **Extract first with `ida:argument-extraction`**, then reconstruct on top of what it produces.
+- **Extract first with `ida:argument-extraction`.** It sets the Argdown output contract: titles, argument blocks with warrants in the inference bar, `{basis, pointer, source}` metadata, assumed premises (`{basis: "assumed", reason}`), and the parser loop. Then reconstruct on top of what it produces.
 - **Follow the text's own structure.** Put the thesis first, then one Argdown section per part of the text, in the text's order. A reader checks a map against the text, so the map should match it.
-- **Reconstruct charitably.** Build the strongest valid version of each step, adding as assumed items the premises and warrants validity needs that the author never states.
+- **Reconstruct charitably.** Build the strongest valid version of each step. Where validity needs a premise the author never states, add it with `{basis: "assumed", reason: "..."}` and tag it `#missing`; where the missing link is the inference rule itself, write it in the `-- Warrant --` bar with `basis: "assumed"`.
 - **Read claims at the strength the evidence can carry.** When the wording overstates (for example "veto" where the evidence shows "sometimes limits"), narrow your label but keep the author's words verbatim in `source`. Record the narrower reading as a decision.
-- **Tag what is open.** Define the legend in the frontmatter. Use `#conflict` also for a branch that falls outside the thesis as stated. Keep any categories the author already uses (for example evidence versus theory) as extra tags.
+- **Attribute relations correctly.** Support is `+>`, attack is `->`, and undercut is `_>` (it attacks the inference, not a premise). Attach each relation to the argument that concludes or first states the claim, never to one that only borrows it as a premise. Otherwise the map shows links the text never makes.
+- **Tag what is open.** Define the legend in the frontmatter. Keep any categories the author already uses (for example evidence versus theory) as extra tags.
+  - `#missing`: a step you added.
+  - `#needs-evidence`: a load-bearing premise without data or authority.
+  - `#unanswered`: an objection the text raises but does not meet.
+  - `#conflict`: two of the author's claims contradict each other, or a branch falls outside the thesis as stated.
 - **Leave the author's judgement calls to the author.** Conflicts, scope choices and cut-offs are theirs. Tag each one and state the question it raises.
 
 ## Integrate new material
@@ -36,9 +40,9 @@ Produce three things:
 
 When the map's job is to lock a text's structure (parts, chapters, sections), rebuild the source as a tree and draw it as panels.
 
-- **Headings are the outline.** One Argdown heading per part, chapter, section and sub-section, in the text's order. Each claim rests on at most three children, written as nested relation lists; a child with more reasons gets an intermediate claim, which is the next heading. Objections are attack children; the reply is an attack child of the objection.
+- **Headings are the outline.** One Argdown heading per part, chapter, section and sub-section, in the text's order. Each claim's children are written as nested relation lists and chosen by `ida:argument-extraction`'s relevance rule; a run that splits becomes intermediate claims, each the next heading. Objections are attack children; the reply is an attack child of the objection.
 - **Premise-conclusion blocks only at the warrant level**, where evidence and theory are checked against the step they license.
-- **Lint before drawing.** `references/tree_lint.py` exports the tree from the Argdown JSON and reports any claim with more than three supports, numbering breaks and orphans.
+- **Lint before drawing.** `references/tree_lint.py` exports the tree from the Argdown JSON and reports numbering breaks and orphans.
 - **Draw with `references/gen_panels.py`**: one overview (root headline, a row of chapter panels per part, sections as columns, reasons as small boxes, arrows only for moves between chapters from a links file) and one canvas per chapter with its warrant blocks beside the panel. Drawing rules are the diagram skill's.
 
 ## Check before delivering
@@ -53,5 +57,4 @@ When the map's job is to lock a text's structure (parts, chapters, sections), re
 ## Record
 
 - **One home.** Keep the Argdown source and the decisions (narrowed readings, merges, dropped views) in the map's PKB note, one line per decision.
-- **Pass the sub-project signal.** When creating the note with `pkb.create`, pass the source artefact's PKB-relative path as `source` (e.g. `<subproject>/<canvas>.excalidraw`), or set `parent` to a node whose file lives in that sub-project directory. Under the home-directory placement rule, passing an existing file path as `source` routes the note into that sub-project directory rather than falling back to `notes/`.
 - **Rebuild, don't patch.** Rebuild the page from the source. Do not hand-edit the derived renders.

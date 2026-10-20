@@ -181,8 +181,26 @@ def get_state(session_id: str) -> dict[str, Any]:
     return _load_state(session_id)
 
 
-def arm(session_id: str, claim_id: str | None = None) -> None:
-    """Arm the premise check for a session until a verdict disarms it."""
+def _judged_path(session_id: str, claim_id: str) -> Path:
+    safe_session = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", session_id or "default")
+    safe_claim = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", claim_id)[:60]
+    digest = hashlib.sha256(claim_id.encode("utf-8")).hexdigest()[:8]
+    return _state_dir() / f"{safe_session}.{safe_claim}-{digest}.judged.txt"
+
+
+def arm(
+    session_id: str,
+    claim_id: str | None = None,
+    judged_text: str | None = None,
+    judged_ref: str | None = None,
+) -> None:
+    """Arm the premise check for a session until a verdict disarms it.
+
+    ``judged_text`` is the report the verdict will judge; it is stored beside
+    the state file so the recorder can cross-check the reason against its
+    ``argument`` block. ``judged_ref`` names where that text came from: the
+    tool-use id of a subagent result, the id of a peer envelope, or a task id.
+    """
     state = _load_state(session_id)
     cid = claim_id or state.get("claim_id") or "unnamed-claim"
     state["armed"] = True
@@ -193,7 +211,31 @@ def arm(session_id: str, claim_id: str | None = None) -> None:
         claim_ids.append(cid)
     state["claim_ids"] = claim_ids
     state["armed_at"] = _now()
+    if judged_text is not None or judged_ref:
+        judged = state.get("judged") or {}
+        entry: dict[str, Any] = {"ref": judged_ref or cid}
+        if judged_text is not None:
+            path = _judged_path(session_id, cid)
+            path.write_text(judged_text, encoding="utf-8")
+            entry["file"] = path.name
+        judged[cid] = entry
+        state["judged"] = judged
     _save_state(session_id, state)
+
+
+def get_judged(session_id: str, claim_id: str) -> tuple[str | None, str | None]:
+    """The judged text and its reference stored when ``claim_id`` armed the gate.
+
+    (None, None) when the arm stored nothing; an entry naming a file that is
+    gone raises FileNotFoundError.
+    """
+    entry = (_load_state(session_id).get("judged") or {}).get(claim_id)
+    if not entry:
+        return None, None
+    text = None
+    if entry.get("file"):
+        text = (_state_dir() / entry["file"]).read_text(encoding="utf-8")
+    return text, entry.get("ref")
 
 
 def disarm(
@@ -210,6 +252,11 @@ def disarm(
     if claim_id in claim_ids:
         claim_ids.remove(claim_id)
     state["claim_ids"] = claim_ids
+    judged = state.get("judged") or {}
+    entry = judged.pop(claim_id, None)
+    if entry and entry.get("file"):
+        (_state_dir() / entry["file"]).unlink()
+    state["judged"] = judged
 
     if claim_ids:
         state["armed"] = True
@@ -392,7 +439,7 @@ def format_verdict_command(
     quoted_claim = shlex.quote(claim_id)
     cmd = (
         f"uv run --project {quoted_project} python3 {quoted_script}"
-        f' --claim {quoted_claim} --verdict <PASS|REVISE|FAIL> --reason "<why>"'
+        f" --claim {quoted_claim} --verdict <PASS|REVISE|FAIL> --reason-file <path>"
     )
     if not os.environ.get("AOPS_SESSION_ID") and session_id:
         cmd += f" --session {shlex.quote(session_id)}"
@@ -446,6 +493,21 @@ def _is_override_active() -> bool:
 # ---------------------------------------------------------------------------
 
 
+def _envelope_id(prompt: str) -> str | None:
+    match = re.search(r"<([a-zA-Z0-9_\-]+)([^>]*)>", prompt)
+    if not match:
+        return None
+    id_match = re.search(
+        r'\b(?:id|report_id|claim_id|verification_id|task_id)=["\']([^"\']+)["\']',
+        match.group(2),
+    )
+    if id_match:
+        cid = id_match.group(1).strip()
+        if cid and re.match(r"^[a-zA-Z0-9_\-\.:]+$", cid):
+            return cid
+    return None
+
+
 def premise_check_arm(ctx: HookContext) -> Result | None:
     """UserPromptSubmit handler: arm the premise check on an incoming report."""
     if ctx.agent_type not in _GATED_AGENT_TYPES:
@@ -455,7 +517,9 @@ def premise_check_arm(ctx: HookContext) -> Result | None:
         return None
 
     claim_id = _derive_claim_id(ctx)
-    arm(ctx.session_id, claim_id=claim_id)
+    prompt = _prompt_text(ctx)
+    judged_text, judged_ref = prompt, _envelope_id(prompt.strip()) or claim_id
+    arm(ctx.session_id, claim_id=claim_id, judged_text=judged_text, judged_ref=judged_ref)
     inject = (
         f"Premise-check gate armed by {claim_id}; record a verdict per the `premise-check` skill.\n"
         f"{format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id)}"

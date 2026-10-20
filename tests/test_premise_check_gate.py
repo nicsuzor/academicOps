@@ -18,6 +18,7 @@ Covers:
 from __future__ import annotations
 
 import importlib.util
+import json
 import shlex
 import sys
 from pathlib import Path
@@ -34,6 +35,21 @@ if str(_HOOKS_DIR) not in sys.path:
 import dispatch
 import premise_check_gate as pcg
 import premise_check_verdict as pcv
+
+
+def _pass_reason(claim_id: str) -> str:
+    """A PASS reason with all seven keyed lines, for judged text with no argdown block."""
+    return "\n".join(
+        [
+            f"Judged: {claim_id}; asks tg-1",
+            "Valid: (2) holds -- the cited rule yields (2) from (1)",
+            "Supported: weakest rule -- (1)",
+            "Answered: tg-1 ← (2)",
+            "Sufficient: (2) material; sufficiency obvious",
+            "Waived: block -- a prose report; its one step could still be judged",
+            "Relay: none",
+        ]
+    )
 
 
 def _load_plugin_module(name: str, path: Path):
@@ -118,11 +134,16 @@ def test_record_verdict_accepts_each_token_with_reason_and_disarms(token):
     pcg.arm(session_id, claim_id="claim-1")
     tracer = _StubTracer(config={"endpoint": "http://x"})
 
+    reason = (
+        _pass_reason("claim-1")
+        if token == "PASS"
+        else "The cited diff supports each claim; the conclusion answers the ask."
+    )
     result = pcv.record_verdict(
         session_id=session_id,
         claim_id="claim-1",
         verdict=token,
-        reason="The cited diff supports each claim; the conclusion answers the ask.",
+        reason=reason,
         tracer_mod=tracer,
     )
 
@@ -131,12 +152,12 @@ def test_record_verdict_accepts_each_token_with_reason_and_disarms(token):
     assert result["disarmed"] is True
     attrs = tracer.exported[0]["spans"][0]["attributes"]
     assert attrs["premise_check.verdict"] == token
-    assert "conclusion answers the ask" in attrs["premise_check.reason"]
+    assert attrs["premise_check.reason_text"] == reason
     assert attrs["premise_check.claim_id"] == "claim-1"
     assert pcg.is_armed(session_id) is False
     last = pcg.get_state(session_id)["last_verdict"]
     assert last["verdict"] == token
-    assert "conclusion answers the ask" in last["reason"]
+    assert last["reason"] == reason
 
 
 def test_record_verdict_normalises_token_case():
@@ -192,7 +213,7 @@ def test_cli_reads_reason_from_stdin(monkeypatch, capsys):
     monkeypatch.setattr(
         pcv, "_import_claude_code_tracer", lambda: _StubTracer(config={"endpoint": "http://x"})
     )
-    reason = "Worker says it ran git push to the branch; the PR link backs that."
+    reason = _pass_reason("claim-1")
     monkeypatch.setattr("sys.stdin", io.StringIO(reason))
 
     rc = pcv.main(
@@ -350,7 +371,11 @@ def test_record_verdict_fails_and_stays_armed_when_tracer_unconfigured():
 
     with pytest.raises(RuntimeError, match="tracing is not configured"):
         pcv.record_verdict(
-            session_id=session_id, claim_id="claim-3", verdict="PASS", reason="r", tracer_mod=tracer
+            session_id=session_id,
+            claim_id="claim-3",
+            verdict="PASS",
+            reason=_pass_reason("claim-3"),
+            tracer_mod=tracer,
         )
 
     assert tracer.exported == []
@@ -365,7 +390,11 @@ def test_record_verdict_fails_and_stays_armed_on_unacknowledged_export():
 
     with pytest.raises(RuntimeError, match="span export failed"):
         pcv.record_verdict(
-            session_id=session_id, claim_id="claim-4", verdict="PASS", reason="r", tracer_mod=tracer
+            session_id=session_id,
+            claim_id="claim-4",
+            verdict="PASS",
+            reason=_pass_reason("claim-4"),
+            tracer_mod=tracer,
         )
 
     assert len(tracer.exported) == 1
@@ -385,7 +414,7 @@ def test_cli_verdict_fails_and_stays_armed_when_span_emission_fails(monkeypatch)
             "--verdict",
             "PASS",
             "--reason",
-            "all good",
+            _pass_reason("claim-cli-fail"),
             "--session",
             session_id,
         ]
@@ -408,7 +437,7 @@ def test_cli_verdict_succeeds_and_disarms_when_span_emission_succeeds(monkeypatc
             "--verdict",
             "PASS",
             "--reason",
-            "all good",
+            _pass_reason("claim-cli-success"),
             "--session",
             session_id,
         ]
@@ -607,7 +636,7 @@ def test_end_to_end_claim_blocks_next_dispatch_until_verdicted():
         session_id=session_id,
         claim_id="researched-X",
         verdict="PASS",
-        reason="The report's evidence supports its conclusion.",
+        reason=_pass_reason("researched-X"),
         tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
     )
 
@@ -842,7 +871,7 @@ def test_record_verdict_returns_distinct_verification_id():
         session_id=session_id,
         claim_id=claim_id,
         verdict="PASS",
-        reason="Logic holds against stated premises.",
+        reason=_pass_reason(claim_id),
         title="logic-pass",
         tracer_mod=tracer,
     )
@@ -879,7 +908,7 @@ def test_verified_outgoing_message_id_accepted_as_incoming_claim_id_upstream():
         session_id=downstream_session,
         claim_id=downstream_claim,
         verdict="PASS",
-        reason="Downstream worker verified test suite.",
+        reason=_pass_reason(downstream_claim),
         title="worker-done",
         tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
     )
@@ -910,7 +939,7 @@ def test_verified_outgoing_message_id_accepted_as_incoming_claim_id_upstream():
         session_id=upstream_session,
         claim_id=verification_id,
         verdict="PASS",
-        reason="Supervisor verified downstream report.",
+        reason=_pass_reason(verification_id),
         title="supervisor-accept",
         tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
     )
@@ -1039,9 +1068,11 @@ def test_printed_command_runs_from_different_cwd_under_claude_code_and_agy(tmp_p
         assert pcg.is_armed(session_id) is True
 
         stub_dir = _make_stub_tracer_dir(tmp_path)
+        reason_file = tmp_path / f"reason-{client}.txt"
+        reason_file.write_text(_pass_reason(claim_id), encoding="utf-8")
         run_tokens = shlex.split(
             cmd.replace("<PASS|REVISE|FAIL>", "PASS").replace(
-                "<why>", f"Verified under {client} from outside cwd"
+                "<path>", shlex.quote(str(reason_file))
             )
         )
         res_verdict = subprocess.run(
@@ -1107,10 +1138,10 @@ def test_printed_command_runs_with_relative_hooks_dir_from_plugin_cwd(tmp_path, 
     pcg.arm(session_id, claim_id=claim_id)
 
     stub_dir = _make_stub_tracer_dir(tmp_path)
+    reason_file = tmp_path / "reason-rel.txt"
+    reason_file.write_text(_pass_reason(claim_id), encoding="utf-8")
     run_tokens = shlex.split(
-        cmd.replace("<PASS|REVISE|FAIL>", "PASS").replace(
-            "<why>", "Verified relative hooks_dir resolution"
-        )
+        cmd.replace("<PASS|REVISE|FAIL>", "PASS").replace("<path>", shlex.quote(str(reason_file)))
     )
     res = subprocess.run(
         run_tokens,
@@ -1126,3 +1157,35 @@ def test_printed_command_runs_with_relative_hooks_dir_from_plugin_cwd(tmp_path, 
     assert res.returncode == 0, f"execution failed:\n{res.stderr}"
     assert "PASS" in res.stdout
     assert pcg.is_armed(session_id) is False
+
+
+# ---------------------------------------------------------------------------
+# agy: recorded hook payload shapes
+# ---------------------------------------------------------------------------
+
+_AGY_PAYLOADS = json.loads(
+    (_REPO_ROOT / "tests" / "fixtures" / "agy_hook_payloads.json").read_text(encoding="utf-8")
+)
+
+
+@pytest.fixture
+def agy_ida(monkeypatch):
+    """The gated agent's identity, supplied the one way normalize() reads it on agy."""
+    monkeypatch.delenv("CLAUDE_AGENT_NAME", raising=False)
+    monkeypatch.delenv("AGY_AGENT_NAME", raising=False)
+    monkeypatch.setenv("AOPS_AGENT_NAME", "ida")
+
+
+def test_agy_invoke_subagent_is_a_gated_tool_on_pre_tool_use(agy_ida):
+    ctx = dispatch.normalize(
+        "agy", "PreToolUse", _AGY_PAYLOADS["pre_tool_invoke_subagent"], _HOOKS_DIR
+    )
+    assert pcg._is_blocked_tool(ctx.tool) is True
+
+
+@pytest.mark.parametrize("payload", ["post_tool_invoke_subagent", "post_tool_wait"])
+def test_agy_dispatch_receipt_and_wait_do_not_arm(agy_ida, payload):
+    ctx = dispatch.normalize("agy", "PostToolUse", _AGY_PAYLOADS[payload], _HOOKS_DIR)
+    assert ctx.agent_type == "ida"
+    assert pcg.premise_check_arm(ctx) is None
+    assert pcg.is_armed(ctx.session_id) is False

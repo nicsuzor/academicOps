@@ -15,9 +15,9 @@ The architectural specification detailing design rationale, theoretical mechanis
 
 ## Governing principle -- agents all the way down
 
-The framework enforces **no programmatic, deterministic, or mechanical verdict on quality or process**, with an authorized exception for a procedural friction gate that never evaluates substance: the premise-check gate (`premise_check_gate.py`), which refuses dispatch, messaging and channel reply tools and blocks `Stop` while an arrived report or relayed direction awaits a recorded verdict ([evidence-contract-enforcement.md](evidence-contract-enforcement.md)). Hooks, server contracts, and config are **delivery channels** -- they remind, route, and make things visible; they never decide whether work is good or whether a rule was followed. Every verdict is an agent's judgment, and the bar every reviewing agent applies is world-leading, not technically-acceptable.
+The framework enforces **no programmatic, deterministic, or mechanical verdict on quality or process**, with an authorized exception for procedural friction that never rules on substance: the premise-check gate (`premise_check_gate.py`), which refuses dispatch, messaging and channel reply tools and blocks `Stop` while an arrived report or relayed direction awaits a recorded verdict, and its verdict recorder (`premise_check_verdict.py`), which refuses a PASS whose reason lacks the checker's seven keyed lines or contradicts the judged block ([evidence-contract-enforcement.md](evidence-contract-enforcement.md)). The recorder checks the reason's shape and its consistency with the block mechanically; whether a rule yields its claim, whether the named rival is the nearest, whether an assumption line is complete, sufficiency against stakes, and relay entailment stay with the checking agent and are never mechanised. Hooks, server contracts, and config are **delivery channels** -- they remind, route, and make things visible; they never decide whether work is good or whether a rule was followed. Every verdict is an agent's judgment, and the bar every reviewing agent applies is world-leading, not technically-acceptable.
 
-The only **mechanical** enforcement is **structural prevention**: credential and workspace isolation, delivery guards, model pins. Prevention by construction -- never reactive detection, never content-sniffing, never a deterministic pass/fail on the substance of an agent's work.
+Apart from the exception above, the only **mechanical** enforcement is **structural prevention**: credential and workspace isolation, delivery guards, model pins. Prevention by construction -- never reactive detection, never content-sniffing, never a deterministic pass/fail on the substance of an agent's work.
 
 ### Regulatory tools
 
@@ -70,7 +70,6 @@ An **agent personality** defines conduct, judgment register, and disposition: wh
 - **Default: skills are personality-agnostic.** Any sufficiently capable agent can execute any skill; a skill that silently assumes one personality is a defect.
 - **Binding a skill to a personality is a deliberate, documented exception**, for exactly two reasons: **earmarking** (the skill depends on that personality's judgment register) or **permission control** (grants restricted to force a workflow split, keeping reviewer ≠ executor).
 - The three review registers above name **lenses a review must apply**, not exclusive executors. Which agent carries a lens is a dispatch decision.
-- **Review lenses bind artifacts by consequence**: The rule-compliance lens (`rbg`) evaluates target artifacts by what they build, configure, or instruct once running: an artifact breaks an axiom when its runtime consequence would violate what axioms forbid an agent to do. Mechanisms that substitute deterministic techniques (path globs, author allowlists, AST shape heuristics) for qualitative judgment fail `judgment-non-delegable`.
 
 ## Design principles
 

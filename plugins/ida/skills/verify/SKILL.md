@@ -28,7 +28,7 @@ Render an immediate `FAIL` on:
 - Bad premise or invalidated requirements.
 - Sentinel values or placeholder text in production outputs.
 - Silent exception swallowing without error logging.
-- Tests that assert existence or tautologies rather than functional behavior, change-detector tests that restate what a file, config or directory holds today, or tests that would still pass with the change's plausible bug introduced.
+- Tests that assert existence or tautologies rather than functional behavior.
 - Data that diverges from primary source records.
 - Edits made directly to runtime install directories instead of source repos.
 - Container or Dockerfile changes passed without building the image and showing changed content present in it, or stating plainly that the worker could not build.
@@ -51,19 +51,20 @@ Any change touching a container image or Dockerfile requires:
 
 ## 6. Output Format
 
-Emit the report using `/dump`'s handback envelope and record it on the task record:
+Emit the report using `/dump`'s handback envelope and record it on the task record. VERDICT is your judgement of the artifact, in the verdict vocabulary `premise-check` uses; STATUS is the release status of your own task.
 
 ```markdown
 ## Handover: <agent> <session-id>
 
-1. **Task**: Verified target and bar (`mechanical | fitness | mixed`).
+1. **Task**: Task id, title, verified target and bar (`mechanical | fitness | mixed`).
 2. **Summary**: Findings, forcing checks (0–3), and remediations for `FAIL`/`REVISE`.
 3. **Verdict & Safeguards**:
-   - VERDICT: <PASS | PARTIAL | FAIL | REVISE | BLOCKED | NEEDS-PRINCIPAL>
-   - GATE: <acceptance criterion tested and observed result>
+   - VERDICT: <PASS | REVISE | FAIL>
+   - STATUS: <release status: done | partial | review | failed | cancelled | in_progress>
+   - GATE: <acceptance criterion id tested and observed result>
    - CONFIDENCE: <high | med | low> + <what single check would falsify this>
    - CONFOUND CHECK: <clean-room/differential control result, or "NOT RUN">
 4. **Output**: <branch + commit SHA> | <PR or artifact link>
-5. **Receipts** (Report Argument): Load-bearing claims written per the `premise-check` skill.
+5. **Argument**: The `argdown` block recorded under the task's `## Report`, asked by the task's ask ids.
 6. **Limitations**: Unresolved items, out-of-scope elements, and verbatim error outputs.
 ```
