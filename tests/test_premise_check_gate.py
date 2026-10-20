@@ -677,8 +677,7 @@ def test_spawn_ack_leaves_gate_unarmed_and_actions_proceed(ack):
     tool_input, tool_response = _SPAWN_ACKS[ack]
     handlers = _load_plugin_module("ida_handlers_gate", _HOOKS_DIR / "handlers.py")
 
-    res = handlers.post_tool(_post_tool_ctx(session_id, tool_input, tool_response))
-    assert res is None or res.kind != dispatch.Kind.REFUSE
+    assert handlers.post_tool(_post_tool_ctx(session_id, tool_input, tool_response)) is None
     assert pcg.is_armed(session_id) is False
 
     for tool in ("Agent", "AskUserQuestion"):
