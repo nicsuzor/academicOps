@@ -55,6 +55,21 @@ def _pass_reason(claim_id: str) -> str:
     )
 
 
+_SAMPLE_VALID_BLOCK = (
+    "\n```argdown\n"
+    "===\n"
+    "asks:\n"
+    "  tg-1: is it done?\n"
+    "answers:\n"
+    "  tg-1: 2\n"
+    "===\n\n"
+    "(1) p -- rule\n"
+    "-- warrant --\n"
+    "(2) c\n"
+    "```\n"
+)
+
+
 def _load_plugin_module(name: str, path: Path):
     spec = importlib.util.spec_from_file_location(name, path)
     assert spec and spec.loader, f"cannot load {path}"
@@ -624,7 +639,8 @@ def test_end_to_end_claim_blocks_next_dispatch_until_verdicted():
 
     # A worker's report arrives at Ida.
     report_ctx = _prompt_ctx(
-        session_id, '<task-notification id="researched-X">worker finished</task-notification>'
+        session_id,
+        f'<task-notification id="researched-X">worker finished{_SAMPLE_VALID_BLOCK}</task-notification>',
     )
     arm_res = pcg.premise_check_arm(report_ctx)
     assert arm_res is not None
@@ -666,9 +682,9 @@ def _prompt_ctx(session_id: str, prompt: str, agent_type: str = "ida:ida") -> di
 @pytest.mark.parametrize(
     "prompt",
     [
-        '<cross-session-message from="twin-a">PR #12 is merged.</cross-session-message>',
-        '<teammate-message teammate_id="worker">done</teammate-message>',
-        "\n  <task-notification>\nworker finished\n</task-notification>",
+        '<cross-session-message from="twin-a">PR #12 is merged.\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</cross-session-message>',
+        '<teammate-message teammate_id="worker">done\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</teammate-message>',
+        "\n  <task-notification>\nworker finished\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</task-notification>",
     ],
 )
 def test_arm_handler_arms_on_peer_report(prompt):
@@ -679,12 +695,51 @@ def test_arm_handler_arms_on_peer_report(prompt):
     assert res is not None and res.kind == dispatch.Kind.REFUSE
 
 
+def test_absent_block_records_revise_no_argument_supplied():
+    session_id = "sess-absent-block"
+    prompt = '<cross-session-message from="twin-a">PR #12 is merged with no block.</cross-session-message>'
+    ctx = _prompt_ctx(session_id, prompt)
+    claim_id = pcg._derive_claim_id(ctx)
+    res = pcg.premise_check_arm(ctx)
+    assert res is not None
+    assert "recorded REVISE and cleared gate" in res.inject_text
+    assert pcg.is_armed(session_id) is False
+    state = pcg.get_state(session_id)
+    last_v = state.get("last_verdict")
+    assert isinstance(last_v, dict)
+    assert last_v.get("claim_id") == claim_id
+    assert last_v.get("verdict") == "REVISE"
+    assert last_v.get("reason") == "no argument supplied"
+
+
+def test_null_form_clears_gate_with_no_agent_action():
+    session_id = "sess-null-form"
+    prompt = (
+        '<cross-session-message from="twin-a">\n'
+        "Status notice.\n"
+        "```argdown\n"
+        "asks: none\n"
+        "[no claim]\n"
+        "```\n"
+        "</cross-session-message>"
+    )
+    ctx = _prompt_ctx(session_id, prompt)
+    res = pcg.premise_check_arm(ctx)
+    assert res is None
+    assert pcg.is_armed(session_id) is False
+    state = pcg.get_state(session_id)
+    last_v = state.get("last_verdict")
+    assert isinstance(last_v, dict)
+    assert last_v.get("verdict") == "PASS"
+    assert last_v.get("reason") == "null form"
+
+
 @pytest.mark.parametrize(
     "prompt",
     [
-        '<channel source="plugin:telegram:telegram" chat_id="1" user="nic">\n<cross-session-message from="twin-a">PR #12 is merged.</cross-session-message>\n</channel>',
-        '<channel source="plugin:telegram:telegram" chat_id="1" user="nic">Context</channel>\n<cross-session-message from="twin-a">PR #12 is merged.</cross-session-message>',
-        '<channel source="plugin:telegram:telegram" chat_id="1" user="worker">\n<task-notification>\nworker finished\n</task-notification>\n</channel>',
+        '<channel source="plugin:telegram:telegram" chat_id="1" user="nic">\n<cross-session-message from="twin-a">PR #12 is merged.\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</cross-session-message>\n</channel>',
+        '<channel source="plugin:telegram:telegram" chat_id="1" user="nic">Context</channel>\n<cross-session-message from="twin-a">PR #12 is merged.\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</cross-session-message>',
+        '<channel source="plugin:telegram:telegram" chat_id="1" user="worker">\n<task-notification>\nworker finished\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</task-notification>\n</channel>',
     ],
 )
 def test_arm_handler_arms_on_wrapped_peer_report(prompt):
@@ -724,7 +779,11 @@ def test_users_message_does_not_disarm_a_pending_check():
 def test_sara_is_gated_like_ida(agent_type):
     session_id = f"sess-{agent_type}"
     pcg.premise_check_arm(
-        _prompt_ctx(session_id, "<cross-session-message>report</cross-session-message>", agent_type)
+        _prompt_ctx(
+            session_id,
+            "<cross-session-message>report\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</cross-session-message>",
+            agent_type,
+        )
     )
     assert pcg.is_armed(session_id) is True
     res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id, agent_type=agent_type))
@@ -782,7 +841,11 @@ def test_derive_claim_id_generates_short_id_without_message_text():
 
 def test_arm_handler_returns_two_line_prompt_note_and_no_message_text():
     session_id = "sess-note-1"
-    prompt = '<cross-session-message from="twin-a">PR #12 is merged.</cross-session-message>'
+    prompt = (
+        '<cross-session-message from="twin-a">PR #12 is merged.\n'
+        "```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n"
+        "</cross-session-message>"
+    )
     ctx = _prompt_ctx(session_id, prompt)
     claim_id = pcg._derive_claim_id(ctx)
     res = pcg.premise_check_arm(ctx)
@@ -922,7 +985,7 @@ def test_verified_outgoing_message_id_accepted_as_incoming_claim_id_upstream():
     # 2. Downstream emits a verified outgoing message carrying that verification ID
     outgoing_msg = (
         f'<cross-session-message from="worker" id="{verification_id}">'
-        "Finished implementation and tests pass."
+        f"Finished implementation and tests pass.{_SAMPLE_VALID_BLOCK}"
         "</cross-session-message>"
     )
 

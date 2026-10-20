@@ -186,7 +186,7 @@ def judge_reason(token: str, reason: str, judged_text: str | None) -> dict[str, 
     block_text = ra.extract_block(judged_text)
     block = ra.parse_block(block_text, vocab) if block_text is not None else None
     if token == "PASS":
-        failures = ra.pass_failures(parsed, block, vocab)
+        failures = ra.pass_failures(parsed, block, vocab, is_null=ra.is_null_form(block_text))
         if failures:
             raise ValueError(
                 "PASS refused -- the reason fails the recorder's checks "
@@ -227,7 +227,20 @@ def record_verdict(
         )
 
     judged_text, judged_ref = get_judged(session_id, cid)
+    block_text = ra.extract_block(judged_text)
+
     attributes = judge_reason(token, reason, judged_text)
+
+    # Machine check on Argdown block for PASS verdicts unless block is waived
+    if token == "PASS" and block_text is not None and not ra.is_null_form(block_text):
+        vocab = ra.load_vocabulary()
+        parsed_reason = ra.parse_reason(reason, vocab)
+        if "block" not in parsed_reason.waived_items(vocab):
+            valid, parser_output, _ = ra.check_argdown_block(block_text)
+            if not valid:
+                token = "REVISE"
+                reason = parser_output
+                attributes = judge_reason(token, reason, judged_text)
     attributes["premise_check.judged_ref"] = judged_ref or ""
     attributes["premise_check.judged_text_sha256"] = (
         hashlib.sha256(judged_text.encode("utf-8")).hexdigest() if judged_text is not None else ""
@@ -264,6 +277,7 @@ def record_verdict(
         "verification_id": verification_id,
         "claim_id": cid,
         "verdict": token,
+        "reason": reason,
         "span_emitted": True,
         "span_error": None,
         "disarmed": True,

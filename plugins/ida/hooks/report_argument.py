@@ -14,7 +14,11 @@ module keeps no copy of it.
 
 from __future__ import annotations
 
+import json
 import re
+import shutil
+import subprocess
+import tempfile
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -252,6 +256,111 @@ def parse_block(block: str, vocab: Vocabulary) -> Argument | None:
     return arg
 
 
+_NULL_FORM_PATTERNS = (
+    re.compile(r"^\s*\[no\s+claim\]\s*$", re.IGNORECASE | re.MULTILINE),
+    re.compile(r"^\s*asks:\s*none\b", re.IGNORECASE | re.MULTILINE),
+    re.compile(r"^\s*claim:\s*none\b", re.IGNORECASE | re.MULTILINE),
+    re.compile(r"^\s*notice:\s*true\b", re.IGNORECASE | re.MULTILINE),
+)
+
+
+def is_null_form(block_text: str | None) -> bool:
+    """True when a fenced argdown block is the null form declaring no claim."""
+    if not block_text or not block_text.strip():
+        return False
+    text = block_text.strip()
+    return any(p.search(text) for p in _NULL_FORM_PATTERNS)
+
+
+def clean_ansi(text: str) -> str:
+    """Strip ANSI escape sequences from parser output and normalize paths."""
+    clean = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", text).strip()
+    return re.sub(r"/tmp/[^\s]+\.argdown", "<argdown>", clean)
+
+
+def check_argdown_block(
+    block_text: str,
+    parser_bin: str | None = None,
+) -> tuple[bool, str, dict[str, Any] | None]:
+    """Parse block with @argdown/cli and run the machine checks from [[aops-reasoning-steps-design]].
+
+    Checks:
+    1. Argdown syntax validity (clean exit and JSON AST from parser).
+    2. Undercut check: any undercut (_>) must target an inference (toType == 'inference').
+    3. Orphan statement check: statements must have role 'premise', 'conclusion' or be an undercut source.
+
+    Returns:
+        (valid: bool, reason_or_error: str, ast: dict | None)
+    """
+    cmd = parser_bin or shutil.which("argdown") or "argdown"
+    with tempfile.NamedTemporaryFile("w", suffix=".argdown", delete=False) as f:
+        f.write(block_text)
+        f.flush()
+        f_path = Path(f.name)
+    try:
+        res = subprocess.run(
+            [cmd, "json", str(f_path), "--stdout", "--logParserErrors", "true"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except Exception as exc:
+        return False, f"Argdown parser execution error: {exc}", None
+    finally:
+        try:
+            f_path.unlink()
+        except OSError:
+            pass
+
+    if res.returncode != 0:
+        err = clean_ansi(res.stderr or res.stdout)
+        return False, f"Argdown syntax error:\n{err}", None
+
+    idx = res.stdout.rfind("}")
+    if idx == -1:
+        return False, "Argdown parser error: no JSON output from parser", None
+    try:
+        data = json.loads(res.stdout[: idx + 1])
+    except Exception as exc:
+        return False, f"Argdown parser error decoding AST: {exc}", None
+
+    stmts = data.get("statements", {})
+    rels = data.get("relations", [])
+    undercut_sources = {r.get("from") for r in rels if r.get("relationType") == "undercut"}
+
+    # Check 1: Undercut not aimed at an inference
+    for r in rels:
+        if r.get("relationType") == "undercut":
+            if r.get("toType") != "inference":
+                target = r.get("to")
+                target_type = r.get("toType")
+                src = r.get("from")
+                return (
+                    False,
+                    f"Argdown argument invalid: undercut from '{src}' targets {target_type} '{target}' instead of an inference",
+                    data,
+                )
+
+    # Check 2: Orphan statement (statement that is not a conclusion, not a premise, and not an undercut)
+    for title, stmt in stmts.items():
+        is_conclusion = bool(
+            stmt.get("isUsedAsMainConclusion") or stmt.get("isUsedAsIntermediaryConclusion")
+        )
+        roles = [m.get("role") for m in stmt.get("members", [])]
+        if any(r in ("main-conclusion", "conclusion", "intermediary-conclusion") for r in roles):
+            is_conclusion = True
+        is_premise = bool(stmt.get("isUsedAsPremise") or any(r == "premise" for r in roles))
+        if not is_conclusion and not is_premise and title not in undercut_sources:
+            text = next((m.get("text") for m in stmt.get("members", []) if m.get("text")), title)
+            return (
+                False,
+                f"Argdown argument invalid: orphan statement '{title}' ('{text}') is not a premise or conclusion",
+                data,
+            )
+
+    return True, "", data
+
+
 # ---------------------------------------------------------------------------
 # The checker's reason
 # ---------------------------------------------------------------------------
@@ -347,10 +456,15 @@ def relay_refs(entry: str) -> list[int]:
 # ---------------------------------------------------------------------------
 
 
-def pass_failures(reason: Reason, block: Argument | None, vocab: Vocabulary) -> list[str]:
+def pass_failures(
+    reason: Reason,
+    block: Argument | None,
+    vocab: Vocabulary,
+    is_null: bool = False,
+) -> list[str]:
     """Every check a PASS reason fails, per the skill's "What the recorder refuses"."""
     if reason.no_claim and set(reason.entries) == {"Judged"}:
-        if block is not None:
+        if block is not None and not is_null:
             return [
                 "a no-claim reason, but the judged text has an argdown block: "
                 "judge the block with the full reason"

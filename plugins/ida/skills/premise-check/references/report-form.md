@@ -62,3 +62,17 @@ notes:
 -- A hook that returns "block" to a runtime that honours it is enforced. Unless: this runtime ignores hook output in the mode it runs in; not ruled out. --
 (4) So, most likely, the hook is enforced.
 ```
+
+## Null form (minimal compliance)
+
+When a message makes no claim (such as automated harness notices, /loop wakeups, or messages making no evidence-backed claims):
+
+```argdown
+===
+asks: none
+===
+
+[no claim]
+```
+
+The null form declares minimal compliance and clears the premise-check gate with no agent action.

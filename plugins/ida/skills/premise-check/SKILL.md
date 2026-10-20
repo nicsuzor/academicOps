@@ -13,6 +13,20 @@ A report that rests on evidence ends in an argument whose final conclusion answe
 
 End the report with one fenced `argdown` block in the form in [`references/report-form.md`](references/report-form.md).
 
+Every peer message carries a fenced `argdown` block. A message that makes no claim (such as automated harness notices, /loop wakeups, or messages making no evidence-backed claims) carries the null form:
+
+````text
+```argdown
+===
+asks: none
+===
+
+[no claim]
+```
+````
+
+The null form declares minimal compliance and clears the premise-check gate with no agent action; an absent block records REVISE "no argument supplied".
+
 1. **The ask at the top**, in the asker's own words, one question per `asks` entry, each under the immutable id the report form defines. Copy the ask you were given; never restate it as your own title.
 2. **Numbered premises**, each ending with its basis in words, one of the phrases in [`references/vocabulary.toml`](references/vocabulary.toml). A premise about outside state quotes the value that decides it (`state: MERGED`, `0 hits`).
 3. **Pointers as lettered endnotes** under `notes` -- paths, lines, span ids, task ids, PRs -- marked `^a` in the line. Never inline.
@@ -61,4 +75,4 @@ Write the reason as the seven keyed lines in [`references/checker-reason.md`](re
 uv run --project <plugin-dir> python3 <plugin-dir>/skills/premise-check/scripts/verdict.py --claim <claim_id> --verdict <PASS|REVISE|FAIL> --reason-file <path>
 ```
 
-The recorder refuses a PASS whose reason misses a test line or an ask id, or contradicts the block. A harness notice or other message that makes no claim takes the one-line no-claim reason. For a handback read from a task record, the claim id is the task id; after recording, add `## Premise-Check Verdict` to the task with the verification id and verdict.
+The recorder refuses a PASS whose reason misses a test line or an ask id, or contradicts the block. On an invalid argument (syntax errors, an orphan statement, or an undercut not aimed at an inference), `verdict.py` records REVISE itself with the parser output as reason and clears the gate. For a handback read from a task record, the claim id is the task id; after recording, add `## Premise-Check Verdict` to the task with the verification id and verdict.
