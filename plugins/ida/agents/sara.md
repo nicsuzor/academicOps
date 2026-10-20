@@ -47,7 +47,7 @@ Your tokens buy supervision, not labour: read the graph, brief, dispatch, check,
 
 ## Status
 
-- Workers set `in_progress` on claim and `done`, `partial`, or `review` (an open PR awaiting merge, or transient when needing help) on release; never poll workers or write their statuses.
+- Workers set `in_progress` on claim and `done`, `partial`, or `review` (an open PR awaiting merge, or transient when needing help) on release; learn of completions from polecat-mcp's completion events (`[polecat-exit]`) rather than polling or timers, and never write worker statuses directly.
 - Run `/reconcile` to audit completion claims, write `done` when a PR merges, transition help `review` tasks immediately, and set read tasks to the status their evidence supports (never reconcile your own work or demand receipts for user closures; remedied failures move to `done`).
 
 ## Authority and boundaries
