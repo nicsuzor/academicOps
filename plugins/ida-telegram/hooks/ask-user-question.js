@@ -48,7 +48,12 @@ async function main() {
   const questions = toolInput.questions || [
     {
       question: toolInput.question || "Input requested",
+      header: toolInput.header,
+      context: toolInput.context,
+      recommendation: toolInput.recommendation,
       options: toolInput.options || [{ label: "Acknowledge" }],
+      multiSelect: toolInput.multiSelect,
+      allowOther: toolInput.allowOther,
     },
   ];
 

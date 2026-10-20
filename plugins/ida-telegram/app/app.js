@@ -297,9 +297,22 @@ async function loadQuestions() {
           const isMulti = Boolean(q.multiSelect);
           const inputType = isMulti ? "checkbox" : "radio";
           const headerHtml = q.header ? `<div class="q-header">${escapeHtml(q.header)}</div>` : "";
+
+          // Context block (explicit field)
+          const contextHtml = q.context
+            ? `<div class="q-context">${renderMarkdown(q.context)}</div>`
+            : "";
+
+          // Recommendation block
+          const recHtml = q.recommendation
+            ? `<div class="q-recommendation"><strong>Recommendation:</strong> ${formatInlineMarkdown(q.recommendation)}</div>`
+            : "";
+
           const optionsHtml = (q.options || [])
             .map((opt, idx) => {
-              const isRec = /\(recommended\)/i.test(opt.label) || idx === 0;
+              const isRec = Boolean(
+                opt.recommended || /\(recommended\)/i.test(opt.label)
+              );
               const recBadge = isRec ? '<span class="rec-badge">Recommended</span>' : "";
               const descHtml = opt.description
                 ? `<div class="opt-desc muted">${escapeHtml(opt.description)}</div>`
@@ -332,7 +345,9 @@ async function loadQuestions() {
           return `
             <div class="card question-card" data-qid="${escapeHtml(q.id)}">
               ${headerHtml}
-              <h3>${escapeHtml(q.question)}</h3>
+              <h3>${formatInlineMarkdown(q.question || "")}</h3>
+              ${contextHtml}
+              ${recHtml}
               <div class="q-options-list">
                 ${optionsHtml}
               </div>

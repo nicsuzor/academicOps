@@ -291,7 +291,9 @@ export class StdioMcpServer {
       const questions = (args.questions as Array<{
         question: string;
         header?: string;
-        options: Array<{ label: string; description?: string }>;
+        context?: string;
+        recommendation?: string;
+        options: Array<{ label: string; description?: string; recommended?: boolean }>;
         multiSelect?: boolean;
         allowOther?: boolean;
         turn_id?: string;
@@ -307,6 +309,8 @@ export class StdioMcpServer {
         const result = await this.broker.askUser({
           question: q.question,
           header: q.header,
+          context: q.context,
+          recommendation: q.recommendation,
           options: q.options,
           multiSelect: q.multiSelect,
           allowOther: q.allowOther,

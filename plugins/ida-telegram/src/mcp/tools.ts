@@ -76,6 +76,8 @@ export const MCP_TOOLS: ToolDefinition[] = [
             properties: {
               question: { type: "string" },
               header: { type: "string" },
+              context: { type: "string", description: "Background context, evidence, or pointers bearing on the decision" },
+              recommendation: { type: "string", description: "Concrete recommendation with functional rationale" },
               options: {
                 type: "array",
                 items: {
@@ -83,6 +85,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
                   properties: {
                     label: { type: "string" },
                     description: { type: "string" },
+                    recommended: { type: "boolean" },
                   },
                   required: ["label"],
                 },
