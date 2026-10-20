@@ -263,7 +263,11 @@ describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration
       expect(typeof data.seq).toBe("number");
 
       // Reaches agent
-      expect(emittedEvents.some((e) => e.event === "question_answer" && e.meta.question_id === q.questionId)).toBe(true);
+      expect(
+        emittedEvents.some(
+          (e) => (e.event === "question_answered" || e.event === "question_answer") && e.meta.question_id === q.questionId
+        )
+      ).toBe(true);
 
       // Edits Telegram card and clears inline keyboard
       const edited = editedCards.find((c) => c.chatId === allowedUserId && c.messageId === 2002);

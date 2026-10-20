@@ -341,7 +341,7 @@ export function handleApiRequest(req: Request, ctx: WebContext): Response | Prom
   if (path === "/api/app/stop" && req.method === "POST") {
     return (async () => {
       try {
-        let reason = "Nic asks you to stop and report";
+        let reason = "The user asks you to stop and report";
         let chatId: number | undefined;
         let messageId: number | undefined;
 

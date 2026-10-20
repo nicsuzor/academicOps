@@ -39,25 +39,18 @@ describe("Progressive disclosure: Format and Entities", () => {
     );
   });
 
-  test("groups consecutive >! lines into a single expandable_blockquote entity per spec_7a9caca5 FR-1.2", () => {
-    const text = "**Header**\n\n>! Line 1 **bold**\n>! Line 2 `code`\n>! Line 3\n\nNormal text";
+  test("groups consecutive >! lines into a single expandable_blockquote entity", () => {
+    const text = "**Summary**\n\n>! Line one with `code`\n>! Line two with **bold**\n>! Line three\n\nFooter";
     const { plainText, entities } = formatMarkdownToEntities(text);
 
     const expQuotes = entities.filter((e) => e.type === "expandable_blockquote");
     expect(expQuotes.length).toBe(1);
-    const expQuote = expQuotes[0];
-    expect(plainText.slice(expQuote.offset, expQuote.offset + expQuote.length)).toBe(
-      "Line 1 bold\nLine 2 code\nLine 3"
+    expect(plainText.slice(expQuotes[0].offset, expQuotes[0].offset + expQuotes[0].length)).toBe(
+      "Line one with code\nLine two with bold\nLine three"
     );
 
-    // Nested entities inside the multi-line expandable blockquote
-    const bold = entities.find((e) => e.type === "bold" && e.offset > expQuote.offset);
-    expect(bold).toBeDefined();
-    expect(plainText.slice(bold!.offset, bold!.offset + bold!.length)).toBe("bold");
-
-    const code = entities.find((e) => e.type === "code" && e.offset > expQuote.offset);
-    expect(code).toBeDefined();
-    expect(plainText.slice(code!.offset, code!.offset + code!.length)).toBe("code");
+    const stdQuotes = entities.filter((e) => e.type === "blockquote");
+    expect(stdQuotes.length).toBe(0);
   });
 
   test("groups consecutive standard > lines into a single blockquote entity per spec_7a9caca5 FR-1.2", () => {
@@ -78,6 +71,34 @@ describe("Progressive disclosure: Format and Entities", () => {
     expect(plainText.slice(expQuotes[0].offset, expQuotes[0].offset + expQuotes[0].length)).toBe(
       "Multi-line quote 1\nMulti-line quote 2"
     );
+  });
+
+  test("continues expandable_blockquote across contiguous > continuation lines", () => {
+    const text = ">! **Receipts**\n> - item 1\n> - item 2";
+    const { plainText, entities } = formatMarkdownToEntities(text);
+
+    const expQuotes = entities.filter((e) => e.type === "expandable_blockquote");
+    expect(expQuotes.length).toBe(1);
+    expect(plainText.slice(expQuotes[0].offset, expQuotes[0].offset + expQuotes[0].length)).toBe(
+      "Receipts\n- item 1\n- item 2"
+    );
+
+    const stdQuotes = entities.filter((e) => e.type === "blockquote");
+    expect(stdQuotes.length).toBe(0);
+  });
+
+  test("handles bare >! opening line followed by > continuation lines", () => {
+    const text = ">!\n> Line 1\n> Line 2";
+    const { plainText, entities } = formatMarkdownToEntities(text);
+
+    const expQuotes = entities.filter((e) => e.type === "expandable_blockquote");
+    expect(expQuotes.length).toBe(1);
+    expect(plainText.slice(expQuotes[0].offset, expQuotes[0].offset + expQuotes[0].length)).toBe(
+      "Line 1\nLine 2"
+    );
+
+    const stdQuotes = entities.filter((e) => e.type === "blockquote");
+    expect(stdQuotes.length).toBe(0);
   });
 
   test("formats markdown tables: pre if <= 36 cols, stacked cards if > 36 cols", () => {

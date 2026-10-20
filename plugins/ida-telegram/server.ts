@@ -102,6 +102,7 @@ async function main() {
                 multiSelect: q.multiSelect,
                 allowOther: q.allowOther,
                 chatId: config.allowFrom[0],
+                turnId: q.turnId || req.turn_id,
               });
               postedIds.push(result.questionId);
 
@@ -125,8 +126,8 @@ async function main() {
   socketServer.listen(config.socketPath, () => {
     try {
       chmodSync(config.socketPath, 0o600); // Strict local permissions per FR-4.1
-    } catch {
-      // Ignore
+    } catch (err) {
+      console.warn("[ida-telegram] chmod socket failed:", err);
     }
   });
 

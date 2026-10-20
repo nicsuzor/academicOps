@@ -12,7 +12,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
   {
     name: "reply",
     description:
-      "Send a message to Nic over Telegram with progressive disclosure, expandable blockquotes, and Details button.",
+      "Send a message to the user over Telegram with progressive disclosure, expandable blockquotes, and Details button.",
     inputSchema: {
       type: "object",
       properties: {
@@ -63,10 +63,11 @@ export const MCP_TOOLS: ToolDefinition[] = [
   },
   {
     name: "ask_user",
-    description: "Post an asynchronous question to Nic over Telegram with vertical choice buttons.",
+    description: "Post an asynchronous question to the user over Telegram with vertical choice buttons.",
     inputSchema: {
       type: "object",
       properties: {
+        turn_id: { type: "string", description: "Turn ID for correlating the async answer event" },
         questions: {
           type: "array",
           items: {
@@ -87,6 +88,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
               },
               multiSelect: { type: "boolean" },
               allowOther: { type: "boolean" },
+              turn_id: { type: "string" },
             },
             required: ["question", "options"],
           },

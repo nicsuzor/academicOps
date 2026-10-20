@@ -38,7 +38,7 @@ export interface QuestionCard {
 }
 
 export interface QuestionAnswerEvent {
-  event: "question_answer";
+  event: "question_answered";
   question_id: string;
   question: string;
   choice: string;
@@ -90,8 +90,10 @@ export class QuestionBroker {
     message: string;
   }> {
     const id = "q_" + randomBytes(4).toString("hex");
+    const turnId = payload.turnId || (payload as { turn_id?: string }).turn_id;
     const stored: StoredQuestion = {
       ...payload,
+      ...(turnId ? { turnId } : {}),
       id,
       createdAt: new Date().toISOString(),
       status: "pending",
@@ -104,7 +106,7 @@ export class QuestionBroker {
     return {
       questionId: id,
       status: "posted",
-      message: `Question ${id} posted to Nic. Do not assume an answer; continue other work or end your turn.`,
+      message: `Question ${id} posted to the user. Do not assume an answer; continue other work or end your turn.`,
     };
   }
 
@@ -248,11 +250,11 @@ export class QuestionBroker {
     const headerPrefix = q.header ? `**${q.header}**\n\n` : "";
     const cardText = `${headerPrefix}${formattedQuestion}\n\nSelected: ${choice} ✅`;
     const channelEvent: QuestionAnswerEvent = {
-      event: "question_answer",
+      event: "question_answered",
       question_id: id,
       question: q.question,
       choice,
-      turn_id: q.turnId,
+      ...(q.turnId ? { turn_id: q.turnId } : {}),
     };
 
     return { cardText, channelEvent, question: q };
