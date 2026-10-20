@@ -24,31 +24,26 @@ def get_pyproject_version(project_root: Path) -> str:
 
 
 def _git_build_metadata(project_root: Path) -> str:
-    try:
-        sha_res = subprocess.run(
-            ["git", "rev-parse", "--short=8", "HEAD"],
-            cwd=project_root,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if sha_res.returncode != 0:
-            return ""
-        sha = sha_res.stdout.strip()
-        if not sha:
-            return ""
-
-        dirty_res = subprocess.run(
-            ["git", "status", "--porcelain"],
-            cwd=project_root,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        is_dirty = dirty_res.returncode == 0 and bool(dirty_res.stdout.strip())
-        return f"g{sha}{'.dirty' if is_dirty else ''}"
-    except Exception:
+    sha_res = subprocess.run(
+        ["git", "rev-parse", "--short=8", "HEAD"],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    sha = sha_res.stdout.strip()
+    if not sha:
         return ""
+
+    dirty_res = subprocess.run(
+        ["git", "status", "--porcelain"],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    is_dirty = bool(dirty_res.stdout.strip())
+    return f"g{sha}{'.dirty' if is_dirty else ''}"
 
 
 def get_current_version(project_root: Path) -> str:
@@ -68,17 +63,14 @@ def get_current_version(project_root: Path) -> str:
 
 
 def _git_tags(project_root: Path) -> list[str]:
-    try:
-        result = subprocess.run(
-            ["git", "tag", "--list"],
-            capture_output=True,
-            text=True,
-            cwd=project_root,
-            check=True,
-        )
-        return [t.strip() for t in result.stdout.splitlines() if t.strip()]
-    except Exception:
-        return []
+    result = subprocess.run(
+        ["git", "tag", "--list"],
+        capture_output=True,
+        text=True,
+        cwd=project_root,
+        check=True,
+    )
+    return [t.strip() for t in result.stdout.splitlines() if t.strip()]
 
 
 def latest_stable_patch(project_root: Path, major: int, minor: int) -> int | None:

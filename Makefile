@@ -114,7 +114,7 @@ install-dev: build
 		fi; \
 	done || true
 	@uv run python -m build.install install --dist-root $(DIST)
-	@uv run pre-commit install >/dev/null 2>&1 || true
+	@uv run pre-commit install >/dev/null 2>&1
 	@echo "Local marketplace '$(LOCAL_MARKETPLACE)' -> $(DIST). Run 'make uninstall-dev' to restore the release channel."
 
 uninstall-dev:

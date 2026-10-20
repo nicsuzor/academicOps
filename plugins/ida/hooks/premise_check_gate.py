@@ -156,10 +156,7 @@ def _state_path(session_id: str) -> Path:
 def _load_state(session_id: str) -> dict[str, Any]:
     target = _state_path(session_id)
     if target.exists():
-        try:
-            return json.loads(target.read_text(encoding="utf-8"))
-        except Exception:
-            return {}
+        return json.loads(target.read_text(encoding="utf-8"))
     return {}
 
 
@@ -170,11 +167,7 @@ def _save_state(session_id: str, state: dict[str, Any]) -> None:
 def clear_state(session_id: str) -> None:
     """Reset premise check state for a session. Used by tests."""
     target = _state_path(session_id)
-    if target.exists():
-        try:
-            target.unlink()
-        except OSError:
-            pass
+    target.unlink(missing_ok=True)
 
 
 def get_state(session_id: str) -> dict[str, Any]:

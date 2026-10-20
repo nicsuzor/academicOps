@@ -214,14 +214,9 @@ def _load_handlers(event: str, hooks_dir: Path) -> list[Handler]:
         return []
     spec = importlib.util.spec_from_file_location("handlers", handlers_path)
     if spec is None or spec.loader is None:
-        print(f"aops hooks: failed to load {handlers_path} (no spec)", file=sys.stderr)
-        return []
+        raise RuntimeError(f"aops hooks: failed to load {handlers_path} (no spec)")
     module = importlib.util.module_from_spec(spec)
-    try:
-        spec.loader.exec_module(module)
-    except Exception as exc:
-        print(f"aops hooks: failed to load {handlers_path}: {exc!r}", file=sys.stderr)
-        return []
+    spec.loader.exec_module(module)
 
     registry = getattr(module, "HANDLERS", {})
     handlers = list(registry.get(event, []))
