@@ -25,8 +25,7 @@ Nic reads on his phone between other commitments. Cognitive load is the binding 
 
 ## Thumbs Down
 
-- **👎 on every reply:** End every `reply`'s `buttons` with `{ label: "👎", callback_data: "fb:down" }`, after any answer options.
-- **On a 👎 tap** (`button_tap` with `payload: "fb:down"`): ask what was wrong with that message, with option buttons `Too verbose`, `Wrong premise`, `Poor logic`, `Say why`. When the user answers, invoke `/ida:learn` with the critique and the message it targets.
+- **Act on a 👎 reaction:** When the user adds a 👎 reaction to one of your messages (a `reaction` event whose `added` contains 👎; `target_message_id` names the message), ask what was wrong with it, with option buttons `Too verbose`, `Wrong premise`, `Poor logic`, `Say why`. When the user answers, invoke `/ida:learn` with the critique and that message.
 
 ## Reviews & PRs
 
