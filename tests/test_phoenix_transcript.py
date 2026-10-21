@@ -5,6 +5,8 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 SCRIPTS = Path(__file__).resolve().parent.parent / "plugins/ida/skills/session-trace/scripts"
 sys.path.insert(0, str(SCRIPTS))
 _spec = importlib.util.spec_from_file_location(
@@ -229,3 +231,42 @@ def test_tool_detail_names_what_a_call_acted_on():
     assert pt.tool_detail(
         json.dumps({"CommandLine": 'python3 -c "\nprint(1)\n"', "toolAction": "x"})
     ) == ('python3 -c " print(1) "')
+
+
+def test_resolve_endpoint_from_environment_variables(monkeypatch):
+    """AC1: With only PHOENIX_MCP_URL and PHOENIX_MCP_PROJECT set, resolve from env vars."""
+    monkeypatch.setenv("PHOENIX_MCP_URL", "http://phoenix.internal:6006/")
+    monkeypatch.setenv("PHOENIX_MCP_PROJECT", "test-project")
+    # Ensure legacy vars are not set
+    monkeypatch.delenv("PHOENIX_BASE_URL", raising=False)
+    monkeypatch.delenv("PHOENIX_COLLECTOR_ENDPOINT", raising=False)
+    monkeypatch.delenv("PHOENIX_PROJECT_NAME", raising=False)
+
+    assert pt.resolve_base_url(None) == "http://phoenix.internal:6006"
+    assert pt.resolve_project(None) == "test-project"
+
+
+def test_resolve_endpoint_from_explicit_flags(monkeypatch):
+    """AC2: Explicit flags take precedence over environment variables."""
+    monkeypatch.setenv("PHOENIX_MCP_URL", "http://env-phoenix:6006")
+    monkeypatch.setenv("PHOENIX_MCP_PROJECT", "env-project")
+
+    assert pt.resolve_base_url("http://flag-phoenix:6006/") == "http://flag-phoenix:6006"
+    assert pt.resolve_project("flag-project") == "flag-project"
+
+
+def test_resolve_endpoint_supplies_no_default_when_unset(monkeypatch):
+    """AC3: With neither flag nor variable set, script supplies no default value and fails."""
+    monkeypatch.delenv("PHOENIX_MCP_URL", raising=False)
+    monkeypatch.delenv("PHOENIX_MCP_PROJECT", raising=False)
+    monkeypatch.delenv("PHOENIX_BASE_URL", raising=False)
+    monkeypatch.delenv("PHOENIX_COLLECTOR_ENDPOINT", raising=False)
+    monkeypatch.delenv("PHOENIX_PROJECT_NAME", raising=False)
+
+    with pytest.raises(pt.ConfigError) as exc_url:
+        pt.resolve_base_url(None)
+    assert "no Phoenix base URL" in str(exc_url.value)
+
+    with pytest.raises(pt.ConfigError) as exc_proj:
+        pt.resolve_project(None)
+    assert "no Phoenix project" in str(exc_proj.value)

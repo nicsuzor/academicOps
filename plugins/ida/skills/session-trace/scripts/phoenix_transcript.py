@@ -35,9 +35,8 @@ Metrics
     ``phoenix_token_cost.py``, overridable with ``--prices``; unpriced models cost 0 and
     are named in the header. The dollar figure is comparable spend, not an invoice.
 
-Configuration is flags or environment only: ``--base-url`` or ``$PHOENIX_BASE_URL`` /
-``$PHOENIX_COLLECTOR_ENDPOINT``; ``--project`` or ``$PHOENIX_PROJECT_NAME``. Standard
-library only.
+Configuration is flags or environment only: ``--base-url`` or ``$PHOENIX_MCP_URL``;
+``--project`` or ``$PHOENIX_MCP_PROJECT``. No fallback values. Standard library only.
 
 Examples::
 
@@ -65,8 +64,8 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from phoenix_token_cost import PRICES, cost_usd, price_row  # noqa: E402
 
-BASE_URL_ENV_VARS = ("PHOENIX_BASE_URL", "PHOENIX_COLLECTOR_ENDPOINT")
-PROJECT_ENV_VAR = "PHOENIX_PROJECT_NAME"
+BASE_URL_ENV_VAR = "PHOENIX_MCP_URL"
+PROJECT_ENV_VAR = "PHOENIX_MCP_PROJECT"
 PAGE_LIMIT = 1000
 SESSION_PAGE_LIMIT = 100
 HTTP_TIMEOUT = 120
@@ -174,19 +173,14 @@ def get_json(url: str) -> Any:
 
 
 def resolve_base_url(explicit: str | None) -> str:
-    candidate = explicit or next(
-        (os.environ[n].strip() for n in BASE_URL_ENV_VARS if os.environ.get(n, "").strip()),
-        None,
-    )
+    candidate = (explicit or os.environ.get(BASE_URL_ENV_VAR, "")).strip()
     if not candidate:
-        raise ConfigError(
-            "no Phoenix base URL. Pass --base-url, or set one of: " + ", ".join(BASE_URL_ENV_VARS)
-        )
+        raise ConfigError(f"no Phoenix base URL. Pass --base-url, or set {BASE_URL_ENV_VAR}")
     return candidate.rstrip("/")
 
 
 def resolve_project(explicit: str | None) -> str:
-    project = explicit or os.environ.get(PROJECT_ENV_VAR, "").strip()
+    project = (explicit or os.environ.get(PROJECT_ENV_VAR, "")).strip()
     if not project:
         raise ConfigError(f"no Phoenix project. Pass --project, or set {PROJECT_ENV_VAR}")
     return project
@@ -1224,9 +1218,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="Render a session's Phoenix spans as a markdown transcript with durations, tokens and costs.",
     )
     parser.add_argument("ident", help="session id, session slug (id prefix), or 32-hex trace id")
-    parser.add_argument(
-        "--base-url", help=f"Phoenix base URL (else ${' / $'.join(BASE_URL_ENV_VARS)})"
-    )
+    parser.add_argument("--base-url", help=f"Phoenix base URL (else ${BASE_URL_ENV_VAR})")
     parser.add_argument("--project", help=f"Phoenix project name (else ${PROJECT_ENV_VAR})")
     parser.add_argument(
         "--from-file", help="render spans from a saved JSON payload instead of fetching"
