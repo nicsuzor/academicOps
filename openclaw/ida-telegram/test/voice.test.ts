@@ -39,7 +39,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
     const { PluginStore } = await import("../src/store.js");
     const { QuestionBroker } = await import("../src/telegram/questions.js");
     const { PermissionRelay } = await import("../src/mcp/permissions.js");
-    const { mkdtempSync, rmSync, writeFileSync, chmodSync } = await import("node:fs");
+    const { mkdtempSync, rmSync, writeFileSync, chmodSync, readFileSync } = await import("node:fs");
     const { join } = await import("node:path");
     const { tmpdir } = await import("node:os");
 
@@ -48,7 +48,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
     const capturedTextPath = join(stateDir, "spoken_input.txt");
     writeFileSync(
       speakScript,
-      `#!/bin/sh\ncp "$1" "${capturedTextPath}"\nprintf 'OggS-fake-opus-audio' > "$2"\n`,
+      `#!/bin/sh\nset -e\ncp "$1" "${capturedTextPath}"\nprintf 'OggS-fake-opus-audio' > "$2"\n`,
       "utf-8"
     );
     chmodSync(speakScript, 0o755);
@@ -130,6 +130,11 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
       expect(voiceCall.isMultipart).toBe(true);
       expect(voiceCall.body.chat_id).toBe("8860530746");
       expect(voiceCall.body.voice.text).toBe("OggS-fake-opus-audio");
+
+      // speak.sh received the Tier 1 text as a file at $1
+      const spokenInput = readFileSync(capturedTextPath, "utf-8");
+      expect(spokenInput).toContain("This is a voice reply.");
+      expect(spokenInput).not.toContain("Tier 2 evidence quote");
 
       // Caption has Tier 1 text only (no Tier 2 quote) with entities
       expect(voiceCall.body.caption).toContain("This is a voice reply.");
