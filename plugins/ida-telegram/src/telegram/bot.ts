@@ -222,6 +222,7 @@ export class TelegramBotClient {
           if (!existsSync(this.config.stateDir)) {
             mkdirSync(this.config.stateDir, { recursive: true });
           }
+          writeFileSync(tempText, spoken, "utf-8");
 
           await execFileAsync(this.config.voiceSpeakCmd, [tempText, tempOgg], {
             timeout: 60000,
