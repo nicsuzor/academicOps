@@ -448,7 +448,8 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
         const overridden = await options.fetchOverride(input, init);
         if (overridden) return overridden;
       }
-      const targetUrl = input.startsWith("http") ? input : `${baseUrl}${input}`;
+      // Resolve like a browser would: relative to the page the app is served from.
+      const targetUrl = new URL(input, `${baseUrl}/app/index.html`).toString();
       const headers = new Headers(init?.headers || {});
       if (sessionCookie) {
         headers.set("Cookie", sessionCookie);
@@ -896,5 +897,10 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
     expect(surveyCard).toBeDefined();
     expect(surveyCard!.querySelector(".rec-badge")).toBeNull();
   });
-});
 
+  test("6. app.js reaches the API by page-relative paths, so the Mini App works behind a path prefix (e.g. /actual/app/)", async () => {
+    const appJs = await Bun.file(new URL("../app/app.js", import.meta.url)).text();
+    expect(appJs).not.toMatch(/["'`]\/api\//);
+    expect(appJs).toMatch(/["'`]\.\.\/api\/app\//);
+  });
+});

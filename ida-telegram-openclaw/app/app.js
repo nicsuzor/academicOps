@@ -29,7 +29,7 @@ function switchTab(tab) {
 async function init() {
   if (tg && tg.initData) {
     try {
-      await fetch("/api/app/auth", {
+      await fetch("../api/app/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ initData: tg.initData }),
@@ -261,7 +261,7 @@ function renderMarkdown(markdown) {
 
 async function loadDetails(id) {
   try {
-    const res = await fetch(`/api/app/details/${id}`);
+    const res = await fetch(`../api/app/details/${id}`);
     if (res.ok) {
       const data = await res.json();
       document.getElementById("details-content").innerHTML = `
@@ -280,7 +280,7 @@ async function loadDetails(id) {
 
 async function loadQuestions() {
   try {
-    const res = await fetch("/api/app/questions");
+    const res = await fetch("../api/app/questions");
     if (res.ok) {
       const data = await res.json();
       const list = data.questions || [];
@@ -387,7 +387,7 @@ async function closeQuestion(qid, reason) {
     if (!trimmed) {
       return;
     }
-    const res = await fetch("/api/app/questions/close", {
+    const res = await fetch("../api/app/questions/close", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question_id: qid, reason: trimmed }),
@@ -426,7 +426,7 @@ async function submitQuestion(qid, isMultiSelect) {
       return;
     }
 
-    const res = await fetch("/api/app/questions/answer", {
+    const res = await fetch("../api/app/questions/answer", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -441,7 +441,7 @@ async function submitQuestion(qid, isMultiSelect) {
 
 async function answerQuestion(qid, optIndex) {
   try {
-    const res = await fetch("/api/app/questions/answer", {
+    const res = await fetch("../api/app/questions/answer", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ questionId: qid, optionIndex: optIndex }),
@@ -483,7 +483,7 @@ async function loadReview() {
     if (params.get("head")) qs.set("head", params.get("head"));
     const querySuffix = qs.toString() ? `?${qs.toString()}` : "";
 
-    const res = await fetch(`/api/app/review${querySuffix}`);
+    const res = await fetch(`../api/app/review${querySuffix}`);
     if (!res.ok) return;
     const data = await res.json();
     const permissions = data.permissions || [];
@@ -587,7 +587,7 @@ async function loadReview() {
 
 async function resolvePermission(permId, decision) {
   try {
-    const res = await fetch("/api/app/review/permission", {
+    const res = await fetch("../api/app/review/permission", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ permId, decision }),
@@ -604,7 +604,7 @@ async function submitPrReview(action, repo, pr) {
   try {
     const critiqueEl = document.getElementById(`pr-critique-${repo}-${pr}`);
     const critique = critiqueEl && critiqueEl.value ? critiqueEl.value.trim() : "";
-    const res = await fetch("/api/app/review/pr", {
+    const res = await fetch("../api/app/review/pr", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, repo, pr, critique }),
@@ -630,7 +630,7 @@ function formatUptime(seconds) {
 
 async function loadAnchor() {
   try {
-    const res = await fetch("/api/app/anchor");
+    const res = await fetch("../api/app/anchor");
     if (res.ok) {
       const data = await res.json();
       document.getElementById("anchor-focus").textContent = data.focus || "Stand by";
@@ -712,7 +712,7 @@ async function loadAnchor() {
 
 document.getElementById("btn-stop")?.addEventListener("click", async () => {
   if (confirm("Stop current session turn and ask Ida to report?")) {
-    await fetch("/api/app/stop", { method: "POST" });
+    await fetch("../api/app/stop", { method: "POST" });
     alert("Stop signal sent to Ida.");
   }
 });
