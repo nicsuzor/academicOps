@@ -246,6 +246,7 @@ def disarm(
     reason: str,
     verification_id: str = "",
     title: str | None = None,
+    machine: bool = False,
 ) -> None:
     """Disarm the premise check after a verdict is recorded."""
     state = _load_state(session_id)
@@ -278,6 +279,10 @@ def disarm(
         last_verdict["verification_id"] = verification_id
     if title:
         last_verdict["title"] = title
+    if machine:
+        last_verdict["machine"] = True
+    if verdict == "no-claim":
+        last_verdict["no_claim"] = True
     state["last_verdict"] = last_verdict
     _save_state(session_id, state)
 
@@ -675,20 +680,13 @@ def premise_check_arm(ctx: HookContext) -> Result | None:
         arm(ctx.session_id, claim_id=claim_id, judged_text=judged_text, judged_ref=judged_ref)
         import premise_check_verdict as pcv
 
-        try:
-            pcv.record_verdict(
-                session_id=ctx.session_id,
-                claim_id=claim_id,
-                verdict="REVISE",
-                reason="no argument supplied",
-            )
-        except RuntimeError:
-            disarm(
-                ctx.session_id,
-                claim_id=claim_id,
-                verdict="REVISE",
-                reason="no argument supplied",
-            )
+        pcv.record_verdict(
+            session_id=ctx.session_id,
+            claim_id=claim_id,
+            verdict="REVISE",
+            reason="no argument supplied",
+            machine=True,
+        )
         inject = (
             f"Premise-check: no argument supplied by {claim_id}; recorded REVISE and cleared gate."
         )
@@ -697,7 +695,9 @@ def premise_check_arm(ctx: HookContext) -> Result | None:
 
     # 2. Null form: clears the gate with no agent action
     if ra.is_null_form(block_text):
-        disarm(ctx.session_id, claim_id=claim_id, verdict="PASS", reason="null form")
+        disarm(
+            ctx.session_id, claim_id=claim_id, verdict="no-claim", reason="null form", machine=True
+        )
         return None
 
     # 3. Substantive argument block: arm the gate awaiting verdict

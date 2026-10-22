@@ -42,7 +42,7 @@ Basis phrases come from [`vocabulary.toml`](vocabulary.toml). A note may follow 
 
 Numbers run on through a chain: a supervisor quoting a worker's lines keeps their numbers and continues from the next one.
 
-Check the block before sending: `npx -y @argdown/cli json --throwExceptions <file>.argdown <outdir>` exits 0 on a valid block.
+Optional local syntax check before sending: `npx -y @argdown/cli json --throwExceptions <file>.argdown <outdir>` exits 0 on a valid block (authoring agents follow syntax rules directly without invoking an external CLI per `argdown-toulmin`).
 
 ## Short example
 
@@ -65,14 +65,4 @@ notes:
 
 ## Null form (minimal compliance)
 
-When a message makes no claim (such as automated harness notices, /loop wakeups, or messages making no evidence-backed claims):
-
-```argdown
-===
-asks: none
-===
-
-[no claim]
-```
-
-The null form declares minimal compliance and clears the premise-check gate with no agent action.
+When a message makes no claim (such as automated harness notices, /loop wakeups, or messages making no evidence-backed claims), see the null form defined in [`SKILL.md`](../SKILL.md#writing-the-argument).

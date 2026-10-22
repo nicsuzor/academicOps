@@ -3,6 +3,7 @@
 ## Requirements
 
 - [Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview), or Antigravity
+- Node.js and `@argdown/cli` (`npm install -g @argdown/cli`) for Argdown argument gating
 - Docker, only if you want polecat's containerised workers
 
 ## From the release channel

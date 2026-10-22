@@ -202,6 +202,7 @@ def record_verdict(
     reason: str = "",
     title: str | None = None,
     tracer_mod: Any | None = None,
+    machine: bool = False,
 ) -> dict[str, Any]:
     """Validate, emit the span, and disarm the premise check."""
     cid = (claim_id or "").strip()
@@ -230,6 +231,8 @@ def record_verdict(
     block_text = ra.extract_block(judged_text)
 
     attributes = judge_reason(token, reason, judged_text)
+    if machine:
+        attributes["premise_check.machine"] = True
 
     # Machine check on Argdown block for PASS verdicts unless block is waived
     if token == "PASS" and block_text is not None and not ra.is_null_form(block_text):
@@ -241,6 +244,7 @@ def record_verdict(
                 token = "REVISE"
                 reason = parser_output
                 attributes = judge_reason(token, reason, judged_text)
+                attributes["premise_check.machine"] = True
     attributes["premise_check.judged_ref"] = judged_ref or ""
     attributes["premise_check.judged_text_sha256"] = (
         hashlib.sha256(judged_text.encode("utf-8")).hexdigest() if judged_text is not None else ""
@@ -270,6 +274,7 @@ def record_verdict(
         reason,
         verification_id=verification_id,
         title=clean_title,
+        machine=bool(attributes.get("premise_check.machine")),
     )
 
     result: dict[str, Any] = {
@@ -282,6 +287,7 @@ def record_verdict(
         "span_error": None,
         "disarmed": True,
         "no_claim": bool(attributes.get("premise_check.no_claim")),
+        "machine": bool(attributes.get("premise_check.machine")),
     }
     if clean_title:
         result["title"] = clean_title

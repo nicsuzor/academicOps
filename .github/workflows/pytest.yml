@@ -45,6 +45,9 @@ jobs:
       - name: Build dist
         run: uv run python -m build.build
 
+      - name: Install @argdown/cli
+        run: npm install -g @argdown/cli
+
       - name: Setup Test Environment
         run: |
           mkdir -p ~/.claude

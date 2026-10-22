@@ -30,7 +30,7 @@ import yaml
 # ``--`` as committed, ``—`` as typed live.
 _DASH = r"(?:--|—)"
 _SEPARATOR = re.compile(rf"\s{_DASH}\s")
-_FENCE_OPEN = re.compile(r"^\s*(?P<fence>`{3,}|~{3,})\s*argdown\s*$")
+_FENCE_OPEN = re.compile(r"^\s*(?P<fence>`{3,}|~{3,})\s*argdown\s*$", re.IGNORECASE)
 _FRONTMATTER_FENCE = "==="
 _NUMBERED = re.compile(r"^\((?P<n>\d+)\)\s*(?P<text>.*)$")
 # Argdown takes an inference line only in ASCII: ``-- ... --``.
@@ -256,11 +256,9 @@ def parse_block(block: str, vocab: Vocabulary) -> Argument | None:
     return arg
 
 
-_NULL_FORM_PATTERNS = (
-    re.compile(r"^\s*\[no\s+claim\]\s*$", re.IGNORECASE | re.MULTILINE),
-    re.compile(r"^\s*asks:\s*none\b", re.IGNORECASE | re.MULTILINE),
-    re.compile(r"^\s*claim:\s*none\b", re.IGNORECASE | re.MULTILINE),
-    re.compile(r"^\s*notice:\s*true\b", re.IGNORECASE | re.MULTILINE),
+_NULL_FORM_RE = re.compile(
+    r"^(?:===\s*\n)?\s*asks:\s*none\s*(?:\n===)?\s*\n\s*\[no\s+claim\]\s*$",
+    re.IGNORECASE,
 )
 
 
@@ -268,13 +266,15 @@ def is_null_form(block_text: str | None) -> bool:
     """True when a fenced argdown block is the null form declaring no claim."""
     if not block_text or not block_text.strip():
         return False
-    text = block_text.strip()
-    return any(p.search(text) for p in _NULL_FORM_PATTERNS)
+    return bool(_NULL_FORM_RE.match(block_text.strip()))
 
 
-def clean_ansi(text: str) -> str:
+def clean_ansi(text: str, file_path: str | None = None) -> str:
     """Strip ANSI escape sequences from parser output and normalize paths."""
     clean = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", text).strip()
+    if file_path:
+        clean = clean.replace(file_path, "<argdown>")
+    clean = re.sub(rf"{re.escape(tempfile.gettempdir())}/[^\s]+\.argdown", "<argdown>", clean)
     return re.sub(r"/tmp/[^\s]+\.argdown", "<argdown>", clean)
 
 
@@ -282,17 +282,20 @@ def check_argdown_block(
     block_text: str,
     parser_bin: str | None = None,
 ) -> tuple[bool, str, dict[str, Any] | None]:
-    """Parse block with @argdown/cli and run the machine checks from [[aops-reasoning-steps-design]].
+    """Parse block with @argdown/cli and run machine checks: orphan statements and misaimed undercuts.
 
     Checks:
     1. Argdown syntax validity (clean exit and JSON AST from parser).
     2. Undercut check: any undercut (_>) must target an inference (toType == 'inference').
-    3. Orphan statement check: statements must have role 'premise', 'conclusion' or be an undercut source.
+    3. Orphan statement check: statements must have relations or argument membership.
 
     Returns:
         (valid: bool, reason_or_error: str, ast: dict | None)
     """
-    cmd = parser_bin or shutil.which("argdown") or "argdown"
+    cmd = parser_bin or shutil.which("argdown")
+    if not cmd:
+        raise RuntimeError("argdown parser binary not found on PATH")
+
     with tempfile.NamedTemporaryFile("w", suffix=".argdown", delete=False) as f:
         f.write(block_text)
         f.flush()
@@ -304,8 +307,6 @@ def check_argdown_block(
             text=True,
             timeout=30,
         )
-    except Exception as exc:
-        return False, f"Argdown parser execution error: {exc}", None
     finally:
         try:
             f_path.unlink()
@@ -313,20 +314,25 @@ def check_argdown_block(
             pass
 
     if res.returncode != 0:
-        err = clean_ansi(res.stderr or res.stdout)
-        return False, f"Argdown syntax error:\n{err}", None
+        err = clean_ansi(res.stderr or res.stdout, str(f_path))
+        if (
+            "Argdown syntax error" in err
+            or "Invalid Argdown syntax detected" in err
+            or "SyntaxError" in err
+        ):
+            return False, f"Argdown syntax error:\n{err}", None
+        raise RuntimeError(f"Argdown parser failed (exit {res.returncode}):\n{err}")
 
     idx = res.stdout.rfind("}")
     if idx == -1:
-        return False, "Argdown parser error: no JSON output from parser", None
+        raise RuntimeError("Argdown parser error: no JSON output from parser")
     try:
         data = json.loads(res.stdout[: idx + 1])
     except Exception as exc:
-        return False, f"Argdown parser error decoding AST: {exc}", None
+        raise RuntimeError(f"Argdown parser error decoding AST: {exc}") from exc
 
     stmts = data.get("statements", {})
     rels = data.get("relations", [])
-    undercut_sources = {r.get("from") for r in rels if r.get("relationType") == "undercut"}
 
     # Check 1: Undercut not aimed at an inference
     for r in rels:
@@ -341,20 +347,41 @@ def check_argdown_block(
                     data,
                 )
 
-    # Check 2: Orphan statement (statement that is not a conclusion, not a premise, and not an undercut)
+    # Check 2: Orphan statement (unconnected statement with no relation and no argument membership)
+    connected_statements: set[str] = set()
+    for r in rels:
+        if r.get("from"):
+            connected_statements.add(r.get("from"))
+        if r.get("to"):
+            connected_statements.add(r.get("to"))
     for title, stmt in stmts.items():
-        is_conclusion = bool(
-            stmt.get("isUsedAsMainConclusion") or stmt.get("isUsedAsIntermediaryConclusion")
-        )
-        roles = [m.get("role") for m in stmt.get("members", [])]
-        if any(r in ("main-conclusion", "conclusion", "intermediary-conclusion") for r in roles):
-            is_conclusion = True
-        is_premise = bool(stmt.get("isUsedAsPremise") or any(r == "premise" for r in roles))
-        if not is_conclusion and not is_premise and title not in undercut_sources:
+        if stmt.get("relations"):
+            connected_statements.add(title)
+        if (
+            stmt.get("isUsedAsPremise")
+            or stmt.get("isUsedAsMainConclusion")
+            or stmt.get("isUsedAsIntermediaryConclusion")
+        ):
+            connected_statements.add(title)
+        for m in stmt.get("members", []):
+            role = m.get("role")
+            if role in (
+                "premise",
+                "main-conclusion",
+                "conclusion",
+                "intermediary-conclusion",
+                "relation-statement",
+            ):
+                connected_statements.add(title)
+            if m.get("argumentTitle"):
+                connected_statements.add(title)
+
+    for title, stmt in stmts.items():
+        if title not in connected_statements:
             text = next((m.get("text") for m in stmt.get("members", []) if m.get("text")), title)
             return (
                 False,
-                f"Argdown argument invalid: orphan statement '{title}' ('{text}') is not a premise or conclusion",
+                f"Argdown argument invalid: orphan statement '{title}' ('{text}') has no relations or argument membership",
                 data,
             )
 
