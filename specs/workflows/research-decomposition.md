@@ -131,10 +131,11 @@ validation and documentation stay separate nodes although one session could run 
 separation is what forces the care. Collapse applies to components that differ in wording, not in
 the judgement they demand.
 
-1. **Settle from the record before naming unknowns.** Search the PKB for how relevant parts of the
-   domain or framework already work; list what is settled before naming any unknown. What the record
-   settles is not a node or probe; an unknown the PKB answers is not a node. What the record cannot
-   settle becomes a probe or pilot; information-gathering precedes commitment.
+1. **Settle from the record before naming unknowns.** Search the record or knowledge base for how
+   relevant parts of the domain or system already work; list what is settled before naming any
+   unknown. What the record settles is not a node or probe; an unknown the record answers is not a
+   node. What the record cannot settle becomes a probe or pilot; information-gathering precedes
+   commitment.
 2. **Assumptions are first-class.** Every load-bearing assumption carries a confidence level, a
    validation path, and a contingency.
 3. **Non-linear dependencies.** `depends_on` for hard gates, `soft_depends_on` for informational

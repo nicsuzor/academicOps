@@ -13,7 +13,7 @@ Work moves through four stages. Each runs, then stops; no stage fires the next.
 | Stage | Skill | What it does |
 | - | - | - |
 | 1. Capture | `/q` | Situate an ask on the graph -- under the right parent, wired to what it serves, valued at intake per [R1](graph-valuation.md#3-r1----placement-at-intake-q). |
-| 2. Expand | `/decompose` | Expand the objective into an abstract graph of sub-objectives at objective altitude, decision branches, prerequisites, and alternate paths. Reads the PKB first and stops at the first unknown before implementation detail. |
+| 2. Expand | `/decompose` | Expand the objective into an abstract graph of sub-objectives at objective altitude, decision branches, prerequisites, and alternate paths. Reads the record first and stops at the first unknown before implementation detail. |
 | 3. Reify | `/reify` | Assemble workflows from templates and write dispatchable tasks to the graph. |
 | 4. Dispatch | `/dispatch` | Start polecat workers on queued, ready tasks. Writes no tasks. |
 

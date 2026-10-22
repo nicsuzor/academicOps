@@ -11,12 +11,12 @@ State what needs doing, never how. Decompose reads; it runs nothing. What the re
 ## Workflow
 
 1. **Reconnaissance**: Read the artefacts and the graph.
-   - Search the PKB for how the relevant part of the framework already works; list what is settled before naming any unknown. What the record settles is not a node or probe; an unknown the PKB answers is not a node.
+   - Search the record or knowledge base for how the relevant part of the domain or system already works; list what is settled before naming any unknown. What the record settles is not a node or probe; an unknown the record answers is not a node.
    - A premise is load-bearing when its falsity would change the graph's shape (which nodes exist, which forks are open). Record each one, what settled it, and what it showed.
    - Resolve every pointer between artefacts and graph both ways. One that no longer resolves is a finding.
    - A false load-bearing premise halts the run: record it and stop.
 2. **Ground in existing means**:
-   - Take the stage skeleton for this class of work from `/workflow-library preview` at stage depth (on a bus, send the ask whole to the PKB session). Its stages are the spine; a stage filled by a choice (method, frame, venue) becomes a fork, never a chosen step.
+   - Take the stage skeleton for this class of work from the workflow template library (e.g. `/workflow-library preview`) at stage depth. Its stages are the spine; a stage filled by a choice (method, frame, venue) becomes a fork, never a chosen step.
    - Place the objective against each stage: met, partly met or open, and the node that carries it.
    - **Capabilities.** For each component, name what it needs (tool and operation, service, data, credentials) and the executor that will run it, and settle each from the record. Recorded as working there: ground on it. Recorded as absent or refused there: the component needs another executor or a prerequisite node. Not on record: a probe the component `depends_on`, whose finding is written back as a capability record.
 3. **Expand within reliable inference**:
@@ -31,7 +31,7 @@ State what needs doing, never how. Decompose reads; it runs nothing. What the re
    - **Collapse to session units**: two components one worker would do in one session against the same material are one node, unless the second must not run in that session (review, verification, merge), they are exclusive options, one gates on another party, or deciding between them changes the second.
    - **Merge into what exists**: search the graph first, `done` tasks and templates included; extend an overlapping node instead of minting a sibling. Overlap with completed work cuts the candidate to what that work left unanswered, wired `soft_depends_on` it; if nothing is left, do not mint.
    - **A first run is not a step**: the first execution of an existing node belongs to that node.
-6. **Wire the graph**: verb-led titles (`Implement X`), no personal names; `parent_id` for hierarchy, no redundant sibling edges; `depends_on` for hard blockers, `soft_depends_on` for informing context; a convergence node where forks rejoin; slugged ids (`aops_<slug>`).
+6. **Wire the graph**: verb-led titles (`Implement X`), no personal names; `parent_id` for hierarchy, no redundant sibling edges; `depends_on` for hard blockers, `soft_depends_on` for informing context; a convergence node where forks rejoin; slugged ids (`<slug>`).
 
 ## Output Schema
 
@@ -47,4 +47,4 @@ State what needs doing, never how. Decompose reads; it runs nothing. What the re
 ## Constraints
 
 - Abstract outcomes only; no execution methods, mechanisms, or scripts.
-- Do not write acceptance criteria or release tasks for dispatch (handled by `/reify`).
+- Do not write acceptance criteria or release tasks for dispatch (handled downstream during task reification, e.g. `/reify`).
