@@ -50,8 +50,10 @@ When invoked headlessly (e.g. correspondence sweep or `notes/mobile-captures/` i
 
 **Description**: Synthesize the ask in a minimal task body:
 
+- Restate the user's terse, fragmented words into clear, complete tasks and notes, judged by fidelity to meaning and distinctions, not by wording.
+- Keep the user's exact words only in the referent the premise check reads (`## Ask` and equivalents); do not treat keeping exact words in PKB outputs as a goal.
+- Fault a restatement only for lost, added, or distorted meaning.
 - Link new messages to prior context, recompose asks into a clear logical structure, and cite message IDs as pointers.
-- Do not quote user words verbatim; do not add extraneous narrative or implementation plans.
 - Leave ambiguity unresolved in the task; do not guess at intent.
 
 **Other sections**: Never restate structured metadata or task edges in prose. Interconnections live in edges, not body prose.

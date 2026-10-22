@@ -51,15 +51,15 @@ Then assemble the steps:
 ```markdown
 ## Ask
 
-[ The verbatim ask or asks from the user or delegating agent that authorise this task, with message ids. Record once at intake; do not edit, paraphrase, or delete. ]
+[ The verbatim ask or asks from the user or delegating agent that authorise this task, with message ids. Record once at intake; do not edit, paraphrase, or delete. These kept words exist as an immutable referent so another agent can verify the restatement is faithful, complete, and does not go too far. ]
 
 ## Goal
 
-[ Concise description of the purpose of the task, describing the end state of this unit of work (not the whole objective), naming the repository or project and the objective. Recompose the ask into a clear logical structure; never quote the user's words verbatim. ]
+[ Concise description of the purpose of the task, describing the end state of this unit of work (not the whole objective), naming the repository or project and the objective. Restate the ask as a clear, complete goal, judged by fidelity to meaning and distinctions, not by wording. Do not treat keeping exact words in task outputs as a goal. ]
 
 ## Context
 
-[ Decisions and facts the worker cannot find (omit if none). Cite message ids as pointers; never record or quote the user's words verbatim. The tracing hook preserves raw prompts. ]
+[ Decisions and facts the worker cannot find (omit if none). Cite message ids as pointers; do not treat keeping exact words as a goal. The tracing hook preserves raw prompts. ]
 
 ## Acceptance
 
@@ -100,8 +100,8 @@ Where the project finish template calls for QA review:
 ### Requirements for writing tasks
 
 - Give the worker the end state and the bounds; leave the method to it.
-- Record the asker's own words once, in `## Ask`, with their ids, and never rewrite them: the task carries the ask as an immutable referent that the worker's argument answers. The no-verbatim rule below governs the rest of the body, not `## Ask`.
-- Never quote or record the user's words verbatim in Goal, Context, or instructions. Make sense of asks in context, link them to prior context, recompose into a clear logical structure, and cite message ids.
+- Record the asker's own words once, in `## Ask`, with their ids, and never rewrite them: the task carries the ask as an immutable referent that the worker's argument answers and that checkers read to test the restatement for fidelity, completeness, and overreach. The no-verbatim rule below governs the rest of the body, not `## Ask`.
+- Restate the user's terse, fragmented words into clear, complete tasks and notes, judged by fidelity to his meaning and distinctions, not by wording. Keeping exact words in PKB outputs is not a goal. Fault a restatement only for lost, added, or distorted meaning. Link asks to prior context, recompose into a clear logical structure, and cite message ids.
 - State the Goal and each criterion over the whole class the request covers: "the user's messages", not a named person's or today's channels and formats. Instances the request names are cases to test, not the boundary of the work. When asked what broke a mechanism (such as authentication, a token, or a service), compose the debugging workflow and preserve the full failure question in Acceptance so the run examines why the mechanism or token stopped working across its lifecycle rather than narrowing to a single startup symptom.
 - Every heading is a prompt for you to fill, and there is no slot for restrictions or exclusions: say what has to be done, not what shouldn't.
 - Keep each task under 150 words, `## Ask` aside. Include only what the worker cannot find for itself.
