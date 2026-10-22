@@ -1,0 +1,4 @@
+model_id,model_name,provider,model_type,release_date
+perspective_toxicity,Perspective API Toxicity,Google Jigsaw,api,2023-01-01
+llama_guard_3,Llama Guard 3 8B,Meta,open_weight,2024-07-01
+wildguard,WildGuard,AllenAI,open_weight,2024-06-01

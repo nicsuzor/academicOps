@@ -1,0 +1,18 @@
+{{ project_name }}:
+  target: dev
+  outputs:
+{% if sql_engine == 'duckdb' %}
+    dev:
+      type: duckdb
+      path: "{{ '{{' }} env_var('DUCKDB_PATH', 'data/local_cache.duckdb') {{ '}}' }}"
+      threads: 4
+{% elif sql_engine == 'bigquery' %}
+    dev:
+      type: bigquery
+      method: oauth
+      project: "{{ '{{' }} env_var('BIGQUERY_PROJECT', '{{ bigquery_project }}') {{ '}}' }}"
+      dataset: "{{ '{{' }} env_var('BIGQUERY_DATASET', '{{ bigquery_dataset }}') {{ '}}' }}"
+      threads: 4
+      timeout_seconds: 300
+      location: US
+{% endif %}

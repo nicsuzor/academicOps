@@ -1,0 +1,72 @@
+# {{ project_title }}
+
+{{ description }}
+
+## Quickstart
+
+### 1. Environment and dependencies
+
+Install dependencies using `uv`:
+
+```bash
+uv sync
+```
+
+Copy the environment example:
+
+```bash
+cp .env.example .env
+```
+
+{% if sql_engine == 'duckdb' %}
+### 2. Run dbt transformations (DuckDB)
+
+```bash
+# Parse project models and configs
+uv run dbt parse --project-dir dbt --profiles-dir dbt
+
+# Seed reference data (model registry)
+uv run dbt seed --project-dir dbt --profiles-dir dbt
+
+# Execute transformation models
+uv run dbt run --project-dir dbt --profiles-dir dbt
+
+# Execute integrity tests
+uv run dbt test --project-dir dbt --profiles-dir dbt
+```
+
+### 3. Export analytical marts to Parquet
+
+```bash
+uv run python scripts/export_parquet.py
+```
+{% elif sql_engine == 'bigquery' %}
+### 2. Run dbt transformations (BigQuery)
+
+Ensure `GOOGLE_APPLICATION_CREDENTIALS` or `gcloud auth application-default login` is configured:
+
+```bash
+# Parse project models and configs
+uv run dbt parse --project-dir dbt --profiles-dir dbt
+
+# Execute transformation models
+uv run dbt run --project-dir dbt --profiles-dir dbt
+
+# Execute integrity tests
+uv run dbt test --project-dir dbt --profiles-dir dbt
+```
+
+### 3. Export analytical marts to Parquet
+
+```bash
+uv run python scripts/export_parquet.py
+```
+{% endif %}
+
+### 4. Computational manuscript
+
+Render the Quarto manuscript:
+
+```bash
+quarto render manuscript
+```
