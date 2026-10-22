@@ -84,7 +84,10 @@ def test_hearsay_fires_on_foreground_subagent_post_tool_use(agent, bg_val):
         agent_type=agent,
         session_id="s-ida-fg",
         hooks_dir=IDA_HOOKS,
-        raw={"tool_input": tool_input},
+        raw={
+            "tool_input": tool_input,
+            "tool_response": {"status": "completed", "content": [{"type": "text", "text": "X"}]},
+        },
     )
     res = handlers.rule_against_hearsay(ctx)
     assert res is not None
@@ -94,8 +97,11 @@ def test_hearsay_fires_on_foreground_subagent_post_tool_use(agent, bg_val):
     assert res.user_text == expected_user
 
 
-@pytest.mark.parametrize("bg_val", [True, "true", "1", "yes"])
+@pytest.mark.parametrize("bg_val", [None, True, "true", "1", "yes"])
 def test_hearsay_does_not_fire_on_background_subagent_post_tool_use(bg_val):
+    tool_input = {"description": "bg subagent"}
+    if bg_val is not None:
+        tool_input["run_in_background"] = bg_val
     ctx = HookContext(
         client="claude",
         event="PostToolUse",
@@ -103,7 +109,10 @@ def test_hearsay_does_not_fire_on_background_subagent_post_tool_use(bg_val):
         agent_type="ida:ida",
         session_id="s-ida-bg",
         hooks_dir=IDA_HOOKS,
-        raw={"tool_input": {"description": "bg subagent", "run_in_background": bg_val}},
+        raw={
+            "tool_input": tool_input,
+            "tool_response": {"isAsync": True, "status": "async_launched", "agentId": "a1"},
+        },
     )
     assert handlers.rule_against_hearsay(ctx) is None
 

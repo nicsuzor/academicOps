@@ -630,6 +630,189 @@ def test_outgoing_post_tool_batch_leaves_check_disarmed(tool, tool_input):
 
 
 # ---------------------------------------------------------------------------
+# Guard: a spawn acknowledgement or a wake with no report never arms the gate
+# ---------------------------------------------------------------------------
+
+
+_SPAWN_ACKS = {
+    "teammate_spawned": (
+        {
+            "description": "Why mini app broke again",
+            "prompt": "diagnose",
+            "name": "sara-mini",
+            "run_in_background": "true",
+        },
+        {
+            "status": "teammate_spawned",
+            "prompt": "diagnose",
+            "agentId": "asara-mini-0000000000000001",
+            "teammate_id": "sara-mini@session-x",
+            "agent_id": "asara-mini-0000000000000001",
+            "agent_type": "ida:sara",
+            "name": "sara-mini",
+            "team_name": "session-x",
+        },
+    ),
+    "async_launched_by_default": (
+        {"description": "Fix premise-check gate arming", "prompt": "fix it"},
+        {
+            "isAsync": True,
+            "status": "async_launched",
+            "agentId": "a0000000000000001",
+            "description": "Fix premise-check gate arming",
+            "prompt": "fix it",
+            "outputFile": "/tmp/tasks/a0000000000000001.output",
+            "canReadOutputFile": False,
+        },
+    ),
+    "spawned_text": ({"description": "Why mini app broke again"}, "Spawned successfully."),
+}
+
+
+def _post_tool_ctx(
+    session_id: str, tool_input: dict[str, Any], tool_response: Any, tool: str = "Agent"
+) -> dispatch.HookContext:
+    return dispatch.HookContext(
+        client="claude",
+        event="PostToolUse",
+        tool=tool,
+        session_id=session_id,
+        agent_type="ida:ida",
+        raw={
+            "tool_input": tool_input,
+            "tool_response": tool_response,
+            "tool_use_id": "toolu_spawn",
+        },
+    )
+
+
+@pytest.mark.parametrize("ack", sorted(_SPAWN_ACKS))
+def test_spawn_ack_leaves_gate_unarmed_and_actions_proceed(ack):
+    session_id = f"sess-ack-{ack}"
+    tool_input, tool_response = _SPAWN_ACKS[ack]
+    handlers = _load_plugin_module("ida_handlers_gate", _HOOKS_DIR / "handlers.py")
+
+    assert handlers.post_tool(_post_tool_ctx(session_id, tool_input, tool_response)) is None
+    assert pcg.is_armed(session_id) is False
+
+    for tool in ("Agent", "AskUserQuestion"):
+        ctx = dispatch.HookContext(
+            client="claude",
+            event="PreToolUse",
+            tool=tool,
+            session_id=session_id,
+            agent_type="ida:ida",
+        )
+        assert handlers.pre_tool(ctx) is None, f"{tool} refused after a spawn ack"
+    stop_ctx = dispatch.HookContext(
+        client="claude", event="Stop", session_id=session_id, agent_type="ida:ida"
+    )
+    assert handlers.stop(stop_ctx) is None
+
+
+def test_spawn_while_claim_pending_keeps_that_claim_and_its_verdict_records():
+    session_id = "sess-pending-spawn"
+    report = '<teammate-message teammate_id="sara" id="why-mini-app">report</teammate-message>'
+    pcg.premise_check_arm(_prompt_ctx(session_id, report))
+    assert pcg.get_state(session_id)["claim_ids"] == ["why-mini-app"]
+
+    handlers = _load_plugin_module("ida_handlers_gate", _HOOKS_DIR / "handlers.py")
+    tool_input, tool_response = _SPAWN_ACKS["async_launched_by_default"]
+    handlers.post_tool(_post_tool_ctx(session_id, tool_input, tool_response))
+
+    state = pcg.get_state(session_id)
+    assert state["claim_id"] == "why-mini-app"
+    assert state["claim_ids"] == ["why-mini-app"]
+
+    result = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="why-mini-app",
+        verdict="PASS",
+        reason=_pass_reason("why-mini-app"),
+        tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
+    )
+    assert result["ok"] is True
+    assert pcg.is_armed(session_id) is False
+
+
+_AGY_CONV = "00000000-0000-4000-8000-00000000c0de"
+_AGY_PEER = "00000000-0000-4000-8000-0000000beef1"
+
+
+def _agy_system_message(body: str) -> str:
+    """A SYSTEM_MESSAGE turn-start as agy writes it to the transcript."""
+    return (
+        "The following is a <SYSTEM_MESSAGE> not actually sent by the user. It is "
+        "provided by the system as important information to pay attention to.\n\n"
+        f"<SYSTEM_MESSAGE>\n{body}\n</SYSTEM_MESSAGE>"
+    )
+
+
+def _agy_message(sender: str, content: str, priority: str = "HIGH") -> str:
+    return _agy_system_message(
+        f"[Message] timestamp=2026-10-20T01:02:03Z sender={sender} "
+        f"priority=MESSAGE_PRIORITY_{priority} content={content}"
+    )
+
+
+# Turn-starts that wake agy without any report or direction arriving.
+_AGY_WAKES_WITHOUT_REPORT = {
+    "own_command_finished": _agy_message(
+        f"{_AGY_CONV}/task-11",
+        f'Task id "{_AGY_CONV}/task-11" finished with result:\n\n\t\t\t\t'
+        "The command exited with code 0.\n\t\t\t\tOutput:\n\t\t\t\tok",
+    ),
+    "own_command_canceled": _agy_message(
+        f"{_AGY_CONV}/task-12",
+        f'Task id "{_AGY_CONV}/task-12" was canceled with result: Step was canceled.',
+        priority="LOW",
+    ),
+    "output_stabilized": _agy_message(
+        f"{_AGY_CONV}/task-13",
+        "The command output has stabilized for 5s. The output delta since last check is:\nbuilding",
+    ),
+    "own_timer": _agy_message(f"{_AGY_CONV}/task-14", "Check build task completion"),
+    "system_notice": _agy_message(
+        "system",
+        "[Notice] All your subagents and background tasks have been stopped due to server restart.",
+        priority="LOW",
+    ),
+    "stop_hook_blocked": _agy_system_message(
+        "stop hook blocked termination due to reason: The user has automatically "
+        "approved the artifact through their review policy. Proceed to execution."
+    ),
+}
+
+
+# Turn-starts that deliver another agent's report or direction.
+def _agy_turn_ctx(tmp_path: Path, session_id: str, turn_start: str) -> dispatch.HookContext:
+    transcript = tmp_path / "transcript.jsonl"
+    transcript.write_text(
+        json.dumps({"step_index": 0, "type": "USER_INPUT", "content": "initial"})
+        + "\n"
+        + json.dumps({"step_index": 1, "type": "SYSTEM_MESSAGE", "content": turn_start})
+        + "\n",
+        encoding="utf-8",
+    )
+    return dispatch.HookContext(
+        client="agy",
+        event="UserPromptSubmit",
+        session_id=session_id,
+        agent_type="ida:ida",
+        transcript_path=str(transcript),
+        raw={"invocationNum": 0, "transcriptPath": str(transcript), "conversationId": _AGY_CONV},
+    )
+
+
+@pytest.mark.parametrize("wake", sorted(_AGY_WAKES_WITHOUT_REPORT))
+def test_agy_wake_without_report_leaves_gate_unarmed(tmp_path: Path, wake):
+    session_id = f"sess-agy-wake-{wake}"
+    ctx = _agy_turn_ctx(tmp_path, session_id, _AGY_WAKES_WITHOUT_REPORT[wake])
+    assert pcg.premise_check_arm(ctx) is None
+    assert pcg.is_armed(session_id) is False
+
+
+# ---------------------------------------------------------------------------
 # End-to-end: full claim -> refusal -> verdict -> allowed cycle
 # ---------------------------------------------------------------------------
 
