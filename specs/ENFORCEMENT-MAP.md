@@ -9,7 +9,7 @@ Current state list of measures in place to shape agent behavior per axiom.
 | Rule | Mechanism | Severity | Detail |
 | - | - | - | - |
 | [Axiom: Categorical Imperative](../plugins/rbg/skills/axioms/categorical-imperative.md) -- All actions must be justified as the application of a general rule covering all similar cases. |  |  |  |
-| [Axiom: Cite Sources (No Plagiarism)](../plugins/rbg/skills/axioms/cite-sources.md) -- Attribute every non-trivial claim to an explicit source; never strip or separate citations. |  |  |  |
+| [Axiom: Cite Sources (No Plagiarism)](../plugins/rbg/skills/axioms/cite-sources.md) -- Attribute every non-trivial claim to an explicit source; restatements judged by meaning and distinctions, not wording. | instructions | imperative | `plugins/rbg/skills/axioms/cite-sources.md:13`: When sending a direction derived from the user's ask, attach a short citation; restatements are judged by fidelity to meaning and distinctions, not wording; fault only for lost, added, or distorted meaning. Observation: Restatements preserve intent and distinctions without verbatim copying. |
 | [Axiom: Closure (No Other Truths)](../plugins/rbg/skills/axioms/closure.md) -- Derive all material decisions strictly from axioms, instructions, or directives; halt on conflict or silence. |  |  |  |
 | [Axiom: Costly Ops Approval](../plugins/rbg/skills/axioms/costly-ops-approval.md) -- Operations with unbounded cost or blast radius require explicit prior approval naming scope and volume. |  |  |  |
 | [Axiom: Data Boundaries](../plugins/rbg/skills/axioms/data-boundaries.md) -- Never emit private or identifying data across trust boundaries without authorization; scrub before transmission. |  |  |  |
@@ -34,7 +34,11 @@ Measures in place in agent definitions and instruction files to steer persona be
 
 | Rule | Mechanism | Severity | Detail |
 | - | - | - | - |
-| [Persona: Ida](../plugins/ida/agents/ida.md) -- Requests to Pauli must state the user's initial ask and the project's strategic fit. | instructions | imperative | `plugins/ida/agents/ida.md:32`: Every request Ida sends to Pauli states the user's initial ask and the project's strategic fit. Observation: Requests sent from Ida to Pauli state the user's initial ask and the project's strategic fit. |
+| [Persona: Ida](../plugins/ida/agents/ida.md) -- Requests to Pauli must state the user's initial ask and the project's strategic fit. | instructions | imperative | `plugins/ida/agents/ida.md:34`: Every request Ida sends to Pauli states the user's initial ask and the project's strategic fit. Observation: Requests sent from Ida to Pauli state the user's initial ask and the project's strategic fit. |
+| [Persona: Ida](../plugins/ida/agents/ida.md) -- Restate user words into clear, complete directions by meaning and distinctions; judge reports by fidelity to meaning, not wording. | instructions | imperative | `plugins/ida/agents/ida.md:25,30-31`: Restates user asks by meaning and distinctions; judges reports strictly by fidelity to meaning and distinctions, faulting only for lost, added, or distorted meaning. Observation: Ida accepts faithful restatements and faults only lost, added, or distorted distinctions. |
+| [Persona: Sara](../plugins/ida/agents/sara.md) -- Recompose asks into clear logical structures by meaning and distinctions; judge restatements by meaning, not verbatim wording. | instructions | imperative | `plugins/ida/agents/sara.md:16,44`: Sara recomposes asks citing message IDs, keeping exact words only in ## Ask; judges restatements by fidelity to meaning and distinctions, not wording. Observation: Sara does not fault workers for rewording or expect verbatim wording in outputs. |
+| [Persona: Pauli](../plugins/ida/agents/pauli.md) -- Restate user asks into clear, complete tasks and notes by meaning and distinctions; keep exact words only in ## Ask. | instructions | imperative | `plugins/ida/agents/pauli.md:37`: Pauli restates asks into clear tasks and notes by meaning and distinctions; kept words exist only in ## Ask for verification. Keeping exact words in PKB outputs is not a goal. Observation: PKB tasks and notes hold synthesized goals and knowledge without verbatim quotes. |
+| [Persona: Marsha](../plugins/ida/agents/marsha.md) -- Verify deliverables against user meaning, distinctions, and acceptance criteria rather than verbatim prompt wording. | instructions | imperative | `plugins/ida/agents/marsha.md:15`: Marsha measures deliverables against requester meaning, distinctions, and acceptance criteria; judges restatements by fidelity to meaning, completeness, and lack of overreach. Observation: QA reviews do not fault deliverables or restatements for rewording. |
 
 ## Evidence contract
 
@@ -44,6 +48,7 @@ Measures in place that enforce the [evidence contract](enforcement/evidence-cont
 | - | - | - | - |
 | Argdown grammar, basis vocabulary, observed-value rule, tags | `argdown-toulmin` skill | All agents | Guidance |
 | Report format, contrast test, verdict tokens, verdict command, return | `premise-check` skill | All agents | Guidance |
+| Restatement fidelity: kept words in `asks` / `## Ask` exist so checkers test restatements for fidelity, completeness, and overreach; judged by meaning and distinctions, not wording | `premise-check` skill, `reify`, `q` | Checkers (Ida, Sara), task authors (Pauli, workers) | Guidance |
 | Report argument in the task handback and QA review | `/pull`, `/dump`, `/verify` | Task workers, QA reviewers | Guidance |
 | Pointer to `premise-check` (no restated format rules) | `sara.md`, `/pull` §3, `ida.md` | Sara, workers, Ida | Guidance |
 | Ida's role: formal checking and attention protection; substance checks prohibited | `ida.md` | Ida | Guidance |
