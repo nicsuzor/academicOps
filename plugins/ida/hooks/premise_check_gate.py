@@ -675,33 +675,25 @@ def premise_check_arm(ctx: HookContext) -> Result | None:
     judged_text, judged_ref = prompt, _envelope_id(prompt.strip()) or claim_id
     block_text = ra.extract_block(prompt)
 
-    # 1. Absent block: records REVISE "no argument supplied" and clears the gate
-    if block_text is None:
-        arm(ctx.session_id, claim_id=claim_id, judged_text=judged_text, judged_ref=judged_ref)
-        import premise_check_verdict as pcv
-
-        pcv.record_verdict(
-            session_id=ctx.session_id,
-            claim_id=claim_id,
-            verdict="REVISE",
-            reason="no argument supplied",
-            machine=True,
-        )
-        inject = (
-            f"Premise-check: no argument supplied by {claim_id}; recorded REVISE and cleared gate."
-        )
-        user_msg = f"Premise-check: {claim_id} recorded REVISE (no argument supplied)."
-        return warn(inject, user_msg)
-
-    # 2. Null form: clears the gate with no agent action
-    if ra.is_null_form(block_text):
+    # 1. Null form: clears the gate with no agent action
+    if block_text is not None and ra.is_null_form(block_text):
         disarm(
             ctx.session_id, claim_id=claim_id, verdict="no-claim", reason="null form", machine=True
         )
         return None
 
-    # 3. Substantive argument block: arm the gate awaiting verdict
+    # 2. Absent block or substantive argument block: arm the gate awaiting agent verdict
     arm(ctx.session_id, claim_id=claim_id, judged_text=judged_text, judged_ref=judged_ref)
+    if block_text is None:
+        inject = (
+            f"Premise-check gate armed by {claim_id}: no argument block supplied; "
+            f"record a verdict per the `premise-check` skill.\n"
+            f"{format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id)}"
+        )
+        user_msg = f"Premise-check gate armed by {claim_id} (no argument block supplied)."
+        return warn(inject, user_msg)
+
+    # 3. Substantive argument block
     inject = (
         f"Premise-check gate armed by {claim_id}; record a verdict per the `premise-check` skill.\n"
         f"{format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id)}"

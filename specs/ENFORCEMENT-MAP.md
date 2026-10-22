@@ -42,7 +42,7 @@ Measures in place that enforce the [evidence contract](enforcement/evidence-cont
 | Session-wide one-line pointer | `SessionStart` (startup, resume, compact) | All agents | Reminder |
 | Reply-format reminder (`honesty.md`) on a peer envelope | `UserPromptSubmit`, peer envelope | All agents | Reminder |
 | Check reminder (`hearsay.md`) on a peer envelope or foreground subagent result | `UserPromptSubmit` (peer envelope), `PostToolUse` on `Agent` | Ida, Sara | Reminder |
-| Gate arms on an incoming peer message or completion notification: null form clears with no-claim, absent block records REVISE, substantive block arms storing judged text and reference | `UserPromptSubmit` (peer or task-notification envelope) | Ida, Sara | Friction |
+| Gate arms on an incoming peer message or completion notification: null form clears with no-claim, substantive or absent block arms storing judged text and reference | `UserPromptSubmit` (peer or task-notification envelope) | Ida, Sara | Friction |
 | Gate arms on a PKB task read with a `## Report` and no `## Premise-Check Verdict` | `PostToolUse` of PKB task read tool | Ida, Sara | [DISABLED] Friction; bypassed in code pending a decision |
 | Gate refuses `Agent`, `Task`, `invoke_subagent`, `SendMessage`, `AskUserQuestion`, `Dump`, channel replies | `PreToolUse` | Ida, Sara | Refuse |
 | Gate blocks `Stop` once per chain | `Stop` | Ida, Sara | Block |

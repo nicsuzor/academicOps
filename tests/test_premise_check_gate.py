@@ -21,7 +21,6 @@ import importlib.util
 import json
 import shlex
 import sys
-import unittest.mock
 from pathlib import Path
 from typing import Any
 
@@ -696,7 +695,7 @@ def test_arm_handler_arms_on_peer_report(prompt):
     assert res is not None and res.kind == dispatch.Kind.REFUSE
 
 
-def test_absent_block_records_revise_no_argument_supplied(monkeypatch):
+def test_absent_block_refuses_to_clear_gate_and_leaves_armed(monkeypatch):
     monkeypatch.setattr(
         pcv, "_import_claude_code_tracer", lambda: _StubTracer(config={"endpoint": "http://x"})
     )
@@ -706,15 +705,21 @@ def test_absent_block_records_revise_no_argument_supplied(monkeypatch):
     claim_id = pcg._derive_claim_id(ctx)
     res = pcg.premise_check_arm(ctx)
     assert res is not None
-    assert "recorded REVISE and cleared gate" in res.inject_text
+    assert "no argument block supplied" in res.inject_text
+    assert pcg.is_armed(session_id) is True
+
+    # The gate refuses dispatch while armed awaiting verdict
+    dispatch_res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
+    assert dispatch_res is not None and dispatch_res.kind == dispatch.Kind.REFUSE
+
+    # Agent records REVISE to send back, which clears the gate
+    pcv.record_verdict(
+        session_id=session_id,
+        claim_id=claim_id,
+        verdict="REVISE",
+        reason="no argument supplied",
+    )
     assert pcg.is_armed(session_id) is False
-    state = pcg.get_state(session_id)
-    last_v = state.get("last_verdict")
-    assert isinstance(last_v, dict)
-    assert last_v.get("claim_id") == claim_id
-    assert last_v.get("verdict") == "REVISE"
-    assert last_v.get("reason") == "no argument supplied"
-    assert last_v.get("machine") is True
 
 
 def test_null_form_clears_gate_with_no_agent_action():
@@ -776,17 +781,6 @@ def test_claim_none_does_not_pass_as_null_form():
     res = pcg.premise_check_arm(ctx)
     assert res is not None
     assert pcg.is_armed(session_id) is True
-
-
-def test_absent_block_raises_when_verdict_recording_fails():
-    session_id = "sess-absent-block-fail"
-    prompt = '<cross-session-message from="twin-a">PR #12 is merged with no block.</cross-session-message>'
-    ctx = _prompt_ctx(session_id, prompt)
-    with unittest.mock.patch(
-        "premise_check_verdict.record_verdict", side_effect=RuntimeError("export failed")
-    ):
-        with pytest.raises(RuntimeError, match="export failed"):
-            pcg.premise_check_arm(ctx)
 
 
 @pytest.mark.parametrize(

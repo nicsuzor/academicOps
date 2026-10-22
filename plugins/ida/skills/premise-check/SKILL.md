@@ -25,7 +25,7 @@ asks: none
 ```
 ````
 
-The null form declares minimal compliance and clears the premise-check gate with no agent action; an absent block records REVISE "no argument supplied".
+The null form declares minimal compliance and clears the premise-check gate with no agent action; an absent block refuses to clear the gate, leaving it armed awaiting an agent verdict so the receiver can return it for revision.
 
 1. **The ask at the top**, in the asker's own words, one question per `asks` entry, each under the immutable id the report form defines. Copy the ask you were given; never restate it as your own title.
 2. **Numbered premises**, each ending with its basis in words, one of the phrases in [`references/vocabulary.toml`](references/vocabulary.toml). A premise about outside state quotes the value that decides it (`state: MERGED`, `0 hits`).
