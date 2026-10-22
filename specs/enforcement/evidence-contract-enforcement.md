@@ -54,13 +54,13 @@ A container worker hands back through its task record. The gate does not arm on 
 
 The recorder holds the checker to the [checker's reason](../../plugins/ida/skills/premise-check/references/checker-reason.md). It gates the checker's reason, never the author's report.
 
-The report argument it reads is the skill's fenced `argdown` block: parser-valid Argdown in standard form, with the asks, answers and endnotes in its frontmatter and the basis in words on each premise line. On PASS, `verdict.py` runs deterministic machine checks (syntax errors, orphan statements not acting as premise or conclusion, and undercuts not aimed at an inference). On an invalid argument, it refuses PASS and records REVISE itself with the parser output as reason, clearing the gate.
+The report argument it reads is the skill's fenced `argdown` block: parser-valid Argdown in standard form, with the asks, answers and endnotes in its frontmatter and the basis in words on each premise line. On PASS, `verdict.py` runs deterministic machine checks (syntax errors, unconnected statements with no relations or argument membership, and undercuts not aimed at an inference). On an invalid argument, it refuses PASS and records REVISE itself with the parser output as reason, clearing the gate.
 
 - **PASS:** refused unless the block passes deterministic Argdown parser checks, and the reason carries the seven keyed lines and passes every mechanical cross-check the skill lists under "What the recorder refuses", run against the judged text the gate stored.
 - **No claim:** a one-line `Judged: <claim id>; no claim -- ...` reason is accepted for PASS and the verdict is marked no-claim.
 - **REVISE and FAIL:** recorded with any reason.
-- **Records:** each verdict emits one `premise_check_verdict` span carrying the claim id, verification id, verdict, reason, the judged-text reference, one attribute per reason line, the ask ids, the weakest basis, the inference count, the defect tags and the no-claim flag.
-- **Fails closed:** when tracing is unconfigured or the span export fails, no verdict is recorded and the gate stays armed.
+- **Records:** each verdict emits one `premise_check_verdict` span carrying the claim id, verification id, verdict, reason, the judged-text reference, one attribute per reason line, the ask ids, the weakest basis, the inference count, the defect tags, the no-claim flag, and the machine flag when generated mechanically.
+- **Fails closed:** when tracing is unconfigured, the span export fails, or the Argdown parser execution, decode, or timeout fails, no verdict is recorded and the gate stays armed.
 
 ## Telemetry
 

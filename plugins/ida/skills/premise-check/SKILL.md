@@ -75,4 +75,4 @@ Write the reason as the seven keyed lines in [`references/checker-reason.md`](re
 uv run --project <plugin-dir> python3 <plugin-dir>/skills/premise-check/scripts/verdict.py --claim <claim_id> --verdict <PASS|REVISE|FAIL> --reason-file <path>
 ```
 
-The recorder refuses a PASS whose reason misses a test line or an ask id, or contradicts the block. On an invalid argument (syntax errors, an orphan statement, or an undercut not aimed at an inference), `verdict.py` records REVISE itself with the parser output as reason and clears the gate. For a handback read from a task record, the claim id is the task id; after recording, add `## Premise-Check Verdict` to the task with the verification id and verdict.
+The recorder refuses a PASS whose reason misses a test line or an ask id, or contradicts the block. On an invalid argument (syntax errors, an unconnected statement, or an undercut not aimed at an inference), `verdict.py` records REVISE itself with the parser output as reason and clears the gate. For a handback read from a task record, the claim id is the task id; after recording, add `## Premise-Check Verdict` to the task with the verification id and verdict.
