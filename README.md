@@ -2,6 +2,12 @@
 
 You can delegate execution to AI without delegating judgment.
 
+## What academicOps is
+
+> In some ways it's middleware, but what it really is, is a principled, integrated approach to unpacking a highly opinionated view of what academic integrity requires, and operationalising that in a distributed workflow.
+
+Academics are going to use AI to improve their productivity. The longer-term bet behind academicOps is that judgement remains the stumbling block: academic integrity requires accountability and trust in your processes, and that trust is not there yet, least of all where several tools from different vendors are used together in novel configurations with little way to verify or validate across them. academicOps is the layer above those tools. It can incorporate commercial offerings, and it facilitates, and sometimes replicates, the expert strategic judgement that anyone using them needs. It is not a production line for more outputs: it builds the modular blocks that let a changing research strategy run across many projects.
+
 academicOps is a streamlined suite of six plugins for Claude Code and Antigravity built around **4 core pillars** and **session telemetry**:
 
 1. **Prompt Situation (`aops`):** Intercepts incoming prompts and grounds them in strategic history from the PKB.
