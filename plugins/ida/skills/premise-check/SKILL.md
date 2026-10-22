@@ -13,7 +13,7 @@ A report that rests on evidence ends in an argument whose final conclusion answe
 
 End the report with one fenced `argdown` block in the form in [`references/report-form.md`](references/report-form.md).
 
-1. **The ask at the top**, in the asker's own words, one question per `asks` entry, each under the immutable id the report form defines. Copy the ask you were given; never restate it as your own title.
+1. **The ask at the top**, in the asker's own words, one question per `asks` entry, each under the immutable id the report form defines. Copy the ask you were given; never restate it as your own title. These kept words exist so a checker can test the restatement for fidelity, completeness, and overreach.
 2. **Numbered premises**, each ending with its basis in words, one of the phrases in [`references/vocabulary.toml`](references/vocabulary.toml). A premise about outside state quotes the value that decides it (`state: MERGED`, `0 hits`).
 3. **Pointers as lettered endnotes** under `notes` -- paths, lines, span ids, task ids, PRs -- marked `^a` in the line. Never inline.
 4. **The inference line** states the warrant as a rule that could be false on its own, then `Unless:` naming what would defeat the step and, after `;`, whether it is ruled out by a numbered line, not ruled out, or not tried.
@@ -31,6 +31,8 @@ Self-check before sending, as the checker will.
 ## Checking a received report
 
 Take observed premises with a pointer as given: never open a pointer or redo the work. Everything else -- warrants, steps, scope, the fit between rule and case -- you judge. When a ruling turns on a fact the report lacks, send it back naming the missing premise.
+
+Restatements of the user's words (in tasks, directions, or reports) are judged by fidelity to the user's meaning and distinctions, not by wording. Outputs need not use exact words. Fault a restatement only for lost, added, or distorted meaning; never fault a report or restatement for rewording.
 
 Run four tests on every inference line:
 
