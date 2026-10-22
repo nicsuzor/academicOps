@@ -66,10 +66,7 @@ Put the current state in front of the owner. Expect them to mark it up.
 Do not defend the previous version — it was a step, not a commitment. **Review boundary: the pass files the artifact on the record for review**, same discipline
 as `wf-escalated-approval`.
 
-**6. Carry feedback into the rework brief near-verbatim.** Brief with goal +
-context + constraints; leave the design decisions to whoever executes the
-rework. Over-specifying method from the owner's raw feedback is the standing
-failure here, not under-specifying it.
+**6. Carry feedback into the rework brief by meaning and distinctions.** Restate feedback clearly, preserving distinctions and constraints without requiring verbatim wording (cite message IDs); leave the design decisions to whoever executes the rework. Over-specifying method from the owner's raw feedback is the standing failure here, not under-specifying it. Judge restatements by fidelity to meaning, faulting only for lost, added, or distorted meaning.
 
 **7. The artifact rides along with the reality it describes.** Update it the
 moment the underlying reality changes — it must not trail. An annotation that
