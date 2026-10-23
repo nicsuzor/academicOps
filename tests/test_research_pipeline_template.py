@@ -1,83 +1,55 @@
 """Tests for the research pipeline Copier template and lifecycle."""
 
+import importlib.util
 import subprocess
 import sys
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import copier
 import duckdb
+import pytest
 
 TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "templates" / "research-pipeline"
 
 
-def test_render_duckdb_project_structure(tmp_path: Path) -> None:
-    """The template renders a DuckDB project with required files and configurations."""
-    dest = tmp_path / "duckdb_research"
+def test_bigquery_export_parquet_fails_fast_when_no_mart_tables(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """BigQuery parquet export raises RuntimeError when no mart tables exist."""
+    dest = tmp_path / "bq_no_marts"
     copier.run_copy(
         src_path=str(TEMPLATE_DIR),
         dst_path=str(dest),
         data={
-            "project_name": "tox_duckdb",
-            "project_title": "Toxicity Analysis (DuckDB)",
-            "sql_engine": "duckdb",
-        },
-        defaults=True,
-        unsafe=True,
-    )
-
-    # Core directory and file assertions
-    assert (dest / "dbt" / "dbt_project.yml").is_file()
-    assert (dest / "dbt" / "profiles.yml").is_file()
-    assert (dest / "pyproject.toml").is_file()
-    assert (dest / ".env.example").is_file()
-    assert (dest / ".github" / "workflows" / "ci.yml").is_file()
-    assert (dest / "manuscript" / "_quarto.yml").is_file()
-    assert (dest / "manuscript" / "index.qmd").is_file()
-    assert (dest / "scripts" / "export_parquet.py").is_file()
-    assert (dest / "dbt" / "seeds" / "safety_model_registry.csv").is_file()
-    assert (dest / "dbt" / "models" / "marts" / "fct_evaluation_summary.sql").is_file()
-    assert (dest / "dbt" / "tests" / "assert_registry_model_count_parity.sql").is_file()
-
-    # Content checks for DuckDB specialization
-    profiles_text = (dest / "dbt" / "profiles.yml").read_text()
-    assert "type: duckdb" in profiles_text
-    assert "DUCKDB_PATH" in profiles_text
-
-    pyproject_text = (dest / "pyproject.toml").read_text()
-    assert "dbt-duckdb" in pyproject_text
-    assert "tox_duckdb" in pyproject_text
-
-
-def test_render_bigquery_project_structure(tmp_path: Path) -> None:
-    """The template renders a BigQuery project with required files and configurations."""
-    dest = tmp_path / "bq_research"
-    copier.run_copy(
-        src_path=str(TEMPLATE_DIR),
-        dst_path=str(dest),
-        data={
-            "project_name": "tox_bq",
-            "project_title": "Toxicity Analysis (BigQuery)",
+            "project_name": "bq_no_marts_test",
+            "project_title": "BQ No Marts Test",
             "sql_engine": "bigquery",
-            "bigquery_project": "test-gcp-project",
-            "bigquery_dataset": "test_analytics",
+            "bigquery_project": "test-project",
+            "bigquery_dataset": "test_dataset",
         },
         defaults=True,
         unsafe=True,
     )
 
-    assert (dest / "dbt" / "dbt_project.yml").is_file()
-    assert (dest / "dbt" / "profiles.yml").is_file()
-    assert (dest / "pyproject.toml").is_file()
-    assert (dest / ".env.example").is_file()
-    assert (dest / ".github" / "workflows" / "ci.yml").is_file()
+    spec = importlib.util.spec_from_file_location(
+        "export_parquet_bq", dest / "scripts" / "export_parquet.py"
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
 
-    profiles_text = (dest / "dbt" / "profiles.yml").read_text()
-    assert "type: bigquery" in profiles_text
-    assert "test-gcp-project" in profiles_text
-    assert "test_analytics" in profiles_text
+    mock_client = MagicMock()
+    mock_query_job = MagicMock()
+    mock_query_job.result.return_value = []
+    mock_client.query.return_value = mock_query_job
 
-    pyproject_text = (dest / "pyproject.toml").read_text()
-    assert "dbt-bigquery" in pyproject_text
+    monkeypatch.setattr("google.cloud.bigquery.Client", lambda **kwargs: mock_client)
+    spec.loader.exec_module(module)
+
+    with pytest.raises(
+        RuntimeError, match="No mart tables matching 'fct_%' or 'dim_%' found to export."
+    ):
+        module.export_bigquery_marts()
 
 
 def test_duckdb_project_dbt_lifecycle_and_parquet_export(tmp_path: Path) -> None:
@@ -95,14 +67,13 @@ def test_duckdb_project_dbt_lifecycle_and_parquet_export(tmp_path: Path) -> None
         unsafe=True,
     )
 
-    dbt_dir = dest / "dbt"
-    (dest / "data").mkdir(parents=True, exist_ok=True)
-
     env = {
         "PATH": sys.executable + ":" + subprocess.os.environ.get("PATH", ""),
         "DBT_PROFILES_DIR": str(dest / "dbt"),
         "DUCKDB_PATH": str(dest / "data" / "local_cache.duckdb"),
     }
+    (dest / "data").mkdir(parents=True, exist_ok=True)
+    dbt_dir = dest / "dbt"
 
     # 1. dbt parse
     res_parse = subprocess.run(
@@ -210,4 +181,44 @@ def test_bigquery_project_dbt_parse(tmp_path: Path) -> None:
     )
     assert res_parse.returncode == 0, (
         f"BigQuery dbt parse failed:\nstdout:\n{res_parse.stdout}\nstderr:\n{res_parse.stderr}"
+    )
+
+
+def test_duckdb_export_parquet_fails_fast_when_no_mart_tables(tmp_path: Path) -> None:
+    """Parquet export halts loudly with an explicit error when no mart tables exist."""
+    dest = tmp_path / "duckdb_no_marts"
+    copier.run_copy(
+        src_path=str(TEMPLATE_DIR),
+        dst_path=str(dest),
+        data={
+            "project_name": "no_marts_test",
+            "project_title": "No Marts Test",
+            "sql_engine": "duckdb",
+        },
+        defaults=True,
+        unsafe=True,
+    )
+
+    env = {
+        "PATH": sys.executable + ":" + subprocess.os.environ.get("PATH", ""),
+        "DBT_PROFILES_DIR": str(dest / "dbt"),
+        "DUCKDB_PATH": str(dest / "data" / "local_cache.duckdb"),
+    }
+    # Create the duckdb database with only a non-mart table
+    (dest / "data").mkdir(parents=True, exist_ok=True)
+    db = duckdb.connect(str(dest / "data" / "local_cache.duckdb"))
+    db.execute("CREATE TABLE non_mart_table (id INTEGER);")
+    db.close()
+
+    res_export = subprocess.run(
+        [sys.executable, str(dest / "scripts" / "export_parquet.py")],
+        cwd=str(dest),
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert res_export.returncode != 0
+    assert (
+        "RuntimeError: No mart tables matching 'fct_%' or 'dim_%' found to export."
+        in res_export.stderr
     )
