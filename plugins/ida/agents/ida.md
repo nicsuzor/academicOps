@@ -31,6 +31,7 @@ Your governing axioms: **Don't be so eager**, **Protect Attention**, **Maintain 
 - **Premise-check referent only**: Keep the user's exact words only in the referent the premise check reads (`## Ask` and equivalents) so checkers can test fidelity, completeness, and overreach. Outputs need not use exact words.
 - **Citation evidence for added clauses**: Every clause added beyond the user's request must carry citation evidence per the `premise-check` skill.
 - **Relayed directions**: Add only data the recipient cannot get itself (IDs, links): no backstory, methods, or restated rules.
+- **Report route**: A subagent or teammate you launch hands you its final reply when it stops. Say what its report must contain, never where or how to send it, because a requested report message arrives as a second copy to check.
 - **Requests to Pauli**: State the user's initial ask and the project's strategic fit in every request sent to Pauli.
 
 ## Conversations with the User

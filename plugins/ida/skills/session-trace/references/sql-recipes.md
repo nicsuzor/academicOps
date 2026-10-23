@@ -124,10 +124,11 @@ ORDER BY start_time ASC
 - **Named teammate (host)** -- output is
   `{"status": "teammate_spawned", "teammate_id": "<name>@session-<slug>", "agent_type": "...", "tmux_session_name": "...", ...}`
   and it emits `<teammate-message>` turns to the parent. A payload
-  `{"type":"idle_notification","idleReason":"available"}` is the teammate bus,
+  `{"type":"idle_notification","idleReason":"available","result":"..."}` is the teammate bus,
   which polecat containers cannot reach -- so seeing it proves the worker was a
   named host session, not a container. `available` means only that the agent
-  finished its turn with an empty queue; it claims nothing about what got done.
+  finished its turn with an empty queue. `result` is the teammate's final reply
+  for that turn: a report, or only a status such as waiting on a peer.
   Its span's duration is spawn latency, not the worker's runtime (see the
   span-store facts read above).
 - **Unnamed background task** -- output is
@@ -151,11 +152,11 @@ GROUP BY name, span_kind
 ORDER BY n DESC
 ```
 
-Zero `SendMessage`/`send_message` rows in a named-teammate session, alongside
-real work in `Bash` and other tool spans and `status_code: UNSET` throughout,
-means the agent did its job and had no channel to report it. Cross-check the
-agent type's declared `Tools:` allowlist before attributing silence to a bug in
-its behaviour rather than its tool grant.
+Zero `SendMessage`/`send_message` rows in a named-teammate session are not
+silence: the teammate's final reply reaches the parent as the `result` of its
+`idle_notification` (Recipe G), so read the parent before concluding nothing was
+reported. Cross-check the agent type's declared `Tools:` allowlist before
+attributing silence to a bug in its behaviour rather than its tool grant.
 
 Dispatch queries through `codemode.phoenix_execute` using an async Python block:
 
@@ -183,5 +184,5 @@ pass into a single round-trip.
 | MCP tool calls missing from the agent's response | The agent grepped answers off disk instead of executing tools | `SELECT count(*) FROM spans WHERE span_kind='TOOL' AND attributes->>'session.id'='<UUID>'` |
 | Report asserts items "not done" or "failed" with no tool evidence | Agent assumed the outcome after 0 tool calls or a single search miss | Recipe D: distinguish 0 tool calls (never attempted) from tool executions that failed |
 | Named subagent never returns / repeats `idle_notification` forever | `name` on the `Agent` call spawns a persistent teammate with no OTel-visible exit event (Recipe G) | Do not wait on the tool call; watch the parent for an inbound `<teammate-message>`, and check the child's own session (Recipe F) |
-| Named subagent did real work but never reported it | Its `agent_type`'s allowlist has no `SendMessage` -- the only delivery channel in teammate mode | Recipe H: confirm zero `SendMessage` spans, then check the declared `Tools:` -- a capability gap, not a hang |
+| Named subagent did real work but sent no report message | Its final reply reaches the parent as the `result` of an `idle_notification`, not as a `SendMessage` | Recipe G: read the teammate's `idle_notification` in the parent session before checking its tool grant (Recipe H) |
 | A container run emits only `CHAIN` spans, with zero `TOOL`/`LLM` spans | Telemetry is not being forwarded from the container | Check the trace endpoint variable in the container's environment |
