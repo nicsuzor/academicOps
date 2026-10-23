@@ -100,9 +100,9 @@ branch protection requiring all checks green (`Lint / Lint`, `Type Check / Type 
 
 1. **Active development and validation.** Work proceeds on release lines (e.g. `release/v1.0-rc0`).
    Pull requests into release lines run the full `pr-pipeline.yml` suite (Lint, Type Check, Pytest).
-2. **Merge into `main`.** Once a release line is green and ready, a pull request is merged into `main`.
-   Branch protection on `main` requires all status checks to pass before merging, with no bypass.
-3. **Build on merge.** Every merge into `main` triggers `.github/workflows/build-extension.yml`.
+2. **Publishing release candidates.** Release candidates are published by pushing an annotated or lightweight tag on the release line (e.g. `v1.0-rc6`). Pushing an rc tag (`v*-*`) triggers `.github/workflows/publish-release.yml`, which runs pytest, builds distribution artifacts, and uploads archives to a GitHub pre-release (`gh release create --prerelease`). Pushing an rc tag publishes a GitHub pre-release only and never writes to `main`.
+3. **Merging stable release into `main`.** Once a release candidate is validated and fully green, a pull request is merged from the release line into `main`. Branch protection on `main` requires all status checks to pass before merging, with no bypass allowed.
+4. **Build on merge.** Every merge into `main` triggers `.github/workflows/build-extension.yml`.
    The workflow:
    - Computes the version from `build.version`.
    - Runs `uv run python -m build.build --set-version <version>`.
@@ -110,8 +110,7 @@ branch protection requiring all checks green (`Lint / Lint`, `Type Check / Type 
      `.claude-plugin/marketplace.json`, and `.aops-image-metadata.json` directly to the root of `main`.
    - Commits and pushes the built artifacts back to `main` with `[skip ci]`.
    - Writes only to `main` (no writes to `dist` or `nicsuzor/aops`).
-4. **GitHub Releases.** Annotated release tags (`v*`) pushed on `main` or release lines upload
-   tarball archives (`dist/*.tar.gz`) to a GitHub Release (`--prerelease` for release candidates).
+5. **Stable GitHub Releases.** Annotated release tags (`vX.Y.Z`) pushed on `main` trigger `.github/workflows/publish-release.yml` to upload tarball archives (`dist/*.tar.gz`) to a stable GitHub Release.
 
 A manual rebuild against a specific commit: push a prerelease tag at that
 commit -- e.g. `git tag v<next>-rc.1 <sha> && git push origin v<next>-rc.1`.
