@@ -23,10 +23,12 @@ on:
   pull_request:
     branches:
       - dev
+      - main
       - agenttools
-      # Release lines: v0.8, v0.8.2, v1.0, ... Deliberately a pattern, so a new
+      # Release lines: v0.8, v0.8.2, v1.0, release/v1.0-rc0, ... Deliberately patterns, so a new
       # line is covered the day it is cut rather than the day someone notices.
       - 'v[0-9]*'
+      - 'release/**'
 
 concurrency:
   group: pr-pipeline-${{ github.event.pull_request.number }}
