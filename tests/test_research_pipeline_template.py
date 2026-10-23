@@ -95,12 +95,14 @@ def test_duckdb_project_dbt_lifecycle_and_parquet_export(tmp_path: Path) -> None
         unsafe=True,
     )
 
+    dbt_dir = dest / "dbt"
+    (dest / "data").mkdir(parents=True, exist_ok=True)
+
     env = {
         "PATH": sys.executable + ":" + subprocess.os.environ.get("PATH", ""),
         "DBT_PROFILES_DIR": str(dest / "dbt"),
         "DUCKDB_PATH": str(dest / "data" / "local_cache.duckdb"),
     }
-    dbt_dir = dest / "dbt"
 
     # 1. dbt parse
     res_parse = subprocess.run(
