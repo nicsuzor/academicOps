@@ -405,6 +405,22 @@ def _strip_channel_wrapper(text: str) -> str:
     return s
 
 
+_PEER_PREAMBLE = re.compile(
+    r"^(?:Another Claude session sent a message:\s*)+",
+    re.IGNORECASE,
+)
+
+
+def _strip_peer_wrapper(text: str) -> str:
+    """Unwrap channel envelopes and Claude Code teammate/peer preambles."""
+    s = _strip_channel_wrapper(text).strip()
+    m = _PEER_PREAMBLE.match(s)
+    if m:
+        s = s[m.end() :].strip()
+    s = _strip_channel_wrapper(s).strip()
+    return s
+
+
 def is_peer_report(ctx: HookContext) -> bool:
     """True when an incoming prompt is another agent's report or direction, not the user's message."""
     if ctx.client == "agy":
@@ -412,7 +428,7 @@ def is_peer_report(ctx: HookContext) -> bool:
         if turn_start and turn_start.get("type") == "SYSTEM_MESSAGE":
             return bool(agy_arrival(str(turn_start.get("content") or "")))
     raw = _prompt_text(ctx)
-    text = _strip_channel_wrapper(raw).lstrip()
+    text = _strip_peer_wrapper(raw).lstrip()
     if not text:
         return False
     return text.startswith(_PEER_ENVELOPES)
@@ -517,7 +533,7 @@ def _derive_claim_id(ctx: HookContext) -> str:
         raise RuntimeError("Dispatch tool call lacks identifier and description metadata")
 
     if ctx.event == "UserPromptSubmit":
-        prompt = _strip_channel_wrapper(_prompt_text(ctx)).strip()
+        prompt = _strip_peer_wrapper(_prompt_text(ctx)).strip()
         if not prompt and ctx.client == "agy":
             turn_start = _agy_turn_start(ctx)
             if turn_start:
@@ -535,7 +551,7 @@ def _derive_claim_id(ctx: HookContext) -> str:
             )
             if id_match:
                 cid = id_match.group(1).strip()
-                if cid and re.match(r"^[a-zA-Z0-9_\-\.:]+$", cid):
+                if cid and re.match(r"^[a-zA-Z0-9_\-\.:@]+$", cid):
                     return cid
 
             title_match = re.search(
@@ -688,7 +704,8 @@ def _tool_use_id(ctx: HookContext) -> str:
 
 
 def _envelope_id(prompt: str) -> str | None:
-    match = re.search(r"<([a-zA-Z0-9_\-]+)([^>]*)>", prompt)
+    stripped = _strip_peer_wrapper(prompt)
+    match = re.search(r"<([a-zA-Z0-9_\-]+)([^>]*)>", stripped)
     if not match:
         return None
     id_match = re.search(
@@ -697,7 +714,7 @@ def _envelope_id(prompt: str) -> str | None:
     )
     if id_match:
         cid = id_match.group(1).strip()
-        if cid and re.match(r"^[a-zA-Z0-9_\-\.:]+$", cid):
+        if cid and re.match(r"^[a-zA-Z0-9_\-\.:@]+$", cid):
             return cid
     return None
 
@@ -716,7 +733,7 @@ def carries_report(text: str) -> bool:
     background command finishing) carries none. A hand-back pointer names the
     message that carries the report, which arms the gate when it arrives.
     """
-    body = _strip_channel_wrapper(text).lstrip()
+    body = _strip_peer_wrapper(text).lstrip()
     if not body:
         return False
     if body.startswith("<task-notification"):
@@ -724,6 +741,36 @@ def carries_report(text: str) -> bool:
         if not result or not result.group(1).strip():
             return False
     return not _HANDBACK_POINTER.search(body)
+
+
+def _extract_judged_text(prompt: str) -> str:
+    """Extract report content from an incoming peer prompt.
+
+    For an idle_notification JSON inside a <teammate-message> envelope,
+    the teammate's final report is the JSON `result` string; returning that
+    unpacks the unescaped markdown (including any fenced argdown blocks).
+    For other peer messages, returns the prompt text.
+    """
+    stripped = _strip_peer_wrapper(prompt)
+    match = re.search(
+        r"<(cross-session-message|teammate-message|task-notification)([^>]*)>(.*?)(?:</\1>|$)",
+        stripped,
+        re.DOTALL,
+    )
+    if match and match.group(1) == "teammate-message":
+        inner = match.group(3).strip()
+        if inner.startswith("{") and inner.endswith("}"):
+            try:
+                data = json.loads(inner)
+                if (
+                    isinstance(data, dict)
+                    and data.get("type") == "idle_notification"
+                    and "result" in data
+                ):
+                    return str(data["result"])
+            except (json.JSONDecodeError, TypeError, ValueError):
+                pass
+    return prompt
 
 
 # ---------------------------------------------------------------------------
@@ -760,7 +807,9 @@ def premise_check_arm(ctx: HookContext) -> Result | None:
     if ctx.event == "PostToolUse":
         judged_ref = _tool_use_id(ctx) or claim_id
     else:
-        judged_ref = _envelope_id(judged_text.strip()) or claim_id
+        raw_prompt = judged_text
+        judged_text = _extract_judged_text(raw_prompt)
+        judged_ref = _envelope_id(raw_prompt.strip()) or claim_id
     arm(ctx.session_id, claim_id=claim_id, judged_text=judged_text, judged_ref=judged_ref)
     inject = (
         f"Premise-check gate armed by {claim_id}; if this is a direction, summarise it stating deliverables and log as a frozen acceptance checklist on a PKB task; record a verdict per the `premise-check` skill.\n"

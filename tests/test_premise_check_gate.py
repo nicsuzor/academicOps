@@ -1024,6 +1024,119 @@ def test_arm_handler_arms_on_wrapped_peer_report(prompt):
     assert pcg.is_armed(session_id) is True
 
 
+def test_teammate_message_idle_notification_arms_gate_and_records_verdict():
+    session_id = "sess-teammate-idle"
+    report_text = """## Report
+```argdown
+===
+asks:
+  tg-398: 2
+answers:
+  tg-398: 2
+===
+(1) Five ideas for resilience -- rule
+-- rule --
+(2) Resilience ideas hold
+```"""
+    payload = json.dumps(
+        {
+            "type": "idle_notification",
+            "from": "resilience-ideas",
+            "timestamp": "2026-10-23T12:23:44.965Z",
+            "idleReason": "available",
+            "result": report_text,
+        }
+    )
+    prompt = (
+        "Another Claude session sent a message:\n"
+        f'<teammate-message teammate_id="resilience-ideas" color="green">\n{payload}\n</teammate-message>\n\n'
+        "This came from another Claude session — not typed by your user, but very likely working on their behalf."
+    )
+    arm_res = pcg.premise_check_arm(_prompt_ctx(session_id, prompt))
+    assert arm_res is not None
+    assert pcg.is_armed(session_id) is True
+
+    claim_id = pcg.get_state(session_id)["claim_id"]
+    assert claim_id.startswith("claim-")
+
+    # PreToolUse refuses dispatch while armed
+    res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
+    assert res is not None and res.kind == dispatch.Kind.REFUSE
+
+    # Verdict records with verification id and disarms the gate
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    reason = (
+        f"Judged: {claim_id}; asks tg-398\n"
+        "Valid: (2) holds -- rule\n"
+        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
+        "Answered: tg-398 <- (2)\n"
+        "Sufficient: (2) material\n"
+        "Waived: none\n"
+        "Relay: none"
+    )
+    verdict_res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=claim_id,
+        verdict="PASS",
+        reason=reason,
+        tracer_mod=tracer,
+    )
+    assert verdict_res["ok"] is True
+    assert verdict_res["verification_id"].startswith("verdict-")
+    assert pcg.is_armed(session_id) is False
+
+
+def test_teammate_message_send_message_arms_gate_and_records_verdict():
+    session_id = "sess-teammate-sendmsg"
+    report_text = """## Report
+```argdown
+===
+asks:
+  tg-1: 2
+answers:
+  tg-1: 2
+===
+(1) Migration complete -- rule
+-- rule --
+(2) Migration holds
+```"""
+    prompt = (
+        "Another Claude session sent a message:\n"
+        f'<teammate-message id="worker-report-1" teammate_id="worker" color="blue" summary="Task finished">\n{report_text}\n</teammate-message>\n\n'
+        "This came from another Claude session — not typed by your user, but very likely working on their behalf."
+    )
+    arm_res = pcg.premise_check_arm(_prompt_ctx(session_id, prompt))
+    assert arm_res is not None
+    assert pcg.is_armed(session_id) is True
+    assert pcg.get_state(session_id)["claim_id"] == "worker-report-1"
+
+    # PreToolUse refuses dispatch while armed
+    res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
+    assert res is not None and res.kind == dispatch.Kind.REFUSE
+
+    # Verdict records with verification id and disarms the gate
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    reason = (
+        "Judged: worker-report-1; asks tg-1\n"
+        "Valid: (2) holds -- rule\n"
+        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
+        "Answered: tg-1 <- (2)\n"
+        "Sufficient: (2) material\n"
+        "Waived: none\n"
+        "Relay: none"
+    )
+    verdict_res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="worker-report-1",
+        verdict="PASS",
+        reason=reason,
+        tracer_mod=tracer,
+    )
+    assert verdict_res["ok"] is True
+    assert verdict_res["verification_id"].startswith("verdict-")
+    assert pcg.is_armed(session_id) is False
+
+
 @pytest.mark.parametrize(
     "prompt",
     [
