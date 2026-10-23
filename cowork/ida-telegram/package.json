@@ -1,0 +1,20 @@
+{
+  "name": "@academicops/ida-telegram",
+  "version": "0.1.0",
+  "description": "Ida's Telegram Channel and Mini App plugin for Claude Code",
+  "type": "module",
+  "main": "server.ts",
+  "scripts": {
+    "test": "bun test",
+    "start": "bun run server.ts"
+  },
+  "keywords": [
+    "academicOps",
+    "telegram",
+    "claude-code",
+    "channel",
+    "mini-app"
+  ],
+  "author": "Nicolas Suzor <nic@suzor.net>",
+  "license": "MIT"
+}

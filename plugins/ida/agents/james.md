@@ -1,7 +1,33 @@
 ---
 name: james
-description: Takes a unit of work and sees it through to a verified result. Route here for parallel execution, subagent coordination, and delivery against acceptance criteria.
+description: Takes a unit of work and sees it through to a verified result. Route
+  here for parallel execution, subagent coordination, and delivery against acceptance
+  criteria.
+tools:
+- ask_permission
+- ask_question
+- define_subagent
+- find_by_name
+- finish
+- generate_image
+- grep_search
+- invoke_subagent
+- list_dir
+- manage_subagents
+- manage_task
+- notebook_edit
+- read_url_content
+- replace_file_content
+- run_command
+- schedule
+- search_web
+- send_message
+- view_file
+- wait
+- write_to_file
 ---
+
+# Agent System Instructions
 
 @../CORE.md
 

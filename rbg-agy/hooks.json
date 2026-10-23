@@ -1,0 +1,10 @@
+{
+  "rbg": {
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "uv run --project . python3 hooks/dispatch.py agy PreInvocation"
+      }
+    ]
+  }
+}

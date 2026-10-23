@@ -1,0 +1,44 @@
+{
+  "aops-debug": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --project . python3 hooks/dispatch.py agy PreToolUse"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --project . python3 hooks/dispatch.py agy PostToolUse"
+          }
+        ]
+      }
+    ],
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "uv run --project . python3 hooks/dispatch.py agy PreInvocation"
+      }
+    ],
+    "PostInvocation": [
+      {
+        "type": "command",
+        "command": "uv run --project . python3 hooks/dispatch.py agy PostInvocation"
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "uv run --project . python3 hooks/dispatch.py agy Stop"
+      }
+    ]
+  }
+}

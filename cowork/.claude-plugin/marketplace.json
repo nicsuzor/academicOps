@@ -1,0 +1,61 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "academicOps-cowork",
+  "description": "academicOps Cowork channel \u2014 local directory marketplace",
+  "owner": {
+    "name": "Nicolas Suzor",
+    "email": "nic@suzor.net"
+  },
+  "plugins": [
+    {
+      "name": "ida",
+      "description": "The strategic face, and the only agent that speaks to the user.",
+      "version": "0.10.25+gd82333aa",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./ida",
+      "category": "productivity"
+    },
+    {
+      "name": "rbg",
+      "description": "Automatic in-session rule enforcement.",
+      "version": "0.10.25+gd82333aa",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./rbg",
+      "category": "productivity"
+    },
+    {
+      "name": "tools",
+      "description": "Domain research skills.",
+      "version": "0.10.25+gd82333aa",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./tools",
+      "category": "productivity"
+    },
+    {
+      "name": "aops-debug",
+      "description": "Debug plugin that dumps raw hook payloads.",
+      "version": "0.10.25+gd82333aa",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./aops-debug",
+      "category": "productivity"
+    },
+    {
+      "name": "ida-telegram",
+      "description": "Ida's custom Telegram channel and Mini App plugin for Claude Code.",
+      "version": "0.10.25+gd82333aa",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./ida-telegram",
+      "category": "productivity"
+    }
+  ]
+}

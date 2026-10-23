@@ -1,0 +1,197 @@
+export interface TelegramBotCommand {
+  command: string;
+  description: string;
+}
+
+export interface IdaCommandSpec extends TelegramBotCommand {
+  skill: string;
+  bareAction: string;
+}
+
+/**
+ * Commands consumed by the official Telegram plugin that must not be reused
+ * for Ida's command menu (kb_ee859e3f).
+ */
+export const RESERVED_COMMANDS = ["start", "help", "status"] as const;
+
+/**
+ * Chosen native Telegram commands for Ida Prime (routine operations, triage, dispatch, tracking):
+ * 1. /decide — Walk through open decisions from today's daily note one at a time.
+ * 2. /q — Stage 1 intake and capture onto the strategic task graph.
+ * 3. /mine — Track a must-not-drop ask across sessions, or pass through tracked tasks.
+ * 4. /reconcile — Run wf-reconcile truth maintenance and update today's daily note.
+ * 5. /hydrate — Fast disambiguation search over the PKB graph.
+ * 6. /up — Step up a level on the last correction and fix the structural class.
+ */
+export const PRIME_COMMANDS: readonly IdaCommandSpec[] = [
+  {
+    command: "decide",
+    description: "Walk through open decisions from today's daily note one at a time",
+    skill: "ida:decide",
+    bareAction:
+      "Invoke /ida:decide: read the '## With you' section of today's daily note and present the first open decision card.",
+  },
+  {
+    command: "q",
+    description: "Capture an ask or idea onto the strategic task graph",
+    skill: "ida:q",
+    bareAction:
+      "Invoke /ida:q: if this command replies to a message or follows an uncaptured ask in chat, capture it onto the graph; otherwise ask the user what to capture.",
+  },
+  {
+    command: "mine",
+    description: "Track a must-not-drop ask or pass through tracked tasks",
+    skill: "ida:mine",
+    bareAction:
+      "Invoke /ida:mine with no argument: pass through all ida-tracked tasks, advance what is due, and report items needing a decision.",
+  },
+  {
+    command: "reconcile",
+    description: "Reconcile the task graph and update today's daily note",
+    skill: "ida:reconcile",
+    bareAction:
+      "Invoke /ida:reconcile: run wf-reconcile truth maintenance over returned work and update '## With you' in today's daily note.",
+  },
+  {
+    command: "hydrate",
+    description: "Disambiguate terms or hydrate current conversation context",
+    skill: "ida:hydrate",
+    bareAction:
+      "Invoke /ida:hydrate: if replying to a message or active topic, extract ambiguous terms and return a PKB shortlist; otherwise ask which terms to hydrate.",
+  },
+  {
+    command: "up",
+    description: "Step up a level on the last correction and fix the class",
+    skill: "ida:up",
+    bareAction:
+      "Invoke /ida:up on the user's last correction: identify the structural class, check why existing rules did not fire, and make the structural fix.",
+  },
+];
+
+/**
+ * Chosen native Telegram commands for Strategic Ida (high-altitude reasoning, decomposition, PKB memory):
+ * 1. /strategize — Reason at strategic altitude and interrogate the core question.
+ * 2. /remember — Persist facts, decisions, and constraints to the PKB.
+ * 3. /decompose — Expand an objective into sub-objectives and decision forks.
+ * 4. /q — Stage 1 intake and capture onto the strategic task graph.
+ * 5. /hydrate — Disambiguate terms or hydrate context from the PKB.
+ * 6. /up — Step up a level on the last correction and fix the class.
+ */
+export const STRATEGIC_COMMANDS: readonly IdaCommandSpec[] = [
+  {
+    command: "strategize",
+    description: "Reason at strategic altitude and interrogate the core question",
+    skill: "ida:strategize",
+    bareAction:
+      "Invoke /ida:strategize: examine the current topic at strategic altitude, assess reversibility and effectuation, and interrogate the core question.",
+  },
+  {
+    command: "remember",
+    description: "Persist facts, decisions, and constraints to the PKB",
+    skill: "ida:remember",
+    bareAction:
+      "Invoke /ida:remember: summarise and persist the active discussion's durable facts, decisions, and constraints to the PKB.",
+  },
+  {
+    command: "decompose",
+    description: "Expand an objective into sub-objectives and decision forks",
+    skill: "ida:decompose",
+    bareAction:
+      "Invoke /ida:decompose: break down the current strategic objective into sub-objectives, decision forks, and prerequisites.",
+  },
+  {
+    command: "q",
+    description: "Capture an ask or idea onto the strategic task graph",
+    skill: "ida:q",
+    bareAction:
+      "Invoke /ida:q: if this command replies to a message or follows an uncaptured ask in chat, capture it onto the graph; otherwise ask the user what to capture.",
+  },
+  {
+    command: "hydrate",
+    description: "Disambiguate terms or hydrate context from the PKB",
+    skill: "ida:hydrate",
+    bareAction:
+      "Invoke /ida:hydrate: if replying to a message or active topic, extract ambiguous terms and return a PKB shortlist; otherwise ask which terms to hydrate.",
+  },
+  {
+    command: "up",
+    description: "Step up a level on the last correction and fix the class",
+    skill: "ida:up",
+    bareAction:
+      "Invoke /ida:up on the user's last correction: identify the structural class, check why existing rules did not fire, and make the structural fix.",
+  },
+];
+
+export const DEFAULT_IDA_COMMANDS: readonly IdaCommandSpec[] = PRIME_COMMANDS;
+
+export const PERSONA_COMMANDS: Record<string, readonly IdaCommandSpec[]> = {
+  prime: PRIME_COMMANDS,
+  pauli: PRIME_COMMANDS,
+  strategic: STRATEGIC_COMMANDS,
+  ida: STRATEGIC_COMMANDS,
+  default: PRIME_COMMANDS,
+};
+
+export const ALL_IDA_COMMANDS: readonly IdaCommandSpec[] = [
+  ...PRIME_COMMANDS,
+  ...STRATEGIC_COMMANDS.filter((sc) => !PRIME_COMMANDS.some((pc) => pc.command === sc.command)),
+];
+
+export function normalizeCommandName(raw: string): string {
+  const withoutSlash = raw.trim().replace(/^\/+/, "");
+  const withoutBotMention = withoutSlash.split("@")[0] || "";
+  return withoutBotMention.toLowerCase();
+}
+
+function parseCustomCommands(customJson: string): TelegramBotCommand[] {
+  const reservedSet = new Set<string>(RESERVED_COMMANDS);
+  try {
+    const parsed = JSON.parse(customJson) as Array<{ command: string; description: string }>;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((entry) => ({
+        command: normalizeCommandName(entry.command),
+        description: String(entry.description || "").trim(),
+      }))
+      .filter(
+        (entry) =>
+          /^[a-z0-9_]{1,32}$/.test(entry.command) &&
+          !reservedSet.has(entry.command) &&
+          entry.description.length >= 1 &&
+          entry.description.length <= 256
+      );
+  } catch {
+    return [];
+  }
+}
+
+export function resolveBotCommands(
+  personaOrCustomJson?: string,
+  customJson?: string
+): TelegramBotCommand[] {
+  if (personaOrCustomJson && (personaOrCustomJson.trim().startsWith("[") || personaOrCustomJson.trim().startsWith("{"))) {
+    return parseCustomCommands(personaOrCustomJson);
+  }
+  if (customJson && customJson.trim().length > 0) {
+    return parseCustomCommands(customJson);
+  }
+
+  const normalizedPersona = (personaOrCustomJson || "default").trim().toLowerCase();
+  const commandSpecs = PERSONA_COMMANDS[normalizedPersona] || DEFAULT_IDA_COMMANDS;
+  return commandSpecs.map(({ command, description }) => ({
+    command,
+    description,
+  }));
+}
+
+export function getBareCommandBehavior(rawCommand: string, persona?: string): IdaCommandSpec | undefined {
+  const normalized = normalizeCommandName(rawCommand);
+  if (persona) {
+    const personaList = PERSONA_COMMANDS[persona.trim().toLowerCase()];
+    if (personaList) {
+      const match = personaList.find((c) => c.command === normalized);
+      if (match) return match;
+    }
+  }
+  return ALL_IDA_COMMANDS.find((c) => c.command === normalized);
+}
