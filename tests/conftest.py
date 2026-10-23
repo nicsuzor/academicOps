@@ -128,6 +128,8 @@ def ensure_test_environment(monkeypatch, tmp_path, shared_uv_cache):
         "OTEL_EXPORTER_OTLP_PROTOCOL",
         "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL",
         "PHOENIX_PROJECT_NAME",
+        "PHOENIX_MCP_URL",
+        "PHOENIX_MCP_PROJECT",
         "OTEL_SERVICE_NAME",
         "OTEL_RESOURCE_ATTRIBUTES",
         "GITHUB_ACTIONS",

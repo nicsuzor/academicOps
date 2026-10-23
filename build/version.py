@@ -9,9 +9,31 @@ same depth as scripts/version.py, so the root resolution is identical).
 import argparse
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 _STABLE_TAG_RE = re.compile(r"^v(\d+)\.(\d+)\.(\d+)$")
+
+
+def validate_version(version: str) -> str:
+    """Validate that version is a valid Python package version per PEP 440.
+
+    Strips an optional leading 'v' if followed by a digit. Returns the normalized
+    version string, or raises ValueError if unparseable.
+    """
+    from packaging.version import InvalidVersion, Version
+
+    raw = version.strip()
+    if raw.startswith("v") and len(raw) > 1 and raw[1].isdigit():
+        raw = raw[1:]
+    try:
+        parsed = Version(raw)
+    except InvalidVersion as err:
+        raise ValueError(
+            f"Invalid Python package version: '{version}' ({err}). "
+            "Must be a valid PEP 440 version string."
+        ) from err
+    return str(parsed)
 
 
 def get_pyproject_version(project_root: Path) -> str:
@@ -126,9 +148,25 @@ def main() -> None:
         default=None,
         help="Override the base version for --prerelease (e.g. 0.4.0)",
     )
+    parser.add_argument(
+        "--validate",
+        type=str,
+        default=None,
+        metavar="VERSION",
+        help="Validate that a version string is a valid Python package version per PEP 440",
+    )
 
     args = parser.parse_args()
     project_root = Path(__file__).resolve().parent.parent
+
+    if args.validate is not None:
+        try:
+            norm = validate_version(args.validate)
+            print(f"✓ valid Python package version: {norm}")
+            return
+        except ValueError as err:
+            print(f"x invalid Python package version: {err}", file=sys.stderr)
+            sys.exit(1)
 
     if args.prerelease is not None:
         current = get_current_version(project_root)

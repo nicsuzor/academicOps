@@ -43,12 +43,15 @@ and why.
 - **AC-1.4** Given the transcript, when the agent answers, then it reads the
   summary and the turns that bear on the question rather than the raw spans,
   and its answer names the turn and step anchors where the decision was made.
-- **AC-1.5** Given any project with the plugins installed, when the question is
-  asked, then the workflow and its script are available from the plugin itself,
-  with no project checkout, and the script holds nothing specific to one user,
-  deployment or project: the trace store URL and project come from flags or the
-  environment, and it reads the attribute conventions its emitters use
-  (OpenInference, OpenTelemetry GenAI, and Claude Code's native spans).
+- **AC-1.5** Given execution without explicit flags, when the script resolves
+  the Phoenix endpoint, then it resolves the base URL and project strictly from
+  environment variables `PHOENIX_MCP_URL` and `PHOENIX_MCP_PROJECT`.
+- **AC-1.6** Given explicit `--base-url` or `--project` flags, when passed to the
+  script, then explicit flags override any environment variables.
+- **AC-1.7** Given neither flags nor environment variables (`PHOENIX_MCP_URL`,
+  `PHOENIX_MCP_PROJECT`) are provided, when the script attempts to resolve the
+  endpoint, then it halts immediately with an error and supplies no default
+  values or fallbacks.
 
 ## Design
 
@@ -64,7 +67,12 @@ and why.
   driving of a run (surfaces, containers under tmux, probes, filesystem audit)
   and points to `session-trace` for telemetry.
 
-### Fetch
+### Configuration and Fetch
+
+The script resolves Phoenix endpoint configuration from explicit flags (`--base-url`,
+`--project`) or from standard polecat MCP server environment variables (`PHOENIX_MCP_URL`,
+`PHOENIX_MCP_PROJECT`). With neither provided, the script supplies no default value and
+fails fast (`ConfigError`). There are no fallback variables or silent default projects.
 
 The script pages `GET /v1/projects/{project}/spans?attribute=session.id:<id>`
 to exhaustion, 1,000 spans a page: about one second per page on the reference
