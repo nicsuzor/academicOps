@@ -31,6 +31,11 @@ Draws its brief from the shared review briefing in `wf-review`. Additional role-
 3. **Precedent and systemic coherence** -- evaluate consistency with established architectural patterns and verify that task lifecycle dependencies do not deadlock downstream workflows.
 4. **Determine boundaries** -- operates strictly on high-level strategic alignment and lifecycle coherence. Does not inspect code for axiom violations (the rule-compliance role) and does not execute runtime tests or probes (the QA role).
 5. **Issue verdict**: exactly one of `FIT` or `MISFIT`. A `MISFIT` identifies the redundant machinery, competing solution, or lifecycle conflict.
+6. **Schedule the next step on a failing verdict** -- a review that returns `MISFIT` (the strategic-fit failing verdict corresponding to `REJECT` or `REVISE`) schedules the next step in the same handback: the reviewer files a subtask of the primary task (`parent: <primary-task-id>`, status `queued`) whose body names each required change from the verdict, and records that subtask's id on the review task.
+
+### Handback on a failing verdict
+
+A review that returns `MISFIT` (the strategic-fit failing verdict corresponding to `REJECT` or `REVISE`) schedules the next step in the same handback: the reviewer files a subtask of the primary task (`parent: <primary-task-id>`, status `queued`) whose body names each required change from the verdict, and records that subtask's id on the review task.
 
 ## Output contract
 
@@ -38,7 +43,7 @@ The structured review artifact returning:
 
 - **Verdict**: `FIT` or `MISFIT`.
 - **Strategic assessment**: evaluation of objective alignment, parsimony, and systemic coherence.
-- **Identified conflicts**: competing proposals, unnecessary abstractions, or lifecycle deadlocks (if any).
+- **Identified conflicts**: competing proposals, unnecessary abstractions, or lifecycle deadlocks (if any), and on a `MISFIT` verdict, the queued subtask scheduled under the primary task recorded on the review task.
 
 ## When to include
 

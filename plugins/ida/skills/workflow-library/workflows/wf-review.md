@@ -63,7 +63,11 @@ A composite review workflow specifies its stages by contract expectations in ord
 1. **Strategic fit evaluation**: An independent strategic evaluation situating the artifact against parent objectives, parsimony, and precedent, returning an explicit `FIT` or `MISFIT` verdict (per `wf-strategic-fit`).
 2. **Rule compliance evaluation**: An independent rule-compliance evaluation testing mechanisms and decisions against governing axioms and rules without running test suites or probes, returning `APPROVE`, `SUGGEST`, `REVISE`, or `REJECT` (per `wf-rbg`).
 3. **Quality assurance evaluation**: An independent runtime quality evaluation executing test suites, verifying red-to-green failure traces, running live probes, and auditing empirical evidence, returning `PASS`, `REVISE`, or `FAIL` (per `wf-qa`).
-4. **Reconciliation and write-back**: Synthesis of findings into a unified findings table and final verdict (`APPROVE`, `MINOR CHANGES`, `REVISE`, or `REJECT`), recorded persistently to the artifact's tracking record.
+4. **Reconciliation and write-back**: Synthesis of findings into a unified findings table and final verdict (`APPROVE`, `MINOR CHANGES`, `REVISE`, or `REJECT`), recorded persistently to the artifact's tracking record. A review that returns `REJECT` or `REVISE` (`MISFIT` for the alignment review) schedules the next step in the same handback: the reviewer files a subtask of the primary task (`parent: <primary-task-id>`, status `queued`) whose body names each required change from the verdict, and records that subtask's id on the review task.
+
+### Handback on a failing verdict
+
+A review that returns `REJECT` or `REVISE` (`MISFIT` for the alignment review) schedules the next step in the same handback: the reviewer files a subtask of the primary task (`parent: <primary-task-id>`, status `queued`) whose body names each required change from the verdict, and records that subtask's id on the review task. `/reify` carries this obligation into each review task it mints.
 
 ## Output contract
 
@@ -72,6 +76,7 @@ A unified review report containing:
 - The itemized findings table mapping issues to reviewer roles, feedback, and severities.
 - The reconciled overall verdict.
 - Persistent write-back to the artifact's task record or review surface.
+- On a failing verdict (`REJECT`, `REVISE`, or `MISFIT`), the queued subtask scheduled under the primary task (`parent: <primary-task-id>`, status `queued`) recorded on the review task.
 
 ## When to include
 

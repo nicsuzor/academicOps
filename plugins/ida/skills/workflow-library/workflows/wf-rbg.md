@@ -39,6 +39,7 @@ Draws its brief from the shared review briefing in `wf-review`. Additional role-
    - Anything else is a _Suggested Improvement_. Where the work exceeds the request, require less, not more.
 5. **Review boundaries** -- operates strictly by static semantic evaluation of the artifact, mechanisms, and diff against governing rules. Does not execute runtime tests or scratch probes (the QA role) and does not evaluate high-level PKB objective alignment or competing backlog options (the strategic fit role).
 6. **Issue verdict**: exactly one of `APPROVE`, `SUGGEST`, `REVISE`, or `REJECT`.
+7. **Schedule the next step on a failing verdict** -- a review that returns `REJECT` or `REVISE` schedules the next step in the same handback: the reviewer files a subtask of the primary task (`parent: <primary-task-id>`, status `queued`) whose body names each required change from the verdict, and records that subtask's id on the review task.
 
 ## Verdict contract
 
@@ -63,9 +64,13 @@ The review returns structured Markdown conforming to:
 - **REVISE:** Material deficiencies or missing proof requiring remediation. The author addresses the required changes and re-submits for review before advancing.
 - **REJECT:** Fundamental rule contradiction, ungrounded assertions, or disproportionate work. The workflow halts; excess machinery is cut or the proposal is cancelled/redesigned.
 
+### Handback on a failing verdict
+
+A review that returns `REJECT` or `REVISE` schedules the next step in the same handback: the reviewer files a subtask of the primary task (`parent: <primary-task-id>`, status `queued`) whose body names each required change from the verdict, and records that subtask's id on the review task.
+
 ## Output contract
 
-The structured review artifact containing exactly one verdict token, itemized required changes with pinpoint citations, and suggested improvements.
+The structured review artifact containing exactly one verdict token, itemized required changes with pinpoint citations, suggested improvements, and, on a `REJECT` or `REVISE` verdict, the queued subtask scheduled under the primary task recorded on the review task.
 
 ## When to include
 
