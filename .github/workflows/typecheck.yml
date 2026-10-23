@@ -10,7 +10,9 @@ on:
     # Release lines by pattern, mirroring pytest.yml — see its `on:` block.
     branches:
       - dev
+      - main
       - 'v[0-9]*'
+      - 'release/**'
 
 jobs:
   type-check:
