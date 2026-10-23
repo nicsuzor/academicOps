@@ -132,6 +132,19 @@ export const MCP_TOOLS: ToolDefinition[] = [
     },
   },
   {
+    name: "answer_question",
+    description: "Record an answer for a pending question (e.g. when answered directly in session). Sets the question status to answered and removes it from the outstanding list.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        question_id: { type: "string", description: "ID of the pending question to answer" },
+        choice: { type: "string", description: "The answer or choice provided by the user" },
+        option_index: { type: "integer", description: "Optional 0-based index of the chosen option" },
+      },
+      required: ["question_id"],
+    },
+  },
+  {
     name: "close_question",
     description: "Close a pending question with a stated reason (answered elsewhere, no longer needed, or replaced by a newer question).",
     inputSchema: {
