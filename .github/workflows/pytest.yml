@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: pytest-${{ github.event.pull_request.number || github.ref }}
+  group: pytest-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
