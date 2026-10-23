@@ -183,10 +183,15 @@ jobs:
           set -euo pipefail
           SRC="${GITHUB_WORKSPACE}"
 
-          # Mirror every built plugin directory to the branch root
+          # Mirror every built plugin directory to the branch root, skipping
+          # 'plugins' (which is the source tree on main, whereas dist/plugins is
+          # the Antigravity multi-plugin distribution)
           plugin_dirs=""
           for d in "${SRC}"/dist/*/; do
             name="$(basename "$d")"
+            if [ "$name" = "plugins" ]; then
+              continue
+            fi
             rsync -a "$d" "${SRC}/${name}/"
             plugin_dirs="$plugin_dirs $name"
           done
@@ -200,9 +205,11 @@ jobs:
             cp "${SRC}/dist/.aops-image-metadata.json" "${SRC}/.aops-image-metadata.json"
           fi
 
+          # Ensure source tree is completely clean and unstaged
+          git checkout -- plugins/
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
           # shellcheck disable=SC2086
           git add -f $plugin_dirs
           git add -f .claude-plugin/marketplace.json
