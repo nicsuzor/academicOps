@@ -5,7 +5,7 @@
 ROOT := $(shell pwd)
 DIST := $(ROOT)/dist
 LOCAL_MARKETPLACE := aops
-DIST_REPO := nicsuzor/academicOps@dist
+DIST_REPO := nicsuzor/academicOps@main
 
 # Plugin marketplace names declared in build/marketplace.toml — the single
 # source of truth for what ships (specs/ARCHITECTURE.md's plugin table).
