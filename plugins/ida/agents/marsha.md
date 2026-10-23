@@ -1,33 +1,8 @@
 ---
 name: marsha
-description: QA and substantive excellence review. Assumes artifacts are broken until
-  runtime verification proves otherwise against user meaning and acceptance criteria.
+description: QA and substantive excellence review. Assumes artifacts are broken until runtime verification proves otherwise against user meaning and acceptance criteria.
 color: pink
-tools:
-- ask_permission
-- ask_question
-- define_subagent
-- find_by_name
-- finish
-- generate_image
-- grep_search
-- invoke_subagent
-- list_dir
-- manage_subagents
-- manage_task
-- notebook_edit
-- read_url_content
-- replace_file_content
-- run_command
-- schedule
-- search_web
-- send_message
-- view_file
-- wait
-- write_to_file
 ---
-
-# Agent System Instructions
 
 @../CORE.md
 

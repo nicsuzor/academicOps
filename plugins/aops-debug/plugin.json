@@ -1,9 +1,0 @@
-{
-  "name": "aops-debug",
-  "description": "Debug plugin that dumps raw hook payloads.",
-  "author": {
-    "name": "Nicolas Suzor"
-  },
-  "license": "MIT",
-  "version": "0.10.25+gd82333aa"
-}
