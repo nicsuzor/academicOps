@@ -832,6 +832,98 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     // Question remains pending
     expect(broker.getPendingQuestions().length).toBe(1);
   });
+
+  test("ask_user with mini_app_only: true or chat: false appears in Mini App and posts nothing to chat (AC1)", async () => {
+    const { StdioMcpServer } = await import("../src/mcp/server.js");
+    const { TelegramBotClient } = await import("../src/telegram/bot.js");
+    const { PluginStore } = await import("../src/store.js");
+    const { PermissionRelay } = await import("../src/mcp/permissions.js");
+
+    const config = {
+      botToken: "test-token",
+      allowFrom: [999],
+      stateDir: testStateDir,
+      socketPath: join(testStateDir, "hook.sock"),
+      port: 0,
+      miniAppUrl: "https://ida.example.ts.net",
+      isPrimary: true,
+      maxChatChars: 1200,
+      voiceTranscribeCmd: "",
+      voiceSpeakCmd: "",
+      voiceReplies: "off" as const,
+      botCommands: [],
+    };
+
+    const store = new PluginStore(testStateDir);
+    const broker = new QuestionBroker(testStateDir);
+    const permRelay = new PermissionRelay();
+    const apiCalls: Array<{ method: string; payload: Record<string, unknown> }> = [];
+
+    const bot = new TelegramBotClient(config, broker, permRelay, () => {});
+    (bot as any).callApi = async (method: string, payload: Record<string, unknown>) => {
+      apiCalls.push({ method, payload });
+      return { ok: true, result: { message_id: 12345 } };
+    };
+
+    const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
+
+    // Call ask_user with mini_app_only: true
+    const res = await mcp.handleMessage({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/call",
+      params: {
+        name: "ask_user",
+        arguments: {
+          mini_app_only: true,
+          questions: [
+            {
+              header: "Background Task Priority",
+              question: "Which background worker should handle data indexing?",
+              options: [
+                { label: "Worker A (Recommended)", description: "High-memory container" },
+                { label: "Worker B", description: "Standard worker" },
+              ],
+            },
+          ],
+        },
+      },
+    });
+
+    // 1. Posts NOTHING to chat (no sendMessage calls)
+    const chatCards = apiCalls.filter((c) => c.method === "sendMessage");
+    expect(chatCards.length).toBe(0);
+
+    // 2. Appears in the pending questions list for Mini App
+    const pending = broker.getPendingQuestions();
+    expect(pending.length).toBe(1);
+    expect(pending[0].question).toBe("Which background worker should handle data indexing?");
+    expect(pending[0].status).toBe("pending");
+    expect((pending[0] as any).mini_app_only || (pending[0] as any).miniAppOnly || (pending[0] as any).chat === false).toBe(true);
+
+    // 3. Question can also be specified with per-question chat: false
+    const res2 = await mcp.handleMessage({
+      jsonrpc: "2.0",
+      id: 2,
+      method: "tools/call",
+      params: {
+        name: "ask_user",
+        arguments: {
+          questions: [
+            {
+              chat: false,
+              question: "Silent question for Mini App only?",
+              options: [{ label: "Yes" }, { label: "No" }],
+            },
+          ],
+        },
+      },
+    });
+
+    // Still no chat cards sent
+    expect(apiCalls.filter((c) => c.method === "sendMessage").length).toBe(0);
+    expect(broker.getPendingQuestions().length).toBe(2);
+  });
 });
 
 

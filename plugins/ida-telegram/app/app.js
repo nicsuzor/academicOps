@@ -368,13 +368,29 @@ async function loadQuestions() {
           if (q.sessionId || q.session_id) metaParts.push(`Session ${escapeHtml(q.sessionId || q.session_id)}`);
           const metaHtml = metaParts.length > 0 ? `<div class="q-meta muted" style="font-size:0.75rem;margin-bottom:0.4rem;">${metaParts.join(" · ")}</div>` : "";
 
+          const detailText = q.detail || q.details;
+          const hasDetails = Boolean(detailText || q.detailsId || q.details_id);
+
+          const detailsHtml = hasDetails
+            ? `
+              <div id="q-details-${escapeHtml(q.id)}" class="q-details card-details" style="display:none;">
+                ${detailText ? renderMarkdown(detailText) : ""}
+              </div>
+            `
+            : "";
+
+          const detailsBtnHtml = hasDetails
+            ? `<button class="btn btn-secondary btn-details btn-q-details" type="button" onclick="toggleQuestionDetails('${escapeHtml(q.id)}')">🔍 Details</button>`
+            : "";
+
           return `
-            <div class="card question-card" data-qid="${escapeHtml(q.id)}">
+            <div class="card question-card" data-qid="${escapeHtml(q.id)}" data-details-id="${escapeHtml(q.detailsId || q.details_id || "")}">
               ${headerHtml}
               ${metaHtml}
               <h3>${formatInlineMarkdown(q.question || "")}</h3>
               ${contextHtml}
               ${recHtml}
+              ${detailsHtml}
               <div class="q-options-list">
                 ${optionsHtml}
               </div>
@@ -383,6 +399,7 @@ async function loadQuestions() {
                 <button class="btn btn-primary" onclick="submitQuestion('${escapeHtml(q.id)}', ${isMulti})">
                   ${isMulti ? "Submit Selection" : "Submit Answer"}
                 </button>
+                ${detailsBtnHtml}
                 <button class="btn btn-secondary btn-close-q" onclick="closeQuestion('${escapeHtml(q.id)}')">
                   Dismiss
                 </button>
@@ -395,6 +412,45 @@ async function loadQuestions() {
   } catch (e) {
     console.error("Failed to load questions", e);
   }
+}
+
+async function toggleQuestionDetails(qid) {
+  const detailsEl = document.getElementById(`q-details-${qid}`);
+  if (!detailsEl) return;
+  const isHidden = detailsEl.style.display === "none" || !detailsEl.classList.contains("open");
+  if (isHidden) {
+    detailsEl.style.display = "block";
+    detailsEl.classList.add("open");
+    const card = document.querySelector(`.question-card[data-qid="${qid}"]`);
+    const detailsId = card?.getAttribute("data-details-id");
+    if (detailsId && !detailsEl.textContent.trim()) {
+      try {
+        const res = await fetch(`../api/app/details/${detailsId}`);
+        if (res.ok) {
+          const data = await res.json();
+          detailsEl.innerHTML = renderMarkdown(data.markdown);
+        }
+      } catch (e) {
+        console.error("Failed to load details for question", e);
+      }
+    }
+  } else {
+    detailsEl.style.display = "none";
+    detailsEl.classList.remove("open");
+  }
+}
+
+async function openQuestionDetails(qid) {
+  const detailsEl = document.getElementById(`q-details-${qid}`);
+  if (detailsEl) {
+    detailsEl.style.display = "block";
+    detailsEl.classList.add("open");
+  }
+}
+
+if (typeof window !== "undefined") {
+  window.toggleQuestionDetails = toggleQuestionDetails;
+  window.openQuestionDetails = openQuestionDetails;
 }
 
 async function closeQuestion(qid, reason) {

@@ -360,9 +360,14 @@ export class TelegramBotClient {
     return null;
   }
 
-  public async sendQuestionCard(chatId: number, qid: string, card: { text: string; buttons: Array<{ text: string; callbackData: string }> }) {
+  public async sendQuestionCard(chatId: number, qid: string, card: { text: string; buttons: Array<{ text: string; callbackData?: string; web_app?: { url: string } }> }) {
     const formatted = formatMarkdownToEntities(card.text);
-    const inline_keyboard = card.buttons.map((b) => [{ text: b.text, callback_data: b.callbackData }]);
+    const inline_keyboard = card.buttons.map((b) => {
+      if (b.web_app) {
+        return [{ text: b.text, web_app: b.web_app }];
+      }
+      return [{ text: b.text, callback_data: b.callbackData || "" }];
+    });
     const res = await this.callApi("sendMessage", {
       chat_id: chatId,
       text: formatted.plainText,
