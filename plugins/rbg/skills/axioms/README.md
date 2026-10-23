@@ -20,6 +20,7 @@ description: Index of academicOps axioms.
 | `judgment-non-delegable` | Delegate tasks freely, but never hand qualitative judgment to mechanical rigs. | always_on |
 | `data-boundaries` | Treat data as private; never emit across trust boundaries without surface approval. | always_on |
 | `evidence-immutable` | Never modify, reformat, or substitute evidentiary sources. | always_on |
+| `explanations-not-reasons` | An agent's explanation of what it did is not its reason; explanations are hearsay. | always_on |
 | `full-observability` | Commit and push discrete changes with clear rationale for complete auditability. | always_on |
 | `costly-ops-approval` | Require explicit prior approval for operations with unbounded cost or blast radius. | always_on |
 | `delay-decisions` | Delay decisions without cost until necessary to maximize evidence. | always_on |
