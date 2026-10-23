@@ -26,7 +26,8 @@ Perform root-cause analysis on systemic failure classes using session execution 
    - _User/PKB_: User preferences, habits, or personal knowledge base.
    - _Framework_: Universal axioms, agent roles, or core tooling.
 5. **File issues**:
-   - File the general bug and the verification miss as separate issues, each in its owning repository.
+   - Determine whether one issue is filed or two: when the primary failure is already well known and has a handler, file one issue for the handler's failure only; file both issues (the general bug and the verification miss) only when the primary failure is not already handled.
+   - File each required issue in its owning repository.
    - For each, search existing issues within the owning repository for the error class before creating a new one to avoid duplicate reports. Target the remote repository directly by name (`owner/repo`) for both search and creation rather than relying on a local checkout.
    - Ground the issue description in the execution record (tool calls, error payloads, latencies). Strip personal names, credentials, file paths containing sensitive usernames, and raw environment details.
 6. **No direct fixes**:
@@ -40,4 +41,4 @@ Return a markdown report containing:
 - **Root cause**: The systemic defect in execution flow, contract, or mechanism demonstrated by the execution record.
 - **Verification miss**: The check that should have caught the instance, and why it did not.
 - **Impact estimate**: Projected frequency and severity.
-- **Artifacts**: Links to the general-bug issue and the verification-miss issue.
+- **Artifacts**: Links to the filed issue(s) (handler's failure only if the primary failure is handled; both the general bug and verification miss if unhandled).
