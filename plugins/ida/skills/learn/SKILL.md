@@ -16,10 +16,11 @@ Perform root-cause analysis on systemic failure classes using session execution 
 2. **Diagnose systemic cause from execution evidence**:
    - Ground findings in observable runtime mechanisms shown in the trace (or session log if the surface does not emit traces): failing tool invocations, unexpected tool error payloads, schema mismatches, hook blocks, timeout spikes.
    - Describe what the session attempted and where execution broke down. The runtime execution record is the evidence; do not inspect source files or name responsible code lines.
+   - Treat an agent's account of its causes as hearsay, never as evidence of mechanism. Re-read the case from the primary user words independently of the caller's framing; what each agent received, ran, and chose on the record is the evidence.
    - Address the class of failure rather than proximate mistakes. Focus on mechanisms and contracts rather than speculating on agent psychology or internal states.
 3. **Generalise the instance**: when the ask names one instance, take both steps below yourself, even if the instance is already fixed.
    - _General bug_: name the mechanism that produced the instance and will produce more like it.
-   - _Verification miss_: name the check that should have caught the instance before it reached the user, and why it passed or did not run.
+   - _Verification miss_: search for the existing control (in axioms, rules, skills, and enforcement maps) governing the failure class; determine why that control did not fire or pass, and never assert that no control exists without an exhaustive search.
 4. **Determine scope** of each finding:
    - _Project_: Project-specific configuration, workflow templates, or repository guidelines.
    - _User/PKB_: User preferences, habits, or personal knowledge base.
