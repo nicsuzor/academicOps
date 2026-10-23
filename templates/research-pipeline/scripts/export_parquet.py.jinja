@@ -1,0 +1,79 @@
+#!/usr/bin/env python3
+"""Export final analysis marts from dbt to columnar Parquet files in data/export/."""
+
+import os
+import sys
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+EXPORT_DIR = PROJECT_ROOT / "data" / "export"
+SQL_ENGINE = "{{ sql_engine }}"
+
+
+def export_duckdb_marts() -> None:
+    import duckdb
+
+    db_env = os.environ.get("DUCKDB_PATH", "data/local_cache.duckdb")
+    db_path = (PROJECT_ROOT / db_env).resolve() if not Path(db_env).is_absolute() else Path(db_env)
+
+    if not db_path.is_file():
+        raise FileNotFoundError(f"Canonical database not found at {db_path}. Run 'dbt run' first.")
+
+    EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+    conn = duckdb.connect(str(db_path), read_only=True)
+
+    # Discover mart tables (fct_* and dim_*)
+    tables = conn.execute(
+        "SELECT table_name FROM information_schema.tables WHERE table_name LIKE 'fct_%' OR table_name LIKE 'dim_%'"
+    ).fetchall()
+
+    if not tables:
+        # Fallback to fct_evaluation_summary if information_schema is partitioned differently
+        tables = [("fct_evaluation_summary",)]
+
+    for (table_name,) in tables:
+        export_file = EXPORT_DIR / f"{table_name}.parquet"
+        conn.execute(f"COPY (SELECT * FROM {table_name}) TO '{export_file}' (FORMAT PARQUET)")
+        row_count = conn.execute(f"SELECT COUNT(*) FROM '{export_file}'").fetchone()[0]
+        print(f"Exported {table_name} ({row_count} rows) -> {export_file}")
+
+    conn.close()
+
+
+def export_bigquery_marts() -> None:
+    from google.cloud import bigquery
+    import pandas as pd
+
+    project_id = os.environ.get("BIGQUERY_PROJECT", "{{ bigquery_project }}")
+    dataset_id = os.environ.get("BIGQUERY_DATASET", "{{ bigquery_dataset }}")
+
+    client = bigquery.Client(project=project_id)
+    EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+
+    query = f"SELECT table_name FROM `{project_id}.{dataset_id}.INFORMATION_SCHEMA.TABLES` WHERE table_name LIKE 'fct_%' OR table_name LIKE 'dim_%'"
+    query_job = client.query(query)
+    tables = [row["table_name"] for row in query_job.result()]
+
+    if not tables:
+        tables = ["fct_evaluation_summary"]
+
+    for table_name in tables:
+        export_file = EXPORT_DIR / f"{table_name}.parquet"
+        df = client.query(f"SELECT * FROM `{project_id}.{dataset_id}.{table_name}`").to_dataframe()
+        df.to_parquet(export_file, index=False)
+        print(f"Exported {table_name} ({len(df)} rows) -> {export_file}")
+
+
+def main() -> None:
+    print(f"Starting Parquet export for engine: {SQL_ENGINE}")
+    if SQL_ENGINE == "duckdb":
+        export_duckdb_marts()
+    elif SQL_ENGINE == "bigquery":
+        export_bigquery_marts()
+    else:
+        raise ValueError(f"Unsupported SQL engine: {SQL_ENGINE}")
+    print("Parquet export completed successfully.")
+
+
+if __name__ == "__main__":
+    main()
