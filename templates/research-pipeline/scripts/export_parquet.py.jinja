@@ -28,8 +28,7 @@ def export_duckdb_marts() -> None:
     ).fetchall()
 
     if not tables:
-        # Fallback to fct_evaluation_summary if information_schema is partitioned differently
-        tables = [("fct_evaluation_summary",)]
+        raise RuntimeError("No mart tables matching 'fct_%' or 'dim_%' found to export.")
 
     for (table_name,) in tables:
         export_file = EXPORT_DIR / f"{table_name}.parquet"
@@ -55,7 +54,7 @@ def export_bigquery_marts() -> None:
     tables = [row["table_name"] for row in query_job.result()]
 
     if not tables:
-        tables = ["fct_evaluation_summary"]
+        raise RuntimeError("No mart tables matching 'fct_%' or 'dim_%' found to export.")
 
     for table_name in tables:
         export_file = EXPORT_DIR / f"{table_name}.parquet"
