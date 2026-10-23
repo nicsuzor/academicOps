@@ -1,5 +1,46 @@
 # Changelog
 
+## [0.10.26](https://github.com/nicsuzor/academicOps/compare/v0.10.25...v0.10.26) (2026-10-23)
+
+
+### Features
+
+* **ida:** add proportionality check to Pauli queuing and Ida requests ([5f724a0](https://github.com/nicsuzor/academicOps/commit/5f724a0ee48e5fc6fa3f694e7c4d32013c78c859))
+* **ida:** add proportionality check to Pauli queuing and Ida requests ([14f6d37](https://github.com/nicsuzor/academicOps/commit/14f6d3716443d62098f8b074fd987699ad47793b))
+* **ida:** report-argument standard, Level B recorder, gate and telemetry ([#2975](https://github.com/nicsuzor/academicOps/issues/2975)) ([87e8375](https://github.com/nicsuzor/academicOps/commit/87e83757af57d89d91c629c7df52003ae1601c6a))
+* **instruction-text:** restate user words by meaning and distinctions, not verbatim ([d5a9dd0](https://github.com/nicsuzor/academicOps/commit/d5a9dd035c956773b4e84dfbe9d4e2a81998aa8d))
+* **instruction-text:** restate user words by meaning and distinctions, not verbatim ([20cd633](https://github.com/nicsuzor/academicOps/commit/20cd6336b1a515d039c58071a26cfff17b602528))
+* **reify:** reconcile task word limit with inlined composite steps ([defbe56](https://github.com/nicsuzor/academicOps/commit/defbe563108d525c36855462a55f192fa7835bbe))
+* **reify:** reconcile task word limit with inlined composite steps ([84308fd](https://github.com/nicsuzor/academicOps/commit/84308fd2f388e7edb000fbbde1fdb393a5219b20))
+* **release:** reject unparseable Python package versions before tagging or publishing ([#3061](https://github.com/nicsuzor/academicOps/issues/3061)) ([0f3a528](https://github.com/nicsuzor/academicOps/commit/0f3a528f886ab3c163df32911d2a131eae8c39c9))
+* **session-trace:** read Phoenix URL and project from PHOENIX_MCP_URL and PHOENIX_MCP_PROJECT ([1d21ef0](https://github.com/nicsuzor/academicOps/commit/1d21ef0c63c4ced16fdb1bce662b4593243d30cb))
+* **session-trace:** read Phoenix URL and project from PHOENIX_MCP_URL and PHOENIX_MCP_PROJECT ([763f88c](https://github.com/nicsuzor/academicOps/commit/763f88c870dd3010c163b7f00a6acf6d9c568f19))
+* **workflow-library:** wf-keep-analysis-data -- keep intermediate data of long-running analyses temporarily when costly to collect ([29cddbd](https://github.com/nicsuzor/academicOps/commit/29cddbd1b252023a26f2e40fcd40317888cac142))
+* **workflow-library:** wf-keep-analysis-data for long-running analyses ([88cf67f](https://github.com/nicsuzor/academicOps/commit/88cf67fcdcc6688960c7cb9ee2f1d7c79f5990e5))
+
+
+### Bug Fixes
+
+* **ida-telegram:** resolve six verification defects in spec_7a9caca5 ([#2932](https://github.com/nicsuzor/academicOps/issues/2932)) ([bb6ebf8](https://github.com/nicsuzor/academicOps/commit/bb6ebf8a963937ec4c5c8be8ad593161d33350a6))
+* **ida:** close [#2811](https://github.com/nicsuzor/academicOps/issues/2811) QA defects in ida/sara split and verdict gate ([#2981](https://github.com/nicsuzor/academicOps/issues/2981)) ([b46e004](https://github.com/nicsuzor/academicOps/commit/b46e0049360c1e66981f1cba49c77e52324fecbc))
+* **ida:** fire the hearsay reminder only on a completed subagent result, and guard the gate against spawns ([e1ddd3f](https://github.com/nicsuzor/academicOps/commit/e1ddd3f0954bdaee062a20eea5142fcc1e6d9424))
+* **ida:** key foreground dispatch on a completed result, not tool_input ([c1a1a2b](https://github.com/nicsuzor/academicOps/commit/c1a1a2bc66999233538d939f260e9d3f80eb6f8b))
+* **ida:** one report channel from launched subagents ([f0172ef](https://github.com/nicsuzor/academicOps/commit/f0172ef1b48e9a32b7398fca020db98433ef38f0))
+* **ida:** one report channel from launched subagents ([13d26c7](https://github.com/nicsuzor/academicOps/commit/13d26c7cd8c74a2c6cde2d96dea00632fa5d8046))
+* **specs:** deduplicate Pauli proportionality check in ENFORCEMENT-MAP ([0f228a0](https://github.com/nicsuzor/academicOps/commit/0f228a02c56afda70047d07c0f040bd2d4665562))
+
+
+### Documentation
+
+* state what academicOps is in the README and package description ([c9344f9](https://github.com/nicsuzor/academicOps/commit/c9344f940beb9aedb39134e1c60eb54bd2a56c4c))
+* state what academicOps is in the README and package description ([27023ea](https://github.com/nicsuzor/academicOps/commit/27023eabf24dc13ed040ecd29a027b77980d9948))
+
+
+### Tests
+
+* **ida:** a spawn acknowledgement fires no hearsay reminder ([e3e7e84](https://github.com/nicsuzor/academicOps/commit/e3e7e84b9b8497b6dd9d2cba4634c6e42a0d9c0b))
+* **ida:** guard the premise-check gate against arming on spawns and wakes ([0083e4e](https://github.com/nicsuzor/academicOps/commit/0083e4e0a5ef42ea5d6891119da372dee6b4d091))
+
 ## [0.10.25](https://github.com/nicsuzor/academicOps/compare/v0.10.24...v0.10.25) (2026-10-20)
 
 ### Features
