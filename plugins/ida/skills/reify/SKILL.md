@@ -67,7 +67,7 @@ Then assemble the steps:
 
 ## Instructions
 
-[ Each step the worker must follow, drawn only from the composed workflow templates. The workflow templates are the only source of truth for instructions, obligations, and required processes. Add none of your own, because the workflow is where that judgement is maintained. The last step is the finish template's finish: deliver, record the evidence, release the task, and exit. ]
+[ Each step the worker must follow, drawn only from the composed workflow templates. The workflow templates are the only source of truth for instructions, obligations, and required processes. Interpret each stage into a concise numbered imperative step for this task; add none of your own, and omit narrative prose, rationale, and method details. The last step is the finish template's finish: deliver, record the evidence, release the task, and exit. ]
 
 ## Output
 
@@ -104,7 +104,7 @@ Where the project finish template calls for QA review:
 - Restate the user's terse, fragmented words into clear, complete tasks and notes, judged by fidelity to his meaning and distinctions, not by wording. Keeping exact words in PKB outputs is not a goal. Fault a restatement only for lost, added, or distorted meaning. Link asks to prior context, recompose into a clear logical structure, and cite message ids.
 - State the Goal and each criterion over the whole class the request covers: "the user's messages", not a named person's or today's channels and formats. Instances the request names are cases to test, not the boundary of the work. When asked what broke a mechanism (such as authentication, a token, or a service), compose the debugging workflow and preserve the full failure question in Acceptance so the run examines why the mechanism or token stopped working across its lifecycle rather than narrowing to a single startup symptom.
 - Every heading is a prompt for you to fill, and there is no slot for restrictions or exclusions: say what has to be done, not what shouldn't.
-- Keep each task under 150 words, `## Ask` aside. Include only what the worker cannot find for itself.
+- Keep each task strictly concise: 50–150 words for atomic tasks, up to 300 words for multi-stage composite workflows, `## Ask` aside. Include only what the worker cannot find for itself.
 - Interpret workflow template stages into concise numbered imperative steps; never paste template narrative, rationale, or explanatory background.
 - Assume the worker could run anywhere; never reference local paths, tools, or conventions.
 - Leave out methods, command scripts, tool names, runtime hints, notes on the worker's limits, summaries of linked notes (point to them instead), provenance, changelogs, session narratives, counts, SHAs and history.

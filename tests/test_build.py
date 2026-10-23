@@ -24,7 +24,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 TESTDATA = PROJECT_ROOT / "build" / "testdata"
 MARKETPLACE = TESTDATA / "marketplace.toml"
 REAL_MARKETPLACE = PROJECT_ROOT / "build" / "marketplace.toml"
-VERSION = "0.0.0-test"
+VERSION = "0.0.0.dev0"
 
 
 @pytest.fixture(scope="module")

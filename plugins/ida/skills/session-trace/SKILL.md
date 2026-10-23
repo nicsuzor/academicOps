@@ -14,9 +14,9 @@ counts and millisecond latencies. Read it rather than a session's own account of
 python3 "${CLAUDE_SKILL_DIR}/scripts/phoenix_transcript.py" <session-id | slug | trace-id> --out <dir>/<slug>.transcript.md
 ```
 
-- Configuration is flags or environment: `--base-url` or `$PHOENIX_BASE_URL` /
-  `$PHOENIX_COLLECTOR_ENDPOINT` (the Phoenix HTTP root, e.g. `http://phoenix:6006`), and
-  `--project` or `$PHOENIX_PROJECT_NAME`. Spans already fetched another way render with
+- Configuration is flags or environment: `--base-url` or `$PHOENIX_MCP_URL` (the Phoenix
+  HTTP root), and `--project` or `$PHOENIX_MCP_PROJECT`. With neither flag nor variable set,
+  the script supplies no default value and halts. Spans already fetched another way render with
   `--from-file spans.json`.
 - One paged fetch on `session.id`; a thousand-span session takes seconds.
 - It writes two files and prints the summary (totals, per-turn table, cost by model,

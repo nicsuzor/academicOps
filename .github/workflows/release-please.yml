@@ -23,6 +23,43 @@ jobs:
     timeout-minutes: 45
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Validate version before release or tag
+        run: |
+          set -euo pipefail
+          # 1. If release_as is provided via workflow_dispatch, validate it.
+          if [ -n "${{ inputs.release_as || '' }}" ]; then
+            echo "Validating workflow_dispatch release_as: ${{ inputs.release_as }}"
+            uv run python -m build.version --validate "${{ inputs.release_as }}"
+          fi
+
+          # 2. Validate committed pyproject.toml version.
+          PYPROJECT_V="$(uv run python -c "import tomllib, pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")"
+          echo "Validating pyproject.toml version: $PYPROJECT_V"
+          uv run python -m build.version --validate "$PYPROJECT_V"
+
+          # 3. Validate .release-please-manifest.json version if present.
+          if [ -f .release-please-manifest.json ]; then
+            MANIFEST_V="$(python3 -c "import json, pathlib; print(json.loads(pathlib.Path('.release-please-manifest.json').read_text()).get('.', ''))")"
+            if [ -n "$MANIFEST_V" ]; then
+              echo "Validating .release-please-manifest.json version: $MANIFEST_V"
+              uv run python -m build.version --validate "$MANIFEST_V"
+            fi
+          fi
+
       - uses: googleapis/release-please-action@v4
         id: release
         with:

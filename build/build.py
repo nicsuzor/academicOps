@@ -43,7 +43,7 @@ from build.tree import (
     ignore,
     mark_shebangs_executable,
 )
-from build.version import get_current_version
+from build.version import get_current_version, validate_version
 
 CLIENT_ADAPTERS = {
     "claude": claude_client.adapt,
@@ -245,6 +245,10 @@ def build_all(
     marketplace_path = marketplace_path or (project_root / "build" / "marketplace.toml")
     decl = load_marketplace_toml(marketplace_path)
     resolved_version = version or get_current_version(project_root)
+    try:
+        validate_version(resolved_version)
+    except ValueError as err:
+        raise BuildError(str(err)) from err
 
     dist_root.mkdir(parents=True, exist_ok=True)
     stage_root = dist_root / ".stage"
