@@ -194,6 +194,7 @@ def arm(
     claim_id: str | None = None,
     judged_text: str | None = None,
     judged_ref: str | None = None,
+    block_expected: bool = False,
 ) -> None:
     """Arm the premise check for a session until a verdict disarms it.
 
@@ -201,20 +202,25 @@ def arm(
     the state file so the recorder can cross-check the reason against its
     ``argument`` block. ``judged_ref`` names where that text came from: the
     tool-use id of a subagent result, the id of a peer envelope, or a task id.
+    ``block_expected`` records whether an Argdown block was required on this report.
     """
     state = _load_state(session_id)
     cid = claim_id or state.get("claim_id") or "unnamed-claim"
     state["armed"] = True
     state["pending"] = True  # backward compat
     state["claim_id"] = cid
+    if block_expected:
+        state["block_expected"] = True
     claim_ids = state.get("claim_ids") or []
     if cid not in claim_ids:
         claim_ids.append(cid)
     state["claim_ids"] = claim_ids
     state["armed_at"] = _now()
-    if judged_text is not None or judged_ref:
+    if judged_text is not None or judged_ref or block_expected:
         judged = state.get("judged") or {}
         entry: dict[str, Any] = {"ref": judged_ref or cid}
+        if block_expected:
+            entry["block_expected"] = True
         if judged_text is not None:
             path = _judged_path(session_id, cid)
             path.write_text(judged_text, encoding="utf-8")
@@ -435,6 +441,8 @@ def format_verdict_command(
     claim_id: str,
     hooks_dir: Path | None = None,
     session_id: str = "",
+    verdict: str = "<PASS|REVISE|FAIL>",
+    reason: str | None = None,
 ) -> str:
     base = _hooks_base(hooks_dir)
     plugin_dir = base.parent if base.name == "hooks" else base
@@ -446,8 +454,12 @@ def format_verdict_command(
     quoted_claim = shlex.quote(claim_id)
     cmd = (
         f"uv run --project {quoted_project} python3 {quoted_script}"
-        f" --claim {quoted_claim} --verdict <PASS|REVISE|FAIL> --reason-file <path>"
+        f" --claim {quoted_claim} --verdict {verdict}"
     )
+    if reason is not None:
+        cmd += f" --reason {shlex.quote(reason)}"
+    else:
+        cmd += " --reason-file <path>"
     if not os.environ.get("AOPS_SESSION_ID") and session_id:
         cmd += f" --session {shlex.quote(session_id)}"
     return cmd
@@ -683,18 +695,32 @@ def premise_check_arm(ctx: HookContext) -> Result | None:
         )
         return None
 
-    # 2. Absent block or substantive argument block: arm the gate awaiting agent verdict
-    arm(ctx.session_id, claim_id=claim_id, judged_text=judged_text, judged_ref=judged_ref)
+    # 2. Absent block: keep gate shut, agent must send it back for resending
     if block_text is None:
+        arm(
+            ctx.session_id,
+            claim_id=claim_id,
+            judged_text=judged_text,
+            judged_ref=judged_ref,
+            block_expected=True,
+        )
         inject = (
             f"Premise-check gate armed by {claim_id}: no argument block supplied; "
-            f"record a verdict per the `premise-check` skill.\n"
-            f"{format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id)}"
+            f"send the message back for revision per the `premise-check` skill "
+            f"(an absent block cannot pass).\n"
+            f"{format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id, verdict='REVISE', reason='no argument supplied')}"
         )
-        user_msg = f"Premise-check gate armed by {claim_id} (no argument block supplied)."
+        user_msg = f"Premise-check gate armed by {claim_id} (no argument block supplied; send back for revision)."
         return warn(inject, user_msg)
 
-    # 3. Substantive argument block
+    # 3. Substantive argument block: arm the gate awaiting agent verdict
+    arm(
+        ctx.session_id,
+        claim_id=claim_id,
+        judged_text=judged_text,
+        judged_ref=judged_ref,
+        block_expected=True,
+    )
     inject = (
         f"Premise-check gate armed by {claim_id}; record a verdict per the `premise-check` skill.\n"
         f"{format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id)}"

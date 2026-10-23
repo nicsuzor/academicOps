@@ -230,6 +230,18 @@ def record_verdict(
     judged_text, judged_ref = get_judged(session_id, cid)
     block_text = ra.extract_block(judged_text)
 
+    entry = (state.get("judged") or {}).get(cid, {})
+    block_expected = bool(entry.get("block_expected") or state.get("block_expected"))
+    is_peer = block_expected or any(
+        str(judged_ref or "").startswith(prefix)
+        for prefix in ("<cross-session-message", "<teammate-message", "<task-notification")
+    )
+    if token == "PASS" and is_peer and block_text is None:
+        raise ValueError(
+            "PASS refused -- no argument block in judged text: an absent block cannot pass; "
+            "send the message back for revision"
+        )
+
     attributes = judge_reason(token, reason, judged_text)
     if machine:
         attributes["premise_check.machine"] = True

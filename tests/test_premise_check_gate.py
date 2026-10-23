@@ -712,7 +712,10 @@ def test_spawn_ack_leaves_gate_unarmed_and_actions_proceed(ack):
 
 def test_spawn_while_claim_pending_keeps_that_claim_and_its_verdict_records():
     session_id = "sess-pending-spawn"
-    report = '<teammate-message teammate_id="sara" id="why-mini-app">report</teammate-message>'
+    report = (
+        f'<teammate-message teammate_id="sara" id="why-mini-app">report'
+        f"{_SAMPLE_VALID_BLOCK}</teammate-message>"
+    )
     pcg.premise_check_arm(_prompt_ctx(session_id, report))
     assert pcg.get_state(session_id)["claim_ids"] == ["why-mini-app"]
 
@@ -889,13 +892,25 @@ def test_absent_block_refuses_to_clear_gate_and_leaves_armed(monkeypatch):
     res = pcg.premise_check_arm(ctx)
     assert res is not None
     assert "no argument block supplied" in res.inject_text
+    assert "send" in res.inject_text.lower() and "back" in res.inject_text.lower()
+    assert "--verdict REVISE" in res.inject_text
     assert pcg.is_armed(session_id) is True
 
-    # The gate refuses dispatch while armed awaiting verdict
+    # The gate refuses dispatch while armed awaiting return/verdict
     dispatch_res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
     assert dispatch_res is not None and dispatch_res.kind == dispatch.Kind.REFUSE
 
-    # Agent records REVISE to send back, which clears the gate
+    # Attempting to record PASS on an absent block is refused: gate stays shut
+    with pytest.raises(ValueError, match="absent block cannot pass"):
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id=claim_id,
+            verdict="PASS",
+            reason=_pass_reason(claim_id),
+        )
+    assert pcg.is_armed(session_id) is True
+
+    # Agent records REVISE to send back for resending, which clears the gate
     pcv.record_verdict(
         session_id=session_id,
         claim_id=claim_id,

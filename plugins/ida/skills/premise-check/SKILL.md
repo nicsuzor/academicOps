@@ -25,7 +25,7 @@ asks: none
 ```
 ````
 
-The null form declares minimal compliance and clears the premise-check gate with no agent action; an absent block refuses to clear the gate, leaving it armed awaiting an agent verdict so the receiver can return it for revision.
+The null form declares minimal compliance and clears the premise-check gate with no agent action; when an expected block is absent, the gate does not open: the recorder refuses PASS, and the receiver's only way through is to send the message back for revision (recording REVISE "no argument supplied" to return it for resending).
 
 1. **The ask at the top**, in the asker's own words, one question per `asks` entry, each under the immutable id the report form defines. Copy the ask you were given; never restate it as your own title. These kept words exist so a checker can test the restatement for fidelity, completeness, and overreach.
 2. **Numbered premises**, each ending with its basis in words, one of the phrases in [`references/vocabulary.toml`](references/vocabulary.toml). A premise about outside state quotes the value that decides it (`state: MERGED`, `0 hits`).
@@ -77,4 +77,4 @@ Write the reason as the seven keyed lines in [`references/checker-reason.md`](re
 uv run --project <plugin-dir> python3 <plugin-dir>/skills/premise-check/scripts/verdict.py --claim <claim_id> --verdict <PASS|REVISE|FAIL> --reason-file <path>
 ```
 
-The recorder refuses a PASS whose reason misses a test line or an ask id, or contradicts the block. On an invalid argument (syntax errors, an unconnected statement, or an undercut not aimed at an inference), `verdict.py` records REVISE itself with the parser output as reason and clears the gate. For a handback read from a task record, the claim id is the task id; after recording, add `## Premise-Check Verdict` to the task with the verification id and verdict.
+The recorder refuses a PASS whose reason misses a test line or an ask id, contradicts the block, or attempts to pass a peer message missing an expected block. On an invalid argument (syntax errors, an unconnected statement, or an undercut not aimed at an inference), `verdict.py` records REVISE itself with the parser output as reason and clears the gate. For a handback read from a task record, the claim id is the task id; after recording, add `## Premise-Check Verdict` to the task with the verification id and verdict.
