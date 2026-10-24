@@ -44,7 +44,7 @@ Self-check before sending, as the checker will.
 
 ## Checking a received report
 
-Take observed premises with a pointer as given: never open a pointer or redo the work. Everything else -- warrants, steps, scope, the fit between rule and case -- you judge. When a ruling turns on a fact the report lacks, send it back naming the missing premise.
+Take observed premises with a pointer as given: never open a pointer or redo the work. A PKB node or another agent's writing is not such a pointer; it ranks as `worker reported, unchecked` rather than an observed primary record. Everything else -- warrants, steps, scope, the fit between rule and case -- you judge. When a ruling turns on a fact the report lacks, send it back naming the missing premise.
 
 Restatements of the user's words (in tasks, directions, or reports) are judged by fidelity to the user's meaning and distinctions, not by wording. Outputs need not use exact words. Fault a restatement only for lost, added, or distorted meaning; never fault a report or restatement for rewording.
 
@@ -53,14 +53,14 @@ Run four tests on every inference line:
 | Test | Passes when | Failure looks like |
 | - | - | - |
 | **Valid** | The premises meet every condition of the warrant, and the conclusion is no wider than they are. | A condition no line supplies; a defeater "not tried" that would change the next action; scope drift. |
-| **Supported** | Each premise's basis can bear the step's stakes. A conclusion is only as strong as its weakest premise. | A _worker reported, unchecked_ or _assumed_ premise carrying a high-stakes step; "PASS" claimed with no verdict id. |
+| **Supported** | Each premise's basis can bear the step's stakes. A conclusion is only as strong as its weakest premise. A PKB node or another agent's writing ranks as _worker reported, unchecked_. | A _worker reported, unchecked_ (including a PKB node or peer text cited without a verdict) or _assumed_ premise carrying a high-stakes step; "PASS" claimed with no verdict id. |
 | **Answered** | The final conclusion answers each ask id, or says it has no answer. | The conclusion answers a narrower or different question than the `Asked` lines. |
 | **Sufficient** | Materiality, sufficiency and necessity settle each step (below). | A complex, unbacked warrant on a high-stakes step accepted without one level of decomposition. |
 
 Proportionality, in order:
 
 1. **Materiality** -- examine a step only if changing its conclusion would change what the reader does next.
-2. **Sufficiency** -- accept a warrant as stated when it is obvious, backed by a cited rule or verdict, or carries a claim cheap to reverse. Send back for one level of decomposition only when it is complex, unbacked and high-stakes. `worker reported` premises get the same test: a report carries a verdict id or is weighed as unchecked.
+2. **Sufficiency** -- accept a warrant as stated when it is obvious, authority-backed, backed by a cited verdict, or carries a claim cheap to reverse. Limit `authority-backed` to the user's own words or a governing spec; a premise citing a PKB node or another agent's writing does not satisfy sufficiency on the citation alone. Send back for one level of decomposition only when it is complex, unbacked and high-stakes. `worker reported` premises get the same test: a report carries a verdict id or is weighed as unchecked.
 3. **Necessity** -- reject only when the objection would change this conclusion; phrasing or a preferred route is not a rejection.
 
 A format breach that leaves the step judgeable is waived and listed; one that hides a step is a REVISE.
