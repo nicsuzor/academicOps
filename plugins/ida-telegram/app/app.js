@@ -272,9 +272,29 @@ async function loadDetails(id) {
         <div class="markdown-body">${renderMarkdown(data.markdown)}</div>
       `;
       switchTab("details");
+    } else {
+      let errMsg = "Details page not found";
+      try {
+        const errData = await res.json();
+        if (errData?.error) errMsg = errData.error;
+      } catch {}
+      document.getElementById("details-content").innerHTML = `
+        <div class="meta-row">
+          <span class="mono">${escapeHtml(id)}</span>
+        </div>
+        <p class="muted">${escapeHtml(errMsg)}</p>
+      `;
+      switchTab("details");
     }
   } catch (e) {
     console.error("Failed to load details", e);
+    document.getElementById("details-content").innerHTML = `
+      <div class="meta-row">
+        <span class="mono">${escapeHtml(id)}</span>
+      </div>
+      <p class="muted">Failed to load details: ${escapeHtml(String(e))}</p>
+    `;
+    switchTab("details");
   }
 }
 
