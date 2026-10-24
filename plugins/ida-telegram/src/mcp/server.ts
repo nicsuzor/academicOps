@@ -246,6 +246,7 @@ export class StdioMcpServer {
           replyTo,
           feedback: typeof args.feedback === "boolean" ? args.feedback : undefined,
           review: reviewArg,
+          actions: args.actions as boolean | undefined,
         });
 
         const out: Record<string, unknown> = {
