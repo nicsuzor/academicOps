@@ -8,6 +8,7 @@ import { TelegramBotClient } from "../telegram/bot.js";
 import { sanitizeChannelMeta } from "../telegram/inbound.js";
 import { splitVoiceTier2Quotes } from "../telegram/voice.js";
 import { PermissionRelay } from "./permissions.js";
+import { broadcastSseEvent } from "../web/routes.js";
 
 export class StdioMcpServer {
   private config: PluginConfig;
@@ -372,6 +373,42 @@ export class StdioMcpServer {
       return `Questions ${postedIds.join(", ")} posted to the user. Do not assume an answer; continue other work or end your turn.`;
     }
 
+    if (name === "answer_question") {
+      const questionId = (args.question_id as string) || (args.questionId as string) || (args.id as string);
+      const choice = typeof args.choice === "string" ? args.choice.trim() : undefined;
+      const optionIndex = typeof args.option_index === "number" ? args.option_index : undefined;
+      if (!questionId) {
+        return { success: false, error: "Missing question_id" };
+      }
+      if (!choice && optionIndex === undefined) {
+        return { success: false, error: "Missing answer: provide choice or option_index" };
+      }
+      const result = await this.broker.resolveAnswer(questionId, optionIndex !== undefined ? optionIndex : "other", choice);
+      if (!result) {
+        return { success: false, error: "Question not found or not pending" };
+      }
+      if (this.bot && result.question.chatId && result.question.messageId) {
+        await this.bot.editMessage(result.question.chatId, result.question.messageId, result.cardText, { inline_keyboard: [] });
+      }
+      this.emitChannelNotification(`Question answered: ${result.channelEvent.choice}`, {
+        event: result.channelEvent.event,
+        ...result.channelEvent,
+      });
+      if (this.store) {
+        const seq = this.store.nextSeq("question_resolved", {
+          question_id: questionId,
+          choice: result.channelEvent.choice,
+          turn_id: result.channelEvent.turn_id,
+        });
+        broadcastSseEvent("question_resolved", {
+          question_id: questionId,
+          choice: result.channelEvent.choice,
+          turn_id: result.channelEvent.turn_id,
+        }, seq);
+      }
+      return { success: true, question_id: questionId, choice: result.channelEvent.choice };
+    }
+
     if (name === "close_question") {
       const questionId = (args.question_id as string) || (args.questionId as string) || (args.id as string);
       const reason = typeof args.reason === "string" ? args.reason.trim() : "";
@@ -392,6 +429,20 @@ export class StdioMcpServer {
         event: result.channelEvent.event,
         ...result.channelEvent,
       });
+      if (this.store) {
+        const seq = this.store.nextSeq("question_closed", {
+          question_id: questionId,
+          reason: result.channelEvent.reason,
+          turn_id: result.channelEvent.turn_id,
+          session_id: result.channelEvent.session_id,
+        });
+        broadcastSseEvent("question_closed", {
+          question_id: questionId,
+          reason: result.channelEvent.reason,
+          turn_id: result.channelEvent.turn_id,
+          session_id: result.channelEvent.session_id,
+        }, seq);
+      }
       return { success: true, question_id: questionId, reason: result.channelEvent.reason };
     }
 

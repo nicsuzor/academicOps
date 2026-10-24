@@ -38,6 +38,14 @@ As an operator directing the agent, I want a direct communication channel throug
 - **AC-3.4** Given a question or permission resolved via the dashboard interface, when the resolution completes, then the corresponding Telegram chat card updates to show the resolved outcome.
 - **AC-3.5** Given an active session, when the operator dispatches a halt directive, then the agent immediately suspends execution and returns a status summary.
 
+### US-4 Automatic Question Lifecycle and Dismissal
+
+As an operator, once a question I was asked has been answered, by any channel, it leaves my outstanding questions without my doing anything.
+
+- **AC-4.1** Given a pending question in the Mini App's outstanding list, when the question is answered or resolved in the asking session, then the agent resolves or closes the question and it leaves the outstanding list without manual intervention.
+- **AC-4.2** Given a pending question in the Mini App's outstanding list, when the question is answered outside the Mini App and outside the asking session (such as via a plain Telegram reply to the question card), then the question transitions to answered and leaves the outstanding list without manual intervention.
+- **AC-4.3** Given a posted question that has not been answered in any channel, when viewing the outstanding questions list, then the question remains listed and pending.
+
 ## Design
 
 ### 1. Unified Serving and Perimeter Authentication (US-1)
@@ -171,3 +179,7 @@ The operator must be able to interact with the active agent directly from the da
 3. **Zero Orphaned Permissions:**
    - Tool permissions have a default lifespan of 300 seconds (5 minutes). If a request times out, it transitions automatically to `status: "expired"`, denies execution to prevent dangling tools, and emits `permission_resolved` with `outcome: "expired"`.
    - If the agent service restarts while permissions remain unfulfilled, the bridge startup pass sweeps lingering pending records, transitions them to `"expired"`, and edits their Telegram cards in place to show `*Expired ⏱️*` with buttons disabled.
+4. **Autonomous Question Dismissal Across Channels (US-4):**
+   - When a question is answered on any channel -- directly within the asking agent session (via `close_question` or `answer_question`), via a plain Telegram reply to the question card or prompt message, or inside the Mini App -- the question broker transitions the question status from `"pending"` to `"answered"` or `"closed"`.
+   - The question is immediately excluded from `GET /api/app/questions` and leaves the Mini App outstanding questions list without requiring the operator to manually dismiss it.
+   - Any question that has not been answered across any channel persists in the store and remains listed as pending.

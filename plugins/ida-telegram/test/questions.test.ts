@@ -1000,6 +1000,241 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       server.close();
     }
   });
+
+  test("AC2: a question answered in the asking session leaves the outstanding list", async () => {
+    const { StdioMcpServer } = await import("../src/mcp/server.js");
+    const { handleApiRequest } = await import("../src/web/routes.js");
+    const { createSessionToken } = await import("../src/web/auth.js");
+
+    const store = new PluginStore(testStateDir);
+    const broker = new QuestionBroker(testStateDir);
+    const permRelay = new PermissionRelay();
+
+    const config = {
+      botToken: "test-token",
+      allowFrom: [999],
+      stateDir: testStateDir,
+      socketPath: join(testStateDir, "hook.sock"),
+      port: 8093,
+      miniAppUrl: "https://ida.example.ts.net",
+      isPrimary: true,
+      maxChatChars: 1200,
+      voiceTranscribeCmd: "",
+      voiceSpeakCmd: "",
+      voiceReplies: "off" as const,
+      botCommands: [],
+    };
+
+    const mcp = new StdioMcpServer(config, store, broker, null, permRelay);
+
+    // 1. Post a question
+    const postRes = await broker.askUser({
+      question: "Which database should we use?",
+      options: [{ label: "PostgreSQL" }, { label: "SQLite" }],
+      turnId: "turn_sess_1",
+      chatId: 999,
+    });
+    const qid = postRes.questionId;
+
+    // Verify it is initially pending in broker and Mini App endpoint
+    expect(broker.getPendingQuestions().some((q) => q.id === qid)).toBe(true);
+
+    const sessionSecret = "super-secret-session-key";
+    const token = createSessionToken(999, sessionSecret, 3600);
+    const reqBefore = new Request("http://127.0.0.1:8093/api/app/questions", {
+      method: "GET",
+      headers: { Cookie: `ida_session=${token}` },
+    });
+    const respBefore = await handleApiRequest(reqBefore, { store, broker, config, sessionSecret, emitChannelEvent: () => {} } as any);
+    const dataBefore = await respBefore.json();
+    expect(dataBefore.questions.some((q: any) => q.id === qid)).toBe(true);
+
+    // 2. The asking agent learns the question was answered in its session and resolves it via answer_question tool
+    const answerCall = await mcp.handleMessage({
+      jsonrpc: "2.0",
+      id: 2,
+      method: "tools/call",
+      params: {
+        name: "answer_question",
+        arguments: {
+          question_id: qid,
+          choice: "PostgreSQL",
+        },
+      },
+    });
+
+    expect(answerCall?.isError).toBeFalsy();
+
+    // 3. Question must have left the outstanding list in broker and Mini App
+    expect(broker.getPendingQuestions().some((q) => q.id === qid)).toBe(false);
+
+    const reqAfter = new Request("http://127.0.0.1:8093/api/app/questions", {
+      method: "GET",
+      headers: { Cookie: `ida_session=${token}` },
+    });
+    const respAfter = await handleApiRequest(reqAfter, { store, broker, config, sessionSecret, emitChannelEvent: () => {} } as any);
+    const dataAfter = await respAfter.json();
+    expect(dataAfter.questions.some((q: any) => q.id === qid)).toBe(false);
+  });
+
+  test("AC3: a question answered outside the Mini App and outside the asking session (e.g. a plain Telegram reply) leaves the outstanding list", async () => {
+    const { TelegramBotClient } = await import("../src/telegram/bot.js");
+    const { handleApiRequest } = await import("../src/web/routes.js");
+    const { createSessionToken } = await import("../src/web/auth.js");
+
+    const store = new PluginStore(testStateDir);
+    const broker = new QuestionBroker(testStateDir);
+    const permRelay = new PermissionRelay();
+
+    const config = {
+      botToken: "test-token",
+      allowFrom: [999],
+      stateDir: testStateDir,
+      socketPath: join(testStateDir, "hook.sock"),
+      port: 8093,
+      miniAppUrl: "https://ida.example.ts.net",
+      isPrimary: true,
+      maxChatChars: 1200,
+      voiceTranscribeCmd: "",
+      voiceSpeakCmd: "",
+      voiceReplies: "off" as const,
+      botCommands: [],
+    };
+
+    const emittedEvents: Array<{ content: string; meta: Record<string, unknown> }> = [];
+    const editedCards: Array<{ chatId: number; messageId: number; text: string }> = [];
+
+    const bot = new TelegramBotClient(config, broker, permRelay, (content, meta) => {
+      emittedEvents.push({ content, meta });
+    }, store);
+
+    (bot as any).editMessage = async (chatId: number, messageId: number, text: string) => {
+      editedCards.push({ chatId, messageId, text });
+      return true;
+    };
+
+    // 1. Post a question that sends a card to Telegram with messageId 601
+    const postRes = await broker.askUser({
+      question: "Which items should go to Sara and Pauli?",
+      options: [{ label: "Both items" }, { label: "Sara only" }],
+      chatId: 999,
+    });
+    const qid = postRes.questionId;
+    broker.setMessageId(qid, 601);
+
+    expect(broker.getPendingQuestions().some((q) => q.id === qid)).toBe(true);
+
+    // 2a. A non-matching conversational reply does not answer or dismiss the question
+    await (bot as any).handleUpdate({
+      update_id: 1233,
+      message: {
+        message_id: 6015,
+        date: Math.floor(Date.now() / 1000),
+        chat: { id: 999, type: "private" },
+        from: { id: 999, is_bot: false, first_name: "User" },
+        text: "What does this mean?",
+        reply_to_message: {
+          message_id: 601,
+          date: Math.floor(Date.now() / 1000) - 10,
+          chat: { id: 999, type: "private" },
+          text: "Which items should go to Sara and Pauli?",
+        },
+      },
+    });
+    expect(broker.getPendingQuestions().some((q) => q.id === qid)).toBe(true);
+    expect(editedCards.length).toBe(0);
+
+    // 2b. User in Telegram replies directly to message 601 with "Both items" (outside Mini App and outside asking session)
+    await (bot as any).handleUpdate({
+      update_id: 1234,
+      message: {
+        message_id: 602,
+        date: Math.floor(Date.now() / 1000),
+        chat: { id: 999, type: "private" },
+        from: { id: 999, is_bot: false, first_name: "User" },
+        text: "Both items",
+        reply_to_message: {
+          message_id: 601,
+          date: Math.floor(Date.now() / 1000) - 10,
+          chat: { id: 999, type: "private" },
+          text: "Which items should go to Sara and Pauli?",
+        },
+      },
+    });
+
+    // 3. The question card in Telegram was edited to show resolved answer
+    expect(editedCards.some((c) => c.messageId === 601 && c.text.includes("Selected: Both items ✅"))).toBe(true);
+
+    // 4. Question must leave the outstanding list in broker and Mini App
+    expect(broker.getPendingQuestions().some((q) => q.id === qid)).toBe(false);
+
+    const sessionSecret = "super-secret-session-key";
+    const token = createSessionToken(999, sessionSecret, 3600);
+    const req = new Request("http://127.0.0.1:8093/api/app/questions", {
+      method: "GET",
+      headers: { Cookie: `ida_session=${token}` },
+    });
+    const resp = await handleApiRequest(req, { store, broker, config, sessionSecret, emitChannelEvent: () => {} } as any);
+    const data = await resp.json();
+    expect(data.questions.some((q: any) => q.id === qid)).toBe(false);
+  });
+
+  test("AC4: an unanswered question stays listed", async () => {
+    const { handleApiRequest } = await import("../src/web/routes.js");
+    const { createSessionToken } = await import("../src/web/auth.js");
+
+    const store = new PluginStore(testStateDir);
+    const broker = new QuestionBroker(testStateDir);
+
+    const config = {
+      botToken: "test-token",
+      allowFrom: [999],
+      stateDir: testStateDir,
+      socketPath: join(testStateDir, "hook.sock"),
+      port: 8093,
+      miniAppUrl: "https://ida.example.ts.net",
+      isPrimary: true,
+      maxChatChars: 1200,
+      voiceTranscribeCmd: "",
+      voiceSpeakCmd: "",
+      voiceReplies: "off" as const,
+      botCommands: [],
+    };
+
+    // Post two questions: q1 (to be answered) and q2 (unanswered)
+    const q1 = await broker.askUser({
+      question: "Answered question",
+      options: [{ label: "Yes" }, { label: "No" }],
+      chatId: 999,
+    });
+    const q2 = await broker.askUser({
+      question: "Unanswered question waiting for operator",
+      options: [{ label: "Option A" }, { label: "Option B" }],
+      chatId: 999,
+    });
+
+    // Resolve q1
+    await broker.resolveAnswer(q1.questionId, 0);
+
+    // q2 remains unanswered
+    const pending = broker.getPendingQuestions();
+    expect(pending.some((q) => q.id === q1.questionId)).toBe(false);
+    expect(pending.some((q) => q.id === q2.questionId)).toBe(true);
+
+    const sessionSecret = "super-secret-session-key";
+    const token = createSessionToken(999, sessionSecret, 3600);
+    const req = new Request("http://127.0.0.1:8093/api/app/questions", {
+      method: "GET",
+      headers: { Cookie: `ida_session=${token}` },
+    });
+    const resp = await handleApiRequest(req, { store, broker, config, sessionSecret, emitChannelEvent: () => {} } as any);
+    const data = await resp.json();
+
+    expect(data.questions.some((q: any) => q.id === q1.questionId)).toBe(false);
+    expect(data.questions.some((q: any) => q.id === q2.questionId)).toBe(true);
+    const found = data.questions.find((q: any) => q.id === q2.questionId);
+    expect(found.status).toBe("pending");
+  });
 });
 
 
