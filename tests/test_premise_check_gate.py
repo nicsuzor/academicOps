@@ -500,12 +500,13 @@ def test_handler_ignores_non_gated_tool():
     assert pcg.premise_check_handler(ctx) is None
 
 
-def test_handler_ignores_non_gated_agent_type():
+def test_handler_holds_regardless_of_agent_type():
     session_id = "sess-gate-4"
     pcg.arm(session_id, claim_id="claim-7")
 
     ctx = _agent_dispatch_ctx(session_id, agent_type="aops:james")
-    assert pcg.premise_check_handler(ctx) is None
+    res = pcg.premise_check_handler(ctx)
+    assert res is not None and res.kind == dispatch.Kind.REFUSE
 
 
 def test_handler_mode_off(monkeypatch):
@@ -1638,3 +1639,245 @@ def test_agy_dispatch_receipt_and_wait_do_not_arm(agy_ida, payload):
     assert ctx.agent_type == "ida"
     assert pcg.premise_check_arm(ctx) is None
     assert pcg.is_armed(ctx.session_id) is False
+
+
+# ---------------------------------------------------------------------------
+# Teammate messages and identity-independent arming
+# ---------------------------------------------------------------------------
+
+
+def _valid_report_argdown(ask_id: str = "tg-100") -> tuple[str, str]:
+    report_text = f"""## Report
+```argdown
+===
+asks:
+  {ask_id}: 2
+answers:
+  {ask_id}: 2
+===
+(1) Work completed per spec -- rule
+-- rule --
+(2) Outcome verified
+```"""
+    reason = (
+        f"Judged: {{claim_id}}; asks {ask_id}\n"
+        "Valid: (2) holds -- rule\n"
+        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
+        f"Answered: {ask_id} <- (2)\n"
+        "Sufficient: (2) material\n"
+        "Waived: none\n"
+        "Relay: none"
+    )
+    return report_text, reason
+
+
+def test_teammate_message_to_teammate_arms_gate_and_records_verdict():
+    session_id = "sess-teammate-recv"
+    report_text, reason_tmpl = _valid_report_argdown("tg-404")
+    prompt = (
+        '<teammate-message id="claim-teammate-404" teammate_id="worker">\n'
+        f"{report_text}\n"
+        "</teammate-message>"
+    )
+    # The receiving agent is a teammate, not ida or sara
+    ctx = _prompt_ctx(session_id, prompt, agent_type="researcher-worker")
+    arm_res = pcg.premise_check_arm(ctx)
+    assert arm_res is not None
+    assert pcg.is_armed(session_id) is True
+
+    # PreToolUse refuses dispatch while armed
+    res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id, agent_type="researcher-worker"))
+    assert res is not None and res.kind == dispatch.Kind.REFUSE
+
+    # Verdict records with verification id and disarms the gate
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    verdict_res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="claim-teammate-404",
+        verdict="PASS",
+        reason=reason_tmpl.format(claim_id="claim-teammate-404"),
+        tracer_mod=tracer,
+    )
+    assert verdict_res["ok"] is True
+    assert verdict_res["verification_id"].startswith("verdict-")
+    assert pcg.is_armed(session_id) is False
+
+
+def test_report_to_in_session_subagent_arms_gate_and_records_verdict():
+    session_id = "sess-subagent-recv"
+    report_text, reason_tmpl = _valid_report_argdown("tg-406")
+    prompt = (
+        '<cross-session-message id="claim-subagent-406" from="peer-a">\n'
+        f"{report_text}\n"
+        "</cross-session-message>"
+    )
+    # The receiving agent is an in-session subagent
+    ctx = _prompt_ctx(session_id, prompt, agent_type="general-purpose")
+    arm_res = pcg.premise_check_arm(ctx)
+    assert arm_res is not None
+    assert pcg.is_armed(session_id) is True
+
+    # PreToolUse refuses dispatch while armed
+    res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id, agent_type="general-purpose"))
+    assert res is not None and res.kind == dispatch.Kind.REFUSE
+
+    # Verdict records with verification id and disarms the gate
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    verdict_res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="claim-subagent-406",
+        verdict="PASS",
+        reason=reason_tmpl.format(claim_id="claim-subagent-406"),
+        tracer_mod=tracer,
+    )
+    assert verdict_res["ok"] is True
+    assert verdict_res["verification_id"].startswith("verdict-")
+    assert pcg.is_armed(session_id) is False
+
+
+def test_foreground_subagent_return_to_teammate_arms_gate_and_records_verdict():
+    session_id = "sess-fg-subagent-return"
+    report_text, reason_tmpl = _valid_report_argdown("tg-500")
+    ctx = dispatch.HookContext(
+        client="claude",
+        event="PostToolUse",
+        tool="Agent",
+        session_id=session_id,
+        agent_type="worker-teammate",
+        raw={
+            "tool_input": {"description": "audit findings"},
+            "tool_response": {
+                "status": "completed",
+                "content": [{"type": "text", "text": report_text}],
+            },
+            "tool_use_id": "toolu_fg_return",
+        },
+    )
+    arm_res = pcg.premise_check_arm(ctx)
+    assert arm_res is not None
+    assert pcg.is_armed(session_id) is True
+    claim_id = pcg.get_state(session_id)["claim_id"]
+
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    verdict_res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=claim_id,
+        verdict="PASS",
+        reason=reason_tmpl.format(claim_id=claim_id),
+        tracer_mod=tracer,
+    )
+    assert verdict_res["ok"] is True
+    assert verdict_res["verification_id"].startswith("verdict-")
+    assert pcg.is_armed(session_id) is False
+
+
+def test_task_notification_return_arms_gate_and_no_result_leaves_unarmed():
+    report_text, reason_tmpl = _valid_report_argdown("tg-task-1")
+
+    # 1. Task notification with a <result> arms the gate
+    session_armed = "sess-tn-result"
+    prompt_armed = (
+        '<task-notification id="claim-task-1">\n'
+        f"<result>\n{report_text}\n</result>\n"
+        "</task-notification>"
+    )
+    ctx_armed = _prompt_ctx(session_armed, prompt_armed, agent_type="worker")
+    arm_res = pcg.premise_check_arm(ctx_armed)
+    assert arm_res is not None
+    assert pcg.is_armed(session_armed) is True
+
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    verdict_res = pcv.record_verdict(
+        session_id=session_armed,
+        claim_id="claim-task-1",
+        verdict="PASS",
+        reason=reason_tmpl.format(claim_id="claim-task-1"),
+        tracer_mod=tracer,
+    )
+    assert verdict_res["ok"] is True
+    assert verdict_res["verification_id"].startswith("verdict-")
+    assert pcg.is_armed(session_armed) is False
+
+    # 2. Task notification without a <result> (e.g. background command finished) leaves gate unarmed
+    session_unarmed = "sess-tn-no-result"
+    prompt_unarmed = (
+        '<task-notification id="claim-task-2">\n'
+        "background bash command exited with code 0\n"
+        "</task-notification>"
+    )
+    ctx_unarmed = _prompt_ctx(session_unarmed, prompt_unarmed, agent_type="worker")
+    assert pcg.premise_check_arm(ctx_unarmed) is None
+    assert pcg.is_armed(session_unarmed) is False
+
+
+def test_teammate_message_idle_notification_arms_gate_and_records_verdict_for_non_default_agent():
+    session_id = "sess-teammate-idle"
+    report_text, reason_tmpl = _valid_report_argdown("tg-398")
+    payload = json.dumps(
+        {
+            "type": "idle_notification",
+            "from": "resilience-ideas",
+            "timestamp": "2026-10-23T12:23:44.965Z",
+            "idleReason": "available",
+            "result": report_text,
+        }
+    )
+    prompt = (
+        "Another Claude session sent a message:\n"
+        f'<teammate-message teammate_id="resilience-ideas" color="green">\n{payload}\n</teammate-message>\n\n'
+        "This came from another Claude session — not typed by your user, but very likely working on their behalf."
+    )
+    arm_res = pcg.premise_check_arm(_prompt_ctx(session_id, prompt, agent_type="teammate-checker"))
+    assert arm_res is not None
+    assert pcg.is_armed(session_id) is True
+
+    claim_id = pcg.get_state(session_id)["claim_id"]
+    assert claim_id.startswith("claim-")
+
+    # PreToolUse refuses dispatch while armed
+    res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id, agent_type="teammate-checker"))
+    assert res is not None and res.kind == dispatch.Kind.REFUSE
+
+    # Verdict records with verification id and disarms the gate
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    verdict_res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=claim_id,
+        verdict="PASS",
+        reason=reason_tmpl.format(claim_id=claim_id),
+        tracer_mod=tracer,
+    )
+    assert verdict_res["ok"] is True
+    assert verdict_res["verification_id"].startswith("verdict-")
+    assert pcg.is_armed(session_id) is False
+
+
+def test_teammate_message_send_message_arms_gate_and_records_verdict_for_non_default_agent():
+    session_id = "sess-teammate-sendmsg"
+    report_text, reason_tmpl = _valid_report_argdown("tg-1")
+    prompt = (
+        "Another Claude session sent a message:\n"
+        f'<teammate-message id="worker-report-1" teammate_id="worker" color="blue" summary="Task finished">\n{report_text}\n</teammate-message>\n\n'
+        "This came from another Claude session — not typed by your user, but very likely working on their behalf."
+    )
+    arm_res = pcg.premise_check_arm(_prompt_ctx(session_id, prompt, agent_type="subagent-lead"))
+    assert arm_res is not None
+    assert pcg.is_armed(session_id) is True
+    assert pcg.get_state(session_id)["claim_id"] == "worker-report-1"
+
+    # PreToolUse refuses dispatch while armed
+    res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id, agent_type="subagent-lead"))
+    assert res is not None and res.kind == dispatch.Kind.REFUSE
+
+    # Verdict records with verification id and disarms the gate
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    verdict_res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="worker-report-1",
+        verdict="PASS",
+        reason=reason_tmpl.format(claim_id="worker-report-1"),
+        tracer_mod=tracer,
+    )
+    assert verdict_res["ok"] is True
+    assert verdict_res["verification_id"].startswith("verdict-")
+    assert pcg.is_armed(session_id) is False
