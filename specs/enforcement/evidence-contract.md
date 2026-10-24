@@ -50,6 +50,7 @@ As the user, I want each claim to reach me as strong as its evidence and no stro
 - A derived claim takes the weakest basis among its premises.
 - A premise resting on another agent's report or a PKB node cites the verdict recorded on that report. A cited verdict resolves to a recorded verification id; a report or PKB node cited without one is weighed as unchecked.
 - Each sentence relayed upward names the line of the checked argument it restates. A sentence with no line is not relayed.
+- Before relaying a claim upward, the agent identifies its source of record (the live configuration, repository, code, or spec the claim describes) and reads the claim against it. A claim the source no longer supports is not relayed.
 
 ### 5. Tested limits
 
@@ -71,6 +72,7 @@ As an agent that could not finish, I want failure and partial delivery to be com
 As the user, I want my directions to reach a worker as I gave them, so that an agent in the chain cannot add to what I asked.
 
 - A relayed direction cites the original ask, and every detail, constraint and method in it can be derived from that ask.
+- When composing a dispatch or relaying a direction, the dispatching agent identifies each claim's source of record (the live configuration, repository, code, or spec the claim describes) and reads the claim against it; work is not dispatched on claims or constraints the source of record does not support.
 
 ### 8. Explanations are not reasons (hearsay)
 
