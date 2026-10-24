@@ -331,14 +331,14 @@ position or a display order.
 
 ## 8. R7 -- Budget for direct queries
 
-Covers U20, S11, and the attention rules already in `plugins/ida/agents/ida.md:120-125`. The brief
+Covers U20, S11, and the attention rules already in `plugins/ida/agents/ida.md:79-85`. The brief
 sets no budget; the figures below are proposed (K2).
 
 | Channel | Budget | Content |
 | - | - | - |
 | Routine notice | 1 per week | summary of direct graph pricing and densify changes |
 | Priority ask | ≤ 1 per day, in the daily digest | a proposed `hard` date within 14 days; or a new opportunity whose `gain` or `loss_averted` would place it in the top 20 under the current key |
-| In conversation | 0 valuation questions | ida's one-question cap is unchanged; valuation never uses it |
+| In conversation | 0 valuation questions | valuation never asks in conversation; questions follow the one decision or question per message rule |
 | Notices | 1 line each in the digest, no reply needed | soft→hard hardenings, retirements from source statements |
 
 **The ask queue.** Every item that would otherwise interrupt the principal goes into one queue: ambiguous
@@ -360,7 +360,7 @@ keeps pauli's rule "never raise the same non-blocking concern twice"
 | - | - |
 | `plugins/ida/skills/q/SKILL.md` | Steps 4-6 are replaced by R1. Description :4 changes from "wire contributes_to/depends_on" to "wire what it serves, propose values". :18 becomes the FR §5.1 edge contract with `set_by: agent-proposed`. :19 keeps `needs` and drops `soft_depends_on` and `supersedes`. :23 keeps effort and adds dates with class (R5). :24: the default `intent` of 3 is removed, and the line goes entirely if FQ10 drops the field. A headless context is added (R1). |
 | `plugins/ida/agents/pauli.md` | :104 "two-axis model (target severity magnitude vs contributing edge weight probability)" becomes: pauli drafts link proposals and estimates target prices directly, leaving intent untouched. :23 "carry … severity magnitude" becomes "carry worth". |
-| `plugins/ida/agents/ida.md` | Adds that valuation asks reach the attention queue through routine notice and the digest (R7). The one-question cap :125 is unchanged. |
+| `plugins/ida/agents/ida.md` | Adds that valuation asks reach the attention queue through routine notice and the digest (R7). Governed by the one decision or question per message rule at :76. |
 | `plugins/ida/skills/remember/SKILL.md` | :22 "carry only graph weights and severity" becomes "carry only worth". :37 "a wikilink … is a real graph edge" is qualified as not read by the flow, pending FQ23. :45 `/pkb:q` becomes `/ida:q`. |
 | `plugins/ida/skills/remember/references/consolidation.md` | Adds a weekly densify stage that runs `wf-densify` (R3). |
 | `plugins/ida/skills/workflow-library/workflows/wf-reconcile.md` | Adds deadline upkeep (R5) and source-stated retirement (R6). :49 reserved fields add `deadline_class: hard` and target worth. |
