@@ -378,6 +378,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
 
   async function bootMiniApp(options: {
     search?: string;
+    noAuth?: boolean;
     setup?: (ctx: {
       store: PluginStore;
       broker: QuestionBroker;
@@ -465,7 +466,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
     const windowObj: any = {
       Telegram: {
         WebApp: {
-          initData: generateValidInitData(botToken, allowedUserId),
+          initData: options.noAuth ? "" : generateValidInitData(botToken, allowedUserId),
           expand() {},
         },
       },
@@ -903,4 +904,72 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
     expect(appJs).not.toMatch(/["'`]\/api\//);
     expect(appJs).toMatch(/["'`]\.\.\/api\/app\//);
   });
+
+  test("7. Details page is publicly accessible without session auth, renders Markdown in unauthenticated Mini App, displays error when missing, and leaves other tabs protected", async () => {
+    let detailsId = "";
+    const { document, baseUrl } = await bootMiniApp({
+      noAuth: true,
+      search: "",
+      setup: ({ store }) => {
+        detailsId = store.storeDetails(
+          [
+            "# Architectural Decision",
+            "",
+            "Publicly accessible **Tier 3** capability record.",
+            "",
+            "| Key | Status |",
+            "| --- | --- |",
+            "| Auth | Public |",
+            "| Type | Capability Slug |",
+            "",
+            "```json",
+            '{"public": true, "auth": "none"}',
+            "```",
+          ].join("\n")
+        );
+      },
+    });
+
+    // 1. Direct unauthenticated HTTP fetch to GET /api/app/details/:id succeeds
+    const directRes = await fetch(`${baseUrl}/api/app/details/${detailsId}`);
+    expect(directRes.status).toBe(200);
+    const directData: any = await directRes.json();
+    expect(directData.id).toBe(detailsId);
+    expect(directData.markdown).toContain("Architectural Decision");
+
+    // 2. Direct fetch to non-existent details returns 404 Not Found
+    const missingRes = await fetch(`${baseUrl}/api/app/details/d_missing_404`);
+    expect(missingRes.status).toBe(404);
+    const missingData: any = await missingRes.json();
+    expect(missingData.error).toBe("Details page not found");
+
+    // 3. Other protected endpoints remain strictly gated by 401 Unauthorized
+    const qRes = await fetch(`${baseUrl}/api/app/questions`);
+    expect(qRes.status).toBe(401);
+    const revRes = await fetch(`${baseUrl}/api/app/review`);
+    expect(revRes.status).toBe(401);
+    const anchorRes = await fetch(`${baseUrl}/api/app/anchor`);
+    expect(anchorRes.status).toBe(401);
+
+    // 4. Mini App with no auth loads and renders the details page via ?d=
+    await document.windowObj.loadDetails(detailsId);
+    await new Promise((r) => setTimeout(r, 40));
+
+    const detailsContent = document.getElementById("details-content");
+    expect(detailsContent).not.toBeNull();
+    const mdBody = detailsContent!.querySelector(".markdown-body");
+    expect(mdBody).not.toBeNull();
+    expect(mdBody!.querySelectorAll("h1").length).toBe(1);
+    expect(mdBody!.querySelectorAll("table").length).toBe(1);
+    const ths = mdBody!.querySelectorAll("th").map((el) => el.textContent.trim());
+    expect(ths).toEqual(["Key", "Status"]);
+
+    // 5. Loading a non-existent details page in the Mini App renders visible error state instead of remaining blank
+    await document.windowObj.loadDetails("d_missing_404");
+    await new Promise((r) => setTimeout(r, 40));
+
+    expect(detailsContent!.textContent).toContain("d_missing_404");
+    expect(detailsContent!.textContent).toContain("Details page not found");
+  });
 });
+

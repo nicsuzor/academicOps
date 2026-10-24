@@ -109,6 +109,24 @@ export function handleApiRequest(req: Request, ctx: WebContext): Response | Prom
     })();
   }
 
+  // 2. Details: GET /api/app/details/:id
+  // Details pages are immutable Tier 3 message overflow pages with high-entropy unguessable capability IDs (d_<hex>).
+  // They are read-only and publicly accessible to recipients opening the 🔍 Details button.
+  if (path.startsWith("/api/app/details/") && req.method === "GET") {
+    const id = path.substring("/api/app/details/".length);
+    const details = ctx.store.getDetails(id);
+    if (!details) {
+      return new Response(JSON.stringify({ error: "Details page not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify(details), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   // All other /api/app/* routes require valid session cookie or perimeter/bridge credentials
   if (!authenticateRequest(req, ctx)) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -231,21 +249,6 @@ export function handleApiRequest(req: Request, ctx: WebContext): Response | Prom
     })();
   }
 
-  // 4. Details: GET /api/app/details/:id
-  if (path.startsWith("/api/app/details/")) {
-    const id = path.substring("/api/app/details/".length);
-    const details = ctx.store.getDetails(id);
-    if (!details) {
-      return new Response(JSON.stringify({ error: "Details page not found" }), {
-        status: 404,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-    return new Response(JSON.stringify(details), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
 
   // 5. Questions: GET /api/app/questions, POST /api/app/questions/answer
   if (path === "/api/app/questions" && req.method === "GET") {
