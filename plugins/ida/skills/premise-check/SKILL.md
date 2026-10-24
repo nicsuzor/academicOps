@@ -46,7 +46,7 @@ Self-check before sending, as the checker will.
 
 Take observed premises with a pointer as given: never open a pointer or redo the work. Everything else -- warrants, steps, scope, the fit between rule and case -- you judge. When a ruling turns on a fact the report lacks, send it back naming the missing premise.
 
-Restatements of the user's words (in tasks, directions, or reports) are judged by fidelity to the user's meaning and distinctions, not by wording. Outputs need not use exact words. Fault a restatement only for lost, added, or distorted meaning; never fault a report or restatement for rewording.
+Restatements of the user's words (in tasks, directions, or reports) are judged by fidelity to the user's meaning and distinctions, not by wording. Outputs need not use exact words. Fault a restatement only for lost, added, or distorted meaning; never fault a report or restatement for rewording. When a report lists an originating ask alongside intermediate brief items or acceptance criteria, the check tests the output against what the originating ask needs in substance -- never against the brief's restated items, added constraints, or length caps alone. Coverage of intermediate acceptance items does not substitute for answering the originating ask.
 
 Run four tests on every inference line:
 
@@ -54,7 +54,7 @@ Run four tests on every inference line:
 | - | - | - |
 | **Valid** | The premises meet every condition of the warrant, and the conclusion is no wider than they are. | A condition no line supplies; a defeater "not tried" that would change the next action; scope drift. |
 | **Supported** | Each premise's basis can bear the step's stakes. A conclusion is only as strong as its weakest premise. | A _worker reported, unchecked_ or _assumed_ premise carrying a high-stakes step; "PASS" claimed with no verdict id. |
-| **Answered** | The final conclusion answers each ask id, or says it has no answer. | The conclusion answers a narrower or different question than the `Asked` lines. |
+| **Answered** | The final conclusion answers what each ask id needs in substance, or says it has no answer. Tested against the originating ask itself; coverage of relayer acceptance items or length bounds does not satisfy an ask. | The conclusion answers a narrower or different question than the `Asked` lines; substituting coverage of relayer acceptance items or format/length limits for what the ask needs. |
 | **Sufficient** | Materiality, sufficiency and necessity settle each step (below). | A complex, unbacked warrant on a high-stakes step accepted without one level of decomposition. |
 
 Proportionality, in order:
