@@ -30,8 +30,8 @@ As an agent receiving a report, I want to judge it from the report alone, so tha
 - A premise about the state of something outside the report quotes the observed value of the field that decides it, beside the pointer.
 - Each state claim rules out the nearest other state that would change the reader's next action. "Blocked on review" says whether review is awaited or changes were requested.
 - The conclusion stays within its premises' scope and answers each ask by its id, or says the ask has no answer.
-- The receiver takes an observed premise with a pointer as given: it never opens a pointer or re-determines an observed fact. It judges everything else: every warrant, step, scope and fit between rule and case. When a ruling turns on a fact the report lacks, the receiver sends the report back naming the missing premise.
-- The receiver tests each material step for sufficiency. A warrant stands as stated when it is obvious, backed by a cited rule or verdict, or carries a claim cheap to reverse. A warrant that is complex, unbacked and high-stakes goes back for one level of decomposition.
+- The receiver takes an observed premise with a pointer as given: it never opens a pointer or re-determines an observed fact. A PKB node or another agent's writing is not such a pointer: it is not observed primary evidence and ranks as worker reported, unchecked rather than an observed record. It judges everything else: every warrant, step, scope and fit between rule and case. When a ruling turns on a fact the report lacks, the receiver sends the report back naming the missing premise.
+- The receiver tests each material step for sufficiency. A warrant stands as stated when it is obvious, authority-backed (strictly limited to the user's own words or a governing spec), backed by a cited verdict, or carries a claim cheap to reverse. A premise or warrant citing a PKB node or peer text does not satisfy sufficiency on the citation alone. A warrant that is complex, unbacked and high-stakes goes back for one level of decomposition.
 - The receiver answers with a verdict and a reason: PASS, REVISE or FAIL. A format breach that leaves every step judgeable is waived and listed in the reason; an untested inference never passes.
 
 ### 3. Verdicts I can audit
@@ -48,7 +48,7 @@ As the user, I want each claim to reach me as strong as its evidence and no stro
 
 - Every claim keeps its basis at every hop.
 - A derived claim takes the weakest basis among its premises.
-- A premise resting on another agent's report cites the verdict recorded on that report. A cited verdict resolves to a recorded verification id; a report cited without one is weighed as unchecked.
+- A premise resting on another agent's report or a PKB node cites the verdict recorded on that report. A cited verdict resolves to a recorded verification id; a report or PKB node cited without one is weighed as unchecked.
 - Each sentence relayed upward names the line of the checked argument it restates. A sentence with no line is not relayed.
 
 ### 5. Tested limits

@@ -22,7 +22,7 @@ Relay: none
 | `Valid` | One per inference line, keyed by the conclusion it yields. `holds`, or `fails` and a defect tag. |
 | `Supported` | One. The weakest basis phrase among all premises. |
 | `Answered` | One per ask id: the line that answers it, or `unanswered`. |
-| `Sufficient` | One or more, keyed by conclusion: which proportionality test settled each material step. |
+| `Sufficient` | One or more, keyed by conclusion: which proportionality test settled each material step. `authority-backed` is limited strictly to the user's own words or a governing spec. |
 | `Waived` | `none`, or one per waived breach, starting with a format item from [`vocabulary.toml`](vocabulary.toml). |
 | `Relay` | `none`, or one per sentence you will send up, naming the lines it restates. |
 
