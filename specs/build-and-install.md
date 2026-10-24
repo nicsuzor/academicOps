@@ -100,7 +100,10 @@ branch protection requiring all checks green (`Lint / Lint`, `Type Check / Type 
 
 1. **Active development and validation.** Work proceeds on release lines (e.g. `release/v1.0-rc0`).
    Pull requests into release lines run the full `pr-pipeline.yml` suite (Lint, Type Check, Pytest).
-2. **Publishing release candidates.** Release candidates are published by pushing an annotated or lightweight tag on the release line (e.g. `v1.0-rc6`). Pushing an rc tag (`v*-*`) triggers `.github/workflows/publish-release.yml`, which runs pytest, builds distribution artifacts, and uploads archives to a GitHub pre-release (`gh release create --prerelease`). Pushing an rc tag publishes a GitHub pre-release only and never writes to `main`.
+2. **Publishing release candidates.** Release candidates are published via GitHub pre-releases:
+   - **Trigger conditions**: Pushing an RC tag matching `v*-rc*` (or pre-release tags `v*-*`, `v*rc*`, `v*beta*`, `v*alpha*`, `v*dev*`) on a release line (e.g. `v1.0-rc7` on `release/v1.0-rc0`), or manually triggering `.github/workflows/publish-release.yml` via `workflow_dispatch` with an RC `tag` input.
+   - **Flags and options**: The workflow runs Pytest, validates PEP 440 version formatting (`build.version --validate`), builds distribution archives with `uv run python -m build.build --set-version <version>`, and attaches the tarballs (`dist/*.tar.gz`) to a GitHub Release marked explicitly with `--prerelease` (`gh release create ... --prerelease` or `gh release edit ... --prerelease`). Stable manifest coherence checks (G2) are skipped for RC builds as pre-releases are not tracked by `.release-please-manifest.json`.
+   - **Publish constraints**: RC builds publish exclusively to GitHub pre-releases. They never promote assets to production channels, never publish to container registries (GHCR), and never write or push to `main` (built plugin directory mirroring and root marketplace updates remain restricted to merges on `main`).
 3. **Merging stable release into `main`.** Once a release candidate is validated and fully green, a pull request is merged from the release line into `main`. Branch protection on `main` requires all status checks to pass before merging, with no bypass allowed.
 4. **Build on merge.** Every merge into `main` triggers `.github/workflows/build-extension.yml`.
    The workflow:
