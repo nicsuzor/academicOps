@@ -1,8 +1,8 @@
 # rbg
 
-In-session rule checking on two operational layers:
+In-session rule checking via two hooks:
 
-- **Turn-by-turn**: Evaluates tool calls against live rules via a fast classifier model and injects advisory context on match. Fails open and never blocks.
+- **Turn-by-turn check**: Evaluates tool calls against live rules via a fast classifier model and injects advisory context on match. Fails open and never blocks.
 - **Turn-boundary stop gate**: At a `Stop` event, holds completion once so the agent explicitly checks its work against governing rules and cites verifiable evidence.
 
 ## Components
@@ -14,16 +14,16 @@ In-session rule checking on two operational layers:
 | Evaluation Handler | `hooks/handlers.py` | Evaluates tool calls against rules and injects advisories. |
 | Stop Handler | `hooks/handlers.py` | Dispatches `rule-check.md` once per turn chain. |
 | Evaluator Client | `hooks/evaluator.py` | HTTP client for `cope` and `openai` wire protocols. |
-| Rule Loader | `hooks/rules.py` | Merges three rule layers (`trigger: always_on`). |
+| Rule Loader | `hooks/rules.py` | Merges three rule scopes (`trigger: always_on`). |
 | Messages | `hooks/messages/*.md` | Templates for advisories, prompts, and stop checks. |
 
-## Rule Layers
+## Rule Scopes
 
-Rules are loaded and merged across three layers (earlier layers cannot be overridden):
+Rules are loaded and merged across three scopes (`axioms` cannot be overridden):
 
-1. **Layer 1:** The `axioms` skill's files, `skills/axioms/` (inviolable baseline).
-2. **Layer 2:** `$CWD/.agents/rules/*.md` (project-local).
-3. **Layer 3:** `$ACA_DATA/.agents/rules/*.md` (user-scoped).
+1. **Axioms:** The `axioms` skill's files, `skills/axioms/` (inviolable baseline).
+2. **Project rules:** `$CWD/.agents/rules/*.md` (project-local).
+3. **User rules:** `$ACA_DATA/.agents/rules/*.md` (user-scoped).
 
 Only markdown files declaring `trigger: always_on` are sent to the evaluator or roster.
 
@@ -40,7 +40,7 @@ Set via environment variables:
 | `COPE_EVALUATOR_TIMEOUT` | All | `5.0` | Max seconds allowed for per-tool check sweep. |
 | `COPE_EVALUATOR_TRACE_PATH` | Tracing | none | Path to append JSONL rule evaluation logs. |
 | `COPE_EVALUATOR_OTEL_TRACE_PATH` | Tracing | none | Path to append OTLP JSON file spans. |
-| `ACA_DATA` | Roster / Loader | none | Root directory for layer 3 user rules. |
+| `ACA_DATA` | Roster / Loader | none | Root directory for user-scoped rules. |
 
 ## Local Evaluator Stack
 
@@ -60,5 +60,5 @@ Point the agent environment at `COPE_EVALUATOR_URL=http://127.0.0.1:8099/v1/labe
 
 - `hooks/dispatch.py`: Hook dispatcher runtime.
 - `agents/rbg.md`: the rbg agent (the Judge).
-- `skills/axioms/`: the `axioms` skill; its files are the Layer 1 baseline rules.
+- `skills/axioms/`: the `axioms` skill; its files are the baseline axioms.
 - External or local Reflexes/CoPE or OpenAI-compatible classifier endpoint.

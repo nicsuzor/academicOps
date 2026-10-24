@@ -35,7 +35,7 @@ It is whether the same _kinds_ of considerations surface. Two classes:
 | - | - | - |
 | D1 | Spec-first / define-before-build | Write the spec first, grounded in existing docs; make the artifact's purpose explicit |
 | D2 | Negative scoping as the core constraint | Reserve the mechanism for what it is _for_; exclude what's already handled — and say why |
-| D3 | Architectural registration | Register a new element in the system's self-description (maps, pyramid, index docs) |
+| D3 | Architectural registration | Register a new element in the system's self-description (maps, enforcement register, index docs) |
 | D4 | Evidence: lived/recent signal | Mine recent daily notes / lived frustration, not only distilled corpora |
 | D5 | Evidence: formal/tracked signal | Review GitHub issues |
 | D6 | Evidence: the DIAGNOSTIC negative signal | Rejected-as-too-brittle PRs / reverts — the highest-signal source for "what only judgment can catch" |
