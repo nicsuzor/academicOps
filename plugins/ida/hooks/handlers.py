@@ -81,21 +81,14 @@ _MAX_INJECT_CHARS = 8000
 _TRUNCATION_MARKER = "\n[...truncated, output exceeded injection budget...]"
 _MAX_QUERY_CHARS = 8192
 
-_SKIP_ENVELOPES = (
-    "<cross-session-message",
-    "<teammate-message",
-    "<task-notification",
-    "<subagent-handback",
-    "<agent-message",
-    "<system-reminder",
-    "<system-message",
-    "<scheduled",
-    "<handback",
-)
-
 _PEER_PREAMBLE = re.compile(
     r"^(?:Another Claude session sent a message:\s*)+",
     re.IGNORECASE,
+)
+
+_ENVELOPE_RE = re.compile(
+    r"^\s*<(?:channel|cross-session-message|teammate-message|task-notification|subagent-handback|agent-message|handback)\b[^>]*>(.*?)(?:</[^>]+>|\s*$)",
+    re.DOTALL,
 )
 
 
@@ -158,31 +151,32 @@ def _cap_output(out: str) -> str:
 
 
 def extract_prompt_query(prompt: str) -> str:
-    """Extract the searchable user text from a prompt, unwrapping channel envelopes.
+    """Extract searchable text from a prompt, unwrapping channel and message envelopes.
 
-    A prompt that begins with a `<channel ...>` envelope (Telegram or another
-    channel) is unwrapped to its body; any other prompt is used as typed. ANSI
-    escape codes are removed and surrounding whitespace stripped.
+    Unwraps <channel ...> envelopes, peer envelopes (<cross-session-message>,
+    <teammate-message>, <subagent-handback>, <task-notification>, etc.), and
+    peer preambles. Prompts without envelopes are used as typed. ANSI escape
+    codes are removed and surrounding whitespace stripped.
 
-    Skips argument-less slash commands (/cmd) and XML-enveloped
-    system/handback/peer/scheduled prompts by returning an empty string so no
-    PKB search runs. Prompts starting with /cmd <arg> send <arg> whole up to
-    8 KB.
+    Skips argument-less slash commands (/cmd) by returning an empty string so
+    no PKB search runs. Slash commands with arguments (/cmd <arg>) send <arg>
+    whole up to 8 KB.
     """
     if not prompt:
         return ""
-    m = re.match(r"\s*<channel\b[^>]*>(.*?)(?:</channel>|$)", prompt, flags=re.DOTALL)
-    text = m.group(1) if m else prompt
+    text = prompt
+    while True:
+        pm = _PEER_PREAMBLE.match(text)
+        if pm:
+            text = text[pm.end() :].lstrip()
+        m = _ENVELOPE_RE.match(text)
+        if m:
+            text = m.group(1).strip()
+            continue
+        break
+
     text = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", text).strip()
     if not text:
-        return ""
-
-    check_text = text
-    preamble_match = _PEER_PREAMBLE.match(check_text)
-    if preamble_match:
-        check_text = check_text[preamble_match.end() :].lstrip()
-
-    if check_text.startswith(_SKIP_ENVELOPES):
         return ""
 
     if text.startswith("/"):
@@ -570,9 +564,6 @@ def _run_pkb_search(
     agent_id: str | None = None,
     surface: str | None = None,
 ) -> str | None:
-    if os.environ.get("PKB_HYDRATE") == "0":
-        return None
-
     query = extract_prompt_query(prompt)[:_MAX_QUERY_CHARS]
     if not query:
         return None
@@ -606,15 +597,10 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
     Returns the output of `pkb search {prompt}` wrapped in
     `<academicOps PKB search results>` tags when matches are found;
     otherwise returns None. Empty results inject nothing.
-    Peer reports, scheduled, system, and argument-less slash commands are
-    skipped so they make no PKB call. Honours PKB_HYDRATE=0.
+    Argument-less slash commands are skipped so they make no PKB call.
+    Peer reports, subagent handbacks, task notifications, and incoming channel
+    messages are searched to ground the turn in existing PKB context.
     """
-    if os.environ.get("PKB_HYDRATE") == "0":
-        return None
-
-    if is_peer_report(ctx):
-        return None
-
     prompt_str = prompt_text(ctx)
     query = extract_prompt_query(prompt_str)
     if not query:

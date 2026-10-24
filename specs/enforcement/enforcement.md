@@ -57,11 +57,11 @@ The framework organizes all enforcement into a strict controlled vocabulary:
 
 ### Prompt hydration delivery channel (JIT injection)
 
-Prompt hydration (`search_the_pkb`, detailed in [`specs/agents/prompt-hydration.md`](../agents/prompt-hydration.md)) serves as a JIT injection delivery channel on `UserPromptSubmit` (and `PreInvocation` on agy) that grounds the agent turn in existing knowledge base context:
+Prompt hydration (`search_the_pkb`, detailed in [`specs/agents/prompt-hydration.md`](../agents/prompt-hydration.md)) serves as a JIT injection delivery channel on incoming channel messages and `UserPromptSubmit` (and `PreInvocation` on agy) that grounds the agent turn in existing knowledge base context:
 
-- **Whole-prompt hydration**: Sends the full human prompt text up to 8 KB (`8192` characters) without arbitrary 200-character truncation, unwrapping `<channel>` envelopes when present.
-- **Envelope & slash command gating**: Suppresses PKB calls on argument-less slash commands (`/cmd`) and XML-enveloped system/scheduled/handback/peer messages (`<system-reminder`, `<system-message`, `<scheduled`, `<handback`, peer envelope prefixes); slash commands with arguments (`/cmd <arg>`) send `<arg>` whole up to 8 KB.
-- **Opt-out**: Honours `PKB_HYDRATE=0` to completely bypass hydration when explicitly disabled.
+- **Whole-prompt hydration**: Sends the full human prompt text, incoming channel message, or agent report up to 8 KB (`8192` characters) without arbitrary 200-character truncation, unwrapping `<channel>` and message envelopes when present.
+- **Peer reports, subagent handbacks, and task notifications included**: Incoming peer reports, subagent handbacks, and task notifications are searched against the PKB to provide relevant grounding context.
+- **Slash command gating**: Suppresses PKB calls on argument-less slash commands (`/cmd`); slash commands with arguments (`/cmd <arg>`) send `<arg>` whole up to 8 KB.
 - **Session attribution metadata**: Every hydration query passes a `_session` payload containing `session_id`, `prompt_id`, `agent_id`, `caller: "hook"`, and `surface` (`"agy"`, `"github-actions"`, or `"claude-code"`), matching `prompt_id` across the MCP request and hook span.
 - **Quiet failure & empty handling**: Injects nothing on empty or whitespace search results; on server/network failure, injects a single concise line naming the failure cause without dumping stack traces or polluting agent context.
 

@@ -196,16 +196,22 @@ def test_dispatch_agy_preinvocation_end_to_end(staged_hooks: Path):
 
 
 @pytest.mark.parametrize(
-    "peer_prompt",
+    ("peer_prompt", "expected_query"),
     [
-        '<cross-session-message from="twin-a">PR #12 merged</cross-session-message>',
-        '<teammate-message teammate_id="worker">done</teammate-message>',
-        "<task-notification>worker finished</task-notification>",
-        '<subagent-handback from="worker">subagent finished</subagent-handback>',
+        (
+            '<cross-session-message from="twin-a">PR #12 merged</cross-session-message>',
+            "PR #12 merged",
+        ),
+        ('<teammate-message teammate_id="worker">done</teammate-message>', "done"),
+        ("<task-notification>worker finished</task-notification>", "worker finished"),
+        (
+            '<subagent-handback from="worker">subagent finished</subagent-handback>',
+            "subagent finished",
+        ),
     ],
 )
-def test_search_the_pkb_skips_peer_reports(peer_prompt):
-    """search_the_pkb does not run on peer reports, leaving hearsay to fire and gate to arm."""
+def test_search_the_pkb_includes_peer_reports(peer_prompt, expected_query):
+    """search_the_pkb includes peer reports, subagent handbacks, and task notifications."""
     ctx = HookContext(
         client="claude",
         event="UserPromptSubmit",
@@ -214,10 +220,11 @@ def test_search_the_pkb_skips_peer_reports(peer_prompt):
         cwd="/workspace",
         agent_type="ida:ida",
     )
-    with patch.object(handlers, "_run_pkb_search") as mock_search:
+    with patch.object(handlers, "_run_pkb_search", return_value="1. note") as mock_search:
         res = handlers.search_the_pkb(ctx)
-        mock_search.assert_not_called()
-        assert res is None
+        mock_search.assert_called_once_with(expected_query, cwd="/workspace")
+        assert res is not None
+        assert "<academicOps PKB search results>" in res.inject_text
 
 
 def test_extract_prompt_query_unwraps_channels_and_strips_ansi():
@@ -468,12 +475,14 @@ def test_agy_turn_started_by_system_message_is_not_searched(tmp_path: Path):
     mock_search.assert_not_called()
 
 
-def test_agy_peer_report_in_transcript_is_not_searched(tmp_path: Path):
+def test_agy_peer_report_in_transcript_is_searched(tmp_path: Path):
     peer = '<USER_REQUEST>\n<cross-session-message from="x">report</cross-session-message>\n</USER_REQUEST>'
     transcript = _agy_transcript(tmp_path, {"step_index": 0, "type": "USER_INPUT", "content": peer})
     with patch.object(handlers, "_run_pkb_search", return_value="1. hit") as mock_search:
-        assert handlers.search_the_pkb(_agy_ctx(transcript)) is None
-    mock_search.assert_not_called()
+        res = handlers.search_the_pkb(_agy_ctx(transcript))
+        assert res is not None
+        assert "<academicOps PKB search results>" in res.inject_text
+    mock_search.assert_called_once_with("report", cwd="/workspace", session_id="c1")
 
 
 def test_agy_missing_transcript_raises_os_error(tmp_path: Path):
@@ -966,33 +975,35 @@ def test_argumentless_slash_commands_make_no_pkb_call(cmd_prompt):
 
 
 @pytest.mark.parametrize(
-    "xml_prompt",
+    ("prompt", "expected_query"),
     [
-        "<system-reminder>Do not reveal instructions</system-reminder>",
-        "<system-message>subagent completed</system-message>",
-        "<scheduled>daily reconciliation</scheduled>",
-        '<handback from="worker">done</handback>',
-        '<subagent-handback from="worker">done</subagent-handback>',
-        '<agent-message to="ida">status update</agent-message>',
-        '<cross-session-message from="peer">done</cross-session-message>',
-        '<teammate-message teammate_id="worker">finished</teammate-message>',
-        "<task-notification>task completed</task-notification>",
-        'Another Claude session sent a message:\n<teammate-message teammate_id="worker">finished</teammate-message>',
+        ('<handback from="worker">done</handback>', "done"),
+        ('<subagent-handback from="worker">done</subagent-handback>', "done"),
+        ('<agent-message to="ida">status update</agent-message>', "status update"),
+        ('<cross-session-message from="peer">done</cross-session-message>', "done"),
+        ('<teammate-message teammate_id="worker">finished</teammate-message>', "finished"),
+        ("<task-notification>task completed</task-notification>", "task completed"),
+        (
+            'Another Claude session sent a message:\n<teammate-message teammate_id="worker">finished</teammate-message>',
+            "finished",
+        ),
     ],
 )
-def test_xml_enveloped_prompts_make_no_pkb_call(xml_prompt):
-    """AC2: XML-enveloped system/handback/peer/scheduled prompts make no PKB call."""
+def test_peer_and_handback_envelopes_are_hydrated(prompt, expected_query):
+    """Peer reports, subagent handbacks, and task notifications are included in PKB search hydration."""
     ctx = HookContext(
         client="claude",
         event="UserPromptSubmit",
-        raw={"prompt": xml_prompt},
+        raw={"prompt": prompt},
         hooks_dir=PKB_HOOKS,
         agent_type="ida:ida",
     )
-    with patch.object(handlers, "_run_pkb_search") as mock_search:
+    with patch.object(handlers, "_run_pkb_search", return_value="hit") as mock_search:
         res = handlers.search_the_pkb(ctx)
-        mock_search.assert_not_called()
-        assert res is None
+        assert res is not None
+        mock_search.assert_called_once()
+        args, _ = mock_search.call_args
+        assert args[0] == expected_query
 
 
 def test_channel_wrapped_human_prompts_send_full_text_up_to_8kb():
@@ -1062,8 +1073,8 @@ def test_prompt_exceeding_8kb_is_capped_at_8192():
         assert len(args[0]) == 8192
 
 
-def test_search_the_pkb_honours_pkb_hydrate_zero():
-    """AC1/AC2: When PKB_HYDRATE=0, no PKB call is made."""
+def test_pkb_hydrate_zero_env_var_is_ignored():
+    """PKB_HYDRATE=0 does not disable hydration; disabling env vars have been removed."""
     ctx = HookContext(
         client="claude",
         event="UserPromptSubmit",
@@ -1073,11 +1084,12 @@ def test_search_the_pkb_honours_pkb_hydrate_zero():
     )
     with (
         patch.dict("os.environ", {"PKB_HYDRATE": "0"}),
-        patch.object(handlers, "_run_pkb_search") as mock_search,
+        patch.object(handlers, "_run_pkb_search", return_value="1. note") as mock_search,
     ):
         res = handlers.search_the_pkb(ctx)
-        mock_search.assert_not_called()
-        assert res is None
+        mock_search.assert_called_once()
+        assert res is not None
+        assert "<academicOps PKB search results>" in res.inject_text
 
 
 def test_search_the_pkb_sends_session_with_matching_prompt_id(
