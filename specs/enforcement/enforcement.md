@@ -15,7 +15,7 @@ The architectural specification detailing design rationale, theoretical mechanis
 
 ## Governing principle -- agents all the way down
 
-The framework enforces **no programmatic, deterministic, or mechanical verdict on quality or process**, with an authorized exception for procedural friction that never rules on substance: the premise-check gate (`premise_check_gate.py`), which refuses dispatch, messaging and channel reply tools and blocks `Stop` while an arrived report or relayed direction awaits a recorded verdict, and its verdict recorder (`premise_check_verdict.py`), which refuses a PASS whose reason lacks the checker's seven keyed lines or contradicts the judged block ([evidence-contract-enforcement.md](evidence-contract-enforcement.md)). The recorder checks the reason's shape and its consistency with the block mechanically; whether a rule yields its claim, whether the named rival is the nearest, whether an assumption line is complete, sufficiency against stakes, and relay entailment stay with the checking agent and are never mechanised. Hooks, server contracts, and config are **delivery channels** -- they remind, route, and make things visible; they never decide whether work is good or whether a rule was followed. Every verdict is an agent's judgment, and the bar every reviewing agent applies is world-leading, not technically-acceptable.
+The framework enforces **no programmatic, deterministic, or mechanical verdict on quality or process**, with an authorized exception for procedural friction that never rules on substance: the premise-check gate (`premise_check_gate.py`), triggered on `UserPromptSubmit` (for canonical incoming agent envelopes: cross-session messages, teammate messages, task notifications, subagent handbacks) and on `PostToolUse` (for foreground subagent dispatch returns: `Agent`, `invoke_subagent`, `Task`), which refuses dispatch, messaging and channel reply tools and blocks `Stop` while an arrived report or relayed direction awaits a recorded verdict, and its verdict recorder (`premise_check_verdict.py`), which refuses a PASS whose reason lacks the checker's seven keyed lines or contradicts the judged block ([evidence-contract-enforcement.md](evidence-contract-enforcement.md)). The recorder checks the reason's shape and its consistency with the block mechanically; whether a rule yields its claim, whether the named rival is the nearest, whether an assumption line is complete, sufficiency against stakes, and relay entailment stay with the checking agent and are never mechanised. Hooks, server contracts, and config are **delivery channels** -- they remind, route, and make things visible; they never decide whether work is good or whether a rule was followed. Every verdict is an agent's judgment, and the bar every reviewing agent applies is world-leading, not technically-acceptable.
 
 Apart from the exception above, the only **mechanical** enforcement is **structural prevention**: credential and workspace isolation, delivery guards, model pins. Prevention by construction -- never reactive detection, never content-sniffing, never a deterministic pass/fail on the substance of an agent's work.
 
@@ -39,7 +39,7 @@ In probabalistic enforcement, we have to match the impact of regulation to the r
 
 The enforcement register is structured in 4 columns:
 
-1. **Rule / nudge** -- The short-form linked reference to the rule (e.g. `[Axiom: Data Boundaries](../../lib/axioms/data-boundaries.md)` or `[Persona: Ida](../../plugins/ida/agents/ida.md)`) paired with the operative obligation or steering intent.
+1. **Rule / nudge** -- The short-form linked reference to the rule (e.g. `[Axiom: Data Boundaries](../../plugins/rbg/skills/axioms/data-boundaries.md)` or `[Persona: Ida](../../plugins/ida/agents/ida.md)`) paired with the operative obligation or steering intent.
 2. **Mechanism** -- The carrier category from the controlled vocabulary.
 3. **Severity** -- The escalation index within the mechanism.
 4. **Detail** -- The pinpoint verification reference (`path:line` + operative snippet, handler function, or CI workflow) and operational state flags (`[DISABLED]`, `[MAP DRIFT]`).
@@ -71,6 +71,15 @@ An **agent personality** defines conduct, judgment register, and disposition: wh
 - **Binding a skill to a personality is a deliberate, documented exception**, for exactly two reasons: **earmarking** (the skill depends on that personality's judgment register) or **permission control** (grants restricted to force a workflow split, keeping reviewer ≠ executor).
 - The three review registers above name **lenses a review must apply**, not exclusive executors. Which agent carries a lens is a dispatch decision.
 - **Review lenses bind artifacts by consequence**: The rule-compliance lens (`rbg`) evaluates target artifacts by what they build, configure, or instruct once running: an artifact breaks an axiom when its runtime consequence would violate what axioms forbid an agent to do. Mechanisms that substitute deterministic techniques (path globs, author allowlists, AST shape heuristics) for qualitative judgment fail `judgment-non-delegable`.
+- **Three non-overlapping review roles**:
+  - **Rule-compliance lens (`rbg`, template `wf-rbg`)**: Evaluates target artifacts by what they build, configure, or instruct once running. Operates strictly by static semantic evaluation; does not run tests/probes (QA) or evaluate graph strategy (Strategic Fit).
+  - **Strategic-fit lens (`pauli`, template `wf-strategic-fit`)**: Evaluates objective alignment, parsimony, necessity, and cross-task lifecycle coherence (rendering `FIT`/`MISFIT`). Does not inspect source code for axiom violations (Rule Compliance) or run tests/probes (QA).
+  - **QA / runtime fitness lens (`marsha`, template `wf-qa`)**: Evaluates empirical runtime execution ("running things"): test suites, red-to-green regression verification, live probes, and empirical claim audits. Does not rule on axioms or evaluate graph strategy.
+- **Shared review briefing (`wf-review`)**: Every review dispatch across all three roles draws its brief from the one shared workflow definition in `wf-review`. The brief quotes the originating request verbatim with its source identifier in a section read before the pull request, branch name, or diff, ensuring reviewers evaluate intent and proportion before inspecting implementation details. Composite review (`wf-review`) coordinates the three distinct role chunks and reconciles their findings into a single unified verdict.
+
+### Published surface and repo visibility review
+
+The rule-compliance review lens (`rbg`, coordinated via `strategic-review` or `wf-rbg`) evaluates everything candidate changes publish across the trust boundary (diffs, commit messages and trailers, PR title and body, review replies) against destination repository visibility under `data-boundaries`. On public destinations, this enforces strict exclusion of personal identifiers, private host/project names, deployment-only agent names, PKB note/task/session IDs, commit trailers, and live telemetry before merge, comment, or push.
 
 ## Design principles
 
@@ -88,3 +97,16 @@ Two flows, deliberately separated as witness and judge, so the volume and direct
 2. **Improve the framework** (used to be the `triage` skill's sweep mode; currently N/A) -- a detached pass over the accumulated issue queue on a cadence the user sets, proposing a mechanism only where recurrence or explicit direction justifies it.
 
 A single incident that is a **bug** is fixed immediately from one report. A single incident that may qualify for an **escalation proposal** is logged and waits for the pattern.
+
+## PR Risk Taxonomy Enforcement
+
+Pull request review and merge authority is governed by a three-tier risk taxonomy (canonical: [[kb_48809ad0]], amended in [[aops_a7366995]]). Because evaluating the operational hazard, semantic intent, and blast radius of a change inherently requires qualitative judgment, risk tier classification is executed natively by agentic verification workflows (`wf-finish.md`, `wf-code-task-base.md`, `wf-qa.md`, `reify/SKILL.md`) rather than deterministic CI scripts or path heuristics (`judgment-non-delegable`, `RULES.md#No Shitty NLP and Agentic-First Design`):
+
+| Tier | Category | Scope / Characteristics | Merge Authority | Carrier Mechanism |
+| :- | :- | :- | :- | :- |
+| **Tier 1** | Autonomous QA-Merge | Low-risk changes: pure documentation, specifications, formatting, typing stubs (`.pyi`). | Independent QA worker merges autonomously on verified pass (`gh pr merge --squash`) and releases task as `done`. | `wf-finish.md`, `wf-code-task-base.md`, `wf-qa.md`, `reify/SKILL.md` |
+| **Tier 2** | Operational & Behavioral Gate | Code, workflows, tools, skills, rules, agent definitions, or tests. | Reviewer sign-off required; QA worker verifies, posts structured receipts to the PR, leaves PR open for sign-off, and releases task as `done`. | `wf-finish.md`, `wf-code-task-base.md`, `wf-qa.md`, `reify/SKILL.md` |
+| **Tier 3** | Critical Hazard & Public Gate | Host infrastructure, credentials, manuscripts, public releases, or high external blast radius. | Exclusive principal review and merge; agents strictly forbidden from merging. QA worker verifies, posts receipts, leaves open, and releases task as `done`. | `wf-finish.md`, `wf-code-task-base.md`, `wf-qa.md`, `reify/SKILL.md` |
+
+Enforcement operates through workflow merge gates (`instructions` → `imperative`):
+Finish and QA templates direct QA workers to semantically evaluate PR risk against the taxonomy in a clean context. For verified Tier 1 PRs, QA workers merge autonomously via `gh pr merge --squash` and release the QA task as `done`. For Tier 2 and Tier 3 PRs, QA workers verify claims, post structured receipts to the PR, and leave the PR open for reviewer or principal sign-off. In accordance with headless worker and review lifecycle rules (`.agents/rules/headless-workers.md`, [[aops_204898b2]]), QA tasks complete as `done` with the PR URL recorded on the task record so that `/reconcile` tracks merge without human wait states; no task rests or releases into `review` for human merge gates.

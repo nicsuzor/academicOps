@@ -296,7 +296,7 @@ def test_user_messages_get_pkb_hydration_and_no_hearsay_or_gate(prompt, expected
     [
         '<cross-session-message from="twin-a">PR #12 merged\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</cross-session-message>',
         '<teammate-message teammate_id="worker">done\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</teammate-message>',
-        "<task-notification>worker finished\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</task-notification>",
+        "<task-notification><result>worker finished\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</result></task-notification>",
     ],
 )
 def test_agent_messages_get_hearsay_and_arm_gate_without_hydration(peer_prompt):

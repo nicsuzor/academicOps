@@ -16,7 +16,7 @@ Coordinate multi-agent review across expert lenses and synthesize findings into 
 
 ### 1. Gather Context
 
-Load the artifact, its diff (for PRs), and relevant quality standards. If originating from a brief, verify against its acceptance criteria and evidence requirements.
+Load the artifact, its diff (for PRs), full file contents, metadata, commit messages and trailers, PR title and body, and review replies. Determine destination repository visibility (public or private) and relevant quality standards. If originating from a brief, verify against its acceptance criteria and evidence requirements.
 
 ### 2. Strategic Fit Check
 
@@ -24,11 +24,11 @@ Before implementation detail is reviewed, the strategic-fit reviewer (TypeName `
 
 ### 3. Deploy Parallel Reviewers
 
-Dispatch all three reviewers concurrently via `invoke_subagent` in a single message with neutral prompts: the artifact and its acceptance criteria, with no lenses or verdict scale of your own. Each reviewer returns its verdict on its own definition's scale.
+Dispatch all three reviewers concurrently via `invoke_subagent` in a single message. Every reviewer's brief is drawn from the shared review briefing defined in `wf-review`:
 
-- **Rule compliance** (TypeName `rbg`): Axiom and rule compliance.
-- **Strategic fit** (TypeName `pauli`): Strategic Fit Check (step 2).
-- **Quality** (TypeName `marsha`): Runtime quality, user ask satisfaction, and excellence.
+- **Rule compliance** (TypeName `rbg`): Axiom and rule compliance per `wf-rbg`.
+- **Strategic fit** (TypeName `pauli`): Strategic Fit Check per `wf-strategic-fit`.
+- **Quality** (TypeName `marsha`): Runtime quality, user ask satisfaction, and excellence per `wf-qa`.
 
 Reviewers select 3-4 relevant lenses (e.g. Scope discipline, Self-consistency, Assumption hygiene, Attribution, Feasibility). Every reviewer also judges proportion: whether the artifact is larger than the request needs, and whether each fix it asks for is worth its cost given the failure's likelihood and consequence.
 
@@ -47,6 +47,6 @@ Synthesize reviewer outputs into a unified findings table:
 ### 5. Action and Reporting
 
 - **Default**: Return the synthesis table and overall verdict to the caller.
-- **`comment`**: Post the reconciled feedback to the PR review or task note.
-- **`fix`**: Apply `FIX` and `TRIVIAL` remedies immediately.
+- **`comment`**: Run the `data-boundaries` check against destination visibility before posting; then post reconciled feedback to the PR review or task note.
+- **`fix`**: Run the `data-boundaries` check against destination visibility before pushing; apply `FIX` and `TRIVIAL` remedies immediately.
 - Write the final verdict and evidence to the artifact's task record.

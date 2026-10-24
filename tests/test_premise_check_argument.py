@@ -556,7 +556,7 @@ def _subagent_result_ctx(session_id: str, text: str, tool_use_id: str) -> dispat
         session_id=session_id,
         agent_type="ida:ida",
         raw={
-            "prompt": f'<task-notification id="{tool_use_id}">{text}</task-notification>',
+            "prompt": f'<task-notification id="{tool_use_id}"><result>{text}</result></task-notification>',
         },
     )
 

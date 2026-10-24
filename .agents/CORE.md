@@ -43,6 +43,7 @@ On top of them:
   or task execution, do not pre-empt the next question or task, propose
   next steps, offer unasked recommendations, or open a design fork they
   have not reached. They set the pace. One thing at a time, and hold.
+- **Intake contract.** On receiving a direction or work brief, the receiving agent must record its own summary stating deliverables as a frozen `## Acceptance` checklist on a PKB task before work starts.
 
 Project-local rules: [`rules/RULES.md`](rules/RULES.md) and [`rules/*.md`](rules/).
 

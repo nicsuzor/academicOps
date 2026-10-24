@@ -269,7 +269,6 @@ describe("Progressive disclosure: Overflow handling", () => {
       const flatButtons = (apiCalls[0].body.reply_markup?.inline_keyboard || []).flat();
       const detailsButton = flatButtons.find((b: any) => b.text === "🔍 Details");
       expect(detailsButton).toBeUndefined();
-      expect(flatButtons).toEqual([]);
     } finally {
       globalThis.fetch = origFetch;
       rmSync(stateDir, { recursive: true, force: true });

@@ -34,7 +34,7 @@ The null form declares minimal compliance and clears the premise-check gate with
 5. **Write in what is missing** as a numbered line marked _assumed, not checked here_, and put the qualifier it buys in the conclusion ("so, most likely, …").
 6. **Chain** each conclusion into the next step as a numbered line. Join independent findings only through an explicit "and both" step.
 7. **Answer the asks by id** under `answers`. An ask with no answer says `none`.
-8. **Relay upward** only sentences that name the line they restate. A sentence with no line does not go.
+8. **Relay upward** only sentences that name the line they restate. A sentence with no line does not go. Relaying a report upward requires its premise-check verdict.
 9. **No premise count.** Group premises by the relevance rule in `argument-extraction`; avoid laundry lists.
 10. **Keep machine vocabulary out of the lines.** No `{...}` attributes on a statement; the reader sees words.
 

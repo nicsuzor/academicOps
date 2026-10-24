@@ -27,7 +27,7 @@ Work is NOT complete until `git push` succeeds, a PR is filed, and reflection is
 4. **Codify learnings** — file an issue or memory entry if something durable was learned (compose [[wf-memory-capture]] / remember).
 5. **Commit, push, file PR** — the mechanical crossing:
    - Stage specific files (never blanket `add -A`).
-   - Commit message states _why_, not _what_; include a `Task:` trailer (and `Epic:` if applicable) linking the commit back to the task graph.
+   - Commit message states _why_, not _what_. Commits to public repositories must never carry PKB IDs or `Task:`/`Epic:`/`Claude-Session:` trailers (`data-boundaries`). Task linkage is maintained in the private task record.
    - **Name the base explicitly — `gh pr create --base <ref> --fill`.** With no `--base`, `gh pr create` targets the repository's **default branch**, which is routinely not the line the work was cut from. Establish which branch is the active line, state it, and never let the CLI default decide for you. A wrong base is silent: the PR still reads `MERGEABLE`, the commits it lists are all genuinely on the branch, and the only symptom is an implausibly large diff — so the failure arrives disguised as a review-scope problem, and merging it drags a whole release line into the default branch.
    - **Epic names a shared branch** — a `## Shared feature branch: <name>` heading on the task's epic body: push to that branch, never a new one. The PR is the epic's — search open PRs on that branch first; reuse it if one exists, open it once if this is the first child to land.
    - **No shared branch named** (most tasks, including every task with no epic): push to a per-task branch (`task/<id>-<slug>`) and open its own PR, or reuse an existing one.

@@ -98,11 +98,14 @@ async function main() {
               const result = await broker.askUser({
                 question: q.question,
                 header: q.header,
+                context: q.context,
+                recommendation: q.recommendation,
                 options: q.options,
                 multiSelect: q.multiSelect,
                 allowOther: q.allowOther,
                 chatId: config.allowFrom[0],
-                turnId: q.turnId || req.turn_id,
+                turnId: q.turnId || q.turn_id || req.turn_id || req.turnId,
+                sessionId: q.sessionId || q.session_id || req.session_id || req.sessionId,
               });
               postedIds.push(result.questionId);
 
@@ -115,6 +118,31 @@ async function main() {
             }
 
             client.write(JSON.stringify({ status: "ok", questionId: postedIds[0], questionIds: postedIds }) + "\n");
+          } else if (req.type === "close_question") {
+            const questionId = req.question_id || req.questionId || req.id;
+            const reason = typeof req.reason === "string" ? req.reason.trim() : "";
+            if (!questionId) {
+              client.write(JSON.stringify({ status: "error", error: "Missing question_id" }) + "\n");
+              return;
+            }
+            if (!reason) {
+              client.write(JSON.stringify({ status: "error", error: "Missing reason: closing a question requires an explicit stated reason" }) + "\n");
+              return;
+            }
+            const result = await broker.closeQuestion(questionId, reason);
+            if (result && bot && result.question.chatId && result.question.messageId) {
+              await bot.editMessage(result.question.chatId, result.question.messageId, result.cardText, { inline_keyboard: [] });
+            }
+            if (result) {
+              mcpServer.emitChannelNotification(`Question closed: ${result.channelEvent.reason}`, {
+                event: result.channelEvent.event,
+                ...result.channelEvent,
+              });
+            }
+            client.write(JSON.stringify({ status: result ? "ok" : "not_found", result }) + "\n");
+          } else if (req.type === "list_questions") {
+            const pending = broker.getPendingQuestions();
+            client.write(JSON.stringify({ status: "ok", questions: pending }) + "\n");
           }
         } catch {
           client.write(JSON.stringify({ error: "malformed request" }) + "\n");

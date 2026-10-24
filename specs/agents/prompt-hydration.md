@@ -21,11 +21,11 @@ As a user, I want each prompt I type searched against my PKB, so that the agent 
 - **AC-1.6** Given an agy invocation, whose hook payload carries no prompt, when the turn's first model invocation starts (`invocationNum` 0), then the search query is the text inside `<USER_REQUEST>` of the transcript's latest `USER_INPUT` step (the whole step content when the tags are absent).
 - **AC-1.7** Given an agy turn, when a later model invocation in the same turn starts (`invocationNum` above 0), or the turn was started by a `SYSTEM_MESSAGE` step, then no search runs.
 
-### US-2 Peer reports stay unhydrated
+### US-2 Peer reports and incoming agent messages stay unhydrated
 
-As a user, I want reports from other agents left out of the search, so that a peer's claim is checked as a claim rather than dressed in PKB context.
+As a user, I want messages from other agents (peer reports, subagent handbacks, task notifications, directions) left out of the search, so that an incoming claim is checked as a claim rather than dressed in PKB context.
 
-- **AC-2.1** Given a prompt that begins with a peer-agent envelope (cross-session message, teammate message or task notification), when it is submitted, then no search runs and nothing is injected.
+- **AC-2.1** Given a prompt that begins with an agent envelope or prefix (cross-session message, teammate message, task notification, subagent handback, pauli handback, report), or an agy turn woken by a `SYSTEM_MESSAGE`, when it is submitted, then no search runs and nothing is injected.
 
 ### US-3 Authenticated search from the environment
 
@@ -45,9 +45,9 @@ As an operator, I want a failed search reported to the agent with the reason the
 
 ## Design
 
-**Trigger.** Hydration runs on every user prompt submission, before the agent's turn. On agy the trigger is `PreInvocation`, whose payload names the transcript but carries no prompt, so the hook reads the user's text from the transcript's latest `USER_INPUT` step (AC-1.6). The user prompt is the only input; peer envelopes are excluded because they carry claims awaiting verification, and grounding them would launder those claims (US-2).
+**Trigger.** Hydration runs on every user prompt submission, before the agent's turn. On agy the trigger is `PreInvocation`, whose payload names the transcript but carries no prompt, so the hook reads the user's text from the transcript's latest `USER_INPUT` step (AC-1.6). The user prompt is the only input; agent envelopes, handbacks, notifications and SYSTEM_MESSAGE wakeups are excluded because they carry claims awaiting verification, and grounding them would launder those claims (US-2).
 
-**Endpoint.** The PKB is an MCP server at `PKB_MCP_URL`, reached via a single streamable-HTTP POST to PKB_MCP_URL. The hook calls its search tool (prefixed by `PKB_MCP_TOOL_PREFIX`, default `search`) with the query. If the endpoint requires an MCP session, the hook falls back to `initialize` once and caches the session ID for 24 hours in the tracer state dir. Requests carry `x-session-id`, `traceparent` from the active turn, a non-urllib `User-Agent`, and any resolved credential headers (unauthenticated when unset so the cloud proxy injects them). That is the only transport: a search that fails reports its failure and stops (AC-4.3), because a quiet second route hides the fault that needs fixing.
+**Endpoint.** The PKB is an MCP server at `PKB_MCP_URL`, reached via a single streamable-HTTP POST to PKB_MCP_URL. The hook calls its search tool (prefixed by `PKB_MCP_TOOL_PREFIX`, default `pkb_search`) with the query. If the endpoint requires an MCP session, the hook falls back to `initialize` once and caches the session ID for 24 hours in the tracer state dir. Requests carry `x-session-id`, `traceparent` from the active turn, a non-urllib `User-Agent`, and any resolved credential headers (unauthenticated when unset so the cloud proxy injects them). That is the only transport: a search that fails reports its failure and stops (AC-4.3), because a quiet second route hides the fault that needs fixing.
 
 **Credentials.** The endpoint sits behind an access-controlled gateway, so every request carries a credential. The hook reads credentials from its own process environment only (AC-3.3), from either source:
 

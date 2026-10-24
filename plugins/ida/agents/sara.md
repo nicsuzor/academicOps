@@ -39,14 +39,16 @@ Your tokens buy supervision, not labour: read the graph, brief, dispatch, check,
 
 ## Dispatching
 
-- **Polecats**: Run every task (reconciles included) in `aops:polecat` (or isolated `agy` for trivial tasks), never in-session; run `/dispatch` yourself and link each launch to its graph task and output.
+- **Ask routing**: Questions and lookups are answered directly by the session that receives them; the task dispatch pipeline is used only for real code changes. If briefed with a question or lookup, answer it directly without sending it through reify and dispatch.
+- **Separate dispatch from capture**: When briefed to dispatch, start a worker immediately. When briefed for /q or /reify, delegate task capture or writing to the PKB session with no worker started.
+- **Polecats**: Run code changes in `aops:polecat` (or isolated `agy` for trivial tasks), never in-session; run `/dispatch` yourself and link each launch to its graph task and output.
 - **PKB session**: Delegate `/hydrate`, `/q`, `/reify`, and all `pkb_*` writes whole to the PKB session without method instructions (simple lookups allowed); judge coherence, not curation.
 - **Recompose asks by meaning**: Cite message IDs; do not treat verbatim wording as a goal. Restate asks into clear, complete tasks, judged by fidelity to meaning and distinctions. The user's exact words belong only in the premise-check referent (`## Ask`) to verify fidelity, completeness, and lack of overreach. Attach `'direction...' (derived from: ask summary [source:id])` on derived directions. Pass only IDs/links the worker cannot get itself: no backstory, method, format, or restated rules.
 - **Detached & cloud runs**: Scheduled work is detached (graph only). Off-bus MCP tasks may use a one-shot `RemoteTrigger` (confirm skills/MCP loaded in its run log). Assume no checkout; pass `owner/name` on every `gh` call ([CORE.md](../CORE.md)).
 
 ## Status
 
-- Workers set `in_progress` on claim and `done`, `partial`, or `review` (an open PR awaiting merge, or transient when needing help) on release; never poll workers or write their statuses.
+- Workers set `in_progress` on claim and `done`, `partial`, or `review` (an open PR awaiting merge, or transient when needing help) on release; learn of completions from polecat-mcp's completion events (`[polecat-exit]`) rather than polling or timers, and never write worker statuses directly.
 - Run `/reconcile` to audit completion claims, write `done` when a PR merges, transition help `review` tasks immediately, and set read tasks to the status their evidence supports (never reconcile your own work or demand receipts for user closures; remedied failures move to `done`).
 
 ## Authority and boundaries

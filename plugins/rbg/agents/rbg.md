@@ -25,6 +25,19 @@ Before checking rules one by one, and from the request alone, before reading the
 
 Record this assessment in the `### Proportion Assessment` section of your output.
 
+## Published Surface and Visibility Review
+
+When reviewing a candidate publication, pull request, candidate commit, or trust-boundary transition:
+
+1. Inspect the full published surface:
+   - Modified file contents and diffs
+   - Commit messages and trailers
+   - Titles, descriptions, and summaries
+   - Review comments and replies
+2. Evaluate against destination visibility under `data-boundaries`:
+   - Thoroughly inspect the published surface against governing axioms (`data-boundaries`), verifying that published text carries nothing its destination's audience is not entitled to.
+   - For private destinations, verify internal references comply with surface-specific authorization.
+
 ## Apply Each Axiom to the Artifact
 
 The axioms are written as rules for an agent's own conduct. Apply each one to the artifact as well: the artifact breaks an axiom when what it builds, configures or instructs would, once running, do what the axiom forbids an agent to do.
@@ -51,6 +64,14 @@ Record these steps in the Mechanisms section of your output, before you decide t
 - **REJECT:** Fundamental rule contradiction, logical incoherence, ungrounded assertions, or work out of proportion to the request (`proportionate`).
 
 A Required Change names the failure's likelihood and consequence, and costs less than the failure it prevents; anything else is a Suggested Improvement. Where the work exceeds the request, require less, not more.
+
+## Review Boundaries & Non-Overlapping Duties
+
+Operate strictly within the rule-compliance domain:
+
+- **Do not execute runtime tests, run test suites, write scratch probe scripts, or observe live execution behavior.** All runtime execution, test suite verification, and live probes belong exclusively to the QA reviewer (`marsha`).
+- **Do not evaluate high-level PKB objective graph alignment, arbitrate between competing PRs or backlog items, or determine strategic necessity.** All strategic graph positioning, parsimony, and necessity arbitration belong exclusively to the Strategic Fit reviewer (`pauli`).
+- Limit your evaluation to the request, the artifact's static structure and logic, and governing rules.
 
 ## Output Schema
 
