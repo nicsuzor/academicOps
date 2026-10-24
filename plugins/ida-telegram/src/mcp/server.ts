@@ -8,6 +8,7 @@ import { TelegramBotClient } from "../telegram/bot.js";
 import { sanitizeChannelMeta } from "../telegram/inbound.js";
 import { splitVoiceTier2Quotes } from "../telegram/voice.js";
 import { PermissionRelay } from "./permissions.js";
+import { broadcastSseEvent } from "../web/routes.js";
 
 export class StdioMcpServer {
   private config: PluginConfig;
@@ -293,6 +294,10 @@ export class StdioMcpServer {
         (args.session_id as string | undefined) ||
         (args.sessionId as string | undefined) ||
         ((args._session as any)?.session_id as string | undefined);
+      const topMiniAppOnly = Boolean(
+        args.mini_app_only || args.miniapp_only || args.miniAppOnly || args.chat === false
+      );
+      const topDetail = (args.detail as string | undefined) || (args.details as string | undefined);
       const questions = (args.questions as Array<{
         question: string;
         header?: string;
@@ -305,6 +310,14 @@ export class StdioMcpServer {
         turnId?: string;
         session_id?: string;
         sessionId?: string;
+        detail?: string;
+        details?: string;
+        detailsId?: string;
+        details_id?: string;
+        mini_app_only?: boolean;
+        miniapp_only?: boolean;
+        miniAppOnly?: boolean;
+        chat?: boolean;
       }>) || [];
 
       if (questions.length === 0) {
@@ -313,6 +326,20 @@ export class StdioMcpServer {
 
       const postedIds: string[] = [];
       for (const q of questions) {
+        const isMiniAppOnly = Boolean(
+          topMiniAppOnly ||
+          q.mini_app_only === true ||
+          q.miniapp_only === true ||
+          q.miniAppOnly === true ||
+          q.chat === false
+        );
+        const detailText = q.detail || q.details || topDetail;
+
+        let detailsId = q.detailsId || q.details_id;
+        if (!detailsId && detailText) {
+          detailsId = this.store.storeDetails(detailText);
+        }
+
         const result = await this.broker.askUser({
           question: q.question,
           header: q.header,
@@ -324,12 +351,16 @@ export class StdioMcpServer {
           turnId: q.turn_id || q.turnId || topTurnId,
           sessionId: q.session_id || q.sessionId || topSessionId,
           chatId: defaultChatId,
+          detail: detailText,
+          detailsId,
+          mini_app_only: isMiniAppOnly,
+          chat: !isMiniAppOnly,
         });
         postedIds.push(result.questionId);
         this.store.recordTurn("out", q.header ? `${q.header}: ${q.question}` : q.question);
 
-        if (this.bot) {
-          const card = this.broker.renderQuestionCard(result.questionId);
+        if (!isMiniAppOnly && this.bot) {
+          const card = this.broker.renderQuestionCard(result.questionId, this.config.miniAppUrl);
           if (card) {
             await this.bot.sendQuestionCard(defaultChatId, result.questionId, card);
           }
@@ -340,6 +371,42 @@ export class StdioMcpServer {
         return `Question ${postedIds[0]} posted to the user. Do not assume an answer; continue other work or end your turn.`;
       }
       return `Questions ${postedIds.join(", ")} posted to the user. Do not assume an answer; continue other work or end your turn.`;
+    }
+
+    if (name === "answer_question") {
+      const questionId = (args.question_id as string) || (args.questionId as string) || (args.id as string);
+      const choice = typeof args.choice === "string" ? args.choice.trim() : undefined;
+      const optionIndex = typeof args.option_index === "number" ? args.option_index : undefined;
+      if (!questionId) {
+        return { success: false, error: "Missing question_id" };
+      }
+      if (!choice && optionIndex === undefined) {
+        return { success: false, error: "Missing answer: provide choice or option_index" };
+      }
+      const result = await this.broker.resolveAnswer(questionId, optionIndex !== undefined ? optionIndex : "other", choice);
+      if (!result) {
+        return { success: false, error: "Question not found or not pending" };
+      }
+      if (this.bot && result.question.chatId && result.question.messageId) {
+        await this.bot.editMessage(result.question.chatId, result.question.messageId, result.cardText, { inline_keyboard: [] });
+      }
+      this.emitChannelNotification(`Question answered: ${result.channelEvent.choice}`, {
+        event: result.channelEvent.event,
+        ...result.channelEvent,
+      });
+      if (this.store) {
+        const seq = this.store.nextSeq("question_resolved", {
+          question_id: questionId,
+          choice: result.channelEvent.choice,
+          turn_id: result.channelEvent.turn_id,
+        });
+        broadcastSseEvent("question_resolved", {
+          question_id: questionId,
+          choice: result.channelEvent.choice,
+          turn_id: result.channelEvent.turn_id,
+        }, seq);
+      }
+      return { success: true, question_id: questionId, choice: result.channelEvent.choice };
     }
 
     if (name === "close_question") {
@@ -362,6 +429,20 @@ export class StdioMcpServer {
         event: result.channelEvent.event,
         ...result.channelEvent,
       });
+      if (this.store) {
+        const seq = this.store.nextSeq("question_closed", {
+          question_id: questionId,
+          reason: result.channelEvent.reason,
+          turn_id: result.channelEvent.turn_id,
+          session_id: result.channelEvent.session_id,
+        });
+        broadcastSseEvent("question_closed", {
+          question_id: questionId,
+          reason: result.channelEvent.reason,
+          turn_id: result.channelEvent.turn_id,
+          session_id: result.channelEvent.session_id,
+        }, seq);
+      }
       return { success: true, question_id: questionId, reason: result.channelEvent.reason };
     }
 

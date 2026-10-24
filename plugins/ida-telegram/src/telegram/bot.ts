@@ -2,11 +2,12 @@ import { DEFAULT_MINI_APP_URL, PluginConfig } from "../config.js";
 import { FormattedMessage, formatMarkdownToEntities } from "./format.js";
 import { parseInboundUpdate, TelegramUpdate } from "./inbound.js";
 import { resolveBotCommands } from "./commands.js";
-import { QuestionBroker } from "./questions.js";
+import { QuestionBroker, matchOptionIndex } from "./questions.js";
 import { FeedbackManager } from "./feedback.js";
 import { prepareVoiceText, buildVoiceInEvent } from "./voice.js";
 import { PermissionRelay } from "../mcp/permissions.js";
 import { PluginStore } from "../store.js";
+import { broadcastSseEvent } from "../web/routes.js";
 import { acquireHostLock, releaseHostLock, calculate409Backoff } from "../role.js";
 import { hostname } from "node:os";
 import { execFile } from "node:child_process";
@@ -360,9 +361,17 @@ export class TelegramBotClient {
     return null;
   }
 
-  public async sendQuestionCard(chatId: number, qid: string, card: { text: string; buttons: Array<{ text: string; callbackData: string }> }) {
+  public async sendQuestionCard(chatId: number, qid: string, card: { text: string; buttons: Array<{ text: string; callbackData?: string; web_app?: { url: string } }> }) {
     const formatted = formatMarkdownToEntities(card.text);
-    const inline_keyboard = card.buttons.map((b) => [{ text: b.text, callback_data: b.callbackData }]);
+    const inline_keyboard = card.buttons.map((b) => {
+      if (b.web_app) {
+        return [{ text: b.text, web_app: b.web_app }];
+      }
+      if (!b.callbackData) {
+        throw new Error(`Question button "${b.text}" missing callbackData`);
+      }
+      return [{ text: b.text, callback_data: b.callbackData }];
+    });
     const res = await this.callApi("sendMessage", {
       chat_id: chatId,
       text: formatted.plainText,
@@ -556,23 +565,51 @@ export class TelegramBotClient {
       await this.setReaction(update.message.chat.id, update.message.message_id, "👀");
     }
 
-    // 2. Check if message is a reply to a force_reply "✏️ Other" question prompt
+    // 2. Check if message is a reply to a force_reply "✏️ Other" prompt OR directly to the question card
     if (
       update.message?.from?.id &&
       this.config.allowFrom.includes(update.message.from.id) &&
       update.message.reply_to_message &&
       update.message.text
     ) {
-      const pendingQ = this.broker.findQuestionByPromptMessageId(update.message.reply_to_message.message_id);
+      const replyToMsgId = update.message.reply_to_message.message_id;
+      const isPromptReply = this.broker.findQuestionByPromptMessageId(replyToMsgId);
+      const isCardReply = this.broker.findQuestionByMessageId(replyToMsgId);
+      const pendingQ = isPromptReply || isCardReply;
+
       if (pendingQ) {
-        const res = await this.broker.resolveAnswer(pendingQ.id, "other", update.message.text);
+        let optIdxOrOther: number | "other" = "other";
+        let customText: string | undefined = update.message.text;
+
+        if (isCardReply && !isPromptReply) {
+          const match = matchOptionIndex(pendingQ, update.message.text);
+          if (!match) {
+            return;
+          }
+          optIdxOrOther = match.optionIndex;
+          customText = undefined;
+        }
+
+        const res = await this.broker.resolveAnswer(pendingQ.id, optIdxOrOther, customText);
         if (res) {
-          const targetMsgId = pendingQ.messageId || update.message.reply_to_message.message_id;
+          const targetMsgId = pendingQ.messageId || replyToMsgId;
           await this.editMessage(update.message.chat.id, targetMsgId, res.cardText, { inline_keyboard: [] });
           this.emitChannelEvent(
             `Question answered: ${res.channelEvent.choice}`,
             res.channelEvent as unknown as Record<string, unknown>
           );
+          if (this.store) {
+            const seq = this.store.nextSeq("question_resolved", {
+              question_id: pendingQ.id,
+              choice: res.channelEvent.choice,
+              turn_id: res.channelEvent.turn_id,
+            });
+            broadcastSseEvent("question_resolved", {
+              question_id: pendingQ.id,
+              choice: res.channelEvent.choice,
+              turn_id: res.channelEvent.turn_id,
+            }, seq);
+          }
         }
         return;
       }
@@ -653,6 +690,18 @@ export class TelegramBotClient {
             `Question answered: ${res.channelEvent.choice}`,
             res.channelEvent as unknown as Record<string, unknown>
           );
+          if (this.store) {
+            const seq = this.store.nextSeq("question_resolved", {
+              question_id: qid,
+              choice: res.channelEvent.choice,
+              turn_id: res.channelEvent.turn_id,
+            });
+            broadcastSseEvent("question_resolved", {
+              question_id: qid,
+              choice: res.channelEvent.choice,
+              turn_id: res.channelEvent.turn_id,
+            }, seq);
+          }
         }
         return;
       }
