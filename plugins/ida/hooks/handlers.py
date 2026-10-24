@@ -772,16 +772,11 @@ def honesty_on_peer_message(ctx: HookContext) -> Result | None:
 
 
 def rule_against_hearsay(ctx: HookContext) -> Result | None:
-    """Remind Ida and Sara that an incoming peer report or foreground subagent return is hearsay."""
+    """Remind agents that an incoming peer report or foreground subagent return is hearsay."""
     if ctx.event == "PostToolUse":
-        if not is_agent(ctx, "ida", "sara"):
-            return None
         if not is_foreground_dispatch(ctx):
             return None
         return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
-
-    if not is_agent(ctx, "ida", "sara"):
-        return None
     if not is_peer_report(ctx):
         return None
     return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
