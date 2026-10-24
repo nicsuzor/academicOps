@@ -27,6 +27,7 @@ As the user, I want every session across every execution surface to export compl
 - **AC-2.2** Given a completed turn triggered by direct user input, a channel message, a cross-session peer message, or a background notification, when the user opens the turn trace in `academicOps`, then the turn root span (`CHAIN`) carries non-empty `input.value` and `output.value` with the final assistant reply, and child `LLM` spans carry `openinference.span.kind = "LLM"`, model name, prompt/completion/total token counts, and secret-scrubbed prompt and completion message arrays (including any expanded skill instructions loaded during the turn).
 - **AC-2.3** Given a turn in which tools execute, runtime hooks evaluate gates or inject context, or rule/verdict evaluations run, when the user inspects the turn trace, then every tool span (`TOOL`) carries secret-scrubbed input, output, tool name, and call ID, every hook action emits a child span recording the hook event, gate, decision, and injected or refusal text, and every evaluation span parents under the active turn root span in the same `trace_id`.
 - **AC-2.4** Given a session on any surface, when spans or resources are exported to the trace store, then `agent.name` is attached only when explicitly reported by the client hook payload or set via the `AOPS_AGENT_NAME` environment variable; with no reported name or environment variable, `agent.name` is omitted across all spans and resources with no directory heuristics, settings-file scans, or fallback defaults (subagent spans retain their explicit subagent type).
+- **AC-2.5** Given a model call executed during a turn on a client-hook surface, when its `LLM` span reaches the trace store, then the span carries complete input and output message payloads from the client invocation, with model name and token counts (`prompt`, `completion`, `total`, `cache_read`, `cache_write`) resolved and attached prior to turn-root span completion, and calls whose counts are delayed in the session transcript resolved on subsequent emissions or final flush.
 
 ### US-3 Correlate upstream MCP service spans with the calling session
 
@@ -94,16 +95,16 @@ In addition to the hop correlation keys above, spans in `academicOps` satisfy th
 | **Worker container streaming and log archive (`polecat.*`, `<sessions_root>/logs/<date>/<task.id>/`)** | Worker containers stream unbuffered output events during execution for live inspection alongside live trace spans, and persist their internal CLI logs and session transcripts to `<sessions_root>/logs/<date>/<task.id>/` before container removal so diagnostic records survive container cleanup (US-4). |
 | **Single canonical emitter and test isolation** | Each surface is instrumented by one canonical emitter exporting complete, secret-scrubbed spans, with duplicate or redacted secondary exporters disabled once turn, `LLM`, subagent, and hook-parenting completeness hold (US-5). Automated test runs emit zero spans to the production trace store. |
 
-### Hook Tracer Atomic Emission Contract
+### Client Hook Emission Contract
 
-To eliminate telemetry loss and transcript parsing races, the hook tracer (`plugins/ida/hooks/claude_code_tracer.py`) adheres to an atomic emission contract:
+Client hook emitters preserve trace integrity and turn boundaries across the session lifecycle:
 
-1. **Atomic Emit Rule**: Every hook emits telemetry synchronously and atomically directly from its hook invocation payload. Hooks do not read transcripts to reconstruct turns or extract spans, nor do they carry turn state across completed turns.
-2. **Turn State Boundaries**: Turn state (`state["current_trace"]` and `state["pending_tools"]`) is maintained only during the active open turn from `UserPromptSubmit` (or fallback at `PreToolUse`) until `Stop` or `StopFailure`.
-3. **Payload-Driven Output**:
-   - `UserPromptSubmit`: Seeds `turn_number`, captures the prompt text from payload for `input.value` (`prompt_preview`), and opens `state["current_trace"]`.
-   - `PreToolUse`: Records pending tool call (`tool_name`, `tool_input`, `start_ns`) in `state["pending_tools"]`, pre-allocating span IDs for Agent/Task tools. If no trace is currently active, opens a fallback trace.
-   - `PostToolUse` / `PostToolUseFailure`: Emits a `TOOL` span populated from payload `tool_input` and `tool_response` (with secrets redacted) under the active turn root or parent Agent span.
-   - `Stop` / `StopFailure`: Captures `last_assistant_message` directly from the hook payload (supporting string, content block list, or dictionary formats), stores it in `last_llm_output`, emits the completed `CHAIN` turn root span with non-empty `output.value`, and clears turn state via `_end_turn`.
-   - `PermissionRequest` / `PermissionDenied` / `Notification` / `PostCompact`: Emit child `CHAIN` spans under the active turn root directly from event payload attributes.
-   - `SessionEnd`: Closes any remaining unclosed turn root span and deletes session state.
+1. **Direct Payload Emission**: Hook emitters populate span attributes directly from their event payloads. Prompts, tool inputs and responses, assistant messages, and execution lifecycle timestamps originate from hook invocations. Emitters do not parse transcripts to reconstruct turns or message content, with one narrow exception: each model call's token counts (`prompt`, `completion`, and cache counts) and model name are resolved from the session transcript and attached to the hook-derived `LLM` span prior to turn completion.
+2. **Turn State Lifecycle**: Turn state spans the active turn from prompt submission until turn completion. Each completed turn closes all open tool and model spans, emits the turn root span, and resets active turn state.
+3. **Lifecycle Phase Emission**:
+   - **Prompt Submission**: Opens the turn trace, records the prompt in the turn root span's input, and opens the initial model call.
+   - **Tool Invocation**: Records the model call that issued the tool, joins token counts and model name from the session transcript, emits the `LLM` span, and stages the tool call.
+   - **Tool Completion**: Emits the `TOOL` span under the active turn root or parent subagent span, and stages the subsequent model call receiving the tool result.
+   - **Turn Completion**: Records the final model output from the completion event payload, joins token counts and model name from the transcript, emits the final `LLM` span, emits the completed `CHAIN` turn root span with non-empty output, and cleans up active turn state.
+   - **Mid-Turn Events**: Permissions, notifications, and context events emit child spans under the active turn root directly from event attributes.
+   - **Session Teardown**: Emits any remaining unclosed turn or model spans and terminates session state.

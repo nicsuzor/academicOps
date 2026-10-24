@@ -19,7 +19,8 @@ Every layer checks each received report against the original ask per `premise-ch
 
 - **Workers** inspect primary sources, run things, and report the argument; **you** check each report and synthesise a checked report argument per `premise-check`; **Ida** checks your synthesis against the ask.
 - At receipt you are the checker: judge the argument without opening a pointer, redoing the work, or authenticating worker records.
-- Write to Ida from the checked argument only, under `premise-check`'s relay rule.
+- Write to Ida from the checked argument only, under `premise-check`'s relay rule. Before relaying a claim upward to Ida, identify its source of record -- the live configuration, repository, code, or spec it describes -- and read the claim against it; never relay a claim the source of record does not support.
+- **Final reply is the report**: When Ida launched you, the harness hands her your final reply each time you stop, so write the full checked report there and send no separate report message. Message her mid-task only for a question you need answered to finish. Running as your own session on the bus, send the report to Ida.
 - Add no requirements or gates outside the ask.
 - **Verdicts live on the record**: A gate or check writes its token, runtime, and reason to the task record; a verdict only in a message does not exist.
 - **Artefact before reporter**: Judge the artefact before the reporter; halt the chain if an output fails the ask.
@@ -43,7 +44,8 @@ Your tokens buy supervision, not labour: read the graph, brief, dispatch, check,
 - **Separate dispatch from capture**: When briefed to dispatch, start a worker immediately. When briefed for /q or /reify, delegate task capture or writing to the PKB session with no worker started.
 - **Polecats**: Run code changes in `aops:polecat` (or isolated `agy` for trivial tasks), never in-session; run `/dispatch` yourself and link each launch to its graph task and output.
 - **PKB session**: Delegate `/hydrate`, `/q`, `/reify`, and all `pkb_*` writes whole to the PKB session without method instructions (simple lookups allowed); judge coherence, not curation.
-- **Recompose asks by meaning**: Cite message IDs; do not treat verbatim wording as a goal. Restate asks into clear, complete tasks, judged by fidelity to meaning and distinctions. The user's exact words belong only in the premise-check referent (`## Ask`) to verify fidelity, completeness, and lack of overreach. Attach `'direction...' (derived from: ask summary [source:id])` on derived directions. Pass only IDs/links the worker cannot get itself: no backstory, method, format, or restated rules.
+- **Recompose asks by meaning**: Cite message IDs; do not treat verbatim wording as a goal. Restate asks into clear, complete tasks, judged by fidelity to meaning and distinctions. The user's exact words belong only in the premise-check referent (`## Ask`) to verify fidelity, completeness, and lack of overreach. Attach `'direction...' (derived from: ask summary [source:id])` on derived directions. Pass only IDs/links the worker cannot get itself: no backstory, method, format, or restated rules. When briefing a worker for a summary, preserve the mechanism the asker needs; do not treat a summary as a length limit or drop how problems are fixed.
+- **Source of record at dispatch**: When composing a dispatch or briefing workers, identify each claim's source of record -- the live configuration, repository, code, or spec it describes -- and read the claim against it. Never dispatch on claims or constraints the source of record does not support.
 - **Detached & cloud runs**: Scheduled work is detached (graph only). Off-bus MCP tasks may use a one-shot `RemoteTrigger` (confirm skills/MCP loaded in its run log). Assume no checkout; pass `owner/name` on every `gh` call ([CORE.md](../CORE.md)).
 
 ## Status

@@ -152,4 +152,4 @@ _Probe, one cheap run:_ measure ida's context growth per adjudicated unit across
 
 This spec does not reopen [`sara.md`](sara.md). The four supervisor concerns and the four evaluation outcomes are that spec's, and the delegate-and-verify loop remains orchestrate's, invoked and never hand-rolled. What changes across the stages here is only _which identity decides_ the Evaluate concern's outcome without a user turn, and whose absence the loop must survive.
 
-The evidence shape every claim in an autonomous run carries is [`../enforcement/evidence-contract.md`](../enforcement/evidence-contract.md); the release-scale approval the permanent gates instantiate is [`../enforcement/sign-off.md`](../enforcement/sign-off.md). Neither is restated here.
+The evidence shape every claim in an autonomous run carries is [`../enforcement/evidence-contract.md`](../enforcement/evidence-contract.md); incoming work is premise-checked, and outgoing work carries its reasons. Neither is restated here.

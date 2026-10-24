@@ -22,6 +22,7 @@ import hashlib
 import json
 import sys
 import tomllib
+import unittest.mock
 from pathlib import Path
 from typing import Any
 
@@ -808,3 +809,128 @@ def test_override_on_a_disarmed_gate_is_not_counted(monkeypatch):
     assert pcg.premise_check_handler(_dispatch_ctx("s-ovr-idle")) is None
     assert tracer.exported == []
     assert "override_count" not in pcg.get_state("s-ovr-idle")
+
+
+# ---------------------------------------------------------------------------
+# Machine checks on Argdown block (Acceptance Criterion 2)
+# ---------------------------------------------------------------------------
+
+
+def test_machine_checks_valid_argument_passes():
+    session_id = "s-mach-pass"
+    _arm_with_report(session_id, "CID")
+    tracer = _configured()
+    result = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="CID",
+        verdict="PASS",
+        reason=_reason("CID"),
+        tracer_mod=tracer,
+    )
+    assert result["verdict"] == "PASS"
+    assert result["disarmed"] is True
+    assert pcg.is_armed(session_id) is False
+
+
+def test_machine_checks_orphan_statement_records_revise_and_clears_gate():
+    session_id = "s-mach-orphan"
+    # Append an orphan statement to a valid report
+    text = _report().replace(
+        "```\n",
+        "\n[orphan]: An orphan statement not used as premise or conclusion.\n```\n",
+    )
+    _arm_with_report(session_id, "CID", text=text)
+    tracer = _configured()
+    result = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="CID",
+        verdict="PASS",
+        reason=_reason("CID"),
+        tracer_mod=tracer,
+    )
+    assert result["verdict"] == "REVISE"
+    assert "orphan statement 'orphan'" in result["reason"]
+    assert result["disarmed"] is True
+    assert pcg.is_armed(session_id) is False
+
+
+def test_machine_checks_misaimed_undercut_records_revise_and_clears_gate():
+    session_id = "s-mach-undercut"
+    # Append an undercut aimed at a statement (1) instead of an inference
+    text = _report().replace(
+        "```\n",
+        "\n[undercut]: Undercutting statement.\n  _> (1)\n```\n",
+    )
+    _arm_with_report(session_id, "CID", text=text)
+    tracer = _configured()
+    result = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="CID",
+        verdict="PASS",
+        reason=_reason("CID"),
+        tracer_mod=tracer,
+    )
+    assert result["verdict"] == "REVISE"
+    assert "undercut from 'undercut' targets" in result["reason"]
+    assert "instead of an inference" in result["reason"]
+    assert result["disarmed"] is True
+    assert pcg.is_armed(session_id) is False
+
+
+def test_machine_checks_parse_error_records_revise_and_clears_gate():
+    session_id = "s-mach-parse-err"
+    # Append a syntax error to the report's argdown block
+    text = _report().replace(
+        "```\n",
+        "\n\n<+ unclosed relation\n```\n",
+    )
+    _arm_with_report(session_id, "CID", text=text)
+    tracer = _configured()
+    result = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="CID",
+        verdict="PASS",
+        reason=_reason("CID"),
+        tracer_mod=tracer,
+    )
+    assert result["verdict"] == "REVISE"
+    assert "Argdown syntax error" in result["reason"]
+    assert result["disarmed"] is True
+    assert result["machine"] is True
+    assert pcg.is_armed(session_id) is False
+
+
+def test_machine_checks_valid_relation_is_not_orphan():
+    session_id = "s-mach-rel"
+    text = _report().replace(
+        "```\n",
+        "\n[Objection]: An objection.\n  -> [Reply]: A reply.\n```\n",
+    )
+    _arm_with_report(session_id, "CID", text=text)
+    tracer = _configured()
+    result = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="CID",
+        verdict="PASS",
+        reason=_reason("CID"),
+        tracer_mod=tracer,
+    )
+    assert result["verdict"] == "PASS"
+    assert result["disarmed"] is True
+    assert pcg.is_armed(session_id) is False
+
+
+def test_machine_checks_parser_failure_raises_and_leaves_gate_armed():
+    session_id = "s-mach-parser-fail"
+    _arm_with_report(session_id, "CID")
+    tracer = _configured()
+    with unittest.mock.patch("report_argument.shutil.which", return_value=None):
+        with pytest.raises(RuntimeError, match="argdown parser binary not found"):
+            pcv.record_verdict(
+                session_id=session_id,
+                claim_id="CID",
+                verdict="PASS",
+                reason=_reason("CID"),
+                tracer_mod=tracer,
+            )
+    assert pcg.is_armed(session_id) is True

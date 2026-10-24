@@ -13,6 +13,14 @@ The framework defines six specialized agent types, five in the `ida` plugin and 
 - **`rbg`**: The Judge: rule-compliance reviewer. Evaluates target artifacts against governing axioms and project rules with rigorous logical judgment and returns a verdict (`APPROVE`, `SUGGEST`, `REVISE`, `REJECT`).
 - **`sara`**: Ida's headless dispatcher. Takes Ida's briefs, runs code changes through isolated workers/polecats, checks worker reports (`/premise-check`), and synthesises checked answers back up to Ida; answers questions and lookups directly; never speaks to the user.
 
+## Git Branches
+
+How you were launched decides which branch you work on; you do not.
+
+- **Elevated privileges on the user's own machine** (an interactive session in the user's own checkout, permissions bypassed): work on the repository's default branch (`gh repo view --json defaultBranchRef`: `main`, or `dev` in academicOps) and commit and push to it directly. Never create a branch, switch to one, or leave the checkout on one: the user must find every repository on its default branch whenever they open it.
+- **An isolated context without elevated privileges** (a polecat worktree, a container, a sandbox): the launcher has already put you on a fresh branch. Commit and push there and open a PR.
+- Change branch yourself only in exceptional circumstances, and put the checkout back on the branch you found before you finish.
+
 ## Project Repository Registry
 
 The canonical mapping of project slugs to their GitHub repositories (`owner/repo`). Every git clone, `gh` CLI invocation, and project lookup resolves from this registry:
