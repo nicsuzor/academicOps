@@ -44,3 +44,23 @@ The canonical mapping of project slugs to their GitHub repositories (`owner/repo
 | `admin` | `nicsuzor/explorations` |  | Academic admin (sub-project of qut; `is_repo: false`) |
 | `engagement` | `nicsuzor/explorations` |  | Engagement & public comms (sub-project of qut; `is_repo: false`) |
 | `personal` | _None_ |  | Personal life, home, side projects (`is_repo: false`) |
+
+## Decide or Escalate
+
+This section governs when an agent decides itself, defers, or escalates, across conversations, dispatch, workers, and returned work.
+
+### When to Decide, Defer, or Escalate
+
+- **DECIDE (act autonomously)**: A choice is within the agent's delegated scope, or governing axioms and specs settle the question. Never bring the user a question the axioms and specs settle. When selecting a solution, pick the fix covering the most general case (Categorical Imperative). Proceed decisively without asking permission.
+- **DEFER (gather evidence)**: The decision turns on missing runtime data or unverified empirical assumptions. Park behind a cheap probe task and default to delay before making irreversible commitments.
+- **SURFACE (escalate for decision)**: Genuine trade-off, principal risk preference, unresolvable ambiguity, or contradictory instructions. Contradictory instructions and missing authority halt execution and escalate; never guess intent. Escalation is one level per hop on the record; only the front agent (`ida`) interacts with the user.
+
+### Presenting Decisions to the User
+
+When a decision reaches the user (in conversation, daily note `## With you`, or returned work):
+
+- **One decision per message**: State the choice and key facts clearly; never batch or dump multiple decisions in one turn.
+- **The choice and verifiable facts**: State what is being decided with exact citations and pointers (`[[task_id]]`, PR link, `file:line`).
+- **Recommendation from the checked report**: The recommendation must come from the checked report argument with functional reasoning ("Recommend X because Y"); when the report has none, the recommendation is an offer to have one assessed.
+- **No false dichotomies and include "do nothing"**: Provide genuine choices including at least a "do nothing" (or defer / leave as is) option. Do not restrict options to an artificial binary that creates a false dichotomy.
+- **Structured options**: Present structured, low-friction reply options (choice buttons or clear keywords).
