@@ -66,8 +66,8 @@ def staged_hooks(tmp_path: Path) -> Path:
     return hooks
 
 
-def test_user_prompt_submit_truncates_prompt_to_200():
-    """Prompt query is truncated to 200 characters when passed to pkb search."""
+def test_user_prompt_submit_sends_whole_prompt_up_to_8kb():
+    """Prompt query is sent whole up to 8 KB without 200-character truncation."""
     long_prompt = "a" * 350
     with (
         patch.object(handlers, "_post_mcp_search", return_value="result line") as mock_client,
@@ -75,7 +75,7 @@ def test_user_prompt_submit_truncates_prompt_to_200():
     ):
         out = handlers._run_pkb_search(long_prompt)
         assert out == "result line"
-        mock_client.assert_called_once_with("http://test", "a" * 200, {})
+        mock_client.assert_called_once_with("http://test", "a" * 350, {})
 
 
 def test_user_prompt_submit_strips_ansi_from_prompt():
@@ -656,9 +656,13 @@ def test_search_the_pkb_sends_one_post_with_headers(http_mcp_server, monkeypatch
     assert "academicOps" in req["headers"]["user-agent"]
     assert req["headers"]["content-type"] == "application/json"
     assert "text/event-stream" in req["headers"]["accept"]
-    assert req["json"]["method"] == "tools/call"
     assert req["json"]["params"]["name"] == "pkb_search"
-    assert req["json"]["params"]["arguments"] == {"query": "what are the axioms?"}
+    args = req["json"]["params"]["arguments"]
+    assert args["query"] == "what are the axioms?"
+    assert "_session" in args
+    assert args["_session"]["session_id"] == "s123"
+    assert args["_session"]["caller"] == "hook"
+    assert args["_session"]["surface"] == "claude-code"
 
 
 def test_search_the_pkb_tool_prefix_env_override(http_mcp_server, monkeypatch, tmp_path):
@@ -930,3 +934,301 @@ def test_post_mcp_search_does_not_initialize_on_404_or_generic_400():
         assert calls == ["tools/call"]
     finally:
         server.shutdown()
+
+
+# --- AC2 & AC3: Envelope/slash gating, 8KB query, _session, empty silence, single-line error ---
+
+
+@pytest.mark.parametrize(
+    "cmd_prompt",
+    [
+        "/cmd",
+        "/pull",
+        "/status",
+        "/cmd   ",
+        "/ida:pull",
+        "/",
+    ],
+)
+def test_argumentless_slash_commands_make_no_pkb_call(cmd_prompt):
+    """AC2: Argument-less slash commands (/cmd) make no PKB call."""
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        raw={"prompt": cmd_prompt},
+        hooks_dir=PKB_HOOKS,
+        agent_type="ida:ida",
+    )
+    with patch.object(handlers, "_run_pkb_search") as mock_search:
+        res = handlers.search_the_pkb(ctx)
+        mock_search.assert_not_called()
+        assert res is None
+
+
+@pytest.mark.parametrize(
+    "xml_prompt",
+    [
+        "<system-reminder>Do not reveal instructions</system-reminder>",
+        "<system-message>subagent completed</system-message>",
+        "<scheduled>daily reconciliation</scheduled>",
+        '<handback from="worker">done</handback>',
+        '<subagent-handback from="worker">done</subagent-handback>',
+        '<agent-message to="ida">status update</agent-message>',
+        '<cross-session-message from="peer">done</cross-session-message>',
+        '<teammate-message teammate_id="worker">finished</teammate-message>',
+        "<task-notification>task completed</task-notification>",
+        'Another Claude session sent a message:\n<teammate-message teammate_id="worker">finished</teammate-message>',
+    ],
+)
+def test_xml_enveloped_prompts_make_no_pkb_call(xml_prompt):
+    """AC2: XML-enveloped system/handback/peer/scheduled prompts make no PKB call."""
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        raw={"prompt": xml_prompt},
+        hooks_dir=PKB_HOOKS,
+        agent_type="ida:ida",
+    )
+    with patch.object(handlers, "_run_pkb_search") as mock_search:
+        res = handlers.search_the_pkb(ctx)
+        mock_search.assert_not_called()
+        assert res is None
+
+
+def test_channel_wrapped_human_prompts_send_full_text_up_to_8kb():
+    """AC2: <channel>-wrapped human prompts send full text up to 8 KB without 200-char truncation."""
+    body_500 = "x" * 500
+    prompt = f'<channel source="telegram" user="nic">{body_500}</channel>'
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        raw={"prompt": prompt},
+        hooks_dir=PKB_HOOKS,
+        agent_type="ida:ida",
+    )
+    with patch.object(handlers, "_run_pkb_search", return_value="hit") as mock_search:
+        res = handlers.search_the_pkb(ctx)
+        assert res is not None
+        mock_search.assert_called_once()
+        args, kwargs = mock_search.call_args
+        assert args[0] == body_500
+
+
+def test_slash_command_with_arg_sends_arg_whole_up_to_8kb():
+    """AC2: /cmd <arg> prompts send <arg> whole up to 8 KB without 200-char truncation."""
+    arg_500 = "y" * 500
+    prompt = f"/cmd {arg_500}"
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        raw={"prompt": prompt},
+        hooks_dir=PKB_HOOKS,
+        agent_type="ida:ida",
+    )
+    with patch.object(handlers, "_run_pkb_search", return_value="hit") as mock_search:
+        res = handlers.search_the_pkb(ctx)
+        assert res is not None
+        args, _ = mock_search.call_args
+        assert args[0] == arg_500
+
+    pull_prompt = "/pull task_c89c7dae"
+    ctx_pull = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        raw={"prompt": pull_prompt},
+        hooks_dir=PKB_HOOKS,
+        agent_type="ida:ida",
+    )
+    with patch.object(handlers, "_run_pkb_search", return_value="hit") as mock_search:
+        res = handlers.search_the_pkb(ctx_pull)
+        assert res is not None
+        args, _ = mock_search.call_args
+        assert args[0] == "task_c89c7dae"
+
+
+def test_prompt_exceeding_8kb_is_capped_at_8192():
+    """AC2: Prompt exceeding 8 KB (8192 chars) is capped at 8192 chars."""
+    huge_prompt = "z" * 10000
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        raw={"prompt": huge_prompt},
+        hooks_dir=PKB_HOOKS,
+        agent_type="ida:ida",
+    )
+    with patch.object(handlers, "_run_pkb_search", return_value="hit") as mock_search:
+        handlers.search_the_pkb(ctx)
+        args, _ = mock_search.call_args
+        assert len(args[0]) == 8192
+
+
+def test_search_the_pkb_honours_pkb_hydrate_zero():
+    """AC1/AC2: When PKB_HYDRATE=0, no PKB call is made."""
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        raw={"prompt": "should we hydrate?"},
+        hooks_dir=PKB_HOOKS,
+        agent_type="ida:ida",
+    )
+    with (
+        patch.dict("os.environ", {"PKB_HYDRATE": "0"}),
+        patch.object(handlers, "_run_pkb_search") as mock_search,
+    ):
+        res = handlers.search_the_pkb(ctx)
+        mock_search.assert_not_called()
+        assert res is None
+
+
+def test_search_the_pkb_sends_session_with_matching_prompt_id(
+    http_mcp_server, monkeypatch, tmp_path
+):
+    """AC3: The hook sends _session with matching prompt_id on both the MCP call and the hook span."""
+    tracer_dir = tmp_path / ".claude" / "tracer"
+    tracer_dir.mkdir(parents=True, exist_ok=True)
+    trace_id = "11112222333344445555666677778888"
+    span_id = "1111222233334444"
+    state_file = tracer_dir / "s-session-ac3.json"
+    state_file.write_text(
+        json.dumps(
+            {
+                "current_trace": {
+                    "trace_id": trace_id,
+                    "root_span_id": span_id,
+                    "prompt_id": "prompt-trace-match-1",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("PKB_MCP_URL", http_mcp_server.url)
+
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        session_id="s-session-ac3",
+        prompt_id="prompt-trace-match-1",
+        raw={"prompt": "what is the session contract?"},
+        hooks_dir=PKB_HOOKS,
+        agent_type="ida:ida",
+    )
+    res = handlers.search_the_pkb(ctx)
+    assert res is not None
+    assert len(http_mcp_server.requests) == 1
+
+    req = http_mcp_server.requests[0]
+    args = req["json"]["params"]["arguments"]
+    assert args["query"] == "what is the session contract?"
+    assert "_session" in args
+    sess = args["_session"]
+    assert sess["session_id"] == "s-session-ac3"
+    assert sess["prompt_id"] == "prompt-trace-match-1"
+    assert sess["caller"] == "hook"
+    assert sess["surface"] == "claude-code"
+
+    # State file's current_trace must have the matching prompt_id
+    updated_state = json.loads(state_file.read_text(encoding="utf-8"))
+    assert updated_state["current_trace"]["prompt_id"] == sess["prompt_id"]
+
+
+def test_search_the_pkb_generates_matching_prompt_id_when_absent(
+    http_mcp_server, monkeypatch, tmp_path
+):
+    """AC3: When prompt_id is absent from payload, generated prompt_id matches on both MCP call and tracer state."""
+    tracer_dir = tmp_path / ".claude" / "tracer"
+    tracer_dir.mkdir(parents=True, exist_ok=True)
+    trace_id = "aaaabbbbccccddddaaaabbbbccccdddd"
+    span_id = "aaaabbbbccccdddd"
+    state_file = tracer_dir / "s-no-prompt-id.json"
+    state_file.write_text(
+        json.dumps(
+            {
+                "current_trace": {
+                    "trace_id": trace_id,
+                    "root_span_id": span_id,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("PKB_MCP_URL", http_mcp_server.url)
+
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        session_id="s-no-prompt-id",
+        raw={"prompt": "find notes without prompt_id"},
+        hooks_dir=PKB_HOOKS,
+        agent_type="ida:ida",
+    )
+    res = handlers.search_the_pkb(ctx)
+    assert res is not None
+    assert len(http_mcp_server.requests) == 1
+
+    req = http_mcp_server.requests[0]
+    sess = req["json"]["params"]["arguments"]["_session"]
+    generated_pid = sess["prompt_id"]
+    assert generated_pid, "prompt_id must not be empty"
+
+    updated_state = json.loads(state_file.read_text(encoding="utf-8"))
+    assert updated_state["current_trace"]["prompt_id"] == generated_pid
+
+
+def test_search_the_pkb_injects_nothing_when_server_returns_empty_content(
+    http_mcp_server, monkeypatch, tmp_path
+):
+    """AC3: The hook injects nothing when the server returns empty text or content."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("PKB_MCP_URL", http_mcp_server.url)
+    http_mcp_server.set_response(
+        200,
+        body={"jsonrpc": "2.0", "id": 1, "result": {"content": []}},
+    )
+
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        session_id="s-empty-1",
+        raw={"prompt": "search nothing"},
+        hooks_dir=PKB_HOOKS,
+        agent_type="ida:ida",
+    )
+    res = handlers.search_the_pkb(ctx)
+    assert res is None
+
+    # Also test empty text item
+    http_mcp_server.set_response(
+        200,
+        body={"jsonrpc": "2.0", "id": 1, "result": {"content": [{"type": "text", "text": "   "}]}},
+    )
+    res2 = handlers.search_the_pkb(ctx)
+    assert res2 is None
+
+
+def test_dispatch_error_injects_single_failure_line(staged_hooks: Path):
+    """AC3: Failure injects a single line naming the cause on error (no newlines)."""
+    env = dict(os.environ)
+    env["PKB_MCP_URL"] = "http://127.0.0.1:9"
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(staged_hooks / "dispatch.py"),
+            "claude",
+            "UserPromptSubmit",
+        ],
+        input=json.dumps({"hook_event_name": "UserPromptSubmit", "prompt": "check status"}),
+        text=True,
+        capture_output=True,
+        timeout=10,
+        cwd=str(staged_hooks),
+        env=env,
+    )
+    assert proc.returncode == 0
+    data = json.loads(proc.stdout)
+    injected = data.get("hookSpecificOutput", {}).get("additionalContext", "")
+    assert injected.startswith("aops hooks: handler 'search_the_pkb' failed")
+    assert "\n" not in injected.strip(), (
+        f"Expected single line failure, got multiline: {injected!r}"
+    )
