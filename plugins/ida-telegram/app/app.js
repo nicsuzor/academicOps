@@ -429,9 +429,17 @@ async function toggleQuestionDetails(qid) {
         if (res.ok) {
           const data = await res.json();
           detailsEl.innerHTML = renderMarkdown(data.markdown);
+        } else {
+          let errMsg = `Failed to load details (${res.status})`;
+          try {
+            const errData = await res.json();
+            if (errData.error) errMsg = errData.error;
+          } catch {}
+          detailsEl.innerHTML = `<p class="muted">${escapeHtml(errMsg)}</p>`;
         }
       } catch (e) {
         console.error("Failed to load details for question", e);
+        detailsEl.innerHTML = `<p class="muted">Failed to load details: ${escapeHtml(String(e))}</p>`;
       }
     }
   } else {

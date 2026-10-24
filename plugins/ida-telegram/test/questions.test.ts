@@ -924,6 +924,82 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     expect(apiCalls.filter((c) => c.method === "sendMessage").length).toBe(0);
     expect(broker.getPendingQuestions().length).toBe(2);
   });
+
+  test("socket server handles ask_user with mini_app_only: true and detail, routing to Mini App without chat cards", async () => {
+    const { createConnection } = await import("node:net");
+    const { createBridgeServer } = await import("../server.js");
+    const { QuestionBroker } = await import("../src/telegram/questions.js");
+    const { TelegramBotClient } = await import("../src/telegram/bot.js");
+    const { PluginStore } = await import("../src/store.js");
+    const { PermissionRelay } = await import("../src/mcp/permissions.js");
+
+    const socketPath = join(testStateDir, "test_server.sock");
+    const config = {
+      botToken: "test-token",
+      apiBaseUrl: "https://api.telegram.org",
+      role: "primary",
+      isPrimary: true,
+      allowFrom: [999],
+      maxChatChars: 1200,
+      port: 8094,
+      stateDir: testStateDir,
+      socketPath,
+      voiceReplies: "off" as const,
+      botCommands: [],
+      miniAppUrl: "https://ida.example.ts.net",
+    };
+
+    const store = new PluginStore(testStateDir);
+    const broker = new QuestionBroker(testStateDir);
+    const permRelay = new PermissionRelay();
+    const sentCards: any[] = [];
+    const bot = new TelegramBotClient(config as any, broker, permRelay, () => {});
+    (bot as any).sendQuestionCard = async (chatId: number, qid: string, card: any) => {
+      sentCards.push({ chatId, qid, card });
+    };
+
+    const server = createBridgeServer(config as any, broker, bot);
+    await new Promise<void>((resolve) => server.listen(socketPath, () => resolve()));
+
+    try {
+      const client = createConnection(socketPath);
+      const resPromise = new Promise<string>((resolve) => {
+        client.on("data", (d) => resolve(d.toString()));
+      });
+
+      client.write(
+        JSON.stringify({
+          type: "ask_user",
+          mini_app_only: true,
+          questions: [
+            {
+              question: "Socket question for Mini App only?",
+              header: "Socket Header",
+              detail: "Deep socket background detail",
+              options: [{ label: "Yes" }, { label: "No" }],
+            },
+          ],
+        }) + "\n"
+      );
+
+      const rawRes = await resPromise;
+      const res = JSON.parse(rawRes.trim());
+      expect(res.status).toBe("ok");
+
+      // Verify no question cards sent to chat
+      expect(sentCards.length).toBe(0);
+
+      // Verify question is pending in broker with detail and mini_app_only
+      const pending = broker.getPendingQuestions();
+      const socketQ = pending.find((q) => q.question === "Socket question for Mini App only?");
+      expect(socketQ).toBeDefined();
+      expect(socketQ!.detail).toBe("Deep socket background detail");
+      expect((socketQ as any).mini_app_only).toBe(true);
+      expect(socketQ!.detailsId).toBeDefined();
+    } finally {
+      server.close();
+    }
+  });
 });
 
 

@@ -366,7 +366,10 @@ export class TelegramBotClient {
       if (b.web_app) {
         return [{ text: b.text, web_app: b.web_app }];
       }
-      return [{ text: b.text, callback_data: b.callbackData || "" }];
+      if (!b.callbackData) {
+        throw new Error(`Question button "${b.text}" missing callbackData`);
+      }
+      return [{ text: b.text, callback_data: b.callbackData }];
     });
     const res = await this.callApi("sendMessage", {
       chat_id: chatId,

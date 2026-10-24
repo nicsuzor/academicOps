@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
+import { PluginStore } from "../store.js";
 
 export interface QuestionOption {
   label: string;
@@ -159,17 +160,8 @@ export class QuestionBroker {
     let detailsId = payload.detailsId || payload.details_id;
 
     if (!detailsId && detailText) {
-      const detailsDir = join(this.stateDir, "details");
-      if (!existsSync(detailsDir)) {
-        mkdirSync(detailsDir, { recursive: true });
-      }
-      detailsId = "d_" + randomBytes(4).toString("hex");
-      const page = {
-        id: detailsId,
-        markdown: detailText,
-        createdAt: new Date().toISOString(),
-      };
-      writeFileSync(join(detailsDir, `${detailsId}.json`), JSON.stringify(page, null, 2), "utf-8");
+      const store = new PluginStore(this.stateDir);
+      detailsId = store.storeDetails(detailText);
     }
 
     const stored: StoredQuestion = {
