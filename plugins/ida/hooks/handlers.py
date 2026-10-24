@@ -28,13 +28,16 @@ from dispatch import (
     load_message_pair,
     warn,
 )
-from premise_check_gate import (
-    is_foreground_dispatch,
+from hearsay_gate import (
+    hearsay_arm,
+    hearsay_handler,
     is_peer_report,
-    premise_check_arm,
-    premise_check_handler,
     prompt_text,
+    should_arm_hearsay,
 )
+
+premise_check_arm = hearsay_arm
+premise_check_handler = hearsay_handler
 
 Handler = Callable[[HookContext], Result | None]
 
@@ -766,18 +769,14 @@ def agy_session_pointer(ctx: HookContext) -> Result | None:
 
 def honesty_on_peer_message(ctx: HookContext) -> Result | None:
     """Remind all agents to write replies/reports in premise-check shape when a peer message arrives."""
-    if not is_peer_report(ctx):
+    if ctx.event != "UserPromptSubmit" or not should_arm_hearsay(ctx):
         return None
     return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
 
 
 def rule_against_hearsay(ctx: HookContext) -> Result | None:
     """Remind agents that an incoming peer report or foreground subagent return is hearsay."""
-    if ctx.event == "PostToolUse":
-        if not is_foreground_dispatch(ctx):
-            return None
-        return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
-    if not is_peer_report(ctx):
+    if not should_arm_hearsay(ctx):
         return None
     return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
 
@@ -920,7 +919,7 @@ def user_prompt_submit(ctx: HookContext) -> Result | None:
         search_the_pkb,
         honesty_on_peer_message,
         rule_against_hearsay,
-        premise_check_arm,
+        hearsay_arm,
     )
     return _merge([_run_handler(step, ctx) for step in steps])
 
@@ -929,7 +928,7 @@ def pre_tool(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical PreToolUse."""
     _run_claude_tracer(ctx, "handle_pre_tool")
     agy_pre_tool(ctx)
-    return _run_handler(premise_check_handler, ctx)
+    return _run_handler(hearsay_handler, ctx)
 
 
 def post_tool(ctx: HookContext) -> Result | None:
@@ -939,7 +938,7 @@ def post_tool(ctx: HookContext) -> Result | None:
     steps = (
         rule_against_hearsay,
         post_tool_degraded_check,
-        premise_check_arm,
+        hearsay_arm,
     )
     return _merge([_run_handler(step, ctx) for step in steps])
 
@@ -953,7 +952,7 @@ def stop(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical Stop."""
     _run_claude_tracer(ctx, "handle_stop")
     agy_stop(ctx)
-    return _run_handler(premise_check_handler, ctx)
+    return _run_handler(hearsay_handler, ctx)
 
 
 def subagent_stop(ctx: HookContext) -> Result | None:

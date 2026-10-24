@@ -175,6 +175,40 @@ def emit_override_span(
     return True
 
 
+def emit_hearsay_span(
+    tracer_mod: Any,
+    session_id: str,
+    claim_id: str,
+    event: str,
+    judged_ref: str | None = None,
+    attributes: dict[str, Any] | None = None,
+    config: dict[str, Any] | None = None,
+) -> bool:
+    """Ship one TOOL span for this hearsay check via claude_code_tracer's pipeline."""
+    attrs: dict[str, Any] = {
+        "hearsay.claim_id": claim_id,
+        "hearsay.event": event,
+        "hearsay.status": "armed",
+        "premise_check.claim_id": claim_id,
+    }
+    if judged_ref:
+        attrs["hearsay.judged_ref"] = judged_ref
+        attrs["premise_check.judged_ref"] = judged_ref
+    if attributes:
+        attrs.update(attributes)
+
+    _export_tool_span(
+        tracer_mod,
+        session_id,
+        "hearsay_check",
+        {"claim_id": claim_id, "event": event},
+        {"status": "armed"},
+        attrs,
+        config,
+    )
+    return True
+
+
 def judge_reason(token: str, reason: str, judged_text: str | None) -> dict[str, Any]:
     """Parse the reason against the judged block; for PASS, refuse on any failed check.
 
