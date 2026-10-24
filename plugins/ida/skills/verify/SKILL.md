@@ -53,6 +53,8 @@ Any change touching a container image or Dockerfile requires:
 
 Emit the report using `/dump`'s handback envelope and record it on the task record. VERDICT is your judgement of the artifact, in the verdict vocabulary `premise-check` uses; STATUS is the release status of your own task.
 
+When the verification check fails (VERDICT is `FAIL` or `REVISE`), release the task with STATUS `failed` documenting failure evidence and root cause. Never file fix tasks or follow-up tasks; the reconcile pass notes failed tasks and decides next actions from the parent epic. When VERDICT is `PASS`, release as `done`.
+
 ```markdown
 ## Handover: <agent> <session-id>
 

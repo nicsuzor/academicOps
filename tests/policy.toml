@@ -12,6 +12,10 @@ no_user_counterpart = { "rbg: ruleset" = "agy-only injection; agy has no user ch
 # Messages that ship user-blind and SHOULD NOT (defect list)
 known_user_blind = { "rbg: rule-check" = "stop-side block with no line for the person; needs the pair, not [0]" }
 
+[hooks.degraded_capability]
+# Keys in tool response that indicate degraded capability failure
+degraded_keys = ["voiceError", "transcript_error"]
+
 [pkb]
 # Is search_the_pkb enabled and returning a Result?
 search_the_pkb_enabled = true
@@ -65,3 +69,11 @@ override_vars = [
   "AOP_FORCE",
   "AOP_OVERRIDE",
 ]
+armed_indicator = "Premise-check gate armed by"
+direction_checklist_indicator = "frozen acceptance checklist"
+
+[rbg.axioms]
+# Aliases mapping alternative names or historical variants to canonical axiom slugs
+aliases = { nondelegablequalitativejudgment = "judgment-non-delegable", qualitativejudgment = "judgment-non-delegable" }
+# Context words or non-axiom markdown words in backticks exempt from axiom checks
+exempt_words = ["cwd"]

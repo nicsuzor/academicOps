@@ -244,7 +244,9 @@ export class StdioMcpServer {
           buttons: args.buttons as Array<{ label: string; callback_data?: string; url?: string; web_app?: string }> | undefined,
           voice: isVoice,
           replyTo,
+          feedback: typeof args.feedback === "boolean" ? args.feedback : undefined,
           review: reviewArg,
+          actions: args.actions as boolean | undefined,
         });
 
         const out: Record<string, unknown> = {
@@ -287,14 +289,22 @@ export class StdioMcpServer {
 
     if (name === "ask_user") {
       const topTurnId = (args.turn_id as string | undefined) || (args.turnId as string | undefined);
+      const topSessionId =
+        (args.session_id as string | undefined) ||
+        (args.sessionId as string | undefined) ||
+        ((args._session as any)?.session_id as string | undefined);
       const questions = (args.questions as Array<{
         question: string;
         header?: string;
-        options: Array<{ label: string; description?: string }>;
+        context?: string;
+        recommendation?: string;
+        options: Array<{ label: string; description?: string; recommended?: boolean }>;
         multiSelect?: boolean;
         allowOther?: boolean;
         turn_id?: string;
         turnId?: string;
+        session_id?: string;
+        sessionId?: string;
       }>) || [];
 
       if (questions.length === 0) {
@@ -306,10 +316,13 @@ export class StdioMcpServer {
         const result = await this.broker.askUser({
           question: q.question,
           header: q.header,
+          context: q.context,
+          recommendation: q.recommendation,
           options: q.options,
           multiSelect: q.multiSelect,
           allowOther: q.allowOther,
           turnId: q.turn_id || q.turnId || topTurnId,
+          sessionId: q.session_id || q.sessionId || topSessionId,
           chatId: defaultChatId,
         });
         postedIds.push(result.questionId);
@@ -327,6 +340,34 @@ export class StdioMcpServer {
         return `Question ${postedIds[0]} posted to the user. Do not assume an answer; continue other work or end your turn.`;
       }
       return `Questions ${postedIds.join(", ")} posted to the user. Do not assume an answer; continue other work or end your turn.`;
+    }
+
+    if (name === "close_question") {
+      const questionId = (args.question_id as string) || (args.questionId as string) || (args.id as string);
+      const reason = typeof args.reason === "string" ? args.reason.trim() : "";
+      if (!questionId) {
+        return { success: false, error: "Missing question_id" };
+      }
+      if (!reason) {
+        return { success: false, error: "Missing reason: closing a question requires an explicit stated reason" };
+      }
+      const result = await this.broker.closeQuestion(questionId, reason);
+      if (!result) {
+        return { success: false, error: "Question not found or not pending" };
+      }
+      if (this.bot && result.question.chatId && result.question.messageId) {
+        await this.bot.editMessage(result.question.chatId, result.question.messageId, result.cardText, { inline_keyboard: [] });
+      }
+      this.emitChannelNotification(`Question closed: ${result.channelEvent.reason}`, {
+        event: result.channelEvent.event,
+        ...result.channelEvent,
+      });
+      return { success: true, question_id: questionId, reason: result.channelEvent.reason };
+    }
+
+    if (name === "list_questions") {
+      const pending = this.broker.getPendingQuestions();
+      return { success: true, count: pending.length, questions: pending };
     }
 
     if (name === "anchor") {

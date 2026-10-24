@@ -5,7 +5,7 @@ description: Turn an objective, or a task id, into complete dispatchable tasks o
 
 # /reify: compose dispatchable tasks from an objective
 
-The task is the whole message to the worker. Write it once, keep it short, and leave it on the graph for `/dispatch`.
+The task is the whole message to the worker. Write it once, keep it short, and leave it on the graph for `/dispatch`. Questions and lookups are answered directly by the session that receives them; the task dispatch pipeline is used only for real code changes. Never create tasks or compose workflows for questions or lookups.
 
 A polecat is a short-running container: it gets in, does one unit of work it controls, records the evidence, and gets out cleanly. It never sees the whole objective through. Everything after its unit is a follow-up task on the graph, and the workflow decides what those follow-ups are.
 
@@ -87,15 +87,14 @@ Then assemble the steps:
 Where the project finish template calls for QA review:
 
 - **Low-risk internal changes (chiefly bugfixes)**: Test whether the task is a low-risk internal change, chiefly a bugfix. If so, it gets no separate verification run. Instead, look for a blocked task waiting on the fix (`blocks` or inbound `needs` / `depends_on`):
-  - **Blocked dependent exists**: Mint a follow-up task with status `queued`, same parent as the primary task, and `needs: [<blocked_task_id>]` that judges the fix by reviewing that blocked task's next run once it runs. Record the follow-up ID in the primary task's `follow_up_tasks`.
+  - **Blocked dependent exists**: Mint a follow-up task with status `queued`, same parent as the primary task, and `needs: [<blocked_task_id>]` that judges the fix by reviewing that blocked task's next run once it runs.
   - **No blocked dependent exists**: Mint no verification follow-up task; the fix finishes without a separate verification run.
 - **Other changes requiring QA**:
   1. Mint an independent follow-up task with status `queued`.
   2. Title: `QA: <primary task title>`.
   3. Set parent to the primary task's parent.
   4. Wire dependency: `needs: [<primary_task_id>]` so the QA task stays blocked until the primary task is `done`.
-  5. Record the QA task ID in the primary task's `follow_up_tasks`.
-  6. Compose the designated QA template (`wf-qa`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the merged deliverable and claims against literal acceptance criteria; a reviewer that changes code delivers it through the finish template and hands off for independent review.
+  5. Compose the review follow-up task drawing its brief from the shared review briefing in `wf-review` and the designated review template (`wf-qa`, `wf-rbg`, `wf-strategic-fit`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the deliverable and claims against literal acceptance criteria; if verification fails, the reviewer releases the task as `failed` with documented failure evidence; confirm tier against the taxonomy; for verified Tier 1 PRs, merge to base branch on a verified pass; for Tier 2 and Tier 3 PRs, post verification receipts to the PR and leave open for reviewer sign-off without releasing to review. A reviewer that changes code delivers it through the finish template and hands off for independent review.
 
 ### Requirements for writing tasks
 

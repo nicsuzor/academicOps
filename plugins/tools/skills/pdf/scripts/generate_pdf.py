@@ -37,33 +37,28 @@ def detect_document_type(input_file: Path) -> str:
     Returns:
         "letter" or "academic"
     """
-    try:
-        content = input_file.read_text(encoding="utf-8")
-        lines = [line.strip() for line in content.split("\n") if line.strip()]
+    content = input_file.read_text(encoding="utf-8")
+    lines = [line.strip() for line in content.split("\n") if line.strip()]
 
-        # Check first 10 lines for h1 heading
-        has_h1 = False
-        for line in lines[:10]:
-            if line.startswith("# "):
-                has_h1 = True
-                break
+    # Check first 10 lines for h1 heading
+    has_h1 = False
+    for line in lines[:10]:
+        if line.startswith("# "):
+            has_h1 = True
+            break
 
-        # If no h1, likely a letter
-        if not has_h1:
-            return "letter"
+    # If no h1, likely a letter
+    if not has_h1:
+        return "letter"
 
-        # Check for letter patterns in first few lines
-        first_content = "\n".join(lines[:10]).lower()
-        letter_patterns = ["dear ", "re:", "sincerely", "regards", "best,"]
+    # Check for letter patterns in first few lines
+    first_content = "\n".join(lines[:10]).lower()
+    letter_patterns = ["dear ", "re:", "sincerely", "regards", "best,"]
 
-        if any(pattern in first_content for pattern in letter_patterns):
-            return "letter"
+    if any(pattern in first_content for pattern in letter_patterns):
+        return "letter"
 
-        return "academic"
-
-    except Exception:
-        # Default to academic if we can't read the file
-        return "academic"
+    return "academic"
 
 
 def generate_pdf(

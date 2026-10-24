@@ -131,7 +131,10 @@ validation and documentation stay separate nodes although one session could run 
 separation is what forces the care. Collapse applies to components that differ in wording, not in
 the judgement they demand.
 
-1. **Start with unknowns.** Every unknown becomes a probe or pilot. Information-gathering precedes
+1. **Settle from the record before naming unknowns.** Search the record or knowledge base for how
+   relevant parts of the domain or system already work; list what is settled before naming any
+   unknown. What the record settles is not a node or probe; an unknown the record answers is not a
+   node. What the record cannot settle becomes a probe or pilot; information-gathering precedes
    commitment.
 2. **Assumptions are first-class.** Every load-bearing assumption carries a confidence level, a
    validation path, and a contingency.
@@ -157,6 +160,10 @@ the judgement they demand.
    "metrics computed using modal predictions, validated against known baselines, edge cases
    documented, methodology justified in report" is actionable. Where depth matters, state the
    expected depth in the task body.
+10. **Hold objective altitude.** Nodes are objectives, never mechanisms, choices between
+    mechanisms, or probes of tool flags. Those belong to the worker.
+11. **Stop at the first unknown.** When the next step depends on something not yet known, the node
+    ends naming that unknown, and no branches beyond it are modelled.
 
 ## Output
 

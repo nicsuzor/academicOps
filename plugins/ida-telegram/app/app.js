@@ -29,7 +29,7 @@ function switchTab(tab) {
 async function init() {
   if (tg && tg.initData) {
     try {
-      await fetch("/api/app/auth", {
+      await fetch("../api/app/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ initData: tg.initData }),
@@ -261,7 +261,7 @@ function renderMarkdown(markdown) {
 
 async function loadDetails(id) {
   try {
-    const res = await fetch(`/api/app/details/${id}`);
+    const res = await fetch(`../api/app/details/${id}`);
     if (res.ok) {
       const data = await res.json();
       document.getElementById("details-content").innerHTML = `
@@ -280,7 +280,7 @@ async function loadDetails(id) {
 
 async function loadQuestions() {
   try {
-    const res = await fetch("/api/app/questions");
+    const res = await fetch("../api/app/questions");
     if (res.ok) {
       const data = await res.json();
       const list = data.questions || [];
@@ -297,9 +297,22 @@ async function loadQuestions() {
           const isMulti = Boolean(q.multiSelect);
           const inputType = isMulti ? "checkbox" : "radio";
           const headerHtml = q.header ? `<div class="q-header">${escapeHtml(q.header)}</div>` : "";
+
+          // Context block (explicit field)
+          const contextHtml = q.context
+            ? `<div class="q-context">${renderMarkdown(q.context)}</div>`
+            : "";
+
+          // Recommendation block
+          const recHtml = q.recommendation
+            ? `<div class="q-recommendation"><strong>Recommendation:</strong> ${formatInlineMarkdown(q.recommendation)}</div>`
+            : "";
+
           const optionsHtml = (q.options || [])
             .map((opt, idx) => {
-              const isRec = /\(recommended\)/i.test(opt.label) || idx === 0;
+              const isRec = Boolean(
+                opt.recommended || /\(recommended\)/i.test(opt.label)
+              );
               const recBadge = isRec ? '<span class="rec-badge">Recommended</span>' : "";
               const descHtml = opt.description
                 ? `<div class="opt-desc muted">${escapeHtml(opt.description)}</div>`
@@ -329,10 +342,19 @@ async function loadQuestions() {
               `
               : "";
 
+          const metaParts = [];
+          if (q.createdAt || q.created_at) metaParts.push(`Asked ${escapeHtml(q.createdAt || q.created_at)}`);
+          if (q.turnId || q.turn_id) metaParts.push(`Turn ${escapeHtml(q.turnId || q.turn_id)}`);
+          if (q.sessionId || q.session_id) metaParts.push(`Session ${escapeHtml(q.sessionId || q.session_id)}`);
+          const metaHtml = metaParts.length > 0 ? `<div class="q-meta muted" style="font-size:0.75rem;margin-bottom:0.4rem;">${metaParts.join(" · ")}</div>` : "";
+
           return `
             <div class="card question-card" data-qid="${escapeHtml(q.id)}">
               ${headerHtml}
-              <h3>${escapeHtml(q.question)}</h3>
+              ${metaHtml}
+              <h3>${formatInlineMarkdown(q.question || "")}</h3>
+              ${contextHtml}
+              ${recHtml}
               <div class="q-options-list">
                 ${optionsHtml}
               </div>
@@ -340,6 +362,9 @@ async function loadQuestions() {
               <div class="actions-row">
                 <button class="btn btn-primary" onclick="submitQuestion('${escapeHtml(q.id)}', ${isMulti})">
                   ${isMulti ? "Submit Selection" : "Submit Answer"}
+                </button>
+                <button class="btn btn-secondary btn-close-q" onclick="closeQuestion('${escapeHtml(q.id)}')">
+                  Dismiss
                 </button>
               </div>
             </div>
@@ -349,6 +374,29 @@ async function loadQuestions() {
     }
   } catch (e) {
     console.error("Failed to load questions", e);
+  }
+}
+
+async function closeQuestion(qid, reason) {
+  try {
+    let promptReason = reason;
+    if (!promptReason && typeof prompt === "function") {
+      promptReason = prompt("Reason for closing this question (e.g. answered elsewhere, no longer needed, replaced by a newer question):");
+    }
+    const trimmed = typeof promptReason === "string" ? promptReason.trim() : "";
+    if (!trimmed) {
+      return;
+    }
+    const res = await fetch("../api/app/questions/close", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question_id: qid, reason: trimmed }),
+    });
+    if (res.ok) {
+      await loadQuestions();
+    }
+  } catch (e) {
+    console.error("Failed to close question", e);
   }
 }
 
@@ -378,7 +426,7 @@ async function submitQuestion(qid, isMultiSelect) {
       return;
     }
 
-    const res = await fetch("/api/app/questions/answer", {
+    const res = await fetch("../api/app/questions/answer", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -393,7 +441,7 @@ async function submitQuestion(qid, isMultiSelect) {
 
 async function answerQuestion(qid, optIndex) {
   try {
-    const res = await fetch("/api/app/questions/answer", {
+    const res = await fetch("../api/app/questions/answer", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ questionId: qid, optionIndex: optIndex }),
@@ -435,7 +483,7 @@ async function loadReview() {
     if (params.get("head")) qs.set("head", params.get("head"));
     const querySuffix = qs.toString() ? `?${qs.toString()}` : "";
 
-    const res = await fetch(`/api/app/review${querySuffix}`);
+    const res = await fetch(`../api/app/review${querySuffix}`);
     if (!res.ok) return;
     const data = await res.json();
     const permissions = data.permissions || [];
@@ -539,7 +587,7 @@ async function loadReview() {
 
 async function resolvePermission(permId, decision) {
   try {
-    const res = await fetch("/api/app/review/permission", {
+    const res = await fetch("../api/app/review/permission", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ permId, decision }),
@@ -556,7 +604,7 @@ async function submitPrReview(action, repo, pr) {
   try {
     const critiqueEl = document.getElementById(`pr-critique-${repo}-${pr}`);
     const critique = critiqueEl && critiqueEl.value ? critiqueEl.value.trim() : "";
-    const res = await fetch("/api/app/review/pr", {
+    const res = await fetch("../api/app/review/pr", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, repo, pr, critique }),
@@ -582,7 +630,7 @@ function formatUptime(seconds) {
 
 async function loadAnchor() {
   try {
-    const res = await fetch("/api/app/anchor");
+    const res = await fetch("../api/app/anchor");
     if (res.ok) {
       const data = await res.json();
       document.getElementById("anchor-focus").textContent = data.focus || "Stand by";
@@ -664,7 +712,7 @@ async function loadAnchor() {
 
 document.getElementById("btn-stop")?.addEventListener("click", async () => {
   if (confirm("Stop current session turn and ask Ida to report?")) {
-    await fetch("/api/app/stop", { method: "POST" });
+    await fetch("../api/app/stop", { method: "POST" });
     alert("Stop signal sent to Ida.");
   }
 });

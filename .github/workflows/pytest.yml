@@ -12,12 +12,14 @@ on:
     # from the day it is cut, not the day someone notices.
     branches:
       - dev
+      - main
       - 'v[0-9]*'
+      - 'release/**'
   workflow_call:
   workflow_dispatch:
 
 concurrency:
-  group: pytest-${{ github.event.pull_request.number || github.ref }}
+  group: pytest-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:

@@ -621,6 +621,217 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     // Should not be recognized as permission handler
     expect((disprovedRes as any)?.error?.code ?? -32601).toBe(-32601);
   });
+
+  test("lists pending questions with origin fields: id, text, session, turn, and when asked", async () => {
+    const { handleApiRequest } = await import("../src/web/routes.js");
+    const { createSessionToken } = await import("../src/web/auth.js");
+
+    const broker = new QuestionBroker(testStateDir);
+    const store = new PluginStore(testStateDir);
+
+    const askPayload = {
+      question: "Which test strategy should we adopt?",
+      options: [{ label: "Unit tests" }, { label: "Integration tests" }],
+      turnId: "turn_session_001",
+      sessionId: "session_abc_123",
+      chatId: 999,
+    };
+    const posted = await broker.askUser(askPayload);
+
+    // 1. Direct broker method test
+    const pendingQuestions = broker.getPendingQuestions();
+    expect(pendingQuestions.length).toBe(1);
+    const qBroker = pendingQuestions[0];
+    expect(qBroker.id).toBe(posted.questionId);
+    expect(qBroker.text).toBe("Which test strategy should we adopt?");
+    expect(qBroker.sessionId || qBroker.session_id).toBe("session_abc_123");
+    expect(qBroker.turnId || qBroker.turn_id).toBe("turn_session_001");
+    expect(qBroker.createdAt || qBroker.created_at).toBeDefined();
+
+    // 2. HTTP route GET /api/app/questions
+    const sessionSecret = "super-secret-session-key";
+    const token = createSessionToken(999, sessionSecret, 3600);
+    const req = new Request("http://127.0.0.1:8093/api/app/questions", {
+      method: "GET",
+      headers: {
+        Cookie: `ida_session=${token}`,
+      },
+    });
+
+    const resp = await handleApiRequest(req, {
+      store,
+      broker,
+      config: {
+        botToken: "test-token",
+        allowFrom: [999],
+        stateDir: testStateDir,
+        socketPath: join(testStateDir, "hook.sock"),
+        port: 8093,
+        miniAppUrl: "https://ida.example.ts.net",
+        isPrimary: true,
+        maxChatChars: 1200,
+        voiceTranscribeCmd: "",
+        voiceSpeakCmd: "",
+        voiceReplies: "off",
+        botCommands: [],
+      },
+      sessionSecret,
+      emitChannelEvent: () => {},
+    } as any);
+
+    expect(resp.status).toBe(200);
+    const data = await resp.json();
+    expect(data.questions).toBeDefined();
+    expect(data.questions.length).toBe(1);
+    const q = data.questions[0];
+    expect(q.id).toBe(posted.questionId);
+    expect(q.text).toBe("Which test strategy should we adopt?");
+    expect(q.sessionId || q.session_id).toBe("session_abc_123");
+    expect(q.turnId || q.turn_id).toBe("turn_session_001");
+    expect(q.createdAt || q.created_at).toBeDefined();
+  });
+
+  test("closing a pending question with a reason removes it from Mini App, edits chat card, and emits channel event", async () => {
+    const { handleApiRequest } = await import("../src/web/routes.js");
+    const { createSessionToken } = await import("../src/web/auth.js");
+
+    const broker = new QuestionBroker(testStateDir);
+    const store = new PluginStore(testStateDir);
+
+    const posted = await broker.askUser({
+      header: "Deployment",
+      question: "Deploy release v1.0.0 to canary?",
+      options: [{ label: "Deploy" }, { label: "Cancel" }],
+      chatId: 999,
+      turnId: "turn_close_test",
+      sessionId: "session_close_test",
+    });
+    broker.setMessageId(posted.questionId, 888);
+
+    const editedCards: Array<{ chatId: number; messageId: number; text: string }> = [];
+    const emittedEvents: Array<{ event: string; content: string; meta: Record<string, unknown> }> = [];
+    const sessionSecret = "super-secret-session-key";
+    const token = createSessionToken(999, sessionSecret, 3600);
+
+    // Call POST /api/app/questions/close with a reason
+    const req = new Request("http://127.0.0.1:8093/api/app/questions/close", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: `ida_session=${token}`,
+      },
+      body: JSON.stringify({
+        question_id: posted.questionId,
+        reason: "answered elsewhere",
+      }),
+    });
+
+    const resp = await handleApiRequest(req, {
+      store,
+      broker,
+      config: {
+        botToken: "test-token",
+        allowFrom: [999],
+        stateDir: testStateDir,
+        socketPath: join(testStateDir, "hook.sock"),
+        port: 8093,
+        miniAppUrl: "https://ida.example.ts.net",
+        isPrimary: true,
+        maxChatChars: 1200,
+        voiceTranscribeCmd: "",
+        voiceSpeakCmd: "",
+        voiceReplies: "off",
+        botCommands: [],
+      },
+      sessionSecret,
+      emitChannelEvent: (event, content, meta) => {
+        emittedEvents.push({ event, content, meta });
+      },
+      editTelegramCard: async (chatId, messageId, text) => {
+        editedCards.push({ chatId, messageId, text });
+      },
+    } as any);
+
+    expect(resp.status).toBe(200);
+
+    // 1. Removed from the Mini App (broker getPendingQuestions returns empty)
+    expect(broker.getPendingQuestions().length).toBe(0);
+
+    // 2. Chat card is edited to show the reason
+    expect(editedCards.length).toBe(1);
+    expect(editedCards[0].chatId).toBe(999);
+    expect(editedCards[0].messageId).toBe(888);
+    expect(editedCards[0].text).toContain("Closed: answered elsewhere");
+
+    // 3. Emits channel event to the asking session
+    expect(emittedEvents.length).toBe(1);
+    expect(emittedEvents[0].event).toBe("question_closed");
+    expect(emittedEvents[0].meta.question_id).toBe(posted.questionId);
+    expect(emittedEvents[0].meta.reason).toBe("answered elsewhere");
+    expect(emittedEvents[0].meta.turn_id).toBe("turn_close_test");
+    expect(emittedEvents[0].meta.session_id).toBe("session_close_test");
+  });
+
+  test("closing a pending question without a reason is rejected with 400 Bad Request and broker throws", async () => {
+    const { handleApiRequest } = await import("../src/web/routes.js");
+    const { createSessionToken } = await import("../src/web/auth.js");
+
+    const broker = new QuestionBroker(testStateDir);
+    const store = new PluginStore(testStateDir);
+
+    const posted = await broker.askUser({
+      question: "Reject without reason test",
+      options: [{ label: "A" }],
+      chatId: 999,
+    });
+
+    // 1. Broker throws on empty or whitespace reason
+    await expect(broker.closeQuestion(posted.questionId, "")).rejects.toThrow("Missing reason");
+    await expect(broker.closeQuestion(posted.questionId, "   ")).rejects.toThrow("Missing reason");
+
+    // 2. HTTP route returns 400 Bad Request
+    const sessionSecret = "super-secret-session-key";
+    const token = createSessionToken(999, sessionSecret, 3600);
+    const req = new Request("http://127.0.0.1:8093/api/app/questions/close", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: `ida_session=${token}`,
+      },
+      body: JSON.stringify({
+        question_id: posted.questionId,
+        reason: "   ",
+      }),
+    });
+
+    const resp = await handleApiRequest(req, {
+      store,
+      broker,
+      config: {
+        botToken: "test-token",
+        allowFrom: [999],
+        stateDir: testStateDir,
+        socketPath: join(testStateDir, "hook.sock"),
+        port: 8093,
+        miniAppUrl: "https://ida.example.ts.net",
+        isPrimary: true,
+        maxChatChars: 1200,
+        voiceTranscribeCmd: "",
+        voiceSpeakCmd: "",
+        voiceReplies: "off",
+        botCommands: [],
+      },
+      sessionSecret,
+      emitChannelEvent: () => {},
+    } as any);
+
+    expect(resp.status).toBe(400);
+    const data = await resp.json();
+    expect(data.error).toContain("Missing reason");
+
+    // Question remains pending
+    expect(broker.getPendingQuestions().length).toBe(1);
+  });
 });
 
 

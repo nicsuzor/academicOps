@@ -66,18 +66,8 @@ class Rule:
     path: Path
 
 
-def _parse(path: Path, layer: int) -> Rule | None:
-    try:
-        text = path.read_text(encoding="utf-8")
-    except OSError as exc:
-        print(
-            "DEGRADED: ",
-            DEGRADED_RULES,
-            f"cope: the rule file {path} could not be read, so that rule is not being checked",
-            f"{exc!r}",
-            file=sys.stderr,
-        )
-        return None
+def _parse(path: Path, layer: int) -> Rule:
+    text = path.read_text(encoding="utf-8")
 
     trigger = ""
     description = ""
@@ -118,32 +108,19 @@ class _Layer:
 def _load_dir(layer: _Layer) -> dict[str, Rule]:
     rules: dict[str, Rule] = {}
     skipped: list[str] = []
-    try:
-        if not layer.path.is_dir():
-            if layer.absent_note:
-                print(
-                    "DEGRADED: ",
-                    DEGRADED_RULES,
-                    f"cope: there is no rule directory at {layer.path} ({layer.absent_note}), "
-                    f"so layer {layer.number} is not being checked",
-                    file=sys.stderr,
-                )
-            return rules
-        paths = sorted(layer.path.glob("*.md"))
-    except OSError as exc:
-        print(
-            "DEGRADED: ",
-            DEGRADED_RULES,
-            f"cope: the rule directory {layer.path} could not be read, so layer "
-            f"{layer.number} is not being checked",
-            f"{exc!r}",
-            file=sys.stderr,
-        )
+    if not layer.path.is_dir():
+        if layer.absent_note:
+            print(
+                "DEGRADED: ",
+                DEGRADED_RULES,
+                f"cope: there is no rule directory at {layer.path} ({layer.absent_note}), "
+                f"so layer {layer.number} is not being checked",
+                file=sys.stderr,
+            )
         return rules
+    paths = sorted(layer.path.glob("*.md"))
     for md_path in paths:
         rule = _parse(md_path, layer.number)
-        if rule is None:
-            continue
         if rule.trigger == TRIGGER_OFF:
             continue
         if rule.trigger != TRIGGER_ON:

@@ -72,6 +72,14 @@ As the user, I want my directions to reach a worker as I gave them, so that an a
 
 - A relayed direction cites the original ask, and every detail, constraint and method in it can be derived from that ask.
 
+### 8. Explanations are not reasons (hearsay)
+
+As the user, I want diagnoses and evaluations to trace causes to runtime evidence rather than agent self-reports, so that failure analyses address actual mechanisms rather than rationalised stories.
+
+- An agent's explanation of what it did is not its reason. Asked why it acted, an agent produces a plausible story after the fact; that account is hearsay, because models have no direct knowledge of their own causes ([`explanations-not-reasons`](../../plugins/rbg/skills/axioms/explanations-not-reasons.md)).
+- A stated reason is never taken at face value: it is probabilistic evidence and sometimes false.
+- Diagnoses, audits, and evaluations establish root causes from external evidence (traces, diffs, inputs, environment state, reproduced runs), never from what an agent claims it thought, intended, or misunderstood.
+
 ## Terms
 
 - **Load-bearing claim:** a claim the reader would act on, or that a conclusion rests on.

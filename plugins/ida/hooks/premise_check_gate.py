@@ -4,9 +4,11 @@
 Enforces that a supervisor (Ida) evaluates incoming subagent reports against
 logic-check doctrine before dispatching further subagents, contacting the user, or finishing tasks:
 
-- ``premise_check_arm``: a ``UserPromptSubmit`` handler that arms the check when
-  a peer's or worker's report arrives. The agent's own outgoing tool calls,
-  subagent dispatches included, and the user's own messages never arm it.
+- ``premise_check_arm``: a ``UserPromptSubmit`` / ``PostToolUse`` handler that arms
+  the check when a report or direction arrives: a peer or worker message, or a
+  foreground subagent's returned result. A spawn acknowledgement, any other of the
+  agent's own tool results, a notice with no report in it, and the user's own
+  messages never arm it.
 - ``premise_check_handler``: a ``PreToolUse`` / ``Stop`` handler that refuses the
   supervisor's next subagent dispatch, communication, channel reply, or stop while armed.
 - ``arm()`` / ``disarm()``: state management primitives. Calling ``disarm()``
@@ -37,13 +39,17 @@ def _now() -> str:
     return datetime.now().astimezone().isoformat()
 
 
-# Agent profiles this check applies to: the manager (ida) and the dispatcher (sara)
-_GATED_AGENT_TYPES = ["ida:ida", "ida", "ida:sara", "sara"]
-
-# Envelopes the harness wraps around a report from another agent. Anything
+# Envelopes the harness wraps around a report or direction from another agent. Anything
 # else arriving on UserPromptSubmit -- a channel message or a typed prompt -- is
 # the user's own message, which is an ask, not a claim to check.
-_PEER_ENVELOPES = ("<cross-session-message", "<teammate-message", "<task-notification")
+_PEER_ENVELOPES = (
+    "<cross-session-message",
+    "<teammate-message",
+    "<task-notification",
+    "<subagent-handback",
+    "<agent-message",
+)
+
 
 # Tools that dispatch subagents
 _DISPATCH_TOOLS = ["Agent", "Task", "invoke_subagent"]
@@ -156,10 +162,7 @@ def _state_path(session_id: str) -> Path:
 def _load_state(session_id: str) -> dict[str, Any]:
     target = _state_path(session_id)
     if target.exists():
-        try:
-            return json.loads(target.read_text(encoding="utf-8"))
-        except Exception:
-            return {}
+        return json.loads(target.read_text(encoding="utf-8"))
     return {}
 
 
@@ -170,11 +173,7 @@ def _save_state(session_id: str, state: dict[str, Any]) -> None:
 def clear_state(session_id: str) -> None:
     """Reset premise check state for a session. Used by tests."""
     target = _state_path(session_id)
-    if target.exists():
-        try:
-            target.unlink()
-        except OSError:
-            pass
+    target.unlink(missing_ok=True)
 
 
 def get_state(session_id: str) -> dict[str, Any]:
@@ -302,22 +301,12 @@ is_gate_open = is_disarmed
 _AGY_USER_REQUEST = re.compile(r"<USER_REQUEST>\s*(.*)\s*</USER_REQUEST>", re.DOTALL)
 
 
-def _agy_user_prompt(ctx: HookContext) -> str:
-    """The user's text for an agy turn, read from the turn's transcript.
-
-    agy's PreInvocation payload carries no prompt; it names the transcript, whose
-    latest USER_INPUT step is already written when the hook fires, wrapping the
-    typed text in `<USER_REQUEST>` tags. Only the turn's first model invocation
-    (`invocationNum` 0) is grounded, so a turn is searched once. A turn whose
-    latest turn-start step is a SYSTEM_MESSAGE (agy woken by a subagent result)
-    has no user text, and returns "".
-    """
+def _agy_turn_start(ctx: HookContext) -> dict[str, Any] | None:
     if ctx.raw.get("invocationNum", 0) != 0:
-        return ""
+        return None
     path = ctx.transcript_path or ctx.raw.get("transcriptPath")
     if not path:
-        return ""
-    turn_start: dict[str, Any] | None = None
+        return None
     with open(path, encoding="utf-8") as f:
         lines = f.readlines()
     for line in reversed(lines):
@@ -332,12 +321,55 @@ def _agy_user_prompt(ctx: HookContext) -> str:
             "USER_INPUT",
             "SYSTEM_MESSAGE",
         ):
-            turn_start = entry
-            break
+            return entry
+    return None
 
+
+_AGY_MESSAGE = re.compile(
+    r"\[Message\][^\n]*?\bsender=(\S+)[^\n]*?\bcontent=(.*?)\s*(?:</SYSTEM_MESSAGE>\s*)?$",
+    re.DOTALL,
+)
+_AGY_IDLE_RESPONSE = re.compile(
+    r"^Subagent \S+ has gone idle\. This was the subagent's most recent response:\s*(\S.*)$",
+    re.DOTALL,
+)
+
+
+def agy_arrival(content: str) -> str:
+    """The report or direction an agy SYSTEM_MESSAGE delivers, or "" when it delivers none.
+
+    agy starts a SYSTEM_MESSAGE turn for every wake: the session's own command
+    tasks and timers finishing (sender ``<conversation>/task-N``), system
+    notices, stop-hook refusals, and messages from other agents. Only a message
+    whose sender is another agent's conversation, or a system notice quoting an
+    idle subagent's last response, carries a report or direction.
+    """
+    m = _AGY_MESSAGE.search(content)
+    if not m:
+        return ""
+    sender, body = m.group(1), m.group(2).strip()
+    if sender == "system":
+        idle = _AGY_IDLE_RESPONSE.match(body)
+        return body if idle else ""
+    if "/" in sender:
+        return ""
+    return body
+
+
+def _agy_user_prompt(ctx: HookContext) -> str:
+    """The user's text for an agy turn, read from the turn's transcript.
+
+    agy's PreInvocation payload carries no prompt; it names the transcript, whose
+    latest USER_INPUT step is already written when the hook fires, wrapping the
+    typed text in `<USER_REQUEST>` tags. Only the turn's first model invocation
+    (`invocationNum` 0) is grounded, so a turn is searched once. A turn whose
+    latest turn-start step is a SYSTEM_MESSAGE (agy woken by a subagent result)
+    has no user text, and returns "".
+    """
+    turn_start = _agy_turn_start(ctx)
     if not turn_start or turn_start.get("type") != "USER_INPUT":
         return ""
-    content = str(turn_start.get("content") or "")
+    content = str(turn_start.get("content") or "").strip()
     m = _AGY_USER_REQUEST.search(content)
     return (m.group(1) if m else content).strip()
 
@@ -370,9 +402,32 @@ def _strip_channel_wrapper(text: str) -> str:
     return s
 
 
+_PEER_PREAMBLE = re.compile(
+    r"^(?:Another Claude session sent a message:\s*)+",
+    re.IGNORECASE,
+)
+
+
+def _strip_peer_wrapper(text: str) -> str:
+    """Unwrap channel envelopes and Claude Code teammate/peer preambles."""
+    s = _strip_channel_wrapper(text).strip()
+    m = _PEER_PREAMBLE.match(s)
+    if m:
+        s = s[m.end() :].strip()
+    s = _strip_channel_wrapper(s).strip()
+    return s
+
+
 def is_peer_report(ctx: HookContext) -> bool:
-    """True when an incoming prompt is another agent's report, not the user's message."""
-    text = _strip_channel_wrapper(_prompt_text(ctx)).lstrip()
+    """True when an incoming prompt is another agent's report or direction, not the user's message."""
+    if ctx.client == "agy":
+        turn_start = _agy_turn_start(ctx)
+        if turn_start and turn_start.get("type") == "SYSTEM_MESSAGE":
+            return bool(agy_arrival(str(turn_start.get("content") or "")))
+    raw = _prompt_text(ctx)
+    text = _strip_peer_wrapper(raw).lstrip()
+    if not text:
+        return False
     return text.startswith(_PEER_ENVELOPES)
 
 
@@ -385,6 +440,8 @@ def is_foreground_dispatch(ctx: HookContext) -> bool:
     carries no report, so ``tool_input`` cannot tell the two apart.
     """
     if ctx.event != "PostToolUse" or ctx.tool not in _DISPATCH_TOOLS:
+        return False
+    if ctx.client == "agy":
         return False
     response = _tool_response(ctx)
     return isinstance(response, dict) and response.get("status") == "completed"
@@ -448,10 +505,38 @@ def format_verdict_command(
 
 
 def _derive_claim_id(ctx: HookContext) -> str:
+    if ctx.event == "PostToolUse":
+        for call in ctx.tool_calls:
+            if call.get("tool_name") in _DISPATCH_TOOLS:
+                tool_input = call.get("tool_input") or {}
+                desc = str(tool_input.get("description") or tool_input.get("prompt") or "").strip()
+                if desc:
+                    return desc[:80]
+                call_id = call.get("tool_use_id") or ""
+                if call_id:
+                    return str(call_id)
+
+        if ctx.tool in _DISPATCH_TOOLS:
+            tool_input = ctx.raw.get("tool_input") or ctx.raw.get("toolInput") or {}
+            if isinstance(tool_input, dict):
+                desc = str(tool_input.get("description") or tool_input.get("prompt") or "").strip()
+                if desc:
+                    return desc[:80]
+            call_id = (
+                ctx.raw.get("tool_call_id") or ctx.raw.get("id") or ctx.raw.get("tool_use_id") or ""
+            )
+            if call_id:
+                return str(call_id)
+        raise RuntimeError("Dispatch tool call lacks identifier and description metadata")
+
     if ctx.event == "UserPromptSubmit":
-        prompt = _strip_channel_wrapper(_prompt_text(ctx))
+        prompt = _strip_peer_wrapper(_prompt_text(ctx)).strip()
+        if not prompt and ctx.client == "agy":
+            turn_start = _agy_turn_start(ctx)
+            if turn_start:
+                prompt = str(turn_start.get("content") or "").strip()
         match = re.match(
-            r"<(cross-session-message|teammate-message|task-notification)([^>]*)>(.*?)(?:</\1>|$)",
+            r"<(cross-session-message|teammate-message|task-notification|subagent-handback|agent-message)([^>]*)>(.*?)(?:</\1>|$)",
             prompt,
             re.DOTALL,
         )
@@ -463,7 +548,7 @@ def _derive_claim_id(ctx: HookContext) -> str:
             )
             if id_match:
                 cid = id_match.group(1).strip()
-                if cid and re.match(r"^[a-zA-Z0-9_\-\.:]+$", cid):
+                if cid and re.match(r"^[a-zA-Z0-9_\-\.:@]+$", cid):
                     return cid
 
             title_match = re.search(
@@ -477,29 +562,7 @@ def _derive_claim_id(ctx: HookContext) -> str:
             return build_id("claim", prompt)
         return build_id("claim", uuid.uuid4().hex)
 
-    for call in ctx.tool_calls:
-        if call.get("tool_name") in _DISPATCH_TOOLS:
-            tool_input = call.get("tool_input") or {}
-            desc = str(tool_input.get("description") or tool_input.get("prompt") or "").strip()
-            if desc:
-                return desc[:80]
-            call_id = call.get("tool_use_id") or ""
-            if call_id:
-                return str(call_id)
-
-    if ctx.tool in _DISPATCH_TOOLS:
-        tool_input = ctx.raw.get("tool_input") or ctx.raw.get("toolInput") or {}
-        if isinstance(tool_input, dict):
-            desc = str(tool_input.get("description") or tool_input.get("prompt") or "").strip()
-            if desc:
-                return desc[:80]
-        call_id = (
-            ctx.raw.get("tool_call_id") or ctx.raw.get("id") or ctx.raw.get("tool_use_id") or ""
-        )
-        if call_id:
-            return str(call_id)
-
-    return "claim-unnamed"
+    raise RuntimeError(f"Cannot derive claim_id for event {ctx.event}")
 
 
 _OVERRIDE_VARS = (
@@ -638,7 +701,8 @@ def _tool_use_id(ctx: HookContext) -> str:
 
 
 def _envelope_id(prompt: str) -> str | None:
-    match = re.search(r"<([a-zA-Z0-9_\-]+)([^>]*)>", prompt)
+    stripped = _strip_peer_wrapper(prompt)
+    match = re.search(r"<([a-zA-Z0-9_\-]+)([^>]*)>", stripped)
     if not match:
         return None
     id_match = re.search(
@@ -647,9 +711,63 @@ def _envelope_id(prompt: str) -> str | None:
     )
     if id_match:
         cid = id_match.group(1).strip()
-        if cid and re.match(r"^[a-zA-Z0-9_\-\.:]+$", cid):
+        if cid and re.match(r"^[a-zA-Z0-9_\-\.:@]+$", cid):
             return cid
     return None
+
+
+_NOTIFICATION_RESULT = re.compile(r"<result>(.*?)</result>", re.DOTALL)
+_HANDBACK_POINTER = re.compile(
+    r"report was delivered to you as a message from .{0,120}\(its SubagentHandback call\)",
+    re.DOTALL,
+)
+
+
+def carries_report(text: str) -> bool:
+    """False when an arrival only announces or points at a report.
+
+    A task notification carries a report in its ``<result>``; one without (a
+    background command finishing) carries none. A hand-back pointer names the
+    message that carries the report, which arms the gate when it arrives.
+    """
+    body = _strip_peer_wrapper(text).lstrip()
+    if not body:
+        return False
+    if body.startswith("<task-notification"):
+        result = _NOTIFICATION_RESULT.search(body)
+        if not result or not result.group(1).strip():
+            return False
+    return not _HANDBACK_POINTER.search(body)
+
+
+def _extract_judged_text(prompt: str) -> str:
+    """Extract report content from an incoming peer prompt.
+
+    For an idle_notification JSON inside a <teammate-message> envelope,
+    the teammate's final report is the JSON `result` string; returning that
+    unpacks the unescaped markdown (including any fenced argdown blocks).
+    For other peer messages, returns the prompt text.
+    """
+    stripped = _strip_peer_wrapper(prompt)
+    match = re.search(
+        r"<(cross-session-message|teammate-message|task-notification|subagent-handback|agent-message)([^>]*)>(.*?)(?:</\1>|$)",
+        stripped,
+        re.DOTALL,
+    )
+    if match and match.group(1) == "teammate-message":
+        inner = match.group(3).strip()
+        if inner.startswith("{") and inner.endswith("}"):
+            try:
+                data = json.loads(inner)
+                if (
+                    isinstance(data, dict)
+                    and data.get("type") == "idle_notification"
+                    and "result" in data
+                ):
+                    return str(data["result"])
+            except (json.JSONDecodeError, TypeError, ValueError):
+                pass
+    return prompt
 
 
 # ---------------------------------------------------------------------------
@@ -658,19 +776,38 @@ def _envelope_id(prompt: str) -> str | None:
 
 
 def premise_check_arm(ctx: HookContext) -> Result | None:
-    """UserPromptSubmit handler: arm the premise check on an incoming report."""
-    if ctx.agent_type not in _GATED_AGENT_TYPES:
+    """UserPromptSubmit or PostToolUse handler: arm the premise check on an incoming report or direction."""
+    if ctx.event == "UserPromptSubmit":
+        if not is_peer_report(ctx):
+            return None
+    elif ctx.event == "PostToolUse":
+        if not is_foreground_dispatch(ctx):
+            return None
+    else:
         return None
 
-    if ctx.event != "UserPromptSubmit" or not is_peer_report(ctx):
+    if ctx.event == "PostToolUse":
+        judged_text = _response_text(_tool_response(ctx))
+    else:
+        judged_text = _prompt_text(ctx)
+        if not judged_text and ctx.client == "agy":
+            turn_start = _agy_turn_start(ctx)
+            if turn_start:
+                judged_text = agy_arrival(str(turn_start.get("content") or ""))
+        judged_text = _extract_judged_text(judged_text)
+    if not carries_report(judged_text):
         return None
 
     claim_id = _derive_claim_id(ctx)
-    prompt = _prompt_text(ctx)
-    judged_text, judged_ref = prompt, _envelope_id(prompt.strip()) or claim_id
+    if ctx.event == "PostToolUse":
+        judged_ref = _tool_use_id(ctx) or claim_id
+    else:
+        raw_prompt = judged_text
+        judged_text = _extract_judged_text(raw_prompt)
+        judged_ref = _envelope_id(raw_prompt.strip()) or claim_id
     arm(ctx.session_id, claim_id=claim_id, judged_text=judged_text, judged_ref=judged_ref)
     inject = (
-        f"Premise-check gate armed by {claim_id}; record a verdict per the `premise-check` skill.\n"
+        f"Premise-check gate armed by {claim_id}; if this is a direction, summarise it stating deliverables and log as a frozen acceptance checklist on a PKB task; record a verdict per the `premise-check` skill.\n"
         f"{format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id)}"
     )
     user_msg = f"Premise-check gate armed by {claim_id}."
@@ -679,9 +816,6 @@ def premise_check_arm(ctx: HookContext) -> Result | None:
 
 def premise_check_handler(ctx: HookContext) -> Result | None:
     """PreToolUse/Stop handler: refuse the next restricted action while armed."""
-    if ctx.agent_type not in _GATED_AGENT_TYPES:
-        return None
-
     if ctx.event == "PreToolUse" and not _is_blocked_tool(ctx.tool):
         return None
 

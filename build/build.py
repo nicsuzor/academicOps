@@ -188,25 +188,21 @@ def generate_image_metadata(
     commit_sha = ""
     short_sha = ""
     is_dirty = False
-    try:
-        sha_res = subprocess.run(
-            ["git", "-C", str(project_root), "rev-parse", "HEAD"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if sha_res.returncode == 0 and sha_res.stdout:
-            commit_sha = sha_res.stdout.strip()
-            short_sha = commit_sha[:8]
-        status_res = subprocess.run(
-            ["git", "-C", str(project_root), "status", "--porcelain"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        is_dirty = status_res.returncode == 0 and bool(status_res.stdout.strip())
-    except Exception:
-        pass
+    sha_res = subprocess.run(
+        ["git", "-C", str(project_root), "rev-parse", "HEAD"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    commit_sha = sha_res.stdout.strip()
+    short_sha = commit_sha[:8]
+    status_res = subprocess.run(
+        ["git", "-C", str(project_root), "status", "--porcelain"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    is_dirty = bool(status_res.stdout.strip())
 
     dist_ref = os.environ.get("AOPS_DIST_REF", "dev")
     repo_url = os.environ.get("AOPS_REPO_URL", "https://github.com/nicsuzor/academicOps.git")

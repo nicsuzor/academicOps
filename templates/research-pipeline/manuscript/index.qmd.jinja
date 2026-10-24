@@ -1,0 +1,18 @@
+---
+title: "{{ project_title }}"
+author:
+  - name: "{{ author_name }}"
+format: html
+---
+
+# Introduction
+
+Research pipeline and analysis for {{ project_title }}.
+
+# Methodology
+
+All data processing, transformations, and metrics are implemented in the dbt pipeline with strict integrity tests.
+
+# Results
+
+All analytical results are sourced from pre-computed marts in `dbt/models/marts` and preserved as Parquet exports in `data/export/`.

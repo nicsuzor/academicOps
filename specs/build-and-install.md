@@ -26,7 +26,7 @@ under `plugins/`, mirroring the table in `ARCHITECTURE.md`.
 | `make build` | Assembles `dist/` for every plugin, clients (Claude, agy, openclaw) and channels (cowork, openclaw). |
 | `make install-dev` | `build`, then registers `dist/` as the local `aops` marketplace and installs every plugin from it (`aops@aops`). |
 | `make uninstall-dev` | Removes the local marketplace and its installs, then restores the released `academicOps` marketplace. |
-| `make install` | Registers `nicsuzor/academicOps@dist` as the `academicOps` marketplace and installs every plugin from it. |
+| `make install` | Registers `nicsuzor/academicOps@main` as the `academicOps` marketplace and installs every plugin from it. |
 | `make test` | `uv run pytest tests/`. |
 | `make lint` | `ruff check .`. |
 | `make format` | `ruff format .` + `dprint fmt`. |
@@ -78,40 +78,39 @@ plugin cache whenever plugin definitions, instructions, or dependencies change.
 In a `polecat` container, plugin content is baked into the image at build time
 (`Dockerfile`, `AOPS_DIST_SOURCE`), and rebuilding the image is the refresh path.
 
-## 2. Release path (`dev` → tag → publish)
+## 2. Release path (`release/*` → `main` → publish)
 
-`release-please` manages version bumps from conventional commits; merging the
-release PR it opens creates the stable `vX.Y.Z` tag. Pushing any `v*` tag fires
-`.github/workflows/build-extension.yml`, run from the tagged commit:
+academicOps `main` holds the current release's source plus the built plugin objects
+previously published to the orphan `dist` branch. The build runs on every merge into `main`
+and writes its output to `main` only. Publishing to the legacy `nicsuzor/aops` mirror has
+stopped as a trial. Merges into `main` are restricted to fully green releases, enforced by
+branch protection requiring all checks green (`Lint / Lint`, `Type Check / Type Check`,
+`Pytest / Pytest`) with no bypass allowed.
 
-1. **Resolve build context.** A tag shaped `vX.Y.Z-<suffix>` (`-rc.N`, `-dev.N`,
-   `-beta.N`, …) is a prerelease/"testing" build; a plain `vX.Y.Z` tag is stable.
-2. **Checkout.** The tagged commit, plus the `dist` branch (the publish target)
-   and `nicsuzor/aops` (the mirror target) at separate paths.
-3. **Compute and validate version.** The tag, verbatim, with the leading `v` stripped.
-   The workflow validates that the version is a valid PEP 440 Python package version
-   (`uv run python -m build.version --validate <version>`), failing closed before any
-   build, publish, or release step if unparseable. `release-please.yml` similarly validates
-   any manual `release_as` input and the committed `pyproject.toml` version before
-   `release-please-action` tags. For a stable tag, the workflow asserts the tag,
-   `pyproject.toml`'s `version`, and `.release-please-manifest.json` all agree, and aborts
-   the release if they don't.
-4. **Build.** `uv run python -m build.build --set-version <version>`.
-5. **Publish to `dist` and `nicsuzor/aops`.** Every built plugin directory under `dist/` is mirrored
-   to the root of the `dist` branch (an orphan branch; plugin dirs and
-   `.claude-plugin/marketplace.json` live at its root), along with
-   `pr-pipeline.yml` and the workflow files it references, so external
-   consumers can pin `uses: nicsuzor/academicOps/.github/workflows/pr-pipeline.yml@dist`.
-   The identical distribution tree is mirrored onto `nicsuzor/aops` (`main` and `dist` branches)
-   for consumers installing directly from `nicsuzor/aops`.
-   This step runs for both stable and prerelease tags -- prerelease builds ship
-   to `dist` too, as a semver prerelease version, so a client chooses whether to
-   install one rather than being force-upgraded.
-6. **Docker (stable tags only).** Builds and pushes
-   `ghcr.io/nicsuzor/aops-crew:v<version>` and `:latest` from the `Dockerfile`,
-   cloning the `dist` branch just published.
-7. **GitHub Release.** Uploads every `dist/*.tar.gz` archive to a release tagged
-   `v<version>`, `--prerelease` for a testing build.
+### What changed for installs
+
+- **Marketplace ref**: Users install from `main` of `nicsuzor/academicOps` using
+  `claude plugin marketplace add nicsuzor/academicOps` (or `nicsuzor/academicOps@main`).
+  The previous orphan `dist` branch (`@dist`) is superseded by `main`.
+- **Built plugin resolution**: Claude Code reads `.claude-plugin/marketplace.json` at the root
+  of `main`, where each plugin points to `./<plugin>-claude` (also committed to `main`).
+- **Discontinued mirrors**: `nicsuzor/aops` is no longer updated or published to.
+
+### How each release candidate is now published
+
+1. **Active development and validation.** Work proceeds on release lines (e.g. `release/v1.0-rc0`).
+   Pull requests into release lines run the full `pr-pipeline.yml` suite (Lint, Type Check, Pytest).
+2. **Publishing release candidates.** Release candidates are published by pushing an annotated or lightweight tag on the release line (e.g. `v1.0-rc6`). Pushing an rc tag (`v*-*`) triggers `.github/workflows/publish-release.yml`, which runs pytest, builds distribution artifacts, and uploads archives to a GitHub pre-release (`gh release create --prerelease`). Pushing an rc tag publishes a GitHub pre-release only and never writes to `main`.
+3. **Merging stable release into `main`.** Once a release candidate is validated and fully green, a pull request is merged from the release line into `main`. Branch protection on `main` requires all status checks to pass before merging, with no bypass allowed.
+4. **Build on merge.** Every merge into `main` triggers `.github/workflows/build-extension.yml`.
+   The workflow:
+   - Computes the version from `build.version`.
+   - Runs `uv run python -m build.build --set-version <version>`.
+   - Mirrors built plugin directories (`<plugin>-claude/`, `<plugin>-agy/`, `<plugin>-openclaw/`, `cowork/`),
+     `.claude-plugin/marketplace.json`, and `.aops-image-metadata.json` directly to the root of `main`.
+   - Commits and pushes the built artifacts back to `main` with `[skip ci]`.
+   - Writes only to `main` (no writes to `dist` or `nicsuzor/aops`).
+5. **Stable GitHub Releases.** Annotated release tags (`vX.Y.Z`) pushed on `main` trigger `.github/workflows/publish-release.yml` to upload tarball archives (`dist/*.tar.gz`) to a stable GitHub Release.
 
 A manual rebuild against a specific commit: push a prerelease tag at that
 commit -- e.g. `git tag v<next>-rc.1 <sha> && git push origin v<next>-rc.1`.

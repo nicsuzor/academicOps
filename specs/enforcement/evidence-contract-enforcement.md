@@ -18,11 +18,12 @@ As the user, I want each agent reminded of the contract at the moment it writes 
 
 - The format lives only in the `premise-check` skill. Every other instruction file, reminder and gate message names the skill and adds nothing to it.
 - Each reminder fires once, at its moment, and is a line or two long.
-- Ida and Sara cannot dispatch, message, reply on a channel or stop while a report that arrived as an incoming message awaits a verdict.
+- Agents cannot dispatch, message, reply on a channel or stop while a report or direction that arrived as an incoming agent message awaits a verdict.
 - Agents judge each report. Parsers and presence checks confirm well-formedness only, under [enforcement.md](enforcement.md)'s governing principle.
-- **AC-1.1** Given Ida or Sara with no report awaiting a verdict, when a cross-session message, a teammate message or a background subagent's or worker's completion notification arrives, then the agent's next dispatch, message or channel reply is refused until it records a verdict, and its first `Stop` is blocked.
-- **AC-1.2** Given Ida or Sara with no report awaiting a verdict, when a foreground subagent returns its result, a background subagent is launched, or any other of the agent's own tool calls completes, then the agent's next dispatch goes through.
-- **AC-1.3** Given Ida or Sara with no report awaiting a verdict, when the user's own message arrives, typed or over a channel, then the agent's next dispatch goes through.
+- **AC-1.1** Given an agent with no report awaiting a verdict, when an incoming agent message carrying a report or direction arrives on `UserPromptSubmit` (a cross-session message, a teammate message, a task notification with a `<result>`, a subagent hand-back, or a direction/brief from above), then the agent's next dispatch, message or channel reply is refused until it records a verdict, and its first `Stop` is blocked.
+- **AC-1.2** Given an agent with no report awaiting a verdict, when a foreground subagent returns its result on `PostToolUse` (for `Agent`, `invoke_subagent`, or `Task`), then the gate arms and holds the next dispatch, message, channel reply or stop until a verdict is recorded. When a subagent is launched or spawned rather than returned (`async_launched`, the default when `run_in_background` is omitted, or `teammate_spawned`), or any other of the agent's own tool calls completes, the check remains disarmed, and a claim already pending stays the one armed.
+- **AC-1.3** Given an agent with no report awaiting a verdict, when the user's own message arrives, typed or over a channel, then the agent's next dispatch goes through without arming the gate, and the user prompt is hydrated from the PKB.
+- **AC-1.4** When the incoming agent message is a direction, the receiving agent records its own summary of it, stating the deliverables, and logs it as a frozen acceptance checklist on a PKB task before work starts.
 
 ## Reminders
 
@@ -30,20 +31,20 @@ As the user, I want each agent reminded of the contract at the moment it writes 
 | - | - | - |
 | Session start, resume and compaction | All | One line: reports follow `premise-check`, written in its shape and checked on receipt |
 | A peer message arrives | All | Your reply is a report; write it per the skill |
-| A report arrives | Ida, Sara | Check it per the skill; if it isn't in shape, REVISE and return it |
-| Gate refusal or `Stop` block | Ida, Sara | At most two lines naming the claim id and the skill; one line for the user |
+| A report or direction arrives | All | Check it per the skill; if a direction, log deliverables as a frozen acceptance checklist on a PKB task; if a report isn't in shape, REVISE and return it |
+| Gate refusal or `Stop` block | All | At most two lines naming the claim id and the skill; one line for the user |
 
 A report arrives as a foreground subagent's result, a background subagent's notification, or a peer message. Each harness carries these moments on its own hook events; the event map is in [ARCHITECTURE.md](../ARCHITECTURE.md).
 
-On agy the session-start line arrives with the first `PreInvocation` of each conversation. agy's hook payloads name no agent and carry no report: a subagent's reply arrives as a message file that starts a new turn. So the Ida and Sara reminders and the gate do not run on agy.
+On agy the session-start line arrives with the first `PreInvocation` of each conversation. agy's hook payloads carry no report: a subagent's reply arrives as a `SYSTEM_MESSAGE` step that starts a new turn, which the gate reads from the transcript.
 
 ## The premise-check gate
 
 The gate is procedural friction, the exception [enforcement.md](enforcement.md) authorises. It and the verdict recorder check form and consistency; every semantic judgement stays with the checking agent.
 
-- **Scope:** Ida and Sara.
-- **Arms:** when an incoming message carries a report: a cross-session message, a teammate message, or the notification that a background subagent or worker has finished (including when unwrapped from outer channel envelopes). A foreground subagent's result is the agent's own tool output and leaves the gate as it was. User prompts and queries never arm it.
-- **Stores:** at arm time, the judged text and an explicit reference to it: the tool-use id or the envelope id.
+- **Scope:** All agents receiving messages from teammates or in-session agents, independent of receiving or sending agent identity.
+- **Arms:** on every report that reaches any agent as an incoming message from a teammate or an in-session agent, whatever the receiving or sending agent's identity: on `UserPromptSubmit`, when an incoming agent message carries a report or direction (a cross-session message `<cross-session-message>`, a teammate message `<teammate-message>` whether arriving via `SendMessage` or a teammate `idle_notification` event, unwrapped from Claude Code's peer preamble `Another Claude session sent a message:`, a subagent hand-back `<subagent-handback>` or `<agent-message>`, a task notification carrying a `<result>`, or a direction/brief from above); on `PostToolUse` of `Agent`, `Task` or `invoke_subagent`, when a foreground subagent returns its result (`status: "completed"`). Nothing else arms it: not a spawn or launch acknowledgement (`async_launched`, `teammate_spawned`, "Spawned successfully"), not a task notification with no `<result>` (a background command finishing), not a pointer saying the report was delivered by hand-back, not any other tool result, and not the user's own prompts. On agy, a `SYSTEM_MESSAGE` turn arms it only when its `[Message]` comes from another agent's conversation (`sender=<conversation-id>`) or is a system notice quoting an idle subagent's last response; the session's own command tasks and timers (`sender=<conversation-id>/task-N`), other system notices, and stop-hook refusals leave it disarmed. Arming adds the arriving report's claim to those pending and never replaces one. The arming notice reminds the receiver to log a direction's deliverables as a frozen acceptance checklist on a PKB task.
+- **Stores:** at arm time, the judged text (unwrapping JSON `result` strings from teammate `idle_notification` payloads so fenced `argdown` blocks can be parsed) and an explicit reference to it: the tool-use id, task id, or the envelope id.
 - **Holds:** while armed, it refuses dispatch tools, messaging tools, `AskUserQuestion`, `Dump` and channel reply tools, and blocks `Stop` once per stop chain.
 - **Disarms:** on a recorded verdict (PASS, REVISE or FAIL, with a reason) through the skill's verdict script. The command it offers carries no pre-filled verdict.
 - **Configuration:** `PREMISE_CHECK_GATE_MODE` is `block` by default, or `warn` or `off`. A truthy `PREMISE_CHECK_OVERRIDE`, `PREMISE_CHECK_GATE_OVERRIDE`, `AOP_FORCE` or `AOP_OVERRIDE` lets an armed gate pass a blocked action. Override use is not counted. Gate state is a per-session file under `AOPS_PREMISE_CHECK_DIR`, by default `aops_premise_check/` in the system temp directory.

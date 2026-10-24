@@ -1,7 +1,9 @@
 import { DEFAULT_MINI_APP_URL, PluginConfig } from "../config.js";
 import { FormattedMessage, formatMarkdownToEntities } from "./format.js";
 import { parseInboundUpdate, TelegramUpdate } from "./inbound.js";
+import { resolveBotCommands } from "./commands.js";
 import { QuestionBroker } from "./questions.js";
+import { FeedbackManager } from "./feedback.js";
 import { prepareVoiceText, buildVoiceInEvent } from "./voice.js";
 import { PermissionRelay } from "../mcp/permissions.js";
 import { PluginStore } from "../store.js";
@@ -29,7 +31,9 @@ export interface SendReplyOptions {
   buttons?: ReplyButtonOption[];
   voice?: boolean;
   replyTo?: number;
+  feedback?: boolean;
   review?: { repo: string; pr?: number };
+  actions?: boolean;
 }
 
 export interface SendReplyResult {
@@ -42,6 +46,7 @@ export interface SendReplyResult {
 export class TelegramBotClient {
   private config: PluginConfig;
   private broker: QuestionBroker;
+  private feedbackManager: FeedbackManager;
   private permRelay: PermissionRelay;
   private emitChannelEvent: (content: string, meta: Record<string, unknown>) => void;
   private isRunning = false;
@@ -57,10 +62,12 @@ export class TelegramBotClient {
     broker: QuestionBroker,
     permRelay: PermissionRelay,
     emitChannelEvent: (content: string, meta: Record<string, unknown>) => void,
-    store?: PluginStore
+    store?: PluginStore,
+    feedbackManager?: FeedbackManager
   ) {
     this.config = config;
     this.broker = broker;
+    this.feedbackManager = feedbackManager || new FeedbackManager(config.stateDir);
     this.permRelay = permRelay;
     this.emitChannelEvent = emitChannelEvent;
     this.store = store;
@@ -147,7 +154,7 @@ export class TelegramBotClient {
   }
 
   public async sendReply(opts: SendReplyOptions): Promise<SendReplyResult | null> {
-    const { chatId, formatted, detailsId, buttons, voice, replyTo, review } = opts;
+    const { chatId, formatted, detailsId, buttons, voice, replyTo, feedback, review, actions } = opts;
 
     // Build inline keyboard
     const inlineKeyboard: Array<Array<Record<string, unknown>>> = [];
@@ -170,6 +177,12 @@ export class TelegramBotClient {
     }
 
     const actionRow: Array<Record<string, unknown>> = [];
+
+    // Feedback buttons (default false)
+    if (feedback === true) {
+      actionRow.push({ text: "👍", callback_data: "fb:up" });
+      actionRow.push({ text: "👎", callback_data: "fb:down" });
+    }
 
     const miniAppBaseUrl = (this.config.miniAppUrl || DEFAULT_MINI_APP_URL).replace(/\/+$/, "");
 
@@ -195,6 +208,14 @@ export class TelegramBotClient {
       ]);
     }
 
+    // Message action buttons (AC1, AC2: logic check and explain)
+    if (actions !== false) {
+      inlineKeyboard.push([
+        { text: "🧐 Check logic", callback_data: "logic_check" },
+        { text: "💡 Explain", callback_data: "explain" },
+      ]);
+    }
+
     let voiceError: string | undefined;
 
     // Check voice out (FR-7)
@@ -207,9 +228,16 @@ export class TelegramBotClient {
         const tempOgg = join(tmpdir(), `voice_out_${stamp}.ogg`);
         try {
           const spoken = prepareVoiceText(formatted.plainText);
+          if (!existsSync(this.config.stateDir)) {
+            mkdirSync(this.config.stateDir, { recursive: true });
+          }
           writeFileSync(tempText, spoken, "utf-8");
 
-          await execFileAsync(this.config.voiceSpeakCmd, [tempText, tempOgg]);
+          await execFileAsync(this.config.voiceSpeakCmd, [tempText, tempOgg], {
+            timeout: 60000,
+            cwd: this.config.stateDir,
+            env: { ...process.env, ...(this.config.env || {}) },
+          });
 
           if (!existsSync(tempOgg)) {
             throw new Error(`TTS script did not produce output file: ${tempOgg}`);
@@ -419,15 +447,25 @@ export class TelegramBotClient {
     return res;
   }
 
-  public async registerCommands(): Promise<boolean> {
-    if (!this.config.isPrimary || this.config.botCommands.length === 0) {
+  public async registerCommands(persona?: string): Promise<boolean> {
+    if (!this.config.isPrimary) {
+      return false;
+    }
+
+    const commands = persona
+      ? resolveBotCommands(persona)
+      : (this.config.botCommands && this.config.botCommands.length > 0
+          ? this.config.botCommands
+          : resolveBotCommands(this.config.persona));
+
+    if (commands.length === 0) {
       return false;
     }
 
     let allOk = true;
     for (const chatId of this.config.allowFrom) {
       const res = await this.callApi("setMyCommands", {
-        commands: this.config.botCommands,
+        commands,
         scope: { type: "chat", chat_id: chatId },
       });
       if (!res?.ok) {
@@ -545,7 +583,7 @@ export class TelegramBotClient {
       const cb = update.callback_query;
       const data = cb.data || "";
 
-      if (!data.startsWith("q:") && !data.startsWith("perm:")) {
+      if (!data.startsWith("q:") && !data.startsWith("perm:") && !data.startsWith("fb:")) {
         await this.callApi("answerCallbackQuery", { callback_query_id: cb.id });
       }
 
@@ -653,6 +691,157 @@ export class TelegramBotClient {
         return;
       }
 
+      // Feedback callbacks: fb:...
+      if (data.startsWith("fb:") && cb.message) {
+        if (!this.config.allowFrom.includes(cb.from.id)) {
+          await this.callApi("answerCallbackQuery", {
+            callback_query_id: cb.id,
+            text: "Unauthorized.",
+          });
+          return;
+        }
+
+        if (data === "fb:up") {
+          await this.callApi("answerCallbackQuery", { callback_query_id: cb.id, text: "Noted 👍" });
+          await this.feedbackManager.handleUpvote({
+            messageId: cb.message.message_id,
+            messageExcerpt: cb.message.text || "",
+          });
+          const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
+            cb.message.reply_markup?.inline_keyboard,
+            [[{ text: "👍 saved", callback_data: "noop" }]]
+          );
+          await this.callApi("editMessageReplyMarkup", {
+            chat_id: cb.message.chat.id,
+            message_id: cb.message.message_id,
+            reply_markup: {
+              inline_keyboard: updatedKeyboard,
+            },
+          });
+          return;
+        }
+
+        if (data === "fb:down") {
+          await this.callApi("answerCallbackQuery", { callback_query_id: cb.id });
+          const critiqueKeyboard = this.feedbackManager.getDownvoteCritiqueKeyboard(cb.message.message_id);
+          const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
+            cb.message.reply_markup?.inline_keyboard,
+            critiqueKeyboard
+          );
+          await this.callApi("editMessageReplyMarkup", {
+            chat_id: cb.message.chat.id,
+            message_id: cb.message.message_id,
+            reply_markup: { inline_keyboard: updatedKeyboard },
+          });
+          return;
+        }
+
+        if (data === "fb:cancel" || data.startsWith("fb:cancel:")) {
+          await this.callApi("answerCallbackQuery", { callback_query_id: cb.id });
+          const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
+            cb.message.reply_markup?.inline_keyboard,
+            [this.feedbackManager.getInitialFeedbackButtons()]
+          );
+          await this.callApi("editMessageReplyMarkup", {
+            chat_id: cb.message.chat.id,
+            message_id: cb.message.message_id,
+            reply_markup: { inline_keyboard: updatedKeyboard },
+          });
+          return;
+        }
+
+        if (data.startsWith("fb:critique:")) {
+          await this.callApi("answerCallbackQuery", { callback_query_id: cb.id });
+          const parts = data.split(":");
+          const critique = parts.slice(3).join(":");
+          const res = await this.feedbackManager.handleCritique({
+            messageId: cb.message.message_id,
+            messageExcerpt: cb.message.text || "",
+            critique,
+          });
+
+          const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
+            cb.message.reply_markup?.inline_keyboard,
+            [[{ text: `Critique saved: ${critique}`, callback_data: "noop" }]]
+          );
+          await this.callApi("editMessageReplyMarkup", {
+            chat_id: cb.message.chat.id,
+            message_id: cb.message.message_id,
+            reply_markup: {
+              inline_keyboard: updatedKeyboard,
+            },
+          });
+
+          if (res.emitsChannelEvent) {
+            this.emitChannelEvent(
+              `Feedback received: ${critique}`,
+              res.channelEvent as unknown as Record<string, unknown>
+            );
+          }
+          return;
+        }
+      }
+
+      // Logic check and explain callbacks (AC1, AC2)
+      if (
+        (data === "logic_check" ||
+          data.startsWith("logic_check:") ||
+          data === "explain" ||
+          data.startsWith("explain:")) &&
+        cb.message &&
+        this.config.allowFrom.includes(cb.from.id)
+      ) {
+        const kbRows = cb.message.reply_markup?.inline_keyboard || [];
+        const matchedBtn = kbRows.flat().find((b) => b.callback_data === data);
+        const isLogicCheck = data === "logic_check" || data.startsWith("logic_check:");
+        const label = matchedBtn?.text || (isLogicCheck ? "🧐 Check logic" : "💡 Explain");
+        const originalText = cb.message.text || "";
+
+        // Remove the action buttons row, but preserve other buttons (e.g. Details, Review diff)
+        const remainingRows = kbRows
+          .map((row) =>
+            row.filter(
+              (b) =>
+                b.callback_data !== "logic_check" &&
+                b.callback_data !== "explain" &&
+                !b.callback_data?.startsWith("logic_check:") &&
+                !b.callback_data?.startsWith("explain:")
+            )
+          )
+          .filter((row) => row.length > 0);
+
+        await this.editMessage(
+          cb.message.chat.id,
+          cb.message.message_id,
+          `${originalText}\n\nSelected: ${label} ✅`,
+          { inline_keyboard: remainingRows }
+        );
+
+        const targetExcerpt = cb.message.text || this.getMessageExcerpt(cb.message.message_id) || "";
+        const action = isLogicCheck ? "logic_check" : "explain";
+        const content = isLogicCheck
+          ? `Give me a logic check on message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""} as if you were receiving it from a peer.`
+          : `Please explain message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""} in more detail.`;
+
+        const meta: Record<string, string> = {
+          event: action,
+          action,
+          callback_id: cb.id,
+          callback_prefix: action,
+          payload: data,
+          label,
+          target_message_id: String(cb.message.message_id),
+          chat_id: String(cb.message.chat.id),
+          user_id: String(cb.from.id),
+        };
+        if (targetExcerpt) {
+          meta.target_excerpt = targetExcerpt;
+        }
+
+        this.emitChannelEvent(content, meta);
+        return;
+      }
+
       // Custom action / decision buttons on reply cards (FR-1.1 / FR-8)
       if (cb.message && this.config.allowFrom.includes(cb.from.id)) {
         const kbRows = cb.message.reply_markup?.inline_keyboard || [];
@@ -704,9 +893,11 @@ export class TelegramBotClient {
           const buf = await res.arrayBuffer();
           writeFileSync(localAudioPath, Buffer.from(buf));
 
-          // Run transcription script
+          // Run transcription script with stateDir cwd and merged env
           const { stdout } = await execFileAsync(this.config.voiceTranscribeCmd, [localAudioPath], {
             timeout: 120000,
+            cwd: this.config.stateDir,
+            env: { ...process.env, ...(this.config.env || {}) },
           });
 
           const voiceEvent = buildVoiceInEvent({
@@ -740,7 +931,7 @@ export class TelegramBotClient {
     }
 
     // 5. General Inbound (text, attachments, reactions, commands)
-    const event = parseInboundUpdate(update, this.config.allowFrom, (msgId) => this.getMessageExcerpt(msgId));
+    const event = parseInboundUpdate(update, this.config.allowFrom, (msgId) => this.getMessageExcerpt(msgId), this.config.persona);
     if (event) {
       if (event.event === "attachment" && event.meta.file_id && this.config.botToken) {
         try {

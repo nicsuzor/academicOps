@@ -1,47 +1,14 @@
 name: Build and Deploy
 
 on:
-  # Tag-driven. The tag SHAPE selects the channel (classified in "Resolve build
-  # context" below):
-  #   vX.Y.Z                     → stable: build, publish to the `dist` branch,
-  #                                cut a normal GitHub Release.
-  #   vX.Y.Z-rc.N / -dev.N / ... → prerelease ("testing"): build and publish to
-  #                                the `dist` branch TOO — we DO ship dev builds
-  #                                to dist. The published plugin version is a
-  #                                semver prerelease (-dev/-beta/-rc), and the
-  #                                GitHub Release is cut `--prerelease`. Because
-  #                                the version is a semver prerelease, semver-aware
-  #                                consumers don't pick it as latest-stable (the
-  #                                stable-tag filter is build/version.py
-  #                                `_STABLE_TAG_RE`), so a client CHOOSES whether to
-  #                                install a dev build — but see the marketplace
-  #                                single-version caveat on the publish step below.
-  # A tag push runs THIS file from the tagged commit, which is the source trunk
-  # (dev, the default branch). release-please creates the stable vX.Y.Z tag with
-  # AOPS_DIST_PAT; prerelease tags are pushed by hand (see `make prerelease`).
-  # We deliberately do NOT trigger on `release: published` — a release
-  # event runs the DEFAULT branch's copy of this file (default-branch semantics)
-  # and would double-fire against the tag-triggered run.
+  # Merges into main rebuild and publish built objects directly to main.
   push:
-    tags: ["v*"]
+    branches:
+      - main
   workflow_dispatch:
-    inputs:
-      tag:
-        description: "Version or tag to build and publish (e.g. v0.10-rc1)"
-        required: false
-        type: string
 
 concurrency:
-  # A stable tag's build-and-deploy job pauses on the `production` environment
-  # reviewer (the ONE human approval, §3.13) — while it's paused it is still
-  # "in progress" from concurrency's point of view. cancel-in-progress: true
-  # here silently cancelled that pending approval the instant the NEXT tag
-  # landed (release-please's fast path can cut one every few minutes), so a
-  # burst of releases each superseded the last before the owner ever saw a prompt —
-  # looked indistinguishable from "shipped with no approval" even though the
-  # cancelled runs never actually published. Queue instead: never drop a
-  # pending or completed deploy; each tag gets its own turn at the gate.
-  group: build-deploy
+  group: build-deploy-main
   cancel-in-progress: false
 
 jobs:
@@ -107,6 +74,9 @@ jobs:
           elif [[ "${{ github.event_name }}" == "release" ]]; then
             REF="${{ github.event.release.tag_name }}"
             RTYPE="stable"
+          elif [[ "${{ github.ref }}" == refs/heads/main ]]; then
+            REF="main"
+            RTYPE="stable"
           else
             REF="${{ github.sha }}"
             RTYPE="stable"
@@ -119,25 +89,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Checkout dist branch for publish target
-        # Runs for BOTH stable and prerelease builds — dev/testing builds publish
-        # to `dist` too (see the "Publish distribution to dist" step), so the dist
-        # branch is always checked out as the publish target.
-        uses: actions/checkout@v4
-        with:
-          ref: dist
-          path: dist-repo
-          token: ${{ secrets.AOPS_DIST_PAT }}
-
-      - name: Checkout nicsuzor/aops mirror target
-        # Mirrors the dist payload onto nicsuzor/aops for consumers installing
-        # directly from nicsuzor/aops.
-        uses: actions/checkout@v4
-        with:
-          repository: nicsuzor/aops
-          ref: main
-          path: aops-repo
           token: ${{ secrets.AOPS_DIST_PAT }}
 
       - name: Setup Python 3.11
@@ -210,136 +161,49 @@ jobs:
           # shellcheck disable=SC2086
           uv run python -m build.build $VERSION_FLAG
 
-      - name: Publish distribution to dist
-        # Runs for BOTH stable and prerelease builds. We DO ship dev builds to the
-        # `dist` branch so testers/clients can install them. The published plugin
-        # version is a semver prerelease (-dev/-beta/-rc); stable resolution
-        # excludes prereleases (tests/test_semver_regression.py), so a client
-        # CHOOSES whether to install a dev build rather than being force-upgraded.
-        # NOTE: the dist-branch root marketplace.json carries a single version per
-        # plugin and is refreshed on every publish, so the most recent build (dev
-        # or stable) is what a fresh `marketplace add …@dist` + `plugin install`
-        # resolves.
+      - name: Publish distribution to main
+        if: github.ref == 'refs/heads/main'
         run: |
           set -euo pipefail
           SRC="${GITHUB_WORKSPACE}"
 
-          # `dist` is the published distribution branch (non-default orphan). Built
-          # plugin dirs live AT THE ROOT of it (e.g. dist:aops-claude), matching
-          # both the marketplace sources (./aops-*, generated at the SOURCE repo
-          # root by build.py) and the local-dev layout — one convention
-          # everywhere. `claude plugin marketplace add nicsuzor/academicOps@dist`
-          # reads the root marketplace on the dist branch and resolves ./aops-*
-          # within that ref.
-          cd "${SRC}/dist-repo"
-
-          # Clean dist-repo root except .git to ensure retired plugins/files are pruned
-          find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
-
-          # Mirror every built plugin directory to the branch root. Release archives
-          # (*.tar.gz / *.zip) are FILES under ${SRC}/dist/ -> not matched by dir glob;
-          # they ship as GitHub Release assets in the next step (never committed to dist).
+          # Mirror every built plugin directory to the branch root, skipping
+          # 'plugins' (which is the source tree on main, whereas dist/plugins is
+          # the Antigravity multi-plugin distribution)
           plugin_dirs=""
           for d in "${SRC}"/dist/*/; do
             name="$(basename "$d")"
-            rsync -a "$d" "${name}/"
+            if [ "$name" = "plugins" ]; then
+              continue
+            fi
+            rsync -a "$d" "${SRC}/${name}/"
             plugin_dirs="$plugin_dirs $name"
           done
 
-          # Single Claude marketplace at the dist-branch root (sources ./<plugin>-claude).
-          mkdir -p .claude-plugin
-          cp "${SRC}/dist/marketplace-production.json" ".claude-plugin/marketplace.json"
+          # Single Claude marketplace at the root (sources ./<plugin>-claude)
+          mkdir -p "${SRC}/.claude-plugin"
+          cp "${SRC}/dist/marketplace-production.json" "${SRC}/.claude-plugin/marketplace.json"
 
           # Image metadata for container builds
           if [ -f "${SRC}/dist/.aops-image-metadata.json" ]; then
-            cp "${SRC}/dist/.aops-image-metadata.json" .aops-image-metadata.json
+            cp "${SRC}/dist/.aops-image-metadata.json" "${SRC}/.aops-image-metadata.json"
           fi
 
-          # Publish the PR-pipeline reusable workflows so external consumers can
-          # pin `uses: nicsuzor/academicOps/.github/workflows/pr-pipeline.yml@dist`
-          # — a ref that auto-advances on every release with no manual step,
-          # replacing the pipeline-v1 static tag that silently drifted.
-          # The dependency set is DERIVED from pr-pipeline.yml's own relative
-          # `uses: ./.github/workflows/*.yml` lines, not hand-maintained here, so a
-          # new sub-job can't silently fall out of sync with what ships to dist —
-          # exactly the kind of second half-trusted path this fix removes.
-          mkdir -p .github/workflows
-          cp "${SRC}/.github/workflows/pr-pipeline.yml" .github/workflows/pr-pipeline.yml
-          if grep -qE 'uses:\s*\./\.github/workflows/' "${SRC}/.github/workflows/pr-pipeline.yml"; then
-            grep -oP 'uses:\s*\./\.github/workflows/\K[\w.-]+\.ya?ml' \
-              "${SRC}/.github/workflows/pr-pipeline.yml" | sort -u | while read -r wf; do
-              cp "${SRC}/.github/workflows/${wf}" ".github/workflows/${wf}"
-            done
-          fi
+          # Ensure source tree is completely clean and unstaged
+          git checkout -- plugins/
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
           # shellcheck disable=SC2086
           git add -f $plugin_dirs
-          git add -f .github/workflows
           git add -f .claude-plugin/marketplace.json
-          if [ -f .aops-image-metadata.json ]; then
+          if [ -f "${SRC}/.aops-image-metadata.json" ]; then
             git add -f .aops-image-metadata.json
           fi
+
           if git diff --cached --quiet; then
-            echo "dist already in sync — nothing to publish"
+            echo "main already in sync — nothing to publish"
           else
-            git commit -m "chore: publish v${{ steps.version.outputs.version }} distribution [skip ci]"
-            # Fast-forward (dist-repo is checked out at dist HEAD) — no force push,
-            # so a non-fast-forward branch rule on dist can stay enforced.
-            git push origin dist
+            git commit -m "chore: publish v${{ steps.version.outputs.version }} distribution to main [skip ci]"
+            git push origin main
           fi
-
-      - name: Publish distribution to nicsuzor/aops (mirror)
-        # Mirror the exact dist-branch tree (.claude-plugin/marketplace.json,
-        # plugin dirs, workflows, metadata) onto nicsuzor/aops' default branch (main)
-        # and dist branch so consumers installing from nicsuzor/aops receive the identical
-        # distribution.
-        run: |
-          set -euo pipefail
-          SRC="${GITHUB_WORKSPACE}"
-          cd "${SRC}/aops-repo"
-
-          # Clean aops-repo root except .git to ensure retired plugins/files are pruned
-          find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
-
-          # Mirror the exact dist-branch content from dist-repo
-          rsync -a --exclude='.git' "${SRC}/dist-repo/" ./
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          if git diff --cached --quiet; then
-            echo "nicsuzor/aops already in sync — nothing to publish"
-          else
-            git commit -m "chore: publish v${{ steps.version.outputs.version }} distribution [skip ci]"
-            git push origin HEAD:main
-            git push origin HEAD:dist
-          fi
-
-      - name: Upload archives to GitHub Release v${{ steps.version.outputs.version }}
-        if: github.event_name == 'release' || github.event_name == 'push'
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-          RELEASE_TYPE: ${{ steps.ctx.outputs.release_type }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          PRERELEASE_FLAG=""
-          [ "$RELEASE_TYPE" = "testing" ] && PRERELEASE_FLAG="--prerelease"
-
-          ARCHIVES=""
-          for f in dist/*.tar.gz; do
-            [ -f "$f" ] && ARCHIVES="$ARCHIVES $f"
-          done
-
-          if [ -z "$ARCHIVES" ]; then
-            echo "::error::No archives in dist/"
-            exit 1
-          fi
-
-          # $ARCHIVES (space-separated file list) and $PRERELEASE_FLAG must
-          # word-split into multiple args, so SC2086 quoting would break them.
-          # shellcheck disable=SC2086
-          gh release upload "v$VERSION" $ARCHIVES --clobber || \
-          gh release create "v$VERSION" --title "v$VERSION" --notes "AcademicOps v$VERSION" $PRERELEASE_FLAG $ARCHIVES

@@ -18,8 +18,8 @@ If any tool or API call fails, follow the Anti-Silent-Failure protocol. See `.gi
 ## Execution Protocol
 
 1. **Read the issue** carefully. Understand scope, acceptance criteria, and
-   constraints. If the issue references a task ID (e.g., `aops-XXXXXXXX`),
-   include it in your commit message as `Closes: <task-id>`.
+   constraints. Reference the issue number in your commit message as `Closes #<issue-number>`.
+   Commits to public repositories must never carry internal PKB IDs or `Task:` trailers.
 
 2. **Stay in scope.** Implement exactly what the issue asks. Do not fix
    unrelated issues, refactor adjacent code, or add features not requested.

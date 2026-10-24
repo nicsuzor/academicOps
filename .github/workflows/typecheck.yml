@@ -10,7 +10,9 @@ on:
     # Release lines by pattern, mirroring pytest.yml — see its `on:` block.
     branches:
       - dev
+      - main
       - 'v[0-9]*'
+      - 'release/**'
 
 jobs:
   type-check:
@@ -18,7 +20,7 @@ jobs:
     name: Type Check
     runs-on: ubuntu-latest
     concurrency:
-      group: typecheck-${{ github.event.pull_request.number || github.ref }}
+      group: typecheck-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
       cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
