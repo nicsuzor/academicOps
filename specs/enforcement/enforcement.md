@@ -11,7 +11,7 @@ The architectural specification detailing design rationale, theoretical mechanis
 
 - **Stated Purpose:** Defines the theoretical foundation, mechanism categories, and escalation model governing how the framework restrains, steers, and verifies agent behavior without programmatic micro-management.
 - **Primary Audience:** Framework architects, system developers, and compliance auditors designing, modifying, or reviewing enforcement mechanisms and policies.
-- **Current Truth / SSoT:** The empirical register of active rules, mechanisms, severity levels, and pinpoints is owed but not yet shipped on this branch. Nothing here restates a live table that does not exist.
+- **Current Truth / SSoT:** The empirical register of active rules, mechanisms, severity levels, and pinpoints is [`specs/ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md). Nothing here restates that live table.
 
 ## Governing principle -- agents all the way down
 
