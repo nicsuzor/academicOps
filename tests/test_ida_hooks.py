@@ -1,4 +1,4 @@
-"""Tests for ida hooks: hearsay, honesty, and quiet."""
+"""Tests for ida hooks: hearsay and honesty."""
 
 from __future__ import annotations
 
@@ -33,15 +33,6 @@ def staged_hooks(tmp_path: Path) -> Path:
     hooks = tmp_path / "hooks"
     shutil.copytree(IDA_HOOKS, hooks, ignore=shutil.ignore_patterns("__pycache__"))
     return hooks
-
-
-@pytest.fixture(autouse=True)
-def clean_gate_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    state_dir = tmp_path / "aops_channel_gate"
-    state_dir.mkdir(parents=True, exist_ok=True)
-    monkeypatch.setenv("AOPS_CHANNEL_GATE_DIR", str(state_dir))
-    yield
-    handlers.clear_channel_gate_state()
 
 
 # ---------------------------------------------------------------------------
@@ -156,11 +147,6 @@ def test_hearsay_does_not_fire_for_non_ida_agents():
 
 # ---------------------------------------------------------------------------
 # 2. Honesty hook on Stop for all agents (blocking once)
-# ---------------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------------
-# 3. Quiet hook on Stop and PreToolUse for Ida Prime
 # ---------------------------------------------------------------------------
 
 

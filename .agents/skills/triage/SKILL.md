@@ -174,19 +174,19 @@ classify each:
 | `defer` | Real but blocked or low-criticality. | Apply defer label and revisit-by date. | `triaged-defer` |
 
 Apply low blast-radius dispositions autonomously. Gate only on an ambiguous
-classification, an add-or-escalate enforcement proposal (step 2 below), or a hard
+classification, an enforcement proposal (step 2 below), or a hard
 halt (locked merge gate, irreversible operation).
 
-### 2. Enforcement-escalation review
+### 2. Enforcement review
 
-Before assigning a disposition to any proposal that **adds or escalates** a rule:
+Before assigning a disposition to any proposal that **adds or modifies** a rule or mechanism:
 
 1. Generalise the failure into a root-cause category.
 2. Map it to existing mechanisms in the enforcement map and the axioms.
-3. Classify it as a _propagation failure_ (fix via L1 propagation) or an
-   _escalation candidate_ (requires cost-benefit analysis and ≥3 recurrence
+3. Classify it as a _propagation failure_ (fix via instruction propagation) or a
+   _mechanism candidate_ (requires proportionality analysis and ≥3 recurrence
    links).
-4. Default to the cheapest tier, L1 propagation. Flag any enforcement change not
+4. Default to instruction propagation unless context, frequency, and risk justify a stronger intervention. Flag any enforcement change not
    reflected in `specs/enforcement/enforcement.md` as a pipeline gap.
 
 ### 3. Report the cycle
@@ -207,7 +207,7 @@ Before assigning a disposition to any proposal that **adds or escalates** a rule
 ### Needs human triage / decision (waiting)
 
 - #Z (rubric ambiguous: <reason>)
-- <add-or-escalate proposal>: cost-ladder reasoning + ≥3 recurrence links
+- <enforcement proposal>: proportionality reasoning + ≥3 recurrence links
 ```
 
 ### 4. Execution rules

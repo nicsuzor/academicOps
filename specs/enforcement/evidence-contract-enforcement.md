@@ -29,10 +29,10 @@ As the user, I want each agent reminded of the contract at the moment it writes 
 
 | Moment | Agents | Reminder |
 | - | - | - |
-| Session start, resume and compaction | All | One line: reports follow `premise-check`, written in its shape and checked on receipt |
-| A peer message arrives | All | Your reply is a report; write it per the skill |
-| A report or direction arrives | All | Check it per the skill; if a direction, log deliverables as a frozen acceptance checklist on a PKB task; if a report isn't in shape, REVISE and return it |
-| Gate refusal or `Stop` block | All | At most two lines naming the claim id and the skill; one line for the user |
+| Session start, resume and compaction | All | One line: reports follow `premise-check`, written in its shape and checked on receipt ([`plugins/ida/hooks/handlers.py:763-773,816-831`](../../plugins/ida/hooks/handlers.py#L763-L773)) |
+| A peer message arrives | All | Your reply is a report; write it per the skill ([`plugins/ida/hooks/handlers.py:834-838`](../../plugins/ida/hooks/handlers.py#L834-L838)) |
+| A report or direction arrives | All | Check it per the skill; if a direction, log deliverables as a frozen acceptance checklist on a PKB task; if a report isn't in shape, REVISE and return it ([`plugins/ida/hooks/handlers.py:841-855`](../../plugins/ida/hooks/handlers.py#L841-L855), [`plugins/ida/hooks/premise_check_gate.py:778-855`](../../plugins/ida/hooks/premise_check_gate.py#L778-L855)) |
+| Gate refusal or `Stop` block | All | At most two lines naming the claim id and the skill; one line for the user ([`plugins/ida/hooks/premise_check_gate.py:475-505,817-855`](../../plugins/ida/hooks/premise_check_gate.py#L475-L505)) |
 
 A report arrives as a foreground subagent's result, a background subagent's notification, or a peer message. Each harness carries these moments on its own hook events; the event map is in [ARCHITECTURE.md](../ARCHITECTURE.md).
 
@@ -83,14 +83,11 @@ WHERE p.name = '<project>' AND s.name = 'premise_check_verdict'
 
 Measure 3 expands the array with `json_each(s.attributes->'$.premise_check.waived_items')`.
 
-## Escalation
+## Proportional interventions
 
-Each level is built only when verdict telemetry shows the level below it rubber-stamping, with PASS near 100% and REVISE rare.
+Each mechanism is added only when verdict telemetry shows the active checks rubber-stamping, with PASS near 100% and REVISE rare:
 
-Level B, the verdict recorder above, is built: it gates the checker's reason. It is distinct from the author-side parse gate in step 2 below, which is not built.
-
-Further steps, in order, each built only when the same trigger fires on the level below:
-
-1. A one-time `SubagentStop` block that sends the skill's pointer back to the subagent before its report is delivered, and later one that blocks only a final message with no `argdown` block.
-2. An author-side parse gate: the Argdown parser runs on the report's `argdown` block, and the recorder refuses any verdict on a block that does not parse.
-3. A separate checker agent on arrival.
+- **Verdict recorder** (built, above): gates the checker's reason (`premise_check_verdict.py`).
+- **Argdown parser check on PASS** (built, above): runs deterministic Argdown parser checks on the report's `argdown` block (`report_argument.py`), refusing PASS and recording REVISE when the block fails syntax, connectedness, or undercut-target checks.
+- **Subagent stop reminder** (not built): a one-time `SubagentStop` block that sends the skill's pointer back to the subagent before its report is delivered, or blocks a final message with no `argdown` block.
+- **Dedicated arrival checker** (not built): a separate checker agent invoked on report arrival.
