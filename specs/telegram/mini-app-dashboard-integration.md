@@ -25,6 +25,8 @@ As an operator observing session execution, I want the interface state to update
 - **AC-2.2** Given a newly posted question or tool permission request, when the agent emits the request, then the interface dynamically displays the corresponding interactive card with selection options.
 - **AC-2.3** Given an unexpected connection interruption, when the client reconnects to the event stream, then the client automatically requests a full state snapshot to reconcile missed updates.
 - **AC-2.4** Given a pending artifact or pull request review assigned to the operator, when the operator inspects reviews in the interface, then the application displays the change diff with approve and request-changes actions.
+- **AC-2.5** Given a question with fuller background (`detail`), when rendered in the Mini App, then the question displays a details button that opens the fuller background.
+- **AC-2.6** Given a question asked as Mini-App-only (`mini_app_only: true` or `chat: false`), when emitted by the agent, then the question appears in the Mini App without posting a card to Telegram chat.
 
 ### US-3 Bi-directional Agent Channel
 
@@ -137,10 +139,15 @@ The operator must be able to interact with the active agent directly from the da
    - The channel bridge delivers the text as an inbound channel notification directly into the agent session context, records the turn in history, and increments `seq`.
    - If `chat_id` and `message_id` are provided (or if an active chat card exists in store), the bridge edits the Telegram card in place to reflect the directive.
    - Response: `{ "success": true, "message_id": string, "seq": number }`
-2. **Structured Question Resolution (`POST /api/app/questions/answer`):**
-   - Request: `{ "question_id": string, "option_index"?: number, "option_indices"?: number[], "custom_text"?: string }` (aliases: `questionId`, `optionIndex`, `optionIndices`, `customText`)
-   - The server marks the question resolved in runtime, emits a channel event (`question_answered`) to the agent, broadcasts `question_resolved` over SSE, and triggers an in-place edit on the Telegram card to display the selected choice with buttons removed (`inline_keyboard: []`).
-   - Response: `{ "success": true, "resolved_at": string, "seq": number }`
+2. **Structured Question Posting and Resolution (`ask_user` and `POST /api/app/questions/answer`):**
+   - Question Posting (`ask_user`):
+     - The agent posts structured decisions with options, recommendation, context, and optional fuller background (`detail`).
+     - When `mini_app_only: true` or `chat: false` is set (globally or on a question), the question is saved in runtime and rendered in the Mini App, but no card is sent to Telegram chat.
+     - When `detail` is provided, the Mini App displays a `🔍 Details` button on the question card that opens its fuller background. If the question also posts to chat, the chat card includes an inline `🔍 Details` button linking directly to the Mini App details view.
+   - Question Resolution (`POST /api/app/questions/answer`):
+     - Request: `{ "question_id": string, "option_index"?: number, "option_indices"?: number[], "custom_text"?: string }` (aliases: `questionId`, `optionIndex`, `optionIndices`, `customText`)
+     - The server marks the question resolved in runtime, emits a channel event (`question_answered`) to the agent, broadcasts `question_resolved` over SSE, and triggers an in-place edit on any associated Telegram card to display the selected choice with buttons removed (`inline_keyboard: []`).
+     - Response: `{ "success": true, "resolved_at": string, "seq": number }`
 3. **Tool Permission Resolution (`POST /api/app/review/permission`):**
    - Request: `{ "permission_id": string, "decision": "allow" | "deny" }` (alias: `permId`)
    - The server resolves the pending permission promise, unblocking tool execution in the agent runtime, and broadcasts `permission_resolved` over SSE.

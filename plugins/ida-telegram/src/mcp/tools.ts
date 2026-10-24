@@ -68,12 +68,22 @@ export const MCP_TOOLS: ToolDefinition[] = [
   },
   {
     name: "ask_user",
-    description: "Post an asynchronous question to the user over Telegram with vertical choice buttons.",
+    description:
+      "Post an asynchronous question to the user over Telegram or the Mini App with vertical choice buttons. Set mini_app_only: true (or chat: false) to route questions to the Mini App only without posting to chat. Pass detail on questions to attach fuller background opened via a Details button in the Mini App.",
     inputSchema: {
       type: "object",
       properties: {
         turn_id: { type: "string", description: "Turn ID for correlating the async answer event" },
         session_id: { type: "string", description: "Session ID for correlating with the asking session" },
+        chat: {
+          type: "boolean",
+          description:
+            "Whether to post question cards to Telegram chat (default true). Set false (or mini_app_only: true) to route questions to the Mini App only.",
+        },
+        mini_app_only: {
+          type: "boolean",
+          description: "If true, posts questions to the Mini App only without sending cards to Telegram chat.",
+        },
         questions: {
           type: "array",
           items: {
@@ -82,6 +92,11 @@ export const MCP_TOOLS: ToolDefinition[] = [
               question: { type: "string" },
               header: { type: "string" },
               context: { type: "string", description: "Background context, evidence, or pointers bearing on the decision" },
+              detail: {
+                type: "string",
+                description:
+                  "Fuller background, evidence, logs, or deep context opened via the Details button in the Mini App (tier 3)",
+              },
               recommendation: { type: "string", description: "Concrete recommendation with functional rationale" },
               options: {
                 type: "array",
@@ -97,6 +112,15 @@ export const MCP_TOOLS: ToolDefinition[] = [
               },
               multiSelect: { type: "boolean" },
               allowOther: { type: "boolean" },
+              chat: {
+                type: "boolean",
+                description:
+                  "Whether to post a card for this question to Telegram chat (default true). Set false to route to the Mini App only.",
+              },
+              mini_app_only: {
+                type: "boolean",
+                description: "If true, posts this question to the Mini App only without sending a card to chat.",
+              },
               turn_id: { type: "string" },
               session_id: { type: "string" },
             },

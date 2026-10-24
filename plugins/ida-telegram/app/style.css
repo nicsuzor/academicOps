@@ -242,6 +242,20 @@ body {
   color: var(--button-color);
 }
 
+.q-details {
+  margin: 10px 0;
+  padding: 10px 12px;
+  background: rgba(36, 129, 204, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.btn-q-details {
+  cursor: pointer;
+}
+
 .q-options-list {
   display: flex;
   flex-direction: column;

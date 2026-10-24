@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
+import { PluginStore } from "../store.js";
 
 export interface QuestionOption {
   label: string;
@@ -22,6 +23,14 @@ export interface QuestionPayload {
   session_id?: string;
   text?: string;
   chatId?: number;
+  detail?: string;
+  details?: string;
+  detailsId?: string;
+  details_id?: string;
+  mini_app_only?: boolean;
+  miniapp_only?: boolean;
+  miniAppOnly?: boolean;
+  chat?: boolean;
 }
 
 export interface StoredQuestion extends QuestionPayload {
@@ -40,11 +49,18 @@ export interface StoredQuestion extends QuestionPayload {
   closedAt?: string;
   messageId?: number;
   promptMessageId?: number;
+  detail?: string;
+  detailsId?: string;
+  details_id?: string;
+  mini_app_only?: boolean;
+  miniAppOnly?: boolean;
+  chat?: boolean;
 }
 
 export interface QuestionButton {
   text: string;
-  callbackData: string;
+  callbackData?: string;
+  web_app?: { url: string };
 }
 
 export interface QuestionCard {
@@ -106,6 +122,11 @@ export class QuestionBroker {
           if (!q.turnId && q.turn_id) q.turnId = q.turn_id;
           if (!q.session_id && q.sessionId) q.session_id = q.sessionId;
           if (!q.sessionId && q.session_id) q.sessionId = q.session_id;
+          if (!q.detailsId && (q as any).details_id) q.detailsId = (q as any).details_id;
+          if (!q.details_id && q.detailsId) q.details_id = q.detailsId;
+          if (!q.detail && (q as any).details) q.detail = (q as any).details;
+          if (!q.mini_app_only && (q as any).miniAppOnly) q.mini_app_only = (q as any).miniAppOnly;
+          if (!q.miniAppOnly && q.mini_app_only) q.miniAppOnly = q.mini_app_only;
           this.questions.set(q.id, q);
         }
       } catch {
@@ -132,6 +153,17 @@ export class QuestionBroker {
     const sessionId = payload.sessionId || payload.session_id;
     const text = payload.text || payload.question;
     const createdAt = new Date().toISOString();
+    const isMiniAppOnly = Boolean(
+      payload.mini_app_only || payload.miniapp_only || payload.miniAppOnly || payload.chat === false
+    );
+    const detailText = payload.detail || payload.details;
+    let detailsId = payload.detailsId || payload.details_id;
+
+    if (!detailsId && detailText) {
+      const store = new PluginStore(this.stateDir);
+      detailsId = store.storeDetails(detailText);
+    }
+
     const stored: StoredQuestion = {
       ...payload,
       id,
@@ -143,6 +175,9 @@ export class QuestionBroker {
       selectedOptions: [],
       ...(turnId ? { turnId, turn_id: turnId } : {}),
       ...(sessionId ? { sessionId, session_id: sessionId } : {}),
+      ...(detailText ? { detail: detailText } : {}),
+      ...(detailsId ? { detailsId, details_id: detailsId } : {}),
+      ...(isMiniAppOnly ? { mini_app_only: true, miniAppOnly: true, chat: false } : { chat: true }),
     };
 
     this.questions.set(id, stored);
@@ -203,7 +238,7 @@ export class QuestionBroker {
     return this.renderQuestionCard(id);
   }
 
-  public renderQuestionCard(id: string): QuestionCard | null {
+  public renderQuestionCard(id: string, miniAppUrl?: string): QuestionCard | null {
     const q = this.questions.get(id);
     if (!q) return null;
 
@@ -253,6 +288,15 @@ export class QuestionBroker {
       buttons.push({
         text: "✏️ Other",
         callbackData: `q:${id}:0:other`,
+      });
+    }
+
+    const detailsId = q.detailsId || q.details_id;
+    if (detailsId && miniAppUrl) {
+      const baseUrl = miniAppUrl.replace(/\/+$/, "");
+      buttons.push({
+        text: "🔍 Details",
+        web_app: { url: `${baseUrl}/app/index.html?d=${detailsId}` },
       });
     }
 
