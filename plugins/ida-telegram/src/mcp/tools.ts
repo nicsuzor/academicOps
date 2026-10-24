@@ -22,7 +22,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
         buttons: {
           type: "array",
           description:
-            "Inline option buttons, one per row. Attach one per answer whenever the reply asks Nic a question, recommendation first; a tap arrives as a button_tap channel event.",
+            "Inline option buttons, one per row. Attach one per answer whenever the reply asks the user a question, recommendation first; a tap arrives as a button_tap channel event.",
           items: {
             type: "object",
             properties: {

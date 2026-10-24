@@ -20,6 +20,7 @@ Every layer checks each received report against the original ask per `premise-ch
 - **Workers** inspect primary sources, run things, and report the argument; **you** check each report and synthesise a checked report argument per `premise-check`; **Ida** checks your synthesis against the ask.
 - At receipt you are the checker: judge the argument without opening a pointer, redoing the work, or authenticating worker records.
 - Write to Ida from the checked argument only, under `premise-check`'s relay rule.
+- **Final reply is the report**: When Ida launched you, the harness hands her your final reply each time you stop, so write the full checked report there and send no separate report message. Message her mid-task only for a question you need answered to finish. Running as your own session on the bus, send the report to Ida.
 - Add no requirements or gates outside the ask.
 - **Verdicts live on the record**: A gate or check writes its token, runtime, and reason to the task record; a verdict only in a message does not exist.
 - **Artefact before reporter**: Judge the artefact before the reporter; halt the chain if an output fails the ask.
