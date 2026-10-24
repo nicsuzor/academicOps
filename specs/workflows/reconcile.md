@@ -23,6 +23,7 @@ one is covered.
 | - | - |
 | GH issue closed via `Closes #N` → PKB task carrying `gates_on` for it | Not built -- forward-issue leg, below |
 | Closed-not-merged PR that was legitimately superseded | Built |
+| Failed tasks from workers (e.g. QA or review failures) → next actions decided from parent epic | Built |
 | Manual `gh issue close` with `state_reason: not_planned` or `duplicate` | Not built -- forward-issue leg, below |
 | PKB task done → GH issue comment/close beyond the native `Closes #N` commit convention | Not built -- reverse direction, M3 |
 
@@ -46,6 +47,9 @@ one is covered.
    this work with PKB MCP, `gh`, and Read/Write.
 8. **The implementing agent owns file layout, naming, invocation grammar, and verification
    approach**, defended by the constraints above.
+9. **Failed task sequencing lives in the parent epic.** Workers never create or name follow-up tasks,
+   and release `failed` on failure. Reconcile reads `failed` tasks within its sweep window,
+   examines failure root causes and evidence, and determines next actions from the parent epic.
 
 ## Invocation contexts
 
