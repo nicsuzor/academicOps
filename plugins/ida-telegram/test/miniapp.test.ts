@@ -971,5 +971,71 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
     expect(detailsContent!.textContent).toContain("d_missing_404");
     expect(detailsContent!.textContent).toContain("Details page not found");
   });
+
+  test("8. Question with details shows a details button that opens its fuller background (AC2)", async () => {
+    let migQid = "";
+    let simpleQid = "";
+    const { document } = await bootMiniApp({
+      search: "?tab=questions",
+      setup: async ({ broker }) => {
+        const q1 = await broker.askUser({
+          header: "Database Migration",
+          question: "Apply non-reversible schema migration to users table?",
+          detail: "### Migration Plan\n- Drops deprecated column `legacy_role`\n- Adds non-nullable `role_id` foreign key\n- Estimated lock time: 420ms",
+          recommendation: "Apply during low-traffic maintenance window.",
+          options: [
+            { label: "Apply now (Recommended)", description: "Low traffic confirmed" },
+            { label: "Hold until weekend", description: "Wait for maintenance window" },
+          ],
+          chatId: 8860530746,
+          turnId: "turn_mig_1",
+        });
+        migQid = q1.questionId;
+
+        const q2 = await broker.askUser({
+          header: "Simple Confirmation",
+          question: "Proceed with routine log flush?",
+          options: [{ label: "Yes (Recommended)" }, { label: "No" }],
+          chatId: 8860530746,
+          turnId: "turn_flush_2",
+        });
+        simpleQid = q2.questionId;
+      },
+    });
+
+    await document.windowObj.switchTab("questions");
+    await new Promise((r) => setTimeout(r, 40));
+
+    const qList = document.getElementById("questions-list");
+    expect(qList).not.toBeNull();
+
+    const migCard = qList!.querySelector(`[data-qid="${migQid}"]`);
+    expect(migCard).not.toBeNull();
+
+    const simpleCard = qList!.querySelector(`[data-qid="${simpleQid}"]`);
+    expect(simpleCard).not.toBeNull();
+
+    // The question without details has NO details button
+    const simpleDetailsBtn = simpleCard!.querySelector(".btn-details") || simpleCard!.querySelector(".btn-q-details");
+    expect(simpleDetailsBtn).toBeNull();
+
+    // The question with details HAS a details button
+    const detailsBtn = migCard!.querySelector(".btn-details") || migCard!.querySelector(".btn-q-details");
+    expect(detailsBtn).not.toBeNull();
+    expect(detailsBtn!.textContent).toContain("Details");
+
+    // Before clicking: details container is hidden
+    const detailsBox = migCard!.querySelector(".q-details");
+    expect(detailsBox).not.toBeNull();
+    expect(detailsBox!.style.display).toBe("none");
+
+    // Click details button to open fuller background
+    await detailsBtn!.click();
+
+    // After clicking: details container is open and displays the rendered markdown
+    expect(detailsBox!.style.display).not.toBe("none");
+    expect(detailsBox!.textContent).toContain("Drops deprecated column legacy_role");
+    expect(detailsBox!.textContent).toContain("Estimated lock time: 420ms");
+  });
 });
 

@@ -15,14 +15,17 @@ The user reads on a phone between other commitments. Cognitive load is the bindi
 - **One conclusion per message:** When a message carries two or more major conclusions, send each as a separate message, one per conclusion, so the user can react to each individually.
 - **Tier 1 (Chat):** Lead with a bold one-line headline stating the takeaway or decision needed, followed by concise bullet points.
 - **Tier 2 (Expandable evidence):** Place receipts, quotes, and evidence in expandable blockquotes (`>!`). Telegram renders these collapsed by default so the user opens them on demand. Use standard blockquotes (`>`) for ordinary quotes.
-- **Tier 3 (Details page):** Place deep context, long logs, code snippets, and background into details or extended properties rather than inline chat text. If chat text exceeds the budget, overflow relocates to details automatically without losing content.
+- **Tier 3 (Details page):** Place deep context, long logs, code snippets, and background into details or extended properties (e.g. `detail` parameter of `reply` or `ask_user` questions) rather than inline chat text. If chat text exceeds the budget, overflow relocates to details automatically without losing content.
 - **Standard Markdown:** Write standard Markdown (`**bold**`, `*italic*`, `` `code` ``, code blocks, `[links](https://example.com)`). Do not escape MarkdownV2 characters; formatting converts directly to native Telegram entities.
 
 ## Questions
 
 - **Inbound ask routing:** Questions and lookups received from the user are answered directly by the session that receives them; the task dispatch pipeline is used only for real code changes. Never send inbound questions or lookups into the dispatch pipeline.
 - **Option buttons on questions:** Provide selectable option buttons whenever asking questions so the user can reply with a single tap.
+- **Mini App-only questions:** To keep chat clear of decisions best reviewed in the dashboard, set `mini_app_only: true` (or `chat: false`) on `ask_user` or individual questions. The question appears interactively in the Mini App without posting a card to chat.
+- **Fuller background behind Details:** Provide deep context, evidence, logs, or detailed tradeoffs in the `detail` parameter of a question. The Mini App displays a `🔍 Details` button on the question card that opens this fuller background on demand, keeping the card compact.
 - **Asynchronous by default:** Post questions with structured options, placing the recommended choice first (`"(Recommended)"`). When no recommendation is available, offer to have one assessed.
+- **Remove answered questions from outstanding list:** Once a question you asked has been answered in your session or resolved outside channel events, remove that question from the Mini App's outstanding list immediately using `close_question({ question_id, reason })` or `answer_question({ question_id, choice })`. (Questions answered via Telegram cards or the Mini App are dismissed automatically by the broker.) Never leave settled questions pending in the user's outstanding list.
 - **Never wait or block:** Questions never block or time out. Proceed with other ready work or conclude the turn; answers arrive asynchronously as channel events.
 
 ## Message Action Buttons (Logic Check & Explain)
