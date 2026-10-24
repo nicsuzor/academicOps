@@ -22,7 +22,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
         buttons: {
           type: "array",
           description:
-            "Inline option buttons, one per row. Attach one per answer whenever the reply asks Nic a question, recommendation first; a tap arrives as a button_tap channel event.",
+            "Inline option buttons, one per row. Attach one per answer whenever the reply asks the user a question, recommendation first; a tap arrives as a button_tap channel event.",
           items: {
             type: "object",
             properties: {
@@ -68,12 +68,22 @@ export const MCP_TOOLS: ToolDefinition[] = [
   },
   {
     name: "ask_user",
-    description: "Post an asynchronous question to the user over Telegram with vertical choice buttons.",
+    description:
+      "Post an asynchronous question to the user over Telegram or the Mini App with vertical choice buttons. Set mini_app_only: true (or chat: false) to route questions to the Mini App only without posting to chat. Pass detail on questions to attach fuller background opened via a Details button in the Mini App.",
     inputSchema: {
       type: "object",
       properties: {
         turn_id: { type: "string", description: "Turn ID for correlating the async answer event" },
         session_id: { type: "string", description: "Session ID for correlating with the asking session" },
+        chat: {
+          type: "boolean",
+          description:
+            "Whether to post question cards to Telegram chat (default true). Set false (or mini_app_only: true) to route questions to the Mini App only.",
+        },
+        mini_app_only: {
+          type: "boolean",
+          description: "If true, posts questions to the Mini App only without sending cards to Telegram chat.",
+        },
         questions: {
           type: "array",
           items: {
@@ -82,6 +92,11 @@ export const MCP_TOOLS: ToolDefinition[] = [
               question: { type: "string" },
               header: { type: "string" },
               context: { type: "string", description: "Background context, evidence, or pointers bearing on the decision" },
+              detail: {
+                type: "string",
+                description:
+                  "Fuller background, evidence, logs, or deep context opened via the Details button in the Mini App (tier 3)",
+              },
               recommendation: { type: "string", description: "Concrete recommendation with functional rationale" },
               options: {
                 type: "array",
@@ -97,6 +112,15 @@ export const MCP_TOOLS: ToolDefinition[] = [
               },
               multiSelect: { type: "boolean" },
               allowOther: { type: "boolean" },
+              chat: {
+                type: "boolean",
+                description:
+                  "Whether to post a card for this question to Telegram chat (default true). Set false to route to the Mini App only.",
+              },
+              mini_app_only: {
+                type: "boolean",
+                description: "If true, posts this question to the Mini App only without sending a card to chat.",
+              },
               turn_id: { type: "string" },
               session_id: { type: "string" },
             },
@@ -105,6 +129,19 @@ export const MCP_TOOLS: ToolDefinition[] = [
         },
       },
       required: ["questions"],
+    },
+  },
+  {
+    name: "answer_question",
+    description: "Record an answer for a pending question (e.g. when answered directly in session). Sets the question status to answered and removes it from the outstanding list.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        question_id: { type: "string", description: "ID of the pending question to answer" },
+        choice: { type: "string", description: "The answer or choice provided by the user" },
+        option_index: { type: "integer", description: "Optional 0-based index of the chosen option" },
+      },
+      required: ["question_id"],
     },
   },
   {

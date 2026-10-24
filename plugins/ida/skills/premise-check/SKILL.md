@@ -13,6 +13,20 @@ A report that rests on evidence ends in an argument whose final conclusion answe
 
 End the report with one fenced `argdown` block in the form in [`references/report-form.md`](references/report-form.md).
 
+Every peer message carries a fenced `argdown` block. A message that makes no claim (such as automated harness notices, /loop wakeups, or messages making no evidence-backed claims) carries the null form:
+
+````text
+```argdown
+===
+asks: none
+===
+
+[no claim]
+```
+````
+
+The null form declares minimal compliance and clears the premise-check gate with no agent action; when an expected block is absent, the gate does not open: the recorder refuses PASS, and the receiver's only way through is to send the message back for revision (recording REVISE "no argument supplied" to return it for resending).
+
 1. **The ask at the top**, in the asker's own words, one question per `asks` entry, each under the immutable id the report form defines. Copy the ask you were given; never restate it as your own title. These kept words exist so a checker can test the restatement for fidelity, completeness, and overreach.
 2. **Numbered premises**, each ending with its basis in words, one of the phrases in [`references/vocabulary.toml`](references/vocabulary.toml). A premise about outside state quotes the value that decides it (`state: MERGED`, `0 hits`).
 3. **Pointers as lettered endnotes** under `notes` -- paths, lines, span ids, task ids, PRs -- marked `^a` in the line. Never inline.
@@ -20,7 +34,7 @@ End the report with one fenced `argdown` block in the form in [`references/repor
 5. **Write in what is missing** as a numbered line marked _assumed, not checked here_, and put the qualifier it buys in the conclusion ("so, most likely, …").
 6. **Chain** each conclusion into the next step as a numbered line. Join independent findings only through an explicit "and both" step.
 7. **Answer the asks by id** under `answers`. An ask with no answer says `none`.
-8. **Relay upward** only sentences that name the line they restate. A sentence with no line does not go. Relaying a report upward requires its premise-check verdict.
+8. **Relay upward** only sentences that name the line they restate. A sentence with no line does not go. Relaying a report upward requires its premise-check verdict. Before relaying a claim upward, identify its source of record -- the live configuration, repository, code, or spec it describes -- and read the claim against it; never relay a claim the source of record does not support.
 9. **No premise count.** Group premises by the relevance rule in `argument-extraction`; avoid laundry lists.
 10. **Keep machine vocabulary out of the lines.** No `{...}` attributes on a statement; the reader sees words.
 
@@ -30,23 +44,23 @@ Self-check before sending, as the checker will.
 
 ## Checking a received report
 
-Take observed premises with a pointer as given: never open a pointer or redo the work. Everything else -- warrants, steps, scope, the fit between rule and case -- you judge. When a ruling turns on a fact the report lacks, send it back naming the missing premise.
+Take observed premises with a pointer as given: never open a pointer or redo the work. A PKB node or another agent's writing is not such a pointer; it ranks as `worker reported, unchecked` rather than an observed primary record. Everything else -- warrants, steps, scope, the fit between rule and case -- you judge. When a ruling turns on a fact the report lacks, send it back naming the missing premise.
 
-Restatements of the user's words (in tasks, directions, or reports) are judged by fidelity to the user's meaning and distinctions, not by wording. Outputs need not use exact words. Fault a restatement only for lost, added, or distorted meaning; never fault a report or restatement for rewording.
+Restatements of the user's words (in tasks, directions, or reports) are judged by fidelity to the user's meaning and distinctions, not by wording. Outputs need not use exact words. Fault a restatement only for lost, added, or distorted meaning; never fault a report or restatement for rewording. When a report lists an originating ask alongside intermediate brief items or acceptance criteria, the check tests the output against what the originating ask needs in substance -- never against the brief's restated items, added constraints, or length caps alone. Coverage of intermediate acceptance items does not substitute for answering the originating ask.
 
 Run four tests on every inference line:
 
 | Test | Passes when | Failure looks like |
 | - | - | - |
 | **Valid** | The premises meet every condition of the warrant, and the conclusion is no wider than they are. | A condition no line supplies; a defeater "not tried" that would change the next action; scope drift. |
-| **Supported** | Each premise's basis can bear the step's stakes. A conclusion is only as strong as its weakest premise. | A _worker reported, unchecked_ or _assumed_ premise carrying a high-stakes step; "PASS" claimed with no verdict id. |
-| **Answered** | The final conclusion answers each ask id, or says it has no answer. | The conclusion answers a narrower or different question than the `Asked` lines. |
+| **Supported** | Each premise's basis can bear the step's stakes. A conclusion is only as strong as its weakest premise. A PKB node or another agent's writing ranks as _worker reported, unchecked_. | A _worker reported, unchecked_ (including a PKB node or peer text cited without a verdict) or _assumed_ premise carrying a high-stakes step; "PASS" claimed with no verdict id. |
+| **Answered** | The final conclusion answers what each ask id needs in substance, or says it has no answer. Tested against the originating ask itself; coverage of relayer acceptance items or length bounds does not satisfy an ask. | The conclusion answers a narrower or different question than the `Asked` lines; substituting coverage of relayer acceptance items or format/length limits for what the ask needs. |
 | **Sufficient** | Materiality, sufficiency and necessity settle each step (below). | A complex, unbacked warrant on a high-stakes step accepted without one level of decomposition. |
 
 Proportionality, in order:
 
 1. **Materiality** -- examine a step only if changing its conclusion would change what the reader does next.
-2. **Sufficiency** -- accept a warrant as stated when it is obvious, backed by a cited rule or verdict, or carries a claim cheap to reverse. Send back for one level of decomposition only when it is complex, unbacked and high-stakes. `worker reported` premises get the same test: a report carries a verdict id or is weighed as unchecked.
+2. **Sufficiency** -- accept a warrant as stated when it is obvious, authority-backed, backed by a cited verdict, or carries a claim cheap to reverse. Limit `authority-backed` to the user's own words or a governing spec; a premise citing a PKB node or another agent's writing does not satisfy sufficiency on the citation alone. Send back for one level of decomposition only when it is complex, unbacked and high-stakes. `worker reported` premises get the same test: a report carries a verdict id or is weighed as unchecked.
 3. **Necessity** -- reject only when the objection would change this conclusion; phrasing or a preferred route is not a rejection.
 
 A format breach that leaves the step judgeable is waived and listed; one that hides a step is a REVISE.
@@ -63,4 +77,4 @@ Write the reason as the seven keyed lines in [`references/checker-reason.md`](re
 uv run --project <plugin-dir> python3 <plugin-dir>/skills/premise-check/scripts/verdict.py --claim <claim_id> --verdict <PASS|REVISE|FAIL> --reason-file <path>
 ```
 
-The recorder refuses a PASS whose reason misses a test line or an ask id, or contradicts the block. A harness notice or other message that makes no claim takes the one-line no-claim reason. For a handback read from a task record, the claim id is the task id; after recording, add `## Premise-Check Verdict` to the task with the verification id and verdict.
+The recorder refuses a PASS whose reason misses a test line or an ask id, contradicts the block, or attempts to pass a peer message missing an expected block. On an invalid argument (syntax errors, an unconnected statement, or an undercut not aimed at an inference), `verdict.py` records REVISE itself with the parser output as reason and clears the gate. For a handback read from a task record, the claim id is the task id; after recording, add `## Premise-Check Verdict` to the task with the verification id and verdict.

@@ -19,7 +19,7 @@ For each item in `## With you`, prepare a decision card containing:
 
 1. **The Choice**: Clear, atomic statement of what is being decided.
 2. **The Facts with Pointers**: Verifiable facts bearing on the decision, citing exact identifiers (`[[task_id]]`, PR URL, document link).
-3. **Recommendation and Why**: Concrete suggestion paired with functional rationale ("Recommend X because Y") drawn from the checked report; when the report has none, the recommendation is an offer to have one assessed.
+3. **Recommendation and Why**: Concrete suggestion paired with functional rationale ("Recommend X because Y").
 4. **Answer Options**: Structured, low-friction reply options (e.g. keywords like `approve` / `reject` / `snooze`, or interactive question choices).
 
 Order cards strictly by what unblocks most (downstream dependencies, critical path blockers, deadline urgency).
@@ -29,7 +29,7 @@ Order cards strictly by what unblocks most (downstream dependencies, critical pa
 Hold the ordered list in memory and present exactly one card per turn.
 
 - **Header**: `Decision N of M: <Short Title>`
-- **Content**: The choice, the facts with pointers, the recommendation (or offer to assess one) with its reason, and the answer options.
+- **Content**: The choice, the facts with pointers, the recommendation with its reason, and the answer options.
 - **Prompt**: Ask for a response (on conversational channels) or present via choice tool (`ask_question` in console) where supported.
 - **Prohibition**: Never output multiple cards in one message or summarize the remaining queue in advance.
 
