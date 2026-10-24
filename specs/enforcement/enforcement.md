@@ -59,9 +59,21 @@ The framework organizes all enforcement into a strict controlled vocabulary:
 
 The canonical doctrine of enforcement is the **enforcement pyramid**: pick the least invasive level to intervene and only **reluctantly** escalate through enforcement strength and levels.
 
-A pattern of failures at one level provides evidence to increment **strength**; increments must be exhausted before moving to another enforcement mechanism.
+### The pyramid pass trigger
 
-Concise records must be kept of assessment of suitability of each regulatory experiment.
+Any change that shapes agent behaviour (hooks, review lenses, branch protection, instructions, project rules, agent personas) must run through the enforcement pyramid options against this specification first before proposing or implementing a mechanism.
+
+- **Trigger:** Any proposed addition, modification, or escalation of a measure intended to shape agent behaviour.
+- **Referent:** This specification (`specs/enforcement/enforcement.md`).
+- **Options:** The options to run through are the categories in the controlled vocabulary (§ "The mechanism categories and strength gradations within categories") and their strength gradations, evaluated from least-invasive to most-invasive:
+  1. `doctrine only`
+  2. `instructions` (`suggestion` → `advisory` → `imperative` → `absolute`)
+  3. `JIT injection`
+  4. `structural` (`scoped` → `permissions` → `warning` → `friction` → `block` → `protection` → `isolation`)
+  5. `process` (`advisory check` → `routing` → `required gate`)
+  6. `post-hoc` (`reversability` → `observability` → `proactive detection`)
+- **Default and burden of proof:** Default to instructions. Instructions work in the large majority of cases; the burden of proof is on adding or escalating to a heavier mechanism.
+- **Escalation threshold:** A pattern of failures at one level provides evidence to increment **strength**; increments must be exhausted before moving to another enforcement mechanism. Concise records must be kept of assessment of suitability of each regulatory experiment.
 
 ## Personalities are not skills
 
