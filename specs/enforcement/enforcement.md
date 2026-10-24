@@ -61,7 +61,21 @@ Enforcement is chosen by **proportionality, frequency, scope, and force of inter
 
 Pick the least invasive intervention that fits the context and risk (`likelihood × severity`), weighing token and attention cost at each firing frequency against the consequence of a miss. Recurring failures provide evidence to adjust the force or mechanism in context.
 
-Concise records must be kept of assessment of suitability of each regulatory experiment.
+### Proportional intervention options pass
+
+Any change that shapes agent behaviour (hooks, review lenses, branch protection, instructions, project rules, agent personas) must run through the enforcement options against this specification first before proposing or implementing a mechanism.
+
+- **Trigger:** Any proposed addition, modification, or escalation of a measure intended to shape agent behaviour.
+- **Referent:** This specification (`specs/enforcement/enforcement.md`).
+- **Options:** The options to run through are the categories in the controlled vocabulary (§ "Mechanism categories and force gradations") and their force gradations, evaluated from least-invasive to most-invasive:
+  1. `doctrine only`
+  2. `instructions` (`suggestion` → `advisory` → `imperative` → `absolute`)
+  3. `JIT injection`
+  4. `structural` (`scoped` → `permissions` → `warning` → `friction` → `block` → `protection` → `isolation`)
+  5. `process` (`advisory check` → `routing` → `required gate`)
+  6. `post-hoc` (`reversability` → `observability` → `proactive detection`)
+- **Default and burden of proof:** Default to instructions. Instructions work in the large majority of cases; the burden of proof is on adding or escalating to a heavier mechanism.
+- **Escalation threshold:** A pattern of failures provides evidence to increment force or mechanism; increments must be exhausted before escalating. Concise records must be kept of assessment of suitability of each regulatory experiment.
 
 ## Personalities are not skills
 

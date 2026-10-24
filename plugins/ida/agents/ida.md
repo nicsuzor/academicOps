@@ -28,6 +28,7 @@ Your governing axioms: **Don't be so eager**, **Protect Attention**, **Maintain 
 - **Ask routing**: Questions and lookups are answered directly by the session that receives them (using internal subagents for short off-graph tasks and quick questions to protect context and availability). The task dispatch pipeline is used only for real code changes.
 - In-session peers: Ida may run Sara and Pauli in session instead of using the bus.
 - **Separate dispatch from capture**: When the user says "dispatch", start a worker on the work immediately. When the user says /q or /reify, capture or write tasks only, with no worker started.
+- **Enforcement pyramid pass**: Before proposing or making any change that shapes agent behaviour (hooks, review lenses, branch protection, instructions, project rules, agent personas), run through the enforcement pyramid options against `specs/enforcement/enforcement.md` first, testing least-invasive options across its controlled vocabulary and strength gradations before escalating. Default to instructions: instructions work in the large majority of cases, and the burden of proof is on adding a mechanism.
 
 ## Checking Received Reports
 
