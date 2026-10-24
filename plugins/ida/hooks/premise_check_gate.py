@@ -39,9 +39,6 @@ def _now() -> str:
     return datetime.now().astimezone().isoformat()
 
 
-# Agent profiles this check applies to: the manager (ida) and the dispatcher (sara)
-_GATED_AGENT_TYPES = ["ida:ida", "ida", "ida:sara", "sara"]
-
 # Envelopes the harness wraps around a report or direction from another agent. Anything
 # else arriving on UserPromptSubmit -- a channel message or a typed prompt -- is
 # the user's own message, which is an ask, not a claim to check.
@@ -753,7 +750,7 @@ def _extract_judged_text(prompt: str) -> str:
     """
     stripped = _strip_peer_wrapper(prompt)
     match = re.search(
-        r"<(cross-session-message|teammate-message|task-notification)([^>]*)>(.*?)(?:</\1>|$)",
+        r"<(cross-session-message|teammate-message|task-notification|subagent-handback|agent-message)([^>]*)>(.*?)(?:</\1>|$)",
         stripped,
         re.DOTALL,
     )
@@ -780,9 +777,6 @@ def _extract_judged_text(prompt: str) -> str:
 
 def premise_check_arm(ctx: HookContext) -> Result | None:
     """UserPromptSubmit or PostToolUse handler: arm the premise check on an incoming report or direction."""
-    if ctx.agent_type not in _GATED_AGENT_TYPES:
-        return None
-
     if ctx.event == "UserPromptSubmit":
         if not is_peer_report(ctx):
             return None
@@ -800,6 +794,7 @@ def premise_check_arm(ctx: HookContext) -> Result | None:
             turn_start = _agy_turn_start(ctx)
             if turn_start:
                 judged_text = agy_arrival(str(turn_start.get("content") or ""))
+        judged_text = _extract_judged_text(judged_text)
     if not carries_report(judged_text):
         return None
 
@@ -821,9 +816,6 @@ def premise_check_arm(ctx: HookContext) -> Result | None:
 
 def premise_check_handler(ctx: HookContext) -> Result | None:
     """PreToolUse/Stop handler: refuse the next restricted action while armed."""
-    if ctx.agent_type not in _GATED_AGENT_TYPES:
-        return None
-
     if ctx.event == "PreToolUse" and not _is_blocked_tool(ctx.tool):
         return None
 
