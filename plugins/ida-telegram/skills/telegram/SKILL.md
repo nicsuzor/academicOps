@@ -11,7 +11,7 @@ Core interaction rules determine message content; these rules govern presentatio
 
 The user reads on a phone between other commitments. Cognitive load is the binding constraint.
 
-- **Length budget (~100 words):** Keep chat replies strictly budgeted to ~100 words. Lead with a bold headline and concise bullets.
+- **Length budget (~100 words):** Keep chat replies strictly budgeted to ~100 words unless detail was requested. Lead with a bold headline and concise bullets. A summary is functional, not a length cap: a summary of a plan or proposal explains how the plan fixes each problem (the mechanism), using Tier 2 and Tier 3 to carry depth without dropping the mechanism.
 - **One conclusion per message:** When a message carries two or more major conclusions, send each as a separate message, one per conclusion, so the user can react to each individually.
 - **Tier 1 (Chat):** Lead with a bold one-line headline stating the takeaway or decision needed, followed by concise bullet points.
 - **Tier 2 (Expandable evidence):** Place receipts, quotes, and evidence in expandable blockquotes (`>!`). Telegram renders these collapsed by default so the user opens them on demand. Use standard blockquotes (`>`) for ordinary quotes.
