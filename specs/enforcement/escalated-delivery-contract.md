@@ -1,16 +1,16 @@
 ---
 id: enforcement-escalated-delivery-contract
-title: In-Session Enforcement -- The Escalated Delivery Contract (Layer 2.5)
+title: In-Session Enforcement -- The Escalated Delivery Contract
 type: spec
 status: draft
 tags: [enforcement, escalated-delivery, task-contract, verification, surfacing, ida]
 ---
 
-# In-Session Enforcement -- The Escalated Delivery Contract (Layer 2.5)
+# In-Session Enforcement -- The Escalated Delivery Contract
 
 ## 1. Problem Statement & Specimen Diagnostics
 
-The academicOps framework enforces rigorous boundaries on task execution: Layer 2 ([`task-contract.md`](task-contract.md)) requires `claim_task` → `release_task` with verifiable evidence written to the PKB task record, and every claim at a task boundary meets the [evidence contract](evidence-contract.md).
+The academicOps framework enforces rigorous boundaries on task execution: the [Work-Unit Contract](task-contract.md) requires `claim_task` → `release_task` with verifiable evidence written to the PKB task record, and every claim at a task boundary meets the [evidence contract](evidence-contract.md).
 
 However, an architectural blind spot exists between **task graph completion** and **escalated delivery**:
 
@@ -55,7 +55,7 @@ However, an architectural blind spot exists between **task graph completion** an
 
 ## 2. Architecture & Data Flow
 
-The Escalated Delivery Contract sits at **Layer 2.5** of the enforcement pyramid: between single work-unit execution (Layer 2) and system-wide peer truth maintenance (Layer 3).
+The **Escalated Delivery Contract** bridges single work-unit execution ([Work-Unit Contract](task-contract.md)) and multi-task workflow verification and reconciliation ([Workflow](workflow.md)). Current implementation across skills and workflow templates is catalogued in [`specs/ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md#work-unit-escalated-delivery-and-workflow-contracts): [`plugins/ida/skills/mine/SKILL.md`](../../plugins/ida/skills/mine/SKILL.md) implements the `/mine` surfacing command (`ida-tracked` tag, `status: ida_held`, and `trigger: /mine`), [`plugins/ida/skills/workflow-library/workflows/wf-escalated-approval.md`](../../plugins/ida/skills/workflow-library/workflows/wf-escalated-approval.md) and [`wf-reconcile.md`](../../plugins/ida/skills/workflow-library/workflows/wf-reconcile.md) implement one-level-per-hop escalation on the record and the Workers-Append rule, and [`plugins/ida/skills/decide/SKILL.md`](../../plugins/ida/skills/decide/SKILL.md) surfaces pending decisions; the `origin` / `delivery_evidence` frontmatter schema and mechanical `pkb_release_task` check in §3.1–§3.2 remain target design (`[NOT BUILT]`).
 
 ```mermaid
 sequenceDiagram

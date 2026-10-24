@@ -13,7 +13,7 @@ So **every piece of real work done with the framework is also an experiment on t
 
 ## The loop
 
-work → observe friction → **record evidence (never fix inline)** → detached review checks recurrence → change at the cheapest layer → re-test blind.
+work → observe friction → **record evidence (never fix inline)** → detached review checks recurrence → change with the most proportional intervention → re-test blind.
 
 ## Modes — pick by what you are starting
 
@@ -35,7 +35,7 @@ This is a frame, not a fifth mode: it sits alongside the mode you picked, and ap
 
 - **Do none of the work yourself.** What you are measuring is independent, contextless operation, and every hint you supply or step you take on the subject's behalf is a variable you added to your own experiment. Your own tool-call record — no edits to the subject's tree, no coaching turns — is what shows this held, and it is a channel the subject cannot author. Facts that exist only in your hands are the brief; anything the framework is supposed to supply the subject is the measurement — method, doctrine, stopping rules, where to look. Write any of that into the brief and you can no longer tell whether the instructions would have supplied it.
 - **A halt is a result.** The subject being unable to proceed **is** the finding: record it and leave it blocked rather than solving it on the subject's behalf. An agent that thrashes its way past a gap converts a recordable framework defect into an unrecordable one, and not having correct instructions at the moment they were needed is exactly the defect class this protocol exists to catch. File it as an evidence record — classification `instruction-gap`, where "no rule existed" is itself the finding — not as a line in your final report.
-- **A blocked route is work, not an excuse.** "A halt is a result" governs the subject's run. It does not govern _your_ route: when the sanctioned path you were told to use will not carry the job, repairing it is the deliverable. Reporting the blockage and taking another road is the failure mode even when the other road works. Repair at the cheapest layer that closes the gap — the inputs you control first (a task created with the right status and properties), the instruction text last — and route it through **Turning evidence into change** below, where the record still comes first and express approval still binds.
+- **A blocked route is work, not an excuse.** "A halt is a result" governs the subject's run. It does not govern _your_ route: when the sanctioned path you were told to use will not carry the job, repairing it is the deliverable. Reporting the blockage and taking another road is the failure mode even when the other road works. Repair with the least invasive intervention that closes the gap — the inputs you control first (a task created with the right status and properties), the instruction text last — and route it through **Turning evidence into change** below, where the record still comes first and express approval still binds.
 - **Never trade away an ambition to make something pass.** Reduced scope, a disabled surface, one client working instead of both, a capability dropped because it was hard — these are not results, and presenting them as results is the failure. Say what is unreached and what it would take. You do not get to lower the bar by shipping the lowered version of it.
 - **There is no binary done.** The minimum standard is world-class, not "working" and not "acceptable"; every outcome is assessed qualitatively and critically, and the bar rises as model capability and tooling improve.
 
@@ -64,11 +64,11 @@ File as a GitHub issue — one incident per record:
 
 ## Turning evidence into change
 
-Any session may propose; only express approval authorises the edit. Work down the cost ladder — always the cheapest sufficient layer:
+Any session may propose; only express approval authorises the edit. Match the intervention to the context by proportionality, frequency, scope, and force:
 
-1. rule / instruction text
-2. skill or process step
-3. workflow contract (task-record criteria, breakpoints)
-4. runtime mechanism (requires ≥3 recurrences + a pre-registration)
+- **instruction text** (rule or persona wording)
+- **skill or process step**
+- **workflow contract** (task-record criteria, breakpoints)
+- **runtime mechanism** (requires ≥3 recurrences + a pre-registration)
 
 Every instruction change passes `/craft` before deployment, then a blind re-test (mode 2) confirms the gap actually closed. Promotion of a tested instruction to canonical location happens before the session ends; record any residual friction in the session handback note rather than filing speculative follow-up tasks.

@@ -86,8 +86,8 @@ The container launcher (`polecat`) and worker image are maintained outside this 
    When the operator's config names a `rules_dir` (or `$POLECAT_RULES_DIR` is
    set), that host directory is mounted read-only at the container's own
    `$ACA_DATA/.agents/rules/` (`/data/.agents/rules` -- `ENV ACA_DATA=/data` in
-   the `Dockerfile`), which is what makes cope/rbg's layer 3 reach a container;
-   absent, the container simply has no layer 3, and a configured-but-unreadable
+   the `Dockerfile`), which is what makes cope/rbg's user-scoped rules reach a container;
+   absent, the container simply has no user-scoped rules, and a configured-but-unreadable
    directory is a hard failure before any container starts. The image is never
    pulled from a registry -- it must already be built locally or CI-produced; a
    missing image is a hard failure with an actionable message.

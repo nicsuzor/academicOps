@@ -51,14 +51,14 @@ rule was followed.
 
 Write each rule as **prose stating principle + reasoning + cue + carve-outs**, never a rule-ID lookup or keyword pattern. Each rule states:
 
-1. **The principle** and, in one clause, **why it matters** -- cite the axiom slug it serves (e.g. `judgment-non-delegable`) from [`lib/axioms/`](../../lib/axioms/).
+1. **The principle** and, in one clause, **why it matters** -- cite the axiom slug it serves (e.g. `judgment-non-delegable`) from [`plugins/rbg/skills/axioms/`](../../plugins/rbg/skills/axioms/).
 2. **The cue** the classifier should look for in the action + user context -- the observable signal, since it cannot see reasoning.
 3. **What counts as a violation**, and the **safer path** to name in the denial.
 4. **Explicit carve-outs** -- when the same action is fine. The classifier handles disjunctions ("deny X when bypassing tests; allow X when validating") as prose.
 
-Default every new behavioural rule to `soft_deny` (context-overridable); escalate to `hard_deny` only on evidence that a `soft_deny` was bypassed with reproducible consequences.
+Default every new behavioural rule to `soft_deny` (context-overridable); strengthen to `hard_deny` only on evidence that a `soft_deny` was bypassed with reproducible consequences.
 
-**Current state: the rule set is seeded and populated.** `autoMode` rules live in `~/.claude/settings.json` (`environment`/`allow`/`soft_deny`); no rule has yet been escalated to `hard_deny`. Individual rules are maintained in that file, not duplicated here -- this spec tracks the mechanism, not each entry. New rules still follow the evidence loop above before landing.
+**Current state: the rule set is seeded and populated.** `autoMode` rules are declared in [`build/clients/claude.py:49-54`](../../build/clients/claude.py#L49-L54) and merged into `~/.claude/settings.json` (`environment`/`allow`/`soft_deny`) by [`build/install.py:86,109-158`](../../build/install.py#L109-L158) (`rbg`'s turn-by-turn model evaluator `evaluate` and stop gate `rule_check` in [`plugins/rbg/hooks/handlers.py:292-297`](../../plugins/rbg/hooks/handlers.py#L292-L297) are `[DISABLED]`); no rule has yet been moved to `hard_deny`. Individual rules are maintained in that file, not duplicated here -- this spec tracks the mechanism, not each entry. New rules still follow the evidence loop above before landing.
 
 ## References
 

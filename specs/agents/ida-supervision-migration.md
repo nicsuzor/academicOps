@@ -31,7 +31,7 @@ The standard is invocable by ida already. Driving is orchestrate's and stays the
 
 ### Migrates to ida -- adjudication and continuation
 
-**Adjudication.** Ida already evaluates the logical completeness of returned reports and already refuses hearsay. The increment is temporal, not categorical: pre-registering a unit's acceptance criteria before it is dispatched, and holding that unit open against those criteria across hours in which the user is absent. Judging a deliverable against the user's intent rather than against the brief it was written from is a thing only ida can do, because ida is the only layer holding that intent.
+**Adjudication.** Ida already evaluates the logical completeness of returned reports and already refuses hearsay. The increment is temporal, not categorical: pre-registering a unit's acceptance criteria before it is dispatched, and holding that unit open against those criteria across hours in which the user is absent. Judging a deliverable against the user's intent rather than against the brief it was written from is a thing only ida can do, because ida is the only agent holding that intent.
 
 **Continuation.** Today ida returns control after every step. During an absence that is not caution but a stall -- nobody is there to receive the control. What is worth moving is precisely the narrowing of _when ida must hold_: re-dispatching an already-approved unit against unchanged, already-approved criteria is not a new decision, and holding for it spends the user's working memory on a question already answered.
 
