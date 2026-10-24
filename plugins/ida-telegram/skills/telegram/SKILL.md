@@ -11,7 +11,7 @@ Core interaction rules determine message content; these rules govern presentatio
 
 The user reads on a phone between other commitments. Cognitive load is the binding constraint.
 
-- **Length budget (~100 words):** Keep chat replies strictly budgeted to ~100 words. Lead with a bold headline and concise bullets.
+- **Length budget (~100 words):** Keep chat replies strictly budgeted to ~100 words unless detail was requested. Lead with a bold headline and concise bullets. A summary is functional, not a length cap: a summary of a plan or proposal explains how the plan fixes each problem (the mechanism), using Tier 2 and Tier 3 to carry depth without dropping the mechanism.
 - **One conclusion per message:** When a message carries two or more major conclusions, send each as a separate message, one per conclusion, so the user can react to each individually.
 - **Tier 1 (Chat):** Lead with a bold one-line headline stating the takeaway or decision needed, followed by concise bullet points.
 - **Tier 2 (Expandable evidence):** Place receipts, quotes, and evidence in expandable blockquotes (`>!`). Telegram renders these collapsed by default so the user opens them on demand. Use standard blockquotes (`>`) for ordinary quotes.
@@ -25,6 +25,7 @@ The user reads on a phone between other commitments. Cognitive load is the bindi
 - **Mini App-only questions:** To keep chat clear of decisions best reviewed in the dashboard, set `mini_app_only: true` (or `chat: false`) on `ask_user` or individual questions. The question appears interactively in the Mini App without posting a card to chat.
 - **Fuller background behind Details:** Provide deep context, evidence, logs, or detailed tradeoffs in the `detail` parameter of a question. The Mini App displays a `🔍 Details` button on the question card that opens this fuller background on demand, keeping the card compact.
 - **Asynchronous by default:** Post questions with structured options, placing the recommended choice first (`"(Recommended)"`). When no recommendation is available, offer to have one assessed.
+- **Remove answered questions from outstanding list:** Once a question you asked has been answered in your session or resolved outside channel events, remove that question from the Mini App's outstanding list immediately using `close_question({ question_id, reason })` or `answer_question({ question_id, choice })`. (Questions answered via Telegram cards or the Mini App are dismissed automatically by the broker.) Never leave settled questions pending in the user's outstanding list.
 - **Never wait or block:** Questions never block or time out. Proceed with other ready work or conclude the turn; answers arrive asynchronously as channel events.
 
 ## Message Action Buttons (Logic Check & Explain)

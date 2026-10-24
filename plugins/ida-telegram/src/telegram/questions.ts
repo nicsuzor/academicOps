@@ -215,6 +215,15 @@ export class QuestionBroker {
     return undefined;
   }
 
+  public findQuestionByMessageId(messageId: number): StoredQuestion | undefined {
+    for (const q of this.questions.values()) {
+      if (q.status === "pending" && q.messageId === messageId) {
+        return q;
+      }
+    }
+    return undefined;
+  }
+
   public getPendingQuestions(): StoredQuestion[] {
     return Array.from(this.questions.values()).filter((q) => q.status === "pending");
   }
@@ -388,4 +397,28 @@ export class QuestionBroker {
     return { cardText, channelEvent, question: q };
   }
 }
+
+export function matchOptionIndex(
+  q: StoredQuestion,
+  text: string
+): { optionIndex: number } | null {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const numMatch = trimmed.match(/^(\d+)$/);
+  if (numMatch) {
+    const idx = parseInt(numMatch[1], 10) - 1;
+    if (idx >= 0 && idx < q.options.length) {
+      return { optionIndex: idx };
+    }
+  }
+  const lower = trimmed.toLowerCase();
+  const labelIdx = q.options.findIndex((opt) => opt.label.trim().toLowerCase() === lower);
+  if (labelIdx !== -1) {
+    return { optionIndex: labelIdx };
+  }
+  return null;
+}
+
 

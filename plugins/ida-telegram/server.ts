@@ -88,7 +88,9 @@ async function main() {
     config,
     broker,
     bot,
-    (content, meta) => mcpServer.emitChannelNotification(content, meta)
+    (content, meta) => mcpServer.emitChannelNotification(content, meta),
+    store,
+    broadcastSseEvent
   );
 
   socketServer.listen(config.socketPath, () => {
@@ -149,7 +151,9 @@ export function createBridgeServer(
   config: PluginConfig,
   broker: QuestionBroker,
   bot: TelegramBotClient | null,
-  emitChannelNotification?: (content: string, meta: Record<string, unknown>) => void
+  emitChannelNotification?: (content: string, meta: Record<string, unknown>) => void,
+  store?: PluginStore,
+  broadcastSse?: typeof broadcastSseEvent
 ) {
   return createServer((client) => {
     let raw = "";
@@ -209,6 +213,55 @@ export function createBridgeServer(
                 event: result.channelEvent.event,
                 ...result.channelEvent,
               });
+            }
+            if (result && store && broadcastSse) {
+              const seq = store.nextSeq("question_closed", {
+                question_id: questionId,
+                reason: result.channelEvent.reason,
+                turn_id: result.channelEvent.turn_id,
+                session_id: result.channelEvent.session_id,
+              });
+              broadcastSse("question_closed", {
+                question_id: questionId,
+                reason: result.channelEvent.reason,
+                turn_id: result.channelEvent.turn_id,
+                session_id: result.channelEvent.session_id,
+              }, seq);
+            }
+            client.write(JSON.stringify({ status: result ? "ok" : "not_found", result }) + "\n");
+          } else if (req.type === "answer_question") {
+            const questionId = req.question_id || req.questionId || req.id;
+            const choice = typeof req.choice === "string" ? req.choice.trim() : undefined;
+            const optionIndex = typeof req.option_index === "number" ? req.option_index : undefined;
+            if (!questionId) {
+              client.write(JSON.stringify({ status: "error", error: "Missing question_id" }) + "\n");
+              return;
+            }
+            if (!choice && optionIndex === undefined) {
+              client.write(JSON.stringify({ status: "error", error: "Missing answer: provide choice or option_index" }) + "\n");
+              return;
+            }
+            const result = await broker.resolveAnswer(questionId, optionIndex !== undefined ? optionIndex : "other", choice);
+            if (result && bot && result.question.chatId && result.question.messageId) {
+              await bot.editMessage(result.question.chatId, result.question.messageId, result.cardText, { inline_keyboard: [] });
+            }
+            if (result && emitChannelNotification) {
+              emitChannelNotification(`Question answered: ${result.channelEvent.choice}`, {
+                event: result.channelEvent.event,
+                ...result.channelEvent,
+              });
+            }
+            if (result && store && broadcastSse) {
+              const seq = store.nextSeq("question_resolved", {
+                question_id: questionId,
+                choice: result.channelEvent.choice,
+                turn_id: result.channelEvent.turn_id,
+              });
+              broadcastSse("question_resolved", {
+                question_id: questionId,
+                choice: result.channelEvent.choice,
+                turn_id: result.channelEvent.turn_id,
+              }, seq);
             }
             client.write(JSON.stringify({ status: result ? "ok" : "not_found", result }) + "\n");
           } else if (req.type === "list_questions") {

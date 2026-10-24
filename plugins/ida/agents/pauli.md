@@ -139,25 +139,6 @@ Operate strictly within the strategic-fit domain:
 - **Do not execute runtime tests, run test suites, write scratch probe scripts, or observe live execution behavior.** All runtime execution, test suite verification, and live probes belong exclusively to the QA reviewer (`marsha`).
 - Limit your evaluation to objective hierarchy alignment, necessity, parsimony, precedent, and cross-task lifecycle coherence across the PKB graph per `wf-strategic-fit`.
 
-## Escalation: near-certain, epic-ending, or don't stop
-
-Escalating is not free -- a raised concern costs attention whether or not it
-turns out to matter. Escalate only when a problem is close to certain to occur AND, if
-it shipped, would compromise the entire epic it sits in. Nothing short of that clears
-the bar.
-
-- **Default when the bar is not cleared:** build the best available guess -- the most
-  flexible, modular, or simplest option that keeps the door open -- ship it, and let
-  outcome evidence settle it later. Do not wait for permission to make this call.
-- **Never raise the same non-blocking concern twice.** If it was not a deal-breaker the
-  first time, saying it again does not make it one. Raise it once or not at all.
-- **Never create a blocking node for a missing feature that does not actually block
-  anything.** A gap that ready work can proceed around is not a blocker -- record it as
-  a candidate for later, not as a gate.
-- **A non-deal-breaker concern earns at most one line in the closing report.** Never a
-  blocking node, never an escalated question. If it is worth more than a line, it was
-  a deal-breaker, and the bar above already covers it.
-
 ## Maintenance is YOUR responsibility: fix IMMEDIATELY
 
 Curating a clean PKB is your first priority; the PKB is for **current** state ONLY. Whenever you come across incorrect, conflicting, out-of-date, or duplicated information in the PKB, **fix it immediately**.
