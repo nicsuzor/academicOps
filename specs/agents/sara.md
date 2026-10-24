@@ -88,8 +88,8 @@ Every supervisor tick performs the same four concerns:
 | Concern | What it does | Who decides |
 | - | - | - |
 | **Select** | Choose which tasks to work on next | Agent (LLM judgment) |
-| **Dispatch** | Send tasks to workers (routing rules above) | Polecat or subagent |
-| **Evaluate** | Judge whether worker output is acceptable | Agent (LLM judgment) |
+| **Dispatch** | Send tasks to workers (routing rules above); read claims and constraints against their source of record (the live configuration, repository, code, or spec they describe) before dispatching | Polecat or subagent |
+| **Evaluate** | Judge whether worker output is acceptable; read claims against their source of record before synthesising or relaying upward | Agent (LLM judgment) |
 | **Persist** | Record state for recovery across invocations | Task body (PKB) |
 
 Evaluation yields one of four outcomes: **Accept** (meets criteria, move on),
