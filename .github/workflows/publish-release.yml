@@ -27,7 +27,6 @@ jobs:
     needs: test
     permissions:
       contents: write
-      packages: write
     steps:
       - name: Resolve build context
         id: ctx
@@ -38,15 +37,14 @@ jobs:
           # shellcheck disable=SC2193
           if [[ -n "${{ inputs.tag || '' }}" ]]; then
             REF="${{ inputs.tag }}"
-            if [[ "$REF" == *-* ]]; then
+            if [[ "$REF" == *-* || "$REF" == *rc* || "$REF" == *alpha* || "$REF" == *beta* || "$REF" == *dev* ]]; then
               RTYPE="testing"
             else
               RTYPE="stable"
             fi
-          elif [[ "${{ github.ref }}" == refs/tags/v*-* ]]; then
-            # Pre-release tag (v1.2.3-rc.1, v0.10-rc1, v1.0-rc6, -dev.N, -beta.N). Checked
-            # FIRST because the v*-* glob is a subset of the plain v* glob below;
-            # in semver a '-' only ever introduces a pre-release identifier.
+          elif [[ "${{ github.ref }}" == refs/tags/v*-* || "${{ github.ref }}" == refs/tags/v*rc* || "${{ github.ref }}" == refs/tags/v*alpha* || "${{ github.ref }}" == refs/tags/v*beta* || "${{ github.ref }}" == refs/tags/v*dev* ]]; then
+            # Pre-release tag (v1.2.3-rc.1, v0.10-rc1, v1.0-rc6, v1.0-rc*, v1.0rc*, -dev.N, -beta.N).
+            # Checked FIRST because pre-release globs are subsets of the plain v* glob below.
             REF="${{ github.ref_name }}"
             RTYPE="testing"
           elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
@@ -128,6 +126,7 @@ jobs:
           RELEASE_TYPE: ${{ steps.ctx.outputs.release_type }}
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           PRERELEASE_FLAG=""
           [ "$RELEASE_TYPE" = "testing" ] && PRERELEASE_FLAG="--prerelease"
 
@@ -141,8 +140,16 @@ jobs:
             exit 1
           fi
 
-          # $ARCHIVES (space-separated file list) and $PRERELEASE_FLAG must
-          # word-split into multiple args, so SC2086 quoting would break them.
-          # shellcheck disable=SC2086
-          gh release upload "v$VERSION" $ARCHIVES --clobber || \
-          gh release create "v$VERSION" --title "v$VERSION" --notes "AcademicOps v$VERSION" $PRERELEASE_FLAG $ARCHIVES
+          TAG="v$VERSION"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            if [ "$RELEASE_TYPE" = "testing" ]; then
+              gh release edit "$TAG" --prerelease
+            fi
+            # $ARCHIVES must word-split into separate args
+            # shellcheck disable=SC2086
+            gh release upload "$TAG" $ARCHIVES --clobber
+          else
+            # $ARCHIVES and $PRERELEASE_FLAG must word-split into separate args
+            # shellcheck disable=SC2086
+            gh release create "$TAG" --title "$TAG" --notes "AcademicOps $TAG" $PRERELEASE_FLAG $ARCHIVES
+          fi
