@@ -33,6 +33,7 @@ export interface SendReplyOptions {
   replyTo?: number;
   feedback?: boolean;
   review?: { repo: string; pr?: number };
+  actions?: boolean;
 }
 
 export interface SendReplyResult {
@@ -153,7 +154,7 @@ export class TelegramBotClient {
   }
 
   public async sendReply(opts: SendReplyOptions): Promise<SendReplyResult | null> {
-    const { chatId, formatted, detailsId, buttons, voice, replyTo, feedback, review } = opts;
+    const { chatId, formatted, detailsId, buttons, voice, replyTo, feedback, review, actions } = opts;
 
     // Build inline keyboard
     const inlineKeyboard: Array<Array<Record<string, unknown>>> = [];
@@ -204,6 +205,14 @@ export class TelegramBotClient {
           text: `🔍 Review diff (${review.repo}#${review.pr || ""})`,
           web_app: { url: `${miniAppBaseUrl}/app/index.html?tab=review` },
         },
+      ]);
+    }
+
+    // Message action buttons (AC1, AC2: logic check and explain)
+    if (actions !== false) {
+      inlineKeyboard.push([
+        { text: "🧐 Check logic", callback_data: "logic_check" },
+        { text: "💡 Explain", callback_data: "explain" },
       ]);
     }
 
@@ -771,6 +780,66 @@ export class TelegramBotClient {
           }
           return;
         }
+      }
+
+      // Logic check and explain callbacks (AC1, AC2)
+      if (
+        (data === "logic_check" ||
+          data.startsWith("logic_check:") ||
+          data === "explain" ||
+          data.startsWith("explain:")) &&
+        cb.message &&
+        this.config.allowFrom.includes(cb.from.id)
+      ) {
+        const kbRows = cb.message.reply_markup?.inline_keyboard || [];
+        const matchedBtn = kbRows.flat().find((b) => b.callback_data === data);
+        const isLogicCheck = data === "logic_check" || data.startsWith("logic_check:");
+        const label = matchedBtn?.text || (isLogicCheck ? "🧐 Check logic" : "💡 Explain");
+        const originalText = cb.message.text || "";
+
+        // Remove the action buttons row, but preserve other buttons (e.g. Details, Review diff)
+        const remainingRows = kbRows
+          .map((row) =>
+            row.filter(
+              (b) =>
+                b.callback_data !== "logic_check" &&
+                b.callback_data !== "explain" &&
+                !b.callback_data?.startsWith("logic_check:") &&
+                !b.callback_data?.startsWith("explain:")
+            )
+          )
+          .filter((row) => row.length > 0);
+
+        await this.editMessage(
+          cb.message.chat.id,
+          cb.message.message_id,
+          `${originalText}\n\nSelected: ${label} ✅`,
+          { inline_keyboard: remainingRows }
+        );
+
+        const targetExcerpt = cb.message.text || this.getMessageExcerpt(cb.message.message_id) || "";
+        const action = isLogicCheck ? "logic_check" : "explain";
+        const content = isLogicCheck
+          ? `Give me a logic check on message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""} as if you were receiving it from a peer.`
+          : `Please explain message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""} in more detail.`;
+
+        const meta: Record<string, string> = {
+          event: action,
+          action,
+          callback_id: cb.id,
+          callback_prefix: action,
+          payload: data,
+          label,
+          target_message_id: String(cb.message.message_id),
+          chat_id: String(cb.message.chat.id),
+          user_id: String(cb.from.id),
+        };
+        if (targetExcerpt) {
+          meta.target_excerpt = targetExcerpt;
+        }
+
+        this.emitChannelEvent(content, meta);
+        return;
       }
 
       // Custom action / decision buttons on reply cards (FR-1.1 / FR-8)

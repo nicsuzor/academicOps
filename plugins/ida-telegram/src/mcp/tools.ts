@@ -45,6 +45,10 @@ export const MCP_TOOLS: ToolDefinition[] = [
             pr: { type: "integer" },
           },
         },
+        actions: {
+          type: "boolean",
+          description: "Attach message action buttons (Check logic, Explain). Defaults to true.",
+        },
       },
       required: ["text"],
     },
