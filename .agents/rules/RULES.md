@@ -10,7 +10,9 @@ in place of them. A rule belongs here only if it states a project-level
 commitment a reviewer can name from the diff, and cannot be derived from an
 axiom alone.
 
-## Enforcement changes update the spec in the same PR
+## Enforcement changes run through the pyramid and update the spec
+
+Before proposing, adding, or modifying an enforcement mechanism, run through the enforcement pyramid options against [`specs/enforcement/enforcement.md`](../../specs/enforcement/enforcement.md) first, testing least-invasive options across its controlled vocabulary and strength gradations before escalating. Default to instructions: instructions work in the large majority of cases; the burden of proof is on adding a mechanism.
 
 Any change that adds, modifies, escalates, or retires an enforcement mechanism
 updates [`specs/enforcement/enforcement.md`](../../specs/enforcement/enforcement.md)

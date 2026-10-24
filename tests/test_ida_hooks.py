@@ -1,4 +1,4 @@
-"""Tests for ida hooks: hearsay, honesty, and quiet."""
+"""Tests for ida hooks: hearsay and honesty."""
 
 from __future__ import annotations
 
@@ -33,15 +33,6 @@ def staged_hooks(tmp_path: Path) -> Path:
     hooks = tmp_path / "hooks"
     shutil.copytree(IDA_HOOKS, hooks, ignore=shutil.ignore_patterns("__pycache__"))
     return hooks
-
-
-@pytest.fixture(autouse=True)
-def clean_gate_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    state_dir = tmp_path / "aops_channel_gate"
-    state_dir.mkdir(parents=True, exist_ok=True)
-    monkeypatch.setenv("AOPS_CHANNEL_GATE_DIR", str(state_dir))
-    yield
-    handlers.clear_channel_gate_state()
 
 
 # ---------------------------------------------------------------------------
@@ -156,11 +147,6 @@ def test_hearsay_does_not_fire_for_non_ida_agents():
 
 # ---------------------------------------------------------------------------
 # 2. Honesty hook on Stop for all agents (blocking once)
-# ---------------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------------
-# 3. Quiet hook on Stop and PreToolUse for Ida Prime
 # ---------------------------------------------------------------------------
 
 
@@ -294,9 +280,9 @@ def test_user_messages_get_pkb_hydration_and_no_hearsay_or_gate(prompt, expected
 @pytest.mark.parametrize(
     "peer_prompt",
     [
-        '<cross-session-message from="twin-a">PR #12 merged</cross-session-message>',
-        '<teammate-message teammate_id="worker">done</teammate-message>',
-        "<task-notification><result>worker finished</result></task-notification>",
+        '<cross-session-message from="twin-a">PR #12 merged\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</cross-session-message>',
+        '<teammate-message teammate_id="worker">done\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</teammate-message>',
+        "<task-notification><result>worker finished\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</result></task-notification>",
     ],
 )
 def test_agent_messages_get_hearsay_and_arm_gate_without_hydration(peer_prompt):

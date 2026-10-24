@@ -2,29 +2,13 @@ name: Build and Deploy
 
 on:
   # Merges into main rebuild and publish built objects directly to main.
-  # Tag pushes (v*) also trigger builds and cut GitHub Releases.
   push:
     branches:
       - main
-    tags: ["v*"]
   workflow_dispatch:
-    inputs:
-      tag:
-        description: "Version or tag to build and publish (e.g. v0.10-rc1)"
-        required: false
-        type: string
 
 concurrency:
-  # A stable tag's build-and-deploy job pauses on the `production` environment
-  # reviewer (the ONE human approval, §3.13) — while it's paused it is still
-  # "in progress" from concurrency's point of view. cancel-in-progress: true
-  # here silently cancelled that pending approval the instant the NEXT tag
-  # landed (release-please's fast path can cut one every few minutes), so a
-  # burst of releases each superseded the last before the owner ever saw a prompt —
-  # looked indistinguishable from "shipped with no approval" even though the
-  # cancelled runs never actually published. Queue instead: never drop a
-  # pending or completed deploy; each tag gets its own turn at the gate.
-  group: build-deploy
+  group: build-deploy-main
   cancel-in-progress: false
 
 jobs:
@@ -223,29 +207,3 @@ jobs:
             git commit -m "chore: publish v${{ steps.version.outputs.version }} distribution to main [skip ci]"
             git push origin main
           fi
-
-      - name: Upload archives to GitHub Release v${{ steps.version.outputs.version }}
-        if: (github.event_name == 'release' || github.event_name == 'push') && startsWith(github.ref, 'refs/tags/')
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-          RELEASE_TYPE: ${{ steps.ctx.outputs.release_type }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          PRERELEASE_FLAG=""
-          [ "$RELEASE_TYPE" = "testing" ] && PRERELEASE_FLAG="--prerelease"
-
-          ARCHIVES=""
-          for f in dist/*.tar.gz; do
-            [ -f "$f" ] && ARCHIVES="$ARCHIVES $f"
-          done
-
-          if [ -z "$ARCHIVES" ]; then
-            echo "::error::No archives in dist/"
-            exit 1
-          fi
-
-          # $ARCHIVES (space-separated file list) and $PRERELEASE_FLAG must
-          # word-split into multiple args, so SC2086 quoting would break them.
-          # shellcheck disable=SC2086
-          gh release upload "v$VERSION" $ARCHIVES --clobber || \
-          gh release create "v$VERSION" --title "v$VERSION" --notes "AcademicOps v$VERSION" $PRERELEASE_FLAG $ARCHIVES

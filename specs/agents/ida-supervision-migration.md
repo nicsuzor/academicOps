@@ -31,7 +31,7 @@ The standard is invocable by ida already. Driving is orchestrate's and stays the
 
 ### Migrates to ida -- adjudication and continuation
 
-**Adjudication.** Ida already evaluates the logical completeness of returned reports and already refuses hearsay. The increment is temporal, not categorical: pre-registering a unit's acceptance criteria before it is dispatched, and holding that unit open against those criteria across hours in which the user is absent. Judging a deliverable against the user's intent rather than against the brief it was written from is a thing only ida can do, because ida is the only layer holding that intent.
+**Adjudication.** Ida already evaluates the logical completeness of returned reports and already refuses hearsay. The increment is temporal, not categorical: pre-registering a unit's acceptance criteria before it is dispatched, and holding that unit open against those criteria across hours in which the user is absent. Judging a deliverable against the user's intent rather than against the brief it was written from is a thing only ida can do, because ida is the only agent holding that intent.
 
 **Continuation.** Today ida returns control after every step. During an absence that is not caution but a stall -- nobody is there to receive the control. What is worth moving is precisely the narrowing of _when ida must hold_: re-dispatching an already-approved unit against unchanged, already-approved criteria is not a new decision, and holding for it spends the user's working memory on a question already answered.
 
@@ -152,4 +152,4 @@ _Probe, one cheap run:_ measure ida's context growth per adjudicated unit across
 
 This spec does not reopen [`sara.md`](sara.md). The four supervisor concerns and the four evaluation outcomes are that spec's, and the delegate-and-verify loop remains orchestrate's, invoked and never hand-rolled. What changes across the stages here is only _which identity decides_ the Evaluate concern's outcome without a user turn, and whose absence the loop must survive.
 
-The evidence shape every claim in an autonomous run carries is [`../enforcement/evidence-contract.md`](../enforcement/evidence-contract.md); the release-scale approval the permanent gates instantiate is [`../enforcement/sign-off.md`](../enforcement/sign-off.md). Neither is restated here.
+The evidence shape every claim in an autonomous run carries is [`../enforcement/evidence-contract.md`](../enforcement/evidence-contract.md); incoming work is premise-checked, and outgoing work carries its reasons. Neither is restated here.

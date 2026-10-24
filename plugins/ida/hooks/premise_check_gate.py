@@ -31,6 +31,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import report_argument as ra
 from dispatch import HookContext, Result, block, refuse, warn
 
 
@@ -38,9 +39,6 @@ def _now() -> str:
     """Current time as an ISO-8601 string carrying the local system UTC offset."""
     return datetime.now().astimezone().isoformat()
 
-
-# Agent profiles this check applies to: the manager (ida) and the dispatcher (sara)
-_GATED_AGENT_TYPES = ["ida:ida", "ida", "ida:sara", "sara"]
 
 # Envelopes the harness wraps around a report or direction from another agent. Anything
 # else arriving on UserPromptSubmit -- a channel message or a typed prompt -- is
@@ -195,6 +193,7 @@ def arm(
     claim_id: str | None = None,
     judged_text: str | None = None,
     judged_ref: str | None = None,
+    block_expected: bool = False,
 ) -> None:
     """Arm the premise check for a session until a verdict disarms it.
 
@@ -202,20 +201,25 @@ def arm(
     the state file so the recorder can cross-check the reason against its
     ``argument`` block. ``judged_ref`` names where that text came from: the
     tool-use id of a subagent result, the id of a peer envelope, or a task id.
+    ``block_expected`` records whether an Argdown block was required on this report.
     """
     state = _load_state(session_id)
     cid = claim_id or state.get("claim_id") or "unnamed-claim"
     state["armed"] = True
     state["pending"] = True  # backward compat
     state["claim_id"] = cid
+    if block_expected:
+        state["block_expected"] = True
     claim_ids = state.get("claim_ids") or []
     if cid not in claim_ids:
         claim_ids.append(cid)
     state["claim_ids"] = claim_ids
     state["armed_at"] = _now()
-    if judged_text is not None or judged_ref:
+    if judged_text is not None or judged_ref or block_expected:
         judged = state.get("judged") or {}
         entry: dict[str, Any] = {"ref": judged_ref or cid}
+        if block_expected:
+            entry["block_expected"] = True
         if judged_text is not None:
             path = _judged_path(session_id, cid)
             path.write_text(judged_text, encoding="utf-8")
@@ -247,6 +251,7 @@ def disarm(
     reason: str,
     verification_id: str = "",
     title: str | None = None,
+    machine: bool = False,
 ) -> None:
     """Disarm the premise check after a verdict is recorded."""
     state = _load_state(session_id)
@@ -279,6 +284,10 @@ def disarm(
         last_verdict["verification_id"] = verification_id
     if title:
         last_verdict["title"] = title
+    if machine:
+        last_verdict["machine"] = True
+    if verdict == "no-claim":
+        last_verdict["no_claim"] = True
     state["last_verdict"] = last_verdict
     _save_state(session_id, state)
 
@@ -405,6 +414,22 @@ def _strip_channel_wrapper(text: str) -> str:
     return s
 
 
+_PEER_PREAMBLE = re.compile(
+    r"^(?:Another Claude session sent a message:\s*)+",
+    re.IGNORECASE,
+)
+
+
+def _strip_peer_wrapper(text: str) -> str:
+    """Unwrap channel envelopes and Claude Code teammate/peer preambles."""
+    s = _strip_channel_wrapper(text).strip()
+    m = _PEER_PREAMBLE.match(s)
+    if m:
+        s = s[m.end() :].strip()
+    s = _strip_channel_wrapper(s).strip()
+    return s
+
+
 def is_peer_report(ctx: HookContext) -> bool:
     """True when an incoming prompt is another agent's report or direction, not the user's message."""
     if ctx.client == "agy":
@@ -412,7 +437,7 @@ def is_peer_report(ctx: HookContext) -> bool:
         if turn_start and turn_start.get("type") == "SYSTEM_MESSAGE":
             return bool(agy_arrival(str(turn_start.get("content") or "")))
     raw = _prompt_text(ctx)
-    text = _strip_channel_wrapper(raw).lstrip()
+    text = _strip_peer_wrapper(raw).lstrip()
     if not text:
         return False
     return text.startswith(_PEER_ENVELOPES)
@@ -473,6 +498,8 @@ def format_verdict_command(
     claim_id: str,
     hooks_dir: Path | None = None,
     session_id: str = "",
+    verdict: str = "<PASS|REVISE|FAIL>",
+    reason: str | None = None,
 ) -> str:
     base = _hooks_base(hooks_dir)
     plugin_dir = base.parent if base.name == "hooks" else base
@@ -484,8 +511,12 @@ def format_verdict_command(
     quoted_claim = shlex.quote(claim_id)
     cmd = (
         f"uv run --project {quoted_project} python3 {quoted_script}"
-        f" --claim {quoted_claim} --verdict <PASS|REVISE|FAIL> --reason-file <path>"
+        f" --claim {quoted_claim} --verdict {verdict}"
     )
+    if reason is not None:
+        cmd += f" --reason {shlex.quote(reason)}"
+    else:
+        cmd += " --reason-file <path>"
     if not os.environ.get("AOPS_SESSION_ID") and session_id:
         cmd += f" --session {shlex.quote(session_id)}"
     return cmd
@@ -517,7 +548,7 @@ def _derive_claim_id(ctx: HookContext) -> str:
         raise RuntimeError("Dispatch tool call lacks identifier and description metadata")
 
     if ctx.event == "UserPromptSubmit":
-        prompt = _strip_channel_wrapper(_prompt_text(ctx)).strip()
+        prompt = _strip_peer_wrapper(_prompt_text(ctx)).strip()
         if not prompt and ctx.client == "agy":
             turn_start = _agy_turn_start(ctx)
             if turn_start:
@@ -535,7 +566,7 @@ def _derive_claim_id(ctx: HookContext) -> str:
             )
             if id_match:
                 cid = id_match.group(1).strip()
-                if cid and re.match(r"^[a-zA-Z0-9_\-\.:]+$", cid):
+                if cid and re.match(r"^[a-zA-Z0-9_\-\.:@]+$", cid):
                     return cid
 
             title_match = re.search(
@@ -688,7 +719,8 @@ def _tool_use_id(ctx: HookContext) -> str:
 
 
 def _envelope_id(prompt: str) -> str | None:
-    match = re.search(r"<([a-zA-Z0-9_\-]+)([^>]*)>", prompt)
+    stripped = _strip_peer_wrapper(prompt)
+    match = re.search(r"<([a-zA-Z0-9_\-]+)([^>]*)>", stripped)
     if not match:
         return None
     id_match = re.search(
@@ -697,7 +729,7 @@ def _envelope_id(prompt: str) -> str | None:
     )
     if id_match:
         cid = id_match.group(1).strip()
-        if cid and re.match(r"^[a-zA-Z0-9_\-\.:]+$", cid):
+        if cid and re.match(r"^[a-zA-Z0-9_\-\.:@]+$", cid):
             return cid
     return None
 
@@ -716,7 +748,7 @@ def carries_report(text: str) -> bool:
     background command finishing) carries none. A hand-back pointer names the
     message that carries the report, which arms the gate when it arrives.
     """
-    body = _strip_channel_wrapper(text).lstrip()
+    body = _strip_peer_wrapper(text).lstrip()
     if not body:
         return False
     if body.startswith("<task-notification"):
@@ -726,6 +758,36 @@ def carries_report(text: str) -> bool:
     return not _HANDBACK_POINTER.search(body)
 
 
+def _extract_judged_text(prompt: str) -> str:
+    """Extract report content from an incoming peer prompt.
+
+    For an idle_notification JSON inside a <teammate-message> envelope,
+    the teammate's final report is the JSON `result` string; returning that
+    unpacks the unescaped markdown (including any fenced argdown blocks).
+    For other peer messages, returns the prompt text.
+    """
+    stripped = _strip_peer_wrapper(prompt)
+    match = re.search(
+        r"<(cross-session-message|teammate-message|task-notification|subagent-handback|agent-message)([^>]*)>(.*?)(?:</\1>|$)",
+        stripped,
+        re.DOTALL,
+    )
+    if match and match.group(1) == "teammate-message":
+        inner = match.group(3).strip()
+        if inner.startswith("{") and inner.endswith("}"):
+            try:
+                data = json.loads(inner)
+                if (
+                    isinstance(data, dict)
+                    and data.get("type") == "idle_notification"
+                    and "result" in data
+                ):
+                    return str(data["result"])
+            except (json.JSONDecodeError, TypeError, ValueError):
+                pass
+    return prompt
+
+
 # ---------------------------------------------------------------------------
 # Hook handlers
 # ---------------------------------------------------------------------------
@@ -733,9 +795,6 @@ def carries_report(text: str) -> bool:
 
 def premise_check_arm(ctx: HookContext) -> Result | None:
     """UserPromptSubmit or PostToolUse handler: arm the premise check on an incoming report or direction."""
-    if ctx.agent_type not in _GATED_AGENT_TYPES:
-        return None
-
     if ctx.event == "UserPromptSubmit":
         if not is_peer_report(ctx):
             return None
@@ -753,15 +812,57 @@ def premise_check_arm(ctx: HookContext) -> Result | None:
             turn_start = _agy_turn_start(ctx)
             if turn_start:
                 judged_text = agy_arrival(str(turn_start.get("content") or ""))
+        judged_text = _extract_judged_text(judged_text)
     if not carries_report(judged_text):
         return None
 
     claim_id = _derive_claim_id(ctx)
     if ctx.event == "PostToolUse":
         judged_ref = _tool_use_id(ctx) or claim_id
+        arm(ctx.session_id, claim_id=claim_id, judged_text=judged_text, judged_ref=judged_ref)
     else:
-        judged_ref = _envelope_id(judged_text.strip()) or claim_id
-    arm(ctx.session_id, claim_id=claim_id, judged_text=judged_text, judged_ref=judged_ref)
+        raw_prompt = judged_text
+        judged_text = _extract_judged_text(raw_prompt)
+        judged_ref = _envelope_id(raw_prompt.strip()) or claim_id
+        block_text = ra.extract_block(judged_text) or ra.extract_block(raw_prompt)
+
+        # 1. Null form: clears the gate with no agent action
+        if block_text is not None and ra.is_null_form(block_text):
+            disarm(
+                ctx.session_id,
+                claim_id=claim_id,
+                verdict="no-claim",
+                reason="null form",
+                machine=True,
+            )
+            return None
+
+        # 2. Absent block: keep gate shut, agent must send it back for resending
+        if block_text is None:
+            arm(
+                ctx.session_id,
+                claim_id=claim_id,
+                judged_text=judged_text,
+                judged_ref=judged_ref,
+                block_expected=True,
+            )
+            inject = (
+                f"Premise-check gate armed by {claim_id}: no argument block supplied; "
+                f"send the message back for revision per the `premise-check` skill "
+                f"(an absent block cannot pass).\n"
+                f"{format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id, verdict='REVISE', reason='no argument supplied')}"
+            )
+            user_msg = f"Premise-check gate armed by {claim_id} (no argument block supplied; send back for revision)."
+            return warn(inject, user_msg)
+
+        # 3. Substantive argument block: arm the gate awaiting agent verdict
+        arm(
+            ctx.session_id,
+            claim_id=claim_id,
+            judged_text=judged_text,
+            judged_ref=judged_ref,
+            block_expected=True,
+        )
     inject = (
         f"Premise-check gate armed by {claim_id}; if this is a direction, summarise it stating deliverables and log as a frozen acceptance checklist on a PKB task; record a verdict per the `premise-check` skill.\n"
         f"{format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id)}"
@@ -772,9 +873,6 @@ def premise_check_arm(ctx: HookContext) -> Result | None:
 
 def premise_check_handler(ctx: HookContext) -> Result | None:
     """PreToolUse/Stop handler: refuse the next restricted action while armed."""
-    if ctx.agent_type not in _GATED_AGENT_TYPES:
-        return None
-
     if ctx.event == "PreToolUse" and not _is_blocked_tool(ctx.tool):
         return None
 

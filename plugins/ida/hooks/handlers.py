@@ -26,11 +26,9 @@ from dispatch import (
     _run_handler,
     block,
     load_message_pair,
-    refuse,
     warn,
 )
 from premise_check_gate import (
-    is_channel_reply_tool,
     is_foreground_dispatch,
     is_peer_report,
     premise_check_arm,
@@ -117,36 +115,6 @@ def is_ida(ctx: HookContext | str | None, *extra_targets: str) -> bool:
 
 _is_ida = is_ida
 _is_agent = is_agent
-
-
-def _channel_gate_state_dir() -> Path:
-    override = os.environ.get("AOPS_CHANNEL_GATE_DIR")
-    path = Path(override) if override else Path(tempfile.gettempdir()) / "aops_channel_gate"
-    path.mkdir(parents=True, exist_ok=True)
-    return path
-
-
-def _channel_gate_state_path(session_id: str) -> Path:
-    safe_session = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", session_id or "default")
-    return _channel_gate_state_dir() / f"{safe_session}.json"
-
-
-def clear_channel_gate_state(session_id: str | None = None) -> None:
-    if session_id:
-        target = _channel_gate_state_path(session_id)
-        if target.exists():
-            try:
-                target.unlink()
-            except OSError:
-                pass
-    else:
-        state_dir = _channel_gate_state_dir()
-        if state_dir.exists():
-            for p in state_dir.glob("*.json"):
-                try:
-                    p.unlink()
-                except OSError:
-                    pass
 
 
 def honest_output(ctx: HookContext) -> Result | None:
@@ -553,41 +521,6 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
     return None
 
 
-def be_quiet(ctx: HookContext) -> Result | None:
-    """Remind Ida to strip its reply down to what is load-bearing on stop."""
-    if not _is_ida(ctx):
-        return None
-    if ctx.raw.get("background_tasks"):
-        return None
-    return block(*load_message_pair(ctx.hooks_dir, "quiet"))
-
-
-def quiet_channel_reply(ctx: HookContext) -> Result | None:
-    """Deny channel replies once for Ida to enforce ADHD executive protection."""
-    if not _is_ida(ctx):
-        return None
-    if not is_channel_reply_tool(ctx.tool):
-        return None
-
-    state_path = _channel_gate_state_path(ctx.session_id)
-    if state_path.exists():
-        data = json.loads(state_path.read_text(encoding="utf-8"))
-        if data.get("blocked_once"):
-            return None
-
-    state_path.write_text(json.dumps({"blocked_once": True, "tool": ctx.tool}), encoding="utf-8")
-
-    quiet_inject, quiet_user = load_message_pair(ctx.hooks_dir, "quiet")
-
-    if ctx.client == "agy":
-        return warn(quiet_inject, quiet_user)
-
-    return refuse(quiet_inject, quiet_user)
-
-
-channel_reply_gate = quiet_channel_reply
-
-
 def _scrub(value: object) -> str:
     """Neutralise characters that let a client-supplied value forge a field."""
     return " ".join(str(value).split()).replace("|", "")
@@ -847,7 +780,6 @@ def rule_against_hearsay(ctx: HookContext) -> Result | None:
             return None
         return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
 
-    clear_channel_gate_state(ctx.session_id)
     if not is_agent(ctx, "ida", "sara"):
         return None
     if not is_peer_report(ctx):
