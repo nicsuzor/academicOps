@@ -39,7 +39,8 @@ one is covered.
 4. **All task writes go through PKB MCP.** That is the concurrency primitive.
 5. **Nothing is flagged for a person without a surface that renders it.** The sweep's own
    synthesized result is that surface. A `needs_user_call` flag with no consumer that renders it
-   is a `halt-on-failure` violation.
+   is a `halt-on-failure` violation. Escalated user decisions fold into the daily note's `## With you`;
+   reconcile never writes execution logs, commit dumps, or raw mutation lists to the daily note.
 6. **Reverse direction defaults to comment-only** on GH, citing PKB task ID and closing commit
    SHA. Auto-close the GH issue only for framework-owned repos, and only where the task carries
    an explicit `closes_issues:` marker (never `gates_on:`).
