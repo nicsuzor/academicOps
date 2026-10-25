@@ -300,13 +300,10 @@ def test_agent_messages_get_hearsay_and_arm_gate_with_hydration(peer_prompt):
         assert search_res is not None
         assert "<academicOps PKB search results>" in search_res.inject_text
 
-        # 2. Honesty fires for peer messages
-        honesty_res = handlers.honesty_on_peer_message(ctx)
-        assert honesty_res is not None
-        expected_honesty, _ = load_message_pair(IDA_HOOKS, "honesty")
-        assert honesty_res.inject_text == expected_honesty
+        # 2. Honesty does not fire on receiving a peer report (it fires on SubagentStart)
+        assert handlers.honest_output(ctx) is None
 
-        # 3. Hearsay fires
+        # 3. Hearsay fires on receiving a peer report
         hearsay_res = handlers.rule_against_hearsay(ctx)
         assert hearsay_res is not None
         expected_hearsay, _ = load_message_pair(IDA_HOOKS, "hearsay")
@@ -320,45 +317,33 @@ def test_agent_messages_get_hearsay_and_arm_gate_with_hydration(peer_prompt):
 @pytest.mark.parametrize(
     "agent", ["ida:ida", "ida:sara", "aops:james", "worker", "pauli", "marsha", "rbg", ""]
 )
-@pytest.mark.parametrize(
-    "peer_prompt",
-    [
-        '<cross-session-message from="twin-a">PR #12 merged</cross-session-message>',
-        '<teammate-message teammate_id="worker">done</teammate-message>',
-        "<task-notification><result>worker finished</result></task-notification>",
-    ],
-)
-def test_honesty_on_peer_message_fires_for_all_agents(agent: str, peer_prompt: str):
-    """When an incoming peer message arrives on UserPromptSubmit, honesty.md fires for all agents."""
+def test_honest_output_fires_on_subagent_start_for_all_agents(agent: str):
+    """When a subagent starts on SubagentStart, honesty.md fires for all agents."""
     ctx = HookContext(
         client="claude",
-        event="UserPromptSubmit",
+        event="SubagentStart",
         agent_type=agent,
         hooks_dir=IDA_HOOKS,
-        raw={"prompt": peer_prompt},
+        raw={"agent_id": "sub-1", "agent_type": agent},
     )
-    res = handlers.honesty_on_peer_message(ctx)
+    res = handlers.honest_output(ctx)
     assert res is not None
     expected_inject, expected_user = load_message_pair(IDA_HOOKS, "honesty")
     assert res.inject_text == expected_inject
     assert res.user_text == expected_user
 
 
-@pytest.mark.parametrize("client", ["claude", "agy"])
 @pytest.mark.parametrize("agent", ["ida:ida", "aops:james", "worker"])
-def test_dispatch_honesty_reaches_all_agents_on_peer_message(
-    staged_hooks: Path, client: str, agent: str
-):
-    """End-to-end dispatch confirms honesty.md is returned for all agents on incoming peer message."""
-    event = "UserPromptSubmit" if client == "claude" else "PreInvocation"
+def test_dispatch_honesty_reaches_all_agents_on_subagent_start(staged_hooks: Path, agent: str):
+    """End-to-end dispatch confirms honesty.md is returned on SubagentStart."""
     payload = {
-        "hook_event_name": event,
+        "hook_event_name": "SubagentStart",
         "agent_type": agent,
-        "session_id": f"s-peer-{client}-{agent}",
-        "prompt": "<task-notification><result>worker finished</result></task-notification>",
+        "agent_id": f"sub-{agent}",
+        "session_id": f"s-sub-{agent}",
     }
     proc = subprocess.run(
-        [sys.executable, str(staged_hooks / "dispatch.py"), client, event],
+        [sys.executable, str(staged_hooks / "dispatch.py"), "claude", "SubagentStart"],
         input=json.dumps(payload),
         text=True,
         capture_output=True,
@@ -368,13 +353,7 @@ def test_dispatch_honesty_reaches_all_agents_on_peer_message(
     assert proc.returncode == 0
     data = json.loads(proc.stdout)
     expected_honesty, _ = load_message_pair(staged_hooks, "honesty")
-    if client == "claude":
-        assert expected_honesty in data["hookSpecificOutput"]["additionalContext"]
-    else:
-        assert any(
-            expected_honesty in step.get("ephemeralMessage", "")
-            for step in data.get("injectSteps", [])
-        )
+    assert expected_honesty in data["hookSpecificOutput"]["additionalContext"]
 
 
 def test_peer_message_prompt_yields_single_user_prompt_submit_output(
@@ -438,10 +417,7 @@ def test_peer_message_prompt_yields_single_user_prompt_submit_output(
     data = json.loads(proc.stdout)
     system_message = data.get("systemMessage", "")
     assert "\n" not in system_message
-    assert system_message == (
-        "Reminded to use `premise-check` when replying to a peer message. "
-        "Premise-check gate armed by claim-59204fc6."
-    )
+    assert system_message == "Premise-check gate armed by claim-59204fc6."
 
 
 def test_session_start_raises_when_pkb_mcp_url_unset(monkeypatch: pytest.MonkeyPatch):

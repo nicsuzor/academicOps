@@ -802,6 +802,31 @@ def extract_judged_content(ctx: HookContext) -> tuple[str, str] | None:
         judged_ref = _tool_use_id(ctx) or _derive_claim_id(ctx)
         return judged_text, judged_ref
 
+    if ctx.event == "PostToolBatch":
+        if ctx.client == "agy":
+            return None
+        fallback: tuple[str, str] | None = None
+        for call in ctx.tool_calls:
+            if call.get("tool_name") not in _DISPATCH_TOOLS:
+                continue
+            resp = call.get("tool_response") or call.get("toolResponse")
+            if not (isinstance(resp, dict) and resp.get("status") == "completed"):
+                continue
+            judged_text = _response_text(resp)
+            if not carries_report(judged_text):
+                continue
+            call_id = str(call.get("tool_use_id") or call.get("id") or "")
+            if not call_id:
+                tool_input = call.get("tool_input") or {}
+                call_id = str(tool_input.get("description") or tool_input.get("prompt") or "")[:80]
+            block_text = ra.extract_block(judged_text)
+            if block_text is not None and ra.is_null_form(block_text):
+                if fallback is None:
+                    fallback = (judged_text, call_id)
+                continue
+            return judged_text, call_id
+        return fallback
+
     return None
 
 
@@ -854,6 +879,8 @@ def _emit_hearsay_trace(ctx: HookContext, claim_id: str, judged_ref: str | None)
 
 def hearsay_arm(ctx: HookContext) -> Result | None:
     """UserPromptSubmit or PostToolUse handler: arm the hearsay gate on an incoming report or direction."""
+    if ctx.event not in ("UserPromptSubmit", "PostToolUse"):
+        return None
     content = extract_judged_content(ctx)
     if not content:
         return None

@@ -100,31 +100,45 @@ def test_hearsay_fires_uniformly_across_all_agents(agent: str):
     assert res_prompt is not None, f"hearsay should fire on peer report for agent {agent}"
     assert res_prompt.kind is Kind.ADVISE
 
-    ctx_post = HookContext(
+    ctx_batch = HookContext(
         client="claude",
-        event="PostToolUse",
-        tool="Agent",
+        event="PostToolBatch",
         agent_type=agent,
-        session_id=f"s-fg-{agent}",
+        session_id=f"s-fg-batch-{agent}",
         hooks_dir=IDA_HOOKS,
-        raw={
-            "tool_input": {"description": "fg subagent"},
-            "tool_response": {
-                "status": "completed",
-                "content": [{"type": "text", "text": "result"}],
+        tool_calls=(
+            {
+                "tool_name": "Agent",
+                "tool_use_id": "call-1",
+                "tool_input": {"description": "fg subagent 1"},
+                "tool_response": {
+                    "status": "completed",
+                    "content": [{"type": "text", "text": "result 1"}],
+                },
             },
-        },
+            {
+                "tool_name": "Agent",
+                "tool_use_id": "call-2",
+                "tool_input": {"description": "fg subagent 2"},
+                "tool_response": {
+                    "status": "completed",
+                    "content": [{"type": "text", "text": "result 2"}],
+                },
+            },
+        ),
     )
-    res_post = handlers.rule_against_hearsay(ctx_post)
-    assert res_post is not None, f"hearsay should fire on fg subagent completion for agent {agent}"
-    assert res_post.kind is Kind.ADVISE
+    res_batch = handlers.post_tool_batch(ctx_batch)
+    assert res_batch is not None, (
+        f"hearsay should fire once on PostToolBatch fg completion for agent {agent}"
+    )
+    assert res_batch.kind is Kind.ADVISE
 
 
 def test_shared_trigger_predicate_prevents_reminder_and_arming_drift():
-    """AC2 & AC3: Shared trigger predicate aligns hearsay.md, honesty.md, and gate arming."""
+    """AC2 & AC3: Shared trigger predicate aligns hearsay.md and gate arming on incoming reports."""
     import hearsay_gate  # type: ignore[import-not-found]
 
-    # 1. Valid peer report -> predicate True, all reminders and arming fire
+    # 1. Valid peer report -> predicate True, hearsay reminder and arming fire; honesty does not fire on receipt
     ctx_valid = HookContext(
         client="claude",
         event="UserPromptSubmit",
@@ -135,7 +149,7 @@ def test_shared_trigger_predicate_prevents_reminder_and_arming_drift():
     )
     assert hearsay_gate.should_arm_hearsay(ctx_valid) is True
     assert handlers.rule_against_hearsay(ctx_valid) is not None
-    assert handlers.honesty_on_peer_message(ctx_valid) is not None
+    assert handlers.honest_output(ctx_valid) is None
     assert handlers.hearsay_arm(ctx_valid) is not None
 
     # 2. Mere notification without report -> predicate False, none fire
@@ -149,7 +163,7 @@ def test_shared_trigger_predicate_prevents_reminder_and_arming_drift():
     )
     assert hearsay_gate.should_arm_hearsay(ctx_notif) is False
     assert handlers.rule_against_hearsay(ctx_notif) is None
-    assert handlers.honesty_on_peer_message(ctx_notif) is None
+    assert handlers.honest_output(ctx_notif) is None
     assert handlers.hearsay_arm(ctx_notif) is None
 
     # 3. Handback pointer -> predicate False, none fire
@@ -163,7 +177,7 @@ def test_shared_trigger_predicate_prevents_reminder_and_arming_drift():
     )
     assert hearsay_gate.should_arm_hearsay(ctx_ptr) is False
     assert handlers.rule_against_hearsay(ctx_ptr) is None
-    assert handlers.honesty_on_peer_message(ctx_ptr) is None
+    assert handlers.honest_output(ctx_ptr) is None
     assert handlers.hearsay_arm(ctx_ptr) is None
 
     # 4. Null form argument -> predicate False, reminders suppressed and gate not armed
@@ -177,7 +191,7 @@ def test_shared_trigger_predicate_prevents_reminder_and_arming_drift():
     )
     assert hearsay_gate.should_arm_hearsay(ctx_null) is False
     assert handlers.rule_against_hearsay(ctx_null) is None
-    assert handlers.honesty_on_peer_message(ctx_null) is None
+    assert handlers.honest_output(ctx_null) is None
     assert handlers.hearsay_arm(ctx_null) is None
 
     # 5. User prompt -> predicate False, none fire
@@ -191,7 +205,7 @@ def test_shared_trigger_predicate_prevents_reminder_and_arming_drift():
     )
     assert hearsay_gate.should_arm_hearsay(ctx_user) is False
     assert handlers.rule_against_hearsay(ctx_user) is None
-    assert handlers.honesty_on_peer_message(ctx_user) is None
+    assert handlers.honest_output(ctx_user) is None
     assert handlers.hearsay_arm(ctx_user) is None
 
 
@@ -264,12 +278,9 @@ def test_hearsay_arm_emits_otel_trace_on_incoming_message(tmp_path, monkeypatch)
         mock_emit.assert_called_once()
 
 
-def test_subagent_start_and_initial_prompt_do_not_inject_honesty(tmp_path, monkeypatch):
-    """AC4: Reminders fire on inbound responses only; outbound injection and .delivered markers removed."""
-    pointer_dir = tmp_path / "pointers"
-    monkeypatch.setenv("AOPS_SESSION_POINTER_DIR", str(pointer_dir))
-
-    # 1. SubagentStart does NOT deliver honesty.md
+def test_honesty_fires_on_subagent_start_and_not_on_receiving_events():
+    """Honesty (writing the report) fires on SubagentStart; receiving events only fire hearsay."""
+    # 1. SubagentStart delivers honesty.md via warn (Kind.ADVISE)
     ctx_start = HookContext(
         client="claude",
         event="SubagentStart",
@@ -279,11 +290,11 @@ def test_subagent_start_and_initial_prompt_do_not_inject_honesty(tmp_path, monke
         hooks_dir=IDA_HOOKS,
         raw={"agent_id": "sub-alpha"},
     )
-    res_start = handlers.honesty_on_peer_message(ctx_start)
-    assert res_start is None
-    assert not list(pointer_dir.glob("honesty_*.delivered"))
+    res_start = handlers.subagent_start(ctx_start)
+    assert res_start is not None
+    assert res_start.kind is Kind.ADVISE
 
-    # 2. Initial prompt without incoming peer report does NOT deliver honesty.md
+    # 2. UserPromptSubmit does NOT deliver honesty.md
     ctx_init = HookContext(
         client="claude",
         event="UserPromptSubmit",
@@ -293,21 +304,7 @@ def test_subagent_start_and_initial_prompt_do_not_inject_honesty(tmp_path, monke
         hooks_dir=IDA_HOOKS,
         raw={"agent_id": "sub-beta", "prompt": "Implement AC1"},
     )
-    res_init = handlers.honesty_on_peer_message(ctx_init)
-    assert res_init is None
-    assert not list(pointer_dir.glob("honesty_*.delivered"))
-
-    # 3. Second prompt without report still does not deliver
-    ctx_second = HookContext(
-        client="claude",
-        event="UserPromptSubmit",
-        agent_id="sub-beta",
-        agent_type="worker",
-        session_id="s-sub-beta",
-        hooks_dir=IDA_HOOKS,
-        raw={"agent_id": "sub-beta", "prompt": "Second turn question"},
-    )
-    assert handlers.honesty_on_peer_message(ctx_second) is None
+    assert handlers.honest_output(ctx_init) is None
 
 
 def test_post_tool_hearsay_arm_unifies_null_form_and_block_expected(tmp_path, monkeypatch):
