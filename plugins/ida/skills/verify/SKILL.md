@@ -15,7 +15,7 @@ Rigorous quality review evaluating correctness, completion, and fitness for purp
 ## 2. Mandatory Forcing Checks
 
 All four checks must be answered explicitly in the report before rendering a `PASS`:
-0. **Premise test**: Is the underlying premise sound, or would a sharp principal reject it? (Bad premise = `FAIL`).
+0. **Gate 0 early stopping (Premise & Proportion)**: Is the underlying premise sound, and is the change proportionate to the ask? If the premise is bad or the change is fundamentally disproportionate, halt immediately and render `FAIL` before line-by-line repo auditing, forcing checks 1-3, or full test suites. Preserve full acceptance-criteria coverage when Gate 0 passes.
 
 1. **Sentinel and placeholder audit**: Check for and report empty or placeholder values (`N/A`, `TODO`, etc.).
 2. **Principal's-eye top-line read**: Quote the primary user-facing output verbatim and verify correctness for the actual end user.
@@ -25,7 +25,8 @@ All four checks must be answered explicitly in the report before rendering a `PA
 
 Render an immediate `FAIL` on:
 
-- Bad premise or invalidated requirements.
+- Bad premise, invalidated requirements, or disproportionate excess machinery (Gate 0 early stopping).
+- Falsified empirical claim or missing cited path under per-claim fail-fast (record `UNMET` immediately without searching repo for fixes).
 - Sentinel values or placeholder text in production outputs.
 - Silent exception swallowing without error logging.
 - Tests that assert existence or tautologies rather than functional behavior, change-detector tests that restate what a file, config or directory holds today, or tests that would still pass with the change's plausible bug introduced.
