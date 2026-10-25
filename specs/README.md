@@ -6,6 +6,7 @@
 - [build-and-install.md](build-and-install.md) -- local install and release pipeline.
 - [transcript-pipeline.md](transcript-pipeline.md) -- session-transcript ingestion, normalization, and output.
 - [observability/observability.md](observability/observability.md) -- cross-surface observability and correlation across the task graph, trace store, container runtime, and session log archive.
+- [aops-cache-consolidation-plan.md](aops-cache-consolidation-plan.md) -- local cache and working directory consolidation under XDG Base Directory specification.
 - [meta/doc-taxonomy.md](meta/doc-taxonomy.md) -- the five document kinds and where each lives.
 - [meta/writing-specs.md](meta/writing-specs.md) -- the spec template and the rules every spec follows.
 - [meta/naming-and-decisions.md](meta/naming-and-decisions.md) -- task naming, filename standards, and graph-relationship decision representation.
