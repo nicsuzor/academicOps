@@ -13,7 +13,7 @@ A polecat is a short-running container: it gets in, does its task, and gets out 
 
 Read each task you were given; for a parent, read its children and take the ready ones.
 
-A task is ready when its status is `queued`, it has no open `needs` edges or incomplete children, and it fills the `/reify` task template (Goal, Acceptance, Instructions, Output), and its Instructions end with the finish template's finish step.
+A task is ready when its status is `queued`, it has no open `needs` edges or incomplete children, it fills the `/reify` task template (Goal, Acceptance, Instructions, Output), and its Instructions conclude with the composed workflow's release step.
 
 - A QA follow-up stays queued until its hard dependency completes; it is not ready yet.
 - A task that folds follow-ups into itself is not ready: send it to `/reify` to be cut.

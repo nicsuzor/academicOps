@@ -832,7 +832,7 @@ def test_machine_checks_valid_argument_passes():
     assert pcg.is_armed(session_id) is False
 
 
-def test_machine_checks_orphan_statement_records_revise_and_clears_gate():
+def test_machine_checks_orphan_statement_refuses_pass_and_leaves_gate_armed():
     session_id = "s-mach-orphan"
     # Append an orphan statement to a valid report
     text = _report().replace(
@@ -841,20 +841,18 @@ def test_machine_checks_orphan_statement_records_revise_and_clears_gate():
     )
     _arm_with_report(session_id, "CID", text=text)
     tracer = _configured()
-    result = pcv.record_verdict(
-        session_id=session_id,
-        claim_id="CID",
-        verdict="PASS",
-        reason=_reason("CID"),
-        tracer_mod=tracer,
-    )
-    assert result["verdict"] == "REVISE"
-    assert "orphan statement 'orphan'" in result["reason"]
-    assert result["disarmed"] is True
-    assert pcg.is_armed(session_id) is False
+    with pytest.raises(ValueError, match="orphan statement 'orphan'"):
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id="CID",
+            verdict="PASS",
+            reason=_reason("CID"),
+            tracer_mod=tracer,
+        )
+    assert pcg.is_armed(session_id) is True
 
 
-def test_machine_checks_misaimed_undercut_records_revise_and_clears_gate():
+def test_machine_checks_misaimed_undercut_refuses_pass_and_leaves_gate_armed():
     session_id = "s-mach-undercut"
     # Append an undercut aimed at a statement (1) instead of an inference
     text = _report().replace(
@@ -863,21 +861,18 @@ def test_machine_checks_misaimed_undercut_records_revise_and_clears_gate():
     )
     _arm_with_report(session_id, "CID", text=text)
     tracer = _configured()
-    result = pcv.record_verdict(
-        session_id=session_id,
-        claim_id="CID",
-        verdict="PASS",
-        reason=_reason("CID"),
-        tracer_mod=tracer,
-    )
-    assert result["verdict"] == "REVISE"
-    assert "undercut from 'undercut' targets" in result["reason"]
-    assert "instead of an inference" in result["reason"]
-    assert result["disarmed"] is True
-    assert pcg.is_armed(session_id) is False
+    with pytest.raises(ValueError, match="undercut from 'undercut' targets"):
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id="CID",
+            verdict="PASS",
+            reason=_reason("CID"),
+            tracer_mod=tracer,
+        )
+    assert pcg.is_armed(session_id) is True
 
 
-def test_machine_checks_parse_error_records_revise_and_clears_gate():
+def test_machine_checks_parse_error_refuses_pass_and_leaves_gate_armed():
     session_id = "s-mach-parse-err"
     # Append a syntax error to the report's argdown block
     text = _report().replace(
@@ -886,18 +881,15 @@ def test_machine_checks_parse_error_records_revise_and_clears_gate():
     )
     _arm_with_report(session_id, "CID", text=text)
     tracer = _configured()
-    result = pcv.record_verdict(
-        session_id=session_id,
-        claim_id="CID",
-        verdict="PASS",
-        reason=_reason("CID"),
-        tracer_mod=tracer,
-    )
-    assert result["verdict"] == "REVISE"
-    assert "Argdown syntax error" in result["reason"]
-    assert result["disarmed"] is True
-    assert result["machine"] is True
-    assert pcg.is_armed(session_id) is False
+    with pytest.raises(ValueError, match="Argdown syntax error"):
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id="CID",
+            verdict="PASS",
+            reason=_reason("CID"),
+            tracer_mod=tracer,
+        )
+    assert pcg.is_armed(session_id) is True
 
 
 def test_machine_checks_valid_relation_is_not_orphan():
@@ -933,4 +925,63 @@ def test_machine_checks_parser_failure_raises_and_leaves_gate_armed():
                 reason=_reason("CID"),
                 tracer_mod=tracer,
             )
+    assert pcg.is_armed(session_id) is True
+
+
+def test_check_argdown_block_requires_argdown_on_path(tmp_path, monkeypatch):
+    """AC2: Expects argdown on PATH and removes resolve_argdown_bin and fallback paths."""
+    assert not hasattr(ra, "resolve_argdown_bin")
+
+    # When shutil.which returns None and no parser_bin passed, raises RuntimeError("argdown parser binary not found on PATH")
+    with unittest.mock.patch("shutil.which", return_value=None):
+        with pytest.raises(RuntimeError, match="argdown parser binary not found on PATH"):
+            ra.check_argdown_block("(1) claim -- I read it\n(2) conc\n")
+
+
+def test_check_argdown_block_handles_markdown_punctuation():
+    """AC3: Markdown punctuation (*, _) in premise-check blocks does not cause false-positive syntax rejections."""
+    report_text = _report().replace(
+        '(2) The hook returns "block", not advice. --',
+        "(2) The hook returns *block*, not advice with an_identifier and **bold**. --",
+    )
+    block_text = ra.extract_block(report_text)
+    assert block_text is not None
+
+    valid, reason, ast = ra.check_argdown_block(block_text)
+    assert valid is True, f"Argdown syntax check failed on markdown punctuation: {reason}"
+    assert ast is not None
+
+
+def test_scaffold_removed():
+    """AC1: generate_scaffold and --scaffold removed."""
+    assert not hasattr(pcv, "generate_scaffold")
+
+
+def test_verdict_cli_scaffold_flag_and_refusal_scaffold(tmp_path, capsys):
+    """AC1: --scaffold flag removed and refusal does not output scaffold."""
+    session_id = "s-cli-scaffold"
+    _arm_with_report(session_id, "CID-CLI")
+
+    # 1. --scaffold flag is no longer recognized
+    with pytest.raises(SystemExit):
+        pcv.main(["--claim", "CID-CLI", "--session", session_id, "--scaffold"])
+
+    # 2. Refused PASS check outputs error to stderr without scaffold and exits 1
+    bad_reason = "Judged: CID-CLI\nValid: (4) holds -- test\nSupported: weakest none\nAnswered: none\nSufficient: none\nWaived: none\nRelay: none"
+    exit_fail = pcv.main(
+        [
+            "--claim",
+            "CID-CLI",
+            "--session",
+            session_id,
+            "--verdict",
+            "PASS",
+            "--reason",
+            bad_reason,
+        ]
+    )
+    assert exit_fail == 1
+    captured_fail = capsys.readouterr()
+    assert "premise_check_verdict:" in captured_fail.err
+    assert "Scaffold" not in captured_fail.err
     assert pcg.is_armed(session_id) is True

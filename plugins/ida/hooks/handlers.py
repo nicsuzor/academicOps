@@ -886,8 +886,8 @@ def agy_session_pointer(ctx: HookContext) -> Result | None:
 
 
 def honesty_on_peer_message(ctx: HookContext) -> Result | None:
-    """Remind all agents to write replies/reports in premise-check shape when a peer message arrives."""
-    if ctx.event != "UserPromptSubmit" or not should_arm_hearsay(ctx):
+    """Remind all agents to write replies/reports in premise-check shape on inbound responses."""
+    if not should_arm_hearsay(ctx):
         return None
     return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
 

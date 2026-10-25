@@ -278,6 +278,23 @@ def clean_ansi(text: str, file_path: str | None = None) -> str:
     return re.sub(r"/tmp/[^\s]+\.argdown", "<argdown>", clean)
 
 
+def sanitise_argdown_text(text: str) -> str:
+    """Prevent markdown punctuation (*, _) in premise-check blocks from triggering false-positive @argdown/cli syntax rejections, and ensure frontmatter has required empty line separation."""
+    m = re.match(r"^(===\s*\n.*?\n===\s*\n)(.*)$", text, re.DOTALL)
+    if m:
+        fm, body = m.group(1), m.group(2)
+        fm = fm.rstrip("\n") + "\n\n"
+        body = body.lstrip("\n")
+    else:
+        fm, body = "", text
+
+    # Escape unescaped * in argdown body
+    body = re.sub(r"(?<!\\)\*", r"\*", body)
+    # Escape unescaped _ in argdown body, except when part of relation '_>'
+    body = re.sub(r"(?<!\\)_(?!>)", r"\_", body)
+    return fm + body
+
+
 def check_argdown_block(
     block_text: str,
     parser_bin: str | None = None,
@@ -295,9 +312,10 @@ def check_argdown_block(
     cmd = parser_bin or shutil.which("argdown")
     if not cmd:
         raise RuntimeError("argdown parser binary not found on PATH")
+    text_to_parse = sanitise_argdown_text(block_text)
 
     with tempfile.NamedTemporaryFile("w", suffix=".argdown", delete=False) as f:
-        f.write(block_text)
+        f.write(text_to_parse)
         f.flush()
         f_path = Path(f.name)
     try:

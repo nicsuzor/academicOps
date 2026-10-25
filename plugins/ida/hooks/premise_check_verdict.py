@@ -287,10 +287,7 @@ def record_verdict(
         if "block" not in parsed_reason.waived_items(vocab):
             valid, parser_output, _ = ra.check_argdown_block(block_text)
             if not valid:
-                token = "REVISE"
-                reason = parser_output
-                attributes = judge_reason(token, reason, judged_text)
-                attributes["premise_check.machine"] = True
+                raise ValueError(f"PASS verdict refused for {cid}: {parser_output}")
     attributes["premise_check.judged_ref"] = judged_ref or ""
     attributes["premise_check.judged_text_sha256"] = (
         hashlib.sha256(judged_text.encode("utf-8")).hexdigest() if judged_text is not None else ""
@@ -364,7 +361,6 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--verdict",
-        required=True,
         type=str.upper,
         choices=VERDICTS,
         help="PASS, REVISE or FAIL.",
@@ -374,7 +370,7 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Optional short title for the verification.",
     )
-    reason = parser.add_mutually_exclusive_group(required=True)
+    reason = parser.add_mutually_exclusive_group()
     reason.add_argument("--reason", help="The checker's reason, inline.")
     reason.add_argument(
         "--reason-file",
@@ -394,6 +390,20 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 1
+
+    if not args.verdict:
+        print(
+            "premise_check_verdict: error: the following arguments are required: --verdict",
+            file=sys.stderr,
+        )
+        return 2
+
+    if not args.reason and not args.reason_file:
+        print(
+            "premise_check_verdict: error: one of --reason or --reason-file is required",
+            file=sys.stderr,
+        )
+        return 2
 
     try:
         text = args.reason if args.reason is not None else _read_reason(args.reason_file)
