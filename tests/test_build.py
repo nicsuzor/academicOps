@@ -58,6 +58,17 @@ def test_shared_single_file_injected_both_clients(built):
         assert (built / f"fixture-alpha-{client}" / "hooks" / "hook.py").is_file()
 
 
+def test_pyproject_toml_included_in_built_distributions(built_orchestrate):
+    """AC4: Build must ensure pyproject.toml is generated and included in built plugin distributions."""
+    for client in CLIENTS:
+        build_dir = built_orchestrate / f"ida-{client}"
+        pyproject = build_dir / "pyproject.toml"
+        assert pyproject.is_file(), f"{build_dir.name} is missing pyproject.toml"
+        content = pyproject.read_text(encoding="utf-8")
+        assert 'name = "ida"' in content
+        assert "opentelemetry" in content
+
+
 # --- stage 3: manifest rendering --------------------------------------------
 
 

@@ -74,7 +74,7 @@ A format breach that leaves the step judgeable is waived and listed; one that hi
 Write the reason as the seven keyed lines in [`references/checker-reason.md`](references/checker-reason.md) -- Judged · Valid · Supported · Answered · Sufficient · Waived · Relay -- and record it:
 
 ```bash
-uv run --project <plugin-dir> python3 <plugin-dir>/skills/premise-check/scripts/verdict.py --claim <claim_id> --verdict <PASS|REVISE|FAIL> --reason-file <path>
+uv run --project <plugin-dir> python <plugin-dir>/skills/premise-check/scripts/verdict.py --claim <claim_id> --verdict <PASS|REVISE|FAIL> --reason-file <path>
 ```
 
 The recorder refuses a PASS whose reason misses a test line or an ask id, contradicts the block, or attempts to pass a peer message missing an expected block. On an invalid argument (syntax errors, an unconnected statement, or an undercut not aimed at an inference), `verdict.py` records REVISE itself with the parser output as reason and clears the gate. For a handback read from a task record, the claim id is the task id; after recording, add `## Premise-Check Verdict` to the task with the verification id and verdict.

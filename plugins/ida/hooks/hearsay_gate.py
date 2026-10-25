@@ -498,7 +498,7 @@ def format_verdict_command(
     quoted_script = shlex.quote(str(script_path.resolve()))
     quoted_claim = shlex.quote(claim_id)
     cmd = (
-        f"uv run --project {quoted_project} python3 {quoted_script}"
+        f"uv run --project {quoted_project} python {quoted_script}"
         f" --claim {quoted_claim} --verdict {verdict}"
     )
     if reason is not None:

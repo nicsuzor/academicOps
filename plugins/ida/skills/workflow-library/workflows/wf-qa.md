@@ -27,7 +27,7 @@ Draws its brief from the shared review briefing in `wf-review`. Additional role-
 ## Procedure
 
 1. **Assemble criteria** -- record acceptance criteria verbatim from the specification before inspecting outputs.
-2. **Execute test suites** -- run test commands (`pytest`, `npm test`, etc.) directly on the branch. Inspect raw stdout/stderr; every test must pass cleanly without unhandled errors. An evaluator that changes code or pushes fixes must not approve, accept, or merge its own changes; evaluators never file fix tasks or follow-up tasks.
+2. **Execute test suites** -- run test commands (`uv run pytest`, `npm test`, etc.) directly on the branch. Inspect raw stdout/stderr; every test must pass cleanly without unhandled errors. An evaluator that changes code or pushes fixes must not approve, accept, or merge its own changes; evaluators never file fix tasks or follow-up tasks.
 3. **Red-to-green regression verification** -- where fixes are claimed, run regression tests against the base commit (to verify failure) and against the branch commit (to verify resolution).
 4. **Live probes and runtime observation** -- run scratch probes and test scripts with real inputs and edge cases (e.g. empty diffs, varied input parameters, error conditions) to observe live execution behavior, exit codes, and output formats.
 5. **Audit empirical claims** -- verify empirical claims in task reports and PR descriptions against primary source records (git history, CI logs, file contents). Falsify claims using direct command execution (e.g. running `git log`, `grep`).

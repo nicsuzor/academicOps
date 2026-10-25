@@ -31,9 +31,11 @@ from dispatch import (
 from hearsay_gate import (
     hearsay_arm,
     hearsay_handler,
-    is_peer_report,
     prompt_text,
     should_arm_hearsay,
+)
+from hearsay_gate import (
+    is_peer_report as is_peer_report,
 )
 
 premise_check_arm = hearsay_arm
