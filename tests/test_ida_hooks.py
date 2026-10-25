@@ -121,28 +121,20 @@ def test_hearsay_does_not_fire_on_the_users_own_messages(prompt):
     assert handlers.rule_against_hearsay(ctx) is None
 
 
-def test_hearsay_does_not_fire_for_non_ida_agents():
+def test_hearsay_fires_for_all_agents():
+    """Hearsay fires uniformly on peer reports across all agents without persona distinction."""
     for agent in ("aops:james", "james", "worker", "pauli", "rbg"):
         ctx = HookContext(
             client="claude",
             event="UserPromptSubmit",
             agent_type=agent,
-            session_id="s-other",
+            session_id=f"s-other-{agent}",
             hooks_dir=IDA_HOOKS,
             raw={"prompt": _PEER_REPORT},
         )
         res = handlers.rule_against_hearsay(ctx)
-        assert res is None, f"hearsay fired for non-ida agent {agent}"
-        ctx_post = HookContext(
-            client="claude",
-            event="PostToolUse",
-            tool="Agent",
-            agent_type=agent,
-            session_id="s-other",
-            hooks_dir=IDA_HOOKS,
-            raw={"tool_input": {"description": "fg"}},
-        )
-        assert handlers.rule_against_hearsay(ctx_post) is None
+        assert res is not None, f"hearsay should fire for agent {agent}"
+        assert res.kind is Kind.ADVISE
 
 
 # ---------------------------------------------------------------------------
@@ -333,7 +325,7 @@ def test_agent_messages_get_hearsay_and_arm_gate_with_hydration(peer_prompt):
     [
         '<cross-session-message from="twin-a">PR #12 merged</cross-session-message>',
         '<teammate-message teammate_id="worker">done</teammate-message>',
-        "<task-notification>worker finished</task-notification>",
+        "<task-notification><result>worker finished</result></task-notification>",
     ],
 )
 def test_honesty_on_peer_message_fires_for_all_agents(agent: str, peer_prompt: str):
@@ -363,7 +355,7 @@ def test_dispatch_honesty_reaches_all_agents_on_peer_message(
         "hook_event_name": event,
         "agent_type": agent,
         "session_id": f"s-peer-{client}-{agent}",
-        "prompt": "<task-notification>worker finished</task-notification>",
+        "prompt": "<task-notification><result>worker finished</result></task-notification>",
     }
     proc = subprocess.run(
         [sys.executable, str(staged_hooks / "dispatch.py"), client, event],

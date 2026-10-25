@@ -131,7 +131,7 @@ def test_dispatch_claude_userpromptsubmit_end_to_end(staged_hooks: Path):
         input=json.dumps(
             {
                 "hook_event_name": "UserPromptSubmit",
-                "prompt": "<task-notification>survey release</task-notification>",
+                "prompt": '<cross-session-message from="twin-a">survey release</cross-session-message>',
             }
         ),
         text=True,
@@ -146,7 +146,7 @@ def test_dispatch_claude_userpromptsubmit_end_to_end(staged_hooks: Path):
     assert specific.get("hookEventName") == "UserPromptSubmit"
     content = specific.get("additionalContext", "")
     expected_inject, _ = load_message_pair(staged_hooks, "honesty")
-    assert content == expected_inject
+    assert expected_inject in content
 
 
 def test_dispatch_agy_preinvocation_end_to_end(staged_hooks: Path):
@@ -177,7 +177,7 @@ def test_dispatch_agy_preinvocation_end_to_end(staged_hooks: Path):
         input=json.dumps(
             {
                 "hook_event_name": "PreInvocation",
-                "prompt": "<task-notification>survey release</task-notification>",
+                "prompt": '<cross-session-message from="twin-a">survey release</cross-session-message>',
             }
         ),
         text=True,
@@ -190,9 +190,8 @@ def test_dispatch_agy_preinvocation_end_to_end(staged_hooks: Path):
     data = json.loads(proc_peer.stdout)
     steps = data.get("injectSteps", [])
     assert len(steps) > 0
-    msg = steps[0].get("ephemeralMessage", "")
     expected_inject, _ = load_message_pair(staged_hooks, "honesty")
-    assert msg == expected_inject
+    assert any(expected_inject in step.get("ephemeralMessage", "") for step in steps)
 
 
 @pytest.mark.parametrize(
