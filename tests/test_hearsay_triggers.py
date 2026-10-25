@@ -262,3 +262,117 @@ def test_hearsay_arm_emits_otel_trace_on_incoming_message(tmp_path, monkeypatch)
         assert res is not None
         assert pcg.is_armed(session_id) is True
         mock_emit.assert_called_once()
+
+
+def test_subagent_start_and_initial_prompt_receives_honesty_reminder(tmp_path, monkeypatch):
+    """AC4: Subagents receive honesty.md on SubagentStart or on initial prompt."""
+    monkeypatch.setenv("AOPS_SESSION_POINTER_DIR", str(tmp_path / "pointers"))
+
+    # 1. SubagentStart delivers honesty.md
+    ctx_start = HookContext(
+        client="claude",
+        event="SubagentStart",
+        agent_id="sub-alpha",
+        agent_type="worker",
+        session_id="s-sub-alpha",
+        hooks_dir=IDA_HOOKS,
+        raw={"agent_id": "sub-alpha"},
+    )
+    res_start = handlers.honesty_on_peer_message(ctx_start)
+    assert res_start is not None
+    assert (
+        "premise-check" in res_start.inject_text.lower()
+        or "report" in res_start.inject_text.lower()
+    )
+
+    # 2. Initial prompt to a spawned subagent delivers honesty.md
+    ctx_init = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        agent_id="sub-beta",
+        agent_type="worker",
+        session_id="s-sub-beta",
+        hooks_dir=IDA_HOOKS,
+        raw={"agent_id": "sub-beta", "prompt": "Implement AC1"},
+    )
+    res_init = handlers.honesty_on_peer_message(ctx_init)
+    assert res_init is not None
+    assert (
+        "premise-check" in res_init.inject_text.lower() or "report" in res_init.inject_text.lower()
+    )
+
+    # Second prompt to the same subagent does not re-deliver
+    ctx_second = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        agent_id="sub-beta",
+        agent_type="worker",
+        session_id="s-sub-beta",
+        hooks_dir=IDA_HOOKS,
+        raw={"agent_id": "sub-beta", "prompt": "Second turn question"},
+    )
+    assert handlers.honesty_on_peer_message(ctx_second) is None
+
+
+def test_post_tool_hearsay_arm_unifies_null_form_and_block_expected(tmp_path, monkeypatch):
+    """AC4: PostToolUse and UserPromptSubmit share null-form and block_expected handling."""
+    import hearsay_gate
+    import premise_check_gate as pcg
+
+    monkeypatch.setenv("AOPS_PREMISE_GATE_DIR", str(tmp_path / "gate"))
+
+    # 1. PostToolUse with null form clears gate with no-claim, should_arm_hearsay returns False
+    session_null = "s-post-null"
+    pcg.clear_state(session_null)
+    ctx_post_null = HookContext(
+        client="claude",
+        event="PostToolUse",
+        tool="Agent",
+        agent_type="worker",
+        session_id=session_null,
+        hooks_dir=IDA_HOOKS,
+        raw={
+            "tool_input": {"prompt": "do work"},
+            "tool_response": {
+                "status": "completed",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Done.\n```argdown\n===\nasks: none\n===\n[no claim]\n```",
+                    }
+                ],
+            },
+        },
+    )
+    assert hearsay_gate.should_arm_hearsay(ctx_post_null) is False
+    res_null = handlers.hearsay_arm(ctx_post_null)
+    assert res_null is None
+    assert pcg.is_armed(session_null) is False
+    st_null = pcg.get_state(session_null)
+    assert st_null.get("last_verdict", {}).get("verdict") == "no-claim"
+
+    # 2. PostToolUse with absent block arms with block_expected=True and warns to send back
+    session_absent = "s-post-absent"
+    pcg.clear_state(session_absent)
+    ctx_post_absent = HookContext(
+        client="claude",
+        event="PostToolUse",
+        tool="Agent",
+        agent_type="worker",
+        session_id=session_absent,
+        hooks_dir=IDA_HOOKS,
+        raw={
+            "tool_input": {"prompt": "do work"},
+            "tool_response": {
+                "status": "completed",
+                "content": [{"type": "text", "text": "Completed task without any block."}],
+            },
+        },
+    )
+    assert hearsay_gate.should_arm_hearsay(ctx_post_absent) is True
+    res_absent = handlers.hearsay_arm(ctx_post_absent)
+    assert res_absent is not None
+    assert "no argument block supplied" in res_absent.inject_text
+    assert pcg.is_armed(session_absent) is True
+    st_absent = pcg.get_state(session_absent)
+    assert st_absent.get("block_expected") is True

@@ -811,10 +811,9 @@ def should_arm_hearsay(ctx: HookContext) -> bool:
     if not content:
         return False
     judged_text, _ = content
-    if ctx.event == "UserPromptSubmit":
-        block_text = ra.extract_block(judged_text)
-        if block_text is not None and ra.is_null_form(block_text):
-            return False
+    block_text = ra.extract_block(judged_text)
+    if block_text is not None and ra.is_null_form(block_text):
+        return False
     return True
 
 
@@ -861,41 +860,21 @@ def hearsay_arm(ctx: HookContext) -> Result | None:
     judged_text, judged_ref = content
 
     claim_id = _derive_claim_id(ctx)
+    block_text = ra.extract_block(judged_text)
 
-    if ctx.event == "UserPromptSubmit":
-        block_text = ra.extract_block(judged_text)
+    # 1. Null form: clears the gate with no agent action
+    if block_text is not None and ra.is_null_form(block_text):
+        disarm(
+            ctx.session_id,
+            claim_id=claim_id,
+            verdict="no-claim",
+            reason="null form",
+            machine=True,
+        )
+        return None
 
-        # 1. Null form: clears the gate with no agent action
-        if block_text is not None and ra.is_null_form(block_text):
-            disarm(
-                ctx.session_id,
-                claim_id=claim_id,
-                verdict="no-claim",
-                reason="null form",
-                machine=True,
-            )
-            return None
-
-        # 2. Absent block: keep gate shut, agent must send it back for resending
-        if block_text is None:
-            arm(
-                ctx.session_id,
-                claim_id=claim_id,
-                judged_text=judged_text,
-                judged_ref=judged_ref,
-                block_expected=True,
-            )
-            _emit_hearsay_trace(ctx, claim_id, judged_ref)
-            inject = (
-                f"Premise-check gate armed by {claim_id}: no argument block supplied; "
-                f"send the message back for revision per the `premise-check` skill "
-                f"(an absent block cannot pass).\n"
-                f"{format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id, verdict='REVISE', reason='no argument supplied')}"
-            )
-            user_msg = f"Premise-check gate armed by {claim_id} (no argument block supplied; send back for revision)."
-            return warn(inject, user_msg)
-
-        # 3. Substantive argument block: arm the gate awaiting agent verdict
+    # 2. Absent block: keep gate shut, agent must send it back for resending
+    if block_text is None:
         arm(
             ctx.session_id,
             claim_id=claim_id,
@@ -904,18 +883,27 @@ def hearsay_arm(ctx: HookContext) -> Result | None:
             block_expected=True,
         )
         _emit_hearsay_trace(ctx, claim_id, judged_ref)
-    else:
-        # PostToolUse
-        arm(
-            ctx.session_id,
-            claim_id=claim_id,
-            judged_text=judged_text,
-            judged_ref=judged_ref,
+        inject = (
+            f"Premise-check gate armed by {claim_id}: no argument block supplied; "
+            f"send the message back for revision per the `premise-check` skill "
+            f"(an absent block cannot pass).\n"
+            f"{format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id, verdict='REVISE', reason='no argument supplied')}"
         )
-        _emit_hearsay_trace(ctx, claim_id, judged_ref)
+        user_msg = f"Premise-check gate armed by {claim_id} (no argument block supplied; send back for revision)."
+        return warn(inject, user_msg)
+
+    # 3. Substantive argument block: arm the gate awaiting agent verdict
+    arm(
+        ctx.session_id,
+        claim_id=claim_id,
+        judged_text=judged_text,
+        judged_ref=judged_ref,
+        block_expected=True,
+    )
+    _emit_hearsay_trace(ctx, claim_id, judged_ref)
 
     inject = (
-        f"Premise-check gate armed by {claim_id}; if this is a direction, summarise it stating deliverables and log as a frozen acceptance checklist on a PKB task; record a verdict per the `premise-check` skill.\n"
+        f"Premise-check gate armed by {claim_id}; if this is a direction, check that it derives from `## Ask` and refuse (`REVISE`) unverified caller method or template prescriptions before logging deliverables as a frozen acceptance checklist on a PKB task; record a verdict per the `premise-check` skill.\n"
         f"{format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id)}"
     )
     user_msg = f"Premise-check gate armed by {claim_id}."
