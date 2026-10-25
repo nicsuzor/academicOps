@@ -934,3 +934,45 @@ def test_machine_checks_parser_failure_raises_and_leaves_gate_armed():
                 tracer_mod=tracer,
             )
     assert pcg.is_armed(session_id) is True
+
+
+def test_resolve_argdown_bin_across_env_node_modules_and_path(tmp_path, monkeypatch):
+    """AC5: Resolves argdown binary across AOPS_ARGDOWN_BIN, repo/user node_modules, and PATH."""
+    fake_bin = tmp_path / "fake_argdown"
+    fake_bin.write_text("#!/bin/sh\nexit 0\n")
+    fake_bin.chmod(0o755)
+
+    # 1. AOPS_ARGDOWN_BIN environment variable takes precedence
+    monkeypatch.setenv("AOPS_ARGDOWN_BIN", str(fake_bin))
+    with unittest.mock.patch("report_argument.shutil.which", return_value=None):
+        assert ra.resolve_argdown_bin() == str(fake_bin)
+
+    # 2. repo/user node_modules/.bin/argdown
+    monkeypatch.delenv("AOPS_ARGDOWN_BIN", raising=False)
+    fake_nm_bin = tmp_path / "node_modules" / ".bin" / "argdown"
+    fake_nm_bin.parent.mkdir(parents=True)
+    fake_nm_bin.write_text("#!/bin/sh\nexit 0\n")
+    fake_nm_bin.chmod(0o755)
+
+    with unittest.mock.patch("pathlib.Path.cwd", return_value=tmp_path):
+        with unittest.mock.patch("report_argument.shutil.which", return_value=None):
+            assert ra.resolve_argdown_bin() == str(fake_nm_bin)
+
+    # 3. Falls back to shutil.which('argdown')
+    with unittest.mock.patch("pathlib.Path.cwd", return_value=tmp_path / "empty"):
+        with unittest.mock.patch("report_argument.shutil.which", return_value="/usr/bin/argdown"):
+            assert ra.resolve_argdown_bin() == "/usr/bin/argdown"
+
+
+def test_check_argdown_block_handles_markdown_punctuation():
+    """AC5: Markdown punctuation (*, _) in premise-check blocks does not cause false-positive syntax rejections."""
+    report_text = _report().replace(
+        '(2) The hook returns "block", not advice. --',
+        "(2) The hook returns *block*, not advice with an_identifier and **bold**. --",
+    )
+    block_text = ra.extract_block(report_text)
+    assert block_text is not None
+
+    valid, reason, ast = ra.check_argdown_block(block_text)
+    assert valid is True, f"Argdown syntax check failed on markdown punctuation: {reason}"
+    assert ast is not None
