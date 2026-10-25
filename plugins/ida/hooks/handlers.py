@@ -34,6 +34,9 @@ from hearsay_gate import (
     prompt_text,
     should_arm_hearsay,
 )
+from hearsay_gate import (
+    is_peer_report as is_peer_report,
+)
 
 premise_check_arm = hearsay_arm
 premise_check_handler = hearsay_handler
