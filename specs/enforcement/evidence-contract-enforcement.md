@@ -55,7 +55,7 @@ A container worker hands back through its task record. The decentralised workflo
 
 The recorder holds the checker to the [checker's reason](../../plugins/ida/skills/premise-check/references/checker-reason.md). It gates the checker's reason, never the author's report.
 
-The report argument it reads is the skill's fenced `argdown` block: parser-valid Argdown in standard form, with the asks, answers and endnotes in its frontmatter and the basis in words on each premise line. On PASS, `verdict.py` runs deterministic machine checks (syntax errors, unconnected statements with no relations or argument membership, and undercuts not aimed at an inference). On an invalid argument, it refuses PASS with an actionable error and scaffold output, leaving the gate armed.
+The report argument it reads is the skill's fenced `argdown` block: parser-valid Argdown in standard form, with the asks, answers and endnotes in its frontmatter and the basis in words on each premise line. On PASS, `verdict.py` runs deterministic machine checks (syntax errors, unconnected statements with no relations or argument membership, and undercuts not aimed at an inference; expecting `argdown` on `PATH` without fallbacks). On an invalid argument, it refuses PASS with an actionable error, leaving the gate armed.
 
 - **PASS:** refused unless the block passes deterministic Argdown parser checks, and the reason carries the seven keyed lines and passes every mechanical cross-check the skill lists under "What the recorder refuses", run against the judged text the gate stored.
 - **No claim:** a one-line `Judged: <claim id>; no claim -- ...` reason is accepted for PASS and the verdict is marked no-claim.
@@ -88,6 +88,6 @@ Measure 3 expands the array with `json_each(s.attributes->'$.premise_check.waive
 Each mechanism is added only when verdict telemetry shows the active checks rubber-stamping, with PASS near 100% and REVISE rare:
 
 - **Verdict recorder** (built, above): gates the checker's reason (`premise_check_verdict.py`).
-- **Argdown parser check on PASS** (built, above): runs deterministic Argdown parser checks on the report's `argdown` block (`report_argument.py`), refusing PASS with an actionable error and scaffold output when the block fails syntax, connectedness, or undercut-target checks.
+- **Argdown parser check on PASS** (built, above): runs deterministic Argdown parser checks on the report's `argdown` block (`report_argument.py`, expecting `argdown` on `PATH` without fallbacks), refusing PASS with an actionable error when the block fails syntax, connectedness, or undercut-target checks.
 - **Subagent stop reminder** (not built): a one-time `SubagentStop` block that sends the skill's pointer back to the subagent before its report is delivered, or blocks a final message with no `argdown` block.
 - **Dedicated arrival checker** (not built): a separate checker agent invoked on report arrival.

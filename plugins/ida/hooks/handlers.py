@@ -886,23 +886,10 @@ def agy_session_pointer(ctx: HookContext) -> Result | None:
 
 
 def honesty_on_peer_message(ctx: HookContext) -> Result | None:
-    """Remind all agents to write replies/reports in premise-check shape on peer message, or subagent start/initial prompt."""
-    if ctx.event == "SubagentStart":
-        return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
-    if ctx.event == "UserPromptSubmit":
-        if should_arm_hearsay(ctx):
-            return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
-        subagent_id = ctx.agent_id or ctx.raw.get("agent_id")
-        if subagent_id:
-            safe_id = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", str(subagent_id))
-            marker = _session_pointer_dir() / f"honesty_{safe_id}.delivered"
-            try:
-                with marker.open("x", encoding="utf-8") as f:
-                    f.write(datetime.now().astimezone().isoformat())
-            except FileExistsError:
-                return None
-            return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
-    return None
+    """Remind all agents to write replies/reports in premise-check shape on inbound responses."""
+    if not should_arm_hearsay(ctx):
+        return None
+    return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
 
 
 def rule_against_hearsay(ctx: HookContext) -> Result | None:

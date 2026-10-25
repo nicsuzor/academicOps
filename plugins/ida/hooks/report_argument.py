@@ -15,7 +15,6 @@ module keeps no copy of it.
 from __future__ import annotations
 
 import json
-import os
 import re
 import shutil
 import subprocess
@@ -279,36 +278,6 @@ def clean_ansi(text: str, file_path: str | None = None) -> str:
     return re.sub(r"/tmp/[^\s]+\.argdown", "<argdown>", clean)
 
 
-def resolve_argdown_bin(parser_bin: str | None = None) -> str:
-    """Resolve argdown parser binary across explicit arg, AOPS_ARGDOWN_BIN, repo/user node_modules, and PATH."""
-    if parser_bin:
-        return parser_bin
-    env_bin = os.environ.get("AOPS_ARGDOWN_BIN")
-    if env_bin and os.path.isfile(env_bin) and os.access(env_bin, os.X_OK):
-        return env_bin
-
-    candidates: list[Path] = []
-    cwd = Path.cwd()
-    candidates.append(cwd / "node_modules" / ".bin" / "argdown")
-    repo_root = Path(__file__).resolve().parents[3]
-    candidates.append(repo_root / "node_modules" / ".bin" / "argdown")
-    home = Path.home()
-    candidates.append(home / "node_modules" / ".bin" / "argdown")
-    candidates.append(home / "ida" / "node_modules" / ".bin" / "argdown")
-    candidates.append(home / ".config" / "yarn" / "global" / "node_modules" / ".bin" / "argdown")
-    candidates.append(home / ".npm-global" / "bin" / "argdown")
-
-    for cand in candidates:
-        if cand.is_file() and os.access(cand, os.X_OK):
-            return str(cand)
-
-    path_bin = shutil.which("argdown")
-    if path_bin:
-        return path_bin
-
-    raise RuntimeError("argdown parser binary not found on PATH")
-
-
 def sanitise_argdown_text(text: str) -> str:
     """Prevent markdown punctuation (*, _) in premise-check blocks from triggering false-positive @argdown/cli syntax rejections, and ensure frontmatter has required empty line separation."""
     m = re.match(r"^(===\s*\n.*?\n===\s*\n)(.*)$", text, re.DOTALL)
@@ -340,7 +309,9 @@ def check_argdown_block(
     Returns:
         (valid: bool, reason_or_error: str, ast: dict | None)
     """
-    cmd = resolve_argdown_bin(parser_bin)
+    cmd = parser_bin or shutil.which("argdown")
+    if not cmd:
+        raise RuntimeError("argdown parser binary not found on PATH")
     text_to_parse = sanitise_argdown_text(block_text)
 
     with tempfile.NamedTemporaryFile("w", suffix=".argdown", delete=False) as f:

@@ -928,36 +928,18 @@ def test_machine_checks_parser_failure_raises_and_leaves_gate_armed():
     assert pcg.is_armed(session_id) is True
 
 
-def test_resolve_argdown_bin_across_env_node_modules_and_path(tmp_path, monkeypatch):
-    """AC5: Resolves argdown binary across AOPS_ARGDOWN_BIN, repo/user node_modules, and PATH."""
-    fake_bin = tmp_path / "fake_argdown"
-    fake_bin.write_text("#!/bin/sh\nexit 0\n")
-    fake_bin.chmod(0o755)
+def test_check_argdown_block_requires_argdown_on_path(tmp_path, monkeypatch):
+    """AC2: Expects argdown on PATH and removes resolve_argdown_bin and fallback paths."""
+    assert not hasattr(ra, "resolve_argdown_bin")
 
-    # 1. AOPS_ARGDOWN_BIN environment variable takes precedence
-    monkeypatch.setenv("AOPS_ARGDOWN_BIN", str(fake_bin))
-    with unittest.mock.patch("report_argument.shutil.which", return_value=None):
-        assert ra.resolve_argdown_bin() == str(fake_bin)
-
-    # 2. repo/user node_modules/.bin/argdown
-    monkeypatch.delenv("AOPS_ARGDOWN_BIN", raising=False)
-    fake_nm_bin = tmp_path / "node_modules" / ".bin" / "argdown"
-    fake_nm_bin.parent.mkdir(parents=True)
-    fake_nm_bin.write_text("#!/bin/sh\nexit 0\n")
-    fake_nm_bin.chmod(0o755)
-
-    with unittest.mock.patch("pathlib.Path.cwd", return_value=tmp_path):
-        with unittest.mock.patch("report_argument.shutil.which", return_value=None):
-            assert ra.resolve_argdown_bin() == str(fake_nm_bin)
-
-    # 3. Falls back to shutil.which('argdown')
-    with unittest.mock.patch("pathlib.Path.cwd", return_value=tmp_path / "empty"):
-        with unittest.mock.patch("report_argument.shutil.which", return_value="/usr/bin/argdown"):
-            assert ra.resolve_argdown_bin() == "/usr/bin/argdown"
+    # When shutil.which returns None and no parser_bin passed, raises RuntimeError("argdown parser binary not found on PATH")
+    with unittest.mock.patch("shutil.which", return_value=None):
+        with pytest.raises(RuntimeError, match="argdown parser binary not found on PATH"):
+            ra.check_argdown_block("(1) claim -- I read it\n(2) conc\n")
 
 
 def test_check_argdown_block_handles_markdown_punctuation():
-    """AC5: Markdown punctuation (*, _) in premise-check blocks does not cause false-positive syntax rejections."""
+    """AC3: Markdown punctuation (*, _) in premise-check blocks does not cause false-positive syntax rejections."""
     report_text = _report().replace(
         '(2) The hook returns "block", not advice. --',
         "(2) The hook returns *block*, not advice with an_identifier and **bold**. --",
@@ -970,37 +952,21 @@ def test_check_argdown_block_handles_markdown_punctuation():
     assert ast is not None
 
 
-def test_scaffold_prefills_asks_conclusions_and_weakest_basis():
-    """AC6: generate_scaffold pre-fills asks IDs, conclusion line numbers, and weakest basis phrase."""
-    report_text = _report()
-    scaffold = pcv.generate_scaffold(report_text, "claim-test-123")
-    assert f"Judged: claim-test-123; asks {ASK_A}, {ASK_B}" in scaffold
-    assert "Valid: (4) holds -- " in scaffold
-    assert "Valid: (6) holds -- " in scaffold
-    assert f"Supported: weakest {_WEAK.phrase} -- (3) " in scaffold
-    assert f"Answered: {ASK_A} ← (4)" in scaffold
-    assert f"Answered: {ASK_B} ← (6)" in scaffold
-    assert "Sufficient: (4) material; sufficiency obvious; no objection" in scaffold
-    assert "Sufficient: (6) material; sufficiency obvious; no objection" in scaffold
-    assert "Waived: none" in scaffold
-    assert "Relay: (4) " in scaffold
-    assert "Relay: (6) " in scaffold
+def test_scaffold_removed():
+    """AC1: generate_scaffold and --scaffold removed."""
+    assert not hasattr(pcv, "generate_scaffold")
 
 
 def test_verdict_cli_scaffold_flag_and_refusal_scaffold(tmp_path, capsys):
-    """AC6: CLI --scaffold prints pre-filled scaffold, and refusal outputs scaffold to stderr."""
+    """AC1: --scaffold flag removed and refusal does not output scaffold."""
     session_id = "s-cli-scaffold"
     _arm_with_report(session_id, "CID-CLI")
 
-    # 1. --scaffold prints pre-filled scaffold and exits 0
-    exit_code = pcv.main(["--claim", "CID-CLI", "--session", session_id, "--scaffold"])
-    assert exit_code == 0
-    captured = capsys.readouterr()
-    assert "Judged: CID-CLI;" in captured.out
-    assert f"asks {ASK_A}, {ASK_B}" in captured.out
-    assert f"weakest {_WEAK.phrase}" in captured.out
+    # 1. --scaffold flag is no longer recognized
+    with pytest.raises(SystemExit):
+        pcv.main(["--claim", "CID-CLI", "--session", session_id, "--scaffold"])
 
-    # 2. Refused PASS check outputs error and scaffold to stderr and exits 1
+    # 2. Refused PASS check outputs error to stderr without scaffold and exits 1
     bad_reason = "Judged: CID-CLI\nValid: (4) holds -- test\nSupported: weakest none\nAnswered: none\nSufficient: none\nWaived: none\nRelay: none"
     exit_fail = pcv.main(
         [
@@ -1017,5 +983,5 @@ def test_verdict_cli_scaffold_flag_and_refusal_scaffold(tmp_path, capsys):
     assert exit_fail == 1
     captured_fail = capsys.readouterr()
     assert "premise_check_verdict:" in captured_fail.err
-    assert "Scaffold for CID-CLI:" in captured_fail.err
+    assert "Scaffold" not in captured_fail.err
     assert pcg.is_armed(session_id) is True

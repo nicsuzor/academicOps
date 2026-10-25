@@ -11,7 +11,7 @@ A report that rests on evidence ends in an argument whose final conclusion answe
 
 ## Writing the Report Argument
 
-End the report with one fenced `argdown` block. Report arguments use ASCII premise-conclusion syntax (`-- <basis>` and lettered endnotes `^a`), distinguishing their lightweight handback syntax from the `{basis, pointer, source}` brace attributes taught in `argdown-toulmin`. Statement lines carry no `{...}` attributes.
+End the report with one fenced `argdown` block formatted per `argdown-toulmin`.
 
 ````text
 ```argdown
@@ -118,4 +118,4 @@ Record the verdict:
 uv run --project <plugin-dir> python3 <plugin-dir>/skills/premise-check/scripts/verdict.py --claim <claim_id> --verdict <PASS|REVISE|FAIL> --reason-file <path>
 ```
 
-Pass `--scaffold` to pre-fill ask IDs, conclusion lines, and weakest basis phrase. The recorder refuses a PASS whose reason misses a test line or ask ID, contradicts the block, or fails machine checks (syntax error, orphan statement, misaimed undercut); on refusal, actionable errors and pre-filled scaffolds are emitted to stderr while keeping the gate armed.
+The recorder refuses a PASS whose reason misses a test line or ask ID, contradicts the block, or fails machine checks (syntax error, orphan statement, misaimed undercut); on refusal, actionable errors are emitted to stderr while keeping the gate armed.

@@ -33,7 +33,7 @@ Then assemble the steps:
 
 - Combine template steps into a logical order (e.g., test-first where the change modifies code that executes, build, then QA).
 - Base the assembly only on what is explicitly requested. Do not investigate, guess at scope, or ad-lib extra requirements. If the request is ambiguous, preserve that ambiguity.
-- Resolve the relevant finish or completion templates from `/workflow-library` to determine delivery route (target branch, PR requirements) and whether an independent QA follow-up is required.
+- Start with the most general applicable template, which provides stubs for finishing and QA where applicable. Templates themselves specify how workflows are built; do not overspecify composition stages or single out finish templates.
 
 **Halt when composition comes up short.** Create and change nothing; report to your caller what failed precisely.
 
@@ -67,11 +67,11 @@ Then assemble the steps:
 
 ## Instructions
 
-[ Each step the worker must follow, drawn only from the composed workflow templates. The workflow templates are the only source of truth for instructions, obligations, and required processes. Interpret each stage into a concise numbered imperative step for this task; add none of your own, and omit narrative prose, rationale, and method details. The last step is the finish template's finish: deliver, record the evidence, release the task, and exit. ]
+[ Each step the worker must follow, drawn only from the composed workflow templates. The workflow templates are the only source of truth for instructions, obligations, and required processes. Interpret each stage into a concise numbered imperative step for this task; add none of your own, and omit narrative prose, rationale, and method details. The last step releases the task: deliver, record the evidence, release the task, and exit. ]
 
 ## Output
 
-[ Where the results of the task should be written. For feature branches, name the upstream repository and base branch to target per the project finish template. Outputs must not be left in the worker's local (volatile) environment. ]
+[ Where the results of the task should be written. For feature branches, name the upstream repository and base branch to target per the composed workflow. Outputs must not be left in the worker's local (volatile) environment. ]
 
 ## Report
 
@@ -84,7 +84,7 @@ Then assemble the steps:
 
 ### Mint QA follow-up when required
 
-Where the project finish template calls for QA review:
+Where the composed workflow calls for QA review:
 
 - **Low-risk internal changes (chiefly bugfixes)**: Test whether the task is a low-risk internal change, chiefly a bugfix. If so, it gets no separate verification run. Instead, look for a blocked task waiting on the fix (`blocks` or inbound `needs` / `depends_on`):
   - **Blocked dependent exists**: Mint a follow-up task with status `queued`, same parent as the primary task, and `needs: [<blocked_task_id>]` that judges the fix by reviewing that blocked task's next run once it runs.
@@ -94,7 +94,7 @@ Where the project finish template calls for QA review:
   2. Title: `QA: <primary task title>`.
   3. Set parent to the primary task's parent.
   4. Wire dependency: `needs: [<primary_task_id>]` so the QA task stays blocked until the primary task is `done`.
-  5. Compose the review follow-up task drawing its brief from the shared review briefing in `wf-review` and the designated review template (`wf-qa`, `wf-rbg`, `wf-strategic-fit`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the deliverable and claims against literal acceptance criteria; if verification fails, the reviewer releases the task as `failed` with documented failure evidence; confirm tier against the taxonomy; for verified Tier 1 PRs, merge to base branch on a verified pass; for Tier 2 and Tier 3 PRs, post verification receipts to the PR and leave open for reviewer sign-off without releasing to review. A reviewer that changes code delivers it through the finish template and hands off for independent review.
+  5. Compose the review follow-up task drawing its brief from the shared review briefing in `wf-review` and the designated review template (`wf-qa`, `wf-rbg`, `wf-strategic-fit`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the deliverable and claims against literal acceptance criteria; if verification fails, the reviewer releases the task as `failed` with documented failure evidence; confirm tier against the taxonomy; for verified Tier 1 PRs, merge to base branch on a verified pass; for Tier 2 and Tier 3 PRs, post verification receipts to the PR and leave open for reviewer sign-off without releasing to review. A reviewer that changes code delivers it through its workflow and hands off for independent review.
 
 ### Requirements for writing tasks
 

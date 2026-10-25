@@ -264,11 +264,12 @@ def test_hearsay_arm_emits_otel_trace_on_incoming_message(tmp_path, monkeypatch)
         mock_emit.assert_called_once()
 
 
-def test_subagent_start_and_initial_prompt_receives_honesty_reminder(tmp_path, monkeypatch):
-    """AC4: Subagents receive honesty.md on SubagentStart or on initial prompt."""
-    monkeypatch.setenv("AOPS_SESSION_POINTER_DIR", str(tmp_path / "pointers"))
+def test_subagent_start_and_initial_prompt_do_not_inject_honesty(tmp_path, monkeypatch):
+    """AC4: Reminders fire on inbound responses only; outbound injection and .delivered markers removed."""
+    pointer_dir = tmp_path / "pointers"
+    monkeypatch.setenv("AOPS_SESSION_POINTER_DIR", str(pointer_dir))
 
-    # 1. SubagentStart delivers honesty.md
+    # 1. SubagentStart does NOT deliver honesty.md
     ctx_start = HookContext(
         client="claude",
         event="SubagentStart",
@@ -279,13 +280,10 @@ def test_subagent_start_and_initial_prompt_receives_honesty_reminder(tmp_path, m
         raw={"agent_id": "sub-alpha"},
     )
     res_start = handlers.honesty_on_peer_message(ctx_start)
-    assert res_start is not None
-    assert (
-        "premise-check" in res_start.inject_text.lower()
-        or "report" in res_start.inject_text.lower()
-    )
+    assert res_start is None
+    assert not list(pointer_dir.glob("honesty_*.delivered"))
 
-    # 2. Initial prompt to a spawned subagent delivers honesty.md
+    # 2. Initial prompt without incoming peer report does NOT deliver honesty.md
     ctx_init = HookContext(
         client="claude",
         event="UserPromptSubmit",
@@ -296,12 +294,10 @@ def test_subagent_start_and_initial_prompt_receives_honesty_reminder(tmp_path, m
         raw={"agent_id": "sub-beta", "prompt": "Implement AC1"},
     )
     res_init = handlers.honesty_on_peer_message(ctx_init)
-    assert res_init is not None
-    assert (
-        "premise-check" in res_init.inject_text.lower() or "report" in res_init.inject_text.lower()
-    )
+    assert res_init is None
+    assert not list(pointer_dir.glob("honesty_*.delivered"))
 
-    # Second prompt to the same subagent does not re-deliver
+    # 3. Second prompt without report still does not deliver
     ctx_second = HookContext(
         client="claude",
         event="UserPromptSubmit",

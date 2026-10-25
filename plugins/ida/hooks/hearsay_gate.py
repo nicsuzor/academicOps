@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import Any
 
 import report_argument as ra
-from dispatch import HookContext, Result, block, refuse, warn
+from dispatch import HookContext, Result, block, load_message_pair, refuse, warn
 
 try:
     import claude_code_tracer
@@ -883,13 +883,26 @@ def hearsay_arm(ctx: HookContext) -> Result | None:
             block_expected=True,
         )
         _emit_hearsay_trace(ctx, claim_id, judged_ref)
-        inject = (
-            f"Premise-check gate armed by {claim_id}: no argument block supplied; "
-            f"send the message back for revision per the `premise-check` skill "
-            f"(an absent block cannot pass).\n"
-            f"{format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id, verdict='REVISE', reason='no argument supplied')}"
+        cmd = format_verdict_command(
+            claim_id,
+            ctx.hooks_dir,
+            ctx.session_id,
+            verdict="REVISE",
+            reason="no argument supplied",
         )
-        user_msg = f"Premise-check gate armed by {claim_id} (no argument block supplied; send back for revision)."
+        agent_tmpl, user_tmpl = load_message_pair(ctx.hooks_dir, "hearsay_absent")
+        if not agent_tmpl:
+            agent_tmpl = (
+                "Premise-check gate armed by {claim_id}: no argument block supplied; "
+                "send the message back for revision per the `premise-check` skill "
+                "(an absent block cannot pass).\n{command}"
+            )
+        inject = agent_tmpl.format(claim_id=claim_id, command=cmd)
+        user_msg = (
+            user_tmpl.format(claim_id=claim_id)
+            if user_tmpl
+            else f"Premise-check gate armed by {claim_id} (no argument block supplied; send back for revision)."
+        )
         return warn(inject, user_msg)
 
     # 3. Substantive argument block: arm the gate awaiting agent verdict
@@ -902,11 +915,21 @@ def hearsay_arm(ctx: HookContext) -> Result | None:
     )
     _emit_hearsay_trace(ctx, claim_id, judged_ref)
 
-    inject = (
-        f"Premise-check gate armed by {claim_id}; if this is a direction, check that it derives from `## Ask` and refuse (`REVISE`) unverified caller method or template prescriptions before logging deliverables as a frozen acceptance checklist on a PKB task; record a verdict per the `premise-check` skill.\n"
-        f"{format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id)}"
+    cmd = format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id)
+    agent_tmpl, user_tmpl = load_message_pair(ctx.hooks_dir, "hearsay_armed")
+    if not agent_tmpl:
+        agent_tmpl = (
+            "Premise-check gate armed by {claim_id}; if this is a direction, check in Argdown format "
+            "that it derives from `## Ask` and refuse (`REVISE`) unverified caller method or template "
+            "prescriptions before logging deliverables as a frozen acceptance checklist on a PKB task; "
+            "record a verdict per the `premise-check` skill.\n{command}"
+        )
+    inject = agent_tmpl.format(claim_id=claim_id, command=cmd)
+    user_msg = (
+        user_tmpl.format(claim_id=claim_id)
+        if user_tmpl
+        else f"Premise-check gate armed by {claim_id}."
     )
-    user_msg = f"Premise-check gate armed by {claim_id}."
     return warn(inject, user_msg)
 
 
@@ -934,12 +957,19 @@ def hearsay_handler(ctx: HookContext) -> Result | None:
         else "dispatching another subagent or message"
     )
 
-    reason = (
-        f"Premise-check gate armed by {claim_id} blocks {action_desc}; "
-        f"record a verdict per the `premise-check` skill.\n"
-        f"{format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id)}"
+    cmd = format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id)
+    agent_tmpl, user_tmpl = load_message_pair(ctx.hooks_dir, "hearsay_blocked")
+    if not agent_tmpl:
+        agent_tmpl = (
+            "Premise-check gate armed by {claim_id} blocks {action_desc}; "
+            "record a verdict per the `premise-check` skill.\n{command}"
+        )
+    reason = agent_tmpl.format(claim_id=claim_id, action_desc=action_desc, command=cmd)
+    user_msg = (
+        user_tmpl.format(claim_id=claim_id)
+        if user_tmpl
+        else f"Blocked: premise-check verdict pending on {claim_id}."
     )
-    user_msg = f"Blocked: premise-check verdict pending on {claim_id}."
 
     if mode == "warn":
         return warn(reason, user_msg)
