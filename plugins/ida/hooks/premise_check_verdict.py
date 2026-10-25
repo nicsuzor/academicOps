@@ -287,10 +287,7 @@ def record_verdict(
         if "block" not in parsed_reason.waived_items(vocab):
             valid, parser_output, _ = ra.check_argdown_block(block_text)
             if not valid:
-                token = "REVISE"
-                reason = parser_output
-                attributes = judge_reason(token, reason, judged_text)
-                attributes["premise_check.machine"] = True
+                raise ValueError(f"PASS verdict refused for {cid}: {parser_output}")
     attributes["premise_check.judged_ref"] = judged_ref or ""
     attributes["premise_check.judged_text_sha256"] = (
         hashlib.sha256(judged_text.encode("utf-8")).hexdigest() if judged_text is not None else ""
@@ -340,6 +337,94 @@ def record_verdict(
     return result
 
 
+def generate_scaffold(
+    judged_text: str | None,
+    claim_id: str,
+    vocab: ra.Vocabulary | None = None,
+) -> str:
+    """Generate pre-filled premise-check scaffold with asks IDs, conclusion line numbers, and weakest basis."""
+    block_text = ra.extract_block(judged_text) if judged_text else None
+    if block_text is None:
+        return (
+            f"Judged: {claim_id}\n"
+            "Valid: (n) holds -- \n"
+            "Supported: weakest <phrase> -- \n"
+            "Answered: none\n"
+            "Sufficient: (n) material; sufficiency obvious; no objection\n"
+            "Waived: none\n"
+            "Relay: none\n"
+        )
+
+    if ra.is_null_form(block_text):
+        return f"Judged: {claim_id}; [no claim]\n"
+
+    vocab = vocab or ra.load_vocabulary()
+    block = ra.parse_block(block_text, vocab)
+    if block is None:
+        return (
+            f"Judged: {claim_id}\n"
+            "Valid: (n) holds -- \n"
+            "Supported: weakest <phrase> -- \n"
+            "Answered: none\n"
+            "Sufficient: (n) material; sufficiency obvious; no objection\n"
+            "Waived: none\n"
+            "Relay: none\n"
+        )
+
+    # Asks
+    asks_str = f"; asks {', '.join(block.asks)}" if block.asks else ""
+    line_judged = f"Judged: {claim_id}{asks_str}"
+
+    # Conclusions
+    if block.conclusions:
+        valid_lines = [f"Valid: ({c}) holds -- " for c in block.conclusions]
+        sufficient_lines = [
+            f"Sufficient: ({c}) material; sufficiency obvious; no objection"
+            for c in block.conclusions
+        ]
+        relay_lines = [f"Relay: ({c}) " for c in block.conclusions]
+    else:
+        valid_lines = ["Valid: (n) holds -- "]
+        sufficient_lines = ["Sufficient: (n) material; sufficiency obvious; no objection"]
+        relay_lines = ["Relay: none"]
+
+    # Weakest basis
+    weakest = block.weakest()
+    if weakest is not None and weakest.basis is not None:
+        line_supported = f"Supported: weakest {weakest.basis.phrase} -- ({weakest.number}) "
+    elif weakest is not None and weakest.basis_text:
+        line_supported = f"Supported: weakest {weakest.basis_text} -- ({weakest.number}) "
+    else:
+        line_supported = "Supported: weakest <phrase> -- "
+
+    # Answers
+    if block.asks:
+        answer_lines = []
+        for a in block.asks:
+            ans = block.answers.get(a)
+            if isinstance(ans, int):
+                answer_lines.append(f"Answered: {a} ← ({ans})")
+            elif block.conclusions:
+                answer_lines.append(f"Answered: {a} ← ({block.conclusions[-1]})")
+            else:
+                answer_lines.append(f"Answered: {a} ← (n)")
+    else:
+        answer_lines = ["Answered: none"]
+
+    line_waived = "Waived: none"
+
+    lines = [
+        line_judged,
+        *valid_lines,
+        line_supported,
+        *answer_lines,
+        *sufficient_lines,
+        line_waived,
+        *relay_lines,
+    ]
+    return "\n".join(lines) + "\n"
+
+
 def _read_reason(path: str) -> str:
     if path == "-":
         return sys.stdin.read()
@@ -363,8 +448,12 @@ def main(argv: list[str] | None = None) -> int:
         help="Identifier or short description of the claim or report.",
     )
     parser.add_argument(
+        "--scaffold",
+        action="store_true",
+        help="Print pre-filled premise-check reason scaffold for the claim and exit.",
+    )
+    parser.add_argument(
         "--verdict",
-        required=True,
         type=str.upper,
         choices=VERDICTS,
         help="PASS, REVISE or FAIL.",
@@ -374,7 +463,7 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Optional short title for the verification.",
     )
-    reason = parser.add_mutually_exclusive_group(required=True)
+    reason = parser.add_mutually_exclusive_group()
     reason.add_argument("--reason", help="The checker's reason, inline.")
     reason.add_argument(
         "--reason-file",
@@ -395,6 +484,26 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
+    if args.scaffold:
+        judged_text, _ = get_judged(args.session, args.claim)
+        scaffold = generate_scaffold(judged_text, args.claim)
+        sys.stdout.write(scaffold)
+        return 0
+
+    if not args.verdict:
+        print(
+            "premise_check_verdict: error: the following arguments are required: --verdict",
+            file=sys.stderr,
+        )
+        return 2
+
+    if not args.reason and not args.reason_file:
+        print(
+            "premise_check_verdict: error: one of --reason or --reason-file is required",
+            file=sys.stderr,
+        )
+        return 2
+
     try:
         text = args.reason if args.reason is not None else _read_reason(args.reason_file)
         result = record_verdict(
@@ -406,6 +515,9 @@ def main(argv: list[str] | None = None) -> int:
         )
     except (OSError, ValueError, RuntimeError, ImportError) as exc:
         print(f"premise_check_verdict: {exc}", file=sys.stderr)
+        judged_text, _ = get_judged(args.session, args.claim)
+        scaffold = generate_scaffold(judged_text, args.claim)
+        print(f"\nScaffold for {args.claim}:\n{scaffold}", file=sys.stderr)
         return 1
 
     print(json.dumps(result))
