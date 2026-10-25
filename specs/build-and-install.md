@@ -122,7 +122,7 @@ commit -- e.g. `git tag v<next>-rc.1 <sha> && git push origin v<next>-rc.1`.
 
 - **Plugin enabled but `/hooks` doesn't list its events.** Claude Code couldn't
   read `hooks/hooks.json` -- usually a JSON syntax error or an unresolvable
-  command path. Inspect with `python3 -c "import json; json.load(open('hooks/hooks.json'))"`.
+  command path. Inspect with `uv run python -c "import json; json.load(open('hooks/hooks.json'))"`.
 - **A local dev install (`make install-dev`) isn't shadowing a release install,
   or vice versa.** Check `claude plugin marketplace list` for both `aops` (dev)
   and `academicOps` (release) -- a stale one of either can silently win. Run

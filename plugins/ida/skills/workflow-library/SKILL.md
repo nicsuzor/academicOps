@@ -91,5 +91,6 @@ tags: [...]
 ## Constraints
 
 - Query tiers dynamically; do not rely on static indices or memory.
+- In `portal_codemode_execute` batch queries (`pkb_list_tasks`, `pkb_search`), use native `metadata_only` / `max_bytes` parameters and project batch results in JavaScript to `{ id, title, status, parent, body }` (omitting duplicate `content` fields and null frontmatter keys) to prevent harness spills, while allowing full untruncated `body` reads for the primary target artifact under review or edit.
 - Keep templates focused on obligations and exit criteria; leave operational method to skills.
 - Do not mint tasks or dispatch work during library management operations.

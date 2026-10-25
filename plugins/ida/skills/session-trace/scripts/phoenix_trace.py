@@ -28,7 +28,7 @@ Configuration is environment-only, per ``specs/ARCHITECTURE.md`` "No defaults": 
 URL comes from ``--base-url`` or ``$PHOENIX_BASE_URL`` / ``$PHOENIX_COLLECTOR_ENDPOINT``,
 and the project from ``--project`` or ``$PHOENIX_PROJECT_NAME``. Both fail loudly.
 
-Standard library only, so the skill can invoke it as ``python3 scripts/phoenix_trace.py``.
+Standard library only, so the skill can invoke it as ``uv run python scripts/phoenix_trace.py``.
 """
 
 from __future__ import annotations

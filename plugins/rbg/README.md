@@ -47,7 +47,7 @@ Set via environment variables:
 Run a local open-weights classifier (`zentropi-ai/cope-b-a4b` via llama.cpp + shim):
 
 ```bash
-python3 scripts/cope_eval_stack.py start \
+uv run python scripts/cope_eval_stack.py start \
   --server-bin <llama.cpp>/build/bin/llama-server \
   --model <path>/cope-b-a4b.Q4_K_M.gguf \
   --log-dir <state-dir> \

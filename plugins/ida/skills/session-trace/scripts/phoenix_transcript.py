@@ -40,10 +40,10 @@ Configuration is flags or environment only: ``--base-url`` or ``$PHOENIX_MCP_URL
 
 Examples::
 
-    python3 phoenix_transcript.py <slug> --out /tmp/<slug>.transcript.md
-    python3 phoenix_transcript.py <session-uuid>
-    python3 phoenix_transcript.py <32-hex-trace-id>
-    python3 phoenix_transcript.py <slug> --from-file spans.json
+    uv run python phoenix_transcript.py <slug> --out /tmp/<slug>.transcript.md
+    uv run python phoenix_transcript.py <session-uuid>
+    uv run python phoenix_transcript.py <32-hex-trace-id>
+    uv run python phoenix_transcript.py <slug> --from-file spans.json
 """
 
 from __future__ import annotations
