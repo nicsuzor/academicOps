@@ -1084,4 +1084,44 @@ def test_hook_bearing_plugins_all_present(dist_root):
     assert hook_plugins == _declared_hook_plugins()
 
 
-# --- 5. ts: no hooks on agy ----------------------------------------------------
+def test_every_shipped_python_hook_command_uses_uv_run_python(dist_root):
+    """Python hook commands must launch via `uv run ... python`, never `python3` or bare `python`."""
+    failures = []
+    for name, client, build_dir in _build_dirs(dist_root):
+        for wire_event, command in _hook_commands(client, build_dir):
+            if ".py" in command:
+                if not command.strip().startswith("uv run"):
+                    failures.append(
+                        f"{name}-{client} {wire_event}: command does not start with 'uv run': {command}"
+                    )
+                tokens = command.split()
+                if "python3" in tokens:
+                    failures.append(
+                        f"{name}-{client} {wire_event}: command uses 'python3' instead of 'python': {command}"
+                    )
+                elif "python" not in tokens:
+                    failures.append(
+                        f"{name}-{client} {wire_event}: command does not invoke 'python': {command}"
+                    )
+    assert not failures, "Python hook command invocations failed contract:\n" + "\n".join(failures)
+
+
+def test_every_shipped_plugin_contains_portable_pyproject_toml(pristine_dist):
+    """Every shipped plugin package must contain pyproject.toml with strictly relative paths."""
+    failures = []
+    for name, client, build_dir in _build_dirs(pristine_dist):
+        pyproject = build_dir / "pyproject.toml"
+        if not pyproject.is_file():
+            failures.append(f"{name}-{client}: missing pyproject.toml")
+            continue
+        content = pyproject.read_text(encoding="utf-8")
+        for line in content.splitlines():
+            line_stripped = line.strip()
+            # Check for absolute Unix or Windows paths in dependencies or configuration
+            if any(p in line_stripped for p in ("file:///", 'path = "/', "path = '/")):
+                failures.append(f"{name}-{client} pyproject.toml contains absolute path: {line}")
+            if re.search(r"[A-Za-z]:[\\/]", line_stripped):
+                failures.append(
+                    f"{name}-{client} pyproject.toml contains Windows drive path: {line}"
+                )
+    assert not failures, "Shipped plugin pyproject.toml validation failed:\n" + "\n".join(failures)

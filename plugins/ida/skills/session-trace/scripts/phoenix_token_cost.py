@@ -43,9 +43,9 @@ Configuration is environment-only, matching ``phoenix_trace.py``: ``--base-url``
 
 Examples::
 
-    python3 phoenix_token_cost.py --since "2026-09-12 00:00" --tz +10:00
-    python3 phoenix_token_cost.py --since 2026-09-11T14:00:00Z --by task --json
-    python3 phoenix_token_cost.py --since 2026-09-11T14:00:00Z --session 5b239939
+    uv run python phoenix_token_cost.py --since "2026-09-12 00:00" --tz +10:00
+    uv run python phoenix_token_cost.py --since 2026-09-11T14:00:00Z --by task --json
+    uv run python phoenix_token_cost.py --since 2026-09-11T14:00:00Z --session 5b239939
 """
 
 from __future__ import annotations
