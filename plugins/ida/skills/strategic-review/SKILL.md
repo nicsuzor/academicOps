@@ -20,14 +20,14 @@ Load the artifact, its diff (for PRs), full file contents, metadata, commit mess
 
 ### 2. Strategic Fit Check
 
-Before implementation detail is reviewed, the strategic-fit reviewer (TypeName `pauli`) situates the artifact against the objectives it claims to serve in the PKB graph using the analytical lenses in `../strategize/SKILL.md` and returns an explicit `FIT`/`MISFIT` verdict, distinct from the compliance verdict and the quality verdict.
+Before implementation detail is reviewed, the strategic-fit reviewer (TypeName `pauli`) situates the artifact against the objectives it claims to serve in the PKB graph using the analytical lenses in `../strategize/SKILL.md` and returns an explicit `FIT`/`MISFIT` verdict, distinct from the compliance verdict and the quality verdict. Provide Pauli's strategic-fit brief inline in the dispatch payload (including parent objective, claimed target nodes, and problem definition) rather than directing Pauli to read filesystem workflow templates or repository files, ensuring Pauli remains strictly on the PKB graph.
 
 ### 3. Deploy Parallel Reviewers
 
 Dispatch all three reviewers concurrently via `invoke_subagent` in a single message. Every reviewer's brief is drawn from the shared review briefing defined in `wf-review`:
 
-- **Rule compliance** (TypeName `rbg`): Axiom and rule compliance per `wf-rbg`.
-- **Strategic fit** (TypeName `pauli`): Strategic Fit Check per `wf-strategic-fit`.
+- **Rule compliance** (TypeName `rbg`): Axiom and rule compliance per `wf-rbg`. Confined strictly to artifact text/diff and rule/spec sources.
+- **Strategic fit** (TypeName `pauli`): Strategic Fit Check per `wf-strategic-fit`, provided with an inline graph-only brief.
 - **Quality** (TypeName `marsha`): Runtime quality, user ask satisfaction, and excellence per `wf-qa`.
 
 Reviewers select 3-4 relevant lenses (e.g. Scope discipline, Self-consistency, Assumption hygiene, Attribution, Feasibility). Every reviewer also judges proportion: whether the artifact is larger than the request needs, and whether each fix it asks for is worth its cost given the failure's likelihood and consequence.
