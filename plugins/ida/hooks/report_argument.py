@@ -33,12 +33,75 @@ _SEPARATOR = re.compile(rf"\s{_DASH}\s")
 _FENCE_OPEN = re.compile(r"^\s*(?P<fence>`{3,}|~{3,})\s*argdown\s*$", re.IGNORECASE)
 _FRONTMATTER_FENCE = "==="
 _NUMBERED = re.compile(r"^\((?P<n>\d+)\)\s*(?P<text>.*)$")
-# Argdown takes an inference line only in ASCII: ``-- ... --``.
-_INFERENCE = re.compile(r"^--\s.*\s--$|^--\s--$")
+# Argdown takes an inference line in ASCII (``-- ... --``) or typed live (``— ... —``).
+_INFERENCE = re.compile(r"^(?:--|—)\s*.*\s*(?:--|—)$")
 _TRAILING_MARKERS = re.compile(r"(?:\s*\^[A-Za-z]+)+\s*$")
 _LINE_REF = re.compile(r"\((?P<n>\d+)\)")
 _ARROW = re.compile(r"←|<-")
-_VALID_ENTRY = re.compile(r"^\((?P<n>\d+)\)\s+(?P<word>holds|fails)\b(?P<rest>.*)$")
+_VALID_ENTRY = re.compile(
+    r"^\s*(?P<lines>(?:\(\d+\)(?:\s*(?:,|and)\s*)*)+)\s+(?P<word>holds?|fails?)\b(?P<rest>.*)$",
+    re.IGNORECASE,
+)
+
+
+@dataclass
+class ValidMatch:
+    lines: tuple[int, ...]
+    word: str
+    rest: str
+    raw: str
+    clauses: tuple[ValidMatch, ...] = ()
+
+    def group(self, key: str | int) -> str:
+        if key in ("n", 1):
+            return str(self.lines[0]) if self.lines else ""
+        if key in ("word", 2):
+            return self.word
+        if key in ("rest", 3):
+            return self.rest
+        if key in ("lines", 4):
+            return ", ".join(f"({n})" for n in self.lines)
+        raise IndexError(f"unknown group {key}")
+
+
+def _match_valid_part(part: str) -> ValidMatch | None:
+    s = part.strip()
+    if not s:
+        return None
+    clauses = [c.strip() for c in re.split(r";\s*(?=\(\d+\))", s) if c.strip()]
+    if len(clauses) > 1:
+        sub = [_match_valid_part(c) for c in clauses]
+        if any(sm is None for sm in sub):
+            return None
+        all_lines: list[int] = []
+        has_fail = False
+        rests: list[str] = []
+        for sm in sub:
+            if sm is not None:
+                all_lines.extend(sm.lines)
+                if sm.word == "fails":
+                    has_fail = True
+                if sm.rest.strip():
+                    rests.append(sm.rest.strip())
+        return ValidMatch(
+            lines=tuple(all_lines),
+            word="fails" if has_fail else "holds",
+            rest=" ; ".join(rests),
+            raw=s,
+            clauses=tuple(sm for sm in sub if sm is not None),
+        )
+
+    m = _VALID_ENTRY.match(s)
+    if not m:
+        return None
+    raw_lines = _LINE_REF.findall(m.group("lines"))
+    if not raw_lines:
+        return None
+    lines = tuple(int(n) for n in raw_lines)
+    word_raw = m.group("word").lower()
+    word = "holds" if word_raw.startswith("hold") else "fails"
+    return ValidMatch(lines=lines, word=word, rest=m.group("rest"), raw=s)
+
 _ANSWERED_LINE = re.compile(r"^(?P<id>[^\s:]+):?\s*(?:←|<-)\s*\((?P<n>\d+)\)\s*$")
 _ANSWERED_NONE = re.compile(r"^(?P<id>[^\s:]+):?\s+unanswered\s*$")
 _TAG = re.compile(r"#[A-Za-z0-9_-]+")
@@ -232,8 +295,31 @@ def parse_block(block: str, vocab: Vocabulary) -> Argument | None:
         arg.answers = {str(k): _answer_value(v) for k, v in sections["answers"].items()}
         arg.notes = {str(k): str(v) for k, v in sections["notes"].items()}
 
+    # Collect logical lines in body, joining multi-line inference bars:
+    body_lines: list[str] = []
+    in_inference = False
+    current_inf: list[str] = []
+    for raw_ln in body:
+        s = raw_ln.strip()
+        if not in_inference:
+            if (s.startswith("--") and not s.endswith("--") and len(s) > 2) or (
+                s.startswith("—") and not s.endswith("—") and len(s) > 1
+            ):
+                in_inference = True
+                current_inf = [s]
+            else:
+                body_lines.append(s)
+        else:
+            current_inf.append(s)
+            if s.endswith("--") or s.endswith("—"):
+                in_inference = False
+                body_lines.append(" ".join(current_inf))
+                current_inf = []
+    if current_inf:
+        body_lines.append(" ".join(current_inf))
+
     after_inference: Inference | None = None
-    for line in (ln.strip() for ln in body):
+    for line in body_lines:
         if not line:
             continue
         if _INFERENCE.match(line):
@@ -288,6 +374,8 @@ def sanitise_argdown_text(text: str) -> str:
     else:
         fm, body = "", text
 
+    # Normalise live em-dash inference lines to ASCII inference bars for @argdown/cli
+    body = re.sub(r"^\s*—\s*(.*?)\s*—\s*$", r"-- \1 --", body, flags=re.MULTILINE)
     # Escape unescaped * in argdown body
     body = re.sub(r"(?<!\\)\*", r"\*", body)
     # Escape unescaped _ in argdown body, except when part of relation '_>'
@@ -446,17 +534,21 @@ class Reason:
                 out.append(None)
         return out
 
-    def valid_entries(self) -> list[re.Match[str] | None]:
-        return [_VALID_ENTRY.match(e.strip()) for e in self.get("Valid")]
+    def valid_entries(self) -> list[ValidMatch | None]:
+        return [_match_valid_part(e) for e in self.get("Valid")]
 
     def defect_tags(self, vocab: Vocabulary) -> list[str]:
         tags: list[str] = []
         for m in self.valid_entries():
-            if m and m.group("word") == "fails":
-                rest = m.group("rest").strip()
-                for tag in _TAG.findall(rest.split(" -- ")[0].split(" — ")[0]):
-                    if tag in vocab.defect_tags:
-                        tags.append(tag)
+            if not m:
+                continue
+            sub_matches = m.clauses if m.clauses else (m,)
+            for sub in sub_matches:
+                if sub.word == "fails":
+                    rest = sub.rest.strip()
+                    for tag in _TAG.findall(rest.split(" -- ")[0].split(" — ")[0]):
+                        if tag in vocab.defect_tags:
+                            tags.append(tag)
         return tags
 
     def waived_items(self, vocab: Vocabulary) -> list[str]:
@@ -479,9 +571,30 @@ def parse_reason(text: str, vocab: Vocabulary) -> Reason:
     keys = "|".join(re.escape(k) for k in vocab.reason_keys)
     line_re = re.compile(rf"^\s*(?P<key>{keys})\s*:\s?(?P<value>.*)$")
     reason = Reason()
-    for line in (text or "").splitlines():
-        if m := line_re.match(line):
-            reason.entries.setdefault(m.group("key"), []).append(m.group("value").strip())
+    current_key: str | None = None
+    for raw_line in (text or "").splitlines():
+        if m := line_re.match(raw_line):
+            current_key = m.group("key")
+            val = m.group("value").strip()
+            if val:
+                if current_key == "Valid":
+                    parts = [p.strip() for p in re.split(r";\s*(?=\(\d+\))", val) if p.strip()]
+                    reason.entries.setdefault(current_key, []).extend(parts)
+                else:
+                    reason.entries.setdefault(current_key, []).append(val)
+        elif current_key is not None:
+            stripped = raw_line.strip()
+            if not stripped:
+                continue
+            if raw_line.startswith((" ", "\t")) or stripped.startswith(("- ", "* ")) or (current_key == "Valid" and stripped.startswith("(")):
+                val = re.sub(r"^[-*]\s+", "", stripped)
+                if current_key == "Valid":
+                    parts = [p.strip() for p in re.split(r";\s*(?=\(\d+\))", val) if p.strip()]
+                    reason.entries.setdefault(current_key, []).extend(parts)
+                else:
+                    reason.entries.setdefault(current_key, []).append(val)
+            else:
+                current_key = None
     return reason
 
 
@@ -578,7 +691,14 @@ def pass_failures(
             "Valid entries not in the form '(n) holds|fails ...': "
             + "; ".join(repr(e) for e in malformed)
         )
-    fails = [m.group("n") for m in valid if m and m.group("word") == "fails"]
+    fails: list[str] = []
+    for m in valid:
+        if not m:
+            continue
+        sub_list = m.clauses if m.clauses else (m,)
+        for sub in sub_list:
+            if sub.word == "fails":
+                fails.extend(str(ln) for ln in sub.lines)
     if fails:
         failures.append(f"Valid says fails for ({'), ('.join(fails)})")
     if block is not None:
@@ -588,13 +708,13 @@ def pass_failures(
                 "inference line with no conclusion line after it: "
                 + "; ".join(repr(t) for t in orphans)
             )
-        if len(reason.get("Valid")) != len(block.inferences):
+        keyed = sorted({line for m in valid if m for line in m.lines})
+        if len(keyed) != len(block.inferences):
             failures.append(
-                f"Valid has {len(reason.get('Valid'))} entries for "
+                f"Valid has {len(keyed)} entries for "
                 f"{len(block.inferences)} inference lines"
             )
         elif not orphans:
-            keyed = sorted(int(m.group("n")) for m in valid if m)
             expected = sorted(int(inf.conclusion or 0) for inf in block.inferences)
             if keyed != expected:
                 failures.append(
@@ -680,8 +800,9 @@ def span_attributes(reason: Reason, block: Argument | None, vocab: Vocabulary) -
     attrs["premise_check.weakest_basis"] = weakest_phrase
     attrs["premise_check.weakest_basis_term"] = weakest_term
 
+    keyed_lines = {line for m in reason.valid_entries() if m for line in m.lines}
     attrs["premise_check.inference_count"] = (
-        len(block.inferences) if block is not None else len(reason.get("Valid"))
+        len(block.inferences) if block is not None else (len(keyed_lines) or len(reason.get("Valid")))
     )
     tags = reason.defect_tags(vocab)
     attrs["premise_check.defect_tags"] = tags

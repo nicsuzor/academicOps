@@ -985,3 +985,85 @@ def test_verdict_cli_scaffold_flag_and_refusal_scaffold(tmp_path, capsys):
     assert "premise_check_verdict:" in captured_fail.err
     assert "Scaffold" not in captured_fail.err
     assert pcg.is_armed(session_id) is True
+
+
+def test_valid_grouped_lines_accepted():
+    """Grouped line references on one Valid line pass a multi-inference argument."""
+    vocab = ra.load_vocabulary()
+    block = ra.parse_block(ra.extract_block(_report()), vocab)
+    assert block is not None
+    assert len(block.inferences) == 2
+
+    # (4), (6) holds
+    r1 = ra.parse_reason(_reason("CID", drop=("Valid:",), extra=("Valid: (4), (6) holds -- both hold",)), vocab)
+    assert not ra.pass_failures(r1, block, vocab)
+
+    # (4), (6) hold
+    r2 = ra.parse_reason(_reason("CID", drop=("Valid:",), extra=("Valid: (4), (6) hold -- both hold",)), vocab)
+    assert not ra.pass_failures(r2, block, vocab)
+
+    # (4) and (6) hold
+    r3 = ra.parse_reason(_reason("CID", drop=("Valid:",), extra=("Valid: (4) and (6) hold -- both hold",)), vocab)
+    assert not ra.pass_failures(r3, block, vocab)
+
+    # Semicolon-separated clauses on one Valid line
+    r4 = ra.parse_reason(_reason("CID", drop=("Valid:",), extra=("Valid: (4) holds -- rule; (6) holds -- meets rule",)), vocab)
+    assert not ra.pass_failures(r4, block, vocab)
+
+
+def test_valid_multiline_indented_accepted():
+    """Indented lines under Valid: are parsed as entries and validate multi-inference blocks."""
+    vocab = ra.load_vocabulary()
+    block = ra.parse_block(ra.extract_block(_report()), vocab)
+    assert block is not None
+
+    reason_text = _reason(
+        "CID",
+        drop=("Valid:",),
+        extra=("Valid:\n  (4) holds -- rule\n  (6) holds -- meets rule",),
+    )
+    r = ra.parse_reason(reason_text, vocab)
+    assert len(r.get("Valid")) == 2
+    assert not ra.pass_failures(r, block, vocab)
+
+
+def test_valid_clause_with_failure_refuses_pass():
+    """A grouped or semicolon valid entry that contains a failure is detected."""
+    vocab = ra.load_vocabulary()
+    block = ra.parse_block(ra.extract_block(_report()), vocab)
+    assert block is not None
+
+    r = ra.parse_reason(
+        _reason(
+            "CID",
+            drop=("Valid:",),
+            extra=("Valid: (4) holds -- rule; (6) fails #missing -- no premise",),
+        ),
+        vocab,
+    )
+    failures = ra.pass_failures(r, block, vocab)
+    assert any("Valid says fails for (6)" in f for f in failures)
+
+
+def test_parse_block_and_check_handles_em_dash_inferences():
+    """Inference bars with em-dashes (—) parse correctly and pass argdown syntax check."""
+    report_text = (
+        "Report\n\n"
+        "```argdown\n"
+        f"{_frontmatter()}\n"
+        f"(1) First premise. -- {_STRONG.phrase}\n"
+        "— Warrant with em dashes —\n"
+        "(2) Conclusion.\n"
+        "```\n"
+    )
+    vocab = ra.load_vocabulary()
+    block_text = ra.extract_block(report_text)
+    assert block_text is not None
+
+    block = ra.parse_block(block_text, vocab)
+    assert block is not None
+    assert len(block.inferences) == 1
+    assert block.inferences[0].conclusion == 2
+
+    valid, reason, ast = ra.check_argdown_block(block_text)
+    assert valid is True, f"Argdown syntax check failed: {reason}"

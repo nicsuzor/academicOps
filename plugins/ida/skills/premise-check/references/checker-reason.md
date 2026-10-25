@@ -19,7 +19,7 @@ Relay: none
 | Key | Entries |
 | - | - |
 | `Judged` | Exactly one. The claim id the gate named, then every ask id in the block. |
-| `Valid` | One per inference line, keyed by the conclusion it yields. `holds`, or `fails` and a defect tag. |
+| `Valid` | One per inference line, keyed by the conclusion it yields (or grouped/semicolon clauses accounting for all conclusions, e.g. `(n), (m) holds`). `holds`, or `fails` and a defect tag. |
 | `Supported` | One. The weakest basis phrase among all premises. |
 | `Answered` | One per ask id: the line that answers it, or `unanswered`. |
 | `Sufficient` | One or more, keyed by conclusion: which proportionality test settled each material step. `authority-backed` is limited strictly to the user's own words or a governing spec. |
@@ -33,7 +33,7 @@ For PASS the recorder checks, and refuses on any miss:
 - all seven keys are present, with exactly one `Judged` and one `Supported`;
 - `Judged` names at least one ask id, and its ask ids equal the `asks` ids in the block, and every line the block's `answers` names exists;
 - every ask id has an `Answered` line that names a line of the block (`← (n)`) or says `unanswered`;
-- `Valid` has one entry per inference line, every inference line is followed by its conclusion, and no entry says `fails`;
+- `Valid` accounts for every inference line by conclusion (individual lines, indented lines, semicolon clauses, or grouped references such as `(n), (m) holds`), every inference line is followed by its conclusion, and no entry says `fails`;
 - the `Supported` phrase has the lowest rank among the block's premises;
 - every `Waived` entry starts with a format item;
 - every `Relay` line names lines that exist in the block.

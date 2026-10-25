@@ -110,6 +110,8 @@ Waived: none | <format item> -- <justification>
 Relay: "<sentence to relay>" ← (n) | none
 ```
 
+For arguments with multiple inference lines, all yielded conclusions must be accounted for under `Valid:`—either via multiple `Valid:` lines, indented continuation lines, semicolon clauses (`(n) holds -- ...; (m) holds -- ...`), or grouped references (`(n), (m) holds -- ...` or `(n) and (m) hold -- ...`).
+
 Format items: `block`, `numbering`, `endnotes`, `basis wording`, `ask wording`, `layout`.
 
 Record the verdict:
