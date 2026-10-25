@@ -145,12 +145,12 @@ def test_dispatch_claude_userpromptsubmit_end_to_end(staged_hooks: Path):
     specific = data.get("hookSpecificOutput", {})
     assert specific.get("hookEventName") == "UserPromptSubmit"
     content = specific.get("additionalContext", "")
-    expected_inject, _ = load_message_pair(staged_hooks, "honesty")
+    expected_inject, _ = load_message_pair(staged_hooks, "hearsay")
     assert expected_inject in content
 
 
 def test_dispatch_agy_preinvocation_end_to_end(staged_hooks: Path):
-    """End-to-end dispatch for AGY PreInvocation: no fallback on user prompt without PKB, honesty on peer report."""
+    """End-to-end dispatch for AGY PreInvocation: no fallback on user prompt without PKB, hearsay on peer report."""
     proc_user = subprocess.run(
         [
             sys.executable,
@@ -190,7 +190,7 @@ def test_dispatch_agy_preinvocation_end_to_end(staged_hooks: Path):
     data = json.loads(proc_peer.stdout)
     steps = data.get("injectSteps", [])
     assert len(steps) > 0
-    expected_inject, _ = load_message_pair(staged_hooks, "honesty")
+    expected_inject, _ = load_message_pair(staged_hooks, "hearsay")
     assert any(expected_inject in step.get("ephemeralMessage", "") for step in steps)
 
 

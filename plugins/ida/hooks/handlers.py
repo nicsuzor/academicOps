@@ -24,7 +24,6 @@ from dispatch import (
     Result,
     _merge,
     _run_handler,
-    block,
     load_message_pair,
     warn,
 )
@@ -134,11 +133,11 @@ _is_agent = is_agent
 
 
 def honest_output(ctx: HookContext) -> Result | None:
-    """Remind all agents to present substantiating evidence on stop, blocking once."""
-    if ctx.raw.get("background_tasks"):
+    """Remind subagents on SubagentStart to write reports in premise-check shape."""
+    if ctx.event != "SubagentStart" or ctx.raw.get("background_tasks"):
         return None
 
-    return block(*load_message_pair(ctx.hooks_dir, "honesty"))
+    return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
 
 
 def _cap_output(out: str) -> str:
@@ -885,11 +884,7 @@ def agy_session_pointer(ctx: HookContext) -> Result | None:
     return warn(PREMISE_CHECK_POINTER)
 
 
-def honesty_on_peer_message(ctx: HookContext) -> Result | None:
-    """Remind all agents to write replies/reports in premise-check shape on inbound responses."""
-    if not should_arm_hearsay(ctx):
-        return None
-    return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
+honesty_on_peer_message = honest_output
 
 
 def rule_against_hearsay(ctx: HookContext) -> Result | None:
@@ -1062,7 +1057,6 @@ def user_prompt_submit(ctx: HookContext) -> Result | None:
     steps = (
         agy_session_pointer,
         search_the_pkb,
-        honesty_on_peer_message,
         rule_against_hearsay,
         hearsay_arm,
     )
@@ -1081,16 +1075,25 @@ def post_tool(ctx: HookContext) -> Result | None:
     _run_claude_tracer(ctx, "handle_post_tool")
     agy_post_tool(ctx)
     steps = (
-        rule_against_hearsay,
         post_tool_degraded_check,
         hearsay_arm,
     )
     return _merge([_run_handler(step, ctx) for step in steps])
 
 
+def post_tool_batch(ctx: HookContext) -> Result | None:
+    """Single entry-point handler for canonical PostToolBatch."""
+    return _run_handler(rule_against_hearsay, ctx)
+
+
 def post_tool_failure(ctx: HookContext) -> Result | None:
     _run_claude_tracer(ctx, "handle_post_tool_failure")
     return None
+
+
+def subagent_start(ctx: HookContext) -> Result | None:
+    """Single entry-point handler for canonical SubagentStart."""
+    return _run_handler(honest_output, ctx)
 
 
 def stop(ctx: HookContext) -> Result | None:
@@ -1146,6 +1149,8 @@ HANDLERS: dict[str, list] = {
     "PreToolUse": [pre_tool],
     "PostToolUse": [post_tool],
     "PostToolUseFailure": [post_tool_failure],
+    "PostToolBatch": [post_tool_batch],
+    "SubagentStart": [subagent_start],
     "Stop": [stop],
     "SubagentStop": [subagent_stop],
     "StopFailure": [stop_failure],

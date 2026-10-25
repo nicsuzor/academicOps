@@ -29,10 +29,10 @@ As the user, I want each agent reminded of the contract at the moment it writes 
 
 | Moment | Agents | Reminder |
 | - | - | - |
-| Session start, resume and compaction | All | One line: reports follow `premise-check`, written in its shape and checked on receipt ([`plugins/ida/hooks/handlers.py:763-773,816-831`](../../plugins/ida/hooks/handlers.py#L763-L773)) |
-| A peer message arrives or subagent starts / receives initial prompt | All | Your reply is a report; write it per the skill ([`plugins/ida/hooks/handlers.py:886-903`](../../plugins/ida/hooks/handlers.py#L886-L903)) |
-| A report or direction arrives | All | Check it per the skill; if a direction, check that it derives from `## Ask` and refuse unverified prescriptions before logging deliverables; if a report isn't in shape, REVISE and return it ([`plugins/ida/hooks/handlers.py:905-909`](../../plugins/ida/hooks/handlers.py#L905-L909), [`plugins/ida/hooks/hearsay_gate.py:856-922`](../../plugins/ida/hooks/hearsay_gate.py#L856-L922)) |
-| Gate refusal or `Stop` block | All | At most two lines naming the claim id and the skill; one line for the user ([`plugins/ida/hooks/premise_check_gate.py:475-505,817-855`](../../plugins/ida/hooks/premise_check_gate.py#L475-L505)) |
+| Session start, resume and compaction | All | One line: reports follow `premise-check`, written in its shape and checked on receipt ([`plugins/ida/hooks/handlers.py:817-858`](../../plugins/ida/hooks/handlers.py#L817-L858)) |
+| A subagent starts (`SubagentStart`) | All subagents | Your reply is a report; write it per the skill ([`plugins/ida/hooks/handlers.py:136-141,1094-1096`](../../plugins/ida/hooks/handlers.py#L136-L141)) |
+| A report or direction arrives (`UserPromptSubmit` or `PostToolBatch`) | All | Check it per the skill; if a direction, check that it derives from `## Ask` and refuse unverified prescriptions before logging deliverables; if a report isn't in shape, REVISE and return it ([`plugins/ida/hooks/handlers.py:891-895,1086-1088`](../../plugins/ida/hooks/handlers.py#L891-L895), [`plugins/ida/hooks/hearsay_gate.py:805-845,881-949`](../../plugins/ida/hooks/hearsay_gate.py#L805-L845)) |
+| Gate refusal or `Stop` block | All | At most two lines naming the claim id and the skill; one line for the user ([`plugins/ida/hooks/hearsay_gate.py:487-510,886-949`](../../plugins/ida/hooks/hearsay_gate.py#L487-L510)) |
 
 A report arrives as a foreground subagent's result, a background subagent's notification, or a peer message. Each harness carries these moments on its own hook events; the event map is in [ARCHITECTURE.md](../ARCHITECTURE.md).
 
