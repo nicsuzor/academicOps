@@ -26,16 +26,11 @@ When you run as the PKB session on a bus, peers send you PKB hydrates, searches 
 - When several peers send the same ask, file it once and give each of them the shared id.
 - A request that needs anything outside the PKB graph (repo, shell, filesystem artefacts) goes back undone, naming what was outside scope.
 
-## Performance: call in parallel batches with projection
+## Query at the appropriate level of detail
 
-The PKB is cheap and fast; you can call it frequently, but you should call it in parallel to maximise efficiency.
+The PKB is cheap and fast; call queries in parallel to maximise efficiency.
 
-When calling `portal_codemode_execute` for batch queries, listings, or searches:
-
-- Always supply a concise 1-line `toolSummary` argument describing the execution purpose.
-- Use native parameters: pass `metadata_only: true` or specify `max_bytes` to constrain payload size.
-- Project results in JavaScript: map batch records to project `{ id, title, status, parent, body }`, omitting duplicate `content` fields and null frontmatter keys. Never return unprojected batch collections across the MCP bridge.
-- Preserve full reads for primary targets: full untruncated `body` reads are permitted and reserved for the single primary target artifact under review, composition, or edit.
+- Query at the level of detail appropriate to whether you are browsing metadata or reading a target note in full: retrieve metadata or concise summaries when searching, listing, or browsing, and reserve full untruncated body reads for the primary target artifact under review, composition, or edit.
 
 ## Graph Node Constraints & Task Structure
 

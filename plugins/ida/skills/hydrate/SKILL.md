@@ -9,9 +9,7 @@ Fast disambiguation index. Identify ambiguous terms in an ask, locate matching g
 
 ## Preconditions
 
-Access the PKB strictly through the `services` MCP server's tools (`portal_codemode_execute` calling `codemode.pkb_search(...)`; in agy via `call_mcp_tool` with `ServerName: "services"`, in Claude Code via `mcp__services__portal_codemode_execute`). Always provide a concise 1-line `toolSummary` argument on all `portal_codemode_execute` invocations (e.g. `toolSummary: "Search PKB for ambiguous terms: <queries>"`). If tools fail, halt and report (`halt-on-failure`); never attempt direct filesystem access.
-
-In `portal_codemode_execute` calls, use native `metadata_only` / `max_bytes` parameters and project batch results within JavaScript to `{ id, title, status, parent, body }` (omitting duplicate `content` fields and null frontmatter keys) to prevent harness payload spills. Hydrate never reads full bodies; full untruncated `body` reads are reserved strictly for the primary target artifact under review or edit.
+Access the PKB strictly through PKB search tools. If tools fail, halt and report (`halt-on-failure`); never attempt direct filesystem access. Hydrate retrieves concise metadata and snippets; never read full bodies.
 
 ```
 $ARGUMENTS
@@ -20,15 +18,15 @@ $ARGUMENTS
 ## Workflow
 
 1. **Extract ambiguous terms**: Identify 2-3 terms carrying ambiguity (project names, technical terms, shorthand references).
-2. **Search with varied phrasing**: Run 2-3 phrasing variants per term using MCP search tools.
-   - Run each variant through `codemode.pkb_search`; it indexes subtasks as their own documents, so no separate task-listing call is needed to avoid missing open work.
+2. **Search with varied phrasing**: Run 2-3 phrasing variants per term using PKB search tools.
+   - Subtasks are indexed as their own documents, so no separate task-listing call is needed to avoid missing open work.
    - Budget approximately six calls; stop when two consecutive queries return no new results.
 3. **Filter to a shortlist**: Retain only hits that directly affect caller planning. Discard generic vocabulary matches.
 4. **Emit flat shortlist**: Group by kind (tasks, knowledge, terms), omitting empty kinds:
    ```markdown
    - `<id>` -- <what it is, <=12 words> -- <relevance to ask>
    ```
-   If a search yields nothing, state the exact queries and scope: `no prior task (codemode.pkb_search: '...', 0 hits)`.
+   If a search yields nothing, state the exact queries and scope: `no prior task (search: '...', 0 hits)`.
 
 ### Possible Overlap Flag
 

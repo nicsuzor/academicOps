@@ -5,7 +5,7 @@ description: List, read, add, edit, and retire workflow templates across project
 
 # Workflow Library
 
-Manage composable workflow templates (`type: template`) across three resolution tiers. Every PKB call below runs through the `services` MCP server's code-mode interface (`portal_codemode_execute` calling `codemode.<pkb_op>(...)`; in agy via `call_mcp_tool` with `ServerName: "services"`, in Claude Code via `mcp__services__portal_codemode_execute`), always passing a concise 1-line `toolSummary` argument (e.g. `toolSummary: "List workflow templates for tier resolution"`), not a directly-invocable flat tool.
+Manage composable workflow templates (`type: template`) across three resolution tiers.
 
 ## Tiers and Resolution
 
@@ -13,8 +13,8 @@ Resolution order is **Project > PKB > Universal**. Higher tiers shadow lower tie
 
 | Tier | Location | Enumeration |
 | - | - | - |
-| 1. Project | PKB templates whose `project` is the task's project | `codemode.pkb_list_tasks({ type: "template", project: "<project>", include_done: true })` |
-| 2. PKB | PKB templates with no `project` | `codemode.pkb_list_tasks({ type: "template", include_done: true })`, keep `project: null` |
+| 1. Project | PKB templates whose `project` is the task's project | PKB list tasks (`type: "template"`, `project: "<project>"`, `include_done: true`) |
+| 2. PKB | PKB templates with no `project` | PKB list tasks (`type: "template"`, `include_done: true`), keep `project: null` |
 | 3. Universal | `${CLAUDE_SKILL_DIR}/workflows/` | `Glob ${CLAUDE_SKILL_DIR}/workflows/*.md` |
 
 The project is the `project` field of the task being composed for, or the project the caller names. With neither, the project tier is empty for composition. Templates scoped to any other project are out of scope for composition, but visible in list mode.
@@ -31,7 +31,7 @@ Enumerate and read universal templates using file tools (`Glob`, `Read`) rather 
 
 Enumerate every template across all three tiers live. Return a unified table: **slug \| tier \| coverage \| status**.
 
-- Include every universal template file (`${CLAUDE_SKILL_DIR}/workflows/*.md`) and every PKB template from the graph (`codemode.pkb_list_tasks({ type: "template", include_done: true })`).
+- Include every universal template file (`${CLAUDE_SKILL_DIR}/workflows/*.md`) and every PKB template from the graph (tasks with `type: "template"`, `include_done: true`).
 - For PKB templates with a `project` field, indicate their project scope in the tier column (e.g. `Project (brain)`). Foreign-project templates are displayed with their project prefix or formatted as `Project (<name>)` in the tier column without altering composition scoping.
 - Extract coverage from `description` in frontmatter, or, if that is missing, from the first sentence of `## What this step does`. Read universal template files directly via `Read`; do not run `Bash` loops.
 - Filter out dated instances (`-*-\d{8}-*`) and `status: cancelled`. Do not filter out foreign-project templates.
@@ -55,7 +55,7 @@ Resolve the template slug across tiers in precedence order. Output the winning c
 Update existing templates in place. Authoring changes must comply with `ida:craft` (`## Workflow Templates`).
 
 - **Universal**: Edit the file directly.
-- **PKB**: Pass only the markdown body below the closing `---` to `codemode.pkb_update_body` to prevent frontmatter duplication.
+- **PKB**: Update the template body in the PKB, passing only the markdown body below the closing `---` to prevent frontmatter duplication.
 
 ### preview
 
@@ -68,13 +68,12 @@ Do not ad lib extra requirements or guess at scope; pass any ambiguity in the pr
 
 ### retire
 
-1. Check for tasks governing retirement (`codemode.pkb_search`). Halt if unfulfilled dependencies exist.
-2. Delete the artifact (`rm` for universal files, `codemode.pkb_delete` for PKB nodes).
+1. Check for tasks governing retirement via PKB search. Halt if unfulfilled dependencies exist.
+2. Delete the artifact (`rm` for universal files, PKB delete for PKB nodes).
 3. Name the superseding workflow in the release message or commit.
 
 ## Constraints
 
 - Query tiers dynamically; do not rely on static indices or memory.
-- In `portal_codemode_execute` calls, always provide a concise 1-line `toolSummary` argument. In batch queries (`pkb_list_tasks`, `pkb_search`), use native `metadata_only` / `max_bytes` parameters and project batch results in JavaScript to `{ id, title, status, parent, body }` (omitting duplicate `content` fields and null frontmatter keys) to prevent harness spills, while allowing full untruncated `body` reads for the primary target artifact under review or edit.
 - Keep templates focused on obligations and exit criteria; leave operational method to skills.
 - Do not mint tasks or dispatch work during library management operations.
