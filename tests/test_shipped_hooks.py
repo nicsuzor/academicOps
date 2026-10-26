@@ -317,7 +317,8 @@ def _command_for(client: str, build_dir: Path, wire_event: str) -> str:
 # directly. A handler needs a `command`; `type` defaults to "command".
 
 _AGY_GROUPED_EVENTS = {"PreToolUse", "PostToolUse"}
-_AGY_FLAT_EVENTS = {"PreInvocation", "PostInvocation", "Stop"}
+_AGY_FLAT_EVENTS = {"PreInvocation", "PostInvocation", "SessionStart", "Stop"}
+
 
 
 def test_shipped_agy_hooks_json_matches_agys_schema(dist_root):

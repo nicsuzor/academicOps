@@ -158,7 +158,7 @@ def test_hooks_json_rendered_per_client(built):
 
 
 def test_agy_rejects_an_event_it_cannot_fire(tmp_path):
-    """agy fires five hook events and no session-level event of any kind. A
+    """agy fires hook events and no SessionEnd event. A
     template wiring one anyway would ship a key agy silently ignores — a hook
     indistinguishable from a working one — so the build stops instead."""
     from build.clients.agy import _to_agy_hooks
@@ -176,9 +176,50 @@ def test_agy_rejects_an_event_it_cannot_fire(tmp_path):
         version=VERSION,
         manifests={},
     )
-    config = {"hooks": {"SessionStart": [{"hooks": [{"command": "bash up.sh"}]}]}}
-    with pytest.raises(BuildError, match="SessionStart"):
+    config = {"hooks": {"SessionEnd": [{"hooks": [{"command": "bash up.sh"}]}]}}
+    with pytest.raises(BuildError, match="SessionEnd"):
         _to_agy_hooks(config, ctx)
+
+
+def test_agy_accepts_session_start_as_flat_event(tmp_path):
+    """agy's lifecycle hooks embed SessionStart as a supported flat event."""
+    from build.clients.agy import _to_agy_hooks
+    from build.context import BuildContext, Plugin
+
+    ctx = BuildContext(
+        plugin=Plugin(
+            directory="ida",
+            marketplace_name="ida",
+            description="desc",
+            category="productivity",
+            source_dir=tmp_path,
+        ),
+        client="agy",
+        version=VERSION,
+        manifests={},
+    )
+    config = {
+        "hooks": {
+            "SessionStart": [
+                {
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": 'uv run --project "${AGY_PLUGIN_ROOT}" python "${AGY_PLUGIN_ROOT}/hooks/dispatch.py" agy SessionStart',
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+    agy_hooks = _to_agy_hooks(config, ctx)
+    assert "ida" in agy_hooks
+    assert "SessionStart" in agy_hooks["ida"]
+    entries = agy_hooks["ida"]["SessionStart"]
+    assert len(entries) == 1
+    assert entries[0]["type"] == "command"
+    assert entries[0]["command"] == "uv run --project . python hooks/dispatch.py agy SessionStart"
+
 
 
 def _agy_ctx(tmp_path, directory="aops", name="aops"):

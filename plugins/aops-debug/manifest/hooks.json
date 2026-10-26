@@ -314,6 +314,16 @@
     },
     "agy": {
       "hooks": {
+        "SessionStart": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy SessionStart"
+              }
+            ]
+          }
+        ],
         "PreToolUse": [
           {
             "hooks": [

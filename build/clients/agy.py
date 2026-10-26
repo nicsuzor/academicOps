@@ -37,13 +37,14 @@ _PLACEHOLDER_RE = re.compile(r"\$\{[^}]*\}")
 _SHELL_VAR_RE = re.compile(r"\$[A-Za-z_][A-Za-z0-9_]*")
 _FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n?(.*)$", re.DOTALL)
 
-# agy's five hook events, split by the structure each one takes. The tool
+# agy's hook events, split by the structure each one takes. The tool
 # events group their handlers under a `matcher` regex; the rest take a flat
 # list of handlers. Both lists, and the split between them, are agy's own:
 # the CLI binary embeds its "Lifecycle Hooks (`hooks.json`)" reference, whose
 # "Hook Spec Fields" and "Supported Event Types" sections define them.
 _GROUPED_EVENTS = ("PreToolUse", "PostToolUse")
-_FLAT_EVENTS = ("PreInvocation", "PostInvocation", "Stop")
+_FLAT_EVENTS = ("PreInvocation", "PostInvocation", "SessionStart", "Stop")
+
 
 
 def adapt(build_dir: Path, ctx: BuildContext) -> None:
