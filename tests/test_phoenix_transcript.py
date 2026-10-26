@@ -286,3 +286,102 @@ def test_resolve_endpoint_supplies_no_default_when_unset(monkeypatch):
     with pytest.raises(pt.ConfigError) as exc_proj:
         pt.resolve_project(None)
     assert "no Phoenix project" in str(exc_proj.value)
+
+
+def test_phoenix_trace_and_token_cost_canonical_env_vars_only(monkeypatch):
+    """phoenix_trace and phoenix_token_cost resolve only PHOENIX_MCP_URL / PHOENIX_MCP_PROJECT and reject legacy vars."""
+    import phoenix_token_cost as ptc
+    import phoenix_trace as ptr
+
+    monkeypatch.delenv("PHOENIX_MCP_URL", raising=False)
+    monkeypatch.delenv("PHOENIX_MCP_PROJECT", raising=False)
+    monkeypatch.setenv("PHOENIX_BASE_URL", "http://legacy-base:6006")
+    monkeypatch.setenv("PHOENIX_COLLECTOR_ENDPOINT", "http://legacy-collector:6006")
+    monkeypatch.setenv("PHOENIX_PROJECT_NAME", "legacy-project")
+
+    with pytest.raises(ptc.ConfigError, match="PHOENIX_MCP_URL"):
+        ptc.resolve_base_url(None)
+    with pytest.raises(ptr.ConfigError, match="PHOENIX_MCP_URL"):
+        ptr.resolve_base_url(None)
+    with pytest.raises(ptr.ConfigError, match="PHOENIX_MCP_PROJECT"):
+        ptr.resolve_project_name(None, None)
+
+    monkeypatch.setenv("PHOENIX_MCP_URL", "https://mcp.example.test/mcp/")
+    monkeypatch.setenv("PHOENIX_MCP_PROJECT", "academicOps")
+    assert ptc.resolve_base_url(None) == "https://mcp.example.test/mcp"
+    assert ptr.resolve_base_url(None) == "https://mcp.example.test/mcp"
+    assert ptr.resolve_project_name(None, None) == "academicOps"
+
+
+def test_get_json_routes_through_services_mcp_proxy(monkeypatch):
+    """get_json translates Phoenix /v1/projects REST URLs into phoenix_execute MCP JSON-RPC calls with CF Access headers."""
+    import phoenix_token_cost as ptc
+
+    monkeypatch.setenv("DISPATCHER_MCP_TOKEN_ID", "test-cf-id")
+    monkeypatch.setenv("DISPATCHER_MCP_TOKEN_SECRET", "test-cf-secret")
+    ptc._MCP_SESSIONS.clear()
+
+    recorded_requests = []
+
+    class FakeResponse:
+        def __init__(self, body: str, headers: dict[str, str] | None = None):
+            self._body = body.encode("utf-8")
+            self.headers = headers or {}
+
+        def read(self) -> bytes:
+            return self._body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    def fake_urlopen(req, timeout=None):
+        payload = json.loads(req.data.decode("utf-8"))
+        headers = {k.lower(): v for k, v in req.header_items()}
+        recorded_requests.append((req.full_url, headers, payload))
+        if payload.get("method") == "initialize":
+            return FakeResponse(
+                json.dumps({"jsonrpc": "2.0", "id": 1, "result": {}}),
+                headers={"mcp-session-id": "mcp-sess-123"},
+            )
+        inner = json.dumps({"data": [{"id": "proj-1", "name": "academicOps"}], "next_cursor": None})
+        sse = (
+            "event: message\n"
+            + "data: "
+            + json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "result": {"content": [{"type": "text", "text": inner}], "isError": False},
+                }
+            )
+            + "\n\n"
+        )
+        return FakeResponse(sse)
+
+    monkeypatch.setattr(ptc.urllib.request, "urlopen", fake_urlopen)
+
+    url = (
+        "https://mcp.example.test/mcp/v1/projects/academicOps/spans"
+        "?attribute=session.id%3Asess-42&limit=500"
+    )
+    res = pt.get_json(url)
+    assert res == {"data": [{"id": "proj-1", "name": "academicOps"}], "next_cursor": None}
+    assert len(recorded_requests) == 2
+
+    init_url, init_headers, init_payload = recorded_requests[0]
+    assert init_url == "https://mcp.example.test/mcp"
+    assert init_headers["cf-access-client-id"] == "test-cf-id"
+    assert init_headers["cf-access-client-secret"] == "test-cf-secret"
+    assert init_payload["method"] == "initialize"
+
+    call_url, call_headers, call_payload = recorded_requests[1]
+    assert call_url == "https://mcp.example.test/mcp"
+    assert call_headers["mcp-session-id"] == "mcp-sess-123"
+    assert call_payload["params"]["name"] == "phoenix_execute"
+    assert (
+        call_payload["params"]["arguments"]["code"]
+        == 'return await call_tool("getSpans", {"project_identifier": "academicOps", "limit": 500, "attribute": ["session.id:sess-42"]})'
+    )

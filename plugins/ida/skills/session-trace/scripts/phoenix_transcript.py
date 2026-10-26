@@ -53,22 +53,26 @@ import json
 import os
 import re
 import sys
-import urllib.error
 import urllib.parse
-import urllib.request
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from phoenix_token_cost import PRICES, cost_usd, price_row  # noqa: E402
+from phoenix_token_cost import (  # noqa: E402
+    BASE_URL_ENV_VAR,
+    PRICES,
+    PROJECT_ENV_VAR,
+    ConfigError,
+    cost_usd,
+    get_json,
+    price_row,
+    resolve_base_url,
+)
 
-BASE_URL_ENV_VAR = "PHOENIX_MCP_URL"
-PROJECT_ENV_VAR = "PHOENIX_MCP_PROJECT"
 PAGE_LIMIT = 1000
 SESSION_PAGE_LIMIT = 100
-HTTP_TIMEOUT = 120
 SLOWEST_STEPS = 10
 HINT_CHARS = 72
 DETAIL_CHARS = 240
@@ -90,10 +94,6 @@ NEW_CONTEXT_KEYS = ("new_context",)
 TURN_KINDS = ("CHAIN", "AGENT")
 
 Span = dict[str, Any]
-
-
-class ConfigError(Exception):
-    """A required input is missing or unusable."""
 
 
 # --- attribute access --------------------------------------------------------
@@ -158,25 +158,6 @@ def ms_between(start: datetime, end: datetime) -> float:
 
 
 # --- HTTP --------------------------------------------------------------------
-
-
-def get_json(url: str) -> Any:
-    request = urllib.request.Request(url, headers={"Accept": "application/json"})
-    try:
-        with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        body = exc.read().decode("utf-8", "replace")[:400]
-        raise ConfigError(f"HTTP {exc.code} from {url}: {body}") from exc
-    except urllib.error.URLError as exc:
-        raise ConfigError(f"cannot reach {url}: {exc.reason}") from exc
-
-
-def resolve_base_url(explicit: str | None) -> str:
-    candidate = (explicit or os.environ.get(BASE_URL_ENV_VAR, "")).strip()
-    if not candidate:
-        raise ConfigError(f"no Phoenix base URL. Pass --base-url, or set {BASE_URL_ENV_VAR}")
-    return candidate.rstrip("/")
 
 
 def resolve_project(explicit: str | None) -> str:
