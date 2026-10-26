@@ -47,15 +47,12 @@ Resolve the template slug across tiers in precedence order. Output the winning c
 2. Select destination tier:
    - **Project**: Specific to one project. Write it to the PKB with `project: <project>` and id `<project>-<slug>`.
    - **PKB**: Portable personal workflow. Write it to the PKB with no `project`.
-   - **Universal**: Core baseline standard across projects.
-3. Write template using the template schema (<100 lines), to these rules:
-   - **State the contract, not the neighbour.** Say what the step needs as input and what it hands back. Never name another template, in the body or the frontmatter: the composing agent decides at composition time what fills each slot. A composite lists its stages as contract expectations in order ("an independent review verdict on the spec"), not as slugs.
-   - **Write for a headless worker.** The executor runs unattended and asynchronously, with no one to talk to mid-task. A step never pauses, waits, or blocks for a human. Where an approval boundary is reached, the step ends there: the worker files the complete artifact on the record and structures the boundary so dependent work remains strictly blocked until approval is recorded (e.g. releasing as `partial` with a queued review task wired with `depends_on`, or an explicit decision task). Work that follows the decision belongs in a separate task that depends on the approval decision; say so, so the composer cuts the chain at that point.
-   - **Promise only what the executor delivers.** The output contract lists artifacts and state the executing agent itself produces. Another party's act -- a human's approval, a reviewer's verdict -- is never an output-contract term.
+   - **Universal**: Core baseline standard across projects (`${CLAUDE_SKILL_DIR}/workflows/`).
+3. Author the template following `ida:craft` (`## Workflow Templates`), which is the authoritative style, schema, and authoring standard across all tiers. Compliance with its contract separation, headless worker execution, approval boundary, and deliverable rules is mandatory.
 
 ### edit
 
-Update existing templates in place.
+Update existing templates in place. Authoring changes must comply with `ida:craft` (`## Workflow Templates`).
 
 - **Universal**: Edit the file directly.
 - **PKB**: Pass only the markdown body below the closing `---` to `codemode.pkb_update_body` to prevent frontmatter duplication.
@@ -74,19 +71,6 @@ Do not ad lib extra requirements or guess at scope; pass any ambiguity in the pr
 1. Check for tasks governing retirement (`codemode.pkb_search`). Halt if unfulfilled dependencies exist.
 2. Delete the artifact (`rm` for universal files, `codemode.pkb_delete` for PKB nodes).
 3. Name the superseding workflow in the release message or commit.
-
-A template carries only what a composing agent needs to select it and to know the step is finished, the same sufficient-and-no-more standard `/reify` composes to. Inventing exclusions, contraindications, or gates the work does not call for overshoots it. Components sit on one flat spine, not sorted into types; a composite names its stages by contract, which is the level `/decompose` reads, and leaf templates carry the steps, which is the level `/reify` reads. A template stating an obligation that blocks acceptance rather than a process that proceeds conventionally carries a `wf-` prefix, no frontmatter field needed to say so.
-
-## Template Schema
-
-```yaml
----
-title: <human name>
-type: template
-description: <one line: what class of work this covers, so a composer can select it>
-tags: [...]
----
-```
 
 ## Constraints
 
