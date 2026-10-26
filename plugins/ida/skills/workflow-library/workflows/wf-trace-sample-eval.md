@@ -41,6 +41,7 @@ Behavioral and qualitative comparative evaluation between baseline and candidate
 ## Output contract
 
 A qualitative evaluation report containing:
+
 - Sample inventory: OTel session/span IDs for Bucket A and Bucket B with prompt class categorization.
 - Comparative evaluation table: Prompt class, baseline response receipt, candidate response receipt, qualitative assessment, and regression verdict.
 - Defect tickets filed for any observed regression (one task per root cause).
