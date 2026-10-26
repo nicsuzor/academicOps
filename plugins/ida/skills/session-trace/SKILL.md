@@ -61,4 +61,4 @@ the recipe from [references/sql-recipes.md](references/sql-recipes.md).
 - Filter on `session.id`, never `trace_id`: one trace can hold several sessions.
 - Subagents share the dispatching session's `session.id`; a spawned worker session
   carries no attribute naming its parent (Recipe F correlates them).
-- Score what a session did on its tool-call spans, not on what its report says.
+- Phoenix tool spans prove execution rather than logical entailment or sufficiency; auditing and QA must inspect durable primary deliverables rather than ephemeral container paths, evaluating whether observed evidence logically entails the claimed outcomes.
