@@ -25,8 +25,8 @@ spans an orphan points at into a ``foreign_parents`` bucket of their own. Neithe
 the exported set.
 
 Configuration is environment-only, per ``specs/ARCHITECTURE.md`` "No defaults": the base
-URL comes from ``--base-url`` or ``$PHOENIX_BASE_URL`` / ``$PHOENIX_COLLECTOR_ENDPOINT``,
-and the project from ``--project`` or ``$PHOENIX_PROJECT_NAME``. Both fail loudly.
+URL comes from ``--base-url`` or ``$PHOENIX_MCP_URL``, and the project from ``--project``
+or ``$PHOENIX_MCP_PROJECT``. Both fail loudly.
 
 Standard library only, so the skill can invoke it as ``uv run python scripts/phoenix_trace.py``.
 """
@@ -38,21 +38,25 @@ import json
 import os
 import re
 import sys
-import urllib.error
 import urllib.parse
-import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-BASE_URL_ENV_VARS = ("PHOENIX_BASE_URL", "PHOENIX_COLLECTOR_ENDPOINT")
-PROJECT_ENV_VAR = "PHOENIX_PROJECT_NAME"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from phoenix_token_cost import (  # noqa: E402
+    BASE_URL_ENV_VAR,
+    PROJECT_ENV_VAR,
+    ConfigError,
+    get_json,
+    resolve_base_url,
+)
+
 PAGE_LIMIT = 1000
 # `trace_id` and `span_id` are repeatable query filters; batching keeps the URL bounded.
 ID_BATCH = 25
 PREVIEW_CHARS = 2000
 DEFAULT_TOLERANCE_MS = 500
-HTTP_TIMEOUT = 60
 # Per-line join warnings are near-identical in bulk; past this many, emit a tail count
 # instead so the block stays readable.
 MAX_LINE_WARNINGS = 20
@@ -66,13 +70,6 @@ Span = dict[str, Any]
 # em-dash summary may sit between the two backticked spans.
 TOOL_CALL_LINE = re.compile(r"^#{2,6} .*?Tool call: `([^`]+)`.*`\(([^)`]+)\)`\s*$")
 FRONTMATTER_SESSION = re.compile(r"^session_id:\s*(\S+)\s*$", re.MULTILINE)
-
-
-# --- errors ----------------------------------------------------------------
-
-
-class ConfigError(Exception):
-    """A required input is missing or unusable."""
 
 
 # --- time helpers ----------------------------------------------------------
@@ -108,33 +105,6 @@ def sort_key(span: Span) -> tuple[float, str]:
 # --- HTTP ------------------------------------------------------------------
 
 
-def get_json(url: str) -> Any:
-    request = urllib.request.Request(url, headers={"Accept": "application/json"})
-    try:
-        with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        body = exc.read().decode("utf-8", "replace")[:400]
-        raise ConfigError(f"HTTP {exc.code} from {url}: {body}") from exc
-    except urllib.error.URLError as exc:
-        raise ConfigError(f"cannot reach {url}: {exc.reason}") from exc
-
-
-def resolve_base_url(explicit: str | None) -> str:
-    candidate = explicit
-    if not candidate:
-        for name in BASE_URL_ENV_VARS:
-            value = os.environ.get(name, "").strip()
-            if value:
-                candidate = value
-                break
-    if not candidate:
-        raise ConfigError(
-            "no Phoenix base URL. Pass --base-url, or set one of: " + ", ".join(BASE_URL_ENV_VARS)
-        )
-    return candidate.rstrip("/")
-
-
 def list_projects(base_url: str) -> list[dict[str, Any]]:
     payload = get_json(f"{base_url}/v1/projects")
     return payload.get("data", []) if isinstance(payload, dict) else []
@@ -145,11 +115,8 @@ def project_names(projects: list[dict[str, Any]]) -> str:
 
 
 def _load_polecat_config() -> dict[str, Any]:
-    cfg_path = os.environ.get("AOPS_POLECAT_CONFIG")
-    if not cfg_path:
-        sessions = os.environ.get("AOPS_SESSIONS")
-        if sessions:
-            cfg_path = os.path.join(sessions, "polecat.yaml")
+    sessions = os.environ.get("AOPS_SESSIONS")
+    cfg_path = os.path.join(sessions, "polecat.yaml") if sessions else None
     if cfg_path and os.path.exists(cfg_path):
         try:
             import yaml
@@ -1037,7 +1004,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--project",
         help=f"Phoenix project name or id; falls back to ${PROJECT_ENV_VAR}. Required.",
     )
-    parser.add_argument("--base-url", help="Phoenix base URL (overrides the environment)")
+    parser.add_argument(
+        "--base-url",
+        help=f"Phoenix base URL; falls back to ${BASE_URL_ENV_VAR}. Required.",
+    )
     parser.add_argument("--transcript", help="path to <base>.controller.md for the join")
     parser.add_argument(
         "--tolerance-ms",

@@ -37,9 +37,8 @@ the channel it fronts (``telegram face``); its first human-typed prompt in the w
 Prices are USD per million tokens and live in :data:`PRICES`; override with
 ``--prices path.json``. Unknown models cost 0 and are flagged in the footer.
 
-Configuration is environment-only, matching ``phoenix_trace.py``: ``--base-url`` or
-``$PHOENIX_BASE_URL`` / ``$PHOENIX_COLLECTOR_ENDPOINT``; ``--project`` or
-``$PHOENIX_PROJECT_NAME``. Standard library only.
+Configuration is flags or environment, matching ``phoenix_transcript.py``: ``--base-url`` or
+``$PHOENIX_MCP_URL``; ``--project`` or ``$PHOENIX_MCP_PROJECT``. Standard library only.
 
 Examples::
 
@@ -63,8 +62,10 @@ from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-BASE_URL_ENV_VARS = ("PHOENIX_BASE_URL", "PHOENIX_COLLECTOR_ENDPOINT")
-PROJECT_ENV_VAR = "PHOENIX_PROJECT_NAME"
+BASE_URL_ENV_VAR = "PHOENIX_MCP_URL"
+PROJECT_ENV_VAR = "PHOENIX_MCP_PROJECT"
+_ACCESS_TOKEN_PAIRS = (("DISPATCHER_MCP_TOKEN_ID", "DISPATCHER_MCP_TOKEN_SECRET"),)
+_MCP_SESSIONS: dict[str, str] = {}
 PAGE_LIMIT = 1000
 HTTP_TIMEOUT = 120
 
@@ -118,34 +119,169 @@ class ConfigError(Exception):
     """A required input is missing or unusable."""
 
 
-# --- HTTP ------------------------------------------------------------------
+# --- HTTP / MCP proxy ------------------------------------------------------
+
+
+def _mcp_headers(session_id: str | None = None) -> dict[str, str]:
+    headers: dict[str, str] = {
+        "User-Agent": "academicOps/0.10 (session-trace)",
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream",
+    }
+    for id_var, secret_var in _ACCESS_TOKEN_PAIRS:
+        cf_id = os.environ.get(id_var)
+        cf_secret = os.environ.get(secret_var)
+        if cf_id and cf_secret:
+            headers["CF-Access-Client-Id"] = cf_id
+            headers["CF-Access-Client-Secret"] = cf_secret
+            break
+    if session_id:
+        headers["mcp-session-id"] = session_id
+    return headers
+
+
+def _parse_v1_url(url: str) -> tuple[str, str, dict[str, Any]]:
+    if "/v1/projects" not in url:
+        raise ConfigError(f"unsupported Phoenix URL path: {url}")
+    mcp_url, rest = url.split("/v1/projects", 1)
+    path_part, _, query_part = rest.partition("?")
+    qs = urllib.parse.parse_qs(query_part, keep_blank_values=False)
+
+    segments = [urllib.parse.unquote(s) for s in path_part.strip("/").split("/") if s]
+    if not segments:
+        args: dict[str, Any] = {"limit": int(qs["limit"][0]) if "limit" in qs else 100}
+        if "cursor" in qs:
+            args["cursor"] = qs["cursor"][0]
+        return mcp_url, "getProjects", args
+
+    if len(segments) == 2 and segments[1] == "sessions":
+        args = {"project_identifier": segments[0]}
+        args["limit"] = int(qs["limit"][0]) if "limit" in qs else 100
+        if "cursor" in qs:
+            args["cursor"] = qs["cursor"][0]
+        return mcp_url, "listProjectSessions", args
+
+    if len(segments) == 2 and segments[1] == "spans":
+        args = {"project_identifier": segments[0]}
+        if "limit" in qs:
+            args["limit"] = int(qs["limit"][0])
+        if "cursor" in qs:
+            args["cursor"] = qs["cursor"][0]
+        if "start_time" in qs:
+            args["start_time"] = qs["start_time"][0]
+        if "end_time" in qs:
+            args["end_time"] = qs["end_time"][0]
+        for list_key in ("attribute", "trace_id", "span_id", "span_kind"):
+            if list_key in qs:
+                args[list_key] = qs[list_key]
+        return mcp_url, "getSpans", args
+
+    raise ConfigError(f"unsupported Phoenix endpoint: {url}")
+
+
+def _extract_jsonrpc_payload(raw_body: str, mcp_url: str) -> dict[str, Any]:
+    try:
+        parsed = json.loads(raw_body)
+        if isinstance(parsed, dict):
+            return parsed
+    except json.JSONDecodeError:
+        pass
+    for line in raw_body.splitlines():
+        line = line.strip()
+        if line.startswith("data:"):
+            try:
+                payload = json.loads(line[5:].strip())
+                if isinstance(payload, dict) and ("result" in payload or "error" in payload):
+                    return payload
+            except json.JSONDecodeError:
+                continue
+    raise ConfigError(f"unparseable MCP response from {mcp_url}: {raw_body[:400]}")
+
+
+def _mcp_init_session(mcp_url: str) -> str:
+    init_payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+            "protocolVersion": "2024-11-05",
+            "capabilities": {},
+            "clientInfo": {"name": "academicOps-session-trace", "version": "0.10"},
+        },
+    }
+    request = urllib.request.Request(
+        mcp_url,
+        data=json.dumps(init_payload).encode("utf-8"),
+        headers=_mcp_headers(),
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT) as response:
+            session_id = response.headers.get("mcp-session-id")
+            if not session_id:
+                raise ConfigError(f"MCP initialize at {mcp_url} returned no mcp-session-id header")
+            _MCP_SESSIONS[mcp_url] = session_id
+            return session_id
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", "replace")[:400]
+        raise ConfigError(f"HTTP {exc.code} from {mcp_url}: {body}") from exc
+    except urllib.error.URLError as exc:
+        raise ConfigError(f"cannot reach {mcp_url}: {exc.reason}") from exc
 
 
 def get_json(url: str) -> Any:
-    request = urllib.request.Request(url, headers={"Accept": "application/json"})
+    mcp_url, tool_name, tool_args = _parse_v1_url(url)
+    session_id = _MCP_SESSIONS.get(mcp_url) or _mcp_init_session(mcp_url)
+    code = f"return await call_tool({json.dumps(tool_name)}, {json.dumps(tool_args)})"
+    call_payload = {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "tools/call",
+        "params": {
+            "name": "phoenix_execute",
+            "arguments": {"code": code},
+        },
+    }
+    request = urllib.request.Request(
+        mcp_url,
+        data=json.dumps(call_payload).encode("utf-8"),
+        headers=_mcp_headers(session_id),
+        method="POST",
+    )
     try:
         with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT) as response:
-            return json.loads(response.read().decode("utf-8"))
+            raw_body = response.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", "replace")[:400]
         raise ConfigError(f"HTTP {exc.code} from {url}: {body}") from exc
     except urllib.error.URLError as exc:
         raise ConfigError(f"cannot reach {url}: {exc.reason}") from exc
 
+    rpc = _extract_jsonrpc_payload(raw_body, mcp_url)
+    if "error" in rpc:
+        raise ConfigError(f"MCP error from {mcp_url}: {rpc['error']}")
+    result = rpc.get("result") or {}
+    content = result.get("content") or []
+    text = "".join(item.get("text", "") for item in content if isinstance(item, dict)).strip()
+    if result.get("isError"):
+        raise ConfigError(f"Phoenix MCP tool {tool_name} failed: {text}")
+    try:
+        return json.loads(text) if text else {}
+    except json.JSONDecodeError as exc:
+        raise ConfigError(f"Phoenix MCP tool {tool_name} returned non-JSON: {text[:400]}") from exc
+
 
 def resolve_base_url(explicit: str | None) -> str:
-    candidate = explicit or next(
-        (os.environ.get(v) for v in BASE_URL_ENV_VARS if os.environ.get(v)), None
-    )
+    candidate = (explicit or os.environ.get(BASE_URL_ENV_VAR, "")).strip()
     if not candidate:
-        raise ConfigError(f"set --base-url or one of {', '.join(BASE_URL_ENV_VARS)}")
-    return candidate.rstrip("/").removesuffix("/v1/traces").removesuffix("/v1")
+        raise ConfigError(f"no Phoenix base URL. Pass --base-url, or set {BASE_URL_ENV_VAR}")
+    return candidate.rstrip("/")
 
 
 def resolve_project(base_url: str, wanted: str | None) -> tuple[str, str]:
-    wanted = wanted or os.environ.get(PROJECT_ENV_VAR)
+    wanted = (wanted or os.environ.get(PROJECT_ENV_VAR, "")).strip()
     if not wanted:
-        raise ConfigError(f"set --project or ${PROJECT_ENV_VAR}")
+        raise ConfigError(f"no Phoenix project. Pass --project, or set {PROJECT_ENV_VAR}")
     projects = get_json(f"{base_url}/v1/projects").get("data", [])
     for project in projects:
         if wanted in (project.get("name"), project.get("id")):
@@ -585,7 +721,7 @@ def main(argv: list[str] | None = None) -> int:
         "--prices", help="JSON file: model -> {in,out,cache_read,cache_write} USD/M"
     )
     parser.add_argument("--project", help=f"Phoenix project (fallback ${PROJECT_ENV_VAR})")
-    parser.add_argument("--base-url", help=f"Phoenix base URL (fallback ${BASE_URL_ENV_VARS[0]})")
+    parser.add_argument("--base-url", help=f"Phoenix base URL (fallback ${BASE_URL_ENV_VAR})")
     parser.add_argument("--json", action="store_true", help="emit rows + meta as JSON")
     parser.add_argument("--markdown", action="store_true", help="emit a markdown table")
     parser.add_argument("--role-width", type=int, default=34, help="agent/role column width")
