@@ -561,9 +561,13 @@ def tool_args(value: Any) -> Any:
 def tool_action(value: Any) -> str:
     args = tool_args(value)
     if isinstance(args, dict):
-        for key in ACTION_KEYS:
-            if isinstance(args.get(key), str) and args[key].strip():
-                return one_line(args[key])
+        candidates = [args]
+        if isinstance(args.get("Arguments"), dict):
+            candidates.append(args["Arguments"])
+        for candidate in candidates:
+            for key in ACTION_KEYS:
+                if isinstance(candidate.get(key), str) and candidate[key].strip():
+                    return one_line(candidate[key])
     return ""
 
 
@@ -690,6 +694,12 @@ def build_tool_steps(
         named = next((s for s in group if first_attr(s, TOOL_NAME_KEYS)), group[0])
         tool_input = group_attr(group, TOOL_INPUT_KEYS)
         tool_output = group_attr(group, TOOL_OUTPUT_KEYS)
+        action_summary = group_attr(group, ("tool.summary",))
+        action = (
+            one_line(str(action_summary))
+            if action_summary and str(action_summary).strip()
+            else tool_action(tool_input)
+        )
         steps.append(
             Step(
                 kind="tool",
@@ -699,7 +709,7 @@ def build_tool_steps(
                 title=str(first_attr(named, TOOL_NAME_KEYS) or named.get("name") or "tool"),
                 hint=tool_hint(tool_input),
                 detail=tool_detail(tool_input),
-                action=tool_action(tool_input),
+                action=action,
                 agent=next(
                     (agent_label(s, session_id) for s in group if agent_label(s, session_id)), ""
                 ),

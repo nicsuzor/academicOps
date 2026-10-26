@@ -32,6 +32,7 @@ The PKB is cheap and fast; you can call it frequently, but you should call it in
 
 When calling `portal_codemode_execute` for batch queries, listings, or searches:
 
+- Always supply a concise 1-line `toolSummary` argument describing the execution purpose.
 - Use native parameters: pass `metadata_only: true` or specify `max_bytes` to constrain payload size.
 - Project results in JavaScript: map batch records to project `{ id, title, status, parent, body }`, omitting duplicate `content` fields and null frontmatter keys. Never return unprojected batch collections across the MCP bridge.
 - Preserve full reads for primary targets: full untruncated `body` reads are permitted and reserved for the single primary target artifact under review, composition, or edit.

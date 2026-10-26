@@ -233,6 +233,22 @@ def test_tool_detail_names_what_a_call_acted_on():
     ) == ('python3 -c " print(1) "')
 
 
+def test_tool_action_extracts_tool_summary():
+    code = "async () => { const a = await codemode.pkb_claim_task({ id: 'aops_fa4c6994' }); }"
+    agy = {
+        "ServerName": "services",
+        "ToolName": "portal_codemode_execute",
+        "Arguments": {"code": code, "toolSummary": "Claim task aops_fa4c6994"},
+    }
+    assert pt.tool_action(json.dumps(agy)) == "Claim task aops_fa4c6994"
+
+    direct = {
+        "code": code,
+        "toolSummary": "Search documents for ambiguous terms",
+    }
+    assert pt.tool_action(json.dumps(direct)) == "Search documents for ambiguous terms"
+
+
 def test_resolve_endpoint_from_environment_variables(monkeypatch):
     """AC1: With only PHOENIX_MCP_URL and PHOENIX_MCP_PROJECT set, resolve from env vars."""
     monkeypatch.setenv("PHOENIX_MCP_URL", "http://phoenix.internal:6006/")
