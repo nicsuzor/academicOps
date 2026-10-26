@@ -1,52 +1,59 @@
 ---
 name: strategic-review
-description: Multi-agent review of an artifact (document, plan, PR). Deploys a rule-compliance reviewer, a strategic-fit reviewer, and a quality reviewer in parallel and reconciles their findings into a single verdict. Pass comment or fix flags to write results back.
+description: Modular multi-agent dialectical review of any artifact (specification, design, plan, document, PR) supervised by James. Calibrates proportionality and altitude upfront, deploys Pauli (strategic direction and congruence with existing material), RBG (compliance), and Marsha (quality and requirement satisfaction) in parallel, drives dialectical deliberation when warranted, and reconciles findings into a single verdict. Pass comment or fix flags to write results back.
 ---
 
 # Strategic Review
 
-Coordinate multi-agent review across expert lenses and synthesize findings into one reconciled verdict.
+Coordinate modular multi-agent dialectical review under **`james` as Supervisor** across three distinct review components and synthesize findings into one reconciled verdict.
 
 ## Inputs
 
-- **Artifact**: File path, PKB note ID, inline text, or PR reference (`owner/repo#N`).
+- **Artifact**: File path, PKB note ID, inline text, design proposal, specification, or PR reference (`owner/repo#N`).
 - **Flags** (optional): `comment` (post findings to review surface), `fix` (apply minor fixes directly). Without flags, review is advisory.
 
 ## Review Process
 
-### 1. Gather Context
+### 1. Supervisor Calibration: Proportionality, Altitude & Context (`james`)
 
-Load the artifact, its diff (for PRs), full file contents, metadata, commit messages and trailers, PR title and body, and review replies. Determine destination repository visibility (public or private) and relevant quality standards. If originating from a brief, verify against its acceptance criteria and evidence requirements.
+Before dispatching reviewers, the Supervisor (`james`) loads the artifact, its originating request, and whatever specifications, requirements, or acceptance criteria are available, determines destination repository visibility (public or private), and explicitly calibrates:
 
-### 2. Strategic Fit Check
+- **Proportionality (depth, rounds, and model selection)**: Weigh the importance, blast radius, and reversibility of the task or artifact at the start:
+  - **High-stakes / critical / architectural work**: Allocate deeper refinement, multiple rounds of dialectical cross-examination, and smarter, higher-capability models (`Model: "pro"`).
+  - **Low-stakes / routine / reversible checks**: Keep the review to a fast, single-pass sanity check with lighter models (`Model: "flash"` or `"flash_lite"`) to confirm the change is sound without wasting time and money.
+- **Altitude alignment**: Define the target level of abstraction for the review so reviewers neither drift into micro-implementation keystrokes on a strategic design nor remain at vague platitudes on a concrete implementation.
 
-Before implementation detail is reviewed, the strategic-fit reviewer (TypeName `pauli`) situates the artifact against the objectives it claims to serve in the PKB graph using the analytical lenses in `../strategize/SKILL.md` and returns an explicit `FIT`/`MISFIT` verdict, distinct from the compliance verdict and the quality verdict. Provide Pauli's strategic-fit brief inline in the dispatch payload (including parent objective, claimed target nodes, and problem definition) rather than directing Pauli to read filesystem workflow templates or repository files, ensuring Pauli remains strictly on the PKB graph.
+### 2. Deploy the Three Review Components in Parallel
 
-### 3. Deploy Parallel Reviewers
+Dispatch all three specialist reviewers concurrently in a single turn using the calibrated `Model` tier. Every reviewer's brief is drawn from the shared review briefing defined in `wf-review` (quoting the originating request and available specifications/requirements/criteria before the artifact or diff):
 
-Dispatch all three reviewers concurrently via `invoke_subagent` in a single message. Every reviewer's brief is drawn from the shared review briefing defined in `wf-review`:
+- **Strategic Direction & Congruence** (TypeName `pauli`, per `wf-strategic-fit`): Evaluates **strategic direction and congruence with existing material** in the PKB -- situating the artifact against parent objectives, PKB graph topology, prior art, existing specifications, topic notes, parsimony, and lifecycle coherence, and returning an explicit `FIT`/`MISFIT` verdict. Provide Pauli's brief inline in the dispatch payload (parent objective, claimed target nodes, problem definition, and summary of the proposed change) so Pauli operates strictly on the PKB graph without reading repository files or filesystem templates.
+- **Compliance** (TypeName `rbg`, per `wf-rbg`): Evaluates **compliance** with universal axioms, project-local rules, data boundaries, and the enforcement pyramid (`specs/enforcement/enforcement.md`). Confined strictly to artifact text/diff and governing rule/spec sources, returning `APPROVE`, `SUGGEST`, `REVISE`, or `REJECT`.
+- **Quality & Requirements Satisfaction** (TypeName `marsha`, per `wf-qa`): Evaluates **quality, runtime fitness, and satisfaction of stated requirements**, testing the artifact empirically and substantively against whatever specifications, requirements, or acceptance criteria are available -- and **if no specifications, requirements, or acceptance criteria are available, treats that absence itself as a critical failure signal (`FAIL` / `REJECT`)**.
 
-- **Rule compliance** (TypeName `rbg`): Axiom and rule compliance per `wf-rbg`. Confined strictly to artifact text/diff and rule/spec sources.
-- **Strategic fit** (TypeName `pauli`): Strategic Fit Check per `wf-strategic-fit`, provided with an inline graph-only brief.
-- **Quality** (TypeName `marsha`): Runtime quality, user ask satisfaction, and excellence per `wf-qa`.
+Every reviewer also judges proportion within its lens: whether the artifact builds more machinery than the request needs, and whether each requested change is worth its cost given the failure's likelihood and consequence.
 
-Reviewers select 3-4 relevant lenses (e.g. Scope discipline, Self-consistency, Assumption hygiene, Attribution, Feasibility). Every reviewer also judges proportion: whether the artifact is larger than the request needs, and whether each fix it asks for is worth its cost given the failure's likelihood and consequence.
+### 3. Dialectical Deliberation & Altitude Enforcement _(Proportional to Stakes)_
+
+- **Fast path (low-stakes sanity check)**: When proportionality is set to single-pass and reviewers surface no fatal blockers or cross-component contradictions, proceed directly to reconciliation.
+- **Dialectical rounds (high-stakes or conflicting findings)**: When reviewers surface competing tensions (e.g. compliance rule vs strategic parsimony, or existing spec congruence vs implementation approach), `james` cross-examines the relevant reviewers with each other's critiques (`send_message`), demanding explicit defense, concession, or synthesis. `james` intervenes immediately if any reviewer drifts off the calibrated altitude.
 
 ### 4. Reconcile Findings
 
-Synthesize reviewer outputs into a unified findings table:
+Synthesize component outputs into a unified findings table:
 
 | Reviewer | Issue | Feedback | Severity |
 | - | - | - | - |
 
+- Include a calibration header noting the chosen proportionality tier (model tier and rounds) and target altitude.
 - Collapse concordant findings across reviewers into a single row that keeps each reviewer's own severity; where they differ, state the severity adopted and why.
-- Give the fit verdict its own row (`FIT`/`MISFIT`), even when concordant with other rows.
-- **Severities**: `REJECT` (fundamental redesign, or work out of proportion to the request), `REVISE` (substantial rework), `FIX` (straightforward resolution), `TRIVIAL` (cosmetic polish), `ADVISORY` (non-blocking).
-- **Overall verdict**: `APPROVE`, `MINOR CHANGES`, `REVISE`, or `REJECT`. A `MISFIT` forces `REVISE` or `REJECT` even when the compliance and quality reviews both pass. A reviewer's `REJECT` stands unless the synthesis names the finding that overrules it.
+- Give the strategic congruence verdict its own row (`FIT`/`MISFIT`), even when concordant with other rows.
+- **Severities**: `REJECT` (fundamental redesign, missing specifications/criteria, or work out of proportion to the request), `REVISE` (substantial rework), `FIX` (straightforward resolution), `TRIVIAL` (cosmetic polish), `ADVISORY` (non-blocking).
+- **Overall verdict**: `APPROVE`, `MINOR CHANGES`, `REVISE`, or `REJECT`. A `MISFIT` from `pauli`, a `REJECT` from `rbg`, or a `FAIL` from `marsha` (including the absence of any specifications, requirements, or acceptance criteria) forces `REVISE` or `REJECT` unless the synthesis explicitly names the finding and reason that overrules it.
 
 ### 5. Action and Reporting
 
-- **Default**: Return the synthesis table and overall verdict to the caller.
+- **Default**: Return the calibration summary, synthesis table, and overall verdict to the caller.
 - **`comment`**: Run the `data-boundaries` check against destination visibility before posting; then post reconciled feedback to the PR review or task note.
 - **`fix`**: Run the `data-boundaries` check against destination visibility before pushing; apply `FIX` and `TRIVIAL` remedies immediately.
 - Write the final verdict and evidence to the artifact's task record.

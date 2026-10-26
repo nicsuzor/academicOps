@@ -9,13 +9,13 @@ Rigorous quality review evaluating correctness, completion, and fitness for purp
 
 ## 1. Classify the Bar
 
-- **Mechanical**: Verify strictly against acceptance criteria.
-- **Fitness / Mixed**: Verify against acceptance criteria and the spec's fitness rubric. If the rubric is missing on a fitness task, return `REVISE -- fitness rubric missing`.
+- **Mechanical**: Verify strictly against available specifications, requirements, and acceptance criteria.
+- **Fitness / Mixed**: Verify against specifications, requirements, acceptance criteria, and the spec's fitness rubric. If no specifications, requirements, or acceptance criteria are available at all, render an immediate `FAIL -- no specifications, requirements, or acceptance criteria available`. If criteria exist but the fitness rubric is missing on a fitness task, return `REVISE -- fitness rubric missing`.
 
 ## 2. Mandatory Forcing Checks
 
 All five checks must be answered explicitly in the report before rendering a `PASS`:
-0. **Gate 0 early stopping (Premise & Proportion)**: Is the underlying premise sound, and is the change proportionate to the ask? If the premise is bad or the change is fundamentally disproportionate, halt immediately and render `FAIL` before line-by-line repo auditing, forcing checks 1-3, or full test suites. Preserve full acceptance-criteria coverage when Gate 0 passes.
+0. **Gate 0 early stopping (Specifications/Criteria Existence, Premise & Proportion)**: Are explicit specifications, requirements, or acceptance criteria available, is the underlying premise sound, and is the change proportionate to the ask? If **no specifications, requirements, or acceptance criteria are available**, or if the premise is bad or the change is fundamentally disproportionate, halt immediately and render `FAIL` before line-by-line repo auditing, forcing checks 1-4, or full test suites. Preserve full requirement and acceptance-criteria coverage when Gate 0 passes.
 
 1. **Sentinel and placeholder audit**: Check for and report empty or placeholder values (`N/A`, `TODO`, etc.).
 2. **Principal's-eye top-line read**: Quote the primary user-facing output verbatim and verify correctness for the actual end user.
@@ -26,6 +26,7 @@ All five checks must be answered explicitly in the report before rendering a `PA
 
 Render an immediate `FAIL` on:
 
+- Absence of any specifications, requirements, or acceptance criteria against which to test the artifact (Gate 0 missing-criteria failure signal).
 - Bad premise, invalidated requirements, or disproportionate excess machinery (Gate 0 early stopping).
 - Falsified empirical claim or missing cited path under per-claim fail-fast (record `UNMET` immediately without searching repo for fixes).
 - Asserting Phoenix tool spans or command execution as proof of logical entailment without evaluating whether primary deliverables satisfy acceptance criteria.
