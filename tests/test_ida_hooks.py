@@ -516,3 +516,82 @@ def test_claude_user_prompt_submit_carries_no_session_start_pointer(
     raw = {"session_id": "claude-sess", "prompt": "hello"}
     result = handlers.user_prompt_submit(normalize("claude", "UserPromptSubmit", raw, IDA_HOOKS))
     assert result is None or not set(result.inject_text.split("\n\n")) & set(parts)
+
+
+def test_agy_session_start_renders_metadata_system_message(monkeypatch: pytest.MonkeyPatch):
+    """agy SessionStart produces injectSteps containing systemMessage with version metadata."""
+    from dispatch import normalize, render, to_canonical
+
+    monkeypatch.delenv("CLAUDE_ENV_FILE", raising=False)
+    monkeypatch.setenv("PKB_MCP_URL", "http://localhost:8000")
+    monkeypatch.setenv("AOPS_IMAGE_PLUGINS_VERSION", "v1.0-rc10")
+
+    raw = {
+        "conversationId": "agy-sess-123",
+        "workspacePaths": ["/workspace"],
+        "modelName": "gemini-4-flash",
+    }
+    assert to_canonical("agy", "SessionStart") == "SessionStart"
+
+    ctx = normalize("agy", "SessionStart", raw, IDA_HOOKS)
+    assert ctx.session_id == "agy-sess-123"
+    assert ctx.cwd == "/workspace"
+
+    res = handlers.session_start(ctx)
+    assert res is not None
+    assert "plugins: v1.0-rc10" in res.inject_text
+    assert "session: agy-sess-123" in res.inject_text
+    assert res.user_text is not None
+    assert "plugins: v1.0-rc10" in res.user_text
+
+    rendered = render("agy", "SessionStart", res)
+    assert "injectSteps" in rendered
+    steps = rendered["injectSteps"]
+    assert len(steps) >= 1
+
+    # First step is systemMessage persisting across turns in trajectory
+    sys_step = steps[0]
+    assert "systemMessage" in sys_step
+    assert "systemMessage" in sys_step["systemMessage"]
+    sys_text = sys_step["systemMessage"]["systemMessage"]
+    assert "plugins: v1.0-rc10" in sys_text
+    assert "session: agy-sess-123" in sys_text
+
+    # Additional instructions delivered via ephemeralMessage
+    if len(steps) > 1:
+        eph_step = steps[1]
+        assert "ephemeralMessage" in eph_step
+        assert handlers.PREMISE_CHECK_POINTER in eph_step["ephemeralMessage"]
+
+
+def test_render_agy_formats_system_message_and_ephemeral_message():
+    """_render_agy handles user_text as systemMessage and inject_text as ephemeralMessage."""
+    from dispatch import Kind, Result, render
+
+    # 1. Refusal
+    refuse_res = Result(inject_text="Access denied", kind=Kind.REFUSE)
+    assert render("agy", "PreToolUse", refuse_res) == {
+        "decision": "deny",
+        "reason": "Access denied",
+    }
+
+    # 2. General advisory without user_text
+    advise_res = Result(inject_text="Advisory notice")
+    assert render("agy", "PreInvocation", advise_res) == {
+        "injectSteps": [{"ephemeralMessage": "Advisory notice"}]
+    }
+
+    # 3. General advisory with user_text
+    with_user_res = Result(inject_text="Advisory notice", user_text="User notice")
+    assert render("agy", "PreInvocation", with_user_res) == {
+        "injectSteps": [
+            {"systemMessage": {"systemMessage": "User notice"}},
+            {"ephemeralMessage": "Advisory notice"},
+        ]
+    }
+
+    # 4. SessionStart with only inject_text defaults to systemMessage
+    start_res = Result(inject_text="Startup welcome")
+    assert render("agy", "SessionStart", start_res) == {
+        "injectSteps": [{"systemMessage": {"systemMessage": "Startup welcome"}}]
+    }
