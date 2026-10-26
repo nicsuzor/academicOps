@@ -24,6 +24,7 @@ one is covered.
 | GH issue closed via `Closes #N` → PKB task carrying `gates_on` for it | Not built -- forward-issue leg, below |
 | Closed-not-merged PR that was legitimately superseded | Built |
 | Failed tasks from workers (e.g. QA or review failures) → next actions decided from parent epic | Built |
+| Multi-part task / verbatim note request partially resolved by merged PR → itemize completed vs incomplete elements | Built |
 | Manual `gh issue close` with `state_reason: not_planned` or `duplicate` | Not built -- forward-issue leg, below |
 | PKB task done → GH issue comment/close beyond the native `Closes #N` commit convention | Not built -- reverse direction, M3 |
 
