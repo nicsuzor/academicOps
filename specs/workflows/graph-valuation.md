@@ -392,7 +392,7 @@ agents james, marsha, rbg, sara; and all tools-plugin skills.
 ## 10. Interface contracts
 
 **Edge write.** Every agent edge write carries the FR §5.1 fields, with `set_by` in
-`{agent-proposed, nic}`. `migrated` is written only by the migration. Direct writes use `agent-proposed`. Each write is followed by a
+`{agent-proposed, user}`. `migrated` is written only by the migration. Direct writes use `agent-proposed`. Each write is followed by a
 `pkb.get_task` readback with no `parse_warnings`.
 
 **Batch message.** The §5 table, numbered 1..n with n ≤ 50, preceded by one line giving the pool
@@ -436,7 +436,7 @@ Each test can be checked by an observer reading the graph or a transcript.
 
 | # | Criterion | Test (observable) | Traces to |
 | - | - | - | - |
-| A1 | `/q` writes only proposals | Run `/q` on three fixture asks. `get_task` on each new node shows every outgoing edge with `label`, `effect`, a justification and `set_by: agent-proposed`. None shows `set_by: nic`, `intent`, `severity` or target worth. | S7, U9, R1 |
+| A1 | `/q` writes only proposals | Run `/q` on three fixture asks. `get_task` on each new node shows every outgoing edge with `label`, `effect`, a justification and `set_by: agent-proposed`. None shows `set_by: user`, `intent`, `severity` or target worth. | S7, U9, R1 |
 | A2 | A bare idea carries nothing | `/q` on an idea that names no target. The node has a container and no other edge. Flow `gain` and `loss_averted` are both 0. | U9, I7 |
 | A3 | An opportunity is one node | Fingerprint every other node's fields before and after `/q` on an opportunity. Only the new node and its own edges differ. | U10, I9 |
 | A4 | The circular stays quiet | Replay calibration case 1 (the "Dear Friends" Copyright Plus forward) through R2. It is classed `reference`, or captured with `deadline_class: fake` and no edge above the default quantum. It is not in the top 50 under any display key. | U1, U15 |

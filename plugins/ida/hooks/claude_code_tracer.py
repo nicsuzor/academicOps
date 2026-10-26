@@ -61,11 +61,8 @@ def _load_config_file(path: Path) -> dict:
 
 
 def _load_polecat_config() -> dict:
-    cfg_path = os.environ.get("AOPS_POLECAT_CONFIG")
-    if not cfg_path:
-        sessions = os.environ.get("AOPS_SESSIONS")
-        if sessions:
-            cfg_path = os.path.join(sessions, "polecat.yaml")
+    sessions = os.environ.get("AOPS_SESSIONS")
+    cfg_path = os.path.join(sessions, "polecat.yaml") if sessions else None
     if cfg_path and os.path.exists(cfg_path):
         try:
             import yaml
@@ -1142,27 +1139,32 @@ RETRIEVER_TOOLS = {"WebSearch", "WebFetch"}
 _MAX_ATTR_BYTES = int(os.environ.get("OTEL_SPAN_ATTRIBUTE_VALUE_LENGTH_LIMIT", "524288"))
 
 
-def _truncate(value: Any) -> str:
+def _redact_secrets(value: Any) -> str:
     s = json.dumps(value) if not isinstance(value, str) else value
 
-    # Redact common secrets before truncation
     secrets = [
         os.environ.get("GH_TOKEN"),
         os.environ.get("GITHUB_TOKEN"),
         os.environ.get("AOPS_BOT_GH_TOKEN"),
         os.environ.get("DISPATCHER_MCP_TOKEN"),
+        os.environ.get("DISPATCHER_MCP_TOKEN_SECRET"),
         os.environ.get("WORKER_MCP_TOKEN"),
+        os.environ.get("WORKER_MCP_TOKEN_SECRET"),
     ]
-    # Add any env vars ending in API_KEY or starting with CF_ACCESS_
     for k, v in os.environ.items():
-        if (k.endswith("_API_KEY") or k.startswith("CF_ACCESS_")) and v:
+        if (
+            k.endswith("_API_KEY") or k.endswith("_TOKEN_SECRET") or k.startswith("CF_ACCESS_")
+        ) and v:
             secrets.append(v)
 
-    # Redact secrets
     for secret in secrets:
-        if secret and len(secret) > 4:  # Don't redact empty or very short strings by accident
+        if secret and len(secret) > 4:
             s = s.replace(secret, "<REDACTED_SECRET>")
+    return s
 
+
+def _truncate(value: Any) -> str:
+    s = _redact_secrets(value)
     encoded = s.encode("utf-8")
     if len(encoded) > _MAX_ATTR_BYTES:
         s = encoded[:_MAX_ATTR_BYTES].decode("utf-8", errors="ignore") + "...[truncated]"
@@ -2017,9 +2019,31 @@ def _build_tool_span_record(
         "output.mime_type": "application/json",
     }
 
-    if not tool_call_id and isinstance(tool_input, dict):
+    parsed_input = tool_input
+    if isinstance(parsed_input, str):
+        try:
+            parsed_input = json.loads(parsed_input)
+        except Exception:
+            parsed_input = None
+
+    if isinstance(parsed_input, dict):
+        action_candidates = [parsed_input]
+        if isinstance(parsed_input.get("Arguments"), dict):
+            action_candidates.append(parsed_input["Arguments"])
+        for candidate in action_candidates:
+            for key in ("toolSummary", "toolAction", "description", "Description"):
+                val = candidate.get(key)
+                if isinstance(val, str) and val.strip():
+                    attrs["tool.summary"] = val.strip()
+                    break
+            if "tool.summary" in attrs:
+                break
+
+    if not tool_call_id and isinstance(parsed_input, dict):
         tool_call_id = (
-            tool_input.get("tool_use_id") or tool_input.get("id") or tool_input.get("tool_call_id")
+            parsed_input.get("tool_use_id")
+            or parsed_input.get("id")
+            or parsed_input.get("tool_call_id")
         )
     if tool_call_id:
         attrs["tool.call_id"] = str(tool_call_id)
@@ -2167,9 +2191,10 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
         except Exception as e:
             log.debug("Failed to parent subagent: %s", e)
 
+    pending_turn = state.pop("pending_turn_trace", None) or {}
     state["current_trace"] = {
-        "trace_id": parent_trace_id if parent_trace_id else _new_trace_id(),
-        "root_span_id": _new_span_id(),
+        "trace_id": parent_trace_id or pending_turn.get("trace_id") or _new_trace_id(),
+        "root_span_id": pending_turn.get("root_span_id") or _new_span_id(),
         "parent_span_id": parent_span_id,
         "turn_start_ns": now_ns,
         "turn_number": turn_number,
@@ -2669,7 +2694,12 @@ def _end_turn(session_id: str, state: dict) -> None:
     the turn for the next UserPromptSubmit to number its turn one higher.
     SessionEnd deletes the file.
     """
-    state.pop("current_trace", None)
+    ct = state.pop("current_trace", None)
+    if isinstance(ct, dict) and ct.get("trace_id") and ct.get("root_span_id"):
+        state["last_trace"] = {
+            "trace_id": ct["trace_id"],
+            "root_span_id": ct["root_span_id"],
+        }
     state.pop("pending_tools", None)
     state.pop("transcript_path", None)
     _save_state(session_id, state)
@@ -2904,6 +2934,156 @@ def handle_session_end(data: dict, config: dict) -> None:
             _emit_pending_llm_spans(state, transcript_path, config, force_remaining=True)
             _complete_turn(state, config, end_ns)
         _delete_state(session_id)
+
+
+def emit_debug_hook_span(
+    data: dict,
+    config: dict,
+    *,
+    client: str,
+    event: str,
+    raw_payload: Any,
+) -> bool:
+    """Emit a full, untruncated debug span for any hook event, threaded into the session's turn trace."""
+    payload_key = "conversationId" if client == "agy" else "session_id"
+    session_id = resolve_session_id(data, payload_key, prefer_env=False)
+    if session_id is None:
+        log.warning(
+            "emit_debug_hook_span (%s/%s): no session id in payload (%r missing) "
+            "and $AOPS_SESSION_ID unset — skipping span emission",
+            client,
+            event,
+            payload_key,
+        )
+        return False
+
+    now_ns = time.time_ns()
+    with _session_lock(session_id):
+        state = _load_state(session_id)
+        if not state.get("session_id"):
+            state["session_id"] = session_id
+            state["phoenix_session_id"] = resolve_session_id(
+                data,
+                payload_key,
+                prefer_env=True,
+            )
+            state["session_start_ns"] = now_ns
+            state["username"] = os.environ.get("USER") or os.environ.get("USERNAME") or None
+            state["turn_number"] = 0
+
+        resolved_cwd = resolve_cwd(data, state)
+        if resolved_cwd:
+            state["cwd"] = resolved_cwd
+        client_agent = resolve_client_agent_name(data)
+        if client_agent:
+            state["agent_name"] = client_agent
+
+        current_trace = state.get("current_trace")
+        last_trace = state.get("last_trace")
+        known_parents: dict[str, str | None] | None = None
+
+        if isinstance(current_trace, dict) and current_trace.get("trace_id"):
+            trace_id = current_trace["trace_id"]
+            parent_span_id = current_trace.get("root_span_id")
+            sub_id = _subagent_id(data)
+            if sub_id:
+                sub_rec = (state.get("subagents") or {}).get(sub_id)
+                if isinstance(sub_rec, dict) and sub_rec.get("agent_span_id"):
+                    parent_span_id = sub_rec["agent_span_id"]
+            known_parents = _known_span_parents(current_trace)
+        elif (
+            isinstance(last_trace, dict)
+            and last_trace.get("trace_id")
+            and event not in ("SessionStart", "Setup", "UserPromptSubmit", "PreInvocation")
+        ):
+            trace_id = last_trace["trace_id"]
+            parent_span_id = last_trace.get("root_span_id")
+        else:
+            pending = state.get("pending_turn_trace")
+            if (
+                not isinstance(pending, dict)
+                or not pending.get("trace_id")
+                or not pending.get("root_span_id")
+            ):
+                parent_trace_id = None
+                psid = state.get("phoenix_session_id")
+                if psid and psid != session_id:
+                    try:
+                        pstate = _load_state(psid)
+                        if pstate and isinstance(pstate.get("current_trace"), dict):
+                            parent_trace_id = pstate["current_trace"].get("trace_id")
+                    except Exception:
+                        pass
+                pending = {
+                    "trace_id": parent_trace_id or _new_trace_id(),
+                    "root_span_id": _new_span_id(),
+                }
+                state["pending_turn_trace"] = pending
+            trace_id = pending["trace_id"]
+            parent_span_id = pending["root_span_id"]
+
+        if event != "SessionEnd":
+            _save_state(session_id, state)
+
+    phoenix_session_id, agent_id, parent_session_id = _resolve_agent_and_parent_ids(
+        state,
+        data,
+        payload_key=payload_key,
+    )
+    full_payload_json = _redact_secrets(
+        json.dumps(raw_payload, ensure_ascii=False, default=str)
+        if not isinstance(raw_payload, str)
+        else raw_payload
+    )
+    hook_event_name = str(data.get("hook_event_name") or data.get("hookEventName") or event)
+    attrs: dict[str, Any] = {
+        "openinference.span.kind": "CHAIN",
+        "hook.plugin": "aops-debug",
+        "hook.client": client,
+        "hook.event": event,
+        "hook.event_name": hook_event_name,
+        "input.value": full_payload_json,
+        "input.mime_type": "application/json",
+        "hook.raw_payload": full_payload_json,
+    }
+    tool_name = str(data.get("tool_name") or data.get("toolName") or "")
+    if tool_name:
+        attrs["tool.name"] = tool_name
+    tool_call_id = data.get("tool_use_id") or data.get("toolCallId")
+    if tool_call_id:
+        attrs["tool.call_id"] = str(tool_call_id)
+
+    (_, _, _, _, _, _, SpanKind, _, _, _) = _otel_imports()
+    surface = "agy" if client == "agy" else "claude-code"
+    service_name = "aops-agy-hooks" if client == "agy" else "aops-claude-hooks"
+    return _build_and_export_spans(
+        config=config,
+        session_id=phoenix_session_id,
+        username=state.get("username"),
+        span_records=[
+            {
+                "trace_id_hex": trace_id,
+                "span_id_hex": _new_span_id(),
+                "parent_span_id_hex": parent_span_id,
+                "name": f"aops-debug.{event}",
+                "kind": SpanKind.INTERNAL,
+                "start_ns": now_ns,
+                "end_ns": now_ns,
+                "attributes": attrs,
+            },
+        ],
+        agent_id=agent_id,
+        parent_session_id=parent_session_id,
+        agent_name=(
+            _subagent_name(data.get("agent_type"))
+            if _subagent_id(data)
+            else state.get("agent_name")
+        ),
+        cwd=state.get("cwd"),
+        known_parents=known_parents,
+        service_name=service_name,
+        surface=surface,
+    )
 
 
 # ---------------------------------------------------------------------------

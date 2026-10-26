@@ -16,7 +16,7 @@ Maintains truth over the task graph: establishes facts about in-flight work and 
 
 1. **Load active and failed tasks**: Read non-terminal tasks across active statuses AND tasks marked `failed` within the sweep window. Closures made directly by the principal are self-authorizing and presumed intentional (no worker completion receipts required; never demote or flag).
 2. **Reconcile pull requests**: Match closed pull requests to tasks by structured indicators (`pr_url`, body task ID, recorded branch, `polecat/` prefix, exact title).
-   - **Merged PRs**: Write `status: done` unconditionally on an observed merged PR (`pr_url`, merge timestamp, branch). Do not re-judge acceptance criteria.
+   - **Merged PRs**: Write `status: done` unconditionally on an observed merged PR (`pr_url`, merge timestamp, branch). Do not re-judge acceptance criteria. Where a merged PR resolves part of a multi-component task or user request, itemize completed versus incomplete elements in the task record; uncompleted components remain active or carry over as open work.
    - **Closed without merge**: Surface for routing; never auto-complete or auto-requeue.
    - **Open PRs**: Read review and check state with `gh pr view <n> --repo <owner/repo> --json state,isDraft,mergedAt,reviewDecision,statusCheckRollup`. `reviewDecision: CHANGES_REQUESTED` or a failing check in `statusCheckRollup` routes the task to `queued` or a follow-up task, never `done` or `review`. Otherwise, a `review` task whose PR is still open is waiting on the repository to merge it; leave it until the PR merges or closes.
 3. **The Review Lifecycle**: Apart from a task waiting on its open PR (step 2), `review` means a worker needs help to finish the task; it is transient, never a waiting state. Under the bazaar model, any pass reading a `review` task owns the outcome in that pass and mints any needed tasks; nothing is deferred to a later sweep or the original dispatcher. Bring the record to reality and take exactly one outcome:
@@ -46,7 +46,7 @@ Maintains truth over the task graph: establishes facts about in-flight work and 
    - _Premise falsified_: named assumption or precondition no longer holds.
    - _Source-stated retirement_: opportunity's source confirms it is no longer open, or explicit principal instruction ("drop X"). Set `status: cancelled` with reason starting `not ripe:` quoting statement and source.
 10. **Two-step mutation contract**: Write annotation/evidence to markdown body first, then mutate frontmatter `status` via `pkb.update_task` (never `batch_update`), then read back to confirm status.
-11. **Escalate**: Settle items reaching the user under the one-level escalation rule (e.g. review tasks reaching the front agent `ida` at the top of the chain requiring user decision, or open questions/asks needing user choice). When running standalone, write them to today's daily note (PKB note `YYYYMMDD-daily`) in `## With you`. When invoked as part of an enclosing run (such as the daily note pipeline), return the escalated items to the caller to fold into `## With you` during its single atomic write, accompanied by current verification timestamps. Reconcile owns writing escalated items to `## With you`; it must not append unowned sections outside `## With you`.
+11. **Escalate**: Settle items reaching the user under the one-level escalation rule (e.g. review tasks reaching the front agent `ida` at the top of the chain requiring user decision, or open questions/asks needing user choice). When running standalone, write them to today's daily note (PKB note `YYYYMMDD-daily`) in `## With you`. When invoked as part of an enclosing run (such as the daily note pipeline), return the escalated items to the caller to fold into `## With you` during its single atomic write, accompanied by current verification timestamps. Reconcile interfaces with the daily note _exclusively_ via `## With you` for escalated decisions; it must never write or append raw mutation summaries, commit SHAs, PR merge logs, branch names, container IDs, or execution heartbeats to the daily note, nor create or append to sections outside `## With you`.
 
 ## Must not
 
@@ -71,6 +71,8 @@ Maintains truth over the task graph: establishes facts about in-flight work and 
 - Must not ignore `failed` tasks within the sweep window: reconcile must examine each failed task and decide the next action from its parent epic.
 - Must not allow workers to direct their own follow-up tasks or leave stale pointers in review reports; sequencing lives in the parent epic.
 - Must not append unowned sections to the daily note outside `## With you`.
+- Must not dump raw reconcile summaries, commit hashes, branch names, PR merge logs, or worker/container identifiers to the daily note.
+- Must not generate or append `## Daily Log` or execution run heartbeats to the daily note (audit and run traces belong in runner logs/OTel).
 - Must not write items with unverified or insufficient evidence to the daily note.
 
 ## Output contract

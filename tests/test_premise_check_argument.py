@@ -916,8 +916,11 @@ def test_machine_checks_parser_failure_raises_and_leaves_gate_armed():
     session_id = "s-mach-parser-fail"
     _arm_with_report(session_id, "CID")
     tracer = _configured()
-    with unittest.mock.patch("report_argument.shutil.which", return_value=None):
-        with pytest.raises(RuntimeError, match="argdown parser binary not found"):
+    with unittest.mock.patch(
+        "report_argument.check_argdown_block",
+        side_effect=RuntimeError("internal parser error"),
+    ):
+        with pytest.raises(RuntimeError, match="internal parser error"):
             pcv.record_verdict(
                 session_id=session_id,
                 claim_id="CID",
@@ -928,14 +931,17 @@ def test_machine_checks_parser_failure_raises_and_leaves_gate_armed():
     assert pcg.is_armed(session_id) is True
 
 
-def test_check_argdown_block_requires_argdown_on_path(tmp_path, monkeypatch):
-    """AC2: Expects argdown on PATH and removes resolve_argdown_bin and fallback paths."""
+def test_check_argdown_block_parses_natively_without_external_binary(tmp_path, monkeypatch):
+    """AC1: check_argdown_block parses natively without requiring argdown binary on PATH."""
     assert not hasattr(ra, "resolve_argdown_bin")
 
-    # When shutil.which returns None and no parser_bin passed, raises RuntimeError("argdown parser binary not found on PATH")
+    # Works even when shutil.which returns None
     with unittest.mock.patch("shutil.which", return_value=None):
-        with pytest.raises(RuntimeError, match="argdown parser binary not found on PATH"):
-            ra.check_argdown_block("(1) claim -- I read it\n(2) conc\n")
+        valid, reason, ast = ra.check_argdown_block(
+            "(1) claim -- I read it\n-- warrant --\n(2) conc\n"
+        )
+        assert valid is True
+        assert ast is not None
 
 
 def test_check_argdown_block_handles_markdown_punctuation():
@@ -985,3 +991,374 @@ def test_verdict_cli_scaffold_flag_and_refusal_scaffold(tmp_path, capsys):
     assert "premise_check_verdict:" in captured_fail.err
     assert "Scaffold" not in captured_fail.err
     assert pcg.is_armed(session_id) is True
+
+
+def test_valid_grouped_lines_accepted():
+    """Grouped line references on one Valid line pass a multi-inference argument."""
+    vocab = ra.load_vocabulary()
+    block = ra.parse_block(ra.extract_block(_report()), vocab)
+    assert block is not None
+    assert len(block.inferences) == 2
+
+    # (4), (6) holds
+    r1 = ra.parse_reason(
+        _reason("CID", drop=("Valid:",), extra=("Valid: (4), (6) holds -- both hold",)), vocab
+    )
+    assert not ra.pass_failures(r1, block, vocab)
+
+    # (4), (6) hold
+    r2 = ra.parse_reason(
+        _reason("CID", drop=("Valid:",), extra=("Valid: (4), (6) hold -- both hold",)), vocab
+    )
+    assert not ra.pass_failures(r2, block, vocab)
+
+    # (4) and (6) hold
+    r3 = ra.parse_reason(
+        _reason("CID", drop=("Valid:",), extra=("Valid: (4) and (6) hold -- both hold",)), vocab
+    )
+    assert not ra.pass_failures(r3, block, vocab)
+
+    # Semicolon-separated clauses on one Valid line
+    r4 = ra.parse_reason(
+        _reason(
+            "CID", drop=("Valid:",), extra=("Valid: (4) holds -- rule; (6) holds -- meets rule",)
+        ),
+        vocab,
+    )
+    assert not ra.pass_failures(r4, block, vocab)
+
+
+def test_valid_multiline_indented_accepted():
+    """Indented lines under Valid: are parsed as entries and validate multi-inference blocks."""
+    vocab = ra.load_vocabulary()
+    block = ra.parse_block(ra.extract_block(_report()), vocab)
+    assert block is not None
+
+    reason_text = _reason(
+        "CID",
+        drop=("Valid:",),
+        extra=("Valid:\n  (4) holds -- rule\n  (6) holds -- meets rule",),
+    )
+    r = ra.parse_reason(reason_text, vocab)
+    assert len(r.get("Valid")) == 2
+    assert not ra.pass_failures(r, block, vocab)
+
+
+def test_valid_clause_with_failure_refuses_pass():
+    """A grouped or semicolon valid entry that contains a failure is detected."""
+    vocab = ra.load_vocabulary()
+    block = ra.parse_block(ra.extract_block(_report()), vocab)
+    assert block is not None
+
+    r = ra.parse_reason(
+        _reason(
+            "CID",
+            drop=("Valid:",),
+            extra=("Valid: (4) holds -- rule; (6) fails #missing -- no premise",),
+        ),
+        vocab,
+    )
+    failures = ra.pass_failures(r, block, vocab)
+    assert any("Valid says fails for (6)" in f for f in failures)
+
+
+def test_parse_block_and_check_handles_em_dash_inferences():
+    """Inference bars with em-dashes (—) parse correctly and pass argdown syntax check."""
+    report_text = (
+        "Report\n\n"
+        "```argdown\n"
+        f"{_frontmatter()}\n"
+        f"(1) First premise. -- {_STRONG.phrase}\n"
+        "— Warrant with em dashes —\n"
+        "(2) Conclusion.\n"
+        "```\n"
+    )
+    vocab = ra.load_vocabulary()
+    block_text = ra.extract_block(report_text)
+    assert block_text is not None
+
+    block = ra.parse_block(block_text, vocab)
+    assert block is not None
+    assert len(block.inferences) == 1
+    assert block.inferences[0].conclusion == 2
+
+    valid, reason, ast = ra.check_argdown_block(block_text)
+    assert valid is True, f"Argdown syntax check failed: {reason}"
+
+
+# ---------------------------------------------------------------------------
+# AC1 & AC2: Tolerant native Argdown parser and machine checks
+# ---------------------------------------------------------------------------
+
+
+def test_native_parser_valid_argdown_with_markdown_emphasis_and_code():
+    """AC1/AC2: Native parser parses valid Argdown blocks with inline markdown emphasis/code."""
+    block = (
+        "===\n"
+        "asks:\n"
+        "  q1: is it working?\n"
+        "answers:\n"
+        "  q1: 2\n"
+        "notes:\n"
+        "  a: '`plugins/ida/hooks/report_argument.py` with *inline* and **bold**'\n"
+        "===\n\n"
+        "(1) Code `foo()` has an_identifier and **bold** and *emphasis*. -- I read it ^a\n"
+        "-- Warrant text. Unless: defeater; not ruled out. --\n"
+        "(2) So, `bar()` succeeds.\n"
+    )
+    valid, reason, ast = ra.check_argdown_block(block)
+    assert valid is True, f"Expected valid Argdown block, got error: {reason}"
+    assert ast is not None
+    parsed = ra.parse_block(block, _VOCAB)
+    assert parsed is not None
+    assert parsed.asks == ["q1"]
+    assert len(parsed.premises) == 1
+    assert parsed.premises[0].basis == _STRONG  # 'I read it' is rank 3
+    assert len(parsed.inferences) == 1
+    assert parsed.conclusions == [2]
+
+
+def test_native_parser_rejects_malformed_inference_lines():
+    """AC2: Rejects malformed inference lines (missing closing dashes)."""
+    block = (
+        "(1) A premise. -- I read it\n"
+        "-- Malformed inference line without closing dashes\n"
+        "(2) Conclusion.\n"
+    )
+    valid, reason, ast = ra.check_argdown_block(block)
+    assert valid is False
+    assert "inference" in reason.lower() or "syntax" in reason.lower()
+
+
+def test_native_parser_rejects_unconnected_orphan_statements():
+    """AC2: Rejects unconnected statements with no relations or argument membership."""
+    block = (
+        "(1) A premise. -- I read it\n"
+        "-- Warrant. Unless: def; status. --\n"
+        "(2) Conclusion.\n"
+        "[orphan_stmt]: This statement is totally unconnected.\n"
+    )
+    valid, reason, ast = ra.check_argdown_block(block)
+    assert valid is False
+    assert "orphan statement 'orphan_stmt'" in reason
+
+
+# ---------------------------------------------------------------------------
+# AC4: Premise attribute syntax {basis: ...} and 0 inference lines check
+# ---------------------------------------------------------------------------
+
+
+def test_premise_attribute_syntax_basis():
+    """AC4: Accepts {basis: \"<basis phrase>\", pointer: ...} alongside -- <basis phrase> ^note."""
+    block = (
+        "===\n"
+        "asks:\n"
+        "  q1: ok?\n"
+        "answers:\n"
+        "  q1: 3\n"
+        "===\n\n"
+        '(1) [P1]: First premise with attr. {basis: "I read it", pointer: "file.py:10"}\n'
+        "(2) [P2]: Second premise with rule.\n"
+        '  {basis: "rule", pointer: "rule.md"}\n'
+        "-- Warrant. Unless: def; status. --\n"
+        "(3) [C1]: Conclusion.\n"
+    )
+    parsed = ra.parse_block(block, _VOCAB)
+    assert parsed is not None
+    assert len(parsed.premises) == 2
+    assert parsed.premises[0].basis_text == "I read it"
+    assert parsed.premises[0].basis is not None and parsed.premises[0].basis.phrase == "I read it"
+    assert parsed.premises[0].rank == 3
+    assert parsed.premises[1].basis_text == "rule"
+    assert parsed.premises[1].basis is not None and parsed.premises[1].basis.phrase == "rule"
+    assert parsed.premises[1].rank == 2
+    assert parsed.weakest() is not None and parsed.weakest().number == 2
+
+
+def test_pass_rejected_when_report_argument_block_has_0_inferences():
+    """AC4: Rejects PASS with actionable error when block has 0 inference lines."""
+    block_text = (
+        "===\n"
+        "asks:\n"
+        f"  {ASK_A}: is it working?\n"
+        "answers:\n"
+        f"  {ASK_A}: 1\n"
+        "===\n\n"
+        "(1) Just a premise with no inferences. -- I read it\n"
+    )
+    arg = ra.parse_block(block_text, _VOCAB)
+    assert arg is not None
+    assert len(arg.inferences) == 0
+
+    reason = ra.parse_reason(
+        f"Judged: claim-0inf; asks {ASK_A}\n"
+        "Valid: (1) holds -- test\n"
+        "Supported: weakest I read it -- (1)\n"
+        f"Answered: {ASK_A} ← (1)\n"
+        "Sufficient: (1) obvious\n"
+        "Waived: none\n"
+        "Relay: none\n",
+        _VOCAB,
+    )
+    failures = ra.pass_failures(reason, arg, _VOCAB)
+    expected_msg = (
+        "report argument block has 0 inference lines (-- <warrant>. Unless: <defeater>; <status>. --); "
+        "cannot record PASS"
+    )
+    assert expected_msg in failures
+
+
+# ---------------------------------------------------------------------------
+# AC5: Semicolon-separated Waived: items and specific waiver enforcement
+# ---------------------------------------------------------------------------
+
+
+def test_waived_semicolon_separated_items_and_bad_items():
+    """AC5: Splits semicolon-separated items on Waived: lines and catches invalid items."""
+    reason = ra.parse_reason(
+        "Waived: block -- not provided; ask wording -- reworded; layout\n",
+        _VOCAB,
+    )
+    assert reason.waived_items(_VOCAB) == ["block", "ask wording", "layout"]
+
+    bad_reason = ra.parse_reason(
+        "Waived: block; invalid_item -- reason; ask wording\n",
+        _VOCAB,
+    )
+    assert bad_reason.waived_items(_VOCAB) == ["block", "ask wording"]
+    failures = ra.pass_failures(bad_reason, None, _VOCAB)
+    assert any("invalid_item" in f for f in failures)
+
+
+def test_waived_block_honored_when_block_is_not_none():
+    """AC5: Honors Waived: block when block is not None (skips block cross-checks)."""
+    # A block with missing inference lines and mismatched asks
+    block_text = (
+        "===\n"
+        "asks:\n"
+        "  different_ask: what is this?\n"
+        "answers:\n"
+        "  different_ask: 1\n"
+        "===\n\n"
+        "(1) A premise without inferences. -- I read it\n"
+    )
+    arg = ra.parse_block(block_text, _VOCAB)
+    assert arg is not None
+
+    reason = ra.parse_reason(
+        f"Judged: claim-wb; asks {ASK_A}\n"
+        "Valid: (1) holds -- test\n"
+        "Supported: weakest I read it -- test\n"
+        f"Answered: {ASK_A} ← (1)\n"
+        "Sufficient: (1) obvious\n"
+        "Waived: block -- block structure waived\n"
+        "Relay: none\n",
+        _VOCAB,
+    )
+    failures = ra.pass_failures(reason, arg, _VOCAB)
+    assert failures == []
+
+
+def test_waived_ask_wording_honored_when_block_is_not_none():
+    """AC5: Honors Waived: ask wording when block is not None."""
+    # Block has reworded ask id in frontmatter
+    report_text = _report().replace(ASK_A, "reworded_ask")
+    block_text = ra.extract_block(report_text)
+    arg = ra.parse_block(block_text, _VOCAB)
+    assert arg is not None
+
+    # Without waiver, fails because judged asks don't equal block asks
+    reason_no_waiver = ra.parse_reason(_reason("CID"), _VOCAB)
+    failures = ra.pass_failures(reason_no_waiver, arg, _VOCAB)
+    assert any("Judged ask ids" in f for f in failures)
+
+    # With Waived: ask wording, passes
+    reason_with_waiver = ra.parse_reason(
+        _reason(
+            "CID", drop=("Waived:",), extra=("Waived: ask wording -- reworded in frontmatter",)
+        ),
+        _VOCAB,
+    )
+    failures_waived = ra.pass_failures(reason_with_waiver, arg, _VOCAB)
+    assert failures_waived == []
+
+
+def test_waived_basis_wording_when_basis_is_none_without_escalating_low_rank():
+    """AC5: Honors Waived: basis wording when p.basis is None without escalating matched unchecked/assumed premises above rank=1."""
+    # Case 1: Premise with non-standard basis phrase (p.basis is None)
+    block_text = (
+        "===\n"
+        f"asks:\n  {ASK_A}: test\n"
+        f"answers:\n  {ASK_A}: 2\n"
+        "===\n\n"
+        "(1) Premise with custom basis wording. -- verified from direct logs\n"
+        "-- Warrant. Unless: def; status. --\n"
+        "(2) So, conclusion.\n"
+    )
+    arg = ra.parse_block(block_text, _VOCAB)
+    assert arg is not None
+    assert arg.premises[0].basis is None
+
+    # Without waiver: fails because basis is unmatched (rank 0)
+    reason_no_waiver = ra.parse_reason(
+        f"Judged: CID; asks {ASK_A}\n"
+        "Valid: (2) holds -- warrant\n"
+        "Supported: weakest I read it -- direct logs\n"
+        f"Answered: {ASK_A} ← (2)\n"
+        "Sufficient: (2) obvious\n"
+        "Waived: none\n"
+        "Relay: none\n",
+        _VOCAB,
+    )
+    failures_no_waiver = ra.pass_failures(reason_no_waiver, arg, _VOCAB)
+    assert any(
+        "weakest premise is (1) 'an unmatched basis' (rank 0)" in f for f in failures_no_waiver
+    )
+
+    # With Waived: basis wording: passes because p.basis is None is waived to match Supported
+    reason_waived = ra.parse_reason(
+        f"Judged: CID; asks {ASK_A}\n"
+        "Valid: (2) holds -- warrant\n"
+        "Supported: weakest I read it -- direct logs\n"
+        f"Answered: {ASK_A} ← (2)\n"
+        "Sufficient: (2) obvious\n"
+        "Waived: basis wording -- custom phrase\n"
+        "Relay: none\n",
+        _VOCAB,
+    )
+    failures_waived = ra.pass_failures(reason_waived, arg, _VOCAB)
+    assert failures_waived == []
+
+    # Case 2: But matched unchecked (rank 1) or assumed (rank 0) CANNOT be escalated above rank 1
+    block_text_with_unchecked = (
+        "===\n"
+        f"asks:\n  {ASK_A}: test\n"
+        f"answers:\n  {ASK_A}: 3\n"
+        "===\n\n"
+        "(1) Premise with custom wording. -- verified from logs\n"
+        "(2) Another premise that is unchecked. -- worker reported, unchecked\n"
+        "-- Warrant. Unless: def; status. --\n"
+        "(3) So, conclusion.\n"
+    )
+    arg_unchecked = ra.parse_block(block_text_with_unchecked, _VOCAB)
+    assert arg_unchecked is not None
+    assert arg_unchecked.premises[0].basis is None
+    assert arg_unchecked.premises[1].basis is not None
+    assert arg_unchecked.premises[1].rank == 1
+
+    # Checker attempts to claim Supported: weakest I read it (rank 3) with Waived: basis wording
+    reason_escalate_attempt = ra.parse_reason(
+        f"Judged: CID; asks {ASK_A}\n"
+        "Valid: (3) holds -- warrant\n"
+        "Supported: weakest I read it -- logs\n"
+        f"Answered: {ASK_A} ← (3)\n"
+        "Sufficient: (3) obvious\n"
+        "Waived: basis wording -- custom phrase\n"
+        "Relay: none\n",
+        _VOCAB,
+    )
+    failures_escalate = ra.pass_failures(reason_escalate_attempt, arg_unchecked, _VOCAB)
+    assert any(
+        "the block's weakest premise is (2) 'worker reported, unchecked' (rank 1)" in f
+        for f in failures_escalate
+    )
