@@ -1001,19 +1001,30 @@ def test_valid_grouped_lines_accepted():
     assert len(block.inferences) == 2
 
     # (4), (6) holds
-    r1 = ra.parse_reason(_reason("CID", drop=("Valid:",), extra=("Valid: (4), (6) holds -- both hold",)), vocab)
+    r1 = ra.parse_reason(
+        _reason("CID", drop=("Valid:",), extra=("Valid: (4), (6) holds -- both hold",)), vocab
+    )
     assert not ra.pass_failures(r1, block, vocab)
 
     # (4), (6) hold
-    r2 = ra.parse_reason(_reason("CID", drop=("Valid:",), extra=("Valid: (4), (6) hold -- both hold",)), vocab)
+    r2 = ra.parse_reason(
+        _reason("CID", drop=("Valid:",), extra=("Valid: (4), (6) hold -- both hold",)), vocab
+    )
     assert not ra.pass_failures(r2, block, vocab)
 
     # (4) and (6) hold
-    r3 = ra.parse_reason(_reason("CID", drop=("Valid:",), extra=("Valid: (4) and (6) hold -- both hold",)), vocab)
+    r3 = ra.parse_reason(
+        _reason("CID", drop=("Valid:",), extra=("Valid: (4) and (6) hold -- both hold",)), vocab
+    )
     assert not ra.pass_failures(r3, block, vocab)
 
     # Semicolon-separated clauses on one Valid line
-    r4 = ra.parse_reason(_reason("CID", drop=("Valid:",), extra=("Valid: (4) holds -- rule; (6) holds -- meets rule",)), vocab)
+    r4 = ra.parse_reason(
+        _reason(
+            "CID", drop=("Valid:",), extra=("Valid: (4) holds -- rule; (6) holds -- meets rule",)
+        ),
+        vocab,
+    )
     assert not ra.pass_failures(r4, block, vocab)
 
 
@@ -1351,4 +1362,3 @@ def test_waived_basis_wording_when_basis_is_none_without_escalating_low_rank():
         "the block's weakest premise is (2) 'worker reported, unchecked' (rank 1)" in f
         for f in failures_escalate
     )
->>>>>>> 842de4896 (feat(ida): replace argdown cli pre-sanitisation with tolerant native parser)

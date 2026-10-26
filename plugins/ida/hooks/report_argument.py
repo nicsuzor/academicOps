@@ -101,6 +101,7 @@ def _match_valid_part(part: str) -> ValidMatch | None:
     word = "holds" if word_raw.startswith("hold") else "fails"
     return ValidMatch(lines=lines, word=word, rest=m.group("rest"), raw=s)
 
+
 _ANSWERED_LINE = re.compile(r"^(?P<id>[^\s:]+):?\s*(?:←|<-)\s*\((?P<n>\d+)\)\s*$")
 _ANSWERED_NONE = re.compile(r"^(?P<id>[^\s:]+):?\s+unanswered\s*$")
 _TAG = re.compile(r"#[A-Za-z0-9_-]+")
@@ -597,10 +598,12 @@ def check_argdown_block(
     # Machine Check 2: Orphan statement check: statements must have relations or argument membership
     connected_statements: set[str] = set()
     for r in relations:
-        if r.get("from"):
-            connected_statements.add(r.get("from"))
-        if r.get("to"):
-            connected_statements.add(r.get("to"))
+        rel_from = r.get("from")
+        if isinstance(rel_from, str):
+            connected_statements.add(rel_from)
+        rel_to = r.get("to")
+        if isinstance(rel_to, str):
+            connected_statements.add(rel_to)
     for title, stmt in statements.items():
         if stmt.get("relations"):
             connected_statements.add(title)
@@ -749,7 +752,11 @@ def parse_reason(text: str, vocab: Vocabulary) -> Reason:
             stripped = raw_line.strip()
             if not stripped:
                 continue
-            if raw_line.startswith((" ", "\t")) or stripped.startswith(("- ", "* ")) or (current_key == "Valid" and stripped.startswith("(")):
+            if (
+                raw_line.startswith((" ", "\t"))
+                or stripped.startswith(("- ", "* "))
+                or (current_key == "Valid" and stripped.startswith("("))
+            ):
                 val = re.sub(r"^[-*]\s+", "", stripped)
                 if current_key == "Valid":
                     parts = [p.strip() for p in re.split(r";\s*(?=\(\d+\))", val) if p.strip()]
@@ -883,8 +890,7 @@ def pass_failures(
             keyed = sorted({line for m in valid if m for line in m.lines})
             if len(keyed) != len(block.inferences):
                 failures.append(
-                    f"Valid has {len(keyed)} entries for "
-                    f"{len(block.inferences)} inference lines"
+                    f"Valid has {len(keyed)} entries for {len(block.inferences)} inference lines"
                 )
             elif not orphans:
                 expected = sorted(int(inf.conclusion or 0) for inf in block.inferences)
@@ -991,7 +997,9 @@ def span_attributes(reason: Reason, block: Argument | None, vocab: Vocabulary) -
 
     keyed_lines = {line for m in reason.valid_entries() if m for line in m.lines}
     attrs["premise_check.inference_count"] = (
-        len(block.inferences) if block is not None else (len(keyed_lines) or len(reason.get("Valid")))
+        len(block.inferences)
+        if block is not None
+        else (len(keyed_lines) or len(reason.get("Valid")))
     )
     tags = reason.defect_tags(vocab)
     attrs["premise_check.defect_tags"] = tags
