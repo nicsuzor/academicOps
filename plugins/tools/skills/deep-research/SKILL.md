@@ -9,8 +9,8 @@ Structure prompts for deep research tools and ingest outputs into the PKB.
 
 ## Routing
 
-- **Authoring prompts**: User needs to formulate an investigation probe. Route to [[prompt-authoring]].
-- **Capturing outputs**: User provides a Google Doc URL or ID from an external run. Route to [[pkb-capture]].
+- **Authoring prompts**: User needs to formulate an investigation probe. Route to `procedures/prompt-authoring.md`.
+- **Capturing outputs**: User provides a Google Doc URL or ID from an external run. Route to `procedures/pkb-capture.md`.
 
 ## Lifecycle Overview
 
