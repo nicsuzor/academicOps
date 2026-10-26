@@ -484,9 +484,8 @@ def test_agy_peer_report_in_transcript_is_searched(tmp_path: Path):
     mock_search.assert_called_once_with("report", cwd="/workspace", session_id="c1")
 
 
-def test_agy_missing_transcript_raises_os_error(tmp_path: Path):
-    with pytest.raises(OSError):
-        handlers.search_the_pkb(_agy_ctx(tmp_path / "absent.jsonl"))
+def test_agy_missing_transcript_returns_none(tmp_path: Path):
+    assert handlers.search_the_pkb(_agy_ctx(tmp_path / "absent.jsonl")) is None
 
 
 def test_agy_user_input_with_embedded_user_request_closing_tag(tmp_path: Path):

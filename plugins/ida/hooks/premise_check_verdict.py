@@ -17,6 +17,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -26,6 +27,33 @@ import report_argument as ra
 from premise_check_gate import disarm, get_judged, get_state, is_armed, mint_verification_id
 
 VERDICTS: tuple[str, ...] = ("PASS", "REVISE", "FAIL")
+
+_TASK_ID_RE = re.compile(
+    r"^(?:task|epic|aops|wf)[_-][a-zA-Z0-9_-]+$"
+    r"|^(?:[a-z][a-z0-9-]*[_-])?[0-9a-f]{8}$"
+    r"|^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    r"|^(?:engine-)?task-\d+$",
+    re.IGNORECASE,
+)
+_NON_TASK_PREFIXES = ("claim-", "verdict-", "report-", "toolu_")
+_KNOWN_NON_TASK_IDS = {"ns", "default", "academicops", "aops"}
+
+
+def is_task_id(identifier: str) -> bool:
+    """Return True if identifier resembles a task or epic ID."""
+    if not identifier:
+        return False
+    tid = identifier.strip()
+    low = tid.lower()
+    if low in _KNOWN_NON_TASK_IDS:
+        return False
+    if any(low.startswith(p) for p in _NON_TASK_PREFIXES):
+        return False
+    if _TASK_ID_RE.match(tid):
+        return True
+    if re.match(r"^[a-z][a-z0-9_.-]*[_-][0-9a-f]{6,}$", tid, re.IGNORECASE):
+        return True
+    return False
 
 
 def _import_claude_code_tracer() -> Any:
@@ -226,6 +254,33 @@ def judge_reason(token: str, reason: str, judged_text: str | None) -> dict[str, 
                 "PASS refused -- the reason fails the recorder's checks "
                 "(see the premise-check skill's checker reason):\n- " + "\n- ".join(failures)
             )
+    elif token in ("REVISE", "FAIL"):
+        valid_lines = parsed.get("Valid")
+        if valid_lines:
+            valid_entries = parsed.valid_entries()
+            all_hold = all(m is not None and m.group("word") == "holds" for m in valid_entries)
+            if all_hold:
+                has_unanswered = False
+                for ans in parsed.answered():
+                    if ans is not None and ans[1] is None:
+                        has_unanswered = True
+                        break
+                if not has_unanswered:
+                    for entry in parsed.get("Answered"):
+                        if "unanswered" in entry.lower():
+                            has_unanswered = True
+                            break
+                if not has_unanswered:
+                    for line in reason.splitlines():
+                        if re.search(r"^\s*asks?\s*:.*?\bunanswered\b", line, re.IGNORECASE):
+                            has_unanswered = True
+                            break
+                if not has_unanswered:
+                    raise ValueError(
+                        f"{token} refused -- reason has Valid entries that all hold and no "
+                        f"Ask: ... -> unanswered; {token} requires at least one failing "
+                        f"inference step ('Valid: (n) fails -- <defect>') or unanswered ask"
+                    )
     return ra.span_attributes(parsed, block, vocab)
 
 
@@ -250,18 +305,26 @@ def record_verdict(
     if not reason:
         raise ValueError("a verdict needs a reason; got none")
 
-    if not is_armed(session_id):
-        raise ValueError(f"no premise check is currently armed for session {session_id!r}")
+    armed = is_armed(session_id)
+    is_task_claim = is_task_id(cid)
 
-    state = get_state(session_id)
-    expected_id = state.get("claim_id")
-    valid_ids = state.get("claim_ids") or ([expected_id] if expected_id else [])
-    if cid != expected_id and cid not in valid_ids:
-        raise ValueError(
-            f"unknown or mismatched report id {cid!r}; gate is armed for {expected_id!r}"
-        )
+    if not armed:
+        if not is_task_claim:
+            raise ValueError(f"no premise check is currently armed for session {session_id!r}")
+        state = get_state(session_id)
+    else:
+        state = get_state(session_id)
+        expected_id = state.get("claim_id")
+        valid_ids = state.get("claim_ids") or ([expected_id] if expected_id else [])
+        if cid != expected_id and cid not in valid_ids:
+            if not is_task_claim:
+                raise ValueError(
+                    f"unknown or mismatched report id {cid!r}; gate is armed for {expected_id!r}"
+                )
 
     judged_text, judged_ref = get_judged(session_id, cid)
+    if is_task_claim and not judged_ref:
+        judged_ref = cid
     block_text = ra.extract_block(judged_text)
 
     entry = (state.get("judged") or {}).get(cid, {})

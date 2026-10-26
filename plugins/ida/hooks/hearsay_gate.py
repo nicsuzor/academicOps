@@ -82,7 +82,7 @@ _CHANNEL_REPLY_TOOLS = frozenset(
 )
 
 # Non-channel tools blocked while the check is armed
-_GATED_TOOLS = frozenset([*_DISPATCH_TOOLS, "SendMessage", "Dump"])
+_GATED_TOOLS = frozenset([*_DISPATCH_TOOLS, "SendMessage", "Dump", "send_message", "dump"])
 
 
 def is_channel_reply_tool(tool_name: str) -> bool:
@@ -100,7 +100,10 @@ def is_channel_reply_tool(tool_name: str) -> bool:
 def _is_blocked_tool(tool_name: str) -> bool:
     if not tool_name:
         return False
-    if tool_name in _GATED_TOOLS or tool_name.split("__")[-1] in _GATED_TOOLS:
+    tool_lower = tool_name.lower()
+    last_seg_lower = tool_lower.split("__")[-1]
+    gated_lower = {t.lower() for t in _GATED_TOOLS}
+    if tool_lower in gated_lower or last_seg_lower in gated_lower:
         return True
     return is_channel_reply_tool(tool_name)
 
@@ -326,6 +329,8 @@ def _agy_turn_start(ctx: HookContext) -> dict[str, Any] | None:
         return None
     path = ctx.transcript_path or ctx.raw.get("transcriptPath")
     if not path:
+        return None
+    if not Path(path).is_file():
         return None
     with open(path, encoding="utf-8") as f:
         lines = f.readlines()
