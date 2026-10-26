@@ -1,22 +1,23 @@
 ---
 name: craft
-description: Authoring standard and quality gate for agent-facing instruction text. Use when writing, reviewing, or revising SKILL.md bodies, frontmatter descriptions, agent definitions, subagent prompts, or tool descriptions. Exclude for human-facing prose (specs, reports) or workflow templates.
+description: Authoring standard and quality gate for agent-facing instruction text and workflow templates. Use when writing, reviewing, or revising SKILL.md bodies, frontmatter descriptions, agent definitions, subagent prompts, tool descriptions, or workflow templates. Exclude for human-facing prose (specs, reports).
 allowed-tools: Read, Write, Edit
 ---
 
 # Instruction Craftsmanship
 
-Author and review agent-facing instructions for operational clarity and token efficiency. Consult `references/evidence.md` for empirical findings.
+Author and review agent-facing instructions and workflow templates for operational clarity, contract separation, and token efficiency. Consult `references/evidence.md` for empirical findings.
 
 ## First Principles
 
 1. **Trust the harness, not today's quirks**: Write for durable capabilities. Avoid hard-coding workarounds for transient model behaviors.
 2. **Specify process, not keystrokes**: State when to invoke a capability and what outcome proves it worked. Omit basic sub-steps or flags the agent already knows.
-3. **One skill, one job**: Keep instructions focused on their singular purpose. Dispatch to peer skills rather than summarizing their internals. Leave another agent's domain to that agent: name the hand-off, never how it does its work.
-4. **Verification must be real**: Demand direct inspection of live artifacts (outputs, logs, diffs) rather than relying on compliance checklists.
-5. **Every line earns its place**: Relocate historical narratives, incident stories, and philosophical justifications to change records.
-6. **Grant discretion; checks live in workflows**: Let the agent make the calls its role covers -- weights, estimates, placements, judgements -- and act on them as final. Never write confirmation gates, sign-off requirements, or "mark it provisional until the user rules" into instructions or notes; a check on discretion belongs in a workflow template, where it is calibrated against the rest of the framework.
-7. **Modular and self-contained**: Avoid dependencies and external references; leave room for change. Describe other components by their general role only.
+3. **One component, one job**: Keep instructions and templates focused on their singular purpose. Dispatch to peer skills rather than summarizing their internals. Leave another agent's domain to that agent: name the hand-off, never how it does its work.
+4. **State the contract, not the neighbour**: Specify what a component needs as input and delivers as output. Never couple to specific neighbour names or slugs; composing agents decide what fills each slot.
+5. **Write for a headless worker**: Assume unattended, asynchronous execution with no interactive human in the loop. A step never pauses or waits for human input; explicit approval boundaries terminate the task and wire dependent tasks as blocked.
+6. **Promise only what the executor delivers**: Output contracts list only artifacts and state the executing agent itself produces. Another party's subsequent act (human sign-off, reviewer verdict) is never an executor deliverable.
+7. **Verification must be real**: Demand direct inspection of live artifacts (outputs, logs, diffs) rather than relying on compliance checklists.
+8. **Every line earns its place**: Relocate historical narratives, incident stories, and philosophical justifications to change records.
 
 ## The Deletion Test
 
@@ -43,6 +44,24 @@ Hold operational content strictly under 200 lines (target 30-80 lines):
 - Use positive imperatives paired with functional reasoning ("Use X because Y").
 - Pair prohibitions with mandatory alternatives and legitimate escape hatches.
 - Rely on document structure rather than capitalized absolutes ("ALWAYS", "NEVER").
+
+## Workflow Templates
+
+Workflow templates (`type: template`) govern repeatable multi-stage execution and task composition (<100 lines target).
+
+- **Schema**:
+  ```yaml
+  ---
+  title: <human name>
+  type: template
+  description: <one line: what class of work this covers, so a composer can select it>
+  tags: [...]
+  ---
+  ```
+- **Contract over neighbour**: Define input and output contracts per stage. Never name another template slug in frontmatter or body. A composite lists stages as contract expectations in order ("an independent review verdict on the spec"), never as slugs.
+- **Headless execution & approval boundaries**: A step never pauses, waits, or prompts a human mid-task. Where approval is required, the step ends there: the worker files the complete artifact on the record and structures the boundary so downstream work remains strictly blocked until approval is recorded (e.g. releasing as `partial` with an explicit decision task or dependency-wired review task). Cut the composition chain at that boundary; work following the decision belongs in a separate dependent task.
+- **Promise only executor deliverables**: Output contracts specify only artifacts and state generated by the executing agent. Future external decisions or approvals are not executor deliverables.
+- **`wf-` prefix**: Templates stating an obligation that blocks acceptance rather than a process that proceeds conventionally carry a `wf-` prefix.
 
 ## Agent Definitions
 
