@@ -43,7 +43,9 @@ Components come from three sources:
 Universal baseline templates in `plugins/ida/skills/workflow-library/workflows/` include:
 
 - `wf-code-task-base`: Foundation for standard code-change tasks (test-first build, PR, independent review).
+- `wf-daily`: Universal daily note lifecycle (read and enrich existing note, strike out completed tasks, process user annotations, elevate verbatim requests and high-signal prompts, itemize merged PR elements, scannable briefing).
 - `wf-finish`: Universal fallback finish policy (PR into base development branch, QA review).
+- `wf-prompt-objectives`: Reduce a day of user prompts to objectives pursued, synthesizing dense consolidated summaries, elevating handwritten or emphasized prompts, and capturing unfinished work.
 - `wf-quick-fix`: Shortened route for simple, uncontroversial project changes (repository-allowed shortened PR or merge route, review exemption when unit and destination tests pass).
 - `wf-reconcile`: Universal graph reconciliation and task truth-maintenance procedure.
 - `wf-tdd`: Test-driven development red-green-refactor cycle.
