@@ -46,7 +46,6 @@ _GROUPED_EVENTS = ("PreToolUse", "PostToolUse")
 _FLAT_EVENTS = ("PreInvocation", "PostInvocation", "SessionStart", "Stop")
 
 
-
 def adapt(build_dir: Path, ctx: BuildContext) -> None:
     manifests = ctx.manifests
     if "plugin" not in manifests:

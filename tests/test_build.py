@@ -221,7 +221,6 @@ def test_agy_accepts_session_start_as_flat_event(tmp_path):
     assert entries[0]["command"] == "uv run --project . python hooks/dispatch.py agy SessionStart"
 
 
-
 def _agy_ctx(tmp_path, directory="aops", name="aops"):
     from build.context import BuildContext, Plugin
 

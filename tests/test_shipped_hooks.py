@@ -320,7 +320,6 @@ _AGY_GROUPED_EVENTS = {"PreToolUse", "PostToolUse"}
 _AGY_FLAT_EVENTS = {"PreInvocation", "PostInvocation", "SessionStart", "Stop"}
 
 
-
 def test_shipped_agy_hooks_json_matches_agys_schema(dist_root):
     """Every agy `hooks.json` we ship, checked against the shape agy parses."""
     checked = 0

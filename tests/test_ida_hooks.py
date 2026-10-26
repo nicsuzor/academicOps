@@ -595,4 +595,3 @@ def test_render_agy_formats_system_message_and_ephemeral_message():
     assert render("agy", "SessionStart", start_res) == {
         "injectSteps": [{"systemMessage": {"systemMessage": "Startup welcome"}}]
     }
-
