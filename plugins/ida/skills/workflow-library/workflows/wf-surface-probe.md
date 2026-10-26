@@ -38,6 +38,7 @@ Execute these five checks in order on the target surface. Each check requires it
 ## Output contract
 
 A surface verification matrix recording:
+
 - Target surface identifier
 - Five probe verdicts (PASS, FAIL, or INCONCLUSIVE) with pinpoint receipts
 - Any discovered configuration, namespace, or environment discrepancies filed as one task per root cause

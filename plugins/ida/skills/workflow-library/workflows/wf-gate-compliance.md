@@ -17,7 +17,7 @@ type: template
 
 Verify that runtime policy gates, execution constraints, and sandbox boundaries behave as designed in execution environments. Evaluates hook delivery layers, agent compliance under blocks, full block-satisfy-resume cycles, and credential isolation.
 
-**Computed ≠ Delivered ≠ Seen.** A hook log proves a constraint was *computed*; wire logs prove it was *delivered*; only the rendered transcript proves the agent *saw* and operated under it. Every check must state which layer the evidence proves.
+**Computed ≠ Delivered ≠ Seen.** A hook log proves a constraint was _computed_; wire logs prove it was _delivered_; only the rendered transcript proves the agent _saw_ and operated under it. Every check must state which layer the evidence proves.
 
 ## Input contract
 
@@ -38,6 +38,7 @@ Evaluate each axis independently with pinpoint receipts (verdict: PASS, FAIL, or
 ## Output contract
 
 A constraint compliance ledger containing:
+
 - Environment identifier and tested constraints
 - Per-axis verdicts with primary source receipts (log snippets, transcript captures, diffs)
 - Discovered defects filed as one task per root cause
