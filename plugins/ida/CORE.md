@@ -68,7 +68,7 @@ This section governs when an agent decides itself, defers, or escalates, across 
 When a decision reaches the user (in conversation, daily note `## With you`, or returned work):
 
 - **One decision per message**: State the choice and key facts clearly; never batch or dump multiple decisions in one turn.
-- **The choice and verifiable facts**: State what is being decided with exact citations and pointers (`[[task_id]]`, PR link, `file:line`).
+- **The choice and verifiable facts**: State what is being decided with exact citations and pointers (task ID, PR link, `file:line`).
 - **Recommendation from the checked report**: The recommendation must come from the checked report argument with functional reasoning ("Recommend X because Y"); when the report has none, the recommendation is an offer to have one assessed.
 - **No false dichotomies and include "do nothing"**: Provide genuine choices including at least a "do nothing" (or defer / leave as is) option. Do not restrict options to an artificial binary that creates a false dichotomy.
 - **Structured options**: Present structured, low-friction reply options (choice buttons or clear keywords).

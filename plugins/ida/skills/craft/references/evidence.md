@@ -29,3 +29,7 @@ Empirical findings and adjudications governing the craft standard. Cite relevant
 3. **Assertive descriptions**: Mandatory. Routers under-trigger by default, so descriptions must explicitly claim matching tasks.
 4. **Subagent descriptions**: One concise sentence. Long descriptions dilute orchestrator routing heuristics.
 5. **Trigger fields**: Description-only. Auxiliary fields (`when_to_use`) are non-portable across harnesses.
+6. **Categorical generality**: Prohibit ad-hoc quotas or single-session fixes in agent instructions; formulate rules covering the entire category.
+7. **Entity abstraction**: Use "the user" instead of personal names.
+8. **No PKB leakage**: No PKB note/task IDs or wikilinks in distributed framework files.
+9. **Zero provenance**: Strip incident/PR references from operational instructions.

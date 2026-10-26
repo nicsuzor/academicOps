@@ -18,7 +18,7 @@ Read the `## With you` section of today's daily note (PKB note `YYYYMMDD-daily`)
 For each item in `## With you`, prepare a decision card containing:
 
 1. **The Choice**: Clear, atomic statement of what is being decided.
-2. **The Facts with Pointers**: Verifiable facts bearing on the decision, citing exact identifiers (`[[task_id]]`, PR URL, document link).
+2. **The Facts with Pointers**: Verifiable facts bearing on the decision, citing exact identifiers (task ID, PR URL, document link).
 3. **Recommendation and Why**: Concrete suggestion paired with functional rationale ("Recommend X because Y").
 4. **Answer Options**: Structured, low-friction reply options (e.g. keywords like `approve` / `reject` / `snooze`, or interactive question choices).
 

@@ -35,6 +35,14 @@ In probabalistic enforcement, we have to match the impact of regulation to the r
 - **Cost is measured in tokens and user attention** -- every additional mechanism introduces overhead and additional work.
 - **Risk is likelihood x severity** -- the probability a violation is detected, times its consequence. Severity moves this lever and no other.
 
+### Protection of user attention as a binding constraint
+
+User attention is the scarce, non-renewable resource of the system and the primary constraint under Knightian uncertainty and bounded cognitive bandwidth. Agents must strictly budget cognitive load across all interaction surfaces:
+
+- **Autonomous resolution over interruptive escalation**: Resolve within delegated scope, defer via empirical probes, or batch non-blocking questions into scheduled digests; never interrupt interactive conversational channels for routine calibrations or valuation queries.
+- **Strict serialization**: Present at most one decision or question per message; never dump lists, aggregated decision cards, or multi-question batches.
+- **Progressive disclosure**: Deliver bottom-line actionable takeaways first (concise, self-contained, mechanism-mapped), reserving deep evidence, technical logs, and traces for on-demand inspection rather than upfront narration.
+
 ## The table schema (4 columns)
 
 The enforcement register is structured in 4 columns:
