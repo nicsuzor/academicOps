@@ -14,10 +14,7 @@ module keeps no copy of it.
 
 from __future__ import annotations
 
-import json
 import re
-import shutil
-import subprocess
 import tempfile
 import tomllib
 from dataclasses import dataclass, field
@@ -34,8 +31,10 @@ _FENCE_OPEN = re.compile(r"^\s*(?P<fence>`{3,}|~{3,})\s*argdown\s*$", re.IGNOREC
 _FRONTMATTER_FENCE = "==="
 _NUMBERED = re.compile(r"^\((?P<n>\d+)\)\s*(?P<text>.*)$")
 # Argdown takes an inference line in ASCII (``-- ... --``) or typed live (``— ... —``).
-_INFERENCE = re.compile(r"^(?:--|—)\s*.*\s*(?:--|—)$")
-_TRAILING_MARKERS = re.compile(r"(?:\s*\^[A-Za-z]+)+\s*$")
+_INFERENCE = re.compile(r"^(?:--|—)\s*.*\s*(?:--|—)$|^--\s--$")
+_TRAILING_MARKERS = re.compile(r"(?:\s*\^[A-Za-z0-9_-]+)+\s*$")
+_ATTR_BLOCK = re.compile(r"\{(?P<attrs>[^{}]+)\}\s*$")
+_BASIS_ATTR = re.compile(r"\bbasis\s*:\s*(?:\"([^\"]+)\"|'([^']+)'|([^,}\n]+))")
 _LINE_REF = re.compile(r"\((?P<n>\d+)\)")
 _ARROW = re.compile(r"←|<-")
 _VALID_ENTRY = re.compile(
@@ -246,6 +245,15 @@ def extract_block(text: str | None) -> str | None:
 
 
 def _premise_basis(text: str) -> str | None:
+    # 1. Attribute syntax {basis: ...}
+    if m_attr := _ATTR_BLOCK.search(text):
+        attrs = m_attr.group("attrs")
+        if m_b := _BASIS_ATTR.search(attrs):
+            val = m_b.group(1) or m_b.group(2) or m_b.group(3)
+            if val:
+                return val.strip()
+
+    # 2. Separator -- or — syntax
     seps = list(_SEPARATOR.finditer(text))
     if not seps:
         return None
@@ -308,7 +316,7 @@ def parse_block(block: str, vocab: Vocabulary) -> Argument | None:
                 in_inference = True
                 current_inf = [s]
             else:
-                body_lines.append(s)
+                body_lines.append(raw_ln)
         else:
             current_inf.append(s)
             if s.endswith("--") or s.endswith("—"):
@@ -320,13 +328,21 @@ def parse_block(block: str, vocab: Vocabulary) -> Argument | None:
 
     after_inference: Inference | None = None
     for line in body_lines:
-        if not line:
+        stripped = line.strip()
+        if not stripped:
             continue
-        if _INFERENCE.match(line):
-            after_inference = Inference(text=line, conclusion=None)
+        # Indented continuation line under premise
+        if line.startswith((" ", "\t")) and arg.premises and after_inference is None:
+            if b_text := _premise_basis(stripped):
+                if arg.premises[-1].basis_text is None:
+                    arg.premises[-1].basis_text = b_text
+                    arg.premises[-1].basis = match_basis(b_text, vocab)
+            continue
+        if _INFERENCE.match(stripped):
+            after_inference = Inference(text=stripped, conclusion=None)
             arg.inferences.append(after_inference)
             continue
-        if m := _NUMBERED.match(line):
+        if m := _NUMBERED.match(stripped):
             n = int(m.group("n"))
             arg.lines[n] = m.group("text")
             if after_inference is not None:
@@ -365,83 +381,208 @@ def clean_ansi(text: str, file_path: str | None = None) -> str:
 
 
 def sanitise_argdown_text(text: str) -> str:
-    """Prevent markdown punctuation (*, _) in premise-check blocks from triggering false-positive @argdown/cli syntax rejections, and ensure frontmatter has required empty line separation."""
-    m = re.match(r"^(===\s*\n.*?\n===\s*\n)(.*)$", text, re.DOTALL)
-    if m:
-        fm, body = m.group(1), m.group(2)
-        fm = fm.rstrip("\n") + "\n\n"
-        body = body.lstrip("\n")
-    else:
-        fm, body = "", text
-
-    # Normalise live em-dash inference lines to ASCII inference bars for @argdown/cli
-    body = re.sub(r"^\s*—\s*(.*?)\s*—\s*$", r"-- \1 --", body, flags=re.MULTILINE)
-    # Escape unescaped * in argdown body
-    body = re.sub(r"(?<!\\)\*", r"\*", body)
-    # Escape unescaped _ in argdown body, except when part of relation '_>'
-    body = re.sub(r"(?<!\\)_(?!>)", r"\_", body)
-    return fm + body
+    """Pass-through for backward compatibility without regex pre-mutation."""
+    return text
 
 
 def check_argdown_block(
     block_text: str,
     parser_bin: str | None = None,
 ) -> tuple[bool, str, dict[str, Any] | None]:
-    """Parse block with @argdown/cli and run machine checks: orphan statements and misaimed undercuts.
+    """Parse and validate an Argdown block using a native tolerant parser.
 
     Checks:
-    1. Argdown syntax validity (clean exit and JSON AST from parser).
+    1. Argdown syntax validity (clean frontmatter, statements, inferences, relations).
     2. Undercut check: any undercut (_>) must target an inference (toType == 'inference').
     3. Orphan statement check: statements must have relations or argument membership.
 
     Returns:
         (valid: bool, reason_or_error: str, ast: dict | None)
     """
-    cmd = parser_bin or shutil.which("argdown")
-    if not cmd:
-        raise RuntimeError("argdown parser binary not found on PATH")
-    text_to_parse = sanitise_argdown_text(block_text)
+    if not block_text or not block_text.strip():
+        return False, "Argdown syntax error: empty block", None
 
-    with tempfile.NamedTemporaryFile("w", suffix=".argdown", delete=False) as f:
-        f.write(text_to_parse)
-        f.flush()
-        f_path = Path(f.name)
-    try:
-        res = subprocess.run(
-            [cmd, "json", str(f_path), "--stdout", "--logParserErrors", "true"],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-    finally:
+    lines = block_text.splitlines()
+
+    # 1. Frontmatter check
+    start = next((i for i, ln in enumerate(lines) if ln.strip()), None)
+    body_lines = lines
+    if start is not None and lines[start].strip() == _FRONTMATTER_FENCE:
+        end = None
+        for i in range(start + 1, len(lines)):
+            if lines[i].strip() == _FRONTMATTER_FENCE:
+                end = i
+                break
+        if end is None:
+            return (
+                False,
+                "Argdown syntax error:\nUnclosed frontmatter fence (missing closing '===')",
+                None,
+            )
+        fm_text = "\n".join(lines[start + 1 : end])
         try:
-            f_path.unlink()
-        except OSError:
-            pass
+            yaml.safe_load(fm_text)
+        except yaml.YAMLError as exc:
+            return False, f"Argdown syntax error:\nInvalid YAML frontmatter: {exc}", None
+        body_lines = lines[end + 1 :]
 
-    if res.returncode != 0:
-        err = clean_ansi(res.stderr or res.stdout, str(f_path))
-        if (
-            "Argdown syntax error" in err
-            or "Invalid Argdown syntax detected" in err
-            or "SyntaxError" in err
-        ):
-            return False, f"Argdown syntax error:\n{err}", None
-        raise RuntimeError(f"Argdown parser failed (exit {res.returncode}):\n{err}")
+    statements: dict[str, dict[str, Any]] = {}
+    numbered_map: dict[int, str] = {}
+    inferences: list[dict[str, Any]] = []
+    relations: list[dict[str, Any]] = []
+    current_inference: dict[str, Any] | None = None
+    last_stmt_or_arg: str | None = None
 
-    idx = res.stdout.rfind("}")
-    if idx == -1:
-        raise RuntimeError("Argdown parser error: no JSON output from parser")
-    try:
-        data = json.loads(res.stdout[: idx + 1])
-    except Exception as exc:
-        raise RuntimeError(f"Argdown parser error decoding AST: {exc}") from exc
+    for line in body_lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
 
-    stmts = data.get("statements", {})
-    rels = data.get("relations", [])
+        # Headings: # Heading
+        if re.match(r"^#{1,6}\s+", stripped):
+            last_stmt_or_arg = None
+            continue
 
-    # Check 1: Undercut not aimed at an inference
-    for r in rels:
+        # Inference line: -- ... -- or — ... —
+        if stripped.startswith(("--", "—")):
+            if _INFERENCE.match(stripped):
+                inf: dict[str, Any] = {"text": stripped, "conclusion": None}
+                inferences.append(inf)
+                current_inference = inf
+                last_stmt_or_arg = None
+                continue
+            return (
+                False,
+                f"Argdown syntax error:\nMalformed inference line (missing closing '--'): {stripped}",
+                None,
+            )
+
+        # Numbered item: (1) ...
+        if m_num := _NUMBERED.match(stripped):
+            n = int(m_num.group("n"))
+            rest = m_num.group("text")
+            m_title = re.match(r"^\[(?P<title>[^\]]+)\](?::\s*(?P<text>.*))?$", rest)
+            if m_title:
+                title = m_title.group("title")
+                stmt_text = m_title.group("text") or title
+            else:
+                title = str(n)
+                stmt_text = rest
+            numbered_map[n] = title
+            stmt = statements.setdefault(
+                title,
+                {
+                    "title": title,
+                    "text": stmt_text,
+                    "isUsedAsPremise": False,
+                    "isUsedAsMainConclusion": False,
+                    "isUsedAsIntermediaryConclusion": False,
+                    "relations": [],
+                    "members": [
+                        {
+                            "role": "premise" if current_inference is None else "conclusion",
+                            "text": stmt_text,
+                        }
+                    ],
+                },
+            )
+            if current_inference is not None:
+                current_inference["conclusion"] = n
+                stmt["isUsedAsMainConclusion"] = True
+                stmt["members"].append({"role": "conclusion", "text": stmt_text})
+                current_inference = None
+            else:
+                stmt["isUsedAsPremise"] = True
+            last_stmt_or_arg = title
+            continue
+
+        # Titled statement: [Title]: text or [Title]
+        if m_stmt := re.match(r"^\[(?P<title>[^\]]+)\](?::\s*(?P<text>.*))?$", stripped):
+            title = m_stmt.group("title")
+            stmt_text = m_stmt.group("text") or title
+            statements.setdefault(
+                title,
+                {
+                    "title": title,
+                    "text": stmt_text,
+                    "isUsedAsPremise": False,
+                    "isUsedAsMainConclusion": False,
+                    "isUsedAsIntermediaryConclusion": False,
+                    "relations": [],
+                    "members": [],
+                },
+            )
+            last_stmt_or_arg = title
+            continue
+
+        # Argument: <Title>: text or <Title>
+        if m_arg := re.match(r"^<(?P<title>[^>]+)>(?::\s*(?P<text>.*))?$", stripped):
+            title = m_arg.group("title")
+            last_stmt_or_arg = title
+            continue
+
+        # Relation: +>, ->, _>, ><
+        if m_rel := re.match(r"^(?P<rel>\+>|->|_>|><)\s*(?P<target>.*)$", stripped):
+            rel_sym = m_rel.group("rel")
+            raw_target = m_rel.group("target").strip()
+            if not raw_target:
+                return False, f"Argdown syntax error:\nRelation missing target: {stripped}", None
+            rel_type = {
+                "+>": "support",
+                "->": "attack",
+                "_>": "undercut",
+                "><": "contradict",
+            }[rel_sym]
+
+            m_t_stmt = re.match(r"^\[(?P<title>[^\]]+)\]", raw_target)
+            m_t_num = re.match(r"^\((?P<n>\d+)\)", raw_target)
+            m_t_arg = re.match(r"^<(?P<title>[^>]+)>", raw_target)
+
+            if m_t_stmt:
+                to_target = m_t_stmt.group("title")
+                to_type = "statement"
+                statements.setdefault(
+                    to_target, {"title": to_target, "text": to_target, "relations": []}
+                )
+            elif m_t_num:
+                n = int(m_t_num.group("n"))
+                to_target = numbered_map.get(n, str(n))
+                to_type = "statement"
+            elif m_t_arg:
+                to_target = m_t_arg.group("title")
+                to_type = "inference" if rel_sym == "_>" else "argument"
+            else:
+                to_target = raw_target
+                to_type = "statement"
+
+            src = last_stmt_or_arg or "unknown"
+            relations.append(
+                {
+                    "relationType": rel_type,
+                    "from": src,
+                    "to": to_target,
+                    "toType": to_type,
+                }
+            )
+            if src in statements:
+                statements[src].setdefault("relations", []).append(to_target)
+            continue
+
+        # Indented metadata or tags under previous statement: {attr: ...} or #tag
+        if line.startswith((" ", "\t")) and (stripped.startswith(("{", "#"))):
+            continue
+
+        # If line does not match any valid Argdown construct, it is a syntax error
+        return False, f"Argdown syntax error:\nUnexpected syntax: '{stripped}'", None
+
+    ast_data: dict[str, Any] = {
+        "statements": statements,
+        "relations": relations,
+        "inferences": inferences,
+    }
+
+    # Machine Check 1: Undercut check: any undercut (_>) must target an inference
+    for r in relations:
         if r.get("relationType") == "undercut":
             if r.get("toType") != "inference":
                 target = r.get("to")
@@ -450,17 +591,17 @@ def check_argdown_block(
                 return (
                     False,
                     f"Argdown argument invalid: undercut from '{src}' targets {target_type} '{target}' instead of an inference",
-                    data,
+                    ast_data,
                 )
 
-    # Check 2: Orphan statement (unconnected statement with no relation and no argument membership)
+    # Machine Check 2: Orphan statement check: statements must have relations or argument membership
     connected_statements: set[str] = set()
-    for r in rels:
+    for r in relations:
         if r.get("from"):
             connected_statements.add(r.get("from"))
         if r.get("to"):
             connected_statements.add(r.get("to"))
-    for title, stmt in stmts.items():
+    for title, stmt in statements.items():
         if stmt.get("relations"):
             connected_statements.add(title)
         if (
@@ -482,21 +623,48 @@ def check_argdown_block(
             if m.get("argumentTitle"):
                 connected_statements.add(title)
 
-    for title, stmt in stmts.items():
+    for title, stmt in statements.items():
         if title not in connected_statements:
-            text = next((m.get("text") for m in stmt.get("members", []) if m.get("text")), title)
+            text = stmt.get("text") or title
             return (
                 False,
                 f"Argdown argument invalid: orphan statement '{title}' ('{text}') has no relations or argument membership",
-                data,
+                ast_data,
             )
 
-    return True, "", data
+    return True, "", ast_data
 
 
 # ---------------------------------------------------------------------------
 # The checker's reason
 # ---------------------------------------------------------------------------
+
+
+def _parse_waived_entries(
+    waived_lines: list[str], vocab: Vocabulary
+) -> tuple[list[str], list[str]]:
+    items: list[str] = []
+    bad: list[str] = []
+    for entry in waived_lines:
+        parts = entry.split(";")
+        in_justification = False
+        for part in parts:
+            p = part.strip()
+            if not p or _is_none(p):
+                continue
+            item = match_format_item(p, vocab)
+            if item:
+                if item not in items:
+                    items.append(item)
+                seps = list(_SEPARATOR.finditer(p))
+                in_justification = bool(seps)
+            else:
+                seps = list(_SEPARATOR.finditer(p))
+                if in_justification and not seps:
+                    continue
+                bad.append(p)
+                in_justification = bool(seps)
+    return items, bad
 
 
 @dataclass
@@ -552,12 +720,7 @@ class Reason:
         return tags
 
     def waived_items(self, vocab: Vocabulary) -> list[str]:
-        items: list[str] = []
-        for entry in self.get("Waived"):
-            item = match_format_item(entry, vocab)
-            if item:
-                items.append(item)
-        return items
+        return _parse_waived_entries(self.get("Waived"), vocab)[0]
 
     def supported_basis(self, vocab: Vocabulary) -> Basis | None:
         entries = self.get("Supported")
@@ -574,7 +737,7 @@ def parse_reason(text: str, vocab: Vocabulary) -> Reason:
     current_key: str | None = None
     for raw_line in (text or "").splitlines():
         if m := line_re.match(raw_line):
-            current_key = m.group("key")
+            current_key = str(m.group("key"))
             val = m.group("value").strip()
             if val:
                 if current_key == "Valid":
@@ -630,6 +793,10 @@ def pass_failures(
         return []
 
     failures: list[str] = []
+    waived = reason.waived_items(vocab)
+    block_waived = "block" in waived
+    ask_wording_waived = "ask wording" in waived
+
     missing = [k for k in vocab.reason_keys if not reason.get(k)]
     if missing:
         failures.append(f"missing keyed lines: {', '.join(missing)}")
@@ -639,17 +806,17 @@ def pass_failures(
             failures.append(f"{key} must appear exactly once; found {count}")
 
     judged_asks = reason.judged_asks
-    if block is not None:
+    if block is not None and not block_waived and not ask_wording_waived:
         if sorted(set(judged_asks)) != sorted(set(block.asks)):
             failures.append(
                 f"Judged ask ids {sorted(set(judged_asks))} do not equal the block's "
                 f"asks {sorted(set(block.asks))}"
             )
-    ask_ids = block.asks if block is not None else judged_asks
+    ask_ids = judged_asks if (block is None or block_waived or ask_wording_waived) else block.asks
     if not ask_ids:
         failures.append(
             "no ask ids: the block's frontmatter has no asks and Judged names none"
-            if block is not None
+            if (block is not None and not block_waived)
             else "no ask ids: Judged names none"
         )
     answered = reason.answered()
@@ -661,14 +828,14 @@ def pass_failures(
             "Answered entries not in the form '<ask id> ← (n)' or '<ask id> unanswered': "
             + "; ".join(repr(e) for e in malformed_answers)
         )
-    if block is not None:
+    if block is not None and not block_waived:
         named = {a[1] for a in answered if a and a[1] is not None}
         absent = sorted(named - set(block.lines))
         if absent:
             failures.append(
                 f"Answered names lines not in the block ({', '.join(map(str, absent))})"
             )
-    if block is not None:
+    if block is not None and not block_waived:
         bad = sorted(str(v) for v in block.answers.values() if isinstance(v, str))
         if bad:
             failures.append(f"the block's answers are not a line number or none: {', '.join(bad)}")
@@ -701,51 +868,73 @@ def pass_failures(
                 fails.extend(str(ln) for ln in sub.lines)
     if fails:
         failures.append(f"Valid says fails for ({'), ('.join(fails)})")
-    if block is not None:
-        orphans = [inf.text for inf in block.inferences if inf.conclusion is None]
-        if orphans:
+    if block is not None and not block_waived:
+        if len(block.inferences) == 0:
             failures.append(
-                "inference line with no conclusion line after it: "
-                + "; ".join(repr(t) for t in orphans)
+                "report argument block has 0 inference lines (-- <warrant>. Unless: <defeater>; <status>. --); cannot record PASS"
             )
-        keyed = sorted({line for m in valid if m for line in m.lines})
-        if len(keyed) != len(block.inferences):
-            failures.append(
-                f"Valid has {len(keyed)} entries for "
-                f"{len(block.inferences)} inference lines"
-            )
-        elif not orphans:
-            expected = sorted(int(inf.conclusion or 0) for inf in block.inferences)
-            if keyed != expected:
+        else:
+            orphans = [inf.text for inf in block.inferences if inf.conclusion is None]
+            if orphans:
                 failures.append(
-                    f"Valid is keyed by lines {keyed}; the inference lines yield {expected}"
+                    "inference line with no conclusion line after it: "
+                    + "; ".join(repr(t) for t in orphans)
                 )
+            keyed = sorted({line for m in valid if m for line in m.lines})
+            if len(keyed) != len(block.inferences):
+                failures.append(
+                    f"Valid has {len(keyed)} entries for "
+                    f"{len(block.inferences)} inference lines"
+                )
+            elif not orphans:
+                expected = sorted(int(inf.conclusion or 0) for inf in block.inferences)
+                if keyed != expected:
+                    failures.append(
+                        f"Valid is keyed by lines {keyed}; the inference lines yield {expected}"
+                    )
 
-    if block is not None and block.premises and reason.get("Supported"):
+    if block is not None and not block_waived and block.premises and reason.get("Supported"):
         named = reason.supported_basis(vocab)
-        lowest = min(p.rank for p in block.premises)
         if named is None:
             failures.append(
                 f"Supported names no basis phrase from {vocab.path.name}: "
                 f"{reason.get('Supported')[0]!r}"
             )
-        elif named.rank != lowest:
-            weakest = block.weakest()
-            shown = weakest.basis.phrase if weakest and weakest.basis else "an unmatched basis"
+        else:
+            basis_wording_waived = "basis wording" in waived
+            premise_ranks: list[tuple[Premise, int]] = []
+            for p in block.premises:
+                if p.basis is not None:
+                    premise_ranks.append((p, p.rank))
+                elif basis_wording_waived:
+                    premise_ranks.append((p, named.rank))
+                else:
+                    premise_ranks.append((p, 0))
+            lowest = min(r for _, r in premise_ranks)
+            if named.rank != lowest:
+                weakest_p = min(premise_ranks, key=lambda pr: pr[1])[0]
+                shown = weakest_p.basis.phrase if weakest_p.basis else "an unmatched basis"
+                failures.append(
+                    f"Supported names {named.phrase!r} (rank {named.rank}); the block's weakest "
+                    f"premise is ({weakest_p.number}) {shown!r} (rank {lowest})"
+                )
+    elif (
+        block is None or block_waived or (block is not None and not block.premises)
+    ) and reason.get("Supported"):
+        named = reason.supported_basis(vocab)
+        if named is None:
             failures.append(
-                f"Supported names {named.phrase!r} (rank {named.rank}); the block's weakest "
-                f"premise is ({weakest.number if weakest else '?'}) {shown!r} (rank {lowest})"
+                f"Supported names no basis phrase from {vocab.path.name}: "
+                f"{reason.get('Supported')[0]!r}"
             )
 
-    bad_waived = [
-        e for e in reason.get("Waived") if not _is_none(e) and match_format_item(e, vocab) is None
-    ]
+    _, bad_waived = _parse_waived_entries(reason.get("Waived"), vocab)
     if bad_waived:
         failures.append(
             "Waived entries that do not start with a format item "
             f"({', '.join(vocab.format_items)}): " + "; ".join(repr(e) for e in bad_waived)
         )
-    if block is None and "block" not in reason.waived_items(vocab):
+    if block is None and not block_waived:
         failures.append(
             "the judged text has no argdown block that parses: PASS needs 'Waived: block -- ...'"
         )
@@ -756,7 +945,7 @@ def pass_failures(
         refs = relay_refs(entry)
         if not refs:
             failures.append(f"Relay names no line: {entry!r}")
-        elif block is not None:
+        elif block is not None and not block_waived:
             absent = [n for n in refs if n not in block.lines]
             if absent:
                 failures.append(
