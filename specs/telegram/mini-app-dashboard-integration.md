@@ -46,6 +46,15 @@ As an operator, once a question I was asked has been answered, by any channel, i
 - **AC-4.2** Given a pending question in the Mini App's outstanding list, when the question is answered outside the Mini App and outside the asking session (such as via a plain Telegram reply to the question card), then the question transitions to answered and leaves the outstanding list without manual intervention.
 - **AC-4.3** Given a posted question that has not been answered in any channel, when viewing the outstanding questions list, then the question remains listed and pending.
 
+### US-5 Retirement of Standalone Hosting and Infrastructure Consolidation
+
+As an operator, I want all agent interface surfaces hosted and routed exclusively by the operational dashboard domain, so that the agent runtime is decoupled from static web serving, separate tunnel lifecycles, and redundant network ingress points.
+
+- **AC-5.1** Given the retirement of standalone Mini App hosting, when an operator accesses the agent interface via Telegram WebApp or browser, then the operational dashboard handles all static asset delivery and client-side routing.
+- **AC-5.2** Given the agent runtime service configuration, when the standalone web server is decommissioned, then the agent process binds only internal communication interfaces for state synchronization and exposes no public-facing static web endpoints.
+- **AC-5.3** Given the consolidated hosting architecture, when external ingress routing is configured, then external traffic routes exclusively to the central dashboard ingress, eliminating dedicated agent WebApp tunnels.
+- **AC-5.4** Given the migration of standalone surfaces to the dashboard, when the standalone Mini App web server is terminated, then all interactive capabilities (questions, details, reviews, cognitive anchor) continue operating through the dashboard service with zero regression in state synchronization.
+
 ## Design
 
 ### 1. Unified Serving and Perimeter Authentication (US-1)
@@ -57,7 +66,7 @@ The agent interface must serve two client topologies: (a) standalone mobile acce
 #### 1.2 Architectural Options
 
 - **Option 1.1 (Telegram-Only Authentication):** Require Telegram WebApp signature validation on every request. Direct desktop browser access to the dashboard requires launching via Telegram desktop or passing synthetic Telegram parameters.
-- **Option 1.2 (Perimeter-Only Authentication):** Place the entire application behind dashboard perimeter identity (such as Cloudflare Access with Google OAuth). All requests must satisfy perimeter identity headers.
+- **Option 1.2 (Perimeter-Only Authentication):** Place the entire application behind dashboard perimeter identity (such as Cloudflare Access with OAuth). All requests must satisfy perimeter identity headers.
 - **Option 1.3 (Dual-Mode Perimeter Authentication -- Recommended):** Employ perimeter identity as the primary gate for direct web visits, combined with an authenticated bypass and validation bridge for signed Telegram WebApp launches.
   - _Recommendation Rationale:_ Mobile WebViews in chat clients struggle with third-party OAuth redirect loops and external identity providers, whereas desktop operators already hold active dashboard sessions. Dual-mode authentication guarantees friction-free access on both devices while strictly enforcing cryptographic identity checks on every request.
 
@@ -67,11 +76,11 @@ The agent interface must serve two client topologies: (a) standalone mobile acce
    - The primary dashboard ingress terminates at the central web application.
    - Standalone client routes are published under `/app/*` (static bundle and responsive standalone shell) and API endpoints under `/api/app/*`.
    - Desktop operators access the embedded view under the primary dashboard layout at `/agent`.
-   - **Bridge Transport:** The agent container hosts the HTTP/1.1 and SSE channel bridge on loopback interface `http://127.0.0.1:8093` (configurable via `PORT` or `BRIDGE_PORT`), proxied by the dashboard service layer or accessed directly over private network mesh.
+   - **Bridge Transport:** The agent process hosts the internal HTTP/1.1 and SSE channel bridge on a private loopback interface or internal service mesh, proxied by the dashboard service layer or accessed directly over private network mesh.
 2. **Authentication Flow:**
-   - **Mode A (Telegram Launch):** The client transmits the cryptographic initialization payload via `POST /api/app/auth`. The server verifies the cryptographic hash against the bot secret token using HMAC-SHA256, validates timestamp freshness (maximum age: 3600 seconds), and checks user identity against the authorized operator list. On success, the server issues an HTTP-only, secure, strict SameSite session cookie (`ida_session`) with a 1-hour expiry.
+   - **Mode A (Telegram Launch):** The client transmits the cryptographic initialization payload via `POST /api/app/auth`. The server verifies the cryptographic hash against the bot secret token using HMAC-SHA256, validates timestamp freshness (maximum age: 3600 seconds), and checks user identity against the authorized operator list. On success, the server issues an HTTP-only, secure, strict SameSite session cookie (`operator_session`) with a 1-hour expiry.
    - **Mode B (Dashboard Perimeter and Service Bridge):** For requests arriving from the dashboard domain or internal services:
-     - The bridge accepts bearer credentials in the `Authorization: Bearer <token>` or `X-Bridge-Token: <token>` header, verified against the shared bridge secret (`IDA_BRIDGE_TOKEN`) or valid session secret.
+     - The bridge accepts bearer credentials in the `Authorization: Bearer <token>` or `X-Bridge-Token: <token>` header, verified against the shared bridge secret (`DASHBOARD_BRIDGE_TOKEN` or configured bridge token) or valid session secret.
      - Alternatively, the server inspects the perimeter identity assertion header (`Cf-Access-Jwt-Assertion` or verified local session). When the identity assertion matches the authorized operator email, the request is authenticated directly without requiring Telegram initialization payloads.
    - **Rejection:** Any request to protected endpoints (`/api/app/*`) lacking both a valid session cookie, valid bridge token, and a valid perimeter assertion receives HTTP 401 Unauthorized (`{"error": "Unauthorized"}`).
 
@@ -167,10 +176,10 @@ The operator must be able to interact with the active agent directly from the da
    - Associated Telegram cards update in place to show `*Halted via Dashboard 🛑*` and disable buttons (`inline_keyboard: []`).
    - Response: `{ "success": true, "status": "stop_dispatched", "seq": number }`
 
-### 4. Cross-Channel State Synchronization Invariants
+### 4. Cross-Channel State Synchronization Invariants (US-4)
 
 1. **Single Source of Truth:**
-   - The running agent session runtime and local persistent stores (`questions.json`, `permissions.json`, `anchor.json`) maintain the authoritative state of active tasks, anchors, questions, and permission requests.
+   - The running agent session runtime and local persistent stores (pending questions store, tool permissions store, and cognitive anchor store) maintain the authoritative state of active tasks, anchors, questions, and permission requests.
    - Late button taps or callbacks from Telegram for an item already resolved or expired in runtime are rejected gracefully via `answerCallbackQuery` and do not alter runtime state.
 2. **Mutual Invalidation:**
    - An action completed on one surface immediately updates all connected surfaces.
@@ -179,7 +188,33 @@ The operator must be able to interact with the active agent directly from the da
 3. **Zero Orphaned Permissions:**
    - Tool permissions have a default lifespan of 300 seconds (5 minutes). If a request times out, it transitions automatically to `status: "expired"`, denies execution to prevent dangling tools, and emits `permission_resolved` with `outcome: "expired"`.
    - If the agent service restarts while permissions remain unfulfilled, the bridge startup pass sweeps lingering pending records, transitions them to `"expired"`, and edits their Telegram cards in place to show `*Expired ⏱️*` with buttons disabled.
-4. **Autonomous Question Dismissal Across Channels (US-4):**
-   - When a question is answered on any channel -- directly within the asking agent session (via `close_question` or `answer_question`), via a plain Telegram reply to the question card or prompt message, or inside the Mini App -- the question broker transitions the question status from `"pending"` to `"answered"` or `"closed"`.
+4. **Autonomous Question Dismissal Across Channels:**
+   - When a question is answered on any channel -- directly within the asking agent session (via session tool resolution), via a plain Telegram reply to the question card or prompt message, or inside the Mini App -- the question broker transitions the question status from pending to answered or closed.
    - The question is immediately excluded from `GET /api/app/questions` and leaves the Mini App outstanding questions list without requiring the operator to manually dismiss it.
    - Any question that has not been answered across any channel persists in the store and remains listed as pending.
+
+### 5. Retirement of Standalone Hosting and Infrastructure Consolidation (US-5)
+
+#### 5.1 Context and Problem
+
+The conversational agent plugin previously bundled an internal HTTP server and dedicated ingress tunnel process to host and publish the Mini App externally. This dual-stack architecture introduced operational overhead, duplicate ingress attack surfaces, and tunnel lifecycle synchronization failures.
+
+#### 5.2 Architectural Options
+
+- **Option 5.1 (Co-existence):** Maintain both the standalone agent web server and the dashboard deployment concurrently.
+  - _Trade-off:_ Redundant runtime resource usage, split ingress endpoints, and persistent configuration drift between standalone and dashboard interfaces.
+- **Option 5.2 (Complete Hosting Retirement -- Recommended):** Decommission the standalone static web hosting server and dedicated ingress tunnel in the agent runtime entirely. Consolidate all user-facing interface serving into the central operational dashboard application, while restricting the agent process to an internal state and event bridge.
+  - _Recommendation Rationale:_ Eliminates dedicated tunnel failures, unifies perimeter authentication and observability at the dashboard gateway, and simplifies the agent runtime footprint.
+
+#### 5.3 Target Architecture and Migration Contract
+
+1. **Component and Serving Boundary:**
+   - The central operational dashboard application assumes exclusive responsibility for delivering static interface assets, responsive layouts, and client-side routing for both desktop browsers and Telegram mobile WebViews.
+   - The standalone static file server in the agent plugin is decommissioned and retired.
+2. **Ingress and Network Boundary:**
+   - External ingress tunnels and reverse proxy endpoints terminate solely at the operational dashboard gateway.
+   - Dedicated external tunnels for the agent process are retired.
+   - The agent runtime binds only internal network interfaces or local IPC for communication with the dashboard service proxy, eliminating direct external exposure.
+3. **Client Continuity and Backward Compatibility:**
+   - Telegram Bot configuration updates the Mini App launch URL to route to the operational dashboard domain (`/app/*`), ensuring single-tap mobile access functions seamlessly without disruption.
+   - All interactive capabilities (cognitive anchor inspection, question answering with details expansion, tool permission authorization, and emergency stopping) operate identically through the dashboard serving layer.
