@@ -105,6 +105,11 @@ def load_message_pair(hooks_dir: Path, name: str) -> tuple[str, str | None]:
 
 Handler = Callable[[HookContext], Result | None]
 
+# Gated tools matching hearsay_gate._GATED_TOOLS (case-insensitive)
+_GATED_TOOLS = frozenset(
+    ["Agent", "Task", "invoke_subagent", "SendMessage", "Dump", "send_message", "dump"]
+)
+
 CANONICAL_EVENTS = (
     "SessionStart",
     "SessionEnd",
@@ -446,9 +451,12 @@ def _instrument_otel_events(ctx: HookContext) -> None:
         )
 
     # 2. SendMessage tool call linkage
-    is_send_msg = ctx.tool == "SendMessage" or any(
+    is_send_msg = (ctx.tool or "").lower() in ("sendmessage", "send_message") or any(
         isinstance(call, dict)
-        and (call.get("tool_name") == "SendMessage" or call.get("tool") == "SendMessage")
+        and (
+            str(call.get("tool_name") or "").lower() in ("sendmessage", "send_message")
+            or str(call.get("tool") or "").lower() in ("sendmessage", "send_message")
+        )
         for call in ctx.tool_calls
     )
     if is_send_msg:
