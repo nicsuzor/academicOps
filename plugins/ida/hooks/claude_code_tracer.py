@@ -2017,9 +2017,31 @@ def _build_tool_span_record(
         "output.mime_type": "application/json",
     }
 
-    if not tool_call_id and isinstance(tool_input, dict):
+    parsed_input = tool_input
+    if isinstance(parsed_input, str):
+        try:
+            parsed_input = json.loads(parsed_input)
+        except Exception:
+            parsed_input = None
+
+    if isinstance(parsed_input, dict):
+        action_candidates = [parsed_input]
+        if isinstance(parsed_input.get("Arguments"), dict):
+            action_candidates.append(parsed_input["Arguments"])
+        for candidate in action_candidates:
+            for key in ("toolSummary", "toolAction", "description", "Description"):
+                val = candidate.get(key)
+                if isinstance(val, str) and val.strip():
+                    attrs["tool.summary"] = val.strip()
+                    break
+            if "tool.summary" in attrs:
+                break
+
+    if not tool_call_id and isinstance(parsed_input, dict):
         tool_call_id = (
-            tool_input.get("tool_use_id") or tool_input.get("id") or tool_input.get("tool_call_id")
+            parsed_input.get("tool_use_id")
+            or parsed_input.get("id")
+            or parsed_input.get("tool_call_id")
         )
     if tool_call_id:
         attrs["tool.call_id"] = str(tool_call_id)

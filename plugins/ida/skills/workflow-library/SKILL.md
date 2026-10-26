@@ -5,7 +5,7 @@ description: List, read, add, edit, and retire workflow templates across project
 
 # Workflow Library
 
-Manage composable workflow templates (`type: template`) across three resolution tiers. Every PKB call below runs through the `services` MCP server's code-mode interface (`portal_codemode_execute` calling `codemode.<pkb_op>(...)`; in agy via `call_mcp_tool` with `ServerName: "services"`, in Claude Code via `mcp__services__portal_codemode_execute`), not a directly-invocable flat tool.
+Manage composable workflow templates (`type: template`) across three resolution tiers. Every PKB call below runs through the `services` MCP server's code-mode interface (`portal_codemode_execute` calling `codemode.<pkb_op>(...)`; in agy via `call_mcp_tool` with `ServerName: "services"`, in Claude Code via `mcp__services__portal_codemode_execute`), always passing a concise 1-line `toolSummary` argument (e.g. `toolSummary: "List workflow templates for tier resolution"`), not a directly-invocable flat tool.
 
 ## Tiers and Resolution
 
@@ -75,6 +75,6 @@ Do not ad lib extra requirements or guess at scope; pass any ambiguity in the pr
 ## Constraints
 
 - Query tiers dynamically; do not rely on static indices or memory.
-- In `portal_codemode_execute` batch queries (`pkb_list_tasks`, `pkb_search`), use native `metadata_only` / `max_bytes` parameters and project batch results in JavaScript to `{ id, title, status, parent, body }` (omitting duplicate `content` fields and null frontmatter keys) to prevent harness spills, while allowing full untruncated `body` reads for the primary target artifact under review or edit.
+- In `portal_codemode_execute` calls, always provide a concise 1-line `toolSummary` argument. In batch queries (`pkb_list_tasks`, `pkb_search`), use native `metadata_only` / `max_bytes` parameters and project batch results in JavaScript to `{ id, title, status, parent, body }` (omitting duplicate `content` fields and null frontmatter keys) to prevent harness spills, while allowing full untruncated `body` reads for the primary target artifact under review or edit.
 - Keep templates focused on obligations and exit criteria; leave operational method to skills.
 - Do not mint tasks or dispatch work during library management operations.
