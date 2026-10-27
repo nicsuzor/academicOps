@@ -194,7 +194,7 @@ def fetch_session_spans(base_url: str, project: str, session_id: str) -> tuple[l
 
 
 def resolve_session_id(base_url: str, project: str, ident: str) -> str:
-    """A full session id from a full id, a slug (id prefix), or a 32-hex trace id."""
+    """A full session ID / conversation ID from a full ID, a slug (ID prefix), or a 32-hex trace ID."""
     if UUID_RE.match(ident):
         return ident
     if TRACE_ID_RE.match(ident):
@@ -1208,7 +1208,9 @@ def build_parser() -> argparse.ArgumentParser:
         prog="phoenix_transcript.py",
         description="Render a session's Phoenix spans as a markdown transcript with durations, tokens and costs.",
     )
-    parser.add_argument("ident", help="session id, session slug (id prefix), or 32-hex trace id")
+    parser.add_argument(
+        "ident", help="session ID / conversation ID, session slug (ID prefix), or 32-hex trace ID"
+    )
     parser.add_argument("--base-url", help=f"Phoenix base URL (else ${BASE_URL_ENV_VAR})")
     parser.add_argument("--project", help=f"Phoenix project name (else ${PROJECT_ENV_VAR})")
     parser.add_argument(

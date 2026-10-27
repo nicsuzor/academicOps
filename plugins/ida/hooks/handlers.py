@@ -899,6 +899,7 @@ def _prepare_tracer_data(ctx: HookContext) -> dict[str, Any]:
     data = dict(ctx.raw)
     if ctx.session_id:
         data.setdefault("session_id", ctx.session_id)
+        data.setdefault("conversationId", ctx.session_id)
     if ctx.cwd:
         data.setdefault("cwd", ctx.cwd)
     if ctx.agent_type:

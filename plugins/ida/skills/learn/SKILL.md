@@ -37,7 +37,7 @@ Perform root-cause analysis on systemic failure classes using session execution 
 
 Return a markdown report containing:
 
-- **Evidence**: Session ID, relevant OTel span IDs (or session log excerpts if the surface does not emit traces), and execution excerpts (tool calls, error payloads, latencies).
+- **Evidence**: Session ID / Conversation ID, relevant OTel span IDs (or session log excerpts if the surface does not emit traces), and execution excerpts (tool calls, error payloads, latencies).
 - **Root cause**: The systemic defect in execution flow, contract, or mechanism demonstrated by the execution record.
 - **Verification miss**: The check that should have caught the instance, and why it did not.
 - **Impact estimate**: Projected frequency and severity.

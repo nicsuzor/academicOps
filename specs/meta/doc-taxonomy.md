@@ -20,7 +20,7 @@ Process templates are instructions too, and live in `plugins/<plugin>/workflows/
 
 **Shipped instructions are generic.** Anything under `plugins/` reaches every user, so it carries no person, no organisation, no named collaborator, no address, no timezone, and no local path. Where a procedure needs those, it states what the value is _for_ and leaves the value to the reader's own PKB, which overrides the shipped copy. A generic template a user extends is a feature; a personal workflow shipped to everyone is a defect.
 
-**Public repository commits and instructions carry no PKB identifiers.** Instructions, templates, and procedures governing commits to public repositories must never direct agents to include PKB note, task, or session IDs, or trailers like `Task:` or `Claude-Session:`. Task tracking belongs strictly on the private task graph and in private task records, never in public commit history.
+**Public repository commits and instructions carry no PKB identifiers.** Instructions, templates, and procedures governing commits to public repositories must never direct agents to include PKB note, task, or session / conversation IDs, or trailers like `Task:` or `Claude-Session:`. Task tracking belongs strictly on the private task graph and in private task records, never in public commit history.
 
 **Modularity means no cross-referencing.** Modular means instructions do not cross-reference everything. When removing a reference, never add a link or pointer to another file in its place; shared rules live once in CORE, and instructions remain self-contained without back-pointers.
 

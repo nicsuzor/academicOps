@@ -111,7 +111,7 @@ An **agent personality** defines conduct, judgment register, and disposition: wh
 
 ### Published surface and repo visibility review
 
-The rule-compliance review lens (`rbg`, coordinated via `strategic-review` or `wf-rbg`) evaluates everything candidate changes publish across the trust boundary (diffs, commit messages and trailers, PR title and body, review replies) against destination repository visibility under `data-boundaries`. On public destinations, this enforces strict exclusion of personal identifiers, private host/project names, deployment-only agent names, PKB note/task/session IDs, commit trailers, and live telemetry before merge, comment, or push.
+The rule-compliance review lens (`rbg`, coordinated via `strategic-review` or `wf-rbg`) evaluates everything candidate changes publish across the trust boundary (diffs, commit messages and trailers, PR title and body, review replies) against destination repository visibility under `data-boundaries`. On public destinations, this enforces strict exclusion of personal identifiers, private host/project names, deployment-only agent names, PKB note/task/session / conversation IDs, commit trailers, and live telemetry before merge, comment, or push.
 
 ## Design principles
 

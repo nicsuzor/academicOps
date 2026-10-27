@@ -11,7 +11,7 @@ counts and millisecond latencies. Read it rather than a session's own account of
 ## Transcript: how did this decision get made
 
 ```bash
-uv run python "${CLAUDE_SKILL_DIR}/scripts/phoenix_transcript.py" <session-id | slug | trace-id> --out <dir>/<slug>.transcript.md
+uv run python "${CLAUDE_SKILL_DIR}/scripts/phoenix_transcript.py" <session-id / conversation-id | slug | trace-id> --out <dir>/<slug>.transcript.md
 ```
 
 - Configuration is flags or environment: `--base-url` or `$PHOENIX_MCP_URL` (the Phoenix
@@ -35,12 +35,12 @@ payload by its anchor (`grep -n 'id="t5-3"' <slug>.transcript.md`) rather than r
 whole transcript, because that is where the cost goes. Answer with the turn and step
 anchors where the decision was made, and hand back the transcript path.
 
-To find the session: a full id, a slug, or a trace id all resolve. Given only a task or a
+To find the session: a full session ID / conversation ID, a slug, or a trace id all resolve. Given only a task or a
 time, find the session with Recipe A or F in [references/sql-recipes.md](references/sql-recipes.md).
 
 ## Other exports
 
-- `uv run python scripts/phoenix_trace.py <session-id>` -- the span forest as JSON (`full`, with
+- `uv run python scripts/phoenix_trace.py <session-id / conversation-id>` -- the span forest as JSON (`full`, with
   `roots` and `orphans`) and a controller view. Check `meta.session_error_count`,
   `orphans`, `meta.trace_contamination` (traces shared with other sessions), and rank
   `subagents[]` by `collapsed_span_count` for the expensive branches.
@@ -58,7 +58,7 @@ the recipe from [references/sql-recipes.md](references/sql-recipes.md).
 
 ## Constraints
 
-- Filter on `session.id`, never `trace_id`: one trace can hold several sessions.
+- Filter on `session.id` (session ID / conversation ID), never `trace_id`: one trace can hold several sessions.
 - Subagents share the dispatching session's `session.id`; a spawned worker session
   carries no attribute naming its parent (Recipe F correlates them).
 - Phoenix tool spans prove execution rather than logical entailment or sufficiency; auditing and QA must inspect durable primary deliverables rather than ephemeral container paths, evaluating whether observed evidence logically entails the claimed outcomes.

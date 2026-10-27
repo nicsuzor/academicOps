@@ -16,12 +16,12 @@ record of the session that made it rather than from any agent's account of itsel
 ## Input contract
 
 - The question, in the asker's words.
-- An identifier for the session: a session id, a session slug, a trace id, or enough to
+- An identifier for the session: a session ID / conversation ID, a session slug, a trace id, or enough to
   find one (a task id, an agent and a time window).
 
 ## Steps
 
-1. **Resolve the session.** Turn the identifier into the owning session id. A task id or
+1. **Resolve the session.** Turn the identifier into the owning session ID / conversation ID. A task id or
    a time window resolves through the trace store's spans for that task or window.
 2. **Assemble the transcript.** Run the `session-trace` skill's transcript script on the
    session. It fetches the session's spans in one paged sequence and writes the full

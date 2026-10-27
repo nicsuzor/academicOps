@@ -118,3 +118,22 @@ def test_hook_subprocess_fails_on_malformed_stdin():
         capture_output=True,
     )
     assert proc.returncode != 0
+
+
+def test_hook_carries_conversation_id_from_agy():
+    """agy call: payload provides conversationId, hook injects session_id = conversationId."""
+    from mcp_caller_session import inject_caller_session
+
+    payload = {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "mcp__telegram__reply",
+        "conversationId": "conv-uuid-agy",
+        "prompt_id": "prompt-uuid-agy",
+        "tool_use_id": "toolu-04",
+        "tool_input": {"chat_id": 12345},
+    }
+
+    result = inject_caller_session(payload)
+    session = result["hookSpecificOutput"]["updatedInput"]["_session"]
+    assert session.get("session_id") == "conv-uuid-agy"
+    assert session.get("prompt_id") == "prompt-uuid-agy"

@@ -12,7 +12,7 @@ silently, which reads as "telemetry not retained" and is not.
 | Identifier | Shape | Example | Query pattern |
 | - | - | - | - |
 | **`trace_id`** | 32 hex chars, **no dashes** | `c75f0a20a67140e791244eb5dfa64be5` | `WHERE trace_id = '<32_HEX>'` -- resolve to `session.id`, then pivot |
-| **`session.id`** | 36 chars, **dashed UUID** | `22ec8f3e-72c1-4b15-9988-123456789abc` | `WHERE JSON_EXTRACT(attributes, '$.session.id') = '<UUID>'` |
+| **`session.id`** (session ID / conversation ID) | 36 chars, **dashed UUID** | `22ec8f3e-72c1-4b15-9988-123456789abc` | `WHERE JSON_EXTRACT(attributes, '$.session.id') = '<UUID>'` |
 | **session slug** | 6–8 hex chars | `22ec8f3e` | `WHERE JSON_EXTRACT(attributes, '$.session.id') LIKE '%<slug>%'` |
 | **`span_id`** | 16 hex chars, **no dashes** | `a1b2c3d4e5f60718` | `WHERE span_id = '<16_HEX>'` |
 
@@ -28,7 +28,8 @@ then pivot every subsequent query onto `session.id`
 (`attributes->>'session.id'` / `JSON_EXTRACT(attributes, '$.session.id')`).
 
 Every span and turn-trace belonging to a session carries a consistent
-`session.id`, across both harnesses (`claude` and `agy`) and across subagent
+`session.id` (OpenInference attribute matching `session_id` in Claude Code and
+`conversationId` in agy), across both harnesses (`claude` and `agy`) and across subagent
 activity. That does **not** guarantee nested parent/child span structure, and it does not give
 per-agent attribution: a subagent shares the dispatching session's
 `session.id` by design, with no attribute marking which agent produced a

@@ -25,7 +25,7 @@ the session that made it and a clear answer from an agent, without it taking
 forever or costing a leg, so that I can understand and audit what an agent did
 and why.
 
-- **AC-1.1** Given a full session id, a session slug, or a trace id, when the
+- **AC-1.1** Given a full session ID / conversation ID, a session slug, or a trace id, when the
   question is asked, then the agent resolves it to the owning session and
   fetches that session's spans from the trace store in one paged request
   sequence filtered on `session.id`, with no per-span or per-turn queries.
