@@ -250,9 +250,16 @@ def judge_reason(token: str, reason: str, judged_text: str | None) -> dict[str, 
     if token == "PASS":
         failures = ra.pass_failures(parsed, block, vocab, is_null=ra.is_null_form(block_text))
         if failures:
+            formatted = []
+            for f in failures:
+                remedy = ra.remediation_for_failure(f)
+                if remedy:
+                    formatted.append(f"{f}\n{remedy}")
+                else:
+                    formatted.append(f)
             raise ValueError(
                 "PASS refused -- the reason fails the recorder's checks "
-                "(see the premise-check skill's checker reason):\n- " + "\n- ".join(failures)
+                "(see the premise-check skill's checker reason):\n- " + "\n- ".join(formatted)
             )
     elif token in ("REVISE", "FAIL"):
         valid_lines = parsed.get("Valid")
@@ -279,7 +286,11 @@ def judge_reason(token: str, reason: str, judged_text: str | None) -> dict[str, 
                     raise ValueError(
                         f"{token} refused -- reason has Valid entries that all hold and no "
                         f"Ask: ... -> unanswered; {token} requires at least one failing "
-                        f"inference step ('Valid: (n) fails -- <defect>') or unanswered ask"
+                        f"inference step ('Valid: (n) fails -- <defect>') or unanswered ask.\n"
+                        f"Required remediation format: For {token}, record at least one failing step or unanswered ask:\n"
+                        f"  Valid: (n) fails #<defect-tag> -- <explanation of failure>\n"
+                        f"  # or:\n"
+                        f"  Answered: <ask_id> unanswered"
                     )
     return ra.span_attributes(parsed, block, vocab)
 
@@ -336,12 +347,12 @@ def record_verdict(
     if token == "PASS" and is_peer and block_text is None:
         raise ValueError(
             "PASS refused -- no argument block in judged text: an absent block cannot pass; "
-            "send the message back for revision"
+            "send the message back for revision\n"
+            "Defect: The judged text does not contain a fenced ```argdown block.\n"
+            "Required remediation: Peer messages must end with a valid ```argdown block. "
+            "Return the message for revision:\n"
+            "  verdict.py --claim <id> --verdict REVISE --reason-file <path>"
         )
-
-    attributes = judge_reason(token, reason, judged_text)
-    if machine:
-        attributes["premise_check.machine"] = True
 
     # Machine check on Argdown block for PASS verdicts unless block is waived
     if token == "PASS" and block_text is not None and not ra.is_null_form(block_text):
@@ -350,7 +361,11 @@ def record_verdict(
         if "block" not in parsed_reason.waived_items(vocab):
             valid, parser_output, _ = ra.check_argdown_block(block_text)
             if not valid:
-                raise ValueError(f"PASS verdict refused for {cid}: {parser_output}")
+                raise ValueError(f"PASS verdict refused for {cid}:\n{parser_output}")
+
+    attributes = judge_reason(token, reason, judged_text)
+    if machine:
+        attributes["premise_check.machine"] = True
     attributes["premise_check.judged_ref"] = judged_ref or ""
     attributes["premise_check.judged_text_sha256"] = (
         hashlib.sha256(judged_text.encode("utf-8")).hexdigest() if judged_text is not None else ""

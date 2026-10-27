@@ -1362,3 +1362,228 @@ def test_waived_basis_wording_when_basis_is_none_without_escalating_low_rank():
         "the block's weakest premise is (2) 'worker reported, unchecked' (rank 1)" in f
         for f in failures_escalate
     )
+
+
+# ---------------------------------------------------------------------------
+# Refusal diagnostics and actionable remediation guidance (AC1, AC2)
+# ---------------------------------------------------------------------------
+
+
+def test_refusal_diagnostics_parenthesized_line_numbers_in_frontmatter_answers():
+    """AC1, AC2: Refusal explicitly lists defect and shows remediation for parenthesized line numbers."""
+    block = (
+        "===\n"
+        f"asks:\n  {ASK_A}: is the hook enforced?\n"
+        f"answers:\n  {ASK_A}: (2)\n"
+        "===\n\n"
+        "(1) Observation. -- I read it\n"
+        "-- Warrant. Unless: def; status. --\n"
+        "(2) So, conclusion.\n"
+    )
+    # Check directly via check_argdown_block
+    valid, error_msg, ast = ra.check_argdown_block(block)
+    assert valid is False
+    assert "Parenthesized line number in frontmatter answers" in error_msg
+    assert "Defect:" in error_msg
+    assert "Required remediation format:" in error_msg
+    assert f"{ASK_A}: 2" in error_msg
+
+    # Check via record_verdict
+    session_id = "s-diag-paren"
+    text = f"```argdown\n{block}```\n"
+    _arm_with_report(session_id, "CID", text=text)
+    reason = (
+        f"Judged: CID; asks {ASK_A}\n"
+        "Valid: (2) holds -- warrant\n"
+        "Supported: weakest I read it -- direct logs\n"
+        f"Answered: {ASK_A} ← (2)\n"
+        "Sufficient: (2) obvious\n"
+        "Waived: none\n"
+        "Relay: none\n"
+    )
+    with pytest.raises(ValueError) as excinfo:
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id="CID",
+            verdict="PASS",
+            reason=reason,
+            tracer_mod=_configured(),
+        )
+    err = str(excinfo.value)
+    assert "PASS verdict refused for CID" in err
+    assert "Parenthesized line number in frontmatter answers" in err
+    assert "Required remediation format:" in err
+    assert f"{ASK_A}: 2" in err
+
+
+def test_refusal_diagnostics_unmapped_asks_in_frontmatter_answers():
+    """AC1, AC2: Refusal explicitly lists defect and shows remediation for unmapped asks."""
+    block = (
+        "===\n"
+        f"asks:\n  {ASK_A}: first ask\n  {ASK_B}: second ask\n"
+        f"answers:\n  {ASK_A}: 2\n"
+        "===\n\n"
+        "(1) Observation. -- I read it\n"
+        "-- Warrant. Unless: def; status. --\n"
+        "(2) So, conclusion.\n"
+    )
+    # Check directly via check_argdown_block
+    valid, error_msg, ast = ra.check_argdown_block(block)
+    assert valid is False
+    assert f"Unmapped ask(s) in frontmatter answers: {ASK_B}" in error_msg
+    assert "Defect:" in error_msg
+    assert "Required remediation format:" in error_msg
+    assert f"answers:\n  {ASK_B}: <line_number | none>" in error_msg
+
+    # Check via record_verdict
+    session_id = "s-diag-unmapped"
+    text = f"```argdown\n{block}```\n"
+    _arm_with_report(session_id, "CID", text=text)
+    reason = (
+        f"Judged: CID; asks {ASK_A}, {ASK_B}\n"
+        "Valid: (2) holds -- warrant\n"
+        "Supported: weakest I read it -- direct logs\n"
+        f"Answered: {ASK_A} ← (2)\n"
+        f"Answered: {ASK_B} ← (2)\n"
+        "Sufficient: (2) obvious\n"
+        "Waived: none\n"
+        "Relay: none\n"
+    )
+    with pytest.raises(ValueError) as excinfo:
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id="CID",
+            verdict="PASS",
+            reason=reason,
+            tracer_mod=_configured(),
+        )
+    err = str(excinfo.value)
+    assert "Unmapped ask(s) in frontmatter answers" in err
+    assert ASK_B in err
+    assert "Required remediation format:" in err
+
+
+def test_refusal_diagnostics_malformed_inference_line():
+    """AC1, AC2: Refusal explicitly lists defect and shows remediation for malformed inference line."""
+    block = (
+        "(1) Observation. -- I read it\n"
+        "-- Malformed inference line without closing dashes\n"
+        "(2) So, conclusion.\n"
+    )
+    valid, error_msg, ast = ra.check_argdown_block(block)
+    assert valid is False
+    assert "Malformed inference line (missing closing '--'):" in error_msg
+    assert "Defect:" in error_msg
+    assert "Required remediation format:" in error_msg
+    assert "-- <warrant rule>. Unless: <defeater>; <status>. --" in error_msg
+
+
+def test_refusal_diagnostics_markdown_numbered_list():
+    """AC1, AC2: Refusal explicitly lists defect and shows remediation for markdown numbers (1. instead of (1))."""
+    block = (
+        "1. Markdown numbered list item. -- I read it\n"
+        "-- Warrant. Unless: def; status. --\n"
+        "(2) So, conclusion.\n"
+    )
+    valid, error_msg, ast = ra.check_argdown_block(block)
+    assert valid is False
+    assert (
+        "Markdown numbered list '1. Markdown numbered list item. -- I read it' is not valid Argdown syntax"
+        in error_msg
+    )
+    assert "Defect:" in error_msg
+    assert "Required remediation format:" in error_msg
+    assert "(1) Markdown numbered list item. -- I read it -- <basis phrase>" in error_msg
+
+
+def test_refusal_diagnostics_premise_number_colon():
+    """AC1, AC2: Refusal explicitly lists defect and shows remediation for (1): instead of (1)."""
+    block = (
+        "(1): Premise with colon. -- I read it\n"
+        "-- Warrant. Unless: def; status. --\n"
+        "(2) So, conclusion.\n"
+    )
+    valid, error_msg, ast = ra.check_argdown_block(block)
+    assert valid is False
+    assert "Premise number followed by colon '(1):' is not valid Argdown syntax" in error_msg
+    assert "Defect:" in error_msg
+    assert "Required remediation format:" in error_msg
+    assert "(1) Premise with colon. -- I read it" in error_msg
+
+
+def test_refusal_diagnostics_orphan_statement():
+    """AC1, AC2: Refusal explicitly lists defect and shows remediation for orphan statement."""
+    block = (
+        "(1) Observation. -- I read it\n"
+        "-- Warrant. Unless: def; status. --\n"
+        "(2) So, conclusion.\n"
+        "[orphan_node]: Disconnected statement text\n"
+    )
+    valid, error_msg, ast = ra.check_argdown_block(block)
+    assert valid is False
+    assert "orphan statement 'orphan_node'" in error_msg
+    assert "Defect:" in error_msg
+    assert "Required remediation format:" in error_msg
+    assert "[orphan_node]: Disconnected statement text\n  +> (n)" in error_msg
+
+
+def test_refusal_diagnostics_undercut_targeting_statement():
+    """AC1, AC2: Refusal explicitly lists defect and shows remediation for undercut targeting statement."""
+    block = (
+        "(1) Observation. -- I read it\n"
+        "-- Warrant. Unless: def; status. --\n"
+        "(2) So, conclusion.\n"
+        "[objection]: Objection\n"
+        "  _> (1)\n"
+    )
+    valid, error_msg, ast = ra.check_argdown_block(block)
+    assert valid is False
+    assert "undercut from 'objection' targets statement '1' instead of an inference" in error_msg
+    assert "Defect:" in error_msg
+    assert "Required remediation format:" in error_msg
+    assert "Undercuts (_>) must target an inference bar title (<Inference>)" in error_msg
+
+
+def test_refusal_diagnostics_unclosed_frontmatter_fence():
+    """AC1, AC2: Refusal explicitly lists defect and shows remediation for unclosed frontmatter fence."""
+    block = f"===\nasks:\n  {ASK_A}: question\n(1) Observation. -- I read it\n"
+    valid, error_msg, ast = ra.check_argdown_block(block)
+    assert valid is False
+    assert "Unclosed frontmatter fence (missing closing '===')" in error_msg
+    assert "Defect:" in error_msg
+    assert "Required remediation format:" in error_msg
+
+
+def test_refusal_diagnostics_zero_inference_lines_in_reason():
+    """AC1, AC2: Refusal explicitly lists defect and shows remediation for 0 inference lines."""
+    block = (
+        "===\n"
+        f"asks:\n  {ASK_A}: question\n"
+        f"answers:\n  {ASK_A}: 1\n"
+        "===\n\n"
+        "(1) Bare observation without inferences. -- I read it\n"
+    )
+    session_id = "s-diag-0inf"
+    text = f"```argdown\n{block}```\n"
+    _arm_with_report(session_id, "CID", text=text)
+    reason = (
+        f"Judged: CID; asks {ASK_A}\n"
+        "Valid: (1) holds -- warrant\n"
+        "Supported: weakest I read it -- direct logs\n"
+        f"Answered: {ASK_A} ← (1)\n"
+        "Sufficient: (1) obvious\n"
+        "Waived: none\n"
+        "Relay: none\n"
+    )
+    with pytest.raises(ValueError) as excinfo:
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id="CID",
+            verdict="PASS",
+            reason=reason,
+            tracer_mod=_configured(),
+        )
+    err = str(excinfo.value)
+    assert "0 inference lines" in err
+    assert "Required remediation format:" in err
+    assert "-- <warrant rule>. Unless: <defeater>; <status>. --" in err

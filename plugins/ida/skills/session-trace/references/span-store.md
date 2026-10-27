@@ -38,17 +38,19 @@ given span.
 ## `turn_number` is not a reliable turn counter
 
 `turn_number` (and `arthur.turn_number`) is scoped per tracer-state file and
-resets at that file's init, so every subagent has its own counter sharing the
-parent's `session.id` -- the numbers overlap and repeat within one exported
-session. In practice it has been observed to take only the values 1 or 2: a
-hook-ordering artifact, not a genuine per-turn counter. Never
+resets at that file's init, so when subagents share the parent's `session.id` (in `claude`),
+the numbers overlap and repeat within one exported session. In practice it has been observed
+to take only the values 1 or 2: a hook-ordering artifact, not a genuine per-turn counter. Never
 sort or discriminate on it. Sort by `start_time` for session-wide chronology.
 
-## A `teammate_spawned` span's duration is not the worker's runtime
+## Dispatch span durations are not the worker's runtime
 
-A named-teammate dispatch's `AGENT` span closes in ~150–250 ms, on the spawn
-acknowledgement, and has no OTel-visible close event tied to the teammate's
-actual work. Never read its `duration_ms` as how long the spawned worker ran.
+- In `claude`, a named-teammate dispatch's `AGENT` span (`teammate_spawned`) closes in
+  ~150–250 ms, on the spawn acknowledgement, and has no OTel-visible close event tied to
+  the teammate's actual work.
+- In `agy`, an `invoke_subagent` tool span's duration reflects dispatch / turn latency.
+  Detached workers and background tasks finish independently.
+- Never read a dispatch span's `duration_ms` as how long the spawned worker ran.
 
 ## Timestamps need an offset
 

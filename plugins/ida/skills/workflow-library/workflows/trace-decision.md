@@ -23,11 +23,14 @@ record of the session that made it rather than from any agent's account of itsel
 
 1. **Resolve the session.** Turn the identifier into the owning session ID / conversation ID. A task id or
    a time window resolves through the trace store's spans for that task or window.
-2. **Assemble the transcript.** Run the `session-trace` skill's transcript script on the
-   session. It fetches the session's spans in one paged sequence and writes the full
-   transcript (one header per turn and per step, payloads folded, nothing truncated, with
-   every step's duration and every model call's tokens and estimated cost) and an outline
-   beside it.
+2. **Assemble and persist the transcripts.** Run the `session-trace` skill's transcript
+   script (`phoenix_transcript.py`) on the session. It fetches the session's spans in one
+   paged sequence and generates two primary files: `<slug>.transcript.md` (full record with
+   durations, tokens, and folded payloads) and `<slug>.outline.md` (condensed outline of prompts,
+   model calls, and tool actions). Save both files to a durable destination (such as the PKB via
+   `pkb_create` or committed to the repository/PR branch) rather than leaving them solely in an
+   ephemeral container filesystem. When saving to the PKB, pass `--sanitize-paths` (or sanitize
+   literal host filesystem paths) to satisfy PKB host-path guards.
 3. **Read narrowly.** Read the summary and the outline, then open only the folded
    payloads of the steps that bear on the question, by anchor.
 4. **Answer.** Say how the decision was made, citing the turn and step anchors in the
@@ -36,5 +39,7 @@ record of the session that made it rather than from any agent's account of itsel
 
 ## Output contract
 
-- The transcript and outline files, at a path the asker can open.
-- The answer, with step anchors into the transcript.
+- The primary deliverables: the two generated transcript files (`<slug>.transcript.md` full
+  and `<slug>.outline.md` condensed), saved to a durable location (PKB note/document or
+  committed repository path; sanitized for PKB persistence).
+- The answer, citing turn and step anchors into the transcript.
