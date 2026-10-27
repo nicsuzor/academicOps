@@ -331,14 +331,14 @@ position or a display order.
 
 ## 8. R7 -- Budget for direct queries
 
-Covers U20, S11, and the attention rules already in `plugins/ida/agents/ida.md:120-125`. The brief
+Covers U20, S11, and the attention rules already in `plugins/ida/agents/ida.md:79-85`. The brief
 sets no budget; the figures below are proposed (K2).
 
 | Channel | Budget | Content |
 | - | - | - |
 | Routine notice | 1 per week | summary of direct graph pricing and densify changes |
 | Priority ask | ≤ 1 per day, in the daily digest | a proposed `hard` date within 14 days; or a new opportunity whose `gain` or `loss_averted` would place it in the top 20 under the current key |
-| In conversation | 0 valuation questions | ida's one-question cap is unchanged; valuation never uses it |
+| In conversation | 0 valuation questions | valuation never asks in conversation; questions follow the one decision or question per message rule |
 | Notices | 1 line each in the digest, no reply needed | soft→hard hardenings, retirements from source statements |
 
 **The ask queue.** Every item that would otherwise interrupt the principal goes into one queue: ambiguous
@@ -360,7 +360,7 @@ keeps pauli's rule "never raise the same non-blocking concern twice"
 | - | - |
 | `plugins/ida/skills/q/SKILL.md` | Steps 4-6 are replaced by R1. Description :4 changes from "wire contributes_to/depends_on" to "wire what it serves, propose values". :18 becomes the FR §5.1 edge contract with `set_by: agent-proposed`. :19 keeps `needs` and drops `soft_depends_on` and `supersedes`. :23 keeps effort and adds dates with class (R5). :24: the default `intent` of 3 is removed, and the line goes entirely if FQ10 drops the field. A headless context is added (R1). |
 | `plugins/ida/agents/pauli.md` | :104 "two-axis model (target severity magnitude vs contributing edge weight probability)" becomes: pauli drafts link proposals and estimates target prices directly, leaving intent untouched. :23 "carry … severity magnitude" becomes "carry worth". |
-| `plugins/ida/agents/ida.md` | Adds that valuation asks reach the attention queue through routine notice and the digest (R7). The one-question cap :125 is unchanged. |
+| `plugins/ida/agents/ida.md` | Adds that valuation asks reach the attention queue through routine notice and the digest (R7). Governed by the one decision or question per message rule at :76. |
 | `plugins/ida/skills/remember/SKILL.md` | :22 "carry only graph weights and severity" becomes "carry only worth". :37 "a wikilink … is a real graph edge" is qualified as not read by the flow, pending FQ23. :45 `/pkb:q` becomes `/ida:q`. |
 | `plugins/ida/skills/remember/references/consolidation.md` | Adds a weekly densify stage that runs `wf-densify` (R3). |
 | `plugins/ida/skills/workflow-library/workflows/wf-reconcile.md` | Adds deadline upkeep (R5) and source-stated retirement (R6). :49 reserved fields add `deadline_class: hard` and target worth. |
@@ -392,7 +392,7 @@ agents james, marsha, rbg, sara; and all tools-plugin skills.
 ## 10. Interface contracts
 
 **Edge write.** Every agent edge write carries the FR §5.1 fields, with `set_by` in
-`{agent-proposed, nic}`. `migrated` is written only by the migration. Direct writes use `agent-proposed`. Each write is followed by a
+`{agent-proposed, user}`. `migrated` is written only by the migration. Direct writes use `agent-proposed`. Each write is followed by a
 `pkb.get_task` readback with no `parse_warnings`.
 
 **Batch message.** The §5 table, numbered 1..n with n ≤ 50, preceded by one line giving the pool
@@ -436,7 +436,7 @@ Each test can be checked by an observer reading the graph or a transcript.
 
 | # | Criterion | Test (observable) | Traces to |
 | - | - | - | - |
-| A1 | `/q` writes only proposals | Run `/q` on three fixture asks. `get_task` on each new node shows every outgoing edge with `label`, `effect`, a justification and `set_by: agent-proposed`. None shows `set_by: nic`, `intent`, `severity` or target worth. | S7, U9, R1 |
+| A1 | `/q` writes only proposals | Run `/q` on three fixture asks. `get_task` on each new node shows every outgoing edge with `label`, `effect`, a justification and `set_by: agent-proposed`. None shows `set_by: user`, `intent`, `severity` or target worth. | S7, U9, R1 |
 | A2 | A bare idea carries nothing | `/q` on an idea that names no target. The node has a container and no other edge. Flow `gain` and `loss_averted` are both 0. | U9, I7 |
 | A3 | An opportunity is one node | Fingerprint every other node's fields before and after `/q` on an opportunity. Only the new node and its own edges differ. | U10, I9 |
 | A4 | The circular stays quiet | Replay calibration case 1 (the "Dear Friends" Copyright Plus forward) through R2. It is classed `reference`, or captured with `deadline_class: fake` and no edge above the default quantum. It is not in the top 50 under any display key. | U1, U15 |

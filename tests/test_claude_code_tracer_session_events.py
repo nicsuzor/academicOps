@@ -641,3 +641,95 @@ def test_handlers_route_session_end_to_tracer(tracer_env, exporter, monkeypatch)
     for handler in handlers.HANDLERS["SessionEnd"]:
         handler(ctx)
     assert not cct._state_path(SESSION).exists()
+
+
+def _load_aops_debug_handlers():
+    import importlib.util
+
+    debug_handlers_path = REPO_ROOT / "plugins" / "aops-debug" / "hooks" / "handlers.py"
+    spec = importlib.util.spec_from_file_location("aops_debug_handlers", debug_handlers_path)
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_aops_debug_emits_full_untruncated_redacted_trace_and_threads_into_turn(
+    tracer_env, exporter, monkeypatch, tmp_path
+):
+    """aops-debug hooks send full untruncated debug payloads (secret-redacted) to OTel
+    and thread pre-turn, mid-turn, and post-turn debug spans into the turn's trace_id and root_span_id."""
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://collector.invalid:4318")
+    monkeypatch.setenv("GH_TOKEN", SECRET)
+    monkeypatch.setattr(cct, "_MAX_ATTR_BYTES", 64)
+    monkeypatch.setenv("TMPDIR", str(tmp_path))
+
+    debug_handlers = _load_aops_debug_handlers()
+    large_blob = "A" * 500 + f" secret={SECRET} " + "B" * 500
+
+    # 1. Pre-turn SessionStart fires in aops-debug before ida's UserPromptSubmit opens current_trace
+    start_raw = {"session_id": SESSION, "transcript_path": str(tracer_env), "extra": large_blob}
+    debug_handlers.dump_payload(
+        dispatch.HookContext(
+            client="claude", event="SessionStart", session_id=SESSION, raw=start_raw
+        )
+    )
+
+    # 2. Turn opens in ida's tracer
+    _hook(cct.handle_user_prompt_submit, tracer_env, prompt="hello")
+
+    # 3. Mid-turn PreToolUse fires in aops-debug
+    pre_raw = {
+        "session_id": SESSION,
+        "transcript_path": str(tracer_env),
+        "tool_name": "Bash",
+        "tool_use_id": "call-1",
+        "payload": large_blob,
+    }
+    debug_handlers.dump_payload(
+        dispatch.HookContext(client="claude", event="PreToolUse", session_id=SESSION, raw=pre_raw)
+    )
+
+    # 4. Turn closes in ida's tracer, then aops-debug's Stop handler runs after current_trace was popped
+    _hook(cct.handle_stop, tracer_env, last_assistant_message="done")
+    stop_raw = {"session_id": SESSION, "transcript_path": str(tracer_env), "tail": large_blob}
+    debug_handlers.dump_payload(
+        dispatch.HookContext(client="claude", event="Stop", session_id=SESSION, raw=stop_raw)
+    )
+
+    (turn_root,) = exporter.named("claude-code-turn")
+    (dbg_start,) = exporter.named("aops-debug.SessionStart")
+    (dbg_pre,) = exporter.named("aops-debug.PreToolUse")
+    (dbg_stop,) = exporter.named("aops-debug.Stop")
+
+    for dbg_span in (dbg_start, dbg_pre, dbg_stop):
+        assert dbg_span.context.trace_id == turn_root.context.trace_id
+        assert dbg_span.parent is not None
+        assert dbg_span.parent.span_id == turn_root.context.span_id
+        assert dbg_span.attributes["session.id"] == SESSION
+        raw_attr = dbg_span.attributes["hook.raw_payload"]
+        assert SECRET not in raw_attr
+        assert "<REDACTED_SECRET>" in raw_attr
+        # Must NOT be truncated despite _MAX_ATTR_BYTES=64
+        assert "...[truncated]" not in raw_attr
+        assert "A" * 500 in raw_attr
+        assert "B" * 500 in raw_attr
+
+
+def test_aops_debug_subagent_session_id_threading(tracer_env, exporter, monkeypatch):
+    """When $AOPS_SESSION_ID is set (subagent spawned under root session), aops-debug stamps
+    session.id = root session id and subagent.id = subagent payload session id."""
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://collector.invalid:4318")
+    monkeypatch.setenv("AOPS_SESSION_ID", "root-session-uuid")
+    sub_session = "subagent-session-uuid"
+
+    debug_handlers = _load_aops_debug_handlers()
+    raw = {"session_id": sub_session, "hook_event_name": "PreToolUse", "tool_name": "Read"}
+    debug_handlers.dump_payload(
+        dispatch.HookContext(client="claude", event="PreToolUse", session_id="", raw=raw)
+    )
+
+    (dbg_span,) = exporter.named("aops-debug.PreToolUse")
+    assert dbg_span.attributes["session.id"] == "root-session-uuid"
+    assert dbg_span.attributes["subagent.id"] == sub_session
+    assert dbg_span.attributes["parent.session_id"] == "root-session-uuid"

@@ -29,7 +29,7 @@ Google Docs rasterizes equations and math. Recover using local agent vision:
 - Stage non-formula images under `knowledge/<topic>/figures/<note-id>/`.
 - Rewrite markdown references:
   ```bash
-  scripts/rewrite.py <source.md> <note-id> <map.json> <output.md>
+  uv run python scripts/rewrite.py <source.md> <note-id> <map.json> <output.md>
   ```
 - Verify zero untranscribed image tags remain (`grep -c '!\[\]\[image' <output.md>` equals 0).
 

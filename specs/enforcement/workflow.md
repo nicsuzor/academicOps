@@ -1,144 +1,87 @@
 ---
 id: enforcement-workflow
-title: Enforcement -- The Workflow (Layer 3)
+title: Enforcement -- The Workflow
 type: spec
 status: draft
 tags: [enforcement, framework-architecture, verification, workflow]
 ---
 
-# Enforcement -- The Workflow (Layer 3)
+# Enforcement -- The Workflow
 
 ## aops -- Workflow
 
 A set of tasks and subtasks that make up a more user-reviewable,
 user-directed unit of work.
 
-This is the first layer where the framework cares about _how_ the work is
+At the workflow scope, the framework cares about _how_ the work is
 done, not only the outcome -- in contrast to the execution span inside a single
 task, where the posture is trust-the-method.
 
 ### Mechanisms
 
-- **`brief`-skill sizing and composition** (pauli's dispatch-time call),
-  task-template conventions, and proof-of-compliance tool fields -- the
-  workflow is assembled compliant before the unit is dispatched.
-- **The supervisor** ([sara.md](../agents/sara.md)) -- the multi-tick
-  delegate-and-verify loop that runs across a set of tasks.
+- **Runtime workflow composition via [`/reify`](../../plugins/ida/skills/reify/SKILL.md) and [`workflow-library`](../../plugins/ida/skills/workflow-library/SKILL.md)** --
+  task-template conventions, composable workflow templates across universal, PKB, and project tiers, and proof-of-compliance tool fields assemble a compliant workflow before the unit is dispatched.
+- **The supervisor loop** ([`sara.md`](../agents/sara.md)) -- the multi-tick
+  delegate-and-verify loop that coordinates execution and verifies returned reports across a set of tasks.
 
-## The five-step shape
+## The four-step shape
 
-A workflow is not a bespoke pipeline invented per task. It is one recursive
-shape, applied at whatever granularity the `brief` skill cuts to -- a single
-unit, an epic, or a multi-epic release all run the same five steps. Within
-this skeleton, pauli assembles the concrete workflow -- the review lenses, the
-required depth of independent review, the altitude -- from composable rules at
-brief time. A literature review, a paper critique, and a code change are the
-same contract with different assembled workflows (different lenses: citation
-verification, methodological soundness, container validation) -- the assembled
-workflow is the only differentiator; there is no separate research path.
+A workflow is assembled at runtime from composable templates in the [`workflow-library`](../../plugins/ida/skills/workflow-library/SKILL.md) rather than prescribed as a fixed pipeline. Only the mechanical lifecycle steps every task shares -- claiming (`claim_task`) and releasing (`release_task`) the task -- are fixed; the composing pass selects templates for the work between them based on the task's domain, risk, and deliverables. A literature review, a paper critique, and a code change share the same task contract ([`task-contract.md`](task-contract.md)) with different assembled workflows (citation verification, methodological soundness, container validation).
 
-1. **Contract** -- the unit's premise, worth, and acceptance criteria are
-   settled before compute is spent executing it, in pauli's one pre-hoc pass:
-   `brief` establishes premise and worth on the graph (assumptions sorted, open
-   forks named, the decision list the user reads), then settles shape and
-   acceptance criteria. The user invoking `brief` is the promotion gate.
-   `brief` emits the contract as a standing, early-blocking node
-   in the epic's DAG, so the rest of the epic's work depends on it clearing. The
-   previously separate standalone premise-gate concept -- a two-judge
-   hard-refuse ceremony run at the spend surfaces (`/pull`) -- is
-   retired; dispatch surfaces trust those passes without re-judging the premise
-   themselves. `brief` plans only: it emits this task (and the
-   boundary-check/QA-around tasks below) into the graph, it never dispatches or
-   runs them itself.
-2. **Execution** -- the claimed agent does the work. This span is
-   trust-the-method: no process-level enforcement, evidence-driven escalation
-   only if something goes wrong.
-3. **Boundary check** -- rbg's lens: did the executing agent follow the rules?
-   Reviews the task's contract and handback only -- inputs and outputs, never
-   the transcript. This is [task-contract.md](task-contract.md)'s
-   `release_task` evidence gate (Layer 2) read against the acceptance criteria
+1. **Contract and composition** -- the unit's premise, worth, and acceptance criteria are
+   settled before compute is spent executing it: [`/q`](../../plugins/ida/skills/q/SKILL.md) places and values the work on the graph ([R1](../workflows/graph-valuation.md#3-r1----placement-at-intake-q)), and [`/reify`](../../plugins/ida/skills/reify/SKILL.md) composes the workflow from templates, writes the dispatchable task (`queued`), and mints any downstream QA task (`needs: [<primary_task_id>]`). The previously separate standalone premise-gate ceremony at the spend surfaces ([`/pull`](../../plugins/ida/skills/pull/SKILL.md), [`/dispatch`](../../plugins/ida/skills/dispatch/SKILL.md)) is retired; dispatch surfaces trust the reified contract without re-judging the premise themselves. `/reify` plans only: it writes tasks to the graph and never dispatches or runs them itself.
+2. **Execution** -- the claimed worker executes the task ([`/pull`](../../plugins/ida/skills/pull/SKILL.md)) and hands over via [`/dump`](../../plugins/ida/skills/dump/SKILL.md). This span is
+   trust-the-method: no process-level micromanagement during execution, with evidence-driven intervention
+   only if something goes wrong. When a task's deliverable is a pull request, the worker opens the PR, records `pr_url`, and releases the task as `review` without waiting for CI or merge; when the repository merges the PR, `/reconcile` transitions the task to `done`, unblocking dependent follow-ups.
+3. **Rule-compliance review** -- the rule-compliance lens ([`rbg`](../../plugins/rbg/agents/rbg.md), [`wf-rbg.md`](../../plugins/ida/skills/workflow-library/workflows/wf-rbg.md), [`wf-review.md`](../../plugins/ida/skills/workflow-library/workflows/wf-review.md), [`/strategic-review`](../../plugins/ida/skills/strategic-review/SKILL.md)): did the artifact and handback follow the governing axioms and project rules?
+   Evaluates the target artifact, contract, and handback against [`task-contract.md`](task-contract.md)'s
+   `release_task` evidence gate (Work-Unit Contract) and the acceptance criteria
    set in step 1.
-4. **QA-around** -- marsha's lens: does the delivered artifact actually do what
-   step 1's contract asked, and does it do it well? Bar is excellent, not
-   passing. Distinct from step 3: boundary check asks whether the rules were
-   followed, QA-around asks whether the work is good.
-5. **Principal sign-off** -- [sign-off.md](sign-off.md) (Layer 4). Final review
-   over the workflow as a whole unit, independent of whatever review happened
-   inside it at steps 3-4.
+4. **Substantive QA verification** -- the QA lens ([`wf-qa.md`](../../plugins/ida/skills/workflow-library/workflows/wf-qa.md), [`/verify`](../../plugins/ida/skills/verify/SKILL.md)): does the delivered artifact actually do what
+   step 1's contract asked, and does it do it excellently at runtime? Distinct from step 3: rule-compliance review asks whether the rules were
+   followed; substantive QA asks whether the work works and meets the excellence bar.
 
-Steps 3, 4, and 5 all read and produce claims in the same shape: see
+Steps 3 and 4 read and produce claims in the same shape: see
 [evidence-contract.md](evidence-contract.md): every load-bearing claim at each
 step carries checkable evidence or a stated failure reason. At steps 3 and 4
 the reviewer opens each pointer, confirms it supports its claim, and checks
 that the acceptance criterion itself was met.
 
-### Two signatures at the sign-off boundary
-
-`done` carries two signatures, in this order. Neither substitutes for the
-other.
-
-1. **Certification -- the dispatcher's, at unit completion.** It commissions the
-   review machinery (the review obligations `brief` records on the task,
-   executed through the review skills), reads the verdict, and writes that
-   verdict onto the task record. What it certifies is mechanics, quality, and
-   compliance with the brief. The dispatcher never supplies that judgment
-   itself and never relays a worker's own claim of success in its place.
-2. **Acceptance -- the face's, against the user's intent.** The brief carries
-   the ask; only the interactive face holds the ambition behind it. Work can be
-   correctly built, cleanly reviewed, and still not be what was wanted -- that
-   is the failure this second signature exists to catch, and it is why
-   acceptance is judged against intent rather than against the brief.
-
-Certification without acceptance ships work nobody weighed against intent.
-Acceptance without certification asks the face to vouch for mechanics it never
-checked and cannot see.
-
 ### Review composition
 
-Steps 3-5 are assembled by pauli from composable rules at brief time. Review
-composition -- the lenses, the depth, whether reviewers are independent from
-authors -- is structural rather than an agent-facing instruction. Base
-workflows, living as workflow templates, set the default standard for these choices
+Steps 3-4 are assembled at runtime via [`/reify`](../../plugins/ida/skills/reify/SKILL.md) from composable workflow templates ([`workflow-library`](../../plugins/ida/skills/workflow-library/SKILL.md), including [`wf-review.md`](../../plugins/ida/skills/workflow-library/workflows/wf-review.md), [`wf-rbg.md`](../../plugins/ida/skills/workflow-library/workflows/wf-rbg.md), [`wf-strategic-fit.md`](../../plugins/ida/skills/workflow-library/workflows/wf-strategic-fit.md), and [`wf-qa.md`](../../plugins/ida/skills/workflow-library/workflows/wf-qa.md)). Review
+composition -- the lenses, the depth, whether reviewers run as independent downstream tasks -- is structural rather than an ad-hoc instruction. Workflow templates set the reusable patterns for these choices
 and evolve over time. Any surface satisfying the assembled workflow's
-requirements qualifies as an executor: an independent polecat session that
-spins the container and validates with the marsha lens for code changes, or
-dispatch-layer subagents running the rbg lens for textual/rules compliance.
-Proof is always written to the task record, typically as a review task plus receipt.
-GitHub/GHA is one optional executor of code review, never the review system
+requirements qualifies as an executor: an independent polecat session ([`/dispatch`](../../plugins/ida/skills/dispatch/SKILL.md)) that
+validates runtime behavior with [`/verify`](../../plugins/ida/skills/verify/SKILL.md) for code changes, or
+review subagents running [`/strategic-review`](../../plugins/ida/skills/strategic-review/SKILL.md) for rule compliance, strategic fit, and substantive quality.
+Proof is always written to the task record, typically as a downstream QA task (`needs: [<primary_task_id>]`) plus a `premise-check` verdict receipt.
+GitHub Actions is one optional executor of code review, never the review system
 itself.
 
 ### Recursion
 
 A task decomposed into subtasks nests this shape: each subtask runs its own
-contract -> execution -> boundary-check -> QA-around cycle, and the parent
-workflow's own step 4/5 read the aggregate of its children's outcomes rather
+contract -> execution -> review cycle, and the parent
+workflow's own step 4 reads the aggregate of its children's outcomes rather
 than re-deriving them. An epic is a workflow whose execution step (2) is
-itself one or more nested workflows -- the same five steps at a coarser grain,
+itself one or more nested workflows -- the same four steps at a coarser grain,
 with no separate contract for "epic-shaped" work.
 
-### Risk-scaled review depth -- pauli's call
+### Risk-scaled review depth
 
-How much of steps 3-4 run as standalone review subtasks versus how much the
-executing agent self-assesses and hands back for one consolidated review is
-pauli's call, made via the `brief` skill at dispatch time (step 1), based on
-the task's risk and blast radius. Two ends of the same shape, not two
-different contracts:
+How much of steps 3-4 run as standalone downstream review tasks versus how much is folded into the next run or a consolidated review pass is determined during [`/reify`](../../plugins/ida/skills/reify/SKILL.md) based on
+the task's risk and blast radius ([`plugins/ida/skills/reify/SKILL.md:85-98`](../../plugins/ida/skills/reify/SKILL.md), [`enforcement.md#pr-risk-taxonomy-enforcement`](enforcement.md#pr-risk-taxonomy-enforcement)):
 
-- **High-risk / wide blast radius** -- per-chunk review subtasks, wired with
-  `depends_on`, each running its own boundary-check and QA-around before the
+- **Substantive deliverables (features, refactors, multi-file changes)** -- `/reify` mints an independent downstream QA task (`Title: QA: <primary task title>`, `needs: [<primary_task_id>]`) that verifies the delivered artifact at runtime and evaluates PR risk against the three-tier taxonomy (`Tier 1` autonomous QA-merge vs `Tier 2` / `Tier 3` reviewer or principal sign-off).
+- **High-risk / wide blast radius** -- per-chunk review tasks wired with
+  `depends_on`, each running its own rule-compliance and substantive QA pass before the
   next chunk starts.
-- **Low-risk / narrow blast radius** -- workers self-assess against the
-  exit-reflection checklist and hand back separate commits under one shared
-  branch; a single consolidated boundary-check + QA-around pass runs once --
-  a review pass whose receipt lands in the task record. One final PR over the coupled
-  set -- never a spray of per-child PRs, per the return contract in
-  [task-contract.md](task-contract.md) -- is the PR-surface instance of that
-  pass, and the GHA PR pipeline is one optional executor of it.
+- **Low-risk bugfixes (`severity: low` / narrow blast radius)** -- rather than spawning a separate container session solely to verify a minor fix, `/reify` folds a 1-2 line verification check into the next scheduled task or run that touches the affected component, and workers hand back commits under one shared PR over the coupled set ([`task-contract.md`](task-contract.md)).
 
-The invariant across the whole range: a complete set of steps 3-5 runs per the
-assembled workflow before a workflow is marked done, regardless of how pauli
-chose to distribute it. A unit may also legally terminate `partial` (see
-[spec-partial-work-tight-loop-delivery.md](../polecat/spec-partial-work-tight-loop-delivery.md#the-partial-terminal-state)):
-steps 3-5 then review the shipped chunk plus its declared-deferred
+The invariant across the whole range: a complete set of steps 3-4 runs per the
+assembled workflow before a workflow is marked done. A unit may also legally terminate `partial` (see
+[`spec-partial-work-tight-loop-delivery.md`](../polecat/spec-partial-work-tight-loop-delivery.md#the-partial-terminal-state)):
+steps 3-4 then review the shipped chunk plus its declared-deferred
 remainder, and draft -> ready-for-the-principal still requires the
-pauli-specified review.
+specified review.

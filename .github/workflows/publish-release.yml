@@ -1,0 +1,155 @@
+name: Publish Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Version or tag to build and publish (e.g. v1.0-rc6)"
+        required: false
+        type: string
+
+concurrency:
+  group: publish-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Pytest
+    uses: ./.github/workflows/pytest.yml
+    permissions:
+      contents: read
+
+  publish-release:
+    name: Build and publish release assets
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      contents: write
+    steps:
+      - name: Resolve build context
+        id: ctx
+        run: |
+          # ${{ github.ref }} is a runtime value, but actionlint substitutes a
+          # static placeholder before shellcheck, which then misreads these glob
+          # tests as SC2193 "can never be equal". The runtime comparison is correct.
+          # shellcheck disable=SC2193
+          if [[ -n "${{ inputs.tag || '' }}" ]]; then
+            REF="${{ inputs.tag }}"
+            if [[ "$REF" == *-* || "$REF" == *rc* || "$REF" == *alpha* || "$REF" == *beta* || "$REF" == *dev* ]]; then
+              RTYPE="testing"
+            else
+              RTYPE="stable"
+            fi
+          elif [[ "${{ github.ref }}" == refs/tags/v*-* || "${{ github.ref }}" == refs/tags/v*rc* || "${{ github.ref }}" == refs/tags/v*alpha* || "${{ github.ref }}" == refs/tags/v*beta* || "${{ github.ref }}" == refs/tags/v*dev* ]]; then
+            # Pre-release tag (v1.2.3-rc.1, v0.10-rc1, v1.0-rc6, v1.0-rc*, v1.0rc*, -dev.N, -beta.N).
+            # Checked FIRST because pre-release globs are subsets of the plain v* glob below.
+            REF="${{ github.ref_name }}"
+            RTYPE="testing"
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            # Stable release tag (v1.2.3).
+            REF="${{ github.ref_name }}"
+            RTYPE="stable"
+          elif [[ "${{ github.event_name }}" == "release" ]]; then
+            REF="${{ github.event.release.tag_name }}"
+            RTYPE="stable"
+          else
+            REF="${{ github.sha }}"
+            RTYPE="stable"
+          fi
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+          echo "release_type=$RTYPE" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Build context::ref=$REF release_type=$RTYPE"
+
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.AOPS_DIST_PAT }}
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Compute version
+        id: version
+        run: |
+          REF="${{ steps.ctx.outputs.ref }}"
+          if [[ "$REF" =~ ^v?[0-9]+ ]]; then
+            VERSION="${REF#v}"
+          else
+            VERSION="$(uv run python -m build.version --get)"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Version::$VERSION"
+
+      - name: Validate Python package version
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          echo "Validating Python package version: $VERSION"
+          uv run python -m build.version --validate "$VERSION"
+
+      - name: Assert version coherence (stable tag only)
+        if: steps.ctx.outputs.release_type == 'stable' && startsWith(github.ref, 'refs/tags/')
+        run: |
+          set -euo pipefail
+          TAG_V="${{ steps.version.outputs.version }}"
+          PYPROJECT_V="$(uv run python -c "import tomllib, pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")"
+          MANIFEST_V="$(python3 -c "import json, pathlib; print(json.loads(pathlib.Path('.release-please-manifest.json').read_text())['.'])")"
+          echo "tag=$TAG_V pyproject=$PYPROJECT_V manifest=$MANIFEST_V"
+          if [ "$TAG_V" != "$PYPROJECT_V" ] || [ "$TAG_V" != "$MANIFEST_V" ]; then
+            echo "::error title=Version mismatch::tag=$TAG_V pyproject=$PYPROJECT_V manifest=$MANIFEST_V — stable release aborted (G2)"
+            exit 1
+          fi
+          echo "Version coherence OK: $TAG_V"
+
+      - name: Build dist artifacts
+        env:
+          ACA_DATA: ${{ github.workspace }}
+        run: |
+          VERSION_FLAG="--set-version ${{ steps.version.outputs.version }}"
+          # shellcheck disable=SC2086
+          uv run python -m build.build $VERSION_FLAG
+
+      - name: Upload archives to GitHub Release v${{ steps.version.outputs.version }}
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_TYPE: ${{ steps.ctx.outputs.release_type }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          PRERELEASE_FLAG=""
+          [ "$RELEASE_TYPE" = "testing" ] && PRERELEASE_FLAG="--prerelease"
+
+          ARCHIVES=""
+          for f in dist/*.tar.gz; do
+            [ -f "$f" ] && ARCHIVES="$ARCHIVES $f"
+          done
+
+          if [ -z "$ARCHIVES" ]; then
+            echo "::error::No archives in dist/"
+            exit 1
+          fi
+
+          TAG="v$VERSION"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            if [ "$RELEASE_TYPE" = "testing" ]; then
+              gh release edit "$TAG" --prerelease
+            fi
+            # $ARCHIVES must word-split into separate args
+            # shellcheck disable=SC2086
+            gh release upload "$TAG" $ARCHIVES --clobber
+          else
+            # $ARCHIVES and $PRERELEASE_FLAG must word-split into separate args
+            # shellcheck disable=SC2086
+            gh release create "$TAG" --title "$TAG" --notes "AcademicOps $TAG" $PRERELEASE_FLAG $ARCHIVES
+          fi

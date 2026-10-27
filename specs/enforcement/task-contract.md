@@ -1,12 +1,12 @@
 ---
 id: enforcement-task-contract
-title: In-Session Enforcement -- The Work-Unit Contract (Layer 2)
+title: In-Session Enforcement -- The Work-Unit Contract
 type: spec
 status: draft
 tags: [enforcement, framework-architecture, verification]
 ---
 
-# In-Session Enforcement -- The Work-Unit Contract (Layer 2)
+# In-Session Enforcement -- The Work-Unit Contract
 
 ## aops -- Work-unit loop (the task contract)
 
@@ -35,15 +35,14 @@ independent-verification evidence bound to the artifact state of the work.
 **A task body carries no history or meta-commentary.** It is a checklist of
 work to be done, rewritten in place as items complete -- an item is ticked only
 with evidence of that item itself; any other item stays unticked with its limit
-stated -- per [`synthesize-not-accrete`](../../lib/axioms/synthesize-not-accrete.md), which
+stated -- per [`durable-capture`](../../plugins/rbg/skills/axioms/durable-capture.md) and [`single-source-of-truth`](../../plugins/rbg/skills/axioms/single-source-of-truth.md), which
 this contract does not restate.
 
 ### Mechanisms
 
 - **Premise judgment** -- no longer a standalone gate at `claim_task`. The
-  assessment happens earlier, in `/q`: it places and values the
-  work per [R1](../workflows/graph-valuation.md#3-r1----placement-at-intake-q), sorts its assumptions, names its open forks, then settles shape and
-  acceptance criteria. Dispatch surfaces (`/pull`) trust that rather
+  assessment happens earlier, in [`/q`](../../plugins/ida/skills/q/SKILL.md) and [`/reify`](../../plugins/ida/skills/reify/SKILL.md): `/q` places and values the
+  work per [R1](../workflows/graph-valuation.md#3-r1----placement-at-intake-q), and `/reify` composes the dispatchable task with its workflow, acceptance criteria, and QA follow-up. Dispatch surfaces ([`/pull`](../../plugins/ida/skills/pull/SKILL.md), [`/dispatch`](../../plugins/ida/skills/dispatch/SKILL.md)) trust that rather
   than re-judging the premise themselves.
 - **Task-binding invariant** -- no mutating work without a task bound to the
   session via `claim_task`, never an environment variable naming the task.
@@ -63,7 +62,7 @@ this contract does not restate.
   where warranted -- `/reconcile` no longer probes or resets claims.
 - **Task naming invariant** -- task titles must be brief, descriptive, verb-led statements of a concrete thing to achieve (e.g. `Implement X`, `Verify Y`). A task title or filename never carries a person's name or persona prefix; assignment belongs exclusively in `assigned_to` / `assignee` frontmatter fields. See [`specs/meta/naming-and-decisions.md`](../meta/naming-and-decisions.md).
 - **Decisions as graph relationships** -- decisions and questions must never be created as standalone "decision" tasks. Open architectural choices are represented as mutually exclusive or mutually blocking option nodes where choosing one branch resolves the conflict, and missing information is modelled as a probe task (`classification: probe`). In-turn questions are put directly via `AskUserQuestion`.
-- **Task body brevity invariant** -- task bodies are strictly concise (50-150 words for atomic tasks), structured only around Goal, Deliverable, Scope, Acceptance criteria, and Pointers. Extraneous narrative sections (`Background`, `References`, `Implementation Plan`) and prose task links are prohibited.
+- **Task body brevity invariant** -- task bodies are strictly concise (50-150 words for atomic tasks at capture), structured around `Goal`, `Deliverable`, `Scope`, `Acceptance criteria`, and `Pointers` ([`specs/meta/naming-and-decisions.md`](../meta/naming-and-decisions.md), [`plugins/ida/agents/pauli.md`](../../plugins/ida/agents/pauli.md)) and expanded by [`/reify`](../../plugins/ida/skills/reify/SKILL.md) into the dispatchable contract (`Ask`, `Goal`, `Context`, `Acceptance`, `Instructions`, `Output`, `Report`, `Appendix: Sources`). Extraneous narrative sections (`Background`, `References`, `Implementation Plan`) and prose task links are prohibited.
 - **Graph edge economy invariant** -- setting `parent_id` is already an intrinsic graph edge; redundant wiring between descendants/siblings under the same parent without specific interactions is prohibited.
 - **Evidence contract** -- at `release_task` / `complete_task`; the completion
   claim must carry independent-verification evidence bound to artifact state,

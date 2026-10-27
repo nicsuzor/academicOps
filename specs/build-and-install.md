@@ -100,9 +100,12 @@ branch protection requiring all checks green (`Lint / Lint`, `Type Check / Type 
 
 1. **Active development and validation.** Work proceeds on release lines (e.g. `release/v1.0-rc0`).
    Pull requests into release lines run the full `pr-pipeline.yml` suite (Lint, Type Check, Pytest).
-2. **Merge into `main`.** Once a release line is green and ready, a pull request is merged into `main`.
-   Branch protection on `main` requires all status checks to pass before merging, with no bypass.
-3. **Build on merge.** Every merge into `main` triggers `.github/workflows/build-extension.yml`.
+2. **Publishing release candidates.** Release candidates are published via GitHub pre-releases:
+   - **Trigger conditions**: Pushing an RC tag matching `v*-rc*` (or pre-release tags `v*-*`, `v*rc*`, `v*beta*`, `v*alpha*`, `v*dev*`) on a release line (e.g. `v1.0-rc7` on `release/v1.0-rc0`), or manually triggering `.github/workflows/publish-release.yml` via `workflow_dispatch` with an RC `tag` input.
+   - **Flags and options**: The workflow runs Pytest, validates PEP 440 version formatting (`build.version --validate`), builds distribution archives with `uv run python -m build.build --set-version <version>`, and attaches the tarballs (`dist/*.tar.gz`) to a GitHub Release marked explicitly with `--prerelease` (`gh release create ... --prerelease` or `gh release edit ... --prerelease`). Stable manifest coherence checks (G2) are skipped for RC builds as pre-releases are not tracked by `.release-please-manifest.json`.
+   - **Publish constraints**: RC builds publish exclusively to GitHub pre-releases. They never promote assets to production channels, never publish to container registries (GHCR), and never write or push to `main` (built plugin directory mirroring and root marketplace updates remain restricted to merges on `main`).
+3. **Merging stable release into `main`.** Once a release candidate is validated and fully green, a pull request is merged from the release line into `main`. Branch protection on `main` requires all status checks to pass before merging, with no bypass allowed.
+4. **Build on merge.** Every merge into `main` triggers `.github/workflows/build-extension.yml`.
    The workflow:
    - Computes the version from `build.version`.
    - Runs `uv run python -m build.build --set-version <version>`.
@@ -110,8 +113,7 @@ branch protection requiring all checks green (`Lint / Lint`, `Type Check / Type 
      `.claude-plugin/marketplace.json`, and `.aops-image-metadata.json` directly to the root of `main`.
    - Commits and pushes the built artifacts back to `main` with `[skip ci]`.
    - Writes only to `main` (no writes to `dist` or `nicsuzor/aops`).
-4. **GitHub Releases.** Annotated release tags (`v*`) pushed on `main` or release lines upload
-   tarball archives (`dist/*.tar.gz`) to a GitHub Release (`--prerelease` for release candidates).
+5. **Stable GitHub Releases.** Annotated release tags (`vX.Y.Z`) pushed on `main` trigger `.github/workflows/publish-release.yml` to upload tarball archives (`dist/*.tar.gz`) to a stable GitHub Release.
 
 A manual rebuild against a specific commit: push a prerelease tag at that
 commit -- e.g. `git tag v<next>-rc.1 <sha> && git push origin v<next>-rc.1`.
@@ -120,7 +122,7 @@ commit -- e.g. `git tag v<next>-rc.1 <sha> && git push origin v<next>-rc.1`.
 
 - **Plugin enabled but `/hooks` doesn't list its events.** Claude Code couldn't
   read `hooks/hooks.json` -- usually a JSON syntax error or an unresolvable
-  command path. Inspect with `python3 -c "import json; json.load(open('hooks/hooks.json'))"`.
+  command path. Inspect with `uv run python -c "import json; json.load(open('hooks/hooks.json'))"`.
 - **A local dev install (`make install-dev`) isn't shadowing a release install,
   or vice versa.** Check `claude plugin marketplace list` for both `aops` (dev)
   and `academicOps` (release) -- a stale one of either can silently win. Run

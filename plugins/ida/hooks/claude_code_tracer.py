@@ -61,11 +61,8 @@ def _load_config_file(path: Path) -> dict:
 
 
 def _load_polecat_config() -> dict:
-    cfg_path = os.environ.get("AOPS_POLECAT_CONFIG")
-    if not cfg_path:
-        sessions = os.environ.get("AOPS_SESSIONS")
-        if sessions:
-            cfg_path = os.path.join(sessions, "polecat.yaml")
+    sessions = os.environ.get("AOPS_SESSIONS")
+    cfg_path = os.path.join(sessions, "polecat.yaml") if sessions else None
     if cfg_path and os.path.exists(cfg_path):
         try:
             import yaml
@@ -1142,27 +1139,32 @@ RETRIEVER_TOOLS = {"WebSearch", "WebFetch"}
 _MAX_ATTR_BYTES = int(os.environ.get("OTEL_SPAN_ATTRIBUTE_VALUE_LENGTH_LIMIT", "524288"))
 
 
-def _truncate(value: Any) -> str:
+def _redact_secrets(value: Any) -> str:
     s = json.dumps(value) if not isinstance(value, str) else value
 
-    # Redact common secrets before truncation
     secrets = [
         os.environ.get("GH_TOKEN"),
         os.environ.get("GITHUB_TOKEN"),
         os.environ.get("AOPS_BOT_GH_TOKEN"),
         os.environ.get("DISPATCHER_MCP_TOKEN"),
+        os.environ.get("DISPATCHER_MCP_TOKEN_SECRET"),
         os.environ.get("WORKER_MCP_TOKEN"),
+        os.environ.get("WORKER_MCP_TOKEN_SECRET"),
     ]
-    # Add any env vars ending in API_KEY or starting with CF_ACCESS_
     for k, v in os.environ.items():
-        if (k.endswith("_API_KEY") or k.startswith("CF_ACCESS_")) and v:
+        if (
+            k.endswith("_API_KEY") or k.endswith("_TOKEN_SECRET") or k.startswith("CF_ACCESS_")
+        ) and v:
             secrets.append(v)
 
-    # Redact secrets
     for secret in secrets:
-        if secret and len(secret) > 4:  # Don't redact empty or very short strings by accident
+        if secret and len(secret) > 4:
             s = s.replace(secret, "<REDACTED_SECRET>")
+    return s
 
+
+def _truncate(value: Any) -> str:
+    s = _redact_secrets(value)
     encoded = s.encode("utf-8")
     if len(encoded) > _MAX_ATTR_BYTES:
         s = encoded[:_MAX_ATTR_BYTES].decode("utf-8", errors="ignore") + "...[truncated]"
@@ -1637,6 +1639,248 @@ def _subagent_record(
     return record
 
 
+def _llm_span_id(message_id: str) -> str:
+    """Span id for the LLM span of one API response, derived from its message.id."""
+    import hashlib
+
+    return hashlib.sha256(f"llm:{message_id}".encode()).hexdigest()[:16]
+
+
+def _extract_model_usages_from_transcript(
+    transcript_path: str | None,
+    human_count_at_start: int = 0,
+    stop_at_next_prompt: bool = True,
+) -> list[dict[str, Any]]:
+    """Extract model call token usages and model name from the transcript for the turn.
+
+    In accordance with the Client Hook Emission Contract, this function reads
+    ONLY token counts (input_tokens, output_tokens, cache_read_input_tokens,
+    cache_creation_input_tokens) and model from each assistant entry. It does
+    NOT read message content, role, timestamps, or tool data from the transcript.
+
+    Entries sharing the same message.id are grouped into one model call (taking the
+    fullest usage snapshot).
+    """
+    if not transcript_path or not os.path.exists(transcript_path):
+        return []
+
+    usages: list[dict[str, Any]] = []
+    try:
+        lines = Path(transcript_path).read_text(encoding="utf-8").splitlines()
+        human_count = 0
+        in_turn = human_count_at_start == 0
+
+        current_group_id: str | None = None
+        group_model: str = "claude"
+        group_usage: dict[str, Any] = {}
+
+        def _flush_group() -> None:
+            nonlocal current_group_id, group_model, group_usage
+            if current_group_id is None:
+                return
+            usages.append(
+                {
+                    "message_id": current_group_id,
+                    "model": group_model,
+                    "input_tokens": int(group_usage.get("input_tokens", 0) or 0),
+                    "output_tokens": int(group_usage.get("output_tokens", 0) or 0),
+                    "cache_read_input_tokens": int(
+                        group_usage.get("cache_read_input_tokens", 0) or 0
+                    ),
+                    "cache_creation_input_tokens": int(
+                        group_usage.get("cache_creation_input_tokens", 0) or 0
+                    ),
+                }
+            )
+            current_group_id = None
+            group_model = "claude"
+            group_usage = {}
+
+        for line in lines:
+            if not line.strip():
+                continue
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+
+            if _is_human_message(entry):
+                human_count += 1
+                if human_count > human_count_at_start:
+                    if in_turn and stop_at_next_prompt and usages:
+                        break
+                    in_turn = True
+            elif in_turn and entry.get("type") == "assistant":
+                msg = entry.get("message")
+                if not isinstance(msg, dict):
+                    continue
+                msg_id = str(msg.get("id") or "")
+                model = str(msg.get("model") or "claude")
+                usage = msg.get("usage")
+                usage_dict = usage if isinstance(usage, dict) else {}
+
+                if msg_id and msg_id == current_group_id:
+                    cur_tot = sum(
+                        int(group_usage.get(k, 0) or 0)
+                        for k in (
+                            "input_tokens",
+                            "output_tokens",
+                            "cache_read_input_tokens",
+                            "cache_creation_input_tokens",
+                        )
+                    )
+                    new_tot = sum(
+                        int(usage_dict.get(k, 0) or 0)
+                        for k in (
+                            "input_tokens",
+                            "output_tokens",
+                            "cache_read_input_tokens",
+                            "cache_creation_input_tokens",
+                        )
+                    )
+                    if new_tot >= cur_tot:
+                        group_usage = usage_dict
+                    if model:
+                        group_model = model
+                else:
+                    _flush_group()
+                    current_group_id = msg_id if msg_id else f"entry_{len(usages)}"
+                    group_model = model
+                    group_usage = usage_dict
+
+        _flush_group()
+    except Exception as e:
+        log.debug("Failed reading transcript usages from %s: %s", transcript_path, e)
+    return usages
+
+
+def _emit_pending_llm_spans(
+    state: dict,
+    transcript_path: str | None,
+    config: dict,
+    *,
+    subagent_id: str | None = None,
+    retry_delay_s: float = 0.0,
+    force_remaining: bool = False,
+) -> None:
+    """Emit pending hook-derived LLM spans joined with token counts from transcript."""
+    current_trace = state.get("current_trace")
+    if not current_trace:
+        return
+
+    model_calls = current_trace.setdefault("model_calls", [])
+    emitted = current_trace.get("emitted_llm_span_count", 0)
+    if emitted >= len(model_calls):
+        return
+
+    human_count_at_start = current_trace.get("human_count_at_start", 0)
+    usages = _extract_model_usages_from_transcript(transcript_path, human_count_at_start)
+
+    if retry_delay_s > 0 and len(usages) < len(model_calls):
+        time.sleep(retry_delay_s)
+        usages = _extract_model_usages_from_transcript(transcript_path, human_count_at_start)
+
+    unemitted = model_calls[emitted:]
+    if not unemitted:
+        return
+
+    (_, _, _, _, _, _, SpanKind, _, _, _) = _otel_imports()
+    spans_to_export: list[dict[str, Any]] = []
+    by_tool_call = current_trace.setdefault("llm_span_by_tool_call", {})
+
+    for idx, call in enumerate(unemitted, start=emitted):
+        usage_info = usages[idx] if idx < len(usages) else None
+        if usage_info is None and not force_remaining:
+            # Hold open until later hook or flush
+            break
+
+        model = usage_info["model"] if usage_info else "claude"
+        msg_id = usage_info.get("message_id", "") if usage_info else ""
+        input_tokens = usage_info.get("input_tokens", 0) if usage_info else 0
+        output_tokens = usage_info.get("output_tokens", 0) if usage_info else 0
+        cache_read = usage_info.get("cache_read_input_tokens", 0) if usage_info else 0
+        cache_write = usage_info.get("cache_creation_input_tokens", 0) if usage_info else 0
+
+        span_id_hex = (
+            _llm_span_id(msg_id) if msg_id and not msg_id.startswith("entry_") else _new_span_id()
+        )
+        for tc_id in call.get("tool_call_ids", []):
+            if tc_id:
+                by_tool_call[str(tc_id)] = span_id_hex
+
+        prompt_tokens = input_tokens + cache_read + cache_write
+        total_tokens = prompt_tokens + output_tokens
+
+        attrs: dict[str, Any] = {
+            "openinference.span.kind": "LLM",
+            "llm.system": "anthropic",
+            "llm.provider": "anthropic",
+            "llm.model_name": model,
+            "llm.token_count.prompt": prompt_tokens,
+            "llm.token_count.completion": output_tokens,
+            "llm.token_count.total": total_tokens,
+            "llm.token_count.prompt_details.cache_read": cache_read,
+            "llm.token_count.prompt_details.cache_write": cache_write,
+            "input.value": call.get("input_value", ""),
+            "input.mime_type": call.get("input_mime", "text/plain"),
+            "output.value": call.get("output_value", ""),
+            "output.mime_type": call.get("output_mime", "text/plain"),
+        }
+        if usage_info is None:
+            attrs["llm.token_count.type"] = "estimated"
+        if msg_id and not msg_id.startswith("entry_"):
+            attrs["llm.message.id"] = msg_id
+
+        parent_span_id = current_trace["root_span_id"]
+        trace_id = current_trace["trace_id"]
+        if subagent_id:
+            subagent = state.get("subagents", {}).get(subagent_id)
+            if subagent:
+                trace_id = subagent.get("trace_id", trace_id)
+                parent_span_id = subagent.get("agent_span_id", parent_span_id)
+
+        start_ns = call.get("start_ns", current_trace["turn_start_ns"])
+        end_ns = call.get("end_ns", time.time_ns())
+        if end_ns < start_ns:
+            end_ns = start_ns
+
+        spans_to_export.append(
+            {
+                "trace_id_hex": trace_id,
+                "span_id_hex": span_id_hex,
+                "parent_span_id_hex": parent_span_id,
+                "name": f"claude/{model}",
+                "kind": SpanKind.CLIENT,
+                "start_ns": start_ns,
+                "end_ns": end_ns,
+                "attributes": attrs,
+                "force_span_id": True,
+            }
+        )
+
+    if not spans_to_export:
+        return
+
+    phoenix_session_id, agent_id, parent_session_id = _resolve_agent_and_parent_ids(state)
+    known_parents = _known_span_parents(current_trace)
+    for sp in spans_to_export:
+        current_trace.setdefault("span_parents", {})[sp["span_id_hex"]] = sp["parent_span_id_hex"]
+
+    _build_and_export_spans(
+        config=config,
+        session_id=phoenix_session_id,
+        username=state.get("username"),
+        span_records=spans_to_export,
+        agent_id=agent_id,
+        parent_session_id=parent_session_id,
+        agent_name=state.get("agent_name"),
+        cwd=state.get("cwd"),
+        known_parents=known_parents,
+    )
+
+    current_trace["emitted_llm_span_count"] = emitted + len(spans_to_export)
+
+
 def _complete_turn(
     state: dict,
     config: dict,
@@ -1775,9 +2019,31 @@ def _build_tool_span_record(
         "output.mime_type": "application/json",
     }
 
-    if not tool_call_id and isinstance(tool_input, dict):
+    parsed_input = tool_input
+    if isinstance(parsed_input, str):
+        try:
+            parsed_input = json.loads(parsed_input)
+        except Exception:
+            parsed_input = None
+
+    if isinstance(parsed_input, dict):
+        action_candidates = [parsed_input]
+        if isinstance(parsed_input.get("Arguments"), dict):
+            action_candidates.append(parsed_input["Arguments"])
+        for candidate in action_candidates:
+            for key in ("toolSummary", "toolAction", "description", "Description"):
+                val = candidate.get(key)
+                if isinstance(val, str) and val.strip():
+                    attrs["tool.summary"] = val.strip()
+                    break
+            if "tool.summary" in attrs:
+                break
+
+    if not tool_call_id and isinstance(parsed_input, dict):
         tool_call_id = (
-            tool_input.get("tool_use_id") or tool_input.get("id") or tool_input.get("tool_call_id")
+            parsed_input.get("tool_use_id")
+            or parsed_input.get("id")
+            or parsed_input.get("tool_call_id")
         )
     if tool_call_id:
         attrs["tool.call_id"] = str(tool_call_id)
@@ -1885,6 +2151,8 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
 
     # Complete the previous turn's trace if one is in progress (unclosed turn fallback).
     if state.get("current_trace"):
+        prev_tp = _get_cached_transcript_path(data, state, session_id)
+        _emit_pending_llm_spans(state, prev_tp, config, force_remaining=True)
         _complete_turn(state, config, now_ns)
         state.pop("pending_tools", None)
 
@@ -1923,13 +2191,23 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
         except Exception as e:
             log.debug("Failed to parent subagent: %s", e)
 
+    pending_turn = state.pop("pending_turn_trace", None) or {}
     state["current_trace"] = {
-        "trace_id": parent_trace_id if parent_trace_id else _new_trace_id(),
-        "root_span_id": _new_span_id(),
+        "trace_id": parent_trace_id or pending_turn.get("trace_id") or _new_trace_id(),
+        "root_span_id": pending_turn.get("root_span_id") or _new_span_id(),
         "parent_span_id": parent_span_id,
         "turn_start_ns": now_ns,
         "turn_number": turn_number,
         "prompt_preview": _truncate(prompt) if prompt else "",
+        "human_count_at_start": max(0, turn_number - 1),
+        "model_calls": [],
+        "emitted_llm_span_count": 0,
+        "pending_model_call": {
+            "input_value": _truncate(prompt) if prompt else "",
+            "input_mime": "text/plain",
+            "start_ns": now_ns,
+            "tool_calls": [],
+        },
     }
 
     _save_state(session_id, state)
@@ -2091,7 +2369,45 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
             "turn_start_ns": now_ns,
             "turn_number": turn_number,
             "prompt_preview": _truncate(prompt_preview) if prompt_preview else "",
+            "human_count_at_start": max(0, current_human_count - 1),
+            "model_calls": [],
+            "emitted_llm_span_count": 0,
+            "pending_model_call": {
+                "input_value": _truncate(prompt_preview) if prompt_preview else "",
+                "input_mime": "text/plain",
+                "start_ns": now_ns,
+                "tool_calls": [],
+            },
         }
+
+    current_trace = state.get("current_trace")
+    if current_trace:
+        pmc = current_trace.setdefault(
+            "pending_model_call",
+            {
+                "input_value": current_trace.get("prompt_preview", ""),
+                "input_mime": "text/plain",
+                "start_ns": current_trace.get("turn_start_ns", now_ns),
+                "tool_calls": [],
+            },
+        )
+        tuid = str(data.get("tool_use_id") or data.get("toolUseId") or data.get("id") or "")
+        pmc.setdefault("tool_calls", []).append(
+            {
+                "name": tool_name,
+                "input": tool_input,
+                "id": tuid,
+            }
+        )
+        pmc["end_ns"] = now_ns
+        inp_str = (
+            json.dumps(tool_input)
+            if isinstance(tool_input, (dict, list))
+            else str(tool_input or "")
+        )
+        pmc["output_value"] = _truncate(inp_str)
+        pmc["output_mime"] = "application/json"
+        pmc["tool_call_ids"] = [tc["id"] for tc in pmc["tool_calls"] if tc.get("id")]
 
     pending_entry: dict[str, Any] = {
         "tool_name": tool_name,
@@ -2099,7 +2415,6 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
         "start_ns": now_ns,
     }
 
-    current_trace = state.get("current_trace")
     if tool_name in ("Agent", "Task") and current_trace:
         agent_span_id = _new_span_id()
         tuid = str(data.get("tool_use_id") or data.get("toolUseId") or "")
@@ -2189,6 +2504,40 @@ def _finish_tool_call(
         subagent = (
             _subagent_record(state, subagent_id, data.get("agent_type")) if subagent_id else None
         )
+
+        # Move completed pending_model_call to model_calls
+        if (
+            current_trace.get("pending_model_call")
+            and "end_ns" in current_trace["pending_model_call"]
+        ):
+            pmc = current_trace.pop("pending_model_call")
+            current_trace.setdefault("model_calls", []).append(pmc)
+
+        # Stage the next model call receiving this tool's response
+        tool_resp_str = (
+            json.dumps(tool_response)
+            if isinstance(tool_response, (dict, list))
+            else str(tool_response or "")
+        )
+        if "pending_model_call" not in current_trace:
+            current_trace["pending_model_call"] = {
+                "input_value": _truncate(tool_resp_str),
+                "input_mime": "application/json"
+                if isinstance(tool_response, (dict, list))
+                else "text/plain",
+                "start_ns": end_ns,
+                "tool_calls": [],
+            }
+        else:
+            prev_in = current_trace["pending_model_call"].get("input_value", "")
+            current_trace["pending_model_call"]["input_value"] = _truncate(
+                f"{prev_in}\n{tool_resp_str}"
+            )
+
+        # Emit any pending LLM spans whose token counts have landed in the transcript
+        transcript_path = _get_cached_transcript_path(data, state, session_id)
+        _emit_pending_llm_spans(state, transcript_path, config, subagent_id=subagent_id)
+
         trace_id = current_trace["trace_id"]
         if subagent_id and subagent is not None:
             trace_id = subagent["trace_id"]
@@ -2196,6 +2545,7 @@ def _finish_tool_call(
         else:
             parent_span_id = (
                 _find_active_agent_span_id(state, pending_key, tool_name)
+                or current_trace.get("llm_span_by_tool_call", {}).get(str(tool_call_id or ""))
                 or current_trace["root_span_id"]
             )
         span_record = _build_tool_span_record(
@@ -2305,6 +2655,19 @@ def handle_stop(data: dict, config: dict) -> None:
         if last_message:
             current_trace["last_llm_output"] = _truncate(_format_assistant_message(last_message))
 
+        if current_trace.get("pending_model_call"):
+            pmc = current_trace.pop("pending_model_call")
+            pmc["output_value"] = _truncate(_format_assistant_message(last_message))
+            pmc["output_mime"] = "text/plain"
+            pmc["end_ns"] = end_ns
+            pmc["is_stop"] = True
+            current_trace.setdefault("model_calls", []).append(pmc)
+
+        transcript_path = _get_cached_transcript_path(data, state, session_id)
+        _emit_pending_llm_spans(
+            state, transcript_path, config, retry_delay_s=0.03, force_remaining=True
+        )
+
         _complete_turn(state, config, end_ns)
 
         _end_turn(session_id, state)
@@ -2331,7 +2694,12 @@ def _end_turn(session_id: str, state: dict) -> None:
     the turn for the next UserPromptSubmit to number its turn one higher.
     SessionEnd deletes the file.
     """
-    state.pop("current_trace", None)
+    ct = state.pop("current_trace", None)
+    if isinstance(ct, dict) and ct.get("trace_id") and ct.get("root_span_id"):
+        state["last_trace"] = {
+            "trace_id": ct["trace_id"],
+            "root_span_id": ct["root_span_id"],
+        }
     state.pop("pending_tools", None)
     state.pop("transcript_path", None)
     _save_state(session_id, state)
@@ -2370,6 +2738,20 @@ def handle_stop_failure(data: dict, config: dict) -> None:
             current_trace["last_llm_output"] = _truncate(_format_assistant_message(last_message))
         elif not current_trace.get("last_llm_output"):
             current_trace["last_llm_output"] = f"(Stop failed: {error_type})"
+
+        if current_trace.get("pending_model_call"):
+            pmc = current_trace.pop("pending_model_call")
+            pmc["output_value"] = current_trace["last_llm_output"]
+            pmc["output_mime"] = "text/plain"
+            pmc["end_ns"] = end_ns
+            pmc["is_stop"] = True
+            current_trace.setdefault("model_calls", []).append(pmc)
+
+        transcript_path = _get_cached_transcript_path(data, state, session_id)
+        _emit_pending_llm_spans(
+            state, transcript_path, config, retry_delay_s=0.03, force_remaining=True
+        )
+
         _complete_turn(
             state,
             config,
@@ -2548,8 +2930,160 @@ def handle_session_end(data: dict, config: dict) -> None:
     with _session_lock(session_id):
         state = _load_state(session_id)
         if state.get("current_trace"):
+            transcript_path = _get_cached_transcript_path(data, state, session_id)
+            _emit_pending_llm_spans(state, transcript_path, config, force_remaining=True)
             _complete_turn(state, config, end_ns)
         _delete_state(session_id)
+
+
+def emit_debug_hook_span(
+    data: dict,
+    config: dict,
+    *,
+    client: str,
+    event: str,
+    raw_payload: Any,
+) -> bool:
+    """Emit a full, untruncated debug span for any hook event, threaded into the session's turn trace."""
+    payload_key = "conversationId" if client == "agy" else "session_id"
+    session_id = resolve_session_id(data, payload_key, prefer_env=False)
+    if session_id is None:
+        log.warning(
+            "emit_debug_hook_span (%s/%s): no session id in payload (%r missing) "
+            "and $AOPS_SESSION_ID unset — skipping span emission",
+            client,
+            event,
+            payload_key,
+        )
+        return False
+
+    now_ns = time.time_ns()
+    with _session_lock(session_id):
+        state = _load_state(session_id)
+        if not state.get("session_id"):
+            state["session_id"] = session_id
+            state["phoenix_session_id"] = resolve_session_id(
+                data,
+                payload_key,
+                prefer_env=True,
+            )
+            state["session_start_ns"] = now_ns
+            state["username"] = os.environ.get("USER") or os.environ.get("USERNAME") or None
+            state["turn_number"] = 0
+
+        resolved_cwd = resolve_cwd(data, state)
+        if resolved_cwd:
+            state["cwd"] = resolved_cwd
+        client_agent = resolve_client_agent_name(data)
+        if client_agent:
+            state["agent_name"] = client_agent
+
+        current_trace = state.get("current_trace")
+        last_trace = state.get("last_trace")
+        known_parents: dict[str, str | None] | None = None
+
+        if isinstance(current_trace, dict) and current_trace.get("trace_id"):
+            trace_id = current_trace["trace_id"]
+            parent_span_id = current_trace.get("root_span_id")
+            sub_id = _subagent_id(data)
+            if sub_id:
+                sub_rec = (state.get("subagents") or {}).get(sub_id)
+                if isinstance(sub_rec, dict) and sub_rec.get("agent_span_id"):
+                    parent_span_id = sub_rec["agent_span_id"]
+            known_parents = _known_span_parents(current_trace)
+        elif (
+            isinstance(last_trace, dict)
+            and last_trace.get("trace_id")
+            and event not in ("SessionStart", "Setup", "UserPromptSubmit", "PreInvocation")
+        ):
+            trace_id = last_trace["trace_id"]
+            parent_span_id = last_trace.get("root_span_id")
+        else:
+            pending = state.get("pending_turn_trace")
+            if (
+                not isinstance(pending, dict)
+                or not pending.get("trace_id")
+                or not pending.get("root_span_id")
+            ):
+                parent_trace_id = None
+                psid = state.get("phoenix_session_id")
+                if psid and psid != session_id:
+                    try:
+                        pstate = _load_state(psid)
+                        if pstate and isinstance(pstate.get("current_trace"), dict):
+                            parent_trace_id = pstate["current_trace"].get("trace_id")
+                    except Exception:
+                        pass
+                pending = {
+                    "trace_id": parent_trace_id or _new_trace_id(),
+                    "root_span_id": _new_span_id(),
+                }
+                state["pending_turn_trace"] = pending
+            trace_id = pending["trace_id"]
+            parent_span_id = pending["root_span_id"]
+
+        if event != "SessionEnd":
+            _save_state(session_id, state)
+
+    phoenix_session_id, agent_id, parent_session_id = _resolve_agent_and_parent_ids(
+        state,
+        data,
+        payload_key=payload_key,
+    )
+    full_payload_json = _redact_secrets(
+        json.dumps(raw_payload, ensure_ascii=False, default=str)
+        if not isinstance(raw_payload, str)
+        else raw_payload
+    )
+    hook_event_name = str(data.get("hook_event_name") or data.get("hookEventName") or event)
+    attrs: dict[str, Any] = {
+        "openinference.span.kind": "CHAIN",
+        "hook.plugin": "aops-debug",
+        "hook.client": client,
+        "hook.event": event,
+        "hook.event_name": hook_event_name,
+        "input.value": full_payload_json,
+        "input.mime_type": "application/json",
+        "hook.raw_payload": full_payload_json,
+    }
+    tool_name = str(data.get("tool_name") or data.get("toolName") or "")
+    if tool_name:
+        attrs["tool.name"] = tool_name
+    tool_call_id = data.get("tool_use_id") or data.get("toolCallId")
+    if tool_call_id:
+        attrs["tool.call_id"] = str(tool_call_id)
+
+    (_, _, _, _, _, _, SpanKind, _, _, _) = _otel_imports()
+    surface = "agy" if client == "agy" else "claude-code"
+    service_name = "aops-agy-hooks" if client == "agy" else "aops-claude-hooks"
+    return _build_and_export_spans(
+        config=config,
+        session_id=phoenix_session_id,
+        username=state.get("username"),
+        span_records=[
+            {
+                "trace_id_hex": trace_id,
+                "span_id_hex": _new_span_id(),
+                "parent_span_id_hex": parent_span_id,
+                "name": f"aops-debug.{event}",
+                "kind": SpanKind.INTERNAL,
+                "start_ns": now_ns,
+                "end_ns": now_ns,
+                "attributes": attrs,
+            },
+        ],
+        agent_id=agent_id,
+        parent_session_id=parent_session_id,
+        agent_name=(
+            _subagent_name(data.get("agent_type"))
+            if _subagent_id(data)
+            else state.get("agent_name")
+        ),
+        cwd=state.get("cwd"),
+        known_parents=known_parents,
+        service_name=service_name,
+        surface=surface,
+    )
 
 
 # ---------------------------------------------------------------------------

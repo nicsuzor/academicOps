@@ -1,4 +1,4 @@
-"""Tests for ida hooks: hearsay, honesty, and quiet."""
+"""Tests for ida hooks: hearsay and honesty."""
 
 from __future__ import annotations
 
@@ -33,15 +33,6 @@ def staged_hooks(tmp_path: Path) -> Path:
     hooks = tmp_path / "hooks"
     shutil.copytree(IDA_HOOKS, hooks, ignore=shutil.ignore_patterns("__pycache__"))
     return hooks
-
-
-@pytest.fixture(autouse=True)
-def clean_gate_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    state_dir = tmp_path / "aops_channel_gate"
-    state_dir.mkdir(parents=True, exist_ok=True)
-    monkeypatch.setenv("AOPS_CHANNEL_GATE_DIR", str(state_dir))
-    yield
-    handlers.clear_channel_gate_state()
 
 
 # ---------------------------------------------------------------------------
@@ -130,37 +121,24 @@ def test_hearsay_does_not_fire_on_the_users_own_messages(prompt):
     assert handlers.rule_against_hearsay(ctx) is None
 
 
-def test_hearsay_does_not_fire_for_non_ida_agents():
+def test_hearsay_fires_for_all_agents():
+    """Hearsay fires uniformly on peer reports across all agents without persona distinction."""
     for agent in ("aops:james", "james", "worker", "pauli", "rbg"):
         ctx = HookContext(
             client="claude",
             event="UserPromptSubmit",
             agent_type=agent,
-            session_id="s-other",
+            session_id=f"s-other-{agent}",
             hooks_dir=IDA_HOOKS,
             raw={"prompt": _PEER_REPORT},
         )
         res = handlers.rule_against_hearsay(ctx)
-        assert res is None, f"hearsay fired for non-ida agent {agent}"
-        ctx_post = HookContext(
-            client="claude",
-            event="PostToolUse",
-            tool="Agent",
-            agent_type=agent,
-            session_id="s-other",
-            hooks_dir=IDA_HOOKS,
-            raw={"tool_input": {"description": "fg"}},
-        )
-        assert handlers.rule_against_hearsay(ctx_post) is None
+        assert res is not None, f"hearsay should fire for agent {agent}"
+        assert res.kind is Kind.ADVISE
 
 
 # ---------------------------------------------------------------------------
 # 2. Honesty hook on Stop for all agents (blocking once)
-# ---------------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------------
-# 3. Quiet hook on Stop and PreToolUse for Ida Prime
 # ---------------------------------------------------------------------------
 
 
@@ -294,12 +272,12 @@ def test_user_messages_get_pkb_hydration_and_no_hearsay_or_gate(prompt, expected
 @pytest.mark.parametrize(
     "peer_prompt",
     [
-        '<cross-session-message from="twin-a">PR #12 merged</cross-session-message>',
-        '<teammate-message teammate_id="worker">done</teammate-message>',
-        "<task-notification><result>worker finished</result></task-notification>",
+        '<cross-session-message from="twin-a">PR #12 merged\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</cross-session-message>',
+        '<teammate-message teammate_id="worker">done\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</teammate-message>',
+        "<task-notification><result>worker finished\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</result></task-notification>",
     ],
 )
-def test_agent_messages_get_hearsay_and_arm_gate_without_hydration(peer_prompt):
+def test_agent_messages_get_hearsay_and_arm_gate_with_hydration(peer_prompt):
     import premise_check_gate as pcg
 
     session_id = f"s-test-peer-{abs(hash(peer_prompt))}"
@@ -315,19 +293,17 @@ def test_agent_messages_get_hearsay_and_arm_gate_without_hydration(peer_prompt):
         raw={"prompt": peer_prompt},
     )
 
-    with patch.object(handlers, "_run_pkb_search") as mock_search:
-        # 1. Hydration skips peer reports
+    with patch.object(handlers, "_run_pkb_search", return_value="1. note") as mock_search:
+        # 1. Hydration includes peer reports
         search_res = handlers.search_the_pkb(ctx)
-        mock_search.assert_not_called()
-        assert search_res is None
+        mock_search.assert_called_once()
+        assert search_res is not None
+        assert "<academicOps PKB search results>" in search_res.inject_text
 
-        # 2. Honesty fires for peer messages
-        honesty_res = handlers.honesty_on_peer_message(ctx)
-        assert honesty_res is not None
-        expected_honesty, _ = load_message_pair(IDA_HOOKS, "honesty")
-        assert honesty_res.inject_text == expected_honesty
+        # 2. Honesty does not fire on receiving a peer report (it fires on SubagentStart)
+        assert handlers.honest_output(ctx) is None
 
-        # 3. Hearsay fires
+        # 3. Hearsay fires on receiving a peer report
         hearsay_res = handlers.rule_against_hearsay(ctx)
         assert hearsay_res is not None
         expected_hearsay, _ = load_message_pair(IDA_HOOKS, "hearsay")
@@ -341,45 +317,33 @@ def test_agent_messages_get_hearsay_and_arm_gate_without_hydration(peer_prompt):
 @pytest.mark.parametrize(
     "agent", ["ida:ida", "ida:sara", "aops:james", "worker", "pauli", "marsha", "rbg", ""]
 )
-@pytest.mark.parametrize(
-    "peer_prompt",
-    [
-        '<cross-session-message from="twin-a">PR #12 merged</cross-session-message>',
-        '<teammate-message teammate_id="worker">done</teammate-message>',
-        "<task-notification>worker finished</task-notification>",
-    ],
-)
-def test_honesty_on_peer_message_fires_for_all_agents(agent: str, peer_prompt: str):
-    """When an incoming peer message arrives on UserPromptSubmit, honesty.md fires for all agents."""
+def test_honest_output_fires_on_subagent_start_for_all_agents(agent: str):
+    """When a subagent starts on SubagentStart, honesty.md fires for all agents."""
     ctx = HookContext(
         client="claude",
-        event="UserPromptSubmit",
+        event="SubagentStart",
         agent_type=agent,
         hooks_dir=IDA_HOOKS,
-        raw={"prompt": peer_prompt},
+        raw={"agent_id": "sub-1", "agent_type": agent},
     )
-    res = handlers.honesty_on_peer_message(ctx)
+    res = handlers.honest_output(ctx)
     assert res is not None
     expected_inject, expected_user = load_message_pair(IDA_HOOKS, "honesty")
     assert res.inject_text == expected_inject
     assert res.user_text == expected_user
 
 
-@pytest.mark.parametrize("client", ["claude", "agy"])
 @pytest.mark.parametrize("agent", ["ida:ida", "aops:james", "worker"])
-def test_dispatch_honesty_reaches_all_agents_on_peer_message(
-    staged_hooks: Path, client: str, agent: str
-):
-    """End-to-end dispatch confirms honesty.md is returned for all agents on incoming peer message."""
-    event = "UserPromptSubmit" if client == "claude" else "PreInvocation"
+def test_dispatch_honesty_reaches_all_agents_on_subagent_start(staged_hooks: Path, agent: str):
+    """End-to-end dispatch confirms honesty.md is returned on SubagentStart."""
     payload = {
-        "hook_event_name": event,
+        "hook_event_name": "SubagentStart",
         "agent_type": agent,
-        "session_id": f"s-peer-{client}-{agent}",
-        "prompt": "<task-notification>worker finished</task-notification>",
+        "agent_id": f"sub-{agent}",
+        "session_id": f"s-sub-{agent}",
     }
     proc = subprocess.run(
-        [sys.executable, str(staged_hooks / "dispatch.py"), client, event],
+        [sys.executable, str(staged_hooks / "dispatch.py"), "claude", "SubagentStart"],
         input=json.dumps(payload),
         text=True,
         capture_output=True,
@@ -389,13 +353,7 @@ def test_dispatch_honesty_reaches_all_agents_on_peer_message(
     assert proc.returncode == 0
     data = json.loads(proc.stdout)
     expected_honesty, _ = load_message_pair(staged_hooks, "honesty")
-    if client == "claude":
-        assert expected_honesty in data["hookSpecificOutput"]["additionalContext"]
-    else:
-        assert any(
-            expected_honesty in step.get("ephemeralMessage", "")
-            for step in data.get("injectSteps", [])
-        )
+    assert expected_honesty in data["hookSpecificOutput"]["additionalContext"]
 
 
 def test_peer_message_prompt_yields_single_user_prompt_submit_output(
@@ -459,10 +417,7 @@ def test_peer_message_prompt_yields_single_user_prompt_submit_output(
     data = json.loads(proc.stdout)
     system_message = data.get("systemMessage", "")
     assert "\n" not in system_message
-    assert system_message == (
-        "Reminded to use `premise-check` when replying to a peer message. "
-        "Premise-check gate armed by claim-59204fc6."
-    )
+    assert system_message == "Premise-check gate armed by claim-59204fc6."
 
 
 def test_session_start_raises_when_pkb_mcp_url_unset(monkeypatch: pytest.MonkeyPatch):
@@ -561,3 +516,82 @@ def test_claude_user_prompt_submit_carries_no_session_start_pointer(
     raw = {"session_id": "claude-sess", "prompt": "hello"}
     result = handlers.user_prompt_submit(normalize("claude", "UserPromptSubmit", raw, IDA_HOOKS))
     assert result is None or not set(result.inject_text.split("\n\n")) & set(parts)
+
+
+def test_agy_session_start_renders_metadata_system_message(monkeypatch: pytest.MonkeyPatch):
+    """agy SessionStart produces injectSteps containing systemMessage with version metadata."""
+    from dispatch import normalize, render, to_canonical
+
+    monkeypatch.delenv("CLAUDE_ENV_FILE", raising=False)
+    monkeypatch.setenv("PKB_MCP_URL", "http://localhost:8000")
+    monkeypatch.setenv("AOPS_IMAGE_PLUGINS_VERSION", "v1.0-rc10")
+
+    raw = {
+        "conversationId": "agy-sess-123",
+        "workspacePaths": ["/workspace"],
+        "modelName": "gemini-4-flash",
+    }
+    assert to_canonical("agy", "SessionStart") == "SessionStart"
+
+    ctx = normalize("agy", "SessionStart", raw, IDA_HOOKS)
+    assert ctx.session_id == "agy-sess-123"
+    assert ctx.cwd == "/workspace"
+
+    res = handlers.session_start(ctx)
+    assert res is not None
+    assert "plugins: v1.0-rc10" in res.inject_text
+    assert "session: agy-sess-123" in res.inject_text
+    assert res.user_text is not None
+    assert "plugins: v1.0-rc10" in res.user_text
+
+    rendered = render("agy", "SessionStart", res)
+    assert "injectSteps" in rendered
+    steps = rendered["injectSteps"]
+    assert len(steps) >= 1
+
+    # First step is systemMessage persisting across turns in trajectory
+    sys_step = steps[0]
+    assert "systemMessage" in sys_step
+    assert "systemMessage" in sys_step["systemMessage"]
+    sys_text = sys_step["systemMessage"]["systemMessage"]
+    assert "plugins: v1.0-rc10" in sys_text
+    assert "session: agy-sess-123" in sys_text
+
+    # Additional instructions delivered via ephemeralMessage
+    if len(steps) > 1:
+        eph_step = steps[1]
+        assert "ephemeralMessage" in eph_step
+        assert handlers.PREMISE_CHECK_POINTER in eph_step["ephemeralMessage"]
+
+
+def test_render_agy_formats_system_message_and_ephemeral_message():
+    """_render_agy handles user_text as systemMessage and inject_text as ephemeralMessage."""
+    from dispatch import Kind, Result, render
+
+    # 1. Refusal
+    refuse_res = Result(inject_text="Access denied", kind=Kind.REFUSE)
+    assert render("agy", "PreToolUse", refuse_res) == {
+        "decision": "deny",
+        "reason": "Access denied",
+    }
+
+    # 2. General advisory without user_text
+    advise_res = Result(inject_text="Advisory notice")
+    assert render("agy", "PreInvocation", advise_res) == {
+        "injectSteps": [{"ephemeralMessage": "Advisory notice"}]
+    }
+
+    # 3. General advisory with user_text
+    with_user_res = Result(inject_text="Advisory notice", user_text="User notice")
+    assert render("agy", "PreInvocation", with_user_res) == {
+        "injectSteps": [
+            {"systemMessage": {"systemMessage": "User notice"}},
+            {"ephemeralMessage": "Advisory notice"},
+        ]
+    }
+
+    # 4. SessionStart with only inject_text defaults to systemMessage
+    start_res = Result(inject_text="Startup welcome")
+    assert render("agy", "SessionStart", start_res) == {
+        "injectSteps": [{"systemMessage": {"systemMessage": "Startup welcome"}}]
+    }

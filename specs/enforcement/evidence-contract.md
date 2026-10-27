@@ -18,7 +18,7 @@ As the user, I want every claim that reaches me to carry evidence I could check,
 
 - Each load-bearing claim carries a pointer with its basis, or a stated failure reason.
 - Each pointer opens without the writer's transcript, and says what its claim asserts.
-- An acceptance criterion is ticked on direct evidence of that item. An item without such evidence stays unticked, with its limit stated beside it.
+- An acceptance criterion is ticked on direct evidence of that item. An item without such evidence stays unticked, with its limit stated beside it. Non-git evaluation datasets, specimen tables, and findings must be persisted in the PKB with durable pointers rather than ephemeral container paths (`<appDataDir>/brain/`, `/tmp/`, unpushed container worktrees) that vanish on exit.
 
 ### 2. Reports a receiver can judge as they stand
 
@@ -27,12 +27,12 @@ As an agent receiving a report, I want to judge it from the report alone, so tha
 - The report is in the shape the [`premise-check` skill](../../plugins/ida/skills/premise-check/SKILL.md) defines.
 - The report opens with the ask in the asker's own words, one question per line, each carried by an immutable id: `tg-<message id>` for a Telegram message, `<task id>/AC<n>` for a task's acceptance criterion. The writer copies the ask it was given and never substitutes its own title for it.
 - Each material premise carries its basis, and a pointer wherever that basis rests on evidence.
-- A premise about the state of something outside the report quotes the observed value of the field that decides it, beside the pointer.
+- A premise about the state of something outside the report quotes the observed value of the field that decides it, beside the pointer. Premises with an `observed` basis (`I did it`, `I read it`) state raw empirical observations quoting deciding values inline, never evaluative or generalising conclusions restating an acceptance criterion.
 - Each state claim rules out the nearest other state that would change the reader's next action. "Blocked on review" says whether review is awaited or changes were requested.
 - The conclusion stays within its premises' scope and answers each ask by its id, or says the ask has no answer.
-- The receiver takes an observed premise with a pointer as given: it never opens a pointer or re-determines an observed fact. It judges everything else: every warrant, step, scope and fit between rule and case. When a ruling turns on a fact the report lacks, the receiver sends the report back naming the missing premise.
-- The receiver tests each material step for sufficiency. A warrant stands as stated when it is obvious, backed by a cited rule or verdict, or carries a claim cheap to reverse. A warrant that is complex, unbacked and high-stakes goes back for one level of decomposition.
-- The receiver answers with a verdict and a reason: PASS, REVISE or FAIL. A format breach that leaves every step judgeable is waived and listed in the reason; an untested inference never passes.
+- The receiver takes an observed premise with a pointer as given: it never opens a pointer or re-determines an observed fact. A PKB node or another agent's writing is not such a pointer: it is not observed primary evidence and ranks as worker reported, unchecked rather than an observed record. It judges everything else: every warrant, step, scope and fit between rule and case, requiring construct match and proportional sample adequacy (rejecting quantitative rank checks as proof of qualitative evaluation, and unexplained n=1 or n=2 probes as proof of representative classes). When a ruling turns on a fact the report lacks, the receiver sends the report back naming the missing premise.
+- The receiver tests each material step for sufficiency. A warrant stands as stated when it is obvious, authority-backed (strictly limited to the user's own words or a governing spec), backed by a cited verdict, or carries a claim cheap to reverse. A task's primary ask or acceptance criterion is never low-stakes or obvious. A premise or warrant citing a PKB node or peer text does not satisfy sufficiency on the citation alone. A warrant that is complex, unbacked and high-stakes goes back for one level of decomposition.
+- The receiver answers with a verdict and a reason: PASS, REVISE or FAIL. Format-only defects on a substantively sound argument with at least one inference line (`>= 1`) are waived and rewritten into standard form by the receiver on PASS; 0 inference lines or substantive defects require REVISE or FAIL and cannot be passed or relayed upward as fact.
 
 ### 3. Verdicts I can audit
 
@@ -48,8 +48,9 @@ As the user, I want each claim to reach me as strong as its evidence and no stro
 
 - Every claim keeps its basis at every hop.
 - A derived claim takes the weakest basis among its premises.
-- A premise resting on another agent's report cites the verdict recorded on that report. A cited verdict resolves to a recorded verification id; a report cited without one is weighed as unchecked.
+- A premise resting on another agent's report or a PKB node cites the verdict recorded on that report. A cited verdict resolves to a recorded verification id; a report or PKB node cited without one is weighed as unchecked.
 - Each sentence relayed upward names the line of the checked argument it restates. A sentence with no line is not relayed.
+- Before relaying a claim upward, the agent identifies its source of record (the live configuration, repository, code, or spec the claim describes) and reads the claim against it. A claim the source no longer supports is not relayed.
 
 ### 5. Tested limits
 
@@ -71,6 +72,7 @@ As an agent that could not finish, I want failure and partial delivery to be com
 As the user, I want my directions to reach a worker as I gave them, so that an agent in the chain cannot add to what I asked.
 
 - A relayed direction cites the original ask, and every detail, constraint and method in it can be derived from that ask.
+- When composing a dispatch or relaying a direction, the dispatching agent identifies each claim's source of record (the live configuration, repository, code, or spec the claim describes) and reads the claim against it; work is not dispatched on claims or constraints the source of record does not support.
 
 ### 8. Explanations are not reasons (hearsay)
 
@@ -79,6 +81,7 @@ As the user, I want diagnoses and evaluations to trace causes to runtime evidenc
 - An agent's explanation of what it did is not its reason. Asked why it acted, an agent produces a plausible story after the fact; that account is hearsay, because models have no direct knowledge of their own causes ([`explanations-not-reasons`](../../plugins/rbg/skills/axioms/explanations-not-reasons.md)).
 - A stated reason is never taken at face value: it is probabilistic evidence and sometimes false.
 - Diagnoses, audits, and evaluations establish root causes from external evidence (traces, diffs, inputs, environment state, reproduced runs), never from what an agent claims it thought, intended, or misunderstood.
+- Tool spans in Phoenix prove execution rather than logical entailment; evaluations, audits, and QA must inspect durable primary deliverables rather than ephemeral container paths.
 
 ## Terms
 
