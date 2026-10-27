@@ -31,13 +31,13 @@ Draws its brief from the shared review briefing in `wf-review`. Additional role-
 
 ## Procedure
 
-1. **Assemble active rules** -- load governing axioms and project rules before judging; never rule from memory.
-2. **Judge proportion first** -- from the originating request in the shared review briefing (`wf-review`), state the smallest mechanism meeting the request across its class before reading the artifact or its diff; reject excess machinery under `proportionate`.
-3. **Evaluate against rules** -- test the artifact against governing axioms (categorical imperative, closure, data boundaries, fail-fast, full observability, honest epistemics, non-delegable qualitative judgment, single source of truth). For candidate publications and trust-boundary transitions, evaluate the full published surface against destination repository visibility under `data-boundaries`.
+1. **Assemble active rules** -- load governing axioms, project rules, and companion specs (e.g. `specs/enforcement/enforcement.md`) before judging; never rule from memory.
+2. **Gate 0 early stopping** -- from the originating request in the shared review briefing (`wf-review`), state the smallest mechanism meeting the request across its class before reading the artifact or its diff. If the core premise fails or the artifact is materially disproportionate under `proportionate`, halt immediately and issue `REJECT` before line-by-line repo auditing. Preserve full rule and acceptance-criteria coverage when Gate 0 passes.
+3. **Evaluate against rules and per-claim fail-fast** -- test the artifact against governing axioms (categorical imperative, closure, data boundaries, fail-fast, full observability, honest epistemics, non-delegable qualitative judgment, single source of truth). For candidate publications and trust-boundary transitions, evaluate the full published surface against destination repository visibility under `data-boundaries`. Apply per-claim fail-fast: if a cited claim, path, or authority is falsified, record `UNMET` / violation immediately without searching the repository to author a fix.
 4. **Determine required changes vs suggested improvements**:
    - A _Required Change_ names a rule violation, its likelihood and consequence, and costs less than the failure it prevents.
    - Anything else is a _Suggested Improvement_. Where the work exceeds the request, require less, not more.
-5. **Review boundaries** -- operates strictly by static semantic evaluation of the artifact, mechanisms, and diff against governing rules. Does not execute runtime tests or scratch probes (the QA role) and does not evaluate high-level PKB objective alignment or competing backlog options (the strategic fit role).
+5. **Review boundaries** -- confine evaluation strictly to the artifact text/diff and governing rule/spec sources (including companion-spec checks). Does not execute runtime tests or scratch probes (the QA role), does not perform whole-codebase omission scans (the QA role), and does not evaluate high-level PKB objective alignment or competing backlog options (the strategic fit role).
 6. **Issue verdict**: exactly one of `APPROVE`, `SUGGEST`, `REVISE`, or `REJECT`.
 7. **Schedule the next step on a failing verdict** -- a review that returns `REJECT` or `REVISE` schedules the next step in the same handback: the reviewer files a subtask of the primary task (`parent: <primary-task-id>`, status `queued`) whose body names each required change from the verdict, and records that subtask's id on the review task.
 

@@ -17,7 +17,7 @@ How an argument is written. Every Argdown document follows this standard.
 - **Statement**: `[Title]: text`. Reuse a title exactly to mean the same statement; a new title is a new statement.
 - **Argument**: `<Title>: gist`, followed by a premise-conclusion block.
 - **Premises** are numbered `(1)`, `(2)` and hold only grounds: observations, findings, sample bounds, scope conditions, or prior conclusions.
-- **Warrant in the inference bar**: `-- Name: warrant text {uses: [1, 2], basis: "...", pointer: "..."} --`. The warrant is the rule, principle, mechanism, or method that licenses the step. A warrant is never a numbered premise.
+- **Warrant in the inference bar**: `-- Name: warrant text. Unless: <defeater>; <status>. {uses: [1, 2], basis: "...", pointer: "..."} --`. The warrant is the rule, principle, mechanism, or method that licenses the step, qualified by defeaters and their status. A warrant is never a numbered premise.
 - **Backing** (what shows the warrant holds) goes in the bar's metadata. A warrant that needs its own support gets a child argument concluding it.
 - **Relevance rule:** every premise on an inference is a condition of its warrant, and there is no premise count. A long run of premises under one warrant usually hides several steps (a method-to-finding step and a finding-to-mechanism step, say); split them with an intermediate conclusion and a second bar.
 - **One bar per epistemic layer**: observation and method to pattern, pattern and mechanism to diagnosis, diagnosis and normative standard to evaluation.
@@ -50,6 +50,8 @@ Attach a relation to the argument that concludes or first states the claim, neve
 - `pointer`: a locator a reader can open: page and paragraph, section, citation handle, `owner/repo@sha:path:line`, node or span ID, URL, or the exact query run.
 - `source`: the verbatim quote (line breaks joined by single spaces, original markup kept) or the exact observed value. A derived intermediate conclusion has no `source` unless the text states it verbatim.
 - `reason`: for `"assumed"` only, the gap the item bridges. An assumed item has no `pointer` or `source`.
+
+For peer messages, task handbacks, and premise-check reports, consult [`../premise-check/SKILL.md`](../premise-check/SKILL.md) for the closed basis vocabulary in words and rank rules (`I read it`, `I did it`, `attempted, failed`, `rule`, `worker reported, verdict`, `worker reported, unchecked`, `assumed, not checked here`).
 
 An `"observed"` or `"reported-by"` item quotes its deciding value or text (`status: MERGED`, `p = 0.004`) inline or in `source`, because a bare pointer shows only that something exists.
 
@@ -100,10 +102,10 @@ model:
 
 (1) [Finding]: What was observed. {basis: "observed", pointer: "...", source: "..."}
 (2) [Bound]: The scope of the method or sample. {basis: "method-bounded", pointer: "...", source: "..."}
--- Method Warrant: Why the method captures the pattern {uses: [1, 2], basis: "stated", pointer: "..."} --
+-- Method Warrant: Why the method captures the pattern. Unless: sampling bias or instrument drift; not observed. {uses: [1, 2], basis: "stated", pointer: "..."} --
 (3) [Pattern]: The pattern the data establish.
 (4) [Condition]: A further condition the next step needs. {basis: "observed", pointer: "...", source: "..."}
--- Mechanism Warrant: The rule that turns the pattern into the claim {uses: [3, 4], basis: "theory", pointer: "..."} --
+-- Mechanism Warrant: The rule that turns the pattern into the claim. Unless: competing mechanism explains the pattern; ruled out by (2). {uses: [3, 4], basis: "theory", pointer: "..."} --
 (5) [Section Claim]: The claim this chain supports.
   +> [Main Claim]
 ```

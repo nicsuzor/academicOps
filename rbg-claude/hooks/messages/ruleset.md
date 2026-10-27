@@ -1,6 +1,6 @@
 # Rules in Force
 
-Active rules by layer: (1) shipped axioms (baseline), (2) project rules (`.agents/rules/`), (3) user rules (`$ACA_DATA/.agents/rules/`). Higher layers add obligations without weakening baselines.
+Active rules by scope: shipped axioms (baseline), project rules (`.agents/rules/`), and user rules (`$ACA_DATA/.agents/rules/`). Project and user rules add obligations without weakening baseline axioms.
 
 {rules}
 

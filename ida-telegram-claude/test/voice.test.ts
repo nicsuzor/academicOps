@@ -715,14 +715,18 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
 
       // 4. Missing ffmpeg
       const emptyBinDir = join(testDir, "empty_bin");
-      const { mkdirSync } = await import("node:fs");
+      const { mkdirSync, symlinkSync } = await import("node:fs");
+      const { execSync } = await import("node:child_process");
       mkdirSync(emptyBinDir, { recursive: true });
+      symlinkSync(execSync("which bash").toString().trim(), join(emptyBinDir, "bash"));
+      symlinkSync(execSync("which dirname").toString().trim(), join(emptyBinDir, "dirname"));
+      symlinkSync(execSync("which python3").toString().trim(), join(emptyBinDir, "python3"));
 
       let err4: any;
       try {
         await execFileAsync(speakScript, [sampleTextFile, join(testDir, "out.ogg")], {
           env: {
-            PATH: `${emptyBinDir}:/bin:/usr/bin`, // ensure python3 is found but no ffmpeg
+            PATH: emptyBinDir, // ensure bash, dirname, and python3 are found but no ffmpeg
             GEMINI_API_KEY: "test_key",
           },
         });

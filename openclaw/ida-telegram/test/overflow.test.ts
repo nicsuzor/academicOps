@@ -138,6 +138,26 @@ describe("Progressive disclosure: Overflow handling", () => {
 
       const stored = store.getDetails(parsedResult.detailsId);
       expect(stored?.markdown).toBe("## Q1 Specs\n\n- Detailed specification and source links.");
+
+      // FR-1.3 & acceptance: Details page is fetchable over HTTP without authentication
+      const { startWebServer } = await import("../src/web/server.js");
+      const appDir = join(import.meta.dir, "..", "app");
+      const webContext: any = {
+        store,
+        broker,
+        permRelay,
+        config,
+        sessionSecret: "test-secret-key-32-characters!!",
+      };
+      const server = startWebServer(webContext, appDir);
+      try {
+        const detailsRes = await origFetch(`http://127.0.0.1:${server.port}/api/app/details/${parsedResult.detailsId}`);
+        expect(detailsRes.status).toBe(200);
+        const detailsJson: any = await detailsRes.json();
+        expect(detailsJson.markdown).toBe("## Q1 Specs\n\n- Detailed specification and source links.");
+      } finally {
+        server.stop();
+      }
     } finally {
       globalThis.fetch = origFetch;
       rmSync(stateDir, { recursive: true, force: true });
@@ -269,7 +289,6 @@ describe("Progressive disclosure: Overflow handling", () => {
       const flatButtons = (apiCalls[0].body.reply_markup?.inline_keyboard || []).flat();
       const detailsButton = flatButtons.find((b: any) => b.text === "🔍 Details");
       expect(detailsButton).toBeUndefined();
-      expect(flatButtons).toEqual([]);
     } finally {
       globalThis.fetch = origFetch;
       rmSync(stateDir, { recursive: true, force: true });

@@ -8,7 +8,7 @@ Consolidation synthesises episodic records into durable knowledge and maintains 
 - **Destination-first persistence**: Write the destination note before modifying or deleting any source task body or episodic note. If the destination write fails, halt immediately.
 - **Halt on tool failure**: When a tool fails, emit `HALT: <tool_name>` and report immediately; never use workarounds or perform destructive partial edits.
 - **Control context volume**: Query slices by `status` or `project` rather than pulling full unindexed graphs.
-- **Invocation is code-mode, not flat tools**: every PKB call below runs inside the `services` MCP server's code-mode interface (`portal_codemode_execute` calling `codemode.<pkb_op>(...)`; in agy via `call_mcp_tool` with `ServerName: "services"`, in Claude Code via `mcp__services__portal_codemode_execute`). There is no directly-invocable flat tool named `pkb__<op>` or `pkb-<op>`.
+- **Invocation is code-mode, not flat tools**: every PKB call below runs inside the `services` MCP server's code-mode interface (`portal_codemode_execute` calling `codemode.<pkb_op>(...)`; in agy via `call_mcp_tool` with `ServerName: "services"`, in Claude Code via `mcp__services__portal_codemode_execute`), always providing a concise 1-line `toolSummary` argument. There is no directly-invocable flat tool named `pkb__<op>` or `pkb-<op>`.
 
 ## Focus
 

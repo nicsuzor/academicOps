@@ -556,9 +556,10 @@ def _init_turn_state_agy(
         except Exception as e:
             log.debug("Failed to parent agy subagent: %s", e)
 
+    pending_turn = state.pop("pending_turn_trace", None) or {}
     state["current_trace"] = {
-        "trace_id": parent_trace_id if parent_trace_id else _new_trace_id(),
-        "root_span_id": _new_span_id(),
+        "trace_id": parent_trace_id or pending_turn.get("trace_id") or _new_trace_id(),
+        "root_span_id": pending_turn.get("root_span_id") or _new_span_id(),
         "parent_span_id": parent_span_id,
         "turn_start_ns": now_ns,
         "turn_number": turn_number,
@@ -575,7 +576,12 @@ def _init_turn_state_agy(
 
 def _end_turn_agy(session_id: str, state: dict) -> None:
     """Clear per-turn trace state while preserving session-level counters and emitted steps."""
-    state.pop("current_trace", None)
+    ct = state.pop("current_trace", None)
+    if isinstance(ct, dict) and ct.get("trace_id") and ct.get("root_span_id"):
+        state["last_trace"] = {
+            "trace_id": ct["trace_id"],
+            "root_span_id": ct["root_span_id"],
+        }
     state.pop("pending_tools", None)
     state.pop("deferred_tool_spans", None)
     _save_state(session_id, state)

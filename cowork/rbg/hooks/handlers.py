@@ -1,7 +1,7 @@
 """rbg's rule checks: one per surface, each scoped to the clients that have it.
 
-``evaluate`` is the ``PreToolUse`` check — layer 1, turn by turn. It loads the
-three-layer rule set (rules.py) and asks a Reflexes evaluator — a small language
+``evaluate`` is the ``PreToolUse`` turn-by-turn check. It loads the
+rule set across scopes (rules.py) and asks a Reflexes evaluator — a small language
 model, remote or locally hosted (evaluator.py) — whether the tool call matches
 each live rule. The judgment is the model's; rbg only composes the question and
 reports what came back. Nothing about a rule's meaning is decided by matching
@@ -18,7 +18,7 @@ Both of those are advisory only, permanently. They return an advisory ``Result``
 — context injected for the agent to read — and never a disposition. A rule
 verdict from a small model is not something to enforce with.
 
-``rule_check`` is layer 2, at the session's stop. It is the one handler here
+``rule_check`` is the stop gate, at the session's stop. It is the one handler here
 that carries a disposition, and what it asks to withhold is the stop, not a tool
 call: the agent gets another turn in which to run the check and cite its
 findings. Whether the disposition is honoured at all belongs to the runtime and
@@ -256,7 +256,7 @@ def rule_check(ctx: HookContext) -> Result | None:
     """Withhold the stop until the session's rule compliance has been checked
     and its evidence presented.
 
-    Blocking, and the only handler here that is. Layer 1 advises on one tool
+    Blocking, and the only handler here that is. The turn-by-turn check advises on one tool
     call at a time and cannot see the shape of the finished work; this is the
     one moment a whole turn is available to judge, and it is the last one —
     after the stop lands there is nothing left to correct.

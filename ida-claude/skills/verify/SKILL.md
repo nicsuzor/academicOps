@@ -14,18 +14,22 @@ Rigorous quality review evaluating correctness, completion, and fitness for purp
 
 ## 2. Mandatory Forcing Checks
 
-All four checks must be answered explicitly in the report before rendering a `PASS`:
-0. **Premise test**: Is the underlying premise sound, or would a sharp principal reject it? (Bad premise = `FAIL`).
+All five checks must be answered explicitly in the report before rendering a `PASS`:
+0. **Gate 0 early stopping (Premise & Proportion)**: Is the underlying premise sound, and is the change proportionate to the ask? If the premise is bad or the change is fundamentally disproportionate, halt immediately and render `FAIL` before line-by-line repo auditing, forcing checks 1-3, or full test suites. Preserve full acceptance-criteria coverage when Gate 0 passes.
 
 1. **Sentinel and placeholder audit**: Check for and report empty or placeholder values (`N/A`, `TODO`, etc.).
 2. **Principal's-eye top-line read**: Quote the primary user-facing output verbatim and verify correctness for the actual end user.
 3. **Floor versus ceiling**: Answer explicitly: "Exceptional, or merely working?" Merely working fails fitness tasks.
+4. **Durable primary deliverables and logical entailment**: Inspect durable primary deliverables (repository commits, branches, PRs, or PKB records) directly rather than ephemeral container paths (`<appDataDir>/brain/`, `/tmp/`, unpushed container worktrees). Tool-call spans in Phoenix prove execution rather than logical entailment or sufficiency; evaluate whether observed evidence logically entails every acceptance criterion.
 
 ## 3. Immediate Fail Triggers
 
 Render an immediate `FAIL` on:
 
-- Bad premise or invalidated requirements.
+- Bad premise, invalidated requirements, or disproportionate excess machinery (Gate 0 early stopping).
+- Falsified empirical claim or missing cited path under per-claim fail-fast (record `UNMET` immediately without searching repo for fixes).
+- Asserting Phoenix tool spans or command execution as proof of logical entailment without evaluating whether primary deliverables satisfy acceptance criteria.
+- Pointers citing ephemeral container paths (`<appDataDir>/brain/`, `/tmp/`, unpushed container worktrees) instead of durable primary deliverables (repo commits, PRs, PKB tasks/notes).
 - Sentinel values or placeholder text in production outputs.
 - Silent exception swallowing without error logging.
 - Tests that assert existence or tautologies rather than functional behavior, change-detector tests that restate what a file, config or directory holds today, or tests that would still pass with the change's plausible bug introduced.
@@ -52,6 +56,8 @@ Any change touching a container image or Dockerfile requires:
 ## 6. Output Format
 
 Emit the report using `/dump`'s handback envelope and record it on the task record. VERDICT is your judgement of the artifact, in the verdict vocabulary `premise-check` uses; STATUS is the release status of your own task.
+
+When the verification check fails (VERDICT is `FAIL` or `REVISE`), release the task with STATUS `failed` documenting failure evidence and root cause. Never file fix tasks or follow-up tasks; the reconcile pass notes failed tasks and decides next actions from the parent epic. When VERDICT is `PASS`, release as `done`.
 
 ```markdown
 ## Handover: <agent> <session-id>

@@ -13,12 +13,13 @@ A polecat is a short-running container: it gets in, does its task, and gets out 
 
 Read each task you were given; for a parent, read its children and take the ready ones.
 
-A task is ready when its status is `queued`, it has no open `needs` edges or incomplete children, and it fills the `/reify` task template (Goal, Acceptance, Instructions, Output), and its Instructions end with the finish template's finish step.
+A task is ready when its status is `queued`, it has no open `needs` edges or incomplete children, it fills the `/reify` task template (Goal, Acceptance, Instructions, Output), and its Instructions conclude with the composed workflow's release step.
 
 - A QA follow-up stays queued until its hard dependency completes; it is not ready yet.
 - A task that folds follow-ups into itself is not ready: send it to `/reify` to be cut.
 - Send a task that is unready or underspecified to `/reify` with its id, because writing and rewriting tasks is that skill's job. Dispatch the rest.
 - **Intake Contract:** On receiving a direction or work brief, the receiving agent must record its own summary stating deliverables as a frozen `## Acceptance` checklist on a PKB task before work starts.
+- **Source of record check**: Before dispatching, identify each claim's source of record -- the live configuration, repository, code, or spec it describes -- and read the claim against it. Do not dispatch work on claims or constraints the source of record does not support.
 
 ## 2. Start the workers
 

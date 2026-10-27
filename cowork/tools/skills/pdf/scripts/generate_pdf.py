@@ -6,7 +6,7 @@ Converts markdown files to professionally formatted PDFs using pandoc and weasyp
 Applies custom academic styling with Roboto fonts.
 
 Usage:
-    python generate_pdf.py <input.md> [output.pdf] [--title "Document Title"]
+    uv run python generate_pdf.py <input.md> [output.pdf] [--title "Document Title"]
 
 Requirements:
     - pandoc

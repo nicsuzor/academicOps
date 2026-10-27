@@ -33,7 +33,9 @@ Generate the following core files using minimal project templates:
   Omit `"agent"` for non-research tool/library repos.
 - **`README.md`**: Title, description, status badge, architecture, setup steps (`uv sync`, `pre-commit install`), directory tree, and team.
 - **`.gitignore`**: Ignore `.claude/settings.local.json`, `.academicOps/`, standard Python caches (`.venv/`, `__pycache__/`), secrets, OS files, and selected tool artifacts (`data/raw/`, `*.parquet`, `*.duckdb`, `_site/`, `_freeze/`, `target/`, `dbt_packages/`, `mlruns/`).
-- **`.pre-commit-config.yaml`**: Standard hooks from `pre-commit-hooks` (trailing-whitespace, end-of-file-fixer, check-yaml, `check-added-large-files` with `--maxkb=500`), `ruff-pre-commit` (ruff `--fix`, ruff-format `--check`), and `nbstripout` if notebooks are used.
+- **`.pre-commit-config.yaml`**: Standard hooks from `pre-commit-hooks` (trailing-whitespace, end-of-file-fixer, check-yaml, `check-added-large-files` with `--maxkb=500`), `markdownlint-cli2` (`args: [--fix]`), `dprint` (`dprint fmt`), `ruff-pre-commit` (ruff `--fix`, ruff-format `--check`), and `nbstripout` if notebooks are used.
+- **`.markdownlint-cli2.jsonc`**: Standard markdownlint configuration (disabling layout rules delegated to dprint, enforcing semantic heading/link checks, and banning horizontal rules) paired with `.markdownlint-rules/no-horizontal-rules.js`.
+- **`.markdownlint-rules/no-horizontal-rules.js`**: Custom markdownlint rule (H39) banning horizontal dividers in favor of headings.
 - **`pyproject.toml`**: Minimal PEP 621 config with `requires-python = ">=3.11"`, `[tool.ruff]` (target-version "py311", line-length 120, lint select `["E", "F", "I", "UP"]`), `[tool.pytest.ini_options]` (`testpaths = ["tests"]`), and selected project dependencies.
 
 ## Step 3: Documentation stubs

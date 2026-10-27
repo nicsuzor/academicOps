@@ -26,11 +26,11 @@ Draws its brief from the shared review briefing in `wf-review`. Additional role-
 
 ## Procedure
 
-1. **Assemble criteria** -- record acceptance criteria verbatim from the specification before inspecting outputs.
-2. **Execute test suites** -- run test commands (`pytest`, `npm test`, etc.) directly on the branch. Inspect raw stdout/stderr; every test must pass cleanly without unhandled errors.
+1. **Gate 0 early stopping and criteria assembly** -- record acceptance criteria verbatim. Evaluate Gate 0 (core premise and overall proportion) first: if the premise is invalid or the change is fundamentally disproportionate, halt immediately and issue `FAIL` before executing exhaustive test suites or line-by-line repo auditing. Preserve full acceptance-criteria coverage when Gate 0 passes.
+2. **Execute test suites** -- run test commands (`uv run pytest`, `npm test`, etc.) directly on the branch. Inspect raw stdout/stderr; every test must pass cleanly without unhandled errors. An evaluator that changes code or pushes fixes must not approve, accept, or merge its own changes; evaluators never file fix tasks or follow-up tasks.
 3. **Red-to-green regression verification** -- where fixes are claimed, run regression tests against the base commit (to verify failure) and against the branch commit (to verify resolution).
 4. **Live probes and runtime observation** -- run scratch probes and test scripts with real inputs and edge cases (e.g. empty diffs, varied input parameters, error conditions) to observe live execution behavior, exit codes, and output formats.
-5. **Audit empirical claims** -- verify empirical claims in task reports and PR descriptions against primary source records (git history, CI logs, file contents). Falsify claims using direct command execution (e.g. running `git log`, `grep`).
+5. **Audit empirical claims and per-claim fail-fast** -- verify empirical claims in task reports and PR descriptions against primary source records (git history, CI logs, file contents). Locate touchpoints via `grep_search` and read complete relevant functions or sections via `view_file` without arbitrary line-count caps or env-var allowlist shortcuts. Apply per-claim fail-fast: record `UNMET` immediately once a cited claim is falsified without searching the codebase to author a fix.
 6. **Review boundaries** -- operates strictly on runtime execution and empirical verification. Does not evaluate code against axioms or author mechanisms analysis (the rule-compliance role) and does not evaluate high-level PKB objective alignment (the strategic fit role).
 7. **Report and issue verdict**: return an itemized per-criterion status (`MET` / `UNMET` with pinpoint evidence) and exactly one verdict token: `PASS`, `REVISE`, or `FAIL`.
 
@@ -42,7 +42,7 @@ Draws its brief from the shared review briefing in `wf-review`. Additional role-
 
 ## Output contract
 
-The structured QA handback containing the per-criterion verification table with pinpoint evidence citations, test run outputs, and exactly one verdict token (`PASS`, `REVISE`, or `FAIL`).
+The structured QA handback containing the per-criterion verification table with pinpoint evidence citations, test run outputs, and exactly one verdict token (`PASS`, `REVISE`, or `FAIL`). Every criterion must be accounted for, none silently dropped. A report missing evidence for a `MET` criterion is not a pass. If any criterion is `UNMET` or the check fails, release the QA task as `failed` with failure evidence and root cause documented on the record; do not file fix tasks or follow-up tasks (the reconcile pass notes failed tasks and decides next actions from the parent epic). When all criteria are `MET`, release as `done` (or merge autonomously for verified Tier 1 PRs).
 
 ## When to include
 

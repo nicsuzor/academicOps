@@ -26,7 +26,7 @@ Write and consolidate knowledge notes under `synthesize-not-accrete`. State curr
 3. **Augment in place**: Rewrite the relevant section to reflect current state via `codemode.pkb_update_body`. Replace superseded facts; do not append dated entries or provenance narratives. Grounding evidence lives in its own node linked by `[[wikilink]]`.
 4. **Create when novel**: Use `codemode.pkb_create({ type: "knowledge", ... })` for documents or `codemode.pkb_create({ type: "memory", ... })` for atomic facts only when no canonical topic matches.
 
-All PKB calls above go through the `services` MCP server's code-mode interface: `portal_codemode_execute` running `async () => await codemode.<pkb_op>(...)` (in agy via `call_mcp_tool` with `ServerName: "services"`, in Claude Code via `mcp__services__portal_codemode_execute`). There is no directly-invocable flat tool named `pkb__<op>` or `pkb-<op>`.
+All PKB calls above go through the `services` MCP server's code-mode interface: `portal_codemode_execute` running `async () => await codemode.<pkb_op>(...)` (in agy via `call_mcp_tool` with `ServerName: "services"`, in Claude Code via `mcp__services__portal_codemode_execute`), always providing a concise 1-line `toolSummary` argument (e.g. `toolSummary: "Update canonical note for <topic>"`). There is no directly-invocable flat tool named `pkb__<op>` or `pkb-<op>`.
 
 ### Graph Integration
 

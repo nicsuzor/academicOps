@@ -162,6 +162,7 @@ def is_continuation(event: str, raw: dict[str, Any]) -> bool:
 TO_CANONICAL = {
     "claude": {name: name for name in CANONICAL_EVENTS},
     "agy": {
+        "SessionStart": "SessionStart",
         "PreInvocation": "UserPromptSubmit",
         # Deliberately unmapped, not merely omitted: live instrumentation
         # (headless agy 1.1.13, AOPS_HOOK_LOG_PATH plus a wire-level probe on
@@ -305,7 +306,7 @@ def _render_claude(result: Result, event: str) -> dict:
     return output
 
 
-def _render_agy(result: Result) -> dict:
+def _render_agy(result: Result, event: str = "") -> dict:
     """agy has no blockable event, so a block reaches it as advice or not at all.
 
     Its ``PostInvocation`` response contract is a bare object with no disposition
@@ -314,9 +315,21 @@ def _render_agy(result: Result) -> dict:
     """
     if result.kind is Kind.REFUSE:
         return {"decision": "deny", "reason": result.inject_text}
-    # agy has no blocking shape at all, on any event — a block() downgrades
-    # to the same advisory shape a warn() would render as.
-    return {"injectSteps": [{"ephemeralMessage": result.inject_text}]}
+
+    steps: list[dict[str, Any]] = []
+    if event == "SessionStart":
+        text = result.user_text or result.inject_text
+        if text:
+            steps.append({"systemMessage": {"systemMessage": text}})
+        if result.user_text and result.inject_text and result.inject_text != result.user_text:
+            steps.append({"ephemeralMessage": result.inject_text})
+    else:
+        if result.user_text:
+            steps.append({"systemMessage": {"systemMessage": result.user_text}})
+        if result.inject_text:
+            steps.append({"ephemeralMessage": result.inject_text})
+
+    return {"injectSteps": steps}
 
 
 def render(client: str, event: str, result: Result | None) -> dict:
@@ -325,7 +338,7 @@ def render(client: str, event: str, result: Result | None) -> dict:
     if client == "claude":
         return _render_claude(result, event)
     if client == "agy":
-        return _render_agy(result)
+        return _render_agy(result, event)
     return {}
 
 

@@ -173,6 +173,60 @@ describe("Inbound completeness: Updates routing and parsing", () => {
     expect(result?.meta.user_id).toBe("12345678");
   });
 
+  test("delivers logic_check button tap event naming target message and excerpt", () => {
+    const update: TelegramUpdate = {
+      update_id: 51,
+      callback_query: {
+        id: "cb_lc_1",
+        from: { id: 12345678, is_bot: false, first_name: "Nic" },
+        message: {
+          message_id: 88,
+          date: Date.now(),
+          chat: { id: 12345678, type: "private" },
+          text: "Statement needing logic verification.",
+        },
+        data: "logic_check",
+      },
+    };
+
+    const result = parseInboundUpdate(update, allowFrom);
+    expect(result).not.toBeNull();
+    expect(result?.event).toBe("logic_check");
+    expect(result?.meta.event).toBe("logic_check");
+    expect(result?.meta.action).toBe("logic_check");
+    expect(result?.meta.target_message_id).toBe("88");
+    expect(result?.meta.target_excerpt).toBe("Statement needing logic verification.");
+    expect(result?.content).toContain("88");
+    expect(result?.content).toContain("logic check");
+  });
+
+  test("delivers explain button tap event naming target message and excerpt", () => {
+    const update: TelegramUpdate = {
+      update_id: 52,
+      callback_query: {
+        id: "cb_exp_1",
+        from: { id: 12345678, is_bot: false, first_name: "Nic" },
+        message: {
+          message_id: 89,
+          date: Date.now(),
+          chat: { id: 12345678, type: "private" },
+          text: "Brief statement needing more detail.",
+        },
+        data: "explain",
+      },
+    };
+
+    const result = parseInboundUpdate(update, allowFrom);
+    expect(result).not.toBeNull();
+    expect(result?.event).toBe("explain");
+    expect(result?.meta.event).toBe("explain");
+    expect(result?.meta.action).toBe("explain");
+    expect(result?.meta.target_message_id).toBe("89");
+    expect(result?.meta.target_excerpt).toBe("Brief statement needing more detail.");
+    expect(result?.content).toContain("89");
+    expect(result?.content).toContain("explain");
+  });
+
   test("delivers bot commands as channel events", () => {
     const update: TelegramUpdate = {
       update_id: 6,

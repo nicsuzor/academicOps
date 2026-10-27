@@ -50,12 +50,6 @@ Ask what kind of door this is before asking whether it is the right one.
 
 Most decisions that feel weighty are two-way doors wearing a costume. If a decision is one-way, slow down; apply Affordable loss to the cheap probes used to inform it.
 
-## Decision Surfacing
-
-- **DECIDE** -- Clear best option exists. Pick it, record reasoning, and proceed without asking.
-- **DEFER** -- Missing runtime data. Park behind a cheap probe task and default to delay.
-- **SURFACE** -- Genuine trade-off, risk tolerance, or principal preference. Present at most 1-2 options with a recommendation and counterargument.
-
 ## Interrogating the Question
 
 - What would have to be true for this to be the right move, and is any of it checkable now?

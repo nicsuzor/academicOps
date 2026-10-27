@@ -46,17 +46,28 @@ async function main() {
   const toolInput = payload.tool_input || payload.toolInput || {};
   const turnId = payload.turn_id || payload.turnId || payload.tool_use_id;
   const sessionId = payload.session_id || payload.sessionId;
-  const questions = toolInput.questions || [
+  const topChat = typeof toolInput.chat === "boolean" ? toolInput.chat : undefined;
+  const topMiniAppOnly = toolInput.mini_app_only ?? toolInput.miniapp_only ?? toolInput.miniAppOnly;
+  const rawQuestions = toolInput.questions || [
     {
       question: toolInput.question || "Input requested",
       header: toolInput.header,
       context: toolInput.context,
+      detail: toolInput.detail || toolInput.details,
       recommendation: toolInput.recommendation,
       options: toolInput.options || [{ label: "Acknowledge" }],
       multiSelect: toolInput.multiSelect,
       allowOther: toolInput.allowOther,
+      mini_app_only: topMiniAppOnly,
+      chat: topChat,
     },
   ];
+  const questions = rawQuestions.map((q) => ({
+    ...q,
+    mini_app_only: q.mini_app_only ?? q.miniapp_only ?? q.miniAppOnly ?? topMiniAppOnly,
+    chat: q.chat ?? topChat,
+    detail: q.detail || q.details,
+  }));
 
   // Send to question broker over Unix domain socket
   const client = createConnection(socketPath);

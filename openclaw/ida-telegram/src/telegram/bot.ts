@@ -2,11 +2,12 @@ import { DEFAULT_MINI_APP_URL, PluginConfig } from "../config.js";
 import { FormattedMessage, formatMarkdownToEntities } from "./format.js";
 import { parseInboundUpdate, TelegramUpdate } from "./inbound.js";
 import { resolveBotCommands } from "./commands.js";
-import { QuestionBroker } from "./questions.js";
+import { QuestionBroker, matchOptionIndex } from "./questions.js";
 import { FeedbackManager } from "./feedback.js";
 import { prepareVoiceText, buildVoiceInEvent } from "./voice.js";
 import { PermissionRelay } from "../mcp/permissions.js";
 import { PluginStore } from "../store.js";
+import { broadcastSseEvent } from "../web/routes.js";
 import { acquireHostLock, releaseHostLock, calculate409Backoff } from "../role.js";
 import { hostname } from "node:os";
 import { execFile } from "node:child_process";
@@ -33,6 +34,7 @@ export interface SendReplyOptions {
   replyTo?: number;
   feedback?: boolean;
   review?: { repo: string; pr?: number };
+  actions?: boolean;
 }
 
 export interface SendReplyResult {
@@ -153,7 +155,7 @@ export class TelegramBotClient {
   }
 
   public async sendReply(opts: SendReplyOptions): Promise<SendReplyResult | null> {
-    const { chatId, formatted, detailsId, buttons, voice, replyTo, feedback, review } = opts;
+    const { chatId, formatted, detailsId, buttons, voice, replyTo, feedback, review, actions } = opts;
 
     // Build inline keyboard
     const inlineKeyboard: Array<Array<Record<string, unknown>>> = [];
@@ -204,6 +206,14 @@ export class TelegramBotClient {
           text: `🔍 Review diff (${review.repo}#${review.pr || ""})`,
           web_app: { url: `${miniAppBaseUrl}/app/index.html?tab=review` },
         },
+      ]);
+    }
+
+    // Message action buttons (AC1, AC2: logic check and explain)
+    if (actions !== false) {
+      inlineKeyboard.push([
+        { text: "🧐 Check logic", callback_data: "logic_check" },
+        { text: "💡 Explain", callback_data: "explain" },
       ]);
     }
 
@@ -351,9 +361,17 @@ export class TelegramBotClient {
     return null;
   }
 
-  public async sendQuestionCard(chatId: number, qid: string, card: { text: string; buttons: Array<{ text: string; callbackData: string }> }) {
+  public async sendQuestionCard(chatId: number, qid: string, card: { text: string; buttons: Array<{ text: string; callbackData?: string; web_app?: { url: string } }> }) {
     const formatted = formatMarkdownToEntities(card.text);
-    const inline_keyboard = card.buttons.map((b) => [{ text: b.text, callback_data: b.callbackData }]);
+    const inline_keyboard = card.buttons.map((b) => {
+      if (b.web_app) {
+        return [{ text: b.text, web_app: b.web_app }];
+      }
+      if (!b.callbackData) {
+        throw new Error(`Question button "${b.text}" missing callbackData`);
+      }
+      return [{ text: b.text, callback_data: b.callbackData }];
+    });
     const res = await this.callApi("sendMessage", {
       chat_id: chatId,
       text: formatted.plainText,
@@ -547,23 +565,51 @@ export class TelegramBotClient {
       await this.setReaction(update.message.chat.id, update.message.message_id, "👀");
     }
 
-    // 2. Check if message is a reply to a force_reply "✏️ Other" question prompt
+    // 2. Check if message is a reply to a force_reply "✏️ Other" prompt OR directly to the question card
     if (
       update.message?.from?.id &&
       this.config.allowFrom.includes(update.message.from.id) &&
       update.message.reply_to_message &&
       update.message.text
     ) {
-      const pendingQ = this.broker.findQuestionByPromptMessageId(update.message.reply_to_message.message_id);
+      const replyToMsgId = update.message.reply_to_message.message_id;
+      const isPromptReply = this.broker.findQuestionByPromptMessageId(replyToMsgId);
+      const isCardReply = this.broker.findQuestionByMessageId(replyToMsgId);
+      const pendingQ = isPromptReply || isCardReply;
+
       if (pendingQ) {
-        const res = await this.broker.resolveAnswer(pendingQ.id, "other", update.message.text);
+        let optIdxOrOther: number | "other" = "other";
+        let customText: string | undefined = update.message.text;
+
+        if (isCardReply && !isPromptReply) {
+          const match = matchOptionIndex(pendingQ, update.message.text);
+          if (!match) {
+            return;
+          }
+          optIdxOrOther = match.optionIndex;
+          customText = undefined;
+        }
+
+        const res = await this.broker.resolveAnswer(pendingQ.id, optIdxOrOther, customText);
         if (res) {
-          const targetMsgId = pendingQ.messageId || update.message.reply_to_message.message_id;
+          const targetMsgId = pendingQ.messageId || replyToMsgId;
           await this.editMessage(update.message.chat.id, targetMsgId, res.cardText, { inline_keyboard: [] });
           this.emitChannelEvent(
             `Question answered: ${res.channelEvent.choice}`,
             res.channelEvent as unknown as Record<string, unknown>
           );
+          if (this.store) {
+            const seq = this.store.nextSeq("question_resolved", {
+              question_id: pendingQ.id,
+              choice: res.channelEvent.choice,
+              turn_id: res.channelEvent.turn_id,
+            });
+            broadcastSseEvent("question_resolved", {
+              question_id: pendingQ.id,
+              choice: res.channelEvent.choice,
+              turn_id: res.channelEvent.turn_id,
+            }, seq);
+          }
         }
         return;
       }
@@ -644,6 +690,18 @@ export class TelegramBotClient {
             `Question answered: ${res.channelEvent.choice}`,
             res.channelEvent as unknown as Record<string, unknown>
           );
+          if (this.store) {
+            const seq = this.store.nextSeq("question_resolved", {
+              question_id: qid,
+              choice: res.channelEvent.choice,
+              turn_id: res.channelEvent.turn_id,
+            });
+            broadcastSseEvent("question_resolved", {
+              question_id: qid,
+              choice: res.channelEvent.choice,
+              turn_id: res.channelEvent.turn_id,
+            }, seq);
+          }
         }
         return;
       }
@@ -771,6 +829,66 @@ export class TelegramBotClient {
           }
           return;
         }
+      }
+
+      // Logic check and explain callbacks (AC1, AC2)
+      if (
+        (data === "logic_check" ||
+          data.startsWith("logic_check:") ||
+          data === "explain" ||
+          data.startsWith("explain:")) &&
+        cb.message &&
+        this.config.allowFrom.includes(cb.from.id)
+      ) {
+        const kbRows = cb.message.reply_markup?.inline_keyboard || [];
+        const matchedBtn = kbRows.flat().find((b) => b.callback_data === data);
+        const isLogicCheck = data === "logic_check" || data.startsWith("logic_check:");
+        const label = matchedBtn?.text || (isLogicCheck ? "🧐 Check logic" : "💡 Explain");
+        const originalText = cb.message.text || "";
+
+        // Remove the action buttons row, but preserve other buttons (e.g. Details, Review diff)
+        const remainingRows = kbRows
+          .map((row) =>
+            row.filter(
+              (b) =>
+                b.callback_data !== "logic_check" &&
+                b.callback_data !== "explain" &&
+                !b.callback_data?.startsWith("logic_check:") &&
+                !b.callback_data?.startsWith("explain:")
+            )
+          )
+          .filter((row) => row.length > 0);
+
+        await this.editMessage(
+          cb.message.chat.id,
+          cb.message.message_id,
+          `${originalText}\n\nSelected: ${label} ✅`,
+          { inline_keyboard: remainingRows }
+        );
+
+        const targetExcerpt = cb.message.text || this.getMessageExcerpt(cb.message.message_id) || "";
+        const action = isLogicCheck ? "logic_check" : "explain";
+        const content = isLogicCheck
+          ? `Give me a logic check on message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""} as if you were receiving it from a peer.`
+          : `Please explain message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""} in more detail.`;
+
+        const meta: Record<string, string> = {
+          event: action,
+          action,
+          callback_id: cb.id,
+          callback_prefix: action,
+          payload: data,
+          label,
+          target_message_id: String(cb.message.message_id),
+          chat_id: String(cb.message.chat.id),
+          user_id: String(cb.from.id),
+        };
+        if (targetExcerpt) {
+          meta.target_excerpt = targetExcerpt;
+        }
+
+        this.emitChannelEvent(content, meta);
+        return;
       }
 
       // Custom action / decision buttons on reply cards (FR-1.1 / FR-8)

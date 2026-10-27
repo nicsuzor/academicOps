@@ -84,72 +84,14 @@ async function main() {
     }
   }
 
-  const socketServer = createServer((client) => {
-    let raw = "";
-    client.on("data", async (chunk) => {
-      raw += chunk.toString();
-      if (raw.includes("\n")) {
-        const line = raw.trim();
-        try {
-          const req = JSON.parse(line);
-          if (req.type === "ask_user") {
-            const postedIds: string[] = [];
-            for (const q of req.questions || []) {
-              const result = await broker.askUser({
-                question: q.question,
-                header: q.header,
-                context: q.context,
-                recommendation: q.recommendation,
-                options: q.options,
-                multiSelect: q.multiSelect,
-                allowOther: q.allowOther,
-                chatId: config.allowFrom[0],
-                turnId: q.turnId || q.turn_id || req.turn_id || req.turnId,
-                sessionId: q.sessionId || q.session_id || req.session_id || req.sessionId,
-              });
-              postedIds.push(result.questionId);
-
-              if (bot) {
-                const card = broker.renderQuestionCard(result.questionId);
-                if (card && config.allowFrom[0]) {
-                  await bot.sendQuestionCard(config.allowFrom[0], result.questionId, card);
-                }
-              }
-            }
-
-            client.write(JSON.stringify({ status: "ok", questionId: postedIds[0], questionIds: postedIds }) + "\n");
-          } else if (req.type === "close_question") {
-            const questionId = req.question_id || req.questionId || req.id;
-            const reason = typeof req.reason === "string" ? req.reason.trim() : "";
-            if (!questionId) {
-              client.write(JSON.stringify({ status: "error", error: "Missing question_id" }) + "\n");
-              return;
-            }
-            if (!reason) {
-              client.write(JSON.stringify({ status: "error", error: "Missing reason: closing a question requires an explicit stated reason" }) + "\n");
-              return;
-            }
-            const result = await broker.closeQuestion(questionId, reason);
-            if (result && bot && result.question.chatId && result.question.messageId) {
-              await bot.editMessage(result.question.chatId, result.question.messageId, result.cardText, { inline_keyboard: [] });
-            }
-            if (result) {
-              mcpServer.emitChannelNotification(`Question closed: ${result.channelEvent.reason}`, {
-                event: result.channelEvent.event,
-                ...result.channelEvent,
-              });
-            }
-            client.write(JSON.stringify({ status: result ? "ok" : "not_found", result }) + "\n");
-          } else if (req.type === "list_questions") {
-            const pending = broker.getPendingQuestions();
-            client.write(JSON.stringify({ status: "ok", questions: pending }) + "\n");
-          }
-        } catch {
-          client.write(JSON.stringify({ error: "malformed request" }) + "\n");
-        }
-      }
-    });
-  });
+  const socketServer = createBridgeServer(
+    config,
+    broker,
+    bot,
+    (content, meta) => mcpServer.emitChannelNotification(content, meta),
+    store,
+    broadcastSseEvent
+  );
 
   socketServer.listen(config.socketPath, () => {
     try {
@@ -205,7 +147,138 @@ async function main() {
   mcpServer.startStdioLoop();
 }
 
-main().catch((err) => {
-  console.error("[ida-telegram] Fatal error:", err);
-  process.exit(1);
-});
+export function createBridgeServer(
+  config: PluginConfig,
+  broker: QuestionBroker,
+  bot: TelegramBotClient | null,
+  emitChannelNotification?: (content: string, meta: Record<string, unknown>) => void,
+  store?: PluginStore,
+  broadcastSse?: typeof broadcastSseEvent
+) {
+  return createServer((client) => {
+    let raw = "";
+    client.on("data", async (chunk) => {
+      raw += chunk.toString();
+      if (raw.includes("\n")) {
+        const line = raw.trim();
+        try {
+          const req = JSON.parse(line);
+          if (req.type === "ask_user") {
+            const postedIds: string[] = [];
+            const topMiniAppOnly = req.mini_app_only === true || req.chat === false;
+            for (const q of req.questions || []) {
+              const isMiniAppOnly = topMiniAppOnly || q.mini_app_only === true || q.chat === false;
+              const result = await broker.askUser({
+                question: q.question,
+                header: q.header,
+                context: q.context,
+                detail: q.detail,
+                mini_app_only: isMiniAppOnly,
+                recommendation: q.recommendation,
+                options: q.options,
+                multiSelect: q.multiSelect,
+                allowOther: q.allowOther,
+                chatId: config.allowFrom[0],
+                turnId: q.turnId || q.turn_id || req.turn_id || req.turnId,
+                sessionId: q.sessionId || q.session_id || req.session_id || req.sessionId,
+              });
+              postedIds.push(result.questionId);
+
+              if (bot && !isMiniAppOnly) {
+                const card = broker.renderQuestionCard(result.questionId);
+                if (card && config.allowFrom[0]) {
+                  await bot.sendQuestionCard(config.allowFrom[0], result.questionId, card);
+                }
+              }
+            }
+
+            client.write(JSON.stringify({ status: "ok", questionId: postedIds[0], questionIds: postedIds }) + "\n");
+          } else if (req.type === "close_question") {
+            const questionId = req.question_id || req.questionId || req.id;
+            const reason = typeof req.reason === "string" ? req.reason.trim() : "";
+            if (!questionId) {
+              client.write(JSON.stringify({ status: "error", error: "Missing question_id" }) + "\n");
+              return;
+            }
+            if (!reason) {
+              client.write(JSON.stringify({ status: "error", error: "Missing reason: closing a question requires an explicit stated reason" }) + "\n");
+              return;
+            }
+            const result = await broker.closeQuestion(questionId, reason);
+            if (result && bot && result.question.chatId && result.question.messageId) {
+              await bot.editMessage(result.question.chatId, result.question.messageId, result.cardText, { inline_keyboard: [] });
+            }
+            if (result && emitChannelNotification) {
+              emitChannelNotification(`Question closed: ${result.channelEvent.reason}`, {
+                event: result.channelEvent.event,
+                ...result.channelEvent,
+              });
+            }
+            if (result && store && broadcastSse) {
+              const seq = store.nextSeq("question_closed", {
+                question_id: questionId,
+                reason: result.channelEvent.reason,
+                turn_id: result.channelEvent.turn_id,
+                session_id: result.channelEvent.session_id,
+              });
+              broadcastSse("question_closed", {
+                question_id: questionId,
+                reason: result.channelEvent.reason,
+                turn_id: result.channelEvent.turn_id,
+                session_id: result.channelEvent.session_id,
+              }, seq);
+            }
+            client.write(JSON.stringify({ status: result ? "ok" : "not_found", result }) + "\n");
+          } else if (req.type === "answer_question") {
+            const questionId = req.question_id || req.questionId || req.id;
+            const choice = typeof req.choice === "string" ? req.choice.trim() : undefined;
+            const optionIndex = typeof req.option_index === "number" ? req.option_index : undefined;
+            if (!questionId) {
+              client.write(JSON.stringify({ status: "error", error: "Missing question_id" }) + "\n");
+              return;
+            }
+            if (!choice && optionIndex === undefined) {
+              client.write(JSON.stringify({ status: "error", error: "Missing answer: provide choice or option_index" }) + "\n");
+              return;
+            }
+            const result = await broker.resolveAnswer(questionId, optionIndex !== undefined ? optionIndex : "other", choice);
+            if (result && bot && result.question.chatId && result.question.messageId) {
+              await bot.editMessage(result.question.chatId, result.question.messageId, result.cardText, { inline_keyboard: [] });
+            }
+            if (result && emitChannelNotification) {
+              emitChannelNotification(`Question answered: ${result.channelEvent.choice}`, {
+                event: result.channelEvent.event,
+                ...result.channelEvent,
+              });
+            }
+            if (result && store && broadcastSse) {
+              const seq = store.nextSeq("question_resolved", {
+                question_id: questionId,
+                choice: result.channelEvent.choice,
+                turn_id: result.channelEvent.turn_id,
+              });
+              broadcastSse("question_resolved", {
+                question_id: questionId,
+                choice: result.channelEvent.choice,
+                turn_id: result.channelEvent.turn_id,
+              }, seq);
+            }
+            client.write(JSON.stringify({ status: result ? "ok" : "not_found", result }) + "\n");
+          } else if (req.type === "list_questions") {
+            const pending = broker.getPendingQuestions();
+            client.write(JSON.stringify({ status: "ok", questions: pending }) + "\n");
+          }
+        } catch {
+          client.write(JSON.stringify({ error: "malformed request" }) + "\n");
+        }
+      }
+    });
+  });
+}
+
+if (import.meta.main) {
+  main().catch((err) => {
+    console.error("[ida-telegram] Fatal error:", err);
+    process.exit(1);
+  });
+}

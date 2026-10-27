@@ -40,10 +40,10 @@ Configuration is flags or environment only: ``--base-url`` or ``$PHOENIX_MCP_URL
 
 Examples::
 
-    python3 phoenix_transcript.py <slug> --out /tmp/<slug>.transcript.md
-    python3 phoenix_transcript.py <session-uuid>
-    python3 phoenix_transcript.py <32-hex-trace-id>
-    python3 phoenix_transcript.py <slug> --from-file spans.json
+    uv run python phoenix_transcript.py <slug> --out /tmp/<slug>.transcript.md
+    uv run python phoenix_transcript.py <session-uuid>
+    uv run python phoenix_transcript.py <32-hex-trace-id>
+    uv run python phoenix_transcript.py <slug> --from-file spans.json
 """
 
 from __future__ import annotations
@@ -53,22 +53,26 @@ import json
 import os
 import re
 import sys
-import urllib.error
 import urllib.parse
-import urllib.request
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from phoenix_token_cost import PRICES, cost_usd, price_row  # noqa: E402
+from phoenix_token_cost import (  # noqa: E402
+    BASE_URL_ENV_VAR,
+    PRICES,
+    PROJECT_ENV_VAR,
+    ConfigError,
+    cost_usd,
+    get_json,
+    price_row,
+    resolve_base_url,
+)
 
-BASE_URL_ENV_VAR = "PHOENIX_MCP_URL"
-PROJECT_ENV_VAR = "PHOENIX_MCP_PROJECT"
 PAGE_LIMIT = 1000
 SESSION_PAGE_LIMIT = 100
-HTTP_TIMEOUT = 120
 SLOWEST_STEPS = 10
 HINT_CHARS = 72
 DETAIL_CHARS = 240
@@ -90,10 +94,6 @@ NEW_CONTEXT_KEYS = ("new_context",)
 TURN_KINDS = ("CHAIN", "AGENT")
 
 Span = dict[str, Any]
-
-
-class ConfigError(Exception):
-    """A required input is missing or unusable."""
 
 
 # --- attribute access --------------------------------------------------------
@@ -158,25 +158,6 @@ def ms_between(start: datetime, end: datetime) -> float:
 
 
 # --- HTTP --------------------------------------------------------------------
-
-
-def get_json(url: str) -> Any:
-    request = urllib.request.Request(url, headers={"Accept": "application/json"})
-    try:
-        with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        body = exc.read().decode("utf-8", "replace")[:400]
-        raise ConfigError(f"HTTP {exc.code} from {url}: {body}") from exc
-    except urllib.error.URLError as exc:
-        raise ConfigError(f"cannot reach {url}: {exc.reason}") from exc
-
-
-def resolve_base_url(explicit: str | None) -> str:
-    candidate = (explicit or os.environ.get(BASE_URL_ENV_VAR, "")).strip()
-    if not candidate:
-        raise ConfigError(f"no Phoenix base URL. Pass --base-url, or set {BASE_URL_ENV_VAR}")
-    return candidate.rstrip("/")
 
 
 def resolve_project(explicit: str | None) -> str:
@@ -561,9 +542,13 @@ def tool_args(value: Any) -> Any:
 def tool_action(value: Any) -> str:
     args = tool_args(value)
     if isinstance(args, dict):
-        for key in ACTION_KEYS:
-            if isinstance(args.get(key), str) and args[key].strip():
-                return one_line(args[key])
+        candidates = [args]
+        if isinstance(args.get("Arguments"), dict):
+            candidates.append(args["Arguments"])
+        for candidate in candidates:
+            for key in ACTION_KEYS:
+                if isinstance(candidate.get(key), str) and candidate[key].strip():
+                    return one_line(candidate[key])
     return ""
 
 
@@ -690,6 +675,12 @@ def build_tool_steps(
         named = next((s for s in group if first_attr(s, TOOL_NAME_KEYS)), group[0])
         tool_input = group_attr(group, TOOL_INPUT_KEYS)
         tool_output = group_attr(group, TOOL_OUTPUT_KEYS)
+        action_summary = group_attr(group, ("tool.summary",))
+        action = (
+            one_line(str(action_summary))
+            if action_summary and str(action_summary).strip()
+            else tool_action(tool_input)
+        )
         steps.append(
             Step(
                 kind="tool",
@@ -699,7 +690,7 @@ def build_tool_steps(
                 title=str(first_attr(named, TOOL_NAME_KEYS) or named.get("name") or "tool"),
                 hint=tool_hint(tool_input),
                 detail=tool_detail(tool_input),
-                action=tool_action(tool_input),
+                action=action,
                 agent=next(
                     (agent_label(s, session_id) for s in group if agent_label(s, session_id)), ""
                 ),

@@ -24,19 +24,21 @@ from dispatch import (
     Result,
     _merge,
     _run_handler,
-    block,
     load_message_pair,
-    refuse,
     warn,
 )
-from premise_check_gate import (
-    is_channel_reply_tool,
-    is_foreground_dispatch,
-    is_peer_report,
-    premise_check_arm,
-    premise_check_handler,
+from hearsay_gate import (
+    hearsay_arm,
+    hearsay_handler,
     prompt_text,
+    should_arm_hearsay,
 )
+from hearsay_gate import (
+    is_peer_report as is_peer_report,
+)
+
+premise_check_arm = hearsay_arm
+premise_check_handler = hearsay_handler
 
 Handler = Callable[[HookContext], Result | None]
 
@@ -81,6 +83,17 @@ _SEARCH_TIMEOUT_SECONDS = 5
 # bites if the backend's output grows unexpectedly large.
 _MAX_INJECT_CHARS = 8000
 _TRUNCATION_MARKER = "\n[...truncated, output exceeded injection budget...]"
+_MAX_QUERY_CHARS = 8192
+
+_PEER_PREAMBLE = re.compile(
+    r"^(?:Another Claude session sent a message:\s*)+",
+    re.IGNORECASE,
+)
+
+_ENVELOPE_RE = re.compile(
+    r"^\s*<(?:channel|cross-session-message|teammate-message|task-notification|subagent-handback|agent-message|handback)\b[^>]*>(.*?)(?:</[^>]+>|\s*$)",
+    re.DOTALL,
+)
 
 
 def is_agent(ctx: HookContext | str | None, *targets: str) -> bool:
@@ -119,42 +132,12 @@ _is_ida = is_ida
 _is_agent = is_agent
 
 
-def _channel_gate_state_dir() -> Path:
-    override = os.environ.get("AOPS_CHANNEL_GATE_DIR")
-    path = Path(override) if override else Path(tempfile.gettempdir()) / "aops_channel_gate"
-    path.mkdir(parents=True, exist_ok=True)
-    return path
-
-
-def _channel_gate_state_path(session_id: str) -> Path:
-    safe_session = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", session_id or "default")
-    return _channel_gate_state_dir() / f"{safe_session}.json"
-
-
-def clear_channel_gate_state(session_id: str | None = None) -> None:
-    if session_id:
-        target = _channel_gate_state_path(session_id)
-        if target.exists():
-            try:
-                target.unlink()
-            except OSError:
-                pass
-    else:
-        state_dir = _channel_gate_state_dir()
-        if state_dir.exists():
-            for p in state_dir.glob("*.json"):
-                try:
-                    p.unlink()
-                except OSError:
-                    pass
-
-
 def honest_output(ctx: HookContext) -> Result | None:
-    """Remind all agents to present substantiating evidence on stop, blocking once."""
-    if ctx.raw.get("background_tasks"):
+    """Remind subagents on SubagentStart to write reports in premise-check shape."""
+    if ctx.event != "SubagentStart" or ctx.raw.get("background_tasks"):
         return None
 
-    return block(*load_message_pair(ctx.hooks_dir, "honesty"))
+    return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
 
 
 def _cap_output(out: str) -> str:
@@ -172,17 +155,44 @@ def _cap_output(out: str) -> str:
 
 
 def extract_prompt_query(prompt: str) -> str:
-    """Extract the searchable user text from a prompt, unwrapping channel envelopes.
+    """Extract searchable text from a prompt, unwrapping channel and message envelopes.
 
-    A prompt that begins with a `<channel ...>` envelope (Telegram or another
-    channel) is unwrapped to its body; any other prompt is used as typed. ANSI
-    escape codes are removed and surrounding whitespace stripped.
+    Unwraps <channel ...> envelopes, peer envelopes (<cross-session-message>,
+    <teammate-message>, <subagent-handback>, <task-notification>, etc.), and
+    peer preambles. Prompts without envelopes are used as typed. ANSI escape
+    codes are removed and surrounding whitespace stripped.
+
+    Skips argument-less slash commands (/cmd) by returning an empty string so
+    no PKB search runs. Slash commands with arguments (/cmd <arg>) send <arg>
+    whole up to 8 KB.
     """
     if not prompt:
         return ""
-    m = re.match(r"\s*<channel\b[^>]*>(.*?)(?:</channel>|$)", prompt, flags=re.DOTALL)
-    text = m.group(1) if m else prompt
-    return re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", text).strip()
+    text = prompt
+    while True:
+        pm = _PEER_PREAMBLE.match(text)
+        if pm:
+            text = text[pm.end() :].lstrip()
+        m = _ENVELOPE_RE.match(text)
+        if m:
+            text = m.group(1).strip()
+            continue
+        break
+
+    text = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", text).strip()
+    if not text:
+        return ""
+
+    if text.startswith("/"):
+        parts = text.split(None, 1)
+        if len(parts) == 1:
+            return ""
+        arg = parts[1].strip()
+        if not arg:
+            return ""
+        return arg[:_MAX_QUERY_CHARS]
+
+    return text[:_MAX_QUERY_CHARS]
 
 
 # Cloudflare Access service-token pairs, in order of preference. The worker
@@ -378,16 +388,58 @@ def _initialize_mcp_session(mcp_url: str, base_headers: dict[str, str]) -> str |
     return None
 
 
+def _resolve_surface(ctx: HookContext | None = None) -> str:
+    """Resolve the execution surface class."""
+    if env_surface := os.environ.get("AOPS_SURFACE"):
+        return env_surface
+    if os.environ.get("GITHUB_ACTIONS"):
+        return "github-actions"
+    if ctx and getattr(ctx, "client", "") == "agy":
+        return "agy"
+    if os.environ.get("ANTIGRAVITY_CLI") or os.environ.get("GEMINI_CLI"):
+        return "agy"
+    return "claude-code"
+
+
 def _post_mcp_search(
     mcp_url: str,
     query: str,
     headers: dict[str, str] | None = None,
     session_id: str | None = None,
     traceparent: str | None = None,
+    prompt_id: str | None = None,
+    agent_id: str | None = None,
+    surface: str | None = None,
 ) -> str | None:
     """Search the PKB over a single streamable-HTTP POST to PKB_MCP_URL."""
     sess_id = session_id if session_id is not None else (os.environ.get("AOPS_SESSION_ID") or "")
     tp = traceparent or _resolve_tracer_traceparent(sess_id)
+
+    pid = prompt_id or ""
+    if not pid and sess_id:
+        tracer_file = _tracer_state_dir() / f"{sess_id}.json"
+        if tracer_file.is_file():
+            try:
+                tdata = json.loads(tracer_file.read_text(encoding="utf-8"))
+                pid = (tdata.get("current_trace") or {}).get("prompt_id") or ""
+            except Exception:
+                pass
+    if not pid:
+        pid = secrets.token_hex(8)
+
+    if sess_id:
+        tracer_file = _tracer_state_dir() / f"{sess_id}.json"
+        if tracer_file.is_file():
+            try:
+                tdata = json.loads(tracer_file.read_text(encoding="utf-8"))
+                cur = tdata.get("current_trace")
+                if isinstance(cur, dict) and cur.get("prompt_id") != pid:
+                    cur["prompt_id"] = pid
+                    tracer_file.write_text(json.dumps(tdata), encoding="utf-8")
+            except Exception as exc:
+                log.debug(
+                    "Could not update prompt_id in tracer file for session %s: %s", sess_id, exc
+                )
 
     req_headers: dict[str, str] = {
         "User-Agent": "academicOps/0.10 (prompt-hydration)",
@@ -406,13 +458,23 @@ def _post_mcp_search(
 
     prefix = os.environ.get("PKB_MCP_TOOL_PREFIX", "pkb_")
     tool_name = f"{prefix}search"
+    session_payload = {
+        "session_id": sess_id,
+        "prompt_id": pid,
+        "agent_id": agent_id or "",
+        "caller": "hook",
+        "surface": surface or _resolve_surface(),
+    }
     payload = {
         "jsonrpc": "2.0",
         "id": 1,
         "method": "tools/call",
         "params": {
             "name": tool_name,
-            "arguments": {"query": query},
+            "arguments": {
+                "query": query,
+                "_session": session_payload,
+            },
         },
     }
     data_bytes = json.dumps(payload).encode("utf-8")
@@ -483,13 +545,16 @@ def _post_mcp_search(
                     f"the PKB endpoint refused authorisation (HTTP {status}); check PKB_MCP_HEADERS, WORKER_MCP_TOKEN_ID / WORKER_MCP_TOKEN_SECRET, or DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
                 )
             if status != 200:
-                raise RuntimeError(f"the PKB endpoint failed with HTTP {status}: {body}")
+                clean_body = " ".join(body.split())
+                raise RuntimeError(f"the PKB endpoint failed with HTTP {status}: {clean_body}")
         else:
+            clean_body = " ".join(body.split())
             raise RuntimeError(
-                f"the PKB endpoint requires session initialization but initialize failed: HTTP {status} {body}"
+                f"the PKB endpoint requires session initialization but initialize failed: HTTP {status} {clean_body}"
             )
     elif status != 200:
-        raise RuntimeError(f"the PKB endpoint failed with HTTP {status}: {body}")
+        clean_body = " ".join(body.split())
+        raise RuntimeError(f"the PKB endpoint failed with HTTP {status}: {clean_body}")
 
     return _parse_mcp_response(body)
 
@@ -499,8 +564,11 @@ def _run_pkb_search(
     cwd: str | Path | None = None,
     session_id: str | None = None,
     traceparent: str | None = None,
+    prompt_id: str | None = None,
+    agent_id: str | None = None,
+    surface: str | None = None,
 ) -> str | None:
-    query = extract_prompt_query(prompt)[:200]
+    query = extract_prompt_query(prompt)[:_MAX_QUERY_CHARS]
     if not query:
         return None
 
@@ -510,82 +578,67 @@ def _run_pkb_search(
         return None
 
     headers = _resolve_mcp_headers()
-    if session_id is not None or traceparent is not None:
-        return _post_mcp_search(
-            mcp_url,
-            query,
-            headers,
-            session_id=session_id,
-            traceparent=traceparent,
-        )
+    kwargs: dict[str, Any] = {}
+    if session_id is not None:
+        kwargs["session_id"] = session_id
+    if traceparent is not None:
+        kwargs["traceparent"] = traceparent
+    if prompt_id is not None:
+        kwargs["prompt_id"] = prompt_id
+    if agent_id is not None:
+        kwargs["agent_id"] = agent_id
+    if surface is not None:
+        kwargs["surface"] = surface
+
+    if kwargs:
+        return _post_mcp_search(mcp_url, query, headers, **kwargs)
     return _post_mcp_search(mcp_url, query, headers)
 
 
 def search_the_pkb(ctx: HookContext) -> Result | None:
     """Ground every prompt in the PKB before the agent acts on it.
 
-    Returns the output of `pkb search {prompt:200}` wrapped in
+    Returns the output of `pkb search {prompt}` wrapped in
     `<academicOps PKB search results>` tags when matches are found;
-    otherwise returns None. Peer reports are skipped so they trigger
-    hearsay and premise check gates instead of hydrating from the PKB.
+    otherwise returns None. Empty results inject nothing.
+    Argument-less slash commands are skipped so they make no PKB call.
+    Peer reports, subagent handbacks, task notifications, and incoming channel
+    messages are searched to ground the turn in existing PKB context.
     """
-    if is_peer_report(ctx):
-        return None
-
     prompt_str = prompt_text(ctx)
     query = extract_prompt_query(prompt_str)
-    if query:
-        session_id = (
-            getattr(ctx, "session_id", None)
-            or ctx.raw.get("session_id")
-            or ctx.raw.get("conversationId")
-            or os.environ.get("AOPS_SESSION_ID")
-            or None
-        )
-        if session_id:
-            output = _run_pkb_search(query, cwd=ctx.cwd, session_id=session_id)
-        else:
-            output = _run_pkb_search(query, cwd=ctx.cwd)
-        if output:
-            msg = f"<academicOps PKB search results>\n{output}\n</academicOps PKB search results>"
-            return warn(msg)
+    if not query:
+        return None
+
+    session_id = (
+        getattr(ctx, "session_id", None)
+        or ctx.raw.get("session_id")
+        or ctx.raw.get("conversationId")
+        or os.environ.get("AOPS_SESSION_ID")
+        or None
+    )
+    prompt_id = (
+        getattr(ctx, "prompt_id", None)
+        or ctx.raw.get("prompt_id")
+        or ctx.raw.get("promptId")
+        or None
+    )
+    agent_id = getattr(ctx, "agent_id", None) or ctx.raw.get("agent_id") or None
+
+    search_kwargs: dict[str, Any] = {"cwd": ctx.cwd}
+    if session_id:
+        search_kwargs["session_id"] = session_id
+    if prompt_id:
+        search_kwargs["prompt_id"] = prompt_id
+    if agent_id:
+        search_kwargs["agent_id"] = agent_id
+
+    output = _run_pkb_search(query, **search_kwargs)
+    if output and output.strip():
+        msg = f"<academicOps PKB search results>\n{output}\n</academicOps PKB search results>"
+        return warn(msg)
 
     return None
-
-
-def be_quiet(ctx: HookContext) -> Result | None:
-    """Remind Ida to strip its reply down to what is load-bearing on stop."""
-    if not _is_ida(ctx):
-        return None
-    if ctx.raw.get("background_tasks"):
-        return None
-    return block(*load_message_pair(ctx.hooks_dir, "quiet"))
-
-
-def quiet_channel_reply(ctx: HookContext) -> Result | None:
-    """Deny channel replies once for Ida to enforce ADHD executive protection."""
-    if not _is_ida(ctx):
-        return None
-    if not is_channel_reply_tool(ctx.tool):
-        return None
-
-    state_path = _channel_gate_state_path(ctx.session_id)
-    if state_path.exists():
-        data = json.loads(state_path.read_text(encoding="utf-8"))
-        if data.get("blocked_once"):
-            return None
-
-    state_path.write_text(json.dumps({"blocked_once": True, "tool": ctx.tool}), encoding="utf-8")
-
-    quiet_inject, quiet_user = load_message_pair(ctx.hooks_dir, "quiet")
-
-    if ctx.client == "agy":
-        return warn(quiet_inject, quiet_user)
-
-    return refuse(quiet_inject, quiet_user)
-
-
-channel_reply_gate = quiet_channel_reply
 
 
 def _scrub(value: object) -> str:
@@ -831,26 +884,12 @@ def agy_session_pointer(ctx: HookContext) -> Result | None:
     return warn(PREMISE_CHECK_POINTER)
 
 
-def honesty_on_peer_message(ctx: HookContext) -> Result | None:
-    """Remind all agents to write replies/reports in premise-check shape when a peer message arrives."""
-    if not is_peer_report(ctx):
-        return None
-    return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
+honesty_on_peer_message = honest_output
 
 
 def rule_against_hearsay(ctx: HookContext) -> Result | None:
-    """Remind Ida and Sara that an incoming peer report or foreground subagent return is hearsay."""
-    if ctx.event == "PostToolUse":
-        if not is_agent(ctx, "ida", "sara"):
-            return None
-        if not is_foreground_dispatch(ctx):
-            return None
-        return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
-
-    clear_channel_gate_state(ctx.session_id)
-    if not is_agent(ctx, "ida", "sara"):
-        return None
-    if not is_peer_report(ctx):
+    """Remind agents that an incoming peer report or foreground subagent return is hearsay."""
+    if not should_arm_hearsay(ctx):
         return None
     return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
 
@@ -866,6 +905,8 @@ def _prepare_tracer_data(ctx: HookContext) -> dict[str, Any]:
         data.setdefault("agent_type", ctx.agent_type)
     if ctx.agent_id:
         data.setdefault("agent_id", ctx.agent_id)
+    if getattr(ctx, "prompt_id", None):
+        data.setdefault("prompt_id", ctx.prompt_id)
     if ctx.tool:
         data.setdefault("tool_name", ctx.tool)
     if "toolName" in data and "tool_name" not in data:
@@ -986,14 +1027,38 @@ def post_tool_degraded_check(ctx: HookContext) -> Result | None:
 
 def user_prompt_submit(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical UserPromptSubmit."""
+    prompt_id = (
+        getattr(ctx, "prompt_id", None) or ctx.raw.get("prompt_id") or ctx.raw.get("promptId")
+    )
+    if not prompt_id:
+        sess_id = (
+            ctx.session_id
+            or ctx.raw.get("session_id")
+            or ctx.raw.get("conversationId")
+            or os.environ.get("AOPS_SESSION_ID")
+        )
+        if sess_id:
+            tracer_file = _tracer_state_dir() / f"{sess_id}.json"
+            if tracer_file.is_file():
+                try:
+                    tdata = json.loads(tracer_file.read_text(encoding="utf-8"))
+                    prompt_id = (tdata.get("current_trace") or {}).get("prompt_id")
+                except Exception:
+                    pass
+    if not prompt_id:
+        prompt_id = secrets.token_hex(8)
+
+    from dataclasses import replace
+
+    ctx = replace(ctx, prompt_id=prompt_id)
+
     _run_claude_tracer(ctx, "handle_user_prompt_submit")
     agy_user_prompt_submit(ctx)
     steps = (
         agy_session_pointer,
         search_the_pkb,
-        honesty_on_peer_message,
         rule_against_hearsay,
-        premise_check_arm,
+        hearsay_arm,
     )
     return _merge([_run_handler(step, ctx) for step in steps])
 
@@ -1002,7 +1067,7 @@ def pre_tool(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical PreToolUse."""
     _run_claude_tracer(ctx, "handle_pre_tool")
     agy_pre_tool(ctx)
-    return _run_handler(premise_check_handler, ctx)
+    return _run_handler(hearsay_handler, ctx)
 
 
 def post_tool(ctx: HookContext) -> Result | None:
@@ -1010,11 +1075,15 @@ def post_tool(ctx: HookContext) -> Result | None:
     _run_claude_tracer(ctx, "handle_post_tool")
     agy_post_tool(ctx)
     steps = (
-        rule_against_hearsay,
         post_tool_degraded_check,
-        premise_check_arm,
+        hearsay_arm,
     )
     return _merge([_run_handler(step, ctx) for step in steps])
+
+
+def post_tool_batch(ctx: HookContext) -> Result | None:
+    """Single entry-point handler for canonical PostToolBatch."""
+    return _run_handler(rule_against_hearsay, ctx)
 
 
 def post_tool_failure(ctx: HookContext) -> Result | None:
@@ -1022,11 +1091,16 @@ def post_tool_failure(ctx: HookContext) -> Result | None:
     return None
 
 
+def subagent_start(ctx: HookContext) -> Result | None:
+    """Single entry-point handler for canonical SubagentStart."""
+    return _run_handler(honest_output, ctx)
+
+
 def stop(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical Stop."""
     _run_claude_tracer(ctx, "handle_stop")
     agy_stop(ctx)
-    return _run_handler(premise_check_handler, ctx)
+    return _run_handler(hearsay_handler, ctx)
 
 
 def subagent_stop(ctx: HookContext) -> Result | None:
@@ -1075,6 +1149,8 @@ HANDLERS: dict[str, list] = {
     "PreToolUse": [pre_tool],
     "PostToolUse": [post_tool],
     "PostToolUseFailure": [post_tool_failure],
+    "PostToolBatch": [post_tool_batch],
+    "SubagentStart": [subagent_start],
     "Stop": [stop],
     "SubagentStop": [subagent_stop],
     "StopFailure": [stop_failure],

@@ -56,7 +56,7 @@ export interface TelegramUpdate {
 }
 
 export interface InboundChannelEvent {
-  event: "message" | "reaction" | "button_tap" | "bot_command" | "voice" | "attachment" | "miniapp";
+  event: "message" | "reaction" | "button_tap" | "bot_command" | "voice" | "attachment" | "miniapp" | "logic_check" | "explain";
   content: string;
   meta: Record<string, string>;
 }
@@ -278,6 +278,34 @@ export function parseInboundUpdate(
     }
     if (cb.message?.chat.id !== undefined) {
       meta.chat_id = String(cb.message.chat.id);
+    }
+
+    if (callbackPrefix === "logic_check" || rawData === "logic_check") {
+      const targetExcerpt = cb.message?.text || (getExcerpt && cb.message?.message_id ? getExcerpt(cb.message.message_id) : undefined);
+      meta.event = "logic_check";
+      meta.action = "logic_check";
+      if (targetExcerpt) {
+        meta.target_excerpt = targetExcerpt;
+      }
+      return {
+        event: "logic_check",
+        content: `Give me a logic check on message ${cb.message?.message_id ?? ""}${targetExcerpt ? `: "${targetExcerpt}"` : ""} as if you were receiving it from a peer.`,
+        meta,
+      };
+    }
+
+    if (callbackPrefix === "explain" || rawData === "explain") {
+      const targetExcerpt = cb.message?.text || (getExcerpt && cb.message?.message_id ? getExcerpt(cb.message.message_id) : undefined);
+      meta.event = "explain";
+      meta.action = "explain";
+      if (targetExcerpt) {
+        meta.target_excerpt = targetExcerpt;
+      }
+      return {
+        event: "explain",
+        content: `Please explain message ${cb.message?.message_id ?? ""}${targetExcerpt ? `: "${targetExcerpt}"` : ""} in more detail.`,
+        meta,
+      };
     }
 
     return {

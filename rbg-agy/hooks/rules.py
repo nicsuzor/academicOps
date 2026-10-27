@@ -1,15 +1,14 @@
-"""Three-layer rule loading for cope's evaluator.
+"""Rule loading across three scopes for cope's evaluator.
 
-Layer 1 ``skills/axioms/`` (the plugin's own injected copy of ``lib/axioms/`` — the
-floor) is loaded first; layer 2 ``$CWD/.agents/rules/*.md`` (project-local)
-and layer 3 ``$ACA_DATA/.agents/rules/*.md`` (user-scoped) can only ADD new
-slugs, never override one already claimed by an earlier layer — a later
-layer adds obligations, it never weakens an axiom (specs/ARCHITECTURE.md,
-cope). ``$ACA_DATA`` has no default; its absence is a missing layer, not an
-error. A layer directory that is unreadable degrades to the layers that did
+Axioms in ``skills/axioms/`` (the baseline) are loaded first; project rules in
+``$CWD/.agents/rules/*.md`` and user rules in ``$ACA_DATA/.agents/rules/*.md``
+can only ADD new slugs, never override one already claimed by an earlier scope —
+narrower scopes add obligations and never weaken an axiom (specs/ARCHITECTURE.md,
+cope). ``$ACA_DATA`` has no default; its absence is an absent user-rules scope, not an
+error. A rule directory that is unreadable degrades to the scopes that did
 load — cope must never block a session on its own failure.
 
-Every layer takes the same marker, and it has three states:
+Every scope takes the same marker, and it has three states:
 
 ``always_on``  a live rule; the policy goes to the evaluator on every tool call.
 ``off``        a real policy, deliberately parked. Silent — see below.
@@ -18,13 +17,13 @@ anything else  reference material — a path table, a naming convention, a stub 
                evaluator cannot answer.
 
 ``off`` is not the same as unmarked, which is why it is spelled out rather than
-left to fall through. An unmarked file in a layer the user owns is reported, on
+left to fall through. An unmarked file in a scope the user owns is reported, on
 the assumption nobody meant to write a rule the evaluator never sees; ``off`` is
 somebody saying they meant it, so reporting it would train the reader to skip
 the report. Turning a rule off one file at a time, and back on the same way, is
 the whole point of the marker having a third state.
 
-A layer that thins out says so on stderr (``DEGRADED:``), which the client
+A scope that thins out says so on stderr (``DEGRADED:``), which the client
 captures into the transcript. That is the only channel these reports have: they
 do not reach the agent's response and they do not reach the person. Nothing here
 is rate-limited, because nothing here is read live. A rules directory nobody
@@ -139,11 +138,11 @@ def _load_dir(layer: _Layer) -> dict[str, Rule]:
 
 
 def load(plugin_root: Path, cwd: Path) -> dict[str, Rule]:
-    """Load all three layers and return slug -> Rule.
+    """Load all three rule scopes and return slug -> Rule.
 
-    A slug already claimed by an earlier layer is never replaced — layer 1
-    (axioms) always wins a collision, then layer 2, then layer 3. This is
-    what "later layers add obligations, never weaken an axiom" means at the
+    A slug already claimed by an earlier scope is never replaced — axioms
+    always win a collision, then project rules, then user rules. This is
+    what "narrower scopes add obligations, never weaken an axiom" means at the
     data-structure level: a project or user rule file cannot shadow an
     axiom's entry just by reusing its filename.
     """
@@ -155,23 +154,23 @@ def load(plugin_root: Path, cwd: Path) -> dict[str, Rule]:
 
 
 def _layers(plugin_root: Path, cwd: Path) -> list[_Layer]:
-    """Each layer's directory, and what its silences are allowed to be.
+    """Each scope's directory, and what its silences are allowed to be.
 
-    Every layer requires ``trigger: always_on``; a rules directory holds
+    Every scope requires ``trigger: always_on``; a rules directory holds
     reference documents as well as policies, and only a policy can be
-    classified. What differs per layer is what deserves reporting.
+    classified. What differs per scope is what deserves reporting.
 
-    Layer 1 is the plugin's own shipped ``skills/axioms/``, whose non-rule files are a
+    The axioms scope is the plugin's own shipped ``skills/axioms/``, whose non-rule files are a
     known, curated set (``SKILL.md``, ``README.md``, ``AXIOMS-REVIEW.md``) that nobody in the
-    session can act on — naming them every tool call would be noise. Layers 2
-    and 3 belong to the project and the user, who can act: a file skipped there
+    session can act on — naming them every tool call would be noise. Project rules
+    and user rules belong to the project and the user, who can act: a file skipped there
     is named, because a rule that quietly stops being evaluated is worse than
     one that was never written.
 
-    An absent layer-2 directory is the ordinary case — most projects carry no
-    local rules — so it says nothing. An absent layer-3 directory is a wrong
+    An absent project-rules directory is the ordinary case — most projects carry no
+    local rules — so it says nothing. An absent user-rules directory is a wrong
     ``$ACA_DATA`` or a path that moved, since setting the variable is a claim
-    that the layer exists; that is reported. ``$ACA_DATA`` unset is not a
+    that the directory exists; that is reported. ``$ACA_DATA`` unset is not a
     mistake and stays silent.
     """
     layers = [

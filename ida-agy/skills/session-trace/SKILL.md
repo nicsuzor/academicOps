@@ -11,7 +11,7 @@ counts and millisecond latencies. Read it rather than a session's own account of
 ## Transcript: how did this decision get made
 
 ```bash
-python3 "${CLAUDE_SKILL_DIR}/scripts/phoenix_transcript.py" <session-id | slug | trace-id> --out <dir>/<slug>.transcript.md
+uv run python "${CLAUDE_SKILL_DIR}/scripts/phoenix_transcript.py" <session-id | slug | trace-id> --out <dir>/<slug>.transcript.md
 ```
 
 - Configuration is flags or environment: `--base-url` or `$PHOENIX_MCP_URL` (the Phoenix
@@ -40,11 +40,11 @@ time, find the session with Recipe A or F in [references/sql-recipes.md](referen
 
 ## Other exports
 
-- `scripts/phoenix_trace.py <session-id>` -- the span forest as JSON (`full`, with
+- `uv run python scripts/phoenix_trace.py <session-id>` -- the span forest as JSON (`full`, with
   `roots` and `orphans`) and a controller view. Check `meta.session_error_count`,
   `orphans`, `meta.trace_contamination` (traces shared with other sessions), and rank
   `subagents[]` by `collapsed_span_count` for the expensive branches.
-- `scripts/phoenix_token_cost.py --since <time>` -- spend ranked across sessions, or
+- `uv run python scripts/phoenix_token_cost.py --since <time>` -- spend ranked across sessions, or
   `--by task`. Prices are list prices per million tokens; the dollar column is
   comparable spend, not an invoice. Gemini spans may carry no token counts.
 
@@ -61,4 +61,4 @@ the recipe from [references/sql-recipes.md](references/sql-recipes.md).
 - Filter on `session.id`, never `trace_id`: one trace can hold several sessions.
 - Subagents share the dispatching session's `session.id`; a spawned worker session
   carries no attribute naming its parent (Recipe F correlates them).
-- Score what a session did on its tool-call spans, not on what its report says.
+- Phoenix tool spans prove execution rather than logical entailment or sufficiency; auditing and QA must inspect durable primary deliverables rather than ephemeral container paths, evaluating whether observed evidence logically entails the claimed outcomes.

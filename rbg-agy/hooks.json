@@ -3,7 +3,7 @@
     "PreInvocation": [
       {
         "type": "command",
-        "command": "uv run --project . python3 hooks/dispatch.py agy PreInvocation"
+        "command": "uv run --project . python hooks/dispatch.py agy PreInvocation"
       }
     ]
   }
