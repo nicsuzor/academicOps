@@ -11,7 +11,7 @@ counts and millisecond latencies. Read it rather than a session's own account of
 ## Transcript: how did this decision get made
 
 ```bash
-uv run python "${CLAUDE_SKILL_DIR:-plugins/ida/skills/session-trace}/scripts/phoenix_transcript.py" <session-id | slug | trace-id> --out <dir>/<slug>.transcript.md [--sanitize-paths]
+uv run python "${CLAUDE_SKILL_DIR}/scripts/phoenix_transcript.py" <session-id / conversation-id | slug | trace-id> --out <dir>/<slug>.transcript.md [--sanitize-paths]
 ```
 
 - Configuration is flags or environment: `--base-url` or `$PHOENIX_MCP_URL` (the Phoenix
@@ -51,12 +51,12 @@ whole transcript, because that is where the cost goes. Answer with the turn and 
 anchors where the decision was made, and provide the durable pointer (or path) to the
 persisted transcript and outline files.
 
-To find the session: a full id, a slug, or a trace id all resolve. Given only a task or a
+To find the session: a full session ID / conversation ID, a slug, or a trace id all resolve. Given only a task or a
 time, find the session with Recipe A or F in [references/sql-recipes.md](references/sql-recipes.md).
 
 ## Other exports
 
-- `uv run python "${CLAUDE_SKILL_DIR:-plugins/ida/skills/session-trace}/scripts/phoenix_trace.py" <session-id>` -- the span forest as JSON (`full`, with
+- `uv run python scripts/phoenix_trace.py <session-id / conversation-id>` -- the span forest as JSON (`full`, with
   `roots` and `orphans`) and a controller view. Check `meta.session_error_count`,
   `orphans`, `meta.trace_contamination` (traces shared with other sessions), and rank
   `subagents[]` by `collapsed_span_count` for the expensive branches.
