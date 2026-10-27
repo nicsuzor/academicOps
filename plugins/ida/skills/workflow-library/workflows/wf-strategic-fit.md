@@ -2,7 +2,7 @@
 alias:
   - wf-strategic-fit
   - wf-fit-check
-description: Universal strategic-direction and congruence review gate -- evaluate candidate artifact, change, or proposal against strategic direction and congruence with existing PKB material (specifications, notes, prior art, parent objectives, parsimony, and lifecycle coherence), returning an explicit FIT or MISFIT verdict.
+description: Universal strategic-direction and congruence review -- evaluate candidate artifact, change, or proposal for core premise soundness, strategic direction, and congruence with the seamless web of existing PKB material (specifications, notes, prior art, parent objectives, parsimony, and lifecycle coherence), returning an explicit PASS, REVISE, or FAIL verdict.
 id: wf-strategic-fit
 tags:
   - wf-template
@@ -10,14 +10,13 @@ tags:
   - strategic-fit
   - strategy
   - congruence
-  - gate
 title: Strategic Direction and Congruence Review
 type: template
 ---
 
 ## What this step does
 
-Universal strategic-direction and congruence review gate (`pauli`): evaluates whether a candidate artifact aligns with strategic direction and exhibits congruence with existing material in the Personal Knowledge Base (PKB graph topology, prior art, existing specifications, topic notes, parent objectives, parsimony, and lifecycle coherence).
+Universal strategic-direction and congruence review (`pauli`): evaluates the core premise, strategic direction, and congruence with the "seamless web" of existing material in the Personal Knowledge Base (PKB graph topology, prior art, existing specifications, topic notes, parent objectives, parsimony, and lifecycle coherence).
 
 ## Input contract
 
@@ -27,25 +26,19 @@ Draws its brief from the shared review briefing (supplied inline so the reviewer
 
 ## Procedure
 
-1. **Strategic direction and objective alignment** -- verify whether the artifact serves the claimed parent target and strategic direction in the PKB graph, identifying any unrequested scope drift or mission creep.
-2. **Congruence with existing material and prior art** -- evaluate alignment with existing specifications, architectural decisions, topic notes, and Maps of Content in the PKB; surface silent contradictions, unacknowledged departures from settled design, or duplicated structures.
-3. **Parsimony and necessity** -- determine whether the mechanism should exist at all, or whether an existing tool, native capability, or competing proposal already solves the need more simply.
-4. **Lifecycle and graph coherence** -- evaluate consistency with established graph topology and verify that task lifecycle dependencies do not deadlock downstream workflows.
-5. **Determine boundaries** -- operates strictly on strategic direction, congruence with existing PKB material, and lifecycle coherence. Does not inspect code for axiom violations (the compliance role, `rbg`) and does not test satisfaction of detailed functional requirements or execute runtime test suites (the quality role, `marsha`).
-6. **Issue verdict**: exactly one of `FIT` or `MISFIT`. A `MISFIT` identifies the strategic misalignment, contradiction with existing material, redundant machinery, or lifecycle conflict.
-7. **Schedule the next step on a failing verdict** -- a review that returns `MISFIT` (the strategic-congruence failing verdict corresponding to `REJECT` or `REVISE`) schedules the next step in the same handback: the reviewer files a subtask of the primary task (`parent: <primary-task-id>`, status `queued`) whose body names each required change from the verdict, and records that subtask's id on the review task.
-
-### Handback on a failing verdict
-
-A review that returns `MISFIT` (the strategic-congruence failing verdict corresponding to `REJECT` or `REVISE`) schedules the next step in the same handback: the reviewer files a subtask of the primary task (`parent: <primary-task-id>`, status `queued`) whose body names each required change from the verdict, and records that subtask's id on the review task.
+1. **Question the core premise and strategic direction** -- ask whether the right question is being answered before evaluating the answer. Name the class of problem rather than just the instance, trace causal chains, distinguish what cannot be known in advance from what is merely unexamined, and separate fatal premise flaws from fixable gaps. Verify whether the artifact serves the claimed parent target and strategic direction in the PKB graph, flagging unrequested scope drift, flawed reasoning (non-sequiturs, circular logic), untested load-bearing assumptions, overconfident claims, missing edge cases, and negative space (what should be here that isn't).
+2. **Maintain the seamless web (congruence with existing material and prior art)** -- evaluate alignment with existing specifications, architectural decisions, topic notes, and Maps of Content in the PKB; surface silent contradictions, unacknowledged departures from settled design, or duplicated structures.
+3. **Parsimony, necessity, and lifecycle coherence** -- determine whether the mechanism should exist at all, or whether an existing tool, native capability, or competing proposal already solves the need more simply, and verify that task lifecycle dependencies do not deadlock downstream workflows.
+4. **Determine boundaries** -- operates strictly on the core premise, strategic direction, congruence with existing PKB material, and lifecycle coherence. Does not inspect code for axiom violations (the compliance role, `rbg`) and does not test whether the delivered implementation satisfies functional requirements at runtime (the quality role, `marsha`).
+5. **Issue verdict**: return an explicit `PASS`, `REVISE`, or `FAIL` verdict with specific, actionable guidance calibrated to the stakes.
 
 ## Output contract
 
 The structured review artifact returning:
 
-- **Verdict**: `FIT` or `MISFIT`.
-- **Strategic direction & congruence assessment**: evaluation of strategic alignment, congruence with existing specifications/notes/prior art, parsimony, and systemic coherence.
-- **Identified conflicts**: contradictions with existing PKB material, competing proposals, unnecessary abstractions, or lifecycle deadlocks (if any), and on a `MISFIT` verdict, the queued subtask scheduled under the primary task recorded on the review task.
+- **Verdict**: `PASS`, `REVISE`, or `FAIL`.
+- **Strategic direction & congruence assessment**: evaluation of core premise soundness, strategic alignment, congruence with the seamless web of existing specifications/notes/prior art, parsimony, and systemic coherence.
+- **Identified conflicts and missing elements**: flawed reasoning, untested assumptions, negative space, contradictions with existing PKB material, competing proposals, unnecessary abstractions, or lifecycle deadlocks (if any).
 
 ## When to include
 

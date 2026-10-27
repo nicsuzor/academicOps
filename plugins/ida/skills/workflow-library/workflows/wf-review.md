@@ -2,7 +2,7 @@
 alias:
   - wf-review
   - wf-multi-agent-review
-description: Universal composite review workflow -- Supervisor (james) calibrates proportionality and altitude upfront, coordinates review across strategic direction/congruence (pauli), compliance (rbg), and quality/requirement satisfaction (marsha), and defines the shared review briefing.
+description: Universal composite review workflow -- Supervisor (james) calibrates proportionality and altitude upfront, coordinates review across strategic direction/congruence (pauli), compliance (rbg), and quality/requirement satisfaction (marsha) into a unified PASS, REVISE, or FAIL verdict, and defines the shared review briefing.
 id: wf-review
 tags:
   - wf-template
@@ -10,7 +10,6 @@ tags:
   - composite
   - dialectic
   - briefing
-  - gate
 title: Multi-Agent Review Workflow
 type: template
 ---
@@ -37,8 +36,8 @@ All three review components (`pauli`, `rbg`, `marsha`), whether dispatched as su
    ```
 
 2. **Supervisor Calibration (`james`)**:
-   - **Proportionality tier**: Single-pass sanity check with lighter models (`flash` / `flash_lite`) for low-stakes or routine work, vs multi-round dialectical deliberation with higher-capability models (`pro`) for high-stakes, complex, or critical work.
-   - **Target altitude**: The abstraction level appropriate to the artifact (preventing drift into micro-implementation or untestable generalities).
+   - **Proportionality**: Single-pass sanity check with lighter models (`flash` / `flash_lite`) for low-stakes or routine work, vs multi-round dialectical deliberation with higher-capability models (`pro`) for high-stakes, complex, or critical work.
+   - **Target altitude**: The abstraction focus appropriate to the artifact (preventing drift into micro-implementation or untestable generalities).
 
 3. **Target Artifact**:
    The candidate change or deliverable under review (read only after the originating request and requirements):
@@ -48,10 +47,10 @@ All three review components (`pauli`, `rbg`, `marsha`), whether dispatched as su
    - **Diff / Content**: `<diff or artifact reference>`
 
 4. **Review Role & Instructions**:
-   The review criteria and obligations specific to the assigned component:
-   - **Strategic Direction & Congruence (`pauli`)**: Evaluates strategic direction and congruence with existing material in the PKB (graph topology, prior art, existing specifications, topic notes, parent objectives, parsimony, and lifecycle coherence) from an inline graph-only brief (`FIT` or `MISFIT`).
-   - **Compliance (`rbg`)**: Evaluates compliance with universal axioms, project-local rules, data boundaries, and the enforcement pyramid (`APPROVE`, `SUGGEST`, `REVISE`, or `REJECT`). From the quoted request alone, state the smallest proportionate mechanism before reading the diff.
-   - **Quality & Requirements Satisfaction (`marsha`)**: Evaluates quality, runtime execution, and satisfaction of stated requirements against whatever specifications, requirements, or acceptance criteria are available (`PASS`, `REVISE`, or `FAIL`). **If no specifications, requirements, or acceptance criteria are available, treats that absence itself as a critical failure signal (`FAIL` / `REJECT`).**
+   All reviewers return verdicts in the unified `PASS`, `REVISE`, or `FAIL` vocabulary:
+   - **Strategic Direction & Congruence (`pauli`)**: Evaluates the core premise, strategic direction, and congruence with the "seamless web" of existing material in the PKB (graph topology, prior art, existing specifications, topic notes, parent objectives, parsimony, and lifecycle coherence) from an inline graph-only brief (`PASS`, `REVISE`, or `FAIL`).
+   - **Compliance (`rbg`)**: Evaluates compliance with universal axioms, project-local rules, scope of delegated authority (_ultra vires_), data boundaries, and the enforcement pyramid (`PASS`, `REVISE`, or `FAIL`). From the quoted request alone, state the smallest proportionate mechanism before reading the diff.
+   - **Quality & Requirements Satisfaction (`marsha`)**: Evaluates whether the work actually delivers on its stated requirements to an ambitious quality standard ("amazingly good", not merely working) across actual rendered multimodal outputs (never code alone or simulated renders), runtime execution, and primary sources against whatever specifications, requirements, or acceptance criteria are available (`PASS`, `REVISE`, or `FAIL`). **If no specifications, requirements, or acceptance criteria are available, treats that absence itself as an immediate critical failure signal (`FAIL`).**
 
 ## Input contract
 
@@ -66,25 +65,20 @@ The invoking workflow provides:
 
 A composite review workflow specifies its stages by contract expectations in order:
 
-1. **Supervisor proportionality and altitude calibration (`james`)**: Upfront assessment of task importance, blast radius, and reversibility to determine review depth, number of deliberation rounds, subagent model tier (`pro` vs `flash`/`flash_lite`), and target discussion altitude.
-2. **Strategic direction and congruence evaluation (`pauli`)**: An independent evaluation situating the artifact against parent strategic direction and testing congruence with existing PKB material (specifications, topic notes, prior art, parsimony, and lifecycle coherence), returning an explicit `FIT` or `MISFIT` verdict.
-3. **Compliance evaluation (`rbg`)**: An independent compliance evaluation testing mechanisms and published surface against universal axioms, project rules, and the enforcement pyramid without running test suites or probes, returning `APPROVE`, `SUGGEST`, `REVISE`, or `REJECT`.
-4. **Quality and requirement satisfaction evaluation (`marsha`)**: An independent evaluation testing substantive quality, runtime execution, and satisfaction of stated requirements against available specifications, requirements, and acceptance criteria, returning `PASS`, `REVISE`, or `FAIL` -- and returning `FAIL` immediately if no specifications, requirements, or criteria are available.
-5. **Dialectical deliberation, reconciliation, and write-back (`james`)**: Cross-examination across reviewers when warranted by stakes and tensions, synthesis of findings into a unified findings table and final verdict (`APPROVE`, `MINOR CHANGES`, `REVISE`, or `REJECT`), and persistent write-back to the artifact's tracking record. A review that returns `REJECT` or `REVISE` (`MISFIT` for strategic congruence) schedules the next step in the same handback: the reviewer files a subtask of the primary task (`parent: <primary-task-id>`, status `queued`) whose body names each required change from the verdict, and records that subtask's id on the review task.
-
-### Handback on a failing verdict
-
-A review that returns `REJECT` or `REVISE` (`MISFIT` for strategic congruence) schedules the next step in the same handback: the reviewer files a subtask of the primary task (`parent: <primary-task-id>`, status `queued`) whose body names each required change from the verdict, and records that subtask's id on the review task. `/reify` carries this obligation into each review task it mints.
+1. **Supervisor proportionality and altitude calibration (`james`)**: Upfront assessment of task importance, blast radius, and reversibility to determine review depth, number of deliberation rounds, subagent model selection (`pro` vs `flash`/`flash_lite`), and target discussion altitude.
+2. **Strategic direction and congruence evaluation (`pauli`)**: An independent evaluation questioning the core premise, situating the artifact against parent strategic direction, and testing congruence with existing PKB material (specifications, topic notes, prior art, parsimony, and lifecycle coherence), returning `PASS`, `REVISE`, or `FAIL`.
+3. **Compliance evaluation (`rbg`)**: An independent compliance evaluation testing mechanisms, scope of authority (_ultra vires_), and published surface against universal axioms, project rules, and the enforcement pyramid without running test suites or probes, returning `PASS`, `REVISE`, or `FAIL`.
+4. **Quality and requirement satisfaction evaluation (`marsha`)**: An independent evaluation testing whether the deliverable achieves ambitious quality across actual rendered multimodal outputs, runtime execution, and primary sources against available specifications, requirements, and acceptance criteria, returning `PASS`, `REVISE`, or `FAIL` -- and returning `FAIL` immediately if no specifications, requirements, or criteria are available.
+5. **Dialectical deliberation, reconciliation, and write-back (`james`)**: Critical evaluation of reviewer reports, cross-examination across reviewers when warranted by stakes and tensions, synthesis of findings into a unified findings table and final verdict (`PASS`, `REVISE`, or `FAIL`), and persistent write-back to the artifact's tracking record.
 
 ## Output contract
 
 A unified review report containing:
 
-- Supervisor calibration summary (proportionality tier, model selection, rounds, and altitude).
-- The itemized findings table mapping issues to reviewer components, feedback, and severities.
-- The reconciled overall verdict (`APPROVE`, `MINOR CHANGES`, `REVISE`, or `REJECT`).
+- Supervisor calibration summary (proportionality, model selection, rounds, and altitude).
+- The itemized findings table mapping issues to reviewer components, feedback, and dispositions.
+- The reconciled overall verdict (`PASS`, `REVISE`, or `FAIL`).
 - Persistent write-back to the artifact's task record or review surface.
-- On a failing verdict (`REJECT`, `REVISE`, or `MISFIT`), the queued subtask scheduled under the primary task (`parent: <primary-task-id>`, status `queued`) recorded on the review task.
 
 ## When to include
 
