@@ -233,7 +233,7 @@ def extract_block(text: str | None) -> str | None:
             i += 1
             continue
         fence = m.group("fence")
-        close = re.compile(rf"^\s*{re.escape(fence[0])}{{{len(fence)},}}\s*$")
+        close = re.compile(rf"^\s*{re.escape(fence[0])}{{{len(fence)},}}(?:\s*|</[^>]+>)*\s*$")
         body: list[str] = []
         j = i + 1
         while j < len(lines) and not close.match(lines[j]):
