@@ -9,6 +9,14 @@ export interface IdaCommandSpec extends TelegramBotCommand {
 }
 
 /**
+ * MAINTAINER NOTE:
+ * When an underlying skill is renamed (for instance in `plugins/ida/skills/`),
+ * remember to update the corresponding Telegram command names and skill mappings
+ * in this package (`PRIME_COMMANDS`, `STRATEGIC_COMMANDS`, and associated tests)
+ * to keep command menus and bare action dispatches congruent with skill definitions.
+ */
+
+/**
  * Commands consumed by the official Telegram plugin that must not be reused
  * for Ida's command menu (kb_ee859e3f).
  */
@@ -22,6 +30,9 @@ export const RESERVED_COMMANDS = ["start", "help", "status"] as const;
  * 4. /reconcile — Run wf-reconcile truth maintenance and update today's daily note.
  * 5. /hydrate — Fast disambiguation search over the PKB graph.
  * 6. /up — Step up a level on the last correction and fix the structural class.
+ * 7. /reify — Compose dispatchable tasks on the graph from an objective.
+ * 8. /dispatch — Start polecat workers on queued tasks already on the graph.
+ * 9. /daily — Update today's daily note and reply with a run-down on Telegram.
  */
 export const PRIME_COMMANDS: readonly IdaCommandSpec[] = [
   {
@@ -66,6 +77,27 @@ export const PRIME_COMMANDS: readonly IdaCommandSpec[] = [
     bareAction:
       "Invoke /ida:up on the user's last correction: identify the structural class, check why existing rules did not fire, and make the structural fix.",
   },
+  {
+    command: "reify",
+    description: "Compose dispatchable tasks on the graph from an objective",
+    skill: "ida:reify",
+    bareAction:
+      "Invoke /ida:reify: turn the active objective or task into complete dispatchable tasks on the graph.",
+  },
+  {
+    command: "dispatch",
+    description: "Start polecat workers on queued tasks already on the graph",
+    skill: "ida:dispatch",
+    bareAction:
+      "Invoke /ida:dispatch: start polecat workers on ready queued tasks on the graph.",
+  },
+  {
+    command: "daily",
+    description: "Update the daily note and reply with a run-down on Telegram",
+    skill: "ida:daily",
+    bareAction:
+      "Invoke /ida:daily: update today's daily note and reply with a scannable run-down of priorities, progress, and open decisions on Telegram.",
+  },
 ];
 
 /**
@@ -76,6 +108,12 @@ export const PRIME_COMMANDS: readonly IdaCommandSpec[] = [
  * 4. /q — Stage 1 intake and capture onto the strategic task graph.
  * 5. /hydrate — Disambiguate terms or hydrate context from the PKB.
  * 6. /up — Step up a level on the last correction and fix the class.
+ * 7. /plan — Facilitate strategic exploration and structure plans under uncertainty.
+ * 8. /strategic_review — Modular multi-agent dialectical review of an artifact.
+ * 9. /argument_map — Build a reviewable map of a text's argument in Argdown.
+ * 10. /reify — Compose dispatchable tasks on the graph from an objective.
+ * 11. /dispatch — Start polecat workers on queued tasks already on the graph.
+ * 12. /daily — Update today's daily note and reply with a run-down on Telegram.
  */
 export const STRATEGIC_COMMANDS: readonly IdaCommandSpec[] = [
   {
@@ -119,6 +157,48 @@ export const STRATEGIC_COMMANDS: readonly IdaCommandSpec[] = [
     skill: "ida:up",
     bareAction:
       "Invoke /ida:up on the user's last correction: identify the structural class, check why existing rules did not fire, and make the structural fix.",
+  },
+  {
+    command: "plan",
+    description: "Facilitate strategic exploration and structure plans under uncertainty",
+    skill: "ida:plan",
+    bareAction:
+      "Invoke /ida:plan: facilitate strategic exploration, structure hypotheses, and assess next steps under uncertainty.",
+  },
+  {
+    command: "strategic_review",
+    description: "Modular multi-agent dialectical review of an artifact",
+    skill: "ida:strategic-review",
+    bareAction:
+      "Invoke /ida:strategic-review: coordinate modular multi-agent review across compliance, quality, and strategic congruence.",
+  },
+  {
+    command: "argument_map",
+    description: "Build a reviewable map of a text's argument in Argdown",
+    skill: "ida:argument-map",
+    bareAction:
+      "Invoke /ida:argument-map: reconstruct the core argument as Chained Toulmin Argdown with every gap tagged.",
+  },
+  {
+    command: "reify",
+    description: "Compose dispatchable tasks on the graph from an objective",
+    skill: "ida:reify",
+    bareAction:
+      "Invoke /ida:reify: turn the active objective or task into complete dispatchable tasks on the graph.",
+  },
+  {
+    command: "dispatch",
+    description: "Start polecat workers on queued tasks already on the graph",
+    skill: "ida:dispatch",
+    bareAction:
+      "Invoke /ida:dispatch: start polecat workers on ready queued tasks on the graph.",
+  },
+  {
+    command: "daily",
+    description: "Update the daily note and reply with a run-down on Telegram",
+    skill: "ida:daily",
+    bareAction:
+      "Invoke /ida:daily: update today's daily note and reply with a scannable run-down of priorities, progress, and open decisions on Telegram.",
   },
 ];
 
@@ -186,12 +266,13 @@ export function resolveBotCommands(
 
 export function getBareCommandBehavior(rawCommand: string, persona?: string): IdaCommandSpec | undefined {
   const normalized = normalizeCommandName(rawCommand);
+  const normalizedUnderscore = normalized.replace(/-/g, "_");
   if (persona) {
     const personaList = PERSONA_COMMANDS[persona.trim().toLowerCase()];
     if (personaList) {
-      const match = personaList.find((c) => c.command === normalized);
+      const match = personaList.find((c) => c.command === normalized || c.command === normalizedUnderscore);
       if (match) return match;
     }
   }
-  return ALL_IDA_COMMANDS.find((c) => c.command === normalized);
+  return ALL_IDA_COMMANDS.find((c) => c.command === normalized || c.command === normalizedUnderscore);
 }
