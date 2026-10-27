@@ -1,6 +1,6 @@
 [project]
 name = "tools"
-version = "0.10.26+geafb50e2"
+version = "0.10.26+g57c46e12"
 description = "Domain research skills."
 requires-python = ">=3.11"
 dependencies = [
