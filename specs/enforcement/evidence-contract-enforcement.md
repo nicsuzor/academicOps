@@ -61,15 +61,17 @@ The report argument it reads is the skill's fenced `argdown` block: parser-valid
 - **REVISE and FAIL:** recorded with any reason.
 - **Records:** each verdict emits one `premise_check_verdict` span carrying the claim id, verification id, verdict, reason, the judged-text reference, one attribute per reason line, the ask ids, the weakest basis, the inference count, the defect tags and the no-claim flag.
 - **Fails closed:** when tracing is unconfigured or the span export fails, no verdict is recorded and the gate stays armed.
+- **Claims:** Before task release, `/dump` exports the report's `argdown` claims to the OpenTelemetry / Phoenix span collector as claims to be verified, emitting a `premise_check_claim` span carrying the claim id, status `to_be_verified`, ask ids, inference count, premise count, weakest basis, and argdown block text and sha256 hash.
 
 ## Telemetry
 
-Three measures are queryable in Phoenix from the verdict span attributes; the fourth, override count, has no span while override counting is bypassed:
+Three measures are queryable in Phoenix from the verdict span attributes; the fourth, override count, has no span while override counting is bypassed; and the fifth measures filed claims:
 
 1. Defect-tag rate per inference line: sum of `premise_check.defect_tag_count` over sum of `premise_check.inference_count`, on `premise_check_verdict` spans.
 2. Strength distribution: count of `premise_check_verdict` spans by `premise_check.verdict` and `premise_check.weakest_basis_term`.
 3. The contents of `Waived`: count of each entry of the `premise_check.waived_items` array.
 4. Override count: count of `premise_check_override` spans by `premise_check.override_var` and `premise_check.override_tool`, once the span is enabled.
+5. Filed claims: count of `premise_check_claim` spans by `premise_check.status` and `premise_check.weakest_basis_term`.
 
 Each is one SQL query over the project's spans, for example measure 1:
 

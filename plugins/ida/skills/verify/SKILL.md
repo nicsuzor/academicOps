@@ -51,20 +51,20 @@ Any change touching a container image or Dockerfile requires:
 
 ## 6. Output Format
 
-Emit the report using `/dump`'s handback envelope and record it on the task record. VERDICT is your judgement of the artifact, in the verdict vocabulary `premise-check` uses; STATUS is the release status of your own task.
+Emit the report using `/dump`'s handback envelope and record it on the task record. Record VERDICT and verification ID under `## Premise-Check Verdict` on the task record; print the concise summary as the final trailing line of the session.
 
 ```markdown
 ## Handover: <agent> <session-id>
 
 1. **Task**: Task id, title, verified target and bar (`mechanical | fitness | mixed`).
-2. **Summary**: Findings, forcing checks (0–3), and remediations for `FAIL`/`REVISE`.
-3. **Verdict & Safeguards**:
-   - VERDICT: <PASS | REVISE | FAIL>
-   - STATUS: <release status: done | partial | review | failed | cancelled | in_progress>
-   - GATE: <acceptance criterion id tested and observed result>
-   - CONFIDENCE: <high | med | low> + <what single check would falsify this>
-   - CONFOUND CHECK: <clean-room/differential control result, or "NOT RUN">
-4. **Output**: <branch + commit SHA> | <PR or artifact link>
-5. **Argument**: The `argdown` block recorded under the task's `## Report`, asked by the task's ask ids.
-6. **Limitations**: Unresolved items, out-of-scope elements, and verbatim error outputs.
+2. **Output**: <branch + commit SHA> | <PR or artifact link>
+3. **Pointers**: Task `## Report` / filed claim ID, verification reference, or artifact paths.
+4. **Limitations**: Unresolved items, out-of-scope elements, and verbatim error outputs.
+5. **Next**: Clear instructions for successor agent.
+```
+
+Trailing session line:
+
+```markdown
+Summary: <1-line concise summary of findings, verdict, and release status>
 ```
