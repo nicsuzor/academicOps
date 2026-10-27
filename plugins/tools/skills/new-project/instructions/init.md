@@ -33,7 +33,9 @@ Generate the following core files using minimal project templates:
   Omit `"agent"` for non-research tool/library repos.
 - **`README.md`**: Title, description, status badge, architecture, setup steps (`uv sync`, `pre-commit install`), directory tree, and team.
 - **`.gitignore`**: Ignore `.claude/settings.local.json`, `.academicOps/`, standard Python caches (`.venv/`, `__pycache__/`), secrets, OS files, and selected tool artifacts (`data/raw/`, `*.parquet`, `*.duckdb`, `_site/`, `_freeze/`, `target/`, `dbt_packages/`, `mlruns/`).
-- **`.pre-commit-config.yaml`**: Standard hooks from `pre-commit-hooks` (trailing-whitespace, end-of-file-fixer, check-yaml, `check-added-large-files` with `--maxkb=500`), `ruff-pre-commit` (ruff `--fix`, ruff-format `--check`), and `nbstripout` if notebooks are used.
+- **`.pre-commit-config.yaml`**: Standard hooks from `pre-commit-hooks` (trailing-whitespace, end-of-file-fixer, check-yaml, `check-added-large-files` with `--maxkb=500`), `markdownlint-cli2` (`args: [--fix]`), `dprint` (`dprint fmt`), `ruff-pre-commit` (ruff `--fix`, ruff-format `--check`), and `nbstripout` if notebooks are used.
+- **`.markdownlint-cli2.jsonc`**: Standard markdownlint configuration (disabling layout rules delegated to dprint, enforcing semantic heading/link checks, and banning horizontal rules) paired with `.markdownlint-rules/no-horizontal-rules.js`.
+- **`.markdownlint-rules/no-horizontal-rules.js`**: Custom markdownlint rule (H39) banning horizontal dividers in favor of headings.
 - **`pyproject.toml`**: Minimal PEP 621 config with `requires-python = ">=3.11"`, `[tool.ruff]` (target-version "py311", line-length 120, lint select `["E", "F", "I", "UP"]`), `[tool.pytest.ini_options]` (`testpaths = ["tests"]`), and selected project dependencies.
 
 ## Step 3: Documentation stubs
@@ -68,19 +70,13 @@ Create `.agents/INDEX.md` listing `README.md`, `.agents/CORE.md`, `docs/METHODOL
 
 ## Step 7: PKB integration
 
-Check for existing node, then create, via the `services` MCP server's code-mode interface (`portal_codemode_execute`; in agy via `call_mcp_tool` with `ServerName: "services"`, in Claude Code via `mcp__services__portal_codemode_execute`):
+Check for an existing project node via PKB search (`<title or slug>`). If a matching project node exists, halt and prompt the user. Otherwise, create a new project node:
 
-```javascript
-const results = await codemode.pkb_search({ query: "<title or slug>", limit: 10 });
-// If matching project node exists, halt and prompt user. Else:
-await codemode.pkb_create_task({
-  title: "Project: <title>",
-  type: "project",
-  body: "<description>",
-  tags: ["project-<slug>"],
-  parent: "<goal_id>" // if specified
-});
-```
+- `title`: "Project: <title>"
+- `type`: "project"
+- `body`: "<description>"
+- `tags`: ["project-<slug>"]
+- `parent`: "<goal_id>" (if specified)
 
 ## Step 8: Git & project registration
 
