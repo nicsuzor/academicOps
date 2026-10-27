@@ -2060,3 +2060,46 @@ def test_gate_argument_block_reading_finds_block_when_closing_fence_glued_to_res
     )
     assert res is not None
     assert "no argument block supplied" not in res.inject_text
+
+
+def test_issue_3181_verdict_pass_on_glued_task_notification_succeeds():
+    """Issue #3181: Coordinator records PASS on a <task-notification> with glued ```</result>."""
+    session_id = "sess-issue-3181"
+    report_text, reason_tmpl = _valid_report_argdown("ida/1")
+    glued_prompt = (
+        "<task-notification>\n"
+        "<task-id>task-3181</task-id>\n"
+        f"<result>{report_text}</result>\n"
+        "</task-notification>"
+    )
+    ctx = _prompt_ctx(session_id, glued_prompt)
+    res = pcg.premise_check_arm(ctx)
+    assert res is not None
+    assert pcg.is_armed(session_id) is True
+    claim_id = pcg.get_state(session_id)["claim_id"]
+
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    verdict_res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=claim_id,
+        verdict="PASS",
+        reason=reason_tmpl.format(claim_id=claim_id),
+        tracer_mod=tracer,
+    )
+    assert verdict_res["ok"] is True
+    assert pcg.is_armed(session_id) is False
+
+
+def test_issue_3182_task_notification_unwraps_result_in_judged_text():
+    """Issue #3182: Gate unwraps <result> body from <task-notification> as judged text."""
+    session_id = "sess-issue-3182"
+    ctx = _prompt_ctx(session_id, _GLUED_RESULT_EXAMPLE)
+    res = pcg.premise_check_arm(ctx)
+    assert res is not None
+    claim_id = pcg.get_state(session_id)["claim_id"]
+    judged_text, _ = pcg.get_judged(session_id, claim_id)
+    assert judged_text is not None
+    assert not judged_text.startswith("<task-notification")
+    assert "<usage>" not in judged_text
+    assert "<task-id>" not in judged_text
+    assert judged_text.startswith("I dispatched the fix to a worker.")
