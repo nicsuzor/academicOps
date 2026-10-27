@@ -25,16 +25,17 @@ the session that made it and a clear answer from an agent, without it taking
 forever or costing a leg, so that I can understand and audit what an agent did
 and why.
 
-- **AC-1.1** Given a full session id, a session slug, or a trace id, when the
+- **AC-1.1** Given a full session ID / conversation ID, a session slug, or a trace id, when the
   question is asked, then the agent resolves it to the owning session and
   fetches that session's spans from the trace store in one paged request
   sequence filtered on `session.id`, with no per-span or per-turn queries.
 - **AC-1.2** Given a session's spans, when the transcript is assembled, then it
-  is a single markdown file with a table of contents linking to one header per
-  turn, and within each turn, in order, the incoming prompt, each model call,
-  each tool call, and the final reply. Prompts, tool inputs and outputs, and
-  model context are placed in folded `<details>` sections, and no content is
-  truncated.
+  generates two files: the full markdown transcript (`<slug>.transcript.md`) with a table
+  of contents linking to one header per turn, and a condensed outline (`<slug>.outline.md`)
+  beside it. Within each turn, in order, the incoming prompt, each model call, each tool
+  call, and the final reply. Prompts, tool inputs and outputs, and model context are placed
+  in folded `<details>` sections, and no content is truncated. Both files are persisted
+  to durable storage.
 - **AC-1.3** Given the transcript, when it is read, then every turn, model call
   and tool call shows its wall-clock duration; every model call shows its model,
   fresh input, cache read, cache write and output tokens and its estimated cost;
@@ -94,7 +95,8 @@ another way (for instance through an MCP proxy) can be rendered offline.
   Assistant text comes from `output.value`, `llm.output_messages` or
   `response.model_output`; the context the call received is folded.
 - **Subagents** sharing the session are labelled from `agent.name` / `agent.id`
-  where an emitter sets them.
+  where an emitter sets them; subagents running in distinct sessions (such as `agy`
+  subagents) are correlated via prompt matching and dispatch spans.
 
 ### Metrics
 

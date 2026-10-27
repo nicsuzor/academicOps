@@ -666,10 +666,35 @@ def test_search_the_pkb_sends_one_post_with_headers(http_mcp_server, monkeypatch
     assert req["json"]["params"]["name"] == "pkb_search"
     args = req["json"]["params"]["arguments"]
     assert args["query"] == "what are the axioms?"
+    assert args["limit"] == 5
+    assert args["detail"] == "snippet"
     assert "_session" in args
+    assert args["session_id"] == "s123" if "session_id" in args else True
     assert args["_session"]["session_id"] == "s123"
     assert args["_session"]["caller"] == "hook"
     assert args["_session"]["surface"] == "claude-code"
+
+
+def test_search_the_pkb_passes_limit_and_detail_defaults(http_mcp_server, monkeypatch, tmp_path):
+    """AC-1.9: arguments carries limit: 5 and detail: 'snippet' by default to prevent truncation."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("PKB_MCP_URL", http_mcp_server.url)
+
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        session_id="s789",
+        raw={"prompt": "check pkb search default limit and detail"},
+        hooks_dir=PKB_HOOKS,
+        agent_type="ida:ida",
+    )
+    res = handlers.search_the_pkb(ctx)
+    assert res is not None
+    assert len(http_mcp_server.requests) == 1
+    args = http_mcp_server.requests[0]["json"]["params"]["arguments"]
+    assert args["limit"] == 5
+    assert args["detail"] == "snippet"
+    assert args["query"] == "check pkb search default limit and detail"
 
 
 def test_search_the_pkb_tool_prefix_env_override(http_mcp_server, monkeypatch, tmp_path):

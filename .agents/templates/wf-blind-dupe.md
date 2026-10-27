@@ -42,7 +42,7 @@ flowchart TD
 
 ### Step 1: Formulate Evaluation Query & Target Scope
 
-- Identify the target session ID/slug (`<session_id>`).
+- Identify the target session ID / conversation ID or slug (`<session_id>`).
 - Define the specific metric/question to evaluate (e.g., _"What PKB notes and tasks were added or updated in session `<session_id>`?"_).
 
 ### Step 2: Dispatch Contextless Subagent

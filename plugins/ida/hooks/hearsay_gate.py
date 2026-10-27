@@ -760,19 +760,26 @@ def _extract_judged_text(prompt: str) -> str:
         stripped,
         re.DOTALL,
     )
-    if match and match.group(1) == "teammate-message":
-        inner = match.group(3).strip()
-        if inner.startswith("{") and inner.endswith("}"):
-            try:
-                data = json.loads(inner)
-                if (
-                    isinstance(data, dict)
-                    and data.get("type") == "idle_notification"
-                    and "result" in data
-                ):
-                    return str(data["result"])
-            except (json.JSONDecodeError, TypeError, ValueError):
-                pass
+    if match:
+        tag = match.group(1)
+        if tag == "teammate-message":
+            inner = match.group(3).strip()
+            if inner.startswith("{") and inner.endswith("}"):
+                try:
+                    data = json.loads(inner)
+                    if (
+                        isinstance(data, dict)
+                        and data.get("type") == "idle_notification"
+                        and "result" in data
+                    ):
+                        return str(data["result"])
+                except (json.JSONDecodeError, TypeError, ValueError):
+                    pass
+        elif tag == "task-notification":
+            inner = match.group(3)
+            result_match = _NOTIFICATION_RESULT.search(inner)
+            if result_match:
+                return result_match.group(1).strip()
     return prompt
 
 

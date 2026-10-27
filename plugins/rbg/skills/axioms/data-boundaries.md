@@ -12,7 +12,7 @@ For a public framework repository, published text excludes:
 - The user's project, repository, and host names
 - Private domains
 - Deployment-only agent names
-- PKB note, task, and session IDs (e.g. `aops_...`, `task-...`, `mem_...`, or `Task:` / `Claude-Session:` trailers)
+- PKB note, task, and session / conversation IDs (e.g. `aops_...`, `task-...`, `mem_...`, or `Task:` / `Claude-Session:` trailers)
 - Live telemetry endpoints, traces, and metrics
 
 Before transmitting information across trust boundaries, check ALL are true:

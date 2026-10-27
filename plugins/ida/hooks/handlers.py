@@ -84,6 +84,8 @@ _SEARCH_TIMEOUT_SECONDS = 5
 _MAX_INJECT_CHARS = 8000
 _TRUNCATION_MARKER = "\n[...truncated, output exceeded injection budget...]"
 _MAX_QUERY_CHARS = 8192
+_DEFAULT_SEARCH_LIMIT = 5
+_DEFAULT_SEARCH_DETAIL = "snippet"
 
 _PEER_PREAMBLE = re.compile(
     r"^(?:Another Claude session sent a message:\s*)+",
@@ -410,6 +412,8 @@ def _post_mcp_search(
     prompt_id: str | None = None,
     agent_id: str | None = None,
     surface: str | None = None,
+    limit: int = _DEFAULT_SEARCH_LIMIT,
+    detail: str = _DEFAULT_SEARCH_DETAIL,
 ) -> str | None:
     """Search the PKB over a single streamable-HTTP POST to PKB_MCP_URL."""
     sess_id = session_id if session_id is not None else (os.environ.get("AOPS_SESSION_ID") or "")
@@ -473,6 +477,8 @@ def _post_mcp_search(
             "name": tool_name,
             "arguments": {
                 "query": query,
+                "limit": limit,
+                "detail": detail,
                 "_session": session_payload,
             },
         },
@@ -567,6 +573,8 @@ def _run_pkb_search(
     prompt_id: str | None = None,
     agent_id: str | None = None,
     surface: str | None = None,
+    limit: int | None = None,
+    detail: str | None = None,
 ) -> str | None:
     query = extract_prompt_query(prompt)[:_MAX_QUERY_CHARS]
     if not query:
@@ -589,6 +597,10 @@ def _run_pkb_search(
         kwargs["agent_id"] = agent_id
     if surface is not None:
         kwargs["surface"] = surface
+    if limit is not None:
+        kwargs["limit"] = limit
+    if detail is not None:
+        kwargs["detail"] = detail
 
     if kwargs:
         return _post_mcp_search(mcp_url, query, headers, **kwargs)
@@ -899,6 +911,7 @@ def _prepare_tracer_data(ctx: HookContext) -> dict[str, Any]:
     data = dict(ctx.raw)
     if ctx.session_id:
         data.setdefault("session_id", ctx.session_id)
+        data.setdefault("conversationId", ctx.session_id)
     if ctx.cwd:
         data.setdefault("cwd", ctx.cwd)
     if ctx.agent_type:

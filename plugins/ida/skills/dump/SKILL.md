@@ -50,7 +50,7 @@ If the release tool is unavailable, record the failure trace and list claimed ta
 Compile the overall session outcome:
 
 ```markdown
-## Handover: <agent> <session-id>
+## Handover: <agent> <session-id / conversation-id>
 
 1. **Task**: Task id and title.
 2. **Summary**: Concise synthesis of findings and modifications.

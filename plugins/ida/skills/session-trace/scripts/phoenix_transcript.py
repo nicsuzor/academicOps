@@ -40,7 +40,7 @@ Configuration is flags or environment only: ``--base-url`` or ``$PHOENIX_MCP_URL
 
 Examples::
 
-    uv run python phoenix_transcript.py <slug> --out /tmp/<slug>.transcript.md
+    uv run python phoenix_transcript.py <slug> --out ./<slug>.transcript.md --sanitize-paths
     uv run python phoenix_transcript.py <session-uuid>
     uv run python phoenix_transcript.py <32-hex-trace-id>
     uv run python phoenix_transcript.py <slug> --from-file spans.json
@@ -194,7 +194,7 @@ def fetch_session_spans(base_url: str, project: str, session_id: str) -> tuple[l
 
 
 def resolve_session_id(base_url: str, project: str, ident: str) -> str:
-    """A full session id from a full id, a slug (id prefix), or a 32-hex trace id."""
+    """A full session ID / conversation ID from a full ID, a slug (ID prefix), or a 32-hex trace ID."""
     if UUID_RE.match(ident):
         return ident
     if TRACE_ID_RE.match(ident):
@@ -1200,6 +1200,25 @@ def render_body(turns: list[Turn], full: bool) -> list[str]:
     return body
 
 
+# --- path sanitization -------------------------------------------------------
+
+HOST_PATH_PATTERNS = [
+    (re.compile(r"/(?:home|Users)/[a-zA-Z0-9._-]+"), "~"),
+    (re.compile(r"[a-zA-Z]:(?:\\{1,2}|/)(?:Users|users)(?:\\{1,2}|/)[a-zA-Z0-9._-]+"), "~"),
+    (re.compile(r"/tmp/claude-[0-9]+-[^/\s\"'`]+"), "/tmp/claude-session"),
+]
+
+
+def sanitize_paths(text: str) -> str:
+    """Sanitize literal host filesystem paths to avoid host-path rejection guards when saving to PKB."""
+    for pattern, replacement in HOST_PATH_PATTERNS:
+        text = pattern.sub(replacement, text)
+    home = os.environ.get("HOME")
+    if home and len(home) > 1 and home != "/":
+        text = text.replace(home, "~")
+    return text
+
+
 # --- CLI ---------------------------------------------------------------------
 
 
@@ -1208,7 +1227,9 @@ def build_parser() -> argparse.ArgumentParser:
         prog="phoenix_transcript.py",
         description="Render a session's Phoenix spans as a markdown transcript with durations, tokens and costs.",
     )
-    parser.add_argument("ident", help="session id, session slug (id prefix), or 32-hex trace id")
+    parser.add_argument(
+        "ident", help="session ID / conversation ID, session slug (ID prefix), or 32-hex trace ID"
+    )
     parser.add_argument("--base-url", help=f"Phoenix base URL (else ${BASE_URL_ENV_VAR})")
     parser.add_argument("--project", help=f"Phoenix project name (else ${PROJECT_ENV_VAR})")
     parser.add_argument(
@@ -1220,6 +1241,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--out",
         help="transcript path (default ./<session-slug>.transcript.md); the outline is written beside it",
+    )
+    parser.add_argument(
+        "--sanitize-paths",
+        action="store_true",
+        help="sanitize literal host filesystem paths (e.g. /home/*, /Users/*) for durable PKB persistence",
     )
     return parser
 
@@ -1259,6 +1285,9 @@ def run(args: argparse.Namespace) -> int:
     spans.sort(key=start_of)
     turns = assemble(spans, session_id, prices)
     text, outline, summary = render(turns, session_id, project, spans, prices)
+    if getattr(args, "sanitize_paths", False):
+        text = sanitize_paths(text)
+        outline = sanitize_paths(outline)
     out = (
         Path(args.out).expanduser() if args.out else Path.cwd() / f"{session_id[:8]}.transcript.md"
     )

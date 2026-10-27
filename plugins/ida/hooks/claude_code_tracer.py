@@ -474,7 +474,12 @@ def resolve_session_id(
     span emission and log a warning naming the missing field rather than
     proceeding with a magic string.
     """
-    payload_value = data.get(payload_key)
+    payload_value = (
+        data.get(payload_key)
+        or data.get("session_id")
+        or data.get("conversationId")
+        or data.get("conversation_id")
+    )
     env_value = os.environ.get("AOPS_SESSION_ID")
     if prefer_env:
         if env_value:
