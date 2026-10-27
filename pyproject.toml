@@ -1,6 +1,6 @@
 [project]
 name = "academicops"
-version = "0.10.25"
+version = "0.10.26"
 description = "A principled, integrated approach to operationalising what academic integrity requires in a distributed, AI-assisted workflow"
 requires-python = ">=3.11"
 dependencies = [
