@@ -7,6 +7,10 @@ description: Diagnose systemic root causes of errors from session logs and file 
 
 Perform root-cause analysis on systemic failure classes using session execution records. Diagnose observable failure mechanisms from OpenTelemetry spans (or session logs where the surface does not emit traces) and file an issue or evidence-bump comment at the responsible layer; do not inspect source code or propose fixes directly.
 
+## Worker
+
+Dispatch `/learn` to **`pauli`** (`TypeName: "pauli"`), never `james`. Pauli operates strictly from session execution records (`ida:session-trace`) and the PKB graph without searching or reading repository source code.
+
 ## Protocol
 
 1. **Retrieve session execution record**:

@@ -9,7 +9,7 @@ Present open decisions drawn strictly from today's daily note one at a time. The
 
 ## 1. Read Decisions from Today's Daily Note
 
-Read the `## With you` section of today's daily note (PKB note `YYYYMMDD-daily`) via the `services` MCP PKB interface (`pkb_get_document`).
+Read the `## With you` section of today's daily note (PKB note `YYYYMMDD-daily`).
 
 - Read only the `## With you` section. Do not harvest directly from mailboxes, GitHub PRs, or whole-graph task sweeps (reconcile and daily note passes have already filtered and placed items needing the user).
 - Each entry under `## With you` represents an item that has reached the user under the one-level escalation rule.
@@ -37,6 +37,6 @@ Hold the ordered list in memory and present exactly one card per turn.
 
 On each answer from the user:
 
-1. **Record on the item**: Immediately write the user's decision to the item's record (e.g. update the task markdown body with the timestamped decision, update frontmatter or call `pkb_release_task` / `pkb_update_task`, or note the resolution).
+1. **Record on the item**: Immediately write the user's decision to the item's record (e.g. update the task markdown body with the timestamped decision, update frontmatter or release the task, or note the resolution).
 2. **Advance**: Immediately output the next card (`Decision N+1 of M`) with no intermediate chatter.
 3. **Wrap-up**: After the final card (`Decision M of M`), provide a concise one-line receipt summarizing the recorded decisions and updated tasks.

@@ -44,7 +44,7 @@ Then assemble the steps:
 - Make each task as big as possible within those cuts.
 - Write each follow-up the workflow calls for as its own task. Never fold a follow-up into the primary task or into another follow-up.
 - Wire `needs` edges only where one unit genuinely requires another's output.
-- Mint multi-task cuts using `pkb.decompose_task`.
+- Mint multi-task cuts using task decomposition.
 - Write tasks with status `queued` immediately.
 - Close every task with an appendix section listing the workflow templates and skills it was composed from.
 
