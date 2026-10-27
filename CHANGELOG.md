@@ -175,6 +175,7 @@
 - **instructions:** keep mechanism in summary briefs and test premise check against ask needs ([68104ca](https://github.com/nicsuzor/academicOps/commit/68104caca25106feaf6a9c7e87d2a17ef176efb3))
 - **observability:** route /session-trace through MCP proxy & emit full aops-debug OTel traces ([f0d8669](https://github.com/nicsuzor/academicOps/commit/f0d86691b6f67418b2e08db9faa76388a76547e2))
 - **observability:** route session-trace through MCP proxy and emit full aops-debug OTel traces ([42f451b](https://github.com/nicsuzor/academicOps/commit/42f451bdbd9a78e09855009d5e4efda3ea073b72))
+- **release:** restore clean plugins tree on main and isolate built distributions ([638d8aa](https://github.com/nicsuzor/academicOps/commit/638d8aa9ca24486507c8a9414199fab3819b636d))
 - **research-pipeline:** fail fast in parquet export and scrub private repo references ([21ab6fd](https://github.com/nicsuzor/academicOps/commit/21ab6fdac02e46b3d5c185c174dd2b5ec0f80f8b))
 - **research-pipeline:** fail fast in parquet export and scrub private repo references ([6ef12a3](https://github.com/nicsuzor/academicOps/commit/6ef12a3911ccc0bcc11066f1c9bed1a3521e2569))
 - **review:** address rule-compliance and alignment review findings ([757370e](https://github.com/nicsuzor/academicOps/commit/757370e0dc0c7c58a0e662549304a91909dd1e65))
@@ -244,6 +245,12 @@
 
 - **axioms:** drop reference clause from single-source-of-truth axiom ([931d4e6](https://github.com/nicsuzor/academicOps/commit/931d4e6c7f7cf6c4a2f7f19d3ab6e5ec4b0976b9))
 - **axioms:** drop reference clause from single-source-of-truth axiom ([5fcbd0a](https://github.com/nicsuzor/academicOps/commit/5fcbd0a3ed6be79aabb6a5aa9517ed95d8f4110f))
+- publish v0.10.25+g638d8aa9 distribution to main [skip ci] ([4e58059](https://github.com/nicsuzor/academicOps/commit/4e58059e1fdd526b7af4d8379c99ebafc6d036ab))
+- publish v0.10.25+gd82333aa distribution to main [skip ci] ([b889379](https://github.com/nicsuzor/academicOps/commit/b889379a07528634a9d0dbf341f7e7b1fd33ec9f))
+- **release/v1.0-rc0:** release 0.10.26 ([eafb50e](https://github.com/nicsuzor/academicOps/commit/eafb50e2a590a528909e342fb24099b0cc9e3b0d))
+- **release/v1.0-rc0:** release 0.10.26 ([be3a1a8](https://github.com/nicsuzor/academicOps/commit/be3a1a8867d35f6acee656039aca04585ba84b0e))
+- **release:** merge release/v1.0-rc0 into main ([d82333a](https://github.com/nicsuzor/academicOps/commit/d82333aa0e429cadfe9ff150b346319b8cf3add6))
+- update uv.lock for release ([121e060](https://github.com/nicsuzor/academicOps/commit/121e060e3d20b2ab369fd2facfafba4265fcf2a0))
 
 ## [0.10.25](https://github.com/nicsuzor/academicOps/compare/v0.10.24...v0.10.25) (2026-10-20)
 
