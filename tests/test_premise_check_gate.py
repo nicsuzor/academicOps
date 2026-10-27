@@ -2007,3 +2007,56 @@ def test_teammate_message_send_message_arms_gate_and_records_verdict_for_non_def
     assert verdict_res["ok"] is True
     assert verdict_res["verification_id"].startswith("verdict-")
     assert pcg.is_armed(session_id) is False
+
+
+_GLUED_RESULT_EXAMPLE = (
+    "<task-notification>\n"
+    "<task-id>a0000000000000001</task-id>\n"
+    "<output-file>/tmp/example/tasks/a0000000000000001.output</output-file>\n"
+    "<status>completed</status>\n"
+    '<summary>Agent "Dispatch example fix" finished</summary>\n'
+    "<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>\n"
+    "<result>I dispatched the fix to a worker. It is still running, so there is no PR yet.\n\n"
+    '- **Task:** `task_0001`, "Example task title". It is at `queued`.\n'
+    "- **Worker:** container `worker-task_0001-20260101`. The launch call returned no error.\n\n"
+    "I compared the task's Goal and Acceptance with the user's message `msg-001`. Nothing is missing, and nothing was added.\n\n"
+    "```argdown\n"
+    "===\n"
+    "asks:\n"
+    "  ida/1: What was dispatched, with task id and worker or PR link.\n"
+    "answers:\n"
+    "  ida/1: 4\n"
+    "notes:\n"
+    "  a: get_task task_0001\n"
+    "  b: run_container result\n"
+    "===\n\n"
+    "(1) The task task_0001, status queued, says what the user asked in msg-001: the requested change, PR into the release branch. -- I read the record ^a\n"
+    "-- A queued task whose Goal and Acceptance say what the ask says is a faithful, ready task. Unless: the body leaves out or adds meaning; ruled out by reading it against msg-001. --\n"
+    "(2) So the task is ready to dispatch.\n"
+    '(3) The run_container call for container polecat-agy-task_0001-20261027 returned no error, with state "created". -- I made the call ^b\n'
+    '-- A run call that returns no error launches the worker. Unless: the container never left "created"; not ruled out, since I did not read its status. --\n'
+    "(4) So task_0001 was dispatched to that container; the PR link follows when it completes.\n"
+    "```</result>\n"
+    "<usage><subagent_tokens>50000</subagent_tokens><tool_uses>9</tool_uses><duration_ms>100000</duration_ms></usage>\n"
+    "</task-notification>\n"
+)
+
+
+def test_gate_argument_block_reading_finds_block_when_closing_fence_glued_to_result():
+    """AC1/AC2: Feeds the task notification example with glued ```</result> closing fence.
+
+    The gate's argument-block reading must find the argdown block rather than
+    wrongly concluding that no argument block was supplied.
+    """
+    # 1. Direct argument-block reader:
+    block = ra.extract_block(_GLUED_RESULT_EXAMPLE)
+
+    # 2. Gate arm handler reading:
+    ctx = _prompt_ctx("sess-glued-result", _GLUED_RESULT_EXAMPLE)
+    res = pcg.premise_check_arm(ctx)
+
+    assert block is not None, (
+        f"exposes wrong 'no argument block' result from gate: {res.inject_text if res else ''}"
+    )
+    assert res is not None
+    assert "no argument block supplied" not in res.inject_text
