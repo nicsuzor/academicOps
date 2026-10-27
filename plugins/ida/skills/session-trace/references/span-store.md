@@ -28,26 +28,33 @@ then pivot every subsequent query onto `session.id`
 (`attributes->>'session.id'` / `JSON_EXTRACT(attributes, '$.session.id')`).
 
 Every span and turn-trace belonging to a session carries a consistent
-`session.id`, across both harnesses (`claude` and `agy`) and across subagent
-activity. That does **not** guarantee nested parent/child span structure, and it does not give
-per-agent attribution: a subagent shares the dispatching session's
-`session.id` by design, with no attribute marking which agent produced a
-given span.
+`session.id`. Subagent session behavior differs by harness:
+
+- In `claude` (Claude Code), in-process subagents and teammates may share the dispatching
+  session's `session.id`, with no attribute marking which agent produced a given span.
+  Detached or background workers execute in their own sessions.
+- In `agy` (Antigravity), `invoke_subagent` dispatches each subagent with its own distinct
+  `session.id` (matching `conversationId` in the tool output and `sender=<uuid>` in
+  `<SYSTEM_MESSAGE>`).
+- When subagents run under their own `session.id`s, child sessions do not carry parent
+  pointers in their span attributes; correlate them using Recipe F (prompt matching, timestamp proximity).
 
 ## `turn_number` is not a reliable turn counter
 
 `turn_number` (and `arthur.turn_number`) is scoped per tracer-state file and
-resets at that file's init, so every subagent has its own counter sharing the
-parent's `session.id` -- the numbers overlap and repeat within one exported
-session. In practice it has been observed to take only the values 1 or 2: a
-hook-ordering artifact, not a genuine per-turn counter. Never
+resets at that file's init, so when subagents share the parent's `session.id` (in `claude`),
+the numbers overlap and repeat within one exported session. In practice it has been observed
+to take only the values 1 or 2: a hook-ordering artifact, not a genuine per-turn counter. Never
 sort or discriminate on it. Sort by `start_time` for session-wide chronology.
 
-## A `teammate_spawned` span's duration is not the worker's runtime
+## Dispatch span durations are not the worker's runtime
 
-A named-teammate dispatch's `AGENT` span closes in ~150–250 ms, on the spawn
-acknowledgement, and has no OTel-visible close event tied to the teammate's
-actual work. Never read its `duration_ms` as how long the spawned worker ran.
+- In `claude`, a named-teammate dispatch's `AGENT` span (`teammate_spawned`) closes in
+  ~150–250 ms, on the spawn acknowledgement, and has no OTel-visible close event tied to
+  the teammate's actual work.
+- In `agy`, an `invoke_subagent` tool span's duration reflects dispatch / turn latency.
+  Detached workers and background tasks finish independently.
+- Never read a dispatch span's `duration_ms` as how long the spawned worker ran.
 
 ## Timestamps need an offset
 
