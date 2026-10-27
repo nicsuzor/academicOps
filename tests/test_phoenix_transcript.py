@@ -385,3 +385,63 @@ def test_get_json_routes_through_services_mcp_proxy(monkeypatch):
         call_payload["params"]["arguments"]["code"]
         == 'return await call_tool("getSpans", {"project_identifier": "academicOps", "limit": 500, "attribute": ["session.id:sess-42"]})'
     )
+
+
+def test_sanitize_paths(monkeypatch):
+    monkeypatch.setenv("HOME", "/home/testuser")
+    raw = (
+        '{"path": "/home/testuser/project/file.py", '
+        '"other": "/Users/developer/code/script.sh", '
+        '"win": "C:\\\\Users\\\\alice\\\\data.txt", '
+        '"tmp": "/tmp/claude-1000-xyz123/scratchpad"}'
+    )
+    sanitized = pt.sanitize_paths(raw)
+    assert "/home/testuser" not in sanitized
+    assert "/Users/developer" not in sanitized
+    assert "C:\\\\Users\\\\alice" not in sanitized
+    assert "/tmp/claude-1000-xyz123" not in sanitized
+    assert "~/project/file.py" in sanitized
+    assert "~/code/script.sh" in sanitized
+    assert "~\\\\data.txt" in sanitized
+    assert "/tmp/claude-session/scratchpad" in sanitized
+
+
+def test_transcript_and_outline_with_sanitize_paths(tmp_path):
+    spans_data = [
+        span(
+            "t1",
+            "Bash",
+            "TOOL",
+            1,
+            2,
+            **{
+                "tool.call_id": "toolu_1",
+                "tool.name": "Bash",
+                "input.value": json.dumps({"command": "ls /home/nic/academicOps"}),
+                "output.value": "/home/nic/academicOps/README.md",
+            },
+        ),
+        span("i1", "interaction", "AGENT", 0.5, 2.5, user_prompt="Check /home/nic/academicOps"),
+    ]
+    spans_file = tmp_path / "spans.json"
+    spans_file.write_text(json.dumps({"data": spans_data}))
+    out = tmp_path / "sanitized.transcript.md"
+    assert (
+        pt.main(
+            [
+                SESSION[:8],
+                "--from-file",
+                str(spans_file),
+                "--out",
+                str(out),
+                "--sanitize-paths",
+            ]
+        )
+        == 0
+    )
+    transcript = out.read_text()
+    outline = (tmp_path / "sanitized.outline.md").read_text()
+    assert "/home/nic" not in transcript
+    assert "~/academicOps" in transcript
+    assert "/home/nic" not in outline
+    assert "~/academicOps" in outline
