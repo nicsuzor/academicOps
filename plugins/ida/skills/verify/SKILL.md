@@ -7,13 +7,15 @@ description: Judgement-based QA pass verifying artifacts against acceptance crit
 
 Rigorous quality and requirement-satisfaction review evaluating whether the artifact, as presented, is amazingly good -- across runtime behaviour, actual rendered multimodal outputs, code, prose, UX, and analytical soundness. We are not chasing "works" or mediocrity. Default posture: assume every fact is wrong and every change is broken until proven otherwise.
 
-## 1. Upfront Specification Check
+## 1. Upfront Standard & Specification Check
 
-Before running test suites or line-by-line code audits, locate whatever specifications, requirements, or acceptance criteria are available for the artifact:
+Before running test suites or line-by-line code audits, identify the format/quality standard governing the artifact's genre (`specs/meta/doc-taxonomy.md` -- e.g., `specs/meta/writing-specs.md` for specifications, `craft` for agent instructions, disciplinary standards for manuscripts/articles, or task acceptance criteria for task handbacks) and locate whatever specifications, requirements, or acceptance criteria are available:
 
-- **Missing-criteria failure signal**: If **no specifications, requirements, or acceptance criteria are available at all**, stop immediately and return `FAIL -- no specifications, requirements, or acceptance criteria available`.
-- **Mechanical**: Verify strictly against available specifications, requirements, and acceptance criteria.
-- **Fitness / Mixed**: Verify against specifications, requirements, acceptance criteria, and the spec's fitness rubric. If criteria exist but the fitness rubric is missing on a fitness task, return `REVISE -- fitness rubric missing`.
+- **Match format requirements to the artifact**: Never impose task-handback sections (`## Ask`, task checklists) on non-task artifacts.
+- **Missing-criteria failure signal**: If **no governing standard, specifications, requirements, or acceptance criteria are available at all**, stop immediately and return `FAIL -- no governing standard, specifications, requirements, or acceptance criteria available`.
+- **Mechanical**: Verify strictly against the governing genre standard and available specifications, requirements, and acceptance criteria.
+- **Fitness / Mixed**: Verify against the governing genre standard, specifications, requirements, acceptance criteria, and the spec's fitness rubric. If criteria exist but the fitness rubric is missing on a fitness task, return `REVISE -- fitness rubric missing`.
+- **Primary materials**: Audit underlying primary materials (git history, raw data, external source files) on **high-risk requests**; on routine requests, verify the presented artifact and its rendered outputs against its governing standard and requirements.
 
 ## 2. Mandatory Forcing Checks
 
