@@ -23,13 +23,21 @@ export interface ReplyButtonOption {
   callback_data?: string;
   url?: string;
   web_app?: string;
+  row?: number;
 }
+
+export type ReplyButtonsInput =
+  | ReplyButtonOption[]
+  | ReplyButtonOption[][];
 
 export interface SendReplyOptions {
   chatId: number;
   formatted: FormattedMessage;
   detailsId?: string;
-  buttons?: ReplyButtonOption[];
+  buttons?: ReplyButtonsInput;
+  buttonLayout?: number[] | number;
+  buttonsPerRow?: number;
+  predefinedRow?: boolean;
   voice?: boolean;
   replyTo?: number;
   feedback?: boolean;
@@ -155,66 +163,159 @@ export class TelegramBotClient {
   }
 
   public async sendReply(opts: SendReplyOptions): Promise<SendReplyResult | null> {
-    const { chatId, formatted, detailsId, buttons, voice, replyTo, feedback, review, actions } = opts;
+    const {
+      chatId,
+      formatted,
+      detailsId,
+      buttons,
+      buttonLayout,
+      buttonsPerRow,
+      predefinedRow,
+      voice,
+      replyTo,
+      feedback,
+      review,
+      actions,
+    } = opts;
 
     // Build inline keyboard
     const inlineKeyboard: Array<Array<Record<string, unknown>>> = [];
 
-    // Custom decision / action buttons (vertical rows, recommendation first per FR-1.1 / FR-2.2)
-    if (buttons && buttons.length > 0) {
-      for (const b of buttons) {
-        const btnObj: Record<string, unknown> = { text: b.label };
-        if (b.callback_data) {
-          btnObj.callback_data = b.callback_data;
-        } else if (b.url) {
-          btnObj.url = b.url;
-        } else if (b.web_app) {
-          btnObj.web_app = { url: b.web_app };
-        } else {
-          btnObj.callback_data = `action:${b.label}`;
-        }
-        inlineKeyboard.push([btnObj]);
+    const formatBtn = (b: ReplyButtonOption): Record<string, unknown> => {
+      const btnObj: Record<string, unknown> = { text: b.label };
+      if (b.callback_data) {
+        btnObj.callback_data = b.callback_data;
+      } else if (b.url) {
+        btnObj.url = b.url;
+      } else if (b.web_app) {
+        btnObj.web_app = { url: b.web_app };
+      } else {
+        btnObj.callback_data = `action:${b.label}`;
       }
-    }
+      return btnObj;
+    };
 
-    const actionRow: Array<Record<string, unknown>> = [];
-
-    // Feedback buttons (default false)
-    if (feedback === true) {
-      actionRow.push({ text: "👍", callback_data: "fb:up" });
-      actionRow.push({ text: "👎", callback_data: "fb:down" });
+    // Build custom caller button rows (AC1)
+    const callerRows: Array<Array<Record<string, unknown>>> = [];
+    if (buttons && buttons.length > 0) {
+      if (Array.isArray(buttons[0])) {
+        // Direct 2D array of rows
+        for (const row of buttons as ReplyButtonOption[][]) {
+          callerRows.push(row.map(formatBtn));
+        }
+      } else {
+        const flatButtons = buttons as ReplyButtonOption[];
+        const hasRowProp = flatButtons.some((b) => typeof b.row === "number");
+        if (hasRowProp) {
+          const rowMap = new Map<number, ReplyButtonOption[]>();
+          for (const b of flatButtons) {
+            const r = b.row ?? 0;
+            if (!rowMap.has(r)) rowMap.set(r, []);
+            rowMap.get(r)!.push(b);
+          }
+          const sortedRows = Array.from(rowMap.keys()).sort((a, b) => a - b);
+          for (const r of sortedRows) {
+            callerRows.push(rowMap.get(r)!.map(formatBtn));
+          }
+        } else if (Array.isArray(buttonLayout) && buttonLayout.length > 0) {
+          let offset = 0;
+          for (const count of buttonLayout) {
+            if (offset >= flatButtons.length) break;
+            const slice = flatButtons.slice(offset, offset + count);
+            callerRows.push(slice.map(formatBtn));
+            offset += count;
+          }
+          if (offset < flatButtons.length) {
+            const remCount = buttonLayout[buttonLayout.length - 1] || 1;
+            while (offset < flatButtons.length) {
+              const slice = flatButtons.slice(offset, offset + remCount);
+              callerRows.push(slice.map(formatBtn));
+              offset += remCount;
+            }
+          }
+        } else if (typeof buttonLayout === "number" && buttonLayout > 0) {
+          for (let i = 0; i < flatButtons.length; i += buttonLayout) {
+            callerRows.push(flatButtons.slice(i, i + buttonLayout).map(formatBtn));
+          }
+        } else if (typeof buttonsPerRow === "number" && buttonsPerRow > 0) {
+          for (let i = 0; i < flatButtons.length; i += buttonsPerRow) {
+            callerRows.push(flatButtons.slice(i, i + buttonsPerRow).map(formatBtn));
+          }
+        } else {
+          // Default: 1 button per row
+          for (const b of flatButtons) {
+            callerRows.push([formatBtn(b)]);
+          }
+        }
+      }
     }
 
     const miniAppBaseUrl = (this.config.miniAppUrl || DEFAULT_MINI_APP_URL).replace(/\/+$/, "");
 
-    // Mini App Details button
-    if (detailsId) {
-      actionRow.push({
-        text: "🔍 Details",
-        web_app: { url: `${miniAppBaseUrl}/app/index.html?d=${detailsId}` },
-      });
+    const detailsBtn: Record<string, unknown> | undefined = detailsId
+      ? {
+          text: "🔍 Details",
+          web_app: { url: `${miniAppBaseUrl}/app/index.html?d=${detailsId}` },
+        }
+      : undefined;
+
+    const feedbackBtns: Array<Record<string, unknown>> = [];
+    if (feedback === true) {
+      feedbackBtns.push({ text: "👍", callback_data: "fb:up" });
+      feedbackBtns.push({ text: "👎", callback_data: "fb:down" });
     }
 
-    if (actionRow.length > 0) {
-      inlineKeyboard.push(actionRow);
-    }
-
-    // Review PR button
-    if (review) {
-      inlineKeyboard.push([
-        {
+    const reviewBtn: Record<string, unknown> | undefined = review
+      ? {
           text: `🔍 Review diff (${review.repo}#${review.pr || ""})`,
           web_app: { url: `${miniAppBaseUrl}/app/index.html?tab=review` },
-        },
-      ]);
+        }
+      : undefined;
+
+    const actionBtns: Array<Record<string, unknown>> = [];
+    if (actions !== false) {
+      actionBtns.push({ text: "🧐 Check logic", callback_data: "logic_check" });
+      actionBtns.push({ text: "💡 Explain", callback_data: "explain" });
     }
 
-    // Message action buttons (AC1, AC2: logic check and explain)
-    if (actions !== false) {
-      inlineKeyboard.push([
-        { text: "🧐 Check logic", callback_data: "logic_check" },
-        { text: "💡 Explain", callback_data: "explain" },
-      ]);
+    if (predefinedRow === true) {
+      // AC2: All predefined buttons sit together on the first row above caller's rows
+      const predefinedFirstRow: Array<Record<string, unknown>> = [];
+      if (detailsBtn) predefinedFirstRow.push(detailsBtn);
+      if (reviewBtn) predefinedFirstRow.push(reviewBtn);
+      if (feedbackBtns.length > 0) predefinedFirstRow.push(...feedbackBtns);
+      if (actionBtns.length > 0) predefinedFirstRow.push(...actionBtns);
+
+      if (predefinedFirstRow.length > 0) {
+        inlineKeyboard.push(predefinedFirstRow);
+      }
+      for (const row of callerRows) {
+        inlineKeyboard.push(row);
+      }
+    } else {
+      // Default: Caller rows first, then separate predefined rows below
+      for (const row of callerRows) {
+        inlineKeyboard.push(row);
+      }
+
+      const actionRow: Array<Record<string, unknown>> = [];
+      if (feedbackBtns.length > 0) {
+        actionRow.push(...feedbackBtns);
+      }
+      if (detailsBtn) {
+        actionRow.push(detailsBtn);
+      }
+      if (actionRow.length > 0) {
+        inlineKeyboard.push(actionRow);
+      }
+
+      if (reviewBtn) {
+        inlineKeyboard.push([reviewBtn]);
+      }
+
+      if (actionBtns.length > 0) {
+        inlineKeyboard.push(actionBtns);
+      }
     }
 
     let voiceError: string | undefined;

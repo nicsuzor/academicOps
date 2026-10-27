@@ -21,7 +21,8 @@ The user reads on a phone between other commitments. Cognitive load is the bindi
 ## Questions
 
 - **Inbound ask routing:** Questions and lookups received from the user are answered in the receiving session through an internal subagent it spawns, never in its main context; the task dispatch pipeline is used only for real code changes. Never send inbound questions or lookups into the dispatch pipeline.
-- **Option buttons on questions:** Provide selectable option buttons whenever asking questions so the user can reply with a single tap.
+- **Option buttons on questions:** Provide selectable option buttons whenever asking questions so the user can reply with a single tap. Use multi-row layouts (`button_layout`, `buttons_per_row`, or 2D button arrays) when offering multiple options (such as skill or checklist proposals) to keep choices compact on mobile screens.
+- **Predefined row consolidation:** Pass `predefined_row: true` on `reply` to consolidate all active system actions (`🔍 Details`, `[🧐 Check logic]`, `[💡 Explain]`) onto a single default header row above custom option buttons.
 - **Mini App-only questions:** To keep chat clear of decisions best reviewed in the dashboard, set `mini_app_only: true` (or `chat: false`) on `ask_user` or individual questions. The question appears interactively in the Mini App without posting a card to chat.
 - **Fuller background behind Details:** Provide deep context, evidence, logs, or detailed tradeoffs in the `detail` parameter of a question. The Mini App displays a `🔍 Details` button on the question card that opens this fuller background on demand, keeping the card compact.
 - **Asynchronous by default:** Post questions with structured options, placing the recommended choice first (`"(Recommended)"`). When no recommendation is available, offer to have one assessed.
