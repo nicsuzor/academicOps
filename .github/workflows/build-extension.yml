@@ -200,6 +200,11 @@ jobs:
           if [ -f "${SRC}/.aops-image-metadata.json" ]; then
             git add -f .aops-image-metadata.json
           fi
+          if [ -f "${SRC}/.github/workflows/auto-retarget-pr.yml" ]; then
+            mkdir -p .github/workflows
+            cp "${SRC}/.github/workflows/auto-retarget-pr.yml" .github/workflows/auto-retarget-pr.yml
+            git add -f .github/workflows/auto-retarget-pr.yml
+          fi
 
           if git diff --cached --quiet; then
             echo "main already in sync — nothing to publish"
