@@ -506,6 +506,48 @@ export class StdioMcpServer {
       return { success: true };
     }
 
+    if (name === "rename_thread" || name === "rename_topic" || name === "edit_forum_topic") {
+      const chatId = (args.chat_id as number) || defaultChatId;
+      const messageThreadId =
+        ((args.message_thread_id ?? args.thread_id) as number | undefined) ??
+        this.bot?.getLastThreadId(chatId);
+      const newName =
+        typeof args.name === "string"
+          ? args.name.trim()
+          : typeof args.title === "string"
+            ? args.title.trim()
+            : "";
+      const iconCustomEmojiId = (args.icon_custom_emoji_id ?? args.iconCustomEmojiId) as string | undefined;
+
+      if (!newName) {
+        return { success: false, error: "Missing name: thread name must be a non-empty string" };
+      }
+      if (newName.length > 128) {
+        return { success: false, error: "Thread name cannot exceed 128 characters" };
+      }
+      if (messageThreadId === undefined || isNaN(messageThreadId)) {
+        return {
+          success: false,
+          error: "Missing thread ID: pass message_thread_id or invoke inside an active thread",
+        };
+      }
+
+      if (this.bot) {
+        const res = await this.bot.editForumTopic(chatId, messageThreadId, newName, iconCustomEmojiId);
+        if (!res?.ok) {
+          return { success: false, error: res?.description || "Failed to rename thread" };
+        }
+        return {
+          success: true,
+          chat_id: chatId,
+          message_thread_id: messageThreadId,
+          name: newName,
+        };
+      }
+
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+
     throw new Error(`Unknown tool: ${name}`);
   }
 

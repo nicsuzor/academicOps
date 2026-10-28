@@ -243,6 +243,35 @@ export const MCP_TOOLS: ToolDefinition[] = [
     },
   },
   {
+    name: "rename_thread",
+    description:
+      "Rename a Telegram forum topic (thread). Defaults to the active thread in the current chat if message_thread_id is omitted.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        chat_id: { type: "integer", description: "Telegram chat ID (defaults to primary user)" },
+        message_thread_id: {
+          type: "integer",
+          description: "Telegram message thread ID (forum topic ID; defaults to active thread)",
+        },
+        thread_id: { type: "integer", description: "Alias for message_thread_id" },
+        name: {
+          type: "string",
+          description: "New name for the thread (1-128 characters)",
+        },
+        title: {
+          type: "string",
+          description: "Alias for name",
+        },
+        icon_custom_emoji_id: {
+          type: "string",
+          description: "Optional custom emoji ID for the topic icon (pass empty string to remove)",
+        },
+      },
+      required: ["name"],
+    },
+  },
+  {
     name: "download_attachment",
     description: "Download a Telegram attachment or voice note to a local path.",
     inputSchema: {
