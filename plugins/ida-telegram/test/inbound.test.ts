@@ -227,6 +227,34 @@ describe("Inbound completeness: Updates routing and parsing", () => {
     expect(result?.content).toContain("explain");
   });
 
+  test("delivers reasons button tap event naming target message and excerpt", () => {
+    const update: TelegramUpdate = {
+      update_id: 53,
+      callback_query: {
+        id: "cb_rsn_1",
+        from: { id: 12345678, is_bot: false, first_name: "Nic" },
+        message: {
+          message_id: 90,
+          date: Date.now(),
+          chat: { id: 12345678, type: "private" },
+          text: "Statement needing argument chain.",
+        },
+        data: "reasons",
+      },
+    };
+
+    const result = parseInboundUpdate(update, allowFrom);
+    expect(result).not.toBeNull();
+    expect(result?.event).toBe("reasons");
+    expect(result?.meta.event).toBe("reasons");
+    expect(result?.meta.action).toBe("reasons");
+    expect(result?.meta.target_message_id).toBe("90");
+    expect(result?.meta.target_excerpt).toBe("Statement needing argument chain.");
+    expect(result?.content).toContain("90");
+    expect(result?.content).toContain("reasons");
+    expect(result?.content).toContain("How do you know that?");
+  });
+
   test("delivers bot commands as channel events", () => {
     const update: TelegramUpdate = {
       update_id: 6,

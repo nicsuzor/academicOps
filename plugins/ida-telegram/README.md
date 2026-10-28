@@ -16,8 +16,8 @@ Ida's custom Telegram channel and Mini App plugin for Claude Code.
   - Never blocks or assumes answers; delivers answers as channel notification events upon reply.
 - **Option Buttons & Message Actions:**
   - `reply` takes `buttons` for the answers to a question asked in the reply; a tap edits the card to `Selected: <label> ✅` and emits a `button_tap` channel event. Supports 2D row arrays (`ReplyButtonOption[][]`), layout chunking via `button_layout` (e.g. `[3, 3, 2]`) or `buttons_per_row` (e.g. `4`), and per-button `row` properties, defaulting to 1 button per row when flat.
-  - Setting `predefined_row: true` groups all active predefined buttons (`🔍 Details`, `🔍 Review diff`, `👍`/`👎`, `[🧐 Check logic]`, `[💡 Explain]`) onto a single consolidated first row above any caller buttons.
-  - Every reply automatically attaches `[🧐 Check logic]` and `[💡 Explain]` action buttons (unless `actions: false` is passed). Tapping `🧐 Check logic` delivers an inbound request naming the message for Ida to run a peer `premise-check`. Tapping `💡 Explain` delivers an inbound request for Ida to expand that message in more detail.
+  - Setting `predefined_row: true` groups all active predefined buttons (`🔍 Details`, `🔍 Review diff`, `👍`/`👎`, `[🧐 Check logic]`, `[💡 Explain]`, `[🧾 Reasons]`) onto a single consolidated first row above any caller buttons.
+  - Every reply automatically attaches `[🧐 Check logic]`, `[💡 Explain]`, and `[🧾 Reasons]` action buttons (unless `actions: false` is passed). Tapping `🧐 Check logic` delivers an inbound request naming the message for Ida to run a peer `premise-check`. Tapping `💡 Explain` delivers an inbound request for Ida to expand that message in more detail. Tapping `🧾 Reasons` delivers an inbound request for Ida to provide the argument chain ("how do you know that?") with verbatim Argdown blocks attached in Details.
 - **Mini App Security, Details, Review, Questions & Anchor:**
   - Loopback-only Bun HTTP server (`127.0.0.1:<port>`) serving `/app/*` and `/api/app/*`.
   - Telegram `initData` HMAC-SHA256 validation with 1-hour expiration and `allowFrom` whitelist check.

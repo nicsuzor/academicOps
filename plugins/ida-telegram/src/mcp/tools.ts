@@ -72,7 +72,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
         predefined_row: {
           type: "boolean",
           description:
-            "Put all predefined buttons (Details, Check logic, Explain, and optional feedback/review) together on a single first row above the caller's rows.",
+            "Put all predefined buttons (Details, Check logic, Explain, Reasons, and optional feedback/review) together on a single first row above the caller's rows.",
         },
         voice: { type: "boolean", description: "Send tier 1 as a spoken voice note" },
         reply_to: { type: "integer", description: "Telegram message ID to reply to" },
@@ -87,7 +87,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
         },
         actions: {
           type: "boolean",
-          description: "Attach message action buttons (Check logic, Explain). Defaults to true.",
+          description: "Attach message action buttons (Check logic, Explain, Reasons). Defaults to true.",
         },
       },
       required: ["text"],
