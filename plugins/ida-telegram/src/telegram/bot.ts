@@ -170,16 +170,23 @@ export class TelegramBotClient {
     return await res.json();
   }
 
-  public async setReaction(chatId: number, messageId: number, emoji: string): Promise<boolean> {
+  public async setReaction(
+    chatId: number,
+    messageId: number,
+    emoji: string
+  ): Promise<{ ok: boolean; error?: string }> {
     try {
       const res = await this.callApi("setMessageReaction", {
         chat_id: chatId,
         message_id: messageId,
         reaction: [{ type: "emoji", emoji }],
       });
-      return !!res.ok;
-    } catch {
-      return false;
+      if (!res.ok) {
+        return { ok: false, error: res.description || "Reaction failed" };
+      }
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: String(err) };
     }
   }
 
