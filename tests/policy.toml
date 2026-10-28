@@ -50,6 +50,10 @@ rule_against_hearsay_enabled = false
 # so the shipped-hooks equality check binds on this event.
 honest_output_enabled = true
 
+[hotfix]
+hotfix_labels = ["hotfix", "type:hotfix"]
+hotfix_prefixes = ["hotfix:"]
+
 [premise_check]
 # The closed vocabulary (basis phrases, format items, defect tags) the verdict
 # recorder reads at runtime, relative to the repository root.

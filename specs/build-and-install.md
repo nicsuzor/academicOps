@@ -96,6 +96,16 @@ branch protection requiring all checks green (`Lint / Lint`, `Type Check / Type 
   of `main`, where each plugin points to `./<plugin>-claude` (also committed to `main`).
 - **Discontinued mirrors**: `nicsuzor/aops` is no longer updated or published to.
 
+### v1 Feature Freeze and Release Automation Rules
+
+Under the academicOps v1 feature freeze (announcement [#3206](https://github.com/nicsuzor/academicOps/issues/3206)):
+
+- **Target branch**: Until `release/v1.0-rc0` is merged into `main`, all academicOps work, hotfix releases included, targets `release/v1.0-rc0` rather than `dev`.
+- **New features and big changes**: The freeze blocks new features and big changes. Any new feature or large change must go on a dedicated feature branch with a PR targeting `release/v1.0-rc0`, merging only on the user's explicit approval.
+- **Hotfixes**: Merge straight to `release/v1.0-rc0` once all CI checks are green, after an initial review check confirms that the change is genuinely a hotfix. Hotfixes must be clearly labelled (`hotfix`) so that release-please bumps only the patch version and automatically publishes a new release build with no approval required.
+- **Everything else**: Waits for the user's explicit approval before merging and releasing. Non-hotfix changes yield no automatic release.
+- **Release-please automation**: When `release-please` runs on push to `release/v1.0-rc0`, `.github/workflows/release-please.yml` invokes `build.hotfix --eval-release-pr` on open release PRs. Hotfixes with verified patch-only bumps are auto-merged without manual approval; non-hotfix or non-patch changes remain open awaiting user sign-off.
+
 ### How each release candidate is now published
 
 1. **Active development and validation.** Work proceeds on release lines (e.g. `release/v1.0-rc0`).

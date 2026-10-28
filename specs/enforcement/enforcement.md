@@ -143,3 +143,16 @@ Pull request review and merge authority is governed by a three-tier risk taxonom
 
 Enforcement operates through workflow merge gates (`instructions`, `imperative`):
 Finish and QA templates direct QA workers to semantically evaluate PR risk against the taxonomy in a clean context. For verified Tier 1 PRs, QA workers merge autonomously via `gh pr merge --squash` and release the QA task as `done`. For Tier 2 and Tier 3 PRs, QA workers verify claims, post structured receipts to the PR, and leave the PR open for reviewer or principal sign-off. Under headless worker and review lifecycle rules, QA tasks complete as `done` with the PR URL recorded on the task record so that `/reconcile` tracks merge without human wait states; no task rests or releases into `review` for human merge gates.
+
+## Feature Freeze and Hotfix Release Enforcement
+
+Pull requests and release lifecycles under the academicOps v1 feature freeze ([#3206](https://github.com/nicsuzor/academicOps/issues/3206)) are governed by branch-targeting and automated release gating:
+
+| Mechanism | Scope / Surface | Trigger | Behavior |
+| :- | :- | :- | :- |
+| **Branch Targeting Directive** | `.agents/CORE.md`, `CONTRIBUTING.md` | All active development | Directs all work and PRs to target `release/v1.0-rc0` until merged into `main`. |
+| **Feature Freeze Scope Gate** | `.agents/CORE.md`, `CONTRIBUTING.md` | New features and big changes | Restricts freeze to new features and big changes, requiring dedicated feature branches and explicit user approval before merge. |
+| **Hotfix Direct-Merge & Review** | `.agents/CORE.md`, `CONTRIBUTING.md` | Bug fixes and hotfixes | Allows direct merge to `release/v1.0-rc0` once CI is green following a review check verifying hotfix qualification. |
+| **Patch Bump & Auto-Release Evaluator** | `build/hotfix.py`, `.github/workflows/release-please.yml` | Release PR creation / update on `release/v1.0-rc0` | Inspects release candidate labels and constituent commits; automatically enables auto-merge for verified patch-only hotfix releases with zero human intervention; halts non-hotfix or non-patch changes for user approval. |
+
+Enforcement operates across instructions, review gates, and CI automation: instructions bound contributors and agents to branch rules, triage review confirms hotfix designations, and the release evaluation script ensures that only strict patch increments under hotfix classification release autonomously.

@@ -43,6 +43,11 @@ On top of them:
   or task execution, do not pre-empt the next question or task, propose
   next steps, offer unasked recommendations, or open a design fork they
   have not reached. They set the pace. One thing at a time, and hold.
+- **Branch, merge and release rules (v1 feature freeze).** academicOps v1 is under feature freeze (see announcement [#3206](https://github.com/nicsuzor/academicOps/issues/3206)):
+  - _Target branch_: until `release/v1.0-rc0` is merged, all academicOps work, hotfix releases included, targets `release/v1.0-rc0`.
+  - _New features and big changes_: the freeze blocks new features and big changes. Any new feature or large change must go on its own feature branch with a PR targeting `release/v1.0-rc0`, merging only on the user's explicit approval.
+  - _Hotfixes_: merge straight to `release/v1.0-rc0` once all CI checks are green, after an initial review check confirms the change is genuinely a hotfix. Hotfixes must be clearly labelled (`hotfix`) so that release-please bumps only the patch version and automatically publishes a new release build with no approval required.
+  - _Everything else_: waits for the user's approval. Non-hotfix changes yield no automatic release.
 - **Intake contract.** On receiving a direction or work brief, the receiving agent must record its own summary stating deliverables as a frozen `## Acceptance` checklist on a PKB task before work starts.
 
 Project-local rules: [`rules/RULES.md`](rules/RULES.md) and [`rules/*.md`](rules/).

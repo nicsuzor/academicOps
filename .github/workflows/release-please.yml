@@ -94,5 +94,13 @@ jobs:
             git push origin HEAD:${{ fromJson(steps.release.outputs.pr).headBranchName }}
           fi
 
+      - name: Evaluate hotfix auto-release
+        if: ${{ steps.release.outputs.pr }}
+        env:
+          GH_TOKEN: ${{ secrets.AOPS_DIST_PAT }}
+          PR_NUMBER: ${{ fromJson(steps.release.outputs.pr).number }}
+        run: |
+          uv run python -m build.hotfix --eval-release-pr "$PR_NUMBER"
+
       # build-extension.yml triggers automatically via push:tags and release:published
       # events when AOPS_DIST_PAT creates the tag/release above.
