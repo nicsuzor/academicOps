@@ -64,6 +64,13 @@ time, find the session with Recipe A or F in [references/sql-recipes.md](referen
   `--by task`. Prices are list prices per million tokens; the dollar column is
   comparable spend, not an invoice. Gemini spans may carry no token counts.
 
+## Cross-session search
+
+With no session id in hand ("every prompt mentioning X"), follow "Cross-session search" in
+[references/sql-recipes.md](references/sql-recipes.md): filter and project on the server, write
+rows to a file in session scratch, print counts and ids only, and read the file by anchor.
+Never let search results accumulate in your context.
+
 ## Ad-hoc queries
 
 The span store is also reachable through the `services` MCP proxy:

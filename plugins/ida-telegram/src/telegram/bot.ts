@@ -23,13 +23,22 @@ export interface ReplyButtonOption {
   callback_data?: string;
   url?: string;
   web_app?: string;
+  row?: number;
 }
+
+export type ReplyButtonsInput =
+  | ReplyButtonOption[]
+  | ReplyButtonOption[][];
 
 export interface SendReplyOptions {
   chatId: number;
+  messageThreadId?: number;
   formatted: FormattedMessage;
   detailsId?: string;
-  buttons?: ReplyButtonOption[];
+  buttons?: ReplyButtonsInput;
+  buttonLayout?: number[] | number;
+  buttonsPerRow?: number;
+  predefinedRow?: boolean;
   voice?: boolean;
   replyTo?: number;
   feedback?: boolean;
@@ -55,6 +64,8 @@ export class TelegramBotClient {
   private conflictCount = 0;
   private lastAlertTime = 0;
   private lastInboundWasVoiceByChat = new Map<number, boolean>();
+  private lastThreadIdByChat = new Map<number, number>();
+  private messageThreads = new Map<number, number>();
   public store?: PluginStore;
   private messageExcerpts = new Map<number, string>();
 
@@ -80,6 +91,20 @@ export class TelegramBotClient {
 
   public isLastInboundVoice(chatId: number): boolean {
     return this.lastInboundWasVoiceByChat.get(chatId) === true;
+  }
+
+  public getLastThreadId(chatId: number): number | undefined {
+    return this.lastThreadIdByChat.get(chatId);
+  }
+
+  public getMessageThread(messageId: number): number | undefined {
+    return this.messageThreads.get(messageId);
+  }
+
+  public recordMessageThread(messageId: number | undefined, threadId: number | undefined): void {
+    if (messageId !== undefined && threadId !== undefined) {
+      this.messageThreads.set(messageId, threadId);
+    }
   }
 
   private recordMessageExcerpt(messageId: number | undefined, text: string | undefined) {
@@ -112,6 +137,7 @@ export class TelegramBotClient {
       caption?: string;
       captionEntities?: unknown[];
       replyTo?: number;
+      messageThreadId?: number;
       inlineKeyboard?: Array<Array<Record<string, unknown>>>;
     }
   ): Promise<any> {
@@ -121,6 +147,9 @@ export class TelegramBotClient {
     formData.append("chat_id", String(chatId));
     formData.append("voice", new Blob([oggBuffer], { type: "audio/ogg" }), "reply.ogg");
 
+    if (options.messageThreadId !== undefined) {
+      formData.append("message_thread_id", String(options.messageThreadId));
+    }
     if (options.caption !== undefined) {
       formData.append("caption", options.caption);
     }
@@ -162,66 +191,165 @@ export class TelegramBotClient {
   }
 
   public async sendReply(opts: SendReplyOptions): Promise<SendReplyResult | null> {
-    const { chatId, formatted, detailsId, buttons, voice, replyTo, feedback, review, actions } = opts;
+    const {
+      chatId,
+      formatted,
+      detailsId,
+      buttons,
+      buttonLayout,
+      buttonsPerRow,
+      predefinedRow,
+      voice,
+      replyTo,
+      feedback,
+      review,
+      actions,
+    } = opts;
+
+    const effectiveThreadId =
+      opts.messageThreadId ??
+      (replyTo ? this.getMessageThread(replyTo) : undefined) ??
+      this.getLastThreadId(chatId);
 
     // Build inline keyboard
     const inlineKeyboard: Array<Array<Record<string, unknown>>> = [];
 
-    // Custom decision / action buttons (vertical rows, recommendation first per FR-1.1 / FR-2.2)
-    if (buttons && buttons.length > 0) {
-      for (const b of buttons) {
-        const btnObj: Record<string, unknown> = { text: b.label };
-        if (b.callback_data) {
-          btnObj.callback_data = b.callback_data;
-        } else if (b.url) {
-          btnObj.url = b.url;
-        } else if (b.web_app) {
-          btnObj.web_app = { url: b.web_app };
-        } else {
-          btnObj.callback_data = `action:${b.label}`;
-        }
-        inlineKeyboard.push([btnObj]);
+    const formatBtn = (b: ReplyButtonOption): Record<string, unknown> => {
+      const btnObj: Record<string, unknown> = { text: b.label };
+      if (b.callback_data) {
+        btnObj.callback_data = b.callback_data;
+      } else if (b.url) {
+        btnObj.url = b.url;
+      } else if (b.web_app) {
+        btnObj.web_app = { url: b.web_app };
+      } else {
+        btnObj.callback_data = `action:${b.label}`;
       }
-    }
+      return btnObj;
+    };
 
-    const actionRow: Array<Record<string, unknown>> = [];
-
-    // Feedback buttons (default false)
-    if (feedback === true) {
-      actionRow.push({ text: "👍", callback_data: "fb:up" });
-      actionRow.push({ text: "👎", callback_data: "fb:down" });
+    // Build custom caller button rows (AC1)
+    const callerRows: Array<Array<Record<string, unknown>>> = [];
+    if (buttons && buttons.length > 0) {
+      if (Array.isArray(buttons[0])) {
+        // Direct 2D array of rows
+        for (const row of buttons as ReplyButtonOption[][]) {
+          callerRows.push(row.map(formatBtn));
+        }
+      } else {
+        const flatButtons = buttons as ReplyButtonOption[];
+        const hasRowProp = flatButtons.some((b) => typeof b.row === "number");
+        if (hasRowProp) {
+          const rowMap = new Map<number, ReplyButtonOption[]>();
+          for (const b of flatButtons) {
+            const r = b.row ?? 0;
+            if (!rowMap.has(r)) rowMap.set(r, []);
+            rowMap.get(r)!.push(b);
+          }
+          const sortedRows = Array.from(rowMap.keys()).sort((a, b) => a - b);
+          for (const r of sortedRows) {
+            callerRows.push(rowMap.get(r)!.map(formatBtn));
+          }
+        } else if (Array.isArray(buttonLayout) && buttonLayout.length > 0) {
+          let offset = 0;
+          for (const count of buttonLayout) {
+            if (offset >= flatButtons.length) break;
+            const slice = flatButtons.slice(offset, offset + count);
+            callerRows.push(slice.map(formatBtn));
+            offset += count;
+          }
+          if (offset < flatButtons.length) {
+            const remCount = buttonLayout[buttonLayout.length - 1] || 1;
+            while (offset < flatButtons.length) {
+              const slice = flatButtons.slice(offset, offset + remCount);
+              callerRows.push(slice.map(formatBtn));
+              offset += remCount;
+            }
+          }
+        } else if (typeof buttonLayout === "number" && buttonLayout > 0) {
+          for (let i = 0; i < flatButtons.length; i += buttonLayout) {
+            callerRows.push(flatButtons.slice(i, i + buttonLayout).map(formatBtn));
+          }
+        } else if (typeof buttonsPerRow === "number" && buttonsPerRow > 0) {
+          for (let i = 0; i < flatButtons.length; i += buttonsPerRow) {
+            callerRows.push(flatButtons.slice(i, i + buttonsPerRow).map(formatBtn));
+          }
+        } else {
+          // Default: 1 button per row
+          for (const b of flatButtons) {
+            callerRows.push([formatBtn(b)]);
+          }
+        }
+      }
     }
 
     const miniAppBaseUrl = (this.config.miniAppUrl || DEFAULT_MINI_APP_URL).replace(/\/+$/, "");
 
-    // Mini App Details button
-    if (detailsId) {
-      actionRow.push({
-        text: "🔍 Details",
-        web_app: { url: `${miniAppBaseUrl}/app/index.html?d=${detailsId}` },
-      });
+    const detailsBtn: Record<string, unknown> | undefined = detailsId
+      ? {
+          text: "🔍 Details",
+          web_app: { url: `${miniAppBaseUrl}/app/index.html?d=${detailsId}` },
+        }
+      : undefined;
+
+    const feedbackBtns: Array<Record<string, unknown>> = [];
+    if (feedback === true) {
+      feedbackBtns.push({ text: "👍", callback_data: "fb:up" });
+      feedbackBtns.push({ text: "👎", callback_data: "fb:down" });
     }
 
-    if (actionRow.length > 0) {
-      inlineKeyboard.push(actionRow);
-    }
-
-    // Review PR button
-    if (review) {
-      inlineKeyboard.push([
-        {
+    const reviewBtn: Record<string, unknown> | undefined = review
+      ? {
           text: `🔍 Review diff (${review.repo}#${review.pr || ""})`,
           web_app: { url: `${miniAppBaseUrl}/app/index.html?tab=review` },
-        },
-      ]);
+        }
+      : undefined;
+
+    const actionBtns: Array<Record<string, unknown>> = [];
+    if (actions !== false) {
+      actionBtns.push({ text: "🧐 Check logic", callback_data: "logic_check" });
+      actionBtns.push({ text: "💡 Explain", callback_data: "explain" });
+      actionBtns.push({ text: "🧾 Reasons", callback_data: "reasons" });
     }
 
-    // Message action buttons (AC1, AC2: logic check and explain)
-    if (actions !== false) {
-      inlineKeyboard.push([
-        { text: "🧐 Check logic", callback_data: "logic_check" },
-        { text: "💡 Explain", callback_data: "explain" },
-      ]);
+    if (predefinedRow === true) {
+      // AC2: All predefined buttons sit together on the first row above caller's rows
+      const predefinedFirstRow: Array<Record<string, unknown>> = [];
+      if (detailsBtn) predefinedFirstRow.push(detailsBtn);
+      if (reviewBtn) predefinedFirstRow.push(reviewBtn);
+      if (feedbackBtns.length > 0) predefinedFirstRow.push(...feedbackBtns);
+      if (actionBtns.length > 0) predefinedFirstRow.push(...actionBtns);
+
+      if (predefinedFirstRow.length > 0) {
+        inlineKeyboard.push(predefinedFirstRow);
+      }
+      for (const row of callerRows) {
+        inlineKeyboard.push(row);
+      }
+    } else {
+      // Default: Caller rows first, then separate predefined rows below
+      for (const row of callerRows) {
+        inlineKeyboard.push(row);
+      }
+
+      const actionRow: Array<Record<string, unknown>> = [];
+      if (feedbackBtns.length > 0) {
+        actionRow.push(...feedbackBtns);
+      }
+      if (detailsBtn) {
+        actionRow.push(detailsBtn);
+      }
+      if (actionRow.length > 0) {
+        inlineKeyboard.push(actionRow);
+      }
+
+      if (reviewBtn) {
+        inlineKeyboard.push([reviewBtn]);
+      }
+
+      if (actionBtns.length > 0) {
+        inlineKeyboard.push(actionBtns);
+      }
     }
 
     let voiceError: string | undefined;
@@ -262,9 +390,11 @@ export class TelegramBotClient {
               caption: formatted.plainText,
               captionEntities: formatted.entities,
               replyTo,
+              messageThreadId: effectiveThreadId,
               inlineKeyboard,
             });
             if (voiceRes?.ok && voiceRes?.result) {
+              this.recordMessageThread(voiceRes.result.message_id, effectiveThreadId);
               this.recordMessageExcerpt(voiceRes.result.message_id, formatted.plainText);
               return {
                 messageId: voiceRes.result.message_id,
@@ -275,17 +405,22 @@ export class TelegramBotClient {
           } else {
             const voiceRes = await this.callVoiceApi(chatId, oggBuffer, {
               replyTo,
+              messageThreadId: effectiveThreadId,
             });
             if (!voiceRes?.ok || !voiceRes?.result) {
               throw new Error(voiceRes?.description || "Telegram sendVoice API call failed");
             }
             const voiceMessageId: number = voiceRes.result.message_id;
+            this.recordMessageThread(voiceMessageId, effectiveThreadId);
 
             const textPayload: Record<string, unknown> = {
               chat_id: chatId,
               text: formatted.plainText,
               entities: formatted.entities,
             };
+            if (effectiveThreadId !== undefined) {
+              textPayload.message_thread_id = effectiveThreadId;
+            }
             if (inlineKeyboard.length > 0) {
               textPayload.reply_markup = { inline_keyboard: inlineKeyboard };
             }
@@ -294,12 +429,14 @@ export class TelegramBotClient {
             if (!textRes?.ok || !textRes?.result) {
               textRes = await this.callApi("sendMessage", {
                 chat_id: chatId,
+                ...(effectiveThreadId !== undefined ? { message_thread_id: effectiveThreadId } : {}),
                 text: formatted.plainText,
                 reply_markup: inlineKeyboard.length > 0 ? { inline_keyboard: inlineKeyboard } : undefined,
               });
             }
 
             const finalMessageId = textRes?.result?.message_id ?? voiceMessageId;
+            this.recordMessageThread(finalMessageId, effectiveThreadId);
             this.recordMessageExcerpt(finalMessageId, formatted.plainText);
             return {
               messageId: finalMessageId,
@@ -327,6 +464,10 @@ export class TelegramBotClient {
       entities: formatted.entities,
     };
 
+    if (effectiveThreadId !== undefined) {
+      payload.message_thread_id = effectiveThreadId;
+    }
+
     if (replyTo) {
       payload.reply_parameters = { message_id: replyTo };
     }
@@ -337,6 +478,7 @@ export class TelegramBotClient {
 
     const res = await this.callApi("sendMessage", payload);
     if (res.ok && res.result) {
+      this.recordMessageThread(res.result.message_id, effectiveThreadId);
       if (this.store && inlineKeyboard.length > 0) {
         this.store.setLastCard(chatId, res.result.message_id, formatted.plainText);
       }
@@ -350,11 +492,13 @@ export class TelegramBotClient {
     // If Telegram rejects formatted entities, resend once as plain text per FR-1.5
     const fallbackRes = await this.callApi("sendMessage", {
       chat_id: chatId,
+      ...(effectiveThreadId !== undefined ? { message_thread_id: effectiveThreadId } : {}),
       text: formatted.plainText,
       reply_markup: inlineKeyboard.length > 0 ? { inline_keyboard: inlineKeyboard } : undefined,
     });
 
     if (fallbackRes.ok && fallbackRes.result) {
+      this.recordMessageThread(fallbackRes.result.message_id, effectiveThreadId);
       if (this.store && inlineKeyboard.length > 0) {
         this.store.setLastCard(chatId, fallbackRes.result.message_id, formatted.plainText);
       }
@@ -368,7 +512,12 @@ export class TelegramBotClient {
     return null;
   }
 
-  public async sendQuestionCard(chatId: number, qid: string, card: { text: string; buttons: Array<{ text: string; callbackData?: string; web_app?: { url: string } }> }) {
+  public async sendQuestionCard(
+    chatId: number,
+    qid: string,
+    card: { text: string; buttons: Array<{ text: string; callbackData?: string; web_app?: { url: string } }> },
+    messageThreadId?: number
+  ) {
     const formatted = formatMarkdownToEntities(card.text);
     const inline_keyboard = card.buttons.map((b) => {
       if (b.web_app) {
@@ -379,14 +528,20 @@ export class TelegramBotClient {
       }
       return [{ text: b.text, callback_data: b.callbackData }];
     });
-    const res = await this.callApi("sendMessage", {
+    const effectiveThreadId = messageThreadId ?? this.getLastThreadId(chatId);
+    const payload: Record<string, unknown> = {
       chat_id: chatId,
       text: formatted.plainText,
       entities: formatted.entities,
       reply_markup: { inline_keyboard },
-    });
+    };
+    if (effectiveThreadId !== undefined) {
+      payload.message_thread_id = effectiveThreadId;
+    }
+    const res = await this.callApi("sendMessage", payload);
     if (res?.ok && res?.result?.message_id) {
       this.broker.setMessageId(qid, res.result.message_id);
+      this.recordMessageThread(res.result.message_id, effectiveThreadId);
       if (this.store) {
         this.store.setLastCard(chatId, res.result.message_id, card.text);
       }
@@ -400,10 +555,13 @@ export class TelegramBotClient {
     toolName: string,
     input: Record<string, unknown>,
     description?: string,
-    inputPreview?: string
+    inputPreview?: string,
+    messageThreadId?: number
   ) {
     const defaultChatId = this.config.allowFrom[0];
     if (!defaultChatId) return;
+
+    const effectiveThreadId = messageThreadId ?? this.getLastThreadId(defaultChatId);
 
     let summary = `Permission request: *${toolName}*`;
     if (description) {
@@ -433,13 +591,19 @@ export class TelegramBotClient {
       ]);
     }
 
-    const res = await this.callApi("sendMessage", {
+    const payload: Record<string, unknown> = {
       chat_id: defaultChatId,
       text: summary,
       reply_markup: { inline_keyboard },
-    });
+    };
+    if (effectiveThreadId !== undefined) {
+      payload.message_thread_id = effectiveThreadId;
+    }
+
+    const res = await this.callApi("sendMessage", payload);
     if (res?.ok && res?.result?.message_id) {
       this.permRelay.setMessageInfo(permId, defaultChatId, res.result.message_id, summary);
+      this.recordMessageThread(res.result.message_id, effectiveThreadId);
       if (this.store) {
         this.store.setLastCard(defaultChatId, res.result.message_id, summary);
       }
@@ -461,6 +625,23 @@ export class TelegramBotClient {
       this.recordMessageExcerpt(messageId, formatted.plainText);
     }
     return res;
+  }
+
+  public async editForumTopic(
+    chatId: number,
+    messageThreadId: number,
+    name: string,
+    iconCustomEmojiId?: string
+  ): Promise<{ ok: boolean; result?: boolean; description?: string; error_code?: number }> {
+    const payload: Record<string, unknown> = {
+      chat_id: chatId,
+      message_thread_id: messageThreadId,
+      name,
+    };
+    if (iconCustomEmojiId !== undefined) {
+      payload.icon_custom_emoji_id = iconCustomEmojiId;
+    }
+    return await this.callApi("editForumTopic", payload);
   }
 
   public async registerCommands(persona?: string): Promise<boolean> {
@@ -564,12 +745,35 @@ export class TelegramBotClient {
     if (update.message?.message_id && (update.message.text || update.message.caption)) {
       this.recordMessageExcerpt(update.message.message_id, update.message.text || update.message.caption);
     }
+    if (update.message?.message_id && update.message.message_thread_id !== undefined) {
+      this.recordMessageThread(update.message.message_id, update.message.message_thread_id);
+    }
+    if (update.callback_query?.message?.message_id && update.callback_query.message.message_thread_id !== undefined) {
+      this.recordMessageThread(update.callback_query.message.message_id, update.callback_query.message.message_thread_id);
+    }
 
-    // 1. If inbound message from user, immediately set 👀 reaction (FR-9) and record voice-vs-text for FR-7.1 mirror
+    // 1. If inbound message from user, immediately set 👀 reaction (FR-9), track thread, and record voice-vs-text for FR-7.1 mirror
     if (update.message?.from?.id && this.config.allowFrom.includes(update.message.from.id)) {
       const isInboundVoice = Boolean(update.message.voice || update.message.audio);
       this.lastInboundWasVoiceByChat.set(update.message.chat.id, isInboundVoice);
+      if (update.message.message_thread_id !== undefined) {
+        this.lastThreadIdByChat.set(update.message.chat.id, update.message.message_thread_id);
+      } else {
+        this.lastThreadIdByChat.delete(update.message.chat.id);
+      }
       await this.setReaction(update.message.chat.id, update.message.message_id, "👀");
+    }
+
+    if (
+      update.callback_query?.message?.chat.id !== undefined &&
+      this.config.allowFrom.includes(update.callback_query.from.id)
+    ) {
+      if (update.callback_query.message.message_thread_id !== undefined) {
+        this.lastThreadIdByChat.set(
+          update.callback_query.message.chat.id,
+          update.callback_query.message.message_thread_id
+        );
+      }
     }
 
     // 2. Check if message is a reply to a force_reply "✏️ Other" prompt OR directly to the question card
@@ -662,14 +866,17 @@ export class TelegramBotClient {
         if (action === "other") {
           if (cb.message) {
             const promptTitle = q?.header || q?.question || qid;
+            const threadId = cb.message.message_thread_id ?? this.getLastThreadId(cb.message.chat.id);
             const promptRes = await this.callApi("sendMessage", {
               chat_id: cb.message.chat.id,
+              ...(threadId !== undefined ? { message_thread_id: threadId } : {}),
               text: `✏️ Reply to this message with your answer for: ${promptTitle}`,
               reply_parameters: { message_id: cb.message.message_id },
               reply_markup: { force_reply: true, selective: true },
             });
             if (promptRes?.ok && promptRes?.result?.message_id) {
               this.broker.setPromptMessageId(qid, promptRes.result.message_id);
+              this.recordMessageThread(promptRes.result.message_id, threadId);
             }
           }
           return;
@@ -838,19 +1045,23 @@ export class TelegramBotClient {
         }
       }
 
-      // Logic check and explain callbacks (AC1, AC2)
+      // Logic check, explain, and reasons callbacks (AC1, AC2)
       if (
         (data === "logic_check" ||
           data.startsWith("logic_check:") ||
           data === "explain" ||
-          data.startsWith("explain:")) &&
+          data.startsWith("explain:") ||
+          data === "reasons" ||
+          data.startsWith("reasons:")) &&
         cb.message &&
         this.config.allowFrom.includes(cb.from.id)
       ) {
         const kbRows = cb.message.reply_markup?.inline_keyboard || [];
         const matchedBtn = kbRows.flat().find((b) => b.callback_data === data);
         const isLogicCheck = data === "logic_check" || data.startsWith("logic_check:");
-        const label = matchedBtn?.text || (isLogicCheck ? "🧐 Check logic" : "💡 Explain");
+        const isExplain = data === "explain" || data.startsWith("explain:");
+        const isReasons = data === "reasons" || data.startsWith("reasons:");
+        const label = matchedBtn?.text || (isLogicCheck ? "🧐 Check logic" : isExplain ? "💡 Explain" : "🧾 Reasons");
         const originalText = cb.message.text || "";
 
         // Remove the action buttons row, but preserve other buttons (e.g. Details, Review diff)
@@ -860,8 +1071,10 @@ export class TelegramBotClient {
               (b) =>
                 b.callback_data !== "logic_check" &&
                 b.callback_data !== "explain" &&
+                b.callback_data !== "reasons" &&
                 !b.callback_data?.startsWith("logic_check:") &&
-                !b.callback_data?.startsWith("explain:")
+                !b.callback_data?.startsWith("explain:") &&
+                !b.callback_data?.startsWith("reasons:")
             )
           )
           .filter((row) => row.length > 0);
@@ -874,10 +1087,12 @@ export class TelegramBotClient {
         );
 
         const targetExcerpt = cb.message.text || this.getMessageExcerpt(cb.message.message_id) || "";
-        const action = isLogicCheck ? "logic_check" : "explain";
+        const action = isLogicCheck ? "logic_check" : isExplain ? "explain" : "reasons";
         const content = isLogicCheck
           ? `Give me a logic check on message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""} as if you were receiving it from a peer.`
-          : `Please explain message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""} in more detail.`;
+          : isExplain
+          ? `Please explain message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""} in more detail.`
+          : `How do you know that? Show the reasons and argument chain behind message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""}.`;
 
         const meta: Record<string, string> = {
           event: action,
@@ -890,6 +1105,11 @@ export class TelegramBotClient {
           chat_id: String(cb.message.chat.id),
           user_id: String(cb.from.id),
         };
+        const cbThread = cb.message.message_thread_id ?? this.getMessageThread(cb.message.message_id);
+        if (cbThread !== undefined) {
+          meta.message_thread_id = String(cbThread);
+          meta.thread_id = String(cbThread);
+        }
         if (targetExcerpt) {
           meta.target_excerpt = targetExcerpt;
         }
@@ -914,7 +1134,7 @@ export class TelegramBotClient {
           { inline_keyboard: [] }
         );
 
-        this.emitChannelEvent(`tapped ${label}`, {
+        const btnMeta: Record<string, string> = {
           event: "button_tap",
           callback_id: cb.id,
           callback_prefix: callbackPrefix,
@@ -923,7 +1143,14 @@ export class TelegramBotClient {
           target_message_id: String(cb.message.message_id),
           chat_id: String(cb.message.chat.id),
           user_id: String(cb.from.id),
-        });
+        };
+        const btnThread = cb.message.message_thread_id ?? this.getMessageThread(cb.message.message_id);
+        if (btnThread !== undefined) {
+          btnMeta.message_thread_id = String(btnThread);
+          btnMeta.thread_id = String(btnThread);
+        }
+
+        this.emitChannelEvent(`tapped ${label}`, btnMeta);
         return;
       }
     }
@@ -962,6 +1189,7 @@ export class TelegramBotClient {
             audioPath: localAudioPath,
             messageId: update.message.message_id,
             replyToMessageId: update.message.reply_to_message?.message_id,
+            messageThreadId: update.message.message_thread_id,
           });
 
           this.emitChannelEvent(voiceEvent.content, {
@@ -975,6 +1203,7 @@ export class TelegramBotClient {
             error: String(e),
             duration,
             messageId: update.message.message_id,
+            messageThreadId: update.message.message_thread_id,
           });
           this.emitChannelEvent(failEvent.content, {
             ...failEvent.meta,
@@ -987,7 +1216,13 @@ export class TelegramBotClient {
     }
 
     // 5. General Inbound (text, attachments, reactions, commands)
-    const event = parseInboundUpdate(update, this.config.allowFrom, (msgId) => this.getMessageExcerpt(msgId), this.config.persona);
+    const event = parseInboundUpdate(
+      update,
+      this.config.allowFrom,
+      (msgId) => this.getMessageExcerpt(msgId),
+      this.config.persona,
+      (msgId) => this.getMessageThread(msgId)
+    );
     if (event) {
       if (event.event === "attachment" && event.meta.file_id && this.config.botToken) {
         try {
