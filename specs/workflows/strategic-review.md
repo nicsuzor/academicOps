@@ -18,7 +18,7 @@ Its core design intent is to eliminate the failure mode of **self-grading** and 
 
 1. **Separation of Author and Reviewer**: The agent authoring or executing work never grades its own deliverable.
 2. **Parallel Blind Review**: Independent specialized review personas (`rbg`, `pauli`, `marsha`) evaluate the artifact concurrently from distinct perspectives without contaminating each other's reasoning.
-3. **Structured Synthesis & Reconciliation**: A single lead persona (`james`) reconciles multi-perspective findings into one actionable verdict rather than dumping a disjointed committee transcript on the user.
+3. **Structured Synthesis & Reconciliation**: A single lead persona (`james`) reconciles multi-perspective findings into one actionable verdict rather than dumping a disjointed committee transcript on the user. A `FAIL` from any expert reviewer makes the combined verdict `FAIL`, and the consolidating agent never downgrades or softens it; addressing an over-harsh reviewer is the user's job to review that reviewer agent.
 4. **Mandatory Write-Back**: The review verdict, synthesis table, and underlying evidence are persistently attached to the reviewed artifact's task record or pull request.
 
 ## Implementation Architecture
@@ -98,6 +98,8 @@ All individual reviewers and the reconciled synthesis return verdicts using the 
 - **PASS**: Satisfies requirements, rules, and strategic congruence (any minor non-blocking suggestions noted inline).
 - **REVISE**: Substantial rework required within the accepted scope.
 - **FAIL**: Fundamental defect in premise, compliance, authority (_ultra vires_), missing specifications/criteria, simulated output renders, or disproportionate work.
+
+A `FAIL` from any individual reviewer (`pauli`, `rbg`, `marsha`) makes the combined reconciled verdict `FAIL`. The consolidating agent never downgrades or softens an expert reviewer's `FAIL` (e.g. to `REVISE` or `PASS`). If an expert reviewer is judged too harsh, that is the user's (Nic's) responsibility to fix by reviewing that reviewer agent, not the consolidating agent's job to soften.
 
 ### 5. Mandatory Return Channel
 

@@ -48,7 +48,7 @@ Synthesize component outputs into a unified findings table:
 - Include a calibration header noting the chosen proportionality (model selection and rounds) and target altitude.
 - Collapse concordant findings across reviewers into a single row that keeps each reviewer's own verdict/disposition; where they differ, state the disposition adopted and why.
 - Give the strategic congruence review (`pauli`) its own row (`PASS`, `REVISE`, or `FAIL`), even when concordant with other rows.
-- **Overall verdict**: `PASS`, `REVISE`, or `FAIL`. Any `FAIL` or `REVISE` from `pauli`, `rbg`, or `marsha` (including the absence of any specifications, requirements, or acceptance criteria) forces `REVISE` or `FAIL` unless the synthesis explicitly names the finding and reason that overrules it.
+- **Overall verdict**: `PASS`, `REVISE`, or `FAIL`. Any expert reviewer's (`pauli`, `rbg`, or `marsha`) `FAIL` (including the absence of any specifications, requirements, or acceptance criteria) makes the combined verdict `FAIL`. The consolidating agent must never downgrade, overrule, or soften an expert reviewer's `FAIL` (e.g. to `REVISE` or `PASS`). If an expert reviewer is judged too harsh, that is the user's (Nic's) responsibility to fix by reviewing that reviewer agent, not the consolidating agent's job to soften. Any `REVISE` without a `FAIL` forces `REVISE` unless all pass (`PASS`).
 
 ### 5. Action and Reporting
 
