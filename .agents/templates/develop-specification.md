@@ -10,6 +10,12 @@ description: Collaboratively develop a complete task/feature specification befor
 been identified. Purpose: a complete spec before implementation starts —
 implementation without this template first is scope-creep waiting to happen.
 
+## One branch, one PR
+
+- Stage 1 opens a **draft** PR into the base branch carrying the spec or design, and its review verdict is recorded on that PR. Stage 1 never merges on its own.
+- Stage 2 builds on Stage 1's branch and pushes to the same PR. The spec stays editable on that branch as the build teaches more.
+- Stage 2 marks the PR ready for review once the feature is written. That flip does not wait for approval: approval comes at the full review, and spec and feature merge together.
+
 ## Steps
 
 1. **Identify the target** — confirm a manual process worth automating, or a
@@ -29,9 +35,7 @@ implementation without this template first is scope-creep waiting to happen.
     axioms and rules (proportionality, single source of truth, closure) before
     review. Resolve any required changes before advancing.
 11. **Review** — record the full summary review on the record for review.
-12. **Finalize and submit** — open a PR for bazaar review; implementation
-    proceeds only after approval (compose [[wf-escalated-approval]] for the
-    go-ahead if the spec commits to something hard to walk back).
+12. **Finalize and submit** — open a **draft** PR (`gh pr create --draft`) for review; the spec task never merges on its own. Implementation proceeds on the same branch and PR once approved, with the spec still editable; the PR is marked ready for review once the feature is written, without waiting for approval; spec and feature merge together after full review.
 
 ## Verification before proceeding to implementation
 

@@ -48,6 +48,13 @@ Then assemble the steps:
 - Write tasks with status `queued` immediately.
 - Close every task with an appendix section listing the workflow templates and skills it was composed from.
 
+### Spec-then-build lifecycle (One branch, one PR)
+
+When an objective calls for specifying or designing a feature ahead of implementation:
+
+- **Stage 1 (Spec/Design)**: Authors and reviews the specification. The task instructions direct the worker to open a **draft** PR (`gh pr create --draft`) into the base branch carrying the spec or design, and record its review verdict on that PR. Stage 1 never merges on its own; once independent review passes (or approval is recorded), the spec task releases as `done` (or `review` for user decision), unblocking Stage 2.
+- **Stage 2 (Build)**: Implementation builds on Stage 1's branch and pushes to the same PR, with the spec still editable as more is learned. The task instructions direct the worker to mark the PR ready for review (`gh pr ready`) once the feature is written, without waiting for approval. Spec and feature merge together after full review.
+
 ```markdown
 ## Ask
 
@@ -71,7 +78,7 @@ Then assemble the steps:
 
 ## Output
 
-[ Where the results of the task should be written. For feature branches, name the upstream repository and base branch to target per the composed workflow. Outputs must not be left in the worker's local (volatile) environment. ]
+[ Where the results of the task should be written. For feature branches, name the upstream repository and base branch to target per the composed workflow. For a Stage 1 spec task, output is a draft PR targeting the base branch; for a Stage 2 build task, output is continuing on Stage 1's branch and PR, marking it ready for review. Outputs must not be left in the worker's local (volatile) environment. ]
 
 ## Report
 
