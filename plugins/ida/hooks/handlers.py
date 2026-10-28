@@ -1028,7 +1028,7 @@ def post_tool_degraded_check(ctx: HookContext) -> Result | None:
             msg_template = (
                 "Degraded capability failure detected in tool response. Under `halt-on-failure` and `fail-fast`:\n"
                 "- Do not silently swallow this degradation or treat the action as fully successful.\n"
-                "- Required: Report the capability failure verbatim to the user and log an escalation issue/task."
+                "- Required: Report the capability failure verbatim to the user and invoke /learn to diagnose the root cause (do not create tasks)."
             )
         inject_text = f"{msg_template}\n\nDegraded output details:\n" + "\n".join(
             f"- {d}" for d in details
