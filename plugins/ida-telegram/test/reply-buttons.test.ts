@@ -263,10 +263,12 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
 
         const kb = apiCalls[0].body.reply_markup?.inline_keyboard || [];
         expect(kb.length).toBe(1);
-        expect(kb[0].length).toBe(3);
+        expect(kb[0].length).toBe(5);
         expect(kb[0][0].text).toBe("🔍 Details");
         expect(kb[0][1].text).toBe("🧐 Check logic");
         expect(kb[0][2].text).toBe("💡 Explain");
+        expect(kb[0][3].text).toBe("✅ Accept recommendation");
+        expect(kb[0][4].text).toBe("❌ Decline recommendation");
       } finally {
         cleanup();
       }
@@ -311,11 +313,17 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
         expect(parsedResult.success).toBe(true);
 
         const kb = apiCalls[0].body.reply_markup?.inline_keyboard || [];
-        // Row 0: Predefined row [Details, Check logic, Explain]
+        // Row 0: Predefined row [Details, Check logic, Explain, Accept recommendation, Decline recommendation]
         // Row 1: Caller row 1 [B1, B2, B3, B4]
         // Row 2: Caller row 2 [B5, B6, B7, B8]
         expect(kb.length).toBe(3);
-        expect(kb[0].map((b: any) => b.text)).toEqual(["🔍 Details", "🧐 Check logic", "💡 Explain"]);
+        expect(kb[0].map((b: any) => b.text)).toEqual([
+          "🔍 Details",
+          "🧐 Check logic",
+          "💡 Explain",
+          "✅ Accept recommendation",
+          "❌ Decline recommendation",
+        ]);
         expect(kb[1].map((b: any) => b.text)).toEqual(["B1", "B2", "B3", "B4"]);
         expect(kb[2].map((b: any) => b.text)).toEqual(["B5", "B6", "B7", "B8"]);
       } finally {
@@ -349,11 +357,16 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
         // Default behaviour:
         // Row 0: Caller buttons ([Caller Button])
         // Row 1: Details ([🔍 Details])
-        // Row 2: Actions ([🧐 Check logic, 💡 Explain])
+        // Row 2: Actions ([🧐 Check logic, 💡 Explain, ✅ Accept recommendation, ❌ Decline recommendation])
         expect(kb.length).toBe(3);
         expect(kb[0].map((b: any) => b.text)).toEqual(["Caller Button"]);
         expect(kb[1].map((b: any) => b.text)).toEqual(["🔍 Details"]);
-        expect(kb[2].map((b: any) => b.text)).toEqual(["🧐 Check logic", "💡 Explain"]);
+        expect(kb[2].map((b: any) => b.text)).toEqual([
+          "🧐 Check logic",
+          "💡 Explain",
+          "✅ Accept recommendation",
+          "❌ Decline recommendation",
+        ]);
       } finally {
         cleanup();
       }

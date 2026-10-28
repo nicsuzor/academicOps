@@ -227,6 +227,64 @@ describe("Inbound completeness: Updates routing and parsing", () => {
     expect(result?.content).toContain("explain");
   });
 
+  test("delivers accept_recommendation button tap event naming target message and acceptance", () => {
+    const update: TelegramUpdate = {
+      update_id: 53,
+      callback_query: {
+        id: "cb_acc_1",
+        from: { id: 12345678, is_bot: false, first_name: "Nic" },
+        message: {
+          message_id: 90,
+          date: Date.now(),
+          chat: { id: 12345678, type: "private" },
+          text: "Recommended plan of action.",
+        },
+        data: "accept_recommendation",
+      },
+    };
+
+    const result = parseInboundUpdate(update, allowFrom);
+    expect(result).not.toBeNull();
+    expect(result?.event).toBe("accept_recommendation");
+    expect(result?.meta.event).toBe("accept_recommendation");
+    expect(result?.meta.action).toBe("accept_recommendation");
+    expect(result?.meta.recommendation).toBe("accepted");
+    expect(result?.meta.choice).toBe("accept");
+    expect(result?.meta.target_message_id).toBe("90");
+    expect(result?.meta.target_excerpt).toBe("Recommended plan of action.");
+    expect(result?.content).toContain("90");
+    expect(result?.content).toMatch(/Nic accepted the recommendation/i);
+  });
+
+  test("delivers decline_recommendation button tap event naming target message and declination", () => {
+    const update: TelegramUpdate = {
+      update_id: 54,
+      callback_query: {
+        id: "cb_dec_1",
+        from: { id: 12345678, is_bot: false, first_name: "Nic" },
+        message: {
+          message_id: 91,
+          date: Date.now(),
+          chat: { id: 12345678, type: "private" },
+          text: "Alternate recommendation not desired.",
+        },
+        data: "decline_recommendation",
+      },
+    };
+
+    const result = parseInboundUpdate(update, allowFrom);
+    expect(result).not.toBeNull();
+    expect(result?.event).toBe("decline_recommendation");
+    expect(result?.meta.event).toBe("decline_recommendation");
+    expect(result?.meta.action).toBe("decline_recommendation");
+    expect(result?.meta.recommendation).toBe("declined");
+    expect(result?.meta.choice).toBe("decline");
+    expect(result?.meta.target_message_id).toBe("91");
+    expect(result?.meta.target_excerpt).toBe("Alternate recommendation not desired.");
+    expect(result?.content).toContain("91");
+    expect(result?.content).toMatch(/Nic declined the recommendation/i);
+  });
+
   test("delivers bot commands as channel events", () => {
     const update: TelegramUpdate = {
       update_id: 6,
