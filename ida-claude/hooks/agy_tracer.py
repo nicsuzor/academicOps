@@ -57,7 +57,16 @@ def _is_human_message_agy(entry: dict) -> bool:
 
 
 def _is_turn_start_entry_agy(entry: dict) -> bool:
-    return entry.get("type") in ("USER_INPUT", "SYSTEM_MESSAGE")
+    entry_type = entry.get("type")
+    if entry_type == "USER_INPUT":
+        return True
+    if entry_type == "SYSTEM_MESSAGE":
+        content = str(entry.get("content") or "").lower()
+        return not (
+            "injected by a sessionstart hook" in content
+            or ("session:" in content and "host:" in content and "cwd:" in content)
+        )
+    return False
 
 
 def _resolve_transcript_path_agy(data: dict, state: dict, session_id: str) -> str:

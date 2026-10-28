@@ -324,6 +324,14 @@ is_gate_open = is_disarmed
 _AGY_USER_REQUEST = re.compile(r"<USER_REQUEST>\s*(.*)\s*</USER_REQUEST>", re.DOTALL)
 
 
+def _is_session_start_or_harness_injection(content: str) -> bool:
+    """True if a SYSTEM_MESSAGE is a SessionStart hook message or harness banner, not an incoming turn message."""
+    s = content.lower()
+    return "injected by a sessionstart hook" in s or (
+        "session:" in s and "host:" in s and "cwd:" in s
+    )
+
+
 def _agy_turn_start(ctx: HookContext) -> dict[str, Any] | None:
     if ctx.raw.get("invocationNum", 0) != 0:
         return None
@@ -342,10 +350,15 @@ def _agy_turn_start(ctx: HookContext) -> dict[str, Any] | None:
             entry = json.loads(line)
         except json.JSONDecodeError:
             continue
-        if isinstance(entry, dict) and entry.get("type") in (
-            "USER_INPUT",
-            "SYSTEM_MESSAGE",
-        ):
+        if not isinstance(entry, dict):
+            continue
+        entry_type = entry.get("type")
+        if entry_type == "USER_INPUT":
+            return entry
+        if entry_type == "SYSTEM_MESSAGE":
+            content = str(entry.get("content") or "")
+            if _is_session_start_or_harness_injection(content):
+                continue
             return entry
     return None
 
@@ -384,11 +397,18 @@ def agy_arrival(content: str) -> str:
 def _agy_user_prompt(ctx: HookContext) -> str:
     """The user's text for an agy turn, read from the turn's transcript."""
     turn_start = _agy_turn_start(ctx)
-    if not turn_start or turn_start.get("type") != "USER_INPUT":
+    if not turn_start:
         return ""
-    content = str(turn_start.get("content") or "").strip()
-    m = _AGY_USER_REQUEST.search(content)
-    return (m.group(1) if m else content).strip()
+    if turn_start.get("type") == "USER_INPUT":
+        content = str(turn_start.get("content") or "").strip()
+        m = _AGY_USER_REQUEST.search(content)
+        return (m.group(1) if m else content).strip()
+    if turn_start.get("type") == "SYSTEM_MESSAGE":
+        content = str(turn_start.get("content") or "").strip()
+        arrival = agy_arrival(content)
+        if arrival:
+            return arrival
+    return ""
 
 
 def prompt_text(ctx: HookContext) -> str:
