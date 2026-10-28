@@ -153,6 +153,39 @@ def test_task_record_handback_verdict_records_with_task_id_and_verification_id()
     assert span["attributes"]["premise_check.verdict"] == "REVISE"
 
 
+def test_task_record_handback_verdict_records_with_construct_drift():
+    """Defect tags #construct-drift and #method-gap are recognized and recorded in span attributes."""
+    tracer = _StubTracer()
+    session_id = "supervisor-session-construct-drift"
+    task_id = "aops_8830b769"
+
+    reason = (
+        f"Judged: {task_id}; asks aops_8830b769/AC1\n"
+        "Valid: (2) fails #construct-drift -- silent substitution of specified form\n"
+        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
+        "Answered: aops_8830b769/AC1 ← (2)\n"
+        "Sufficient: (2) material; low-stakes\n"
+        "Waived: block -- reviewed from task record\n"
+        "Relay: none"
+    )
+
+    res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=task_id,
+        verdict="REVISE",
+        reason=reason,
+        title="task record check construct drift",
+        tracer_mod=tracer,
+    )
+
+    assert res["ok"] is True
+    assert res["claim_id"] == task_id
+    assert res["verdict"] == "REVISE"
+    span = tracer.exported[0]["spans"][0]
+    assert span["attributes"]["premise_check.defect_tags"] == ["#construct-drift"]
+    assert span["attributes"]["premise_check.defect_tag_count"] == 1
+
+
 def test_non_task_claim_refused_when_unarmed():
     """Non-task claim ids still refuse with 'no premise check is currently armed' when unarmed."""
     tracer = _StubTracer()
