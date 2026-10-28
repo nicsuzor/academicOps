@@ -86,6 +86,12 @@ including the `dist/cowork/` and `dist/openclaw/` directory-marketplace
 channels and `dist/plugins/` (Antigravity's native multi-plugin directory,
 populated from `dist/<plugin>-agy`).
 
+Agent definitions under `agents/` are processed during client adaptation:
+per-client variant files (`<name>.<client>.md`) are resolved, and `@` file
+import lines (such as `@../CORE.md`) are resolved and inlined into each built
+agent body. Before packaging, the build verifies that no unresolved `@` import
+lines remain in built agent files (`assert_no_unresolved_imports`).
+
 ### Client adapters
 
 A client adapter is the only place a client-specific workaround may live.

@@ -23,6 +23,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from build.agents import assert_no_unresolved_imports
 from build.clients import agy as agy_client
 from build.clients import claude as claude_client
 from build.clients import openclaw as openclaw_client
@@ -181,6 +182,7 @@ def _build_plugin_client(
     # whatever mode the source repo happened to commit.
     mark_shebangs_executable(build_dir)
     assert_no_build_artifacts(build_dir)
+    assert_no_unresolved_imports(build_dir)
     _package(build_dir, client, dist_root)  # stage 5
     return build_dir
 

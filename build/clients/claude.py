@@ -13,7 +13,11 @@ from pathlib import Path
 
 import yaml
 
-from build.agents import resolve_client_agents
+from build.agents import (
+    assert_no_unresolved_imports,
+    resolve_agent_imports,
+    resolve_client_agents,
+)
 from build.axioms import AXIOMS_SUBDIR, load_always_on_axioms
 from build.context import BuildContext
 from build.errors import BuildError
@@ -61,6 +65,7 @@ def _adapt_agents(build_dir: Path) -> None:
         return
 
     resolve_client_agents(agents_dir, "claude")
+    resolve_agent_imports(agents_dir)
 
     md_files = sorted(agents_dir.rglob("*.md"))
     if not md_files:
@@ -122,6 +127,8 @@ def _adapt_agents(build_dir: Path) -> None:
                 and not any(md_file.parent.iterdir())
             ):
                 md_file.parent.rmdir()
+
+    assert_no_unresolved_imports(build_dir)
 
 
 def _write_json(path: Path, data: dict) -> None:

@@ -69,6 +69,96 @@ def test_pyproject_toml_included_in_built_distributions(built_orchestrate):
         assert "opentelemetry" in content
 
 
+def test_built_agents_inline_core_md(built_orchestrate):
+    """AC1: Every built agent file that imports CORE.md contains CORE.md's text and no unresolved import line."""
+    core_text = (PROJECT_ROOT / "plugins" / "ida" / "CORE.md").read_text(encoding="utf-8").strip()
+    agents_with_core = ["ida", "james", "marsha", "pauli", "sara"]
+
+    for client in CLIENTS:
+        build_dir = built_orchestrate / f"ida-{client}"
+        agents_dir = build_dir / "agents"
+        assert agents_dir.is_dir(), f"missing agents dir in {build_dir.name}"
+
+        for agent_name in agents_with_core:
+            agent_file = agents_dir / f"{agent_name}.md"
+            assert agent_file.is_file(), f"missing {agent_name}.md in {build_dir.name}"
+            content = agent_file.read_text(encoding="utf-8")
+
+            assert core_text in content, f"{agent_file} does not contain inlined CORE.md content"
+            assert "@../CORE.md" not in content, (
+                f"{agent_file} still contains unresolved '@../CORE.md'"
+            )
+            for line in content.splitlines():
+                assert not line.strip().startswith("@"), (
+                    f"{agent_file} contains unresolved import line: {line.strip()}"
+                )
+
+
+def test_agent_missing_import_raises_build_error(tmp_path):
+    from build.agents import resolve_agent_imports
+
+    agents_dir = tmp_path / "agents"
+    agents_dir.mkdir()
+    (agents_dir / "agent.md").write_text(
+        "---\nname: agent\ndescription: Test agent\n---\n\n@nonexistent.md\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(BuildError, match="does not exist"):
+        resolve_agent_imports(agents_dir)
+
+
+def test_agent_circular_import_raises_build_error(tmp_path):
+    from build.agents import resolve_agent_imports
+
+    agents_dir = tmp_path / "agents"
+    agents_dir.mkdir()
+    (agents_dir / "a.md").write_text(
+        "---\nname: a\ndescription: A\n---\n\n@b.md\n",
+        encoding="utf-8",
+    )
+    (agents_dir / "b.md").write_text(
+        "---\nname: b\ndescription: B\n---\n\n@a.md\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(BuildError, match="circular import detected"):
+        resolve_agent_imports(agents_dir)
+
+
+def test_assert_no_unresolved_imports_raises_build_error(tmp_path):
+    from build.agents import assert_no_unresolved_imports
+
+    build_dir = tmp_path / "dist"
+    agents_dir = build_dir / "agents"
+    agents_dir.mkdir(parents=True)
+    (agents_dir / "agent.md").write_text(
+        "---\nname: agent\ndescription: Test agent\n---\n\n@unresolved.md\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(BuildError, match="unresolved import line"):
+        assert_no_unresolved_imports(build_dir)
+
+
+def test_agent_code_fence_at_line_is_not_treated_as_import(tmp_path):
+    from build.agents import assert_no_unresolved_imports, resolve_agent_imports
+
+    build_dir = tmp_path / "dist"
+    agents_dir = build_dir / "agents"
+    agents_dir.mkdir(parents=True)
+    content = (
+        "---\nname: agent\ndescription: Test agent\n---\n\n"
+        "Here is some python code:\n\n"
+        "```python\n"
+        "@dataclass\n"
+        "class Foo:\n"
+        "    pass\n"
+        "```\n"
+    )
+    (agents_dir / "agent.md").write_text(content, encoding="utf-8")
+    resolve_agent_imports(agents_dir)
+    assert_no_unresolved_imports(build_dir)
+    assert "@dataclass" in (agents_dir / "agent.md").read_text(encoding="utf-8")
+
+
 # --- stage 3: manifest rendering --------------------------------------------
 
 
