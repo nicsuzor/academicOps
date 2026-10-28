@@ -3,7 +3,7 @@ alias:
   - wf-daily
   - tpl_daily
   - tpl-daily
-description: Universal daily note workflow -- read existing note content to enrich and reconcile it, strike out completed tasks, process user annotations into tasks/updates, elevate verbatim requests and high-signal prompts into tracking and work tasks, itemize merged PR elements, and compose a scannable, high-signal briefing.
+description: Universal daily note workflow -- read existing note content to enrich and reconcile it, strike out items whose result has reached the user, process user annotations into tasks/updates, elevate verbatim requests and high-signal prompts into tracking and work tasks, itemize merged PR elements, and compose a scannable, high-signal briefing.
 id: wf-daily
 tags:
   - wf-template
@@ -21,9 +21,9 @@ Creates or updates today's daily note as a scannable cognitive prosthesis. The d
 
 1. **Untruncated Ingestion & Preconditions**: Fetch the full daily template without truncation (`truncated: false`). Ensure PKB interface answers. Enforce strict single-line scannable ceiling (≤25 words per bullet) on objectives. Absolutely ban run execution logs (`## Daily Log`), cron heartbeats, and raw reconcile dumps.
 2. **Enrich Existing Note Content**: When updating an existing daily note for today, workers MUST read existing content and actively enrich it:
-   - _Strike out completed tasks_: Inspect tasks listed in the note (under set-out, came-up, still open, or agenda sections). If a task has closed on the graph, strike it out (`~~item~~`) or rephrase it so its completion is obvious.
+   - _Strike out delivered items_: Inspect tasks and items listed in the note (under set-out, came-up, still open, or agenda sections). Strike out an item (`~~item~~`) only when its result has reached the user, not when its task closes on the graph.
    - _Process user annotations, comments, and instructions_: Extract user annotations, comments, indications of dealt-with tasks, or custom directives. File them as updates on existing tasks or create new tasks with proper links and parents. Update the note text in-place, rewriting annotations with recorded task IDs, slugs, and actions taken (`*Filed as [[task-id]]: action taken*`).
-   - _Elevate verbatim user requests_: Verbatim requests, notes, or custom sections placed in the note reflect deliberate, high-priority user signals. Verify if a tracking task exists. If not, create a tracking task assigned to the front supervisory agent (`ida`) under `agent_brains/ida` for follow-up. If the underlying work has no task, create one situated under the appropriate parent on the graph (marked `status: in_progress`). If matching an existing task, situate it properly.
+   - _Elevate verbatim user requests and asks whose result has not reached the user_: For asks whose result has not reached the user, and deliberate verbatim requests, notes, or custom sections placed in the note (reflecting high-priority user signals), verify if a tracking task exists. If not, create a tracking task assigned to the front supervisory agent (`ida`) under `agent_brains/ida` for follow-up. If the underlying work has no task, create one situated under the appropriate parent on the graph (marked `status: in_progress`). If matching an existing task, situate it properly.
    - _Itemize merged PR progress_: If a relevant PR has merged for tracked work, update the note to itemize completed versus incomplete elements in a checklist (`- [x]` completed, `- [ ]` incomplete), leaving undone components visible.
    - _Carry over incomplete work_: Incomplete elements from merged PRs and unfinished tasks carry over as incomplete work to the next day's note.
 3. **Trawl Daily Prompts for Consolidated Insights (`wf-prompt-objectives`)**:
@@ -41,7 +41,7 @@ Creates or updates today's daily note as a scannable cognitive prosthesis. The d
 1. **Lede**: One or two lines making order of the day; top priority first.
 2. **`## Catastrophic`**: Urgent items with verbatim consequence text; omitted if none.
 3. **`## Today`**: Today's calendar events, emails needing reply today, and hard deadline commitments. Optional invitations phrased conditionally.
-4. **`## What you set out to do`**: One scannable line (≤25 words) per set-out objective, heaviest first. Completed items struck out (`~~item~~`). Includes `<details><summary>Still open from before today (n)</summary>` for carried-over incomplete work, and `<details><summary>What you wrote</summary>` for user priorities.
+4. **`## What you set out to do`**: One scannable line (≤25 words) per set-out objective, heaviest first. Items whose result has reached the user struck out (`~~item~~`). Includes `<details><summary>Still open from before today (n)</summary>` for carried-over incomplete work, and `<details><summary>What you wrote</summary>` for user priorities.
 5. **`## What came up along the way`**: One scannable line (≤25 words) per branched objective, naming what it branched from.
 6. **`## With you`**: Decisions and answers waiting on the user now.
 7. **`## Open PRs`**: Clean table of open PRs requiring user action (`PR | What it does | Recommendation`).
