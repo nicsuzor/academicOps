@@ -22,17 +22,52 @@ export const MCP_TOOLS: ToolDefinition[] = [
         buttons: {
           type: "array",
           description:
-            "Inline option buttons, one per row. Attach one per answer whenever the reply asks the user a question, recommendation first; a tap arrives as a button_tap channel event.",
+            "Inline option buttons. Can be a flat array of buttons (defaulting to 1 per row or arranged via button_layout / buttons_per_row) or an array of rows (array of button arrays) for custom multi-row grids.",
           items: {
-            type: "object",
-            properties: {
-              label: { type: "string" },
-              callback_data: { type: "string" },
-              url: { type: "string" },
-              web_app: { type: "string" },
-            },
-            required: ["label"],
+            anyOf: [
+              {
+                type: "object",
+                properties: {
+                  label: { type: "string" },
+                  callback_data: { type: "string" },
+                  url: { type: "string" },
+                  web_app: { type: "string" },
+                  row: { type: "integer", description: "Optional row index (0-based)" },
+                },
+                required: ["label"],
+              },
+              {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    label: { type: "string" },
+                    callback_data: { type: "string" },
+                    url: { type: "string" },
+                    web_app: { type: "string" },
+                  },
+                  required: ["label"],
+                },
+              },
+            ],
           },
+        },
+        button_layout: {
+          description:
+            "Optional custom row layout specifying button counts per row (e.g. [3, 3, 2] or [4, 4]), or a uniform row size integer.",
+          anyOf: [
+            { type: "array", items: { type: "integer" } },
+            { type: "integer" },
+          ],
+        },
+        buttons_per_row: {
+          type: "integer",
+          description: "Optional number of buttons per row to automatically arrange flat buttons into rows.",
+        },
+        predefined_row: {
+          type: "boolean",
+          description:
+            "Put all predefined buttons (Details, Check logic, Explain, and optional feedback/review) together on a single first row above the caller's rows.",
         },
         voice: { type: "boolean", description: "Send tier 1 as a spoken voice note" },
         reply_to: { type: "integer", description: "Telegram message ID to reply to" },
