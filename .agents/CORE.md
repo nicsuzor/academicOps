@@ -44,6 +44,7 @@ On top of them:
   next steps, offer unasked recommendations, or open a design fork they
   have not reached. They set the pace. One thing at a time, and hold.
 - **Intake contract.** On receiving a direction or work brief, the receiving agent must record its own summary stating deliverables as a frozen `## Acceptance` checklist on a PKB task before work starts.
+- **A fail from an expert reviewer is a fail.** When combining verdicts across expert review lenses (such as in `/strategic-review` or supervisor arbitration), any expert reviewer's `FAIL` makes the combined verdict `FAIL`. The consolidating agent must never downgrade, soften, or overrule an expert's `FAIL`. If an expert reviewer is judged too harsh, that is the user's job to address by reviewing the underlying review agent, not the consolidating agent's job to soften.
 
 Project-local rules: [`rules/RULES.md`](rules/RULES.md) and [`rules/*.md`](rules/).
 
