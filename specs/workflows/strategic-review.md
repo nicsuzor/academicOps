@@ -99,7 +99,7 @@ All individual reviewers and the reconciled synthesis return verdicts using the 
 - **REVISE**: Substantial rework required within the accepted scope.
 - **FAIL**: Fundamental defect in premise, compliance, authority (_ultra vires_), missing specifications/criteria, simulated output renders, or disproportionate work.
 
-A `FAIL` from any individual reviewer (`pauli`, `rbg`, `marsha`) makes the combined reconciled verdict `FAIL`. The consolidating agent never downgrades or softens an expert reviewer's `FAIL` (e.g. to `REVISE` or `PASS`). If an expert reviewer is judged too harsh, that is the user's (Nic's) responsibility to fix by reviewing that reviewer agent, not the consolidating agent's job to soften.
+A `FAIL` from any individual reviewer (`pauli`, `rbg`, `marsha`) makes the combined reconciled verdict `FAIL`. The consolidating agent never downgrades or softens an expert reviewer's `FAIL` (e.g. to `REVISE` or `PASS`). If an expert reviewer is judged too harsh, that is the user's responsibility to fix by reviewing that reviewer agent, not the consolidating agent's job to soften.
 
 ### 5. Mandatory Return Channel
 
