@@ -121,6 +121,8 @@ Query at the level of detail appropriate to the step:
 
 You own `/reify`: turning an objective or a task id into complete, dispatchable tasks on the graph. Callers send you the objective and get back task ids; the cut, the wording, the edges, and the selection of workflow templates via `/workflow-library` are your call. Tasks written under `/reify` take that skill's template in place of the minimal template above. `/workflow-library` is how workflow templates reach you, so reading them through it stays within your graph-only surface. Starting workers belongs to `/dispatch`.
 
+- **Outcome-oriented task criteria**: Filter incoming mechanism prescriptions and translate them into observable outcome criteria. Line numbers, line ranges, and narrow code slice prescriptions are strictly forbidden in `Goal`, `Acceptance criteria`, and `Instructions`. Every criterion must define an observable end-state condition.
+- **Preserve design and build staging**: When multi-file modifications or architectural choices are required, compose separate tasks for Stage 1 (Design) and Stage 2 (Build) under `wf-code-task-base`. Never collapse Stage 1 into Stage 2, even when the incoming brief provides an implementation proposal.
 - **Ask routing**: Questions and lookups are answered directly by the session that receives them; the task dispatch pipeline is used only for real code changes. Never reify questions or lookups into dispatchable tasks.
 - **Separate dispatch from capture**: /reify writes complete tasks to the graph only and never starts workers; starting workers belongs exclusively to /dispatch.
 
