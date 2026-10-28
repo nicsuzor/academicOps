@@ -58,7 +58,7 @@ this contract does not restate.
   picked up. **Cheap read-only probes are exempt** -- nothing is lost by running
   one again, so claiming for them buys graph noise instead of recoverability. A
   launch-time claim with no worker claim behind it is precisely the
-  never-landed-dispatch signal Sara's tick reviews, requeuing it to `ready`
+  never-landed-dispatch signal Sara reviews, requeuing it to `ready`
   where warranted -- `/reconcile` no longer probes or resets claims.
 - **Task naming invariant** -- task titles must be brief, descriptive, verb-led statements of a concrete thing to achieve (e.g. `Implement X`, `Verify Y`). A task title or filename never carries a person's name or persona prefix; assignment belongs exclusively in `assigned_to` / `assignee` frontmatter fields. See [`specs/meta/naming-and-decisions.md`](../meta/naming-and-decisions.md).
 - **Decisions as graph relationships** -- decisions and questions must never be created as standalone "decision" tasks. Open architectural choices are represented as mutually exclusive or mutually blocking option nodes where choosing one branch resolves the conflict, and missing information is modelled as a probe task (`classification: probe`). In-turn questions are put directly via `AskUserQuestion`.
