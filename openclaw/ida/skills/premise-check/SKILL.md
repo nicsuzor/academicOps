@@ -69,6 +69,7 @@ Premise lines end with their basis in words, drawn strictly from this closed voc
 5. **The inference line**: Starts `--`, ends `--`, on one line: warrant rule, then `Unless: <defeater>; <status>`.
 6. **Chain conclusions**: Each step begins `So` and chains into subsequent steps.
 7. **Relay upward**: Relaying a report upward requires its premise-check verdict; name the line each relayed sentence restates. Read claims against their source of record before relaying. Never relay an argument with 0 inference lines or substantive defects as fact.
+8. **Method pairing line**: When an ask specifies a method, form, design, or value, the report carries a pairing line setting each specified feature beside what was done (e.g. `@file -> @./at-test-target.md`; `read back -> Read tool`), naming each departure with its reason, else `departures: none`. A detail in a method specification is load-bearing regardless of typography (quoted, backticked, or plain) unless the ask's purpose shows it free. Rewording that preserves the construct is not a departure; exact wording is not required where the construct is preserved.
 
 ## Checking a Received Report or Direction
 
@@ -86,17 +87,28 @@ Take observed premises with a pointer as given: never open a pointer or redo the
 
 | Test | Passes when | Failure looks like |
 | - | - | - |
-| **Valid** | Premises meet every condition of the warrant; conclusion is no wider than premises; construct matches and sample is adequate. | Missing condition; unruled defeater; scope drift; construct mismatch (quantitative rank checks substituted for qualitative evaluation); sample inadequacy (unexplained n=1 or n=2 probes asserted as proof of representative classes). |
+| **Valid** | Premises meet every condition of the warrant; conclusion is no wider than premises; construct matches and sample is adequate; all specified methods, forms, designs, and values are paired and accounted for. | Missing condition; unruled defeater; scope drift (`#scope-drift`); construct mismatch or drift (`#construct-drift`: unnamed departure or silent substitution of specified method, form, design, or value); method gap (`#method-gap`: method cannot observe what is claimed); sample inadequacy (unexplained n=1 or n=2 probes asserted as proof of representative classes). |
 | **Supported** | Each premise's basis can bear the step's stakes. Weakest premise bounds conclusion. | `worker reported, unchecked` or `assumed` on high-stakes step. |
 | **Answered** | Final conclusion answers what each ask ID needs in substance. | Narrower conclusion; relayer acceptance items substituted for ask needs. |
 | **Sufficient** | Proportionality holds: materiality, sufficiency (obvious, authority-backed, low-stakes), and necessity. A task's primary ask or acceptance criterion is never low-stakes or obvious. | Complex unbacked warrant on high-stakes step without decomposition; treating a primary ask or acceptance criterion as low-stakes or obvious. |
 
 Proportionality: accept warrants as stated when obvious, authority-backed (strictly limited to user words or governing spec), backed by a cited verdict, or cheap to reverse. A task's primary ask or acceptance criterion is never low-stakes or obvious. Send back for decomposition only when complex, unbacked, or high-stakes.
 
+#### Fidelity Procedure
+
+When checking an inference line or deliverable where the ask specifies a method, form, design, or value:
+
+1. **Extract specified features**: Read `## Ask` for any specified method, form, design, or value. Details in method specifications are load-bearing regardless of typography (quoted, backticked, or plain) unless the ask's purpose shows them free.
+2. **Check the pairing line**: Verify the report pairs each specified feature with what was done.
+3. **Judge departures**:
+   - An unnamed departure (silent substitution of a specified method, form, design, or value) fails `Valid` with `#construct-drift` or `#method-gap`.
+   - A block that silently swaps a specified form cannot PASS; return for revision (`REVISE`).
+   - Rewording that preserves the construct and distinction passes; do not require verbatim wording outside specified forms or methods.
+
 ## Recording the Verdict
 
 - **PASS**: Every inference holds, every ask is answered, the weakest basis bears the stakes, and at least one inference line is tested (>= 1). Format-only defects on a substantively sound argument with >= 1 inference line are waived under `Waived:` and rewritten into standard form by the receiver before relaying upward.
-- **REVISE**: Name the line, defect tag (`#missing`, `#scope-drift`, `#conflict`, `#unanswered`, `#undercut`), and remedy. Mandatory for substantive defects or 0 inference lines (bare assertions); cannot be relayed upward as fact. Return to sender.
+- **REVISE**: Name the line, defect tag (`#missing`, `#scope-drift`, `#conflict`, `#unanswered`, `#undercut`, `#construct-drift`, `#method-gap`), and remedy. Mandatory for substantive defects or 0 inference lines (bare assertions); cannot be relayed upward as fact. Return to sender.
 - **FAIL**: Conclusion does not answer the ask or contradicts evidence. Mandatory for substantive defects; cannot be relayed upward as fact.
 
 Write the reason as the seven keyed lines:
@@ -111,7 +123,7 @@ Waived: none | <format item> -- <justification>
 Relay: "<sentence to relay>" ← (n) | none
 ```
 
-For arguments with multiple inference lines, all yielded conclusions must be accounted for under `Valid:`—either via multiple `Valid:` lines, indented continuation lines, semicolon clauses (`(n) holds -- ...; (m) holds -- ...`), or grouped references (`(n), (m) holds -- ...` or `(n) and (m) hold -- ...`).
+For arguments with multiple inference lines, all yielded conclusions must be accounted for under `Valid:`--either via multiple `Valid:` lines, indented continuation lines, semicolon clauses (`(n) holds -- ...; (m) holds -- ...`), or grouped references (`(n), (m) holds -- ...` or `(n) and (m) hold -- ...`).
 
 Format items: `block`, `numbering`, `endnotes`, `basis wording`, `ask wording`, `layout`.
 

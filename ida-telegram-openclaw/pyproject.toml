@@ -1,6 +1,6 @@
 [project]
 name = "ida-telegram"
-version = "0.10.26+g18f3fdcd"
+version = "0.10.26+g378fc3d3"
 description = "Ida's custom Telegram channel and Mini App plugin for Claude Code."
 requires-python = ">=3.11"
 dependencies = [
