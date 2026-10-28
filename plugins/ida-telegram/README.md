@@ -40,6 +40,11 @@ Ida's custom Telegram channel and Mini App plugin for Claude Code.
     - `VOICE_SPEAK_CMD`: Optional path override for speech synthesis command. Defaults to the bundled `${CLAUDE_PLUGIN_ROOT}/scripts/speak.sh`.
     - `GEMINI_TTS_VOICE`: Optional prebuilt voice name for Gemini TTS (default: `Aoede`).
     - `VOICE_REPLIES`: Speech synthesis reply policy: `off`, `mirror`, or `always` (default: `mirror`).
+- **Threaded Conversations by Default:**
+  - Messages arriving in Telegram forum topics or message threads are received with their thread identity (`meta.message_thread_id` and `meta.thread_id`).
+  - Outbound paths (`reply`, `ask_user` question cards, `force_reply` prompts for `✏️ Other`, message edits, and emoji reactions) automatically stay in that thread without requiring configuration or opt-in settings.
+  - Callers may optionally supply `message_thread_id` (or `thread_id`) explicitly to target a specific thread.
+  - Unthreaded chats maintain legacy behaviour with parameters omitted from outbound requests.
 - **Native Bot Commands:**
   - Registers persona-tailored command menus via `setMyCommands` at `botCommandScopeChat` for each `allowFrom` chat on startup, surviving channel restarts and overriding `all_private_chats` defaults.
   - Ida Prime registers `/decide`, `/q`, `/mine`, `/reconcile`, `/hydrate`, `/up`, `/reify`, `/dispatch`, and `/daily`.

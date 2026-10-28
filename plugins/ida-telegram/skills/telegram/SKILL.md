@@ -61,6 +61,11 @@ Every reply sent over Telegram automatically carries inline action buttons: `[ðŸ
 - **Diff reviews:** Attach review metadata when presenting a pull request or branch for review, allowing the user to inspect changes and submit approval or critique directly.
 - **Cognitive anchor:** Update the live cognitive anchor whenever primary focus changes or work is delegated, keeping the status view current.
 
+## Threaded Conversations
+
+- **Thread confinement by default:** In Telegram supergroups with forum topics enabled, messages arriving in a thread are tagged with `meta.message_thread_id` and `meta.thread_id`. All outbound paths (replies, voice notes, question cards, edits, and reactions) automatically stay in that thread without configuration.
+- **Explicit target overriding:** If work requires posting into a specific topic, pass `message_thread_id` (or `thread_id`) explicitly to `reply` or `ask_user`.
+
 ## Voice
 
 - **Inbound voice:** Spoken voice notes from the user are transcribed automatically before reaching the agent. If transcription fails (`transcript_error`), report the failure and error immediately in chat and log an escalation; do not retry manually via Bash or silently drop it.

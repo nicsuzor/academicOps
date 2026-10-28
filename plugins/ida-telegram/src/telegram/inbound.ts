@@ -15,6 +15,7 @@ export interface TelegramChat {
 
 export interface TelegramMessage {
   message_id: number;
+  message_thread_id?: number;
   date: number;
   chat: TelegramChat;
   from?: TelegramUser;
@@ -62,6 +63,7 @@ export interface InboundChannelEvent {
 }
 
 export type TargetExcerptFetcher = (messageId: number) => string | undefined;
+export type MessageThreadFetcher = (messageId: number) => number | undefined;
 
 export function sanitizeChannelMeta(raw: Record<string, unknown>): Record<string, string> {
   const out: Record<string, string> = {};
@@ -79,7 +81,8 @@ export function parseInboundUpdate(
   update: TelegramUpdate,
   allowFrom: number[],
   getExcerpt?: TargetExcerptFetcher,
-  persona?: string
+  persona?: string,
+  getThread?: MessageThreadFetcher
 ): InboundChannelEvent | null {
   // 1. Text / Media Message
   if (update.message) {
@@ -109,6 +112,11 @@ export function parseInboundUpdate(
         args,
         user_id: String(userId),
       };
+
+      if (msg.message_thread_id !== undefined) {
+        meta.message_thread_id = String(msg.message_thread_id);
+        meta.thread_id = String(msg.message_thread_id);
+      }
 
       if (msg.from?.first_name) {
         meta.user = msg.from.first_name;
@@ -151,6 +159,11 @@ export function parseInboundUpdate(
         chat_id: String(msg.chat.id),
         user_id: String(userId),
       };
+
+      if (msg.message_thread_id !== undefined) {
+        meta.message_thread_id = String(msg.message_thread_id);
+        meta.thread_id = String(msg.message_thread_id);
+      }
 
       if (msg.from?.first_name) {
         meta.user = msg.from.first_name;
@@ -199,6 +212,11 @@ export function parseInboundUpdate(
         user_id: String(userId),
       };
 
+      if (msg.message_thread_id !== undefined) {
+        meta.message_thread_id = String(msg.message_thread_id);
+        meta.thread_id = String(msg.message_thread_id);
+      }
+
       if (msg.from?.first_name) {
         meta.user = msg.from.first_name;
       }
@@ -231,6 +249,7 @@ export function parseInboundUpdate(
     const added = rx.new_reaction.map((r) => r.emoji).filter(Boolean).join(" ");
     const removed = rx.old_reaction.map((r) => r.emoji).filter(Boolean).join(" ");
     const targetExcerpt = getExcerpt ? getExcerpt(rx.message_id) : undefined;
+    const threadId = getThread ? getThread(rx.message_id) : undefined;
 
     const meta: Record<string, string> = {
       event: "reaction",
@@ -240,6 +259,11 @@ export function parseInboundUpdate(
       added,
       removed,
     };
+
+    if (threadId !== undefined) {
+      meta.message_thread_id = String(threadId);
+      meta.thread_id = String(threadId);
+    }
 
     if (targetExcerpt !== undefined) {
       meta.target_excerpt = targetExcerpt;
@@ -272,6 +296,11 @@ export function parseInboundUpdate(
       payload,
       user_id: String(userId),
     };
+
+    if (cb.message?.message_thread_id !== undefined) {
+      meta.message_thread_id = String(cb.message.message_thread_id);
+      meta.thread_id = String(cb.message.message_thread_id);
+    }
 
     if (cb.message?.message_id !== undefined) {
       meta.target_message_id = String(cb.message.message_id);
