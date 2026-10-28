@@ -200,18 +200,45 @@ def extract_prompt_query(prompt: str) -> str:
 _ACCESS_TOKEN_PAIRS = (
     ("WORKER_MCP_TOKEN_ID", "WORKER_MCP_TOKEN_SECRET"),
     ("DISPATCHER_MCP_TOKEN_ID", "DISPATCHER_MCP_TOKEN_SECRET"),
+    ("CF_ACCESS_CLIENT_ID", "CF_ACCESS_CLIENT_SECRET"),
 )
 
 
-def _resolve_mcp_headers() -> dict[str, str]:
-    """HTTP headers for the PKB endpoint, from the environment only.
+def _read_client_mcp_headers() -> dict[str, str]:
+    """Read MCP headers from client configuration files (Claude and agy) when unset in env."""
+    headers: dict[str, str] = {}
+    config_paths = [
+        Path(os.environ.get("CLAUDE_CONFIG_DIR", Path.home() / ".claude")) / ".claude.json",
+        Path.home() / ".claude.json",
+        Path(os.environ.get("CLAUDE_CONFIG_DIR", Path.home() / ".claude")) / "mcp_config.json",
+        Path.home() / ".gemini" / "config" / "mcp_config.json",
+        Path.home() / ".gemini" / "antigravity-cli" / "mcp_config.json",
+    ]
+    for p in config_paths:
+        if p.is_file():
+            try:
+                data = json.loads(p.read_text(encoding="utf-8"))
+                servers = data.get("mcpServers", {})
+                for server_name in ("services", "pkb"):
+                    srv = servers.get(server_name)
+                    if isinstance(srv, dict):
+                        h = srv.get("headers")
+                        if isinstance(h, dict):
+                            for k, v in h.items():
+                                headers.setdefault(str(k), str(v))
+            except Exception as exc:
+                log.debug("Could not read client MCP config %s: %s", p, exc)
+    return headers
 
-    `PKB_MCP_HEADERS` is a JSON object of header name to value.
-    A Cloudflare Access service-token pair supplies the Access headers: the
-    worker pair `WORKER_MCP_TOKEN_ID` / `WORKER_MCP_TOKEN_SECRET` by default,
-    because it has no polecat dispatch access, else the dispatcher pair
-    `DISPATCHER_MCP_TOKEN_ID` / `DISPATCHER_MCP_TOKEN_SECRET`. A malformed
-    `PKB_MCP_HEADERS` is logged and ignored, never silently swallowed.
+
+def _resolve_mcp_headers() -> dict[str, str]:
+    """HTTP headers for the PKB endpoint.
+
+    Resolves from the environment first: `PKB_MCP_HEADERS` (JSON object) and
+    Cloudflare Access service-token pairs (`WORKER_MCP_TOKEN_*`, `DISPATCHER_MCP_TOKEN_*`,
+    or `CF_ACCESS_CLIENT_*`). If no Access client ID is set, falls back to reading
+    headers from client MCP configurations (~/.claude/.claude.json,
+    ~/.gemini/config/mcp_config.json) to authenticate local and crew sessions reliably.
     """
     headers: dict[str, str] = {}
 
@@ -234,6 +261,10 @@ def _resolve_mcp_headers() -> dict[str, str]:
             headers.setdefault("CF-Access-Client-Id", cf_id)
             headers.setdefault("CF-Access-Client-Secret", cf_secret)
             break
+
+    if "CF-Access-Client-Id" not in headers:
+        for k, v in _read_client_mcp_headers().items():
+            headers.setdefault(k, v)
 
     return headers
 
@@ -380,7 +411,10 @@ def _initialize_mcp_session(mcp_url: str, base_headers: dict[str, str]) -> str |
             f"the PKB endpoint did not answer within {_SEARCH_TIMEOUT_SECONDS} seconds"
         ) from exc
     except urllib.error.URLError as exc:
-        if isinstance(exc.reason, TimeoutError):
+        if (
+            isinstance(exc.reason, (TimeoutError, socket.timeout))
+            or "timed out" in str(exc.reason).lower()
+        ):
             raise TimeoutError(
                 f"the PKB endpoint did not answer within {_SEARCH_TIMEOUT_SECONDS} seconds"
             ) from exc
@@ -494,7 +528,10 @@ def _post_mcp_search(
                 f"the PKB endpoint did not answer within {_SEARCH_TIMEOUT_SECONDS} seconds"
             ) from exc
         except urllib.error.URLError as exc:
-            if isinstance(exc.reason, TimeoutError):
+            if (
+                isinstance(exc.reason, (TimeoutError, socket.timeout))
+                or "timed out" in str(exc.reason).lower()
+            ):
                 raise TimeoutError(
                     f"the PKB endpoint did not answer within {_SEARCH_TIMEOUT_SECONDS} seconds"
                 ) from exc
@@ -535,7 +572,19 @@ def _post_mcp_search(
         elif status == 200:
             raise RuntimeError(f"PKB MCP error: {err_obj}")
 
+    if (err_obj is not None and "session" in str(err_obj).lower()) or (
+        "session" in body.lower() and status in (400, 404, 422)
+    ):
+        session_needed = True
+
     if session_needed:
+        cache_path = _session_cache_path()
+        try:
+            if cache_path.is_file():
+                cache_path.unlink()
+        except OSError:
+            pass
+        req_headers.pop("mcp-session-id", None)
         new_session = _initialize_mcp_session(mcp_url, req_headers)
         if new_session:
             req_headers["mcp-session-id"] = new_session

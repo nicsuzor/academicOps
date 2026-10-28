@@ -37,6 +37,8 @@ from dispatch import (  # type: ignore[import-not-found]
     load_message_pair,
 )
 
+_ORIG_READ_CLIENT_MCP_HEADERS = handlers._read_client_mcp_headers
+
 
 @pytest.fixture(autouse=True)
 def no_ambient_pkb_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -54,8 +56,11 @@ def no_ambient_pkb_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
         "WORKER_MCP_TOKEN_SECRET",
         "DISPATCHER_MCP_TOKEN_ID",
         "DISPATCHER_MCP_TOKEN_SECRET",
+        "CF_ACCESS_CLIENT_ID",
+        "CF_ACCESS_CLIENT_SECRET",
     ):
         monkeypatch.delenv(var, raising=False)
+    monkeypatch.setattr(handlers, "_read_client_mcp_headers", lambda: {})
 
 
 @pytest.fixture
@@ -1242,3 +1247,173 @@ def test_dispatch_error_injects_single_failure_line(staged_hooks: Path):
     assert "\n" not in injected.strip(), (
         f"Expected single line failure, got multiline: {injected!r}"
     )
+
+
+def test_agy_prompt_with_session_start_hook_message_is_searched(tmp_path: Path):
+    """When a SessionStart hook message follows USER_INPUT, hydration still grounds the user prompt."""
+    session_start_msg = (
+        "The following is a <SYSTEM_MESSAGE> not actually sent by the user. "
+        "It is provided by the system as important information to pay attention to.\n\n"
+        "<SYSTEM_MESSAGE>\nThe following system message was injected by a SessionStart hook:\n"
+        "session: c1 | time: 2026-10-28 04:00:00 +0000 | host: test | cwd: /workspace | pkb: https://mcp.suzor.com/mcp\n"
+        "</SYSTEM_MESSAGE>"
+    )
+    transcript = _agy_transcript(
+        tmp_path,
+        {
+            "step_index": 0,
+            "type": "USER_INPUT",
+            "source": "USER_EXPLICIT",
+            "content": AGY_USER_INPUT,
+        },
+        {
+            "step_index": 1,
+            "type": "SYSTEM_MESSAGE",
+            "source": "SYSTEM_SDK",
+            "content": session_start_msg,
+        },
+    )
+    with patch.object(handlers, "_run_pkb_search", return_value="1. hit") as mock_search:
+        res = handlers.search_the_pkb(_agy_ctx(transcript))
+    mock_search.assert_called_once_with(AGY_TYPED, cwd="/workspace", session_id="c1")
+    assert res is not None and "<academicOps PKB search results>" in res.inject_text
+
+
+def test_agy_turn_started_by_peer_system_message_is_searched(tmp_path: Path):
+    """When an agy turn is woken by a peer message in a SYSTEM_MESSAGE, hydration grounds it."""
+    peer_msg = "[Message] sender=twin-a priority=MESSAGE_PRIORITY_HIGH content=evidence of hydration failure"
+    transcript = _agy_transcript(
+        tmp_path,
+        {"step_index": 0, "type": "USER_INPUT", "content": "<USER_REQUEST>old</USER_REQUEST>"},
+        {"step_index": 1, "type": "PLANNER_RESPONSE", "content": "done"},
+        {"step_index": 2, "type": "SYSTEM_MESSAGE", "content": peer_msg},
+    )
+    with patch.object(handlers, "_run_pkb_search", return_value="1. hit") as mock_search:
+        res = handlers.search_the_pkb(_agy_ctx(transcript))
+    mock_search.assert_called_once_with(
+        "evidence of hydration failure", cwd="/workspace", session_id="c1"
+    )
+    assert res is not None and "<academicOps PKB search results>" in res.inject_text
+
+
+def test_resolve_mcp_headers_reads_cf_access_client_env():
+    """Environment variables CF_ACCESS_CLIENT_ID / SECRET are recognized."""
+    with patch.dict(
+        os.environ,
+        {"CF_ACCESS_CLIENT_ID": "cid", "CF_ACCESS_CLIENT_SECRET": "csec"},
+        clear=True,
+    ):
+        assert handlers._resolve_mcp_headers() == {
+            "CF-Access-Client-Id": "cid",
+            "CF-Access-Client-Secret": "csec",
+        }
+
+
+def test_resolve_mcp_headers_falls_back_to_client_config(tmp_path: Path):
+    """When env vars are unset, headers fall back to client MCP configuration files."""
+    claude_cfg = tmp_path / ".claude.json"
+    claude_cfg.write_text(
+        json.dumps(
+            {
+                "mcpServers": {
+                    "services": {
+                        "type": "http",
+                        "url": "https://mcp.suzor.com/mcp",
+                        "headers": {
+                            "CF-Access-Client-Id": "client-id-val",
+                            "CF-Access-Client-Secret": "client-secret-val",
+                        },
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    with (
+        patch.dict("os.environ", {}, clear=True),
+        patch.object(handlers, "_read_client_mcp_headers", _ORIG_READ_CLIENT_MCP_HEADERS),
+        patch("pathlib.Path.home", return_value=tmp_path),
+    ):
+        hdrs = handlers._resolve_mcp_headers()
+        assert hdrs == {
+            "CF-Access-Client-Id": "client-id-val",
+            "CF-Access-Client-Secret": "client-secret-val",
+        }
+
+
+def test_post_mcp_search_reinitializes_on_session_error(tmp_path: Path):
+    """When a session error occurs on tools/call, cached session is cleared and initialize is invoked."""
+    cache_file = tmp_path / "pkb_session_cache.json"
+    cache_file.write_text(
+        json.dumps({"session_id": "old-stale-session", "timestamp": 12345}), encoding="utf-8"
+    )
+
+    calls = []
+
+    def mock_urlopen(req, timeout=5):
+        body = req.data.decode("utf-8") if req.data else ""
+        parsed = json.loads(body)
+        method = parsed.get("method")
+        calls.append(method)
+
+        class MockResp:
+            def __init__(self, data, status=200, headers=None):
+                self.data = data
+                self.status = status
+                self.headers = headers or {}
+
+            def read(self):
+                return self.data.encode("utf-8")
+
+            def getcode(self):
+                return self.status
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                pass
+
+        if method == "tools/call" and len(calls) == 1:
+            # First call fails with session expired
+            return MockResp(
+                json.dumps(
+                    {
+                        "jsonrpc": "2.0",
+                        "error": {"code": -32000, "message": "Session expired or does not exist"},
+                    }
+                ),
+                status=200,
+            )
+        if method == "initialize":
+            return MockResp(
+                json.dumps(
+                    {"jsonrpc": "2.0", "id": 1, "result": {"protocolVersion": "2024-11-05"}}
+                ),
+                status=200,
+                headers={"mcp-session-id": "new-fresh-session"},
+            )
+        if method == "tools/call" and len(calls) == 3:
+            # Retried call succeeds
+            return MockResp(
+                json.dumps(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "result": {"content": [{"type": "text", "text": "result item"}]},
+                    }
+                ),
+                status=200,
+            )
+        return MockResp("{}", status=200)
+
+    with (
+        patch("urllib.request.urlopen", side_effect=mock_urlopen),
+        patch.object(handlers, "_session_cache_path", return_value=cache_file),
+    ):
+        result = handlers._post_mcp_search("https://mcp.suzor.com/mcp", "test query")
+        assert result == "result item"
+        assert calls == ["tools/call", "initialize", "tools/call"]
+        # Verify cache was updated with the fresh session
+        cached = json.loads(cache_file.read_text(encoding="utf-8"))
+        assert cached.get("session_id") == "new-fresh-session"

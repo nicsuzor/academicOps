@@ -29,13 +29,13 @@ As a user, I want argument-less slash commands to make no PKB search calls, so t
 
 - **AC-2.1** Given an argument-less slash command (`/cmd`), when it is submitted, then no search runs and nothing is injected.
 
-### US-3 Authenticated search from the environment
+### US-3 Authenticated search from environment and client configuration
 
-As an operator, I want the search to reach an access-controlled PKB endpoint using credentials I set in the environment, so that the PKB stays private and no credential ships in the plugin.
+As an operator, I want the search to reach an access-controlled PKB endpoint using credentials I set in the environment or client configuration, so that the PKB stays private, sessions authenticate across crew containers and local hosts, and no credential ships in the plugin.
 
 - **AC-3.1** Given `PKB_MCP_URL` and a credential in the hook's environment, when a prompt is submitted, then the search request carries that credential and the endpoint returns results.
 - **AC-3.2** Given `PKB_MCP_URL` is unset, when a prompt is submitted, then no search runs and the turn proceeds.
-- **AC-3.3** Given a credential set only in a client's own MCP configuration, when a prompt is submitted, then the search does not use it.
+- **AC-3.3** Given credentials are unset in the process environment, when client MCP configuration files (`~/.claude/.claude.json`, `~/.claude.json`, or `~/.gemini/config/mcp_config.json`) contain `services` or `pkb` headers, then the search reads those headers so crew containers and local host sessions authenticate reliably.
 
 ### US-4 Failures are visible and name their cause
 
@@ -47,18 +47,17 @@ As an operator, I want a failed search reported to the agent with the reason the
 
 ## Design
 
-**Trigger.** Hydration runs on incoming channel messages and every user prompt submission (`UserPromptSubmit`, never on a `/pull` tool call), before the agent's turn. On agy the trigger is `PreInvocation`, whose payload names the transcript but carries no prompt, so the hook reads the user's text from the transcript's latest `USER_INPUT` step (AC-1.6). Argument-less slash commands (`/cmd`) are gated out, making no PKB call; human prompts wrapped in `<channel>` envelopes, peer reports, subagent handbacks, task notifications, and `/cmd <arg>` prompts are unwrapped and searched whole up to 8 KB without 200-character truncation.
+**Trigger.** Hydration runs on incoming channel messages and every user prompt submission (`UserPromptSubmit`, never on a `/pull` tool call), before the agent's turn. On agy the trigger is `PreInvocation`, whose payload names the transcript but carries no prompt, so the hook reads the user's text from the transcript's latest `USER_INPUT` step (AC-1.6), skipping harness injections (such as SessionStart system messages) that precede model invocation. When a turn is woken by an incoming peer report or subagent handback via `SYSTEM_MESSAGE`, that arrival is searched. Argument-less slash commands (`/cmd`) are gated out, making no PKB call; human prompts wrapped in `<channel>` envelopes, peer reports, subagent handbacks, task notifications, and `/cmd <arg>` prompts are unwrapped and searched whole up to 8 KB without 200-character truncation.
 
 **Endpoint.** The PKB is an MCP server at `PKB_MCP_URL`, reached via a single streamable-HTTP POST to PKB_MCP_URL. The hook calls its search tool (prefixed by `PKB_MCP_TOOL_PREFIX`, default `pkb_search`) with the query. If the endpoint requires an MCP session, the hook falls back to `initialize` once and caches the session ID for 24 hours in the tracer state dir. Requests carry `x-session-id`, `traceparent` from the active turn, a non-urllib `User-Agent`, and any resolved credential headers (unauthenticated when unset so the cloud proxy injects them). Tool call arguments carry the query and a reserved `_session` attribution object (`session_id`, `prompt_id`, `agent_id`, `caller: "hook"`, `surface`), with `prompt_id` matching the turn hook span (AC-1.9). That is the only transport: a search that fails reports its failure and stops (AC-4.3), because a quiet second route hides the fault that needs fixing.
 
-**Credentials.** The endpoint sits behind an access-controlled gateway, so every request carries a credential. The hook reads credentials from its own process environment only (AC-3.3), from either source:
+**Credentials.** The endpoint sits behind an access-controlled gateway, so every request carries a credential. The hook reads credentials from its process environment first (`PKB_MCP_HEADERS`, `WORKER_MCP_TOKEN_*`, `DISPATCHER_MCP_TOKEN_*`, or `CF_ACCESS_CLIENT_*`), and when unset falls back to reading headers from the client's own MCP configuration files (`~/.claude/.claude.json`, `~/.claude.json`, `~/.gemini/config/mcp_config.json`) so crew containers and local host sessions authenticate without duplicate environment variable exports:
 
-| Variable | Contents | Sent as |
+| Source | Contents | Sent as |
 | - | - | - |
 | `PKB_MCP_HEADERS` | JSON object of header name to value, e.g. `{"Authorization": "Bearer <token>"}` | Each pair as an HTTP header. Malformed JSON is logged and ignored. |
-| `WORKER_MCP_TOKEN_ID` + `WORKER_MCP_TOKEN_SECRET`, else `DISPATCHER_MCP_TOKEN_ID` + `DISPATCHER_MCP_TOKEN_SECRET` | A Cloudflare Access service token, both halves. The worker pair is the default because it has no polecat dispatch access; the dispatcher pair is used only when the worker pair is absent. | `CF-Access-Client-Id` and `CF-Access-Client-Secret` headers |
-
-The hook runs as its own process, launched by the client with the client's environment. A credential that the client itself holds for its own MCP connection (for example an OAuth token for the same gateway) is not visible to the hook; the operator supplies the hook's credential separately in the environment the client is launched from.
+| `WORKER_MCP_TOKEN_ID` + `WORKER_MCP_TOKEN_SECRET`, else `DISPATCHER_MCP_TOKEN_ID` + `DISPATCHER_MCP_TOKEN_SECRET`, else `CF_ACCESS_CLIENT_ID` + `CF_ACCESS_CLIENT_SECRET` | A Cloudflare Access service token, both halves. The worker pair is the default because it has no polecat dispatch access. | `CF-Access-Client-Id` and `CF-Access-Client-Secret` headers |
+| Client MCP configuration (`~/.claude/.claude.json`, `~/.gemini/config/mcp_config.json`) | `mcpServers.services.headers` or `mcpServers.pkb.headers` | Configured headers (e.g. `CF-Access-Client-Id` / `CF-Access-Client-Secret`) |
 
 **Budget.** The connect-and-search is bounded at 5 seconds, because the hook runs synchronously ahead of every turn. Search queries are capped at 8 KB (8,192 characters). Injected output is capped at 8,000 characters (AC-1.4).
 
