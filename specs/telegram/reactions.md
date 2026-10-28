@@ -24,12 +24,13 @@ As an operator interacting with multiple bot personas across chat windows, I wan
 - **AC-2.1** Given an inbound user message, when the message arrives and advances through lifecycle milestones, then every bot persona updates the message reaction according to the unified lifecycle legend:
   - `👀` : Inbound message received and being read/assessed.
   - `✍` : Captured: note, decision, intake, or task persisted to knowledge base.
-  - `🕊` : Dispatched: briefed and dispatched to an autonomous background worker.
+  - `🐱` : Dispatched (polecat): briefed and dispatched to an isolated background worker (a polecat holds it).
+  - `🕊` : Dispatched (subagent): delegated to an internal subagent (a subagent holds it).
   - `🤔` : Waiting: a question, choice, or clarification is pending user reply.
   - `💔` : Blocked or failed: execution halted or hit an external blocker (reply details the refusal).
   - `🎉` : Completed: task answered or resolved with substantive reply.
   - `🫡` : Acknowledged: request handled/completed where no substantive reply was owed.
-- **AC-2.2** Given the "dispatched" lifecycle milestone, when work is handed to an autonomous background worker, then all personas react with `🕊`.
+- **AC-2.2** Given dispatched work, when work is handed to an isolated background worker, then all personas react with `🐱` ("a polecat holds it"); when work is delegated to an internal subagent, then all personas react with `🕊` ("a subagent holds it").
 - **AC-2.3** Given communicative feedback or content-specific reactions, when an agent or operator reacts to message substance, then every reaction carries exactly one semantic meaning across all personas:
   - `👎` : Negative feedback on substance / report failure (prompts autonomous remediation).
   - `👍` : Affirmative confirmation or approval.
@@ -67,7 +68,8 @@ All agent personas operating over Telegram share a single reaction legend. Each 
 | :- | :- | :- | :- |
 | `👀` | Lifecycle | Inbound received | Automatically applied upon message arrival while reading and planning |
 | `✍` | Lifecycle | Captured | Applied when note, decision, intake, or task is persisted to knowledge base |
-| `🕊` | Lifecycle | Dispatched | Applied when work is briefed and launched to a background worker |
+| `🐱` | Lifecycle | Dispatched (polecat) | Applied when work is briefed and launched to an isolated background worker (a polecat holds it) |
+| `🕊` | Lifecycle | Dispatched (subagent) | Applied when work is delegated to an internal subagent (a subagent holds it) |
 | `🤔` | Lifecycle | Waiting | Applied when a question, choice, or clarification is pending in chat |
 | `💔` | Lifecycle | Blocked / Failed | Applied when execution fails or an external blocker halts progress |
 | `🎉` | Lifecycle | Completed | Applied when task is resolved and a substantive reply is delivered |
@@ -83,7 +85,7 @@ All agent personas operating over Telegram share a single reaction legend. Each 
 | `🤯` | Semantic | Surprising | Unexpected finding or startling discovery |
 | `😢` | Semantic | Regret | Unfortunate news or regrettable outcome |
 
-`🕊` is the designated reaction across all bot personas for work briefed and dispatched to background workers, maintaining gender-neutral phrasing and cross-persona consistency.
+`🐱` is the designated reaction across all bot personas for work briefed and dispatched to isolated background workers (a polecat holds it), and `🕊` is the designated reaction when work is handled by an internal subagent (a subagent holds it), maintaining gender-neutral phrasing and cross-persona consistency.
 
 ### 3. Outcome-Level Build Criteria Mapped to Checks
 
@@ -91,7 +93,7 @@ Implementation tasks must satisfy four outcome-level build criteria, each valida
 
 | Build Criterion | Outcome Description | Verification Check |
 | :- | :- | :- |
-| **BC-1: Unified Legend in Instructions** | Agent instructions define the unified shared legend with `🕊` as the sole reaction for dispatched work, with no conflicting definitions across personas. | Inspection of agent instructions shows the unified legend documented with `🕊` for dispatched work and no conflicting reaction mappings. |
+| **BC-1: Unified Legend in Instructions** | Agent instructions define the unified shared legend with `🐱` for polecat work and `🕊` for subagent work, with no conflicting definitions across personas. | Inspection of agent instructions shows the unified legend documented with `🐱` for polecats and `🕊` for subagents and no conflicting reaction mappings. |
 | **BC-2: Normalization & Single-Grapheme Validation** | Normalization cleans Unicode variation selectors, maps canonical equivalents, validates single grapheme clusters, and accepts arbitrary valid single emojis. | Demonstration that arbitrary valid emojis normalize cleanly, variation selectors are stripped, and multi-emoji payloads are rejected upfront. |
 | **BC-3: Authoritative Error Propagation** | The reaction tool and bot client propagate Telegram API responses directly, returning failure with Telegram's verbatim error on rejection. | Demonstration that Telegram `REACTION_INVALID` responses return failure carrying Telegram's verbatim error description, and accepted reactions return success. |
 | **BC-4: Regression & Automated Invariants** | Automatic reaction behavior (such as `👀` on inbound messages) and lifecycle transitions remain fully operational. | Successful execution of the full regression test suite with zero test failures. |

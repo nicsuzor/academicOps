@@ -61,7 +61,10 @@ export const MCP_TOOLS: ToolDefinition[] = [
       properties: {
         chat_id: { type: "integer", description: "Telegram chat ID" },
         message_id: { type: "integer", description: "Message ID to react to" },
-        reaction: { type: "string", description: "Emoji reaction string from allowed set" },
+        reaction: {
+          type: "string",
+          description: "Emoji reaction string (e.g. 🐱 for polecat, 🕊 for subagent, or other shared legend reaction)",
+        },
       },
       required: ["message_id", "reaction"],
     },

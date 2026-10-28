@@ -283,7 +283,10 @@ export class StdioMcpServer {
       }
 
       if (this.bot) {
-        await this.bot.setReaction(chatId, messageId, norm);
+        const res = await this.bot.setReaction(chatId, messageId, norm);
+        if (!res.ok) {
+          return { success: false, error: res.error || "Reaction failed" };
+        }
       }
       return { success: true, reaction: norm };
     }

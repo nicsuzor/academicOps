@@ -41,15 +41,28 @@ Every reply sent over Telegram automatically carries inline action buttons: `[�
 ## Reactions & Feedback
 
 - **Act on a 👎 reaction:** When the user adds a 👎 reaction to a message (a `reaction` event whose `added` contains 👎), treat it as feedback on substance -- the failure or blocker the message reported -- not on how the message was written. Act directly on the reported failure (investigate, fix, unblock, or replan) without asking the user to classify the reaction or critique the wording.
-- **Inbound message status:** The channel marks inbound messages with 👀 upon arrival. Advance reactions as state transitions:
-  - ✍ captured: note, decision, or intake recorded.
-  - 👨‍💻 dispatched: briefed and dispatched to background workers.
-  - 🤔 waiting: a question or clarification is pending in chat.
-  - 💔 blocked: execution failed or hit a blocker; reply details the issue.
-  - 🎉 completed: task answered or resolved.
-  - 🫡 acknowledged: completed when no reply was owed.
-- **Allowed reactions:** Send only valid Telegram reaction strings:
-  ❤ 👍 👎 🔥 🥰 👏 😁 🤔 🤯 😱 🤬 😢 🎉 🤩 🤮 💩 🙏 👌 🕊 🤡 🥱 🥴 😍 🐳 ❤‍🔥 🌚 🌭 💯 🤣 ⚡ 🍌 🏆 💔 🤨 😐 🍓 🍾 💋 🖕 😈 😴 😭 🤓 👻 👨‍💻 👀 🎃 🙈 😇 😨 🤝 ✍ 🤗 🫡 🎅 🎄 ☃ 💅 🤪 🗿 🆒 💘 🙉 🦄 😘 💊 🙊 😎 👾 🤷‍♂ 🤷 🤷‍♀ 😡
+- **Inbound message status:** The channel marks inbound messages with 👀 upon arrival.
+- **Shared reaction legend:** All bot personas share a single reaction legend with exactly one meaning per reaction and one reaction per state. Telegram authoritatively validates reactions; unsupported reactions surface platform errors directly.
+  - _Lifecycle states:_
+    - `👀` inbound: message received and being read/assessed.
+    - `✍` captured: note, decision, intake, or task persisted to knowledge base.
+    - `🐱` dispatched (polecat): work briefed and dispatched to an isolated background worker (a polecat holds it).
+    - `🕊` dispatched (subagent): work delegated to an internal subagent (a subagent holds it).
+    - `🤔` waiting: a question, choice, or clarification is pending user reply in chat.
+    - `💔` blocked or failed: execution halted or hit an external blocker (reply details the refusal).
+    - `🎉` completed: task answered or resolved with substantive reply.
+    - `🫡` acknowledged: request handled or completed where no substantive reply was owed.
+  - _Feedback and semantic reactions:_
+    - `👎` substance defect: negative feedback on substance or report failure (prompts autonomous remediation).
+    - `👍` affirmation: affirmative confirmation or approval.
+    - `🔥` breakthrough: exceptional idea, high resonance, or breakthrough.
+    - `🤝` agreement: consensus reached or proposal accepted.
+    - `💯` aligned: exact agreement, fully aligned.
+    - `🏆` milestone: difficult feat accomplished or significant milestone reached.
+    - `🙏` appreciation: gratitude or appreciation.
+    - `🤣` humor: humor or joke acknowledged.
+    - `🤯` surprising: unexpected finding or revelation.
+    - `😢` regret: regrettable outcome or unfortunate news.
 
 ## Reviews & State Tracking
 
