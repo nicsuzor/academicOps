@@ -166,6 +166,11 @@ The container launcher (`polecat`) and worker image are maintained outside this 
    reaches stdout per invocation: on the seed-verification retry path, aborted
    attempt output is buffered and suppressed so callers never receive
    concatenated streams.
+9. **Completion event delivery.** Every polecat exit produces a structured
+   completion event (`[polecat-exit]`). The relay delivers unacknowledged
+   completion events over the cross-session bus to listening sessions and
+   acknowledges them only upon verified delivery. No recorded completion event
+   remains undelivered while a listener is attached.
 
 ## What `run` does not do
 

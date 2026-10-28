@@ -106,6 +106,14 @@ does not fire-and-forget. Responsibility is not polling: a tick is woken by a wo
 terminating or by a bound the supervisor set at dispatch, and it establishes state by
 reading durable evidence, never by asking a running worker how it is going.
 
+## Worker Completion Delivery
+
+Worker completion notifications are delivered reactively without polling:
+
+1. **Completion events**: When a worker container exits, polecat emits a structured completion event (`[polecat-exit] task=<id> container=<name> exit_code=<n> status=<...> pr_url=<url> duration=<s>s`) to the persistent event store.
+2. **Delivery to listening sessions**: The notification relay (`scripts/polecat_notify_relay.py`) delivers unacknowledged events over the cross-session bus (`/tmp/cc-socks/`) to the listening supervisor session matching the `dispatcher` label (e.g. `sara.sock` or `prime.sock`).
+3. **Delivery and acknowledgement guarantee**: The relay acknowledges events only upon successful delivery to an attached listening session. Recorded events remain unacknowledged while no listener is attached, and are delivered and acknowledged as soon as a listener attaches, ensuring no recorded completion event stays undelivered.
+
 ## Status Lifecycle
 
 ```
