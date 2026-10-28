@@ -679,4 +679,264 @@ describe("Threaded Conversations Support", () => {
       }
     });
   });
+
+  describe("AC4: Thread Renaming (rename_thread)", () => {
+    test("rename_thread renames the active thread in the chat via editForumTopic", async () => {
+      const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-th-rename-act-"));
+      const config = loadConfig({
+        TELEGRAM_BOT_TOKEN: "test-token",
+        IDA_TELEGRAM_ROLE: "primary",
+        ALLOWED_USER_IDS: "12345678",
+        STATE_DIR: stateDir,
+      });
+
+      const store = new PluginStore(config.stateDir);
+      const broker = new QuestionBroker(config.stateDir);
+      const permRelay = new PermissionRelay();
+
+      const apiCalls: Array<{ method: string; body: any }> = [];
+      const origFetch = globalThis.fetch;
+      globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+        const method = String(url).split("/").pop() || "";
+        const body = init?.body ? JSON.parse(String(init.body)) : {};
+        apiCalls.push({ method, body });
+        return new Response(JSON.stringify({ ok: true, result: true }), { status: 200 });
+      }) as typeof fetch;
+
+      try {
+        const bot = new TelegramBotClient(config, broker, permRelay, () => {}, store);
+        const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
+
+        // 1. Simulate inbound message in thread 4242 to set active thread
+        await (bot as any).handleUpdate({
+          update_id: 30,
+          message: {
+            message_id: 301,
+            message_thread_id: 4242,
+            date: Date.now(),
+            chat: { id: 12345678, type: "supergroup" },
+            from: { id: 12345678, is_bot: false, first_name: "Nic" },
+            text: "Message in thread 4242",
+          },
+        });
+        apiCalls.length = 0;
+
+        // 2. Call rename_thread without explicit thread_id (should use active thread 4242)
+        const response = await mcp.handleMessage({
+          jsonrpc: "2.0",
+          id: 11,
+          method: "tools/call",
+          params: {
+            name: "rename_thread",
+            arguments: {
+              name: "Renamed Active Thread",
+            },
+          },
+        });
+
+        const renameCall = apiCalls.find((c) => c.method === "editForumTopic");
+        expect(renameCall).toBeDefined();
+        expect(renameCall?.body.chat_id).toBe(12345678);
+        expect(renameCall?.body.message_thread_id).toBe(4242);
+        expect(renameCall?.body.name).toBe("Renamed Active Thread");
+
+        expect(response?.result).toBeDefined();
+        const contentText = (response?.result as any)?.content?.[0]?.text;
+        const parsed = JSON.parse(contentText);
+        expect(parsed.success).toBe(true);
+        expect(parsed.message_thread_id).toBe(4242);
+        expect(parsed.name).toBe("Renamed Active Thread");
+      } finally {
+        globalThis.fetch = origFetch;
+        rmSync(stateDir, { recursive: true, force: true });
+      }
+    });
+
+    test("rename_thread renames an explicitly specified thread ID with optional icon", async () => {
+      const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-th-rename-exp-"));
+      const config = loadConfig({
+        TELEGRAM_BOT_TOKEN: "test-token",
+        IDA_TELEGRAM_ROLE: "primary",
+        ALLOWED_USER_IDS: "12345678",
+        STATE_DIR: stateDir,
+      });
+
+      const store = new PluginStore(config.stateDir);
+      const broker = new QuestionBroker(config.stateDir);
+      const permRelay = new PermissionRelay();
+
+      const apiCalls: Array<{ method: string; body: any }> = [];
+      const origFetch = globalThis.fetch;
+      globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+        const method = String(url).split("/").pop() || "";
+        const body = init?.body ? JSON.parse(String(init.body)) : {};
+        apiCalls.push({ method, body });
+        return new Response(JSON.stringify({ ok: true, result: true }), { status: 200 });
+      }) as typeof fetch;
+
+      try {
+        const bot = new TelegramBotClient(config, broker, permRelay, () => {}, store);
+        const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
+
+        const response = await mcp.handleMessage({
+          jsonrpc: "2.0",
+          id: 12,
+          method: "tools/call",
+          params: {
+            name: "rename_thread",
+            arguments: {
+              chat_id: 12345678,
+              message_thread_id: 8888,
+              name: "Explicitly Targeted Thread",
+              icon_custom_emoji_id: "54321",
+            },
+          },
+        });
+
+        const renameCall = apiCalls.find((c) => c.method === "editForumTopic");
+        expect(renameCall).toBeDefined();
+        expect(renameCall?.body.chat_id).toBe(12345678);
+        expect(renameCall?.body.message_thread_id).toBe(8888);
+        expect(renameCall?.body.name).toBe("Explicitly Targeted Thread");
+        expect(renameCall?.body.icon_custom_emoji_id).toBe("54321");
+
+        const contentText = (response?.result as any)?.content?.[0]?.text;
+        const parsed = JSON.parse(contentText);
+        expect(parsed.success).toBe(true);
+        expect(parsed.message_thread_id).toBe(8888);
+      } finally {
+        globalThis.fetch = origFetch;
+        rmSync(stateDir, { recursive: true, force: true });
+      }
+    });
+
+    test("rename_thread returns clear error when name is empty or missing", async () => {
+      const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-th-rename-err-"));
+      const config = loadConfig({
+        TELEGRAM_BOT_TOKEN: "test-token",
+        IDA_TELEGRAM_ROLE: "primary",
+        ALLOWED_USER_IDS: "12345678",
+        STATE_DIR: stateDir,
+      });
+
+      const store = new PluginStore(config.stateDir);
+      const broker = new QuestionBroker(config.stateDir);
+      const permRelay = new PermissionRelay();
+
+      try {
+        const bot = new TelegramBotClient(config, broker, permRelay, () => {}, store);
+        const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
+
+        const response = await mcp.handleMessage({
+          jsonrpc: "2.0",
+          id: 13,
+          method: "tools/call",
+          params: {
+            name: "rename_thread",
+            arguments: {
+              message_thread_id: 1234,
+              name: "   ",
+            },
+          },
+        });
+
+        const contentText = (response?.result as any)?.content?.[0]?.text;
+        const parsed = JSON.parse(contentText);
+        expect(parsed.success).toBe(false);
+        expect(parsed.error).toContain("Missing name");
+      } finally {
+        rmSync(stateDir, { recursive: true, force: true });
+      }
+    });
+
+    test("rename_thread returns clear error when no thread ID can be resolved", async () => {
+      const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-th-rename-noth-"));
+      const config = loadConfig({
+        TELEGRAM_BOT_TOKEN: "test-token",
+        IDA_TELEGRAM_ROLE: "primary",
+        ALLOWED_USER_IDS: "12345678",
+        STATE_DIR: stateDir,
+      });
+
+      const store = new PluginStore(config.stateDir);
+      const broker = new QuestionBroker(config.stateDir);
+      const permRelay = new PermissionRelay();
+
+      try {
+        const bot = new TelegramBotClient(config, broker, permRelay, () => {}, store);
+        const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
+
+        const response = await mcp.handleMessage({
+          jsonrpc: "2.0",
+          id: 14,
+          method: "tools/call",
+          params: {
+            name: "rename_thread",
+            arguments: {
+              name: "Valid Name But No Thread",
+            },
+          },
+        });
+
+        const contentText = (response?.result as any)?.content?.[0]?.text;
+        const parsed = JSON.parse(contentText);
+        expect(parsed.success).toBe(false);
+        expect(parsed.error).toContain("Missing thread ID");
+      } finally {
+        rmSync(stateDir, { recursive: true, force: true });
+      }
+    });
+
+    test("rename_thread returns clear error when Telegram Bot API rejects rename", async () => {
+      const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-th-rename-rej-"));
+      const config = loadConfig({
+        TELEGRAM_BOT_TOKEN: "test-token",
+        IDA_TELEGRAM_ROLE: "primary",
+        ALLOWED_USER_IDS: "12345678",
+        STATE_DIR: stateDir,
+      });
+
+      const store = new PluginStore(config.stateDir);
+      const broker = new QuestionBroker(config.stateDir);
+      const permRelay = new PermissionRelay();
+
+      const origFetch = globalThis.fetch;
+      globalThis.fetch = (async () => {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            error_code: 400,
+            description: "Bad Request: TOPIC_ID_INVALID",
+          }),
+          { status: 400 }
+        );
+      }) as typeof fetch;
+
+      try {
+        const bot = new TelegramBotClient(config, broker, permRelay, () => {}, store);
+        const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
+
+        const response = await mcp.handleMessage({
+          jsonrpc: "2.0",
+          id: 15,
+          method: "tools/call",
+          params: {
+            name: "rename_thread",
+            arguments: {
+              message_thread_id: 99999,
+              name: "Invalid Thread Topic",
+            },
+          },
+        });
+
+        const contentText = (response?.result as any)?.content?.[0]?.text;
+        const parsed = JSON.parse(contentText);
+        expect(parsed.success).toBe(false);
+        expect(parsed.error).toBe("Bad Request: TOPIC_ID_INVALID");
+      } finally {
+        globalThis.fetch = origFetch;
+        rmSync(stateDir, { recursive: true, force: true });
+      }
+    });
+  });
 });
