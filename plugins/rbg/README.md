@@ -23,7 +23,7 @@ Rules are loaded and merged across three scopes (`axioms` cannot be overridden):
 
 1. **Axioms:** The `axioms` skill's files, `skills/axioms/` (inviolable baseline).
 2. **Project rules:** `$CWD/.agents/rules/*.md` (project-local).
-3. **User rules:** `$ACA_DATA/.agents/rules/*.md` (user-scoped).
+3. **User rules:** `$COPE_USER_RULES_DIR/*.md` (user-scoped).
 
 Only markdown files declaring `trigger: always_on` are sent to the evaluator or roster.
 
@@ -40,7 +40,7 @@ Set via environment variables:
 | `COPE_EVALUATOR_TIMEOUT` | All | `5.0` | Max seconds allowed for per-tool check sweep. |
 | `COPE_EVALUATOR_TRACE_PATH` | Tracing | none | Path to append JSONL rule evaluation logs. |
 | `COPE_EVALUATOR_OTEL_TRACE_PATH` | Tracing | none | Path to append OTLP JSON file spans. |
-| `ACA_DATA` | Roster / Loader | none | Root directory for user-scoped rules. |
+| `COPE_USER_RULES_DIR` | Roster / Loader | none | Directory containing user-scoped rules (`*.md`). |
 
 ## Local Evaluator Stack
 

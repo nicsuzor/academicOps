@@ -40,6 +40,9 @@ valid_statuses = [
 # The PreToolUse rule evaluator (cope) is currently disabled
 enabled = false
 
+[rbg.rules]
+user_rules_env = "COPE_USER_RULES_DIR"
+
 [ida]
 strip_the_reply_enabled = true
 search_the_pkb_enabled = true
