@@ -1,4 +1,5 @@
 ---
+id: outcome-oriented-tasks
 title: Outcome-Oriented Task Reification and Full-Context File Inspection
 status: draft
 type: spec
@@ -45,6 +46,7 @@ As a quality reviewer, I want implementation workers to read complete files in c
 
 - **AC-3.1**: Given a task targeting repository files, when a worker begins implementation, then the worker reads each target file in full before executing any edits.
 - **AC-3.2**: Given a task referencing advisory file or line hints, when a worker executes file reads, then the worker treats line numbers strictly as advisory starting pointers and never restricts file reads to narrow line windows around those pointers without first inspecting the whole file.
+- **AC-3.3**: Given a target file that exceeds tool single-page read limits, when a worker begins implementation, then the worker inspects the entire file via sequential page discovery before executing any edits.
 
 ## Entry Point Analysis & One-Step Changes
 
@@ -102,7 +104,7 @@ A multi-workstream implementation brief containing explicit file and line coordi
 
 ### 4. Observable Verification Signal
 
-- **Task text evaluation**: Running regex check `grep -E ':\b[0-9]+\b|lines?\s+[0-9]+' <reified-task>` over `Acceptance` and `Instructions` yields zero matches.
+- **Task text evaluation (offline probe)**: Running regex probe `grep -E ':\b[0-9]+\b|lines?\s+[0-9]+' <reified-task>` as an offline verification test over `Acceptance` and `Instructions` yields zero matches (this is an empirical evaluation check, not a runtime code gate).
 - **Telemetry audit**: Phoenix trace spans for the worker session show `read_file` calls on modified files without narrow `StartLine`/`EndLine` parameters on initial inspection.
 
 ## Open Questions

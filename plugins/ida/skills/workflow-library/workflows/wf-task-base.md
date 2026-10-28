@@ -5,8 +5,8 @@ description: Foundation for every task executed from a task file via /ida:pull -
 tags: [base, task]
 ---
 
-- **GOAL:** <one sentence>
-- **ACCEPTANCE CRITERIA:** <one line each>
+- **GOAL:** <one sentence stating the observable outcome>
+- **ACCEPTANCE CRITERIA:** <one line each, stating observable end-state conditions rather than mechanism prescriptions or file:line edits; workers read target files in full before editing>
   - <criterion>
   - <criterion>
 - [ ] **OUTPUT:** <destination repo or URI (no local paths, polecats run isolated)>
