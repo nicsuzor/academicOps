@@ -276,6 +276,7 @@ export class TelegramBotClient {
     if (actions !== false) {
       actionBtns.push({ text: "🧐 Check logic", callback_data: "logic_check" });
       actionBtns.push({ text: "💡 Explain", callback_data: "explain" });
+      actionBtns.push({ text: "🧾 Reasons", callback_data: "reasons" });
     }
 
     if (predefinedRow === true) {
@@ -932,19 +933,23 @@ export class TelegramBotClient {
         }
       }
 
-      // Logic check and explain callbacks (AC1, AC2)
+      // Logic check, explain, and reasons callbacks (AC1, AC2)
       if (
         (data === "logic_check" ||
           data.startsWith("logic_check:") ||
           data === "explain" ||
-          data.startsWith("explain:")) &&
+          data.startsWith("explain:") ||
+          data === "reasons" ||
+          data.startsWith("reasons:")) &&
         cb.message &&
         this.config.allowFrom.includes(cb.from.id)
       ) {
         const kbRows = cb.message.reply_markup?.inline_keyboard || [];
         const matchedBtn = kbRows.flat().find((b) => b.callback_data === data);
         const isLogicCheck = data === "logic_check" || data.startsWith("logic_check:");
-        const label = matchedBtn?.text || (isLogicCheck ? "🧐 Check logic" : "💡 Explain");
+        const isExplain = data === "explain" || data.startsWith("explain:");
+        const isReasons = data === "reasons" || data.startsWith("reasons:");
+        const label = matchedBtn?.text || (isLogicCheck ? "🧐 Check logic" : isExplain ? "💡 Explain" : "🧾 Reasons");
         const originalText = cb.message.text || "";
 
         // Remove the action buttons row, but preserve other buttons (e.g. Details, Review diff)
@@ -954,8 +959,10 @@ export class TelegramBotClient {
               (b) =>
                 b.callback_data !== "logic_check" &&
                 b.callback_data !== "explain" &&
+                b.callback_data !== "reasons" &&
                 !b.callback_data?.startsWith("logic_check:") &&
-                !b.callback_data?.startsWith("explain:")
+                !b.callback_data?.startsWith("explain:") &&
+                !b.callback_data?.startsWith("reasons:")
             )
           )
           .filter((row) => row.length > 0);
@@ -968,10 +975,12 @@ export class TelegramBotClient {
         );
 
         const targetExcerpt = cb.message.text || this.getMessageExcerpt(cb.message.message_id) || "";
-        const action = isLogicCheck ? "logic_check" : "explain";
+        const action = isLogicCheck ? "logic_check" : isExplain ? "explain" : "reasons";
         const content = isLogicCheck
           ? `Give me a logic check on message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""} as if you were receiving it from a peer.`
-          : `Please explain message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""} in more detail.`;
+          : isExplain
+          ? `Please explain message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""} in more detail.`
+          : `How do you know that? Show the reasons and argument chain behind message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""}.`;
 
         const meta: Record<string, string> = {
           event: action,

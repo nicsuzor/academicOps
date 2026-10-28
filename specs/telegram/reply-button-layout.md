@@ -20,10 +20,10 @@ As an operator interacting with multi-option prompts (such as skill or workflow 
 
 ### US-2 Predefined Buttons Consolidated on the Default First Row
 
-As an operator reading agent replies with system actions (such as Details, Check logic, and Explain), I want all active predefined buttons grouped together on a single default row at the top above custom option buttons, so that common navigational and meta-actions remain predictable and compact without consuming multiple rows.
+As an operator reading agent replies with system actions (such as Details, Check logic, Explain, and Reasons), I want all active predefined buttons grouped together on a single default row at the top above custom option buttons, so that common navigational and meta-actions remain predictable and compact without consuming multiple rows.
 
 - **AC-2.1** Given `predefined_row: true` with `detailsId` present and message actions disabled (`actions: false`), when the reply is sent, then `🔍 Details` is placed on the first row (row 0).
-- **AC-2.2** Given `predefined_row: true` with `detailsId` present and message actions enabled (`actions: true`), when the reply is sent, then `🔍 Details`, `🧐 Check logic`, and `💡 Explain` all sit together on the same first row (row 0).
+- **AC-2.2** Given `predefined_row: true` with `detailsId` present and message actions enabled (`actions: true`), when the reply is sent, then `🔍 Details`, `🧐 Check logic`, `💡 Explain`, and `🧾 Reasons` all sit together on the same first row (row 0).
 - **AC-2.3** Given `predefined_row: true` with both predefined buttons and caller buttons present, when the reply is sent, then the consolidated predefined row sits at the top (row 0) above the caller's custom button rows.
 - **AC-2.4** Given `predefined_row: false` or omitted, when the reply is sent, then predefined buttons maintain their legacy multi-row arrangement below caller buttons.
 
@@ -54,11 +54,11 @@ As an operator reading agent replies with system actions (such as Details, Check
      1. `🔍 Details` (when `detailsId` is present)
      2. `🔍 Review diff` (when `review` is present)
      3. Feedback buttons (`👍`, `👎`, when `feedback: true`)
-     4. Message action buttons (`🧐 Check logic`, `💡 Explain`, when `actions !== false`)
+     4. Message action buttons (`🧐 Check logic`, `💡 Explain`, `🧾 Reasons`, when `actions !== false`)
    - **Zero Predefined Buttons:** When no predefined buttons are active (e.g. `actions: false` without details or feedback), no empty row is prepended.
 
 3. **In-Place Action Interaction:**
-   When an operator taps `🧐 Check logic` or `💡 Explain`, the callback handler filters out the tapped actions while preserving other buttons on that same row (such as `🔍 Details`) and all caller rows below.
+   When an operator taps `🧐 Check logic`, `💡 Explain`, or `🧾 Reasons`, the callback handler filters out the tapped actions while preserving other buttons on that same row (such as `🔍 Details`) and all caller rows below.
 
 4. **Verification Check:**
-   - Checked by `plugins/ida-telegram/test/reply-buttons.test.ts` (AC2 tests: Details alone, Details with Check logic and Explain on row 0, predefined row above caller grid rows, and legacy layout preservation when option is unset).
+   - Checked by `plugins/ida-telegram/test/reply-buttons.test.ts` (AC2 tests: Details alone, Details with Check logic, Explain, and Reasons on row 0, predefined row above caller grid rows, and legacy layout preservation when option is unset).
