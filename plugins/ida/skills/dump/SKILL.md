@@ -1,6 +1,6 @@
 ---
 name: dump
-description: Session exit and handover -- commit and push work, release claimed PKB tasks, and emit a final report. Use when completing, pausing, or handing off a session.
+description: Session exit and handover -- commit and push work, release claimed PKB tasks, and emit a final report. Use when completing, pausing, or handing off a session. Exclude for routine in-session task checkpoints or status updates without session exit.
 ---
 
 # Dump -- Session Exit
@@ -22,7 +22,7 @@ For each claimed task (releasing child tasks first), update the task body so its
 
 - `done`: All acceptance criteria are fully met with verified evidence recorded in the task's Report section: quoted output, `file:line` citations, counts, the specimen run where requested, and the report argument answering each `<task id>/AC<n>` from that evidence. A worker whose deliverable is a PR releases `review` instead (below). An empty, template, or bare-assertion report is released as `partial`.
 - `partial`: The worker's own acceptance items remain unfinished -- a scope seam, an external dependency, or a missing tool. Never release as `partial` because a dependent check (QA, merge, deploy) remains to run. Workers document what was completed and what remains unfinished in `reason` and `## Report`; workers never create or name follow-up tasks, and reports carry no 'Next task' pointer (the reconcile pass and parent epic handle next actions).
-- `review`: Either the worker's PR is open and awaits merge by the repository (record `pr_url`; do not wait for CI, review or merge; `/reconcile` writes `done` on the merge), or the worker needs help to finish the task. Help is transient, never a waiting state: a worker hands back on the record, documenting what help is needed in `reason`, and never addresses or escalates to the user. Any reconcile pass reading a `review` task transitions it immediately.
+- `review`: Either the worker's PR is open and awaits merge by the repository (record `pr_url`; do not wait for CI, review or merge; the reconcile pass writes `done` on the merge), or the worker needs help to finish the task. Help is transient, never a waiting state: a worker hands back on the record, documenting what help is needed in `reason`, and never addresses or escalates to the user. Any reconcile pass reading a `review` task transitions it immediately.
 - `failed`: The task cannot be completed, has reached a terminal failure, or a check failed (e.g. QA or review). Document failure evidence and root cause. Never file fix tasks or follow-up tasks; the reconcile pass notes failed tasks and decides next actions from the parent epic.
 - `cancelled`: Task is obsolete or invalidated. Document reason.
 - `in_progress`: Use only if an active successor session is immediately continuing work.
