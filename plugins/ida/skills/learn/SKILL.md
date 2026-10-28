@@ -18,6 +18,7 @@ Dispatch `/learn` to **`pauli`** (`TypeName: "pauli"`), never `james`. Pauli ope
    - If the surface does not emit traces, proceed using the session's execution log or transcript directly. If the surface emits traces but the trace is absent, unexported, or incomplete, halt immediately and state that the trace is unavailable.
    - Do not fall back to inspecting, grepping, or reading repository source code.
 2. **Diagnose systemic cause from execution evidence**:
+   - **Agent failures are framework failures.** The user is not here to allocate blame among agents. An agent's error (misreading or rewording an ask, skipping a step, never delivering a result) is the instance, never the root cause. The root cause is the instruction, workflow, template, contract or tool that let a capable agent make that error: a rule that was missing, that did not reach the agent at that point, or that another instruction contradicted. Never name an agent, its brief or its wording as the root cause.
    - Ground findings in observable runtime mechanisms shown in the trace (or session log if the surface does not emit traces): failing tool invocations, unexpected tool error payloads, schema mismatches, hook blocks, timeout spikes.
    - Describe what the session attempted and where execution broke down. The runtime execution record is the evidence; do not inspect source files or name responsible code lines.
    - Treat an agent's account of its causes as hearsay, never as evidence of mechanism. Re-read the case from the primary user words independently of the caller's framing; what each agent received, ran, and chose on the record is the evidence.
@@ -44,7 +45,7 @@ Dispatch `/learn` to **`pauli`** (`TypeName: "pauli"`), never `james`. Pauli ope
 Return a markdown report containing:
 
 - **Evidence**: Session ID / Conversation ID, relevant OTel span IDs (or session log excerpts if the surface does not emit traces), and execution excerpts (tool calls, error payloads, latencies).
-- **Root cause**: The systemic defect in execution flow, contract, or mechanism demonstrated by the execution record.
+- **Root cause**: The framework or workflow defect the execution record shows let the failure happen: a missing, unreached or contradicted instruction, a workflow step, a contract, or a tool. Never an agent's choice or wording.
 - **Verification miss**: The check that should have caught the instance, and why it did not.
 - **Impact estimate**: Projected frequency and severity.
 - **Artifacts**: Links to the filed issue(s) or evidence-bump comment(s) (evidence-bump comment when an existing issue tracks the failure; otherwise handler's failure only if the primary failure is handled, or both the general bug and verification miss if unhandled).
