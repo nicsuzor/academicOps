@@ -17,6 +17,11 @@ export const MCP_TOOLS: ToolDefinition[] = [
       type: "object",
       properties: {
         chat_id: { type: "integer", description: "Telegram chat ID (defaults to primary user)" },
+        message_thread_id: {
+          type: "integer",
+          description: "Telegram message thread ID (for forum supergroups; defaults to active thread)",
+        },
+        thread_id: { type: "integer", description: "Alias for message_thread_id" },
         text: { type: "string", description: "Markdown text for chat (tier 1 and 2)" },
         detail: { type: "string", description: "Optional deep markdown for Details page (tier 3)" },
         buttons: {
@@ -97,6 +102,8 @@ export const MCP_TOOLS: ToolDefinition[] = [
         chat_id: { type: "integer", description: "Telegram chat ID" },
         message_id: { type: "integer", description: "Message ID to react to" },
         reaction: { type: "string", description: "Emoji reaction string from allowed set" },
+        message_thread_id: { type: "integer", description: "Optional thread ID" },
+        thread_id: { type: "integer", description: "Alias for message_thread_id" },
       },
       required: ["message_id", "reaction"],
     },
@@ -110,6 +117,11 @@ export const MCP_TOOLS: ToolDefinition[] = [
       properties: {
         turn_id: { type: "string", description: "Turn ID for correlating the async answer event" },
         session_id: { type: "string", description: "Session ID for correlating with the asking session" },
+        message_thread_id: {
+          type: "integer",
+          description: "Telegram message thread ID (for forum supergroups; defaults to active thread)",
+        },
+        thread_id: { type: "integer", description: "Alias for message_thread_id" },
         chat: {
           type: "boolean",
           description:
@@ -156,6 +168,8 @@ export const MCP_TOOLS: ToolDefinition[] = [
                 type: "boolean",
                 description: "If true, posts this question to the Mini App only without sending a card to chat.",
               },
+              message_thread_id: { type: "integer" },
+              thread_id: { type: "integer" },
               turn_id: { type: "string" },
               session_id: { type: "string" },
             },
@@ -222,6 +236,8 @@ export const MCP_TOOLS: ToolDefinition[] = [
         chat_id: { type: "integer" },
         message_id: { type: "integer" },
         text: { type: "string" },
+        message_thread_id: { type: "integer" },
+        thread_id: { type: "integer" },
       },
       required: ["message_id", "text"],
     },
