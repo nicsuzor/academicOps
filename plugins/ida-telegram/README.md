@@ -49,7 +49,7 @@ Ida's custom Telegram channel and Mini App plugin for Claude Code.
   - Registers persona-tailored command menus via `setMyCommands` at `botCommandScopeChat` for each `allowFrom` chat on startup, surviving channel restarts and overriding `all_private_chats` defaults.
   - Ida Prime registers `/decide`, `/q`, `/mine`, `/reconcile`, `/hydrate`, `/up`, `/reify`, `/dispatch`, and `/daily`.
   - Strategic Ida (Ida Actual) registers `/strategize`, `/remember`, `/decompose`, `/q`, `/hydrate`, `/up`, `/plan`, `/strategic_review`, `/argument_map`, `/reify`, `/dispatch`, and `/daily`. Plan, strategic review, argument map, and decompose appear on Ida Actual's menu only.
-  - `/daily` updates today's daily note (via `wf-daily`) and replies with a scannable run-down of priorities, progress, and open decisions on Telegram.
+  - `/daily` updates today's daily note (via the PKB template `tpl_daily`) and replies with a scannable run-down of priorities, progress, and open decisions on Telegram.
   - Persona is configured via `IDA_TELEGRAM_PERSONA` / `TELEGRAM_PERSONA` or inferred from `STATE_DIR` (`telegram-pauli` / `telegram-prime` -> `prime`, `telegram-ida` / `telegram-strategic` -> `strategic`).
   - Custom JSON override via `TELEGRAM_BOT_COMMANDS` overrides persona defaults.
   - Excludes reserved official-plugin commands (`/start`, `/help`, `/status`).
