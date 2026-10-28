@@ -893,9 +893,11 @@ def test_every_axiom_is_live_in_the_built_clients(pristine_dist, tmp_path, monke
     loaded = rules.load(pristine_dist / "rbg-claude", tmp_path)
     assert {s for s, r in loaded.items() if r.trigger == rules.TRIGGER_ON} == slugs
 
+    from build.axioms import generate_axioms_readme
+
     readme = (source / "README.md").read_text(encoding="utf-8")
-    rows = dict(re.findall(r"^\| `([\w-]+)` +\|.*\| (\S+) +\|$", readme, re.MULTILINE))
-    assert rows == dict.fromkeys(slugs, "always_on")
+    expected_readme = generate_axioms_readme(source)
+    assert readme == expected_readme
 
 
 def test_no_build_artifacts_in_dist_tree(pristine_dist):

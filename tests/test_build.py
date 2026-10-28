@@ -684,6 +684,59 @@ def test_axioms_always_on_wired_per_client(built):
     assert not (agy_rules / "reference-rule.md").exists()
 
 
+def test_generate_axioms_readme(tmp_path):
+    from build.axioms import generate_axioms_readme
+
+    axioms_dir = tmp_path / "axioms"
+    axioms_dir.mkdir()
+    (axioms_dir / "SKILL.md").write_text("---\nname: axioms\n---\n")
+    (axioms_dir / "rule-b.md").write_text(
+        "---\ndescription: Principle B.\ntrigger: always_on\n---\nBody B\n"
+    )
+    (axioms_dir / "rule-a.md").write_text(
+        "---\ndescription: Principle A.\ntrigger: always_on\n---\nBody A\n"
+    )
+
+    readme = generate_axioms_readme(axioms_dir)
+    assert readme == (
+        "---\n"
+        "description: Index of academicOps axioms.\n"
+        "---\n"
+        "\n"
+        "# Axioms\n"
+        "\n"
+        "| Slug | Core Principle | Trigger |\n"
+        "| - | - | - |\n"
+        "| `rule-a` | Principle A. | always_on |\n"
+        "| `rule-b` | Principle B. | always_on |\n"
+    )
+
+
+def test_axioms_readme_cli_check_fails_on_drift(tmp_path, capsys):
+    from build.axioms import main
+
+    axioms_dir = tmp_path / "axioms"
+    axioms_dir.mkdir()
+    (axioms_dir / "rule-a.md").write_text(
+        "---\ndescription: Principle A.\ntrigger: always_on\n---\nBody A\n"
+    )
+    (axioms_dir / "README.md").write_text("old drifted content\n")
+
+    rc = main(["--axioms-dir", str(axioms_dir), "--check"])
+    assert rc == 1
+    captured = capsys.readouterr()
+    assert "is out of sync" in captured.err
+
+    # Update via CLI
+    rc_update = main(["--axioms-dir", str(axioms_dir)])
+    assert rc_update == 0
+    assert (axioms_dir / "README.md").read_text() != "old drifted content\n"
+
+    # Check passes after update
+    rc_check2 = main(["--axioms-dir", str(axioms_dir), "--check"])
+    assert rc_check2 == 0
+
+
 # --- stage 5: packaging ------------------------------------------------------
 
 

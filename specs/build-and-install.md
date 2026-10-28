@@ -28,8 +28,8 @@ under `plugins/`, mirroring the table in `ARCHITECTURE.md`.
 | `make uninstall-dev` | Removes the local marketplace and its installs, then restores the released `academicOps` marketplace. |
 | `make install` | Registers `nicsuzor/academicOps@main` as the `academicOps` marketplace and installs every plugin from it. |
 | `make test` | `uv run pytest tests/`. |
-| `make lint` | `ruff check .`. |
-| `make format` | `ruff format .` + `dprint fmt`. |
+| `make lint` | `ruff check .` + `scripts/check_refs.py` + `build.axioms --check` + `basedpyright` + `gitleaks`. |
+| `make format` | `python -m build.axioms` + `ruff format .` + `dprint fmt`. |
 | `make clean` | Removes `dist/`. |
 | `make clean-plugins` | Prunes stale plugin caches and Cowork packages via `scripts/clean_plugins.py`. |
 | `make docker` | Alias for `make docker-build`. |
