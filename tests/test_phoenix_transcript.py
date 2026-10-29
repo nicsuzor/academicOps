@@ -445,3 +445,98 @@ def test_transcript_and_outline_with_sanitize_paths(tmp_path):
     assert "~/academicOps" in transcript
     assert "/home/nic" not in outline
     assert "~/academicOps" in outline
+
+
+def test_turn_links_to_own_spans_in_transcript_and_outline():
+    """AC1: Every turn in each markdown output links to its own span(s) in Phoenix."""
+    spans = two_emitter_turn()
+    turns = pt.assemble(spans, SESSION, pt.PRICES)
+    full, outline, _ = pt.render(
+        turns,
+        SESSION,
+        "academicOps",
+        spans,
+        pt.PRICES,
+        ui_base_url="https://phoenix.example.test",
+    )
+    # Both c1 and i1 are turn roots
+    assert "https://phoenix.example.test/redirects/spans/c1" in full
+    assert "https://phoenix.example.test/redirects/spans/i1" in full
+    assert "https://phoenix.example.test/redirects/spans/c1" in outline
+    assert "https://phoenix.example.test/redirects/spans/i1" in outline
+
+
+def test_turn_links_to_session_in_transcript_and_outline():
+    """AC2: Every turn links to its session in Phoenix."""
+    spans = two_emitter_turn()
+    turns = pt.assemble(spans, SESSION, pt.PRICES)
+    full, outline, _ = pt.render(
+        turns,
+        SESSION,
+        "academicOps",
+        spans,
+        pt.PRICES,
+        ui_base_url="https://phoenix.example.test",
+    )
+    expected_session_link = f"[session](https://phoenix.example.test/redirects/sessions/{SESSION})"
+    assert expected_session_link in full
+    assert expected_session_link in outline
+
+
+def test_resolve_ui_base_url(monkeypatch):
+    """Test resolution and derivation of Phoenix UI URL."""
+    monkeypatch.delenv("PHOENIX_UI_URL", raising=False)
+    # Derived from standard Phoenix base URL
+    assert (
+        pt.resolve_ui_base_url(None, "http://phoenix.internal:6006")
+        == "http://phoenix.internal:6006"
+    )
+    assert pt.resolve_ui_base_url(None, "http://localhost:6006/") == "http://localhost:6006"
+
+    # Derived from MCP proxy gateway URL (mcp. -> phoenix., strip /mcp)
+    assert pt.resolve_ui_base_url(None, "https://mcp.suzor.com/mcp") == "https://phoenix.suzor.com"
+    assert (
+        pt.resolve_ui_base_url(None, "https://mcp.example.com/mcp") == "https://phoenix.example.com"
+    )
+
+    # Explicit flag overrides everything
+    assert (
+        pt.resolve_ui_base_url("https://custom.ui", "https://mcp.suzor.com/mcp")
+        == "https://custom.ui"
+    )
+
+    # Environment variable PHOENIX_UI_URL overrides base_url derivation
+    monkeypatch.setenv("PHOENIX_UI_URL", "https://env.ui")
+    assert pt.resolve_ui_base_url(None, "https://mcp.suzor.com/mcp") == "https://env.ui"
+
+    # None when no base_url and no env var
+    monkeypatch.delenv("PHOENIX_UI_URL", raising=False)
+    assert pt.resolve_ui_base_url(None, None) is None
+
+
+def test_transcript_and_outline_contain_phoenix_links_via_cli(tmp_path):
+    spans_data = two_emitter_turn()
+    spans_file = tmp_path / "spans.json"
+    spans_file.write_text(json.dumps({"data": spans_data}))
+    out = tmp_path / "linked.transcript.md"
+    assert (
+        pt.main(
+            [
+                SESSION[:8],
+                "--from-file",
+                str(spans_file),
+                "--out",
+                str(out),
+                "--base-url",
+                "https://mcp.example.com/mcp",
+            ]
+        )
+        == 0
+    )
+    transcript = out.read_text()
+    outline = (tmp_path / "linked.outline.md").read_text()
+    session_link = f"[session](https://phoenix.example.com/redirects/sessions/{SESSION})"
+    assert session_link in transcript
+    assert session_link in outline
+    assert "https://phoenix.example.com/redirects/spans/c1" in transcript
+    assert "https://phoenix.example.com/redirects/spans/c1" in outline

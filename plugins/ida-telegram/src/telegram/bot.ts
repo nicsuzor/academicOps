@@ -310,6 +310,8 @@ export class TelegramBotClient {
       actionBtns.push({ text: "🧐 Check logic", callback_data: "logic_check" });
       actionBtns.push({ text: "💡 Explain", callback_data: "explain" });
       actionBtns.push({ text: "🧾 Reasons", callback_data: "reasons" });
+      actionBtns.push({ text: "✅ Accept recommendation", callback_data: "accept_recommendation" });
+      actionBtns.push({ text: "❌ Decline recommendation", callback_data: "decline_recommendation" });
     }
 
     if (predefinedRow === true) {
@@ -1110,6 +1112,68 @@ export class TelegramBotClient {
           meta.message_thread_id = String(cbThread);
           meta.thread_id = String(cbThread);
         }
+        if (targetExcerpt) {
+          meta.target_excerpt = targetExcerpt;
+        }
+
+        this.emitChannelEvent(content, meta);
+        return;
+      }
+
+      // Accept / decline recommendation callbacks (AC1, AC2)
+      if (
+        (data === "accept_recommendation" ||
+          data.startsWith("accept_recommendation:") ||
+          data === "decline_recommendation" ||
+          data.startsWith("decline_recommendation:")) &&
+        cb.message &&
+        this.config.allowFrom.includes(cb.from.id)
+      ) {
+        const kbRows = cb.message.reply_markup?.inline_keyboard || [];
+        const matchedBtn = kbRows.flat().find((b) => b.callback_data === data);
+        const isAccept = data === "accept_recommendation" || data.startsWith("accept_recommendation:");
+        const defaultLabel = isAccept ? "✅ Accept recommendation" : "❌ Decline recommendation";
+        const label = matchedBtn?.text || defaultLabel;
+        const originalText = cb.message.text || "";
+
+        // Remove the recommendation buttons, but preserve other buttons (e.g. Details, Review diff, Check logic, Explain)
+        const remainingRows = kbRows
+          .map((row) =>
+            row.filter(
+              (b) =>
+                b.callback_data !== "accept_recommendation" &&
+                b.callback_data !== "decline_recommendation" &&
+                !b.callback_data?.startsWith("accept_recommendation:") &&
+                !b.callback_data?.startsWith("decline_recommendation:")
+            )
+          )
+          .filter((row) => row.length > 0);
+
+        await this.editMessage(
+          cb.message.chat.id,
+          cb.message.message_id,
+          `${originalText}\n\nSelected: ${label} ✅`,
+          { inline_keyboard: remainingRows }
+        );
+
+        const targetExcerpt = cb.message.text || this.getMessageExcerpt(cb.message.message_id) || "";
+        const action = isAccept ? "accept_recommendation" : "decline_recommendation";
+        const decision = isAccept ? "accepted" : "declined";
+        const content = `Nic ${decision} the recommendation for message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""}.`;
+
+        const meta: Record<string, string> = {
+          event: action,
+          action,
+          recommendation: decision,
+          choice: isAccept ? "accept" : "decline",
+          callback_id: cb.id,
+          callback_prefix: action,
+          payload: data,
+          label,
+          target_message_id: String(cb.message.message_id),
+          chat_id: String(cb.message.chat.id),
+          user_id: String(cb.from.id),
+        };
         if (targetExcerpt) {
           meta.target_excerpt = targetExcerpt;
         }
