@@ -208,26 +208,12 @@ _ACCESS_TOKEN_PAIRS = (
 def _resolve_mcp_headers() -> dict[str, str]:
     """HTTP headers for the PKB endpoint, from the environment only.
 
-    `PKB_MCP_HEADERS` is a JSON object of header name to value.
     A Cloudflare Access service-token pair supplies the Access headers: the
     worker pair `WORKER_MCP_TOKEN_ID` / `WORKER_MCP_TOKEN_SECRET` by default,
     because it has no polecat dispatch access, else the dispatcher pair
-    `DISPATCHER_MCP_TOKEN_ID` / `DISPATCHER_MCP_TOKEN_SECRET`. A malformed
-    `PKB_MCP_HEADERS` is logged and ignored, never silently swallowed.
+    `DISPATCHER_MCP_TOKEN_ID` / `DISPATCHER_MCP_TOKEN_SECRET`.
     """
     headers: dict[str, str] = {}
-
-    env_headers = os.environ.get("PKB_MCP_HEADERS")
-    if env_headers:
-        try:
-            parsed = json.loads(env_headers)
-        except json.JSONDecodeError as exc:
-            log.warning("PKB_MCP_HEADERS is not valid JSON, ignoring it: %s", exc)
-        else:
-            if isinstance(parsed, dict):
-                headers.update({str(k): str(v) for k, v in parsed.items()})
-            else:
-                log.warning("PKB_MCP_HEADERS is not a JSON object, ignoring it")
 
     for id_var, secret_var in _ACCESS_TOKEN_PAIRS:
         cf_id = os.environ.get(id_var)
@@ -372,7 +358,7 @@ def _initialize_mcp_session(mcp_url: str, base_headers: dict[str, str]) -> str |
     except urllib.error.HTTPError as exc:
         if exc.code in (401, 403):
             raise RuntimeError(
-                f"the PKB endpoint refused authorisation (HTTP {exc.code}); check PKB_MCP_HEADERS, WORKER_MCP_TOKEN_ID / WORKER_MCP_TOKEN_SECRET, or DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
+                f"the PKB endpoint refused authorisation (HTTP {exc.code}); check WORKER_MCP_TOKEN_ID / WORKER_MCP_TOKEN_SECRET, or DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
             ) from exc
         raise RuntimeError(
             f"the PKB endpoint failed with HTTP {exc.code} during initialize: {exc.reason}"
@@ -512,7 +498,7 @@ def _post_mcp_search(
 
     if status in (401, 403):
         raise RuntimeError(
-            f"the PKB endpoint refused authorisation (HTTP {status}); check PKB_MCP_HEADERS, WORKER_MCP_TOKEN_ID / WORKER_MCP_TOKEN_SECRET, or DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
+            f"the PKB endpoint refused authorisation (HTTP {status}); check WORKER_MCP_TOKEN_ID / WORKER_MCP_TOKEN_SECRET, or DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
         )
 
     session_needed = False
@@ -548,7 +534,7 @@ def _post_mcp_search(
             status, body = _execute_post(req_headers)
             if status in (401, 403):
                 raise RuntimeError(
-                    f"the PKB endpoint refused authorisation (HTTP {status}); check PKB_MCP_HEADERS, WORKER_MCP_TOKEN_ID / WORKER_MCP_TOKEN_SECRET, or DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
+                    f"the PKB endpoint refused authorisation (HTTP {status}); check WORKER_MCP_TOKEN_ID / WORKER_MCP_TOKEN_SECRET, or DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
                 )
             if status != 200:
                 clean_body = " ".join(body.split())

@@ -37,10 +37,9 @@ The `ida` plugin's `UserPromptSubmit` hook searches the PKB at `PKB_MCP_URL`
 with every prompt. The hook is a separate process: it cannot use the OAuth
 token the client holds for its own `services` connection, so it needs its own
 credential in the environment the client is launched from (the container or
-launchd environment, not the agent's shell). Set one of:
+launchd environment, not the agent's shell). Set canonical Cloudflare Access
+service-token pairs:
 
-- `PKB_MCP_HEADERS` -- a JSON object of HTTP headers, e.g.
-  `{"Authorization": "Bearer <token>"}`
 - `WORKER_MCP_TOKEN_ID` and `WORKER_MCP_TOKEN_SECRET` -- a Cloudflare Access
   service token without polecat dispatch access, the default
 - `DISPATCHER_MCP_TOKEN_ID` and `DISPATCHER_MCP_TOKEN_SECRET` -- the
