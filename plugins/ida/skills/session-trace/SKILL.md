@@ -15,20 +15,21 @@ uv run python "${CLAUDE_SKILL_DIR}/scripts/phoenix_transcript.py" <session-id / 
 ```
 
 - Configuration is flags or environment: `--base-url` or `$PHOENIX_MCP_URL` (the Phoenix
-  HTTP root), and `--project` or `$PHOENIX_MCP_PROJECT`. With neither flag nor variable set,
-  the script supplies no default value and halts. Spans already fetched another way render with
-  `--from-file spans.json`.
+  HTTP root), and `--project` or `$PHOENIX_MCP_PROJECT`. Phoenix UI deep-links resolve via
+  `--ui-base-url` or `$PHOENIX_UI_URL` (default derived from the Phoenix endpoint). With neither
+  flag nor variable set, the script supplies no default value and halts. Spans already fetched another
+  way render with `--from-file spans.json`.
 - One paged fetch on `session.id`; a thousand-span session takes seconds.
 - It writes two files and prints the summary (totals, per-turn table, cost by model,
   slowest steps, errors):
   - `<slug>.transcript.md` -- the full record: one `## Turn N` per turn, one `### N.M`
     per model or tool call with its duration, tokens and cost, payloads folded in
-    `<details>`, nothing truncated.
+    `<details>`, nothing truncated. Every turn links directly to its Phoenix session and span(s).
   - `<slug>.outline.md` -- prompts, model calls with their text, and replies; each tool
     call is one bullet under the model call that made it, labelled with the call's own
     action summary (agy `toolAction` / `toolSummary`, Claude Code `description`), with a line beneath
     naming what it acted on: the calls and literal arguments inside a code-mode block,
-    else the command, path or query.
+    else the command, path or query. Every turn links directly to its Phoenix session and span(s).
 
 ## Deliverable and durable storage
 
@@ -63,6 +64,13 @@ time, find the session with Recipe A or F in [references/sql-recipes.md](referen
 - `uv run python "${CLAUDE_SKILL_DIR:-plugins/ida/skills/session-trace}/scripts/phoenix_token_cost.py" --since <time>` -- spend ranked across sessions, or
   `--by task`. Prices are list prices per million tokens; the dollar column is
   comparable spend, not an invoice. Gemini spans may carry no token counts.
+
+## Cross-session search
+
+With no session id in hand ("every prompt mentioning X"), follow "Cross-session search" in
+[references/sql-recipes.md](references/sql-recipes.md): filter and project on the server, write
+rows to a file in session scratch, print counts and ids only, and read the file by anchor.
+Never let search results accumulate in your context.
 
 ## Ad-hoc queries
 

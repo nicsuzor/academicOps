@@ -68,12 +68,12 @@ build-test: build
 				&& echo "✓ cowork $$p validated" \
 				|| { echo "x cowork $$p validate failed" >&2; exit 1; }; \
 		fi; \
-		if command -v agy >/dev/null 2>&1; then \
+		if command -v agy >/dev/null 2>&1 && [ -d "$(DIST)/$$p-agy" ]; then \
 			agy plugin validate "$(DIST)/$$p-agy" \
 				&& echo "✓ agy $$p validated" \
 				|| { echo "x agy $$p validate failed" >&2; exit 1; }; \
 		fi; \
-		if command -v claude >/dev/null 2>&1; then \
+		if command -v claude >/dev/null 2>&1 && [ -d "$(DIST)/$$p-openclaw" ]; then \
 			claude plugin validate "$(DIST)/$$p-openclaw" \
 				&& echo "✓ openclaw $$p validated" \
 				|| { echo "x openclaw $$p validate failed" >&2; exit 1; }; \
