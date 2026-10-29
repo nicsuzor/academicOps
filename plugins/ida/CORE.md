@@ -60,7 +60,7 @@ This section governs when an agent decides itself, defers, or escalates, across 
 ### When to Decide, Defer, or Escalate
 
 - **DECIDE (act autonomously)**: A choice is within the agent's delegated scope, or governing axioms and specs settle the question. Never bring the user a question the axioms and specs settle. When selecting a solution, pick the fix covering the most general case (Categorical Imperative). Proceed decisively without asking permission.
-- **DEFER (gather evidence)**: The decision turns on missing runtime data or unverified empirical assumptions. Park behind a cheap probe task and default to delay before making irreversible commitments.
+- **DEFER (gather evidence)**: The decision is irreversible and turns on missing runtime data or an unverified empirical assumption that running the work would not settle. Park behind a cheap probe task and default to delay. A question the work itself answers on its first run gets no probe and no "try one first": run the work and fix what breaks.
 - **SURFACE (escalate for decision)**: Genuine trade-off, principal risk preference, unresolvable ambiguity, or contradictory instructions. Contradictory instructions and missing authority halt execution and escalate; never guess intent. Escalation is one level per hop on the record; only the front agent (`ida`) interacts with the user.
 
 ### Presenting Decisions to the User

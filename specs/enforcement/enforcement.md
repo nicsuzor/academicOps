@@ -93,6 +93,7 @@ Any change that shapes agent behaviour (hooks, review lenses, branch protection,
   5. `process` (`advisory check` → `routing` → `required gate`)
   6. `post-hoc` (`reversability` → `observability` → `proactive detection`)
 - **Default and burden of proof:** Default to instructions. Instructions work in the large majority of cases; the burden of proof is on adding or escalating to a heavier mechanism.
+- **Changes to Ida are made, then tested by use:** a change at the `instructions` level to Ida (her persona, her instruction files, the skills she checks and relays with) is made on the user's direction without an empirical test first; if it does not work, the next experiment follows. We learn by doing and talking and cannot afford to wait (user ruling, 2026-10-29). Keep the concise record of each experiment required by the escalation threshold above; measurement gates mechanisms, not instructions. The PKB workflow template `aops-wf-framework-change` step 5 carries the same ruling.
 - **Escalation threshold:** A pattern of failures provides evidence to increment force or mechanism; increments must be exhausted before escalating. Concise records must be kept of assessment of suitability of each regulatory experiment.
 
 ## Personalities are not skills
@@ -118,7 +119,7 @@ The rule-compliance review lens (`rbg`, coordinated via `strategic-review` or `w
 
 1. **Default to instructions.** Agents are intelligent and instructions work in the large majority of cases; the burden of proof is on adding a mechanism.
 2. **Bias hard against mechanical gates.** Every hard-coded check is permanent complexity and a new place for the framework to fail.
-3. **Measure before changing.** The evidence loop below is the authority for adding or strengthening a mechanism. Authorial intuition is not evidence.
+3. **Measure before changing a mechanism.** The evidence loop below is the authority for adding or strengthening a mechanism. Authorial intuition is not evidence. Instruction-level changes to Ida are made on direction and tested by use (see the options pass above).
 4. **Show, don't tell.** Where compliance is claimed, require information that demonstrates it.
 5. **Never guess.** With no evidence either way, current placement holds.
 

@@ -53,6 +53,10 @@ and why.
   `PHOENIX_MCP_PROJECT`) are provided, when the script attempts to resolve the
   endpoint, then it halts immediately with an error and supplies no default
   values or fallbacks.
+- **AC-1.8** Given generated transcript and outline markdown files, when rendered,
+  then every turn in each markdown output links to its session (`/redirects/sessions/{session_id}`)
+  and to its own root span(s) (`/redirects/spans/{span_id}`) in Phoenix, with the Phoenix UI base
+  URL resolved from `--ui-base-url`, `PHOENIX_UI_URL`, or derived from the Phoenix endpoint.
 
 ## Design
 
@@ -74,6 +78,9 @@ The script resolves Phoenix endpoint configuration from explicit flags (`--base-
 `--project`) or from standard polecat MCP server environment variables (`PHOENIX_MCP_URL`,
 `PHOENIX_MCP_PROJECT`). With neither provided, the script supplies no default value and
 fails fast (`ConfigError`). There are no fallback variables or silent default projects.
+Phoenix UI base URL for deep-links is resolved from `--ui-base-url`, `PHOENIX_UI_URL`, or
+derived from the Phoenix endpoint (mapping MCP gateway URLs like `https://mcp.<domain>/mcp`
+to `https://phoenix.<domain>`).
 
 The script pages `GET /v1/projects/{project}/spans?attribute=session.id:<id>`
 to exhaustion, 1,000 spans a page: about one second per page on the reference
@@ -86,7 +93,9 @@ another way (for instance through an MCP proxy) can be rendered offline.
 - **Turns** are clusters of root spans whose time windows overlap. Two emitters
   often each open a root for the same turn (a hook-based tracer's `CHAIN` turn
   and a client's native interaction span); clustering joins them without
-  depending on either.
+  depending on either. Every turn header in both the full transcript and condensed outline
+  renders direct markdown links to the Phoenix session (`/redirects/sessions/{session_id}`)
+  and the turn's root span(s) (`/redirects/spans/{span_id}`).
 - **Tool calls** are deduplicated on their call id (`tool.call_id`,
   `tool_use_id`, `tool.id`, `gen_ai.tool.call.id`). The rendered call takes its
   input and output from the span that holds them whole and its duration from the
