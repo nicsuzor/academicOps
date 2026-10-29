@@ -71,6 +71,8 @@ from phoenix_token_cost import (  # noqa: E402
     resolve_base_url,
 )
 
+UI_BASE_URL_ENV_VAR = "PHOENIX_UI_URL"
+
 PAGE_LIMIT = 1000
 SESSION_PAGE_LIMIT = 100
 SLOWEST_STEPS = 10
@@ -165,6 +167,25 @@ def resolve_project(explicit: str | None) -> str:
     if not project:
         raise ConfigError(f"no Phoenix project. Pass --project, or set {PROJECT_ENV_VAR}")
     return project
+
+
+def resolve_ui_base_url(explicit: str | None, base_url: str | None) -> str | None:
+    """Resolve Phoenix UI base URL from explicit flag, env var, or derived from base URL."""
+    candidate = (explicit or os.environ.get(UI_BASE_URL_ENV_VAR, "")).strip()
+    if candidate:
+        return candidate.rstrip("/")
+    if not base_url:
+        return None
+    parsed = urllib.parse.urlparse(base_url.rstrip("/"))
+    netloc = parsed.netloc
+    path = parsed.path
+    if netloc.startswith("mcp."):
+        netloc = "phoenix." + netloc[4:]
+        if path == "/mcp":
+            path = ""
+        elif path.startswith("/mcp/"):
+            path = path[4:]
+    return urllib.parse.urlunparse((parsed.scheme, netloc, path.rstrip("/"), "", "", ""))
 
 
 def paged(base_url: str, path: str, query: list[tuple[str, str]]) -> tuple[list[Any], int]:
@@ -289,6 +310,21 @@ class Turn:
 
     def token_total(self, key: str) -> int:
         return sum(s.tokens.get(key, 0) for s in self.model_steps)
+
+
+def turn_spans(turn: Turn) -> list[Span]:
+    """The root span(s) identifying this turn."""
+    candidates = [r for r in turn.roots if r.get("span_kind") in TURN_KINDS and span_id(r)]
+    if not candidates:
+        candidates = [r for r in turn.roots if span_id(r)]
+    seen: set[str] = set()
+    result: list[Span] = []
+    for s in candidates:
+        sid = span_id(s)
+        if sid and sid not in seen:
+            seen.add(sid)
+            result.append(s)
+    return result
 
 
 def empty_tokens() -> dict[str, int]:
@@ -1072,6 +1108,7 @@ def render(
     project: str,
     spans: list[Span],
     prices: dict[str, dict[str, float]],
+    ui_base_url: str | None = None,
 ) -> tuple[str, str, str]:
     """The full transcript, the outline (no folded payloads) and the summary block."""
     start = min(t.start for t in turns)
@@ -1102,6 +1139,10 @@ def render(
         header.append(f"- **Subagents:** {', '.join(agents)}")
     if unpriced:
         header.append(f"- **Unpriced models (costed at $0):** {', '.join(unpriced)}")
+    if ui_base_url and session_id:
+        header.append(
+            f"- **Phoenix session:** [{session_id}]({ui_base_url}/redirects/sessions/{session_id})"
+        )
 
     summary = [
         "## Turns",
@@ -1157,22 +1198,49 @@ def render(
             )
 
     head = [*header, "", *summary, ""]
-    full = "\n".join([*head, *render_body(turns, full=True)]).rstrip() + "\n"
-    outline = "\n".join([*head, *render_body(turns, full=False)]).rstrip() + "\n"
+    full = (
+        "\n".join(
+            [*head, *render_body(turns, full=True, session_id=session_id, ui_base_url=ui_base_url)]
+        ).rstrip()
+        + "\n"
+    )
+    outline = (
+        "\n".join(
+            [*head, *render_body(turns, full=False, session_id=session_id, ui_base_url=ui_base_url)]
+        ).rstrip()
+        + "\n"
+    )
     return full, outline, "\n".join([*header, "", *summary]) + "\n"
 
 
-def render_body(turns: list[Turn], full: bool) -> list[str]:
+def render_body(
+    turns: list[Turn],
+    full: bool,
+    session_id: str = "",
+    ui_base_url: str | None = None,
+) -> list[str]:
     body: list[str] = []
     for turn in turns:
         agent = f" · {turn.agent}" if turn.agent else ""
+        turn_meta = [
+            f"{fmt_time(turn.start)} · {fmt_ms(turn.duration_ms)} · {len(turn.model_steps)} model calls · "
+            f"{len(turn.tool_steps)} tool calls · {fmt_usd(turn.cost)}{agent}"
+        ]
+        if ui_base_url and session_id:
+            links = [f"[session]({ui_base_url}/redirects/sessions/{session_id})"]
+            spans = turn_spans(turn)
+            if len(spans) == 1:
+                links.append(f"[span]({ui_base_url}/redirects/spans/{span_id(spans[0])})")
+            elif len(spans) > 1:
+                for i, s in enumerate(spans, start=1):
+                    links.append(f"[span {i}]({ui_base_url}/redirects/spans/{span_id(s)})")
+            turn_meta.append(" · ".join(links))
         body += [
             f'<a id="t{turn.index}"></a>',
             "",
             f"## Turn {turn.index} · {escape_cell(turn_title(turn))}",
             "",
-            f"{fmt_time(turn.start)} · {fmt_ms(turn.duration_ms)} · {len(turn.model_steps)} model calls · "
-            f"{len(turn.tool_steps)} tool calls · {fmt_usd(turn.cost)}{agent}",
+            " · ".join(turn_meta),
             "",
         ]
         if turn.prompt and full:
@@ -1231,6 +1299,10 @@ def build_parser() -> argparse.ArgumentParser:
         "ident", help="session ID / conversation ID, session slug (ID prefix), or 32-hex trace ID"
     )
     parser.add_argument("--base-url", help=f"Phoenix base URL (else ${BASE_URL_ENV_VAR})")
+    parser.add_argument(
+        "--ui-base-url",
+        help=f"Phoenix UI base URL (else ${UI_BASE_URL_ENV_VAR}, or derived from base URL)",
+    )
     parser.add_argument("--project", help=f"Phoenix project name (else ${PROJECT_ENV_VAR})")
     parser.add_argument(
         "--from-file", help="render spans from a saved JSON payload instead of fetching"
@@ -1268,11 +1340,14 @@ def run(args: argparse.Namespace) -> int:
             )
         session_id = matches[0] if matches else args.ident
         spans = [s for s in universe if str(attr(s, "session.id")) == session_id]
+        base_url = (args.base_url or os.environ.get(BASE_URL_ENV_VAR, "")).strip() or None
     else:
         base_url = resolve_base_url(args.base_url)
         project = resolve_project(args.project)
         session_id = resolve_session_id(base_url, project, args.ident)
         spans, _ = fetch_session_spans(base_url, project, session_id)
+
+    ui_base_url = resolve_ui_base_url(getattr(args, "ui_base_url", None), base_url)
 
     if not spans:
         print(
@@ -1284,7 +1359,9 @@ def run(args: argparse.Namespace) -> int:
 
     spans.sort(key=start_of)
     turns = assemble(spans, session_id, prices)
-    text, outline, summary = render(turns, session_id, project, spans, prices)
+    text, outline, summary = render(
+        turns, session_id, project, spans, prices, ui_base_url=ui_base_url
+    )
     if getattr(args, "sanitize_paths", False):
         text = sanitize_paths(text)
         outline = sanitize_paths(outline)
