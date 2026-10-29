@@ -144,3 +144,13 @@ Pull request review and merge authority is governed by a three-tier risk taxonom
 
 Enforcement operates through workflow merge gates (`instructions`, `imperative`):
 Finish and QA templates direct QA workers to semantically evaluate PR risk against the taxonomy in a clean context. For verified Tier 1 PRs, QA workers merge autonomously via `gh pr merge --squash` and release the QA task as `done`. For Tier 2 and Tier 3 PRs, QA workers verify claims, post structured receipts to the PR, and leave the PR open for reviewer or principal sign-off. Under headless worker and review lifecycle rules, QA tasks complete as `done` with the PR URL recorded on the task record so that `/reconcile` tracks merge without human wait states; no task rests or releases into `review` for human merge gates.
+
+### Non-PR Task Verification and Lifecycle
+
+For tasks that do not produce pull requests (such as empirical analyses, documentation updates, research tasks, and operational maintenance), `/reify` mints an independent downstream `QA: <task>` child task only where the composed workflow warrants an independent check (such as empirical analyses requiring numerical replication, high-impact specification changes, or formal qualitative audits). Workflows that do not warrant an additional verification pass mint no QA child.
+
+Worker self-release to `done` is preserved across all non-PR tasks: when a worker satisfies all frozen acceptance criteria with concrete verifiable evidence recorded in its handback report, it releases the task directly to `done`. Non-PR workers are not forced into `review` awaiting external verification. If a separate QA task was minted, that QA task executes independently against the completed artifact; if the QA check fails, the QA worker releases its own task as `failed` with diagnostic evidence.
+
+### Operational Event Ingestion and Session Waking
+
+Worker container completion is recorded via the exit listener, OpenTelemetry `polecat.container.exit` spans, and the `polecat_events` MCP queue. The operational dashboard daemon (`specs/telegram/mini-app-dashboard-integration.md`) acts as the single consumer of `polecat_events` and repository webhooks, waking listening agent sessions over its authenticated HTTP/SSE channel bridge. Direct UNIX domain socket pushes (`[polecat-exit]`) and in-session client polling loops are retired.

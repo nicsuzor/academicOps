@@ -74,6 +74,7 @@ How much of steps 3-4 run as standalone downstream review tasks versus how much 
 the task's risk and blast radius ([`plugins/ida/skills/reify/SKILL.md:85-98`](../../plugins/ida/skills/reify/SKILL.md), [`enforcement.md#pr-risk-taxonomy-enforcement`](enforcement.md#pr-risk-taxonomy-enforcement)):
 
 - **Substantive deliverables (features, refactors, multi-file changes)** -- `/reify` mints an independent downstream QA task (`Title: QA: <primary task title>`, `needs: [<primary_task_id>]`) that verifies the delivered artifact at runtime and evaluates PR risk against the three-tier taxonomy (`Tier 1` autonomous QA-merge vs `Tier 2` / `Tier 3` reviewer or principal sign-off).
+- **Non-PR tasks (analyses, docs, research, operational tasks)** -- `/reify` mints a separate `QA: <task>` child task only where the composed workflow warrants an independent check (such as empirical analyses with replication requirements, high-impact policy or specification changes, or multi-step qualitative audits). Workflows that do not warrant a separate verification pass (routine documentation updates, straightforward queries, direct single-source summaries) mint no QA child. In all non-PR tasks, worker self-release to `done` remains standard upon fulfilling the frozen acceptance criteria; workers are not held in `review` awaiting a downstream gate.
 - **High-risk / wide blast radius** -- per-chunk review tasks wired with
   `depends_on`, each running its own rule-compliance and substantive QA pass before the
   next chunk starts.
