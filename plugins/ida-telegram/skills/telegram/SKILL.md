@@ -22,16 +22,16 @@ The user reads on a phone between other commitments. Cognitive load is the bindi
 
 - **Inbound ask routing:** Questions and lookups received from the user are answered in the receiving session through an internal subagent it spawns, never in its main context; the task dispatch pipeline is used only for real code changes. Never send inbound questions or lookups into the dispatch pipeline.
 - **Option buttons on questions:** Provide selectable option buttons whenever asking questions so the user can reply with a single tap. Use multi-row layouts (`button_layout`, `buttons_per_row`, or 2D button arrays) when offering multiple options (such as skill or checklist proposals) to keep choices compact on mobile screens.
-- **Predefined row consolidation:** Pass `predefined_row: true` on `reply` to consolidate all active system actions (`🔍 Details`, `[🧐 Check logic]`, `[💡 Explain]`, `[🧾 Reasons]`) onto a single default header row above custom option buttons.
+- **Predefined row consolidation:** Pass `predefined_row: true` on `reply` to consolidate all active system actions (`🔍 Details`, `[🧐 Check logic]`, `[💡 Explain]`, `[🧾 Reasons]`, `[✅ Accept recommendation]`, `[❌ Decline recommendation]`) onto a single default header row above custom option buttons.
 - **Mini App-only questions:** To keep chat clear of decisions best reviewed in the dashboard, set `mini_app_only: true` (or `chat: false`) on `ask_user` or individual questions. The question appears interactively in the Mini App without posting a card to chat.
 - **Fuller background behind Details:** Provide deep context, evidence, logs, or detailed tradeoffs in the `detail` parameter of a question. The Mini App displays a `🔍 Details` button on the question card that opens this fuller background on demand, keeping the card compact.
 - **Asynchronous by default:** Post questions with structured options, placing the recommended choice first (`"(Recommended)"`). When no recommendation is available, offer to have one assessed.
 - **Remove answered questions from outstanding list:** Once a question you asked has been answered in your session or resolved outside channel events, remove that question from the Mini App's outstanding list immediately using `close_question({ question_id, reason })` or `answer_question({ question_id, choice })`. (Questions answered via Telegram cards or the Mini App are dismissed automatically by the broker.) Never leave settled questions pending in the user's outstanding list.
 - **Never wait or block:** Questions never block or time out. Proceed with other ready work or conclude the turn; answers arrive asynchronously as channel events.
 
-## Message Action Buttons (Logic Check, Explain & Reasons)
+## Message Action Buttons (Logic Check, Explain, Reasons & Recommendation)
 
-Every reply sent over Telegram automatically carries inline action buttons: `[🧐 Check logic]`, `[💡 Explain]`, and `[🧾 Reasons]`:
+Every reply sent over Telegram automatically carries inline action buttons: `[🧐 Check logic]`, `[💡 Explain]`, `[🧾 Reasons]`, `[✅ Accept recommendation]`, and `[❌ Decline recommendation]`:
 
 - **Logic check (`🧐 Check logic`):** Requests a formal logic check on that specific message statement (`event: "logic_check"`).
   - Apply the formal premise-check procedure: test whether the inference is valid, the premises supported, the ask answered, and warrants sufficient.
@@ -42,19 +42,36 @@ Every reply sent over Telegram automatically carries inline action buttons: `[�
   - Returns the arguments behind the message verbatim (Chained Toulmin Argdown blocks), one per link of the chain, each labelled with who argued it and to whom (e.g. `Prime to Nic`, `Sara to Prime`, `worker to Sara`), nested by delegation depth, in the reply's details (`detail` parameter).
   - A link whose argument cannot be found is named as missing (e.g. `[Missing argument: no premise-check record found for ...]`), never paraphrased.
   - Chat text provides a concise summary (~100 words) with the primary takeaway and the chain structure, referencing the Details page for the full verbatim Argdown blocks.
+- **Accept recommendation (`✅ Accept recommendation`):** Marks the card and notifies Ida that the user accepted the recommendation (`event: "accept_recommendation"`).
+  - Act on the accepted recommendation or confirm execution.
+- **Decline recommendation (`❌ Decline recommendation`):** Marks the card and notifies Ida that the user declined the recommendation (`event: "decline_recommendation"`).
+  - Acknowledge declination, avoid proceeding with the declined course, and offer alternatives or seek clarification if needed.
 
 ## Reactions & Feedback
 
 - **Act on a 👎 reaction:** When the user adds a 👎 reaction to a message (a `reaction` event whose `added` contains 👎), treat it as feedback on substance -- the failure or blocker the message reported -- not on how the message was written. Act directly on the reported failure (investigate, fix, unblock, or replan) without asking the user to classify the reaction or critique the wording.
-- **Inbound message status:** The channel marks inbound messages with 👀 upon arrival. Advance reactions as state transitions:
-  - ✍ captured: note, decision, or intake recorded.
-  - 👨‍💻 dispatched: briefed and dispatched to background workers.
-  - 🤔 waiting: a question or clarification is pending in chat.
-  - 💔 blocked: execution failed or hit a blocker; reply details the issue.
-  - 🎉 completed: task answered or resolved.
-  - 🫡 acknowledged: completed when no reply was owed.
-- **Allowed reactions:** Send only valid Telegram reaction strings:
-  ❤ 👍 👎 🔥 🥰 👏 😁 🤔 🤯 😱 🤬 😢 🎉 🤩 🤮 💩 🙏 👌 🕊 🤡 🥱 🥴 😍 🐳 ❤‍🔥 🌚 🌭 💯 🤣 ⚡ 🍌 🏆 💔 🤨 😐 🍓 🍾 💋 🖕 😈 😴 😭 🤓 👻 👨‍💻 👀 🎃 🙈 😇 😨 🤝 ✍ 🤗 🫡 🎅 🎄 ☃ 💅 🤪 🗿 🆒 💘 🙉 🦄 😘 💊 🙊 😎 👾 🤷‍♂ 🤷 🤷‍♀ 😡
+- **Inbound message status:** The channel marks inbound messages with 👀 upon arrival.
+- **Shared reaction legend:** All bot personas share a single reaction legend with exactly one meaning per reaction and one reaction per state. Telegram authoritatively validates reactions; unsupported reactions surface platform errors directly.
+  - _Lifecycle states:_
+    - `👀` inbound: message received and being read/assessed.
+    - `✍` captured: note, decision, intake, or task persisted to knowledge base.
+    - `🐱` dispatched (polecat): work briefed and dispatched to an isolated background worker (a polecat holds it).
+    - `🕊` dispatched (subagent): work delegated to an internal subagent (a subagent holds it).
+    - `🤔` waiting: a question, choice, or clarification is pending user reply in chat.
+    - `💔` blocked or failed: execution halted or hit an external blocker (reply details the refusal).
+    - `🎉` completed: task answered or resolved with substantive reply.
+    - `🫡` acknowledged: request handled or completed where no substantive reply was owed.
+  - _Feedback and semantic reactions:_
+    - `👎` substance defect: negative feedback on substance or report failure (prompts autonomous remediation).
+    - `👍` affirmation: affirmative confirmation or approval.
+    - `🔥` breakthrough: exceptional idea, high resonance, or breakthrough.
+    - `🤝` agreement: consensus reached or proposal accepted.
+    - `💯` aligned: exact agreement, fully aligned.
+    - `🏆` milestone: difficult feat accomplished or significant milestone reached.
+    - `🙏` appreciation: gratitude or appreciation.
+    - `🤣` humor: humor or joke acknowledged.
+    - `🤯` surprising: unexpected finding or revelation.
+    - `😢` regret: regrettable outcome or unfortunate news.
 
 ## Reviews & State Tracking
 

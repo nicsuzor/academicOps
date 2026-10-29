@@ -32,6 +32,7 @@ Call `/workflow-library` to weave together every workflow relevant to the task i
 Then assemble the steps:
 
 - Combine template steps into a logical order (e.g., test-first where the change modifies code that executes, build, then QA).
+- Preserve design and build staging: when multi-file modifications or architectural choices are required, compose separate tasks for Stage 1 (Design) and Stage 2 (Build) under `wf-code-task-base`. Never collapse Stage 1 into Stage 2, even when the incoming brief provides an implementation proposal.
 - Base the assembly only on what is explicitly requested. Do not investigate, guess at scope, or ad-lib extra requirements. If the request is ambiguous, preserve that ambiguity.
 - Start with the most general applicable template, which provides stubs for finishing and QA where applicable. Templates themselves specify how workflows are built; do not overspecify composition stages or single out finish templates.
 
@@ -70,7 +71,7 @@ When an objective calls for specifying or designing a feature ahead of implement
 
 ## Acceptance
 
-[ Number the items `AC1`, `AC2`, ...; each number gives the item its ask id (per the `premise-check` report form), which the worker's report argument answers. Write each Acceptance item so that it requires evidence sufficient to prove the criterion has been met in substance. Verifiable evidence must be recorded on the task because the task record is the only thing that comes back. Criteria name outcomes and the evidence that proves them, not where something is wired or how it is invoked. ]
+[ Number the items `AC1`, `AC2`, ...; each number gives the item its ask id (per the `premise-check` report form), which the worker's report argument answers. Write each Acceptance item so that it requires evidence sufficient to prove the criterion has been met in substance. Verifiable evidence must be recorded on the task because the task record is the only thing that comes back. Criteria name outcomes and the evidence that proves them, not where something is wired or how it is invoked. Filter incoming mechanism prescriptions and translate them into observable outcome criteria. Line numbers, line ranges, and narrow code slice prescriptions are strictly forbidden in `Goal`, `Acceptance`, and `Instructions`. ]
 
 ## Instructions
 
@@ -105,7 +106,7 @@ Where the composed workflow calls for QA review:
 
 ### Requirements for writing tasks
 
-- Give the worker the end state and the bounds; leave the method to it.
+- Filter incoming mechanism prescriptions and translate them into observable outcome criteria. Line numbers, line ranges, and narrow code slice prescriptions are strictly forbidden in `Goal`, `Acceptance`, and `Instructions`. Give the worker the end state and the bounds; leave the method to it.
 - Record the asker's own words once, in `## Ask`, with their ids, and never rewrite them: the task carries the ask as an immutable referent that the worker's argument answers and that checkers read to test the restatement for fidelity, completeness, and overreach. The no-verbatim rule below governs the rest of the body, not `## Ask`.
 - Restate the user's terse, fragmented words into clear, complete tasks and notes, judged by fidelity to his meaning and distinctions, not by wording. Keeping exact words in PKB outputs is not a goal. Fault a restatement only for lost, added, or distorted meaning. Link asks to prior context, recompose into a clear logical structure, and cite message ids.
 - State the Goal and each criterion over the whole class the request covers: "the user's messages", not a named person's or today's channels and formats. Instances the request names are cases to test, not the boundary of the work. When asked what broke a mechanism (such as authentication, a token, or a service), compose the debugging workflow and preserve the full failure question in Acceptance so the run examines why the mechanism or token stopped working across its lifecycle rather than narrowing to a single startup symptom.
