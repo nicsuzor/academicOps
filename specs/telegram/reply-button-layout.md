@@ -20,12 +20,19 @@ As an operator interacting with multi-option prompts (such as skill or workflow 
 
 ### US-2 Predefined Buttons Consolidated on the Default First Row
 
-As an operator reading agent replies with system actions (such as Details, Check logic, Explain, and Reasons), I want all active predefined buttons grouped together on a single default row at the top above custom option buttons, so that common navigational and meta-actions remain predictable and compact without consuming multiple rows.
+As an operator reading agent replies with system actions (such as Details, Check logic, Explain, Reasons, and Accept/Decline recommendation), I want all active predefined buttons grouped together on a single default row at the top above custom option buttons, so that common navigational and meta-actions remain predictable and compact without consuming multiple rows.
 
 - **AC-2.1** Given `predefined_row: true` with `detailsId` present and message actions disabled (`actions: false`), when the reply is sent, then `🔍 Details` is placed on the first row (row 0).
-- **AC-2.2** Given `predefined_row: true` with `detailsId` present and message actions enabled (`actions: true`), when the reply is sent, then `🔍 Details`, `🧐 Check logic`, `💡 Explain`, and `🧾 Reasons` all sit together on the same first row (row 0).
+- **AC-2.2** Given `predefined_row: true` with `detailsId` present and message actions enabled (`actions: true`), when the reply is sent, then `🔍 Details`, `🧐 Check logic`, `💡 Explain`, `🧾 Reasons`, `✅ Accept recommendation`, and `❌ Decline recommendation` all sit together on the same first row (row 0).
 - **AC-2.3** Given `predefined_row: true` with both predefined buttons and caller buttons present, when the reply is sent, then the consolidated predefined row sits at the top (row 0) above the caller's custom button rows.
 - **AC-2.4** Given `predefined_row: false` or omitted, when the reply is sent, then predefined buttons maintain their legacy multi-row arrangement below caller buttons.
+
+### US-3 Recommendation Action Buttons on Replies
+
+As an operator receiving agent recommendations in chat, I want direct accept and decline recommendation buttons attached alongside Check logic and Explain on replies, so that I can accept or decline recommendations with a single tap and immediately notify the agent of my choice.
+
+- **AC-3.1** Every reply that carries default message actions attaches `[✅ Accept recommendation]` and `[❌ Decline recommendation]` alongside `[🧐 Check logic]` and `[💡 Explain]`. Passing `actions: false` suppresses all default action buttons including both recommendation buttons; setting `predefined_row: true` places them together on row 0.
+- **AC-3.2** Tapping `[✅ Accept recommendation]` or `[❌ Decline recommendation]` acknowledges the callback, edits the Telegram message card to show the user's choice (`Selected: <label> ✅`), removes the recommendation buttons from the inline keyboard while preserving other buttons (Details, Review diff, Check logic, Explain), and delivers an event to Ida (`accept_recommendation` or `decline_recommendation`) naming the target message ID, text excerpt, and whether Nic accepted or declined the recommendation.
 
 ## Design
 
@@ -54,11 +61,31 @@ As an operator reading agent replies with system actions (such as Details, Check
      1. `🔍 Details` (when `detailsId` is present)
      2. `🔍 Review diff` (when `review` is present)
      3. Feedback buttons (`👍`, `👎`, when `feedback: true`)
-     4. Message action buttons (`🧐 Check logic`, `💡 Explain`, `🧾 Reasons`, when `actions !== false`)
+     4. Message action buttons (`🧐 Check logic`, `💡 Explain`, `🧾 Reasons`, `✅ Accept recommendation`, `❌ Decline recommendation`, when `actions !== false`)
    - **Zero Predefined Buttons:** When no predefined buttons are active (e.g. `actions: false` without details or feedback), no empty row is prepended.
 
 3. **In-Place Action Interaction:**
-   When an operator taps `🧐 Check logic`, `💡 Explain`, or `🧾 Reasons`, the callback handler filters out the tapped actions while preserving other buttons on that same row (such as `🔍 Details`) and all caller rows below.
+   When an operator taps `🧐 Check logic` or `💡 Explain`, the callback handler filters out the tapped actions while preserving other buttons on that same row (such as `🔍 Details`, `🧾 Reasons`, `✅ Accept recommendation`, `❌ Decline recommendation`) and all caller rows below.
 
 4. **Verification Check:**
-   - Checked by `plugins/ida-telegram/test/reply-buttons.test.ts` (AC2 tests: Details alone, Details with Check logic, Explain, and Reasons on row 0, predefined row above caller grid rows, and legacy layout preservation when option is unset).
+   - Checked by `plugins/ida-telegram/test/reply-buttons.test.ts` (AC2 tests: Details alone, Details with Check logic, Explain, Reasons, Accept recommendation, Decline recommendation on row 0, predefined row above caller grid rows, and legacy layout preservation when option is unset).
+
+### 3. Recommendation Action Buttons (US-3)
+
+1. **Default Attachment and Suppression:**
+   Every reply attaches `[✅ Accept recommendation]` (callback `accept_recommendation`) and `[❌ Decline recommendation]` (callback `decline_recommendation`) alongside `[🧐 Check logic]`, `[💡 Explain]`, and `[🧾 Reasons]` unless `actions: false` is passed. When `predefined_row: true` is set, they consolidate onto row 0.
+
+2. **In-Place Card Update & Filtering:**
+   When an operator taps either button:
+   - The bot acknowledges the callback query immediately to dismiss the client spinner.
+   - The message text is edited in-place to append `Selected: <label> ✅`.
+   - The inline keyboard filters out both recommendation buttons (`accept_recommendation` and `decline_recommendation`) while preserving other buttons (such as `🔍 Details`, `[🧐 Check logic]`, `[💡 Explain]`, `[🧾 Reasons]`, and custom caller rows).
+
+3. **Event Delivery:**
+   The bot delivers an inbound event to Ida (`event: "accept_recommendation"` or `event: "decline_recommendation"`), including:
+   - `content`: `"Nic accepted the recommendation for message <id>: \"<excerpt>\"."` or `"Nic declined the recommendation for message <id>: \"<excerpt>\"."`
+   - `meta`: `target_message_id`, `target_excerpt`, `action`, `event`, `recommendation` (`"accepted"` / `"declined"`), `choice` (`"accept"` / `"decline"`), `label`, `chat_id`, `user_id`.
+
+4. **Verification Checks:**
+   - Attachment, suppression, and row consolidation checked by `plugins/ida-telegram/test/recommendation-actions.test.ts` (AC1) and `plugins/ida-telegram/test/reply-buttons.test.ts` (AC2).
+   - Tapping, card marking, button filtering, and event delivery checked by `plugins/ida-telegram/test/recommendation-actions.test.ts` (AC2) and `plugins/ida-telegram/test/inbound.test.ts`.

@@ -39,6 +39,8 @@ Step inlining is interpretive, not mechanical transcription:
 - Workflow templates (`wf-*`) cannot be invoked by workers. Each composed template stage, obligation, and quality gate is interpreted into a concise numbered imperative step in Instructions.
 - Inlining distills the required outcome or verification checkpoint for each stage; it omits narrative prose, rationale, background explanations, and implementation methods the worker can determine for itself.
 - Every composed template stage and finish obligation is represented as a concrete step so no required process or gate is lost, while staying strictly within the 300-word ceiling for composite workflows (or 150 words for atomic tasks).
+- Outcome-oriented criteria: Reified tasks define observable end-state conditions and verification criteria rather than implementation mechanisms. Line numbers, line ranges, and narrow code slice prescriptions are strictly forbidden in `Goal`, `Acceptance criteria`, and `Execution steps` / `Instructions`.
+- Preserving design and build staging: When multi-file modifications or architectural choices are required, separate tasks are reified for Stage 1 (Design) and Stage 2 (Build) under `wf-code-task-base`. Stage 1 is never collapsed into Stage 2, even when the brief includes an implementation proposal.
 
 ## Context gathering
 
