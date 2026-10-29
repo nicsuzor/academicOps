@@ -68,3 +68,11 @@ Agents must never create standalone "decision" tasks or file questions as backlo
 - **Represent forks as mutually exclusive option nodes:** Architectural choices and trade-offs are modelled on the graph as competing option nodes with mutual blocking edges. Choosing an option resolves the conflict and cancels the competing node, unblocking downstream dependencies.
 - **Model unknowns as empirical probes:** Missing information is gathered via focused probe tasks (`classification: probe`).
 - **Ask in-turn questions directly:** Interactive clarifications in an active session use `AskUserQuestion` directly rather than polluting the graph with un-actionable decision tasks.
+
+## Keep indexes synchronized with their sources
+
+Whenever creating, modifying, renaming, or deleting a file, rule, skill, workflow, or definition that is indexed in a README, catalog, or table of contents, update the index in the same change:
+
+- **Derive directly from canonical source:** Each row or entry (slug, title, description, trigger, or signature) must accurately reflect the canonical metadata or frontmatter in the source file. Do not author divergent summaries or paraphrases.
+- **Maintain across all indexes:** This obligation applies generally across the repository (e.g. axiom indexes, rule catalogs, skill tables, workflow registries), not just specific file types.
+- **Agentic maintenance over mechanical mirror checks:** Agents maintain documentation accuracy semantically as part of their work. Do not write bespoke generation scripts, linters, or change-detector tests for individual index files.

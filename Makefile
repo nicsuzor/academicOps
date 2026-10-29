@@ -144,11 +144,9 @@ test:
 lint:
 	@uv run ruff check .
 	@uv run python scripts/check_refs.py
-	@uv run python -m build.axioms --check
 	@uv run basedpyright
 	@uv run pre-commit run gitleaks --all-files
 
 format:
-	@uv run python -m build.axioms
 	@uv run ruff format .
 	@uv run dprint fmt

@@ -126,12 +126,6 @@ jobs:
         timeout-minutes: 2
         run: uv run python scripts/check_refs.py
 
-      # Axiom README index must match canonical axiom files (single-source-of-truth).
-      - name: Axioms README index matches canonical axiom files
-        if: always()
-        timeout-minutes: 2
-        run: uv run python -m build.axioms --check
-
       # Commit-time secret backstop (Layer 2). No autofix: a
       # secret found here always blocks, the same as check_refs.py above.
       - name: Secret scan (gitleaks)
