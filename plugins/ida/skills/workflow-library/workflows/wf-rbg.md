@@ -26,7 +26,7 @@ Draws its brief from the shared review briefing. Additional role-specific inputs
 - **Rule sources** -- assembled in priority order:
   - Framework axioms: the `rbg:axioms` skill (inviolable baseline).
   - Project-local rules: `$CWD/.agents/rules/`.
-  - Account-scoped rules: read from active PKB rules.
+  - User-scoped rules: read from active PKB documents with `type: rule` (optional).
   - Enforcement architecture: `specs/enforcement/enforcement.md` (when behavior-shaping mechanisms are touched).
 
 ## Procedure
