@@ -2941,6 +2941,42 @@ def handle_session_end(data: dict, config: dict) -> None:
         _delete_state(session_id)
 
 
+def _extract_debug_hook_description(data: dict, raw_payload: Any, client: str, event: str) -> str:
+    """Extract a concise description or summary for a debug hook span without substantive payload text."""
+    tool_input = None
+    if isinstance(raw_payload, dict):
+        tool_input = raw_payload.get("tool_input") or raw_payload.get("toolInput")
+        if not tool_input and isinstance(raw_payload.get("toolCall"), dict):
+            tool_input = raw_payload["toolCall"].get("args")
+    if not tool_input and isinstance(data, dict):
+        tool_input = data.get("tool_input") or data.get("toolInput")
+
+    if isinstance(tool_input, str):
+        try:
+            tool_input = json.loads(tool_input)
+        except Exception:
+            tool_input = None
+
+    if isinstance(tool_input, dict):
+        candidates = [tool_input]
+        if isinstance(tool_input.get("Arguments"), dict):
+            candidates.append(tool_input["Arguments"])
+        for cand in candidates:
+            for key in ("toolSummary", "toolAction", "description", "Description"):
+                val = cand.get(key)
+                if isinstance(val, str) and val.strip():
+                    return val.strip()
+
+    for src in (raw_payload, data):
+        if isinstance(src, dict):
+            for key in ("toolSummary", "toolAction", "description", "Description"):
+                val = src.get(key)
+                if isinstance(val, str) and val.strip():
+                    return val.strip()
+
+    return f"{client} {event} hook"
+
+
 def emit_debug_hook_span(
     data: dict,
     config: dict,
@@ -2949,7 +2985,7 @@ def emit_debug_hook_span(
     event: str,
     raw_payload: Any,
 ) -> bool:
-    """Emit a full, untruncated debug span for any hook event, threaded into the session's turn trace."""
+    """Emit a metadata-only debug span for any hook event, threaded into the session's turn trace."""
     payload_key = "conversationId" if client == "agy" else "session_id"
     session_id = resolve_session_id(data, payload_key, prefer_env=False)
     if session_id is None:
@@ -3035,11 +3071,6 @@ def emit_debug_hook_span(
         data,
         payload_key=payload_key,
     )
-    full_payload_json = _redact_secrets(
-        json.dumps(raw_payload, ensure_ascii=False, default=str)
-        if not isinstance(raw_payload, str)
-        else raw_payload
-    )
     hook_event_name = str(data.get("hook_event_name") or data.get("hookEventName") or event)
     attrs: dict[str, Any] = {
         "openinference.span.kind": "CHAIN",
@@ -3047,16 +3078,34 @@ def emit_debug_hook_span(
         "hook.client": client,
         "hook.event": event,
         "hook.event_name": hook_event_name,
-        "input.value": full_payload_json,
-        "input.mime_type": "application/json",
-        "hook.raw_payload": full_payload_json,
     }
-    tool_name = str(data.get("tool_name") or data.get("toolName") or "")
+
+    tool_name = str(
+        data.get("tool_name")
+        or data.get("toolName")
+        or (
+            raw_payload.get("toolCall", {}).get("name")
+            if isinstance(raw_payload, dict) and isinstance(raw_payload.get("toolCall"), dict)
+            else ""
+        )
+        or ""
+    )
     if tool_name:
         attrs["tool.name"] = tool_name
-    tool_call_id = data.get("tool_use_id") or data.get("toolCallId")
+        attrs["tool.type"] = tool_name
+
+    tool_call_id = (
+        data.get("tool_use_id")
+        or data.get("toolCallId")
+        or (raw_payload.get("tool_use_id") if isinstance(raw_payload, dict) else None)
+    )
     if tool_call_id:
         attrs["tool.call_id"] = str(tool_call_id)
+
+    desc = _extract_debug_hook_description(data, raw_payload, client, event)
+    attrs["description"] = desc
+    if tool_name:
+        attrs["tool.summary"] = desc
 
     (_, _, _, _, _, _, SpanKind, _, _, _) = _otel_imports()
     surface = "agy" if client == "agy" else "claude-code"

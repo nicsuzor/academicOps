@@ -30,7 +30,7 @@ plugins/                Plugin sources. Only what a client needs.
                         an advisory turn-by-turn evaluator plus a stop-side
                         rule-check gate.
   tools/                Domain research skills.
-  aops-debug/           Debug plugin that dumps raw hook payloads.
+  aops-debug/           Debug plugin that logs metadata-only hook traces to OTel and dumps raw payloads to local files.
   ida-telegram/         Ida's custom Telegram channel and Mini App plugin.
 specs/                  Design intent.
 tests/                  Test suite.
@@ -51,7 +51,7 @@ source of truth for the built plugin set.
 | `plugins/ida` | ida (`plugins/ida/agents/ida.md`) -- the interactive face and the only agent that talks to the user; james, marsha, sara, and pauli (`plugins/ida/agents/pauli.md`) -- the PKB graph agent for memory, planning, decomposition, and graph writes; capture, memory, decomposition, dispatch, workflow-library, review, and premise-check skills; session, PKB-search, tracing, and premise-check hooks. |
 | `plugins/rbg` | Rule enforcement: the rbg agent (`plugins/rbg/agents/rbg.md`), the `axioms` skill whose files are the axioms (`plugins/rbg/skills/axioms/`), an advisory turn-by-turn evaluator plus a stop-side rule-check gate. |
 | `plugins/tools` | Domain research skills (data analysis, document conversion, diagramming, peer review, project scaffolding). |
-| `plugins/aops-debug` | Debug plugin that dumps raw hook payloads. |
+| `plugins/aops-debug` | Debug plugin that logs metadata-only hook traces to OTel and dumps raw payloads to local files. |
 | `plugins/ida-telegram` | Ida's custom Telegram channel and Mini App plugin: stdio MCP channel server, progressive disclosure with expandable blockquotes, async question broker, feedback trace collection, Mini App (Details, Review, Questions, Anchor), voice notes, and role-gated polling. |
 
 Each plugin's own `README.md` is the fuller description; this table is not a

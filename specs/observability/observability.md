@@ -28,6 +28,7 @@ As the user, I want every session across every execution surface to export compl
 - **AC-2.3** Given a turn in which tools execute, runtime hooks evaluate gates or inject context, or rule/verdict evaluations run, when the user inspects the turn trace, then every tool span (`TOOL`) carries secret-scrubbed input, output, tool name, and call ID, every hook action emits a child span recording the hook event, gate, decision, and injected or refusal text, and every evaluation span parents under the active turn root span in the same `trace_id`.
 - **AC-2.4** Given a session on any surface, when spans or resources are exported to the trace store, then `agent.name` is attached only when explicitly reported by the client hook payload or set via the `AOPS_AGENT_NAME` environment variable; with no reported name or environment variable, `agent.name` is omitted across all spans and resources with no directory heuristics, settings-file scans, or fallback defaults (subagent spans retain their explicit subagent type).
 - **AC-2.5** Given a model call executed during a turn on a client-hook surface, when its `LLM` span reaches the trace store, then the span carries complete input and output message payloads from the client invocation, with model name and token counts (`prompt`, `completion`, `total`, `cache_read`, `cache_write`) resolved and attached prior to turn-root span completion, and calls whose counts are delayed in the session transcript resolved on subsequent emissions or final flush.
+- **AC-2.6** Given a debug hook span emitted by the `aops-debug` plugin for any hook event on Claude Code or agy, when the span is exported to the trace store, then the span carries metadata attributes only (identifying `hook.plugin`, `hook.client`, `hook.event`, `hook.event_name`, `session.id`, `description`, and for tool calls `tool.name`, `tool.type`, and `tool.call_id`) and never substantive payload text (prompts, tool inputs, tool responses, command bodies, or message bodies).
 
 ### US-3 Correlate upstream MCP service spans with the calling session
 
@@ -93,6 +94,7 @@ In addition to the hop correlation keys above, spans in `academicOps` satisfy th
 | **Hook decisions and verdict spans (`aops.hook.*`, `verdict.*`, `claim.id`)** | Runtime hooks that inject context, arm or disarm a gate, or block/warn on an action emit a child span under the active turn carrying `aops.hook.event`, `aops.hook.gate`, `aops.hook.decision` (`"allow"`, `"block"`, `"warn"`, `"inject"`, `"arm"`, or `"disarm"`), and the injected or refusal text in `output.value` (US-2). Supervisor report evaluations across subagent returns, peer messages, and container task-record handbacks emit a verdict span carrying the correlation keys in the hop table above so every acceptance or rejection (`PASS`, `REVISE`, `FAIL`) is auditable from the trace store and task record alike (US-1). |
 | **MCP service correlation (`mcp.session_id`, W3C `traceparent`)** | MCP gateways forward W3C `traceparent`, the caller's `session.id`, and active `task.id` to upstream MCP services (US-3). Upstream services parent their spans under the caller's tool span, populate `session.id` exclusively from an explicit client session ID supplied by the caller, record the transport connection ID in `mcp.session_id` so stateless calls never create synthetic sessions, and stamp `task.id` on task-targeted operations. |
 | **Worker container streaming and log archive (`polecat.*`, `<sessions_root>/logs/<date>/<task.id>/`)** | Worker containers stream unbuffered output events during execution for live inspection alongside live trace spans, and persist their internal CLI logs and session transcripts to `<sessions_root>/logs/<date>/<task.id>/` before container removal so diagnostic records survive container cleanup (US-4). |
+| **Debug hook spans (`aops-debug.*`)** | Debug hook spans emitted by `aops-debug` across all Claude Code and `agy` hook events carry metadata only, threading into the active turn trace while strictly excluding substantive payload bodies (prompts, tool inputs, tool responses, command bodies, and message bodies) to protect data boundaries and eliminate unbounded span attribute bloat (US-2). |
 | **Single canonical emitter and test isolation** | Each surface is instrumented by one canonical emitter exporting complete, secret-scrubbed spans, with duplicate or redacted secondary exporters disabled once turn, `LLM`, subagent, and hook-parenting completeness hold (US-5). Automated test runs emit zero spans to the production trace store. |
 
 ### Client Hook Emission Contract
@@ -108,3 +110,43 @@ Client hook emitters preserve trace integrity and turn boundaries across the ses
    - **Turn Completion**: Records the final model output from the completion event payload, joins token counts and model name from the transcript, emits the final `LLM` span, emits the completed `CHAIN` turn root span with non-empty output, and cleans up active turn state.
    - **Mid-Turn Events**: Permissions, notifications, and context events emit child spans under the active turn root directly from event attributes.
    - **Session Teardown**: Emits any remaining unclosed turn or model spans and terminates session state.
+
+### Debug Hook Metadata-Only Contract (`aops-debug`)
+
+Spans emitted by the `aops-debug` plugin for hook events on Claude Code and `agy` adhere to a strict metadata-only contract. Every hook call produces exactly one span threaded into the turn trace, capturing execution telemetry without leaking substantive payload content.
+
+#### Span Fields and Attributes
+
+| Attribute | Type | Presence | Description |
+| :- | :- | :- | :- |
+| `name` | string | Always | Formatted as `aops-debug.<event>` (e.g. `aops-debug.PreToolUse`, `aops-debug.SessionStart`). |
+| `openinference.span.kind` | string | Always | Set to `"CHAIN"`. |
+| `hook.plugin` | string | Always | Set to `"aops-debug"`. |
+| `hook.client` | string | Always | Client name (`"claude"` or `"agy"`). |
+| `hook.event` | string | Always | Canonical hook event name (e.g. `"PreToolUse"`, `"Stop"`, `"SessionStart"`). |
+| `hook.event_name` | string | Always | Wire event name reported in payload or normalized event name. |
+| `session.id` | string | Always | Owning session UUID. |
+| `description` | string | Always | Concise action summary or description extracted from `toolSummary`, `toolAction`, `description`, `Description`, or fallback `<client> <event> hook`. |
+| `tool.name` | string | Tool events | Tool name/type (e.g. `"Bash"`, `"invoke_subagent"`). |
+| `tool.type` | string | Tool events | Tool name/type alias matching `tool.name`. |
+| `tool.call_id` | string | Tool events with ID | Client tool use/call identifier (`tool_use_id` or `toolCallId`). |
+| `tool.summary` | string | Tool events with summary | Extracted tool summary matching `description`. |
+
+#### Excluded Substantive Content
+
+To prevent leaking sensitive user content and exceeding attribute size boundaries, the following fields are strictly excluded from span attributes across all events:
+
+- User prompts and expanded prompts (`prompt`, `substantive_payload`).
+- Tool invocation bodies, inputs, scripts, and arguments (`command`, `CommandLine`, `code`, `tool_input`, `toolCall.args`, `raw_payload`).
+- Tool outputs, return values, and responses (`tool_response`, `error` stack traces, file contents).
+- Message bodies and assistant replies (`last_assistant_message`, `content`, `message`).
+- Raw payloads (`hook.raw_payload`, full payload JSON in `input.value`).
+
+#### Verification Mapping
+
+| Criterion | Requirement | Verification Check |
+| :- | :- | :- |
+| **AC-1** Payload Content Exclusion | Spans carry no prompt, tool input, tool response, or substantive payload text across every hook event. | `tests/test_claude_code_tracer_session_events.py:test_aops_debug_claude_events_carry_no_substantive_content` and `test_aops_debug_agy_events_carry_no_substantive_content` assert absence of substantive substrings and `hook.raw_payload` across 30 Claude Code and 5 agy hook events. |
+| **AC-2** Identifying Metadata Retention | Every hook call yields one span whose attributes identify event, description, tool type, and session. | Parametrized tests assert `hook.plugin`, `hook.client`, `hook.event`, `session.id`, `description`, `tool.name`, and `tool.type` across all events. |
+| **AC-3** Governing Spec | Spec states metadata-only contract and field inventory. | Documented in `specs/observability/observability.md`. |
+| **AC-4** Delivery Verification | Clean PR into `release/v1.0-rc0` with passing suite and linters. | Full pytest suite (776 passed) and `make lint` green. |
