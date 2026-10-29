@@ -41,8 +41,10 @@
 
 ## Telegram
 
-- [telegram/mini-app-dashboard-integration.md](telegram/mini-app-dashboard-integration.md) -- integration plan and interface specification for serving the Telegram Mini App from the overwhelm dashboard with dynamic state and bi-directional communication.
 - [telegram/command-menus.md](telegram/command-menus.md) -- native Telegram bot command menu registration and routing contract across conversational agent personas.
+- [telegram/message-actions.md](telegram/message-actions.md) -- inline message action buttons (`Check logic`, `Explain`, `Reasons`), callback tap events, and multi-level argument chain response contract.
+- [telegram/mini-app-dashboard-integration.md](telegram/mini-app-dashboard-integration.md) -- integration plan and interface specification for serving the Telegram Mini App from the overwhelm dashboard with dynamic state and bi-directional communication.
+- [telegram/reactions.md](telegram/reactions.md) -- Telegram reaction handling contract, platform-authoritative validation, and unified shared reaction legend across bot personas.
 - [telegram/reply-button-layout.md](telegram/reply-button-layout.md) -- reply button layout customization and consolidated predefined row specification.
 - [telegram/threaded-conversations.md](telegram/threaded-conversations.md) -- threaded Telegram conversations and topic message routing by default without configuration.
 

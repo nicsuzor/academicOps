@@ -17,7 +17,7 @@ The architectural specification detailing design rationale, theoretical mechanis
 
 The framework enforces **no programmatic, deterministic, or mechanical verdict on quality or process**, with an authorized exception for procedural friction that never rules on substance: the hearsay gate (`hearsay_gate.py`, with `premise_check_gate.py` compatibility), triggered on `UserPromptSubmit` (for canonical incoming agent envelopes: cross-session messages, teammate messages, task notifications, subagent handbacks) and on `PostToolUse` (for foreground subagent dispatch returns: `Agent`, `invoke_subagent`, `Task`), which refuses dispatch, messaging and channel reply tools and blocks `Stop` while an arrived report or relayed direction awaits a recorded verdict, paired with separated JIT reminders for report writing (`honesty.md` on `SubagentStart`) and report receiving (`hearsay.md` on `UserPromptSubmit` and once per resolved batch on `PostToolBatch`), and its verdict recorder (`premise_check_verdict.py`), which refuses a PASS whose reason lacks the checker's seven keyed lines or contradicts the judged block, and refuses REVISE or FAIL when Valid entries all hold with no unanswered ask ([evidence-contract-enforcement.md](evidence-contract-enforcement.md)). The recorder checks the reason's shape and its consistency with the block mechanically; whether a rule yields its claim, whether the named rival is the nearest, whether an assumption line is complete, sufficiency against stakes, and relay entailment stay with the checking agent and are never mechanised. Hooks, server contracts, and config are **delivery channels** -- they remind, route, and make things visible; they never decide whether work is good or whether a rule was followed. Every verdict is an agent's judgment, and the bar every reviewing agent applies is world-leading, not technically-acceptable.
 
-Apart from the exception above, the only **mechanical** enforcement is **structural prevention**: credential and workspace isolation, delivery guards, model pins. Prevention by construction -- never reactive detection, never content-sniffing, never a deterministic pass/fail on the substance of an agent's work.
+Apart from the exception above, the only **mechanical** enforcement is **structural prevention**: credential and workspace isolation, delivery guards (such as stray PR auto-retargeting from distribution branches via `.github/workflows/auto-retarget-pr.yml`), model pins. Prevention by construction -- never reactive detection, never content-sniffing, never a deterministic pass/fail on the substance of an agent's work.
 
 ### Regulatory tools
 
@@ -93,6 +93,7 @@ Any change that shapes agent behaviour (hooks, review lenses, branch protection,
   5. `process` (`advisory check` → `routing` → `required gate`)
   6. `post-hoc` (`reversability` → `observability` → `proactive detection`)
 - **Default and burden of proof:** Default to instructions. Instructions work in the large majority of cases; the burden of proof is on adding or escalating to a heavier mechanism.
+- **Changes to Ida are made, then tested by use:** a change at the `instructions` level to Ida (her persona, her instruction files, the skills she checks and relays with) is made on the user's direction without an empirical test first; if it does not work, the next experiment follows. We learn by doing and talking and cannot afford to wait (user ruling, 2026-10-29). Keep the concise record of each experiment required by the escalation threshold above; measurement gates mechanisms, not instructions. The PKB workflow template `aops-wf-framework-change` step 5 carries the same ruling.
 - **Escalation threshold:** A pattern of failures provides evidence to increment force or mechanism; increments must be exhausted before escalating. Concise records must be kept of assessment of suitability of each regulatory experiment.
 
 ## Personalities are not skills
@@ -118,7 +119,7 @@ The rule-compliance review lens (`rbg`, coordinated via `strategic-review` or `w
 
 1. **Default to instructions.** Agents are intelligent and instructions work in the large majority of cases; the burden of proof is on adding a mechanism.
 2. **Bias hard against mechanical gates.** Every hard-coded check is permanent complexity and a new place for the framework to fail.
-3. **Measure before changing.** The evidence loop below is the authority for adding or strengthening a mechanism. Authorial intuition is not evidence.
+3. **Measure before changing a mechanism.** The evidence loop below is the authority for adding or strengthening a mechanism. Authorial intuition is not evidence. Instruction-level changes to Ida are made on direction and tested by use (see the options pass above).
 4. **Show, don't tell.** Where compliance is claimed, require information that demonstrates it.
 5. **Never guess.** With no evidence either way, current placement holds.
 

@@ -57,7 +57,19 @@ export interface TelegramUpdate {
 }
 
 export interface InboundChannelEvent {
-  event: "message" | "reaction" | "button_tap" | "bot_command" | "voice" | "attachment" | "miniapp" | "logic_check" | "explain";
+  event:
+    | "message"
+    | "reaction"
+    | "button_tap"
+    | "bot_command"
+    | "voice"
+    | "attachment"
+    | "miniapp"
+    | "logic_check"
+    | "explain"
+    | "reasons"
+    | "accept_recommendation"
+    | "decline_recommendation";
   content: string;
   meta: Record<string, string>;
 }
@@ -333,6 +345,62 @@ export function parseInboundUpdate(
       return {
         event: "explain",
         content: `Please explain message ${cb.message?.message_id ?? ""}${targetExcerpt ? `: "${targetExcerpt}"` : ""} in more detail.`,
+        meta,
+      };
+    }
+
+    if (callbackPrefix === "reasons" || rawData === "reasons") {
+      const targetExcerpt = cb.message?.text || (getExcerpt && cb.message?.message_id ? getExcerpt(cb.message.message_id) : undefined);
+      meta.event = "reasons";
+      meta.action = "reasons";
+      if (targetExcerpt) {
+        meta.target_excerpt = targetExcerpt;
+      }
+      return {
+        event: "reasons",
+        content: `How do you know that? Show the reasons and argument chain behind message ${cb.message?.message_id ?? ""}${targetExcerpt ? `: "${targetExcerpt}"` : ""}.`,
+        meta,
+      };
+    }
+
+    if (
+      callbackPrefix === "accept_recommendation" ||
+      rawData === "accept_recommendation" ||
+      callbackPrefix === "accept_rec" ||
+      rawData === "accept_rec"
+    ) {
+      const targetExcerpt = cb.message?.text || (getExcerpt && cb.message?.message_id ? getExcerpt(cb.message.message_id) : undefined);
+      meta.event = "accept_recommendation";
+      meta.action = "accept_recommendation";
+      meta.recommendation = "accepted";
+      meta.choice = "accept";
+      if (targetExcerpt) {
+        meta.target_excerpt = targetExcerpt;
+      }
+      return {
+        event: "accept_recommendation",
+        content: `Nic accepted the recommendation for message ${cb.message?.message_id ?? ""}${targetExcerpt ? `: "${targetExcerpt}"` : ""}.`,
+        meta,
+      };
+    }
+
+    if (
+      callbackPrefix === "decline_recommendation" ||
+      rawData === "decline_recommendation" ||
+      callbackPrefix === "decline_rec" ||
+      rawData === "decline_rec"
+    ) {
+      const targetExcerpt = cb.message?.text || (getExcerpt && cb.message?.message_id ? getExcerpt(cb.message.message_id) : undefined);
+      meta.event = "decline_recommendation";
+      meta.action = "decline_recommendation";
+      meta.recommendation = "declined";
+      meta.choice = "decline";
+      if (targetExcerpt) {
+        meta.target_excerpt = targetExcerpt;
+      }
+      return {
+        event: "decline_recommendation",
+        content: `Nic declined the recommendation for message ${cb.message?.message_id ?? ""}${targetExcerpt ? `: "${targetExcerpt}"` : ""}.`,
         meta,
       };
     }

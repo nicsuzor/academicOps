@@ -38,6 +38,15 @@ As an operator using direct messages (private chats) or regular unthreaded group
 - **AC-3.1** Given a message arriving in an unthreaded chat (no `message_thread_id`), when the update is parsed, then `meta.message_thread_id` and `meta.thread_id` are absent.
 - **AC-3.2** Given an unthreaded conversation, when the agent calls `reply` or `ask_user`, then outbound API requests omit `message_thread_id`.
 
+### US-4 Thread Renaming via Tool Call
+
+As an operator interacting with an agent in a forum topic or thread, I want Ida to be able to rename the thread to reflect the active conversation topic, task, or state, so that threads in chat carry meaningful names.
+
+- **AC-4.1 Active Thread Renaming:** When the agent invokes `rename_thread({ name: "..." })` without specifying a thread or chat, the tool renames the active thread in the current chat using the Telegram Bot API (`editForumTopic`).
+- **AC-4.2 Explicit Thread Target:** When the agent invokes `rename_thread({ message_thread_id: 1234, name: "New Name" })` (or alias `thread_id`), the tool renames that specific thread in the specified or default chat, optionally forwarding `icon_custom_emoji_id`.
+- **AC-4.3 Input Validation & Clear Error Reporting:** When the agent invokes `rename_thread` with an invalid/missing thread ID, empty or missing name, name exceeding 128 characters, or when Telegram API rejects the rename, the tool returns a clear error (`{ success: false, error: "..." }`) rather than silently succeeding.
+- **AC-4.4 Unthreaded Context Rejection:** When the agent invokes `rename_thread` in an unthreaded conversation without providing an explicit `message_thread_id`, the tool returns a clear error indicating that a thread ID is required.
+
 ## Design
 
 ### 1. Inbound Routing and Context Tracking
@@ -58,3 +67,12 @@ As an operator using direct messages (private chats) or regular unthreaded group
    When an effective thread ID is present, it is added to `sendMessage` payload and `sendVoice` multipart form data as `message_thread_id`. When absent (unthreaded chats), the parameter is omitted.
 3. **Question Cards and Decision Flows:**
    Both `StdioMcpServer.executeTool("ask_user")` and the Unix domain socket bridge (`createBridgeServer`) pass the effective thread ID to `broker.askUser` and `bot.sendQuestionCard`. Tapping `✏️ Other` preserves `message_thread_id` on the `force_reply` prompt. Resolving or closing questions emits channel events carrying the thread identity.
+
+### 3. Thread Renaming
+
+1. **Tool Definition & Schema (`tools.ts`):**
+   `rename_thread` tool definition in `MCP_TOOLS` exposes `chat_id` (optional, defaults to primary chat), `message_thread_id` (optional, alias `thread_id`, defaults to active thread in chat via `bot.getLastThreadId`), `name` (required string, 1-128 characters), and `icon_custom_emoji_id` (optional custom emoji ID for topic icon).
+2. **Bot API Dispatch (`bot.ts`):**
+   `TelegramBotClient.editForumTopic(chatId, messageThreadId, name, iconCustomEmojiId)` dispatches `POST /bot<token>/editForumTopic` with `{ chat_id, message_thread_id, name, ... }`.
+3. **Validation and Error Handling (`server.ts`):**
+   Input validation rejects empty/whitespace names, names > 128 characters, or missing thread IDs immediately with `{ success: false, error: "<reason>" }`. When the Telegram Bot API returns `ok: false`, the tool returns `{ success: false, error: res.description || "Failed to rename thread" }` so callers receive explicit failure feedback.

@@ -170,16 +170,23 @@ export class TelegramBotClient {
     return await res.json();
   }
 
-  public async setReaction(chatId: number, messageId: number, emoji: string): Promise<boolean> {
+  public async setReaction(
+    chatId: number,
+    messageId: number,
+    emoji: string
+  ): Promise<{ ok: boolean; error?: string }> {
     try {
       const res = await this.callApi("setMessageReaction", {
         chat_id: chatId,
         message_id: messageId,
         reaction: [{ type: "emoji", emoji }],
       });
-      return !!res.ok;
-    } catch {
-      return false;
+      if (!res.ok) {
+        return { ok: false, error: res.description || "Reaction failed" };
+      }
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: String(err) };
     }
   }
 
@@ -302,6 +309,9 @@ export class TelegramBotClient {
     if (actions !== false) {
       actionBtns.push({ text: "🧐 Check logic", callback_data: "logic_check" });
       actionBtns.push({ text: "💡 Explain", callback_data: "explain" });
+      actionBtns.push({ text: "🧾 Reasons", callback_data: "reasons" });
+      actionBtns.push({ text: "✅ Accept recommendation", callback_data: "accept_recommendation" });
+      actionBtns.push({ text: "❌ Decline recommendation", callback_data: "decline_recommendation" });
     }
 
     if (predefinedRow === true) {
@@ -617,6 +627,23 @@ export class TelegramBotClient {
       this.recordMessageExcerpt(messageId, formatted.plainText);
     }
     return res;
+  }
+
+  public async editForumTopic(
+    chatId: number,
+    messageThreadId: number,
+    name: string,
+    iconCustomEmojiId?: string
+  ): Promise<{ ok: boolean; result?: boolean; description?: string; error_code?: number }> {
+    const payload: Record<string, unknown> = {
+      chat_id: chatId,
+      message_thread_id: messageThreadId,
+      name,
+    };
+    if (iconCustomEmojiId !== undefined) {
+      payload.icon_custom_emoji_id = iconCustomEmojiId;
+    }
+    return await this.callApi("editForumTopic", payload);
   }
 
   public async registerCommands(persona?: string): Promise<boolean> {
@@ -1020,19 +1047,23 @@ export class TelegramBotClient {
         }
       }
 
-      // Logic check and explain callbacks (AC1, AC2)
+      // Logic check, explain, and reasons callbacks (AC1, AC2)
       if (
         (data === "logic_check" ||
           data.startsWith("logic_check:") ||
           data === "explain" ||
-          data.startsWith("explain:")) &&
+          data.startsWith("explain:") ||
+          data === "reasons" ||
+          data.startsWith("reasons:")) &&
         cb.message &&
         this.config.allowFrom.includes(cb.from.id)
       ) {
         const kbRows = cb.message.reply_markup?.inline_keyboard || [];
         const matchedBtn = kbRows.flat().find((b) => b.callback_data === data);
         const isLogicCheck = data === "logic_check" || data.startsWith("logic_check:");
-        const label = matchedBtn?.text || (isLogicCheck ? "🧐 Check logic" : "💡 Explain");
+        const isExplain = data === "explain" || data.startsWith("explain:");
+        const isReasons = data === "reasons" || data.startsWith("reasons:");
+        const label = matchedBtn?.text || (isLogicCheck ? "🧐 Check logic" : isExplain ? "💡 Explain" : "🧾 Reasons");
         const originalText = cb.message.text || "";
 
         // Remove the action buttons row, but preserve other buttons (e.g. Details, Review diff)
@@ -1042,8 +1073,10 @@ export class TelegramBotClient {
               (b) =>
                 b.callback_data !== "logic_check" &&
                 b.callback_data !== "explain" &&
+                b.callback_data !== "reasons" &&
                 !b.callback_data?.startsWith("logic_check:") &&
-                !b.callback_data?.startsWith("explain:")
+                !b.callback_data?.startsWith("explain:") &&
+                !b.callback_data?.startsWith("reasons:")
             )
           )
           .filter((row) => row.length > 0);
@@ -1056,10 +1089,12 @@ export class TelegramBotClient {
         );
 
         const targetExcerpt = cb.message.text || this.getMessageExcerpt(cb.message.message_id) || "";
-        const action = isLogicCheck ? "logic_check" : "explain";
+        const action = isLogicCheck ? "logic_check" : isExplain ? "explain" : "reasons";
         const content = isLogicCheck
           ? `Give me a logic check on message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""} as if you were receiving it from a peer.`
-          : `Please explain message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""} in more detail.`;
+          : isExplain
+          ? `Please explain message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""} in more detail.`
+          : `How do you know that? Show the reasons and argument chain behind message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""}.`;
 
         const meta: Record<string, string> = {
           event: action,
@@ -1077,6 +1112,68 @@ export class TelegramBotClient {
           meta.message_thread_id = String(cbThread);
           meta.thread_id = String(cbThread);
         }
+        if (targetExcerpt) {
+          meta.target_excerpt = targetExcerpt;
+        }
+
+        this.emitChannelEvent(content, meta);
+        return;
+      }
+
+      // Accept / decline recommendation callbacks (AC1, AC2)
+      if (
+        (data === "accept_recommendation" ||
+          data.startsWith("accept_recommendation:") ||
+          data === "decline_recommendation" ||
+          data.startsWith("decline_recommendation:")) &&
+        cb.message &&
+        this.config.allowFrom.includes(cb.from.id)
+      ) {
+        const kbRows = cb.message.reply_markup?.inline_keyboard || [];
+        const matchedBtn = kbRows.flat().find((b) => b.callback_data === data);
+        const isAccept = data === "accept_recommendation" || data.startsWith("accept_recommendation:");
+        const defaultLabel = isAccept ? "✅ Accept recommendation" : "❌ Decline recommendation";
+        const label = matchedBtn?.text || defaultLabel;
+        const originalText = cb.message.text || "";
+
+        // Remove the recommendation buttons, but preserve other buttons (e.g. Details, Review diff, Check logic, Explain)
+        const remainingRows = kbRows
+          .map((row) =>
+            row.filter(
+              (b) =>
+                b.callback_data !== "accept_recommendation" &&
+                b.callback_data !== "decline_recommendation" &&
+                !b.callback_data?.startsWith("accept_recommendation:") &&
+                !b.callback_data?.startsWith("decline_recommendation:")
+            )
+          )
+          .filter((row) => row.length > 0);
+
+        await this.editMessage(
+          cb.message.chat.id,
+          cb.message.message_id,
+          `${originalText}\n\nSelected: ${label} ✅`,
+          { inline_keyboard: remainingRows }
+        );
+
+        const targetExcerpt = cb.message.text || this.getMessageExcerpt(cb.message.message_id) || "";
+        const action = isAccept ? "accept_recommendation" : "decline_recommendation";
+        const decision = isAccept ? "accepted" : "declined";
+        const content = `Nic ${decision} the recommendation for message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""}.`;
+
+        const meta: Record<string, string> = {
+          event: action,
+          action,
+          recommendation: decision,
+          choice: isAccept ? "accept" : "decline",
+          callback_id: cb.id,
+          callback_prefix: action,
+          payload: data,
+          label,
+          target_message_id: String(cb.message.message_id),
+          chat_id: String(cb.message.chat.id),
+          user_id: String(cb.from.id),
+        };
         if (targetExcerpt) {
           meta.target_excerpt = targetExcerpt;
         }

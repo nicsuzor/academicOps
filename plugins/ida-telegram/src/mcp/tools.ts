@@ -72,7 +72,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
         predefined_row: {
           type: "boolean",
           description:
-            "Put all predefined buttons (Details, Check logic, Explain, and optional feedback/review) together on a single first row above the caller's rows.",
+            "Put all predefined buttons (Details, Check logic, Explain, Reasons, Accept/Decline recommendation, and optional feedback/review) together on a single first row above the caller's rows.",
         },
         voice: { type: "boolean", description: "Send tier 1 as a spoken voice note" },
         reply_to: { type: "integer", description: "Telegram message ID to reply to" },
@@ -87,7 +87,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
         },
         actions: {
           type: "boolean",
-          description: "Attach message action buttons (Check logic, Explain). Defaults to true.",
+          description: "Attach message action buttons (Check logic, Explain, Reasons, Accept/Decline recommendation). Defaults to true.",
         },
       },
       required: ["text"],
@@ -101,7 +101,10 @@ export const MCP_TOOLS: ToolDefinition[] = [
       properties: {
         chat_id: { type: "integer", description: "Telegram chat ID" },
         message_id: { type: "integer", description: "Message ID to react to" },
-        reaction: { type: "string", description: "Emoji reaction string from allowed set" },
+        reaction: {
+          type: "string",
+          description: "Emoji reaction string (e.g. 🐱 for polecat, 🕊 for subagent, or other shared legend reaction)",
+        },
         message_thread_id: { type: "integer", description: "Optional thread ID" },
         thread_id: { type: "integer", description: "Alias for message_thread_id" },
       },
@@ -240,6 +243,35 @@ export const MCP_TOOLS: ToolDefinition[] = [
         thread_id: { type: "integer" },
       },
       required: ["message_id", "text"],
+    },
+  },
+  {
+    name: "rename_thread",
+    description:
+      "Rename a Telegram forum topic (thread). Defaults to the active thread in the current chat if message_thread_id is omitted.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        chat_id: { type: "integer", description: "Telegram chat ID (defaults to primary user)" },
+        message_thread_id: {
+          type: "integer",
+          description: "Telegram message thread ID (forum topic ID; defaults to active thread)",
+        },
+        thread_id: { type: "integer", description: "Alias for message_thread_id" },
+        name: {
+          type: "string",
+          description: "New name for the thread (1-128 characters)",
+        },
+        title: {
+          type: "string",
+          description: "Alias for name",
+        },
+        icon_custom_emoji_id: {
+          type: "string",
+          description: "Optional custom emoji ID for the topic icon (pass empty string to remove)",
+        },
+      },
+      required: ["name"],
     },
   },
   {

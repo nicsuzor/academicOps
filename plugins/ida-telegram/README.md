@@ -16,8 +16,8 @@ Ida's custom Telegram channel and Mini App plugin for Claude Code.
   - Never blocks or assumes answers; delivers answers as channel notification events upon reply.
 - **Option Buttons & Message Actions:**
   - `reply` takes `buttons` for the answers to a question asked in the reply; a tap edits the card to `Selected: <label> ✅` and emits a `button_tap` channel event. Supports 2D row arrays (`ReplyButtonOption[][]`), layout chunking via `button_layout` (e.g. `[3, 3, 2]`) or `buttons_per_row` (e.g. `4`), and per-button `row` properties, defaulting to 1 button per row when flat.
-  - Setting `predefined_row: true` groups all active predefined buttons (`🔍 Details`, `🔍 Review diff`, `👍`/`👎`, `[🧐 Check logic]`, `[💡 Explain]`) onto a single consolidated first row above any caller buttons.
-  - Every reply automatically attaches `[🧐 Check logic]` and `[💡 Explain]` action buttons (unless `actions: false` is passed). Tapping `🧐 Check logic` delivers an inbound request naming the message for Ida to run a peer `premise-check`. Tapping `💡 Explain` delivers an inbound request for Ida to expand that message in more detail.
+  - Setting `predefined_row: true` groups all active predefined buttons (`🔍 Details`, `🔍 Review diff`, `👍`/`👎`, `[🧐 Check logic]`, `[💡 Explain]`, `[🧾 Reasons]`, `[✅ Accept recommendation]`, `[❌ Decline recommendation]`) onto a single consolidated first row above any caller buttons.
+  - Every reply automatically attaches `[🧐 Check logic]`, `[💡 Explain]`, `[🧾 Reasons]`, `[✅ Accept recommendation]`, and `[❌ Decline recommendation]` action buttons (unless `actions: false` is passed). Tapping `🧐 Check logic` delivers an inbound request naming the message for Ida to run a peer `premise-check`. Tapping `💡 Explain` delivers an inbound request for Ida to expand that message in more detail. Tapping `🧾 Reasons` delivers an inbound request for Ida to provide the argument chain ("how do you know that?") with verbatim Argdown blocks attached in Details. Tapping `✅ Accept recommendation` or `❌ Decline recommendation` marks the card with the choice and delivers an event naming the message and whether the recommendation was accepted or declined.
 - **Mini App Security, Details, Review, Questions & Anchor:**
   - Loopback-only Bun HTTP server (`127.0.0.1:<port>`) serving `/app/*` and `/api/app/*`.
   - Telegram `initData` HMAC-SHA256 validation with 1-hour expiration and `allowFrom` whitelist check.
@@ -49,7 +49,7 @@ Ida's custom Telegram channel and Mini App plugin for Claude Code.
   - Registers persona-tailored command menus via `setMyCommands` at `botCommandScopeChat` for each `allowFrom` chat on startup, surviving channel restarts and overriding `all_private_chats` defaults.
   - Ida Prime registers `/decide`, `/q`, `/mine`, `/reconcile`, `/hydrate`, `/up`, `/reify`, `/dispatch`, and `/daily`.
   - Strategic Ida (Ida Actual) registers `/strategize`, `/remember`, `/decompose`, `/q`, `/hydrate`, `/up`, `/plan`, `/strategic_review`, `/argument_map`, `/reify`, `/dispatch`, and `/daily`. Plan, strategic review, argument map, and decompose appear on Ida Actual's menu only.
-  - `/daily` updates today's daily note (via `wf-daily`) and replies with a scannable run-down of priorities, progress, and open decisions on Telegram.
+  - `/daily` updates today's daily note (via the PKB template `tpl_daily`) and replies with a scannable run-down of priorities, progress, and open decisions on Telegram.
   - Persona is configured via `IDA_TELEGRAM_PERSONA` / `TELEGRAM_PERSONA` or inferred from `STATE_DIR` (`telegram-pauli` / `telegram-prime` -> `prime`, `telegram-ida` / `telegram-strategic` -> `strategic`).
   - Custom JSON override via `TELEGRAM_BOT_COMMANDS` overrides persona defaults.
   - Excludes reserved official-plugin commands (`/start`, `/help`, `/status`).
