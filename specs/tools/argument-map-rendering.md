@@ -1,6 +1,6 @@
 ---
 title: Rendering Argument Maps from Argdown Sources
-status: draft
+status: ready
 ---
 
 # Rendering Argument Maps from Argdown Sources

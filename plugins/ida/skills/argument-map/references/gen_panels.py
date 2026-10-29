@@ -1,5 +1,7 @@
 # ruff: noqa: E701, E702, E741
-"""Panel layout for a claim tree: headline sentences, nested panels, leaves packed under their section,
+"""DEPRECATED: Legacy panel layout script retired in favor of automated rebuild (specs/tools/argument-map-rendering.md).
+
+Panel layout for a claim tree: headline sentences, nested panels, leaves packed under their section,
 arrows only for moves between panels. Input: tree.json from tree_lint.py.
 Usage:
   gen_panels.py tree.json overview out.excalidraw [links.json]

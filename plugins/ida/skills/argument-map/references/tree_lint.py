@@ -1,4 +1,6 @@
 # ruff: noqa: E701, E702, E741
+"""DEPRECATED: Legacy tree lint script retired in favor of automated rebuild (specs/tools/argument-map-rendering.md)."""
+
 import collections
 import json
 import sys

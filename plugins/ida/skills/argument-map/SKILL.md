@@ -32,14 +32,22 @@ Produce three things:
 - **Merge restatements.** If an item restates an existing claim, merge it into that claim and keep both locators.
 - **Re-check relations.** Afterwards, re-check every relation that touches a changed claim.
 
-## Shape it as a tree when the job is structure
+## Rebuild from source
 
-When the map's job is to lock a text's structure (parts, chapters, sections), rebuild the source as a tree and draw it as panels.
+Rebuild the Excalidraw canvases, SVGs, and overview page automatically from the canonical Argdown source or PKB note:
 
-- **Headings are the outline.** One Argdown heading per part, chapter, section and sub-section, in the text's order. Each claim's children are written as nested relation lists and chosen by the relevance rule; a run that splits becomes intermediate claims, each the next heading. Objections are attack children; the reply is an attack child of the objection.
-- **Premise-conclusion blocks only at the warrant level**, where evidence and theory are checked against the step they license.
-- **Lint before drawing.** `references/tree_lint.py` exports the tree from the Argdown JSON and reports numbering breaks and orphans.
-- **Draw with `references/gen_panels.py`**: one overview (root headline, a row of chapter panels per part, sections as columns, reasons as small boxes, arrows only for moves between chapters from a links file) and one canvas per chapter with its warrant blocks beside the panel. Drawing rules are the diagram skill's.
+```bash
+python3 plugins/ida/skills/argument-map/scripts/render.py <source-path-or-note-id> [--out <dir>]
+```
+
+Execution runs through the four-stage rebuild contract ([specs/tools/argument-map-rendering.md](../../../../specs/tools/argument-map-rendering.md)):
+
+1. **Syntax Parsing**: Compiles Argdown source to a JSON AST via `@argdown/cli`.
+2. **Hierarchical Assembly & Layout**: Maps AST nodes to visual hierarchy following `tools:diagram` ("nest first, arrow last": hero headline for root thesis, zone panels for parts/chapters, vertical columns for sections, sharp rectangular cards for claims, dashed cards for open gaps/objections, dotted warrant blocks beside per-part canvases).
+3. **Automated Audit**: Audits generated canvases with `pkb-excalidraw check` (referential integrity, reciprocal `boundElements`, monotonic base-62 fractional indices without trailing fractional zeros), `pkb-excalidraw overlap` (zero shape collisions), and `pkb-excalidraw arrows-check` (zero connector intersections).
+4. **Rendering & Page Synthesis**: Renders vector SVGs via `pkb-excalidraw screenshot` and synthesizes the overview markdown document (`<stem>-overview.md`) linking rendered SVGs, summary metrics, and open issue audits.
+
+Legacy ad-hoc scripts (`references/gen_panels.py` and `references/tree_lint.py`) are deprecated and retired in favor of this automated rebuild procedure.
 
 ## Check before delivering
 
