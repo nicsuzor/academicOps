@@ -654,11 +654,12 @@ def _load_aops_debug_handlers():
     return mod
 
 
-def test_aops_debug_emits_metadata_trace_and_threads_into_turn(
+def test_aops_debug_emits_full_payload_in_input_value_without_raw_payload_duplication(
     tracer_env, exporter, monkeypatch, tmp_path
 ):
-    """aops-debug hooks send metadata-only payloads (no substantive content) to OTel
-    and thread pre-turn, mid-turn, and post-turn debug spans into the turn's trace_id and root_span_id."""
+    """aops-debug hooks send full untruncated payloads (secret-redacted) in input.value to OTel,
+    do not duplicate into hook.raw_payload, and thread pre-turn, mid-turn, and post-turn debug spans
+    into the turn's trace_id and root_span_id."""
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://collector.invalid:4318")
     monkeypatch.setenv("GH_TOKEN", SECRET)
     monkeypatch.setattr(cct, "_MAX_ATTR_BYTES", 64)
@@ -710,9 +711,16 @@ def test_aops_debug_emits_metadata_trace_and_threads_into_turn(
         assert dbg_span.attributes["session.id"] == SESSION
         assert dbg_span.attributes["hook.plugin"] == "aops-debug"
         assert "description" in dbg_span.attributes
+        # Stops duplicating into hook.raw_payload
         assert "hook.raw_payload" not in dbg_span.attributes
-        assert "A" * 500 not in str(dbg_span.attributes)
-        assert SECRET not in str(dbg_span.attributes)
+        # Preserves full text in input.value, untruncated despite _MAX_ATTR_BYTES=64
+        assert dbg_span.attributes["input.mime_type"] == "application/json"
+        input_val = dbg_span.attributes["input.value"]
+        assert SECRET not in input_val
+        assert "<REDACTED_SECRET>" in input_val
+        assert "...[truncated]" not in input_val
+        assert "A" * 500 in input_val
+        assert "B" * 500 in input_val
 
     assert dbg_pre.attributes.get("tool.name") == "Bash"
     assert dbg_pre.attributes.get("tool.type") == "Bash"
@@ -822,11 +830,11 @@ def test_aops_debug_subagent_session_id_threading(tracer_env, exporter, monkeypa
         ("SessionEnd", {"reason": "SUBSTANTIVE_END_REASON"}),
     ],
 )
-def test_aops_debug_claude_events_carry_no_substantive_content(
+def test_aops_debug_claude_events_carry_full_payload_without_raw_payload_duplication(
     tracer_env, exporter, monkeypatch, event, raw_extra
 ):
-    """AC1 & AC2: Every Claude Code hook event handled by aops-debug emits a span with identifying
-    metadata (event, description, tool type, session) and NO substantive payload content."""
+    """Every Claude Code hook event handled by aops-debug emits a span with identifying
+    metadata and full payload in input.value, without duplicating into hook.raw_payload."""
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://collector.invalid:4318")
 
     debug_handlers = _load_aops_debug_handlers()
@@ -845,14 +853,15 @@ def test_aops_debug_claude_events_carry_no_substantive_content(
     assert len(spans) == 1
     span = spans[0]
 
-    # AC1: No substantive payload text in any attribute
-    for k, v in span.attributes.items():
-        assert "SUBSTANTIVE" not in str(v), f"Substantive text leaked in attribute {k}={v!r}"
+    # No hook.raw_payload attribute
     assert "hook.raw_payload" not in span.attributes
-    if "input.value" in span.attributes:
-        assert "SUBSTANTIVE" not in str(span.attributes["input.value"])
 
-    # AC2: Identifying metadata (event, description, tool type, session)
+    # Full payload JSON preserved in input.value
+    assert span.attributes.get("input.mime_type") == "application/json"
+    assert "input.value" in span.attributes
+    assert "substantive" in span.attributes["input.value"].lower()
+
+    # Identifying metadata (event, description, tool type, session)
     assert span.attributes["hook.plugin"] == "aops-debug"
     assert span.attributes["hook.client"] == "claude"
     assert span.attributes["hook.event"] == event
@@ -896,11 +905,11 @@ def test_aops_debug_claude_events_carry_no_substantive_content(
         ("Stop", {"lastMessage": "SUBSTANTIVE_AGY_STOP_MSG"}),
     ],
 )
-def test_aops_debug_agy_events_carry_no_substantive_content(
+def test_aops_debug_agy_events_carry_full_payload_without_raw_payload_duplication(
     tracer_env, exporter, monkeypatch, event, raw_extra
 ):
-    """AC1 & AC2: Every agy hook event handled by aops-debug emits a span with identifying
-    metadata (event, description, tool type, session) and NO substantive payload content."""
+    """Every agy hook event handled by aops-debug emits a span with identifying
+    metadata and full payload in input.value, without duplicating into hook.raw_payload."""
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://collector.invalid:4318")
 
     debug_handlers = _load_aops_debug_handlers()
@@ -918,14 +927,15 @@ def test_aops_debug_agy_events_carry_no_substantive_content(
     assert len(spans) == 1
     span = spans[0]
 
-    # AC1: No substantive payload text in any attribute
-    for k, v in span.attributes.items():
-        assert "SUBSTANTIVE" not in str(v), f"Substantive text leaked in attribute {k}={v!r}"
+    # No hook.raw_payload attribute
     assert "hook.raw_payload" not in span.attributes
-    if "input.value" in span.attributes:
-        assert "SUBSTANTIVE" not in str(span.attributes["input.value"])
 
-    # AC2: Identifying metadata (event, description, tool type, session)
+    # Full payload JSON preserved in input.value
+    assert span.attributes.get("input.mime_type") == "application/json"
+    assert "input.value" in span.attributes
+    assert "substantive" in span.attributes["input.value"].lower()
+
+    # Identifying metadata (event, description, tool type, session)
     assert span.attributes["hook.plugin"] == "aops-debug"
     assert span.attributes["hook.client"] == "agy"
     assert span.attributes["hook.event"] == event

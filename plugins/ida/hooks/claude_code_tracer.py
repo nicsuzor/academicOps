@@ -2985,7 +2985,7 @@ def emit_debug_hook_span(
     event: str,
     raw_payload: Any,
 ) -> bool:
-    """Emit a metadata-only debug span for any hook event, threaded into the session's turn trace."""
+    """Emit a debug span for any hook event, threaded into the session's turn trace with full payload in input.value."""
     payload_key = "conversationId" if client == "agy" else "session_id"
     session_id = resolve_session_id(data, payload_key, prefer_env=False)
     if session_id is None:
@@ -3071,6 +3071,11 @@ def emit_debug_hook_span(
         data,
         payload_key=payload_key,
     )
+    full_payload_json = _redact_secrets(
+        json.dumps(raw_payload, ensure_ascii=False, default=str)
+        if not isinstance(raw_payload, str)
+        else raw_payload
+    )
     hook_event_name = str(data.get("hook_event_name") or data.get("hookEventName") or event)
     attrs: dict[str, Any] = {
         "openinference.span.kind": "CHAIN",
@@ -3078,6 +3083,8 @@ def emit_debug_hook_span(
         "hook.client": client,
         "hook.event": event,
         "hook.event_name": hook_event_name,
+        "input.value": full_payload_json,
+        "input.mime_type": "application/json",
     }
 
     tool_name = str(
