@@ -68,7 +68,7 @@ Premise lines end with their basis in words, drawn strictly from this closed voc
 4. **Pointers as lettered endnotes**: Pointers live under `notes:` and are cited as `^a` on the line.
 5. **The inference line**: Starts `--`, ends `--`, on one line: warrant rule, then `Unless: <defeater>; <status>`.
 6. **Chain conclusions**: Each step begins `So` and chains into subsequent steps.
-7. **Relay upward**: Relaying a report upward requires its premise-check verdict; name the line each relayed sentence restates. Read claims against their source of record before relaying. Never relay an argument with 0 inference lines or substantive defects as fact.
+7. **Relay upward**: Relaying a report upward requires its premise-check verdict; name the line each relayed sentence restates. Relay sentences only from checked argument lines without reading sources. Never relay an argument with 0 inference lines or substantive defects as fact.
 
 ## Checking a Received Report or Direction
 
@@ -82,7 +82,7 @@ When an incoming direction arrives from another agent:
 
 ### Reports
 
-Take observed premises with a pointer as given: never open a pointer or redo the work. A PKB node or peer writing ranks as `worker reported, unchecked`. Run four tests on every inference line:
+Take observed premises with a pointer as given: never open a pointer or redo the work. A checker never reads a source to check someone's claim; it reads one only to settle a genuine conflict between two records. When a claim lacks evidence or rests on an unchecked basis, do not inspect the source: record REVISE or FAIL naming the defect. A PKB node or peer writing ranks as `worker reported, unchecked`. Run four tests on every inference line:
 
 | Test | Passes when | Failure looks like |
 | - | - | - |
@@ -111,7 +111,7 @@ Waived: none | <format item> -- <justification>
 Relay: "<sentence to relay>" ← (n) | none
 ```
 
-For arguments with multiple inference lines, all yielded conclusions must be accounted for under `Valid:`—either via multiple `Valid:` lines, indented continuation lines, semicolon clauses (`(n) holds -- ...; (m) holds -- ...`), or grouped references (`(n), (m) holds -- ...` or `(n) and (m) hold -- ...`).
+For arguments with multiple inference lines, all yielded conclusions must be accounted for under `Valid:`--either via multiple `Valid:` lines, indented continuation lines, semicolon clauses (`(n) holds -- ...; (m) holds -- ...`), or grouped references (`(n), (m) holds -- ...` or `(n) and (m) hold -- ...`).
 
 Format items: `block`, `numbering`, `endnotes`, `basis wording`, `ask wording`, `layout`.
 

@@ -21,7 +21,7 @@ task, where the posture is trust-the-method.
 
 - **Runtime workflow composition via [`/reify`](../../plugins/ida/skills/reify/SKILL.md) and [`workflow-library`](../../plugins/ida/skills/workflow-library/SKILL.md)** --
   task-template conventions, composable workflow templates across universal, PKB, and project tiers, and proof-of-compliance tool fields assemble a compliant workflow before the unit is dispatched.
-- **The supervisor loop** ([`sara.md`](../agents/sara.md)) -- the multi-tick
+- **The supervisor loop** ([`sara.md`](../agents/sara.md)) -- the
   delegate-and-verify loop that coordinates execution and verifies returned reports across a set of tasks.
 
 ## The four-step shape

@@ -30,7 +30,7 @@ As an agent receiving a report, I want to judge it from the report alone, so tha
 - A premise about the state of something outside the report quotes the observed value of the field that decides it, beside the pointer. Premises with an `observed` basis (`I did it`, `I read it`) state raw empirical observations quoting deciding values inline, never evaluative or generalising conclusions restating an acceptance criterion.
 - Each state claim rules out the nearest other state that would change the reader's next action. "Blocked on review" says whether review is awaited or changes were requested.
 - The conclusion stays within its premises' scope and answers each ask by its id, or says the ask has no answer.
-- The receiver takes an observed premise with a pointer as given: it never opens a pointer or re-determines an observed fact. A PKB node or another agent's writing is not such a pointer: it is not observed primary evidence and ranks as worker reported, unchecked rather than an observed record. It judges everything else: every warrant, step, scope and fit between rule and case, requiring construct match and proportional sample adequacy (rejecting quantitative rank checks as proof of qualitative evaluation, and unexplained n=1 or n=2 probes as proof of representative classes). When a ruling turns on a fact the report lacks, the receiver sends the report back naming the missing premise.
+- The receiver takes an observed premise with a pointer as given: it never opens a pointer or re-determines an observed fact. A checker never reads a source to check someone's claim; it reads one only to settle a genuine conflict between two records. A PKB node or another agent's writing is not such a pointer: it is not observed primary evidence and ranks as worker reported, unchecked rather than an observed record. It judges everything else: every warrant, step, scope and fit between rule and case, requiring construct match and proportional sample adequacy (rejecting quantitative rank checks as proof of qualitative evaluation, and unexplained n=1 or n=2 probes as proof of representative classes). When a ruling turns on a fact the report lacks, the receiver sends the report back naming the missing premise.
 - The receiver tests each material step for sufficiency. A warrant stands as stated when it is obvious, authority-backed (strictly limited to the user's own words or a governing spec), backed by a cited verdict, or carries a claim cheap to reverse. A task's primary ask or acceptance criterion is never low-stakes or obvious. A premise or warrant citing a PKB node or peer text does not satisfy sufficiency on the citation alone. A warrant that is complex, unbacked and high-stakes goes back for one level of decomposition.
 - The receiver answers with a verdict and a reason: PASS, REVISE or FAIL. Format-only defects on a substantively sound argument with at least one inference line (`>= 1`) are waived and rewritten into standard form by the receiver on PASS; 0 inference lines or substantive defects require REVISE or FAIL and cannot be passed or relayed upward as fact.
 
@@ -49,8 +49,7 @@ As the user, I want each claim to reach me as strong as its evidence and no stro
 - Every claim keeps its basis at every hop.
 - A derived claim takes the weakest basis among its premises.
 - A premise resting on another agent's report or a PKB node cites the verdict recorded on that report. A cited verdict resolves to a recorded verification id; a report or PKB node cited without one is weighed as unchecked.
-- Each sentence relayed upward names the line of the checked argument it restates. A sentence with no line is not relayed.
-- Before relaying a claim upward, the agent identifies its source of record (the live configuration, repository, code, or spec the claim describes) and reads the claim against it. A claim the source no longer supports is not relayed.
+- Each sentence relayed upward names the line of the checked argument it restates. A sentence with no line is not relayed. A sentence relayed upward derives exclusively from a checked line in the judged argument; an agent never reads a source of record to check or verify a claim before relaying. If a claim lacks supporting evidence in the argument, the report is returned for revision or rejected rather than patched by reading the source.
 
 ### 5. Tested limits
 
@@ -71,8 +70,7 @@ As an agent that could not finish, I want failure and partial delivery to be com
 
 As the user, I want my directions to reach a worker as I gave them, so that an agent in the chain cannot add to what I asked.
 
-- A relayed direction cites the original ask, and every detail, constraint and method in it can be derived from that ask.
-- When composing a dispatch or relaying a direction, the dispatching agent identifies each claim's source of record (the live configuration, repository, code, or spec the claim describes) and reads the claim against it; work is not dispatched on claims or constraints the source of record does not support.
+- A relayed direction cites the original ask, and every detail, constraint and method in it can be derived from that ask. When composing a dispatch or relaying a direction, the dispatching agent derives instructions faithfully from the original ask and task record without reading primary sources to verify claims; workers inspect sources and execute.
 
 ### 8. Explanations are not reasons (hearsay)
 
@@ -97,7 +95,7 @@ flowchart TD
     A2["A2: Session Reminders Injected<br/>(Session or turn start reminder)"]
     A3{"A3: Check Direction Derivation<br/>(Does direction derive from Ask?)"}
     A4["A4: Refuse Unverified Prescriptions<br/>(Reject caller method constraints)"]
-    A5["A5: Verify Claims Against Source of Record<br/>(Check config, repo, code before dispatch)"]
+    A5["A5: Compose Dispatch from Ask & Task<br/>(Derive without inspecting primary source)"]
     A6["A6: Freeze Acceptance Checklist<br/>(Log deliverables on task before work)"]
 
     A1 --> A3
@@ -185,7 +183,7 @@ flowchart TD
 
   subgraph P6["Phase 6: Upward Relay & Telemetry"]
     direction TB
-    F1["F1: Check Source of Record Before Relay<br/>(Verify claim against live config, repo, spec)"]
+    F1["F1: Relay Exclusively from Checked Line<br/>(Derive from argument without reading source)"]
     F2["F2: Restate Named Line from Relay Field<br/>(Every relayed sentence names checked line)"]
     F3["F3: Preserve Basis & Inherit Weakest Basis<br/>(Derived claim takes weakest premise basis)"]
     F4["F4: Transmit Relayed Claim Upward<br/>(Attach verification ID and citation)"]
@@ -210,12 +208,36 @@ flowchart TD
 
 ### Invariants and state transitions
 
-1. **Direction derivation and frozen acceptance:** Incoming directions derive strictly from the originating ask (`tg-<id>` or `<task id>/AC<n>`). Any unverified caller method or template prescription is refused. Claims are verified against their source of record before dispatch, and deliverables are recorded as a frozen acceptance checklist on the task record before work begins.
+1. **Direction derivation and frozen acceptance:** Incoming directions derive strictly from the originating ask (`tg-<id>` or `<task id>/AC<n>`). Any unverified caller method or template prescription is refused. Dispatching agents derive instructions faithfully from the ask and task record without inspecting target repository sources to verify claims, and deliverables are recorded as a frozen acceptance checklist on the task record before work begins.
 2. **Durable authoring:** Deliverables and findings are stored in durable repositories or PKB records rather than ephemeral paths. Reports open with the original ask verbatim and follow standard premise-check structure. Each material premise carries its closed-vocabulary basis and self-contained pointer; observed premises quote deciding values inline; nearest alternate states are ruled out; negative claims cite tested limits; and hearsay is excluded by tracing causes to runtime evidence.
 3. **Arrival and gating:** User prompts hydrate from the PKB and proceed without arming. Incoming agent reports and directions arm the universal premise-check gate across all agents, holding dispatch, messaging, user questions, and stop actions until a verdict is recorded.
 4. **Semantic evaluation and sufficiency:** Checkers accept observed premises with direct pointers as given without reopening, while ranking PKB nodes and peer writing as unchecked. Material steps are tested for sufficiency (obvious, authority-backed, cited verdict, or cheap to reverse); unbacked high-stakes warrants are decomposed, and missing premises are returned for evidence. Checkers formulate a seven-line checker reason.
 5. **Deterministic machine validation:** The verdict recorder validates the argdown block using deterministic native checks (syntax, connectedness, undercut targets, and at least one inference line on PASS). Format-only defects are waived and rewritten into standard form on PASS, while substantive defects or zero inference lines require REVISE or FAIL. Valid verdicts mint a verification ID, emit a telemetry span, disarm the gate, and record task verdicts.
-6. **Upward relay:** Relayed claims are verified against their source of record, explicitly name their validated argument line from the relay field, inherit the weakest basis among premises, and travel with their verification ID.
+6. **Upward relay:** Relayed claims derive exclusively from checked lines in the validated argument without reading sources of record, explicitly name their validated argument line from the relay field, inherit the weakest basis among premises, and travel with their verification ID.
+
+### Single rule for when a checker reads a source
+
+#### Ruling and scope of authority
+
+The governing ruling for source inspection by checking agents states:
+
+> **The Checker Source-of-Record Rule:**
+> A checker never reads a source to check someone's claim; it reads one only to settle a genuine conflict between two records. When a claim lacks evidence or rests on an unchecked basis, do not inspect the source: record REVISE or FAIL naming the defect.
+
+**Where it binds:**
+
+- Binds all checking roles and evaluating personas across the framework (`ida`, `sara`, and reviewing agents) when receiving, evaluating, or relaying reports and handbacks.
+- Binds dispatching supervisors when composing instructions or dispatching tasks to workers: dispatchers pass requirements derived faithfully from the ask and task record without inspecting target repository source files or configuration to verify claims.
+- Binds all premise-check and hearsay evaluation workflows: a checker judges the argument as presented; it never opens a cited pointer, re-runs commands, or fetches external records to verify an unbacked premise.
+
+#### Single home and deferral architecture
+
+The ruling is placed in exactly one canonical specification home and one canonical instruction home:
+
+- **Specification home:** `specs/enforcement/evidence-contract.md` (US-2 and this Design section).
+- **Instruction home:** `plugins/ida/skills/premise-check/SKILL.md` (under "Reports" and Rule 7 "Relay upward").
+
+Other checking roles, evaluating personas, and skills defer strictly to `premise-check`'s relay and checking rules rather than defining independent inspection procedures.
 
 ## Terms
 
