@@ -23,7 +23,9 @@ Rules are loaded and merged across three scopes (`axioms` cannot be overridden):
 
 1. **Axioms:** The `axioms` skill's files, `skills/axioms/` (inviolable baseline).
 2. **Project rules:** `$CWD/.agents/rules/*.md` (project-local).
-3. **User rules:** `$COPE_USER_RULES_DIR/*.md` (user-scoped).
+3. **User rules:**
+   - **In-session evaluator (COPE):** `$COPE_USER_RULES_DIR/*.md` (user-scoped, `trigger: always_on`).
+   - **Compliance reviewer (RBG):** Active PKB documents with `type: rule`.
 
 Only markdown files declaring `trigger: always_on` are sent to the evaluator or roster.
 

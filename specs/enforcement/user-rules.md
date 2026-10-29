@@ -9,90 +9,82 @@ The user-scoped rule tier enables operators and developers to define cross-proje
 
 ## User stories
 
-### US-1 Sourcing User Rules Across Workspaces
+### US-1 Sourcing Runtime Tool-Call Evaluator Rules
 
-As an operator working across multiple projects and repositories, I want to define user-scoped rules in a dedicated local directory, so that my personal behavioral constraints and operational rules apply to review and evaluation without committing personal preferences to public or shared project repositories.
+As a developer running automated tool-call evaluation during an interactive session, I want user-scoped rules loaded from a dedicated local directory, so that personal operational constraints apply to automated tool checks without committing personal policies to repository code.
 
-- **AC-1.1** Given `COPE_USER_RULES_DIR` is set to a valid directory containing Markdown files with `trigger: always_on`, when rule evaluation or loading occurs, then all valid user-scoped rules are loaded as layer 3.
-- **AC-1.2** Given `COPE_USER_RULES_DIR` is unset, when rule evaluation or loading occurs, then the operation proceeds silently with zero user-scoped rules and emits no degradation warnings.
-- **AC-1.3** Given `COPE_USER_RULES_DIR` is set to a non-existent or unreadable directory, when rule evaluation or loading occurs, then the loader emits a diagnostic warning to standard error indicating degraded rule evaluation and proceeds with baseline axiom and project rules.
+- **AC-1.1** Given `COPE_USER_RULES_DIR` is set to a valid directory containing Markdown files with `trigger: always_on`, when rule loading occurs, then all valid user-scoped rules are loaded as layer 3.
+- **AC-1.2** Given `COPE_USER_RULES_DIR` is unset, when rule loading occurs, then rule loading proceeds silently with zero layer-3 rules and emits no degradation warnings.
+- **AC-1.3** Given `COPE_USER_RULES_DIR` is set to a non-existent or unreadable directory, when rule loading occurs, then the loader emits a diagnostic warning to standard error indicating degraded rule evaluation and proceeds with baseline axiom and project rules.
 - **AC-1.4** Given a user rule in `COPE_USER_RULES_DIR` shares a slug with a shipped axiom or a project-local rule, when rules are loaded, then the shipped axiom or project rule takes precedence and the user rule cannot override or shadow it.
 
-### US-2 Consistent Documentation and Review Briefings
+### US-2 Sourcing Qualitative Compliance Review Rules
 
-As a reviewer or agent evaluating artifacts, I want all agent definitions, review templates, and plugin documentation to name the exact same source for user-scoped rules, so that rule compliance reviews are deterministic and never search non-existent paths or undefinable database queries.
+As a compliance reviewer evaluating artifacts across host, container, or remote sandbox environments, I want user-scoped rules sourced from the knowledge base by document type, so that personal governance constraints are reachable and evaluable everywhere the reviewer runs.
 
-- **AC-2.1** Given any agent inspecting the rule hierarchy in agent definitions, review templates, or plugin documentation, when looking up the source of user-scoped rules, then every surface points to `$COPE_USER_RULES_DIR/*.md` and no surface references knowledge base queries or retired repository paths.
-- **AC-2.2** Given an agent checking stop-gate instructions or evaluation prompts, when reviewing active rule scopes, then prompts state `$COPE_USER_RULES_DIR` (when set) and omit legacy paths.
+- **AC-2.1** Given an active knowledge base containing documents with `type: rule`, when compliance review gathers active rules, then all such documents are evaluated as user-scoped rules.
+- **AC-2.2** Given a knowledge base with no documents matching `type: rule`, when compliance review gathers active rules, then review proceeds with universal axioms and project rules without error.
+- **AC-2.3** Given a knowledge base document with `type: rule` sharing a slug or title with an axiom or project-local rule, when compliance review evaluates rules, then the axiom or project-local rule takes precedence and the user rule cannot override or weaken it.
+- **AC-2.4** Given compliance reviewer agent instructions, review workflows, and plugin documentation, when describing user-scoped rule sources for compliance review, then each surface specifies knowledge base documents with `type: rule`.
 
 ## Design
 
-### 1. Problem Statement
+### 1. Dual Operational Subsystems
 
-The source of the third (user-scoped) rule tier was documented inconsistently and rendered unreachable in practice:
+User-scoped rules operate across two distinct enforcement subsystems with separate reachability boundaries and execution models:
 
-1. **Three-Way Sourcing Contradiction:** Agent instructions stated that the knowledge base contained user rules, review workflow templates referenced active knowledge base rule queries, and plugin documentation and loader code pointed to a filesystem directory (`$ACA_DATA/.agents/rules/*.md`). The former referred to undefined database queries lacking synchronous hook access; the latter referred to a filesystem path.
-2. **Unreachable Runtime Path:** The legacy `$ACA_DATA` directory was retired, container entrypoints unset the variable when unmounted, and the loader silently treated absence as a no-op.
+1. **In-Session Runtime Evaluator (COPE):** Automated turn-by-turn tool-call classification. The evaluator runs in low-latency hook subprocesses without asynchronous tool execution capabilities. It sources user-scoped rules from local Markdown files (`*.md`) located in the directory specified by `COPE_USER_RULES_DIR`.
+2. **Qualitative Compliance Reviewer (RBG):** Deliberative compliance review of specifications, code, and pull requests. RBG operates in sandboxed execution environments, worker containers, and headless agent sessions where arbitrary host filesystem paths are unmounted and unreachable. RBG reads only plugin distribution assets (`skills/axioms/`), the current repository (`.agents/rules/`), and the knowledge base. Consequently, RBG sources user-scoped rules from the knowledge base via its `type: rule` document attribute.
 
-### 2. Settled Architecture: Single SSoT via `$COPE_USER_RULES_DIR`
+### 2. Knowledge Base Sourcing Contract for Compliance Review
 
-The single authoritative source for the user-scoped rule tier is the local filesystem directory designated by the environment variable `COPE_USER_RULES_DIR`.
+Knowledge base notes and general documents carry no binding governance authority. To establish an unambiguous single source of truth for user-scoped compliance review rules:
 
-- **Retirement of Legacy Paths:** `ACA_DATA` is completely removed as a configuration variable for rule loading.
-- **Rejection of Database Query Sourcing:** Rule evaluation runs in synchronous, low-latency hook subprocesses without access to asynchronous tool infrastructure. Moreover, knowledge base notes are informational and hold no binding governance power over compliance reviews.
-- **Format and Invariants:** User-scoped rules follow the identical standard as project-local rules: Markdown files (`*.md`) containing YAML frontmatter. Files declaring `trigger: always_on` are loaded into active policy memory. Files declaring `trigger: off` are deliberately parked and skipped without warning. Files lacking a known trigger marker are treated as non-policy reference material and flagged as skipped on standard error.
-- **Precedence:** Rule merging maintains strict immutable hierarchy (`setdefault` semantics):
-  1. Universal Axioms (`skills/axioms/`)
-  2. Project Rules (`.agents/rules/`)
-  3. User Rules (`$COPE_USER_RULES_DIR/`)
+- **Explicit Type Attribute:** User-scoped rules in the knowledge base are identified by the frontmatter attribute `type: rule`.
+- **Query Discovery:** Reviewing agents retrieve active user-scoped rules by listing or searching documents with `type: rule`.
+- **Content Structure:** A rule document contains descriptive Markdown defining the normative policy obligation.
 
-  An axiom always overrides a project or user rule; a project rule always overrides a user rule. Narrower scopes may add obligations but can never weaken or shadow an existing rule.
+### 3. Filesystem Sourcing Contract for Runtime Evaluation
 
-### 3. Enforcement Spec Alignment (One-Step Move)
+For the runtime hook evaluator:
 
-Per the framework's enforcement architecture, changes to behavior-shaping mechanisms default to the least-invasive option at the bottom of the enforcement pyramid.
+- **Directory Configuration:** Specified by environment variable `COPE_USER_RULES_DIR`.
+- **File Format:** Markdown files (`*.md`) with YAML frontmatter. Only files declaring `trigger: always_on` are loaded into active policy memory. Files declaring `trigger: off` are deliberately parked and skipped without warning. Files lacking a recognised trigger marker are treated as non-policy reference material and flagged as skipped on standard error.
+- **Failure Semantics:** Unset environment variable is an ordinary absence (silent no-op). A configured path that cannot be read is an operational fault that emits `DEGRADED: cope-rules` on standard error and proceeds with axioms and project rules.
 
-- **Mechanism Level:** Configuration via environment variable (`COPE_USER_RULES_DIR`) paired with clear instruction text.
-- **Proportionality:** Eliminates fictional database queries and non-existent legacy paths in a single step without introducing custom daemons, complex query engines, or heavy hook machinery.
-- **Failure Semantics:** An unset variable represents ordinary absence (silent no-op). A configured path that does not exist represents an operational fault and emits an explicit `DEGRADED: cope-rules` diagnostic to standard error, ensuring broken configurations are not silently swallowed.
+### 4. Rule Precedence and Invariants
 
-### 4. Reachability & Deployment Matrix
+Across both subsystems, rule merging enforces strict immutable precedence (`setdefault` semantics):
 
-The settled source is reachable across all three execution environments:
+1. Universal Axioms (Tier 1, inviolable baseline)
+2. Project-Local Rules (Tier 2)
+3. User-Scoped Rules (Tier 3)
 
-| Deployment Surface | Reachability & Configuration | Behavior When Unset / Unconfigured |
+An axiom always overrides a project or user rule; a project rule always overrides a user rule. Narrower scopes add obligations without weakening or shadowing baseline rules.
+
+### 5. Reachability & Deployment Matrix
+
+| Deployment Surface | Runtime Evaluator (COPE) | Compliance Reviewer (RBG) |
 | - | - | - |
-| **Interactive Host Session** | Configured by the user in shell configuration, `.envrc`, or `.env.local` pointing to a local directory (e.g., `~/.config/cope/rules/` or custom workspace directory). | When unset: silent no-op (0 user rules). When invalid path: emits `DEGRADED: cope-rules` to stderr. |
-| **Polecat Container Worker** | The host container runner mounts the host-configured rules directory read-only into `/etc/cope/rules`, and the container environment exports `ENV COPE_USER_RULES_DIR=/etc/cope/rules`. | If the host specifies no rules directory, no mount occurs and `/etc/cope/rules` is absent, cleanly evaluating to 0 user rules. |
-| **Continuous Integration (CI)** | `COPE_USER_RULES_DIR` remains unset in CI test harnesses. | Evaluates Tiers 1 and 2 deterministically with 0 user rules, ensuring reproducible CI runs. |
+| **Interactive Host Session** | Reads `COPE_USER_RULES_DIR/*.md`. Silent no-op when unset. | Queries knowledge base documents with `type: rule`. |
+| **Polecat Container Worker** | Reads container mount `/etc/cope/rules` (`ENV COPE_USER_RULES_DIR=/etc/cope/rules`). | Queries knowledge base documents with `type: rule`. |
+| **Continuous Integration (CI)** | Deterministic run with `COPE_USER_RULES_DIR` unset (0 user rules). | Evaluates universal axioms and project rules (0 user rules when no PKB configured). |
 
-### 5. Surface Inventory
+### 6. Surface Inventory
 
-To maintain single-source-of-truth across the framework, the following components reference the user-scoped rule tier and align with `$COPE_USER_RULES_DIR`:
-
-| Component | Surface File | Target Reference |
+| Component | Surface File | Governed Source |
 | - | - | - |
-| Agent Definition | `plugins/rbg/agents/rbg.md` | `$COPE_USER_RULES_DIR/*.md` (optional user rules) |
-| Review Workflow | `plugins/ida/skills/workflow-library/workflows/wf-rbg.md` | `$COPE_USER_RULES_DIR/*.md` |
-| Plugin Documentation | `plugins/rbg/README.md` | `$COPE_USER_RULES_DIR/*.md` and environment variable table |
-| Rule Loader | `plugins/rbg/hooks/rules.py` | Environment variable `COPE_USER_RULES_DIR` |
+| Compliance Reviewer Agent | `plugins/rbg/agents/rbg.md` | Active PKB documents with `type: rule` |
+| Review Workflow Template | `plugins/ida/skills/workflow-library/workflows/wf-rbg.md` | Active PKB documents with `type: rule` |
+| Plugin Documentation | `plugins/rbg/README.md` | COPE: `COPE_USER_RULES_DIR`; RBG: PKB `type: rule` |
+| Runtime Rule Loader | `plugins/rbg/hooks/rules.py` | Environment variable `COPE_USER_RULES_DIR` |
 | Stop-Gate Message | `plugins/rbg/hooks/messages/rule-check.md` | `$COPE_USER_RULES_DIR` (when set) |
-| Ruleset Prompt | `plugins/rbg/hooks/messages/ruleset.md` | `$COPE_USER_RULES_DIR` (when set) |
-| Enforcement Map | `specs/ENFORCEMENT-MAP.md` | `$COPE_USER_RULES_DIR` |
-| System Spec | `specs/polecat/polecat-system.md` | `/etc/cope/rules` container mount via `COPE_USER_RULES_DIR` |
-| Test Harness | `tests/test_shipped_hooks.py` | `COPE_USER_RULES_DIR` isolation fixture |
-
-### 6. Build Acceptance Criteria
-
-The implementation build task verifies the feature against the following criteria:
-
-- **AC-BUILD-1 (Valid User Rules Load):** Given `COPE_USER_RULES_DIR` points to an existing directory containing Markdown files with `trigger: always_on`, when `rules.load()` runs, then all such rules are returned with `layer=3`.
-- **AC-BUILD-2 (Silent Absent Loader):** Given `COPE_USER_RULES_DIR` is unset, when `rules.load()` runs, then zero layer-3 rules are returned and stderr contains no degradation warnings.
-- **AC-BUILD-3 (Degraded Diagnostics):** Given `COPE_USER_RULES_DIR` is set to a non-existent path, when `rules.load()` runs, then stderr contains `DEGRADED: cope-rules` and `rules.load()` returns loaded axioms and project rules without raising exceptions.
-- **AC-BUILD-4 (Precedence Invariant):** Given a rule file in `COPE_USER_RULES_DIR` has the same slug as an axiom or a project-local rule, when `rules.load()` runs, then the axiom or project rule is returned and the user rule does not override it.
-- **AC-BUILD-5 (Zero Legacy References):** A recursive search across `plugins/rbg/`, `specs/enforcement/`, `specs/ENFORCEMENT-MAP.md`, and `plugins/ida/skills/workflow-library/workflows/wf-rbg.md` returns zero occurrences of `ACA_DATA`.
-- **AC-BUILD-6 (Test Suite Green):** `make test` and `make lint` pass completely.
+| Ruleset Advisory Prompt | `plugins/rbg/hooks/messages/ruleset.md` | `$COPE_USER_RULES_DIR` (when set) |
+| Enforcement Map | `specs/ENFORCEMENT-MAP.md` | Evaluator: `COPE_USER_RULES_DIR`; Reviewer: PKB `type: rule` |
+| Container Specification | `specs/polecat/polecat-system.md` | `/etc/cope/rules` container mount via `COPE_USER_RULES_DIR` |
+| Hook Test Suite | `tests/test_shipped_hooks.py` | `COPE_USER_RULES_DIR` test isolation fixture |
+| User Rules Test Suite | `tests/test_user_rules.py` | Loader tests for `COPE_USER_RULES_DIR` |
 
 ## Open questions
 
-None. The single source and deployment model are fully resolved.
+None. Sourcing contracts across both operational subsystems are fully resolved.

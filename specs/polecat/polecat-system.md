@@ -85,7 +85,7 @@ The container launcher (`polecat`) and worker image are maintained outside this 
    logs and transcripts are visible on the host live, not just at container exit.
    When the operator's config names a `rules_dir` (or `$POLECAT_RULES_DIR` is
    set), that host directory is mounted read-only at the container's own
-   `/etc/cope/rules` (`ENV COPE_USER_RULES_DIR=/etc/cope/rules`), which is what makes cope/rbg's user-scoped rules reach a container;
+   `/etc/cope/rules` (`ENV COPE_USER_RULES_DIR=/etc/cope/rules`), which is what makes cope's user-scoped rules reach a container;
    absent, the container simply has no user-scoped rules, and a configured-but-unreadable
    directory is a hard failure before any container starts. The image is never
    pulled from a registry -- it must already be built locally or CI-produced; a
