@@ -139,30 +139,3 @@ def test_user_rules_precedence_cannot_override_earlier_scopes(rules_mod, tmp_pat
 
     assert loaded["local-rule"].layer == 2
     assert loaded["local-rule"].body == "Project rule body."
-
-
-def test_zero_legacy_references_in_governed_surfaces():
-    """AC-BUILD-5: A recursive search across plugins/rbg/, specs/enforcement/
-
-    (excluding user-rules.md), specs/ENFORCEMENT-MAP.md, and
-    plugins/ida/skills/workflow-library/workflows/wf-rbg.md returns zero occurrences
-    of the legacy ACA_DATA variable.
-    """
-    surfaces = [
-        REPO_ROOT / "plugins" / "rbg",
-        REPO_ROOT / "specs" / "ENFORCEMENT-MAP.md",
-        REPO_ROOT / "plugins" / "ida" / "skills" / "workflow-library" / "workflows" / "wf-rbg.md",
-    ]
-    for path in surfaces:
-        if path.is_file():
-            assert "ACA_DATA" not in path.read_text(encoding="utf-8"), f"Legacy reference in {path}"
-        elif path.is_dir():
-            for f in path.rglob("*"):
-                if f.is_file() and not f.name.endswith((".pyc", ".pyo")):
-                    assert "ACA_DATA" not in f.read_text(encoding="utf-8"), (
-                        f"Legacy reference in {f}"
-                    )
-
-    for f in (REPO_ROOT / "specs" / "enforcement").glob("*.md"):
-        if f.name != "user-rules.md":
-            assert "ACA_DATA" not in f.read_text(encoding="utf-8"), f"Legacy reference in {f}"

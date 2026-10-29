@@ -25,7 +25,7 @@ As a compliance reviewer evaluating artifacts across host, container, or remote 
 - **AC-2.1** Given an active knowledge base containing documents with `type: rule`, when compliance review gathers active rules, then all such documents are evaluated as user-scoped rules.
 - **AC-2.2** Given a knowledge base with no documents matching `type: rule`, when compliance review gathers active rules, then review proceeds with universal axioms and project rules without error.
 - **AC-2.3** Given a knowledge base document with `type: rule` sharing a slug or title with an axiom or project-local rule, when compliance review evaluates rules, then the axiom or project-local rule takes precedence and the user rule cannot override or weaken it.
-- **AC-2.4** Given compliance reviewer agent instructions, review workflows, and plugin documentation, when describing user-scoped rule sources for compliance review, then each surface specifies knowledge base documents with `type: rule`.
+- **AC-2.4** Given a compliance reviewer evaluating rule sources, when identifying user-scoped rules, then the reviewer queries the knowledge base for documents with `type: rule` and evaluates any matches as user-scoped rules.
 
 ## Design
 
@@ -69,21 +69,6 @@ An axiom always overrides a project or user rule; a project rule always override
 | **Interactive Host Session** | Reads `COPE_USER_RULES_DIR/*.md`. Silent no-op when unset. | Queries knowledge base documents with `type: rule`. |
 | **Polecat Container Worker** | Reads container mount `/etc/cope/rules` (`ENV COPE_USER_RULES_DIR=/etc/cope/rules`). | Queries knowledge base documents with `type: rule`. |
 | **Continuous Integration (CI)** | Deterministic run with `COPE_USER_RULES_DIR` unset (0 user rules). | Evaluates universal axioms and project rules (0 user rules when no PKB configured). |
-
-### 6. Surface Inventory
-
-| Component | Surface File | Governed Source |
-| - | - | - |
-| Compliance Reviewer Agent | `plugins/rbg/agents/rbg.md` | Active PKB documents with `type: rule` |
-| Review Workflow Template | `plugins/ida/skills/workflow-library/workflows/wf-rbg.md` | Active PKB documents with `type: rule` |
-| Plugin Documentation | `plugins/rbg/README.md` | COPE: `COPE_USER_RULES_DIR`; RBG: PKB `type: rule` |
-| Runtime Rule Loader | `plugins/rbg/hooks/rules.py` | Environment variable `COPE_USER_RULES_DIR` |
-| Stop-Gate Message | `plugins/rbg/hooks/messages/rule-check.md` | `$COPE_USER_RULES_DIR` (when set) |
-| Ruleset Advisory Prompt | `plugins/rbg/hooks/messages/ruleset.md` | `$COPE_USER_RULES_DIR` (when set) |
-| Enforcement Map | `specs/ENFORCEMENT-MAP.md` | Evaluator: `COPE_USER_RULES_DIR`; Reviewer: PKB `type: rule` |
-| Container Specification | `specs/polecat/polecat-system.md` | `/etc/cope/rules` container mount via `COPE_USER_RULES_DIR` |
-| Hook Test Suite | `tests/test_shipped_hooks.py` | `COPE_USER_RULES_DIR` test isolation fixture |
-| User Rules Test Suite | `tests/test_user_rules.py` | Loader tests for `COPE_USER_RULES_DIR` |
 
 ## Open questions
 
