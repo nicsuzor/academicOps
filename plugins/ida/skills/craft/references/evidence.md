@@ -16,6 +16,8 @@ Empirical findings and adjudications governing the craft standard. Cite relevant
 | System prompt rule trimming preserves accuracy | Slashed >80% legacy rules with zero eval degradation | Anthropic Engineering (2025–2026) |
 | Static prompt prefix optimizes caching | Up to 90% read-token cost and latency reduction | Anthropic / OpenAI Prompt Caching |
 | Boundary-checked tool descriptions reduce failure | Mini-manual descriptions minimize bad tool calls | MCP Discovery Specifications |
+| Passive references suffer from low retrieval | Unprompted file references drop to <20% read rate vs >95% under explicit procedural gates | SkillsBench, arXiv:2602.12670 |
+| Negative instruction dilution | Long negative enumerations degrade affirmative task recall by up to 25% | IFEval, arXiv:2507.22462 |
 
 ## Format Limits
 
@@ -32,7 +34,7 @@ Empirical findings and adjudications governing the craft standard. Cite relevant
 
 1. **Reasoning vs bare imperatives**: Explain reasoning. Functional clauses help models generalize to unseen cases.
 2. **Capitalized emphasis**: Prohibited. Typography normalizes away and creates attention noise; use position and headers.
-3. **Assertive descriptions**: Mandatory. Routers under-trigger by default, so descriptions must explicitly claim matching tasks.
+3. **Assertive, affirmative descriptions**: Mandatory. Routers under-trigger by default, so descriptions must explicitly claim matching tasks. Structure descriptions affirmative-first (>=75% positive capability and trigger intent; <=25% contrastive exclusions naming the alternative peer skill). Prohibit speculative laundry lists of what the skill is not (IFEval, arXiv:2507.22462).
 4. **Subagent descriptions**: One concise sentence. Long descriptions dilute orchestrator routing heuristics.
 5. **Trigger fields**: Description-only. Auxiliary fields (`when_to_use`) are non-portable across harnesses.
 6. **Persona vs. skill decoupling**: Personas define persistent identity and authority; skills define reusable execution recipes. Personas do not inline skill internals, and skills do not couple to specific personas.
@@ -41,3 +43,5 @@ Empirical findings and adjudications governing the craft standard. Cite relevant
 9. **Entity abstraction**: Use "the user" instead of personal names.
 10. **No PKB leakage**: No PKB note/task IDs or wikilinks in distributed framework files.
 11. **Zero provenance**: Strip incident/PR references from operational instructions.
+12. **Level 3 reference incorporation**: Never rely on passive suggestions ("see references/..."). Incorporate Level 3 references via imperative procedural gates (`If <condition>, read <exact-path>`). Inline the structural shape in Level 2 and reserve Level 3 for non-median deep dives (SkillsBench, arXiv:2602.12670).
+13. **Empirical evidence isolation**: Operational skill bodies define current rules and contracts without inlining citations. Evidence bases (Level 3) are consulted solely when rules or budgets are contested in review, keeping median execution lean.

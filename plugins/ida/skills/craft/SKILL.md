@@ -6,7 +6,7 @@ allowed-tools: Read, Write, Edit
 
 # Instruction Craftsmanship
 
-Author and review agent-facing instructions, personas, and workflow templates for operational clarity, contract separation, instruction density, and token efficiency. Consult `references/evidence.md` for empirical findings.
+Author and review agent-facing instructions, personas, and workflow templates for operational clarity, contract separation, instruction density, and token efficiency.
 
 ## First Principles
 
@@ -43,6 +43,14 @@ To prevent context bloat and instruction dilution, structure skill packages in t
 - **Level 2: Skill Body (`SKILL.md`)**: Operational instructions loaded just-in-time when the skill is claimed or triggered.
 - **Level 3: Auxiliary References (`references/`, `scripts/`)**: Detailed schemas, reference manuals, or executable tools stored exactly one directory deep and loaded on demand.
 
+#### Incorporating Level 3 References
+
+Agents rarely explore unprompted reference files. To ensure Level 3 assets are read reliably without bloating median context:
+
+1. **Imperative Procedural Gating**: Never rely on passive suggestions ("see references/...", "consult X"). State an explicit condition, exact relative path, and action in the Level 2 procedure: e.g., `If <condition>, read references/<file>.md before <action>`.
+2. **Shape Inline, Depth in Reference**: Provide structural contracts, schema skeletons, and expected shapes inline in the Level 2 body so the agent understands the pattern immediately. Use Level 3 files strictly for exhaustive enumerations, raw schemas, or rare edge cases.
+3. **The Median Path Invariant**: If an agent must read a file on the median execution path, that content belongs inline in Level 2 (refactored to fit the 30–80 line budget), not in Level 3. Level 3 is reserved strictly for off-median branches, deep references, or secondary lookups.
+
 ## Length Budgets by Instruction Type
 
 Adhere to quantitative token and line limits to prevent attention degradation ("Lost in the Middle") and instruction dilution:
@@ -58,11 +66,15 @@ Adhere to quantitative token and line limits to prevent attention degradation ("
 
 ## The Description Is the Router
 
-Frontmatter descriptions are the primary routing surface (<1024 chars):
+Frontmatter descriptions are the primary routing surface (target 150–400 chars, ceiling 1,024 chars). Because affirmative instructions yield significantly higher compliance (IFEval, arXiv:2507.22462), descriptions must be affirmative-first:
 
-- **Front-load intent**: State the exact trigger conditions in the opening clause.
-- **Define exclusions**: Explicitly state when not to invoke to prevent crossover.
-- **Consolidate routing**: Place all triggering logic in the description field. Auxiliary fields (e.g. `when_to_use`) are non-portable.
+- **Affirmative-First Structure (1–3 sentences)**:
+  1. _Core Capability_: Active imperative stating the primary domain and outcome (Sentence 1).
+  2. _Trigger Conditions_: Explicit phrases, user asks, and task contexts where the skill applies (Sentence 2).
+  3. _Contrastive Exclusions_: Terse negative boundaries paired with alternative redirects (Sentence 3).
+- **Proportionate Exclusions**: Dedicate at least 75% of the description budget to positive capabilities and trigger conditions. Do NOT compile exhaustive lists of what a skill is not--negative enumerations dilute semantic matching and cause under-triggering.
+- **Contrastive Redirects**: Limit exclusions strictly to real adjacent competitors or collision domains where ambiguity exists, and always name the alternative tool or peer skill (e.g., `Exclude for X (use Y)`).
+- **Consolidate Routing**: Place all triggering logic in the description field. Auxiliary fields (e.g. `when_to_use`) are non-portable.
 
 ## The Body Is a Budget
 
@@ -101,12 +113,13 @@ Workflow templates (`type: template`) govern repeatable multi-stage execution an
 
 ## Quality Gates
 
-Every agent instruction, skill, persona definition, and subagent prompt must pass these four gates before merging:
+Every agent instruction, skill, persona definition, and subagent prompt must pass these five gates before merging:
 
 1. **Categorical generality (Categorical Imperative)**: Express rules in general terms covering the full class of situations. Prohibit hyper-specific quotas, rigid interaction numbers, or one-off compromises.
 2. **Entity abstraction (Name the process, not the actor)**: Refer to the principal as "the user", never by a personal proper noun or name. Refer to collaborators by role or capability.
 3. **No PKB leakage (Data Boundaries)**: Never include private PKB note or task IDs (`aops_...`, `task_...`, `mem_...`, `kb_...`) or Obsidian wikilinks (`[[...]]`) in distributed framework instruction files. Use standard relative markdown links for file references.
 4. **Zero historical provenance**: Strictly eliminate incident stories, post-mortem recaps ("after an incident on..."), or PR/commit changelog citations. Instructions define what is true now, never how it came to be true.
+5. **Adjudication against empirical evidence**: When an instruction design choice or length budget is contested during review, cite the empirical findings and sources in `references/evidence.md`.
 
 ## Agent Definitions
 
