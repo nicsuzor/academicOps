@@ -10,14 +10,6 @@ tags: [enforcement, testing, tdd, instructions, rules]
 
 This specification governs the scope and assertions of testing across academicOps. It establishes the rule that tests verify observable outputs, never internal contents. Text documents and instruction files are not functions and produce no outputs, so they owe zero unit tests. For executable code, tests assert observable outputs and behavioral contracts, never that code contains a particular phrase, variable, enum, constant, or condition.
 
-## Originating Ask & Evidence
-
-User direction relayed on 2026-10-30:
-
-> "never write unit tests for documentation or instruction files. testing rule should clearly say that we test OUTPUTS. we never test contents themselves. this applies to code too - i never want to see a test that asserts that our code says a particular phrase or uses a particular variable, enum, constant, condition, etc. Since text documents are not functions, they dont generate outputs, so we don't test them.
->
-> update the TTD workflows at each level to make this clear as well."
-
 ## User Stories
 
 ### US-1: Documentation and Instruction Files Owe No Unit Tests
