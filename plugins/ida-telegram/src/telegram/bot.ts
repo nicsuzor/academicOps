@@ -32,6 +32,7 @@ export type ReplyButtonsInput =
 
 export interface SendReplyOptions {
   chatId: number;
+  messageThreadId?: number;
   formatted: FormattedMessage;
   detailsId?: string;
   buttons?: ReplyButtonsInput;
@@ -63,6 +64,8 @@ export class TelegramBotClient {
   private conflictCount = 0;
   private lastAlertTime = 0;
   private lastInboundWasVoiceByChat = new Map<number, boolean>();
+  private lastThreadIdByChat = new Map<number, number>();
+  private messageThreads = new Map<number, number>();
   public store?: PluginStore;
   private messageExcerpts = new Map<number, string>();
 
@@ -88,6 +91,20 @@ export class TelegramBotClient {
 
   public isLastInboundVoice(chatId: number): boolean {
     return this.lastInboundWasVoiceByChat.get(chatId) === true;
+  }
+
+  public getLastThreadId(chatId: number): number | undefined {
+    return this.lastThreadIdByChat.get(chatId);
+  }
+
+  public getMessageThread(messageId: number): number | undefined {
+    return this.messageThreads.get(messageId);
+  }
+
+  public recordMessageThread(messageId: number | undefined, threadId: number | undefined): void {
+    if (messageId !== undefined && threadId !== undefined) {
+      this.messageThreads.set(messageId, threadId);
+    }
   }
 
   private recordMessageExcerpt(messageId: number | undefined, text: string | undefined) {
@@ -120,6 +137,7 @@ export class TelegramBotClient {
       caption?: string;
       captionEntities?: unknown[];
       replyTo?: number;
+      messageThreadId?: number;
       inlineKeyboard?: Array<Array<Record<string, unknown>>>;
     }
   ): Promise<any> {
@@ -129,6 +147,9 @@ export class TelegramBotClient {
     formData.append("chat_id", String(chatId));
     formData.append("voice", new Blob([oggBuffer], { type: "audio/ogg" }), "reply.ogg");
 
+    if (options.messageThreadId !== undefined) {
+      formData.append("message_thread_id", String(options.messageThreadId));
+    }
     if (options.caption !== undefined) {
       formData.append("caption", options.caption);
     }
@@ -149,16 +170,23 @@ export class TelegramBotClient {
     return await res.json();
   }
 
-  public async setReaction(chatId: number, messageId: number, emoji: string): Promise<boolean> {
+  public async setReaction(
+    chatId: number,
+    messageId: number,
+    emoji: string
+  ): Promise<{ ok: boolean; error?: string }> {
     try {
       const res = await this.callApi("setMessageReaction", {
         chat_id: chatId,
         message_id: messageId,
         reaction: [{ type: "emoji", emoji }],
       });
-      return !!res.ok;
-    } catch {
-      return false;
+      if (!res.ok) {
+        return { ok: false, error: res.description || "Reaction failed" };
+      }
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: String(err) };
     }
   }
 
@@ -177,6 +205,11 @@ export class TelegramBotClient {
       review,
       actions,
     } = opts;
+
+    const effectiveThreadId =
+      opts.messageThreadId ??
+      (replyTo ? this.getMessageThread(replyTo) : undefined) ??
+      this.getLastThreadId(chatId);
 
     // Build inline keyboard
     const inlineKeyboard: Array<Array<Record<string, unknown>>> = [];
@@ -276,6 +309,7 @@ export class TelegramBotClient {
     if (actions !== false) {
       actionBtns.push({ text: "🧐 Check logic", callback_data: "logic_check" });
       actionBtns.push({ text: "💡 Explain", callback_data: "explain" });
+      actionBtns.push({ text: "🧾 Reasons", callback_data: "reasons" });
       actionBtns.push({ text: "✅ Accept recommendation", callback_data: "accept_recommendation" });
       actionBtns.push({ text: "❌ Decline recommendation", callback_data: "decline_recommendation" });
     }
@@ -358,9 +392,11 @@ export class TelegramBotClient {
               caption: formatted.plainText,
               captionEntities: formatted.entities,
               replyTo,
+              messageThreadId: effectiveThreadId,
               inlineKeyboard,
             });
             if (voiceRes?.ok && voiceRes?.result) {
+              this.recordMessageThread(voiceRes.result.message_id, effectiveThreadId);
               this.recordMessageExcerpt(voiceRes.result.message_id, formatted.plainText);
               return {
                 messageId: voiceRes.result.message_id,
@@ -371,17 +407,22 @@ export class TelegramBotClient {
           } else {
             const voiceRes = await this.callVoiceApi(chatId, oggBuffer, {
               replyTo,
+              messageThreadId: effectiveThreadId,
             });
             if (!voiceRes?.ok || !voiceRes?.result) {
               throw new Error(voiceRes?.description || "Telegram sendVoice API call failed");
             }
             const voiceMessageId: number = voiceRes.result.message_id;
+            this.recordMessageThread(voiceMessageId, effectiveThreadId);
 
             const textPayload: Record<string, unknown> = {
               chat_id: chatId,
               text: formatted.plainText,
               entities: formatted.entities,
             };
+            if (effectiveThreadId !== undefined) {
+              textPayload.message_thread_id = effectiveThreadId;
+            }
             if (inlineKeyboard.length > 0) {
               textPayload.reply_markup = { inline_keyboard: inlineKeyboard };
             }
@@ -390,12 +431,14 @@ export class TelegramBotClient {
             if (!textRes?.ok || !textRes?.result) {
               textRes = await this.callApi("sendMessage", {
                 chat_id: chatId,
+                ...(effectiveThreadId !== undefined ? { message_thread_id: effectiveThreadId } : {}),
                 text: formatted.plainText,
                 reply_markup: inlineKeyboard.length > 0 ? { inline_keyboard: inlineKeyboard } : undefined,
               });
             }
 
             const finalMessageId = textRes?.result?.message_id ?? voiceMessageId;
+            this.recordMessageThread(finalMessageId, effectiveThreadId);
             this.recordMessageExcerpt(finalMessageId, formatted.plainText);
             return {
               messageId: finalMessageId,
@@ -423,6 +466,10 @@ export class TelegramBotClient {
       entities: formatted.entities,
     };
 
+    if (effectiveThreadId !== undefined) {
+      payload.message_thread_id = effectiveThreadId;
+    }
+
     if (replyTo) {
       payload.reply_parameters = { message_id: replyTo };
     }
@@ -433,6 +480,7 @@ export class TelegramBotClient {
 
     const res = await this.callApi("sendMessage", payload);
     if (res.ok && res.result) {
+      this.recordMessageThread(res.result.message_id, effectiveThreadId);
       if (this.store && inlineKeyboard.length > 0) {
         this.store.setLastCard(chatId, res.result.message_id, formatted.plainText);
       }
@@ -446,11 +494,13 @@ export class TelegramBotClient {
     // If Telegram rejects formatted entities, resend once as plain text per FR-1.5
     const fallbackRes = await this.callApi("sendMessage", {
       chat_id: chatId,
+      ...(effectiveThreadId !== undefined ? { message_thread_id: effectiveThreadId } : {}),
       text: formatted.plainText,
       reply_markup: inlineKeyboard.length > 0 ? { inline_keyboard: inlineKeyboard } : undefined,
     });
 
     if (fallbackRes.ok && fallbackRes.result) {
+      this.recordMessageThread(fallbackRes.result.message_id, effectiveThreadId);
       if (this.store && inlineKeyboard.length > 0) {
         this.store.setLastCard(chatId, fallbackRes.result.message_id, formatted.plainText);
       }
@@ -464,7 +514,12 @@ export class TelegramBotClient {
     return null;
   }
 
-  public async sendQuestionCard(chatId: number, qid: string, card: { text: string; buttons: Array<{ text: string; callbackData?: string; web_app?: { url: string } }> }) {
+  public async sendQuestionCard(
+    chatId: number,
+    qid: string,
+    card: { text: string; buttons: Array<{ text: string; callbackData?: string; web_app?: { url: string } }> },
+    messageThreadId?: number
+  ) {
     const formatted = formatMarkdownToEntities(card.text);
     const inline_keyboard = card.buttons.map((b) => {
       if (b.web_app) {
@@ -475,14 +530,20 @@ export class TelegramBotClient {
       }
       return [{ text: b.text, callback_data: b.callbackData }];
     });
-    const res = await this.callApi("sendMessage", {
+    const effectiveThreadId = messageThreadId ?? this.getLastThreadId(chatId);
+    const payload: Record<string, unknown> = {
       chat_id: chatId,
       text: formatted.plainText,
       entities: formatted.entities,
       reply_markup: { inline_keyboard },
-    });
+    };
+    if (effectiveThreadId !== undefined) {
+      payload.message_thread_id = effectiveThreadId;
+    }
+    const res = await this.callApi("sendMessage", payload);
     if (res?.ok && res?.result?.message_id) {
       this.broker.setMessageId(qid, res.result.message_id);
+      this.recordMessageThread(res.result.message_id, effectiveThreadId);
       if (this.store) {
         this.store.setLastCard(chatId, res.result.message_id, card.text);
       }
@@ -496,10 +557,13 @@ export class TelegramBotClient {
     toolName: string,
     input: Record<string, unknown>,
     description?: string,
-    inputPreview?: string
+    inputPreview?: string,
+    messageThreadId?: number
   ) {
     const defaultChatId = this.config.allowFrom[0];
     if (!defaultChatId) return;
+
+    const effectiveThreadId = messageThreadId ?? this.getLastThreadId(defaultChatId);
 
     let summary = `Permission request: *${toolName}*`;
     if (description) {
@@ -529,13 +593,19 @@ export class TelegramBotClient {
       ]);
     }
 
-    const res = await this.callApi("sendMessage", {
+    const payload: Record<string, unknown> = {
       chat_id: defaultChatId,
       text: summary,
       reply_markup: { inline_keyboard },
-    });
+    };
+    if (effectiveThreadId !== undefined) {
+      payload.message_thread_id = effectiveThreadId;
+    }
+
+    const res = await this.callApi("sendMessage", payload);
     if (res?.ok && res?.result?.message_id) {
       this.permRelay.setMessageInfo(permId, defaultChatId, res.result.message_id, summary);
+      this.recordMessageThread(res.result.message_id, effectiveThreadId);
       if (this.store) {
         this.store.setLastCard(defaultChatId, res.result.message_id, summary);
       }
@@ -557,6 +627,23 @@ export class TelegramBotClient {
       this.recordMessageExcerpt(messageId, formatted.plainText);
     }
     return res;
+  }
+
+  public async editForumTopic(
+    chatId: number,
+    messageThreadId: number,
+    name: string,
+    iconCustomEmojiId?: string
+  ): Promise<{ ok: boolean; result?: boolean; description?: string; error_code?: number }> {
+    const payload: Record<string, unknown> = {
+      chat_id: chatId,
+      message_thread_id: messageThreadId,
+      name,
+    };
+    if (iconCustomEmojiId !== undefined) {
+      payload.icon_custom_emoji_id = iconCustomEmojiId;
+    }
+    return await this.callApi("editForumTopic", payload);
   }
 
   public async registerCommands(persona?: string): Promise<boolean> {
@@ -660,12 +747,35 @@ export class TelegramBotClient {
     if (update.message?.message_id && (update.message.text || update.message.caption)) {
       this.recordMessageExcerpt(update.message.message_id, update.message.text || update.message.caption);
     }
+    if (update.message?.message_id && update.message.message_thread_id !== undefined) {
+      this.recordMessageThread(update.message.message_id, update.message.message_thread_id);
+    }
+    if (update.callback_query?.message?.message_id && update.callback_query.message.message_thread_id !== undefined) {
+      this.recordMessageThread(update.callback_query.message.message_id, update.callback_query.message.message_thread_id);
+    }
 
-    // 1. If inbound message from user, immediately set 👀 reaction (FR-9) and record voice-vs-text for FR-7.1 mirror
+    // 1. If inbound message from user, immediately set 👀 reaction (FR-9), track thread, and record voice-vs-text for FR-7.1 mirror
     if (update.message?.from?.id && this.config.allowFrom.includes(update.message.from.id)) {
       const isInboundVoice = Boolean(update.message.voice || update.message.audio);
       this.lastInboundWasVoiceByChat.set(update.message.chat.id, isInboundVoice);
+      if (update.message.message_thread_id !== undefined) {
+        this.lastThreadIdByChat.set(update.message.chat.id, update.message.message_thread_id);
+      } else {
+        this.lastThreadIdByChat.delete(update.message.chat.id);
+      }
       await this.setReaction(update.message.chat.id, update.message.message_id, "👀");
+    }
+
+    if (
+      update.callback_query?.message?.chat.id !== undefined &&
+      this.config.allowFrom.includes(update.callback_query.from.id)
+    ) {
+      if (update.callback_query.message.message_thread_id !== undefined) {
+        this.lastThreadIdByChat.set(
+          update.callback_query.message.chat.id,
+          update.callback_query.message.message_thread_id
+        );
+      }
     }
 
     // 2. Check if message is a reply to a force_reply "✏️ Other" prompt OR directly to the question card
@@ -758,14 +868,17 @@ export class TelegramBotClient {
         if (action === "other") {
           if (cb.message) {
             const promptTitle = q?.header || q?.question || qid;
+            const threadId = cb.message.message_thread_id ?? this.getLastThreadId(cb.message.chat.id);
             const promptRes = await this.callApi("sendMessage", {
               chat_id: cb.message.chat.id,
+              ...(threadId !== undefined ? { message_thread_id: threadId } : {}),
               text: `✏️ Reply to this message with your answer for: ${promptTitle}`,
               reply_parameters: { message_id: cb.message.message_id },
               reply_markup: { force_reply: true, selective: true },
             });
             if (promptRes?.ok && promptRes?.result?.message_id) {
               this.broker.setPromptMessageId(qid, promptRes.result.message_id);
+              this.recordMessageThread(promptRes.result.message_id, threadId);
             }
           }
           return;
@@ -934,19 +1047,23 @@ export class TelegramBotClient {
         }
       }
 
-      // Logic check and explain callbacks (AC1, AC2)
+      // Logic check, explain, and reasons callbacks (AC1, AC2)
       if (
         (data === "logic_check" ||
           data.startsWith("logic_check:") ||
           data === "explain" ||
-          data.startsWith("explain:")) &&
+          data.startsWith("explain:") ||
+          data === "reasons" ||
+          data.startsWith("reasons:")) &&
         cb.message &&
         this.config.allowFrom.includes(cb.from.id)
       ) {
         const kbRows = cb.message.reply_markup?.inline_keyboard || [];
         const matchedBtn = kbRows.flat().find((b) => b.callback_data === data);
         const isLogicCheck = data === "logic_check" || data.startsWith("logic_check:");
-        const label = matchedBtn?.text || (isLogicCheck ? "🧐 Check logic" : "💡 Explain");
+        const isExplain = data === "explain" || data.startsWith("explain:");
+        const isReasons = data === "reasons" || data.startsWith("reasons:");
+        const label = matchedBtn?.text || (isLogicCheck ? "🧐 Check logic" : isExplain ? "💡 Explain" : "🧾 Reasons");
         const originalText = cb.message.text || "";
 
         // Remove the action buttons row, but preserve other buttons (e.g. Details, Review diff)
@@ -956,8 +1073,10 @@ export class TelegramBotClient {
               (b) =>
                 b.callback_data !== "logic_check" &&
                 b.callback_data !== "explain" &&
+                b.callback_data !== "reasons" &&
                 !b.callback_data?.startsWith("logic_check:") &&
-                !b.callback_data?.startsWith("explain:")
+                !b.callback_data?.startsWith("explain:") &&
+                !b.callback_data?.startsWith("reasons:")
             )
           )
           .filter((row) => row.length > 0);
@@ -970,10 +1089,12 @@ export class TelegramBotClient {
         );
 
         const targetExcerpt = cb.message.text || this.getMessageExcerpt(cb.message.message_id) || "";
-        const action = isLogicCheck ? "logic_check" : "explain";
+        const action = isLogicCheck ? "logic_check" : isExplain ? "explain" : "reasons";
         const content = isLogicCheck
           ? `Give me a logic check on message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""} as if you were receiving it from a peer.`
-          : `Please explain message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""} in more detail.`;
+          : isExplain
+          ? `Please explain message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""} in more detail.`
+          : `How do you know that? Show the reasons and argument chain behind message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""}.`;
 
         const meta: Record<string, string> = {
           event: action,
@@ -986,6 +1107,11 @@ export class TelegramBotClient {
           chat_id: String(cb.message.chat.id),
           user_id: String(cb.from.id),
         };
+        const cbThread = cb.message.message_thread_id ?? this.getMessageThread(cb.message.message_id);
+        if (cbThread !== undefined) {
+          meta.message_thread_id = String(cbThread);
+          meta.thread_id = String(cbThread);
+        }
         if (targetExcerpt) {
           meta.target_excerpt = targetExcerpt;
         }
@@ -1072,7 +1198,7 @@ export class TelegramBotClient {
           { inline_keyboard: [] }
         );
 
-        this.emitChannelEvent(`tapped ${label}`, {
+        const btnMeta: Record<string, string> = {
           event: "button_tap",
           callback_id: cb.id,
           callback_prefix: callbackPrefix,
@@ -1081,7 +1207,14 @@ export class TelegramBotClient {
           target_message_id: String(cb.message.message_id),
           chat_id: String(cb.message.chat.id),
           user_id: String(cb.from.id),
-        });
+        };
+        const btnThread = cb.message.message_thread_id ?? this.getMessageThread(cb.message.message_id);
+        if (btnThread !== undefined) {
+          btnMeta.message_thread_id = String(btnThread);
+          btnMeta.thread_id = String(btnThread);
+        }
+
+        this.emitChannelEvent(`tapped ${label}`, btnMeta);
         return;
       }
     }
@@ -1120,6 +1253,7 @@ export class TelegramBotClient {
             audioPath: localAudioPath,
             messageId: update.message.message_id,
             replyToMessageId: update.message.reply_to_message?.message_id,
+            messageThreadId: update.message.message_thread_id,
           });
 
           this.emitChannelEvent(voiceEvent.content, {
@@ -1133,6 +1267,7 @@ export class TelegramBotClient {
             error: String(e),
             duration,
             messageId: update.message.message_id,
+            messageThreadId: update.message.message_thread_id,
           });
           this.emitChannelEvent(failEvent.content, {
             ...failEvent.meta,
@@ -1145,7 +1280,13 @@ export class TelegramBotClient {
     }
 
     // 5. General Inbound (text, attachments, reactions, commands)
-    const event = parseInboundUpdate(update, this.config.allowFrom, (msgId) => this.getMessageExcerpt(msgId), this.config.persona);
+    const event = parseInboundUpdate(
+      update,
+      this.config.allowFrom,
+      (msgId) => this.getMessageExcerpt(msgId),
+      this.config.persona,
+      (msgId) => this.getMessageThread(msgId)
+    );
     if (event) {
       if (event.event === "attachment" && event.meta.file_id && this.config.botToken) {
         try {

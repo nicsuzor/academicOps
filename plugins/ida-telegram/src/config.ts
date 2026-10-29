@@ -23,6 +23,11 @@ export interface PluginConfig {
   miniAppUrl: string;
   botCommands: TelegramBotCommand[];
   bridgeToken?: string;
+  cfAccessTeamDomain?: string;
+  cfAccessAud?: string;
+  cfAccessAllowedEmails?: string[];
+  cfAccessCertsUrl?: string;
+  cfAccessKeys?: any;
   env?: Record<string, string>;
 }
 
@@ -199,6 +204,21 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
     miniAppUrl,
     botCommands: resolveBotCommands(persona, mergedEnv.TELEGRAM_BOT_COMMANDS),
     bridgeToken: mergedEnv.IDA_BRIDGE_TOKEN || mergedEnv.BRIDGE_TOKEN,
+    cfAccessTeamDomain: (mergedEnv.CF_ACCESS_TEAM_DOMAIN || mergedEnv.CF_ACCESS_TEAM_NAME || "").trim() || undefined,
+    cfAccessAud: (mergedEnv.CF_ACCESS_AUD || "").trim() || undefined,
+    cfAccessAllowedEmails: (mergedEnv.CF_ACCESS_ALLOWED_EMAILS || "").trim()
+      ? (mergedEnv.CF_ACCESS_ALLOWED_EMAILS || "").trim().split(/[\s,]+/).map((s) => s.trim().toLowerCase()).filter(Boolean)
+      : undefined,
+    cfAccessCertsUrl: (mergedEnv.CF_ACCESS_CERTS_URL || "").trim() || undefined,
+    cfAccessKeys: (() => {
+      const raw = mergedEnv.CF_ACCESS_KEYS || mergedEnv.CF_ACCESS_PUBKEY || "";
+      if (!raw) return undefined;
+      try {
+        return JSON.parse(raw);
+      } catch {
+        return raw;
+      }
+    })(),
     env: mergedEnv as Record<string, string>,
   };
 }

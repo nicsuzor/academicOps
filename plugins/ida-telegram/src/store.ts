@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
+import { ReplayCache } from "./web/auth.js";
 
 export interface StoredDetailsPage {
   id: string;
@@ -50,6 +51,7 @@ export class PluginStore {
   private seq: number = 1;
   private lastCard: { chatId: number; messageId: number; text: string } | null = null;
   private changeListeners: Array<(seq: number, type: string, data: any) => void> = [];
+  private replayCache: ReplayCache = new ReplayCache();
 
   constructor(stateDir: string) {
     this.stateDir = stateDir;
@@ -64,6 +66,10 @@ export class PluginStore {
 
   public getSeq(): number {
     return this.seq;
+  }
+
+  public getReplayCache(): ReplayCache {
+    return this.replayCache;
   }
 
   public nextSeq(type?: string, data?: any): number {

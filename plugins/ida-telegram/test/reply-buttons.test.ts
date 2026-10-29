@@ -239,7 +239,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
       }
     });
 
-    test("defect check: Details with Check logic and Explain all sit together on row 0 with predefined_row: true", async () => {
+    test("defect check: Details with Check logic, Explain, and Reasons all sit together on row 0 with predefined_row: true", async () => {
       const { mcp, apiCalls, cleanup } = setupTest();
       try {
         const resp = await mcp.handleMessage({
@@ -263,12 +263,13 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
 
         const kb = apiCalls[0].body.reply_markup?.inline_keyboard || [];
         expect(kb.length).toBe(1);
-        expect(kb[0].length).toBe(5);
+        expect(kb[0].length).toBe(6);
         expect(kb[0][0].text).toBe("🔍 Details");
         expect(kb[0][1].text).toBe("🧐 Check logic");
         expect(kb[0][2].text).toBe("💡 Explain");
-        expect(kb[0][3].text).toBe("✅ Accept recommendation");
-        expect(kb[0][4].text).toBe("❌ Decline recommendation");
+        expect(kb[0][3].text).toBe("🧾 Reasons");
+        expect(kb[0][4].text).toBe("✅ Accept recommendation");
+        expect(kb[0][5].text).toBe("❌ Decline recommendation");
       } finally {
         cleanup();
       }
@@ -313,7 +314,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
         expect(parsedResult.success).toBe(true);
 
         const kb = apiCalls[0].body.reply_markup?.inline_keyboard || [];
-        // Row 0: Predefined row [Details, Check logic, Explain, Accept recommendation, Decline recommendation]
+        // Row 0: Predefined row [Details, Check logic, Explain, Reasons, Accept recommendation, Decline recommendation]
         // Row 1: Caller row 1 [B1, B2, B3, B4]
         // Row 2: Caller row 2 [B5, B6, B7, B8]
         expect(kb.length).toBe(3);
@@ -321,6 +322,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           "🔍 Details",
           "🧐 Check logic",
           "💡 Explain",
+          "🧾 Reasons",
           "✅ Accept recommendation",
           "❌ Decline recommendation",
         ]);
@@ -357,13 +359,71 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
         // Default behaviour:
         // Row 0: Caller buttons ([Caller Button])
         // Row 1: Details ([🔍 Details])
-        // Row 2: Actions ([🧐 Check logic, 💡 Explain, ✅ Accept recommendation, ❌ Decline recommendation])
+        // Row 2: Actions ([🧐 Check logic, 💡 Explain, 🧾 Reasons, ✅ Accept recommendation, ❌ Decline recommendation])
         expect(kb.length).toBe(3);
         expect(kb[0].map((b: any) => b.text)).toEqual(["Caller Button"]);
         expect(kb[1].map((b: any) => b.text)).toEqual(["🔍 Details"]);
         expect(kb[2].map((b: any) => b.text)).toEqual([
           "🧐 Check logic",
           "💡 Explain",
+          "🧾 Reasons",
+          "✅ Accept recommendation",
+          "❌ Decline recommendation",
+        ]);
+      } finally {
+        cleanup();
+      }
+    });
+
+    test("AC1: whatever suppresses or relocates Explain (actions: false, predefined_row) does the same to Reasons", async () => {
+      const { mcp, apiCalls, cleanup } = setupTest();
+      try {
+        // Case 1: actions: false suppresses both Explain and Reasons
+        await mcp.handleMessage({
+          jsonrpc: "2.0",
+          id: 9,
+          method: "tools/call",
+          params: {
+            name: "reply",
+            arguments: {
+              chat_id: allowFrom,
+              text: "Actions false text",
+              detail: "Detail text",
+              actions: false,
+              predefined_row: true,
+            },
+          },
+        });
+
+        const kbOff = apiCalls[0].body.reply_markup?.inline_keyboard || [];
+        const flatOff = kbOff.flat();
+        expect(flatOff.find((b: any) => b.text === "💡 Explain")).toBeUndefined();
+        expect(flatOff.find((b: any) => b.text === "🧾 Reasons")).toBeUndefined();
+        expect(flatOff.find((b: any) => b.callback_data === "reasons")).toBeUndefined();
+        expect(flatOff.find((b: any) => b.text === "🔍 Details")).toBeDefined();
+
+        // Case 2: default actions (actions: true) attaches both Explain and Reasons to predefined row
+        await mcp.handleMessage({
+          jsonrpc: "2.0",
+          id: 10,
+          method: "tools/call",
+          params: {
+            name: "reply",
+            arguments: {
+              chat_id: allowFrom,
+              text: "Actions true text",
+              actions: true,
+              predefined_row: false,
+            },
+          },
+        });
+
+        const kbOn = apiCalls[1].body.reply_markup?.inline_keyboard || [];
+        const actionRow = kbOn[0];
+        expect(actionRow.map((b: any) => b.text)).toEqual([
+          "🧐 Check logic",
+          "💡 Explain",
+          "🧾 Reasons",
           "✅ Accept recommendation",
           "❌ Decline recommendation",
         ]);

@@ -227,14 +227,42 @@ describe("Inbound completeness: Updates routing and parsing", () => {
     expect(result?.content).toContain("explain");
   });
 
-  test("delivers accept_recommendation button tap event naming target message and acceptance", () => {
+  test("delivers reasons button tap event naming target message and excerpt", () => {
     const update: TelegramUpdate = {
       update_id: 53,
+      callback_query: {
+        id: "cb_rsn_1",
+        from: { id: 12345678, is_bot: false, first_name: "Nic" },
+        message: {
+          message_id: 90,
+          date: Date.now(),
+          chat: { id: 12345678, type: "private" },
+          text: "Statement needing argument chain.",
+        },
+        data: "reasons",
+      },
+    };
+
+    const result = parseInboundUpdate(update, allowFrom);
+    expect(result).not.toBeNull();
+    expect(result?.event).toBe("reasons");
+    expect(result?.meta.event).toBe("reasons");
+    expect(result?.meta.action).toBe("reasons");
+    expect(result?.meta.target_message_id).toBe("90");
+    expect(result?.meta.target_excerpt).toBe("Statement needing argument chain.");
+    expect(result?.content).toContain("90");
+    expect(result?.content).toContain("reasons");
+    expect(result?.content).toContain("How do you know that?");
+  });
+
+  test("delivers accept_recommendation button tap event naming target message and acceptance", () => {
+    const update: TelegramUpdate = {
+      update_id: 54,
       callback_query: {
         id: "cb_acc_1",
         from: { id: 12345678, is_bot: false, first_name: "Nic" },
         message: {
-          message_id: 90,
+          message_id: 91,
           date: Date.now(),
           chat: { id: 12345678, type: "private" },
           text: "Recommended plan of action.",
@@ -250,20 +278,20 @@ describe("Inbound completeness: Updates routing and parsing", () => {
     expect(result?.meta.action).toBe("accept_recommendation");
     expect(result?.meta.recommendation).toBe("accepted");
     expect(result?.meta.choice).toBe("accept");
-    expect(result?.meta.target_message_id).toBe("90");
+    expect(result?.meta.target_message_id).toBe("91");
     expect(result?.meta.target_excerpt).toBe("Recommended plan of action.");
-    expect(result?.content).toContain("90");
+    expect(result?.content).toContain("91");
     expect(result?.content).toMatch(/Nic accepted the recommendation/i);
   });
 
   test("delivers decline_recommendation button tap event naming target message and declination", () => {
     const update: TelegramUpdate = {
-      update_id: 54,
+      update_id: 55,
       callback_query: {
         id: "cb_dec_1",
         from: { id: 12345678, is_bot: false, first_name: "Nic" },
         message: {
-          message_id: 91,
+          message_id: 92,
           date: Date.now(),
           chat: { id: 12345678, type: "private" },
           text: "Alternate recommendation not desired.",
@@ -279,9 +307,9 @@ describe("Inbound completeness: Updates routing and parsing", () => {
     expect(result?.meta.action).toBe("decline_recommendation");
     expect(result?.meta.recommendation).toBe("declined");
     expect(result?.meta.choice).toBe("decline");
-    expect(result?.meta.target_message_id).toBe("91");
+    expect(result?.meta.target_message_id).toBe("92");
     expect(result?.meta.target_excerpt).toBe("Alternate recommendation not desired.");
-    expect(result?.content).toContain("91");
+    expect(result?.content).toContain("92");
     expect(result?.content).toMatch(/Nic declined the recommendation/i);
   });
 
