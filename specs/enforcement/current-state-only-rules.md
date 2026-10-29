@@ -1,4 +1,5 @@
 ---
+id: current_state_only_rules
 title: Current State Only Rules
 status: ready
 type: spec
@@ -21,17 +22,14 @@ As a repository maintainer, I want instructions and code to reflect current oper
 
 ## Design
 
-### 1. Placement and Carriers
+### 1. Placement and Single Canonical Carrier
 
-In accordance with the enforcement pyramid, these rules are introduced as Level 2 instructions (`instructions`, `imperative`).
+In accordance with the Single Source of Truth axiom (`plugins/rbg/skills/axioms/single-source-of-truth.md`) and the enforcement pyramid (`specs/enforcement/enforcement.md`), these rules are introduced under a single canonical carrier at Level 2 (`instructions`, `imperative`):
 
-The rules are carried in two project-local locations:
-
-1. **Primary Carrier (`.agents/rules/current-state-only.md`):**
-   A dedicated project-local rule file with `trigger: always_on`. This file is loaded by the rule evaluation hook (`plugins/rbg/hooks/rules.py`), compliance review lenses (`plugins/rbg/agents/rbg.md`), and automated review agents.
-
-2. **Secondary Carrier (`.agents/CORE.md`):**
-   A binding constraint entry under `## Binding constraints` in `.agents/CORE.md`. Because `.agents/CORE.md` is loaded at session start across both supported client harnesses (`CLAUDE.md` and `AGENTS.md`), this ensures universal runtime visibility for executing agents.
+- **Canonical Carrier (`.agents/rules/current-state-only.md`):**
+  A dedicated project-local rule file with `trigger: always_on`. This file is the single authoritative source of truth for the three rules. It is loaded automatically by the rule evaluation hook (`plugins/rbg/hooks/rules.py`), compliance review lenses (`plugins/rbg/agents/rbg.md`), and automated review agents.
+- **Harness Integration via CORE.md:**
+  `.agents/CORE.md:50` already links all project rules via `Project-local rules: rules/RULES.md and rules/*.md.`, giving executing agents universal visibility across Claude Code and Antigravity harnesses without duplicating rule text. In Stage 2 (Build), the legacy partial clause in `.agents/CORE.md:25-27` ("Instructions are operative") will be retired in favour of this single canonical rule to eliminate competing definitions.
 
 ### 2. Enforcement-Map Status
 
@@ -57,9 +55,3 @@ Maintain current state only across the repository. Do not preserve backwards com
 - **No history in instructions or code:** Git holds history; instruction, skill, agent, configuration, and code files state current state only.
 - **Spec exception:** A specification may carry one very brief bullet naming a rejected choice and the reason it was rejected.
 ```
-
-### 4. Supporting Binding Constraint in CORE.md
-
-The corresponding binding constraint in `.agents/CORE.md`:
-
-`- **Current state only.** Deprecated files are deleted, not kept around. Git holds history; instructions, skills, agent definitions, and code state current state only. As a sole exception, a spec may carry one very brief bullet naming a rejected choice and the reason it was rejected.`
