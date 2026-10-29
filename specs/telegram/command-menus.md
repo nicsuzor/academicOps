@@ -33,12 +33,16 @@ As an operator tapping a command button in the Telegram client menu, I want bare
 
 ### US-3 Interactive Menu Proposal and Customization
 
-As an operator managing Telegram bot command surfaces across multiple personas, I want an interactive skill that inspects all available skills, common workflows, and empirical usage metrics, and presents a structured proposal to customize and allocate commands per bot persona, so that Telegram menu commands reflect actual operational usage and can be easily evolved.
+As an operator managing Telegram bot command surfaces across multiple personas, I want an interactive skill that inspects available skills, common workflows, and empirical usage metrics, and presents a structured proposal to customize and allocate commands per bot persona, so that Telegram menu commands reflect actual operational usage and can be easily evolved.
 
-- **AC-3.1** Given an operator requesting a menu review or scheduled proposal, when the proposal skill executes, then it enumerates all installed skills and workflows, retrieves usage frequency metrics from telemetry, and inspects currently configured and live menus across all bot personas.
-- **AC-3.2** Given the inspected skills and usage metrics, when the proposal is presented, then every candidate skill is displayed with its usage count and current allocation without filtering out autonomous coordination skills, and the operator is prompted to assign each command per bot ("Prime only", "Strategic only", "both", or "none") using structured multi-choice options with free-text support.
-- **AC-3.3** Given an operator defining a composite or new command, when the operator specifies the command name, menu description, and execution meaning, then the skill validates the command name against Telegram API constraints and captures the execution action for the designated bot persona(s).
-- **AC-3.4** Given approved menu changes, when the operator confirms the update, then the system immediately invokes Telegram Bot API `setMyCommands` across authorized chat scopes for each target bot persona and persists the approved configuration so that changes survive restarts.
+- **AC-3.1 (Candidate proposal presentation)** Given an operator requesting a menu review, when the proposal skill executes, then the system presents a proposal matrix of candidate skills and workflows with their aggregated invocation frequencies and current bot allocations, normalizing skill identifiers to Telegram-compliant command names.
+  - _Check_: Proposal output contains candidate skills and workflows (including autonomous coordination skills), shows usage frequency counts, and normalizes kebab-case skill names (e.g. `strategic_review` for `strategic-review`).
+- **AC-3.2 (Per-bot command allocation)** Given the presented proposal, when the operator selects command placement across bot personas, then the skill records the chosen allocation ("Prime only", "Strategic only", "both", or "none") via structured options or natural language chat replies.
+  - _Check_: Verification asserting that structured multi-choice selections and equivalent natural language replies update command allocations per persona identically.
+- **AC-3.3 (Custom and composite command definition)** Given an operator defining a custom command, when the operator specifies the command name, description, and execution action, then the system validates the command identifier against Telegram API constraints (`/^[a-z0-9_]{1,32}$/`), accepts valid specifications with their action metadata, and rejects invalid identifiers with descriptive syntax errors.
+  - _Check_: Schema validation verifying rejection of invalid names (leading slashes, invalid characters, length > 32) and acceptance of valid commands with specified action metadata.
+- **AC-3.4 (Immediate menu synchronization & persistence)** Given approved menu changes, when the operator confirms the update, then the system immediately synchronizes live menus via Telegram Bot API `setMyCommands` across authorized chat scopes for each target bot persona and persists the approved configuration so that changes survive restarts.
+  - _Check_: API verification asserting `setMyCommands` payloads match approved commands for each bot persona and authorized chat scope, and configuration persistence verification asserting dynamic configuration restores on restart.
 
 ## Design
 
@@ -94,44 +98,28 @@ When an underlying skill is renamed in the framework (such as files in `plugins/
    - **Configured Menus:** Static defaults and configured command mappings for each bot persona.
    - **Live Menus:** Active commands currently registered with the Telegram Bot API via `getMyCommands` for each bot token and authorized chat scope.
    - **Installed Skills and Workflows:** Discovered across installed plugin skill registries and universal workflow templates.
-     - _Autonomous and Coordination Skills:_ Agent-run coordination skills (such as `reify`, `dispatch`, `mine`, `reconcile`) are included in candidate discovery because operators frequently trigger planning or dispatch pipelines directly from chat.
-     - _Exclusions:_ Official reserved commands (`start`, `help`, `status`) and headless worker lifecycle commands (`pull`, `dump`) remain strictly excluded from conversational menus to protect worker isolation boundaries.
-   - **Telemetry Usage Metrics:** Invocation frequencies retrieved from runtime span storage:
-     - Tool execution spans recording skill invocations across interactive turns and subagents.
-     - Channel turn events with `event="bot_command"` recording direct menu button taps.
+     - _Autonomous Coordination Skills:_ Operator-facing coordination skills (such as `reify`, `dispatch`, `mine`, `reconcile`) are included in candidate discovery to allow rapid triggering of planning and dispatch workflows directly from chat.
+     - _Identifier Normalization:_ Candidate skill discovery automatically normalizes kebab-case skill identifiers into Telegram-compliant snake_case command names (e.g., `strategic-review` becomes `strategic_review`, `argument-map` becomes `argument_map`) while preserving the underlying skill identifier in execution routing metadata.
+   - **Telemetry Usage Metrics:** Invocation frequencies retrieved from runtime span storage across interactive turns and subagents.
 
 2. **Proposal Presentation and Operator Interaction:**
    - **Structured Proposal Matrix:** Presents candidate skills and workflows displaying:
-     - Command identifier.
+     - Command identifier (normalized for Telegram).
      - Functional description.
      - Empirical usage count from telemetry spans.
      - Current menu allocation (`[Prime]`, `[Strategic]`, `[Both]`, or `[None]`).
    - **Per-Bot Allocation Choice:**
      - The operator assigns each command per bot persona: Prime only, Strategic only, both, or remove from menus.
-     - The interface provides structured option buttons (e.g. checkbox selections) while accepting free-text replies and conversational adjustments.
+     - The interface provides structured option buttons while accepting free-text replies and conversational adjustments.
    - **Custom and Composite Commands:**
      - The operator may define new or composite commands with custom execution semantics.
      - For each custom command, the skill captures and validates:
        1. `command`: Normalized command name (1-32 characters, lowercase alphanumeric and underscores `/^[a-z0-9_]{1,32}$/`, excluding reserved commands `start`, `help`, `status`). Leading slashes are stripped during normalization.
        2. `description`: Human-readable menu description (1-256 characters).
        3. `skill`: Target skill or workflow identifier.
-       4. `bareAction`: Concrete natural language prompt or instructions injected into execution metadata when tapped without arguments.
+       4. `bareAction`: Concrete target skill identifier, universal workflow identifier, or prompt instructions injected into execution metadata when tapped without arguments.
    - **API Invariants:** Total registered commands per bot persona must not exceed the Telegram Bot API limit of 100 commands per scope.
 
 3. **Delivery and Menu Synchronization Pipeline:**
    - **Immediate Live Menu Synchronization:** When menu updates are confirmed, the system immediately invokes the Telegram Bot API `setMyCommands` endpoint with `scope: { type: "chat", chat_id: chatId }` for each authorized chat across target bot personas, updating client menus in real time without downtime.
-   - **Configuration Persistence:** The approved command configurations are saved to the bot instance's persistent configuration store (`TELEGRAM_BOT_COMMANDS` or persistent state), ensuring customized menus persist across restarts and environment rebuilds.
-
-## Build Acceptance Criteria and Verification Matrix
-
-The implementation of the Telegram menu-proposal skill must satisfy the following outcome-level acceptance criteria, each validated by its corresponding verification check:
-
-| ID | Outcome-Level Acceptance Criterion | Verification Check |
-| - | - | - |
-| **BAC-1** | Candidate discovery enumerates installed skills and workflows including autonomous coordination skills (`reify`, `dispatch`), while strictly filtering out reserved commands (`start`, `help`, `status`) and headless worker commands (`pull`, `dump`). | Unit test passing simulated plugin skill registry asserting that `reify` and `dispatch` appear in candidate output while `pull`, `dump`, `start`, and `help` are excluded. |
-| **BAC-2** | Telemetry ingestion calculates accurate invocation frequencies from span storage across skill executions and bot command events. | Integration test querying test span fixture asserting correct aggregated invocation counts for each skill. |
-| **BAC-3** | Proposal formatting renders candidate skills with usage counts, current allocations, and per-bot placement options, enforcing the 100-command limit. | Snapshot test verifying rendered proposal markdown structure, placement options, and truncation/warning when candidate count exceeds Telegram API limits. |
-| **BAC-4** | Interactive intake accepts structured multi-choice selections as well as free-text replies for allocating commands per bot. | Parser test verifying that structured selections and free-text inputs ("put daily on both, remove hydrate from prime") resolve to identical command allocations. |
-| **BAC-5** | Custom / composite command creation enforces name constraints (1-32 characters, regex `/^[a-z0-9_]{1,32}$/`, non-reserved), description bounds (1-256 characters), and captures execution actions. | Schema validation test asserting rejection of invalid names (`/start`, `/invalid-hyphen`, names > 32 characters) and verification of command specification with valid `bareAction`. |
-| **BAC-6** | Approved configurations are written to persistent configuration storage, surviving process restarts. | Persistence test verifying that configuration written during intake is restored identically after restarting the configuration provider. |
-| **BAC-7** | Live command synchronization invokes Telegram `setMyCommands` with updated command arrays for each bot persona across authorized chat scopes. | Mocked Telegram Bot API integration test verifying `setMyCommands` payload matches approved command sets per target chat ID upon confirmation. |
+   - **Configuration Persistence & Startup Precedence:** Approved command configurations are saved to the persistent configuration store (`TELEGRAM_BOT_COMMANDS`). On bot startup, command registration inspects this store first; when present, the persisted dynamic configuration supersedes static fallback command arrays (`PRIME_COMMANDS`, `STRATEGIC_COMMANDS`), ensuring customizations survive restarts.
