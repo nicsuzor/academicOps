@@ -1,6 +1,6 @@
 ---
 name: dump
-description: Session exit and handover -- commit and push work, release claimed PKB tasks, and emit a final report. Use when completing, pausing, or handing off a session. Exclude for routine in-session task checkpoints or status updates without session exit.
+description: Session exit and handover -- commit and push work, release claimed PKB tasks, and emit a final report. Use when completing, pausing, or handing off a session. Exclude for in-session updates (use reconcile).
 ---
 
 # Dump -- Session Exit
