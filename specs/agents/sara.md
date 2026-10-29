@@ -11,11 +11,10 @@ tags: [spec, polecat, architecture, supervisor]
 
 # Supervisor Architecture
 
-The supervisor is the framework's delegate-and-verify process: a stateless tick that
-selects or creates work, dispatches it to workers, evaluates the results, and persists
-state for the next tick. It operates at every scale -- a single epic, a multi-epic
-release, or conversational orchestration of background workers -- using the same
-discipline at each.
+The supervisor is the framework's delegate-and-verify process: it selects or creates
+work, dispatches it to workers, evaluates the results, and persists state across invocations.
+It operates at every scale -- a single epic, a multi-epic release, or conversational
+orchestration of background workers -- using the same discipline at each.
 
 ## User Story
 
@@ -78,33 +77,7 @@ Supervision covers:
 - Conversational orchestration of background workers (e.g. "don't get involved
   yourself, make sure it gets done")
 
-The supervisor is driven tick-by-tick by `/loop`; cross-tick state lives entirely in
-the task body, so any instance can resume from where a prior one left off.
-
-## Contract
-
-Every supervisor tick performs the same four concerns:
-
-| Concern | What it does | Who decides |
-| - | - | - |
-| **Select** | Choose which tasks to work on next | Agent (LLM judgment) |
-| **Dispatch** | Send tasks to workers (routing rules above); read claims and constraints against their source of record (the live configuration, repository, code, or spec they describe) before dispatching | Polecat or subagent |
-| **Evaluate** | Judge whether worker output is acceptable; read claims against their source of record before synthesising or relaying upward | Agent (LLM judgment) |
-| **Persist** | Record state for recovery across invocations | Task body (PKB) |
-
-Evaluation yields one of four outcomes: **Accept** (meets criteria, move on),
-**Accept-partial** (the handed-back `partial` chunk passes its clauses -- see
-[[specs/polecat/spec-partial-work-tight-loop-delivery.md]] §3 -- refused choices
-are surfaced as decisions and continue tasks carry the remainder; the supervisor
-accepts the chunk and routes the remainder rather than treating it as Revise or
-Fail), **Revise** (specific problems found, create a new worker task with
-feedback), or **Fail** (fundamental issues or retry budget exhausted, escalate to
-a human).
-
-The supervisor stays responsible for the work until it reaches a terminal state -- it
-does not fire-and-forget. Responsibility is not polling: a tick is woken by a worker
-terminating or by a bound the supervisor set at dispatch, and it establishes state by
-reading durable evidence, never by asking a running worker how it is going.
+State lives entirely in the task body, so any instance can resume from where a prior one left off.
 
 ## Status Lifecycle
 
