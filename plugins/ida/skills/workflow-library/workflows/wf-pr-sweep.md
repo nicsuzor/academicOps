@@ -13,6 +13,13 @@ type: template
 
 Coordinates a comprehensive sweep of open pull requests across repositories. Enumerates open PRs, categorizes each against project-specific branch and merge policies, advances eligible PRs through the move-along lifecycle, and generates an honest disposition report accounting for every item.
 
+## Execution Modes
+
+Sweep execution may run via either:
+
+- **Distributed dispatch**: Dispatch individual tasks for each PR candidate to separate workers.
+- **Single-worker fan-out**: Dispatch a single coordinator worker with an instruction to fan out across open PRs in parallel (using concurrent subagents or isolated worktrees), advancing each PR independently and aggregating dispositions into a single sweep handback.
+
 ## Input contract
 
 - List of target repositories or current working repository context.

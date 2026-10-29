@@ -16,6 +16,8 @@ type: template
 
 Specifies how open pull requests in `nicsuzor/academicOps` are moved along to resolution. Governs check validation, proportionate review, feedback resolution, merge conflict resolution, and landing under the repository's feature freeze and review policy.
 
+May be executed for a single pull request or dispatched to a single worker instructed to fan out in parallel across multiple candidate PRs using concurrent subagents or isolated worktrees.
+
 ## Policy and Merge Gates
 
 - **Base branch**: PRs target `release/v1.0-rc0`. PRs targeting deprecated branches must be retargeted before processing.
