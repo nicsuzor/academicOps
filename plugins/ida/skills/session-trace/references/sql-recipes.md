@@ -9,15 +9,18 @@ The backend is an allowlisted SQLite database; use JSON extraction (`->>` or
 Code) by calling `codemode.phoenix_execute`.
 
 **A0 -- resolve a `trace_id` to its `session.id`.** Then pivot every subsequent
-query onto `session.id`.
+query onto `session.id`. `trace_id` and the project name live on `traces` and
+`projects`, not on `spans`; join through `spans.trace_rowid`.
 
 ```sql
-SELECT JSON_EXTRACT(attributes, '$.session.id') AS session_id,
-       project_name, COUNT(*) AS span_count,
-       MIN(start_time) AS first_seen, MAX(start_time) AS last_seen
-FROM spans
-WHERE trace_id = '<32_HEX_TRACE_ID>'
-GROUP BY session_id, project_name
+SELECT JSON_EXTRACT(s.attributes, '$.session.id') AS session_id,
+       p.name AS project, COUNT(*) AS span_count,
+       MIN(s.start_time) AS first_seen, MAX(s.start_time) AS last_seen
+FROM spans s
+JOIN traces t ON t.id = s.trace_rowid
+JOIN projects p ON p.id = t.project_rowid
+WHERE t.trace_id = '<32_HEX_TRACE_ID>'
+GROUP BY session_id, p.name
 ```
 
 **A -- session discovery and error check.**
@@ -185,12 +188,32 @@ Inside `phoenix_execute`, the block can `await call_tool("executeSql", {"sql": .
 several times and return one combined object -- use it to collapse a multi-query
 pass into a single round-trip.
 
+## Cross-session search (find text across many sessions)
+
+Use this route when the question has no session id: "every prompt mentioning X",
+"which sessions called tool Y". Do not hand-write SQL turn by turn and let each
+result sit in your context: every later call re-reads it.
+
+1. **Filter and project on the server.** Put the text match, the agent or tool
+   filter and a bounded `start_time` window in `WHERE`; select ids, timestamps and
+   `SUBSTR(...)` snippets, never whole `input.value`/`output.value`. A whole-payload
+   pull can hit the 4 MiB response limit and fail.
+2. **Write rows to a file, not to your context.** In the same `phoenix_execute`
+   block, loop pages with `LIMIT`/`OFFSET` (or `start_time` keyset), append the rows
+   to a file in session scratch, and return only the row count and the first few ids.
+3. **Read by anchor.** `grep -n` or `sed -n` the file for the rows you need and quote
+   those. Do not read the whole file back.
+4. **One query per block where you can.** Each extra model turn re-reads your whole
+   base context, so fewer turns save about as much as smaller returns.
+
+SQL is capped at 2 KiB per call. Keep one-off aggregations in code mode as above.
+
 ## Gotchas
 
 | Symptom | Cause | Fix |
 | - | - | - |
 | `executeSql` result "exceeds maximum allowed tokens", dumped to a `.txt` file | Query returned too many rows, or unbounded `input.value`/`output.value` columns | Narrow with `SUBSTR(...)` and a tighter `WHERE`/`LIMIT`; if already dumped, read the saved file with `jq` rather than re-querying |
-| `{"data":[],"next_cursor":null}` searching for a session by id | Queried `session.id` with a 32-hex `trace_id` | Resolve via `WHERE trace_id = '<32_HEX>'` (Recipe A0) first |
+| `{"data":[],"next_cursor":null}` searching for a session by id | Queried `session.id` with a 32-hex `trace_id` | Resolve via `WHERE t.trace_id = '<32_HEX>'` on the joined `traces` table (Recipe A0) first |
 | MCP tool calls missing from the agent's response | The agent grepped answers off disk instead of executing tools | `SELECT count(*) FROM spans WHERE span_kind='TOOL' AND attributes->>'session.id'='<UUID>'` |
 | Report asserts items "not done" or "failed" with no tool evidence | Agent assumed the outcome after 0 tool calls or a single search miss | Recipe D: distinguish 0 tool calls (never attempted) from tool executions that failed |
 | Named subagent never returns / repeats `idle_notification` forever | In Claude Code, `name` on `Agent` call spawns a persistent teammate with no OTel-visible exit event (Recipe G) | Do not wait on the tool call; watch the parent for an inbound `<teammate-message>`, and check the child's own session (Recipe F). In `agy`, inspect subagent session via `conversationId` |

@@ -115,6 +115,10 @@ branch protection requiring all checks green (`Lint / Lint`, `Type Check / Type 
    - Writes only to `main` (no writes to `dist` or `nicsuzor/aops`).
 5. **Stable GitHub Releases.** Annotated release tags (`vX.Y.Z`) pushed on `main` trigger `.github/workflows/publish-release.yml` to upload tarball archives (`dist/*.tar.gz`) to a stable GitHub Release.
 
+### Automatic PR retargeting (`main` → `dev`)
+
+Because `main` is the published distribution and release branch rather than a direct development branch, pull requests must not target `main`. To prevent human or agent pull requests accidentally opened against `main` (which GitHub selects by default as the repository's default branch), `.github/workflows/auto-retarget-pr.yml` automatically flips any opened or reopened pull request whose base branch is `main` to target `dev` (excluding automated `release-please` PRs). Because `pull_request_target` workflows resolve from the default branch, the workflow file is preserved on `main` via `.github/workflows/build-extension.yml` on every publish.
+
 A manual rebuild against a specific commit: push a prerelease tag at that
 commit -- e.g. `git tag v<next>-rc.1 <sha> && git push origin v<next>-rc.1`.
 
