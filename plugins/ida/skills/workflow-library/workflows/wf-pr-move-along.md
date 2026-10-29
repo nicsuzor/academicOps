@@ -11,13 +11,13 @@ type: template
 
 ## What this template does
 
-Drives an open pull request through its progression lifecycle: confirming passing checks, securing a proportionate review, addressing review feedback, settling merge conflicts against the base branch, and executing or staging the merge according to project-local merge rules.
+Drives an individual open pull request through its progression lifecycle: confirming passing checks, securing a proportionate review, addressing review feedback, settling merge conflicts against the base branch, and executing or staging the merge according to project-local merge rules.
 
-May be executed for an individual pull request or invoked across a batch by a single worker instructed to fan out in parallel using concurrent subagents or isolated worktrees.
+A worker executing this workflow may coordinate parallel subagents to conduct independent checks or review lenses concurrently.
 
 ## Input contract
 
-- An open pull request identifier or URL (or batch of PR identifiers when operating in single-worker fan-out mode).
+- An open pull request identifier or URL.
 - Repository git access and platform CLI (`gh`).
 - Project rules and merge policy (from repository project rules or local templates).
 
