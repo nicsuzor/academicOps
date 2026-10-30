@@ -29,12 +29,12 @@ In accordance with the Single Source of Truth axiom (`plugins/rbg/skills/axioms/
 - **Canonical Carrier (`.agents/rules/current-state-only.md`):**
   A dedicated project-local rule file with `trigger: always_on`. This file is the single authoritative source of truth for the three rules. It is loaded automatically by the rule evaluation hook (`plugins/rbg/hooks/rules.py`), compliance review lenses (`plugins/rbg/agents/rbg.md`), and automated review agents.
 - **Harness Integration via CORE.md:**
-  `.agents/CORE.md:50` already links all project rules via `Project-local rules: rules/RULES.md and rules/*.md.`, giving executing agents universal visibility across Claude Code and Antigravity harnesses without duplicating rule text. In Stage 2 (Build), the legacy partial clause in `.agents/CORE.md:25-27` ("Instructions are operative") will be retired in favour of this single canonical rule to eliminate competing definitions.
+  `.agents/CORE.md:50` already links all project rules via `Project-local rules: rules/RULES.md and rules/*.md.`, giving executing agents universal visibility across Claude Code and Antigravity harnesses without duplicating rule text. The legacy partial clause in `.agents/CORE.md` ("Instructions are operative") is retired in favour of this single canonical rule to eliminate competing definitions.
+- **Rejected alternative:** Duplicating rule text across `CORE.md` and persona definitions was rejected under Single Source of Truth to maintain a single canonical carrier.
 
 ### 2. Enforcement-Map Status
 
-- **Current Status:** Absent. Inspection of `specs/ENFORCEMENT-MAP.md` confirms that no rows currently exist governing backwards compatibility, deletion of deprecated files, or current-state-only instruction/code conventions.
-- **Planned Mapping:** During Stage 2 (Build), `specs/ENFORCEMENT-MAP.md` will be updated under `## Agent instructions` with a dedicated row:
+- **Status:** Recorded under `## Agent instructions` in `specs/ENFORCEMENT-MAP.md`:
   `| [Project Rule: Current State Only](../.agents/rules/current-state-only.md) -- Deprecated files deleted; no history in instructions or code; specs may carry one concise rejected-choice bullet. | instructions | imperative | .agents/rules/current-state-only.md:1-20 |`
 
 ### 3. Proposed Rule Wording
