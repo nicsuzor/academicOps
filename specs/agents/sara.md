@@ -88,7 +88,7 @@ State lives entirely in the task body, so any instance can resume from where a p
 ```
 queued → in_progress → done (deliverable accepted)
                 │
-                ├→ review (transient: worker needs help; moved on by reconcile)
+                ├→ [review retired from worker release; manual human hold only]
                 ├→ partial (terminal: chunk handed back, remainder carried by
                 │           continue tasks -- see
                 │           [[specs/polecat/spec-partial-work-tight-loop-delivery.md]] §4)
