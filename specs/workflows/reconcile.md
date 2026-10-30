@@ -34,7 +34,7 @@ one is covered.
    workflows and skills invoke it; they do not re-implement it.
 2. **No shitty NLP.** Mechanical matching is allowed only on guaranteed-structured surfaces
    (frontmatter fields, the GH API's `closingIssuesReferences`, frontmatter URLs). Anywhere prose
-   is involved, an agent reads it.
+   is involved, an agent reads it ([`human-readability-first`](../../plugins/rbg/skills/axioms/human-readability-first.md)).
 3. **State lives in PKB frontmatter.** Deltas between GH state and PKB state surface through a
    short-lived event log, which is a queue of unprocessed deltas, not state.
 4. **All task writes go through PKB MCP.** That is the concurrency primitive.

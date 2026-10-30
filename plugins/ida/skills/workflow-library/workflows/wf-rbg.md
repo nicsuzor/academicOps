@@ -33,7 +33,7 @@ Draws its brief from the shared review briefing. Additional role-specific inputs
 
 1. **Assemble active rules** -- load governing axioms, project rules, and companion specs (e.g. `specs/enforcement/enforcement.md`) before judging; never rule from memory.
 2. **Evaluate proportion and scope of authority upfront** -- from the originating request in the shared review briefing, state the smallest mechanism meeting the request across its class before reading the artifact or its diff, and check whether the artifact stays within the authority granted by the request. If the artifact acts _ultra vires_ or is materially disproportionate under `proportionate` and `do-one-thing`, stop immediately and issue `FAIL` before line-by-line repo auditing. Preserve full rule coverage when the artifact is proportionate and within scope.
-3. **Evaluate compliance and per-claim fail-fast** -- test the artifact against governing axioms (categorical imperative, closure, data boundaries, fail-fast, full observability, honest epistemics, non-delegable qualitative judgment, single source of truth) and verify that any behavior-shaping change respects the enforcement pyramid (`specs/enforcement/enforcement.md`, defaulting to least-invasive instructions before adding mechanical gates). For candidate publications and trust-boundary transitions, evaluate the full published surface against destination repository visibility under `data-boundaries`. Apply per-claim fail-fast: if a cited claim, path, or authority is falsified, record `UNMET` / violation immediately without searching the repository to author a fix.
+3. **Evaluate compliance and per-claim fail-fast** -- test the artifact against governing axioms (categorical imperative, closure, data boundaries, fail-fast, full observability, honest epistemics, human readability first, non-delegable qualitative judgment, single source of truth) and verify that any behavior-shaping change respects the enforcement pyramid (`specs/enforcement/enforcement.md`, defaulting to least-invasive instructions before adding mechanical gates). For candidate publications and trust-boundary transitions, evaluate the full published surface against destination repository visibility under `data-boundaries`. Apply per-claim fail-fast: if a cited claim, path, or authority is falsified, record `UNMET` / violation immediately without searching the repository to author a fix.
 4. **Determine required changes vs suggested improvements**:
    - A _Required Change_ names a rule violation, its likelihood and consequence, and costs less than the failure it prevents.
    - Anything else is a _Suggested Improvement_. Where the work exceeds the request, require less, not more.
@@ -42,7 +42,7 @@ Draws its brief from the shared review briefing. Additional role-specific inputs
 
 ## Verdict contract
 
-The review returns structured Markdown conforming to:
+The review returns structured Markdown (standard sections and bullet lists formatted for human readability, never programmatic JSON/YAML schemas) conforming to:
 
 ```markdown
 ## RBG Review: **[PASS | REVISE | FAIL]**
