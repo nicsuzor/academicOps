@@ -11,7 +11,7 @@ The architectural specification detailing design rationale, theoretical mechanis
 
 - **Stated Purpose:** Defines the theoretical foundation, mechanism categories, and proportionality model governing how the framework restrains, steers, and verifies agent behavior without programmatic micro-management.
 - **Primary Audience:** Framework architects, system developers, and compliance auditors designing, modifying, or reviewing enforcement mechanisms and policies.
-- **Current Truth / SSoT:** The empirical register of active rules, mechanisms, severity levels, and pinpoints is [`specs/ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md). Nothing here restates that live table.
+- **Current Truth / SSoT:** The empirical register of active rules, mechanisms, severity levels, and pinpoints is [`specs/ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md), governed by [`specs/enforcement/enforcement-map.md`](enforcement-map.md). Nothing here restates that live table.
 
 ## Governing principle -- agents all the way down
 
@@ -43,14 +43,9 @@ User attention is the scarce, non-renewable resource of the system and the prima
 - **Strict serialization**: Present at most one decision or question per message; never dump lists, aggregated decision cards, or multi-question batches.
 - **Progressive disclosure**: Deliver bottom-line actionable takeaways first (concise, self-contained, mechanism-mapped), reserving deep evidence, technical logs, and traces for on-demand inspection rather than upfront narration.
 
-## The table schema (4 columns)
+## The enforcement register (schema & inclusion)
 
-The enforcement register is structured in 4 columns:
-
-1. **Rule / nudge** -- The short-form linked reference to the rule (e.g. `[Axiom: Data Boundaries](../../plugins/rbg/skills/axioms/data-boundaries.md)` or `[Persona: Ida](../../plugins/ida/agents/ida.md)`) paired with the operative obligation or steering intent.
-2. **Mechanism** -- The carrier category from the controlled vocabulary.
-3. **Severity** -- The force of intervention within the mechanism.
-4. **Detail** -- The pinpoint verification reference (`path:line` + operative snippet or handler function) and operational state flags (`[DISABLED]`, `[MAP DRIFT]`).
+The enforcement register ([`specs/ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md)) is the canonical empirical state document mapping active behavioral controls. Its table schema, row-by-row inclusion boundaries, and concision invariants are governed by [`specs/enforcement/enforcement-map.md`](enforcement-map.md).
 
 ## Mechanism categories and force gradations
 
