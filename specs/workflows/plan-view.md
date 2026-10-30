@@ -23,6 +23,7 @@ As a user with a preferred plan visualization style, I want decomposition to use
 - **AC-2.1** Given an explicit plan-view template specified by the user, when decomposition renders the plan view, then it selects and applies the user-specified template.
 - **AC-2.2** Given no plan-view template specified by the user, when decomposition renders the plan view, then it discovers templates tagged `plan-view` and selects the template whose frontmatter specifies `default: true`.
 - **AC-2.3** Given decomposition instructions, when inspected, then the instructions identify the template through the `plan-view` tag and `default: true` frontmatter marker rather than hardcoded template names or identifiers.
+- **AC-2.4** Given a missing user-specified template, an absence of any `plan-view` templates, or conflicting multiple `default: true` templates, when decomposition runs, then the process halts loudly with an explicit error rather than silently defaulting or guessing.
 
 ### US-3 Synchronized redrawing on re-runs
 
@@ -44,8 +45,8 @@ The plan view is strictly structural:
 
 Decomposition selects the rendering template through tag and frontmatter metadata:
 
-1. **User override:** If the user specifies a template name or identifier in the decomposition prompt or parameters, that template is used.
-2. **Default selection:** If no template is named by the user, decomposition queries templates tagged `plan-view` and selects the one with `default: true` in its frontmatter.
+1. **User override:** If the user specifies a template name or identifier in the decomposition prompt or parameters, that template is used. If the specified template cannot be resolved, execution halts loudly naming the missing template.
+2. **Default selection:** If no template is named by the user, decomposition queries templates tagged `plan-view` and selects the one with `default: true` in its frontmatter. If no template carries the tag, or if multiple templates carry `default: true`, execution halts loudly naming the ambiguity or absence.
 3. **Decoupled skill:** The decomposition skill contains no hardcoded template identifiers or names, preserving modularity and runtime composition.
 
 ### 3. Plan-view components
@@ -64,12 +65,33 @@ Each run of decomposition treats the `## Plan` section as an atomic, derived pro
 - The section begins with `## Plan` and is completely rewritten on every run.
 - When nodes are added, collapsed, merged, or reparented, re-running decomposition walks the current descendant tree and emits a fresh diagram and table.
 
+### 5. Enforcement pyramid and proportionality analysis
+
+Per framework enforcement architecture, the mechanism for steering decomposition to generate plan views was evaluated across the enforcement pyramid options from least-invasive to most-invasive:
+
+1. **`doctrine only`**: Rejected. Broad declarations that plans should be transparent do not provide operational guidance for generating structured sections during decomposition runs.
+2. **`instructions` (`imperative`)**: Selected. Adding an imperative procedural step to the decomposition skill (`plugins/ida/skills/decompose/SKILL.md`) directs executing agents to discover the default or requested template and render the plan view. This satisfies the "default to instructions" mandate with zero tooling overhead.
+3. **`JIT injection`**: Rejected. Executing agents already load the decomposition skill; injecting duplicate runtime prompts on task creation introduces redundant token cost.
+4. **`structural`**: Rejected. Mechanical graph-rendering hooks or deterministic markdown injectors would add rigid, high-maintenance code, violating agentic-first principles and prohibitions against over-engineered builds.
+5. **`process`**: Selected for validation. Downstream QA and review lenses verify the presence and fidelity of the rendered plan view without requiring mechanical runtime enforcement.
+6. **`post-hoc`**: Maintained. Task version history in the knowledge base and repository records preserve prior plan states.
+
+### 6. Proposed enforcement map extract (Stage 2 implementation)
+
+During the follow-up build stage, the live enforcement register (`specs/ENFORCEMENT-MAP.md`) will be updated with the following extract once `plugins/ida/skills/decompose/SKILL.md` is modified and verified:
+
+```markdown
+| [Skill: Decompose](../plugins/ida/skills/decompose/SKILL.md) -- Write and redraw a plan graph on the top-level task via the default or user-named plan-view template, showing planned process only without task status. | instructions | imperative | `plugins/ida/skills/decompose/SKILL.md`: Each `/decompose` run selects the user-specified or default `plan-view` template (without hardcoded names) and renders the stage strip, dependency graph, legend, and summary table on the top-level task, redrawing in place on re-runs; status is omitted to preserve SSoT (`specs/workflows/plan-view.md`). Instruction-sharpening move on user request to inspect planned process without opening individual task bodies. Observation: Top-level tasks carry structural plan views redrawn on each pass without status duplication. |
+```
+
+- **Evidence for the move:** User feedback in iterative planning sessions demonstrated that supervisors could not evaluate whether a decomposition balanced research, build, and review without opening every child task record. Restricting the plan view to static process structure preserves Single Source of Truth while providing immediate objective-level clarity.
+
 ## Outcome-level build criteria
 
 When implementing the plan-view step in decomposition instructions (in follow-up build work), the implementation must satisfy the following outcome-level build criteria:
 
-- **BC-1 (Template Selection):** Decomposition instructions require selecting the user-named plan-view template if specified, or discovering templates tagged `plan-view` and selecting the one carrying `default: true` in frontmatter; the skill instructions contain no hardcoded template name or identifier.
+- **BC-1 (Template Selection and Fail-Fast):** Decomposition instructions require selecting the user-named plan-view template if specified, or discovering templates tagged `plan-view` and selecting the one carrying `default: true` in frontmatter; execution halts loudly on missing templates, absent tags, or ambiguous multiple defaults; the skill instructions contain no hardcoded template name or identifier.
 - **BC-2 (Rendered Plan View):** Decomposition instructions require rendering a `## Plan` section on the top-level task containing the stage strip, Mermaid dependency graph, workflow color legend, and summary table derived from descendant tasks.
 - **BC-3 (Status Exemption):** The rendered plan view contains no task status, assignee, or progress information, maintaining single source of truth on child tasks.
 - **BC-4 (In-Place Redraw):** Decomposition instructions require completely replacing any existing `## Plan` section on subsequent runs to reflect added detail and graph revisions.
-- **BC-5 (Enforcement Alignment):** `specs/ENFORCEMENT-MAP.md` records the imperative instruction for decomposition plan-view rendering under `## Agent instructions`.
+- **BC-5 (Enforcement Alignment):** `specs/ENFORCEMENT-MAP.md` records the imperative instruction for decomposition plan-view rendering under `## Agent instructions` once the skill modification is completed and verified in Stage 2.
