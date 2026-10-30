@@ -246,7 +246,7 @@ def test_resolve_mcp_headers_reads_environment():
 
     with patch.dict(
         os.environ,
-        {"WORKER_MCP_TOKEN_ID": "id123", "WORKER_MCP_TOKEN_SECRET": "sec456"},
+        {"DISPATCHER_MCP_TOKEN_ID": "id123", "DISPATCHER_MCP_TOKEN_SECRET": "sec456"},
         clear=True,
     ):
         assert handlers._resolve_mcp_headers() == {
@@ -255,52 +255,35 @@ def test_resolve_mcp_headers_reads_environment():
         }
 
 
-def test_resolve_mcp_headers_falls_back_to_dispatcher_pair():
-    """With no worker pair set, the dispatcher pair supplies the Access headers."""
+def test_resolve_mcp_headers_ignores_retired_worker_pair():
+    """The hook expects only DISPATCHER_MCP_TOKEN_*; worker pairs are not read by the hook."""
     with patch.dict(
         os.environ,
-        {"DISPATCHER_MCP_TOKEN_ID": "did", "DISPATCHER_MCP_TOKEN_SECRET": "dsec"},
+        {"WORKER_MCP_TOKEN_ID": "wid", "WORKER_MCP_TOKEN_SECRET": "wsec"},
         clear=True,
     ):
-        assert handlers._resolve_mcp_headers() == {
-            "CF-Access-Client-Id": "did",
-            "CF-Access-Client-Secret": "dsec",
-        }
-
-
-def test_resolve_mcp_headers_prefers_worker_pair():
-    """The worker pair, which has no polecat dispatch access, wins over the dispatcher pair."""
-    with patch.dict(
-        os.environ,
-        {
-            "WORKER_MCP_TOKEN_ID": "wid",
-            "WORKER_MCP_TOKEN_SECRET": "wsec",
-            "DISPATCHER_MCP_TOKEN_ID": "did",
-            "DISPATCHER_MCP_TOKEN_SECRET": "dsec",
-        },
-        clear=True,
-    ):
-        assert handlers._resolve_mcp_headers() == {
-            "CF-Access-Client-Id": "wid",
-            "CF-Access-Client-Secret": "wsec",
-        }
+        assert handlers._resolve_mcp_headers() == {}
 
 
 def test_resolve_mcp_headers_ignores_half_a_pair():
-    """An id without its secret is not a credential; the next pair is used instead."""
+    """An id without its secret is not a credential; empty headers returned."""
     with patch.dict(
         os.environ,
         {
-            "WORKER_MCP_TOKEN_ID": "wid",
             "DISPATCHER_MCP_TOKEN_ID": "did",
+        },
+        clear=True,
+    ):
+        assert handlers._resolve_mcp_headers() == {}
+
+    with patch.dict(
+        os.environ,
+        {
             "DISPATCHER_MCP_TOKEN_SECRET": "dsec",
         },
         clear=True,
     ):
-        assert handlers._resolve_mcp_headers() == {
-            "CF-Access-Client-Id": "did",
-            "CF-Access-Client-Secret": "dsec",
-        }
+        assert handlers._resolve_mcp_headers() == {}
 
 
 def test_resolve_mcp_headers_ignores_legacy_variable(caplog):
@@ -637,8 +620,8 @@ def test_search_the_pkb_sends_one_post_with_headers(http_mcp_server, monkeypatch
     )
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("PKB_MCP_URL", http_mcp_server.url)
-    monkeypatch.setenv("WORKER_MCP_TOKEN_ID", "wid")
-    monkeypatch.setenv("WORKER_MCP_TOKEN_SECRET", "wsec")
+    monkeypatch.setenv("DISPATCHER_MCP_TOKEN_ID", "wid")
+    monkeypatch.setenv("DISPATCHER_MCP_TOKEN_SECRET", "wsec")
     monkeypatch.delenv("PKB_MCP_TOOL_PREFIX", raising=False)
 
     ctx = HookContext(
@@ -778,8 +761,8 @@ def test_search_the_pkb_injected_message_on_401(staged_hooks: Path, http_mcp_ser
     assert "refused authorisation" in injected
     assert "401" in injected
     assert legacy_var not in injected
-    assert "WORKER_MCP_TOKEN_ID" in injected
-    assert "WORKER_MCP_TOKEN_SECRET" in injected
+    assert "WORKER_MCP_TOKEN_ID" not in injected
+    assert "WORKER_MCP_TOKEN_SECRET" not in injected
     assert "DISPATCHER_MCP_TOKEN_ID" in injected
     assert "DISPATCHER_MCP_TOKEN_SECRET" in injected
     assert len(http_mcp_server.requests) == 1
@@ -813,8 +796,8 @@ def test_search_the_pkb_injected_message_on_403(staged_hooks: Path, http_mcp_ser
     assert "refused authorisation" in injected
     assert "403" in injected
     assert legacy_var not in injected
-    assert "WORKER_MCP_TOKEN_ID" in injected
-    assert "WORKER_MCP_TOKEN_SECRET" in injected
+    assert "WORKER_MCP_TOKEN_ID" not in injected
+    assert "WORKER_MCP_TOKEN_SECRET" not in injected
     assert "DISPATCHER_MCP_TOKEN_ID" in injected
     assert "DISPATCHER_MCP_TOKEN_SECRET" in injected
     assert len(http_mcp_server.requests) == 1
@@ -875,8 +858,8 @@ def test_search_the_pkb_ignores_legacy_headers_and_authenticates_with_canonical_
 
     # 2. With only a canonical pair set, the hook authenticates carrying the token pair
     monkeypatch.delenv(legacy_var, raising=False)
-    monkeypatch.setenv("WORKER_MCP_TOKEN_ID", "wid123")
-    monkeypatch.setenv("WORKER_MCP_TOKEN_SECRET", "wsec456")
+    monkeypatch.setenv("DISPATCHER_MCP_TOKEN_ID", "did123")
+    monkeypatch.setenv("DISPATCHER_MCP_TOKEN_SECRET", "dsec456")
 
     ctx2 = HookContext(
         client="claude",
@@ -888,8 +871,8 @@ def test_search_the_pkb_ignores_legacy_headers_and_authenticates_with_canonical_
     )
     handlers.search_the_pkb(ctx2)
     assert len(http_mcp_server.requests) == 2
-    assert http_mcp_server.requests[1]["headers"]["cf-access-client-id"] == "wid123"
-    assert http_mcp_server.requests[1]["headers"]["cf-access-client-secret"] == "wsec456"
+    assert http_mcp_server.requests[1]["headers"]["cf-access-client-id"] == "did123"
+    assert http_mcp_server.requests[1]["headers"]["cf-access-client-secret"] == "dsec456"
 
 
 def test_search_the_pkb_session_fallback_and_caching(monkeypatch, tmp_path):

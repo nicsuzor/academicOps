@@ -197,37 +197,31 @@ def extract_prompt_query(prompt: str) -> str:
     return text[:_MAX_QUERY_CHARS]
 
 
-# Cloudflare Access service-token pairs. The hook and runtime expect canonical
-# token pairs. Launching apps substitute the appropriate keys for different
-# surfaces and use cases: WORKER_MCP_TOKEN_* in containerized worker environments,
-# and DISPATCHER_MCP_TOKEN_* in interactive client/workstation environments.
-_ACCESS_TOKEN_PAIRS = (
-    ("WORKER_MCP_TOKEN_ID", "WORKER_MCP_TOKEN_SECRET"),
-    ("DISPATCHER_MCP_TOKEN_ID", "DISPATCHER_MCP_TOKEN_SECRET"),
-)
+# Cloudflare Access service-token credentials. The hook and runtime expect
+# a single canonical set of variable names: DISPATCHER_MCP_TOKEN_ID and
+# DISPATCHER_MCP_TOKEN_SECRET. Launching applications substitute the
+# appropriate keys (e.g. worker-scoped credentials for worker containers)
+# into these environment variables.
+_TOKEN_ID_VAR = "DISPATCHER_MCP_TOKEN_ID"
+_TOKEN_SECRET_VAR = "DISPATCHER_MCP_TOKEN_SECRET"
 
 
 def _resolve_mcp_headers() -> dict[str, str]:
     """HTTP headers for the PKB endpoint, from the environment only.
 
-    The hook and runtime expect canonical Cloudflare Access token pairs.
-    Launching applications substitute the appropriate keys for each surface:
-    the worker pair `WORKER_MCP_TOKEN_ID` / `WORKER_MCP_TOKEN_SECRET` for
-    isolated worker containers, and the dispatcher pair
-    `DISPATCHER_MCP_TOKEN_ID` / `DISPATCHER_MCP_TOKEN_SECRET` for interactive
-    client sessions.
+    The hook and runtime expect the canonical Cloudflare Access token pair:
+    `DISPATCHER_MCP_TOKEN_ID` and `DISPATCHER_MCP_TOKEN_SECRET`. Launching
+    applications substitute the appropriate keys for different surfaces and
+    use cases (such as worker-scoped credentials in isolated worker containers).
     """
-    headers: dict[str, str] = {}
-
-    for id_var, secret_var in _ACCESS_TOKEN_PAIRS:
-        cf_id = os.environ.get(id_var)
-        cf_secret = os.environ.get(secret_var)
-        if cf_id and cf_secret:
-            headers.setdefault("CF-Access-Client-Id", cf_id)
-            headers.setdefault("CF-Access-Client-Secret", cf_secret)
-            break
-
-    return headers
+    cf_id = os.environ.get(_TOKEN_ID_VAR)
+    cf_secret = os.environ.get(_TOKEN_SECRET_VAR)
+    if cf_id and cf_secret:
+        return {
+            "CF-Access-Client-Id": cf_id,
+            "CF-Access-Client-Secret": cf_secret,
+        }
+    return {}
 
 
 def _tracer_state_dir() -> Path:
@@ -362,7 +356,7 @@ def _initialize_mcp_session(mcp_url: str, base_headers: dict[str, str]) -> str |
     except urllib.error.HTTPError as exc:
         if exc.code in (401, 403):
             raise RuntimeError(
-                f"the PKB endpoint refused authorisation (HTTP {exc.code}); check WORKER_MCP_TOKEN_ID / WORKER_MCP_TOKEN_SECRET, or DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
+                f"the PKB endpoint refused authorisation (HTTP {exc.code}); check DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
             ) from exc
         raise RuntimeError(
             f"the PKB endpoint failed with HTTP {exc.code} during initialize: {exc.reason}"
@@ -502,7 +496,7 @@ def _post_mcp_search(
 
     if status in (401, 403):
         raise RuntimeError(
-            f"the PKB endpoint refused authorisation (HTTP {status}); check WORKER_MCP_TOKEN_ID / WORKER_MCP_TOKEN_SECRET, or DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
+            f"the PKB endpoint refused authorisation (HTTP {status}); check DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
         )
 
     session_needed = False
@@ -538,7 +532,7 @@ def _post_mcp_search(
             status, body = _execute_post(req_headers)
             if status in (401, 403):
                 raise RuntimeError(
-                    f"the PKB endpoint refused authorisation (HTTP {status}); check WORKER_MCP_TOKEN_ID / WORKER_MCP_TOKEN_SECRET, or DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
+                    f"the PKB endpoint refused authorisation (HTTP {status}); check DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
                 )
             if status != 200:
                 clean_body = " ".join(body.split())

@@ -39,16 +39,13 @@ token the client holds for its own `services` connection, so it needs its own
 credential in the environment the client is launched from (the container or
 launchd environment, not the agent's shell).
 
-The hook and runtime expect canonical Cloudflare Access service-token pairs.
-Launching apps substitute the appropriate keys for different surfaces and use
-cases:
+The hook and runtime expect canonical Cloudflare Access service-token credentials:
 
-- `DISPATCHER_MCP_TOKEN_ID` and `DISPATCHER_MCP_TOKEN_SECRET` -- the client-side
-  credential for interactive Claude Code and AGY sessions on developer/user
-  workstations
-- `WORKER_MCP_TOKEN_ID` and `WORKER_MCP_TOKEN_SECRET` -- the credential substituted
-  by launching apps (such as polecat) for isolated worker containers without
-  dispatch access
+- `DISPATCHER_MCP_TOKEN_ID` and `DISPATCHER_MCP_TOKEN_SECRET` -- the Cloudflare Access
+  service token pair. The hook itself and everything running in the framework
+  expects only this set of names. Launching apps substitute the appropriate keys
+  for different surfaces and use cases (for example, substituting worker-scoped
+  keys without polecat dispatch access for isolated worker containers).
 
 **Check it is working.** A grounded turn carries
 `<academicOps PKB search results>` in its hook context. A failing one carries
