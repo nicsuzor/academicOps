@@ -7,6 +7,16 @@ description: List, read, add, edit, and retire workflow templates across project
 
 Manage composable workflow templates (`type: template`) across three resolution tiers.
 
+## Foundational Structural Invariants
+
+Every workflow composed across all tiers must adhere to two universal invariants:
+
+1. **Decision Step on Design Research Invariant:** Every research task investigating an open design question, architectural pattern, technology evaluation, or implementation trade-off must, by default, include a dependent decision task assigned to the user (`assignee: user`) that depends on the research artifact. In this decision task, the user selects the implementation route. Downstream implementation tasks are strictly blocked on this decision task.
+2. **Review and Follow-Up Structural Placement Invariant:** Every task requiring a review, verification, or subsequent follow-up step must be structured in exactly one of two valid topological patterns:
+   - **Single Task with Internal Subtasks:** If all steps (e.g. build, local verification, documentation) can be executed by the same agent in one continuous session, they must remain internal subtasks (checklist items) within a single task body.
+   - **Dedicated Epic with Child Tasks:** If the steps require independent sessions, clean execution context, distinct reviewer personas (`pauli`, `rbg`, `marsha`), different tool boundaries, or human decision gates, the work must be structured as a dedicated epic containing separate child tasks (e.g. Child 1: Primary Task, Child 2: Review / Decision / Follow-up), with dependencies explicitly wired between children (`Child 2` `needs: [Child 1]`).
+   - **Prohibition:** A task and its subsequent follow-up or review step must never be created as loose siblings under an external parent.
+
 ## Tiers and Resolution
 
 Resolution order is **Project > PKB > Universal**. Higher tiers shadow lower tiers completely; never merge text across tiers.

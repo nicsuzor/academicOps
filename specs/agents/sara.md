@@ -64,6 +64,10 @@ Every delegation MUST leave an inspectable trace; nothing is fire-and-forgotten:
   events at `$POLECAT_HOME/transcripts/<task-id>.jsonl`; session transcripts under
   `$AOPS_SESSIONS`). Where a surface does not yet persist transcripts automatically,
   this is a target requirement, not yet enforced.
+- **Completion record**: container termination is recorded by the Docker exit
+  listener, emitted as OpenTelemetry `polecat.container.exit` spans, and queued in
+  `polecat_events`. There is no UDS socket push into supervisor sessions; completion
+  events are delivered to the supervisor via the dashboard daemon bridge.
 - **Verdict**: the supervisor's evaluation outcome is recorded on the task or epic
   ledger, so any later reader can see what was accepted and why.
 

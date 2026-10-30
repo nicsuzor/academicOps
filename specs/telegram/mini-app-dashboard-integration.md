@@ -56,6 +56,14 @@ As an operator, I want all agent interface surfaces hosted and routed exclusivel
 - **AC-5.3** Given the consolidated hosting architecture, when external ingress routing is configured, then external traffic routes exclusively to the central dashboard ingress, eliminating dedicated agent WebApp tunnels.
 - **AC-5.4** Given the migration of standalone surfaces to the dashboard, when the standalone Mini App web server is terminated, then all interactive capabilities (questions, details, reviews, cognitive anchor) continue operating through the dashboard service with zero regression in state synchronization.
 
+### US-6 Unified Operational Event Ingestion and Session Waking
+
+As an autonomous framework supervisor, I want the operational dashboard daemon to ingest asynchronous infrastructure events (`polecat_events` and repository webhooks) and wake agent sessions across its HTTP/SSE channel bridge, so that task completions, pull request updates, and repository events trigger immediate supervision and reconciliation passes without client polling loops or ad-hoc host socket relays.
+
+- **AC-6.1** Given completed worker containers recorded in `polecat_events`, when unacknowledged completion events are present, then the daemon consumes the events, dispatches a wake notification to the active supervisor session over the bridge, and marks the events acknowledged.
+- **AC-6.2** Given an inbound repository webhook (such as PR review comments, CI status completion, or PR merges), when received by the dashboard daemon's webhook ingress, then the daemon translates the event into a structured session event and wakes the target agent session.
+- **AC-6.3** Given an active agent session connected over the HTTP/SSE bridge, when an operational event is dispatched, then the bridge delivers the structured notification to the session within the configured debounce window.
+
 ## Design
 
 ### 1. Unified Serving and Perimeter Authentication (US-1)
@@ -219,3 +227,29 @@ The conversational agent plugin previously bundled an internal HTTP server and d
 3. **Client Continuity and Backward Compatibility:**
    - Telegram Bot configuration updates the Mini App launch URL to route to the operational dashboard domain (`/app/*`), ensuring single-tap mobile access functions seamlessly without disruption.
    - All interactive capabilities (cognitive anchor inspection, question answering with details expansion, tool permission authorization, and emergency stopping) operate identically through the dashboard serving layer.
+
+### 6. Unified Operational Event Ingestion and Session Waking (US-6)
+
+#### 6.1 Context and Problem
+
+Background worker containers operate headless and asynchronously. Distributed task completion and external repository activity (such as pull request reviews, CI check completions, and branch merges) must wake active supervisor sessions promptly without relying on client polling loops or host-specific socket daemons.
+
+#### 6.2 Event Ingestion and Delivery Architecture
+
+The operational dashboard daemon centralises operational event ingestion across worker container exits and repository webhooks, acting as the singular session bridge:
+
+1. **Worker Completion Event Ingestion:**
+   - The daemon continuously monitors the unacknowledged queue of worker completion events emitted by the container runtime exit listener.
+   - Completions are debounced over a short window (10–60 seconds) to coalesce concurrent container exits into a single supervisory notification turn.
+   - Each notification carries the task identifier, container reference, exit code, terminal task status, and execution duration.
+   - Upon confirmed delivery to the session bridge, the daemon marks the processed events acknowledged in the queue.
+2. **Repository Webhook Ingestion:**
+   - The dashboard daemon hosts an authenticated webhook ingress endpoint protected by cryptographic signature verification.
+   - The ingress accepts repository lifecycle events, including pull request mutations, review submissions, and automated check completions.
+   - Inbound webhook events matching active supervisory contexts are translated into structured operational notifications.
+3. **Session Waking and Turn Dispatch:**
+   - Operational notifications are delivered to the active supervisor session over the authenticated HTTP channel bridge as high-priority inbound turns.
+   - Receipt of a notification induces an immediate reactive execution turn in the supervisor session to evaluate returned evidence, perform verification, and advance dependent workflows.
+4. **Offline Session Persistence Invariant:**
+   - When no active supervisor session is connected to the channel bridge, unacknowledged events remain persisted in the event queue without expiration or loss.
+   - Upon supervisor session connection or bridge re-attachment, the daemon flushes all unacknowledged events as a consolidated batch snapshot, waking the session to reconcile accumulated state.
