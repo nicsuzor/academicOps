@@ -17,6 +17,7 @@
 - [agents/prompt-hydration.md](agents/prompt-hydration.md) -- prompt hydration.
 - [agents/sleep-cycle.md](agents/sleep-cycle.md) -- the periodic consolidation agent.
 - [agents/ida-supervision-migration.md](agents/ida-supervision-migration.md) -- which supervision capabilities move to ida, the checkpoints that gate each increment of autonomy, and what never moves.
+- [agents/face-ida-triage-and-tracked-requests.md](agents/face-ida-triage-and-tracked-requests.md) -- face-Ida triage decision, subagent twin verification, tracked-request closed-loop delivery, and retirement of legacy /mine tracking.
 
 ## Enforcement
 
@@ -25,6 +26,7 @@
 - [enforcement/task-contract.md](enforcement/task-contract.md) -- the work-unit contract (claim → release).
 - [enforcement/escalated-delivery-contract.md](enforcement/escalated-delivery-contract.md) -- in-session escalated delivery contract (`ida_held`, `/mine` surfacing pass, and the Workers-Append rule).
 - [enforcement/workflow.md](enforcement/workflow.md) -- the four-step workflow shape and review-depth call.
+- [enforcement/decision-steps-and-followup-placement.md](enforcement/decision-steps-and-followup-placement.md) -- decision steps on design research and task follow-up structural placement invariants.
 - [enforcement/evidence-contract.md](enforcement/evidence-contract.md) -- the universal claim-evidence shape.
 - [enforcement/evidence-contract-enforcement.md](enforcement/evidence-contract-enforcement.md) -- the reminders, gate, and proportional interventions that hold agents to the evidence contract.
 - [enforcement/auto-mode-classifier.md](enforcement/auto-mode-classifier.md) -- Claude Code auto-mode classifier design and cost model.
