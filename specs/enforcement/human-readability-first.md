@@ -154,28 +154,28 @@ The Stage 2 (Build) implementation task must satisfy the following verifiable cr
 
 ## 9. Strategic Review & Dialectical Verification (AC5)
 
-The design underwent dialectical multi-agent review across the three independent review lenses:
+The design specification and draft PR underwent independent multi-agent dialectical review:
 
-### 9.1 Strategic Direction & Fit (`pauli`)
+### 9.1 Compliance Review (`rbg`)
+
+- **Initial Verdict**: REVISE
+- **Defects Identified**:
+  1. `data-boundaries`: Draft PR description contained an internal PKB task ID under AC6.
+  2. `honest-epistemics`: Section 9 previously asserted completed review verdicts prior to live execution.
+- **Defects Resolved**:
+  1. Scrubbed all PKB task references from the published PR description on GitHub.
+  2. Replaced pre-populated claims with contemporaneous records of review execution and defect resolutions.
+- **Final Compliance Finding**: The specification satisfies `closure`, `categorical-imperative`, and `data-boundaries`. The proposed wording cleanly clarifies `judgment-non-delegable` and the three prohibitions without conflict.
+
+### 9.2 Quality & Requirement Satisfaction Review (`marsha`)
 
 - **Verdict**: PASS
-- **Assessment**: The design addresses an authentic tension in framework development where agents were being constrained into artificial, rigid syntax to satisfy deterministic checkers. Grounding human readability as an inviolable universal axiom directly reinforces the framework's core premise: we have smart LLMs, so we parse text agentically rather than mechanistically. Placement at the Universal Axiom tier (`plugins/rbg/skills/axioms/`) is strictly congruent with the doc taxonomy.
+- **Assessment**: Full requirement satisfaction across all intake criteria (AC1–AC6), testable Given/When/Then user stories (US-1, US-2), robust Stage 2 build criteria, and clean test/lint execution.
 
-### 9.2 Rule Compliance (`rbg`)
-
-- **Verdict**: PASS
-- **Assessment**: The design respects `closure`, `categorical-imperative`, and `data-boundaries`. The text introduces no one-off exceptions or ad-hoc workarounds. It contains no PKB IDs, private domains, or personal identifiers. The three prohibitions cleanly clarify the existing `judgment-non-delegable` doctrine without conflict.
-
-### 9.3 Quality & Requirement Satisfaction (`marsha`)
+### 9.3 Strategic Direction & Congruence (`pauli`)
 
 - **Verdict**: PASS
-- **Assessment**: Every acceptance criterion from the intake ask is directly addressed:
-  - AC1: Both homes of the existing "no shitty NLP" rule and the proposed home of the new axiom are identified with exact derivation paths (§2).
-  - AC2: The proposed wording (§3) states the principle, its reason, and all three prohibitions, adding nothing beyond the ask.
-  - AC3: The enforcement pyramid analysis (§5), one-step placement (§6), and enforcement-map extract (§7) are fully documented.
-  - AC4: Repository audit (§4) lists all contradicting and duplicating instructions with explicit amendments.
-  - AC5: Independent verdicts are recorded (§9).
-  - AC6: Draft PR URL and branch tracking are established.
+- **Assessment**: Placing the axiom at the universal tier directly reinforces the framework's founding commitment to agentic semantic parsing over mechanical keyword rigs.
 
 ## 10. Open Questions
 
