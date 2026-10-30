@@ -35,10 +35,12 @@ As an operator tapping a command button in the Telegram client menu, I want bare
 
 As an operator managing Telegram bot command surfaces across multiple personas, I want an agent workflow that inspects installed skills, common workflows, and empirical usage metrics, and presents a considered menu recommendation per bot persona with an interactive checkbox proposal, so that command menus reflect actual operational needs without manual auditing.
 
-- **AC-3.1 (Considered recommendation presentation)** Given an operator requesting a menu review or update, when the menu proposal workflow runs, then the agent samples recent workflow and skill invocations from execution telemetry, inspects installed capabilities, and presents a structured recommendation listing proposed commands per bot persona with their invocation frequencies and rationale.
-- **AC-3.2 (Persona-tailored command allocation)** Given candidate commands, when the agent evaluates placement across bot personas, then operational and triage actions are recommended for Ida Prime, reflective and high-altitude actions are recommended for Ida Actual, and shared coordination actions are recommended for both.
+- **AC-3.1 (Considered recommendation presentation & identifier validity)** Given an operator requesting a menu review or update in an interactive session, when the menu proposal workflow runs, then the agent samples recent workflow and skill invocations from execution telemetry, inspects installed capabilities, and presents a structured recommendation listing proposed commands per bot persona with their invocation frequencies and rationale. Every recommended command identifier is a valid Telegram command name matching `^[a-z0-9_]{1,32}$`, converting hyphens to underscores for skills whose names contain hyphens (e.g. `/strategic_review`, `/argument_map`, `/menu_proposal`).
+  - _Check_: The workflow recommendations match `^[a-z0-9_]{1,32}$` and normalize hyphenated skill names to snake_case.
+- **AC-3.2 (Persona-tailored command allocation & headless worker separation)** Given candidate commands, when the agent evaluates placement across bot personas, then operational and triage actions are recommended for Ida Prime, reflective and high-altitude actions are recommended for Ida Actual, and shared coordination actions are recommended for both. Headless worker lifecycle commands (`/pull`, `/dump`) and worker execution hooks are strictly excluded from candidate discovery and menus, keeping interactive conversational menus apart from headless workers (`headless-workers.md`).
+  - _Check_: Verification that `/pull` and `/dump` are absent from candidate discovery and persona menus.
 - **AC-3.3 (Composite command synthesis)** Given recurring multi-step action patterns observed in telemetry or operator requests, when the agent recommends commands, then composite commands synthesizing common workflows into a single menu action (such as daily status and briefing) are included with their intended behavior.
-- **AC-3.4 (Interactive review and codification)** Given the presented recommendation, when the operator confirms or adjusts command placement, then the approved command menus are codified into the bot configuration, ensuring all command names comply with platform constraints (1–32 lowercase alphanumeric and underscore characters, maximum 100 commands per persona).
+- **AC-3.4 (Interactive review and codification)** Given the presented recommendation, when the operator confirms or adjusts command placement in an interactive session, then the approved command menus are codified into the bot configuration, ensuring all command names comply with platform constraints (1–32 lowercase alphanumeric and underscore characters, maximum 100 commands per persona).
 
 ## Design
 
@@ -63,7 +65,7 @@ As an operator managing Telegram bot command surfaces across multiple personas, 
      - `/up`: Step up a level on the last correction and fix the class (`ida:up`).
      - `/reify`: Compose dispatchable tasks on the graph from an objective (`ida:reify`).
      - `/dispatch`: Start polecat workers on queued tasks already on the graph (`ida:dispatch`).
-     - `/daily`: Update today's daily note and reply with a run-down on Telegram (`ida:daily`).
+     - `/daily`: Update the daily note and reply with a run-down on Telegram (`ida:daily`).
    - **Strategic Ida / Ida Actual (`strategic`):**
      - `/strategize`: Reason at strategic altitude and interrogate the core question (`ida:strategize`).
      - `/remember`: Persist facts, decisions, and constraints to the PKB (`ida:remember`).
@@ -76,10 +78,10 @@ As an operator managing Telegram bot command surfaces across multiple personas, 
      - `/argument_map`: Build a reviewable map of a text's argument in Argdown (`ida:argument-map`). _Ida Actual only._
      - `/reify`: Compose dispatchable tasks on the graph from an objective (`ida:reify`).
      - `/dispatch`: Start polecat workers on queued tasks already on the graph (`ida:dispatch`).
-     - `/daily`: Update today's daily note and reply with a run-down on Telegram (`ida:daily`).
-4. **Exclusions:**
+     - `/daily`: Update the daily note and reply with a run-down on Telegram (`ida:daily`).
+4. **Exclusions and Headless Worker Separation:**
    - Official plugin reserved commands (`/start`, `/help`, `/status`) are excluded from registration.
-   - Headless worker commands (`/pull`, `/dump`) are excluded from conversational menus.
+   - Headless worker lifecycle commands (`/pull`, `/dump`) and worker execution hooks are strictly excluded from conversational menus. Per `headless-workers.md`, autonomous workers operate non-interactively and cannot pause for human input; conversational menus exclusively serve interactive chat sessions between human operators and conversational agent personas.
 
 ### 2. Maintainer Note on Skill Renaming
 
@@ -90,26 +92,29 @@ When an underlying skill is renamed in the framework (such as files in `plugins/
 
 ### 3. Telegram Menu Proposal Workflow
 
-1. **Telemetry Sampling and Capability Discovery:**
+1. **Telemetry Sampling, Capability Discovery, and Headless Worker Separation:**
    - The workflow queries recent execution telemetry across agent sessions and subagents to determine empirical invocation frequency for each installed skill and workflow template.
-   - Discovers available capabilities across plugin skill directories and workflow libraries, including operator-facing coordination skills.
+   - Discovers available capabilities across plugin skill directories and workflow libraries, including operator-facing coordination skills (`reify`, `dispatch`, `mine`, `reconcile`, `daily`).
    - Identifies candidate composite commands from recurring prompt patterns or multi-skill compositions.
+   - Strictly excludes reserved platform commands (`start`, `help`, `status`) and headless worker lifecycle commands (`pull`, `dump`). Conversational command menus are reserved exclusively for interactive operator sessions; headless workers never pause for human input, and the interactive proposal workflow is conducted solely within interactive operator sessions (`headless-workers.md`).
 
-2. **Qualitative Evaluation and Persona Allocation:**
+2. **Qualitative Evaluation, Persona Allocation, and Identifier Normalization:**
    - Evaluates each candidate command against the operational mandate of each bot persona:
      - **Ida Prime:** Emphasizes fast triage, task queueing, daily review, single-step decisions, and worker dispatch.
      - **Ida Actual (Strategic Ida):** Emphasizes high-altitude strategizing, reflective reasoning, argument mapping, dialectical review, and goal decomposition.
      - **Shared:** Emphasizes cross-cutting workflow coordination.
    - Enforces Telegram platform invariants: command names must match `[a-z0-9_]{1,32}`, human-readable descriptions must be between 1 and 256 characters, and total registered commands must not exceed 100 per persona scope.
+   - **Command identifier normalization:** Every recommended command must be a valid Telegram command identifier matching `^[a-z0-9_]{1,32}$` (no hyphens, lowercase alphanumeric and underscores only, length 1–32). For candidate skills or workflows named with hyphens (kebab-case, e.g. `strategic-review`, `argument-map`, `menu-proposal`, `session-trace`), the workflow normalizes the name by converting all hyphens to underscores (`strategic-review` $\rightarrow$ `/strategic_review`, `argument-map` $\rightarrow$ `/argument_map`, `menu-proposal` $\rightarrow$ `/menu_proposal`).
 
 3. **Proposal Presentation and Operator Interaction:**
+   - Conducted exclusively in interactive operator sessions:
    - Presents a scannable table or checkbox proposal detailing:
-     - Proposed command name and type (skill, workflow, or composite).
+     - Proposed command name (normalized to `[a-z0-9_]{1,32}`) and type (skill, workflow, or composite).
      - Empirical invocation count from recent telemetry.
      - Recommended persona allocation (`[Prime]`, `[Strategic]`, or `[Both]`) with justification.
      - Description of action taken on bare tap.
    - Solicits operator approval or fine-tuning via structured options or natural language feedback.
 
 4. **Codification and Delivery:**
-   - Upon operator confirmation, the approved menu allocations are codified in the bot persona command definitions.
+   - Upon operator confirmation in the interactive session, the approved menu allocations are codified in the bot persona command definitions.
    - Updates become active on the next bot configuration load or deployment.
