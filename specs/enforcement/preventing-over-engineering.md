@@ -1,8 +1,6 @@
 ---
 title: Preventing Over-Engineered Builds and Preserving Agentic-First Solutions
 status: ready
-type: spec
-tags: [enforcement, axioms, proportionality, non-delegation, over-engineering, review, rbg]
 ---
 
 # Preventing Over-Engineered Builds and Preserving Agentic-First Solutions
@@ -30,7 +28,7 @@ As a compliance auditor or reviewing agent, I want an explicit universal axiom p
 As the rule-compliance reviewer (`rbg`), I want an upfront Gate 0 check comparing candidate artifacts against a non-mechanical baseline before inspecting code diffs or implementation details, so that over-engineered builds are halted immediately at Gate 0 with minimal token spend.
 
 - **AC-3.1** Given a candidate specification, pull request, or design proposal submitted for rule-compliance review, when `rbg` evaluates Gate 0, then `rbg` explicitly determines whether the request can be fulfilled by an agent workflow or prompt instruction without new executable code.
-- **AC-3.2** Given an artifact that introduces executable code, scripts, or unit test suites where the non-mechanical baseline suffices, when `rbg` evaluates Gate 0, then `rbg` halts immediately and issues `REJECT` under `no-over-engineering` and `proportionate` without performing line-by-line repo auditing, test suite reviews, or code styling checks.
+- **AC-3.2** Given an artifact that introduces executable code, scripts, or unit test suites where the non-mechanical baseline suffices, when `rbg` evaluates Gate 0, then `rbg` halts immediately and issues `FAIL` under `no-over-engineering` and `proportionate` without performing line-by-line repo auditing, test suite reviews, or code styling checks.
 
 ## Design
 
@@ -136,8 +134,8 @@ To resolve the failure points identified in the PR #3196 chain, the framework im
 - **Current Placement**: `plugins/rbg/agents/rbg.md:22-29`, `plugins/ida/skills/workflow-library/workflows/wf-rbg.md:35`, and `plugins/ida/skills/workflow-library/workflows/wf-review.md:46` evaluate Gate 0 by stating the smallest proportionate mechanism, but measure size within the same genre as the artifact (e.g. comparing code lines to code lines).
 - **One-Step Change**:
   Update Gate 0 in `plugins/rbg/agents/rbg.md`, `wf-rbg.md`, and `wf-review.md` to mandate the **Non-Mechanical Baseline Check**:
-  > "Before reading the artifact's diff or internal design, state the non-mechanical baseline: can this request be fulfilled by an agent workflow (`wf-*`), prompt instructions (`SKILL.md`), or existing tools without new executable code? If YES, and the artifact builds a script, CLI, or test harness, immediately halt and issue `REJECT` under `no-over-engineering` and `proportionate`. Do not audit code lines, review test coverage, or suggest implementation refinements for machinery that should not exist."
-- **Observation That Proves It Worked**: On any PR or specification proposing scripts for qualitative tasks, RBG renders `REJECT` at Gate 0 with a concise proportion assessment, terminating review within one turn without reading diffs or test files.
+  > "Before reading the artifact's diff or internal design, state the non-mechanical baseline: can this request be fulfilled by an agent workflow (`wf-*`), prompt instructions (`SKILL.md`), or existing tools without new executable code? If YES, and the artifact builds a script, CLI, or test harness, immediately halt and issue `FAIL` under `no-over-engineering` and `proportionate`. Do not audit code lines, review test coverage, or suggest implementation refinements for machinery that should not exist."
+- **Observation That Proves It Worked**: On any PR or specification proposing scripts for qualitative tasks, RBG renders `FAIL` at Gate 0 with a concise proportion assessment, terminating review within one turn without reading diffs or test files.
 
 ### 5. Axiomatic Integration of "Don't Over-Engineer"
 
@@ -170,10 +168,10 @@ Never build a mechanical engine, script, CLI tool, programmatic API wrapper, or 
 
 ### 6. Walk-Through: PR #3196 Under Changed Principles
 
-Under the revised principles, authoring guidelines, and review gates, Nic's originating request in Telegram message 2763 is handled without generating scripts or software builds:
+Under the revised principles, authoring guidelines, and review gates, the user's originating request to curate and propose Telegram commands is handled without generating scripts or software builds:
 
 ```
-[ Nic's Ask (tg 2763) ]
+[ The User's Ask ]
 "make a skill in the telegram package that presents me with a list of skills that you have and
 workflows that you commonly use with a checkbox proposal to add them to your telegram bot config...
 do it manually first with me now to see how it goes and learn, and then codify it."
@@ -209,7 +207,7 @@ do it manually first with me now to see how it goes and learn, and then codify i
   * Baseline: Agent workflow instructing agents to sample spans and propose menus.
   * Candidate Artifact: 55 lines of workflow and skill Markdown.
   * Comparison: Artifact exactly matches non-mechanical baseline; zero scripts added.
-- Gate 0 passes; renders APPROVE.
+- Gate 0 passes; renders PASS.
                          │
                          ▼
                   [ Clean Delivery ]
