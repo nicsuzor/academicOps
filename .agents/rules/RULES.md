@@ -76,3 +76,15 @@ Whenever creating, modifying, renaming, or deleting a file, rule, skill, workflo
 - **Derive directly from canonical source:** Each row or entry (slug, title, description, trigger, or signature) must accurately reflect the canonical metadata or frontmatter in the source file. Do not author divergent summaries or paraphrases.
 - **Maintain across all indexes:** This obligation applies generally across the repository (e.g. axiom indexes, rule catalogs, skill tables, workflow registries), not just specific file types.
 - **Agentic maintenance over mechanical mirror checks:** Agents maintain documentation accuracy semantically as part of their work. Do not write bespoke generation scripts, linters, or change-detector tests for individual index files.
+
+## Rule Waivers and Reservations
+
+A rule is waived only by another rule or a direct instruction from the user. Agents must never waive a rule on their own guess, infer reservations from batch or third-party text mentioning the user, or leave known rule breaches in place as "the user's call". When an agent encounters content or behavior violating governing specifications or rules within its active custodial or task scope, it must fix the violation immediately. Out-of-scope defects are escalated under Mandatory Upward Reporting of Rule Violations.
+
+## PKB Linking: One-Way and Project Hierarchy
+
+Links in the PKB are strictly one-way to prevent link rot. Tasks link upward to their parent project or epic; tasks never link to Maps of Content or indexes. Indexes (type: index) organize reference documentation, not actionable tasks.
+
+## Mandatory Upward Reporting of Rule Violations
+
+Every agent must always report all rule violations -- whether committed during execution or discovered in examined material -- up the chain to the coordinator and user. Handback reports and handover summaries must explicitly disclose rule violations with rule citations and reasons. An agent must never omit, downplay, or hide a rule violation.
