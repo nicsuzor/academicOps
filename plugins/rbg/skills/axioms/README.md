@@ -17,6 +17,7 @@ description: Index of academicOps axioms.
 | `exercise-authority` | Act within delegated scope; choose lightest proportionate means; do not ask for routine execution or abdicate to literal phrasing. | always_on |
 | `halt-on-failure` | Halt on failure with verbatim reporting; no silent bypasses or fallbacks. | always_on |
 | `fail-fast` | Everything must work; halt and escalate on any infrastructure failure or conflicting demand. | always_on |
+| `human-readability-first` | Future readability by human reviewers comes before mechanical parsing of text agents write. | always_on |
 | `judgment-non-delegable` | Delegate tasks freely, but never hand qualitative judgment to mechanical rigs. | always_on |
 | `data-boundaries` | Treat data as private; never emit across trust boundaries without surface approval. | always_on |
 | `evidence-immutable` | Never modify, reformat, or substitute evidentiary sources. | always_on |
