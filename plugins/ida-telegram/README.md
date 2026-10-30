@@ -46,15 +46,12 @@ Ida's custom Telegram channel and Mini App plugin for Claude Code.
   - Callers may optionally supply `message_thread_id` (or `thread_id`) explicitly to target a specific thread.
   - Unthreaded chats maintain legacy behaviour with parameters omitted from outbound requests.
 - **Native Bot Commands:**
-  - Registers persona-tailored command menus via `setMyCommands` at `botCommandScopeChat` for each `allowFrom` chat on startup, surviving channel restarts and overriding `all_private_chats` defaults.
-  - Ida Prime registers `/decide`, `/q`, `/mine`, `/reconcile`, `/hydrate`, `/up`, `/reify`, `/dispatch`, and `/daily`.
-  - Strategic Ida (Ida Actual) registers `/strategize`, `/remember`, `/decompose`, `/q`, `/hydrate`, `/up`, `/plan`, `/strategic_review`, `/argument_map`, `/reify`, `/dispatch`, and `/daily`. Plan, strategic review, argument map, and decompose appear on Ida Actual's menu only.
-  - `/daily` updates today's daily note (via the PKB template `tpl_daily`) and replies with a scannable run-down of priorities, progress, and open decisions on Telegram.
-  - Persona is configured via `IDA_TELEGRAM_PERSONA` / `TELEGRAM_PERSONA` or inferred from `STATE_DIR` (`telegram-pauli` / `telegram-prime` -> `prime`, `telegram-ida` / `telegram-strategic` -> `strategic`).
-  - Custom JSON override via `TELEGRAM_BOT_COMMANDS` overrides persona defaults.
+  - Registers the native command menu via `setMyCommands` at `botCommandScopeChat` for each `allowFrom` chat on startup, surviving channel restarts and overriding `all_private_chats` defaults.
+  - Registers the single shared command menu for every Ida instance, dynamically built from all installed skills at poller start per `spec_7a9caca5` FR-8.1.
+  - Custom JSON override via `TELEGRAM_BOT_COMMANDS` overrides defaults.
   - Excludes reserved official-plugin commands (`/start`, `/help`, `/status`).
   - Enriches bare menu taps (commands with no arguments) with each command's defined no-argument behavior (`meta.default_action` and `meta.skill`).
-  - **Maintainer Note on Skill Renaming:** When an underlying skill is renamed in the framework, update the corresponding command name, skill mapping, and tests in this package to match.
+  - **Maintainer Note on Skill Renaming:** When an underlying skill is added, removed, or renamed in the framework, the registered menu updates dynamically at startup with no edits required to plugin code. Hyphens in skill names are automatically converted to underscores for valid Telegram command identifiers.
 - **Concurrency & Host Locks:**
   - Gated to `IDA_TELEGRAM_ROLE=primary`.
   - Non-primary instances register zero tools, run no poller, and leave hooks inert.
