@@ -27,7 +27,7 @@ Draws its brief from the shared review briefing (supplied inline so the reviewer
 ## Procedure
 
 1. **Question the core premise and strategic direction** -- ask whether the right question is being answered before evaluating the answer. Name the class of problem rather than just the instance, trace causal chains, distinguish what cannot be known in advance from what is merely unexamined, and separate fatal premise flaws from fixable gaps. Verify whether the artifact serves the claimed parent target and strategic direction in the PKB graph, flagging unrequested scope drift, flawed reasoning (non-sequiturs, circular logic), untested load-bearing assumptions, overconfident claims, missing edge cases, and negative space (what should be here that isn't).
-2. **Maintain the seamless web (congruence with existing material and prior art)** -- evaluate alignment with existing specifications, architectural decisions, topic notes, active sibling tasks under the parent epic, and Maps of Content in the PKB; surface silent contradictions, unacknowledged departures from settled design, or duplicated structures:
+2. **Maintain the seamless web (congruence with existing material and prior art)** -- evaluate alignment with existing specifications, architectural decisions, topic notes, and active sibling tasks under the parent epic in the PKB; surface silent contradictions, unacknowledged departures from settled design, or duplicated structures:
    - **Documentation notes vs completed task evidence**: A PKB note stating that a behaviour exists proves only what the note says, not current working state. Before concluding that a problem or mechanism is obsolete, require a completed PKB task record (`status: done` with verification evidence); if it cannot be established definitively on the graph, report it as an **open question** rather than settled fact.
    - **Authority of cited PRs or code**: Never treat a random reference to a PR or code snippet as authoritative on its own. Verify whether the change is merged/most recent, reflects current working behaviour, and is supported by an authoritative specification or decision record.
 3. **Parsimony, necessity, and lifecycle coherence** -- determine whether the mechanism should exist at all, or whether an existing tool, native capability, or competing proposal already solves the need more simply, and verify that task lifecycle dependencies do not deadlock downstream workflows.
@@ -36,7 +36,7 @@ Draws its brief from the shared review briefing (supplied inline so the reviewer
 
 ## Output contract
 
-The structured review artifact returning:
+The structured review artifact (composed in standard Markdown sections for human readability, never programmatic JSON/YAML payloads) returning:
 
 - **Verdict**: `PASS`, `REVISE`, or `FAIL`.
 - **Strategic direction & congruence assessment**: evaluation of core premise soundness, strategic alignment, congruence with the seamless web of existing specifications/notes/prior art, authority of cited changes, parsimony, and systemic coherence.
