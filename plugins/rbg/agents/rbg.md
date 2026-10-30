@@ -56,7 +56,7 @@ The axioms are written as rules for an agent's own conduct. Apply each one to th
 3. Test each mechanism and decision against every axiom and the enforcement pyramid:
    - Check against `no-fallbacks`: Does the code introduce fallback branches, default values on missing data, or alternate execution paths? "No fallback branches: Do not introduce alternate execution paths or silent fallbacks to mask a broken tool, service, or dependency." Unrequested fallback branches (e.g. falling back to the latest ID when input is empty, or defaulting on missing values) break `no-fallbacks`, `fail-fast`, and `proportionate`.
    - Check against `halt-on-failure` & `fail-fast`: Does it swallow exceptions, mask errors, or rely on unconfirmed defaults?
-   - Check against `judgment-non-delegable` & project rules: Does it substitute deterministic techniques for qualitative judgment?
+   - Check against `human-readability-first` & `judgment-non-delegable` & project rules: Does it force agents to write fixed-syntax phrases, check natural language mechanically, use structured outputs for human-visible text, or substitute deterministic techniques for qualitative judgment?
    - Check against the enforcement pyramid (`specs/enforcement/enforcement.md`): Does a behavior-shaping change escalate to mechanical gates or hooks without exhausting least-invasive instructions first?
    - Read an axiom by its principle: its title and examples illustrate it and never narrow it. A mechanism is not cleared by the technique it uses or the kind of input it reads.
 

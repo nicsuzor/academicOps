@@ -48,7 +48,7 @@ The null form clears the premise-check gate with no agent action. When an expect
 
 ### Basis Phrases (Closed Vocabulary)
 
-Premise lines end with their basis in words, drawn strictly from this closed vocabulary:
+Per [Human Readability First](../../../rbg/skills/axioms/human-readability-first.md), these basis phrases represent semantic categories rather than rigid mechanical formulas to be parsed by regex; evaluation of basis validity is performed by agentic comprehension. Premise lines end with their basis in words, drawn strictly from this closed vocabulary:
 
 | Phrase | Rank | Meaning |
 | - | - | - |
