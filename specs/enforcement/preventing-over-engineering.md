@@ -83,7 +83,7 @@ The following table records every instruction, skill, agent, and template file c
 | Reify Code-Bias | `plugins/ida/skills/reify/SKILL.md:8` | "the task dispatch pipeline is used only for real code changes" | `specs/ENFORCEMENT-MAP.md:34` (under `proportionate`). | Defective (Biased) |
 | Pauli Queuing Check | `plugins/ida/agents/pauli.md:58` | Quick judgment on effort vs benefit and strategic fit when queuing. | `specs/ENFORCEMENT-MAP.md:44` (`instructions` \| `imperative`). Omits non-mechanical check. | Incomplete |
 | RBG Gate 0 Stopping | `plugins/rbg/agents/rbg.md:22-29` | Gate 0 early stopping for premise/proportion failure. | `specs/ENFORCEMENT-MAP.md:57` (`instructions` \| `imperative`). Compares code to code, not code to workflow. | Incomplete |
-| Review Briefing | `plugins/ida/skills/workflow-library/workflows/wf-review.md:46` | Quotes request before diff; sizes smallest proportionate mechanism. | `specs/ENFORCEMENT-MAP.md:18, 58` (`instructions, process`). Lacks non-mechanical baseline check. | Incomplete |
+| Review Briefing | `plugins/ida/skills/workflow-library/workflows/wf-dialectical-review.md:46` | Quotes request before diff; sizes smallest proportionate mechanism. | `specs/ENFORCEMENT-MAP.md:18, 58` (`instructions, process`). Lacks non-mechanical baseline check. | Incomplete |
 | RBG Review Template | `plugins/ida/skills/workflow-library/workflows/wf-rbg.md:35` | Gate 0 early stopping from quoted request. | `specs/ENFORCEMENT-MAP.md:17, 33` (`instructions, process`). Lacks non-mechanical baseline check. | Incomplete |
 | QA Gate 0 Stopping | `plugins/ida/skills/workflow-library/workflows/wf-qa.md:29` | QA Gate 0 early stopping on premise and proportion. | `specs/ENFORCEMENT-MAP.md:57` (`instructions` \| `imperative`). | Incomplete |
 
@@ -96,7 +96,7 @@ In accordance with `specs/enforcement/enforcement.md:82-97`, any intervention in
    - Formulating an explicit universal axiom `no-over-engineering` binds all agents across all sessions.
    - Amending `proportionate.md` and `judgment-non-delegable.md` clarifies that mechanical code written where a workflow suffices is an immediate axiom violation.
    - Purging the code-bias sentence from `q/SKILL.md` and `reify/SKILL.md` eliminates the false incentive that all dispatched tasks must produce code.
-   - Adding the Non-Mechanical Baseline Check to RBG Gate 0 in `rbg.md`, `wf-rbg.md`, and `wf-review.md` empowers reviewers to reject over-engineered proposals immediately.
+   - Adding the Non-Mechanical Baseline Check to RBG Gate 0 in `rbg.md`, `wf-rbg.md`, and `wf-dialectical-review.md` empowers reviewers to reject over-engineered proposals immediately.
    - _Verdict_: **Adopted**. Defaulting to instructions provides comprehensive coverage across intake, authoring, and review without adding permanent runtime complexity or brittle AST parsers.
 3. `JIT injection`: Injecting reminders at tool dispatch or prompt submit. Deemed disproportionate at this stage; instructions must be proven before adding hook overhead.
 4. `structural`: Linter scripts or AST hooks attempting to detect whether a script should have been a workflow would violate `judgment-non-delegable` by using deterministic heuristics to evaluate semantic task intent. Prohibited.
@@ -131,9 +131,9 @@ To resolve the failure points identified in the PR #3196 chain, the framework im
 
 #### Failure Point 4 & 5: RBG Gate 0 Review Misses
 
-- **Current Placement**: `plugins/rbg/agents/rbg.md:22-29`, `plugins/ida/skills/workflow-library/workflows/wf-rbg.md:35`, and `plugins/ida/skills/workflow-library/workflows/wf-review.md:46` evaluate Gate 0 by stating the smallest proportionate mechanism, but measure size within the same genre as the artifact (e.g. comparing code lines to code lines).
+- **Current Placement**: `plugins/rbg/agents/rbg.md:22-29`, `plugins/ida/skills/workflow-library/workflows/wf-rbg.md:35`, and `plugins/ida/skills/workflow-library/workflows/wf-dialectical-review.md:46` evaluate Gate 0 by stating the smallest proportionate mechanism, but measure size within the same genre as the artifact (e.g. comparing code lines to code lines).
 - **One-Step Change**:
-  Update Gate 0 in `plugins/rbg/agents/rbg.md`, `wf-rbg.md`, and `wf-review.md` to mandate the **Non-Mechanical Baseline Check**:
+  Update Gate 0 in `plugins/rbg/agents/rbg.md`, `wf-rbg.md`, and `wf-dialectical-review.md` to mandate the **Non-Mechanical Baseline Check**:
   > "Before reading the artifact's diff or internal design, state the non-mechanical baseline: can this request be fulfilled by an agent workflow (`wf-*`), prompt instructions (`SKILL.md`), or existing tools without new executable code? If YES, and the artifact builds a script, CLI, or test harness, immediately halt and issue `FAIL` under `no-over-engineering` and `proportionate`. Do not audit code lines, review test coverage, or suggest implementation refinements for machinery that should not exist."
 - **Observation That Proves It Worked**: On any PR or specification proposing scripts for qualitative tasks, RBG renders `FAIL` at Gate 0 with a concise proportion assessment, terminating review within one turn without reading diffs or test files.
 
@@ -237,7 +237,7 @@ The implementation of this specification in the follow-up build task is verified
 | **BC-1** | Universal axiom file `plugins/rbg/skills/axioms/no-over-engineering.md` exists with `trigger: always_on`, and is registered in `plugins/rbg/skills/axioms/README.md`. | Inspect `plugins/rbg/skills/axioms/no-over-engineering.md` and verify slug row in `plugins/rbg/skills/axioms/README.md`. |
 | **BC-2** | Existing axioms `proportionate.md` and `judgment-non-delegable.md` carry explicit wording identifying mechanical code written in lieu of workflows as an axiom defect. | Grep for anti-over-engineering clauses in `plugins/rbg/skills/axioms/proportionate.md` and `judgment-non-delegable.md`. |
 | **BC-3** | Intake and reification instructions in `plugins/ida/skills/q/SKILL.md` and `plugins/ida/skills/reify/SKILL.md` have the code-bias sentence removed and contain the Agentic-First Mechanism Gate. | Grep `q/SKILL.md` and `reify/SKILL.md` verifying removal of "used only for real code changes" and presence of agentic-first evaluation. |
-| **BC-4** | RBG review instructions in `plugins/rbg/agents/rbg.md`, `wf-rbg.md`, and `wf-review.md` enforce the Gate 0 Non-Mechanical Baseline Check before diff inspection. | Inspect `plugins/rbg/agents/rbg.md`, `wf-rbg.md`, and `wf-review.md` verifying requirement to state non-mechanical baseline and reject unneeded scripts. |
+| **BC-4** | RBG review instructions in `plugins/rbg/agents/rbg.md`, `wf-rbg.md`, and `wf-dialectical-review.md` enforce the Gate 0 Non-Mechanical Baseline Check before diff inspection. | Inspect `plugins/rbg/agents/rbg.md`, `wf-rbg.md`, and `wf-dialectical-review.md` verifying requirement to state non-mechanical baseline and reject unneeded scripts. |
 | **BC-5** | `specs/ENFORCEMENT-MAP.md` registers active rows for `no-over-engineering` and `No Shitty NLP and Agentic-First Design`, with no unenforced gaps. | Inspect `specs/ENFORCEMENT-MAP.md` verifying rows for both rules with pinpoints and carrier mechanisms. |
 | **BC-6** | Axiom `plugins/rbg/skills/axioms/exercise-authority.md` carries explicit wording directing agents to choose the lightest proportionate means (workflows over scripts) rather than abdicating to literal mechanical phrasing, with its row in `specs/ENFORCEMENT-MAP.md` updated. | Grep for authority and lightest proportionate means in `plugins/rbg/skills/axioms/exercise-authority.md` and verify row 28 in `specs/ENFORCEMENT-MAP.md`. |
 

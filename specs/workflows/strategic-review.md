@@ -23,7 +23,7 @@ Its core design intent is to eliminate the failure mode of **self-grading** and 
 
 ## Implementation Architecture
 
-The workflow is implemented operationally via `plugins/ida/skills/strategic-review/SKILL.md`, `plugins/ida/skills/workflow-library/workflows/wf-dialectical-design.md`, and `plugins/ida/skills/workflow-library/workflows/wf-review.md`, and supervised by `james`:
+The workflow is implemented operationally via `plugins/ida/skills/strategic-review/SKILL.md` and `plugins/ida/skills/workflow-library/workflows/wf-dialectical-review.md`, and supervised by `james`:
 
 ```
       [ James: Upfront Proportionality & Altitude Calibration ]
@@ -61,7 +61,7 @@ Before dispatching reviewers, the Supervisor (`james`) sets the target altitude 
 
 ### 2. Specialized Reviewer Roles & Shared Briefing
 
-All three review roles draw their briefing from the shared review briefing defined in `wf-review` (`plugins/ida/skills/workflow-library/workflows/wf-review.md`) and return verdicts in the unified `PASS` / `REVISE` / `FAIL` vocabulary. The brief presents the originating request quoted verbatim with its source identifier in a dedicated section read before any pull request, branch name, or diff, and includes the governing genre standard alongside whatever specifications, requirements, or acceptance criteria are available.
+All three review roles draw their briefing from the shared review briefing defined in `wf-dialectical-review` (`plugins/ida/skills/workflow-library/workflows/wf-dialectical-review.md`) and return verdicts in the unified `PASS` / `REVISE` / `FAIL` vocabulary. The brief presents the originating request quoted verbatim with its source identifier in a dedicated section read before any pull request, branch name, or diff, and includes the governing genre standard alongside whatever specifications, requirements, or acceptance criteria are available.
 
 Each of the three review roles operates in a distinct domain with strictly non-overlapping duties:
 
