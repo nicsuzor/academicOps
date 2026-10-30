@@ -28,6 +28,7 @@
 - [enforcement/escalated-delivery-contract.md](enforcement/escalated-delivery-contract.md) -- in-session escalated delivery contract (`ida_held`, `/mine` surfacing pass, and the Workers-Append rule).
 - [enforcement/workflow.md](enforcement/workflow.md) -- the four-step workflow shape and review-depth call.
 - [enforcement/decision-steps-and-followup-placement.md](enforcement/decision-steps-and-followup-placement.md) -- decision steps on design research and task follow-up structural placement invariants.
+- [enforcement/release-as-done-lifecycle.md](enforcement/release-as-done-lifecycle.md) -- release-as-done task lifecycle, autonomous QA dispatch unblocking, and retirement of agent review status.
 - [enforcement/rule-handling-and-escalation.md](enforcement/rule-handling-and-escalation.md) -- rule handling, waivers, one-way PKB linking, and mandatory upward escalation.
 - [enforcement/evidence-contract.md](enforcement/evidence-contract.md) -- the universal claim-evidence shape.
 - [enforcement/evidence-contract-enforcement.md](enforcement/evidence-contract-enforcement.md) -- the reminders, gate, and proportional interventions that hold agents to the evidence contract.
