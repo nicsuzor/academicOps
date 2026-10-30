@@ -74,7 +74,7 @@ trigger: always_on
 
 Future readability by human reviewers is of paramount importance and must never be sacrificed for mechanical parsing of text agents write, because LLM agents can always be asked to parse it as if they were human.
 
-This clarifies that the "no shitty NLP" rule covers three prohibitions:
+This covers three prohibitions:
 
 1. Prohibits writing fixed-syntax phrases.
 2. Prohibits checking natural language mechanically.
@@ -97,7 +97,7 @@ A repository-wide search across instructions, skills, workflows, hooks, and spec
 
 | File | Exact Location | Nature of Contradiction / Duplication | Required Amendment in Build |
 | - | - | - | - |
-| `plugins/rbg/skills/axioms/judgment-non-delegable.md` | lines 6–10 | Focuses solely on the evaluator side (not substituting deterministic techniques for judgment) without addressing generator behavior (writing fixed syntax) or structured output representations. | Retain as the evaluation-focused axiom; add a cross-reference noting that generation and human-visible representation are governed by `[Axiom: Human Readability First]`. |
+| `plugins/rbg/skills/axioms/judgment-non-delegable.md` | lines 6–10 | Focuses solely on the evaluator side (not substituting deterministic techniques for judgment) without addressing generator behavior (writing fixed syntax) or structured output representations. | Retain as the evaluation-focused axiom; kept self-contained without cross-references per universal axiom principles. |
 | `.agents/rules/RULES.md` | lines 45–53 (`## No Shitty NLP and Agentic-First Design`) | Prohibits keyword matching and regex heuristics for parsing decisions, but does not explicitly enumerate the three prohibitions (writing fixed syntax, mechanical checks on NL, structured outputs for human text). | Update section heading and text to explicitly enumerate the three prohibitions and cite `human-readability-first`. |
 | `plugins/ida/skills/premise-check/SKILL.md` | lines 49–65 (`Basis Phrases (Closed Vocabulary)`) | Imposes a rigid closed vocabulary of exact phrases (`I read it`, `I did it`, `rule`, etc.) and mandates premise lines end with exact strings, prompting mechanical validation. | Clarify that basis phrases are semantic categories rather than exact mechanical syntax strings; evaluation of basis validity is performed by LLM comprehension. (Under separate design review per user note, but documented here). |
 | `plugins/ida/hooks/report_argument.py` | lines 30–80, 385 | Structural regex parser for premise-check blocks that parses lines and token markers mechanically. | Clarify in documentation and code comments that mechanical checks are confined strictly to markdown fence container markers (` ```argdown `); all semantic interpretation belongs to LLM agents per `human-readability-first`. |
@@ -124,7 +124,7 @@ Following `specs/enforcement/enforcement.md` (§ "Proportional intervention opti
 | **1. Universal Axiom Definition** | `plugins/rbg/skills/axioms/human-readability-first.md` | Framework lacks an explicit universal axiom enshrining human readability over mechanical parsing and articulating the three prohibitions. | Add `human-readability-first.md` with `trigger: always_on` containing the approved principle, reason, and three prohibitions. | `instructions`, `absolute` |
 | **2. Universal Axiom Index** | `plugins/rbg/skills/axioms/README.md` | Index table lists 19 axioms but omits `human-readability-first`. | Add `human-readability-first` to the index table with core principle and `always_on` trigger. | `instructions`, `imperative` |
 | **3. Project Governance Rules** | `.agents/rules/RULES.md` | `## No Shitty NLP and Agentic-First Design` does not explicitly codify the three prohibitions. | Update rule text to codify (1) no fixed syntax phrases, (2) no mechanical checking of NL, (3) no structured outputs for human text. | `instructions`, `imperative` |
-| **4. Evaluator Axiom Cross-Reference** | `plugins/rbg/skills/axioms/judgment-non-delegable.md` | States "no shitty NLP" but focuses solely on qualitative judgment without human readability primacy. | Add cross-reference to `human-readability-first.md` to establish the generator and representation bounds. | `instructions`, `absolute` |
+| **4. Axiom Self-Containment** | `plugins/rbg/skills/axioms/` | Universal axioms must remain self-contained rather than cross-referencing other axioms. | Retain independent standalone formulation for each axiom. | `instructions`, `absolute` |
 | **5. Compliance Reviewer Lens** | `plugins/rbg/agents/rbg.md`, `plugins/ida/skills/workflow-library/workflows/wf-rbg.md` | Compliance review checks non-delegable judgment but lacks an explicit lens for human readability and the three prohibitions. | Explicitly include `human-readability-first` in rule-compliance evaluation criteria. | `process`, `required gate` |
 | **6. Enforcement Register** | `specs/ENFORCEMENT-MAP.md` | Missing registration for the new axiom. | Add 4-column row for `[Axiom: Human Readability First]`. | `state`, `SSoT` |
 
@@ -143,7 +143,7 @@ The Stage 2 (Build) implementation task must satisfy the following verifiable cr
 1. **Axiom File Creation**: `plugins/rbg/skills/axioms/human-readability-first.md` is created with frontmatter (`trigger: always_on`, `description`) and the exact approved text (§3).
 2. **Axiom Index Update**: `plugins/rbg/skills/axioms/README.md` is updated with a new entry for `human-readability-first`.
 3. **Project Rule Harmonization**: `.agents/rules/RULES.md` is updated under `## No Shitty NLP and Agentic-First Design` to articulate all three prohibitions.
-4. **Evaluator Axiom Reference**: `plugins/rbg/skills/axioms/judgment-non-delegable.md` is updated with a clarifying cross-reference.
+4. **Evaluator Axiom Independence**: `plugins/rbg/skills/axioms/judgment-non-delegable.md` remains self-contained without cross-references.
 5. **Enforcement Map Sync**: `specs/ENFORCEMENT-MAP.md` is updated with the extract from §7.
 6. **Code and Test Conformance**:
    - `make lint` passes with 0 errors and 0 warnings.
