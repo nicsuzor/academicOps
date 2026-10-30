@@ -10,14 +10,33 @@ tags: [spec, workflow, composition, pipeline]
 
 Work moves through four stages. Each runs, then stops; no stage fires the next.
 
-| Stage | Skill | What it does |
-| - | - | - |
-| 1. Capture | `/q` | Situate an ask on the graph -- under the right parent, wired to what it serves, valued at intake per [R1](graph-valuation.md#3-r1----placement-at-intake-q). |
-| 2. Expand | `/decompose` | Expand the objective into an abstract graph of sub-objectives at objective altitude, decision branches, prerequisites, and alternate paths. Reads the record first and stops at the first unknown before implementation detail. |
-| 3. Reify | `/reify` | Assemble workflows from templates and write dispatchable tasks to the graph. |
-| 4. Dispatch | `/dispatch` | Start polecat workers on queued, ready tasks. Writes no tasks. |
+| Stage | Skill | Object | What it does |
+| - | - | - | - |
+| 1. Capture | `/q` | one ask | Situate an ask on the graph -- under the right parent, wired to what it serves, valued at intake per [R1](graph-valuation.md#3-r1----placement-at-intake-q). |
+| 2. Expand | `/decompose` | one objective | Expand the objective into an abstract graph of sub-objectives at objective altitude, decision branches, prerequisites, and alternate paths, each a node bound to no executor. Reads the record first and stops at the first unknown before implementation detail. |
+| 3. Reify | `/reify` | one node, next to run | Bind the node to its executor and the workflow templates current now: assemble the workflow and write the dispatchable task to the graph. |
+| 4. Dispatch | `/dispatch` | ready tasks | Start polecat workers on queued, ready tasks. Writes no tasks. |
+
+The PKB custodian (Pauli) runs stages 1-3 and `/strategize`; an agent that receives one of these asks hands it to her. Stage 4 belongs to the dispatcher.
 
 The stages are operative instructions and live in `plugins/ida/skills/`. This spec does not restate them.
+
+## Altitude: what each planning skill is about
+
+Three planning skills sit above dispatch, told apart by the object each works on, not by how abstract its output is.
+
+| Altitude | Skill | Object | Produces |
+| - | - | - | - |
+| Macro | `/strategize` | the graph as a whole | Direction: which objectives exist, how they intersect, which assumptions are load-bearing, what to do next. Thinking time; no tasks are written. Converged asks go to `/q`, adopted objectives to `/decompose`. |
+| Meso | `/decompose` | one objective | Sub-objectives, forks and probes as nodes bound to no executor, expanded as far as reliable inference reaches now. |
+| Micro | `/reify` | one node | The dispatchable task: the node bound to an executor class and a workflow composed from the templates current at that moment. |
+
+The three are timed differently, for opposite reasons:
+
+- **Decompose early.** No objective is independent; its sub-objectives are what other objectives' tasks intersect with. A task minted elsewhere (a meeting, a submission, a collaboration) can account for a decomposed part only once that part exists on the graph, so an objective is expanded as soon as it is captured, to what can reliably be inferred at that point, and stops at the first unknown.
+- **Reify late.** A reified task fixes the executor and the workflow, and both change with circumstances. A dispatchable task that sits on the graph goes stale, so a node is reified when it is next to run and not before; a node blocked on something outside the graph's control stays unreified until that clears.
+
+The boundary that separates meso from micro is executor binding: a decomposed node says what must become true and names no executor or workflow; a reified task says who runs it and how. Lookups and questions pass through neither: the session that receives them answers them.
 
 ## Workflow components
 

@@ -192,7 +192,6 @@ describe("Native Telegram bot commands for Ida (FR-8.1)", () => {
       "q",
       "hydrate",
       "up",
-      "plan",
       "strategic_review",
       "argument_map",
       "reify",
@@ -200,8 +199,8 @@ describe("Native Telegram bot commands for Ida (FR-8.1)", () => {
       "daily",
     ]);
 
-    // AC1 & AC2: plan, strategic review, argument map and decompose appear on Ida Actual (strategic) menu only
-    const actualOnly = ["plan", "strategic_review", "argument_map", "decompose"];
+    // AC1 & AC2: strategic review, argument map and decompose appear on Ida Actual (strategic) menu only
+    const actualOnly = ["strategic_review", "argument_map", "decompose"];
     for (const cmd of actualOnly) {
       expect(strategicCmds.some((c) => c.command === cmd)).toBe(true);
       expect(primeCmds.some((c) => c.command === cmd)).toBe(false);
@@ -233,7 +232,6 @@ describe("Native Telegram bot commands for Ida (FR-8.1)", () => {
 
     // Verify all added commands map to valid skills
     const addedExpectedSkills: Record<string, string> = {
-      plan: "ida:plan",
       strategic_review: "ida:strategic-review",
       argument_map: "ida:argument-map",
       reify: "ida:reify",
@@ -319,7 +317,6 @@ describe("Native Telegram bot commands for Ida (FR-8.1)", () => {
         "q",
         "hydrate",
         "up",
-        "plan",
         "strategic_review",
         "argument_map",
         "reify",
@@ -359,7 +356,6 @@ describe("Native Telegram bot commands for Ida (FR-8.1)", () => {
       "q",
       "hydrate",
       "up",
-      "plan",
       "strategic_review",
       "argument_map",
       "reify",

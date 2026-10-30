@@ -1,9 +1,11 @@
 ---
 name: reify
-description: Turn an objective, or a task id, into complete dispatchable tasks on the graph -- hydrate, compose the workflow from templates, write each task at `queued`, and mint any QA follow-up. Use when work needs tasks written or an existing task rewritten before a worker can pull it. Exclude for starting workers on tasks already written (use /dispatch).
+description: Bind one node that is next to run to its executor and workflow -- hydrate, compose the workflow from templates, write the task at `queued`, and mint any QA follow-up. Use when a node is about to be dispatched and needs its task written or rewritten; the PKB custodian (Pauli) runs it. Exclude for expanding an objective into sub-objectives (use decompose) or starting workers on tasks already written (use dispatch).
 ---
 
-# /reify: compose dispatchable tasks from an objective
+# /reify: compose the dispatchable task for a node that is next to run
+
+**Object: one node, at dispatch time.** Reifying binds the node to an executor class and to the workflow templates current now; both change, so a task reified before it can run goes stale on the graph. Reify a node when `/dispatch` is about to take it or the user says to write it, and leave a node blocked on something outside the graph's control (another party's reply, an approval, an upstream result) unreified until that clears. Given a parent, reify only the children that are ready to run. The PKB custodian (Pauli) runs this skill; a caller sends her the node or objective and receives task ids.
 
 The task is the whole message to the worker. Write it once, keep it short, and leave it on the graph for `/dispatch`. Questions and lookups are answered directly by the session that receives them; the task dispatch pipeline is used only for real code changes. Never create tasks or compose workflows for questions or lookups.
 

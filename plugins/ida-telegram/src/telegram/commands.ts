@@ -108,12 +108,11 @@ export const PRIME_COMMANDS: readonly IdaCommandSpec[] = [
  * 4. /q — Stage 1 intake and capture onto the strategic task graph.
  * 5. /hydrate — Disambiguate terms or hydrate context from the PKB.
  * 6. /up — Step up a level on the last correction and fix the class.
- * 7. /plan — Facilitate strategic exploration and structure plans under uncertainty.
- * 8. /strategic_review — Modular multi-agent dialectical review of an artifact.
- * 9. /argument_map — Build a reviewable map of a text's argument in Argdown.
- * 10. /reify — Compose dispatchable tasks on the graph from an objective.
- * 11. /dispatch — Start polecat workers on queued tasks already on the graph.
- * 12. /daily — Update today's daily note and reply with a run-down on Telegram.
+ * 7. /strategic_review — Modular multi-agent dialectical review of an artifact.
+ * 8. /argument_map — Build a reviewable map of a text's argument in Argdown.
+ * 9. /reify — Compose dispatchable tasks on the graph from an objective.
+ * 10. /dispatch — Start polecat workers on queued tasks already on the graph.
+ * 11. /daily — Update today's daily note and reply with a run-down on Telegram.
  */
 export const STRATEGIC_COMMANDS: readonly IdaCommandSpec[] = [
   {
@@ -121,7 +120,7 @@ export const STRATEGIC_COMMANDS: readonly IdaCommandSpec[] = [
     description: "Reason at strategic altitude and interrogate the core question",
     skill: "ida:strategize",
     bareAction:
-      "Invoke /ida:strategize: examine the current topic at strategic altitude, assess reversibility and effectuation, and interrogate the core question.",
+      "Invoke /ida:strategize: examine the current topic at strategic altitude across the graph, assess reversibility and effectuation, structure the plan as hypotheses, and interrogate the core question.",
   },
   {
     command: "remember",
@@ -157,13 +156,6 @@ export const STRATEGIC_COMMANDS: readonly IdaCommandSpec[] = [
     skill: "ida:up",
     bareAction:
       "Invoke /ida:up on the user's last correction: identify the structural class, check why existing rules did not fire, and make the structural fix.",
-  },
-  {
-    command: "plan",
-    description: "Facilitate strategic exploration and structure plans under uncertainty",
-    skill: "ida:plan",
-    bareAction:
-      "Invoke /ida:plan: facilitate strategic exploration, structure hypotheses, and assess next steps under uncertainty.",
   },
   {
     command: "strategic_review",
