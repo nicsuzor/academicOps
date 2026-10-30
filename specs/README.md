@@ -30,6 +30,7 @@
 - [enforcement/evidence-contract.md](enforcement/evidence-contract.md) -- the universal claim-evidence shape.
 - [enforcement/evidence-contract-enforcement.md](enforcement/evidence-contract-enforcement.md) -- the reminders, gate, and proportional interventions that hold agents to the evidence contract.
 - [enforcement/auto-mode-classifier.md](enforcement/auto-mode-classifier.md) -- Claude Code auto-mode classifier design and cost model.
+- [enforcement/handback-format-design.md](enforcement/handback-format-design.md) -- premise-check handback format design review: empirical sample, Toulmin structure preservation, and migration plan.
 
 ## Polecat
 
