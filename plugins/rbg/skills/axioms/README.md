@@ -14,7 +14,7 @@ description: Index of academicOps axioms.
 | `cite-sources` | Attribute every non-trivial claim to a named source. | always_on |
 | `single-source-of-truth` | Maintain exactly one authoritative copy of every fact, rule, or artifact. | always_on |
 | `do-one-thing` | Complete exactly what was requested to user criteria, then stop. | always_on |
-| `exercise-authority` | Act within delegated scope; escalate outside; do not ask for routine execution. | always_on |
+| `exercise-authority` | Act within delegated scope; choose lightest proportionate means; do not ask for routine execution or abdicate to literal phrasing. | always_on |
 | `halt-on-failure` | Halt on failure with verbatim reporting; no silent bypasses or fallbacks. | always_on |
 | `fail-fast` | Everything must work; halt and escalate on any infrastructure failure or conflicting demand. | always_on |
 | `judgment-non-delegable` | Delegate tasks freely, but never hand qualitative judgment to mechanical rigs. | always_on |
@@ -25,4 +25,5 @@ description: Index of academicOps axioms.
 | `costly-ops-approval` | Require explicit prior approval for operations with unbounded cost or blast radius. | always_on |
 | `delay-decisions` | Delay decisions without cost until necessary to maximize evidence. | always_on |
 | `proportionate` | Build the least that meets the request; guard a risk by its likelihood × consequence. | always_on |
+| `no-over-engineering` | Never build a mechanical engine or script where an agent workflow meets the request. | always_on |
 | `reasons` | Give written, parseable reasons for every claim you rely on or communicate. | always_on |

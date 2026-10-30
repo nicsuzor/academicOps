@@ -23,7 +23,7 @@ Relay: none
 | `Supported` | One. The weakest basis phrase among all premises. |
 | `Answered` | One per ask id: the line that answers it, or `unanswered`. A conclusion line `(n)` demonstrating why an unfulfillable brief demand is unreachable by construction satisfies the ask and links under `Answered: <ask_id> ← (n)`. |
 | `Sufficient` | One or more, keyed by conclusion: which proportionality test settled each material step. `authority-backed` is limited strictly to the user's own words or a governing spec. |
-| `Waived` | `none`, or one per waived breach, starting with a format item from [`vocabulary.toml`](vocabulary.toml). |
+| `Waived` | `none`, or one per waived breach, starting with a format item from [`vocabulary.toml`](vocabulary.toml). `Waived` is strictly restricted to format items (`block`, `numbering`, `endnotes`, `basis wording`, `ask wording`, `layout`). Rule violations in deliverables are never waivable and can never be recorded under `Waived:`; any report admitting or exhibiting a rule violation in its deliverable must receive `REVISE with #conflict` or `FAIL`. |
 | `Relay` | `none`, or one per sentence you will send up, naming the lines it restates. |
 
 ## What the recorder refuses
@@ -35,7 +35,7 @@ For PASS the recorder checks, and refuses on any miss:
 - every ask id has an `Answered` line that names a line of the block (`← (n)`) or says `unanswered` (an ask whose demand was unfulfillable by construction is answered by the conclusion establishing its unreachability);
 - `Valid` accounts for every inference line by conclusion (individual lines, indented lines, semicolon clauses, or grouped references such as `(n), (m) holds`), every inference line is followed by its conclusion, and no entry says `fails`;
 - the `Supported` phrase has the lowest rank among the block's premises;
-- every `Waived` entry starts with a format item;
+- every `Waived` entry starts with a format item (`block`, `numbering`, `endnotes`, `basis wording`, `ask wording`, `layout`); rule violations are strictly non-waivable;
 - every `Relay` line names lines that exist in the block.
 
 With no `argdown` block in the judged text, or one whose frontmatter does not parse, the block cross-checks cannot run: PASS then needs `Waived: block -- ...` and the remaining checks run against the reason alone.
