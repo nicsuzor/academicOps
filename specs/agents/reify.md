@@ -2,6 +2,16 @@ Turn a terse user prompt into a durable, enriched task node carrying intent,
 workflow, execution steps and guardrails -- so any worker can pull it and execute
 without gathering context again.
 
+Reification works on one node at the moment it is next to run (the micro
+altitude of the planning pipeline). It binds that node to an executor class and
+to the workflow templates current at that moment, and both change with
+circumstances, so a task reified ahead of its turn goes stale on the graph.
+A node whose prerequisites are outside the graph's control stays unreified
+until they clear. Expanding an objective into the nodes themselves is the
+preceding stage (decomposition), which binds nothing to an executor. The PKB
+custodian (Pauli) runs reification; callers send the node or objective and
+receive task ids.
+
 This skill does _enrichment_: selecting a workflow, interpreting it
 into concrete steps, attaching guardrails, and **writing the result onto a task
 node**. That durability is the whole point: an enriched task survives session loss,
@@ -42,9 +52,13 @@ Step inlining is interpretive, not mechanical transcription:
 - Outcome-oriented criteria: Reified tasks define observable end-state conditions and verification criteria rather than implementation mechanisms. Line numbers, line ranges, and narrow code slice prescriptions are strictly forbidden in `Goal`, `Acceptance criteria`, and `Execution steps` / `Instructions`.
 - Preserving design and build staging: When multi-file modifications or architectural choices are required, separate tasks are reified for Stage 1 (Design) and Stage 2 (Build) under `wf-code-task-base`. Stage 1 is never collapsed into Stage 2, even when the brief includes an implementation proposal.
 
-## QA follow-up tasks
+## QA follow-up tasks and structural placement
 
-For pull request deliverables, `/reify` mints an independent downstream `QA: <task>` child task that verifies the delivered artifact and evaluates PR risk.
+All tasks requiring review, verification, or subsequent follow-up must be structured per the follow-up placement invariant: either as a single task with internal subtasks (when executable by the same agent in one continuous session) or as a dedicated epic with child tasks (when multi-session, clean context, or independent reviewer personas are required); never as loose siblings under an external parent.
+
+For pull request deliverables requiring an independent review pass, `/reify` mints an independent downstream `QA: <task>` child task under the dedicated epic (with child-to-child `needs` dependency) that verifies the delivered artifact and evaluates PR risk.
+
+For research tasks investigating open design questions or architectural choices, `/reify` automatically composes a dependent decision task assigned to the user (`assignee: user`) that depends on the research findings to choose the implementation route, strictly blocking downstream implementation.
 
 For non-PR tasks (such as empirical analyses, documentation updates, research tasks, and operational maintenance), `/reify` mints a separate `QA: <task>` child task only where the composed workflow warrants an independent verification check (e.g. empirical analysis with replication requirements, high-impact specification or policy changes, or multi-step qualitative audits). Workflows that do not warrant a separate verification pass mint no QA child.
 
