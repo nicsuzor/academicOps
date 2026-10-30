@@ -76,15 +76,11 @@ this contract does not restate.
   is a legal terminal outcome, not a failure; that spec owns partial
   semantics, which this bullet does not restate). `/pull` mandates invoking
   `/dump` for the final handover and for logging results at the end of every
-  job, whatever its release status (`done`, `partial`, `review`, `failed`,
+  job, whatever its release status (`done`, `partial`, `failed`,
   `cancelled`, or `in_progress`), and `/dump`'s `release_task` body update
   includes a report argument (per [`premise-check`](../../plugins/ida/skills/premise-check/SKILL.md))
   whose conclusion answers each original direction given or question posed by
-  its ask id. A worker whose deliverable
-  is a PR releases its task `review` once the PR is open and exits; the
-  repository merges it and `/reconcile` writes `done` on the merge, which
-  unblocks dependent follow-ups (QA, deploy); `partial` is reserved strictly for the
-  worker's own unfinished acceptance items. Only silent, undisclosed
+  its ask id. A worker whose deliverable is a PR releases its task `done` once the PR is open with branch and `pr_url` recorded, local tests verified, and exits; releasing `done` immediately unblocks dependent follow-ups (QA, deploy) on the task graph; `partial` is reserved strictly for the worker's own unfinished acceptance items. Only silent, undisclosed
   abandonment is garbage-collected (H10): incentive-first, this machinery is the
   backstop, not the mechanism agents are expected to lean on. Its floor is the
   task server predicate -- the contract is only as strong as that floor.

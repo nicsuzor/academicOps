@@ -36,7 +36,7 @@ Draws its brief from the shared review briefing (supplied inline so the reviewer
 
 ## Output contract
 
-The structured review artifact returning:
+The structured review artifact (composed in standard Markdown sections for human readability, never programmatic JSON/YAML payloads) returning:
 
 - **Verdict**: `PASS`, `REVISE`, or `FAIL`.
 - **Strategic direction & congruence assessment**: evaluation of core premise soundness, strategic alignment, congruence with the seamless web of existing specifications/notes/prior art, authority of cited changes, parsimony, and systemic coherence.

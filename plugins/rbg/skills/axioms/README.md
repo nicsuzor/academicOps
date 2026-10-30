@@ -22,6 +22,7 @@ description: Index of academicOps axioms.
 | `full-observability` | Persist material actions in git commits with clear rationale for complete auditability. | always_on |
 | `halt-on-failure` | Halt on failure and report verbatim without workarounds, fallbacks, or bypasses. | always_on |
 | `honest-epistemics` | Tailor claims strictly to available evidence. | always_on |
+| `human-readability-first` | Future readability by human reviewers comes before mechanical parsing of text agents write. | always_on |
 | `judgment-non-delegable` | Never hand qualitative judgment to mechanical processes. | always_on |
 | `no-over-engineering` | Never build a mechanical engine, script, or programmatic wrapper where an agent workflow instructing agents to exercise qualitative judgment meets the request. | always_on |
 | `proportionate` | Build the least that meets the request; spend on a risk in proportion to its likelihood and consequence. | always_on |
