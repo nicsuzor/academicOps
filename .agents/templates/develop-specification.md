@@ -29,11 +29,11 @@ implementation without this template first is scope-creep waiting to happen.
     axioms and rules (proportionality, single source of truth, closure) before
     review. Resolve any required changes before advancing.
 11. **Review** — record the full summary review on the record for review.
-12. **Finalize and submit** — open a draft PR for review; implementation
-    proceeds on the same branch and PR. Once the implementation's code step
-    completes, mark the draft PR ready for review without waiting for
-    approval (compose [[wf-escalated-approval]] for the go-ahead if the spec
-    commits to something hard to walk back).
+12. **Finalize and submit** — open a draft PR for bazaar review; implementation
+    proceeds only after approval (compose [[wf-escalated-approval]] for the
+    go-ahead if the spec commits to something hard to walk back). When implementation
+    proceeds on the same branch and PR, mark the draft PR ready for review once
+    its code step completes, without waiting for approval.
 
 ## Verification before proceeding to implementation
 
