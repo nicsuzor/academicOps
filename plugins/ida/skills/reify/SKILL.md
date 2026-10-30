@@ -7,7 +7,7 @@ description: Bind one node that is next to run to its executor and workflow -- h
 
 **Object: one node, at dispatch time.** Reifying binds the node to an executor class and to the workflow templates current now; both change, so a task reified before it can run goes stale on the graph. Reify a node when `/dispatch` is about to take it or the user says to write it, and leave a node blocked on something outside the graph's control (another party's reply, an approval, an upstream result) unreified until that clears. Given a parent, reify only the children that are ready to run. The PKB custodian (Pauli) runs this skill; a caller sends her the node or objective and receives task ids.
 
-The task is the whole message to the worker. Write it once, keep it short, and leave it on the graph for `/dispatch`. Questions and lookups are answered directly by the session that receives them; the task dispatch pipeline is used only for real code changes. Never create tasks or compose workflows for questions or lookups.
+The task is the whole message to the worker. Write it once, keep it short, and leave it on the graph for `/dispatch`. The task dispatch pipeline is used for any durable deliverable -- including agent workflows, instruction updates, specifications, and code changes. Questions and lookups that can be answered in-turn are answered directly without queueing tasks.
 
 A polecat is a short-running container: it gets in, does one unit of work it controls, records the evidence, and gets out cleanly. It never sees the whole objective through. Everything after its unit is a follow-up task on the graph, and the workflow decides what those follow-ups are.
 
@@ -25,6 +25,8 @@ Call `/hydrate` on the objective, or on the task if you were given an id.
 - You may update an existing task if you need to modify context, acceptance criteria, or instructions. This includes retrying failed tasks; do not create a new task for the same work.
 
 ## 2. Compose workflows
+
+- **Agentic-First Mechanism Gate**: Before composing an implementation task or specifying software builds, ask: Can this request be satisfied by an agent workflow template (`wf-*`) or skill instructions (`SKILL.md`)? If the task involves qualitative judgment, sampling, curation, classification, or recommendation, compose an agent workflow or skill instruction. Never specify executable scripts, CLI utilities, or unit test suites when an agent workflow meets the request.
 
 Call `/workflow-library` to weave together every workflow relevant to the task in context. The composed workflow draws on two kinds of component, and they enter the Instructions differently:
 
