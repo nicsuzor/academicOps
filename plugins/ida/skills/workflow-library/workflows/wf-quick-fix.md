@@ -52,4 +52,4 @@ Any change falling outside the eligible scope, code that executes lacking unit t
 6. Release the task:
    - As `done` if destination tests pass green, without minting follow-up review tasks.
    - As `failed` if destination tests fail after merge or rebase, escalating for triage.
-   - As standard handoff status (e.g. `review`) if fallback to the standard delivery process was triggered prior to delivery.
+   - As standard handoff status (e.g. `partial` if blocked, or `done` if delivered via standard PR) if fallback to the standard delivery process was triggered prior to delivery. Never release as `review`.

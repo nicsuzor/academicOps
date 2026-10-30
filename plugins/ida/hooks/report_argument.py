@@ -221,6 +221,20 @@ class Argument:
         return min(self.premises, key=lambda p: p.rank)
 
 
+def normalise_argdown_block(text: str) -> str:
+    """Normalise meaning-free whitespace in an Argdown block.
+
+    Strips CRLF endings, trailing whitespace on every line, and removes common
+    leading indentation across the block while preserving relative indentation.
+    """
+    if not text:
+        return ""
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    lines = [ln.rstrip() for ln in text.splitlines()]
+    dedented = textwrap.dedent("\n".join(lines))
+    return dedented.strip("\n")
+
+
 def extract_block(text: str | None) -> str | None:
     """Body of the last ```argdown fenced block in ``text``, or None."""
     if not text:
@@ -242,7 +256,7 @@ def extract_block(text: str | None) -> str | None:
             body.append(lines[j])
             j += 1
         if j < len(lines):
-            found = textwrap.dedent("\n".join(body))
+            found = normalise_argdown_block("\n".join(body))
         i = j + 1
     return found
 
@@ -294,7 +308,7 @@ def _answer_value(value: Any) -> int | str | None:
 
 def parse_block(block: str, vocab: Vocabulary) -> Argument | None:
     """Parse an argdown block; None when its YAML frontmatter fails to parse or syntax is invalid."""
-    block = textwrap.dedent(block)
+    block = normalise_argdown_block(block)
     valid, _, _ = check_argdown_block(block)
     if not valid:
         return None
@@ -327,8 +341,9 @@ def parse_block(block: str, vocab: Vocabulary) -> Argument | None:
         if not in_inference:
             if raw_ln.startswith((" ", "\t")) and _premise_basis(s):
                 body_lines.append(raw_ln)
-            elif (s.startswith("--") and not s.endswith("--") and len(s) > 2) or (
-                s.startswith("—") and not s.endswith("—") and len(s) > 1
+            elif not raw_ln.startswith((" ", "\t")) and (
+                (s.startswith("--") and not s.endswith("--") and len(s) > 2)
+                or (s.startswith("—") and not s.endswith("—") and len(s) > 1)
             ):
                 in_inference = True
                 current_inf = [s]
@@ -376,7 +391,7 @@ def parse_block(block: str, vocab: Vocabulary) -> Argument | None:
 
 
 _NULL_FORM_RE = re.compile(
-    r"^(?:===\s*\n)?\s*asks:\s*none\s*(?:\n===)?\s*\n\s*\[no\s+claim\]\s*$",
+    r"^(?:===\s*\n)?\s*asks:\s*none\s*(?:\n\s*===)?\s*\n\s*\[no\s+claim\]\s*$",
     re.IGNORECASE,
 )
 
@@ -385,7 +400,8 @@ def is_null_form(block_text: str | None) -> bool:
     """True when a fenced argdown block is the null form declaring no claim."""
     if not block_text or not block_text.strip():
         return False
-    return bool(_NULL_FORM_RE.match(textwrap.dedent(block_text).strip()))
+    norm = normalise_argdown_block(block_text)
+    return bool(_NULL_FORM_RE.match(norm.strip()))
 
 
 def clean_ansi(text: str, file_path: str | None = None) -> str:
@@ -436,7 +452,7 @@ def check_argdown_block(
             None,
         )
 
-    block_text = textwrap.dedent(block_text)
+    block_text = normalise_argdown_block(block_text)
     lines = block_text.splitlines()
 
     # 1. Frontmatter check
@@ -569,6 +585,8 @@ def check_argdown_block(
                     )
 
         body_lines = textwrap.dedent("\n".join(lines[end + 1 :])).splitlines()
+    else:
+        body_lines = textwrap.dedent("\n".join(lines)).splitlines()
 
     statements: dict[str, dict[str, Any]] = {}
     numbered_map: dict[int, str] = {}

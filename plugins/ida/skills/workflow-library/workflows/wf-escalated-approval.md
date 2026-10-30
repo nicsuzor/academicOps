@@ -19,7 +19,7 @@ Ends the current task at a decision that requires escalation for review. The wor
 ## Procedure
 
 1. **Complete the artifact** -- the full artifact the decision is about, never a summary or abstract standing in for it. Attach whatever review verdicts already exist for it.
-2. **File it on the record** -- route delivery through the record: state plainly what decision is being asked for, the evidence supporting it, and what happens on approval. Hand back on the record and enforce one-level-per-hop escalation (never assign directly to `ida` or jump to the top); whichever agent one level up next reads the record decides what happens under the bazaar model.
+2. **File it on the record** -- route delivery through the record: state plainly what decision is being asked for with enough information to decide, proportionate evidence supporting it, and a reasoned recommendation stating what happens on approval. Hand back on the record and enforce one-level-per-hop escalation (never assign directly to `ida` or jump to the top); whichever agent one level up next reads the record decides what happens under the bazaar model.
 3. **Structure the approval gate** -- do not release the task as `done`. Per the review rules (outcome 2), release the task as `partial` with a queued review task that this task `depends_on`, or queue an explicit decision task before dependent work can unblock. Implementation work is strictly blocked until the approval decision is recorded on the record. Stop.
 
 ## Composition
