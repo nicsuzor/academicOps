@@ -14,7 +14,7 @@ description: Index of academicOps axioms.
 | `cite-sources` | Attribute every non-trivial claim to a named source. | always_on |
 | `single-source-of-truth` | Maintain exactly one authoritative copy of every fact, rule, or artifact. | always_on |
 | `do-one-thing` | Complete exactly what was requested to user criteria, then stop. | always_on |
-| `exercise-authority` | Act within delegated scope; escalate outside; do not ask for routine execution. | always_on |
+| `exercise-authority` | Act within delegated scope; choose lightest proportionate means; do not ask for routine execution or abdicate to literal phrasing. | always_on |
 | `halt-on-failure` | Halt on failure with verbatim reporting; no silent bypasses or fallbacks. | always_on |
 | `fail-fast` | Everything must work; halt and escalate on any infrastructure failure or conflicting demand. | always_on |
 | `judgment-non-delegable` | Delegate tasks freely, but never hand qualitative judgment to mechanical rigs. | always_on |

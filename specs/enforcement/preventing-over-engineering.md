@@ -41,7 +41,7 @@ The breakdown occurred across six discrete points where existing principles shou
 1. **Intake and Graph Capture**:
    - _Evidence_: The intake note for Telegram menu choices recorded data sources (Phoenix spans, Bot API `getMyCommands`, `commands.ts`) alongside deployment details. In `plugins/ida/skills/q/SKILL.md:10`, the instruction explicitly prescribed: "the task dispatch pipeline is used only for real code changes."
    - _Failure_: This instruction created a structural bias: any task admitted to the dispatch pipeline was presumed to require code modifications. When the user directed "make a skill in the telegram package... codify it", intake framed the deliverable as code rather than an agent workflow.
-   - _Broken Principles_: Violated `proportionate` (failing to seek the least mechanism) and `exercise-authority` (failing to recognize that agents possess the authority to curate menus directly).
+   - _Broken Principles_: Violated `proportionate` (failing to seek the least mechanism) and `exercise-authority` (failing to recognize that agents possess the authority to curate menus directly, and abdicating delegated authority to literal phrasing like "codify it" and dispatch pipeline code bias instead of choosing the lighter agentic means).
 
 2. **Task Reification and Composition**:
    - _Evidence_: The design task for the Telegram menu-proposal skill established acceptance criterion AC2: "The spec lists outcome-level acceptance criteria for the build, each mapped to its check." Instructions directed: "Write the design into the spec, with build criteria mapped to checks."
@@ -76,7 +76,7 @@ The following table records every instruction, skill, agent, and template file c
 | :- | :- | :- | :- | :- |
 | `proportionate` | `plugins/rbg/skills/axioms/proportionate.md:1-12` | Core axiom: build least mechanism; risk by likelihood × consequence. | `specs/ENFORCEMENT-MAP.md:34` (`instructions, process` \| `imperative, required gate`) | Active |
 | `judgment-non-delegable` | `plugins/rbg/skills/axioms/judgment-non-delegable.md:1-10` | Core axiom: never hand qualitative judgment to regex, substring, or heuristics. | `specs/ENFORCEMENT-MAP.md:33` (`instructions, structural, process` \| `absolute, permissions, required gate`) | Active |
-| `exercise-authority` | `plugins/rbg/skills/axioms/exercise-authority.md:1-12` | Core axiom: exercise judgment decisively within scope; do not abdicate or add friction. | `specs/ENFORCEMENT-MAP.md:28` (`instructions, process` \| `imperative, routing`) | Active |
+| `exercise-authority` | `plugins/rbg/skills/axioms/exercise-authority.md:1-13` | Core axiom: exercise judgment decisively within scope; do not abdicate or add friction; choose lightest proportionate means over literal mechanical phrasing. | `specs/ENFORCEMENT-MAP.md:28` (`instructions, process` \| `imperative, routing`) | Active |
 | Anti-Over-Engineering | None (implicit in `proportionate` and `judgment-non-delegable`) | Prohibition on building mechanical engines where workflows suffice. | No dedicated row in `specs/ENFORCEMENT-MAP.md`. | **Unenforced** |
 | Project Rule: Agentic-First | `.agents/rules/RULES.md:45-65` (`No Shitty NLP and Agentic-First Design`) | Mandates agentic workflows over deterministic scripts and API wrappers. | No row in `specs/ENFORCEMENT-MAP.md`. | **Unenforced** |
 | Intake Code-Bias | `plugins/ida/skills/q/SKILL.md:10` | "the task dispatch pipeline is used only for real code changes" | `specs/ENFORCEMENT-MAP.md:24, 34` (under `durable-capture` and `proportionate`). | Defective (Biased) |
@@ -137,9 +137,19 @@ To resolve the failure points identified in the PR #3196 chain, the framework im
   > "Before reading the artifact's diff or internal design, state the non-mechanical baseline: can this request be fulfilled by an agent workflow (`wf-*`), prompt instructions (`SKILL.md`), or existing tools without new executable code? If YES, and the artifact builds a script, CLI, or test harness, immediately halt and issue `FAIL` under `no-over-engineering` and `proportionate`. Do not audit code lines, review test coverage, or suggest implementation refinements for machinery that should not exist."
 - **Observation That Proves It Worked**: On any PR or specification proposing scripts for qualitative tasks, RBG renders `FAIL` at Gate 0 with a concise proportion assessment, terminating review within one turn without reading diffs or test files.
 
+#### Failure Point 6: Abdication of Delegated Authority to Literal Mechanical Phrasing
+
+- **Current Placement**: `plugins/rbg/skills/axioms/exercise-authority.md:1-12` defined abdication narrowly as failing to complete tasks or inventing approval friction, without clarifying that deferring to literal mechanical phrasing when a lighter agentic means suffices is also abdication.
+- **One-Step Change**:
+  1. In `plugins/rbg/skills/axioms/exercise-authority.md`, add:
+     > "- Within your delegated authority to deliver the requested outcome, you must exercise judgment to choose the lightest proportionate means across the whole class. Do not abdicate to literal mechanical phrasing, historical code patterns, or presumed software requirements: if an agent workflow or instruction template achieves the goal, you hold both the authority and the obligation to choose it over building executable scripts, CLIs, or test harnesses, even when task or user wording casually names code or software."
+  2. Update `plugins/rbg/skills/axioms/README.md` to clarify that `exercise-authority` includes choosing the lightest proportionate means rather than abdicating to literal mechanical phrasing.
+  3. Register the updated scope, failure evidence, and observable verification in `specs/ENFORCEMENT-MAP.md:28`.
+- **Observation That Proves It Worked**: When a prompt or task directs an agent to "codify" or "build a skill" for qualitative curation or selection, the agent exercises its authority to deliver an agent workflow template rather than defaulting to executable scripts or test harnesses.
+
 ### 5. Axiomatic Integration of "Don't Over-Engineer"
 
-The prohibition on over-engineering is carried as an explicit universal axiom in `plugins/rbg/skills/axioms/no-over-engineering.md` with trigger `always_on`, supported by reciprocal clarifications in `proportionate.md` and `judgment-non-delegable.md`.
+The prohibition on over-engineering is carried as an explicit universal axiom in `plugins/rbg/skills/axioms/no-over-engineering.md` with trigger `always_on`, supported by reciprocal clarifications in `proportionate.md`, `judgment-non-delegable.md`, and `exercise-authority.md`.
 
 #### Exact Wording: `plugins/rbg/skills/axioms/no-over-engineering.md`
 
@@ -165,6 +175,9 @@ Never build a mechanical engine, script, CLI tool, programmatic API wrapper, or 
 
 2. In `plugins/rbg/skills/axioms/judgment-non-delegable.md`, append to paragraph 2:
    > "This framework is designed to harness emerging advances in multimodal agents for the semantic interpretation of natural language and media artefacts. Regex, substring checks, and heuristics cannot substitute for semantic understanding. We have smart LLMs -- use them. Never build deterministic software engines or API client wrappers to perform tasks that an agent can execute directly through qualitative judgment."
+
+3. In `plugins/rbg/skills/axioms/exercise-authority.md`, append to bullet 3:
+   > "- Within your delegated authority to deliver the requested outcome, you must exercise judgment to choose the lightest proportionate means across the whole class. Do not abdicate to literal mechanical phrasing, historical code patterns, or presumed software requirements: if an agent workflow or instruction template achieves the goal, you hold both the authority and the obligation to choose it over building executable scripts, CLIs, or test harnesses, even when task or user wording casually names code or software."
 
 ### 6. Walk-Through: PR #3196 Under Changed Principles
 
@@ -226,6 +239,7 @@ The implementation of this specification in the follow-up build task is verified
 | **BC-3** | Intake and reification instructions in `plugins/ida/skills/q/SKILL.md` and `plugins/ida/skills/reify/SKILL.md` have the code-bias sentence removed and contain the Agentic-First Mechanism Gate. | Grep `q/SKILL.md` and `reify/SKILL.md` verifying removal of "used only for real code changes" and presence of agentic-first evaluation. |
 | **BC-4** | RBG review instructions in `plugins/rbg/agents/rbg.md`, `wf-rbg.md`, and `wf-review.md` enforce the Gate 0 Non-Mechanical Baseline Check before diff inspection. | Inspect `plugins/rbg/agents/rbg.md`, `wf-rbg.md`, and `wf-review.md` verifying requirement to state non-mechanical baseline and reject unneeded scripts. |
 | **BC-5** | `specs/ENFORCEMENT-MAP.md` registers active rows for `no-over-engineering` and `No Shitty NLP and Agentic-First Design`, with no unenforced gaps. | Inspect `specs/ENFORCEMENT-MAP.md` verifying rows for both rules with pinpoints and carrier mechanisms. |
+| **BC-6** | Axiom `plugins/rbg/skills/axioms/exercise-authority.md` carries explicit wording directing agents to choose the lightest proportionate means (workflows over scripts) rather than abdicating to literal mechanical phrasing, with its row in `specs/ENFORCEMENT-MAP.md` updated. | Grep for authority and lightest proportionate means in `plugins/rbg/skills/axioms/exercise-authority.md` and verify row 28 in `specs/ENFORCEMENT-MAP.md`. |
 
 ## Open questions
 
