@@ -34,6 +34,7 @@ Task report format (for the `release_task` body update in `## Report` and the se
 
 - **Update**: [1-3 sentences on work completed and remaining]
 - **Output**: [Branch, commit SHA, PR link, or artifact path]
+- **Rule Violations**: [None | List of violations with rule name, source, and explanation]
 - **Proof**:
 
 ```argdown
@@ -62,4 +63,5 @@ Compile the overall session outcome:
 4. **Output**: <branch + commit SHA> | <PR or artifact link>
 5. **Argument**: The `argdown` block recorded under the task's `## Report`.
 6. **Limitations**: Unresolved items, out-of-scope elements, and verbatim error outputs.
+7. **Rule Violations**: [None | Disclosed violations with rule citations and reasons]
 ```

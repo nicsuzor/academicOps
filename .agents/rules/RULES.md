@@ -68,3 +68,15 @@ Agents must never create un-actionable "decision" tasks or file conversational q
 - **Represent forks as mutually exclusive option nodes:** Architectural choices and trade-offs are modelled on the graph as competing option nodes with mutual blocking edges. Choosing an option resolves the conflict and cancels the competing node, unblocking downstream dependencies.
 - **Model unknowns as empirical probes:** Missing information is gathered via focused probe tasks (`classification: probe`).
 - **Ask in-turn questions directly:** Interactive clarifications in an active session use `AskUserQuestion` directly rather than polluting the graph with un-actionable decision tasks.
+
+## Rule Waivers and Reservations
+
+A rule is waived only by another rule or a direct instruction from the user. Agents must never waive a rule on their own guess, infer reservations from batch or third-party text mentioning the user, or leave known rule breaches in place as "the user's call". When an agent encounters content or behavior violating governing specifications or rules within its active custodial or task scope, it must fix the violation immediately. Out-of-scope defects are escalated under Mandatory Upward Reporting of Rule Violations.
+
+## PKB Linking: One-Way and Project Hierarchy
+
+Links in the PKB are strictly one-way to prevent link rot. Tasks link upward to their parent project or epic; tasks never link to Maps of Content or indexes. Indexes (type: index) organize reference documentation, not actionable tasks.
+
+## Mandatory Upward Reporting of Rule Violations
+
+Every agent must always report all rule violations -- whether committed during execution or discovered in examined material -- up the chain to the coordinator and user. Handback reports and handover summaries must explicitly disclose rule violations with rule citations and reasons. An agent must never omit, downplay, or hide a rule violation.

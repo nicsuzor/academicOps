@@ -26,7 +26,7 @@ Review, customize, and allocate native Telegram command menus across agent perso
 Apply qualitative judgment to evaluate candidate commands against each persona's operational role:
 
 - **Ida Prime (`prime`):** Prioritize fast operational triage, quick capture, decision walk-throughs, task queueing, daily briefings, and worker dispatch (e.g. `/decide`, `/q`, `/mine`, `/reconcile`, `/up`, `/reify`, `/dispatch`, `/daily`).
-- **Strategic Ida / Ida Actual (`strategic`):** Prioritize reflective analysis, high-altitude strategizing, goal decomposition, dialectical reviews, argument audits, and durable capture (e.g. `/strategize`, `/remember`, `/decompose`, `/plan`, `/strategic_review`, `/argument_map`, `/daily`).
+- **Strategic Ida / Ida Actual (`strategic`):** Prioritize reflective analysis, high-altitude strategizing, goal decomposition, dialectical reviews, argument audits, and durable capture (e.g. `/strategize`, `/remember`, `/decompose`, `/strategic_review`, `/argument_map`, `/daily`).
 - **Shared:** Actions supporting general coordination workflows belong on both menus.
 - **Composite commands:** Propose single-tap composite commands where recurring multi-step patterns or common briefings are identified (such as `/daily`).
 - **Command identifier normalization & platform constraints:**

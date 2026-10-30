@@ -187,8 +187,8 @@ describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration
       expect(cfRes.status).toBe(401);
     });
 
-    test("AC1: A request carrying a forged, malformed, expired or replayed assertion is refused on every authenticated route", async () => {
-      const { baseUrl, store } = await createBridgeTestContext({
+    test("AC1: A request carrying a forged, malformed, or expired assertion is refused on every authenticated route", async () => {
+      const { baseUrl } = await createBridgeTestContext({
         cfAccessAud: testAud,
         cfAccessTeamDomain: testTeamDomain,
         cfAccessAllowedEmails: [testAllowedEmail],
@@ -199,10 +199,6 @@ describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration
       const forgedAssertion = makeCfAccessJwt({}, {}, otherPrivateKey);
       const malformedAssertion = "not.a.valid.jwt.token";
       const expiredAssertion = makeCfAccessJwt({ exp: now - 300 });
-      const replayedAssertion = makeCfAccessJwt({ jti: "replayed-nonce-123" });
-      if ((store as any).getReplayCache) {
-        (store as any).getReplayCache().add("replayed-nonce-123", now + 3600);
-      }
 
       const authenticatedRoutes: Array<{ method: string; path: string; body?: any }> = [
         { method: "GET", path: "/api/app/events" },
@@ -250,17 +246,6 @@ describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration
           ...(route.body ? { body: JSON.stringify(route.body) } : {}),
         });
         expect(expiredRes.status).toBe(401);
-
-        // 4. Replayed assertion
-        const replayedRes = await fetch(`${baseUrl}${route.path}`, {
-          method: route.method,
-          headers: {
-            "Cf-Access-Jwt-Assertion": replayedAssertion,
-            ...(route.body ? { "Content-Type": "application/json" } : {}),
-          },
-          ...(route.body ? { body: JSON.stringify(route.body) } : {}),
-        });
-        expect(replayedRes.status).toBe(401);
       }
     });
 
@@ -279,6 +264,29 @@ describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data).toBeDefined();
+    });
+
+    test("AC1: consecutive requests in one session with the same valid assertion succeed with 200", async () => {
+      const { baseUrl } = await createBridgeTestContext({
+        cfAccessAud: testAud,
+        cfAccessTeamDomain: testTeamDomain,
+        cfAccessAllowedEmails: [testAllowedEmail],
+        cfAccessKeys: { [testKeyId]: testPublicKeyPem },
+      } as any);
+
+      const validAssertion = makeCfAccessJwt();
+
+      // First request in session -> 200
+      const res1 = await fetch(`${baseUrl}/api/app/anchor`, {
+        headers: { "Cf-Access-Jwt-Assertion": validAssertion },
+      });
+      expect(res1.status).toBe(200);
+
+      // Second request in same session with same assertion -> 200
+      const res2 = await fetch(`${baseUrl}/api/app/questions`, {
+        headers: { "Cf-Access-Jwt-Assertion": validAssertion },
+      });
+      expect(res2.status).toBe(200);
     });
 
     test("1.2 Sequence numbers: monotonic seq counter increments across state mutations, present in REST snapshots and SSE stream", async () => {
