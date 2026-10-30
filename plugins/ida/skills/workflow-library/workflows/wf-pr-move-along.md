@@ -32,8 +32,8 @@ A worker executing this workflow may coordinate parallel subagents to conduct in
 
 2. **Audit CI Checks and Proportionate Review**:
    - Query CI pipeline status on the latest head commit. All required checks must pass cleanly.
-   - Verify that a review proportionate to the PR's blast radius and risk tier has been recorded.
-   - If the PR lacks proportionate review, coordinate a fresh independent review before advancing.
+   - Verify that a review proportionate to the PR's blast radius and risk tier has been posted to the pull request thread.
+   - If the PR lacks a proportionate review on its thread, coordinate a fresh independent review and post findings to the thread before advancing. Under no circumstances may a pull request be transitioned to ready or left in an awaiting-approval disposition without an agent-generated review present on the pull request thread.
 
 3. **Address Review Feedback and Requested Changes**:
    - Inspect open review threads, comments, and review states.
@@ -47,7 +47,7 @@ A worker executing this workflow may coordinate parallel subagents to conduct in
 5. **Evaluate Merge Gate and Land**:
    - Check whether all merge prerequisites are met: green checks, satisfied review obligations, resolved feedback, and required approvals per project policy.
    - If authorized to merge, execute the merge following repository merge conventions (merge commit, rebase, or squash).
-   - If the PR is gated on external human approval, unmerged dependencies, or substantive author revisions, leave the PR open and record an explicit disposition reason.
+   - If the PR is gated on external human approval, verify that the proportionate review is already posted to the PR thread, convert from draft to ready (`gh pr ready`) if applicable, leave the PR open, and record an explicit disposition reason. Never classify or leave a PR as awaiting approval without a posted review.
 
 ## Output contract
 
@@ -58,4 +58,5 @@ A worker executing this workflow may coordinate parallel subagents to conduct in
 - Must not merge a pull request with failing or pending required checks.
 - Must not merge a pull request with an active changes-requested review.
 - Must not bypass project-specific merge gates or approval requirements.
+- Must not classify or leave a pull request as awaiting approval without a proportionate review posted to the PR thread.
 - Must not leave an unmerged pull request without a documented, checkable reason.

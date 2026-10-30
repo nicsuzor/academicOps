@@ -18,7 +18,7 @@ Ends the current task at a decision that requires escalation for review. The wor
 
 ## Procedure
 
-1. **Complete the artifact** -- the full artifact the decision is about, never a summary or abstract standing in for it. Attach whatever review verdicts already exist for it.
+1. **Complete the artifact and review thread** -- the full artifact the decision is about, never a summary or abstract standing in for it. If the artifact is delivered via a pull request requiring user approval, verify that an agent-generated review proportionate to the change has been posted to the pull request thread, and that the pull request is marked ready for review only after review receipts are visible on GitHub. Attach whatever review verdicts already exist for it.
 2. **File it on the record** -- route delivery through the record: state plainly what decision is being asked for, the evidence supporting it, and what happens on approval. Hand back on the record and enforce one-level-per-hop escalation (never assign directly to `ida` or jump to the top); whichever agent one level up next reads the record decides what happens under the bazaar model.
 3. **Structure the approval gate** -- do not release the task as `done`. Per the review rules (outcome 2), release the task as `partial` with a queued review task that this task `depends_on`, or queue an explicit decision task before dependent work can unblock. Implementation work is strictly blocked until the approval decision is recorded on the record. Stop.
 
@@ -28,7 +28,7 @@ Cut the chain here. Work that proceeds on approval goes in a separate task that 
 
 ## Output contract
 
-- The complete artifact, filed on the record where the reviewer will find it.
+- The complete artifact, filed on the record where the reviewer will find it. For pull request deliverables, the proportionate review posted to the PR thread before submission for approval.
 - The approval boundary recorded (e.g. task released as `partial` with a queued review task wired with `depends_on`, or an explicit decision task), strictly blocking dependent work until approval is recorded.
 
 ## When to include

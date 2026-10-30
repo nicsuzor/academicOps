@@ -145,6 +145,20 @@ Pull request review and merge authority is governed by a three-tier risk taxonom
 Enforcement operates through workflow merge gates (`instructions`, `imperative`):
 Finish and QA templates direct QA workers to semantically evaluate PR risk against the taxonomy in a clean context. For verified Tier 1 PRs, QA workers merge autonomously via `gh pr merge --squash` and release the QA task as `done`. For Tier 2 and Tier 3 PRs, QA workers verify claims, post structured receipts to the PR, and leave the PR open for reviewer or principal sign-off. Under headless worker and review lifecycle rules, QA tasks complete as `done` with the PR URL recorded on the task record so that `/reconcile` tracks merge without human wait states; no task rests or releases into `review` for human merge gates.
 
+### Pre-Approval Review Invariant and Native Draft Gating
+
+The framework enforces a strict ordering invariant across all pull request lifecycles:
+
+$$\text{Review Generated} \longrightarrow \text{Review Posted to PR Thread} \longrightarrow \text{PR Marked Ready / User Approval Requested}$$
+
+Under no circumstances is a pull request submitted for user approval, tagged for user review, or reported in an awaiting-approval disposition without an agent-generated review already present on the pull request thread.
+
+Enforcement operates through native platform mechanisms and workflow gates ([`specs/workflows/proportionate-pr-review-before-approval.md`](../workflows/proportionate-pr-review-before-approval.md)):
+
+1. **Native Draft PR Gating (`--draft` and `gh pr ready`)**: Any pull request requiring user or reviewer approval is initially opened in draft state. Draft status natively suppresses user review notifications, prevents premature merges, and signals incomplete readiness. An independent review or QA worker conducts the proportionate review, posts receipts to the PR thread, and converts the PR to ready (`gh pr ready`).
+2. **Synchronous In-Task Review**: Where a task delivers both authoring and verification in a single run, author self-review hazard is eliminated by dispatching an isolated review subagent. Review receipts are posted to the PR thread before converting from draft or releasing.
+3. **Move-Along and Sweep Guardrails**: PR move-along workflows audit open PR threads for existing reviews and coordinate/post missing reviews before advancing merge gates. PR sweep workflows categorize unreviewed PRs needing approval strictly as `Queued for Review` (never `Blocked on Approval`).
+
 ### Non-PR Task Verification and Lifecycle
 
 For tasks that do not produce pull requests (such as empirical analyses, documentation updates, research tasks, and operational maintenance), `/reify` mints an independent downstream `QA: <task>` child task only where the composed workflow warrants an independent check (such as empirical analyses requiring numerical replication, high-impact specification changes, or formal qualitative audits). Workflows that do not warrant an additional verification pass mint no QA child.

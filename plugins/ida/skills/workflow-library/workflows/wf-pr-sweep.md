@@ -40,19 +40,20 @@ Sweep execution runs via parallel fan-out: a single coordinator fans out across 
 
 3. **Triage and Queue Next-Step Tasks**:
    - Decouple triage from execution: do not attempt inline multi-PR resolutions.
-   - For each ready, non-draft PR requiring action:
+   - For each PR requiring action:
      - Audit CI check status.
-     - Inspect review status (proportionate review, changes requested, or author feedback).
+     - Inspect review status: verify whether a proportionate review is posted on the PR thread.
      - Check mergeability and base branch conflict state.
+     - If checks pass and approval is required, but no review is posted on the PR thread, classify as `Queued for Review` and queue a review task; strictly forbid classifying as `Blocked on Approval`.
      - Identify the discrete next action needed (e.g. address review feedback, settle merge conflicts, conduct risk-tier review, or merge).
      - Verify an existing open task covers this action, or queue a discrete follow-up task.
 
 4. **Compile Sweep Disposition Report**:
    - For every enumerated PR, record an explicit disposition:
-     - `Queued for Review`: Awaiting initial review; next-step task queued.
+     - `Queued for Review`: Awaiting initial or proportionate review; next-step review task queued. PRs requiring approval that lack posted reviews are always categorized here.
      - `Queued for Feedback`: Blocked on requested changes or review feedback; next-step task queued.
      - `Queued for Conflicts`: Merge conflicts against base branch; next-step task queued.
-     - `Blocked on Approval`: Green and reviewed, awaiting designated principal sign-off per project policy.
+     - `Blocked on Approval`: CI checks green and proportionate review already posted on the PR thread, awaiting designated principal sign-off per project policy. If a review has not been posted on the PR thread, the PR must never be classified as `Blocked on Approval`.
      - `Merged`: Merged into base branch (for fully approved, green hotfixes where authorized).
      - `Excluded`: Draft or automated release PR outside automated sweep scope.
    - File a closed summary task recording the full sweep disposition manifest.
@@ -67,5 +68,6 @@ Sweep execution runs via parallel fan-out: a single coordinator fans out across 
 - Must not merge automated release PRs without explicit human release approval.
 - Must not merge PRs lacking required project-level approvals or reviews.
 - Must not merge PRs with active changes-requested reviews or failing checks.
+- Must not classify any PR requiring approval as `Blocked on Approval` unless an agent-generated proportionate review has already been posted to the PR thread.
 - Must not execute complex multi-PR inline resolutions within the triage sweep.
 - Must not omit any evaluated PR from the sweep handback report.

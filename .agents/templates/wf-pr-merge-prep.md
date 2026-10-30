@@ -22,7 +22,9 @@ actually stands, not as it was last checked.
 
 1. **Review the diff in full.** Read what changed, not the PR's account of what
    changed. Note every concern -- correctness, scope creep, missed cases,
-   anything that would surprise the principal later.
+   anything that would surprise the principal later. Coordinate an independent
+   review proportionate to the PR's risk tier and post the review findings to
+   the PR thread.
 
 2. **Address what the review found.** Fix what can be fixed inside the PR's own
    diff. What can't be fixed here -- or shouldn't be, because it needs a call
@@ -34,17 +36,21 @@ actually stands, not as it was last checked.
    pass, another node, or the PR author is not this. Where it isn't, that is
    itself a finding, not something to wait out.
 
-4. **Write an honest summary into the PR's own body.** Use the repo's PR
-   template if it has one (fetch it, don't recall it); fill every section with
-   real content. A summary is a defect report if the diff and the words
-   disagree.
+4. **Write an honest summary into the PR's own body and post review.** Use the
+   repo's PR template if it has one (fetch it, don't recall it); fill every
+   section with real content. Ensure the proportionate review receipts are
+   posted to the PR thread before handing to the sign-off gate. If the PR is in
+   draft state, convert it to ready (`gh pr ready`) only after review receipts
+   are posted. A summary is a defect report if the diff and the words disagree.
 
 ## Exit: hand it to the sign-off gate
 
-This template ends where [[wf-signoff-loop]] begins. Merging is a ship-type
+This template ends where `wf-signoff-loop` begins. Merging is a ship-type
 act -- compose that gate to carry the review's findings and a recommendation
-to the principal. This template never merges the PR itself; producing
-material for someone else's decision is the deliverable, not the decision.
+to the principal. The PR must have a proportionate agent review posted on its
+thread before handing off to the sign-off gate. This template never merges the
+PR itself; producing material for someone else's decision is the deliverable,
+not the decision.
 
 ## Not for
 
