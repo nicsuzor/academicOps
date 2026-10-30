@@ -76,12 +76,12 @@ Per framework enforcement architecture, the mechanism for steering decomposition
 5. **`process`**: Selected for validation. Downstream QA and review lenses verify the presence and fidelity of the rendered plan view without requiring mechanical runtime enforcement.
 6. **`post-hoc`**: Maintained. Task version history in the knowledge base and repository records preserve prior plan states.
 
-### 6. Proposed enforcement map extract (Stage 2 implementation)
+### 6. Enforcement map extract
 
-During the follow-up build stage, the live enforcement register (`specs/ENFORCEMENT-MAP.md`) will be updated with the following extract once `plugins/ida/skills/decompose/SKILL.md` is modified and verified:
+The live enforcement register (`specs/ENFORCEMENT-MAP.md`) records the following extract:
 
 ```markdown
-| [Skill: Decompose](../plugins/ida/skills/decompose/SKILL.md) -- Write and redraw a plan graph on the top-level task via the default or user-named plan-view template, showing planned process only without task status. | instructions | imperative | `plugins/ida/skills/decompose/SKILL.md`: Each `/decompose` run selects the user-specified or default `plan-view` template (without hardcoded names) and renders the stage strip, dependency graph, legend, and summary table on the top-level task, redrawing in place on re-runs; status is omitted to preserve SSoT (`specs/workflows/plan-view.md`). Instruction-sharpening move on user request to inspect planned process without opening individual task bodies. Observation: Top-level tasks carry structural plan views redrawn on each pass without status duplication. |
+| [Skill: Decompose](../plugins/ida/skills/decompose/SKILL.md) -- Write and redraw a plan graph on the top-level task via the default or user-named plan-view template, showing planned process only without task status. | instructions | imperative | `plugins/ida/skills/decompose/SKILL.md:35-38`: Each `/decompose` run selects the user-specified or default `plan-view` template (without hardcoded names) and renders the stage strip, dependency graph, legend, and summary table on the top-level task, redrawing in place on re-runs; status is omitted to preserve SSoT (`specs/workflows/plan-view.md`). Instruction-sharpening move on user request to inspect planned process without opening individual task bodies. Observation: Top-level tasks carry structural plan views redrawn on each pass without status duplication. |
 ```
 
 - **Evidence for the move:** User feedback in iterative planning sessions demonstrated that supervisors could not evaluate whether a decomposition balanced research, build, and review without opening every child task record. Restricting the plan view to static process structure preserves Single Source of Truth while providing immediate objective-level clarity.
