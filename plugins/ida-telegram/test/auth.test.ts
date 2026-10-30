@@ -248,6 +248,16 @@ describe("Mini App Security: Cloudflare Access JWT validation (AC1, AC2)", () =>
     expect(res.reason).toContain("issuer mismatch");
   });
 
+  test("rejects assertion with missing issuer when teamDomain configured", async () => {
+    const token = makeJwt({ iss: undefined });
+    const res = await verifyCfAccessJwt(token, {
+      keys: { "test-kid-1": pem },
+      teamDomain,
+    });
+    expect(res.valid).toBe(false);
+    expect(res.reason).toContain("issuer mismatch");
+  });
+
   test("rejects assertion with unauthorized email", async () => {
     const token = makeJwt({ email: "unauthorized@example.com" });
     const res = await verifyCfAccessJwt(token, {
