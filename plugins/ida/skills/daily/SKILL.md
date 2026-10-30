@@ -25,7 +25,7 @@ Every daily note run must execute Steps 0 through 7 in sequential order to compl
 - **Step 3**: Read today's agenda (correspondence sweep, email, and calendar).
 - **Step 4**: Reconcile the graph (`wf-reconcile`).
 - **Step 5**: Collect open PRs needing the user across repositories.
-- **Step 6**: Assemble state via graph review subagent (`pauli`).
+- **Step 6**: Assemble state via graph review subagent.
 - **Step 7**: Write the note to the PKB and read it back.
 
 ### Execution Invariants
