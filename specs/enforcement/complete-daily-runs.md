@@ -1,7 +1,7 @@
 ---
 id: complete-daily-runs
 title: Complete Daily Run Step Execution Enforcement
-status: draft
+status: active
 type: spec
 tags: [enforcement, daily, tpl-daily, workflow-execution, hotfix]
 ---
@@ -166,20 +166,25 @@ flowchart TD
    - Update its body to fetch `tpl_daily` dynamically from PKB and mandate complete execution of Steps 0 through 7.
    - When the next distribution release is built and deployed, the `/daily` command will seamlessly execute the canonical PKB template.
 
-## 8. Outcome-Level Build Criteria for Downstream Implementation
+## 8. Implemented Build Deliverables
 
-The downstream implementation task must satisfy the following verifiable criteria:
+The implementation establishes the complete step execution contract across all target surfaces:
 
-1. **PKB Template Update (`tpl_daily`):**
-   - Add Precondition 10 under `## 0. Fail-loud preconditions`:
+1. **PKB Template (`tpl_daily`):**
+   - Precondition 10 added under `## 0. Fail-loud preconditions`:
      `**10. Complete step execution invariant**: Every run MUST execute Steps 0 through 7 in sequence to completion. Cutting corners, skipping steps, or terminating early because the note looks current or the full pass is large is strictly prohibited. External tool unreachability must be confirmed across all available channels before quiet status is recorded. Step-execution verification must remain within execution traces and never be appended to the daily note body.`
-   - Under `## Steps`, add an explicit requirement that each step must be executed and verified before proceeding to Step 7 (Write).
-2. **PKB Specification Update (`spec_daily_reconcile_steps`):**
-   - Add the "Complete Step Execution Invariant" to the `## Ownership and Boundary Invariants` section.
+   - Under `## Steps`, mandatory execution contract added requiring full execution of Steps 0 through 7 in sequence and verification before proceeding to Step 7 (Write).
+2. **PKB Specification (`spec_daily_reconcile_steps`):**
+   - Added the "Complete Step Execution Invariant" to the `## Ownership and Boundary Invariants` section.
 3. **Plugin Skill Restoration (`plugins/ida/skills/daily/SKILL.md`):**
-   - Restore `plugins/ida/skills/daily/SKILL.md` with frontmatter `name: daily`, pointing `/daily` to dynamic execution of `tpl_daily` with full step completion requirements.
+   - Restored `plugins/ida/skills/daily/SKILL.md` with frontmatter `name: daily`, pointing `/daily` to dynamic execution of `tpl_daily` with full step completion requirements.
 4. **Enforcement Map Registration (`specs/ENFORCEMENT-MAP.md`):**
-   - Register an imperative row for Complete Daily Run Step Execution Invariant under `specs/ENFORCEMENT-MAP.md`.
-   - Record the regulatory experiment tracking entry (what moved, evidence, expected observation).
-5. **Empirical Verification:**
-   - Execute a specimen daily note run following the updated instructions, capturing the full execution trace and verifying that Steps 0 through 7 were executed in order.
+   - Registered imperative row 78 for Complete Daily Run Step Execution Invariant under `specs/ENFORCEMENT-MAP.md`.
+
+## 9. Regulatory Experiment Record
+
+- **Hypothesis:** Upgrading from unmapped advisory step enumeration to Level 2 imperative instructions with fail-loud preconditions, trace receipts, and restored plugin routing will eliminate step-skipping behavior caused by cognitive evasion under large task breadth.
+- **What moved:** From unmapped advisory instructions to Level 2 imperative instructions across all four invocation surfaces (`tpl_daily`, `spec_daily_reconcile_steps`, `plugins/ida/skills/daily/SKILL.md`, and runner prompts).
+- **On what evidence:** Documented 2026-10-30 run confessing skipping Steps 0b, 1, 2, 3, 4, 5, and 6 because "the note looked current and the full pass is large", alongside observed multi-day carryover of unverified PR text.
+- **Observation / Promotion Criteria:** Subsequent daily note runs execute all steps (Steps 0 through 7) in sequence, verifiable through execution trace logs, with zero skipped operational phases and zero `## Daily Log` or heartbeat insertions into the daily note body.
+- **Kill / Escalation Criteria:** If future runs continue to omit steps or terminate prematurely under large task breadth, escalate to Level 4 structural partitioning (individual task nodes per phase) or Level 5 process gates (mandatory independent QA verification).
