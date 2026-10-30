@@ -47,8 +47,6 @@ Execution runs through the four-stage rebuild contract ([specs/tools/argument-ma
 3. **Automated Audit**: Audits generated canvases with `pkb-excalidraw check` (referential integrity, reciprocal `boundElements`, monotonic base-62 fractional indices without trailing fractional zeros), `pkb-excalidraw overlap` (zero shape collisions), and `pkb-excalidraw arrows-check` (zero connector intersections).
 4. **Rendering & Page Synthesis**: Renders vector SVGs via `pkb-excalidraw screenshot` and synthesizes the overview markdown document (`<stem>-overview.md`) linking rendered SVGs, summary metrics, and open issue audits.
 
-Legacy ad-hoc scripts (`references/gen_panels.py` and `references/tree_lint.py`) are deprecated and retired in favor of this automated rebuild procedure.
-
 ## Check before delivering
 
 - **The source is sound.** The Argdown parses without errors. Every `#missing` item has a reason, and every quoted source has a locator.
