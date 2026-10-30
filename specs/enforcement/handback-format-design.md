@@ -1,7 +1,7 @@
 ---
 id: handback-format-design
 title: Design Review of the Premise-Check Handback Format: Endnote Pointers and Mechanical Basis Claims
-status: draft
+status: ready
 type: spec
 tags: [enforcement, premise-check, argdown-toulmin, evidence-contract, handback-format, readability]
 ---
@@ -21,17 +21,17 @@ It addresses two primary readability friction points identified by the user:
 
 As the framework principal and human reviewer, I want report argument blocks to read as clear, natural English statements with inline references, so that I can evaluate findings and logical inferences directly from top to bottom without having to navigate back and forth to decode lettered endnotes or filter out mechanical boilerplate.
 
-- **AC-1.1**: The argument body eliminates `^n` endnote markers and the `notes:` frontmatter section; pointers, citations, and locators are integrated directly inline with the claims they support.
-- **AC-1.2**: Trailing mechanical clauses (e.g. `-- I read it`, `-- I did it`) are removed from premise lines; observations are stated naturally with quoted values in prose.
-- **AC-1.3**: The core Toulmin structure (numbered premises, warrant rules with explicit defeaters and statuses in the inference bar, chained conclusions, and `asks:`/`answers:` mappings) remains 100% intact.
+- **AC-1.1**: Given a handback report with source citations, when an author renders the fenced Argdown block, then citations and locators appear directly inline with the premise claims they support, without `^n` endnote markers or a `notes:` frontmatter section.
+- **AC-1.2**: Given empirical observations or actions recorded in premises, when an author writes premise statements, then claims are stated as natural language prose with quoted values inline, without trailing mechanical basis clauses (such as `-- I read it` or `-- I did it`).
+- **AC-1.3**: Given a handback argument block in natural language format, when parsed or reviewed, then the full Toulmin inferential geometry (numbered premises, inference bars with warrant rules and defeaters, chained conclusions, and `asks:`/`answers:` mappings) is intact and valid.
 
 ### US-2: Semantic Evidence Evaluation Over Mechanical Pattern-Matching
 
 As an execution supervisor and quality reviewer, I want evidence sufficiency to be evaluated qualitatively by intelligent agents rather than by deterministic substring heuristics and rigid rank arithmetic, so that valid reports are not refused by false-positive parser failures.
 
-- **AC-2.1**: The verdict recorder retires deterministic case-insensitive prefix matching and strict `min(rank)` arithmetic comparisons on premise basis text.
-- **AC-2.2**: The checking agent evaluates evidence sufficiency semantically under the `Supported:` check, verifying whether the cited evidence bears the stakes of the step.
-- **AC-2.3**: Checkers are free to state natural language explanations of evidence under `Supported:` without encountering tool refusals.
+- **AC-2.1**: Given a handback argument block submitted for verdict recording, when the verdict recorder evaluates the premise-check block, then it performs structural validation without deterministic case-insensitive prefix matching or `min(rank)` arithmetic comparisons on premise basis text.
+- **AC-2.2**: Given a handback report under review, when a checking agent evaluates the `Supported:` check, then the agent verifies evidence sufficiency qualitatively against the stakes of the task using semantic reasoning.
+- **AC-2.3**: Given a checking agent recording a verdict reason, when the checker writes a natural language explanation of evidence sufficiency under `Supported:`, then the verdict recorder accepts the reason without tool refusals.
 
 ## 2. Empirical Census of Mechanical Basis Failures
 
@@ -83,7 +83,7 @@ The 27 mechanical basis check failures fall into three distinct failure modes:
 
 1. **Zero Reuse in Practice:** An audit of real handback blocks revealed that notes are virtually always cited exactly once (1:1 with premises). In the sample examined below, 7 out of 7 notes were used only once. An endnote table saves zero space when notes are not reused.
 2. **Cognitive Overhead and Eye-Jumping:** A human reviewer reading line `(1)` must stop, jump up to the `notes:` table in YAML frontmatter to locate `a`, read the target, and jump back down. This destroys readability.
-3. **Redundancy and SSoT Violation:** Real blocks already cite the primary identifiers within the statement body (e.g. `(1) Task task-39696253 created... -- I did it ^a` where `notes: a: task-39696253`). Having the ID in both places duplicates text and invites drift.
+3. **Redundancy and SSoT Violation:** Real blocks already cite the primary identifiers within the statement body (e.g. `(1) Task task-1001 created... -- I did it ^a` where `notes: a: task-1001`). Having the ID in both places duplicates text and invites drift.
 4. **Replacement:** Pointers and citations are embedded directly inline:
    - File locations: `(path/to/file.py:42)`
    - Task/spec references: `[[task-id]]` or `task-id`
@@ -104,7 +104,7 @@ The 27 mechanical basis check failures fall into three distinct failure modes:
 
 ## 4. Before and After Handback Comparison
 
-The following before/after comparison uses a real handback block from the trace store (session `25882068-5a33-4b28-9faf-9fe62bd13eee`, claim `claim-cd61ddb6`).
+The following before/after comparison uses a real handback block from the trace store (session `session-sample-uuid`, claim `claim-sample-id`).
 
 ### Before: Current Format with Endnotes and Mechanical Basis Trailers
 
@@ -120,17 +120,17 @@ answers:
   ask-2: 8
   ask-3: 10
 notes:
-  a: task-39696253
-  b: task-7fb34e2c
+  a: task-1001
+  b: task-1002
   c: workflow-library/SKILL.md "Tiers and Resolution"
   d: workflow-library/workflows/wf-research.md
   e: reify/SKILL.md:90,113
-  f: task-363ad971
-  g: task-059bc4dd, task-95fd4cdb, wf-finish
+  f: task-1004
+  g: task-1005, task-1006, wf-finish
 ===
 
-(1) Task task-39696253 created: assignee "user", depends_on task-4b8f24f1 (status "done"), status "ready", options (a)-(c) plus polecat. -- I did it ^a
-(2) task-7fb34e2c created; research and decision tasks reparented under it ("Task updated" for both). -- I did it ^b
+(1) Task task-1001 created: assignee "user", depends_on task-1003 (status "done"), status "ready", options (a)-(c) plus polecat. -- I did it ^a
+(2) task-1002 created; research and decision tasks reparented under it ("Task updated" for both). -- I did it ^b
 (3) The research task's sources are "wf-research, wf-task-base"; wf-research has no approval stage. -- I read it ^d
 -- A decision task owned by the asker, depending on the research and sitting under a shared epic, is the asked-for step in the asked-for shape. Unless: an equivalent task already existed; ruled out by (3) and the earlier read showing no dependents. --
 (4) So the missing decision task now exists, owned by the user, depending on the research, with research and decision as children of one epic.
@@ -139,7 +139,7 @@ notes:
 (7) The graph coordinator works on the task graph only and hands back anything outside it. -- rule
 -- The highest home for a library-wide rule is the universal tier; a PKB copy with the same name would replace rather than add to it, and the universal tier is outside the PKB. Unless: a PKB base template exists to carry it; ruled out by the template listing (no PKB wf-task-base). --
 (8) So both rules belong in the universal tier (workflow-library SKILL.md Constraints; wf-research.md), with reify lines 90 and 113 amended to match, and are handed back with the proposed wording.
-(9) task-363ad971 is "done": workers never create follow-ups and failed checks go to reconcile; task-059bc4dd and task-95fd4cdb are "queued", with the sweep creating follow-up tasks; wf-finish mints next-run follow-ups without saying where they go. -- I read it ^f ^g
+(9) task-1004 is "done": workers never create follow-ups and failed checks go to reconcile; task-1005 and task-1006 are "queued", with the sweep creating follow-up tasks; wf-finish mints next-run follow-ups without saying where they go. -- I read it ^f ^g
 -- A prior discussion is relevant when it governs who creates follow-ups or where they go. Unless: other search hits concern follow-ups of this kind; ruled out by reading their titles (TrustCon, Oversight Board). --
 (10) So three earlier threads are relevant: the worker rule (done), the PR sweep design (queued), and next-run follow-ups in the finish template (current).
 ```
@@ -160,8 +160,8 @@ answers:
   ask-3: 10
 ===
 
-(1) Task task-39696253 was created at ready with assignee "user", depending on task-4b8f24f1 (done), offering routes (a)-(c) plus polecat.
-(2) Parent task task-7fb34e2c was created, and both research and decision tasks were reparented under it.
+(1) Task task-1001 was created at ready with assignee "user", depending on task-1003 (done), offering routes (a)-(c) plus polecat.
+(2) Parent task task-1002 was created, and both research and decision tasks were reparented under it.
 (3) The research task's sources are wf-research and wf-task-base (read from `workflow-library/workflows/wf-research.md`); wf-research has no approval stage.
 -- A decision task owned by the asker, depending on the research and sitting under a shared epic, is the asked-for step in the asked-for shape. Unless: an equivalent task already existed; ruled out by (3) and the earlier read showing no dependents. --
 (4) So the missing decision task now exists, owned by the user, depending on the research, with research and decision as children of one epic.
@@ -170,7 +170,7 @@ answers:
 (7) The graph coordinator works on the task graph only and hands back anything outside it (agent operating rule).
 -- The highest home for a library-wide rule is the universal tier; a PKB copy with the same name would replace rather than add to it, and the universal tier is outside the PKB. Unless: a PKB base template exists to carry it; ruled out by the template listing (no PKB wf-task-base). --
 (8) So both rules belong in the universal tier (workflow-library SKILL.md Constraints; wf-research.md), with reify lines 90 and 113 amended to match, and are handed back with the proposed wording.
-(9) task-363ad971 is done (workers never create follow-ups; failed checks go to reconcile); task-059bc4dd and task-95fd4cdb are queued (sweep creates follow-ups); and wf-finish mints next-run follow-ups without stating placement.
+(9) task-1004 is done (workers never create follow-ups; failed checks go to reconcile); task-1005 and task-1006 are queued (sweep creates follow-ups); and wf-finish mints next-run follow-ups without stating placement.
 -- A prior discussion is relevant when it governs who creates follow-ups or where they go. Unless: other search hits concern follow-ups of this kind; ruled out by reading their titles (TrustCon, Oversight Board). --
 (10) So three earlier threads are relevant: the worker rule (done), the PR sweep design (queued), and next-run follow-ups in the finish template (current).
 ```
@@ -219,7 +219,7 @@ The table below identifies every file, grammar specification, recorder script, t
 | 5 | `plugins/ida/skills/argdown-toulmin/SKILL.md` | Core grammar standard for Chained Toulmin Argdown in the framework. | - Clarify in the "Metadata" and "Presentation" sections that task report handbacks embed citations inline in prose rather than requiring endnote markers or trailing metadata blocks. |
 | 6 | `plugins/ida/hooks/report_argument.py` | Structural parser validating the Argdown block and checker reason. | - Update `_premise_basis()` to make basis trailers optional.<br>- Update `parse_block()` to make `notes:` section optional in frontmatter.<br>- In `pass_failures()`, remove the check requiring `Supported` to match `vocab.basis` phrase and the check comparing `named.rank != lowest`.<br>- Update `span_attributes()` to safely handle omitted basis terms. |
 | 7 | `plugins/ida/hooks/premise_check_verdict.py` | Command-line runner for recording verdicts, emitting spans, and disarming gates. | - Ensure `judge_reason()` does not reject PASS verdicts due to un-enumbered premise phrasing or descriptive `Supported:` text. |
-| 8 | `tests/test_report_argument.py` and `tests/test_premise_check_verdict.py` | Test suites asserting parser and recorder behavior. | - Update unit tests that assert basis rank matching and endnote parsing.<br>- Add tests verifying that clean natural language blocks (no `notes:`, no `-- <basis>`) parse and record PASS cleanly. |
+| 8 | `tests/test_premise_check_argument.py` and `tests/test_premise_check_verdict.py` | Test suites asserting parser and recorder behavior. | - Update unit tests that assert basis rank matching and endnote parsing.<br>- Add tests verifying that clean natural language blocks (no `notes:`, no `-- <basis>`) parse and record PASS cleanly. |
 | 9 | `specs/ENFORCEMENT-MAP.md` | System-wide matrix of all enforcement mechanisms. | - Update Row 18 (Cite Sources) and Row 87 (Verdict-reason form check) to document the transition from mechanical basis rank checking to agentic semantic evaluation and inline citations. |
 | 10 | `specs/enforcement/enforcement.md` | Core enforcement specification and pyramid reference. | - Document the de-escalation of premise basis checking from Level 3 structural hooks to Level 2 agentic review and Level 1 instructions. |
 | 11 | `specs/enforcement/evidence-contract.md` and `evidence-contract-enforcement.md` | Evidence contract specifications. | - Update User Story 2 to specify inline citation format and remove references to mechanical basis ranking. |
@@ -233,3 +233,7 @@ The table below identifies every file, grammar specification, recorder script, t
    - Legacy format: Blocks carrying `-- <basis phrase> ^n` and `notes:`.
 2. **Checker Freedom:** Checkers can record `Supported:` with qualitative natural language immediately without triggering refusals.
 3. **Phased Instruction Rollout:** Instructions across skills and agent personas will update the handback template to the clean natural format.
+
+## Open questions
+
+None. Architectural design choices for Stage 1 (dropping single-use endnote pointers, dropping mechanical basis trailers and rank checks, preserving Toulmin inferential geometry, and transitioning evidence sufficiency to semantic evaluation) are fully resolved.
