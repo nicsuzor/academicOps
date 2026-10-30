@@ -70,7 +70,7 @@ Emit the report using `/dump`'s handback envelope and record it on the task reco
 2. **Summary**: Findings, forcing checks (1–5), and remediations for `FAIL`/`REVISE`.
 3. **Verdict & Safeguards**:
    - VERDICT: <PASS | REVISE | FAIL>
-   - STATUS: <release status: done | partial | review | failed | cancelled | in_progress>
+   - STATUS: <release status: done | partial | failed | cancelled | in_progress>
    - CRITERIA: <acceptance criterion id tested and observed result>
    - CONFIDENCE: <high | med | low> + <what single check would falsify this>
    - CONFOUND CHECK: <clean-room/differential control result, or "NOT RUN">

@@ -15,7 +15,7 @@ Read each task you were given; for a parent, read its children and take the read
 
 A task is ready when its status is `queued`, it has no open `needs` edges or incomplete children, it fills the `/reify` task template (Goal, Acceptance, Instructions, Output), and its Instructions conclude with the composed workflow's release step.
 
-- A QA follow-up stays queued until its hard dependency completes; it is not ready yet.
+- A QA follow-up stays queued until its primary task releases `done`; once the primary task releases `done`, the QA follow-up's `needs` dependency is satisfied and it becomes ready for immediate dispatch.
 - A task that folds follow-ups into internal subtasks is ready when executable by the same agent in one session; only send to `/reify` when work requires independent sessions, personas, or approval gates that must be cut into an epic with child tasks.
 - Send a task that is unready or underspecified to `/reify` with its id, because writing and rewriting tasks is that skill's job. Dispatch the rest.
 - **Intake Contract:** On receiving a direction or work brief, the receiving agent must record its own summary stating deliverables as a frozen `## Acceptance` checklist on a PKB task before work starts.
@@ -30,13 +30,13 @@ Confirm each worker started. A worker that failed to start is a halt: report the
 
 Do not poll workers or wait on a timer (no status checking loops, no sleep loops, no cron timers). The dispatching session learns that a polecat has finished from polecat-mcp's completion event delivered over the event route or cross-session bus:
 
-`[polecat-exit] task=<task-id> container=<container-name> exit_code=<code|0> status=<review|done|partial|failed> pr_url=<url> duration=<seconds>s`
+`[polecat-exit] task=<task-id> container=<container-name> exit_code=<code|0> status=<done|partial|failed> pr_url=<url> duration=<seconds>s`
 
 ## 4. Act on completion
 
 When the completion event arrives, act on it immediately:
 
-- **Review or Done (`status=review` or `status=done`, `exit_code=0`)**: The worker delivered. Trigger `/verify` on the deliverable or `/reconcile` to process the PR and update task state. Read downstream tasks on the graph whose `needs` dependencies are now satisfied, and dispatch any that are ready.
+- **Done (`status=done`, `exit_code=0`)**: The worker delivered. Read downstream tasks on the graph (e.g. QA follow-up or review task) whose `needs` dependencies are now satisfied, and dispatch any that are ready. Trigger `/verify` on the deliverable or `/reconcile` as needed.
 - **Partial or Failed (`status=partial` or `status=failed`, or `exit_code!=0`)**: Inspect the failure reason recorded on the task and container logs. If unfinished work remains, route the follow-up through `/reify` or escalate per fail-fast.
 
 ## 5. Report
