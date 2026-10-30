@@ -17,7 +17,7 @@ Work moves through four stages. Each runs, then stops; no stage fires the next.
 | 3. Reify | `/reify` | one node, next to run | Bind the node to its executor and the workflow templates current now: assemble the workflow and write the dispatchable task to the graph. |
 | 4. Dispatch | `/dispatch` | ready tasks | Start polecat workers on queued, ready tasks. Writes no tasks. |
 
-The PKB custodian (Pauli) runs stages 1-3 and `/strategize`; an agent that receives one of these asks hands it to her. Stage 4 belongs to the dispatcher.
+The PKB custodian (Pauli) runs stages 1-3 and `/strategize`; an agent that receives one of these asks hands it to them. Stage 4 belongs to the dispatcher.
 
 The stages are operative instructions and live in `plugins/ida/skills/`. This spec does not restate them.
 
