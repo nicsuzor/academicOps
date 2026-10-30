@@ -42,6 +42,14 @@ Step inlining is interpretive, not mechanical transcription:
 - Outcome-oriented criteria: Reified tasks define observable end-state conditions and verification criteria rather than implementation mechanisms. Line numbers, line ranges, and narrow code slice prescriptions are strictly forbidden in `Goal`, `Acceptance criteria`, and `Execution steps` / `Instructions`.
 - Preserving design and build staging: When multi-file modifications or architectural choices are required, separate tasks are reified for Stage 1 (Design) and Stage 2 (Build) under `wf-code-task-base`. Stage 1 is never collapsed into Stage 2, even when the brief includes an implementation proposal.
 
+## QA follow-up tasks
+
+For pull request deliverables, `/reify` mints an independent downstream `QA: <task>` child task that verifies the delivered artifact and evaluates PR risk.
+
+For non-PR tasks (such as empirical analyses, documentation updates, research tasks, and operational maintenance), `/reify` mints a separate `QA: <task>` child task only where the composed workflow warrants an independent verification check (e.g. empirical analysis with replication requirements, high-impact specification or policy changes, or multi-step qualitative audits). Workflows that do not warrant a separate verification pass mint no QA child.
+
+Worker self-release to `done` is preserved across all non-PR tasks: workers self-release to `done` upon satisfying the frozen acceptance checklist with concrete evidence, without being held in `review`.
+
 ## Context gathering
 
 | Tier | Source | Role |
