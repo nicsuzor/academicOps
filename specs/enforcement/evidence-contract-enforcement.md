@@ -39,7 +39,7 @@ A report arrives as a foreground subagent's result, a background subagent's noti
 
 On agy the session-start line arrives with the first `PreInvocation` of each conversation. agy's hook payloads carry no report: a subagent's reply arrives as a `SYSTEM_MESSAGE` step that starts a new turn, which the gate reads from the transcript.
 
-A subagent's report may reach its caller twice: once through its explicit mid-run message and again via the harness's idle notification carrying its final reply. This duplicate delivery is intentionally retained without deduplication or performance optimization: the waste is small, as subsequent reads occur within the prompt-cache window at cached rates (roughly a tenth of fresh pricing), and duplicate arrival provides insurance against hung or crashed subagents since an explicit message arrives even if a clean idle event fails.
+A subagent's report may reach its caller twice: once through its explicit mid-run message and again via the harness's idle notification carrying its final reply. Duplicate delivery is kept as is, and no performance improvement is implemented: the waste is small.
 
 ## The premise-check gate
 
