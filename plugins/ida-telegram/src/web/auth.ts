@@ -382,7 +382,7 @@ export async function verifyCfAccessJwt(
     const rawDomain = options.teamDomain.replace(/^https?:\/\//, "").replace(/\/+$/, "");
     const expectedDomain = rawDomain.includes(".") ? rawDomain : `${rawDomain}.cloudflareaccess.com`;
     const expectedIss = `https://${expectedDomain}`;
-    if (payload.iss && payload.iss.replace(/\/+$/, "") !== expectedIss) {
+    if (!payload.iss || payload.iss.replace(/\/+$/, "") !== expectedIss) {
       return { valid: false, reason: `issuer mismatch: expected ${expectedIss} but got ${payload.iss}` };
     }
   }
