@@ -20,7 +20,7 @@ tags: [base, task, docs, instructions, spec, composite]
 
 ## Composition
 
-Stages 1--2 form one task; stage 3 is a second task that `needs` the first, so a fresh worker picks it up with no shared context. A minor docs repair or trivial chore omits stage 3.
+Structure documentation and instruction workflows per the follow-up placement invariant: as a single task with internal subtasks when executable by the same agent in one session, or as a dedicated epic with child tasks (Child 1: Stages 1--2 Drafting and Proof, Child 2: Stage 3 Review, with `needs: [<child_1_id>]`), never as loose siblings under an external parent. A minor docs repair or trivial chore omits stage 3.
 
 Where the same change also alters code that executes, that code is built and tested on its own terms, and both parts arrive in one PR.
 

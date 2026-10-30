@@ -45,7 +45,7 @@ Historical forensic evidence from the PKB establishes that titles shaped like `<
 
 ### Resolution at the Source
 
-1. **Abolition of Standalone Decision Tasks:** Standalone "decision" tasks are strictly prohibited across all prompts, skills, and documentation.
+1. **Abolition of Un-actionable Decision Tickets & Preservation of Design Decision Gates:** Standalone "decision" tasks filed as holding bins for open conversational questions are strictly prohibited across all prompts, skills, and documentation. In contrast, structured decision tasks assigned to the user that resolve an explicit design research fork and unblock downstream implementation are authorized and mandatory for design research workflows, operating in harmony with option-node branching (§4).
 2. **Proper Field Separation:** Identity and assignment are strictly confined to `assigned_to:` / `assignee:`.
 3. **Direct Interactive Resolution:** Interactive, in-session questions are asked immediately via `AskUserQuestion` rather than converted into backlog items.
 

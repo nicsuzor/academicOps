@@ -55,7 +55,7 @@ and evolve over time. Any surface satisfying the assembled workflow's
 requirements qualifies as an executor: an independent polecat session ([`/dispatch`](../../plugins/ida/skills/dispatch/SKILL.md)) that
 validates runtime behavior with [`/verify`](../../plugins/ida/skills/verify/SKILL.md) for code changes, or
 review subagents running [`/strategic-review`](../../plugins/ida/skills/strategic-review/SKILL.md) for rule compliance, strategic fit, and substantive quality.
-Proof is always written to the task record, typically as a downstream QA task (`needs: [<primary_task_id>]`) plus a `premise-check` verdict receipt.
+Proof is always written to the task record, structured either within a single task with internal subtasks or as child tasks under a dedicated epic (e.g. `Child 2: QA: <primary task title>`, `needs: [<child_1_id>]`), never as loose siblings under an external parent, plus a `premise-check` verdict receipt.
 GitHub Actions is one optional executor of code review, never the review system
 itself.
 
@@ -73,7 +73,8 @@ with no separate contract for "epic-shaped" work.
 How much of steps 3-4 run as standalone downstream review tasks versus how much is folded into the next run or a consolidated review pass is determined during [`/reify`](../../plugins/ida/skills/reify/SKILL.md) based on
 the task's risk and blast radius ([`plugins/ida/skills/reify/SKILL.md:85-98`](../../plugins/ida/skills/reify/SKILL.md), [`enforcement.md#pr-risk-taxonomy-enforcement`](enforcement.md#pr-risk-taxonomy-enforcement)):
 
-- **Substantive deliverables (features, refactors, multi-file changes)** -- `/reify` mints an independent downstream QA task (`Title: QA: <primary task title>`, `needs: [<primary_task_id>]`) that verifies the delivered artifact at runtime and evaluates PR risk against the three-tier taxonomy (`Tier 1` autonomous QA-merge vs `Tier 2` / `Tier 3` reviewer or principal sign-off).
+- **Substantive deliverables (features, refactors, multi-file changes)** -- structured per the follow-up placement invariant as a dedicated epic with child tasks (`Child 1: Primary Task`, `Child 2: QA: <primary task title>`, with `Child 2` `needs: [Child 1]`), never as loose siblings under an external parent, verifying the delivered artifact at runtime and evaluating PR risk against the three-tier taxonomy (`Tier 1` autonomous QA-merge vs `Tier 2` / `Tier 3` reviewer or principal sign-off).
+- **Design research tasks** -- `/reify` composes a dependent decision task assigned to the user (`assignee: user`) by default (`Title: Decide implementation route for <topic>`, `depends_on: [<research_task_id>]`) before downstream implementation tasks can unblock.
 - **Non-PR tasks (analyses, docs, research, operational tasks)** -- `/reify` mints a separate `QA: <task>` child task only where the composed workflow warrants an independent check (such as empirical analyses with replication requirements, high-impact policy or specification changes, or multi-step qualitative audits). Workflows that do not warrant a separate verification pass (routine documentation updates, straightforward queries, direct single-source summaries) mint no QA child. In all non-PR tasks, worker self-release to `done` remains standard upon fulfilling the frozen acceptance criteria; workers are not held in `review` awaiting a downstream gate.
 - **High-risk / wide blast radius** -- per-chunk review tasks wired with
   `depends_on`, each running its own rule-compliance and substantive QA pass before the

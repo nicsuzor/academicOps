@@ -43,7 +43,7 @@ Then assemble the steps:
 - Default to a single task with steps as a linear checklist; every extra cut costs a hand-off and loses context.
 - Cut into separate leaves only when independent sessions are strictly required (e.g. forks, loops, independent reviews).
 - Make each task as big as possible within those cuts.
-- Write each follow-up the workflow calls for as its own task. Never fold a follow-up into the primary task or into another follow-up.
+- When a task and its follow-up can be executed by the same agent in one session, structure them as a single task with internal subtasks. When independent sessions or review personas are required, structure them as a dedicated epic with child tasks, never as loose siblings.
 - Wire `needs` edges only where one unit genuinely requires another's output.
 - Mint multi-task cuts using task decomposition.
 - Write tasks with status `queued` immediately.
@@ -95,14 +95,12 @@ When an objective calls for specifying or designing a feature ahead of implement
 Where the composed workflow calls for QA review:
 
 - **Low-risk internal changes (chiefly bugfixes)**: Test whether the task is a low-risk internal change, chiefly a bugfix. If so, it gets no separate verification run. Instead, look for a blocked task waiting on the fix (`blocks` or inbound `needs` / `depends_on`):
-  - **Blocked dependent exists**: Mint a follow-up task with status `queued`, same parent as the primary task, and `needs: [<blocked_task_id>]` that judges the fix by reviewing that blocked task's next run once it runs.
+  - **Blocked dependent exists**: Mint a follow-up task with status `queued` under the shared epic, with `needs: [<blocked_task_id>]` that judges the fix by reviewing that blocked task's next run once it runs.
   - **No blocked dependent exists**: Mint no verification follow-up task; the fix finishes without a separate verification run.
 - **Other changes requiring QA**:
-  1. Mint an independent follow-up task with status `queued`.
-  2. Title: `QA: <primary task title>`.
-  3. Set parent to the primary task's parent.
-  4. Wire dependency: `needs: [<primary_task_id>]` so the QA task stays blocked until the primary task is `done`.
-  5. Compose the review follow-up task drawing its brief from the shared review briefing in `wf-review` and the designated review template (`wf-qa`, `wf-rbg`, `wf-strategic-fit`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the deliverable and claims against literal acceptance criteria; if verification fails, the reviewer releases the task as `failed` with documented failure evidence; confirm tier against the taxonomy; for verified Tier 1 PRs, merge to base branch on a verified pass; for Tier 2 and Tier 3 PRs, post verification receipts to the PR and leave open for reviewer sign-off without releasing to review. A reviewer that changes code delivers it through its workflow and hands off for independent review.
+  1. Structure the task and its QA review either as a single task with internal subtasks (if executable by the same agent in one session) or as a dedicated epic with child tasks (Child 1: Primary Task, Child 2: QA Task with `needs: [<child_1_id>]`); never mint a follow-up or review task as a loose sibling under an external parent.
+  2. For epic-child cuts: mint the independent follow-up task with status `queued` as a child under the dedicated epic, Title: `QA: <primary task title>`, and wire dependency `needs: [<primary_task_id>]` so the QA task stays blocked until the primary task is `done`.
+  3. Compose the review follow-up task drawing its brief from the shared review briefing in `wf-review` and the designated review template (`wf-qa`, `wf-rbg`, `wf-strategic-fit`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the deliverable and claims against literal acceptance criteria; if verification fails, the reviewer releases the task as `failed` with documented failure evidence; confirm tier against the taxonomy; for verified Tier 1 PRs, merge to base branch on a verified pass; for Tier 2 and Tier 3 PRs, post verification receipts to the PR and leave open for reviewer sign-off without releasing to review. A reviewer that changes code delivers it through its workflow and hands off for independent review.
 
 ### Requirements for writing tasks
 
@@ -118,7 +116,7 @@ Where the composed workflow calls for QA review:
 - Change an existing task only for a defect you can point to in its text; otherwise leave it as written. Never rewrite its `## Ask` or renumber its criteria: a new criterion takes the next number, and no number is reused.
 - A skill may be a step, even the only step: write `invoke /<skill-name>` and leave its implementation to the skill. A workflow template is never a step; its steps are.
 - Close every task with an appendix section listing the workflow templates and skills it was composed from.
-- Do not create standalone decision tasks or file questions as tasks.
+- Do not create standalone decision tasks or file questions as tasks, with the exception of design research tasks: any research task on a design question gets, by default, a decision task assigned to the user (assignee: user) that depends on the research results, in which the user chooses the implementation route.
 
 ## 4. Report
 
