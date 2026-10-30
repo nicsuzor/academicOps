@@ -197,8 +197,10 @@ def extract_prompt_query(prompt: str) -> str:
     return text[:_MAX_QUERY_CHARS]
 
 
-# Cloudflare Access service-token pairs, in order of preference. The worker
-# pair comes first because it has no polecat dispatch access (Nic, tg 2369).
+# Cloudflare Access service-token pairs. The hook and runtime expect canonical
+# token pairs. Launching apps substitute the appropriate keys for different
+# surfaces and use cases: WORKER_MCP_TOKEN_* in containerized worker environments,
+# and DISPATCHER_MCP_TOKEN_* in interactive client/workstation environments.
 _ACCESS_TOKEN_PAIRS = (
     ("WORKER_MCP_TOKEN_ID", "WORKER_MCP_TOKEN_SECRET"),
     ("DISPATCHER_MCP_TOKEN_ID", "DISPATCHER_MCP_TOKEN_SECRET"),
@@ -208,10 +210,12 @@ _ACCESS_TOKEN_PAIRS = (
 def _resolve_mcp_headers() -> dict[str, str]:
     """HTTP headers for the PKB endpoint, from the environment only.
 
-    A Cloudflare Access service-token pair supplies the Access headers: the
-    worker pair `WORKER_MCP_TOKEN_ID` / `WORKER_MCP_TOKEN_SECRET` by default,
-    because it has no polecat dispatch access, else the dispatcher pair
-    `DISPATCHER_MCP_TOKEN_ID` / `DISPATCHER_MCP_TOKEN_SECRET`.
+    The hook and runtime expect canonical Cloudflare Access token pairs.
+    Launching applications substitute the appropriate keys for each surface:
+    the worker pair `WORKER_MCP_TOKEN_ID` / `WORKER_MCP_TOKEN_SECRET` for
+    isolated worker containers, and the dispatcher pair
+    `DISPATCHER_MCP_TOKEN_ID` / `DISPATCHER_MCP_TOKEN_SECRET` for interactive
+    client sessions.
     """
     headers: dict[str, str] = {}
 

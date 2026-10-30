@@ -1152,8 +1152,10 @@ def _redact_secrets(value: Any) -> str:
         os.environ.get("GITHUB_TOKEN"),
         os.environ.get("AOPS_BOT_GH_TOKEN"),
         os.environ.get("DISPATCHER_MCP_TOKEN"),
+        os.environ.get("DISPATCHER_MCP_TOKEN_ID"),
         os.environ.get("DISPATCHER_MCP_TOKEN_SECRET"),
         os.environ.get("WORKER_MCP_TOKEN"),
+        os.environ.get("WORKER_MCP_TOKEN_ID"),
         os.environ.get("WORKER_MCP_TOKEN_SECRET"),
     ]
     for k, v in os.environ.items():
