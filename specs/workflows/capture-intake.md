@@ -2,7 +2,7 @@
 title: Capture Intake -- Mobile and Webhook Pickup into the PKB
 type: spec
 category: workflow
-status: draft
+status: ready
 tags: [spec, workflow, capture, intake, pkb, daily]
 ---
 
@@ -49,8 +49,8 @@ preserved for clarification without stalling headless execution.
 
 ### Placement and grain
 
-The triage process runs as an autonomous step during daily note generation, executing early in the run
-prior to agenda assembly, graph reconciliation, and state assembly. Running early ensures newly
+The triage process runs as an autonomous step during daily note generation (Step 1.5 in the daily note
+template `tpl_daily`), executing early in the run prior to agenda assembly, graph reconciliation, and state assembly. Running early ensures newly
 converted tasks and probe items are indexed and available for downstream agenda synthesis and
 reconciliation in the same run.
 
