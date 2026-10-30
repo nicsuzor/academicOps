@@ -10,9 +10,9 @@ tags: [enforcement, lifecycle, task-contract, workflow, dispatch, reconcile]
 
 This specification establishes the architectural standard and structural lifecycle rules for task completion across the framework:
 
-1. **Worker Release-as-Done Rule:** Every worker completing its assigned deliverable (including pull request deliverables) releases its task as `status: done` upon verifying local checks and recording deliverable evidence. Automated agents and workers are strictly forbidden from releasing tasks as `review`.
+1. **Worker Release-as-Done Rule:** Every worker completing its assigned deliverable (including pull request deliverables) releases its task as `status: done` upon verifying local checks, pushing the branch, opening the PR, and recording deliverable evidence. Automated agents and workers are strictly forbidden from releasing tasks as `review`.
 2. **Autonomous Dispatch QA-Gating Invariant:** Dependent QA and review tasks wire a hard `needs` dependency on the implementation task. Because the implementation task releases as `done`, graph dependencies unblock immediately, allowing `/dispatch` to launch independent review and verification workers without human intervention or execution deadlocks.
-3. **Reconcile Active Review Transition & Legacy Sweep:** When `/reconcile` processes a task sitting in `status: review`, it transitions the task to `done` whenever a review or QA task covers it, or if its pull request deliverable is in place; it evaluates remaining cases against concrete evidence, and sweeps legacy tasks at `review` to unblock trapped graph dependencies.
+3. **Reconcile Active Review Transition & Legacy Sweep:** When `/reconcile` processes an agent task sitting in `status: review`, it transitions the task to `done` whenever a review or QA task covers it, or if its pull request deliverable is in place; it evaluates remaining cases against concrete evidence, and sweeps legacy tasks at `review` to unblock trapped graph dependencies. Tasks placed in `review` directly by the user are respected as manual holds and left untouched.
 4. **Scope of the `review` Status:** `review` is retained in the underlying taxonomy solely as a manual parking state for the human principal ("the user"). No agent instruction, template, or automated worker is permitted to set or release tasks into `review`.
 
 ## 1. User Stories
@@ -23,7 +23,7 @@ As an execution coordinator and dispatch supervisor, I want workers delivering c
 
 - **AC-1.1**: Given a worker executing a task whose deliverable is a pull request, when the worker pushes the branch, opens the PR, verifies local tests pass, and updates acceptance evidence, then the worker releases the task as `status: done` with `pr_url` and branch recorded on the task record.
 - **AC-1.2**: Given an implementation task with a downstream `QA: <title>` child task wired with `needs: [<implementation_task_id>]`, when the implementation worker releases `done`, then the dependency is satisfied in the graph engine and the QA task transitions from blocked to ready (`ready: true`, `status: queued`).
-- **AC-1.3**: Given any automated worker executing via `/ida:pull`, the worker never sets or releases `status: review`.
+- **AC-1.3**: Given an automated worker completing a task via `/ida:pull`, when it releases the task, then it releases `status: done` (or `status: partial` if incomplete) and never releases `status: review`.
 
 ### US-2: Automated Dispatch of Unblocked Review Tasks
 
@@ -36,22 +36,23 @@ As the `/dispatch` engine, I want clear readiness criteria based on upstream `do
 
 As the `/reconcile` truth maintenance pass, I want clear deterministic rules for resolving tasks sitting in `review`, so that tasks covered by review workflows or finished PRs transition to `done` and legacy tasks are cleared from the graph.
 
-- **AC-3.1**: Given a task currently in `status: review` that is covered by an active or completed review or QA task (or whose child/dependent is a review task), when `/reconcile` evaluates the task, then it immediately mutates its status to `done`, resolving blocking edges for dependent tasks.
-- **AC-3.2**: Given a task currently in `status: review` where no review or QA task covers it, but a valid open pull request is recorded on the task, when `/reconcile` evaluates the task, then it mutates the task status to `done` and, if the PR risk tier warrants independent review, mints/queues a `QA: <title>` follow-up task with `needs: [<task_id>]`.
-- **AC-3.3**: Given a task currently in `status: review` with no pull request and no covering review task, when `/reconcile` evaluates the task, then it verifies recorded evidence: if all acceptance criteria are met with verifiable evidence, it mutates status to `done`; if incomplete agent work remains, it transitions to `queued` (or `partial`); if a principal decision is required, it sets `partial` with the decision in `reason` and escalates to the daily note `## With you`.
-- **AC-3.4**: Given legacy tasks sitting at `review` on the graph today, when `/reconcile` runs its sweep, then all qualifying tasks are updated to `done`, eliminating false dependency blocks across active projects.
+- **AC-3.1**: Given an agent task currently in `status: review` that is covered by an active or completed review or QA task (where a review task carries `needs` or `depends_on` pointing to the task), when `/reconcile` evaluates the task, then it immediately mutates its status to `done`, resolving blocking edges for dependent tasks.
+- **AC-3.2**: Given an agent task currently in `status: review` where no review or QA task covers it, but a valid open pull request is recorded on the task, when `/reconcile` evaluates the task, then it mutates the task status to `done` and, if the PR risk tier warrants independent review, mints/queues a `QA: <title>` follow-up task with `needs: [<task_id>]`.
+- **AC-3.3**: Given an agent task currently in `status: review` with no pull request and no covering review task, when `/reconcile` evaluates the task, then it verifies recorded evidence: if all acceptance criteria are met with verifiable evidence, it mutates status to `done`; if incomplete agent work remains, it transitions to `queued` (or `partial`); if a principal decision is required, it sets `partial` with the decision in `reason` and escalates to the daily note `## With you`.
+- **AC-3.4**: Given tasks currently sitting in `status: review` on the graph, when `/reconcile` runs its sweep, then all qualifying agent tasks are updated to `done`, eliminating false dependency blocks across active projects.
+- **AC-3.5**: Given a task explicitly held in `status: review` by the user (`assignee: user`), when `/reconcile` evaluates the task, then it preserves the user's manual hold and does not mutate the status.
 
 ### US-4: Definite Status Vocabulary Boundary
 
 As a framework architect and reviewer, I want the status taxonomy to clearly delimit the semantics of `review`, so that agents never conflate automated verification with human holding states.
 
-- **AC-4.1**: The closed status taxonomy (`valid_statuses`) retains `review` for database and schema backwards-compatibility.
-- **AC-4.2**: The specification and agent instructions explicitly restrict `review` to a single use case: a manual hold placed exclusively by the human principal when personally inspecting a task.
-- **AC-4.3**: Across all skills, workflow templates, agent personas, and project rules, zero instructions tell automated agents to release or write `status: review`.
+- **AC-4.1**: Given the status taxonomy in `tests/policy.toml`, when schema validation checks `valid_statuses`, then `review` is present in the 12-value set for database backwards compatibility.
+- **AC-4.2**: Given a task on the graph, when an agent or the user sets `status: review`, then `status: review` is accepted only if set directly by the user (`assignee: user`), and is rejected for automated agent releases.
+- **AC-4.3**: Given all framework skills, workflow templates, agent personas, and project rules, when searched for release instructions, then zero instructions tell automated agents to release `status: review`.
 
 ## 2. Root Cause & Architectural Rationale
 
-### The Graph Dependency Trap
+### The Graph Dependency Deadlock
 
 In the personal knowledge base (PKB) and task graph architecture, task dependencies are modeled as directed edges (`needs: [<upstream_id>]` or `depends_on: [<upstream_id>]`). The graph query engine evaluates whether a dependency is satisfied using an exact condition: **an upstream task only unblocks downstream dependents when its status is `done`**.
 
@@ -59,8 +60,9 @@ Under prior instructions:
 
 1. `plugins/ida/skills/pull/SKILL.md` instructed: _"A worker whose deliverable is a PR releases `review` once the PR is open... and exits without waiting for CI, review or merge: the repository merges it, and `/reconcile` writes `done` on the merge"_.
 2. Universal finish template `wf-finish.md` instructed: _"Release the task as `review` via `pkb.release_task`, with the PR URL in `pr_url`"_.
-3. At the same time, `/reify` minted downstream QA follow-up tasks with `needs: [<primary_task_id>]`.
-4. `/dispatch` instructed: _"A QA follow-up stays queued until its hard dependency completes; it is not ready yet"_.
+3. Universal quick-fix template `wf-quick-fix.md` instructed: _"Release the task: ... As standard handoff status (e.g. `review`)..."_.
+4. At the same time, `/reify` minted downstream QA follow-up tasks with `needs: [<primary_task_id>]`.
+5. `/dispatch` instructed: _"A QA follow-up stays queued until its hard dependency completes; it is not ready yet"_.
 
 This created a **structural deadlock**:
 
@@ -72,11 +74,10 @@ This created a **structural deadlock**:
 - Because the PR was never merged, `/reconcile` never observed a merge to transition the primary task to `done`.
 - The task sat in `review` permanently, and the QA task sat blocked permanently.
 
-### Nic's Ruling and Resolution
+### Principal Determination and Architectural Resolution
 
-On 2026-10-30, the framework principal issued the definitive ruling:
-
-> _"ensure that workflows and instructions and particularly /dispatch tell workers to release as '/done'; and /reconcile should look at anything in 'review' and probably change it to 'done' if there's an actual review task. I don't actually know when we need 'review', so we should probably never tell agents to use it."_
+The framework principal determined the unified operating rule:
+Workers must release finished deliverables as `done`. Automated agents are never told to use `review`. `/reconcile` transitions tasks in `review` to `done` when a review task or PR deliverable covers them.
 
 The resolution:
 
@@ -108,7 +109,7 @@ Every file across skills, workflow templates, agent personas, rules, and specifi
     ```
   - **Proposed Text:**
     ```markdown
-    Workers are never told to release `review`. If a worker's own deliverable is incomplete due to an external blocker, missing tool, or scope seam, release as `partial` naming unfinished items and missing evidence in `reason`. When an approval boundary or decision point is reached, file the complete artifact on the record and release as `partial` documenting what decision is needed; never release as `review`.
+    Never release as `review`. If a worker's own deliverable is incomplete due to an external blocker, missing tool, or scope seam, release as `partial` naming unfinished items and missing evidence in `reason`. When an approval boundary or decision point is reached, file the complete artifact on the record and release as `partial` documenting what decision is needed; never release as `review`.
     ```
 
 - **Line 40:**
@@ -139,9 +140,8 @@ Every file across skills, workflow templates, agent personas, rules, and specifi
     - `review`: Either the worker's PR is open and awaits merge by the repository (record `pr_url`; do not wait for CI, review or merge; the reconcile pass writes `done` on the merge), or the worker needs help to finish the task. Help is transient, never a waiting state: a worker hands back on the record, documenting what help is needed in `reason`, and never addresses or escalates to the user. Any reconcile pass reading a `review` task transitions it immediately.
     ```
   - **Proposed Text:**
-    _(Remove `review` from worker release options, or state:)_
     ```markdown
-    - `review`: Reserved exclusively for manual human hold applied directly by the user. Workers and automated sessions never set or release `review`. If a worker requires approval or has incomplete items, it releases `partial` with documented reason.
+    - `review`: Reserved exclusively for manual human holds applied directly by the user. Workers and automated sessions never set or release `review`. If work requires an escalated decision or has incomplete items, release `partial` with documented reason.
     ```
 
 - **Line 58:**
@@ -212,18 +212,19 @@ Every file across skills, workflow templates, agent personas, rules, and specifi
     4. Release the task as `done` via `pkb_release_task`, with the PR URL in `pr_url` and branch recorded on the task record. Do not release as `review`. Releasing `done` unblocks the downstream QA or review follow-up task on the graph. Do not wait for CI, review or merge. `partial` is reserved strictly for the worker's own unfinished acceptance items. Workers never create or name follow-up tasks.
     ```
 
-- **Line 51:**
+### 3.5 `plugins/ida/skills/workflow-library/workflows/wf-quick-fix.md`
+
+- **Line 55:**
   - **Current Text:**
     ```markdown
-    - **Goal**: Independently verify the deliverable and claims against literal acceptance criteria in a clean context. If verification fails, the QA task releases `failed` with failure evidence documented on the record; reviewers do not file fix tasks or follow-up tasks. On a verified pass, evaluate tier membership against the taxonomy: for verified Tier 1 PRs with low-risk changes, merge to base branch autonomously via `gh pr merge --squash` and release as `done`; for Tier 2 and Tier 3 PRs, post verification receipts to the PR and leave open for reviewer sign-off without releasing to review; release as `done` with receipts and PR URL on record. A reviewer that changes code delivers it through this finish template and hands off for independent review.
+    - As standard handoff status (e.g. `review`) if fallback to the standard delivery process was triggered prior to delivery.
     ```
   - **Proposed Text:**
-    _(Maintains release as `done` for QA without releasing to `review`; reinforce that primary task released `done`.)_
     ```markdown
-    - **Goal**: Independently verify the deliverable and claims against literal acceptance criteria in a clean context. If verification fails, the QA task releases `failed` with failure evidence documented on the record; reviewers do not file fix tasks or follow-up tasks. On a verified pass, evaluate tier membership against the taxonomy: for verified Tier 1 PRs with low-risk changes, merge to base branch autonomously via `gh pr merge --squash` and release as `done`; for Tier 2 and Tier 3 PRs, post verification receipts to the PR and leave open for reviewer sign-off without releasing to review; release as `done` with receipts and PR URL on record. A reviewer that changes code delivers it through this finish template and hands off for independent review.
+    - As standard handoff status (e.g. `partial` if blocked, or `done` if delivered via standard PR) if fallback to the standard delivery process was triggered prior to delivery. Never release as `review`.
     ```
 
-### 3.5 `plugins/ida/skills/workflow-library/workflows/wf-code-task-base.md`
+### 3.6 `plugins/ida/skills/workflow-library/workflows/wf-code-task-base.md`
 
 - **Line 21:**
   - **Current Text:**
@@ -231,18 +232,9 @@ Every file across skills, workflow templates, agent personas, rules, and specifi
     3. **Push and file the PR** -- push the branch and open a pull request against the base branch, its description mapping each acceptance criterion to the evidence that meets it: a test, a command's output, a fresh agent's run, or a commit. Record the PR URL on the task and release it as `done`.
     ```
   - **Proposed Text:**
-    _(Already specifies releasing as `done`; retain and reinforce:)_
     ```markdown
     3. **Push and file the PR** -- push the branch and open a pull request against the base branch, its description mapping each acceptance criterion to the evidence that meets it: a test, a command's output, a fresh agent's run, or a commit. Record the PR URL and branch on the task and release it as `done`. Releasing `done` satisfies the dependency for Stage 4 (Review and verdict).
     ```
-
-- **Line 26:**
-  - **Current Text:**
-    ```markdown
-    - **Mergeable** -- the review is clean with no reviewer code changes, checks are green, and GitHub reports the PR mergeable: post a merge recommendation on the PR citing the green checks and the review. Confirm tier against the taxonomy: for verified Tier 1 PRs, merge autonomously (`gh pr merge --squash`) and release the task as `done`. For Tier 2 or Tier 3 PRs, post receipts and leave the PR open for reviewer sign-off, releasing the task as `done`. Do not release to `review` for a human merge gate.
-    ```
-  - **Proposed Text:**
-    _(Retain line 26; aligns with release as `done`)._
 
 - **Line 40:**
   - **Current Text:**
@@ -254,7 +246,7 @@ Every file across skills, workflow templates, agent personas, rules, and specifi
     or a merge recommendation posted with the review task released as `done`. Workers never file fix follow-up tasks.
     ```
 
-### 3.6 `plugins/ida/skills/workflow-library/workflows/wf-doc-base.md`
+### 3.7 `plugins/ida/skills/workflow-library/workflows/wf-doc-base.md`
 
 - **Line 19:**
   - **Current Text:**
@@ -266,7 +258,17 @@ Every file across skills, workflow templates, agent personas, rules, and specifi
     or **mergeable** (clean review, no reviewer changes, checks green: post a merge recommendation and release as `done`). Do not merge.
     ```
 
-### 3.7 `plugins/ida/skills/workflow-library/workflows/wf-reconcile.md`
+### 3.8 `plugins/ida/skills/workflow-library/workflows/wf-reconcile.md`
+
+- **Line 2:**
+  - **Current Text:**
+    ```yaml
+    description: Truth maintenance over the task graph -- reconcile merged PRs, move review tasks to reality under the bazaar model, handle failed tasks by deciding next actions from the parent epic, write items reaching the user to today's daily note, record world-fact cancellations, and demote affected tasks to inbox.
+    ```
+  - **Proposed Text:**
+    ```yaml
+    description: Truth maintenance over the task graph -- reconcile merged PRs, transition tasks in review to done when covered by review tasks or open PRs, handle failed tasks by deciding next actions from the parent epic, write items reaching the user to today's daily note, record world-fact cancellations, and demote affected tasks to inbox.
+    ```
 
 - **Lines 21–27:**
   - **Current Text:**
@@ -284,14 +286,24 @@ Every file across skills, workflow templates, agent personas, rules, and specifi
     ```markdown
     - **Open PRs**: Read review and check state with `gh pr view <n> --repo <owner/repo> --json state,isDraft,mergedAt,reviewDecision,statusCheckRollup`. `reviewDecision: CHANGES_REQUESTED` or a failing check in `statusCheckRollup` routes the task to `queued` or a follow-up task, never `done` or `review`.
 
-    3. **Reconciling Tasks in Review**: Agents never release tasks into `review`. When `/reconcile` encounters any task sitting in `status: review`:
-       - **Covered by a review or QA task**: If an open or completed review or QA task covers the task (e.g. a child or dependent `QA: <title>` task on the graph), mutate the task status immediately to `done`. This satisfies dependency edges and unblocks downstream tasks.
+    3. **Reconciling Tasks in Review**: Agents never release tasks into `review`. Tasks explicitly held in `review` by the user (`assignee: user`) represent manual inspection holds and are left untouched. For all other tasks in `status: review`:
+       - **Covered by a review or QA task**: If an active review or QA task points to the task via graph dependency edges (`needs` or `depends_on` contains the task ID), mutate the task status immediately to `done`. This unblocks dependent tasks on the graph.
        - **Uncovered with an open PR**: If no review or QA task covers the task, but an open pull request is recorded on the task, mutate the task status to `done` and, if the PR risk tier warrants verification, mint/queue a `QA: <title>` follow-up task with `needs: [<task_id>]`.
        - **Uncovered without a PR**: If the task has no PR and no covering review task, verify recorded evidence against acceptance criteria:
          - If criteria are fully satisfied with verifiable evidence: mutate status to `done`.
          - If incomplete agent work remains: transition to `queued` (or `partial` if partly delivered).
          - If principal input is required: transition to `partial` (recording the question in `reason`) and escalate to today's daily note `## With you`.
-           Nothing is left in `review`.
+           No agent task is left in `review`.
+    ```
+
+- **Line 56:**
+  - **Current Text:**
+    ```markdown
+    - Must not write `done` on any evidence other than an observed merged PR or a clean finished part of a split task.
+    ```
+  - **Proposed Text:**
+    ```markdown
+    - Must not write `done` on any evidence other than an observed merged PR, a clean finished part of a split task, or an agent task in `review` covered by a review/QA task, open PR, or complete verifiable evidence.
     ```
 
 - **Line 57:**
@@ -301,10 +313,20 @@ Every file across skills, workflow templates, agent personas, rules, and specifi
     ```
   - **Proposed Text:**
     ```markdown
-    - Must not leave tasks in `review` or route tasks to `review`; all tasks found in `review` must be transitioned immediately.
+    - Must not leave agent tasks in `review` or route tasks to `review`; all agent tasks found in `review` must be transitioned immediately.
     ```
 
-### 3.8 `.agents/rules/headless-workers.md`
+### 3.9 `.agents/rules/headless-workers.md`
+
+- **Line 3 (Frontmatter Description):**
+  - **Current Text:**
+    ```yaml
+    description: Headless workers cannot pause interactively or escalate to the user; approval boundaries file artifacts on the record, and review is transient help rather than a decision wait state.
+    ```
+  - **Proposed Text:**
+    ```yaml
+    description: Headless workers cannot pause interactively or escalate to the user; approval boundaries file artifacts on the record, and agents are never told to release review.
+    ```
 
 - **Lines 11–12:**
   - **Current Text:**
@@ -315,10 +337,10 @@ Every file across skills, workflow templates, agent personas, rules, and specifi
   - **Proposed Text:**
     ```markdown
     - Workers never create or name follow-up tasks, and reports carry no 'Next task' pointer. A worker whose check fails (e.g. QA or review) releases its task as `failed`. When an approval boundary or decision point is reached, the worker files the complete artifact on the record and does not release the task as `done` when dependent implementation work requires an explicit approval decision; it releases on the record as `partial` documenting what decision or help is needed in `reason`, without minting follow-up tasks. Sequencing, remediation, and downstream work live in the parent epic and are decided during the reconcile pass.
-    - Workers are never told to use or release `review`. If a worker cannot complete work without higher-level help, it releases as `partial` documenting the required assistance in `reason`. Any reconcile pass reading a task in `review` transitions it immediately.
+    - Workers are never told to use or release `review`. If a worker cannot complete work without higher-level help, it releases as `partial` documenting the required assistance in `reason`. Any reconcile pass reading an agent task in `review` transitions it immediately.
     ```
 
-### 3.9 `plugins/ida/agents/sara.md`
+### 3.10 `plugins/ida/agents/sara.md`
 
 - **Line 49:**
   - **Current Text:**
@@ -337,7 +359,7 @@ Every file across skills, workflow templates, agent personas, rules, and specifi
     ```
   - **Proposed Text:**
     ```markdown
-    - Run `/reconcile` to audit completion claims, write `done` when a PR merges, transition any tasks found in `review` to `done` (or `partial`), and set read tasks to the status their evidence supports (never reconcile your own work or demand receipts for user closures; remedied failures move to `done`).
+    - Run `/reconcile` to audit completion claims, write `done` when a PR merges, transition any agent tasks found in `review` to `done` (or `partial`), and set read tasks to the status their evidence supports (never reconcile your own work or demand receipts for user closures; remedied failures move to `done`).
     ```
 
 - **Line 91:**
@@ -350,15 +372,7 @@ Every file across skills, workflow templates, agent personas, rules, and specifi
     ├→ [review retired from worker release; manual human hold only]
     ```
 
-### 3.10 `plugins/ida/skills/verify/SKILL.md`
-
-- **Line 64:**
-  - **Current Text:**
-    ```markdown
-    VERDICT is your judgement of the artifact (`PASS`, `REVISE`, or `FAIL`); STATUS is the release status of your own task (`failed` when VERDICT is `FAIL` or `REVISE` with failure evidence and root cause documented; `done` when VERDICT is `PASS`). Never file fix tasks or follow-up tasks.
-    ```
-  - **Proposed Text:**
-    _(Retain; already specifies `done` or `failed`.)_
+### 3.11 `plugins/ida/skills/verify/SKILL.md`
 
 - **Line 73:**
   - **Current Text:**
@@ -370,7 +384,7 @@ Every file across skills, workflow templates, agent personas, rules, and specifi
     - STATUS: <release status: done | partial | failed | cancelled | in_progress>
     ```
 
-### 3.11 `specs/enforcement/task-contract.md`
+### 3.12 `specs/enforcement/task-contract.md`
 
 - **Lines 83–87:**
   - **Current Text:**
@@ -382,7 +396,7 @@ Every file across skills, workflow templates, agent personas, rules, and specifi
     A worker whose deliverable is a PR releases its task `done` once the PR is open with branch and `pr_url` recorded, local tests verified, and exits; releasing `done` immediately unblocks dependent follow-ups (QA, deploy) on the task graph; `partial` is reserved strictly for the worker's own unfinished acceptance items.
     ```
 
-### 3.12 `specs/enforcement/workflow.md`
+### 3.13 `specs/enforcement/workflow.md`
 
 - **Line 35:**
   - **Current Text:**
@@ -404,7 +418,7 @@ Every file across skills, workflow templates, agent personas, rules, and specifi
     Across all tasks (both PR and non-PR tasks), worker self-release to `done` is standard upon fulfilling the frozen acceptance criteria; workers are never held in `review` awaiting a downstream gate.
     ```
 
-### 3.13 `specs/enforcement/enforcement.md`
+### 3.14 `specs/enforcement/enforcement.md`
 
 - **Lines 143, 146, 152:**
   - **Current Text:**
@@ -418,21 +432,44 @@ Every file across skills, workflow templates, agent personas, rules, and specifi
     Worker self-release to `done` applies across all tasks (PR and non-PR): when a worker satisfies all frozen acceptance criteria with concrete verifiable evidence recorded in its handback report, it releases the task directly to `done`. Workers are never forced into `review` awaiting external verification.
     ```
 
-### 3.14 `specs/workflows/reconcile.md`
+### 3.15 `specs/workflows/reconcile.md`
 
-- **Lines 19–30:**
+- **Lines 22–30:**
   - **Current Text:**
-    _(Lists coverage gaps and open PR handling awaiting merge.)_
+    ```markdown
+    | Gap | State |
+    | - | - |
+    | GH issue closed via `Closes #N` → PKB task carrying `gates_on` for it | Not built -- forward-issue leg, below |
+    | Closed-not-merged PR that was legitimately superseded | Built |
+    | Failed tasks from workers (e.g. QA or review failures) → next actions decided from parent epic | Built |
+    | Multi-part task / verbatim note request partially resolved by merged PR → itemize completed vs incomplete elements | Built |
+    | Manual `gh issue close` with `state_reason: not_planned` or `duplicate` | Not built -- forward-issue leg, below |
+    | PKB task done → GH issue comment/close beyond the native `Closes #N` commit convention | Not built -- reverse direction, M3 |
+    ```
   - **Proposed Text:**
-    Add coverage item for transitioning tasks in `review` to `done` when covered by a review task, open PR, or complete evidence, and sweeping legacy review tasks.
+    ```markdown
+    | Gap | State |
+    | - | - |
+    | GH issue closed via `Closes #N` → PKB task carrying `gates_on` for it | Not built -- forward-issue leg, below |
+    | Closed-not-merged PR that was legitimately superseded | Built |
+    | Failed tasks from workers (e.g. QA or review failures) → next actions decided from parent epic | Built |
+    | Multi-part task / verbatim note request partially resolved by merged PR → itemize completed vs incomplete elements | Built |
+    | Task in `review` covered by a review/QA task, open PR, or complete evidence | Built -- transitioned to `done` |
+    | Manual `gh issue close` with `state_reason: not_planned` or `duplicate` | Not built -- forward-issue leg, below |
+    | PKB task done → GH issue comment/close beyond the native `Closes #N` commit convention | Not built -- reverse direction, M3 |
+    ```
 
-### 3.15 `specs/ENFORCEMENT-MAP.md`
+### 3.16 `specs/ENFORCEMENT-MAP.md`
 
-- **Row 69 & related rows:**
+- **Line 69:**
   - **Current Text:**
-    Refers to non-PR tasks having self-release to `done`, while PR tasks released `review`.
+    ```markdown
+    | [Non-PR QA Child Rule](enforcement/workflow.md#risk-scaled-review-depth) -- `/reify` mints a separate `QA: <task>` child for non-PR tasks only where the composed workflow warrants an independent verification check; worker self-release to `done` is preserved across all non-PR tasks. | instructions, process | imperative, required gate | `specs/enforcement/workflow.md:77`, `specs/agents/reify.md:47-51`, `specs/enforcement/enforcement.md#non-pr-task-verification-and-lifecycle`: Mints separate QA child task only when the workflow warrants another check (e.g. replication, qualitative audits, high-impact specs); straightforward non-PR workflows mint no QA child; workers self-release to `done` upon meeting frozen acceptance criteria without being held in `review`. Observation: Workflow composition at reification mints independent QA tasks for empirical and high-impact non-PR workflows while preserving worker self-release to done on standard tasks without review deadlocks. |
+    ```
   - **Proposed Text:**
-    Update to state the universal Release-as-Done rule across all tasks (PR and non-PR), with QA tasks unblocked autonomously on the graph via `status: done`.
+    ```markdown
+    | [Release-as-Done & QA Autonomous Unblocking](enforcement/release-as-done-lifecycle.md) -- Workers release finished deliverables (including PRs) as `done`; agents are forbidden from releasing `review`; dependent QA tasks unblock autonomously upon upstream `done`. | instructions, structural, process | imperative, required gate | `plugins/ida/skills/pull/SKILL.md:32`, `dump/SKILL.md:23`, `dispatch/SKILL.md:18,39`, `wf-finish.md:41`, `wf-code-task-base.md:21`, `.agents/rules/headless-workers.md:11-12`: Mandates release as `done` upon deliverable existence, PR creation, and passing local checks; forbids agent release to `review`; downstream QA tasks unblock on `needs` when upstream is `done`; `/reconcile` transitions legacy `review` tasks covered by review/QA tasks to `done`. |
+    ```
 
 ## 4. /dispatch QA-Gating Rule Specification (AC2)
 
@@ -481,17 +518,21 @@ When `/reconcile` (or `wf-reconcile`) executes its sweep, it reads all tasks cur
 ```
 For each task T where T.status == "review":
 
-  1. CHECK FOR COVERING REVIEW OR QA TASK:
-     If there exists a task R on the graph such that:
-       (R.title starts with "QA: " or "Review " AND R.parent == T.parent) OR
-       (R.needs contains T.id or R.depends_on contains T.id)
-     Then:
-       Mutate T.status -> "done"
-       Log: "Reconciled review task T to done: covered by review task R (unblocking dependencies)"
+  1. CHECK FOR USER MANUAL HOLD:
+     If T.assignee == "user":
+       Leave T in status: review (manual user hold preserved per wf-reconcile.md:17).
        Continue to next task.
 
-  2. CHECK FOR DELIVERED PULL REQUEST:
-     Else if T.pr_url is non-empty AND T.pr_url points to a valid pull request:
+  2. CHECK FOR COVERING REVIEW OR QA TASK VIA GRAPH EDGES:
+     Else if there exists an active task R on the graph such that:
+       (R.needs contains T.id OR R.depends_on contains T.id)
+     Then:
+       Mutate T.status -> "done"
+       Log: "Reconciled review task T to done: covered by dependent review task R"
+       Continue to next task.
+
+  3. CHECK FOR DELIVERED PULL REQUEST:
+     Else if T.pr_url is non-empty AND T.pr_url points to an active pull request:
        Mutate T.status -> "done"
        If T warrants independent QA under risk taxonomy AND no QA task exists:
          Mint QA child under T.parent: Title="QA: " + T.title, needs=[T.id], status="queued"
@@ -500,7 +541,7 @@ For each task T where T.status == "review":
          Log: "Reconciled review task T to done on open PR"
        Continue to next task.
 
-  3. CHECK RECORDED EVIDENCE AGAINST ACCEPTANCE CRITERIA:
+  4. CHECK RECORDED EVIDENCE AGAINST ACCEPTANCE CRITERIA:
      Else:
        Read T.body acceptance criteria and ## Report.
        If all acceptance criteria are marked (- [x]) with verifiable pinpoint citations:
@@ -517,13 +558,13 @@ For each task T where T.status == "review":
 
 ### Resolution of Tasks Sitting at `review` Today
 
-As of 2026-10-30, 40 tasks sit in `status: review` across the task graph.
-Under this specification:
+Tasks currently sitting in `status: review` across the task graph are resolved on the next reconcile sweep:
 
-1. `/reconcile` sweeps all 40 tasks.
-2. For each task that represents a delivered PR with an associated QA task or open PR, `/reconcile` immediately transitions the task to `status: done`.
-3. Transitioning these tasks to `done` immediately resolves the `needs` edges for their dependent child tasks (unblocking downstream build and QA tasks).
-4. No task is left in `review`.
+1. `/reconcile` sweeps all tasks at `status: review`.
+2. Tasks assigned to the user (`assignee: user`) remain in `status: review` as intentional manual holds.
+3. For all agent tasks that represent delivered PRs with associated QA tasks or open PRs, `/reconcile` immediately transitions the task to `status: done`.
+4. Transitioning these tasks to `done` immediately resolves the `needs` edges for their dependent child tasks (unblocking downstream build and QA tasks).
+5. No agent task is left in `review`.
 
 ## 6. Status Vocabulary Analysis & Scope of `review` (AC4)
 
@@ -550,13 +591,13 @@ valid_statuses = [
 `review` **remains a valid status string in the underlying database schema and taxonomy**. Retaining it in `valid_statuses` is necessary to:
 
 1. Prevent database migration failures or schema validation errors against historic task records and git commit trees.
-2. Allow `/reconcile` to query `pkb_list_tasks({ status: "review" })` during truth maintenance sweeps without schema rejection.
+2. Allow `/reconcile` to query tasks carrying `status: review` during truth maintenance sweeps without schema rejection.
 
 ### The Single Permitted Case for `review`
 
 > **The Single Case Rule:**
 > `status: review` is reserved **exclusively** for a manual holding state applied directly by the human principal ("the user").
-> If the principal explicitly moves a task into `review` in the PKB console or editor to hold it for personal manual inspection, that status is respected as intentional human action.
+> If the user explicitly moves a task into `review` in the PKB console or editor to hold it for personal manual inspection, that status is respected as intentional human action and left untouched by automated reconcile sweeps.
 
 ### Absolute Prohibition on Agent Use
 
@@ -572,7 +613,7 @@ Following [`specs/enforcement/enforcement.md`](enforcement.md), the change is ev
 
 | Tier | Mechanism | Implementation in this Change |
 | :- | :- | :- |
-| **Level 1: Instructions** | Skill and workflow markdown instructions | Update `pull/SKILL.md`, `dump/SKILL.md`, `dispatch/SKILL.md`, `wf-finish.md`, `wf-code-task-base.md`, `wf-doc-base.md`, `wf-reconcile.md`, `headless-workers.md`, and `sara.md` to mandate `release_task(status: done)` and eliminate instructions directing agents to use `review`. |
+| **Level 1: Instructions** | Skill and workflow markdown instructions | Update `pull/SKILL.md`, `dump/SKILL.md`, `dispatch/SKILL.md`, `wf-finish.md`, `wf-quick-fix.md`, `wf-code-task-base.md`, `wf-doc-base.md`, `wf-reconcile.md`, `headless-workers.md`, and `sara.md` to mandate `release_task(status: done)` and eliminate instructions directing agents to use `review`. |
 | **Level 2: Context / Prompts** | Reconcile and dispatch operational context | `/dispatch` checks for `status: done` to unblock `needs` edges; `/reconcile` checks for covering QA tasks and transitions `review` to `done`. |
 | **Level 3: Structural** | Graph edge dependency resolution | PKB graph query engine evaluates `needs: [<id>]` as satisfied when upstream status is `done`. Unblocks downstream QA dispatch without polling. |
 | **Level 4: Mechanical Gates** | Tool input validation | PKB tool `pkb_release_task` already requires `summary` and ticked acceptance criteria for `status: done`. Future escalation could soft-deny `status: review` when caller is an automated agent session. |
@@ -585,15 +626,7 @@ Defaulting to Level 1 (Instructions) and Level 3 (Structural graph dependencies)
 
 The subsequent implementation change must satisfy:
 
-1. **Instruction Parity:** All 17 identified file locations are updated to reflect the release-as-done rule and the single-case scope of `review`.
+1. **Instruction Parity:** All identified file locations in skills, workflows, agent personas, rules, and specifications are updated to reflect the release-as-done rule and the single-case scope of `review`.
 2. **Dispatch Unblocking:** Given a primary task with a downstream QA task, completing the primary task with `status: done` leaves the QA task in `ready: true`, dispatchable by `/dispatch` without human intervention.
-3. **Reconcile Drain:** Running `/reconcile` sweeps any task sitting in `status: review` covered by a review task or PR and transitions it to `status: done`.
+3. **Reconcile Drain:** Running `/reconcile` sweeps any agent task sitting in `status: review` covered by a review task or PR and transitions it to `status: done`, while leaving user-assigned manual holds in `review`.
 4. **Test Suite Green:** All existing tests in `tests/` pass (`uv run pytest`), ensuring zero regression in policy validation or hook handling.
-
-## 9. Appendix: Enforcement Map Updates
-
-The following row is added/updated in [`specs/ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md):
-
-| Rule / Requirement | Mechanism Category | Strength / Gradation | Live Enforcement Surface & Citation |
-| :- | :- | :- | :- |
-| [Release-as-Done & QA Autonomous Unblocking](enforcement/release-as-done-lifecycle.md) -- Workers release finished deliverables (including PRs) as `done`; agents are forbidden from releasing `review`; dependent QA tasks unblock autonomously upon upstream `done`. | instructions, structural, process | imperative, required gate | `plugins/ida/skills/pull/SKILL.md:32`, `dump/SKILL.md:23`, `dispatch/SKILL.md:18,39`, `wf-finish.md:41`, `wf-code-task-base.md:21`, `.agents/rules/headless-workers.md:11-12`: Mandates release as `done` upon deliverable existence, PR creation, and passing local checks; forbids agent release to `review`; downstream QA tasks unblock on `needs` when upstream is `done`; `/reconcile` transitions legacy `review` tasks covered by review/QA tasks to `done`. |
