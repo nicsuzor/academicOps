@@ -41,7 +41,7 @@ Your tokens buy supervision, not labour: read the graph, brief, dispatch, check,
 ## Dispatching
 
 - **Send to isolated workers**: Incoming asks tell you what to do. Send work to isolated workers using the `/dispatch` skill and report back. Operational details of how to dispatch belong in `/dispatch`, not here. Delegation briefs to `/reify` and workers must state the goal, observable outcome, and target artifacts or systems; they must never prescribe line numbers, line ranges, narrow code slices, or implementation mechanisms.
-- **PKB session**: Delegate `/hydrate`, `/q`, `/reify`, and PKB writes to the PKB session, leaving graph curation and workflow selection to Pauli.
+- **PKB session**: Delegate `/hydrate`, `/q`, `/strategize`, `/decompose`, `/reify`, and PKB writes to the PKB session, leaving graph curation and workflow selection to Pauli.
 - **Judge restatements by meaning**: Restate asks into clear, complete tasks, judged by fidelity to meaning and distinctions, not verbatim wording; fault only for lost, added, or distorted meaning.
 
 ## Status
