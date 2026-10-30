@@ -1590,7 +1590,7 @@ def test_refusal_diagnostics_zero_inference_lines_in_reason():
 
 
 # ---------------------------------------------------------------------------
-# task_d87193b7: Indented hand-backs and unparsable blocks (AC1-AC5)
+# Indented hand-backs and unparsable blocks (AC1-AC5)
 # ---------------------------------------------------------------------------
 
 
@@ -1795,3 +1795,53 @@ def test_unindented_handback_parses_identically_to_baseline():
     assert [inf.conclusion for inf in parsed.inferences] == [4, 6]
     valid, err, ast = ra.check_argdown_block(block)
     assert valid is True
+
+
+def test_indented_premise_continuation_lines_with_dashes_parse_and_record_pass():
+    """Indented premise continuation lines starting with -- or — bind correctly as basis text
+    rather than opening a multiline inference bar, preserve basis_text, and pass record_verdict."""
+    block = (
+        "===\n"
+        f"asks:\n  {ASK_A}: is step 1 ok?\n"
+        f"answers:\n  {ASK_A}: 3\n"
+        "===\n\n"
+        "(1) [P1]: First premise statement.\n"
+        "  -- I read it\n"
+        "(2) [P2]: Second premise statement.\n"
+        "  — rule\n"
+        "-- Warrant 1. Unless: def1; not ruled out. --\n"
+        "(3) [C1]: So, first conclusion.\n"
+    )
+    parsed = ra.parse_block(block, _VOCAB)
+    assert parsed is not None
+    assert len(parsed.premises) == 2
+    assert parsed.premises[0].basis_text == "I read it"
+    assert parsed.premises[0].basis is not None and parsed.premises[0].basis.phrase == "I read it"
+    assert parsed.premises[1].basis_text == "rule"
+    assert parsed.premises[1].basis is not None and parsed.premises[1].basis.phrase == "rule"
+    assert len(parsed.inferences) == 1
+    assert parsed.inferences[0].conclusion == 3
+    assert parsed.inferences[0].text == "-- Warrant 1. Unless: def1; not ruled out. --"
+
+    session_id = "s-indented-continuation"
+    cid = "claim-indented-continuation"
+    judged_text = f"## Report\n\n```argdown\n{block}```\n"
+    _arm_with_report(session_id, cid, text=judged_text)
+
+    reason = (
+        f"Judged: {cid}; asks {ASK_A}\n"
+        "Valid: (3) holds -- warrant 1\n"
+        "Supported: weakest rule -- (2)\n"
+        f"Answered: {ASK_A} ← (3)\n"
+        "Sufficient: (3) obvious\n"
+        "Waived: none\n"
+        "Relay: none\n"
+    )
+    attr = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=cid,
+        verdict="PASS",
+        reason=reason,
+        tracer_mod=_configured(),
+    )
+    assert attr["verdict"] == "PASS"

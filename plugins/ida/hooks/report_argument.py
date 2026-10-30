@@ -325,7 +325,9 @@ def parse_block(block: str, vocab: Vocabulary) -> Argument | None:
     for raw_ln in body:
         s = raw_ln.strip()
         if not in_inference:
-            if (s.startswith("--") and not s.endswith("--") and len(s) > 2) or (
+            if raw_ln.startswith((" ", "\t")) and _premise_basis(s):
+                body_lines.append(raw_ln)
+            elif (s.startswith("--") and not s.endswith("--") and len(s) > 2) or (
                 s.startswith("—") and not s.endswith("—") and len(s) > 1
             ):
                 in_inference = True
