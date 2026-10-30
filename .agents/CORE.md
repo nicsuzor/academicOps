@@ -16,6 +16,7 @@ Design intent for anything else: [`specs/README.md`](../specs/README.md).
 The axioms in [`plugins/rbg/skills/axioms/`](../plugins/rbg/skills/axioms/) apply here as they do everywhere.
 On top of them:
 
+- **Integration base branch**: Under feature freeze, active development and PRs target `release/v1.0-rc0`. All workflows resolve the active base branch from this definition; PRs targeting alternative branches must be retargeted.
 - **No duplication.** Anything two plugins need lives in `lib/` and is injected
   at build time. A second copy is a build failure.
 - **No defaults.** No endpoint, URL, host, path, token, or credential appears in
