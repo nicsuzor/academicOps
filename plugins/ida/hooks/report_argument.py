@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import re
 import tempfile
+import textwrap
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -224,6 +225,20 @@ class Argument:
         return min(self.premises, key=lambda p: p.rank)
 
 
+def normalise_argdown_block(text: str) -> str:
+    """Normalise meaning-free whitespace in an Argdown block.
+
+    Strips CRLF endings, trailing whitespace on every line, and removes common
+    leading indentation across the block while preserving relative indentation.
+    """
+    if not text:
+        return ""
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    lines = [ln.rstrip() for ln in text.splitlines()]
+    dedented = textwrap.dedent("\n".join(lines))
+    return dedented.strip("\n")
+
+
 def extract_block(text: str | None) -> str | None:
     """Body of the last ```argdown fenced block in ``text``, or None."""
     if not text:
@@ -244,7 +259,7 @@ def extract_block(text: str | None) -> str | None:
             body.append(lines[j])
             j += 1
         if j < len(lines):
-            found = "\n".join(body)
+            found = normalise_argdown_block("\n".join(body))
         i = j + 1
     return found
 
@@ -258,7 +273,13 @@ def _premise_basis(text: str) -> str | None:
             if val:
                 return val.strip()
 
-    # 2. Separator -- or — syntax
+    # 2. Leading separator on continuation line: -- or —
+    stripped = text.strip()
+    if stripped.startswith(("-- ", "— ")):
+        tail = stripped[3:] if stripped.startswith("-- ") else stripped[2:]
+        return _TRAILING_MARKERS.sub("", tail).strip()
+
+    # 3. Separator -- or — syntax
     seps = list(_SEPARATOR.finditer(text))
     if not seps:
         return None
@@ -270,10 +291,12 @@ def _split_frontmatter(lines: list[str]) -> tuple[str | None, list[str]] | None:
     """(YAML text or None, body lines); None when a frontmatter fence is unclosed."""
     start = next((i for i, ln in enumerate(lines) if ln.strip()), None)
     if start is None or lines[start].strip() != _FRONTMATTER_FENCE:
-        return None, lines
+        return None, textwrap.dedent("\n".join(lines)).splitlines()
     for end in range(start + 1, len(lines)):
         if lines[end].strip() == _FRONTMATTER_FENCE:
-            return "\n".join(lines[start + 1 : end]), lines[end + 1 :]
+            fm_text = textwrap.dedent("\n".join(lines[start + 1 : end])).strip("\n")
+            body = textwrap.dedent("\n".join(lines[end + 1 :])).splitlines()
+            return fm_text, body
     return None
 
 
@@ -288,6 +311,7 @@ def _answer_value(value: Any) -> int | str | None:
 
 def parse_block(block: str, vocab: Vocabulary) -> Argument | None:
     """Parse an argdown block; None when its YAML frontmatter fails to parse."""
+    block = normalise_argdown_block(block)
     split = _split_frontmatter(block.splitlines())
     if split is None:
         return None
@@ -315,8 +339,9 @@ def parse_block(block: str, vocab: Vocabulary) -> Argument | None:
     for raw_ln in body:
         s = raw_ln.strip()
         if not in_inference:
-            if (s.startswith("--") and not s.endswith("--") and len(s) > 2) or (
-                s.startswith("—") and not s.endswith("—") and len(s) > 1
+            if not raw_ln.startswith((" ", "\t")) and (
+                (s.startswith("--") and not s.endswith("--") and len(s) > 2)
+                or (s.startswith("—") and not s.endswith("—") and len(s) > 1)
             ):
                 in_inference = True
                 current_inf = [s]
@@ -364,7 +389,7 @@ def parse_block(block: str, vocab: Vocabulary) -> Argument | None:
 
 
 _NULL_FORM_RE = re.compile(
-    r"^(?:===\s*\n)?\s*asks:\s*none\s*(?:\n===)?\s*\n\s*\[no\s+claim\]\s*$",
+    r"^(?:===\s*\n)?\s*asks:\s*none\s*(?:\n\s*===)?\s*\n\s*\[no\s+claim\]\s*$",
     re.IGNORECASE,
 )
 
@@ -373,7 +398,8 @@ def is_null_form(block_text: str | None) -> bool:
     """True when a fenced argdown block is the null form declaring no claim."""
     if not block_text or not block_text.strip():
         return False
-    return bool(_NULL_FORM_RE.match(block_text.strip()))
+    norm = normalise_argdown_block(block_text)
+    return bool(_NULL_FORM_RE.match(norm.strip()))
 
 
 def clean_ansi(text: str, file_path: str | None = None) -> str:
@@ -424,6 +450,7 @@ def check_argdown_block(
             None,
         )
 
+    block_text = normalise_argdown_block(block_text)
     lines = block_text.splitlines()
 
     # 1. Frontmatter check
@@ -450,7 +477,7 @@ def check_argdown_block(
                 "<argument body>",
                 None,
             )
-        fm_text = "\n".join(lines[start + 1 : end])
+        fm_text = textwrap.dedent("\n".join(lines[start + 1 : end])).strip("\n")
         try:
             fm_data = yaml.safe_load(fm_text)
         except yaml.YAMLError as exc:
@@ -555,7 +582,9 @@ def check_argdown_block(
                         None,
                     )
 
-        body_lines = lines[end + 1 :]
+        body_lines = textwrap.dedent("\n".join(lines[end + 1 :])).splitlines()
+    else:
+        body_lines = textwrap.dedent("\n".join(lines)).splitlines()
 
     statements: dict[str, dict[str, Any]] = {}
     numbered_map: dict[int, str] = {}
