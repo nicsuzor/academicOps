@@ -25,4 +25,5 @@ description: Index of academicOps axioms.
 | `costly-ops-approval` | Require explicit prior approval for operations with unbounded cost or blast radius. | always_on |
 | `delay-decisions` | Delay decisions without cost until necessary to maximize evidence. | always_on |
 | `proportionate` | Build the least that meets the request; guard a risk by its likelihood × consequence. | always_on |
+| `no-over-engineering` | Never build a mechanical engine or script where an agent workflow meets the request. | always_on |
 | `reasons` | Give written, parseable reasons for every claim you rely on or communicate. | always_on |
