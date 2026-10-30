@@ -94,10 +94,14 @@ Where the composed workflow calls for QA review:
 - **Low-risk internal changes (chiefly bugfixes)**: Test whether the task is a low-risk internal change, chiefly a bugfix. If so, it gets no separate verification run. Instead, look for a blocked task waiting on the fix (`blocks` or inbound `needs` / `depends_on`):
   - **Blocked dependent exists**: Mint a follow-up task with status `queued` under the shared epic, with `needs: [<blocked_task_id>]` that judges the fix by reviewing that blocked task's next run once it runs.
   - **No blocked dependent exists**: Mint no verification follow-up task; the fix finishes without a separate verification run.
-- **Other changes requiring QA**:
+- **Pull request deliverables requiring independent review**:
   1. Structure the task and its QA review either as a single task with internal subtasks (if executable by the same agent in one session) or as a dedicated epic with child tasks (Child 1: Primary Task, Child 2: QA Task with `needs: [<child_1_id>]`); never mint a follow-up or review task as a loose sibling under an external parent.
   2. For epic-child cuts: mint the independent follow-up task with status `queued` as a child under the dedicated epic, Title: `QA: <primary task title>`, and wire dependency `needs: [<primary_task_id>]` so the QA task stays blocked until the primary task is `done`.
   3. Compose the review follow-up task drawing its brief from the shared review briefing in `wf-review` and the designated review template (`wf-qa`, `wf-rbg`, `wf-strategic-fit`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the deliverable and claims against literal acceptance criteria; if verification fails, the reviewer releases the task as `failed` with documented failure evidence; confirm tier against the taxonomy; for verified Tier 1 PRs, merge to base branch on a verified pass; for Tier 2 and Tier 3 PRs, post verification receipts to the PR and leave open for reviewer sign-off without releasing to review. A reviewer that changes code delivers it through its workflow and hands off for independent review.
+- **Non-PR tasks (analyses, docs, research, operational maintenance)**:
+  - Mint a separate `QA: <primary task title>` child task under the dedicated epic (`needs: [<primary_task_id>]`) only where the composed workflow warrants an independent verification check (such as empirical analyses requiring numerical replication, high-impact specification or policy changes, or multi-step qualitative audits).
+  - Workflows that do not warrant an additional verification pass (routine documentation updates, straightforward queries, direct single-source summaries) mint no QA child.
+  - Across all non-PR tasks, worker self-release to `done` remains standard upon fulfilling frozen acceptance criteria with concrete evidence; workers are not held in `review`.
 
 ### Requirements for writing tasks
 

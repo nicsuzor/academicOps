@@ -28,13 +28,11 @@ Confirm each worker started. A worker that failed to start is a halt: report the
 
 ## 3. Receive completion events
 
-Do not poll workers or wait on a timer (no status checking loops, no sleep loops, no cron timers). The dispatching session learns that a polecat has finished from polecat-mcp's completion event delivered over the event route or cross-session bus:
-
-`[polecat-exit] task=<task-id> container=<container-name> exit_code=<code|0> status=<review|done|partial|failed> pr_url=<url> duration=<seconds>s`
+Do not poll workers or wait on a timer (no status checking loops, no sleep loops, no cron timers). Container termination is recorded by the Docker exit listener, exported as OpenTelemetry `polecat.container.exit` spans, and queued in `polecat_events`. The dispatching session learns of worker completion from notifications delivered across the operational dashboard daemon bridge rather than direct socket pushes or client polling loops.
 
 ## 4. Act on completion
 
-When the completion event arrives, act on it immediately:
+When a completion notification arrives, act on it immediately:
 
 - **Review or Done (`status=review` or `status=done`, `exit_code=0`)**: The worker delivered. Trigger `/verify` on the deliverable or `/reconcile` to process the PR and update task state. Read downstream tasks on the graph whose `needs` dependencies are now satisfied, and dispatch any that are ready.
 - **Partial or Failed (`status=partial` or `status=failed`, or `exit_code!=0`)**: Inspect the failure reason recorded on the task and container logs. If unfinished work remains, route the follow-up through `/reify` or escalate per fail-fast.
