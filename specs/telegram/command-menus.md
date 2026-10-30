@@ -123,3 +123,10 @@ When an underlying skill is renamed in the framework (such as files in `plugins/
 3. **Delivery and Menu Synchronization Pipeline:**
    - **Immediate Live Menu Synchronization:** When menu updates are confirmed, the system immediately invokes the Telegram Bot API `setMyCommands` endpoint with `scope: { type: "chat", chat_id: chatId }` for each authorized chat across target bot personas, updating client menus in real time without downtime.
    - **Configuration Persistence & Startup Precedence:** Approved command configurations are saved to the persistent configuration store (`TELEGRAM_BOT_COMMANDS`). On bot startup, command registration inspects this store first; when present, the persisted dynamic configuration supersedes static fallback command arrays (`PRIME_COMMANDS`, `STRATEGIC_COMMANDS`), ensuring customizations survive restarts.
+
+## Regulatory Experiment Record
+
+- **Intervention**: Interactive proposal skill at `instructions` level paired with identifier validation and configuration precedence at `structural` level (`specs/enforcement/enforcement.md`).
+- **Baseline (Static Menus)**: Command menus were hardcoded static arrays (`PRIME_COMMANDS`, `STRATEGIC_COMMANDS`) in `commands.ts`. Customization required code edits, test adjustments, rebuilding plugins, and restarting bot instances.
+- **Changed (Interactive Proposal & Dynamic Synchronization)**: The `menu-proposal` skill discovers all candidate skills and workflows, pairs them with empirical telemetry usage counts, captures per-persona allocations (Prime vs Strategic) via structured or free-text input, validates composite commands against Telegram constraints (`/^[a-z0-9_]{1,32}$/`), and synchronizes live menus via `setMyCommands` while persisting to dynamic configuration store (`TELEGRAM_BOT_COMMANDS`).
+- **Observable Verification Signal**: Unit and integration suite (`plugins/ida-telegram/test/proposal.test.ts`) passes verifying candidate discovery, telemetry ingestion, allocation parsing, schema validation, persistence precedence, and live API synchronization (BAC-1 through BAC-7 / AC-3.1 through AC-3.4). Specimen skill run confirms discovery and matrix presentation.
