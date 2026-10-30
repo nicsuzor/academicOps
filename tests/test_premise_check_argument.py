@@ -1590,7 +1590,7 @@ def test_refusal_diagnostics_zero_inference_lines_in_reason():
 
 
 # ---------------------------------------------------------------------------
-# Whitespace and Indentation Tolerance (aops_21e954df)
+# Whitespace and Indentation Tolerance
 # ---------------------------------------------------------------------------
 
 
