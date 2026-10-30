@@ -223,24 +223,12 @@ export function normalizeCommandName(raw: string): string {
   return withoutBotMention.toLowerCase();
 }
 
-function parseCustomCommands(customJson: string, persona?: string): TelegramBotCommand[] {
+function parseCustomCommands(customJson: string): TelegramBotCommand[] {
   const reservedSet = new Set<string>(RESERVED_COMMANDS);
   try {
-    const parsed = JSON.parse(customJson);
-    let list: Array<{ command: string; description: string }> = [];
-    if (Array.isArray(parsed)) {
-      list = parsed;
-    } else if (parsed && typeof parsed === "object") {
-      const normPersona = (persona || "default").trim().toLowerCase();
-      if (Array.isArray(parsed[normPersona])) {
-        list = parsed[normPersona];
-      } else if (Array.isArray(parsed["default"])) {
-        list = parsed["default"];
-      } else if (normPersona === "default" && Array.isArray(parsed["prime"])) {
-        list = parsed["prime"];
-      }
-    }
-    return list
+    const parsed = JSON.parse(customJson) as Array<{ command: string; description: string }>;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
       .map((entry) => ({
         command: normalizeCommandName(entry.command),
         description: String(entry.description || "").trim(),
@@ -261,22 +249,14 @@ export function resolveBotCommands(
   personaOrCustomJson?: string,
   customJson?: string
 ): TelegramBotCommand[] {
-  const normalizedPersona = (personaOrCustomJson || "default").trim().toLowerCase();
-
-  if (customJson && customJson.trim().length > 0) {
-    const custom = parseCustomCommands(customJson, normalizedPersona);
-    if (custom.length > 0) {
-      return custom;
-    }
-  }
-
   if (personaOrCustomJson && (personaOrCustomJson.trim().startsWith("[") || personaOrCustomJson.trim().startsWith("{"))) {
-    const custom = parseCustomCommands(personaOrCustomJson, "default");
-    if (custom.length > 0) {
-      return custom;
-    }
+    return parseCustomCommands(personaOrCustomJson);
+  }
+  if (customJson && customJson.trim().length > 0) {
+    return parseCustomCommands(customJson);
   }
 
+  const normalizedPersona = (personaOrCustomJson || "default").trim().toLowerCase();
   const commandSpecs = PERSONA_COMMANDS[normalizedPersona] || DEFAULT_IDA_COMMANDS;
   return commandSpecs.map(({ command, description }) => ({
     command,
@@ -284,17 +264,9 @@ export function resolveBotCommands(
   }));
 }
 
-export function getBareCommandBehavior(
-  rawCommand: string,
-  persona?: string,
-  customCommands?: readonly IdaCommandSpec[]
-): IdaCommandSpec | undefined {
+export function getBareCommandBehavior(rawCommand: string, persona?: string): IdaCommandSpec | undefined {
   const normalized = normalizeCommandName(rawCommand);
   const normalizedUnderscore = normalized.replace(/-/g, "_");
-  if (customCommands && customCommands.length > 0) {
-    const match = customCommands.find((c) => c.command === normalized || c.command === normalizedUnderscore);
-    if (match) return match;
-  }
   if (persona) {
     const personaList = PERSONA_COMMANDS[persona.trim().toLowerCase()];
     if (personaList) {

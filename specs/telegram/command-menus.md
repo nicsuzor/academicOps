@@ -31,18 +31,14 @@ As an operator tapping a command button in the Telegram client menu, I want bare
 - **AC-2.3 (/daily definition and execution)** Given an execution of `/daily` (via menu tap or chat input), the command routes to skill `ida:daily`, with default action to update today's daily note (via the PKB template `tpl_daily`) and reply with a scannable run-down of priorities, progress, and open decisions on Telegram.
   - _Check_: `plugins/ida-telegram/test/commands.test.ts` (`AC3: added commands map to their respective skills, and /daily updates daily note and replies on Telegram`) asserts `meta.skill === "ida:daily"` and verifies `meta.default_action` contains the daily note update and Telegram reply directive.
 
-### US-3 Interactive Menu Proposal and Customization
+### US-3 Telegram Menu Proposal Workflow
 
-As an operator managing Telegram bot command surfaces across multiple personas, I want an interactive skill that inspects available skills, common workflows, and empirical usage metrics, and presents a structured proposal to customize and allocate commands per bot persona, so that Telegram menu commands reflect actual operational usage and can be easily evolved.
+As an operator managing Telegram bot command surfaces across multiple personas, I want an agent workflow that inspects installed skills, common workflows, and empirical usage metrics, and presents a considered menu recommendation per bot persona with an interactive checkbox proposal, so that command menus reflect actual operational needs without manual auditing.
 
-- **AC-3.1 (Candidate proposal presentation)** Given an operator requesting a menu review, when the proposal skill executes, then the system presents a proposal matrix of candidate skills and workflows with their aggregated invocation frequencies and current bot allocations, normalizing skill identifiers to Telegram-compliant command names.
-  - _Check_: Proposal output contains candidate skills and workflows (including autonomous coordination skills), shows usage frequency counts, and normalizes kebab-case skill names (e.g. `strategic_review` for `strategic-review`).
-- **AC-3.2 (Per-bot command allocation)** Given the presented proposal, when the operator selects command placement across bot personas, then the skill records the chosen allocation ("Prime only", "Strategic only", "both", or "none") via structured options or natural language chat replies.
-  - _Check_: Verification asserting that structured multi-choice selections and equivalent natural language replies update command allocations per persona identically.
-- **AC-3.3 (Custom and composite command definition)** Given an operator defining a custom command, when the operator specifies the command name, description, and execution action, then the system validates the command identifier against Telegram API constraints (`/^[a-z0-9_]{1,32}$/`), accepts valid specifications with their action metadata, and rejects invalid identifiers with descriptive syntax errors.
-  - _Check_: Schema validation verifying rejection of invalid names (leading slashes, invalid characters, length > 32) and acceptance of valid commands with specified action metadata.
-- **AC-3.4 (Immediate menu synchronization & persistence)** Given approved menu changes, when the operator confirms the update, then the system immediately synchronizes live menus via Telegram Bot API `setMyCommands` across authorized chat scopes for each target bot persona and persists the approved configuration so that changes survive restarts.
-  - _Check_: API verification asserting `setMyCommands` payloads match approved commands for each bot persona and authorized chat scope, and configuration persistence verification asserting dynamic configuration restores on restart.
+- **AC-3.1 (Considered recommendation presentation)** Given an operator requesting a menu review or update, when the menu proposal workflow runs, then the agent samples recent workflow and skill invocations from execution telemetry, inspects installed capabilities, and presents a structured recommendation listing proposed commands per bot persona with their invocation frequencies and rationale.
+- **AC-3.2 (Persona-tailored command allocation)** Given candidate commands, when the agent evaluates placement across bot personas, then operational and triage actions are recommended for Ida Prime, reflective and high-altitude actions are recommended for Ida Actual, and shared coordination actions are recommended for both.
+- **AC-3.3 (Composite command synthesis)** Given recurring multi-step action patterns observed in telemetry or operator requests, when the agent recommends commands, then composite commands synthesizing common workflows into a single menu action (such as daily status and briefing) are included with their intended behavior.
+- **AC-3.4 (Interactive review and codification)** Given the presented recommendation, when the operator confirms or adjusts command placement, then the approved command menus are codified into the bot configuration, ensuring all command names comply with platform constraints (1–32 lowercase alphanumeric and underscore characters, maximum 100 commands per persona).
 
 ## Design
 
@@ -92,41 +88,28 @@ When an underlying skill is renamed in the framework (such as files in `plugins/
 - Maintainers must update the corresponding command name, skill mapping (`skill` field), bare action text, and test assertions in `plugins/ida-telegram/src/telegram/commands.ts` and `plugins/ida-telegram/test/commands.test.ts`.
 - Note that Telegram command identifiers only support characters `[a-z0-9_]{1,32}` (no hyphens).
 
-### 3. Menu Proposal Skill (Interactive Customization)
+### 3. Telegram Menu Proposal Workflow
 
-1. **Data Sources:**
-   - **Configured Menus:** Static defaults and configured command mappings for each bot persona.
-   - **Live Menus:** Active commands currently registered with the Telegram Bot API via `getMyCommands` for each bot token and authorized chat scope.
-   - **Installed Skills and Workflows:** Discovered across installed plugin skill registries and universal workflow templates.
-     - _Autonomous Coordination Skills:_ Operator-facing coordination skills (such as `reify`, `dispatch`, `mine`, `reconcile`) are included in candidate discovery to allow rapid triggering of planning and dispatch workflows directly from chat.
-     - _Identifier Normalization:_ Candidate skill discovery automatically normalizes kebab-case skill identifiers into Telegram-compliant snake_case command names (e.g., `strategic-review` becomes `strategic_review`, `argument-map` becomes `argument_map`) while preserving the underlying skill identifier in execution routing metadata.
-   - **Telemetry Usage Metrics:** Invocation frequencies retrieved from runtime span storage across interactive turns and subagents.
+1. **Telemetry Sampling and Capability Discovery:**
+   - The workflow queries recent execution telemetry across agent sessions and subagents to determine empirical invocation frequency for each installed skill and workflow template.
+   - Discovers available capabilities across plugin skill directories and workflow libraries, including operator-facing coordination skills.
+   - Identifies candidate composite commands from recurring prompt patterns or multi-skill compositions.
 
-2. **Proposal Presentation and Operator Interaction:**
-   - **Structured Proposal Matrix:** Presents candidate skills and workflows displaying:
-     - Command identifier (normalized for Telegram).
-     - Functional description.
-     - Empirical usage count from telemetry spans.
-     - Current menu allocation (`[Prime]`, `[Strategic]`, `[Both]`, or `[None]`).
-   - **Per-Bot Allocation Choice:**
-     - The operator assigns each command per bot persona: Prime only, Strategic only, both, or remove from menus.
-     - The interface provides structured option buttons while accepting free-text replies and conversational adjustments.
-   - **Custom and Composite Commands:**
-     - The operator may define new or composite commands with custom execution semantics.
-     - For each custom command, the skill captures and validates:
-       1. `command`: Normalized command name (1-32 characters, lowercase alphanumeric and underscores `/^[a-z0-9_]{1,32}$/`, excluding reserved commands `start`, `help`, `status`). Leading slashes are stripped during normalization.
-       2. `description`: Human-readable menu description (1-256 characters).
-       3. `skill`: Target skill or workflow identifier.
-       4. `bareAction`: Concrete target skill identifier, universal workflow identifier, or prompt instructions injected into execution metadata when tapped without arguments.
-   - **API Invariants:** Total registered commands per bot persona must not exceed the Telegram Bot API limit of 100 commands per scope.
+2. **Qualitative Evaluation and Persona Allocation:**
+   - Evaluates each candidate command against the operational mandate of each bot persona:
+     - **Ida Prime:** Emphasizes fast triage, task queueing, daily review, single-step decisions, and worker dispatch.
+     - **Ida Actual (Strategic Ida):** Emphasizes high-altitude strategizing, reflective reasoning, argument mapping, dialectical review, and goal decomposition.
+     - **Shared:** Emphasizes cross-cutting workflow coordination.
+   - Enforces Telegram platform invariants: command names must match `[a-z0-9_]{1,32}`, human-readable descriptions must be between 1 and 256 characters, and total registered commands must not exceed 100 per persona scope.
 
-3. **Delivery and Menu Synchronization Pipeline:**
-   - **Immediate Live Menu Synchronization:** When menu updates are confirmed, the system immediately invokes the Telegram Bot API `setMyCommands` endpoint with `scope: { type: "chat", chat_id: chatId }` for each authorized chat across target bot personas, updating client menus in real time without downtime.
-   - **Configuration Persistence & Startup Precedence:** Approved command configurations are saved to the persistent configuration store (`TELEGRAM_BOT_COMMANDS`). On bot startup, command registration inspects this store first; when present, the persisted dynamic configuration supersedes static fallback command arrays (`PRIME_COMMANDS`, `STRATEGIC_COMMANDS`), ensuring customizations survive restarts.
+3. **Proposal Presentation and Operator Interaction:**
+   - Presents a scannable table or checkbox proposal detailing:
+     - Proposed command name and type (skill, workflow, or composite).
+     - Empirical invocation count from recent telemetry.
+     - Recommended persona allocation (`[Prime]`, `[Strategic]`, or `[Both]`) with justification.
+     - Description of action taken on bare tap.
+   - Solicits operator approval or fine-tuning via structured options or natural language feedback.
 
-## Regulatory Experiment Record
-
-- **Intervention**: Interactive proposal skill at `instructions` level paired with identifier validation and configuration precedence at `structural` level (`specs/enforcement/enforcement.md`).
-- **Baseline (Static Menus)**: Command menus were hardcoded static arrays (`PRIME_COMMANDS`, `STRATEGIC_COMMANDS`) in `commands.ts`. Customization required code edits, test adjustments, rebuilding plugins, and restarting bot instances.
-- **Changed (Interactive Proposal & Dynamic Synchronization)**: The `menu-proposal` skill discovers all candidate skills and workflows, pairs them with empirical telemetry usage counts, captures per-persona allocations (Prime vs Strategic) via structured or free-text input, validates composite commands against Telegram constraints (`/^[a-z0-9_]{1,32}$/`), and synchronizes live menus via `setMyCommands` while persisting to dynamic configuration store (`TELEGRAM_BOT_COMMANDS`).
-- **Observable Verification Signal**: Unit and integration suite (`plugins/ida-telegram/test/proposal.test.ts`) passes verifying candidate discovery, telemetry ingestion, allocation parsing, schema validation, persistence precedence, and live API synchronization (BAC-1 through BAC-7 / AC-3.1 through AC-3.4). Specimen skill run confirms discovery and matrix presentation.
+4. **Codification and Delivery:**
+   - Upon operator confirmation, the approved menu allocations are codified in the bot persona command definitions.
+   - Updates become active on the next bot configuration load or deployment.

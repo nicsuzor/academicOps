@@ -1,48 +1,49 @@
 ---
 name: menu-proposal
-description: Interactively review, customize, and allocate Telegram bot command menus across agent personas (Prime and Strategic). Discovers candidate skills and workflows, calculates telemetry invocation counts, presents per-bot placement proposals, captures custom composite commands, and synchronizes live menus via Telegram Bot API setMyCommands. Use when the user requests a Telegram menu review or command customization. Exclude for routine status reports or non-Telegram command configurations.
+description: Review and recommend native Telegram command menu allocations per agent persona (Prime and Strategic). Instructs agents to sample recent execution telemetry and skill invocations, inspect available skills and workflows, present a considered per-bot allocation matrix with rationale, and codify approved updates. Use when the user requests a Telegram command menu review, proposal, or customization. Exclude for non-Telegram bot commands or general task scheduling.
 ---
 
-# Menu Proposal
+# Menu Proposal Workflow
 
 Review, customize, and allocate native Telegram command menus across agent personas.
 
 ## Procedure
 
-### 1. Discover Candidates and Empirical Usage
+### 1. Sample Telemetry and Discover Capabilities
 
-1. Run candidate discovery across installed plugin skills and workflow templates:
-   - Enumerate all installed skills and common workflows. Operator-facing coordination skills (`reify`, `dispatch`, `mine`, `reconcile`) are included.
-   - Filter out reserved commands (`start`, `help`, `status`) and headless worker commands (`pull`, `dump`).
-   - Normalize kebab-case identifiers to Telegram-compliant snake_case command names (e.g. `strategic-review` becomes `strategic_review`).
-2. Query telemetry invocation frequencies from runtime span storage (skill tool runs and `bot_command` turn events) across interactive turns and subagent runs.
-3. Determine current allocations across bot personas (`[Prime]`, `[Strategic]`, `[Both]`, or `[None]`).
+1. **Sample recent invocations:** Query execution telemetry spans (or inspect recent session logs) for skill runs and menu taps across interactive sessions and subagents to gather empirical invocation frequencies.
+2. **Discover candidate skills and workflows:**
+   - Enumerate installed skills across plugins (`plugins/*/skills/`) and common workflow templates.
+   - Include operator-facing coordination skills (`reify`, `dispatch`, `mine`, `reconcile`, `daily`).
+   - Exclude reserved platform commands (`start`, `help`, `status`) and headless worker lifecycle commands (`pull`, `dump`).
+3. **Inspect current allocations:** Read configured commands for each bot persona in `plugins/ida-telegram/src/telegram/commands.ts` (`PRIME_COMMANDS`, `STRATEGIC_COMMANDS`).
 
-### 2. Present Proposal Matrix
+### 2. Synthesize Considered Recommendations
 
-Present the structured proposal table to the user with progressive disclosure:
+Apply qualitative judgment to evaluate candidate commands against each persona's operational role:
 
-- **Summary headline:** Total candidates discovered, current allocations per persona, and validation against the 100-command limit.
-- **Proposal table:**
-  - `Command`: Normalized command identifier (e.g. `/reify`).
-  - `Type`: `skill`, `workflow`, or `custom`.
-  - `Usage`: Empirical invocation count from telemetry spans.
-  - `Allocation`: `[Prime]`, `[Strategic]`, `[Both]`, or `[None]`.
-  - `Description`: Human-readable summary of the action.
-- **Action options:** Offer structured choices to allocate commands per persona or define new composite commands.
+- **Ida Prime (`prime`):** Prioritize fast operational triage, quick capture, decision walk-throughs, task queueing, daily briefings, and worker dispatch (e.g. `/decide`, `/q`, `/mine`, `/reconcile`, `/up`, `/reify`, `/dispatch`, `/daily`).
+- **Strategic Ida / Ida Actual (`strategic`):** Prioritize reflective analysis, high-altitude strategizing, goal decomposition, dialectical reviews, argument audits, and durable capture (e.g. `/strategize`, `/remember`, `/decompose`, `/plan`, `/strategic_review`, `/argument_map`, `/daily`).
+- **Shared:** Actions supporting general coordination workflows belong on both menus.
+- **Composite commands:** Propose single-tap composite commands where recurring multi-step patterns or common briefings are identified (such as `/daily`).
+- **Platform constraints:** Ensure all command identifiers match `/^[a-z0-9_]{1,32}$/`, descriptions are 1-256 characters, and total commands do not exceed 100 per persona.
 
-### 3. Capture Allocations and Custom Commands
+### 3. Present Proposal Matrix
 
-1. **Per-bot allocation:** Accept structured option button choices or free-text instructions (e.g. "put daily on both", "remove hydrate from prime", "strategic only for decompose").
-2. **Custom / composite commands:** When the user defines a composite or custom command, capture and validate:
-   - `command`: 1-32 characters, lowercase alphanumeric and underscores (`/^[a-z0-9_]{1,32}$/`), excluding reserved commands.
-   - `description`: 1-256 characters.
-   - `skill`: Target skill or workflow identifier.
-   - `bareAction`: Concrete prompt instructions or target skill invocation injected when tapped without arguments.
-     Reject invalid specifications with actionable syntax errors.
+Present a scannable proposal table to the user:
 
-### 4. Persist and Synchronize Live Menus
+- **Candidate pool summary:** Total candidates inspected and current allocations per persona.
+- **Recommendation table:**
+  - `Command`: Normalized identifier (e.g. `/reify`).
+  - `Type`: `skill`, `workflow`, or `composite`.
+  - `Usage`: Empirical invocation count from recent telemetry.
+  - `Proposed Allocation`: `[Prime]`, `[Strategic]`, `[Both]`, or `[None]`.
+  - `Description`: Clear functional summary.
+  - `Rationale`: Why this command fits the recommended persona.
+- **Interactive options:** Present checkbox proposals or structured options allowing the user to approve recommendations or adjust allocations in free text.
 
-1. **Live synchronization:** Invoke Telegram Bot API `setMyCommands` with `scope: { type: "chat", chat_id: chatId }` for each authorized chat across target bot personas, applying updates immediately.
-2. **Configuration persistence:** Persist the approved configuration to `TELEGRAM_BOT_COMMANDS` (or persistent state `commands.json`). On startup, persisted configuration takes precedence over static default command arrays.
-3. Reply to the user confirming updated menus per persona.
+### 4. Codify Approved Allocations
+
+1. Upon user confirmation, codify the approved command allocations in `plugins/ida-telegram/src/telegram/commands.ts` under `PRIME_COMMANDS` and `STRATEGIC_COMMANDS`.
+2. Run test verification (`cd plugins/ida-telegram && bun test test/commands.test.ts`) to ensure command registration and bare action mapping pass cleanly.
+3. Confirm updated menus to the user.
