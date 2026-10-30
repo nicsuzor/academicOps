@@ -24,6 +24,7 @@ Red-green-refactor development for a change to code that executes, where correct
 
 ## Constraints (normative)
 
+- Tests check outputs, never contents. Never write unit tests for documentation or instruction files: text documents are not functions and produce no outputs, so we do not test them. For code, never write a test that asserts that code says a particular phrase or uses a particular variable, enum, constant, condition, or similar; assert observable outputs, never contents themselves.
 - One behavior per test, one behavior per cycle. Test before code.
 - Black-box only: assert inputs → output or observable effect through the public interface, never private helpers, internal state, call order, or a mock's call log.
 - Mutation check: introducing the named bug must turn the test red. A test that survives it guards nothing; drop it.
