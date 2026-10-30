@@ -1,11 +1,13 @@
 ---
 name: reify
-description: Turn an objective, or a task id, into complete dispatchable tasks on the graph -- hydrate, compose the workflow from templates, write each task at `queued`, and mint any QA follow-up. Use when work needs tasks written or an existing task rewritten before a worker can pull it. Exclude for starting workers on tasks already written (use /dispatch).
+description: Bind one node that is next to run to its executor and workflow -- hydrate, compose the workflow from templates, write the task at `queued`, and mint any QA follow-up. Use when a node is about to be dispatched and needs its task written or rewritten; the PKB custodian (Pauli) runs it. Exclude for expanding an objective into sub-objectives (use decompose) or starting workers on tasks already written (use dispatch).
 ---
 
-# /reify: compose dispatchable tasks from an objective
+# /reify: compose the dispatchable task for a node that is next to run
 
-The task is the whole message to the worker. Write it once, keep it short, and leave it on the graph for `/dispatch`. Questions and lookups are answered directly by the session that receives them; the task dispatch pipeline is used only for real code changes. Never create tasks or compose workflows for questions or lookups.
+**Object: one node, at dispatch time.** Reifying binds the node to an executor class and to the workflow templates current now; both change, so a task reified before it can run goes stale on the graph. Reify a node when `/dispatch` is about to take it or the user says to write it, and leave a node blocked on something outside the graph's control (another party's reply, an approval, an upstream result) unreified until that clears. Given a parent, reify only the children that are ready to run. The PKB custodian (Pauli) runs this skill; a caller sends her the node or objective and receives task ids.
+
+The task is the whole message to the worker. Write it once, keep it short, and leave it on the graph for `/dispatch`. The task dispatch pipeline is used for any durable deliverable -- including agent workflows, instruction updates, specifications, and code changes. Questions and lookups that can be answered in-turn are answered directly without queueing tasks.
 
 A polecat is a short-running container: it gets in, does one unit of work it controls, records the evidence, and gets out cleanly. It never sees the whole objective through. Everything after its unit is a follow-up task on the graph, and the workflow decides what those follow-ups are.
 
@@ -23,6 +25,8 @@ Call `/hydrate` on the objective, or on the task if you were given an id.
 - You may update an existing task if you need to modify context, acceptance criteria, or instructions. This includes retrying failed tasks; do not create a new task for the same work.
 
 ## 2. Compose workflows
+
+- **Agentic-First Mechanism Gate**: Before composing an implementation task or specifying software builds, ask: Can this request be satisfied by an agent workflow template (`wf-*`) or skill instructions (`SKILL.md`)? If the task involves qualitative judgment, sampling, curation, classification, or recommendation, compose an agent workflow or skill instruction. Never specify executable scripts, CLI utilities, or unit test suites when an agent workflow meets the request.
 
 Call `/workflow-library` to weave together every workflow relevant to the task in context. The composed workflow draws on two kinds of component, and they enter the Instructions differently:
 

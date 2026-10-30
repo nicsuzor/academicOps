@@ -2,6 +2,16 @@ Turn a terse user prompt into a durable, enriched task node carrying intent,
 workflow, execution steps and guardrails -- so any worker can pull it and execute
 without gathering context again.
 
+Reification works on one node at the moment it is next to run (the micro
+altitude of the planning pipeline). It binds that node to an executor class and
+to the workflow templates current at that moment, and both change with
+circumstances, so a task reified ahead of its turn goes stale on the graph.
+A node whose prerequisites are outside the graph's control stays unreified
+until they clear. Expanding an objective into the nodes themselves is the
+preceding stage (decomposition), which binds nothing to an executor. The PKB
+custodian (Pauli) runs reification; callers send the node or objective and
+receive task ids.
+
 This skill does _enrichment_: selecting a workflow, interpreting it
 into concrete steps, attaching guardrails, and **writing the result onto a task
 node**. That durability is the whole point: an enriched task survives session loss,

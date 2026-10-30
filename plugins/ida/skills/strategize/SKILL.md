@@ -1,24 +1,17 @@
 ---
 name: strategize
-description: Analytical lenses for reasoning at strategic altitude -- effectuation, altitude, reversibility, survival envelopes, and interrogating the question. Use for "plan this", "what should I do next", or "is this plan still right". Exclude for facilitation of planning sessions or structuring effectual hypotheses (use plan) or breaking epics into task trees (use decompose).
+description: Reason at strategic altitude across the whole graph -- effectuation, altitude, reversibility, hypothesis structuring, information-value prioritisation, and bounded proposals. Use for "plan this", "help me think through", "what should I do next", or "is this plan still right"; the PKB custodian (Pauli) runs it. Exclude for expanding one objective into sub-objectives (use decompose) or writing one node's dispatchable task (use reify).
 ---
 
 # Strategize
 
 Equipment for thinking at the user's altitude. These are lenses to reach for when a question is strategic rather than operational, not a procedure to work through.
 
+**Object: the graph as a whole.** Which objectives exist, how they intersect, which assumptions they rest on, and what to do next. The PKB custodian (Pauli) runs this skill; an agent that receives a strategic ask hands it to her. Thinking time, not doing time: facilitate, propose, and stop; execution and task-writing belong to the stages downstream.
+
 ## Founding Principle
 
 **Don't foreclose opportunities just because they're not possible.** In effectual logic under Knightian uncertainty, impossibility is an artifact of current causal constraints. As demonstrated means expand affordances and partnerships form, previously impossible options become viable. Never rule out an opportunity during strategic thinking simply because the mechanism to achieve it does not currently exist.
-
-## Register
-
-Two registers, and only the user moves between them.
-
-- **Explaining** -- the user is laying out what they know, do, and see. Hold the lenses privately. The output is capture, reflection in their words, and connections to what they said earlier, offered as connections rather than conclusions. No verdicts, no "what follows", no next step, no new question, nothing ruled out, nothing called wrong. The user is still building the picture; an early conclusion costs them the thread.
-- **Deciding** -- the user asks what to do, or whether a plan is right. Apply the lenses aloud and give one recommendation.
-
-Never repeat a question the user has not answered. If they answer something else, follow them there.
 
 ## Effectuation and Non-Predictive Control
 
@@ -50,6 +43,23 @@ Ask what kind of door this is before asking whether it is the right one.
 
 Most decisions that feel weighty are two-way doors wearing a costume. If a decision is one-way, slow down; apply Affordable loss to the cheap probes used to inform it.
 
+## Hypothesis Structuring
+
+Every plan rests on assumptions. Treat a roadmap as an empirical investigation:
+
+- **Surface load-bearing unknowns** -- the untested assumptions whose falsity would change the direction.
+- **Map epistemic dependencies** -- what must be known before what must be done can be settled.
+- **Design cheap probes** -- the cheapest discriminating experiment (a diagnostic, a short query, a prototype) before committing heavy resources.
+- **Detect synergies** -- actions that advance an objective, prove a new capability, and recruit institutional leverage at once.
+
+## Prioritisation by Value of Information
+
+Rank exploratory next steps by what they would teach, not by urgency:
+
+$$\text{information\_value} \approx \text{downstream\_weight} \times \text{assumption\_criticality}$$
+
+A step earns a probe only when both hold: the node or its unblocking cone has outcome uncertainty (an open design question or `confidence < 1.0`), and that cone reaches at least two distinct alternative paths. Discount deliverable-shaped tasks whose output is already certain: information value belongs to genuine probes and spikes.
+
 ## Interrogating the Question
 
 - What would have to be true for this to be the right move, and is any of it checkable now?
@@ -57,3 +67,7 @@ Most decisions that feel weighty are two-way doors wearing a costume. If a decis
 - What would change my mind? An answer no evidence could revise is a preference, not a conclusion.
 - Who has to agree, and what would they need to believe? Strategy that ignores who must act is analysis.
 - Is this the question that matters, or the question that arrived?
+
+## Bounded Proposals and Hand-off
+
+Offer at most one or two high-value options, each with a concise rationale and a falsification criterion; never an open-ended menu. When exploration converges, stop without executing: an ask the user adopts is captured on the graph (`/q`), and an objective the user adopts is expanded into its sub-objectives (`/decompose`).
