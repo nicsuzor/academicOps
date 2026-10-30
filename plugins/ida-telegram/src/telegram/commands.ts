@@ -43,13 +43,11 @@ export const KNOWN_BARE_ACTIONS: Record<string, string> = {
   daily:
     "Invoke /ida:daily: update today's daily note and reply with a scannable run-down of priorities, progress, and open decisions on Telegram.",
   strategize:
-    "Invoke /ida:strategize: examine the current topic at strategic altitude, assess reversibility and effectuation, and interrogate the core question.",
+    "Invoke /ida:strategize: examine the current topic at strategic altitude across the graph, assess reversibility and effectuation, structure the plan as hypotheses, and interrogate the core question.",
   remember:
     "Invoke /ida:remember: summarise and persist the active discussion's durable facts, decisions, and constraints to the PKB.",
   decompose:
     "Invoke /ida:decompose: break down the current strategic objective into sub-objectives, decision forks, and prerequisites.",
-  plan:
-    "Invoke /ida:plan: facilitate strategic exploration, structure hypotheses, and assess next steps under uncertainty.",
   strategic_review:
     "Invoke /ida:strategic-review: coordinate modular multi-agent review across compliance, quality, and strategic congruence.",
   argument_map:

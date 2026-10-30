@@ -229,7 +229,6 @@ describe("Native Telegram bot commands for Ida (FR-8.1)", () => {
     expect(commandNames).toContain("strategize");
     expect(commandNames).toContain("remember");
     expect(commandNames).toContain("decompose");
-    expect(commandNames).toContain("plan");
     expect(commandNames).toContain("strategic_review");
     expect(commandNames).toContain("argument_map");
 
