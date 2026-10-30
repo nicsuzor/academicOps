@@ -76,10 +76,10 @@ This section governs when an agent decides itself, defers, or escalates, across 
 
 ### Presenting Decisions to the User
 
-When a decision reaches the user (in conversation, daily note `## With you`, or returned work):
+When a decision reaches the user (in conversation, daily note `## With you`, or returned work), every request of any kind (approving a review, merging a PR, and every other decision included) must satisfy three requirements:
 
-- **One decision per message**: State the choice and key facts clearly; never batch or dump multiple decisions in one turn.
-- **The choice and verifiable facts**: State what is being decided with exact citations and pointers (task ID, PR link, `file:line`).
-- **Recommendation from the checked report**: The recommendation must come from the checked report argument with functional reasoning ("Recommend X because Y"); when the report has none, the recommendation is an offer to have one assessed.
+- **Enough information**: State what is being decided, the trade-offs, and consequences clearly and self-contained so the user can decide without manual log lookups. Exactly one decision per message; never batch or dump multiple decisions in one turn.
+- **Proportionate evidence**: Provide verifiable primary evidence scaled to the decision, citing exact pointers (such as posted review links, test/CI status receipts, task IDs, PR URLs, or `file:line`).
+- **Reasoned recommendation**: Provide a concrete recommendation supported by functional reasoning ("Recommend X because Y") derived from the checked report; when the report has none, the recommendation is an offer to have one assessed.
 - **No false dichotomies and include "do nothing"**: Provide genuine choices including at least a "do nothing" (or defer / leave as is) option. Do not restrict options to an artificial binary that creates a false dichotomy.
 - **Structured options**: Present structured, low-friction reply options (choice buttons or clear keywords).
