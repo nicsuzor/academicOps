@@ -35,7 +35,7 @@ implementation without this template first is scope-creep waiting to happen.
     axioms and rules (proportionality, single source of truth, closure) before
     review. Resolve any required changes before advancing.
 11. **Review** — record the full summary review on the record for review.
-12. **Finalize and submit** — open a **draft** PR (`gh pr create --draft`) for review; the spec task never merges on its own. Implementation proceeds on the same branch and PR once approved, with the spec still editable; the PR is marked ready for review once the feature is written, without waiting for approval; spec and feature merge together after full review.
+12. **Finalize and submit** — open a **draft** PR (`gh pr create --draft`) for review; the spec task never merges on its own. Implementation proceeds on the same branch and PR only after approval (compose [[wf-escalated-approval]] for the go-ahead if the spec commits to something hard to walk back), with the spec still editable; mark the draft PR ready for review (`gh pr ready`) once the feature is written, without waiting for approval; spec and feature merge together after full review.
 
 ## Verification before proceeding to implementation
 

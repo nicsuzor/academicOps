@@ -13,7 +13,7 @@ type: template
 
 ## What this template does
 
-Specifies how tasks in `nicsuzor/academicOps` finish. All individual task changes deliver via PR targeting `dev`. A PR merges into `dev` on green; functional changes also require independent QA review first. Merging to `main` requires escalated review.
+Specifies how tasks in `nicsuzor/academicOps` finish. All individual task changes deliver via PR targeting the designated integration base branch declared in `.agents/CORE.md`. A PR merges on green; functional changes also require independent QA review first. Merging to `main` requires escalated review.
 
 ## One branch, one PR
 
@@ -23,10 +23,10 @@ Specifies how tasks in `nicsuzor/academicOps` finish. All individual task change
 
 ## Finish Policy
 
-- **Target branch for tasks**: `dev`. Individual tasks must not target `main`.
-- **Delivery mechanism**: Open a pull request targeting `dev`. When the work is a Stage 1 spec or design preceding a build, open the PR as a **draft** (`gh pr create --draft --base dev`); when the work is a Stage 2 build continuing an approved spec, build on Stage 1's branch, push to that PR, and mark the PR ready for review once the feature is written, without waiting for approval. Spec and feature merge together after full review. For standalone single-stage changes, open a standard pull request (`gh pr create --base dev`). PR descriptions focus on what was done and the approach taken, structured as a scannable decision aid; do not enumerate every single change in detail, as the diff is available for that. Follow the repository template at `.github/PULL_REQUEST_TEMPLATE.md`.
-- **Merging to dev**: Merge on green. Where QA is required, the verifying task reviews the PR and merges it to `dev` upon successful verification. If verification fails, the verifying task releases `failed` with failure evidence documented on the record; it does not file fix tasks or follow-up tasks. A Stage 1 spec draft PR never merges on its own; it merges only with its feature after full review.
-- **Releases to main**: A PR from `dev` into `main` merges only on explicit release approval.
+- **Target branch for tasks**: The designated integration base branch declared in `.agents/CORE.md` (e.g. `release/v1.0-rc0`). Individual tasks must not target `main`.
+- **Delivery mechanism**: Open a pull request targeting the base branch. When the work is a Stage 1 spec or design preceding a build, open the PR as a **draft** (`gh pr create --draft --base <branch>`); when the work is a Stage 2 build continuing an approved spec, build on Stage 1's branch, push to that PR, and mark the PR ready for review (`gh pr ready`) once the feature is written, without waiting for approval. Spec and feature merge together after full review. For standalone single-stage changes, open a standard pull request (`gh pr create --base <branch>`). PR descriptions focus on what was done and the approach taken, structured as a scannable decision aid; do not enumerate every single change in detail, as the diff is available for that. Follow the repository template at `.github/PULL_REQUEST_TEMPLATE.md`.
+- **Merging**: Merge on green. Where QA is required, the verifying task reviews the PR and merges it to the base branch upon successful verification. If verification fails, the verifying task releases `failed` with failure evidence documented on the record; it does not file fix tasks or follow-up tasks. A Stage 1 spec draft PR never merges on its own; it merges only with its feature after full review.
+- **Releases to main**: A PR from the integration base branch into `main` merges only on explicit release approval.
 - **Commit messages and trailers**: Commits to public repositories must never carry PKB IDs or `Task:`, `Epic:`, or `Claude-Session:` trailers (`data-boundaries`). Task linkage is maintained in the private task record, not in public repository commits.
 - **QA review**:
   - **Required**: For any changes touching plugins, hooks, skills, agents, runtimes, or scripts, except for low-risk internal changes below. `/reify` mints a follow-up verifying task.
@@ -38,7 +38,7 @@ Specifies how tasks in `nicsuzor/academicOps` finish. All individual task change
 Before marking `status: done`, the worker must:
 
 1. Ensure test suite and linter pass (`uv run pytest`, `uv run ruff check`).
-2. Push feature branch to remote and open or update the PR: for a Stage 1 spec or design task preceding a build, open as a draft PR (`gh pr create --draft --base dev`); for a Stage 2 build, push to Stage 1's branch and mark the PR ready for review once the feature is written, without waiting for approval; for standalone changes, open a PR targeting `dev`. Write a PR description explaining what was done and the approach taken, following `.github/PULL_REQUEST_TEMPLATE.md`, leaving fine-grained inspection to the diff.
+2. Push feature branch to remote and open or update the PR: for a Stage 1 spec or design task preceding a build, open as a draft PR targeting the base branch (`gh pr create --draft --base <branch>`); for a Stage 2 build, push to Stage 1's branch and mark the PR ready for review (`gh pr ready`) once the feature is written, without waiting for approval; for standalone changes, open a PR targeting the base branch. Write a PR description explaining what was done and the approach taken, following `.github/PULL_REQUEST_TEMPLATE.md`, leaving fine-grained inspection to the diff.
 3. Update acceptance criteria on the PKB task: tick an item only with evidence of that item itself; leave any other item unticked with its limit stated, citing pinpoint evidence (`file:line`, command output, PR link).
 4. Mark task `status: done` and release claim (or `review` where an explicit user decision is required). A worker whose own deliverable is complete releases its task `done`, even when a dependent check (QA, merge, deploy) is still to run; `partial` is only for the worker's own unfinished acceptance items. Workers never create or name follow-up tasks.
 
@@ -50,7 +50,7 @@ Where QA is required for standard changes, the verifying task runs independently
 - **Parent**: Same parent as primary task
 - **Depends on**: `[<primary-task-id>]`
 - **Workflow**: Composes independent verification workflow
-- **Goal**: Independently verify PR changes on clean checkout against literal acceptance criteria. Once verified, merge the PR to `dev`. If verification fails, the verifying task releases `failed` with failure evidence and root cause documented on the record; it does not file fix tasks.
+- **Goal**: Independently verify PR changes on clean checkout against literal acceptance criteria. Once verified, merge the PR to the base branch. If verification fails, the verifying task releases `failed` with failure evidence and root cause documented on the record; it does not file fix tasks.
 
 ### Low-risk internal bugfixes (next-run review)
 
