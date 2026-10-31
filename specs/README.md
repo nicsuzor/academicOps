@@ -36,6 +36,7 @@
 - [enforcement/evidence-contract.md](enforcement/evidence-contract.md) -- the universal claim-evidence shape.
 - [enforcement/evidence-contract-enforcement.md](enforcement/evidence-contract-enforcement.md) -- the reminders, gate, and proportional interventions that hold agents to the evidence contract.
 - [enforcement/preventing-over-engineering.md](enforcement/preventing-over-engineering.md) -- eliminating over-engineered mechanical software builds and enforcing agentic-first workflows.
+- [enforcement/reviewer-class-standard-check.md](enforcement/reviewer-class-standard-check.md) -- reviewer class-standard verification across changed files in candidate changes.
 - [enforcement/auto-mode-classifier.md](enforcement/auto-mode-classifier.md) -- Claude Code auto-mode classifier design and cost model.
 
 ## Polecat
@@ -64,7 +65,9 @@
 ## Workflows
 
 - [workflows/workflow.md](workflows/workflow.md) -- the four-stage pipeline and where workflow components come from.
+- [workflows/plan-view.md](workflows/plan-view.md) -- formal plan view generation and redrawing on decomposed objectives.
 - [workflows/conceptual-review-workflow.md](workflows/conceptual-review-workflow.md) -- composable-lens multi-agent review of intellectual artifacts.
+- [workflows/default-dialectic-review.md](workflows/default-dialectic-review.md) -- dialectical multi-agent evaluation as the workflow library's default independent review stage.
 - [workflows/research-decomposition.md](workflows/research-decomposition.md) -- research-specific decomposition primitives and sequencing.
 - [workflows/reconcile.md](workflows/reconcile.md) -- GitHub ↔ PKB task-graph reconciliation.
 - [workflows/strategic-review.md](workflows/strategic-review.md) -- design intent for the parallel-review-and-reconcile quality gate.
