@@ -22,6 +22,7 @@ Authors a complete, unambiguous technical specification grounded in the evidence
 4. **Acceptance criteria** -- formulate concrete, observable, and falsifiable acceptance criteria for completion.
 5. **Test and verification strategy** -- for code that executes, specify test cases (unit, integration, regression) validating each criterion; for any other criterion, how it is verified.
 6. **Rule-compliance review** -- verify the draft specification against governing axioms (proportionality, single source of truth, closure) before finalizing or submitting for review. Remediate any `REVISE` findings before delivery.
+7. **Submit and PR lifecycle** -- commit the spec on the branch. When running as a Stage 1 design or specification task, open the PR as a draft targeting the base branch. The Stage 2 build continues on the same branch and PR; once its code step completes, mark the draft PR ready for review (`gh pr ready`) without waiting for approval.
 
 ## Output contract
 
