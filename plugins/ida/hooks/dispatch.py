@@ -164,6 +164,47 @@ def is_continuation(event: str, raw: dict[str, Any]) -> bool:
     return event in CONTINUATION_EVENTS and bool(raw.get("stop_hook_active"))
 
 
+# The one place a Claude Cowork session is recognised. Both hook entry points
+# (this dispatcher and ``mcp_caller_session.py``) ask it before doing anything,
+# and in Cowork they do nothing: Cowork refuses any MCP call whose input a
+# plugin hook changed ("A plugin hook changed this tool call's input. That is
+# allowed only for calls that run in the same environment as the hook"), and
+# its sessions carry none of the environment SessionStart needs.
+#
+# The signal is Claude Code's own, read from the 2.1.314 binary (build
+# 2026-10-29, 5c99a5b6). ``CLAUDE_CODE_IS_COWORK`` is in the set of variables
+# the host app sets for the session and is read as a boolean
+# (``if(i.CLAUDE_CODE_IS_COWORK)return!0``). The surface-name table labels the
+# ``CLAUDE_CODE_ENTRYPOINT`` values ``local-agent`` and ``remote_cowork``
+# "Cowork"; ``remote_cowork_trigger`` is the Cowork scheduled-run entrypoint
+# and ``local_agent`` is the spelling the client normalises to ``local-agent``
+# at startup. The client's own Cowork test is the disjunction of the two
+# variables. ``claude-desktop`` and ``remote_desktop`` are the desktop app's
+# Code tab, and ``CLAUDE_CODE_REMOTE`` is also ``true`` in cloud sessions,
+# which keep their hooks; neither is part of the signal. A hook process
+# inherits the parent environment (hooks reference, "Inherited environment"),
+# so the hook sees what the client set.
+COWORK_FLAG_VAR = "CLAUDE_CODE_IS_COWORK"
+ENTRYPOINT_VAR = "CLAUDE_CODE_ENTRYPOINT"
+COWORK_ENTRYPOINTS = frozenset(
+    {"local-agent", "local_agent", "remote_cowork", "remote_cowork_trigger"}
+)
+# The two spellings Claude Code documents for its own boolean variables
+# (``CLAUDE_CODE_REMOTE`` is ``"true"``, ``CLAUDE_CODE_SUBPROCESS_ENV_SCRUB`` is ``1``).
+_TRUE_VALUES = frozenset({"1", "true"})
+
+
+def is_cowork(environ: dict[str, str] | None = None) -> bool:
+    """Is this hook running inside a Claude Cowork session?
+
+    ``environ`` defaults to the process environment; tests pass a dict.
+    """
+    env = os.environ if environ is None else environ
+    if (env.get(COWORK_FLAG_VAR) or "").strip().lower() in _TRUE_VALUES:
+        return True
+    return (env.get(ENTRYPOINT_VAR) or "").strip() in COWORK_ENTRYPOINTS
+
+
 TO_CANONICAL = {
     "claude": {name: name for name in CANONICAL_EVENTS},
     "agy": {
@@ -497,6 +538,12 @@ def main(argv: list[str]) -> int:
             raw = json.load(sys.stdin)
         except json.JSONDecodeError:
             raw = {}
+
+    # In a Claude Cowork session the hooks do nothing: no fire is logged, no
+    # handler runs, nothing is printed. The payload is read first so the
+    # client's write never meets a closed pipe.
+    if is_cowork():
+        return 0
 
     event = to_canonical(client, wire_event)
     if event is None:
