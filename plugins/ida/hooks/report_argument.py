@@ -243,6 +243,7 @@ def extract_block(text: str | None) -> str | None:
     """Body of the last ```argdown fenced block in ``text``, or None."""
     if not text:
         return None
+    text = textwrap.dedent(text)
     lines = text.splitlines()
     found: str | None = None
     i = 0
@@ -310,8 +311,11 @@ def _answer_value(value: Any) -> int | str | None:
 
 
 def parse_block(block: str, vocab: Vocabulary) -> Argument | None:
-    """Parse an argdown block; None when its YAML frontmatter fails to parse."""
+    """Parse an argdown block; None when its YAML frontmatter fails to parse or syntax is invalid."""
     block = normalise_argdown_block(block)
+    valid, _, _ = check_argdown_block(block)
+    if not valid:
+        return None
     split = _split_frontmatter(block.splitlines())
     if split is None:
         return None
@@ -339,7 +343,9 @@ def parse_block(block: str, vocab: Vocabulary) -> Argument | None:
     for raw_ln in body:
         s = raw_ln.strip()
         if not in_inference:
-            if not raw_ln.startswith((" ", "\t")) and (
+            if raw_ln.startswith((" ", "\t")) and _premise_basis(s):
+                body_lines.append(raw_ln)
+            elif not raw_ln.startswith((" ", "\t")) and (
                 (s.startswith("--") and not s.endswith("--") and len(s) > 2)
                 or (s.startswith("—") and not s.endswith("—") and len(s) > 1)
             ):
@@ -455,7 +461,7 @@ def check_argdown_block(
 
     # 1. Frontmatter check
     start = next((i for i, ln in enumerate(lines) if ln.strip()), None)
-    body_lines = lines
+    body_lines = textwrap.dedent("\n".join(lines)).splitlines()
     if start is not None and lines[start].strip() == _FRONTMATTER_FENCE:
         end = None
         for i in range(start + 1, len(lines)):
@@ -605,6 +611,8 @@ def check_argdown_block(
 
         # Inference line: -- ... -- or — ... —
         if stripped.startswith(("--", "—")):
+            if line.startswith((" ", "\t")) and _premise_basis(stripped):
+                continue
             if _INFERENCE.match(stripped):
                 inf: dict[str, Any] = {"text": stripped, "conclusion": None}
                 inferences.append(inf)
