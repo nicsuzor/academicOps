@@ -28,7 +28,7 @@ Confirm each worker started. A worker that failed to start is a halt: report the
 
 ## 3. Receive completion events
 
-Do not poll workers or wait on a timer (no status checking loops, no sleep loops, no cron timers). Container termination is recorded by the Docker exit listener, exported as OpenTelemetry `polecat.container.exit` spans, and queued in `polecat_events`. The dispatching session learns of worker completion from notifications delivered across the operational dashboard daemon bridge rather than direct socket pushes or client polling loops.
+Do not poll workers or wait on a timer (no status checking loops, no sleep loops, no cron timers). The dispatching session learns of worker completion from completion notifications delivered to the session rather than polling or timers.
 
 ## 4. Act on completion
 
