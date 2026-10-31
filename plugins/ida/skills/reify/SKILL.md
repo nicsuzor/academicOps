@@ -57,7 +57,7 @@ Then assemble the steps:
 
 When an objective calls for specifying or designing a feature ahead of implementation:
 
-- **Stage 1 (Spec/Design)**: Authors and reviews the specification. The task instructions direct the worker to open a **draft** PR (`gh pr create --draft`) into the base branch carrying the spec or design, and record its review verdict on that PR. Stage 1 never merges on its own; once independent review passes (or approval is recorded), the spec task releases as `done` (or `review` for user decision), unblocking Stage 2.
+- **Stage 1 (Spec/Design)**: Authors and reviews the specification. The task instructions direct the worker to open a **draft** PR (`gh pr create --draft`) into the base branch carrying the spec or design, and record its review verdict on that PR. Stage 1 never merges on its own; once independent review passes (or approval is recorded), the spec task releases as `done`, unblocking Stage 2.
 - **Stage 2 (Build)**: Implementation builds on Stage 1's branch and pushes to the same PR, with the spec still editable as more is learned. The task instructions direct the worker to mark the PR ready for review (`gh pr ready`) once the feature is written, without waiting for approval. Spec and feature merge together after full review.
 
 ```markdown

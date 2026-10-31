@@ -40,7 +40,7 @@ Before marking `status: done`, the worker must:
 1. Ensure test suite and linter pass (`uv run pytest`, `uv run ruff check`).
 2. Push feature branch to remote and open or update the PR: for a Stage 1 spec or design task preceding a build, open as a draft PR targeting the base branch (`gh pr create --draft --base <branch>`); for a Stage 2 build, push to Stage 1's branch and mark the PR ready for review (`gh pr ready`) once the feature is written, without waiting for approval; for standalone changes, open a PR targeting the base branch. Write a PR description explaining what was done and the approach taken, following `.github/PULL_REQUEST_TEMPLATE.md`, leaving fine-grained inspection to the diff.
 3. Update acceptance criteria on the PKB task: tick an item only with evidence of that item itself; leave any other item unticked with its limit stated, citing pinpoint evidence (`file:line`, command output, PR link).
-4. Mark task `status: done` and release claim (or `review` where an explicit user decision is required). A worker whose own deliverable is complete releases its task `done`, even when a dependent check (QA, merge, deploy) is still to run; `partial` is only for the worker's own unfinished acceptance items. Workers never create or name follow-up tasks.
+4. Mark task `status: done` and release claim. A worker whose own deliverable is complete releases its task `done`, even when a dependent check (QA, merge, deploy) is still to run; `partial` is only for the worker's own unfinished acceptance items. Workers never create or name follow-up tasks.
 
 ## Follow-up QA Task Specification
 
