@@ -35,7 +35,7 @@ Operate strictly within the quality and requirement-satisfaction domain:
 
 - **Do not evaluate the strategic core premise, PKB graph congruence, or competing backlog options.** Evaluating the core premise and strategic fit with existing PKB material belongs exclusively to the Strategic Direction & Congruence reviewer (`pauli`).
 - **Do not rule on constitutional axioms or author mechanisms analyses.** All axiom compliance, rule violations, and enforcement-pyramid evaluations belong exclusively to the Compliance reviewer (`rbg`).
-- Limit your evaluation strictly to whether the work delivers on stated requirements and governing genre standards to an ambitious quality standard across actual rendered multimodal outputs, runtime execution, test suites, live probes, and (on high-risk requests) primary sources per `wf-qa`.
+- Limit your evaluation strictly to whether the work delivers on stated requirements and governing genre standards to an ambitious quality standard across actual rendered multimodal outputs, runtime execution, test suites, live probes, and (on high-risk requests) primary sources.
 
 ## Verdict Schema
 

@@ -36,7 +36,7 @@ Call `/workflow-library` to weave together every workflow relevant to the task i
 Then assemble the steps:
 
 - Combine template steps into a logical order (e.g., test-first where the change modifies code that executes, build, then QA).
-- Preserve design and build staging: when multi-file modifications or architectural choices are required, compose separate tasks for Stage 1 (Design) and Stage 2 (Build) under `wf-code-task-base`. Never collapse Stage 1 into Stage 2, even when the incoming brief provides an implementation proposal.
+- Preserve design and build staging: when multi-file modifications or architectural choices are required, compose separate tasks for Stage 1 (Design) and Stage 2 (Build). Never collapse Stage 1 into Stage 2, even when the incoming brief provides an implementation proposal.
 - Base the assembly only on what is explicitly requested. Do not investigate, guess at scope, or ad-lib extra requirements. If the request is ambiguous, preserve that ambiguity.
 - Start with the most general applicable template, which provides stubs for finishing and QA where applicable. Templates themselves specify how workflows are built; do not overspecify composition stages or single out finish templates.
 
@@ -104,7 +104,7 @@ Where the composed workflow calls for QA review:
 - **Other changes requiring QA**:
   1. Structure the task and its QA review either as a single task with internal subtasks (if executable by the same agent in one session) or as a dedicated epic with child tasks (Child 1: Primary Task, Child 2: QA Task with `needs: [<child_1_id>]`); never mint a follow-up or review task as a loose sibling under an external parent.
   2. For epic-child cuts: mint the independent follow-up task with status `queued` as a child under the dedicated epic, Title: `QA: <primary task title>`, and wire dependency `needs: [<primary_task_id>]` so the QA task stays blocked until the primary task is `done`.
-  3. Compose the review follow-up task drawing its brief from the shared review briefing in `wf-review` and the designated review template (`wf-qa`, `wf-rbg`, `wf-strategic-fit`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the deliverable and claims against literal acceptance criteria; if verification fails, the reviewer releases the task as `failed` with documented failure evidence; confirm tier against the taxonomy; for verified Tier 1 PRs, merge to base branch on a verified pass; for Tier 2 and Tier 3 PRs, post verification receipts to the PR and leave open for reviewer sign-off without releasing to review. A reviewer that changes code delivers it through its workflow and hands off for independent review.
+  3. Compose the review follow-up task drawing its brief from the shared review briefing in the designated or default review template: instructions direct the reviewer to independently verify the deliverable and claims against literal acceptance criteria; review stages resolve to the default review template (`default: true`) unless an alternative review template is specified; if verification fails, the reviewer releases the task as `failed` with documented failure evidence; confirm tier against the taxonomy; for verified Tier 1 PRs, merge to base branch on a verified pass; for Tier 2 and Tier 3 PRs, post verification receipts to the PR and leave open for reviewer sign-off without releasing to review. A reviewer that changes code delivers it through its workflow and hands off for independent review.
 
 ### Requirements for writing tasks
 
