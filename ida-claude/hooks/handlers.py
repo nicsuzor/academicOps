@@ -869,6 +869,7 @@ PREMISE_CHECK_POINTER = (
 
 def session_start(ctx: HookContext) -> Result | None:
     """Handle SessionStart for Claude Code and SessionStart for agy."""
+    emit_debug_span(ctx)
     metadata = _format_session_metadata(ctx)
     parts = [
         metadata,
@@ -1101,6 +1102,7 @@ def user_prompt_submit(ctx: HookContext) -> Result | None:
 
     ctx = replace(ctx, prompt_id=prompt_id)
 
+    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_user_prompt_submit")
     agy_user_prompt_submit(ctx)
     steps = (
@@ -1114,6 +1116,7 @@ def user_prompt_submit(ctx: HookContext) -> Result | None:
 
 def pre_tool(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical PreToolUse."""
+    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_pre_tool")
     agy_pre_tool(ctx)
     return _run_handler(hearsay_handler, ctx)
@@ -1121,6 +1124,7 @@ def pre_tool(ctx: HookContext) -> Result | None:
 
 def post_tool(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical PostToolUse."""
+    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_post_tool")
     agy_post_tool(ctx)
     steps = (
@@ -1132,63 +1136,95 @@ def post_tool(ctx: HookContext) -> Result | None:
 
 def post_tool_batch(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical PostToolBatch."""
+    emit_debug_span(ctx)
     return _run_handler(rule_against_hearsay, ctx)
 
 
 def post_tool_failure(ctx: HookContext) -> Result | None:
+    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_post_tool_failure")
     return None
 
 
 def subagent_start(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical SubagentStart."""
+    emit_debug_span(ctx)
     return _run_handler(honest_output, ctx)
 
 
 def stop(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical Stop."""
+    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_stop")
     agy_stop(ctx)
     return _run_handler(hearsay_handler, ctx)
 
 
 def subagent_stop(ctx: HookContext) -> Result | None:
+    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_subagent_stop")
     return None
 
 
 def stop_failure(ctx: HookContext) -> Result | None:
+    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_stop_failure")
     return None
 
 
 def permission_request(ctx: HookContext) -> Result | None:
+    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_permission_request")
     return None
 
 
 def permission_denied(ctx: HookContext) -> Result | None:
+    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_permission_denied")
     return None
 
 
 def notification(ctx: HookContext) -> Result | None:
+    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_notification")
     return None
 
 
 def pre_compact(ctx: HookContext) -> Result | None:
+    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_pre_compact")
     return None
 
 
 def post_compact(ctx: HookContext) -> Result | None:
+    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_post_compact")
     return None
 
 
 def session_end(ctx: HookContext) -> Result | None:
+    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_session_end")
+    return None
+
+
+def emit_debug_span(ctx: HookContext) -> Result | None:
+    """Export an aops-debug span for any hook event on every surface the hook tracer runs on."""
+    if claude_code_tracer is None:
+        return None
+    try:
+        data = _prepare_tracer_data(ctx)
+        config = claude_code_tracer.discover_config(data)
+        if config is not None:
+            claude_code_tracer.emit_debug_hook_span(
+                data,
+                config,
+                client=ctx.client,
+                event=ctx.event,
+                raw_payload=ctx.raw,
+            )
+    except Exception as exc:
+        log.debug("Debug hook span export failed (%s): %s", ctx.event, exc)
     return None
 
 
