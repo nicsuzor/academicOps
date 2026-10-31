@@ -15,11 +15,7 @@ if str(IDA_HOOKS) not in sys.path:
     sys.path.insert(0, str(IDA_HOOKS))
 
 _POLICY = tomllib.loads((REPO_ROOT / "tests" / "policy.toml").read_text(encoding="utf-8"))
-SESSION_SERVERS = frozenset(
-    _POLICY.get("hooks", {})
-    .get("mcp_caller_session", {})
-    .get("session_servers", ["pkb", "services"])
-)
+SESSION_SERVERS = frozenset(_POLICY["hooks"]["mcp_caller_session"]["session_servers"])
 
 
 def test_hook_carries_session_ids_and_keeps_original_arguments():
@@ -33,7 +29,7 @@ def test_hook_carries_session_ids_and_keeps_original_arguments():
         "prompt_id": "prompt-uuid-main",
         "tool_use_id": "toolu-01",
         "tool_input": {
-            "id": "task_0c62b710",
+            "id": "task-fixture-01",
         },
     }
 
@@ -46,7 +42,7 @@ def test_hook_carries_session_ids_and_keeps_original_arguments():
     updated = specific.get("updatedInput")
     assert isinstance(updated, dict)
     # Original arguments kept
-    assert updated.get("id") == "task_0c62b710"
+    assert updated.get("id") == "task-fixture-01"
 
     # _session injected
     assert "_session" in updated
@@ -68,7 +64,7 @@ def test_hook_includes_agent_id_in_subagent():
         "prompt_id": "prompt-uuid-turn",
         "tool_use_id": "toolu-02",
         "tool_input": {
-            "code": "return await codemode.pkb_get_task({ id: 'task_0c62b710' });",
+            "code": "return await codemode.pkb_get_task({ id: 'task-fixture-01' });",
         },
     }
 
@@ -77,7 +73,7 @@ def test_hook_includes_agent_id_in_subagent():
     updated = specific["updatedInput"]
 
     # Original arguments kept
-    assert updated["code"] == "return await codemode.pkb_get_task({ id: 'task_0c62b710' });"
+    assert updated["code"] == "return await codemode.pkb_get_task({ id: 'task-fixture-01' });"
 
     # _session includes agent_id
     session = updated["_session"]
@@ -151,6 +147,7 @@ def test_hook_omits_session_for_non_session_servers():
 
     for tool_name in (
         "mcp__telegram__reply",
+        "mcp__aops:telegram__reply",
         "mcp__konnect__get_board",
         "mcp__playwright__browser_click",
     ):
@@ -207,6 +204,8 @@ def test_hook_injects_session_for_pkb_and_services():
         "mcp__services__portal_list_servers",
         "mcp__plugin_aops_pkb__get_task",
         "mcp__plugin_aops_services__portal_codemode_execute",
+        "mcp__aops:pkb__get_task",
+        "mcp__aops:services__portal_codemode_execute",
     ]
 
     for tool_name in target_tools:
@@ -227,3 +226,27 @@ def test_hook_injects_session_for_pkb_and_services():
             "session_id": "sess-ac2",
             "prompt_id": "prompt-ac2",
         }
+
+
+def test_hook_omits_session_for_multi_segment_non_session_servers():
+    """Verify that multi-segment server names ending in _services or _pkb (e.g. external_services) do not match session_servers."""
+    from mcp_caller_session import inject_caller_session
+
+    for tool_name in (
+        "mcp__plugin_aops_external_services__fetch",
+        "mcp__aops:external_services__fetch",
+        "mcp__external_services__fetch",
+    ):
+        payload = {
+            "hook_event_name": "PreToolUse",
+            "tool_name": tool_name,
+            "session_id": "sess-uuid-main",
+            "prompt_id": "prompt-uuid-main",
+            "tool_use_id": "toolu-01",
+            "tool_input": {"param": "val"},
+        }
+        result = inject_caller_session(payload, session_servers=SESSION_SERVERS)
+        updated = result.get("hookSpecificOutput", {}).get("updatedInput")
+        assert updated is None or "_session" not in updated, (
+            f"Expected no _session for {tool_name}, got {updated}"
+        )

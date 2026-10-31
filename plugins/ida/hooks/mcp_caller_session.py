@@ -28,8 +28,11 @@ def extract_mcp_server(tool_name: str) -> str:
     if ":" in server_raw:
         return server_raw.split(":")[-1]
     if server_raw.startswith("plugin_"):
-        subparts = server_raw.split("_")
-        return subparts[-1] if len(subparts) >= 3 else server_raw
+        remainder = server_raw[7:]
+        if "_" in remainder:
+            _, server_name = remainder.split("_", 1)
+            return server_name
+        return remainder
     return server_raw
 
 
@@ -39,11 +42,7 @@ def uses_caller_session(
 ) -> bool:
     """Check if the target MCP server consumes _session."""
     server = extract_mcp_server(tool_name)
-    if not server:
-        return False
-    return server in session_servers or (
-        len(tool_name.split("__")) > 1 and tool_name.split("__")[1] in session_servers
-    )
+    return bool(server and server in session_servers)
 
 
 def inject_caller_session(
