@@ -11,7 +11,7 @@ The architectural specification detailing design rationale, theoretical mechanis
 
 - **Stated Purpose:** Defines the theoretical foundation, mechanism categories, and proportionality model governing how the framework restrains, steers, and verifies agent behavior without programmatic micro-management.
 - **Primary Audience:** Framework architects, system developers, and compliance auditors designing, modifying, or reviewing enforcement mechanisms and policies.
-- **Current Truth / SSoT:** The empirical register of active rules, mechanisms, severity levels, and pinpoints is [`specs/ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md). Nothing here restates that live table.
+- **Current Truth / SSoT:** The empirical register of active rules, mechanisms, severity levels, and pinpoints is [`specs/ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md), governed by [`specs/enforcement/enforcement-map.md`](enforcement-map.md). It is a concise cross-reference table showing what kind of enforcement applies to each rule, not a summary of specs or workflows. Nothing here restates that live table.
 
 ## Governing principle -- agents all the way down
 
@@ -43,14 +43,9 @@ User attention is the scarce, non-renewable resource of the system and the prima
 - **Strict serialization**: Present at most one decision or question per message; never dump lists, aggregated decision cards, or multi-question batches.
 - **Progressive disclosure**: Deliver bottom-line actionable takeaways first (concise, self-contained, mechanism-mapped), reserving deep evidence, technical logs, and traces for on-demand inspection rather than upfront narration.
 
-## The table schema (4 columns)
+## The enforcement register (schema & inclusion)
 
-The enforcement register is structured in 4 columns:
-
-1. **Rule / nudge** -- The short-form linked reference to the rule (e.g. `[Axiom: Data Boundaries](../../plugins/rbg/skills/axioms/data-boundaries.md)` or `[Persona: Ida](../../plugins/ida/agents/ida.md)`) paired with the operative obligation or steering intent.
-2. **Mechanism** -- The carrier category from the controlled vocabulary.
-3. **Severity** -- The force of intervention within the mechanism.
-4. **Detail** -- The pinpoint verification reference (`path:line` + operative snippet or handler function) and operational state flags (`[DISABLED]`, `[MAP DRIFT]`).
+The enforcement register ([`specs/ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md)) is the canonical empirical state document mapping active behavioral controls. It is a concise cross-reference table showing what kind of enforcement applies to each rule, not a summary of specs or workflows. Its table schema, row-by-row inclusion boundaries, and concision invariants are governed by [`specs/enforcement/enforcement-map.md`](enforcement-map.md).
 
 ## Mechanism categories and force gradations
 
@@ -139,12 +134,12 @@ Pull request review and merge authority is governed by a three-tier risk taxonom
 
 | Tier | Category | Scope / Characteristics | Merge Authority | Carrier Mechanism |
 | :- | :- | :- | :- | :- |
-| **Tier 1** | Autonomous QA-Merge | Low-risk changes: pure documentation, specifications, formatting, typing stubs (`.pyi`). | Independent QA worker merges autonomously on verified pass (`gh pr merge --squash`) and releases task as `done`. | `wf-finish.md`, `wf-code-task-base.md`, `wf-qa.md`, `plugins/ida/skills/reify/SKILL.md` |
+| **Tier 1** | Autonomous QA-Merge | Low-risk standalone changes: pure documentation, standalone retrospective specifications with no following build, formatting, typing stubs (`.pyi`). (A spec or design stage preceding a feature build never merges autonomously on its own; it opens a draft PR, the feature follows on the same branch and PR, and both merge together after full review.) | Independent QA worker merges autonomously on verified pass (`gh pr merge --squash`) and releases task as `done`. | `wf-finish.md`, `wf-code-task-base.md`, `wf-qa.md`, `plugins/ida/skills/reify/SKILL.md` |
 | **Tier 2** | Operational & Behavioral Gate | Code, workflows, tools, skills, rules, agent definitions, or tests. | Reviewer sign-off required; QA worker verifies, posts structured receipts to the PR, leaves PR open for sign-off, and releases task as `done`. | `wf-finish.md`, `wf-code-task-base.md`, `wf-qa.md`, `plugins/ida/skills/reify/SKILL.md` |
 | **Tier 3** | Critical Hazard & Public Gate | Host infrastructure, credentials, manuscripts, public releases, or high external blast radius. | Exclusive principal review and merge; agents strictly forbidden from merging. QA worker verifies, posts receipts, leaves open, and releases task as `done`. | `wf-finish.md`, `wf-code-task-base.md`, `wf-qa.md`, `plugins/ida/skills/reify/SKILL.md` |
 
 Enforcement operates through workflow merge gates (`instructions`, `imperative`):
-Finish and QA templates direct QA workers to semantically evaluate PR risk against the taxonomy in a clean context. For verified Tier 1 PRs, QA workers merge autonomously via `gh pr merge --squash` and release the QA task as `done`. For Tier 2 and Tier 3 PRs, QA workers verify claims, post structured receipts to the PR, and leave the PR open for reviewer or principal sign-off. Under headless worker and review lifecycle rules, both implementation workers and QA workers complete as `done` with the PR URL recorded on the task record so that `/dispatch` unblocks QA immediately and `/reconcile` tracks merge without human wait states; no task rests or releases into `review` for human merge gates.
+Finish and QA templates direct QA workers to semantically evaluate PR risk against the taxonomy in a clean context. Under the one-branch, one-PR lifecycle for spec-then-build workflows, the spec goes out as a draft PR into the base branch carrying the spec or design, and its review verdict is recorded on that PR; the spec task never merges on its own. After approval, the feature is built on the same branch and PR, with the spec still editable as more is learned; the PR flips to ready once the feature is written and ready for full review, without waiting for approval; spec and feature merge together after full review. For verified standalone Tier 1 PRs with no following build, QA workers merge autonomously via `gh pr merge --squash` and release the QA task as `done`. For Tier 2 and Tier 3 PRs, QA workers verify claims, post structured receipts to the PR, and leave the PR open for reviewer or principal sign-off. Under headless worker and review lifecycle rules, both implementation workers and QA workers complete as `done` with the PR URL recorded on the task record so that `/dispatch` unblocks QA immediately and `/reconcile` tracks merge without human wait states; no task rests or releases into `review` for human merge gates.
 
 ### Non-PR Task Verification and Lifecycle
 

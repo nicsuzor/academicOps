@@ -5,7 +5,7 @@ description: Bind one node that is next to run to its executor and workflow -- h
 
 # /reify: compose the dispatchable task for a node that is next to run
 
-**Object: one node, at dispatch time.** Reifying binds the node to an executor class and to the workflow templates current now; both change, so a task reified before it can run goes stale on the graph. Reify a node when `/dispatch` is about to take it or the user says to write it, and leave a node blocked on something outside the graph's control (another party's reply, an approval, an upstream result) unreified until that clears. Given a parent, reify only the children that are ready to run. The PKB custodian (Pauli) runs this skill; a caller sends her the node or objective and receives task ids.
+**Object: one node, at dispatch time.** Reifying binds the node to an executor class and to the workflow templates current now; both change, so a task reified before it can run goes stale on the graph. Reify a node when `/dispatch` is about to take it or the user says to write it, and leave a node blocked on something outside the graph's control (another party's reply, an approval, an upstream result) unreified until that clears. Given a parent, reify only the children that are ready to run. The PKB custodian (Pauli) runs this skill; a caller sends them the node or objective and receives task ids.
 
 The task is the whole message to the worker. Write it once, keep it short, and leave it on the graph for `/dispatch`. The task dispatch pipeline is used for any durable deliverable -- including agent workflows, instruction updates, specifications, and code changes. Questions and lookups that can be answered in-turn are answered directly without queueing tasks.
 
@@ -36,7 +36,7 @@ Call `/workflow-library` to weave together every workflow relevant to the task i
 Then assemble the steps:
 
 - Combine template steps into a logical order (e.g., test-first where the change modifies code that executes, build, then QA).
-- Preserve design and build staging: when multi-file modifications or architectural choices are required, compose separate tasks for Stage 1 (Design) and Stage 2 (Build) under `wf-code-task-base`. Never collapse Stage 1 into Stage 2, even when the incoming brief provides an implementation proposal.
+- Preserve design and build staging: when multi-file modifications or architectural choices are required, compose separate tasks for Stage 1 (Design) and Stage 2 (Build). Never collapse Stage 1 into Stage 2, even when the incoming brief provides an implementation proposal.
 - Base the assembly only on what is explicitly requested. Do not investigate, guess at scope, or ad-lib extra requirements. If the request is ambiguous, preserve that ambiguity.
 - Start with the most general applicable template, which provides stubs for finishing and QA where applicable. Templates themselves specify how workflows are built; do not overspecify composition stages or single out finish templates.
 
@@ -52,6 +52,13 @@ Then assemble the steps:
 - Mint multi-task cuts using task decomposition.
 - Write tasks with status `queued` immediately.
 - Close every task with an appendix section listing the workflow templates and skills it was composed from.
+
+### Spec-then-build lifecycle (One branch, one PR)
+
+When an objective calls for specifying or designing a feature ahead of implementation:
+
+- **Stage 1 (Spec/Design)**: Authors and reviews the specification. The task instructions direct the worker to open a **draft** PR (`gh pr create --draft`) into the base branch carrying the spec or design, and record its review verdict on that PR. Stage 1 never merges on its own; once independent review passes (or approval is recorded), the spec task releases as `done`, unblocking Stage 2.
+- **Stage 2 (Build)**: Implementation builds on Stage 1's branch and pushes to the same PR, with the spec still editable as more is learned. The task instructions direct the worker to mark the PR ready for review (`gh pr ready`) once the feature is written, without waiting for approval. Spec and feature merge together after full review.
 
 ```markdown
 ## Ask
@@ -76,7 +83,7 @@ Then assemble the steps:
 
 ## Output
 
-[ Where the results of the task should be written. For feature branches, name the upstream repository and base branch to target per the composed workflow. Outputs must not be left in the worker's local (volatile) environment. ]
+[ Where the results of the task should be written. For feature branches, name the upstream repository and base branch to target per the composed workflow. For a Stage 1 spec task, output is a draft PR targeting the base branch; for a Stage 2 build task, output is continuing on Stage 1's branch and PR, marking it ready for review. Outputs must not be left in the worker's local (volatile) environment. ]
 
 ## Report
 
@@ -97,13 +104,13 @@ Where the composed workflow calls for QA review:
 - **Other changes requiring QA**:
   1. Structure the task and its QA review either as a single task with internal subtasks (if executable by the same agent in one session) or as a dedicated epic with child tasks (Child 1: Primary Task, Child 2: QA Task with `needs: [<child_1_id>]`); never mint a follow-up or review task as a loose sibling under an external parent.
   2. For epic-child cuts: mint the independent follow-up task with status `queued` as a child under the dedicated epic, Title: `QA: <primary task title>`, and wire dependency `needs: [<primary_task_id>]` so the QA task stays blocked until the primary task is `done`.
-  3. Compose the review follow-up task drawing its brief from the shared review briefing in `wf-review` and the designated review template (`wf-qa`, `wf-rbg`, `wf-strategic-fit`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the deliverable and claims against literal acceptance criteria; if verification fails, the reviewer releases the task as `failed` with documented failure evidence; confirm tier against the taxonomy; for verified Tier 1 PRs, merge to base branch on a verified pass; for Tier 2 and Tier 3 PRs, post verification receipts to the PR and leave open for reviewer sign-off without releasing to review. A reviewer that changes code delivers it through its workflow and hands off for independent review.
+  3. Compose the review follow-up task drawing its brief from the shared review briefing in the designated or default review template: instructions direct the reviewer to independently verify the deliverable and claims against literal acceptance criteria; review stages resolve to the default review template (`default: true`) unless an alternative review template is specified; if verification fails, the reviewer releases the task as `failed` with documented failure evidence; confirm tier against the taxonomy; for verified Tier 1 PRs, merge to base branch on a verified pass; for Tier 2 and Tier 3 PRs, post verification receipts to the PR and leave open for reviewer sign-off without releasing to review. A reviewer that changes code delivers it through its workflow and hands off for independent review.
 
 ### Requirements for writing tasks
 
 - Filter incoming mechanism prescriptions and translate them into observable outcome criteria. Line numbers, line ranges, and narrow code slice prescriptions are strictly forbidden in `Goal`, `Acceptance`, and `Instructions`. Give the worker the end state and the bounds; leave the method to it.
 - Record the asker's own words once, in `## Ask`, with their ids, and never rewrite them: the task carries the ask as an immutable referent that the worker's argument answers and that checkers read to test the restatement for fidelity, completeness, and overreach. The no-verbatim rule below governs the rest of the body, not `## Ask`.
-- Restate the user's terse, fragmented words into clear, complete tasks and notes, judged by fidelity to his meaning and distinctions, not by wording. Keeping exact words in PKB outputs is not a goal. Fault a restatement only for lost, added, or distorted meaning. Link asks to prior context, recompose into a clear logical structure, and cite message ids.
+- Restate the user's terse, fragmented words into clear, complete tasks and notes, judged by fidelity to their meaning and distinctions, not by wording. Keeping exact words in PKB outputs is not a goal. Fault a restatement only for lost, added, or distorted meaning. Link asks to prior context, recompose into a clear logical structure, and cite message ids.
 - State the Goal and each criterion over the whole class the request covers: "the user's messages", not a named person's or today's channels and formats. Instances the request names are cases to test, not the boundary of the work. When asked what broke a mechanism (such as authentication, a token, or a service), compose the debugging workflow and preserve the full failure question in Acceptance so the run examines why the mechanism or token stopped working across its lifecycle rather than narrowing to a single startup symptom.
 - Every heading is a prompt for you to fill, and there is no slot for restrictions or exclusions: say what has to be done, not what shouldn't.
 - Keep each task strictly concise: 50–150 words for atomic tasks, up to 300 words for multi-stage composite workflows, `## Ask` aside. Include only what the worker cannot find for itself.

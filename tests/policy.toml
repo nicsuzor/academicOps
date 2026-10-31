@@ -16,6 +16,10 @@ known_user_blind = { "rbg: rule-check" = "stop-side block with no line for the p
 # Keys in tool response that indicate degraded capability failure
 degraded_keys = ["voiceError", "transcript_error"]
 
+[hooks.mcp_caller_session]
+# MCP servers that consume _session for caller attribution
+session_servers = ["pkb", "services"]
+
 [pkb]
 # Is search_the_pkb enabled and returning a Result?
 search_the_pkb_enabled = true
@@ -74,9 +78,3 @@ override_vars = [
 ]
 armed_indicator = "Premise-check gate armed by"
 direction_checklist_indicator = "frozen acceptance checklist"
-
-[rbg.axioms]
-# Aliases mapping alternative names or historical variants to canonical axiom slugs
-aliases = { nondelegablequalitativejudgment = "judgment-non-delegable", qualitativejudgment = "judgment-non-delegable" }
-# Context words or non-axiom markdown words in backticks exempt from axiom checks
-exempt_words = ["cwd"]
