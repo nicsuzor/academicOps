@@ -22,9 +22,6 @@ On top of them:
 - **No defaults.** No endpoint, URL, host, path, token, or credential appears in
   a shipped artifact. Every such value comes from the environment or client
   `userConfig`.
-- **Instructions are operative.** Agent, skill, and command files say what to do
-  now — no history, rationale, changelogs, deprecation notices, backwards-compat
-  notes, or decision logs. Explanation goes in `specs/`.
 - **A plugin never reads another plugin's files.** It may read `lib/`.
 - **Installed runtime plugins are strictly read-only.** Never write to or edit `~/.gemini/config/plugins/` or `~/.claude/plugins/`. All modifications belong in the source repository.
 - **Never edit a tracked file through a shell.** No heredoc, `python3 -c`,

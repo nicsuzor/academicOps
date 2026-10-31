@@ -1,119 +1,79 @@
 ---
-title: Telegram Bot Command Menus per Persona
+title: Native Telegram Bot Command Menu for Ida
 status: ready
 ---
 
-# Telegram Bot Command Menus per Persona
+# Native Telegram Bot Command Menu for Ida
 
-This specification defines the native Telegram bot command menu registration and routing contract across conversational agent personas in the `ida-telegram` plugin. It serves operators interacting with specialized agent personas (such as Ida Prime for routine operations, triage, and dispatch, and Strategic Ida / Ida Actual for high-altitude reasoning, decomposition, and planning) through dedicated Telegram windows.
+This specification defines the native Telegram bot command menu registration and routing contract across all Ida bot instances in the `ida-telegram` plugin. It serves operators interacting with Ida across any channel window (Prime, Actual, Audre, or any other named channel) by presenting one unified native Telegram command menu dynamically built from all installed skills at poller start.
+
+## Acceptance Criteria & Verifications
+
+- **AC-1 (Zero persona variables or split lists):** Behavioral tests verify uniform configuration output across channel folders and persona environment configurations with zero persona branching.
+  - _Check_: `plugins/ida-telegram/test/commands.test.ts` (`AC1: loadConfig and resolveBotCommands produce uniform command menus across any persona environment configuration`) verifies identical `botCommands` across persona environment settings.
+- **AC-2 (Uniform menu across channel folders):** A test shows `telegram-prime`, `telegram-actual`, `telegram-audre` and `telegram-ida` folders yield the exact same menu.
+  - _Check_: `plugins/ida-telegram/test/commands.test.ts` (`AC2: telegram-prime, telegram-actual, telegram-audre and telegram-ida folders yield the same menu`) verifies that `loadConfig` across all channel folders returns identical `botCommands`.
+- **AC-3 (Registered menu matches Telegram functional specification FR-8.1):** The registered menu matches the Telegram functional specification FR-8.1 ("every skill, always"), registering all installed skills with valid `[a-z0-9_]{1,32}` identifiers, descriptions between 1 and 256 characters, reserved and headless worker commands omitted, and defined bare actions attached.
+  - _Check_: `plugins/ida-telegram/test/commands.test.ts` (`AC3: registered menu matches Telegram functional specification FR-8.1`) validates command identifiers, descriptions, reserved and worker exclusions, and bare action bindings.
+- **AC-4 (Configuration audit):** The Telegram configuration specifications and reference notes no longer list the persona variables.
+  - _Check_: Audit of Telegram configuration documentation verifies zero occurrences of `IDA_TELEGRAM_PERSONA` or `TELEGRAM_PERSONA`.
+- **AC-5 (Dynamic skill discovery without plugin code edits):** Adding, removing or renaming a skill changes the registered menu with no edit to plugin code, and every installed skill appears with a distinct, valid command name.
+  - _Check_: `plugins/ida-telegram/test/commands.test.ts` (`AC5: adding, removing or renaming a skill changes the registered menu with no edit to plugin code, and every skill appears with a distinct, valid command name`) creates an isolated test skill root, adds, removes, and renames skills, induces cross-plugin collisions, and verifies dynamic menu resolution without modifying plugin code.
 
 ## User stories
 
-### US-1 Persona-Tailored Command Menus
+### US-1 Shared Native Command Menu
 
-As an operator interacting with distinct agent personas in dedicated Telegram windows, I want each bot window to present native commands tailored to that persona's specific role and operational responsibilities, so that quick actions in the menu match the conversation context without clutter or irrelevant commands.
+As an operator interacting with Ida across any Telegram window (prime, actual, audre, or any named instance), I want the bot window to present the single shared command menu stated in the Telegram functional specification FR-8.1, so that all Ida instances share the exact same operational command surface without persona branching or folder-dependent menu splits.
 
-- **AC-1.1 (Prime menu)** Given a bot instance configured for the Prime persona, when command registration executes on startup, then the bot registers Prime-specific commands (`/decide`, `/q`, `/mine`, `/reconcile`, `/hydrate`, `/up`, `/reify`, `/dispatch`, `/daily`) scoped to each authorized chat.
-  - _Check_: `plugins/ida-telegram/test/commands.test.ts` asserts `resolveBotCommands("prime")` returns exactly these 9 commands in order.
-- **AC-1.2 (Ida Actual menu & exclusivity)** Given a bot instance configured for the Strategic persona (Ida Actual), when command registration executes on startup, then the bot registers Strategic-specific commands (`/strategize`, `/remember`, `/decompose`, `/q`, `/hydrate`, `/up`, `/strategic_review`, `/argument_map`, `/reify`, `/dispatch`, `/daily`) scoped to each authorized chat; `/strategic_review`, `/argument_map`, and `/decompose` appear on Ida Actual's menu only.
-  - _Check_: `plugins/ida-telegram/test/commands.test.ts` asserts `resolveBotCommands("strategic")` returns these 11 commands, and explicitly validates that `strategic_review`, `argument_map`, and `decompose` are present on Strategic and absent from Prime.
-- **AC-1.3 (Custom override)** Given an explicit custom command configuration in `TELEGRAM_BOT_COMMANDS`, when command registration executes, then the custom configuration overrides persona defaults.
+- **AC-1.1 (Dynamic installed skills menu)** Given an Ida bot instance (running with `STATE_DIR` pointing to `telegram-prime`, `telegram-actual`, `telegram-audre`, `telegram-ida`, or any other directory), when command registration executes on startup, then the bot registers every skill available to Ida built dynamically from installed skills at poller start, scoped to each authorized chat.
+  - _Check_: `plugins/ida-telegram/test/commands.test.ts` asserts `loadConfig` across `telegram-prime`, `telegram-actual`, `telegram-audre`, and `telegram-ida` folders yields the exact same menu matching the Telegram functional specification FR-8.1.
+- **AC-1.2 (Custom override)** Given an explicit custom command configuration in `TELEGRAM_BOT_COMMANDS`, when command registration executes, then the custom configuration overrides the default menu.
   - _Check_: `plugins/ida-telegram/test/commands.test.ts` verifies custom JSON override parsing and reserved command filtration.
 
 ### US-2 Zero-Argument Tap Execution & Composite Commands
 
 As an operator tapping a command button in the Telegram client menu, I want bare commands without arguments to route with sensible default actions and skill metadata, so that tapping a button triggers immediate, correct execution without requiring manual typing.
 
-- **AC-2.1 (Immediate command execution)** Given a bare tap on an immediate zero-argument command (`/decide`, `/mine`, `/reconcile`, `/up`, `/strategize`, `/remember`, `/decompose`, `/strategic_review`, `/argument_map`, `/reify`, `/dispatch`, `/daily`), when the inbound update arrives, then the event payload enriches the message with `meta.skill` and `meta.default_action` instructing the agent to execute immediately.
-  - _Check_: `plugins/ida-telegram/test/commands.test.ts` loops over all commands in `DEFAULT_IDA_COMMANDS` and `STRATEGIC_COMMANDS`, asserting `event.meta.skill` and `event.meta.default_action`.
-- **AC-2.2 (Contextual command execution)** Given a bare tap on a contextual command (`/q`, `/hydrate`), when the inbound update arrives, then the event payload enriches the message with `meta.skill` and `meta.default_action` instructing the agent to apply to preceding message context or prompt for input.
-  - _Check_: `plugins/ida-telegram/test/commands.test.ts` verifies `bareAction` text for `/q` and `/hydrate`.
-- **AC-2.3 (/daily definition and execution)** Given an execution of `/daily` (via menu tap or chat input), the command routes to skill `ida:daily`, with default action to update today's daily note (via the PKB template `tpl_daily`) and reply with a scannable run-down of priorities, progress, and open decisions on Telegram.
-  - _Check_: `plugins/ida-telegram/test/commands.test.ts` (`AC3: added commands map to their respective skills, and /daily updates daily note and replies on Telegram`) asserts `meta.skill === "ida:daily"` and verifies `meta.default_action` contains the daily note update and Telegram reply directive.
+- **AC-2.1 (Immediate command execution)** Given a bare tap on an immediate zero-argument command (`/decide`, `/mine`, `/reconcile`, `/up`, etc.), when the inbound update arrives, then the event payload enriches the message with `meta.skill` and `meta.default_action` instructing the agent to execute immediately.
+  - _Check_: `plugins/ida-telegram/test/commands.test.ts` loops over installed commands asserting `event.meta.skill` and `event.meta.default_action`.
+- **AC-2.2 (Contextual command execution)** Given a bare tap on an argument-taking contextual command (`/q`, `/hydrate`, `/reify`, `/dispatch`), when the inbound update arrives, then the event payload enriches the message with `meta.skill` and `meta.default_action` instructing the agent to apply to preceding message context or prompt for input.
+  - _Check_: `plugins/ida-telegram/test/commands.test.ts` verifies `bareAction` text for contextual commands.
 
 ### US-3 Telegram Menu Proposal Workflow
 
-As an operator managing Telegram bot command surfaces across multiple personas, I want an agent workflow that inspects installed skills, common workflows, and empirical usage metrics, and presents a considered menu recommendation per bot persona with an interactive checkbox proposal, so that command menus reflect actual operational needs without manual auditing.
+As an operator managing Telegram bot command surfaces, I want an agent workflow that inspects installed skills and active configuration, reviews platform invariants, and presents an interactive proposal if custom overrides are requested, ensuring the menu reflects actual operational needs without manual auditing.
 
-- **AC-3.1 (Considered recommendation presentation & identifier validity)** Given an operator requesting a menu review or update in an interactive session, when the menu proposal workflow runs, then the agent samples recent workflow and skill invocations from execution telemetry, inspects installed capabilities, and presents a structured recommendation listing proposed commands per bot persona with their invocation frequencies and rationale. Every recommended command identifier is a valid Telegram command name matching `^[a-z0-9_]{1,32}$`, converting hyphens to underscores for skills whose names contain hyphens (e.g. `/strategic_review`, `/argument_map`, `/menu_proposal`).
+- **AC-3.1 (Considered recommendation presentation & identifier validity)** Given an operator requesting a menu review or update in an interactive session, when the menu proposal workflow runs, then the agent samples recent workflow and skill invocations from execution telemetry, inspects installed capabilities, and presents a structured recommendation for the shared menu with empirical frequencies and rationale. Every recommended command identifier is a valid Telegram command name matching `^[a-z0-9_]{1,32}$`, converting hyphens to underscores for skills whose names contain hyphens (e.g. `/strategic_review`, `/argument_map`, `/menu_proposal`).
   - _Check_: The workflow recommendations match `^[a-z0-9_]{1,32}$` and normalize hyphenated skill names to snake_case.
-- **AC-3.2 (Persona-tailored command allocation & headless worker separation)** Given candidate commands, when the agent evaluates placement across bot personas, then operational and triage actions are recommended for Ida Prime, reflective and high-altitude actions are recommended for Ida Actual, and shared coordination actions are recommended for both. Headless worker lifecycle commands (`/pull`, `/dump`) and worker execution hooks are strictly excluded from candidate discovery and menus, keeping interactive conversational menus apart from headless workers (`headless-workers.md`).
-  - _Check_: Verification that `/pull` and `/dump` are absent from candidate discovery and persona menus.
-- **AC-3.3 (Composite command synthesis)** Given recurring multi-step action patterns observed in telemetry or operator requests, when the agent recommends commands, then composite commands synthesizing common workflows into a single menu action (such as daily status and briefing) are included with their intended behavior.
-- **AC-3.4 (Interactive review and codification)** Given the presented recommendation, when the operator confirms or adjusts command placement in an interactive session, then the approved command menus are codified into the bot configuration, ensuring all command names comply with platform constraints (1–32 lowercase alphanumeric and underscore characters, maximum 100 commands per persona).
+- **AC-3.2 (Shared command allocation & headless worker separation)** Given candidate commands, when the agent evaluates placement for the shared menu, commands are evaluated for the single shared Ida menu. Headless worker lifecycle commands (`/pull`, `/dump`) and worker execution hooks are strictly excluded from candidate discovery and menus, keeping interactive conversational menus apart from headless workers (`headless-workers.md`).
+  - _Check_: Verification that `/pull` and `/dump` are absent from conversational candidate discovery and menus.
+- **AC-3.3 (Platform compliance & codification)** Given the presented recommendation, when the operator confirms custom overrides in an interactive session, then the approved configuration is codified into `TELEGRAM_BOT_COMMANDS`, ensuring all command names comply with platform constraints (1–32 lowercase alphanumeric and underscore characters, maximum 100 commands).
 
 ## Design
 
-### 1. Persona Resolution and Scoped Registration
+### 1. Unified Registration Contract
 
-1. **Persona Discovery:**
-   - The plugin resolves persona from configuration:
-     1. Explicit `IDA_TELEGRAM_PERSONA` or `TELEGRAM_PERSONA` environment variable (`prime` / `strategic`).
-     2. Inferred from `STATE_DIR`: directories containing `telegram-pauli` or `telegram-prime` resolve to `prime`; directories containing `telegram-ida` or `telegram-strategic` resolve to `strategic`.
-     3. Defaults to `prime` when unspecified.
-2. **Registration Contract:**
+1. **Single Menu for Every Ida:**
+   - Every Ida instance -- prime, actual, audre, or any other channel name -- registers the exact same command menu.
+   - Persona split is eliminated: channel folder names (`telegram-prime`, `telegram-actual`, `telegram-audre`, `telegram-ida`) and persona environment variables do not alter command selection.
+2. **Dynamic Skill Discovery:**
+   - At poller startup, `discoverInstalledSkills()` discovers all skills available to Ida across installed plugins.
+   - For each skill, `name` and `description` are parsed from frontmatter in `SKILL.md`.
+   - Command names follow skill names, converting hyphens to underscores (`^[a-z0-9_]{1,32}$`).
+   - If two plugins ship a skill with the same name, distinct valid command names are assigned using the plugin prefix.
+   - If total discovered commands exceed 100, the condition is logged and reported loudly per FR-8.1.
+3. **Registration Contract:**
    - `registerCommands()` invokes Telegram Bot API `setMyCommands` with `scope: { type: "chat", chat_id: chatId }` for each identifier in `allowFrom`.
    - Registration runs only when `isPrimary` is true and command list is non-empty.
    - Survives restarts and overrides global private chat defaults.
-3. **Command Allocations:**
-   - **Ida Prime (`prime`):**
-     - `/decide`: Walk through open decisions from today's daily note one at a time (`ida:decide`).
-     - `/q`: Capture an ask or idea onto the task graph (`ida:q`).
-     - `/mine`: Track a must-not-drop ask or pass through tracked tasks (`ida:mine`).
-     - `/reconcile`: Reconcile the task graph and update today's daily note (`ida:reconcile`).
-     - `/hydrate`: Disambiguate terms or hydrate current conversation context (`ida:hydrate`).
-     - `/up`: Step up a level on the last correction and fix the class (`ida:up`).
-     - `/reify`: Compose dispatchable tasks on the graph from an objective (`ida:reify`).
-     - `/dispatch`: Start polecat workers on queued tasks already on the graph (`ida:dispatch`).
-     - `/daily`: Update the daily note and reply with a run-down on Telegram (`ida:daily`).
-   - **Strategic Ida / Ida Actual (`strategic`):**
-     - `/strategize`: Reason at strategic altitude across the graph, structure plans as hypotheses, and interrogate the core question (`ida:strategize`).
-     - `/remember`: Persist facts, decisions, and constraints to the PKB (`ida:remember`).
-     - `/decompose`: Expand an objective into sub-objectives and decision forks (`ida:decompose`). _Ida Actual only._
-     - `/q`: Capture an ask or idea onto the task graph (`ida:q`).
-     - `/hydrate`: Disambiguate terms or hydrate context from the PKB (`ida:hydrate`).
-     - `/up`: Step up a level on the last correction and fix the class (`ida:up`).
-     - `/strategic_review`: Modular multi-agent dialectical review of an artifact (`ida:strategic-review`). _Ida Actual only._
-     - `/argument_map`: Build a reviewable map of a text's argument in Argdown (`ida:argument-map`). _Ida Actual only._
-     - `/reify`: Compose dispatchable tasks on the graph from an objective (`ida:reify`).
-     - `/dispatch`: Start polecat workers on queued tasks already on the graph (`ida:dispatch`).
-     - `/daily`: Update the daily note and reply with a run-down on Telegram (`ida:daily`).
 4. **Exclusions and Headless Worker Separation:**
    - Official plugin reserved commands (`/start`, `/help`, `/status`) are excluded from registration.
-   - Headless worker lifecycle commands (`/pull`, `/dump`) and worker execution hooks are strictly excluded from conversational menus. Per `headless-workers.md`, autonomous workers operate non-interactively and cannot pause for human input; conversational menus exclusively serve interactive chat sessions between human operators and conversational agent personas.
+   - Headless worker lifecycle commands (`/pull`, `/dump`) and worker execution hooks are strictly excluded from conversational menus per `headless-workers.md`.
 
 ### 2. Maintainer Note on Skill Renaming
 
 When an underlying skill is renamed in the framework (such as files in `plugins/ida/skills/`):
 
-- Maintainers must update the corresponding command name, skill mapping (`skill` field), bare action text, and test assertions in `plugins/ida-telegram/src/telegram/commands.ts` and `plugins/ida-telegram/test/commands.test.ts`.
-- Note that Telegram command identifiers only support characters `[a-z0-9_]{1,32}` (no hyphens).
-
-### 3. Telegram Menu Proposal Workflow
-
-1. **Telemetry Sampling, Capability Discovery, and Headless Worker Separation:**
-   - The workflow queries recent execution telemetry across agent sessions and subagents to determine empirical invocation frequency for each installed skill and workflow template.
-   - Discovers available capabilities across plugin skill directories and workflow libraries, including operator-facing coordination skills (`reify`, `dispatch`, `mine`, `reconcile`, `daily`).
-   - Identifies candidate composite commands from recurring prompt patterns or multi-skill compositions.
-   - Strictly excludes reserved platform commands (`start`, `help`, `status`) and headless worker lifecycle commands (`pull`, `dump`). Conversational command menus are reserved exclusively for interactive operator sessions; headless workers never pause for human input, and the interactive proposal workflow is conducted solely within interactive operator sessions (`headless-workers.md`).
-
-2. **Qualitative Evaluation, Persona Allocation, and Identifier Normalization:**
-   - Evaluates each candidate command against the operational mandate of each bot persona:
-     - **Ida Prime:** Emphasizes fast triage, task queueing, daily review, single-step decisions, and worker dispatch.
-     - **Ida Actual (Strategic Ida):** Emphasizes high-altitude strategizing, reflective reasoning, argument mapping, dialectical review, and goal decomposition.
-     - **Shared:** Emphasizes cross-cutting workflow coordination.
-   - Enforces Telegram platform invariants: command names must match `[a-z0-9_]{1,32}`, human-readable descriptions must be between 1 and 256 characters, and total registered commands must not exceed 100 per persona scope.
-   - **Command identifier normalization:** Every recommended command must be a valid Telegram command identifier matching `^[a-z0-9_]{1,32}$` (no hyphens, lowercase alphanumeric and underscores only, length 1–32). For candidate skills or workflows named with hyphens (kebab-case, e.g. `strategic-review`, `argument-map`, `menu-proposal`, `session-trace`), the workflow normalizes the name by converting all hyphens to underscores (`strategic-review` $\rightarrow$ `/strategic_review`, `argument-map` $\rightarrow$ `/argument_map`, `menu-proposal` $\rightarrow$ `/menu_proposal`).
-
-3. **Proposal Presentation and Operator Interaction:**
-   - Conducted exclusively in interactive operator sessions:
-   - Presents a scannable table or checkbox proposal detailing:
-     - Proposed command name (normalized to `[a-z0-9_]{1,32}`) and type (skill, workflow, or composite).
-     - Empirical invocation count from recent telemetry.
-     - Recommended persona allocation (`[Prime]`, `[Strategic]`, or `[Both]`) with justification.
-     - Description of action taken on bare tap.
-   - Solicits operator approval or fine-tuning via structured options or natural language feedback.
-
-4. **Codification and Delivery:**
-   - Upon operator confirmation in the interactive session, the approved menu allocations are codified in the bot persona command definitions.
-   - Updates become active on the next bot configuration load or deployment.
+- The command menu updates automatically on next startup without code modifications in the plugin.
+- Note that Telegram command identifiers only support characters `[a-z0-9_]{1,32}` (no hyphens; hyphens are converted to underscores).
