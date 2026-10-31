@@ -22,7 +22,7 @@ A worker executing this workflow may coordinate parallel subagents to conduct in
 
 - **Base branch**: PRs target the designated integration base branch declared in `.agents/CORE.md`. PRs targeting deprecated branches must be retargeted before processing.
 - **Merge authority under feature freeze**:
-  - Hotfixes: Clearly labeled hotfixes merge autonomously to the designated integration base branch once CI checks are green and an agent confirms hotfix scope.
+  - Hotfixes: Pull requests explicitly directed by the user as hotfixes merge autonomously to the designated integration base branch once CI checks are green, leaving compliance review to verify alignment with what was asked. Hotfixes proposed autonomously by an agent require confirmation from the front agent that they fit hotfix scope before merging autonomously.
   - Standard features and structural changes: Require explicit approval from the repository owner before merging.
   - Changes requested: A PR with an active "changes requested" review must not merge under any circumstances.
   - Release pull requests (`release-please`): Excluded from autonomous merging; merge only on explicit manual release approval.
@@ -60,6 +60,6 @@ A worker executing this workflow may coordinate parallel subagents to conduct in
 ## Must not
 
 - Must not merge any release-please PR.
-- Must not merge any PR without required owner approval unless it is a verified hotfix.
+- Must not merge any PR without required owner approval unless it is a hotfix directed by the user or confirmed by the front agent.
 - Must not merge any PR with failing checks or unresolved changes requested.
 - Must not leave an unmerged PR without an explicit stated reason.

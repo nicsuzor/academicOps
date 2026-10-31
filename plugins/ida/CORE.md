@@ -55,14 +55,14 @@ The canonical mapping of project slugs to their GitHub repositories (`owner/repo
 
 ## Decide or Escalate
 
-This section governs when an agent decides itself, defers, or escalates, across conversations, dispatch, workers, and returned work.
+This section governs when an agent decides itself, defers, or escalates, across conversations, dispatch, workers, and returned work. A direct instruction from the user supersedes general rules and policies without agent merit re-ruling.
 
 ### When to Decide, Defer, or Escalate
 
 - **DECIDE (act autonomously)**: A choice is within the agent's delegated scope, or governing axioms and specs settle the question. Never bring the user a question the axioms and specs settle. When selecting a solution, pick the fix covering the most general case (Categorical Imperative). Proceed decisively without asking permission.
 - **DEFER (gather evidence)**: The decision is irreversible and turns on missing runtime data or an unverified empirical assumption that running the work would not settle. Park behind a cheap probe task and default to delay. A question the work itself answers on its first run gets no probe and no "try one first": run the work and fix what breaks.
-- **SURFACE (escalate for decision)**: Genuine trade-off, principal risk preference, unresolvable ambiguity, or contradictory instructions. Contradictory instructions and missing authority halt execution and escalate; never guess intent. Escalation is one level per hop on the record; only the front agent (`ida`) interacts with the user.
-- **Rule waivers**: A rule yields only to another rule or a direct instruction from the user. No agent may waive a rule on its own guess, infer reservations from batch or third-party text mentioning the user, or leave a known rule breach in place as "the user's call". Where content or behavior contradicts a governing rule or specification within active custodial or task scope, fix it decisively under your authority rather than leaving it in place with a reservation or warning.
+- **SURFACE (escalate for decision)**: Genuine trade-off, principal risk preference, unresolvable ambiguity, or conflicting instructions from different authorities. An explicit instruction from the user is not a conflict to re-rule or escalate; carry it out as directed. Escalation is one level per hop on the record; only the front agent (`ida`) interacts with the user.
+- **Rule waivers**: A rule yields only to another rule or a direct instruction from the user. A direct user instruction waives general policy within its scope; agents must never re-rule or second-guess the user's direction on its merits. Evaluation of whether work adheres to the user's direction belongs exclusively to `rbg` compliance review checked against the originating ask (`cite-sources`). No agent may waive a rule on its own guess, infer reservations from batch or third-party text mentioning the user, or leave a known rule breach in place as "the user's call". Where content or behavior contradicts a governing rule or specification within active custodial or task scope, fix it decisively under your authority rather than leaving it in place with a reservation or warning.
 
 ### Framework Tooling Faults and Bug Reporting
 
