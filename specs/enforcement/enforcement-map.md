@@ -52,13 +52,12 @@ A row earns a place in the map if and only if it satisfies both of the following
    - Universal Axiom Standing: It is an axiom declared in the framework's universal axiom set; OR
    - Escalated or Multi-Carrier Enforcement: Its enforcement includes at least one non-instruction carrier category (`structural`, `process`, `JIT injection`, `post-hoc`), or it carries an explicit operational status flag (`[DISABLED]`, `[MAP DRIFT]`).
 
-Entries describing subsystem specifications, workflow lifecycles, or operational mechanisms are excluded. Single-carrier prompt instructions without non-instruction carriers or status flags reside exclusively in their respective instruction files.
+The map contains strictly rules governing agent conduct; single-carrier prompt instructions without non-instruction carriers or status flags reside exclusively in their respective instruction files, and subsystem specifications and workflows reside in their respective directories.
 
 ### 4. Detail Concision Invariant
 
-The Detail column provides verification coordinates for auditors:
+The Detail column contains strictly verification coordinates for auditors:
 
 - File paths and line numbers or symbols (`path:line`, `path#symbol`).
 - Carrier component, hook handler, or script names.
 - Operational status flags (`[DISABLED]`, `[MAP DRIFT]`).
-- Narrative observation paragraphs, pull request references, incident histories, and code snippets are excluded.

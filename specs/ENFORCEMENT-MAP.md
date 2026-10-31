@@ -4,7 +4,7 @@ id: enforcement_map
 
 # Enforcement map
 
-The enforcement map is a concise cross-reference table showing what kind of enforcement is applied to each rule. It is not a summary of specifications or workflows. See [`enforcement/enforcement.md`](enforcement/enforcement.md) for governing principles and [`enforcement/enforcement-map.md`](enforcement-map.md) for schema and inclusion rules.
+The enforcement map is a concise cross-reference table showing what kind of enforcement is applied to each rule. It is not a summary of specifications or workflows. See [`enforcement/enforcement.md`](enforcement/enforcement.md) for governing principles and [`enforcement/enforcement-map.md`](enforcement/enforcement-map.md) for schema and inclusion rules.
 
 **Universal axiom baseline (applies to every `trigger: always_on` axiom below):**
 
