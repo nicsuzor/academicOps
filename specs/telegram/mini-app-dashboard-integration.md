@@ -78,7 +78,7 @@ As an operator managing multiple concurrent agent streams and background tasks, 
 
 As an operator running multiple concurrent agent instances (such as primary and persona channels), I want the dashboard proxy layer to dynamically discover and route to each running agent's local HTTP/SSE bridge, so that every instance's state is queryable and streamable through the central dashboard perimeter.
 
-- **AC-8.1** Given a set of running agent instances configured in the dashboard environment, when querying `GET /api/app/instances`, then the response lists all registered instances with their identifier, display label, connectivity status (`online` or `offline`), and default instance flag.
+- **AC-8.1** Given a set of running agent instances configured in the dashboard environment, when querying `GET /api/app/instances`, then the response lists all registered instances with their identifier, display label, and connectivity status (`online` or `offline`).
 - **AC-8.2** Given an instance-scoped REST request (`GET /api/app/instances/:instance/anchor`, `/questions`, or `/review`), when the upstream agent instance is reachable, then the dashboard forwards the request to that instance's local bridge with upstream authorization, returning the live JSON payload and monotonic sequence number.
 - **AC-8.3** Given an instance-scoped event stream request (`GET /api/app/instances/:instance/events`), when the upstream agent bridge emits SSE frames, then the dashboard streams the frames in real time with sequence numbers intact, relays reconnection parameters (`Last-Event-ID` or `?since`), and emits periodic keepalive comments.
 - **AC-8.4** Given a request to an upstream agent instance that is unreachable, stopped, or disconnected, when the dashboard attempts to proxy the request, then the proxy responds with HTTP 503 Service Unavailable and a structured error payload without crashing or blocking other instances.
@@ -92,7 +92,7 @@ As an operator supervising and directing work from either the desktop `/agent` i
 - **AC-9.3** Given the standalone Mini App loaded via chat client or browser with an `instance` query parameter, when initialised, then all API requests for state snapshots, event streaming, and operator actions automatically route to that specific instance's bridge.
 - **AC-9.4** Given a pending structured decision or tool permission on either interface, when the operator submits a choice or allow/deny decision, then the action dispatches to `POST /api/app/instances/:instance/questions/answer` or `POST /api/app/instances/:instance/review/permission`, unblocking the agent session and updating the corresponding chat card in place.
 - **AC-9.5** Given a freeform prompt or halt directive submitted through the interface, when dispatched to `POST /api/app/instances/:instance/message` or `POST /api/app/instances/:instance/stop`, then the target agent receives the directive into its active session context and halts or responds accordingly.
-- **AC-9.6** Given a client issuing un-scoped requests (`/api/app/anchor`, `/api/app/questions`, `/api/app/events`, `/api/app/message`), when received by the dashboard, then the proxy routes the request to the designated default agent instance, preserving backward compatibility.
+- **AC-9.6** Given a client issuing a request to an instance-scoped endpoint without an instance identifier (such as `/api/app/anchor`), when received by the dashboard, then the server rejects the request with HTTP 400 Bad Request requiring an explicit instance parameter.
 
 ## Design
 
@@ -115,7 +115,7 @@ The agent interface must serve two client topologies: (a) standalone mobile acce
    - The primary dashboard ingress terminates at the central web application.
    - Standalone client routes are published under `/app/*` (static bundle and responsive standalone shell) and API endpoints under `/api/app/*` (with multi-instance routes scoped under `/api/app/instances/:instance/*`).
    - Desktop operators access the embedded view under the primary dashboard layout at `/agent`.
-   - **Bridge Transport:** The agent process hosts the internal HTTP/1.1 and SSE channel bridge on a private loopback interface or internal service mesh, proxied by the dashboard service layer or accessed directly over private network mesh (see §8 for multi-instance proxy architecture).
+   - **Bridge Transport:** The agent process hosts the internal HTTP/1.1 and SSE channel bridge on a private loopback interface or internal service mesh, proxied by the dashboard service layer or accessed directly over private network mesh as specified under multi-instance proxy architecture.
 2. **Authentication Flow:**
    - **Mode A (Telegram Launch):** The client transmits the cryptographic initialization payload via `POST /api/app/auth`. The server verifies the cryptographic hash against the bot secret token using HMAC-SHA256, validates timestamp freshness (maximum age: 3600 seconds), and checks user identity against the authorized operator list. On success, the server issues an HTTP-only, secure, strict SameSite session cookie (`ida_session`) with a 1-hour expiry.
    - **Mode B (Dashboard Perimeter and Service Bridge):** For requests arriving from the dashboard domain or internal services:
@@ -413,8 +413,7 @@ Multiple agent instances execute concurrently across distinct bots, personas, an
          "id": "prime",
          "label": "Primary Coordinator",
          "bridgeUrl": "http://127.0.0.1:8093",
-         "bridgeToken": "shared-bridge-token",
-         "isDefault": true
+         "bridgeToken": "shared-bridge-token"
        },
        {
          "id": "persona-1",
@@ -424,7 +423,7 @@ Multiple agent instances execute concurrently across distinct bots, personas, an
        }
      ]
      ```
-   - Each entry defines the unique instance slug (`id`), display label, internal HTTP bridge base URL, optional bridge authentication token, and default instance designation.
+   - Each entry defines the unique instance slug (`id`), display label, internal HTTP bridge base URL, and optional bridge authentication token.
 2. **Discovery Endpoint (`GET /api/app/instances`):**
    - Returns the active registry:
      ```json
@@ -433,23 +432,20 @@ Multiple agent instances execute concurrently across distinct bots, personas, an
          {
            "id": "prime",
            "label": "Primary Coordinator",
-           "isDefault": true,
            "status": "online"
          },
          {
            "id": "persona-1",
            "label": "Specialist Persona",
-           "isDefault": false,
            "status": "online"
          }
-       ],
-       "defaultInstance": "prime"
+       ]
      }
      ```
    - The `status` field reflects real-time connectivity derived from upstream health checks or recent bridge interaction.
 3. **Ingress Path Translation and Forwarding:**
    - **Instance-Scoped Routes:** Requests to `/api/app/instances/:instance/:endpoint` are mapped directly to `<bridgeUrl>/api/app/:endpoint`.
-   - **Legacy / Default Routes:** Requests to `/api/app/:endpoint` (without instance prefix) map to the instance marked with `isDefault: true`.
+   - **Missing Instance Parameter:** Requests to `/api/app/:endpoint` omitting the instance identifier reject with HTTP 400 Bad Request (`{"error": "Missing instance identifier", "message": "Specify instance via /api/app/instances/:instance/:endpoint"}`).
    - **Authentication Forwarding:** The dashboard proxy strips perimeter assertion headers, validates the perimeter session, and injects the configured `X-Bridge-Token` or `Authorization: Bearer <bridgeToken>` before forwarding to the local bridge.
 4. **SSE Event Stream Proxying (`GET /api/app/instances/:instance/events`):**
    - The proxy opens an upstream SSE connection to `<bridgeUrl>/api/app/events`, relaying any incoming `Last-Event-ID` or `?since=` parameter.
@@ -476,7 +472,8 @@ Operators switch between two presentation surfaces: the desktop operational dash
 
 1. **Instance Selector:**
    - The header displays an instance selector populated from `GET /api/app/instances`.
-   - The active instance is maintained in client state, defaulting to `defaultInstance` or URL query parameter `?instance=:instance`.
+   - The active instance is maintained in client state, populated from the URL query parameter `?instance=:instance`.
+   - When no instance is specified in the URL query parameter, the interface displays an instance selection prompt requiring the operator to choose an active instance before rendering state.
 2. **Dynamic Binding:**
    - Changing the active instance:
      - Closes the active SSE connection to the previous instance.
@@ -489,12 +486,11 @@ Operators switch between two presentation surfaces: the desktop operational dash
 
 #### 9.3 Standalone Mini App (`/app/`) Multi-Instance Contract
 
-1. **Target Instance Resolution Hierarchy:**
-   - The Mini App determines which agent instance to bind to using the following resolution order:
+1. **Target Instance Resolution:**
+   - The Mini App binds to an agent instance through explicit launch parameters:
      1. URL query parameter: `?instance=:instance`.
      2. Telegram WebApp start parameter: `tgWebAppStartParam` (passed via direct bot deep-link).
-     3. Cached preference in local storage.
-     4. Default instance declared by `GET /api/app/instances`.
+   - If opened without an instance parameter, the application displays an instance selection prompt requiring the operator to choose an active agent instance before rendering state.
 2. **Instance Indicator and Switcher:**
    - The Mini App header displays an instance indicator badge showing the current agent label and connectivity indicator.
    - Tapping the badge opens an instance selection sheet allowing the operator to switch instances without reloading the application shell.
@@ -516,7 +512,7 @@ Actions dispatched from either `/agent` or `/app/` route to the instance's bridg
 
 | Criterion | Target Requirement | Verification Check & Observable Proof |
 | - | - | - |
-| **AC-8.1** | Instance Configuration & Discovery | Given configured instances in environment, `GET /api/app/instances` returns HTTP 200 with JSON matching registry schema, showing IDs, labels, default flag, and online statuses. |
+| **AC-8.1** | Instance Configuration & Discovery | Given configured instances in environment, `GET /api/app/instances` returns HTTP 200 with JSON matching registry schema, showing IDs, labels, and online statuses. |
 | **AC-8.2** | Upstream REST Proxying | Given two running agent bridges on distinct ports, `GET /api/app/instances/prime/anchor` and `GET /api/app/instances/persona-1/anchor` return distinct anchor payloads reflecting each agent's live state. |
 | **AC-8.3** | Upstream SSE Event Proxying | Given an active SSE connection to `/api/app/instances/:instance/events`, triggering an anchor mutation on the upstream agent produces an `event: anchor` frame downstream within 500ms with sequence number intact. |
 | **AC-8.4** | Upstream Fault Isolation | Given one stopped agent instance and one running instance, querying the stopped instance returns HTTP 503 with `status: "offline"`, while queries to the running instance succeed with HTTP 200. |
@@ -525,4 +521,4 @@ Actions dispatched from either `/agent` or `/app/` route to the instance's bridg
 | **AC-9.3** | Mini App Instance Scoping | Given `/app/?instance=persona-1`, inspecting network requests verifies all API calls target `/api/app/instances/persona-1/*`. |
 | **AC-9.4** | Action Resolution & Card Edit | Given a pending question on an instance, `POST /api/app/instances/:instance/questions/answer` returns HTTP 200, unblocks the agent session, and updates the associated chat card. |
 | **AC-9.5** | Steering & Halt Dispatch | Given an active agent session, `POST /api/app/instances/:instance/stop` dispatches halt interrupt, resulting in execution suspension and updated card status. |
-| **AC-9.6** | Backward-Compatible Routing | Given a client requesting `GET /api/app/anchor` without instance slug, the proxy routes to the default instance, returning HTTP 200 and the default instance's anchor. |
+| **AC-9.6** | Explicit Missing Instance Rejection | Given a request to an instance-scoped endpoint omitting the instance slug (e.g. `GET /api/app/anchor`), the proxy rejects with HTTP 400 Bad Request requiring explicit instance parameter. |
