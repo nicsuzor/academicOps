@@ -31,6 +31,8 @@ Every daily note run must execute Steps 0 through 7 in sequential order to compl
 ### Execution Invariants
 
 - **No Shortcutting**: Never skip steps, truncate passes, or terminate early based on subjective currency of an existing note or the breadth of the full pass.
+- **Mandatory Pre-Write Turn Ledger**: Before calling `pkb_update_body` or `pkb_create`, the executing agent must output an explicit, human-readable Step Execution Ledger in its turn response accounting for every step (0 through 7) with concrete observations and findings.
+- **Fail-Closed Abort**: If any required step cannot be completed due to missing capabilities, configuration errors, or tool refusals (other than documented quiet inline degradation for external service unreachability under Step 5), halt loudly and abort immediately without creating or updating the daily note. Releasing or committing a partial daily note is strictly prohibited.
 - **Graceful Degradation**: When external services (GitHub, Email, Calendar) are unreachable, attempt all available tool channels before recording quiet single-line status in-place.
 - **Trace Receipts Only**: Record step completion receipts in internal execution traces and telemetry. Never append run execution logs, hourly heartbeats, cron timestamps, or raw reconcile mutation dumps to the daily note body.
 
