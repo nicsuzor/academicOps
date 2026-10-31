@@ -23,6 +23,8 @@
 
 - [ENFORCEMENT-MAP.md](ENFORCEMENT-MAP.md) -- concise cross-reference table mapping rules to their live enforcement mechanisms.
 - [enforcement/enforcement-map.md](enforcement/enforcement-map.md) -- specification governing the enforcement map schema, inclusion boundaries, and concision invariants.
+- [enforcement/reviewer-class-standard-check.md](enforcement/reviewer-class-standard-check.md) -- reviewer evaluation of modified files against governing document taxonomy class standards.
+- [enforcement/class-spec-review-and-map-discipline.md](enforcement/class-spec-review-and-map-discipline.md) -- systemic design for class-spec review, runtime workflow composition, and enforcement map discipline.
 - [enforcement/enforcement.md](enforcement/enforcement.md) -- governing principle, regulatory tools, mechanism categories, and proportional intervention.
 - [enforcement/task-contract.md](enforcement/task-contract.md) -- the work-unit contract (claim → release).
 - [enforcement/escalated-delivery-contract.md](enforcement/escalated-delivery-contract.md) -- in-session escalated delivery contract (`ida_held`, `/mine` surfacing pass, and the Workers-Append rule).
