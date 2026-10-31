@@ -23,6 +23,11 @@ export interface PluginConfig {
   miniAppUrl: string;
   botCommands: TelegramBotCommand[];
   bridgeToken?: string;
+  cfAccessTeamDomain?: string;
+  cfAccessAud?: string;
+  cfAccessAllowedEmails?: string[];
+  cfAccessCertsUrl?: string;
+  cfAccessKeys?: any;
   env?: Record<string, string>;
 }
 
@@ -94,11 +99,92 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
   const rawMiniAppUrl = (mergedEnv.MINI_APP_URL || mergedEnv.IDA_WEB_URL || DEFAULT_MINI_APP_URL).trim();
   const miniAppUrl = (rawMiniAppUrl || DEFAULT_MINI_APP_URL).replace(/\/+$/, "");
 
-  const defaultTranscribeCmd = join(homedir(), ".claude", "channels", "telegram", "transcribe.sh");
-  const voiceTranscribeCmd = mergedEnv.VOICE_TRANSCRIBE_CMD || defaultTranscribeCmd;
+  // Voice transcribe candidate resolution per spec_7a9caca5 FR-7.5
+  const transcribeCandidates = [
+    join(stateDir, "transcribe.sh"),
+    join(homedir(), ".claude", "channels", "telegram", "transcribe.sh"),
+    "/usr/local/bin/transcribe.sh",
+    join(homedir(), ".local", "bin", "transcribe.sh"),
+  ];
+  let defaultTranscribeCmd = join(homedir(), ".claude", "channels", "telegram", "transcribe.sh");
+  for (const cand of transcribeCandidates) {
+    if (existsSync(cand)) {
+      defaultTranscribeCmd = cand;
+      break;
+    }
+  }
 
-  const defaultSpeakCmd = join(import.meta.dir, "..", "scripts", "speak.sh");
-  const voiceSpeakCmd = mergedEnv.VOICE_SPEAK_CMD || defaultSpeakCmd;
+  const rawTranscribeCmd = (mergedEnv.VOICE_TRANSCRIBE_CMD || "").trim();
+  let voiceTranscribeCmd = defaultTranscribeCmd;
+  if (rawTranscribeCmd) {
+    if (rawTranscribeCmd.includes("/") || rawTranscribeCmd.includes("\\")) {
+      voiceTranscribeCmd = rawTranscribeCmd;
+    } else {
+      const bareCandidates = [
+        join(stateDir, rawTranscribeCmd),
+        join(homedir(), ".claude", "channels", "telegram", rawTranscribeCmd),
+        join("/usr/local/bin", rawTranscribeCmd),
+        join(homedir(), ".local", "bin", rawTranscribeCmd),
+      ];
+      let found = false;
+      for (const cand of bareCandidates) {
+        if (existsSync(cand)) {
+          voiceTranscribeCmd = cand;
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        voiceTranscribeCmd = rawTranscribeCmd;
+      }
+    }
+  }
+
+  // Voice speak candidate resolution per spec_7a9caca5 FR-7.2 & FR-7.5
+  const bundledSpeak = mergedEnv.CLAUDE_PLUGIN_ROOT
+    ? join(mergedEnv.CLAUDE_PLUGIN_ROOT, "scripts", "speak.sh")
+    : join(import.meta.dir, "..", "scripts", "speak.sh");
+  const speakCandidates = [
+    join(stateDir, "speak.sh"),
+    join(homedir(), ".claude", "channels", "telegram", "speak.sh"),
+    "/usr/local/bin/speak.sh",
+    bundledSpeak,
+    join(import.meta.dir, "..", "scripts", "speak.sh"),
+  ];
+  let defaultSpeakCmd = bundledSpeak;
+  for (const cand of speakCandidates) {
+    if (existsSync(cand)) {
+      defaultSpeakCmd = cand;
+      break;
+    }
+  }
+
+  const rawSpeakCmd = (mergedEnv.VOICE_SPEAK_CMD || "").trim();
+  let voiceSpeakCmd = defaultSpeakCmd;
+  if (rawSpeakCmd) {
+    if (rawSpeakCmd.includes("/") || rawSpeakCmd.includes("\\")) {
+      voiceSpeakCmd = rawSpeakCmd;
+    } else {
+      const bareCandidates = [
+        join(stateDir, rawSpeakCmd),
+        join(homedir(), ".claude", "channels", "telegram", rawSpeakCmd),
+        join("/usr/local/bin", rawSpeakCmd),
+        mergedEnv.CLAUDE_PLUGIN_ROOT ? join(mergedEnv.CLAUDE_PLUGIN_ROOT, "scripts", rawSpeakCmd) : "",
+        join(import.meta.dir, "..", "scripts", rawSpeakCmd),
+      ].filter(Boolean);
+      let found = false;
+      for (const cand of bareCandidates) {
+        if (existsSync(cand)) {
+          voiceSpeakCmd = cand;
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        voiceSpeakCmd = rawSpeakCmd;
+      }
+    }
+  }
 
   return {
     botToken: mergedEnv.TELEGRAM_BOT_TOKEN || "",
@@ -118,6 +204,21 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
     miniAppUrl,
     botCommands: resolveBotCommands(persona, mergedEnv.TELEGRAM_BOT_COMMANDS),
     bridgeToken: mergedEnv.IDA_BRIDGE_TOKEN || mergedEnv.BRIDGE_TOKEN,
+    cfAccessTeamDomain: (mergedEnv.CF_ACCESS_TEAM_DOMAIN || mergedEnv.CF_ACCESS_TEAM_NAME || "").trim() || undefined,
+    cfAccessAud: (mergedEnv.CF_ACCESS_AUD || "").trim() || undefined,
+    cfAccessAllowedEmails: (mergedEnv.CF_ACCESS_ALLOWED_EMAILS || "").trim()
+      ? (mergedEnv.CF_ACCESS_ALLOWED_EMAILS || "").trim().split(/[\s,]+/).map((s) => s.trim().toLowerCase()).filter(Boolean)
+      : undefined,
+    cfAccessCertsUrl: (mergedEnv.CF_ACCESS_CERTS_URL || "").trim() || undefined,
+    cfAccessKeys: (() => {
+      const raw = mergedEnv.CF_ACCESS_KEYS || mergedEnv.CF_ACCESS_PUBKEY || "";
+      if (!raw) return undefined;
+      try {
+        return JSON.parse(raw);
+      } catch {
+        return raw;
+      }
+    })(),
     env: mergedEnv as Record<string, string>,
   };
 }

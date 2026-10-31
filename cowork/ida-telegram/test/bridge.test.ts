@@ -2,6 +2,7 @@ import { describe, expect, test, afterEach } from "bun:test";
 import { rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { generateKeyPairSync, createSign } from "node:crypto";
 import { PluginStore } from "../src/store.js";
 import { QuestionBroker } from "../src/telegram/questions.js";
 import { PermissionRelay } from "../src/mcp/permissions.js";
@@ -9,6 +10,46 @@ import { startWebServer } from "../src/web/server.js";
 import { createSessionToken } from "../src/web/auth.js";
 import type { PluginConfig } from "../src/config.js";
 import { TelegramBotClient } from "../src/telegram/bot.js";
+
+const { publicKey: testPublicKey, privateKey: testPrivateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+const { privateKey: otherPrivateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+const testPublicKeyPem = testPublicKey.export({ type: "spki", format: "pem" }).toString();
+const testKeyId = "test-cf-access-key-1";
+const testAud = "aud-cf-access-tag-12345";
+const testTeamDomain = "testteam.cloudflareaccess.com";
+const testAllowedEmail = "operator@example.com";
+
+function makeCfAccessJwt(
+  payloadOverrides: Record<string, unknown> = {},
+  headerOverrides: Record<string, unknown> = {},
+  signKey = testPrivateKey
+): string {
+  const header = {
+    alg: "RS256",
+    typ: "JWT",
+    kid: testKeyId,
+    ...headerOverrides,
+  };
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    aud: [testAud],
+    email: testAllowedEmail,
+    iss: `https://${testTeamDomain}`,
+    sub: "test-user-sub-uuid",
+    iat: now,
+    nbf: now,
+    exp: now + 3600,
+    type: "app",
+    ...payloadOverrides,
+  };
+  const h64 = Buffer.from(JSON.stringify(header)).toString("base64url");
+  const p64 = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const input = `${h64}.${p64}`;
+  const sign = createSign("RSA-SHA256");
+  sign.update(input);
+  const sig = sign.sign(signKey).toString("base64url");
+  return `${input}.${sig}`;
+}
 
 describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration.md)", () => {
   const botToken = "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11";
@@ -28,7 +69,7 @@ describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration
     }
   });
 
-  async function createBridgeTestContext() {
+  async function createBridgeTestContext(configOverrides: Partial<PluginConfig> = {}) {
     testStateDir = join(tmpdir(), "ida-tg-bridge-" + Math.random().toString(36).slice(2, 9));
     const store = new PluginStore(testStateDir);
     const broker = new QuestionBroker(testStateDir);
@@ -51,6 +92,7 @@ describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration
       miniAppUrl: "https://ida.example.ts.net",
       botCommands: [],
       bridgeToken,
+      ...configOverrides,
     } as any;
 
     const emittedEvents: Array<{ event: string; content: string; meta: Record<string, unknown> }> = [];
@@ -138,11 +180,113 @@ describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration
       });
       expect(customHeaderRes.status).toBe(200);
 
-      // Cf-Access perimeter header -> 200
+      // Cf-Access perimeter header with unverified dummy string is rejected with 401
       const cfRes = await fetch(`${baseUrl}/api/app/anchor`, {
         headers: { "Cf-Access-Jwt-Assertion": "jwt-assertion-payload" },
       });
-      expect(cfRes.status).toBe(200);
+      expect(cfRes.status).toBe(401);
+    });
+
+    test("AC1: A request carrying a forged, malformed, or expired assertion is refused on every authenticated route", async () => {
+      const { baseUrl } = await createBridgeTestContext({
+        cfAccessAud: testAud,
+        cfAccessTeamDomain: testTeamDomain,
+        cfAccessAllowedEmails: [testAllowedEmail],
+        cfAccessKeys: { [testKeyId]: testPublicKeyPem },
+      } as any);
+
+      const now = Math.floor(Date.now() / 1000);
+      const forgedAssertion = makeCfAccessJwt({}, {}, otherPrivateKey);
+      const malformedAssertion = "not.a.valid.jwt.token";
+      const expiredAssertion = makeCfAccessJwt({ exp: now - 300 });
+
+      const authenticatedRoutes: Array<{ method: string; path: string; body?: any }> = [
+        { method: "GET", path: "/api/app/events" },
+        { method: "POST", path: "/api/app/message", body: { text: "hello" } },
+        { method: "GET", path: "/api/app/anchor" },
+        { method: "GET", path: "/api/app/questions" },
+        { method: "POST", path: "/api/app/questions/answer", body: { question_id: "q1", answer: "yes" } },
+        { method: "POST", path: "/api/app/questions/close", body: { question_id: "q1" } },
+        { method: "GET", path: "/api/app/review" },
+        { method: "POST", path: "/api/app/review/permission", body: { id: "p1", decision: "allow" } },
+        { method: "POST", path: "/api/app/review/pr", body: { repo: "test/repo", pr: 1, decision: "approve" } },
+        { method: "POST", path: "/api/app/stop" },
+      ];
+
+      for (const route of authenticatedRoutes) {
+        // 1. Forged assertion (invalid signature)
+        const forgedRes = await fetch(`${baseUrl}${route.path}`, {
+          method: route.method,
+          headers: {
+            "Cf-Access-Jwt-Assertion": forgedAssertion,
+            ...(route.body ? { "Content-Type": "application/json" } : {}),
+          },
+          ...(route.body ? { body: JSON.stringify(route.body) } : {}),
+        });
+        expect(forgedRes.status).toBe(401);
+
+        // 2. Malformed assertion
+        const malformedRes = await fetch(`${baseUrl}${route.path}`, {
+          method: route.method,
+          headers: {
+            "Cf-Access-Jwt-Assertion": malformedAssertion,
+            ...(route.body ? { "Content-Type": "application/json" } : {}),
+          },
+          ...(route.body ? { body: JSON.stringify(route.body) } : {}),
+        });
+        expect(malformedRes.status).toBe(401);
+
+        // 3. Expired assertion
+        const expiredRes = await fetch(`${baseUrl}${route.path}`, {
+          method: route.method,
+          headers: {
+            "Cf-Access-Jwt-Assertion": expiredAssertion,
+            ...(route.body ? { "Content-Type": "application/json" } : {}),
+          },
+          ...(route.body ? { body: JSON.stringify(route.body) } : {}),
+        });
+        expect(expiredRes.status).toBe(401);
+      }
+    });
+
+    test("AC2: A request with a valid Access identity still succeeds", async () => {
+      const { baseUrl } = await createBridgeTestContext({
+        cfAccessAud: testAud,
+        cfAccessTeamDomain: testTeamDomain,
+        cfAccessAllowedEmails: [testAllowedEmail],
+        cfAccessKeys: { [testKeyId]: testPublicKeyPem },
+      } as any);
+
+      const validAssertion = makeCfAccessJwt();
+      const res = await fetch(`${baseUrl}/api/app/anchor`, {
+        headers: { "Cf-Access-Jwt-Assertion": validAssertion },
+      });
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data).toBeDefined();
+    });
+
+    test("AC1: consecutive requests in one session with the same valid assertion succeed with 200", async () => {
+      const { baseUrl } = await createBridgeTestContext({
+        cfAccessAud: testAud,
+        cfAccessTeamDomain: testTeamDomain,
+        cfAccessAllowedEmails: [testAllowedEmail],
+        cfAccessKeys: { [testKeyId]: testPublicKeyPem },
+      } as any);
+
+      const validAssertion = makeCfAccessJwt();
+
+      // First request in session -> 200
+      const res1 = await fetch(`${baseUrl}/api/app/anchor`, {
+        headers: { "Cf-Access-Jwt-Assertion": validAssertion },
+      });
+      expect(res1.status).toBe(200);
+
+      // Second request in same session with same assertion -> 200
+      const res2 = await fetch(`${baseUrl}/api/app/questions`, {
+        headers: { "Cf-Access-Jwt-Assertion": validAssertion },
+      });
+      expect(res2.status).toBe(200);
     });
 
     test("1.2 Sequence numbers: monotonic seq counter increments across state mutations, present in REST snapshots and SSE stream", async () => {

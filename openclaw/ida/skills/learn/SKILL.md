@@ -1,11 +1,15 @@
 ---
 name: learn
-description: Diagnose systemic root causes of errors from session logs and file anonymised issues in the appropriate repository. Diagnoses only; does not inspect repository source code, propose fixes, or implement remedies directly.
+description: Diagnose systemic root causes of errors from session logs and file anonymised issues or evidence-bump comments in the appropriate repository. Diagnoses only; does not inspect repository source code, propose fixes, or implement remedies directly.
 ---
 
 # Learn
 
-Perform root-cause analysis on systemic failure classes using session execution records. Diagnose observable failure mechanisms from OpenTelemetry spans (or session logs where the surface does not emit traces) and file an issue at the responsible layer; do not inspect source code or propose fixes directly.
+Perform root-cause analysis on systemic failure classes using session execution records. Diagnose observable failure mechanisms from OpenTelemetry spans (or session logs where the surface does not emit traces) and file an issue or evidence-bump comment at the responsible layer; do not inspect source code or propose fixes directly.
+
+## Worker
+
+Dispatch `/learn` to **`pauli`** (`TypeName: "pauli"`), never `james`. Pauli operates strictly from session execution records (`ida:session-trace`) and the PKB graph without searching or reading repository source code.
 
 ## Protocol
 
@@ -14,6 +18,8 @@ Perform root-cause analysis on systemic failure classes using session execution 
    - If the surface does not emit traces, proceed using the session's execution log or transcript directly. If the surface emits traces but the trace is absent, unexported, or incomplete, halt immediately and state that the trace is unavailable.
    - Do not fall back to inspecting, grepping, or reading repository source code.
 2. **Diagnose systemic cause from execution evidence**:
+   - **Root causes are framework defects, never agent faults.** A root cause is never an agent's fault, capability limitation, choice, or action; it is always the framework's: the instructions, skills, workflows, contracts, or tools that led the agent to act as it did. An agent's action (e.g. dispatching to an agent without necessary credentials or access, rewording an ask, skipping a step, never delivering a result) is an intermediate event on the execution trace, never the root cause. When an agent acts, locate and quote the instruction, skill, workflow, or prompt text that led that agent to take that action, and identify the framework defect (missing constraint, contradictory rule, or ambiguous guidance) that permitted or caused the failure. Never cite an agent, its brief, its capabilities, or its choices as the root cause.
+   - **No passive voice; name the actor and quote the instruction.** Use active voice throughout all findings, issue descriptions, and reports; passive voice is strictly prohibited (e.g. "the run went to X" or "a file was modified" is forbidden). Every finding must explicitly state who acted by naming the specific actor (e.g. "Ida Prime sent the run to Pauli"), followed immediately by quoting the exact instruction, skill, or workflow text that led them to act (e.g. "The instructions provided to Ida in `<file>` state: `[extract]`"). Then state the framework defect in those instructions or tools.
    - Ground findings in observable runtime mechanisms shown in the trace (or session log if the surface does not emit traces): failing tool invocations, unexpected tool error payloads, schema mismatches, hook blocks, timeout spikes.
    - Describe what the session attempted and where execution broke down. The runtime execution record is the evidence; do not inspect source files or name responsible code lines.
    - Treat an agent's account of its causes as hearsay, never as evidence of mechanism. Re-read the case from the primary user words independently of the caller's framing; what each agent received, ran, and chose on the record is the evidence.
@@ -25,11 +31,13 @@ Perform root-cause analysis on systemic failure classes using session execution 
    - _Project_: Project-specific configuration, workflow templates, or repository guidelines.
    - _User/PKB_: User preferences, habits, or personal knowledge base.
    - _Framework_: Universal axioms, agent roles, or core tooling.
-5. **File issues**:
-   - Determine whether one issue is filed or two: when the primary failure is already well known and has a handler, file one issue for the handler's failure only; file both issues (the general bug and the verification miss) only when the primary failure is not already handled.
-   - File each required issue in its owning repository.
-   - For each, search existing issues within the owning repository for the error class before creating a new one to avoid duplicate reports. Target the remote repository directly by name (`owner/repo`) for both search and creation rather than relying on a local checkout.
-   - Ground the issue description in the execution record (tool calls, error payloads, latencies). Strip personal names, credentials, file paths containing sensitive usernames, and raw environment details.
+5. **File issues or post evidence-bump comments**:
+   - For each finding, search existing issues within the owning repository for the error class before creating a new issue to avoid duplicate reports. Target the remote repository directly by name (`owner/repo`) for both search and issue/comment creation rather than relying on a local checkout.
+   - When the evidence belongs to an issue that already exists, summarise that evidence into an evidence-bump comment on that existing issue; do not file a separate issue for the evidence.
+   - When no existing issue covers the finding, file in the owning repository:
+     - When the primary failure is already well known and has a handler, file one issue for the handler's failure only.
+     - When the primary failure is not already handled, file both issues (the general bug and the verification miss).
+   - Ground the issue description or evidence-bump comment in the execution record (tool calls, error payloads, latencies). Strip personal names, credentials, file paths containing sensitive usernames, and raw environment details.
 6. **No direct fixes**:
    - Diagnose only; do not propose fixes, select enforcement mechanisms, or open tasks to implement remedies. Findings serve as evidence for the framework enforcement loop (`specs/enforcement/enforcement.md`).
 
@@ -37,8 +45,8 @@ Perform root-cause analysis on systemic failure classes using session execution 
 
 Return a markdown report containing:
 
-- **Evidence**: Session ID, relevant OTel span IDs (or session log excerpts if the surface does not emit traces), and execution excerpts (tool calls, error payloads, latencies).
-- **Root cause**: The systemic defect in execution flow, contract, or mechanism demonstrated by the execution record.
+- **Evidence**: Session ID / Conversation ID, relevant OTel span IDs (or session log excerpts if the surface does not emit traces), and execution excerpts (tool calls, error payloads, latencies).
+- **Root cause**: The framework or workflow defect the execution record shows let the failure happen: the missing, unreached, ambiguous, or contradicted instruction, workflow step, contract, or tool that led the agent to act as it did. State strictly in active voice, name the actor who acted, quote the governing instruction text that led them to act, and explain the framework defect. Never cite an agent, an agent's capability limitation, or an agent's choice as the root cause, and never use passive voice.
 - **Verification miss**: The check that should have caught the instance, and why it did not.
 - **Impact estimate**: Projected frequency and severity.
-- **Artifacts**: Links to the filed issue(s) (handler's failure only if the primary failure is handled; both the general bug and verification miss if unhandled).
+- **Artifacts**: Links to the filed issue(s) or evidence-bump comment(s) (evidence-bump comment when an existing issue tracks the failure; otherwise handler's failure only if the primary failure is handled, or both the general bug and verification miss if unhandled).

@@ -610,6 +610,111 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
     }
   });
 
+  test("AC3: in an installed-plugin layout with VOICE_SPEAK_CMD=speak.sh, reply({voice: true}) returns voiceSent: true after resolving speak.sh, but reproduces Executable not found when unresolvable", async () => {
+    const { loadConfig } = await import("../src/config.js");
+    const { TelegramBotClient } = await import("../src/telegram/bot.js");
+    const { PluginStore } = await import("../src/store.js");
+    const { QuestionBroker } = await import("../src/telegram/questions.js");
+    const { PermissionRelay } = await import("../src/mcp/permissions.js");
+    const { formatMarkdownToEntities } = await import("../src/telegram/format.js");
+    const { mkdtempSync, rmSync, writeFileSync, mkdirSync, chmodSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { tmpdir } = await import("node:os");
+
+    const installedPluginRoot = mkdtempSync(join(tmpdir(), "ida-tg-installed-"));
+    const scriptsDir = join(installedPluginRoot, "scripts");
+    mkdirSync(scriptsDir, { recursive: true });
+    const bundledSpeak = join(scriptsDir, "speak.sh");
+    writeFileSync(
+      bundledSpeak,
+      `#!/bin/sh\nset -e\nprintf 'OggS-fake-opus-audio' > "$2"\n`,
+      "utf-8"
+    );
+    chmodSync(bundledSpeak, 0o755);
+
+    const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-installed-state-"));
+
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      const urlStr = String(url);
+      const isVoice = urlStr.includes("sendVoice");
+      if (isVoice) {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            result: { message_id: 3193, chat: { id: 8860530746 } },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          result: { message_id: 3194, chat: { id: 8860530746 } },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }) as any;
+
+    try {
+      // Installed-plugin environment where VOICE_SPEAK_CMD is set to bare "speak.sh"
+      const cfg = loadConfig({
+        CLAUDE_PLUGIN_ROOT: installedPluginRoot,
+        STATE_DIR: stateDir,
+        VOICE_SPEAK_CMD: "speak.sh",
+        TELEGRAM_BOT_TOKEN: "test-token",
+        IDA_TELEGRAM_ROLE: "primary",
+      });
+
+      // Assert that loadConfig resolves the candidate path to the bundled script
+      expect(cfg.voiceSpeakCmd).toBe(bundledSpeak);
+
+      const bot = new TelegramBotClient(
+        cfg,
+        new QuestionBroker(stateDir),
+        new PermissionRelay(),
+        () => {}
+      );
+
+      const formatted = formatMarkdownToEntities("Voice reply from installed plugin");
+      const res = await bot.sendReply({
+        chatId: 8860530746,
+        formatted,
+        voice: true,
+      });
+
+      expect(res).not.toBeNull();
+      expect(res?.voiceSent).toBe(true);
+      expect(res?.voiceError).toBeUndefined();
+
+      // Verify that unresolvable bare command reproduces "Executable not found in $PATH"
+      const unresolvableCfg = loadConfig({
+        CLAUDE_PLUGIN_ROOT: installedPluginRoot,
+        STATE_DIR: stateDir,
+        VOICE_SPEAK_CMD: "nonexistent-speak.sh",
+        TELEGRAM_BOT_TOKEN: "test-token",
+        IDA_TELEGRAM_ROLE: "primary",
+      });
+      const unresolvableBot = new TelegramBotClient(
+        unresolvableCfg,
+        new QuestionBroker(stateDir),
+        new PermissionRelay(),
+        () => {}
+      );
+      const resUnresolvable = await unresolvableBot.sendReply({
+        chatId: 8860530746,
+        formatted,
+        voice: true,
+      });
+      expect(resUnresolvable?.voiceSent).toBe(false);
+      expect(resUnresolvable?.voiceError).toContain("nonexistent-speak.sh");
+    } finally {
+      globalThis.fetch = origFetch;
+      rmSync(installedPluginRoot, { recursive: true, force: true });
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
   test("loadConfig defaults voiceSpeakCmd to bundled speak.sh when unset", async () => {
     const { loadConfig } = await import("../src/config.js");
     const { mkdtempSync, rmSync, existsSync } = await import("node:fs");
@@ -629,24 +734,23 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
     }
   });
 
-  test("loadConfig does not probe candidate paths and uses single canonical defaults", async () => {
+  test("loadConfig probes candidate paths in order per spec_7a9caca5", async () => {
     const { loadConfig } = await import("../src/config.js");
     const { mkdtempSync, rmSync, writeFileSync } = await import("node:fs");
     const { join } = await import("node:path");
-    const { tmpdir, homedir } = await import("node:os");
+    const { tmpdir } = await import("node:os");
 
     const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-voice-cfg-cand-"));
     try {
-      // Create fake transcribe.sh and speak.sh in stateDir to test they are ignored
+      // Create fake transcribe.sh and speak.sh in stateDir to test priority over bundled scripts
       writeFileSync(join(stateDir, "transcribe.sh"), "#!/bin/sh\n", { mode: 0o755 });
       writeFileSync(join(stateDir, "speak.sh"), "#!/bin/sh\n", { mode: 0o755 });
 
       const cfg = loadConfig({
         STATE_DIR: stateDir,
       });
-      expect(cfg.voiceTranscribeCmd).toBe(join(homedir(), ".claude", "channels", "telegram", "transcribe.sh"));
-      expect(cfg.voiceSpeakCmd).toContain("scripts/speak.sh");
-      expect(cfg.voiceSpeakCmd).not.toBe(join(stateDir, "speak.sh"));
+      expect(cfg.voiceTranscribeCmd).toBe(join(stateDir, "transcribe.sh"));
+      expect(cfg.voiceSpeakCmd).toBe(join(stateDir, "speak.sh"));
     } finally {
       rmSync(stateDir, { recursive: true, force: true });
     }

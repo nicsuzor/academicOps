@@ -1,11 +1,13 @@
 ---
 name: reify
-description: Turn an objective, or a task id, into complete dispatchable tasks on the graph -- hydrate, compose the workflow from templates, write each task at `queued`, and mint any QA follow-up. Use when work needs tasks written or an existing task rewritten before a worker can pull it. Exclude for starting workers on tasks already written (use /dispatch).
+description: Bind one node that is next to run to its executor and workflow -- hydrate, compose the workflow from templates, write the task at `queued`, and mint any QA follow-up. Use when a node is about to be dispatched and needs its task written or rewritten; the PKB custodian (Pauli) runs it. Exclude for expanding an objective into sub-objectives (use decompose) or starting workers on tasks already written (use dispatch).
 ---
 
-# /reify: compose dispatchable tasks from an objective
+# /reify: compose the dispatchable task for a node that is next to run
 
-The task is the whole message to the worker. Write it once, keep it short, and leave it on the graph for `/dispatch`. Questions and lookups are answered directly by the session that receives them; the task dispatch pipeline is used only for real code changes. Never create tasks or compose workflows for questions or lookups.
+**Object: one node, at dispatch time.** Reifying binds the node to an executor class and to the workflow templates current now; both change, so a task reified before it can run goes stale on the graph. Reify a node when `/dispatch` is about to take it or the user says to write it, and leave a node blocked on something outside the graph's control (another party's reply, an approval, an upstream result) unreified until that clears. Given a parent, reify only the children that are ready to run. The PKB custodian (Pauli) runs this skill; a caller sends them the node or objective and receives task ids.
+
+The task is the whole message to the worker. Write it once, keep it short, and leave it on the graph for `/dispatch`. The task dispatch pipeline is used for any durable deliverable -- including agent workflows, instruction updates, specifications, and code changes. Questions and lookups that can be answered in-turn are answered directly without queueing tasks.
 
 A polecat is a short-running container: it gets in, does one unit of work it controls, records the evidence, and gets out cleanly. It never sees the whole objective through. Everything after its unit is a follow-up task on the graph, and the workflow decides what those follow-ups are.
 
@@ -24,6 +26,8 @@ Call `/hydrate` on the objective, or on the task if you were given an id.
 
 ## 2. Compose workflows
 
+- **Agentic-First Mechanism Gate**: Before composing an implementation task or specifying software builds, ask: Can this request be satisfied by an agent workflow template (`wf-*`) or skill instructions (`SKILL.md`)? If the task involves qualitative judgment, sampling, curation, classification, or recommendation, compose an agent workflow or skill instruction. Never specify executable scripts, CLI utilities, or unit test suites when an agent workflow meets the request.
+
 Call `/workflow-library` to weave together every workflow relevant to the task in context. The composed workflow draws on two kinds of component, and they enter the Instructions differently:
 
 - **Workflow templates** (`type: template`, including every `wf-*`): the worker cannot invoke them. Read each one and interpret its stages into concise numbered imperative steps in the Instructions. Where a template names a stage or a class of workflow rather than a step, resolve it to the matching templates and write their steps in too. Do not copy narrative paragraphs, rationale, or explanatory prose from templates.
@@ -32,6 +36,7 @@ Call `/workflow-library` to weave together every workflow relevant to the task i
 Then assemble the steps:
 
 - Combine template steps into a logical order (e.g., test-first where the change modifies code that executes, build, then QA).
+- Preserve design and build staging: when multi-file modifications or architectural choices are required, compose separate tasks for Stage 1 (Design) and Stage 2 (Build) under `wf-code-task-base`. Never collapse Stage 1 into Stage 2, even when the incoming brief provides an implementation proposal.
 - Base the assembly only on what is explicitly requested. Do not investigate, guess at scope, or ad-lib extra requirements. If the request is ambiguous, preserve that ambiguity.
 - Start with the most general applicable template, which provides stubs for finishing and QA where applicable. Templates themselves specify how workflows are built; do not overspecify composition stages or single out finish templates.
 
@@ -42,9 +47,9 @@ Then assemble the steps:
 - Default to a single task with steps as a linear checklist; every extra cut costs a hand-off and loses context.
 - Cut into separate leaves only when independent sessions are strictly required (e.g. forks, loops, independent reviews).
 - Make each task as big as possible within those cuts.
-- Write each follow-up the workflow calls for as its own task. Never fold a follow-up into the primary task or into another follow-up.
+- When a task and its follow-up can be executed by the same agent in one session, structure them as a single task with internal subtasks. When independent sessions or review personas are required, structure them as a dedicated epic with child tasks, never as loose siblings.
 - Wire `needs` edges only where one unit genuinely requires another's output.
-- Mint multi-task cuts using `pkb.decompose_task`.
+- Mint multi-task cuts using task decomposition.
 - Write tasks with status `queued` immediately.
 - Close every task with an appendix section listing the workflow templates and skills it was composed from.
 
@@ -63,7 +68,7 @@ Then assemble the steps:
 
 ## Acceptance
 
-[ Number the items `AC1`, `AC2`, ...; each number gives the item its ask id (per the `premise-check` report form), which the worker's report argument answers. Write each Acceptance item so that it requires evidence sufficient to prove the criterion has been met in substance. Verifiable evidence must be recorded on the task because the task record is the only thing that comes back. Criteria name outcomes and the evidence that proves them, not where something is wired or how it is invoked. ]
+[ Number the items `AC1`, `AC2`, ...; each number gives the item its ask id (per the `premise-check` report form), which the worker's report argument answers. Write each Acceptance item so that it requires evidence sufficient to prove the criterion has been met in substance. Verifiable evidence must be recorded on the task because the task record is the only thing that comes back. Criteria name outcomes and the evidence that proves them, not where something is wired or how it is invoked. Filter incoming mechanism prescriptions and translate them into observable outcome criteria. Line numbers, line ranges, and narrow code slice prescriptions are strictly forbidden in `Goal`, `Acceptance`, and `Instructions`. ]
 
 ## Instructions
 
@@ -87,20 +92,18 @@ Then assemble the steps:
 Where the composed workflow calls for QA review:
 
 - **Low-risk internal changes (chiefly bugfixes)**: Test whether the task is a low-risk internal change, chiefly a bugfix. If so, it gets no separate verification run. Instead, look for a blocked task waiting on the fix (`blocks` or inbound `needs` / `depends_on`):
-  - **Blocked dependent exists**: Mint a follow-up task with status `queued`, same parent as the primary task, and `needs: [<blocked_task_id>]` that judges the fix by reviewing that blocked task's next run once it runs.
+  - **Blocked dependent exists**: Mint a follow-up task with status `queued` under the shared epic, with `needs: [<blocked_task_id>]` that judges the fix by reviewing that blocked task's next run once it runs.
   - **No blocked dependent exists**: Mint no verification follow-up task; the fix finishes without a separate verification run.
 - **Other changes requiring QA**:
-  1. Mint an independent follow-up task with status `queued`.
-  2. Title: `QA: <primary task title>`.
-  3. Set parent to the primary task's parent.
-  4. Wire dependency: `needs: [<primary_task_id>]` so the QA task stays blocked until the primary task is `done`.
-  5. Compose the review follow-up task drawing its brief from the shared review briefing in `wf-review` and the designated review template (`wf-qa`, `wf-rbg`, `wf-strategic-fit`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the deliverable and claims against literal acceptance criteria; if verification fails, the reviewer releases the task as `failed` with documented failure evidence; confirm tier against the taxonomy; for verified Tier 1 PRs, merge to base branch on a verified pass; for Tier 2 and Tier 3 PRs, post verification receipts to the PR and leave open for reviewer sign-off without releasing to review. A reviewer that changes code delivers it through its workflow and hands off for independent review.
+  1. Structure the task and its QA review either as a single task with internal subtasks (if executable by the same agent in one session) or as a dedicated epic with child tasks (Child 1: Primary Task, Child 2: QA Task with `needs: [<child_1_id>]`); never mint a follow-up or review task as a loose sibling under an external parent.
+  2. For epic-child cuts: mint the independent follow-up task with status `queued` as a child under the dedicated epic, Title: `QA: <primary task title>`, and wire dependency `needs: [<primary_task_id>]` so the QA task stays blocked until the primary task is `done`.
+  3. Compose the review follow-up task drawing its brief from the shared review briefing in `wf-review` and the designated review template (`wf-qa`, `wf-rbg`, `wf-strategic-fit`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the deliverable and claims against literal acceptance criteria; if verification fails, the reviewer releases the task as `failed` with documented failure evidence; confirm tier against the taxonomy; for verified Tier 1 PRs, merge to base branch on a verified pass; for Tier 2 and Tier 3 PRs, post verification receipts to the PR and leave open for reviewer sign-off without releasing to review. A reviewer that changes code delivers it through its workflow and hands off for independent review.
 
 ### Requirements for writing tasks
 
-- Give the worker the end state and the bounds; leave the method to it.
+- Filter incoming mechanism prescriptions and translate them into observable outcome criteria. Line numbers, line ranges, and narrow code slice prescriptions are strictly forbidden in `Goal`, `Acceptance`, and `Instructions`. Give the worker the end state and the bounds; leave the method to it.
 - Record the asker's own words once, in `## Ask`, with their ids, and never rewrite them: the task carries the ask as an immutable referent that the worker's argument answers and that checkers read to test the restatement for fidelity, completeness, and overreach. The no-verbatim rule below governs the rest of the body, not `## Ask`.
-- Restate the user's terse, fragmented words into clear, complete tasks and notes, judged by fidelity to his meaning and distinctions, not by wording. Keeping exact words in PKB outputs is not a goal. Fault a restatement only for lost, added, or distorted meaning. Link asks to prior context, recompose into a clear logical structure, and cite message ids.
+- Restate the user's terse, fragmented words into clear, complete tasks and notes, judged by fidelity to their meaning and distinctions, not by wording. Keeping exact words in PKB outputs is not a goal. Fault a restatement only for lost, added, or distorted meaning. Link asks to prior context, recompose into a clear logical structure, and cite message ids.
 - State the Goal and each criterion over the whole class the request covers: "the user's messages", not a named person's or today's channels and formats. Instances the request names are cases to test, not the boundary of the work. When asked what broke a mechanism (such as authentication, a token, or a service), compose the debugging workflow and preserve the full failure question in Acceptance so the run examines why the mechanism or token stopped working across its lifecycle rather than narrowing to a single startup symptom.
 - Every heading is a prompt for you to fill, and there is no slot for restrictions or exclusions: say what has to be done, not what shouldn't.
 - Keep each task strictly concise: 50–150 words for atomic tasks, up to 300 words for multi-stage composite workflows, `## Ask` aside. Include only what the worker cannot find for itself.
@@ -110,7 +113,7 @@ Where the composed workflow calls for QA review:
 - Change an existing task only for a defect you can point to in its text; otherwise leave it as written. Never rewrite its `## Ask` or renumber its criteria: a new criterion takes the next number, and no number is reused.
 - A skill may be a step, even the only step: write `invoke /<skill-name>` and leave its implementation to the skill. A workflow template is never a step; its steps are.
 - Close every task with an appendix section listing the workflow templates and skills it was composed from.
-- Do not create standalone decision tasks or file questions as tasks.
+- Do not create standalone decision tasks or file questions as tasks, with the exception of design research tasks: any research task on a design question gets, by default, a decision task assigned to the user (assignee: user) that depends on the research results, in which the user chooses the implementation route.
 
 ## 4. Report
 

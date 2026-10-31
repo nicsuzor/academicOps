@@ -23,15 +23,7 @@ format_items = [
 ]
 
 # Defect tags a `Valid:` entry may carry after `fails`.
-defect_tags = [
-  "#missing",
-  "#scope-drift",
-  "#conflict",
-  "#unanswered",
-  "#undercut",
-  "#construct-drift",
-  "#method-gap",
-]
+defect_tags = ["#missing", "#scope-drift", "#conflict", "#unanswered", "#undercut"]
 
 # Basis phrases a premise line ends with, written in words. `rank` orders
 # strength: a derived claim carries the lowest rank among its premises. A

@@ -1,6 +1,6 @@
 # Report form
 
-The report argument is one fenced `argdown` block at the end of the report, parser-valid Argdown in standard form. The recorder reads it to cross-check the checker's reason, so the line shapes below are exact. Statement lines carry no `{...}` attributes.
+The report argument is one fenced `argdown` block at the end of the report, parser-valid Argdown in standard form. The recorder reads it to cross-check the checker's reason, so the line shapes below are exact. Statement lines carry no `{...}` attributes. Readers ignore meaning-free whitespace across the block (common leading indents across frontmatter or body, trailing whitespace on lines, CRLF endings, and added or removed blank lines); whitespace carrying syntactic meaning (relative nesting within frontmatter, and single-line inference bars) remains significant.
 
 ````text
 ```argdown
@@ -44,17 +44,7 @@ Numbers run on through a chain: a supervisor quoting a worker's lines keeps thei
 
 Optional local syntax check before sending: `npx -y @argdown/cli json --throwExceptions <file>.argdown <outdir>` exits 0 on a valid block (authoring agents follow syntax rules directly without invoking an external CLI per `argdown-toulmin`).
 
-## Method fidelity and departures
-
-When an ask specifies a method, form, design, or value, the report carries a pairing line before the argument block setting each specified feature beside what was done, naming each departure with its reason, else `departures: none`.
-
-- **Shape**: `Departures: none` or `Departures: <specified feature> -> <what was done> (<reason>); ...`
-- **Default rule**: A detail in a method specification is load-bearing regardless of typography (quoted, backticked, or plain) unless the ask's purpose shows it free.
-- **Rewording**: Rewording that preserves the construct is not a departure; no verbatim requirement is added outside specified methods, forms, designs, or values.
-
 ## Short example
-
-Departures: none
 
 ```argdown
 ===

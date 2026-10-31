@@ -30,8 +30,9 @@ def inject_caller_session(raw: dict[str, Any]) -> dict[str, Any]:
         updated_input = {}
 
     session: dict[str, Any] = {}
-    if raw.get("session_id") is not None:
-        session["session_id"] = raw["session_id"]
+    session_id = raw.get("session_id") or raw.get("conversationId") or raw.get("conversation_id")
+    if session_id is not None:
+        session["session_id"] = session_id
     if raw.get("agent_id") is not None:
         session["agent_id"] = raw["agent_id"]
     if raw.get("prompt_id") is not None:

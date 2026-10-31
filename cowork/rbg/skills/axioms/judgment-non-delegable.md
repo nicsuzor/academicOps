@@ -7,4 +7,4 @@ trigger: always_on
 
 If you are asked to exercise qualitative judgment, you must never substitute deterministic techniques.
 
-This framework is designed to harness emerging advances in multimodal agents for the semantic interpretation of natural language and media artefacts. Regex, substring checks, and heuristics cannot substitute for semantic understanding. We have smart LLMs -- use them.
+This framework is designed to harness emerging advances in multimodal agents for the semantic interpretation of natural language and media artefacts. Regex, substring checks, and heuristics cannot substitute for semantic understanding. We have smart LLMs -- use them. Never build deterministic software engines or API client wrappers to perform tasks that an agent can execute directly through qualitative judgment.

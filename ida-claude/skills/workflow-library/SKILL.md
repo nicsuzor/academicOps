@@ -5,7 +5,17 @@ description: List, read, add, edit, and retire workflow templates across project
 
 # Workflow Library
 
-Manage composable workflow templates (`type: template`) across three resolution tiers. Every PKB call below runs through the `services` MCP server's code-mode interface (`portal_codemode_execute` calling `codemode.<pkb_op>(...)`; in agy via `call_mcp_tool` with `ServerName: "services"`, in Claude Code via `mcp__services__portal_codemode_execute`), always passing a concise 1-line `toolSummary` argument (e.g. `toolSummary: "List workflow templates for tier resolution"`), not a directly-invocable flat tool.
+Manage composable workflow templates (`type: template`) across three resolution tiers.
+
+## Foundational Structural Invariants
+
+Every workflow composed across all tiers must adhere to two universal invariants:
+
+1. **Decision Step on Design Research Invariant:** Every research task investigating an open design question, architectural pattern, technology evaluation, or implementation trade-off must, by default, include a dependent decision task assigned to the user (`assignee: user`) that depends on the research artifact. In this decision task, the user selects the implementation route. Downstream implementation tasks are strictly blocked on this decision task.
+2. **Review and Follow-Up Structural Placement Invariant:** Every task requiring a review, verification, or subsequent follow-up step must be structured in exactly one of two valid topological patterns:
+   - **Single Task with Internal Subtasks:** If all steps (e.g. build, local verification, documentation) can be executed by the same agent in one continuous session, they must remain internal subtasks (checklist items) within a single task body.
+   - **Dedicated Epic with Child Tasks:** If the steps require independent sessions, clean execution context, distinct reviewer personas (`pauli`, `rbg`, `marsha`), different tool boundaries, or human decision gates, the work must be structured as a dedicated epic containing separate child tasks (e.g. Child 1: Primary Task, Child 2: Review / Decision / Follow-up), with dependencies explicitly wired between children (`Child 2` `needs: [Child 1]`).
+   - **Prohibition:** A task and its subsequent follow-up or review step must never be created as loose siblings under an external parent.
 
 ## Tiers and Resolution
 
@@ -13,8 +23,8 @@ Resolution order is **Project > PKB > Universal**. Higher tiers shadow lower tie
 
 | Tier | Location | Enumeration |
 | - | - | - |
-| 1. Project | PKB templates whose `project` is the task's project | `codemode.pkb_list_tasks({ type: "template", project: "<project>", include_done: true })` |
-| 2. PKB | PKB templates with no `project` | `codemode.pkb_list_tasks({ type: "template", include_done: true })`, keep `project: null` |
+| 1. Project | PKB templates whose `project` is the task's project | Query PKB templates (`type: "template"`, `project: "<project>"`, including completed nodes) |
+| 2. PKB | PKB templates with no `project` | Query PKB templates (`type: "template"`, including completed nodes), keep `project: null` |
 | 3. Universal | `${CLAUDE_SKILL_DIR}/workflows/` | `Glob ${CLAUDE_SKILL_DIR}/workflows/*.md` |
 
 The project is the `project` field of the task being composed for, or the project the caller names. With neither, the project tier is empty for composition. Templates scoped to any other project are out of scope for composition, but visible in list mode.
@@ -31,7 +41,7 @@ Enumerate and read universal templates using file tools (`Glob`, `Read`) rather 
 
 Enumerate every template across all three tiers live. Return a unified table: **slug \| tier \| coverage \| status**.
 
-- Include every universal template file (`${CLAUDE_SKILL_DIR}/workflows/*.md`) and every PKB template from the graph (`codemode.pkb_list_tasks({ type: "template", include_done: true })`).
+- Include every universal template file (`${CLAUDE_SKILL_DIR}/workflows/*.md`) and every PKB template from the graph (`type: "template"`).
 - For PKB templates with a `project` field, indicate their project scope in the tier column (e.g. `Project (brain)`). Foreign-project templates are displayed with their project prefix or formatted as `Project (<name>)` in the tier column without altering composition scoping.
 - Extract coverage from `description` in frontmatter, or, if that is missing, from the first sentence of `## What this step does`. Read universal template files directly via `Read`; do not run `Bash` loops.
 - Filter out dated instances (`-*-\d{8}-*`) and `status: cancelled`. Do not filter out foreign-project templates.
@@ -55,7 +65,7 @@ Resolve the template slug across tiers in precedence order. Output the winning c
 Update existing templates in place. Authoring changes must comply with `ida:craft` (`## Workflow Templates`).
 
 - **Universal**: Edit the file directly.
-- **PKB**: Pass only the markdown body below the closing `---` to `codemode.pkb_update_body` to prevent frontmatter duplication.
+- **PKB**: Update only the markdown body below the closing `---` in the PKB node to prevent frontmatter duplication.
 
 ### preview
 
@@ -68,13 +78,13 @@ Do not ad lib extra requirements or guess at scope; pass any ambiguity in the pr
 
 ### retire
 
-1. Check for tasks governing retirement (`codemode.pkb_search`). Halt if unfulfilled dependencies exist.
-2. Delete the artifact (`rm` for universal files, `codemode.pkb_delete` for PKB nodes).
+1. Search the PKB for tasks governing retirement. Halt if unfulfilled dependencies exist.
+2. Delete the artifact (`rm` for universal files, or delete the PKB node).
 3. Name the superseding workflow in the release message or commit.
 
 ## Constraints
 
 - Query tiers dynamically; do not rely on static indices or memory.
-- In `portal_codemode_execute` calls, always provide a concise 1-line `toolSummary` argument. In batch queries (`pkb_list_tasks`, `pkb_search`), use native `metadata_only` / `max_bytes` parameters and project batch results in JavaScript to `{ id, title, status, parent, body }` (omitting duplicate `content` fields and null frontmatter keys) to prevent harness spills, while allowing full untruncated `body` reads for the primary target artifact under review or edit.
+- Query PKB templates at metadata/summary detail when enumerating lists, and read full bodies only for the target template under view, preview, or edit.
 - Keep templates focused on obligations and exit criteria; leave operational method to skills.
 - Do not mint tasks or dispatch work during library management operations.

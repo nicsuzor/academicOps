@@ -1,7 +1,12 @@
 import { PluginStore } from "../store.js";
 import { QuestionBroker } from "../telegram/questions.js";
 import { PermissionRelay } from "../mcp/permissions.js";
-import { verifySessionToken, verifyTelegramInitData, createSessionToken } from "./auth.js";
+import {
+  verifySessionToken,
+  verifyTelegramInitData,
+  createSessionToken,
+  verifyCfAccessJwt,
+} from "./auth.js";
 import { fetchPrDiff, FormattedPrDiff } from "./review.js";
 import { PluginConfig } from "../config.js";
 
@@ -41,7 +46,7 @@ export function broadcastSseEvent(event: string, data: any, seq: number) {
   }
 }
 
-function authenticateRequest(req: Request, ctx: WebContext): boolean {
+async function authenticateRequest(req: Request, ctx: WebContext): Promise<boolean> {
   // Mode A: Cookie ida_session
   const cookieHeader = req.headers.get("Cookie") || "";
   const match = cookieHeader.match(/ida_session=([^;]+)/);
@@ -67,13 +72,23 @@ function authenticateRequest(req: Request, ctx: WebContext): boolean {
   // Mode B: Perimeter identity assertion header
   const cfHeader = req.headers.get("Cf-Access-Jwt-Assertion");
   if (cfHeader && cfHeader.trim().length > 0) {
-    return true;
+    const cfResult = await verifyCfAccessJwt(cfHeader.trim(), {
+      keys: ctx.config.cfAccessKeys,
+      aud: ctx.config.cfAccessAud,
+      teamDomain: ctx.config.cfAccessTeamDomain,
+      allowedEmails: ctx.config.cfAccessAllowedEmails,
+      certsUrl: ctx.config.cfAccessCertsUrl,
+    });
+    if (cfResult.valid) {
+      return true;
+    }
+    return false;
   }
 
   return false;
 }
 
-export function handleApiRequest(req: Request, ctx: WebContext): Response | Promise<Response> {
+export async function handleApiRequest(req: Request, ctx: WebContext): Promise<Response> {
   const url = new URL(req.url);
   const path = url.pathname;
 
@@ -128,7 +143,7 @@ export function handleApiRequest(req: Request, ctx: WebContext): Response | Prom
   }
 
   // All other /api/app/* routes require valid session cookie or perimeter/bridge credentials
-  if (!authenticateRequest(req, ctx)) {
+  if (!(await authenticateRequest(req, ctx))) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { "Content-Type": "application/json" },

@@ -125,12 +125,16 @@ describe("Progressive disclosure: Format and Entities", () => {
     }
   });
 
-  test("normalizes reactions to Telegram allow-list and strips VS16", () => {
+  test("normalizes reactions by stripping VS16, canonical mapping, and validating single emoji grapheme", () => {
     // ✍️ has VS16 (\uFE0F); Telegram requires bare ✍
     expect(normalizeReaction("✍️")).toBe("✍");
     expect(normalizeReaction("👍")).toBe("👍");
     expect(normalizeReaction("❤️")).toBe("❤");
-    // Invalid reaction maps to null or fallback
-    expect(normalizeReaction("🚀")).toBeNull();
+    // Arbitrary single valid emojis are accepted
+    expect(normalizeReaction("🚀")).toBe("🚀");
+    expect(normalizeReaction("🐱")).toBe("🐱");
+    // Multi-emoji strings or non-emoji text are rejected
+    expect(normalizeReaction("💩🦄")).toBeNull();
+    expect(normalizeReaction("hello")).toBeNull();
   });
 });

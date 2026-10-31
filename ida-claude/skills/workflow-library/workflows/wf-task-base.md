@@ -5,8 +5,9 @@ description: Foundation for every task executed from a task file via /ida:pull -
 tags: [base, task]
 ---
 
-- **GOAL:** <one sentence>
-- **ACCEPTANCE CRITERIA:** <one line each>
+- **GOAL:** <one sentence stating the observable outcome>
+- **STRUCTURAL PLACEMENT:** Tasks requiring review or follow-up must be structured either as a single task with internal subtasks (if executable by the same agent in one session) or as a dedicated epic with child tasks (if multi-session or independent context is required); never as loose siblings under an external parent. Research on design questions includes by default a dependent decision task assigned to the user (`assignee: user`) to select the implementation route.
+- **ACCEPTANCE CRITERIA:** <one line each, stating observable end-state conditions rather than mechanism prescriptions or file:line edits; workers read target files in full before editing>
   - <criterion>
   - <criterion>
 - [ ] **OUTPUT:** <destination repo or URI (no local paths, polecats run isolated)>

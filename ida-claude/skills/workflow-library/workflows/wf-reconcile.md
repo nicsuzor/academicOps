@@ -1,5 +1,5 @@
 ---
-description: Truth maintenance over the task graph -- reconcile merged PRs, move review tasks to reality under the bazaar model, handle failed tasks by deciding next actions from the parent epic, write items reaching the user to today's daily note, record world-fact cancellations, and demote affected tasks to inbox.
+description: Truth maintenance over the task graph -- reconcile merged PRs, transition tasks in review to done when covered by review tasks or open PRs, handle failed tasks by deciding next actions from the parent epic, write items reaching the user to today's daily note, record world-fact cancellations, and demote affected tasks to inbox.
 id: wf-reconcile
 tags:
   - wf-template
@@ -18,13 +18,15 @@ Maintains truth over the task graph: establishes facts about in-flight work and 
 2. **Reconcile pull requests**: Match closed pull requests to tasks by structured indicators (`pr_url`, body task ID, recorded branch, `polecat/` prefix, exact title).
    - **Merged PRs**: Write `status: done` unconditionally on an observed merged PR (`pr_url`, merge timestamp, branch). Do not re-judge acceptance criteria. Where a merged PR resolves part of a multi-component task or user request, itemize completed versus incomplete elements in the task record; uncompleted components remain active or carry over as open work.
    - **Closed without merge**: Surface for routing; never auto-complete or auto-requeue.
-   - **Open PRs**: Read review and check state with `gh pr view <n> --repo <owner/repo> --json state,isDraft,mergedAt,reviewDecision,statusCheckRollup`. `reviewDecision: CHANGES_REQUESTED` or a failing check in `statusCheckRollup` routes the task to `queued` or a follow-up task, never `done` or `review`. Otherwise, a `review` task whose PR is still open is waiting on the repository to merge it; leave it until the PR merges or closes.
-3. **The Review Lifecycle**: Apart from a task waiting on its open PR (step 2), `review` means a worker needs help to finish the task; it is transient, never a waiting state. Under the bazaar model, any pass reading a `review` task owns the outcome in that pass and mints any needed tasks; nothing is deferred to a later sweep or the original dispatcher. Bring the record to reality and take exactly one outcome:
-   - `ready` or `queued`: not finished properly, an agent can finish it.
-   - `partial` plus a new review task queued for an agent, wired so the source cannot complete before it (source `depends_on` it). Dispatch or queue the review task so it does not sit idle.
-   - `done` plus a clean split of partly-finished work (sequencing handled by the epic).
-   - `failed`: terminal failure with documented root cause.
-     Nothing is left in `review`.
+   - **Open PRs**: Read review and check state with `gh pr view <n> --repo <owner/repo> --json state,isDraft,mergedAt,reviewDecision,statusCheckRollup`. `reviewDecision: CHANGES_REQUESTED` or a failing check in `statusCheckRollup` routes the task to `queued` or a follow-up task, never `done` or `review`.
+3. **Reconciling Tasks in Review**: Agents never release tasks into `review`. Tasks explicitly held in `review` by the user (`assignee: user`) represent manual inspection holds and are left untouched. For all other tasks in `status: review`:
+   - **Covered by a review or QA task**: If an active review or QA task points to the task via graph dependency edges (`needs` or `depends_on` contains the task ID), mutate the task status immediately to `done`. This unblocks dependent tasks on the graph.
+   - **Uncovered with an open PR**: If no review or QA task covers the task, but an open pull request is recorded on the task, mutate the task status to `done` and, if the PR risk tier warrants verification, mint/queue a `QA: <title>` follow-up task with `needs: [<task_id>]`.
+   - **Uncovered without a PR**: If the task has no PR and no covering review task, verify recorded evidence against acceptance criteria:
+     - If criteria are fully satisfied with verifiable evidence: mutate status to `done`.
+     - If incomplete agent work remains: transition to `queued` (or `partial` if partly delivered).
+     - If principal input is required: transition to `partial` (recording the question in `reason`) and escalate to today's daily note `## With you`.
+       No agent task is left in `review`.
 4. **Decide next action for failed tasks from the parent epic**: Workers never create or name follow-up tasks, and release `failed` when a check (e.g. QA or review) or implementation fails. For every task marked `failed` within the sweep window:
    - Inspect the failure record: failure evidence, unmet criteria, and documented root cause in `## Report` and `reason`.
    - Load the task's parent epic and its wider graph context (siblings, dependencies, and epic goals).
@@ -53,8 +55,8 @@ Maintains truth over the task graph: establishes facts about in-flight work and 
 - Must not run concurrently with another reconcile: maintain single-flight execution (one reconcile at a time; halt immediately if another reconcile is active).
 - Must not move a claimed (`in_progress`) task backwards while an active worker holds it.
 - Must not leave minted agent review tasks in review or unowned (minted review tasks must be queued or dispatched).
-- Must not write `done` on any evidence other than an observed merged PR or a clean finished part of a split task.
-- Must not leave tasks in `review` or route tasks to `review` as a waiting state, except a task whose open PR awaits merge.
+- Must not write `done` on any evidence other than an observed merged PR, a clean finished part of a split task, or an agent task in `review` covered by a review/QA task, open PR, or complete verifiable evidence.
+- Must not leave agent tasks in `review` or route tasks to `review`; all agent tasks found in `review` must be transitioned immediately.
 - Must not defer `review` outcomes to a later pass or to the original dispatcher.
 - Must not escalate outside the framework (escalation is one level per hop on the record).
 - Must not demand completion receipts for direct principal closures.

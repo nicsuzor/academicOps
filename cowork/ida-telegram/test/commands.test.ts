@@ -180,6 +180,9 @@ describe("Native Telegram bot commands for Ida (FR-8.1)", () => {
       "reconcile",
       "hydrate",
       "up",
+      "reify",
+      "dispatch",
+      "daily",
     ]);
 
     expect(strategicCmds.map((c) => c.command)).toEqual([
@@ -189,7 +192,62 @@ describe("Native Telegram bot commands for Ida (FR-8.1)", () => {
       "q",
       "hydrate",
       "up",
+      "strategic_review",
+      "argument_map",
+      "reify",
+      "dispatch",
+      "daily",
     ]);
+
+    // AC1 & AC2: strategic review, argument map and decompose appear on Ida Actual (strategic) menu only
+    const actualOnly = ["strategic_review", "argument_map", "decompose"];
+    for (const cmd of actualOnly) {
+      expect(strategicCmds.some((c) => c.command === cmd)).toBe(true);
+      expect(primeCmds.some((c) => c.command === cmd)).toBe(false);
+    }
+  });
+
+  test("AC3: added commands map to their respective skills, and /daily updates daily note and replies on Telegram", () => {
+    const allowFrom = [8860530746];
+    const update: TelegramUpdate = {
+      update_id: 206,
+      message: {
+        message_id: 306,
+        date: Date.now(),
+        chat: { id: 8860530746, type: "private" },
+        from: { id: 8860530746, is_bot: false, first_name: "Nic" },
+        text: "/daily",
+      },
+    };
+
+    const event = parseInboundUpdate(update, allowFrom);
+    expect(event).not.toBeNull();
+    expect(event?.event).toBe("bot_command");
+    expect(event?.meta.command).toBe("/daily");
+    expect(event?.meta.skill).toBe("ida:daily");
+    expect(event?.meta.default_action).toContain("daily note");
+    expect(event?.meta.default_action).toContain("Telegram");
+    expect(event?.content).toContain("daily note");
+    expect(event?.content).toContain("Telegram");
+
+    // Verify all added commands map to valid skills
+    const addedExpectedSkills: Record<string, string> = {
+      strategic_review: "ida:strategic-review",
+      argument_map: "ida:argument-map",
+      reify: "ida:reify",
+      dispatch: "ida:dispatch",
+      daily: "ida:daily",
+    };
+
+    for (const [cmd, expectedSkill] of Object.entries(addedExpectedSkills)) {
+      const spec = getBareCommandBehavior(cmd, "strategic");
+      expect(spec).toBeDefined();
+      expect(spec?.skill).toBe(expectedSkill);
+    }
+
+    // Hyphenated variants match the registered command behavior
+    expect(getBareCommandBehavior("/strategic-review")?.skill).toBe("ida:strategic-review");
+    expect(getBareCommandBehavior("/argument-map")?.skill).toBe("ida:argument-map");
   });
 
   test("registerCommands registers Prime commands for prime persona and Strategic commands for strategic persona", async () => {
@@ -246,6 +304,9 @@ describe("Native Telegram bot commands for Ida (FR-8.1)", () => {
         "reconcile",
         "hydrate",
         "up",
+        "reify",
+        "dispatch",
+        "daily",
       ]);
 
       expect(registeredPayloads["strategize"]).toBeDefined();
@@ -256,6 +317,11 @@ describe("Native Telegram bot commands for Ida (FR-8.1)", () => {
         "q",
         "hydrate",
         "up",
+        "strategic_review",
+        "argument_map",
+        "reify",
+        "dispatch",
+        "daily",
       ]);
     } finally {
       globalThis.fetch = origFetch;
@@ -274,6 +340,9 @@ describe("Native Telegram bot commands for Ida (FR-8.1)", () => {
       "reconcile",
       "hydrate",
       "up",
+      "reify",
+      "dispatch",
+      "daily",
     ]);
 
     const configIda = loadConfig({
@@ -287,6 +356,11 @@ describe("Native Telegram bot commands for Ida (FR-8.1)", () => {
       "q",
       "hydrate",
       "up",
+      "strategic_review",
+      "argument_map",
+      "reify",
+      "dispatch",
+      "daily",
     ]);
   });
 

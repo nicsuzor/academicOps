@@ -192,6 +192,7 @@ export class StdioMcpServer {
       const text = (args.text as string) || "";
       const detail = args.detail as string | undefined;
       const chatId = (args.chat_id as number) || defaultChatId;
+      const messageThreadId = (args.message_thread_id ?? args.thread_id) as number | undefined;
       const replyTo = args.reply_to as number | undefined;
 
       // FR-7.1: Determine whether voice reply is requested explicitly or via voice_replies setting
@@ -240,9 +241,13 @@ export class StdioMcpServer {
       if (this.bot) {
         const sendRes = await this.bot.sendReply({
           chatId,
+          messageThreadId,
           formatted,
           detailsId,
-          buttons: args.buttons as Array<{ label: string; callback_data?: string; url?: string; web_app?: string }> | undefined,
+          buttons: args.buttons as any,
+          buttonLayout: (args.button_layout ?? args.buttonLayout) as number[] | number | undefined,
+          buttonsPerRow: (args.buttons_per_row ?? args.buttonsPerRow) as number | undefined,
+          predefinedRow: (args.predefined_row ?? args.predefined_buttons_row ?? args.predefinedRow) as boolean | undefined,
           voice: isVoice,
           replyTo,
           feedback: typeof args.feedback === "boolean" ? args.feedback : undefined,
@@ -283,7 +288,10 @@ export class StdioMcpServer {
       }
 
       if (this.bot) {
-        await this.bot.setReaction(chatId, messageId, norm);
+        const res = await this.bot.setReaction(chatId, messageId, norm);
+        if (!res.ok) {
+          return { success: false, error: res.error || "Reaction failed" };
+        }
       }
       return { success: true, reaction: norm };
     }
@@ -294,6 +302,7 @@ export class StdioMcpServer {
         (args.session_id as string | undefined) ||
         (args.sessionId as string | undefined) ||
         ((args._session as any)?.session_id as string | undefined);
+      const topThreadId = (args.message_thread_id ?? args.thread_id) as number | undefined;
       const topMiniAppOnly = Boolean(
         args.mini_app_only || args.miniapp_only || args.miniAppOnly || args.chat === false
       );
@@ -310,6 +319,8 @@ export class StdioMcpServer {
         turnId?: string;
         session_id?: string;
         sessionId?: string;
+        message_thread_id?: number;
+        thread_id?: number;
         detail?: string;
         details?: string;
         detailsId?: string;
@@ -340,6 +351,10 @@ export class StdioMcpServer {
           detailsId = this.store.storeDetails(detailText);
         }
 
+        const effectiveThreadId =
+          (q.message_thread_id ?? q.thread_id ?? topThreadId) ??
+          this.bot?.getLastThreadId(defaultChatId);
+
         const result = await this.broker.askUser({
           question: q.question,
           header: q.header,
@@ -351,6 +366,7 @@ export class StdioMcpServer {
           turnId: q.turn_id || q.turnId || topTurnId,
           sessionId: q.session_id || q.sessionId || topSessionId,
           chatId: defaultChatId,
+          messageThreadId: effectiveThreadId,
           detail: detailText,
           detailsId,
           mini_app_only: isMiniAppOnly,
@@ -362,7 +378,7 @@ export class StdioMcpServer {
         if (!isMiniAppOnly && this.bot) {
           const card = this.broker.renderQuestionCard(result.questionId, this.config.miniAppUrl);
           if (card) {
-            await this.bot.sendQuestionCard(defaultChatId, result.questionId, card);
+            await this.bot.sendQuestionCard(defaultChatId, result.questionId, card, effectiveThreadId);
           }
         }
       }
@@ -491,6 +507,48 @@ export class StdioMcpServer {
         await this.bot.editMessage(chatId, messageId, text);
       }
       return { success: true };
+    }
+
+    if (name === "rename_thread" || name === "rename_topic" || name === "edit_forum_topic") {
+      const chatId = (args.chat_id as number) || defaultChatId;
+      const messageThreadId =
+        ((args.message_thread_id ?? args.thread_id) as number | undefined) ??
+        this.bot?.getLastThreadId(chatId);
+      const newName =
+        typeof args.name === "string"
+          ? args.name.trim()
+          : typeof args.title === "string"
+            ? args.title.trim()
+            : "";
+      const iconCustomEmojiId = (args.icon_custom_emoji_id ?? args.iconCustomEmojiId) as string | undefined;
+
+      if (!newName) {
+        return { success: false, error: "Missing name: thread name must be a non-empty string" };
+      }
+      if (newName.length > 128) {
+        return { success: false, error: "Thread name cannot exceed 128 characters" };
+      }
+      if (messageThreadId === undefined || isNaN(messageThreadId)) {
+        return {
+          success: false,
+          error: "Missing thread ID: pass message_thread_id or invoke inside an active thread",
+        };
+      }
+
+      if (this.bot) {
+        const res = await this.bot.editForumTopic(chatId, messageThreadId, newName, iconCustomEmojiId);
+        if (!res?.ok) {
+          return { success: false, error: res?.description || "Failed to rename thread" };
+        }
+        return {
+          success: true,
+          chat_id: chatId,
+          message_thread_id: messageThreadId,
+          name: newName,
+        };
+      }
+
+      return { success: false, error: "Telegram bot client is not available" };
     }
 
     throw new Error(`Unknown tool: ${name}`);

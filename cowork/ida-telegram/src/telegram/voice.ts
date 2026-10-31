@@ -5,6 +5,7 @@ export interface VoiceInEventInput {
   audioPath?: string;
   messageId: number;
   replyToMessageId?: number;
+  messageThreadId?: number;
 }
 
 export interface VoiceChannelEvent {
@@ -19,6 +20,11 @@ export function buildVoiceInEvent(input: VoiceInEventInput): VoiceChannelEvent {
     voice: "true",
     message_id: String(input.messageId),
   };
+
+  if (input.messageThreadId !== undefined) {
+    baseMeta.message_thread_id = String(input.messageThreadId);
+    baseMeta.thread_id = String(input.messageThreadId);
+  }
 
   if (input.duration !== undefined) {
     baseMeta.duration = String(input.duration);

@@ -7,7 +7,7 @@ description: Write or check the argument at the end of an evidence-backed report
 
 A report that rests on evidence ends in an argument whose final conclusion answers the asker's questions. The writer lays it out so each step can be judged from the report alone; the checker judges every step and records why.
 
-**Standing rule: a format breach on an argument with at least one inference line is waivable on PASS and rewritten by the receiver; 0 inference lines or substantive defects require REVISE or FAIL and cannot pass or relay upward.**
+**Standing rule: a format breach on an argument with at least one inference line is waivable on PASS and rewritten by the receiver; 0 inference lines, substantive defects, or rule violations in delivered work require REVISE or FAIL and cannot pass or relay upward. Rule violations in deliverables are strictly non-waivable.**
 
 ## Writing the Report Argument
 
@@ -48,7 +48,7 @@ The null form clears the premise-check gate with no agent action. When an expect
 
 ### Basis Phrases (Closed Vocabulary)
 
-Premise lines end with their basis in words, drawn strictly from this closed vocabulary:
+Per [Human Readability First](../../../rbg/skills/axioms/human-readability-first.md), these basis phrases represent semantic categories rather than rigid mechanical formulas to be parsed by regex; evaluation of basis validity is performed by agentic comprehension. Premise lines end with their basis in words, drawn strictly from this closed vocabulary:
 
 | Phrase | Rank | Meaning |
 | - | - | - |
@@ -68,8 +68,7 @@ Premise lines end with their basis in words, drawn strictly from this closed voc
 4. **Pointers as lettered endnotes**: Pointers live under `notes:` and are cited as `^a` on the line.
 5. **The inference line**: Starts `--`, ends `--`, on one line: warrant rule, then `Unless: <defeater>; <status>`.
 6. **Chain conclusions**: Each step begins `So` and chains into subsequent steps.
-7. **Relay upward**: Relaying a report upward requires its premise-check verdict; name the line each relayed sentence restates. Read claims against their source of record before relaying. Never relay an argument with 0 inference lines or substantive defects as fact.
-8. **Method pairing line**: When an ask specifies a method, form, design, or value, the report carries a pairing line setting each specified feature beside what was done (e.g. `@file -> @./at-test-target.md`; `read back -> Read tool`), naming each departure with its reason, else `departures: none`. A detail in a method specification is load-bearing regardless of typography (quoted, backticked, or plain) unless the ask's purpose shows it free. Rewording that preserves the construct is not a departure; exact wording is not required where the construct is preserved.
+7. **Relay upward**: Relaying a report upward requires its premise-check verdict; name the line each relayed sentence restates. Relay sentences only from checked argument lines without reading sources. Never relay an argument with 0 inference lines or substantive defects as fact. Disclosed rule violations in a received report must be propagated upward in the relay and never dropped across hops. Relay only premises and conclusions; a struck doubt or an untried defeater is never relayed as a risk.
 
 ## Checking a Received Report or Direction
 
@@ -78,37 +77,35 @@ Premise lines end with their basis in words, drawn strictly from this closed voc
 When an incoming direction arrives from another agent:
 
 1. Verify that every instruction and requirement derives faithfully from `## Ask` (or active user directives).
-2. Refuse (`REVISE`) unverified caller method or template prescriptions before logging deliverables. A caller may pass only `## Ask` (verbatim with ID), strategic fit/context, and the objective or skill invocation.
-3. Once verified, log deliverables as a frozen `## Acceptance` checklist on a PKB task before work starts.
+2. Verify brief satisfiability: evaluate whether all demanded deliverables can be produced by your own role and route before terminating. Refuse (`REVISE`) directions demanding deliverables belonging to subsequent pipeline stages or unfulfillable by construction at your stopping point.
+3. Refuse (`REVISE`) unverified caller method or template prescriptions before logging deliverables. A caller may pass only `## Ask` (verbatim with ID), strategic fit/context, and the objective or skill invocation.
+4. Once verified, log deliverables as a frozen `## Acceptance` checklist on a PKB task before work starts.
 
 ### Reports
 
-Take observed premises with a pointer as given: never open a pointer or redo the work. A PKB node or peer writing ranks as `worker reported, unchecked`. Run four tests on every inference line:
+Take observed premises with a pointer as given: never open a pointer or redo the work. A checker never reads a source to check someone's claim; it reads one only to settle a genuine conflict between two records. When a claim lacks evidence or rests on an unchecked basis, do not inspect the source: record REVISE or FAIL naming the defect. A doubt is a claim. A defeater, risk or "I haven't checked" the writer raises with no basis for thinking it true (`not tried`, with no reason given that the step would fail) is a speculation, not a defect in the argument: it neither undercuts the step nor becomes a finding. Strike it: judge Valid as if it were absent, relay nothing from it, and send nothing back for it. Where the work itself shows the answer on its first run, the doubt is never worth a probe, a trial run or a lookup; asked about it, answer that it had no basis. A PKB node or peer writing ranks as `worker reported, unchecked`.
+
+In addition to the four inference tests, the checker examines the entire report (prose and argument) for rule compliance in the delivered work:
 
 | Test | Passes when | Failure looks like |
 | - | - | - |
-| **Valid** | Premises meet every condition of the warrant; conclusion is no wider than premises; construct matches and sample is adequate; all specified methods, forms, designs, and values are paired and accounted for. | Missing condition; unruled defeater; scope drift (`#scope-drift`); construct mismatch or drift (`#construct-drift`: unnamed departure or silent substitution of specified method, form, design, or value); method gap (`#method-gap`: method cannot observe what is claimed); sample inadequacy (unexplained n=1 or n=2 probes asserted as proof of representative classes). |
+| **Rule-Consistent** | The actions, omissions, and claims in the delivered work do not contradict standing axioms, project rules, or specifications. Disclosing an out-of-scope breach under Rule 4 is compliant escalation. | Report states or admits leaving a rule breach in place in its own deliverable, waives a rule without a higher rule or direct user directive, or describes an action forbidden by a standing rule. |
+
+Run four tests on every inference line:
+
+| Test | Passes when | Failure looks like |
+| - | - | - |
+| **Valid** | Premises meet every condition of the warrant; conclusion is no wider than premises; construct matches and sample is adequate. | Missing condition; unruled defeater that has a basis (a baseless one is struck, not ruled on); scope drift; construct mismatch (quantitative rank checks substituted for qualitative evaluation); sample inadequacy (unexplained n=1 or n=2 probes asserted as proof of representative classes). |
 | **Supported** | Each premise's basis can bear the step's stakes. Weakest premise bounds conclusion. | `worker reported, unchecked` or `assumed` on high-stakes step. |
-| **Answered** | Final conclusion answers what each ask ID needs in substance. | Narrower conclusion; relayer acceptance items substituted for ask needs. |
+| **Answered** | Final conclusion answers what each ask ID needs in substance. An ask whose demand was unfulfillable by construction at the reporter's stopping point is satisfied when the conclusion establishes unreachability; checkers must link the conclusion (`← (n)`) and not mark it `unanswered` or issue REVISE/FAIL. | Narrower conclusion; relayer acceptance items substituted for ask needs; marking an ask unanswered when its unreachability by construction is validly established. |
 | **Sufficient** | Proportionality holds: materiality, sufficiency (obvious, authority-backed, low-stakes), and necessity. A task's primary ask or acceptance criterion is never low-stakes or obvious. | Complex unbacked warrant on high-stakes step without decomposition; treating a primary ask or acceptance criterion as low-stakes or obvious. |
 
 Proportionality: accept warrants as stated when obvious, authority-backed (strictly limited to user words or governing spec), backed by a cited verdict, or cheap to reverse. A task's primary ask or acceptance criterion is never low-stakes or obvious. Send back for decomposition only when complex, unbacked, or high-stakes.
 
-#### Fidelity Procedure
-
-When checking an inference line or deliverable where the ask specifies a method, form, design, or value:
-
-1. **Extract specified features**: Read `## Ask` for any specified method, form, design, or value. Details in method specifications are load-bearing regardless of typography (quoted, backticked, or plain) unless the ask's purpose shows them free.
-2. **Check the pairing line**: Verify the report pairs each specified feature with what was done.
-3. **Judge departures**:
-   - An unnamed departure (silent substitution of a specified method, form, design, or value) fails `Valid` with `#construct-drift` or `#method-gap`.
-   - A block that silently swaps a specified form cannot PASS; return for revision (`REVISE`).
-   - Rewording that preserves the construct and distinction passes; do not require verbatim wording outside specified forms or methods.
-
 ## Recording the Verdict
 
-- **PASS**: Every inference holds, every ask is answered, the weakest basis bears the stakes, and at least one inference line is tested (>= 1). Format-only defects on a substantively sound argument with >= 1 inference line are waived under `Waived:` and rewritten into standard form by the receiver before relaying upward.
-- **REVISE**: Name the line, defect tag (`#missing`, `#scope-drift`, `#conflict`, `#unanswered`, `#undercut`, `#construct-drift`, `#method-gap`), and remedy. Mandatory for substantive defects or 0 inference lines (bare assertions); cannot be relayed upward as fact. Return to sender.
+- **PASS**: Every inference holds, every ask is answered, the weakest basis bears the stakes, and at least one inference line is tested (>= 1). Format-only defects on a substantively sound argument with >= 1 inference line are waived under `Waived:` and rewritten into standard form by the receiver before relaying upward. Rule violations in deliverables can never be waived.
+- **REVISE**: Name the line, defect tag (`#missing`, `#scope-drift`, `#conflict`, `#unanswered`, `#undercut`), and remedy. Mandatory for substantive defects, rule violations in delivered work (return with `#conflict`), or 0 inference lines (bare assertions); cannot be relayed upward as fact. Return to sender.
 - **FAIL**: Conclusion does not answer the ask or contradicts evidence. Mandatory for substantive defects; cannot be relayed upward as fact.
 
 Write the reason as the seven keyed lines:

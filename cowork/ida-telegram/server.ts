@@ -166,8 +166,13 @@ export function createBridgeServer(
           if (req.type === "ask_user") {
             const postedIds: string[] = [];
             const topMiniAppOnly = req.mini_app_only === true || req.chat === false;
+            const topThreadId = (req.message_thread_id ?? req.thread_id) as number | undefined;
+            const defaultChatId = config.allowFrom[0];
             for (const q of req.questions || []) {
               const isMiniAppOnly = topMiniAppOnly || q.mini_app_only === true || q.chat === false;
+              const effectiveThreadId =
+                (q.message_thread_id ?? q.thread_id ?? topThreadId) ??
+                (defaultChatId ? bot?.getLastThreadId(defaultChatId) : undefined);
               const result = await broker.askUser({
                 question: q.question,
                 header: q.header,
@@ -178,7 +183,8 @@ export function createBridgeServer(
                 options: q.options,
                 multiSelect: q.multiSelect,
                 allowOther: q.allowOther,
-                chatId: config.allowFrom[0],
+                chatId: defaultChatId,
+                messageThreadId: effectiveThreadId,
                 turnId: q.turnId || q.turn_id || req.turn_id || req.turnId,
                 sessionId: q.sessionId || q.session_id || req.session_id || req.sessionId,
               });
@@ -186,8 +192,8 @@ export function createBridgeServer(
 
               if (bot && !isMiniAppOnly) {
                 const card = broker.renderQuestionCard(result.questionId);
-                if (card && config.allowFrom[0]) {
-                  await bot.sendQuestionCard(config.allowFrom[0], result.questionId, card);
+                if (card && defaultChatId) {
+                  await bot.sendQuestionCard(defaultChatId, result.questionId, card, effectiveThreadId);
                 }
               }
             }
