@@ -413,7 +413,7 @@ def check_argdown_block(
             "answers:\n"
             "  <ask_id>: <line_number | none>\n"
             "===\n\n"
-            "(1) <empirical observation quoting deciding values>. -- <basis phrase> ^note\n"
+            "(1) <empirical observation quoting deciding values inline>.\n"
             "-- <warrant rule>. Unless: <defeater>; <status>. --\n"
             "(2) So, <conclusion answering ask>.\n"
             "```",
@@ -749,7 +749,7 @@ def check_argdown_block(
             f"Defect: Unexpected syntax: '{stripped}'\n"
             f"Required remediation format:\n"
             f"Argdown lines must be one of:\n"
-            f"  (n) <statement>. -- <basis phrase> ^note       # Numbered premise\n"
+            f"  (n) <statement with inline citations>          # Numbered premise\n"
             f"  -- <warrant>. Unless: <defeater>; <status>. --  # Inference bar\n"
             f"  (n) So, <conclusion>.                           # Conclusion line\n"
             f"  [Title]: <statement text>                       # Statement declaration\n"
@@ -997,7 +997,7 @@ def remediation_for_failure(failure: str) -> str:
             "Required remediation format: Reason must include all 7 keyed lines:\n"
             "Judged: <claim_id>; asks <ask_id>\n"
             "Valid: (n) holds -- <rule and why it yields (n)>\n"
-            "Supported: weakest <basis phrase> -- (<premise n>) <reason>\n"
+            "Supported: (<premise n>) <qualitative reason / sufficiency evaluation>\n"
             "Answered: <ask_id> ← (n)\n"
             "Sufficient: (n) material; obvious; no objection\n"
             "Waived: none\n"
@@ -1239,41 +1239,6 @@ def pass_failures(
                         f"Valid is keyed by lines {keyed}; the inference lines yield {expected}"
                     )
 
-    if block is not None and not block_waived and block.premises and reason.get("Supported"):
-        named = reason.supported_basis(vocab)
-        if named is None:
-            failures.append(
-                f"Supported names no basis phrase from {vocab.path.name}: "
-                f"{reason.get('Supported')[0]!r}"
-            )
-        else:
-            basis_wording_waived = "basis wording" in waived
-            premise_ranks: list[tuple[Premise, int]] = []
-            for p in block.premises:
-                if p.basis is not None:
-                    premise_ranks.append((p, p.rank))
-                elif basis_wording_waived:
-                    premise_ranks.append((p, named.rank))
-                else:
-                    premise_ranks.append((p, 0))
-            lowest = min(r for _, r in premise_ranks)
-            if named.rank != lowest:
-                weakest_p = min(premise_ranks, key=lambda pr: pr[1])[0]
-                shown = weakest_p.basis.phrase if weakest_p.basis else "an unmatched basis"
-                failures.append(
-                    f"Supported names {named.phrase!r} (rank {named.rank}); the block's weakest "
-                    f"premise is ({weakest_p.number}) {shown!r} (rank {lowest})"
-                )
-    elif (
-        block is None or block_waived or (block is not None and not block.premises)
-    ) and reason.get("Supported"):
-        named = reason.supported_basis(vocab)
-        if named is None:
-            failures.append(
-                f"Supported names no basis phrase from {vocab.path.name}: "
-                f"{reason.get('Supported')[0]!r}"
-            )
-
     _, bad_waived = _parse_waived_entries(reason.get("Waived"), vocab)
     if bad_waived:
         failures.append(
@@ -1326,12 +1291,22 @@ def span_attributes(reason: Reason, block: Argument | None, vocab: Vocabulary) -
         weakest = block.weakest()
         if weakest is not None and weakest.basis is not None:
             weakest_phrase, weakest_term = weakest.basis.phrase, weakest.basis.term
-        elif weakest is not None:
-            weakest_phrase, weakest_term = weakest.basis_text or "", "unmatched"
+        elif weakest is not None and weakest.basis_text:
+            weakest_phrase, weakest_term = weakest.basis_text, "unmatched"
+        else:
+            named = reason.supported_basis(vocab)
+            if named is not None:
+                weakest_phrase, weakest_term = named.phrase, named.term
+            else:
+                weakest_phrase = (reason.get("Supported") or [""])[0]
+                weakest_term = "semantic"
     else:
         named = reason.supported_basis(vocab)
         if named is not None:
             weakest_phrase, weakest_term = named.phrase, named.term
+        elif reason.get("Supported"):
+            weakest_phrase = reason.get("Supported")[0]
+            weakest_term = "semantic"
     attrs["premise_check.weakest_basis"] = weakest_phrase
     attrs["premise_check.weakest_basis_term"] = weakest_term
 

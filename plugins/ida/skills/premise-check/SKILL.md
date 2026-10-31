@@ -20,13 +20,11 @@ asks:
   <ask_id>: <the asker's own words, one question>
 answers:
   <ask_id>: <number of the line that answers it>
-notes:
-  a: <path:line, span id, task id, PR>
 ===
 
-(1) <premise>. -- <basis phrase> ^a
-(2) <premise quoting deciding value>. -- <basis phrase>
-(3) <missing premise, written in>. -- assumed, not checked here
+(1) <premise with inline citation>.
+(2) <premise quoting deciding value inline>.
+(3) <missing premise, written in>.
 -- <warrant rule>. Unless: <defeater>; <ruled out by (n) | not ruled out | not tried>. --
 (4) So, <qualifier bought by (3)>, <conclusion>.
 ```
@@ -46,26 +44,24 @@ asks: none
 
 The null form clears the premise-check gate with no agent action. When an expected block is absent, the gate does not open: PASS is refused, and the receiver must return it for revision (`REVISE` "no argument supplied").
 
-### Basis Phrases (Closed Vocabulary)
+### Source Attribution Guidance
 
-Premise lines end with their basis in words, drawn strictly from this closed vocabulary:
+Premises state clean natural assertions citing sources and locators directly inline (e.g. `(path/to/file.py:42)`, `(run: exit_code = 0)`, `[[task-id]]`). Trailing mechanical basis clauses (`-- <basis phrase>`) and endnote tables (`notes:`, `^a`) are dropped. Evidence categories provide authoring guidance for source attribution:
 
-| Phrase | Rank | Meaning |
+| Category | Evidentiary Basis | Examples / Guidelines |
 | - | - | - |
-| `I read it` | 3 | Primary record, diff, log, or code read directly |
-| `I did it` | 3 | Runtime command executed, test run, or artifact generated directly |
-| `attempted, failed` | 3 | Direct reproduction attempt failed with observed error |
-| `rule` | 2 | Framework axiom, project rule, or governing specification |
-| `worker reported, verdict` | 2 | Another agent's report backed by a recorded verification ID |
-| `worker reported, unchecked` | 1 | Peer writing or PKB note without a recorded verdict |
-| `assumed, not checked here` | 0 | Unchecked assumption; requires a qualifier in its conclusion |
+| **Primary empirical observation** | Direct execution or reading | Raw observations quoting deciding values inline (`exit_code = 0`, diffs, logs, executed tests). |
+| **Tested limits** | Direct reproduction or bounded search | Failed reproduction attempts with verbatim errors or bounded zero searches. |
+| **Governing rule** | Formal framework or specification | Axioms, project rules, system specifications, or contracts. |
+| **Reported finding** | Secondary report or task record | Secondary agent reports citing a recorded verification ID (`verdict-...`), or PKB task records. |
+| **Assumed premise** | Unchecked assumption | Explicit assumption needed to complete an inference; requires qualifier in conclusion. |
 
 ### Rules for the Block
 
 1. **The ask at the top**: Copy the asker's exact words under its immutable ID (`tg-<msg_id>`, `<task_id>/AC<n>`).
-2. **Raw empirical observations**: Premises with an `observed` basis (`I did it`, `I read it`, rank = 3) state raw empirical observations quoting deciding values inline (`exit_code = 0`, `rank = 3`, `status: MERGED`). They never state evaluative or generalising conclusions restating an acceptance criterion (such as "AC1 is met" or "behavior is correct"). Evaluative and generalising conclusions must sit below an inference bar as claims derived from those observations.
-3. **Numbered premises**: Each line ends with `-- <basis phrase>`, with outside values quoted.
-4. **Pointers as lettered endnotes**: Pointers live under `notes:` and are cited as `^a` on the line.
+2. **Raw empirical observations**: Premises stating observations quote deciding values inline (`exit_code = 0`, `status: MERGED`). They never state evaluative or generalising conclusions restating an acceptance criterion (such as "AC1 is met" or "behavior is correct"). Evaluative and generalising conclusions must sit below an inference bar as claims derived from those observations.
+3. **Numbered premises**: State claims in natural language, quoting deciding values and citing sources inline (e.g. `(path/to/file.py:42)`, `(run: exit_code = 0)`). Trailing mechanical basis clauses (`-- <basis phrase>`) are dropped.
+4. **Inline citations**: Citations and pointers live directly inline with the claims they support. Lettered endnote pointers (`^n`, `notes:`) are dropped.
 5. **The inference line**: Starts `--`, ends `--`, on one line: warrant rule, then `Unless: <defeater>; <status>`.
 6. **Chain conclusions**: Each step begins `So` and chains into subsequent steps.
 7. **Relay upward**: Relaying a report upward requires its premise-check verdict; name the line each relayed sentence restates. Relay sentences only from checked argument lines without reading sources. Never relay an argument with 0 inference lines or substantive defects as fact. Relay only premises and conclusions; a struck doubt or an untried defeater is never relayed as a risk.
@@ -87,7 +83,7 @@ Take observed premises with a pointer as given: never open a pointer or redo the
 | Test | Passes when | Failure looks like |
 | - | - | - |
 | **Valid** | Premises meet every condition of the warrant; conclusion is no wider than premises; construct matches and sample is adequate. | Missing condition; unruled defeater that has a basis (a baseless one is struck, not ruled on); scope drift; construct mismatch (quantitative rank checks substituted for qualitative evaluation); sample inadequacy (unexplained n=1 or n=2 probes asserted as proof of representative classes). |
-| **Supported** | Each premise's basis can bear the step's stakes. Weakest premise bounds conclusion. | `worker reported, unchecked` or `assumed` on high-stakes step. |
+| **Supported** | Each premise is supported by evidence that can bear the step's stakes. Checked qualitatively against task stakes using semantic reasoning. | High-stakes step resting on unbacked or unchecked assertion. |
 | **Answered** | Final conclusion answers what each ask ID needs in substance. | Narrower conclusion; relayer acceptance items substituted for ask needs. |
 | **Sufficient** | Proportionality holds: materiality, sufficiency (obvious, authority-backed, low-stakes), and necessity. A task's primary ask or acceptance criterion is never low-stakes or obvious. | Complex unbacked warrant on high-stakes step without decomposition; treating a primary ask or acceptance criterion as low-stakes or obvious. |
 
@@ -95,7 +91,7 @@ Proportionality: accept warrants as stated when obvious, authority-backed (stric
 
 ## Recording the Verdict
 
-- **PASS**: Every inference holds, every ask is answered, the weakest basis bears the stakes, and at least one inference line is tested (>= 1). Format-only defects on a substantively sound argument with >= 1 inference line are waived under `Waived:` and rewritten into standard form by the receiver before relaying upward.
+- **PASS**: Every inference holds, every ask is answered, evidence sufficiency bears the stakes, and at least one inference line is tested (>= 1). Format-only defects on a substantively sound argument with >= 1 inference line are waived under `Waived:` and rewritten into standard form by the receiver before relaying upward.
 - **REVISE**: Name the line, defect tag (`#missing`, `#scope-drift`, `#conflict`, `#unanswered`, `#undercut`), and remedy. Mandatory for substantive defects or 0 inference lines (bare assertions); cannot be relayed upward as fact. Return to sender.
 - **FAIL**: Conclusion does not answer the ask or contradicts evidence. Mandatory for substantive defects; cannot be relayed upward as fact.
 
@@ -104,7 +100,7 @@ Write the reason as the seven keyed lines:
 ```text
 Judged: <claim id>; asks <ask id>, <ask id>
 Valid: (n) holds -- <rule and why it yields (n) here>
-Supported: weakest <basis phrase> -- (<premise n>) <reason>
+Supported: (<premise n>) <qualitative explanation of evidence sufficiency against stakes>
 Answered: <ask id> ← (n)
 Sufficient: (n) material; <obvious | authority-backed | low-stakes>; no objection
 Waived: none | <format item> -- <justification>
@@ -113,7 +109,7 @@ Relay: "<sentence to relay>" ← (n) | none
 
 For arguments with multiple inference lines, all yielded conclusions must be accounted for under `Valid:`--either via multiple `Valid:` lines, indented continuation lines, semicolon clauses (`(n) holds -- ...; (m) holds -- ...`), or grouped references (`(n), (m) holds -- ...` or `(n) and (m) hold -- ...`).
 
-Format items: `block`, `numbering`, `endnotes`, `basis wording`, `ask wording`, `layout`.
+Format items: `block`, `numbering`, `basis wording`, `ask wording`, `layout` (endnotes dropped/obsolete).
 
 Record the verdict:
 

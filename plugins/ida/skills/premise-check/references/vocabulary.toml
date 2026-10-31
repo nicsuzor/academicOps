@@ -16,7 +16,7 @@ reason_keys = [
 format_items = [
   "block",
   "numbering",
-  "endnotes",
+  "endnotes", # obsolete: endnote pointers dropped in favour of inline citations
   "basis wording",
   "ask wording",
   "layout",
@@ -25,10 +25,10 @@ format_items = [
 # Defect tags a `Valid:` entry may carry after `fails`.
 defect_tags = ["#missing", "#scope-drift", "#conflict", "#unanswered", "#undercut"]
 
-# Basis phrases a premise line ends with, written in words. `rank` orders
-# strength: a derived claim carries the lowest rank among its premises. A
-# premise whose basis matches no phrase counts at rank 0. `term` is the
-# machine vocabulary carried into span attributes only.
+# Basis phrases for source attribution guidance. Numeric `rank` is deprecated
+# and preserved only for backwards-compatibility; evidence sufficiency is evaluated
+# semantically by checking agents under `Supported:` rather than by rank arithmetic.
+# `term` is the machine vocabulary carried into span attributes only.
 [[basis]]
 phrase = "rule"
 term = "theory"

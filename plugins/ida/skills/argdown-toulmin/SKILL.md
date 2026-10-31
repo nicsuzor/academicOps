@@ -51,7 +51,7 @@ Attach a relation to the argument that concludes or first states the claim, neve
 - `source`: the verbatim quote (line breaks joined by single spaces, original markup kept) or the exact observed value. A derived intermediate conclusion has no `source` unless the text states it verbatim.
 - `reason`: for `"assumed"` only, the gap the item bridges. An assumed item has no `pointer` or `source`.
 
-For peer messages, task handbacks, and premise-check reports, consult [`../premise-check/SKILL.md`](../premise-check/SKILL.md) for the closed basis vocabulary in words and rank rules (`I read it`, `I did it`, `attempted, failed`, `rule`, `worker reported, verdict`, `worker reported, unchecked`, `assumed, not checked here`).
+For peer messages, task handbacks, and premise-check reports, citations and pointers are embedded directly inline in natural prose (e.g. `(path/to/file.py:42)`, `(run: exit_code = 0)`, `[[task-id]]`) rather than requiring lettered endnote tables (`notes:`, `^a`) or trailing metadata blocks. Consult [`../premise-check/SKILL.md`](../premise-check/SKILL.md) for source attribution authoring guidance.
 
 An `"observed"` or `"reported-by"` item quotes its deciding value or text (`status: MERGED`, `p = 0.004`) inline or in `source`, because a bare pointer shows only that something exists.
 
@@ -79,7 +79,7 @@ Tags go before the `{metadata}`. Each tag marks one kind of open issue:
 
 ## Presentation
 
-- Statement text is clear, direct, modern prose. The author's own wording goes verbatim in `source`, not in the statement.
+- Statement text is clear, direct, modern prose. In report handbacks (`dump`, `premise-check`), citations and locators appear directly inline with the claims they support. The author's own wording goes verbatim in `source`, not in the statement.
 - One blank line between arguments and around headings.
 
 ```argdown
