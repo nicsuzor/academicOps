@@ -1,141 +1,125 @@
 ---
-title: Capture Intake -- Mobile/Webhook Pickup into the PKB
+title: Capture Intake -- Mobile and Webhook Pickup into the PKB
 type: spec
 category: workflow
-status: draft
-tags: [spec, workflow, capture, intake, pkb, q]
+status: ready
+tags: [spec, workflow, capture, intake, pkb, daily]
 ---
 
 # Capture Intake
 
-Capture front ends commit raw notes into the PKB with no processing at capture time -- they are
-supplied by the installer, and not this spec's concern. What
-has no owner is pickup: turning a landed capture into a graph node. This spec defines the standing
-route that picks up captures in `notes/mobile-captures/`, classifies each capture, and converts
-task-like captures into tasks in place.
+Capture front ends record raw notes into the knowledge base with no processing at capture time.
+This specification defines the standing daily-run triage route that picks up captures waiting in
+the intake directory, classifies each capture, and routes or disposes of it in place.
 
-## Coverage
+## User stories
 
-| Piece | State |
-| - | - |
-| Capture front ends land raw notes in `notes/mobile-captures/` (`type: note`) | Installer-supplied |
-| Manual triage (Task / Note / Expand / Discard) at `/daily` step 1.5 | Built -- remains the fallback this route defers to |
-| Standing, automated pickup context in `/q` | Built (`plugins/ida/skills/q/SKILL.md`) |
-| PKB write that moves, renames and retypes a document while keeping its ID (`convert_document`) | Built in `nicsuzor/mem#659` (requires MCP `tools/list` publication) |
+### US-1 Autonomous daily triage of landed captures
 
-## The unprocessed marker
+As a knowledge base user capturing thoughts across mobile devices and front ends, I want unprocessed
+captures triaged during the daily note run, so that incoming thoughts are classified and actionable
+items reach my agenda without manual sorting.
 
-**A capture is unprocessed if and only if its file is still in `notes/mobile-captures/`.** There
-is no `processed` flag: front ends do not write one, and triage neither reads nor writes one. A
-routed capture always leaves the directory, by one of two moves:
+- **AC-1.1** Given unprocessed capture files in `notes/mobile-captures/`, when the daily triage process
+  runs, then every capture leaves the intake directory via in-place conversion or deletion.
+- **AC-1.2** Given an empty capture intake directory, when the daily triage process runs, then the run
+  completes cleanly with zero noise or warning.
+- **AC-1.3** Given an actionable request capture, when triaged as a task, then the document is retyped
+  and relocated into active tasks in place, retaining its original identifier and revision history.
+- **AC-1.4** Given a capture folded into an existing note or task, when the destination write fails,
+  then the source capture remains untouched in the intake directory.
+- **AC-1.5** Given a capture triaged as a reference note, when the destination note write is confirmed,
+  then the source capture note is deleted.
 
-- **Task or Expand:** the capture's own file becomes the task -- moved out of the directory into
-  the task location (see Routing procedure).
-- **Note or Discard:** the capture is deleted after its content is placed (Note) or judged not
-  worth keeping (Discard) -- the same "no tombstone, git holds the history" doctrine `/reconcile`
-  applies to harvested tasks.
+### US-2 Handling captures with unreadable or ambiguous intent
 
-Every run processes whatever is in the directory. Nothing is skipped because a previous run missed
-it: a previous run either routed it (it is no longer there) or left it (it is still there,
-unambiguously pending). There is no window to track. `/daily` step 1.5 triages by the same rule --
-whatever is in the directory -- and finds fewer captures because this route has already cleared the
-confident ones.
+As a user dictating thoughts on the move, I want unreadable or ambiguous captures handled safely
+during unattended daily runs, so that accidental noise is discarded while genuine thoughts are
+preserved for clarification without stalling headless execution.
 
-## Routing procedure
+- **AC-2.1** Given a capture containing only transcription noise, empty input, or accidental fragments,
+  when daily triage runs, then the capture is deleted.
+- **AC-2.2** Given a capture containing substantive text whose actionability, parent, or destination
+  cannot be resolved autonomously, when daily triage runs, then the capture is converted in place into
+  an inbox probe task documenting the ambiguity, without halting execution for interactive prompts.
+- **AC-2.3** Given voice-dictated captures, when phonetic or homophone transcription inaccuracies exist,
+  then interpretation resolves meaning in context before evaluating for ambiguity.
 
-**Grain:** one capture note is one unit of judgment, matching `/reconcile`'s per-task grain.
+## Design
 
-**Owner:** `ida:q` -- the Stage 1 Intake & Capture skill (`plugins/ida/skills/q/SKILL.md`) owns
-capture intake (classify, parent, search-and-adopt, densify, value at intake per [R1](graph-valuation.md#3-r1----placement-at-intake-q)). This route
-invokes it; it does not reimplement classification, parenting, or valuation logic. One canonical
-owner, per the same constraint `/reconcile`'s spec states for closure-loop logic.
+### Placement and grain
 
-**Dictation and homophones:** Mobile captures are often dictated by voice (`[[quick-babf1cd6]]`).
-Before judging a capture's meaning or treating it as ambiguous, read it for phonetic or homophone
-transcription errors in context.
+The triage process runs as an autonomous step during daily note generation (Step 1.5 in the daily note
+template `tpl_daily`), executing early in the run prior to agenda assembly, graph reconciliation, and state assembly. Running early ensures newly
+converted tasks and probe items are indexed and available for downstream agenda synthesis and
+reconciliation in the same run.
 
-**The interactive/headless gap.** Interactive `/q` disambiguates unclear classification or an
-ambiguous parent with `AskUserQuestion`. A capture note picked up headlessly has nobody watching,
-so `/q` exposes two invocation contexts on the same pattern `/reconcile` uses (input subset changes,
-procedure does not):
+One capture note constitutes one unit of judgment.
 
-| Context | Owner | Behaviour when classification/parenting is unclear |
-| - | - | - |
-| Interactive | `/q` | Asks, via `AskUserQuestion`. |
-| Automated pickup | `/q` | Does not guess. Leaves the capture note untouched and moves to the next one. |
+### The unprocessed marker
 
-This is the answer to "what does the step do when a capture cannot be routed": nothing forced. The
-note stays put, `/daily` step 1.5's existing manual triage is still there for it. No
-`needs_user_call` event, no new surfacing mechanism -- the surface already exists and this route
-defers to it rather than duplicating it.
+A capture is unprocessed if and only if its file is in `notes/mobile-captures/`. There is no
+`processed` metadata flag: front ends do not write one, and triage neither reads nor writes one.
+A routed capture always leaves the intake directory by one of two moves:
 
-**Per-capture disposition**, once classification is confident enough to proceed without asking:
+- **In-place conversion:** The capture's file becomes the destination task or probe node, moved out of
+  `notes/mobile-captures/` into the tasks directory while preserving its identifier.
+- **Deletion:** The capture is deleted after its substantive content is placed in a destination topic
+  note or task, or when judged not worth keeping (discard).
 
-- **Task.** The capture becomes the task in place: the same file and the same ID, moved out of
-  `notes/mobile-captures/` into `tasks/`, renamed to a task filename, and given task frontmatter
-  (`type: task`, `status`, `parent`, `project`, `links`). Invoke
-  `convert_document(id=<capture-id>, type="task", status="ready"|"inbox")` to retype and relocate
-  the document while pinning its ID, then invoke `update_task` and `update_body` to set a verb-led
-  imperative `title`, minimal task body, parent container, and R1 valuation edges
-  ([R1](graph-valuation.md#3-r1----placement-at-intake-q)). No second file is created and no note
-  is left behind in `notes/mobile-captures/`. If search-and-adopt finds an existing task that
-  already carries the ask, fold the capture into that task (`update_body`) and delete the capture
-  under the gate below, as with Note.
-- **Note.** Not an actionable ask -- resolve a destination: an existing canonical topic
-  note (synthesize in via
-  `update_body`) or a new one (`create(type="knowledge", ...)`), never left as an
-  unparented capture.
-- **Expand.** Not a fourth destination type -- maps to the Task path with
-  `classification: probe` (`convert_document` followed by `update_task(classification="probe", ...)`
-  and `update_body`), reusing `/q`'s existing uncertainty classification rather than inventing a new
-  one. When expanding an existing note directly, synthesize into that note (`update_body`) and
-  delete the capture under the gate below.
-- **Discard.** Neither an actionable ask nor a durable proposition. No destination to write or
-  verify -- delete outright via `delete`. This is the one disposition that skips the gate below,
-  because there is nothing written elsewhere for it to protect.
+Every run processes all capture files present in the intake directory. When the directory is empty,
+the step exits immediately without modifying documents or outputting log entries.
 
-**Before deleting a capture folded into another node** (Note, or Task folded into an existing
-task), the destination write has succeeded and any external references are reparented. Only then
-`delete` the source capture note. A failed destination write halts on that capture and leaves
-it in place -- same abort semantics as the hygiene route, never a retry against a different
-destination in the same pass.
+### Per-capture routing dispositions
 
-## In-place conversion primitive (`convert_document`)
+Every capture is evaluated and routed to one of four dispositions:
 
-The Task and Expand dispositions use `convert_document` (`nicsuzor/mem#659`) to convert an existing
-capture ID in place:
+- **Task:** An actionable request or project task. The document is converted in place into an active
+  task: the file is moved out of the intake directory into the tasks directory, retyped as a task, and
+  assigned an imperative title, concise body, parent container, and intake valuation edges. Its
+  unique identifier and git history are preserved. When deduplication identifies an existing open task
+  already carrying the ask, the capture's content is synthesized into that existing task, and the
+  source capture is deleted under the deletion gate.
+- **Note:** A durable reference, observation, or non-actionable insight. Content is synthesized into an
+  existing canonical topic note or written as a new topic note. Once the destination write is
+  verified, the source capture is deleted under the deletion gate.
+- **Expand:** Substantive content whose requirements, scope, or actionability need investigation or
+  clarification before becoming an active task or note. Converted in place into an inbox probe task
+  carrying a probe classification and documenting the captured text and open questions. When expanding
+  an existing note directly, content is synthesized into that note and the source capture deleted under
+  the deletion gate.
+- **Discard:** Noise, accidental dictations, or uninterpretable fragments with no discernible
+  substantive value. Deleted outright.
 
-1. Pin the existing document `id` explicitly in frontmatter so renaming the file preserves identity.
-2. Replace `type` with `"task"` (and set initial `status`, defaulting to `"inbox"` or `"ready"`).
-3. Move and rename the file out of `notes/mobile-captures/` into `tasks/<id>-<slug>.md` (and on a
-   subsequent `update_task(title=...)`, keep the filename slug aligned with the task title).
-4. Re-index the node in the PKB graph under the same ID.
+### Handling captures whose intent cannot be read
 
-Triage does not work around an unavailable or failing `convert_document` tool with raw git or
-filesystem edits of the PKB repo, and does not fall back to creating a new task and deleting the
-capture. If `convert_document` is unavailable or returns an error, any capture classified as Task
-or Expand stays untouched in `notes/mobile-captures/`.
+The daily note generation workflow executes headlessly and cannot pause for interactive user prompts.
+When the triage process cannot autonomously determine the intent or destination of a capture:
 
-## Trigger
+- **Uninterpretable noise or accidental input:** Captures consisting of empty dictations, pocket noise,
+  transcription gibberish, or meaningless fragments with no substantive content are routed to
+  **Discard** and deleted outright.
+- **Substantive text with ambiguous or unreadable intent:** Captures containing substantive text whose
+  actionability, parent, or destination cannot be determined autonomously are routed to **Expand**
+  with a probe classification. The document is converted in place into an inbox probe task documenting
+  the raw capture and specific ambiguities requiring clarification. This ensures no genuine idea is
+  lost or discarded, avoids stalling headless runs, and places the clarification onto the graph as an
+  inspectable probe task.
+- **Tool or infrastructure errors:** When a document conversion, update, or deletion fails, the affected
+  capture remains untouched in the intake directory to fail loud and retry on the subsequent daily run.
+  No partial mutations or silent fallbacks occur.
 
-Invoked as `/q`'s headless capture-intake context: routing a capture is judgment work belonging to `ida:q`.
+### Deletion gate
 
-## Out of scope
+Before deleting any capture that is folded into another node (a topic note or an existing task), the
+destination write must succeed and any external references must be updated. Only then is the source
+capture note deleted. A failed destination write halts processing on that capture and leaves it intact
+in the intake directory.
 
-- The capture front ends themselves and their frontmatter shape.
-- Legacy capture notes still carrying a `processed` key, and files carrying `tags: [Array]` --
-  pre-existing data-quality debt, not a backfill this route performs.
-- Surfacing anything to the user beyond what `/daily` step 1.5 already renders -- the update-surfacing task's
-  concern if a gap remains once this lands, not assumed here.
+### Invariant and output constraints
 
-## Landing milestones
-
-- **M0 -- PKB in-place conversion (`nicsuzor/mem#659`).** `convert_document` moves, renames, and
-  retypes a capture in place while keeping its ID.
-- **M1 -- `/q` gains the Automated pickup context (`plugins/ida/skills/q/SKILL.md`).** Classifies
-  each capture, converts task-like captures in place via `convert_document` + `update_task` /
-  `update_body`, and leaves uncertain captures untouched instead of asking.
-- **M2 -- Wired to automated pickup.** Standing invocation of the automated pickup context.
-- **M3 -- First live run confirms real writes.** Before automated pickup is trusted unattended, one
-  run must confirm a real capture converted into a task in place (same ID, file now outside
-  `notes/mobile-captures/`) and `delete` exercised on a real capture.
+- **ID and history preservation:** Converted tasks and probe nodes retain their original capture
+  identifier and version history via in-place retyping and relocation. No duplicate replacement files
+  are minted.
+- **Log cleanliness:** The triage step outputs no execution logs, file manifests, or heartbeat
+  breadcrumbs into the daily note body, adhering to daily note scannability and log-ban invariants.
