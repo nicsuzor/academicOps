@@ -29,6 +29,8 @@
 - [enforcement/workflow.md](enforcement/workflow.md) -- the four-step workflow shape and review-depth call.
 - [enforcement/decision-steps-and-followup-placement.md](enforcement/decision-steps-and-followup-placement.md) -- decision steps on design research and task follow-up structural placement invariants.
 - [enforcement/human-readability-first.md](enforcement/human-readability-first.md) -- design for the human-readability-first universal axiom and tripartite no-shitty-NLP clarification.
+- [enforcement/agent-comments.md](enforcement/agent-comments.md) -- the agent comment standard governing short-form text posted for human readers in passing.
+- [enforcement/two-reader-reports-and-tasks.md](enforcement/two-reader-reports-and-tasks.md) -- two-reader task layout, comment templates, and advisory compliance review lens design.
 - [enforcement/release-as-done-lifecycle.md](enforcement/release-as-done-lifecycle.md) -- release-as-done task lifecycle, autonomous QA dispatch unblocking, and retirement of agent review status.
 - [enforcement/rule-handling-and-escalation.md](enforcement/rule-handling-and-escalation.md) -- rule handling, waivers, one-way PKB linking, and mandatory upward escalation.
 - [enforcement/evidence-contract.md](enforcement/evidence-contract.md) -- the universal claim-evidence shape.
