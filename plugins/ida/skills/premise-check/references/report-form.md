@@ -1,6 +1,6 @@
 # Report form
 
-The report argument is one fenced `argdown` block at the end of the report, parser-valid Argdown in standard form. The recorder reads it to cross-check the checker's reason, so the line shapes below are exact. Statement lines carry no `{...}` attributes.
+The report argument is one fenced `argdown` block at the end of the report, parser-valid Argdown in standard form. The recorder reads it to cross-check the checker's reason, so the line shapes below are exact. Statement lines carry no `{...}` attributes. Readers ignore meaning-free whitespace across the block (common leading indents across frontmatter or body, trailing whitespace on lines, CRLF endings, and added or removed blank lines); whitespace carrying syntactic meaning (relative nesting within frontmatter, and single-line inference bars) remains significant.
 
 ````text
 ```argdown

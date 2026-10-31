@@ -110,7 +110,6 @@ def ensure_test_environment(monkeypatch, tmp_path, shared_uv_cache):
         "POLECAT_TARGET_TASK",
         "POLECAT_TASK",
         "PKB_MCP_URL",
-        "PKB_MCP_HEADERS",
         "DISPATCHER_MCP_TOKEN",
         "WORKER_MCP_TOKEN",
         "WORKER_MCP_TOKEN_ID",

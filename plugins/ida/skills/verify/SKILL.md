@@ -11,6 +11,7 @@ Rigorous quality and requirement-satisfaction review evaluating whether the arti
 
 Before running test suites or line-by-line code audits, identify the format/quality standard governing the artifact's genre (`specs/meta/doc-taxonomy.md` -- e.g., `specs/meta/writing-specs.md` for specifications, `craft` for agent instructions, disciplinary standards for manuscripts/articles, or task acceptance criteria for task handbacks) and locate whatever specifications, requirements, or acceptance criteria are available:
 
+- **Per-file class-standard verification**: Enumerate all modified files from the diff (`git diff --name-only`). Identify each touched file's taxonomy class (`specs/meta/doc-taxonomy.md`) and verify compliance against its governing class standard (e.g. `craft` and `specs/meta/doc-taxonomy.md § Instructions` for instructions; `specs/meta/writing-specs.md` and `doc-taxonomy.md § Specs` for specs; `doc-taxonomy.md § State` and subsystem spec for state docs such as `ENFORCEMENT-MAP.md`; `doc-taxonomy.md § Docs` for user documentation). If any changed file fails its class standard (such as injecting unnecessary external implementation details into instructions, or inserting spec summaries into `ENFORCEMENT-MAP.md`), record `UNMET` for that file and issue `REVISE` (or `FAIL` if foundational) regardless of overall feature criteria.
 - **Match format requirements to the artifact**: Never impose task-handback sections (`## Ask`, task checklists) on non-task artifacts.
 - **Missing-criteria failure signal**: If **no governing standard, specifications, requirements, or acceptance criteria are available at all**, stop immediately and return `FAIL -- no governing standard, specifications, requirements, or acceptance criteria available`.
 - **Mechanical**: Verify strictly against the governing genre standard and available specifications, requirements, and acceptance criteria.
@@ -42,6 +43,7 @@ Render an immediate `FAIL` on:
 - Data that diverges from primary source records.
 - Edits made directly to runtime install directories instead of source repos.
 - Container or Dockerfile changes passed without building the image and showing changed content present in it, or stating plainly that the worker could not build.
+- Touched file in the diff violating its document taxonomy class standard (record `UNMET` with pinpoint citation and issue `REVISE` or `FAIL`).
 
 ## 4. Visual and Multimodal Verification
 
@@ -70,7 +72,7 @@ Emit the report using `/dump`'s handback envelope and record it on the task reco
 2. **Summary**: Findings, forcing checks (1–5), and remediations for `FAIL`/`REVISE`.
 3. **Verdict & Safeguards**:
    - VERDICT: <PASS | REVISE | FAIL>
-   - STATUS: <release status: done | partial | review | failed | cancelled | in_progress>
+   - STATUS: <release status: done | partial | failed | cancelled | in_progress>
    - CRITERIA: <acceptance criterion id tested and observed result>
    - CONFIDENCE: <high | med | low> + <what single check would falsify this>
    - CONFOUND CHECK: <clean-room/differential control result, or "NOT RUN">
