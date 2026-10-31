@@ -3,7 +3,7 @@ id: wf-pr-merge-prep
 title: "wf-pr-merge-prep"
 type: template
 category: process
-description: Prepare an already-open PR for someone else's merge decision -- review it fully, fix what needs fixing, confirm it is actually green and mergeable, and write an honest summary into its own body. Select when a PR exists and needs readying for a principal's merge call. Not for authoring the PR's changes, not for a PR whose only reviewer is also its sole author (that is self-review, not this), and not a licence to merge it yourself.
+description: Prepare an already-open PR for someone else's merge decision -- review it fully, fix what needs fixing, confirm it is actually green and reviewed, and write an honest summary into its own body. Select when a PR exists and needs readying for a principal's merge call. Not for authoring the PR's changes, not for a PR whose only reviewer is also its sole author (that is self-review, not this), and not a licence to merge it yourself.
 tags:
   - wf-template
   - process
@@ -28,11 +28,14 @@ actually stands, not as it was last checked.
    diff. What can't be fixed here -- or shouldn't be, because it needs a call
    only the principal can make -- gets named, not silently dropped.
 
-3. **Confirm green and mergeable, against the world.** Query CI and merge
-   status directly (e.g. `gh pr checks`, `gh pr view --json
-   mergeable,mergeStateStatus`) -- a claim that it's green from an earlier
+3. **Confirm green, against the world.** Query CI status directly (e.g.
+   `gh pr checks`) -- a claim that it's green from an earlier
    pass, another node, or the PR author is not this. Where it isn't, that is
-   itself a finding, not something to wait out.
+   itself a finding, not something to wait out. A draft PR whose code step is
+   complete is marked ready for review. Mergeability is not required before
+   approval: do not rebase or resolve conflicts here; bringing the PR up to date
+   with its base and resolving conflicts happens after the principal approves,
+   just before merge.
 
 4. **Write an honest summary into the PR's own body.** Use the repo's PR
    template if it has one (fetch it, don't recall it); fill every section with

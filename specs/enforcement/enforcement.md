@@ -146,6 +146,10 @@ Pull request review and merge authority is governed by a three-tier risk taxonom
 Enforcement operates through workflow merge gates (`instructions`, `imperative`):
 Finish and QA templates direct QA workers to semantically evaluate PR risk against the taxonomy in a clean context. For verified Tier 1 PRs, QA workers merge autonomously via `gh pr merge --squash` and release the QA task as `done`. For Tier 2 and Tier 3 PRs, QA workers verify claims, post structured receipts to the PR, and leave the PR open for reviewer or principal sign-off. Under headless worker and review lifecycle rules, both implementation workers and QA workers complete as `done` with the PR URL recorded on the task record so that `/dispatch` unblocks QA immediately and `/reconcile` tracks merge without human wait states; no task rests or releases into `review` for human merge gates.
 
+### Pre-Approval Readiness and Post-Approval Rebase
+
+Before approval (by the principal or designated reviewer), a pull request requires green checks and an independent proportionate review, with review comments and requested changes addressed; mergeability against the base branch is not required before approval. Rebase and conflict-resolution passes must not be executed while a PR is awaiting approval. Bringing a pull request up to date with its base branch and resolving merge conflicts happens after approval, just before merge.
+
 ### Non-PR Task Verification and Lifecycle
 
 For tasks that do not produce pull requests (such as empirical analyses, documentation updates, research tasks, and operational maintenance), `/reify` mints an independent downstream `QA: <task>` child task only where the composed workflow warrants an independent check (such as empirical analyses requiring numerical replication, high-impact specification changes, or formal qualitative audits). Workflows that do not warrant an additional verification pass mint no QA child.
