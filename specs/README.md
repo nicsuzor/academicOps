@@ -21,7 +21,8 @@
 
 ## Enforcement
 
-- [ENFORCEMENT-MAP.md](ENFORCEMENT-MAP.md) -- single source of truth mapping axioms, agent instructions, work-unit, escalated delivery, and workflow contracts, and the evidence contract to their live enforcement mechanisms.
+- [ENFORCEMENT-MAP.md](ENFORCEMENT-MAP.md) -- concise cross-reference table mapping rules to their live enforcement mechanisms.
+- [enforcement/enforcement-map.md](enforcement/enforcement-map.md) -- specification governing the enforcement map schema, inclusion boundaries, and concision invariants.
 - [enforcement/enforcement.md](enforcement/enforcement.md) -- governing principle, regulatory tools, mechanism categories, and proportional intervention.
 - [enforcement/task-contract.md](enforcement/task-contract.md) -- the work-unit contract (claim → release).
 - [enforcement/escalated-delivery-contract.md](enforcement/escalated-delivery-contract.md) -- in-session escalated delivery contract (`ida_held`, `/mine` surfacing pass, and the Workers-Append rule).
