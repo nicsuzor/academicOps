@@ -16,7 +16,7 @@ As an operator, I want to access the agent's cognitive anchor, interactive cards
 - **AC-1.1** Given an authenticated dashboard session, when the operator navigates to the agent control interface, then the application renders the cognitive anchor, context usage, and recent turns without prompting for secondary credentials.
 - **AC-1.2** Given an operator opening the Mini App within a native Telegram client, when the application initialises, then the backend validates the signed Telegram authentication payload and grants access to the dedicated responsive interface.
 - **AC-1.3** Given an unauthenticated HTTP request lacking both valid dashboard perimeter credentials and valid Telegram authentication data, when accessing any protected endpoint, then the server rejects the request with HTTP 401 Unauthorized.
-- **AC-1.4** Given a request carrying a `Cf-Access-Jwt-Assertion` header, when the assertion is forged, malformed, expired, replayed, or issued for an unauthorized email, then the server rejects the request with HTTP 401 Unauthorized across all authenticated routes.
+- **AC-1.4** Given a request carrying a `Cf-Access-Jwt-Assertion` header, when the assertion is forged, malformed, expired, missing or mismatched issuer, or issued for an unauthorized email, then the server rejects the request with HTTP 401 Unauthorized across all authenticated routes.
 
 ### US-2 Dynamic Real-Time State Population
 
@@ -64,6 +64,16 @@ As an autonomous framework supervisor, I want the operational dashboard daemon t
 - **AC-6.2** Given an inbound repository webhook (such as PR review comments, CI status completion, or PR merges), when received by the dashboard daemon's webhook ingress, then the daemon translates the event into a structured session event and wakes the target agent session.
 - **AC-6.3** Given an active agent session connected over the HTTP/SSE bridge, when an operational event is dispatched, then the bridge delivers the structured notification to the session within the configured debounce window.
 
+### US-7 Unified Pending Decisions and Owed Items View
+
+As an operator managing multiple concurrent agent streams and background tasks, I want a single unified dashboard view that aggregates all pending decisions, permissions, reviews, and items owed back to me across every agent instance and the task graph, so that no request or directive I issued is lost or forgotten.
+
+- **AC-7.1** Given multiple active Telegram-facing agent instances and the central task graph, when the operator accesses the unified decisions view, then the interface displays pending items gathered from all sources: structured questions, tool permissions, and artifact reviews from every agent instance bridge, alongside active open asks and items waiting on operator feedback from the task graph.
+- **AC-7.2** Given an item displayed in the unified view, when rendered, then the card displays its originating agent instance or project, classification (decision, permission, review, or owed ask), summary text, recommendation or preview diff where applicable, elapsed waiting time, and contextual action controls.
+- **AC-7.3** Given an open ask or pending decision in the unified view, when an agent session disconnects, restarts, or crashes, then the item remains persisted in the view and cannot be removed without an explicit, recorded resolution event.
+- **AC-7.4** Given an active item in the unified view, when the item is answered, permitted/denied, reviewed, or when its underlying task transitions to a terminal state (`done` or `cancelled`) with recorded evidence, then the item transitions out of the pending view; if closed without resolution, an audited reason must be recorded.
+- **AC-7.5** Given a pending decision, permission request, or review in the unified view, when the operator acts directly within the dashboard interface, then the resolution is dispatched to the originating agent bridge and updates the corresponding source state across connected channels.
+
 ## Design
 
 ### 1. Unified Serving and Perimeter Authentication (US-1)
@@ -90,8 +100,8 @@ The agent interface must serve two client topologies: (a) standalone mobile acce
    - **Mode A (Telegram Launch):** The client transmits the cryptographic initialization payload via `POST /api/app/auth`. The server verifies the cryptographic hash against the bot secret token using HMAC-SHA256, validates timestamp freshness (maximum age: 3600 seconds), and checks user identity against the authorized operator list. On success, the server issues an HTTP-only, secure, strict SameSite session cookie (`ida_session`) with a 1-hour expiry.
    - **Mode B (Dashboard Perimeter and Service Bridge):** For requests arriving from the dashboard domain or internal services:
      - The bridge accepts bearer credentials in the `Authorization: Bearer <token>` or `X-Bridge-Token: <token>` header, verified against the shared bridge secret (`IDA_BRIDGE_TOKEN`) or valid session secret.
-     - Alternatively, the server verifies the perimeter identity assertion header (`Cf-Access-Jwt-Assertion`). The server validates the assertion cryptographically using Cloudflare Access public keys / JWKS (RS256), checking `iss` (matching the configured team domain), `aud` (matching the configured application AUD tag), temporal validity (`exp` and `nbf`), replay prevention (`jti` or `identity_nonce` cache), and ensures the `email` claim matches an authorized operator. Mere presence of the header without successful cryptographic and claim verification never grants access.
-   - **Rejection:** Any request to protected endpoints (`/api/app/*`) lacking a valid session cookie, valid bridge token, or verified perimeter assertion (including forged, malformed, expired, or replayed assertions) receives HTTP 401 Unauthorized (`{"error": "Unauthorized"}`).
+     - Alternatively, the server verifies the perimeter identity assertion header (`Cf-Access-Jwt-Assertion`). The server validates the assertion cryptographically using Cloudflare Access public keys / JWKS (RS256), checking `iss` (matching the configured team domain), `aud` (matching the configured application AUD tag), temporal validity (`exp` and `nbf`), and ensures the `email` claim matches an authorized operator. Mere presence of the header without successful cryptographic and claim verification never grants access.
+   - **Rejection:** Any request to protected endpoints (`/api/app/*`) lacking a valid session cookie, valid bridge token, or verified perimeter assertion (including forged, malformed, expired, or missing/mismatched issuer assertions) receives HTTP 401 Unauthorized (`{"error": "Unauthorized"}`).
 
 ### 2. Dynamic State Population (US-2)
 
@@ -253,3 +263,109 @@ The operational dashboard daemon centralises operational event ingestion across 
 4. **Offline Session Persistence Invariant:**
    - When no active supervisor session is connected to the channel bridge, unacknowledged events remain persisted in the event queue without expiration or loss.
    - Upon supervisor session connection or bridge re-attachment, the daemon flushes all unacknowledged events as a consolidated batch snapshot, waking the session to reconcile accumulated state.
+
+### 7. Unified Pending Decisions and Owed Items View (US-7)
+
+#### 7.1 Context and Problem
+
+In multi-agent operations, multiple agent instances execute concurrently across distinct bots, personas, and work streams. Operators interact asynchronously through multiple Telegram channels, mobile Mini Apps, and desktop dashboard sessions. Without a unified aggregation surface, pending decisions and delegated deliverables risk fragmentation:
+
+- Questions and permission requests issued by different agent instances remain siloed within each instance's individual Mini App route.
+- Asks directed to background workers and task graph epics lack a unified tracker showing what is currently owed back to the operator.
+- Stalled tasks or interrupted sessions risk dropping threads silently if not continuously tracked against a persistent baseline.
+
+The operational dashboard requires a unified aggregation view--spanning all agent Mini App instances and the persistent task graph--that ensures every pending decision and owed item is visible in one place and cannot silently disappear.
+
+#### 7.2 Aggregation Architecture and Federated Sources
+
+The dashboard backend aggregates items across two primary substrate tiers:
+
+1. **Multi-Instance Agent Bridge Federation:**
+   - The dashboard daemon maintains connections to all configured agent instances (e.g. primary coordinator and specialized persona routes) via their local HTTP/SSE state bridges (`/api/app/<instance>/*`).
+   - For each connected instance, the daemon subscribes to state snapshots and real-time SSE event streams:
+     - `GET /api/app/<instance>/questions` for pending structured decision cards (`ask_user`).
+     - `GET /api/app/<instance>/review` for pending tool permission requests and artifact reviews.
+     - Real-time updates via `GET /api/app/<instance>/events` (`question_posted`, `question_resolved`, `permission_requested`, `permission_resolved`).
+   - When an instance is temporarily unreachable or offline, its last known pending items are retained with an `offline` indicator; items are never dropped due to transient connection loss.
+
+2. **Persistent Task Graph Ingestion:**
+   - The dashboard connects directly to the central task graph service over internal RPC.
+   - The aggregator queries:
+     - Open asks: Tasks created from operator directives that remain active or in progress (`status: in_progress`, `status: queued`).
+     - Awaiting feedback: Tasks flagged as waiting for operator review or guidance (`status: review`, `status: inbox`, or tagged `waiting_on: operator`).
+     - Owed deliverables: Descendant tasks serving active operator goals whose deliverables have not yet been accepted.
+
+```mermaid
+flowchart TD
+    subgraph Dashboard["Operational Dashboard Server"]
+        AGG["Decisions & Owed Items Aggregator"]
+        VIEW["Unified View UI (/decisions)"]
+        STORE["Consolidated State Cache"]
+        AGG --> STORE --> VIEW
+    end
+
+    subgraph AgentInstances["Telegram-Facing Agent Instances"]
+        INST1["Primary Agent Instance<br/>(Bridge: /api/app/prime)"]
+        INST2["Persona Agent Instance<br/>(Bridge: /api/app/persona-1)"]
+        INST3["Specialist Agent Instance<br/>(Bridge: /api/app/specialist)"]
+    end
+
+    subgraph TaskGraph["Persistent Task Graph"]
+        PKB["Task Store (Internal RPC)<br/>Open Asks · Owed Items · Reviews"]
+    end
+
+    INST1 -- "SSE + Snapshots" --> AGG
+    INST2 -- "SSE + Snapshots" --> AGG
+    INST3 -- "SSE + Snapshots" --> AGG
+    PKB -- "RPC Queries" --> AGG
+    VIEW -- "Direct Action Dispatch" --> AGG
+    AGG -- "Mutation RPC / REST" --> INST1
+    AGG -- "Mutation RPC / REST" --> INST2
+    AGG -- "Mutation RPC / REST" --> INST3
+    AGG -- "Mutation RPC" --> PKB
+```
+
+#### 7.3 Item Representation and Information Architecture
+
+Each item rendered in the unified view carries standardized visual and metadata attributes:
+
+| Field | Source Type | Content & Visual Presentation |
+| - | - | - |
+| **Origin & Channel** | All | Badges showing originating agent instance (e.g. `Primary`, `Persona A`), project name, and originating Telegram topic or thread. |
+| **Classification** | All | Explicit category chip: `Decision` (question card), `Permission` (tool authorization), `Review` (artifact/diff), or `Owed Item` (task deliverable). |
+| **Summary & Prompt** | All | The core question text, shell script command preview, pull request title, or task objective. |
+| **Context & Drill-down** | Decisions / Reviews / Owed | Primary recommendation highlighted first for decisions; expandable `>!` collapsible quotes or details modal for fuller background; unified diff viewer for code/permission reviews; task parent chain for owed items. |
+| **Freshness & Urgency** | All | Relative elapsed time since creation (e.g. `2h ago`), urgency indicator (P0–P4), and stalled warning markers for inactive work streams (>24h without progress). |
+| **Resolution Actions** | All | In-place interactive controls: vertical option buttons for decisions, `Allow`/`Deny` for permissions, `Approve`/`Request Changes` for reviews, and status update / claim controls for task items. |
+
+#### 7.4 Guaranteed Retention and Item Exit Lifecycle
+
+To enforce the invariant that no open ask or decision is silently dropped:
+
+1. **Non-Vanishing Invariant:**
+   - Items enter the pending state upon creation in an agent bridge or task graph.
+   - An item **never** vanishes due to:
+     - Client page reloads or local cache clearance.
+     - Agent session terminations, restarts, or crashes.
+     - Bridge network timeouts or transient communication failures.
+     - Idle expiration (except tool permissions which transition to an explicit `expired` status with audit trail).
+2. **Explicit Exit Criteria:**
+   - An item transitions out of the active view **only** through one of the following documented events:
+     - **Decision / Question:** Operator submits a valid choice (via unified view, Mini App, or Telegram card) resulting in `question_resolved`, or an agent explicitly closes the question via `close_question` with a mandatory recorded reason (`answered elsewhere`, `no longer needed`, `superseded`).
+     - **Tool Permission:** Operator clicks `Allow` or `Deny` via `POST /api/app/<instance>/review/permission`, or permission timeout triggers transition to `expired` with denial.
+     - **Artifact Review:** Operator submits approval/feedback, or the underlying pull request / branch is merged or closed.
+     - **Owed Item / Open Ask:** The task graph transitions the item to `status: done` accompanied by verifiable completion evidence, or to `status: cancelled` with an explicit cancellation rationale.
+3. **Dropped Thread Escalation:**
+   - If an open ask or delegated task ceases activity without transitioning to a terminal state, the view does not expire or hide the item; instead, it visually tags the item as a "Dropped Thread" requiring operator or supervisory triage.
+
+#### 7.5 Verification and Criteria Mapping
+
+Every acceptance criterion defined in US-7 maps directly to an observable verification check:
+
+| Criterion | Target Requirement | Verification Check & Observable Proof |
+| - | - | - |
+| **AC-7.1** | Federated Source Ingestion | Given two running agent bridges with active questions/permissions and the task graph with an open ask, `GET /api/dashboard/owed` returns an aggregated array containing items from all three distinct sources with their respective source identifiers. |
+| **AC-7.2** | Item Representation and Context | Given rendered items in the UI, inspection of the DOM and API payload verifies that every item contains `origin`, `classification`, `summary`, `timestamp`, and appropriate action payloads (e.g. option list for decisions, diff preview for reviews). |
+| **AC-7.3** | Non-Vanishing Invariant | Given active pending items in the dashboard view, simulate an agent process kill (`SIGKILL`) or container restart; verify that upon bridge reconnect, all pending items remain intact in the view without loss or eviction. |
+| **AC-7.4** | Explicit Exit and Lifecycle Transitions | Given an active question and task item, verify they remain visible until: (a) calling `POST /api/app/<instance>/questions/answer` removes the question from the active view, and (b) updating the task to `status: done` with completion summary removes the task item. Unresolved deletion requests lacking terminal status or reasons are rejected. |
+| **AC-7.5** | Direct In-View Resolution | Given a decision card in the unified dashboard view, submitting an option selection via `POST /api/dashboard/resolve` dispatches the resolution to the originating agent's bridge (`/api/app/<instance>/questions/answer`), verifies that the agent session receives the answer event, and confirms that connected Telegram cards update. |

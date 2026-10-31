@@ -1587,3 +1587,517 @@ def test_refusal_diagnostics_zero_inference_lines_in_reason():
     assert "0 inference lines" in err
     assert "Required remediation format:" in err
     assert "-- <warrant rule>. Unless: <defeater>; <status>. --" in err
+
+
+# ---------------------------------------------------------------------------
+# Whitespace and Indentation Tolerance
+# ---------------------------------------------------------------------------
+
+
+def test_common_leading_indent_parses_identically_and_records_pass():
+    """AC1: A well-formed block carrying any common leading indent records PASS and parses identically."""
+    canonical_report = _report()
+    canonical_block = ra.extract_block(canonical_report)
+    assert canonical_block is not None
+    canonical_parsed = ra.parse_block(canonical_block, _VOCAB)
+    canonical_valid, canonical_err, canonical_ast = ra.check_argdown_block(canonical_block)
+    assert canonical_valid is True
+
+    for indent in ("  ", "    ", "\t"):
+        # Indent every non-empty line of the report
+        indented_report = "\n".join(
+            indent + ln if ln.strip() else "" for ln in canonical_report.splitlines()
+        )
+        indented_block = ra.extract_block(indented_report)
+        assert indented_block is not None, f"Failed to extract block with indent {indent!r}"
+
+        # 1. parse_block parses identically to canonical form
+        parsed = ra.parse_block(indented_block, _VOCAB)
+        assert parsed == canonical_parsed, f"parse_block differs for indent {indent!r}"
+
+        # Direct call to parse_block with indented text (without extract_block) also works
+        raw_indented_block = "\n".join(
+            indent + ln if ln.strip() else "" for ln in canonical_block.splitlines()
+        )
+        assert ra.parse_block(raw_indented_block, _VOCAB) == canonical_parsed
+
+        # 2. check_argdown_block parses identically
+        valid, err, ast = ra.check_argdown_block(indented_block)
+        assert valid is True, f"check_argdown_block failed for indent {indent!r}: {err}"
+        assert ast == canonical_ast
+
+        # 3. Records PASS on full hand-back-shaped report
+        sess = f"sess-indent-{len(indent)}"
+        cid = f"claim-indent-{len(indent)}"
+        _arm_with_report(sess, cid, text=indented_report)
+        attrs = pcv.record_verdict(
+            session_id=sess,
+            claim_id=cid,
+            verdict="PASS",
+            reason=_reason(cid),
+            tracer_mod=_configured(),
+        )
+        assert attrs["verdict"] == "PASS"
+
+
+def test_trailing_whitespace_parses_identically_to_canonical():
+    """AC2: Trailing whitespace (spaces and tabs) parses identically to the canonical form."""
+    canonical_block = ra.extract_block(_report())
+    assert canonical_block is not None
+    canonical_parsed = ra.parse_block(canonical_block, _VOCAB)
+    canonical_valid, canonical_err, canonical_ast = ra.check_argdown_block(canonical_block)
+
+    # Append trailing spaces and tabs to every line
+    trailing_block = "\n".join(ln + "  \t  " for ln in canonical_block.splitlines())
+
+    parsed = ra.parse_block(trailing_block, _VOCAB)
+    assert parsed == canonical_parsed
+
+    valid, err, ast = ra.check_argdown_block(trailing_block)
+    assert valid is True, f"check_argdown_block failed on trailing whitespace: {err}"
+    assert ast == canonical_ast
+
+
+def test_crlf_line_endings_parse_identically_to_canonical():
+    """AC2: CRLF endings parse identically to the canonical form."""
+    canonical_block = ra.extract_block(_report())
+    assert canonical_block is not None
+    canonical_parsed = ra.parse_block(canonical_block, _VOCAB)
+    canonical_valid, canonical_err, canonical_ast = ra.check_argdown_block(canonical_block)
+
+    crlf_block = canonical_block.replace("\n", "\r\n")
+
+    parsed = ra.parse_block(crlf_block, _VOCAB)
+    assert parsed == canonical_parsed
+
+    valid, err, ast = ra.check_argdown_block(crlf_block)
+    assert valid is True, f"check_argdown_block failed on CRLF: {err}"
+    assert ast == canonical_ast
+
+
+def test_added_blank_lines_parse_identically_to_canonical():
+    """AC2: Added blank lines parse identically to the canonical form."""
+    canonical_block = ra.extract_block(_report())
+    assert canonical_block is not None
+    canonical_parsed = ra.parse_block(canonical_block, _VOCAB)
+    canonical_valid, canonical_err, canonical_ast = ra.check_argdown_block(canonical_block)
+
+    # Insert extra blank lines inside frontmatter and between body items
+    added_blank = "\n\n".join(canonical_block.splitlines())
+
+    parsed = ra.parse_block(added_blank, _VOCAB)
+    assert parsed == canonical_parsed
+
+    valid, err, ast = ra.check_argdown_block(added_blank)
+    assert valid is True, f"check_argdown_block failed on added blank lines: {err}"
+    assert ast == canonical_ast
+
+
+def test_removed_blank_lines_parse_identically_to_canonical():
+    """AC2: Removed blank lines parse identically to the canonical form."""
+    canonical_block = ra.extract_block(_report())
+    assert canonical_block is not None
+    canonical_parsed = ra.parse_block(canonical_block, _VOCAB)
+    canonical_valid, canonical_err, canonical_ast = ra.check_argdown_block(canonical_block)
+
+    # Strip all empty lines
+    removed_blank = "\n".join(ln for ln in canonical_block.splitlines() if ln.strip())
+
+    parsed = ra.parse_block(removed_blank, _VOCAB)
+    assert parsed == canonical_parsed
+
+    valid, err, ast = ra.check_argdown_block(removed_blank)
+    assert valid is True, f"check_argdown_block failed on removed blank lines: {err}"
+    assert ast == canonical_ast
+
+
+def test_null_form_tolerates_indentation_and_trailing_whitespace():
+    """AC3: Null form declarations tolerate common leading indentation, tabs, and trailing whitespace."""
+    canonical_null = "===\nasks: none\n===\n[no claim]"
+    assert ra.is_null_form(canonical_null) is True
+
+    variations = [
+        "  ===\n  asks: none\n  ===\n  [no claim]",
+        "\t===\n\tasks: none\n\t===\n\t[no claim]",
+        "===   \nasks: none \t \n===   \n[no claim]  ",
+        "  asks: none\n  [no claim]",
+        "===\r\n  asks: none\r\n===\r\n  [no claim]\r\n",
+    ]
+    for text in variations:
+        assert ra.is_null_form(text) is True, f"is_null_form returned False for {text!r}"
+
+
+def test_differing_frontmatter_and_body_indentation_parses_identically():
+    """AC3: Different indentation levels between frontmatter and body parse identically."""
+    canonical_block = ra.extract_block(_report())
+    assert canonical_block is not None
+    canonical_parsed = ra.parse_block(canonical_block, _VOCAB)
+    canonical_valid, canonical_err, canonical_ast = ra.check_argdown_block(canonical_block)
+
+    split = ra._split_frontmatter(canonical_block.splitlines())
+    assert split is not None
+    fm, body = split
+
+    # Case A: Frontmatter at column 0, body indented by 4 spaces
+    block_a = f"===\n{fm}\n===\n" + "\n".join("    " + ln if ln.strip() else "" for ln in body)
+    assert ra.parse_block(block_a, _VOCAB) == canonical_parsed
+    valid, _, ast = ra.check_argdown_block(block_a)
+    assert valid is True
+    assert ast == canonical_ast
+
+    # Case B: Frontmatter indented by 4 spaces, body at column 0
+    fm_indented = "\n".join("    " + ln if ln.strip() else "" for ln in fm.splitlines())
+    block_b = f"    ===\n{fm_indented}\n    ===\n" + "\n".join(body)
+    assert ra.parse_block(block_b, _VOCAB) == canonical_parsed
+    valid, _, ast = ra.check_argdown_block(block_b)
+    assert valid is True
+    assert ast == canonical_ast
+
+
+def test_premise_indented_continuation_line_preserved_under_block_indent():
+    """AC3: Indented continuation lines under premises remain intact when the entire block has leading indent."""
+    block_text = (
+        "===\n"
+        f"asks:\n  {ASK_A}: question\n"
+        f"answers:\n  {ASK_A}: 2\n"
+        "===\n\n"
+        "(1) Observation quoting deciding value.\n"
+        f"    -- {_STRONG.phrase} ^a\n"
+        "-- Warrant rule. Unless: defeater; not ruled out. --\n"
+        "(2) So conclusion.\n"
+    )
+    parsed_unindented = ra.parse_block(block_text, _VOCAB)
+    assert parsed_unindented is not None
+    assert len(parsed_unindented.premises) == 1
+    assert parsed_unindented.premises[0].basis == _STRONG
+
+    # Indent the entire block by 2 spaces
+    indented_block = "\n".join("  " + ln if ln.strip() else "" for ln in block_text.splitlines())
+    parsed_indented = ra.parse_block(indented_block, _VOCAB)
+    assert parsed_indented == parsed_unindented
+    assert parsed_indented.premises[0].basis == _STRONG
+
+
+def test_altered_frontmatter_relative_nesting_changes_result():
+    """AC4: Whitespace that changes meaning still changes the result (frontmatter nesting)."""
+    # Case 1: answers nested under asks
+    malformed_nesting = (
+        "===\n"
+        f"asks:\n"
+        f"  {ASK_A}: question\n"
+        f"  answers:\n"
+        f"    {ASK_A}: 2\n"
+        "===\n\n"
+        "(1) Observation. -- I read it\n"
+        "-- Warrant. Unless: def; ok. --\n"
+        "(2) So conclusion.\n"
+    )
+    valid, err, _ = ra.check_argdown_block(malformed_nesting)
+    assert valid is False
+    assert "Missing 'answers:' section" in err
+
+    # Case 2: ask id not nested under asks (same column 0 as asks)
+    unindented_ask = (
+        "===\n"
+        f"asks:\n"
+        f"{ASK_A}: question\n"
+        f"answers:\n"
+        f"  {ASK_A}: 2\n"
+        "===\n\n"
+        "(1) Observation. -- I read it\n"
+        "-- Warrant. Unless: def; ok. --\n"
+        "(2) So conclusion.\n"
+    )
+    parsed = ra.parse_block(unindented_ask, _VOCAB)
+    assert parsed is not None
+    # Because ASK_A was at the root instead of under asks:, parsed.asks is empty
+    assert parsed.asks == []
+
+
+def test_split_inference_line_changes_result():
+    """AC4: Whitespace that changes meaning still changes the result (split inference line)."""
+    canonical_block = ra.extract_block(_report())
+    assert canonical_block is not None
+
+    # Split inference line across lines
+    split_block = canonical_block.replace(
+        "Unless: this runtime ignores hook output; not ruled out. --",
+        "\nUnless: this runtime ignores hook output; not ruled out. --",
+    )
+
+    # 1. check_argdown_block returns False with malformed inference defect
+    valid, err, _ = ra.check_argdown_block(split_block)
+    assert valid is False
+    assert "Malformed inference line (missing closing '--')" in err
+
+    # 2. record_verdict for PASS is refused
+    sess = "sess-split-inf"
+    cid = "claim-split-inf"
+    _arm_with_report(sess, cid, text=f"```argdown\n{split_block}\n```\n")
+    with pytest.raises(ValueError) as excinfo:
+        pcv.record_verdict(
+            session_id=sess,
+            claim_id=cid,
+            verdict="PASS",
+            reason=_reason(cid),
+            tracer_mod=_configured(),
+        )
+    assert "Malformed inference line" in str(excinfo.value)
+
+
+# ---------------------------------------------------------------------------
+# Indented hand-backs and unparsable blocks (AC1-AC5)
+# ---------------------------------------------------------------------------
+
+
+def test_indented_handback_four_inferences_parses_and_records_pass():
+    """AC1: A hand-back whose block opens '  ===\\n  asks:...', carrying a sound four-inference argument,
+    parses with 4 inference lines and records PASS; fails before the fix."""
+    ask_c = "tg-1992"
+    ask_d = "tg-1993"
+    block = (
+        "  ===\n"
+        f"  asks:\n"
+        f"    {ASK_A}: is step 1 ok?\n"
+        f"    {ASK_B}: is step 2 ok?\n"
+        f"    {ask_c}: is step 3 ok?\n"
+        f"    {ask_d}: is step 4 ok?\n"
+        f"  answers:\n"
+        f"    {ASK_A}: 2\n"
+        f"    {ASK_B}: 3\n"
+        f"    {ask_c}: 4\n"
+        f"    {ask_d}: 5\n"
+        "  ===\n\n"
+        "  (1) First premise. -- I did it\n"
+        "  -- Warrant 1. Unless: def1; not ruled out. --\n"
+        "  (2) So, first conclusion.\n"
+        "  -- Warrant 2. Unless: def2; not ruled out. --\n"
+        "  (3) So, second conclusion.\n"
+        "  -- Warrant 3. Unless: def3; not ruled out. --\n"
+        "  (4) So, third conclusion.\n"
+        "  -- Warrant 4. Unless: def4; not ruled out. --\n"
+        "  (5) So, fourth conclusion.\n"
+    )
+    # Check parse_block directly
+    parsed = ra.parse_block(block, _VOCAB)
+    assert parsed is not None
+    assert len(parsed.inferences) == 4
+    assert [inf.conclusion for inf in parsed.inferences] == [2, 3, 4, 5]
+
+    # Check record_verdict on hand-back text
+    session_id = "s-ac1-indented"
+    cid = "claim-ac1"
+    judged_text = f"## Report\n\n```argdown\n{block}```\n"
+    _arm_with_report(session_id, cid, text=judged_text)
+
+    reason = (
+        f"Judged: {cid}; asks {ASK_A}, {ASK_B}, {ask_c}, {ask_d}\n"
+        "Valid: (2) holds -- warrant 1\n"
+        "Valid: (3) holds -- warrant 2\n"
+        "Valid: (4) holds -- warrant 3\n"
+        "Valid: (5) holds -- warrant 4\n"
+        "Supported: weakest I did it -- (1)\n"
+        f"Answered: {ASK_A} ← (2)\n"
+        f"Answered: {ASK_B} ← (3)\n"
+        f"Answered: {ask_c} ← (4)\n"
+        f"Answered: {ask_d} ← (5)\n"
+        "Sufficient: (2), (3), (4), (5) obvious\n"
+        "Waived: none\n"
+        "Relay: none\n"
+    )
+    tracer = _configured()
+    result = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=cid,
+        verdict="PASS",
+        reason=reason,
+        tracer_mod=tracer,
+    )
+    assert result["ok"] is True
+    assert result["verdict"] == "PASS"
+    assert pcg.is_armed(session_id) is False
+    assert tracer.exported[0]["attributes"]["premise_check.inference_count"] == 4
+
+
+def test_nested_argdown_relations_under_common_indent_yields_same_structure():
+    """AC2: A block with nested Argdown relations under a common indent yields the same
+    relation structure as the same block unindented."""
+    unindented_block = (
+        "[S1]: Statement 1\n  +> [S2]\n    +> [S3]\n[S2]: Statement 2\n[S3]: Statement 3\n"
+    )
+    indented_block = (
+        "  [S1]: Statement 1\n"
+        "    +> [S2]\n"
+        "      +> [S3]\n"
+        "  [S2]: Statement 2\n"
+        "  [S3]: Statement 3\n"
+    )
+    valid_u, err_u, ast_u = ra.check_argdown_block(unindented_block)
+    assert valid_u is True, err_u
+    valid_i, err_i, ast_i = ra.check_argdown_block(indented_block)
+    assert valid_i is True, err_i
+    assert ast_u is not None and ast_i is not None
+    assert ast_u["relations"] == ast_i["relations"]
+    assert ast_u["statements"] == ast_i["statements"]
+
+
+def test_strict_structural_markers_remain_refused():
+    """AC3: Malformed inference lines, (n) numbering, answers: pointers and basis phrases
+    are refused after the change as before."""
+    # 1. Malformed inference line
+    block_bad_inf = (
+        "===\n"
+        f"asks:\n  {ASK_A}: q\n"
+        f"answers:\n  {ASK_A}: 2\n"
+        "===\n\n"
+        "(1) Observation. -- I read it\n"
+        "-- Malformed inference without closing dashes\n"
+        "(2) So, conclusion.\n"
+    )
+    valid, err, _ = ra.check_argdown_block(block_bad_inf)
+    assert valid is False
+    assert "Malformed inference line" in err
+
+    # 2. Malformed (n) numbering (markdown list item)
+    block_bad_num = (
+        "1. Markdown item. -- I read it\n-- Warrant. Unless: def; status. --\n(2) So, conclusion.\n"
+    )
+    valid, err, _ = ra.check_argdown_block(block_bad_num)
+    assert valid is False
+    assert "Markdown numbered list" in err
+
+    # 3. Malformed answers: pointer (unmapped ask)
+    block_bad_ans = (
+        "===\n"
+        f"asks:\n  {ASK_A}: q1\n  {ASK_B}: q2\n"
+        f"answers:\n  {ASK_A}: 2\n"
+        "===\n\n"
+        "(1) Observation. -- I read it\n"
+        "-- Warrant. Unless: def; status. --\n"
+        "(2) So, conclusion.\n"
+    )
+    valid, err, _ = ra.check_argdown_block(block_bad_ans)
+    assert valid is False
+    assert "Unmapped ask" in err
+
+    # 4. Malformed basis phrase (unknown phrase)
+    block_bad_basis = (
+        "(1) Observation. -- totally made up basis\n"
+        "-- Warrant. Unless: def; status. --\n"
+        "(2) So, conclusion.\n"
+    )
+    parsed = ra.parse_block(block_bad_basis, _VOCAB)
+    assert parsed is not None
+    assert parsed.premises[0].basis is None and parsed.premises[0].rank == 0
+
+
+def test_unparsable_block_yields_could_not_parse_refusal_not_0_inferences_and_leaves_gate_armed():
+    """AC4: An unparsable block yields a refusal stating the block could not be parsed,
+    never '0 inference lines', and the gate stays armed."""
+    session_id = "s-ac4-unparsable"
+    cid = "claim-unparsable"
+    unparsable_block = (
+        "===\n"
+        f"asks:\n  {ASK_A}: question\n"
+        f"answers:\n  {ASK_A}: 2\n"
+        "===\n\n"
+        "(1) Premise without warrant.\n"
+        "this line is unparsable gibberish that violates argdown syntax entirely\n"
+    )
+    judged_text = f"## Report\n\n```argdown\n{unparsable_block}```\n"
+    _arm_with_report(session_id, cid, text=judged_text)
+    assert pcg.is_armed(session_id) is True
+
+    reason = (
+        f"Judged: {cid}; asks {ASK_A}\n"
+        "Valid: (1) holds -- warrant\n"
+        "Supported: weakest I did it -- (1)\n"
+        f"Answered: {ASK_A} ← (1)\n"
+        "Sufficient: (1) obvious\n"
+        "Waived: none\n"
+        "Relay: none\n"
+    )
+    with pytest.raises(ValueError) as excinfo:
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id=cid,
+            verdict="PASS",
+            reason=reason,
+            tracer_mod=_configured(),
+        )
+
+    err = str(excinfo.value)
+    # Refusal states the block could not be parsed
+    assert (
+        "could not parse" in err.lower()
+        or "cannot parse" in err.lower()
+        or "no argdown block that parses" in err.lower()
+    )
+    # Refusal NEVER says "0 inference lines"
+    assert "0 inference lines" not in err
+    # Gate stays armed
+    assert pcg.is_armed(session_id) is True
+
+
+def test_unindented_handback_parses_identically_to_baseline():
+    """AC5: Unindented hand-backs parse as before; full test suite and linter green."""
+    report_text = _report()
+    block = ra.extract_block(report_text)
+    assert block is not None
+    parsed = ra.parse_block(block, _VOCAB)
+    assert parsed is not None
+    assert parsed.asks == [ASK_A, ASK_B]
+    assert len(parsed.inferences) == 2
+    assert [inf.conclusion for inf in parsed.inferences] == [4, 6]
+    valid, err, ast = ra.check_argdown_block(block)
+    assert valid is True
+
+
+def test_indented_premise_continuation_lines_with_dashes_parse_and_record_pass():
+    """Indented premise continuation lines starting with -- or — bind correctly as basis text
+    rather than opening a multiline inference bar, preserve basis_text, and pass record_verdict."""
+    block = (
+        "===\n"
+        f"asks:\n  {ASK_A}: is step 1 ok?\n"
+        f"answers:\n  {ASK_A}: 3\n"
+        "===\n\n"
+        "(1) [P1]: First premise statement.\n"
+        "  -- I read it\n"
+        "(2) [P2]: Second premise statement.\n"
+        "  — rule\n"
+        "-- Warrant 1. Unless: def1; not ruled out. --\n"
+        "(3) [C1]: So, first conclusion.\n"
+    )
+    parsed = ra.parse_block(block, _VOCAB)
+    assert parsed is not None
+    assert len(parsed.premises) == 2
+    assert parsed.premises[0].basis_text == "I read it"
+    assert parsed.premises[0].basis is not None and parsed.premises[0].basis.phrase == "I read it"
+    assert parsed.premises[1].basis_text == "rule"
+    assert parsed.premises[1].basis is not None and parsed.premises[1].basis.phrase == "rule"
+    assert len(parsed.inferences) == 1
+    assert parsed.inferences[0].conclusion == 3
+    assert parsed.inferences[0].text == "-- Warrant 1. Unless: def1; not ruled out. --"
+
+    session_id = "s-indented-continuation"
+    cid = "claim-indented-continuation"
+    judged_text = f"## Report\n\n```argdown\n{block}```\n"
+    _arm_with_report(session_id, cid, text=judged_text)
+
+    reason = (
+        f"Judged: {cid}; asks {ASK_A}\n"
+        "Valid: (3) holds -- warrant 1\n"
+        "Supported: weakest rule -- (2)\n"
+        f"Answered: {ASK_A} ← (3)\n"
+        "Sufficient: (3) obvious\n"
+        "Waived: none\n"
+        "Relay: none\n"
+    )
+    attr = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=cid,
+        verdict="PASS",
+        reason=reason,
+        tracer_mod=_configured(),
+    )
+    assert attr["verdict"] == "PASS"

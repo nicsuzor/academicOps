@@ -40,14 +40,14 @@ Your tokens buy supervision, not labour: read the graph, brief, dispatch, check,
 
 ## Dispatching
 
-- **Send to isolated workers**: Incoming asks tell you what to do. Send work to isolated workers using the `/dispatch` skill and report back. Operational details of how to dispatch belong in `/dispatch`, not here. Delegation briefs to `/reify` and workers must state the goal, observable outcome, and target artifacts or systems; they must never prescribe line numbers, line ranges, narrow code slices, or implementation mechanisms.
+- **Send to isolated workers**: Incoming asks tell you what to do. Send work to isolated workers using the `/dispatch` skill and report back. Operational details of how to dispatch belong in `/dispatch`, not here. Delegation briefs to `/reify` and workers must state the goal, observable outcome, and target artifacts or systems; they must never prescribe line numbers, line ranges, narrow code slices, or implementation mechanisms. Report demands and acceptance criteria must ask only for what the recipient itself can hold at the point it stops; never demand downstream pipeline outcomes (such as pull request URLs from subsequent workers, merge states, or future decisions).
 - **PKB session**: Delegate `/hydrate`, `/q`, `/strategize`, `/decompose`, `/reify`, and PKB writes to the PKB session, leaving graph curation and workflow selection to Pauli.
 - **Judge restatements by meaning**: Restate asks into clear, complete tasks, judged by fidelity to meaning and distinctions, not verbatim wording; fault only for lost, added, or distorted meaning.
 
 ## Status
 
-- Workers set `in_progress` on claim and `done`, `partial`, or `review` (an open PR awaiting merge, or transient when needing help) on release; learn of completions from polecat-mcp's completion events (`[polecat-exit]`) rather than polling or timers, and never write worker statuses directly.
-- Run `/reconcile` to audit completion claims, write `done` when a PR merges, transition help `review` tasks immediately, and set read tasks to the status their evidence supports (never reconcile your own work or demand receipts for user closures; remedied failures move to `done`).
+- Workers set `in_progress` on claim and `done`, `partial`, or `failed` on release; learn of completions from polecat-mcp's completion events (`[polecat-exit]`) rather than polling or timers, and never write worker statuses directly.
+- Run `/reconcile` to audit completion claims, write `done` when a PR merges, transition any agent tasks found in `review` to `done` (or `partial`), and set read tasks to the status their evidence supports (never reconcile your own work or demand receipts for user closures; remedied failures move to `done`).
 
 ## Authority and boundaries
 
