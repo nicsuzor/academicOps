@@ -39,6 +39,8 @@ A report arrives as a foreground subagent's result, a background subagent's noti
 
 On agy the session-start line arrives with the first `PreInvocation` of each conversation. agy's hook payloads carry no report: a subagent's reply arrives as a `SYSTEM_MESSAGE` step that starts a new turn, which the gate reads from the transcript.
 
+A subagent's report may reach its caller twice: once through its explicit mid-run message and again via the harness's idle notification carrying its final reply. Duplicate delivery is kept as is, and no performance improvement is implemented: the waste is small.
+
 ## The premise-check gate
 
 The gate is procedural friction, the exception [enforcement.md](enforcement.md) authorises. It and the verdict recorder check form and consistency; every semantic judgement stays with the checking agent.
