@@ -25,22 +25,22 @@ For each failure class, this specification documents the touched rows of the enf
 As the user, I want the coordinator's statements about future operational behavior to be strictly backed by persistent writes, so that commitments survive session restarts and I am never given unbacked assurances.
 
 - **AC-1.1**: Given a user correction or operational inquiry, when the coordinator replies with text stating a commitment or rule regarding future operational behavior, then the session's contemporaneous execution records show a persistent write (instruction edit, rule addition, configuration update, or tracked task creation) executed within the same turn.
-- **AC-1.2**: Given a drafted reply containing a commitment regarding future behavior without an accompanying persistent write or citation of an active persistent control, when the coordinator attempts to output the text or terminate the turn, then execution friction halts the action and requires either persisting the mechanism or retracting the unbacked assurance.
+- **AC-1.2**: Given an outbound conversational reply containing forward-looking commitments regarding future behavior, when agentic verification evaluates the reply against declared relay lines prior to output, then the commitment must trace to a verified argument line demonstrating a persistent write or citing an active persistent control, preventing unbacked assurances from reaching the user.
 
 ### US-2: Autonomous Resolution Against Standing Rulings
 
 As the user, I want incoming worker questions and approval requests tested against my standing rulings before reaching me, so that my attention is never spent re-deciding matters I have already settled.
 
-- **AC-2.1**: Given an incoming worker report or card proposal categorizing an item as requiring user approval or escalation, when verification evaluates the handback, then the evaluation tests the item against active standing rulings and merge policies.
-- **AC-2.2**: Given an item covered by an active standing ruling, when the coordinator processes the item, then the coordinator applies the ruling autonomously and suppresses user escalation.
+- **AC-2.1**: Given an incoming worker report or card proposal categorizing an item as requiring user approval or escalation, when verification evaluates the handback under `premise-check`, then the evaluation tests the item semantically against active standing rulings and merge policies.
+- **AC-2.2**: Given an item covered by an active standing ruling, when the coordinator processes the handback, then `Sufficient:` fails with `REVISE` if escalated, directing the coordinator to apply the ruling autonomously and suppress user escalation.
 - **AC-2.3**: Given a question or approval card presented to the user, then verification records an explicit check confirming the absence of applicable standing rulings before the card is emitted.
 
 ### US-3: Closed-Loop Remediation Dispatch
 
 As the user, I want review and workflow gaps identified by the coordinator to be dispatched to execution immediately, so that remediation work does not stall as an unowned queued task.
 
-- **AC-3.1**: Given a discovered deliverable gap or failing review requiring remediation, when the coordinator routes task creation to the graph custodian, then the handback evaluation explicitly tests for operational remainders.
-- **AC-3.2**: Given a handback reporting that remediation tasks are queued and ready for dispatch, when the coordinator completes handback evaluation, then the evaluation records an unowned remainder and automatically initiates dispatch to the execution dispatcher within the same turn.
+- **AC-3.1**: Given a discovered deliverable gap or failing review requiring remediation, when the coordinator routes task creation to the graph custodian, then the handback evaluation explicitly tests whether downstream dispatch obligations remain unfulfilled.
+- **AC-3.2**: Given a handback reporting that remediation tasks are queued and ready for dispatch, when the coordinator completes handback evaluation under canonical `Answered:` and `Relay:` rules, then `Relay: none` is prohibited from closing the thread, and the coordinator automatically initiates dispatch to the execution dispatcher within the same turn.
 - **AC-3.3**: Given an identified quality or review gap, then the coordinator emits no status to the user indicating remediation is underway without a verified dispatch invocation recorded in the trace.
 
 ### US-4: Scoped Filter Briefs and Outbound Card Verification
@@ -49,7 +49,8 @@ As the user, I want filtered requests briefed strictly to the requested scope an
 
 - **AC-4.1**: Given a user request for a filtered subset of items, when the coordinator briefs a subagent, then the brief specifies only the filtering criteria and contains no instructions requesting categorization or status of items outside the filter.
 - **AC-4.2**: Given a standing scheduled prompt, when the user provides a subsequent narrower directive over the same domain, then the standing schedule yields to the narrower user directive and does not generate competing approval items.
-- **AC-4.3**: Given an invocation of the structured user question tool, when outbound validation executes, then the tool call is blocked unless the card contains at most one decision question and every proposed option resolves directly to a verified relay line answering the user's latest conversation directive.
+- **AC-4.3**: Given an invocation of the structured user question tool, when syntactic pre-tool validation executes, then the tool call is blocked if the payload contains more than one decision question (`len(questions) > 1`).
+- **AC-4.4**: Given an invocation of the structured user question tool, when card composition verification executes, then every question and option text must derive semantically from a verified `Relay:` line answering the user's latest conversation directive.
 
 ### US-5: Interrupted Turn Recovery Across Restarts
 
@@ -75,8 +76,8 @@ Enforcement moves follow the controlled vocabulary and proportionality framework
   - Issue #3302 (RCA): During session execution (2026-10-30), the coordinator answered a user challenge regarding repeated escalations with the promise: _"From here, every item gets checked against your rulings before it reaches you..."_. Contemporaneous trace records showed zero write or edit tool calls, zero git commits, and no dispatched tasks. An earlier promise in the same session (*"I'm asking in plain text from now on..."*) was similarly unbacked and broken within hours by invoking the structured question tool.
   - Issue #3303 (Verification Miss 1): Premise-checking gates arm exclusively on incoming messages from peers or subagents. Outbound self-composed coordinator replies pass without verification, allowing forward-looking commitments to reach the user without verifying supporting write operations.
 - **Proposed One-Step Move**:
-  - Advance from Level 2 `instructions` to Level 4 **`structural` (`friction`)** via outbound turn verification.
-  - Operational Mechanism: A pre-output / turn termination hook evaluates outbound conversational replies. When a reply contains forward-looking behavioral commitments (*"from now on"*, _"from here"_, _"in future"_, _"I will ensure"_), the hook inspects the turn's tool execution trace. If the turn contains no persistent write operation (file edit, rule creation, configuration write, or tracking task creation) and cites no active persistent control, turn completion is refused with a friction notice directing the agent to either persist the control or strike the unbacked commitment.
+  - Advance from Level 2 `instructions` to Level 5 **`process` (`required gate`)** activating the outbound reply verification contract (`specs/enforcement/evidence-contract.md:52`, `specs/ENFORCEMENT-MAP.md:119`).
+  - Operational Mechanism: Outbound replies containing forward-looking commitments or policy statements must derive from checked argument lines in the turn's premise check. The checking agent verifies that any stated behavioral guarantee is grounded in an in-turn persistent write (instruction edit, rule file, configuration change, or tracking task creation) or cites an active persistent control, preventing unbacked assurances from reaching the conversational surface. In accordance with `human-readability-first` and `judgment-non-delegable`, verification is performed through agentic semantic evaluation rather than mechanical keyword sniffing.
 
 ### Class 2: Escalation of Already-Ruled Items
 
@@ -91,7 +92,7 @@ Enforcement moves follow the controlled vocabulary and proportionality framework
   - Issues #3308, #3309, #3310: An unconfirmed hotfix label was silenced during a merge pass without validating the label against user rulings, leading to unnecessary user inquiry.
 - **Proposed One-Step Move**:
   - Advance from Level 2 `instructions` to Level 5 **`process` (`required gate`)** within handback verification and card composition.
-  - Operational Mechanism: Classify user escalation as high-stakes under User Attention Protection principles (`specs/enforcement/enforcement.md`), eliminating the presumption of cheap reversibility. In `premise-check`, the `Sufficient:` evaluation for any claim routing a decision to the user must execute a mandatory `standing-rulings` check, verifying that the question is not settled by existing repository rules, merge policies, or recorded directives. If settled, `PASS` is refused, and the agent must resolve the item autonomously.
+  - Operational Mechanism: Classify user escalation as high-stakes under User Attention Protection principles (`specs/enforcement/enforcement.md`), eliminating the presumption of cheap reversibility. In `premise-check`, the `Sufficient:` evaluation for any claim routing a decision to the user must execute a mandatory `standing-rulings` check, verifying that the question is not settled by existing repository rules, merge policies, or recorded directives. In accordance with `specs/enforcement/enforcement.md:18`, this check is performed qualitatively by the evaluating agent; if settled, `PASS` is refused, and the agent must resolve the item autonomously.
 
 ### Class 3: Orphaned Remediation Remainders
 
@@ -105,7 +106,7 @@ Enforcement moves follow the controlled vocabulary and proportionality framework
   - Issue #3305 (Verification Miss): Premise-check judged the custodian's handback solely against the partial ask sent to it, recording `Answered` and `Relay: none`. The seven keyed lines contained no check evaluating what the report left undone or identifying who owned the remainder.
 - **Proposed One-Step Move**:
   - Advance from Level 2 `instructions` to Level 5 **`process` (`routing` / `required gate`)** in handback verification.
-  - Operational Mechanism: Extend handback evaluation in `premise-check` with an explicit `Remainder:` check. When a handback report indicates that downstream actions remain necessary (e.g., tasks queued awaiting execution), `Relay: none` is prohibited from closing the thread. The gate requires an immediate chained dispatch message to the execution dispatcher before turn completion can succeed.
+  - Operational Mechanism: Enforce complete obligation evaluation across the canonical `Answered:` and `Relay:` lines in `premise-check`. When a handback report indicates that downstream actions remain necessary (e.g., tasks queued awaiting execution), the obligation cannot be marked answered in full, and `Relay: none` is prohibited from closing the thread. The evaluating agent must recognize the unfulfilled remainder and immediately dispatch the execution message to the dispatcher before turn completion can succeed.
 
 ### Class 4: Partition Widening and Unchecked Cards
 
@@ -118,11 +119,11 @@ Enforcement moves follow the controlled vocabulary and proportionality framework
   - Issue #3318 (RCA): A user request for uncontroversial pull requests suitable for batch approval was briefed by the coordinator as a full partition, explicitly demanding failure reasons for all excluded items. Concurrently, an older standing loop prompt re-armed after restart without accounting for the user's narrower request. The coordinator combined both into a multi-question card presenting excluded items as separate decisions.
   - Issue #3319 (Verification Miss): Premise-check evaluated materiality against what a reader might do rather than what the user asked, approving inclusion of the complement set. The outgoing decision card was emitted four seconds after the verdict without undergoing any outbound check.
 - **Proposed One-Step Move**:
-  - Advance from Level 2 `instructions` to Level 4 **`structural` (`friction`)** on question tool calls.
-  - Operational Mechanism: Enforce pre-tool validation on the structured question tool (`AskUserQuestion`). The pre-tool hook verifies that:
-    1. The payload contains at most one decision question, strictly enforcing single-decision serialization.
-    2. Every question and option text maps directly to a verified `Relay:` line of a current turn verdict answering the user's latest active directive.
-    3. Standing scheduled prompts yield to subsequent conversational filters over the same target domain.
+  - Advance from Level 2 `instructions` to Level 4 **`structural` (`friction`)** for syntactic invariants and Level 5 **`process` (`required gate`)** for semantic card verification.
+  - Operational Mechanism:
+    1. _Syntactic Pre-Tool Hook_: A deterministic pre-tool hook on `AskUserQuestion` inspects parameter structure and blocks calls where `len(questions) > 1`, enforcing single-decision serialization by construction without NLP.
+    2. _Agentic Card Verification_: During card composition under `premise-check`, the composing agent verifies that all presented options derive semantically from verified `Relay:` lines answering the user's latest conversation directive.
+    3. _Standing Schedule Yielding_: Instructions and re-arming logic require standing scheduled prompts to yield to subsequent narrower conversational filters over the same target domain.
 
 ### Class 5: Dropped Interrupted Turns on Restart
 
@@ -131,7 +132,7 @@ Enforcement moves follow the controlled vocabulary and proportionality framework
   - `[Dropped Means Not Delivered]` (`specs/ENFORCEMENT-MAP.md:71`): `instructions` (`imperative`).
   - Current placement: Level 1 `doctrine only` / Level 2 `instructions` (`imperative`). No active enforcement map row governs in-session turn recovery on restart.
 - **Failure Evidence**:
-  - Session Execution Record (`cee1226c-192b-5538-b797-17be9a4f5dda`): Trace spans show instances where turns received user prompts or launched dispatches, experienced session restarts, and recorded `null` assistant output. The coordinator confessed in active session cards that it repeatedly treated unfinished turns as finished upon restart, dropping user instructions until re-prompted.
+  - Session Execution Record (2026-10-30): Trace spans show instances where turns received user prompts or launched dispatches, experienced session restarts, and recorded `null` assistant output. The coordinator confessed in active session cards that it repeatedly treated unfinished turns as finished upon restart, dropping user instructions until re-prompted.
   - Hook Architecture: The `SessionStart` hook exports session identity and environment variables but executes no audit of the prior turn's completion status.
 - **Proposed One-Step Move**:
   - Advance from Level 1 `doctrine` to Level 3 **`JIT injection`** / Level 5 **`process` (`routing`)** at session start.
@@ -141,10 +142,10 @@ Enforcement moves follow the controlled vocabulary and proportionality framework
 
 | Failure Class | Current Placement | Target Placement | Mechanism | Verification Surface | Build Acceptance Criterion |
 | :- | :- | :- | :- | :- | :- |
-| **1. Unbacked Promises** | Level 2: `instructions` (`imperative`) | Level 4: `structural` (`friction`) | Turn completion / reply hook checks persistent write backing | PreToolUse / Stop hook | AC-1.1 & AC-1.2: Unbacked behavioral promises refused unless supported by in-turn write tool call or git commit. |
-| **2. Settled Items Escalated** | Level 2: `instructions` (`imperative`) | Level 5: `process` (`required gate`) | `premise-check` `Sufficient:` validates against standing rulings | `premise_check_verdict.py` / card intake | AC-2.1 & AC-2.2: Reports escalating items covered by standing rulings fail `Sufficient:`, enforcing autonomous resolution. |
-| **3. Orphaned Remainder** | Level 2: `instructions` (`imperative`) | Level 5: `process` (`routing` / `required gate`) | `premise-check` `Remainder:` check gates thread termination | `premise_check_gate.py` / `verdict.py` | AC-3.1 & AC-3.2: Handbacks stating queued tasks require verified dispatch invocation to close the gate. |
-| **4. Partition Widening & Cards** | Level 2: `instructions` (`imperative`) | Level 4: `structural` (`friction`) | Pre-tool check on `AskUserQuestion` enforces single-decision and `Relay:` map | PreToolUse on `AskUserQuestion` | AC-4.1 & AC-4.2: Multi-question cards blocked; questions must derive from verified `Relay:` lines answering latest ask. |
+| **1. Unbacked Promises** | Level 2: `instructions` (`imperative`) | Level 5: `process` (`required gate`) | Outbound reply verification against declared Relay lines and persistent writes | `premise-check` outbound reply review | AC-1.1 & AC-1.2: Unbacked behavioral promises refused unless supported by verified relay line grounded in persistent write. |
+| **2. Settled Items Escalated** | Level 2: `instructions` (`imperative`) | Level 5: `process` (`required gate`) | `premise-check` `Sufficient:` validates semantically against standing rulings | `premise-check` agent evaluation | AC-2.1 & AC-2.2: Reports escalating items covered by standing rulings fail `Sufficient:`, enforcing autonomous resolution. |
+| **3. Orphaned Remainder** | Level 2: `instructions` (`imperative`) | Level 5: `process` (`routing` / `required gate`) | `premise-check` canonical `Answered:` & `Relay:` gates thread closure on unowned tasks | `premise-check` handback evaluation | AC-3.1 & AC-3.2: Handbacks stating queued tasks require verified dispatch invocation to close the thread. |
+| **4. Partition Widening & Cards** | Level 2: `instructions` (`imperative`) | Level 4: `structural` (`friction`) & Level 5: `process` (`required gate`) | Pre-tool check on `AskUserQuestion` (`len <= 1`); semantic Relay line mapping | PreToolUse hook (`len <= 1`) & `premise-check` | AC-4.1, AC-4.3 & AC-4.4: Multi-question cards blocked; questions must derive from verified `Relay:` lines answering latest ask. |
 | **5. Interrupted Turns Dropped** | Level 1: `doctrine only` | Level 3: `JIT injection` / Level 5: `process` (`routing`) | `SessionStart` prior turn audit injects interrupted context | `SessionStart` hook handler | AC-5.1 & AC-5.2: Interrupted turns detected on restart; recovery block injected into first prompt. |
 
 ## 4. Open Questions

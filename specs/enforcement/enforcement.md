@@ -73,6 +73,20 @@ Prompt hydration (`search_the_pkb`, detailed in [`specs/agents/prompt-hydration.
 - **Session attribution metadata**: Every hydration query passes a `_session` payload containing `session_id`, `prompt_id`, `agent_id`, `caller: "hook"`, and `surface` (`"agy"`, `"github-actions"`, or `"claude-code"`), matching `prompt_id` across the MCP request and hook span.
 - **Quiet failure & empty handling**: Injects nothing on empty or whitespace search results; on server/network failure, injects a single concise line naming the failure cause without dumping stack traces or polluting agent context.
 
+### Interrupted turn recovery delivery channel (JIT injection)
+
+Session initialization on `SessionStart` (and session resume/compaction) serves as a JIT injection delivery channel restoring interrupted turn state across restarts:
+
+- **Prior turn audit**: Inspects the immediate prior turn from the local transcript or Phoenix trace store; if the preceding turn contains an incoming prompt or dispatch without a corresponding terminal output, injects an `UNFINISHED_TURN_RECOVERY` payload.
+- **Turn resumption**: Hands the uncompleted prompt back into the session's opening prompt so the coordinator resumes and completes the interrupted turn before processing new unrelated requests.
+
+### Question tool serialization friction (structural friction)
+
+Pre-tool execution on structured question tools (`AskUserQuestion`) enforces single-decision serialization structurally without natural language parsing:
+
+- **Syntactic count invariant**: Blocks any tool payload containing more than one question (`len(questions) > 1`), rejecting multi-decision batches and question rolls by construction.
+- **Agentic content verification**: Semantic alignment between proposed options and authorized relay lines remains an agentic check performed within `premise-check`, never delegated to deterministic keyword heuristics.
+
 ## Proportionality and force of intervention
 
 Enforcement is chosen by **proportionality, frequency, scope, and force of intervention**, assessed in context rather than as a mechanical ladder.
