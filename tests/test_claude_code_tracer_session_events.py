@@ -733,3 +733,97 @@ def test_aops_debug_subagent_session_id_threading(tracer_env, exporter, monkeypa
     assert dbg_span.attributes["session.id"] == "root-session-uuid"
     assert dbg_span.attributes["subagent.id"] == sub_session
     assert dbg_span.attributes["parent.session_id"] == "root-session-uuid"
+
+
+def test_claude_code_background_subagent_run_span(tracer_env, exporter, monkeypatch):
+    """A background Claude Code subagent's run shows as one span from launch to
+    SubagentStop, under the parent's Agent span."""
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://collector.invalid:4318")
+    sub_agent_id = "subagent-bg-456"
+
+    # 1. Turn starts
+    _hook(cct.handle_user_prompt_submit, tracer_env, prompt="Run background worker")
+
+    # 2. Parent launches background subagent
+    tool_input = {"subagent_type": "james", "prompt": "audit task"}
+    tool_response = {"isAsync": True, "status": "async_launched", "agentId": sub_agent_id}
+
+    _hook(
+        cct.handle_pre_tool,
+        tracer_env,
+        tool_name="Agent",
+        tool_input=tool_input,
+        tool_use_id="toolu_agent_01",
+    )
+    _hook(
+        cct.handle_post_tool,
+        tracer_env,
+        tool_name="Agent",
+        tool_input=tool_input,
+        tool_response=tool_response,
+        tool_use_id="toolu_agent_01",
+    )
+
+    (parent_agent_span,) = exporter.named("Agent")
+    assert parent_agent_span.attributes["openinference.span.kind"] == "AGENT"
+    assert parent_agent_span.attributes["agent.id"] == sub_agent_id
+
+    # 3. SubagentStop fires when background agent finishes
+    _hook(
+        cct.handle_subagent_stop,
+        tracer_env,
+        agent_id=sub_agent_id,
+        agent_type="james",
+        last_assistant_message="Subagent task completed.",
+    )
+
+    # Subagent run span must show under parent's Agent span
+    run_spans = [
+        s
+        for s in exporter.spans
+        if s.attributes.get("agent.id") == sub_agent_id and s != parent_agent_span
+    ]
+    assert len(run_spans) == 1
+    run_span = run_spans[0]
+    assert run_span.attributes["openinference.span.kind"] == "AGENT"
+    assert run_span.parent is not None
+    assert run_span.parent.span_id == parent_agent_span.context.span_id
+    assert run_span.start_time <= run_span.end_time
+    assert run_span.attributes["subagent.id"] == sub_agent_id
+    assert run_span.attributes.get("agent.name") == "james"
+
+
+def test_claude_code_handback_turn_names_subagent(tracer_env, exporter, monkeypatch):
+    """The hand-back turn carries an attribute naming the subagent."""
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://collector.invalid:4318")
+    sub_agent_id = "subagent-bg-789"
+
+    # Subagent returns to parent in a new turn
+    handback_prompt = f'<agent-message from="{sub_agent_id}">Here is the report</agent-message>'
+    _hook(cct.handle_user_prompt_submit, tracer_env, prompt=handback_prompt)
+    _hook(cct.handle_stop, tracer_env, last_assistant_message="Report received.")
+
+    (turn_root,) = exporter.named("claude-code-turn")
+    assert turn_root.attributes.get("subagent.id") == sub_agent_id
+
+
+def test_ida_handlers_emit_debug_spans_without_aops_debug_plugin(tracer_env, exporter, monkeypatch):
+    """Debug spans are emitted on every surface the hook tracer runs on, cloud sessions included,
+    even when aops-debug plugin is not loaded."""
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://collector.invalid:4318")
+
+    ctx = dispatch.HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        session_id=SESSION,
+        raw={"session_id": SESSION, "prompt": "Hello"},
+    )
+
+    # Run UserPromptSubmit through ida's handlers
+    ida_handlers = handlers.HANDLERS.get("UserPromptSubmit", [])
+    for h in ida_handlers:
+        h(ctx)
+
+    dbg_spans = exporter.named("aops-debug.UserPromptSubmit")
+    assert len(dbg_spans) == 1
+    assert dbg_spans[0].attributes["session.id"] == SESSION
