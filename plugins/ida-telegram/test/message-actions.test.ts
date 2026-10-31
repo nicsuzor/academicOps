@@ -62,9 +62,9 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
 
       const kb = apiCalls[0].body.reply_markup?.inline_keyboard || [];
       const flatButtons = kb.flat();
-      const logicCheckBtn = flatButtons.find((b: any) => b.text === "🧐 Check logic");
+      const logicCheckBtn = flatButtons.find((b: any) => b.text === "🧐 Check");
       const explainBtn = flatButtons.find((b: any) => b.text === "💡 Explain");
-      const reasonsBtn = flatButtons.find((b: any) => b.text === "🧾 Reasons");
+      const reasonsBtn = flatButtons.find((b: any) => b.text === "🧾");
 
       expect(logicCheckBtn).toBeDefined();
       expect(logicCheckBtn.callback_data).toBe("logic_check");
@@ -601,7 +601,7 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
 
       // Verify Details button attached
       const flatBtns = (lastSendMessage?.body.reply_markup?.inline_keyboard || []).flat();
-      const detailsBtn = flatBtns.find((b: any) => b.text === "🔍 Details");
+      const detailsBtn = flatBtns.find((b: any) => b.text === "🔍");
       expect(detailsBtn).toBeDefined();
 
       // Retrieve and verify details content from store
