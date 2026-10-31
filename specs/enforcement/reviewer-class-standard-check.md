@@ -79,7 +79,7 @@ Per `specs/enforcement/enforcement.md` § Proportionality and force of intervent
 
 ### 3. Specification of the Instruction Changes
 
-In Stage 2 (Build task `aops_8012b713`), the following updates will be applied across Marsha's instruction files:
+In Stage 2 (Build task), the following updates will be applied across Marsha's instruction files:
 
 1. **`plugins/ida/agents/marsha.md`**:
    Update Section 1 ("Governing standard and specification existence") to include per-file class-standard verification:
@@ -112,7 +112,7 @@ The effectiveness of this change will be demonstrated by evaluating the reviewed
 
 ### 5. Enforcement Map Update (Stage 2)
 
-Upon implementation in Stage 2 (`aops_8012b713`), the following row will be added to `specs/ENFORCEMENT-MAP.md`:
+Upon implementation in Stage 2, the following row will be added to `specs/ENFORCEMENT-MAP.md`:
 
 ```markdown
 | [Reviewer Class-Standard Verification](enforcement/reviewer-class-standard-check.md) -- Reviewers check every file a change touches against the governing standard for its document taxonomy class (craft for instructions, writing-specs for specs, doc-taxonomy for state/docs), recording UNMET for any file that violates its class standard regardless of feature acceptance criteria. | instructions | imperative | `plugins/ida/agents/marsha.md:15-18`, `plugins/ida/skills/workflow-library/workflows/wf-qa.md:30-33`, `plugins/ida/skills/verify/SKILL.md:12-16`, `specs/enforcement/reviewer-class-standard-check.md`: Mandates per-file class-standard checking across git diffs; reviewers fail/revise PRs touching files that violate their class standards (e.g. craft violations in instructions, spec summaries in ENFORCEMENT-MAP.md). Observation: PR #3291 head commit b760d303 evaluated under class-standard check correctly flagged all 4 changed files as UNMET under craft and doc-taxonomy. |
