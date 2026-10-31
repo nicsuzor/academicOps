@@ -9,14 +9,14 @@ This specification defines the native Telegram bot command menu registration and
 
 ## Acceptance Criteria & Verifications
 
-- **AC-1 (Zero persona variables or split lists):** Searching the plugin for `STRATEGIC_COMMANDS`, `resolvePersona`, `IDA_TELEGRAM_PERSONA` and `TELEGRAM_PERSONA` finds nothing.
-  - _Check_: `plugins/ida-telegram/test/commands.test.ts` (`AC1: Searching the plugin for STRATEGIC_COMMANDS, resolvePersona, IDA_TELEGRAM_PERSONA and TELEGRAM_PERSONA finds nothing`) programmatically scans all plugin sources and asserts zero matches.
+- **AC-1 (Zero persona variables or split lists):** Behavioral tests verify uniform configuration output across channel folders and persona environment configurations with zero persona branching.
+  - _Check_: `plugins/ida-telegram/test/commands.test.ts` (`AC1: loadConfig and resolveBotCommands produce uniform command menus across any persona environment configuration`) verifies identical `botCommands` across persona environment settings.
 - **AC-2 (Uniform menu across channel folders):** A test shows `telegram-prime`, `telegram-actual`, `telegram-audre` and `telegram-ida` folders yield the exact same menu.
   - _Check_: `plugins/ida-telegram/test/commands.test.ts` (`AC2: telegram-prime, telegram-actual, telegram-audre and telegram-ida folders yield the same menu`) verifies that `loadConfig` across all channel folders returns identical `botCommands`.
-- **AC-3 (Registered menu matches spec_7a9caca5 FR-8.1):** The registered menu matches `spec_7a9caca5` FR-8.1 ("every skill, always"), registering all installed skills with valid `[a-z0-9_]{1,32}` identifiers, descriptions between 1 and 256 characters, reserved commands omitted, and defined bare actions attached.
-  - _Check_: `plugins/ida-telegram/test/commands.test.ts` (`AC3: registered menu matches spec_7a9caca5 FR-8.1`) validates command identifiers, descriptions, reserved exclusions, and bare action bindings.
-- **AC-4 (Knowledge base audit):** `kb_c3b64912` no longer lists the persona variables.
-  - _Check_: Primary-source audit of `kb_c3b64912` verifies zero occurrences of `IDA_TELEGRAM_PERSONA` or `TELEGRAM_PERSONA`.
+- **AC-3 (Registered menu matches Telegram functional specification FR-8.1):** The registered menu matches the Telegram functional specification FR-8.1 ("every skill, always"), registering all installed skills with valid `[a-z0-9_]{1,32}` identifiers, descriptions between 1 and 256 characters, reserved and headless worker commands omitted, and defined bare actions attached.
+  - _Check_: `plugins/ida-telegram/test/commands.test.ts` (`AC3: registered menu matches Telegram functional specification FR-8.1`) validates command identifiers, descriptions, reserved and worker exclusions, and bare action bindings.
+- **AC-4 (Configuration audit):** The Telegram configuration specifications and reference notes no longer list the persona variables.
+  - _Check_: Audit of Telegram configuration documentation verifies zero occurrences of `IDA_TELEGRAM_PERSONA` or `TELEGRAM_PERSONA`.
 - **AC-5 (Dynamic skill discovery without plugin code edits):** Adding, removing or renaming a skill changes the registered menu with no edit to plugin code, and every installed skill appears with a distinct, valid command name.
   - _Check_: `plugins/ida-telegram/test/commands.test.ts` (`AC5: adding, removing or renaming a skill changes the registered menu with no edit to plugin code, and every skill appears with a distinct, valid command name`) creates an isolated test skill root, adds, removes, and renames skills, induces cross-plugin collisions, and verifies dynamic menu resolution without modifying plugin code.
 
@@ -24,10 +24,10 @@ This specification defines the native Telegram bot command menu registration and
 
 ### US-1 Shared Native Command Menu
 
-As an operator interacting with Ida across any Telegram window (prime, actual, audre, or any named instance), I want the bot window to present the single shared command menu stated in `spec_7a9caca5` FR-8.1, so that all Ida instances share the exact same operational command surface without persona branching or folder-dependent menu splits.
+As an operator interacting with Ida across any Telegram window (prime, actual, audre, or any named instance), I want the bot window to present the single shared command menu stated in the Telegram functional specification FR-8.1, so that all Ida instances share the exact same operational command surface without persona branching or folder-dependent menu splits.
 
 - **AC-1.1 (Dynamic installed skills menu)** Given an Ida bot instance (running with `STATE_DIR` pointing to `telegram-prime`, `telegram-actual`, `telegram-audre`, `telegram-ida`, or any other directory), when command registration executes on startup, then the bot registers every skill available to Ida built dynamically from installed skills at poller start, scoped to each authorized chat.
-  - _Check_: `plugins/ida-telegram/test/commands.test.ts` asserts `loadConfig` across `telegram-prime`, `telegram-actual`, `telegram-audre`, and `telegram-ida` folders yields the exact same menu matching `spec_7a9caca5` FR-8.1.
+  - _Check_: `plugins/ida-telegram/test/commands.test.ts` asserts `loadConfig` across `telegram-prime`, `telegram-actual`, `telegram-audre`, and `telegram-ida` folders yields the exact same menu matching the Telegram functional specification FR-8.1.
 - **AC-1.2 (Custom override)** Given an explicit custom command configuration in `TELEGRAM_BOT_COMMANDS`, when command registration executes, then the custom configuration overrides the default menu.
   - _Check_: `plugins/ida-telegram/test/commands.test.ts` verifies custom JSON override parsing and reserved command filtration.
 

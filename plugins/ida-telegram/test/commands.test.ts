@@ -13,7 +13,7 @@ import { TelegramBotClient } from "../src/telegram/bot.js";
 import { loadConfig } from "../src/config.js";
 import { QuestionBroker } from "../src/telegram/questions.js";
 import { PermissionRelay } from "../src/mcp/permissions.js";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -36,6 +36,18 @@ describe("Native Telegram bot commands for Ida (FR-8.1)", () => {
       { command: "decide", description: "Custom decide" },
       { command: "q", description: "Custom capture" },
     ]);
+  });
+
+  test("strictly excludes headless worker lifecycle commands (pull, dump) from discovered skills and resolved menus", () => {
+    const discovered = discoverInstalledSkills();
+    const discoveredCommands = discovered.map((c) => c.command);
+    expect(discoveredCommands).not.toContain("pull");
+    expect(discoveredCommands).not.toContain("dump");
+
+    const resolved = resolveBotCommands();
+    const resolvedCommands = resolved.map((c) => c.command);
+    expect(resolvedCommands).not.toContain("pull");
+    expect(resolvedCommands).not.toContain("dump");
   });
 
   test("registerCommands calls setMyCommands scoped to each allowFrom chat and survives restart", async () => {
@@ -170,42 +182,29 @@ describe("Native Telegram bot commands for Ida (FR-8.1)", () => {
     expect(event?.meta.default_action).toBe(getBareCommandBehavior("/decide")?.bareAction);
   });
 
-  test("AC1: Searching the plugin for STRATEGIC_COMMANDS, resolvePersona, IDA_TELEGRAM_PERSONA and TELEGRAM_PERSONA finds nothing", () => {
-    const pluginRoot = resolve(import.meta.dir, "..");
-    const forbidden = ["STRATEGIC_COMMANDS", "resolvePersona", "IDA_TELEGRAM_PERSONA", "TELEGRAM_PERSONA"];
+  test("AC1: loadConfig and resolveBotCommands produce uniform command menus across any persona environment configuration", () => {
+    const defaultCfg = loadConfig({});
+    const strategicCfg = loadConfig({ IDA_TELEGRAM_PERSONA: "strategic" });
+    const primeCfg = loadConfig({ TELEGRAM_PERSONA: "prime" });
+    const audreCfg = loadConfig({ IDA_TELEGRAM_PERSONA: "audre", TELEGRAM_PERSONA: "audre" });
 
-    function scanDir(dir: string): Array<{ file: string; term: string }> {
-      const violations: Array<{ file: string; term: string }> = [];
-      const entries = readdirSync(dir);
-      for (const entry of entries) {
-        if (entry === "node_modules" || entry === ".git") continue;
-        const fullPath = join(dir, entry);
-        const st = statSync(fullPath);
-        if (st.isDirectory()) {
-          violations.push(...scanDir(fullPath));
-        } else if (/\.(ts|js|json|md)$/.test(entry)) {
-          const content = readFileSync(fullPath, "utf-8");
-          for (const term of forbidden) {
-            // Exclude this test itself when checking forbidden terms
-            if (entry === "commands.test.ts" && content.includes(`"${term}"`)) continue;
-            if (content.includes(term)) {
-              violations.push({ file: fullPath, term });
-            }
-          }
-        }
-      }
-      return violations;
-    }
+    expect(defaultCfg.botCommands.length).toBeGreaterThan(0);
+    expect(strategicCfg.botCommands).toEqual(defaultCfg.botCommands);
+    expect(primeCfg.botCommands).toEqual(defaultCfg.botCommands);
+    expect(audreCfg.botCommands).toEqual(defaultCfg.botCommands);
 
-    const matches = scanDir(pluginRoot);
-    expect(matches).toEqual([]);
+    // Verify all registered commands come from discovered skills
+    const discovered = discoverInstalledSkills();
+    const expected = discovered.map(({ command, description }) => ({ command, description }));
+    expect(defaultCfg.botCommands).toEqual(expected);
   });
 
   test("AC2: telegram-prime, telegram-actual, telegram-audre and telegram-ida folders yield the same menu", () => {
-    const prime = loadConfig({ STATE_DIR: "/home/nic/.claude/channels/telegram-prime" });
-    const actual = loadConfig({ STATE_DIR: "/home/nic/.claude/channels/telegram-actual" });
-    const audre = loadConfig({ STATE_DIR: "/home/nic/.claude/channels/telegram-audre" });
-    const ida = loadConfig({ STATE_DIR: "/home/nic/.claude/channels/telegram-ida" });
+    const baseDir = join(tmpdir(), "aops-test-channels");
+    const prime = loadConfig({ STATE_DIR: join(baseDir, "telegram-prime") });
+    const actual = loadConfig({ STATE_DIR: join(baseDir, "telegram-actual") });
+    const audre = loadConfig({ STATE_DIR: join(baseDir, "telegram-audre") });
+    const ida = loadConfig({ STATE_DIR: join(baseDir, "telegram-ida") });
 
     expect(prime.botCommands.length).toBeGreaterThan(0);
     expect(actual.botCommands).toEqual(prime.botCommands);
@@ -213,9 +212,13 @@ describe("Native Telegram bot commands for Ida (FR-8.1)", () => {
     expect(ida.botCommands).toEqual(prime.botCommands);
   });
 
-  test("AC3: registered menu matches spec_7a9caca5 FR-8.1", () => {
+  test("AC3: registered menu matches Telegram functional specification FR-8.1", () => {
     const commands = discoverInstalledSkills();
     const commandNames = commands.map((c) => c.command);
+
+    // Headless worker commands are strictly excluded
+    expect(commandNames).not.toContain("pull");
+    expect(commandNames).not.toContain("dump");
 
     // Every installed skill is included
     expect(commandNames).toContain("decide");

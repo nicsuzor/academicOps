@@ -19,9 +19,15 @@ export interface SkillDiscoveryOptions {
 
 /**
  * Commands consumed by the official Telegram plugin that must not be reused
- * for Ida's command menu (kb_ee859e3f, spec_7a9caca5 FR-8.1).
+ * for Ida's command menu (Telegram functional specification FR-8.1).
  */
 export const RESERVED_COMMANDS = ["start", "help", "status"] as const;
+
+/**
+ * Headless worker lifecycle commands that must never appear in conversational menus
+ * per headless-workers.md and the Telegram functional specification FR-8.1.
+ */
+export const WORKER_COMMANDS = ["pull", "dump"] as const;
 
 export const KNOWN_BARE_ACTIONS: Record<string, string> = {
   decide:
@@ -60,10 +66,14 @@ export function normalizeCommandName(raw: string): string {
   return withoutBotMention.toLowerCase().replace(/-/g, "_").replace(/[^a-z0-9_]/g, "");
 }
 
-export function parseSkillMarkdown(content: string, fallbackName: string): { name: string; description: string } {
+export function parseSkillMarkdown(
+  content: string,
+  fallbackName: string
+): { name: string; description: string; defaultAction?: string } {
   const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   let name = fallbackName;
   let description = "";
+  let defaultAction: string | undefined;
 
   if (match) {
     const yaml = match[1];
@@ -74,6 +84,14 @@ export function parseSkillMarkdown(content: string, fallbackName: string): { nam
     const descMatch = yaml.match(/^description:\s*([\s\S]*?)(?=\r?\n[a-zA-Z0-9_-]+:|$)/m);
     if (descMatch) {
       description = descMatch[1]
+        .replace(/^[>|]\s*\n?/, "")
+        .replace(/\r?\n\s*/g, " ")
+        .trim()
+        .replace(/^['"]|['"]$/g, "");
+    }
+    const actionMatch = yaml.match(/^(?:default_action|bare_action):\s*([\s\S]*?)(?=\r?\n[a-zA-Z0-9_-]+:|$)/m);
+    if (actionMatch) {
+      defaultAction = actionMatch[1]
         .replace(/^[>|]\s*\n?/, "")
         .replace(/\r?\n\s*/g, " ")
         .trim()
@@ -90,11 +108,11 @@ export function parseSkillMarkdown(content: string, fallbackName: string): { nam
     description = description.slice(0, 256).trim();
   }
 
-  return { name, description };
+  return { name, description, defaultAction };
 }
 
 function parseCustomCommands(customJson: string): TelegramBotCommand[] {
-  const reservedSet = new Set<string>(RESERVED_COMMANDS);
+  const excludedSet = new Set<string>([...RESERVED_COMMANDS, ...WORKER_COMMANDS]);
   try {
     const parsed = JSON.parse(customJson) as Array<{ command: string; description: string }>;
     if (!Array.isArray(parsed)) return [];
@@ -106,21 +124,22 @@ function parseCustomCommands(customJson: string): TelegramBotCommand[] {
       .filter(
         (entry) =>
           /^[a-z0-9_]{1,32}$/.test(entry.command) &&
-          !reservedSet.has(entry.command) &&
+          !excludedSet.has(entry.command) &&
           entry.description.length >= 1 &&
           entry.description.length <= 256
       );
-  } catch {
+  } catch (err) {
+    console.error("[ida-telegram] Error parsing custom bot commands JSON:", err);
     return [];
   }
 }
 
 /**
  * Discovers installed skills from filesystem roots and builds command specifications.
- * Spec: spec_7a9caca5 FR-8.1
+ * Spec: Telegram functional specification FR-8.1
  */
 export function discoverInstalledSkills(options?: SkillDiscoveryOptions): IdaCommandSpec[] {
-  const reservedSet = new Set<string>(RESERVED_COMMANDS);
+  const excludedSet = new Set<string>([...RESERVED_COMMANDS, ...WORKER_COMMANDS]);
   const scannedSkillDirs: Array<{ skillDir: string; pluginName: string }> = [];
   const seenSkillPaths = new Set<string>();
   const seenPlugins = new Set<string>();
@@ -154,8 +173,13 @@ export function discoverInstalledSkills(options?: SkillDiscoveryOptions): IdaCom
   }
 
   // Fallback installed seed & container locations if nothing found yet
-  const seedMarketplace = "/opt/nic/claude-plugin-seed/marketplaces/academicOps";
+  const seedMarketplace =
+    process.env.AOPS_SEED_MARKETPLACE ||
+    (process.env.CLAUDE_PLUGIN_SEED_DIR
+      ? join(process.env.CLAUDE_PLUGIN_SEED_DIR, "marketplaces", "academicOps")
+      : undefined);
   const userMarketplace = join(homedir(), ".claude", "plugins", "marketplaces", "academicOps");
+  const fallbackMarketplaces = [seedMarketplace, userMarketplace].filter((m): m is string => Boolean(m));
 
   for (const root of searchRoots) {
     if (!existsSync(root)) continue;
@@ -163,7 +187,8 @@ export function discoverInstalledSkills(options?: SkillDiscoveryOptions): IdaCom
     let stat;
     try {
       stat = statSync(root);
-    } catch {
+    } catch (err) {
+      console.error(`[ida-telegram] Error inspecting directory ${root}:`, err);
       continue;
     }
     if (!stat.isDirectory()) continue;
@@ -197,7 +222,9 @@ export function discoverInstalledSkills(options?: SkillDiscoveryOptions): IdaCom
             }
           }
         }
-      } catch {}
+      } catch (err) {
+        console.error(`[ida-telegram] Error reading skills directory ${directSkillsDir}:`, err);
+      }
       continue;
     }
 
@@ -208,7 +235,8 @@ export function discoverInstalledSkills(options?: SkillDiscoveryOptions): IdaCom
         const subPath = join(root, sub);
         try {
           if (!statSync(subPath).isDirectory()) continue;
-        } catch {
+        } catch (err) {
+          console.error(`[ida-telegram] Error inspecting path ${subPath}:`, err);
           continue;
         }
 
@@ -238,12 +266,14 @@ export function discoverInstalledSkills(options?: SkillDiscoveryOptions): IdaCom
           }
         }
       }
-    } catch {}
+    } catch (err) {
+      console.error(`[ida-telegram] Error reading search root ${root}:`, err);
+    }
   }
 
   // If no skills were found from primary locations, check seed marketplaces
   if (scannedSkillDirs.length === 0) {
-    for (const marketplace of [seedMarketplace, userMarketplace]) {
+    for (const marketplace of fallbackMarketplaces) {
       if (!existsSync(marketplace)) continue;
       try {
         const subEntries = readdirSync(marketplace);
@@ -268,7 +298,9 @@ export function discoverInstalledSkills(options?: SkillDiscoveryOptions): IdaCom
             }
           }
         }
-      } catch {}
+      } catch (err) {
+        console.error(`[ida-telegram] Error reading marketplace directory ${marketplace}:`, err);
+      }
     }
   }
 
@@ -283,14 +315,15 @@ export function discoverInstalledSkills(options?: SkillDiscoveryOptions): IdaCom
     let content = "";
     try {
       content = readFileSync(skillFilePath, "utf-8");
-    } catch {
+    } catch (err) {
+      console.error(`[ida-telegram] Error reading skill file ${skillFilePath}:`, err);
       continue;
     }
 
-    const { name: rawName, description } = parseSkillMarkdown(content, basename(skillDir));
+    const { name: rawName, description, defaultAction } = parseSkillMarkdown(content, basename(skillDir));
     const normalizedName = normalizeCommandName(rawName);
 
-    if (!normalizedName || reservedSet.has(normalizedName)) {
+    if (!normalizedName || excludedSet.has(normalizedName)) {
       continue;
     }
 
@@ -310,6 +343,7 @@ export function discoverInstalledSkills(options?: SkillDiscoveryOptions): IdaCom
 
     const skillId = `${pluginName}:${rawName}`;
     const bareAction =
+      defaultAction ||
       KNOWN_BARE_ACTIONS[normalizedName] ||
       `Invoke /${skillId}: execute skill with context or prompt user for arguments.`;
 
@@ -361,21 +395,7 @@ export function getBareCommandBehavior(
   const normalized = normalizeCommandName(rawCommand);
   const normalizedUnderscore = normalized.replace(/-/g, "_");
 
-  // First search in discovered skills
+  // Search strictly in discovered skills
   const discovered = discoverInstalledSkills(options);
-  const match = discovered.find((c) => c.command === normalized || c.command === normalizedUnderscore);
-  if (match) return match;
-
-  // Fallback to known bare actions if not in current discovered roots
-  if (KNOWN_BARE_ACTIONS[normalized] || KNOWN_BARE_ACTIONS[normalizedUnderscore]) {
-    const key = KNOWN_BARE_ACTIONS[normalized] ? normalized : normalizedUnderscore;
-    return {
-      command: key,
-      description: `Invoke /ida:${key}`,
-      skill: `ida:${key.replace(/_/g, "-")}`,
-      bareAction: KNOWN_BARE_ACTIONS[key],
-    };
-  }
-
-  return undefined;
+  return discovered.find((c) => c.command === normalized || c.command === normalizedUnderscore);
 }

@@ -47,7 +47,7 @@ Ida's custom Telegram channel and Mini App plugin for Claude Code.
   - Unthreaded chats maintain legacy behaviour with parameters omitted from outbound requests.
 - **Native Bot Commands:**
   - Registers the native command menu via `setMyCommands` at `botCommandScopeChat` for each `allowFrom` chat on startup, surviving channel restarts and overriding `all_private_chats` defaults.
-  - Registers the single shared command menu for every Ida instance, dynamically built from all installed skills at poller start per `spec_7a9caca5` FR-8.1.
+  - Registers the single shared command menu for every Ida instance, dynamically built from all installed skills at poller start per the Telegram functional specification FR-8.1.
   - Custom JSON override via `TELEGRAM_BOT_COMMANDS` overrides defaults.
   - Excludes reserved official-plugin commands (`/start`, `/help`, `/status`).
   - Enriches bare menu taps (commands with no arguments) with each command's defined no-argument behavior (`meta.default_action` and `meta.skill`).

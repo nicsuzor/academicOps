@@ -48,6 +48,6 @@ Present a scannable proposal table to the user (in interactive operator sessions
 
 ### 4. Codify Approved Allocations
 
-1. The default command menu dynamically discovers all installed skills at poller startup per `spec_7a9caca5` FR-8.1. If the operator requests custom menu overrides, codify the approved custom command list as JSON into `TELEGRAM_BOT_COMMANDS` in the channel's environment configuration (`$STATE_DIR/.env`).
+1. The default command menu dynamically discovers all installed skills at poller startup per the Telegram functional specification FR-8.1. If the operator requests custom menu overrides, codify the approved custom command list as JSON into `TELEGRAM_BOT_COMMANDS` in the channel's environment configuration (`$STATE_DIR/.env`).
 2. Run test verification (`cd plugins/ida-telegram && bun test test/commands.test.ts`) to ensure command registration and bare action mapping pass cleanly.
 3. Confirm updated menu to the user.
