@@ -7,7 +7,7 @@ description: Reason at strategic altitude across the whole graph -- effectuation
 
 Equipment for thinking at the user's altitude. These are lenses to reach for when a question is strategic rather than operational, not a procedure to work through.
 
-**Object: the graph as a whole.** Which objectives exist, how they intersect, which assumptions they rest on, and what to do next. The PKB custodian (Pauli) runs this skill; an agent that receives a strategic ask hands it to her. Thinking time, not doing time: facilitate, propose, and stop; execution and task-writing belong to the stages downstream.
+**Object: the graph as a whole.** Which objectives exist, how they intersect, which assumptions they rest on, and what to do next. The PKB custodian (Pauli) runs this skill; an agent that receives a strategic ask hands it to them. Thinking time, not doing time: facilitate, propose, and stop; execution and task-writing belong to the stages downstream.
 
 ## Founding Principle
 
