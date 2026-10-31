@@ -33,7 +33,7 @@ A workflow is assembled at runtime from composable templates in the [`workflow-l
 2. **Execution** -- the claimed worker executes the task ([`/pull`](../../plugins/ida/skills/pull/SKILL.md)) and hands over via [`/dump`](../../plugins/ida/skills/dump/SKILL.md). This span is
    trust-the-method: no process-level micromanagement during execution, with evidence-driven intervention
    only if something goes wrong. When a task's deliverable is a pull request, the worker opens the PR, records `pr_url` and branch, and releases the task as `done` without waiting for CI or merge; releasing `done` immediately unblocks dependent follow-ups (such as independent QA tasks); when the repository merges the PR, the parent epic progresses.
-3. **Rule-compliance review** -- the rule-compliance lens ([`rbg`](../../plugins/rbg/agents/rbg.md), [`wf-rbg.md`](../../plugins/ida/skills/workflow-library/workflows/wf-rbg.md), [`wf-dialectical-review.md`](../../plugins/ida/skills/workflow-library/workflows/wf-dialectical-review.md), [`/strategic-review`](../../plugins/ida/skills/strategic-review/SKILL.md)): did the artifact and handback follow the governing axioms and project rules?
+3. **Rule-compliance review** -- the rule-compliance lens ([`rbg`](../../plugins/rbg/agents/rbg.md), [`wf-rbg.md`](../../plugins/ida/skills/workflow-library/workflows/wf-rbg.md), [`wf-review.md`](../../plugins/ida/skills/workflow-library/workflows/wf-review.md), [`/strategic-review`](../../plugins/ida/skills/strategic-review/SKILL.md)): did the artifact and handback follow the governing axioms and project rules?
    Evaluates the target artifact, contract, and handback against [`task-contract.md`](task-contract.md)'s
    `release_task` evidence gate (Work-Unit Contract) and the acceptance criteria
    set in step 1.
@@ -49,7 +49,7 @@ that the acceptance criterion itself was met.
 
 ### Review composition
 
-Steps 3-4 are assembled at runtime via [`/reify`](../../plugins/ida/skills/reify/SKILL.md) from composable workflow templates ([`workflow-library`](../../plugins/ida/skills/workflow-library/SKILL.md), including [`wf-dialectical-review.md`](../../plugins/ida/skills/workflow-library/workflows/wf-dialectical-review.md), [`wf-rbg.md`](../../plugins/ida/skills/workflow-library/workflows/wf-rbg.md), [`wf-strategic-fit.md`](../../plugins/ida/skills/workflow-library/workflows/wf-strategic-fit.md), and [`wf-qa.md`](../../plugins/ida/skills/workflow-library/workflows/wf-qa.md)). Review
+Steps 3-4 are assembled at runtime via [`/reify`](../../plugins/ida/skills/reify/SKILL.md) from composable workflow templates ([`workflow-library`](../../plugins/ida/skills/workflow-library/SKILL.md), including [`wf-review.md`](../../plugins/ida/skills/workflow-library/workflows/wf-review.md), [`wf-rbg.md`](../../plugins/ida/skills/workflow-library/workflows/wf-rbg.md), [`wf-strategic-fit.md`](../../plugins/ida/skills/workflow-library/workflows/wf-strategic-fit.md), and [`wf-qa.md`](../../plugins/ida/skills/workflow-library/workflows/wf-qa.md)). Review
 composition -- the lenses, the depth, whether reviewers run as independent downstream tasks -- is structural rather than an ad-hoc instruction. Workflow templates set the reusable patterns for these choices
 and evolve over time. Any surface satisfying the assembled workflow's
 requirements qualifies as an executor: an independent polecat session ([`/dispatch`](../../plugins/ida/skills/dispatch/SKILL.md)) that

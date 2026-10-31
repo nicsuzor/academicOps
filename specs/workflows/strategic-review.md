@@ -23,7 +23,7 @@ Its core design intent is to eliminate the failure mode of **self-grading** and 
 
 ## Implementation Architecture
 
-The workflow is implemented operationally via `plugins/ida/skills/strategic-review/SKILL.md` and `plugins/ida/skills/workflow-library/workflows/wf-dialectical-review.md`, and supervised by `james`:
+The workflow is implemented operationally via `plugins/ida/skills/strategic-review/SKILL.md` and the default review workflow, and supervised by `james`:
 
 ```
       [ James: Upfront Proportionality & Altitude Calibration ]
@@ -61,23 +61,23 @@ Before dispatching reviewers, the Supervisor (`james`) sets the target altitude 
 
 ### 2. Specialized Reviewer Roles & Shared Briefing
 
-All three review roles draw their briefing from the shared review briefing defined in `wf-dialectical-review` (`plugins/ida/skills/workflow-library/workflows/wf-dialectical-review.md`) and return verdicts in the unified `PASS` / `REVISE` / `FAIL` vocabulary. The brief presents the originating request quoted verbatim with its source identifier in a dedicated section read before any pull request, branch name, or diff, and includes the governing genre standard alongside whatever specifications, requirements, or acceptance criteria are available.
+All three review roles draw their briefing from the shared review briefing and return verdicts in the unified `PASS` / `REVISE` / `FAIL` vocabulary. The brief presents the originating request quoted verbatim with its source identifier in a dedicated section read before any pull request, branch name, or diff, and includes the governing genre standard alongside whatever specifications, requirements, or acceptance criteria are available.
 
 Each of the three review roles operates in a distinct domain with strictly non-overlapping duties:
 
-- **`pauli` (Strategic Direction & Congruence; template `wf-strategic-fit`)**: Evaluates the core premise, strategic direction, and congruence with the "seamless web" of existing material in the PKB graph:
+- **`pauli` (Strategic Direction & Congruence)**: Evaluates the core premise, strategic direction, and congruence with the "seamless web" of existing material in the PKB graph:
   - Questions the core premise, names the class of problem, and probes for flawed reasoning, untested load-bearing assumptions, negative space, and missing edge cases.
   - Situates the artifact against parent objectives, active sibling tasks, and existing PKB notes/tasks, testing whether it is needed or whether an existing tool, native mechanism, or competing proposal already covers it.
   - Checks for congruence, duplication, and dependency conflicts across the graph, verifying that documentation notes are not mistaken for proofs of current working state (requiring a completed task record with verification evidence or flagging an open question) and that cited PRs/code are authoritative (merged/most recent, reflecting current working behaviour, and backed by a spec or decision record).
   - Returns `PASS`, `REVISE`, or `FAIL`.
   - **Boundary**: Operates strictly on the PKB graph from an inline briefing. Does not inspect repository source code for axiom violations (belongs to `rbg`) and does not run tests or probes (belongs to `marsha`).
-- **`rbg` (Compliance; template `wf-rbg`)**: Evaluates compliance with universal axioms, project-local rules, scope of delegated authority (_ultra vires_), permission/data boundaries, and the enforcement pyramid (`specs/enforcement/enforcement.md`):
+- **`rbg` (Compliance)**: Evaluates compliance with universal axioms, project-local rules, scope of delegated authority (_ultra vires_), permission/data boundaries, and the enforcement pyramid (`specs/enforcement/enforcement.md`):
   1. **Judge for Yourself**: Reaches verdicts from the request, artifact, and rules alone without reading prior reviews, PR comments, or prior task reports.
   2. **Judge Proportion and Scope of Authority First**: From the quoted originating request, sizes the smallest mechanism meeting the request across its class before reading artifact internals, rejecting _ultra vires_ overreach and unneeded machinery under `proportionate` and `do-one-thing`, and checking that any new control starts at the bottom of the enforcement pyramid (`specs/enforcement/enforcement.md`).
   3. **Apply Each Axiom to the Artifact**: Evaluates mechanisms by their runtime consequences, assesses whether the substantive decision requires qualitative judgment, and verifies that mechanisms do not violate axioms (such as delegating qualitative decisions to deterministic path/author/AST heuristics under `judgment-non-delegable`, or introducing silent fallback branches under `halt-on-failure`).
   4. **Mechanisms Analysis**: Produces a structured `### Mechanisms` section explicitly evaluating each added mechanism's decision, necessity of judgment, and broken axioms before issuing a verdict (`PASS`, `REVISE`, or `FAIL`).
   - **Boundary**: Operates strictly by static semantic evaluation. Does not execute runtime tests, run test suites, or write scratch probe scripts (belongs to `marsha`), and does not evaluate the core premise or PKB graph congruence (belongs to `pauli`).
-- **`marsha` (Quality & Requirement Satisfaction; template `wf-qa`)**: Evaluates whether the work actually delivers on its requirements and governing genre standard to an ambitious quality standard ("amazingly good", not merely working) across actual rendered multimodal outputs, runtime execution, and (on high-risk requests) primary sources:
+- **`marsha` (Quality & Requirement Satisfaction)**: Evaluates whether the work actually delivers on its requirements and governing genre standard to an ambitious quality standard ("amazingly good", not merely working) across actual rendered multimodal outputs, runtime execution, and (on high-risk requests) primary sources:
   - **Upfront Standard & Specification Check**: Matches the evaluation standard to the artifact's genre (`specs/meta/doc-taxonomy.md` -- e.g., `specs/meta/writing-specs.md` for specifications), treats the absence of any governing standard, specifications, requirements, or acceptance criteria as an immediate critical failure signal (`FAIL`), and stops before running tests or code audits.
   - **Rendered Multimodal Output Inspection**: Evaluates artifacts in their actual rendered, multimodal form (live runtime output, rendered PDFs, visual plots, UI screenshots, built containers); output renders may never be simulated or mocked.
   - Runs test suites directly on the branch, checking that all tests pass cleanly.
