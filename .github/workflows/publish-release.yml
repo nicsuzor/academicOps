@@ -58,13 +58,21 @@ jobs:
             REF="${{ github.sha }}"
             RTYPE="stable"
           fi
+          # A manual run builds the tag it names, not the branch it was started from.
+          if [[ -n "${{ inputs.tag || '' }}" ]]; then
+            CHECKOUT="refs/tags/v${REF#v}"
+          else
+            CHECKOUT="${{ github.ref }}"
+          fi
           echo "ref=$REF" >> "$GITHUB_OUTPUT"
+          echo "checkout=$CHECKOUT" >> "$GITHUB_OUTPUT"
           echo "release_type=$RTYPE" >> "$GITHUB_OUTPUT"
           echo "::notice title=Build context::ref=$REF release_type=$RTYPE"
 
       - name: Checkout source
         uses: actions/checkout@v4
         with:
+          ref: ${{ steps.ctx.outputs.checkout }}
           fetch-depth: 0
           token: ${{ secrets.AOPS_DIST_PAT }}
 
@@ -153,3 +161,14 @@ jobs:
             # shellcheck disable=SC2086
             gh release create "$TAG" --title "$TAG" --notes "AcademicOps $TAG" $PRERELEASE_FLAG $ARCHIVES
           fi
+
+      # Every release, candidates included, also goes to `main`, the branch
+      # Claude Code installs and auto-updates from. Runs after the GitHub Release,
+      # so `main` never carries a build the release feed lacks.
+      # The script comes from the commit this workflow runs from: a manual run
+      # builds an older tag, whose tree may predate the script.
+      - name: Publish distribution to main
+        run: |
+          set -euo pipefail
+          git show "${{ github.workflow_sha }}:scripts/publish-dist-to-main.sh" >"$RUNNER_TEMP/publish-dist-to-main.sh"
+          bash "$RUNNER_TEMP/publish-dist-to-main.sh" dist "${{ steps.version.outputs.version }}"

@@ -27,8 +27,15 @@ Draws its brief from the shared review briefing. Additional role-specific inputs
 
 ## Procedure
 
-1. **Upfront standard and specification check** -- identify the governing standard for the artifact's genre (`specs/meta/doc-taxonomy.md`) and assemble whatever specifications, requirements, or acceptance criteria are available, recording them verbatim:
-   - **Match format requirements to the artifact**: Evaluate a specification against `specs/meta/writing-specs.md`, an instruction file against `craft`, a scholarly article against its disciplinary standard, and a task handback against its task acceptance criteria. Never impose task-handback formatting (`## Ask`, task checklists) on non-task artifacts.
+1. **Upfront standard, specification check & per-file class-standard verification** -- enumerate all changed files from the diff (`git diff --name-only`), identify each file's taxonomy class (`specs/meta/doc-taxonomy.md`), and assemble whatever specifications, requirements, or acceptance criteria are available, recording them verbatim:
+   - **Per-file class-standard check**: Evaluate every modified file against the standard for its document taxonomy class:
+     - _Instructions_ against `plugins/ida/skills/craft/SKILL.md` (contract separation, concision, no unnecessary external implementation details the agent cannot act upon, no hardcoded workflow rules in task assembly skills) and `specs/meta/doc-taxonomy.md § Instructions`.
+     - _Specs_ against `specs/meta/writing-specs.md` and `specs/meta/doc-taxonomy.md § Specs` (single feature, Given/When/Then, behaviour not mechanism, self-contained).
+     - _State_ against `specs/meta/doc-taxonomy.md § State` and subsystem spec (for `ENFORCEMENT-MAP.md`, strictly a 4-column cross-reference table mapping active agent rules to their enforcement mechanisms, never summarizing random specs or workflows; 5-question shape for runtime subsystems; no proposals).
+     - _Audit-artifact_ against `specs/meta/doc-taxonomy.md § Audit-artifact` (script-generated header, never hand-edited).
+     - _Docs_ against `specs/meta/doc-taxonomy.md § Docs` (user-facing, mermaid flowcharts without citations, config tables, no internal jargon).
+     - If any changed file fails its class standard, record `UNMET` for that file with pinpoint citations and issue `REVISE` (or `FAIL`), regardless of overall feature criteria or test results.
+   - **Match format requirements to the overall artifact**: Evaluate a specification against `specs/meta/writing-specs.md`, an instruction file against `craft`, a scholarly article against its disciplinary standard, and a task handback against its task acceptance criteria. Never impose task-handback formatting (`## Ask`, task checklists) on non-task artifacts.
    - **Missing-criteria failure signal**: If **no governing standard, specifications, requirements, or acceptance criteria are available**, stop immediately and issue `FAIL`. The absence of testable specifications or criteria is itself a critical failure signal; never invent ad-hoc criteria on the author's behalf or pass an unspec'd artifact on intuition.
 2. **Verify ambitious quality and satisfaction of stated requirements** -- when governing standards, specifications, requirements, or acceptance criteria exist, test the deliverable systematically against every stated requirement and criterion with full coverage. Judge restatements by fidelity to meaning, completeness, and lack of distortion or overreach rather than verbatim wording. Demand ambitious, best-in-class quality (`excellence`) rather than mere checklist completion or mediocrity.
 3. **Inspect actual rendered multimodal outputs (never code alone or simulations)** -- reading source code or diffs is never sufficient. Evaluate every artifact in its actual rendered, multimodal form (live execution output, rendered PDFs, visual plots, UI screenshots, built containers). Output renders may **never** be simulated, mocked, or inferred from source text.
@@ -41,7 +48,7 @@ Draws its brief from the shared review briefing. Additional role-specific inputs
 ## Verdict contract
 
 - **PASS**: Governing standard/specifications/criteria exist, execution succeeds, actual rendered multimodal outputs are verified, all tests pass, and all stated requirements and acceptance criteria are empirically satisfied to an ambitious quality standard.
-- **REVISE**: Governing standard/specifications/criteria exist and the approach functions, but requires specific fixes for unmet requirements, genre-format compliance, edge cases, missing test coverage, quality polish, or unverified claims.
+- **REVISE**: Governing standard/specifications/criteria exist and the approach functions, but requires specific fixes for unmet requirements, per-file class-standard violations, genre-format compliance, edge cases, missing test coverage, quality polish, or unverified claims.
 - **FAIL**: No governing standard, specifications, requirements, or acceptance criteria are available; or output renders were simulated rather than produced and inspected multimodally; or the artifact fails runtime execution, fails test suites, misses stated requirements, or contradicts empirical evidence.
 
 ## Output contract
