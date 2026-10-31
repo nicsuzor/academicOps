@@ -26,6 +26,7 @@ A worker executing this workflow may coordinate parallel subagents to conduct in
   - Standard features and structural changes: Require explicit approval from the repository owner before merging.
   - Changes requested: A PR with an active "changes requested" review must not merge under any circumstances.
   - Release pull requests (`release-please`): Excluded from autonomous merging; merge only on explicit manual release approval.
+- **Pre-approval readiness**: Before owner approval, a PR must be green and reviewed, with review feedback addressed; mergeability is not required before approval. Do not rebase or resolve merge conflicts before approval. Bringing a PR up to date with its base branch and resolving conflicts happens after approval, just before merge.
 - **Commit hygiene**: Commits to public repositories must never carry private task, note, or session identifiers, or commit trailers.
 
 ## Obligations
@@ -44,14 +45,17 @@ A worker executing this workflow may coordinate parallel subagents to conduct in
    - Review comments and requested changes must be met by concrete diff edits on the PR branch or rejected with reasoned arguments recorded on the PR thread.
    - If changes requested remain unaddressed or require higher-level architectural decisions, leave the PR open and document the exact blocking feedback as the disposition reason.
 
-4. **Verify Approvals and Mergeability**:
-   - Verify that required approvals are recorded per the merge authority policy.
-   - Check PR merge state (`gh pr view --json mergeable,mergeStateStatus`).
-   - If merge conflicts exist (`mergeable: CONFLICTING`), resolve conflicts by rebasing or merging the base branch into the feature branch, ensuring tests remain green.
+4. **Verify Approvals and Pre-Approval Readiness**:
+   - Verify whether required approvals are recorded per the merge authority policy.
+   - Before owner approval, verify checks are green and proportionate review is recorded with feedback addressed. Do not rebase or resolve conflicts before approval; mergeability is not required before approval.
+   - If the PR is awaiting owner approval, leave the PR open with its disposition documented (e.g. awaiting owner approval: green and reviewed, mergeable not required).
 
-5. **Execute Landing**:
-   - Once all checks are green, required approvals are filed, and mergeability is clean, merge the PR into the base branch via standard merge (`gh pr merge <number> --merge`).
-   - If the PR cannot be merged (e.g. awaiting owner approval, active requested changes, or unresolved substantive conflicts), leave the PR open with its disposition and reason documented on the record.
+5. **Settle Conflicts and Execute Landing**:
+   - Once required approvals are recorded (or for verified hotfixes where authorized to merge autonomously):
+     - Check PR merge state (`gh pr view --json mergeable,mergeStateStatus`).
+     - If merge conflicts exist or the branch is behind the base branch, bring the PR up to date with the base branch and resolve conflicts, ensuring tests remain green.
+     - Once all checks are green, required approvals are filed, and mergeability is clean, merge the PR into the base branch via standard merge (`gh pr merge <number> --merge`).
+   - If the PR cannot be merged (e.g. active requested changes or unresolved substantive conflicts), leave the PR open with its disposition and reason documented on the record.
 
 ## Output contract
 
@@ -61,5 +65,6 @@ A worker executing this workflow may coordinate parallel subagents to conduct in
 
 - Must not merge any release-please PR.
 - Must not merge any PR without required owner approval unless it is a verified hotfix.
+- Must not rebase or resolve merge conflicts on a PR before required approval is recorded.
 - Must not merge any PR with failing checks or unresolved changes requested.
 - Must not leave an unmerged PR without an explicit stated reason.
