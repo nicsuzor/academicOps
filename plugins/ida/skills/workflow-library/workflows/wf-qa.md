@@ -46,7 +46,7 @@ Draws its brief from the shared review briefing. Additional role-specific inputs
 
 ## Output contract
 
-The structured QA handback containing the per-requirement / per-criterion verification table with pinpoint evidence citations, rendered output and test run observations, and exactly one verdict token (`PASS`, `REVISE`, or `FAIL`). Every requirement and criterion must be accounted for, none silently dropped. A report missing evidence for a `MET` criterion is not a pass. If no specifications/criteria exist, or if any criterion is `UNMET` or the check fails, release the QA task as `failed` with failure evidence and root cause documented on the record; do not file fix tasks or follow-up tasks. When all criteria are `MET`, release as `done`.
+The structured QA handback (composed in standard Markdown sections and tables for human readability, never programmatic JSON/YAML payloads) containing the per-requirement / per-criterion verification table with pinpoint evidence citations, rendered output and test run observations, and exactly one verdict token (`PASS`, `REVISE`, or `FAIL`). Every requirement and criterion must be accounted for, none silently dropped. A report missing evidence for a `MET` criterion is not a pass. If no specifications/criteria exist, or if any criterion is `UNMET` or the check fails, release the QA task as `failed` with failure evidence and root cause documented on the record; do not file fix tasks or follow-up tasks. When all criteria are `MET`, release as `done`.
 
 ## When to include
 

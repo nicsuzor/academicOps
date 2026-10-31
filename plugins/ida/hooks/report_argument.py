@@ -8,6 +8,10 @@ format or presence check over that grammar -- the YAML frontmatter, line shapes,
 ids, numbers, and matches against the closed vocabularies in
 ``references/vocabulary.toml``. Nothing here classifies what a line means.
 
+Per [Axiom: Human Readability First], mechanical checks are confined strictly
+to markdown container fences and structural markers; all semantic interpretation
+and qualitative evaluation of argument validity belong to LLM agents.
+
 The vocabulary is read from the skill's ``vocabulary.toml`` at runtime; this
 module keeps no copy of it.
 """
