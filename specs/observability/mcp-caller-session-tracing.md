@@ -5,7 +5,7 @@ status: ready
 
 # Caller-session tracing contract for MCP servers
 
-Every custom Model Context Protocol (MCP) server and gateway portal exports OpenTelemetry tool-call spans to the shared collector and attributes each execution to the calling agent session. The contract applies to servers and gateways implemented in any language runtime, ensuring that direct invocations and gateway-routed calls appear in the caller's session trace with complete attribution, secret-scrubbed payloads, and unambiguous provenance.
+Every custom Model Context Protocol (MCP) server and gateway portal exports OpenTelemetry tool-call spans to the shared collector and attributes each execution to the calling agent session. The contract applies to servers and gateways implemented in any language runtime, ensuring that direct invocations and gateway-routed calls appear in the caller's session trace with complete attribution, secret-scrubbed payloads, and unambiguous provenance across all client execution surfaces.
 
 ## User stories
 
@@ -17,6 +17,7 @@ As a platform operator, I want custom MCP servers and gateway proxies to receive
 - **AC-1.2** Given a client invoking a tool through a gateway proxy, when the gateway forwards the call to an upstream server, then the gateway extracts the caller session identifier from the incoming call, strips `_session` from the tool arguments, and forwards it upstream in the `x-session-id` transport header along with W3C `traceparent` context.
 - **AC-1.3** Given an upstream server receiving a request, when the server processes the call, then it resolves the caller session from the forwarded `x-session-id` header or request metadata for that call without binding the connection to any single session.
 - **AC-1.4** Given a request that arrives without an explicit session identifier, when the server processes the call, then the call remains unattributed with `aops.session.source = "none"` and `session.id` unset.
+- **AC-1.5** Given a client surface that does not support client-side argument rewriting, when invoking tools directly or through a gateway, then tool calls dispatch without input argument mutation and session identity resolves from request transport headers, metadata, or explicit execution arguments.
 
 ### US-2 Declare caller session acceptance and preserve tool schemas
 
@@ -88,6 +89,41 @@ Client Invocation (Gateway / Portal)
                   ├── Resolves session.id from x-session-id header
                   └── Emits child TOOL span linked to caller trace
 ```
+
+### Architectural Options Comparison and Simplicity Evaluation
+
+Three architectural designs address caller session attribution across diverse client surfaces and servers:
+
+1. **Option 1: Required, declared session parameter on each traced server (filled automatically or by agent)**
+   - _Mechanism_: Every traced server explicitly declares a session parameter in its tool schemas. PreToolUse hooks inject it automatically where hooks run; agents supply it by instruction on other surfaces.
+   - _Evaluation_: Fails on client surfaces that reject hook input modifications (such as Claude Cowork), because Cowork blocks tool execution whenever a hook rewrites inputs regardless of schema validity. Agent manual supply adds token overhead and introduces transcription errors on 36-character UUIDs. Furthermore, modifying schemas across all domain tools creates widespread schema pollution.
+
+2. **Option 2: No parameter at all (out-of-band transport headers or metadata only)**
+   - _Mechanism_: Tool argument schemas contain only domain parameters. Session identity travels exclusively via transport headers (`x-session-id`) or JSON-RPC metadata (`_meta.session_id`).
+   - _Evaluation_: While schema-clean, standard MCP client runtimes (Claude Code CLI, Claude Desktop, Cowork) do not provide hook extension points to inject custom HTTP headers or custom JSON-RPC `_meta` fields on arbitrary tool calls. Client hooks can only modify tool input dictionaries (`updatedInput`). Direct client-to-server calls cannot deliver session context without platform client modifications.
+
+3. **Option 3: Post-hoc joining of server spans to client spans on `claudecode/toolUseId`**
+   - _Mechanism_: Servers omit session parameters and record only `claudecode/toolUseId` from `_meta`. Server spans are joined offline to client spans in the trace store.
+   - _Evaluation_: Violates the core architectural requirement that sessions are queryable directly by `session.id` grouping. Phoenix requires `session.id` to reassemble session waterfalls without secondary processing pipelines. Additionally, non-Claude clients and third-party gateways do not generate or propagate `claudecode/toolUseId`.
+
+**The Winning Design: Gateway Header Propagation with Precedence-Based Resolution**
+The selected design combines the direct strengths of Options 1 and 2:
+
+- Direct local calls from hook-capable clients supply `_session` strictly to servers configured to consume it, preserving strict schemas elsewhere.
+- Multiplexed gateways (such as the services portal) extract session identity from incoming requests, strip `_session` from arguments, and forward session identity upstream via the standard `x-session-id` transport header.
+- Client surfaces unable to rewrite tool inputs (Cowork) avoid hook-driven input mutation entirely, relying on gateway context extraction, direct code-mode arguments, or client metadata without triggering client-side execution blocks.
+
+### Resolution Plan for Known Defect Classes
+
+| Defect Class | Root Cause | Resolving Behaviour | Repository |
+| :- | :- | :- | :- |
+| **Cowork Hook Refusal** | Cowork rejects tool calls whose inputs are modified by plugin hooks running in different environments. | Client PreToolUse hook exempts Cowork sessions from argument rewrites; session context passes via direct execution arguments or gateway transport headers. | `nicsuzor/academicOps` |
+| **Strict Schema Rejection** | Third-party or strict servers reject unexpected `_session` parameters under `additionalProperties: false`. | Client hook restricts `_session` injection to allowlisted session servers; gateway strips `_session` before forwarding to upstreams. | `nicsuzor/academicOps` |
+| **Gateway Session Dropping** | Gateway portals terminate client sessions and open unauthenticated/unattributed upstream connections. | Gateway extracts incoming session identity and forwards it upstream via `x-session-id` and W3C `traceparent` headers without binding connections. | `nicsuzor/dotfiles` |
+| **Unchecked Connector Payloads** | claude.ai connector and Cowork send standard HTTP JSON-RPC without session headers; portal forwards arguments without session context. | Gateway intercepts calls, translates incoming authentication and session context into upstream `x-session-id` headers, and strips arguments. | `nicsuzor/dotfiles` |
+| **Missing Gateway Environment** | Cowork lacks environment variables (`PKB_MCP_URL`), causing SessionStart hooks to fail fast. | SessionStart hook gracefully handles missing gateway URL by defaulting to canonical portal endpoints or omitting optional telemetry headers without halting session startup. | `nicsuzor/academicOps` |
+| **Spec & PR Discrepancies** | PR descriptions cite obsolete connection binding and inaccurate resolution priority. | Spec establishes definitive precedence order (`_session` > `_meta` > header); PR description synchronizes exactly with spec criteria. | `nicsuzor/academicOps` |
+| **Downstream Server Alignment** | Custom servers (`omcp`, `zotmcp`) lack uniform specification for header extraction and telemetry export. | Contract spec defines uniform `x-session-id` header resolution, OpenInference span conventions, and fail-fast startup behavior across all servers. | `nicsuzor/academicOps` |
 
 ### Server Declaration and Schema Handling
 
