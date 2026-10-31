@@ -66,6 +66,8 @@
 - [workflows/reconcile.md](workflows/reconcile.md) -- GitHub ↔ PKB task-graph reconciliation.
 - [workflows/strategic-review.md](workflows/strategic-review.md) -- design intent for the parallel-review-and-reconcile quality gate.
 - [workflows/graph-valuation.md](workflows/graph-valuation.md) -- how agents capture, value and maintain the graph under the flow rule: placement, densify batches, pricing, deadline classes, ripeness, and the budget for asking the user.
+- [workflows/pr-lifecycle.md](workflows/pr-lifecycle.md) -- PR lifecycle workflows: sweep task queuing and move-along fan-out.
+- [workflows/proportionate-pr-review-before-approval.md](workflows/proportionate-pr-review-before-approval.md) -- posted proportionate agent review precedes pull request approval requests.
 
 ## Future
 

@@ -31,13 +31,12 @@ A worker executing this workflow may coordinate parallel subagents to conduct in
 ## Obligations
 
 1. **Verify Triage and Eligibility**:
-   - Confirm the PR is not a draft. Draft PRs remain with their author or owning task until marked ready for review.
-   - Confirm the PR is not an excluded release PR.
+   - Confirm the PR is not an excluded release PR. Draft PRs undergoing review remain in draft until the proportionate review is posted on the PR thread.
    - Verify the base branch matches the designated integration base branch declared in `.agents/CORE.md`. If targeting another branch, retarget the base branch.
 
 2. **Audit CI Checks and Proportionate Review**:
    - Query automated checks (`gh pr checks`). All required test, lint, and type check suites must pass cleanly.
-   - Verify that the PR has undergone a review proportionate to its risk tier. If review is absent, dispatch an independent review before proceeding.
+   - Verify that the PR has undergone a review proportionate to its risk tier and that the review has been posted to the PR thread. If review is absent from the PR thread, dispatch an independent review and post findings to the thread before proceeding. Under no circumstances may a PR be transitioned to ready or left in an awaiting-approval disposition without an agent-generated review present on the PR thread.
 
 3. **Resolve Review Feedback and Requested Changes**:
    - Inspect existing review threads and reviews.
@@ -51,7 +50,7 @@ A worker executing this workflow may coordinate parallel subagents to conduct in
 
 5. **Execute Landing**:
    - Once all checks are green, required approvals are filed, and mergeability is clean, merge the PR into the base branch via standard merge (`gh pr merge <number> --merge`).
-   - If the PR cannot be merged (e.g. awaiting owner approval, active requested changes, or unresolved substantive conflicts), leave the PR open with its disposition and reason documented on the record.
+   - If awaiting owner approval, verify that the proportionate review is posted to the PR thread and convert from draft to ready (`gh pr ready`) if applicable. If the PR cannot be merged (e.g. awaiting owner approval, active requested changes, or unresolved substantive conflicts), leave the PR open with its disposition and reason documented on the record. Never leave a PR as awaiting approval without a posted review.
 
 ## Output contract
 
@@ -62,4 +61,5 @@ A worker executing this workflow may coordinate parallel subagents to conduct in
 - Must not merge any release-please PR.
 - Must not merge any PR without required owner approval unless it is a verified hotfix.
 - Must not merge any PR with failing checks or unresolved changes requested.
+- Must not classify or leave a PR as awaiting approval without a proportionate review posted to the PR thread.
 - Must not leave an unmerged PR without an explicit stated reason.

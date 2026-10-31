@@ -104,6 +104,8 @@ it to step 5 as a named gap and mark every proposition resting on it unverified.
 
 ### 5. Present the evidence digest — **Gate A**
 
+Where `<unit>` is delivered via a pull request requiring user approval, the pull request thread must carry the proportionate review posted visibly on GitHub before Gate A is presented to `<principal>`. If the PR was opened in draft state, convert it to ready (`gh pr ready`) only after review findings are posted. Presenting an unreviewed PR to `<principal>` is strictly prohibited.
+
 **Bottom line first.** The digest opens with the verdict `<verifier>` reached and the decision
 `<principal>` is being asked to make. **The digest's open question is its literal last line,
 restated fresh each round** — or is put through a direct question surface. Never buried

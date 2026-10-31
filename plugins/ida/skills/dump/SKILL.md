@@ -12,8 +12,8 @@ Finalize session work and provide a structured handover before exit.
 ### 1. Save and Push Work
 
 1. Commit all modified files. If work is incomplete, describe what is partial in the commit message.
-2. Deliver commits only where the task's Output names. If Output says nothing is pushed or names only a PKB task or note, do not push. If Output names a branch or pull request, push commits to that remote branch (`git push`). If the PR is a draft and its code step is complete, mark it ready for review (`gh pr ready`) without waiting for approval. Ephemeral container and session scratch paths (`<appDataDir>/brain/`, `/tmp/`, unpushed container working trees) vanish on exit; non-git evaluation datasets, specimen tables, and reports must be persisted in the PKB with durable pointers rather than stored in ephemeral directories.
-3. For pull requests (`gh pr create`), target the diverged base branch (e.g. `--base "${BASE_BRANCH:-${POLECAT_BASE_BRANCH}}"`).
+2. Deliver commits only where the task's Output names. If Output says nothing is pushed or names only a PKB task or note, do not push. If Output names a branch or pull request, push commits to that remote branch (`git push`). Ephemeral container and session scratch paths (`<appDataDir>/brain/`, `/tmp/`, unpushed container working trees) vanish on exit; non-git evaluation datasets, specimen tables, and reports must be persisted in the PKB with durable pointers rather than stored in ephemeral directories.
+3. For pull requests (`gh pr create`), target the diverged base branch (e.g. `--base "${BASE_BRANCH:-${POLECAT_BASE_BRANCH}}"`). If the pull request requires user or reviewer approval, create it in draft state (`--draft`) to suppress review notifications until proportionate review receipts are posted to the thread.
 4. Record the branch name and commit SHA in the final report.
 
 ### 2. Release Claimed Tasks
