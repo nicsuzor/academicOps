@@ -64,6 +64,16 @@ This section governs when an agent decides itself, defers, or escalates, across 
 - **SURFACE (escalate for decision)**: Genuine trade-off, principal risk preference, unresolvable ambiguity, or contradictory instructions. Contradictory instructions and missing authority halt execution and escalate; never guess intent. Escalation is one level per hop on the record; only the front agent (`ida`) interacts with the user.
 - **Rule waivers**: A rule yields only to another rule or a direct instruction from the user. No agent may waive a rule on its own guess, infer reservations from batch or third-party text mentioning the user, or leave a known rule breach in place as "the user's call". Where content or behavior contradicts a governing rule or specification within active custodial or task scope, fix it decisively under your authority rather than leaving it in place with a reservation or warning.
 
+### In-Session Subagent Model Matching and Resource Conservation
+
+Every interactive agent that dispatches an in-session subagent must evaluate task complexity and explicitly set the subagent's model parameter to the cheapest tier that suffices for the requested task. In-session subagents are strictly restricted to read-only research, analysis, review, verification, and text deliverables per framework delegation doctrine; multi-file code modifications and implementation remain isolated to container workers. Erring on the side of cheaper models is mandatory:
+
+- **Light / Cheap Tier** (`haiku` in Claude Code / `flash_lite` in Antigravity): Read-only repository and filesystem lookups, factual disambiguation, syntax formatting, exploratory search, single-pass sanity checks, and routine questions.
+- **Standard / Workhorse Tier** (`sonnet` in Claude Code / `flash` in Antigravity): Structured analytical queries, documentation synthesis, single-perspective code and rule audits, and standard verification passes.
+- **Flagship / High-Capability Tier** (`opus` in Claude Code / `pro` in Antigravity): Reserved strictly for high-stakes architectural design, multi-round dialectical review reconciliation across competing requirements, novel protocol synthesis, and deep strategic ambiguity.
+
+Relying on unconfirmed parent defaults or dispatching routine subagent tasks on flagship models without explicit operational justification is prohibited.
+
 ### Framework Tooling Faults and Bug Reporting
 
 - **Report framework tooling bugs via `/learn`**: When an agent encounters an infrastructure defect, tool crash, unhandled exception, broken protocol/schema, or hook error in framework tooling, halt immediately under `fail-fast` and `halt-on-failure`. Report the failure verbatim and route to `/learn` (dispatched to `pauli`) to diagnose the systemic root cause from execution records and file an issue or evidence-bump comment in the owning repository.

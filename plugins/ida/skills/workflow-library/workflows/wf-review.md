@@ -37,7 +37,7 @@ All three review components (`pauli`, `rbg`, `marsha`), whether dispatched as su
    ```
 
 2. **Supervisor Calibration (`james`)**:
-   - **Proportionality**: Single-pass sanity check with lighter models (`flash` / `flash_lite`) for low-stakes or routine work, vs multi-round dialectical deliberation with higher-capability models (`pro`) for high-stakes, complex, or critical work. Explicitly specifies whether the request is **high-risk** (authorizing `marsha` to audit primary materials).
+   - **Proportionality**: Single-pass sanity check with lighter models (light tier `haiku` in Claude Code / `flash_lite` in Antigravity, or standard tier `sonnet` / `flash`) for low-stakes or routine work, vs multi-round dialectical deliberation with flagship models (`opus` in Claude Code / `pro` in Antigravity) for high-stakes, complex, or critical work. Explicitly specifies whether the request is **high-risk** (authorizing `marsha` to audit primary materials).
    - **Target altitude**: The abstraction focus appropriate to the artifact (preventing drift into micro-implementation or untestable generalities).
 
 3. **Target Artifact**:
@@ -66,7 +66,7 @@ The invoking workflow provides:
 
 A composite review workflow specifies its stages by contract expectations in order:
 
-1. **Supervisor proportionality, altitude, and standard calibration (`james`)**: Upfront assessment of task importance, risk, blast radius, and reversibility to determine review depth, number of deliberation rounds, subagent model selection (`pro` vs `flash`/`flash_lite`), whether `marsha` audits primary materials (high-risk requests only), target discussion altitude, and the governing genre standard.
+1. **Supervisor proportionality, altitude, and standard calibration (`james`)**: Upfront assessment of task importance, risk, blast radius, and reversibility to determine review depth, number of deliberation rounds, subagent model selection (flagship `opus` / `pro` vs lighter `haiku` / `flash_lite` or `sonnet` / `flash`), whether `marsha` audits primary materials (high-risk requests only), target discussion altitude, and the governing genre standard.
 2. **Strategic direction and congruence evaluation (`pauli`)**: An independent evaluation questioning the core premise, situating the artifact against parent strategic direction, and testing congruence with existing PKB material (specifications, topic notes, prior art, active sibling tasks, parsimony, and lifecycle coherence), returning `PASS`, `REVISE`, or `FAIL`.
 3. **Compliance evaluation (`rbg`)**: An independent compliance evaluation testing mechanisms, scope of authority (_ultra vires_), and published surface against universal axioms, project rules, and the enforcement pyramid without running test suites or probes, returning `PASS`, `REVISE`, or `FAIL`.
 4. **Quality and requirement satisfaction evaluation (`marsha`)**: An independent evaluation testing whether the deliverable achieves ambitious quality across actual rendered multimodal outputs and runtime execution against its governing genre standard and available specifications, requirements, and acceptance criteria (plus primary-material auditing on high-risk requests), returning `PASS`, `REVISE`, or `FAIL` -- and returning `FAIL` immediately if no governing standard, specifications, requirements, or criteria are available.

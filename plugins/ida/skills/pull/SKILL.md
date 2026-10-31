@@ -18,6 +18,7 @@ Claim and execute a queued PKB task, directing subagents to deliver against stat
 ### 2. Execute and Supervise
 
 - Coordinate subagents in parallel to execute task requirements.
+- Match subagent models to task requirements on every dispatch, erring on the side of cheaper models (light tier `haiku` / `flash_lite` for routine lookups and sanity checks, standard tier `sonnet` / `flash` for analysis and drafting, reserving flagship models `opus` / `pro` for complex architectural design or synthesis).
 - Break work into sequenced steps, managing failures upstream without applying hidden workarounds.
 - **Full-context file inspection**: Before modifying any repository file, the worker must read the entire target file in full to understand surrounding architecture, conventions, and helper abstractions. Keyhole line-slice reads (`read_file` with narrow line windows around advisory line hints) in isolation without prior whole-file context are strictly prohibited; line numbers are advisory starting pointers only. If a target file exceeds tool page limits, inspect the complete file via sequential discovery before editing.
 
