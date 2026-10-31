@@ -139,9 +139,9 @@ Pull request review and merge authority is governed by a three-tier risk taxonom
 
 | Tier | Category | Scope / Characteristics | Merge Authority | Carrier Mechanism |
 | :- | :- | :- | :- | :- |
-| **Tier 1** | Autonomous QA-Merge | Low-risk changes: pure documentation, specifications, formatting, typing stubs (`.pyi`). | Independent QA worker merges autonomously on verified pass (`gh pr merge --squash`) and releases task as `done`. | `wf-finish.md`, `wf-code-task-base.md`, `wf-qa.md`, `plugins/ida/skills/reify/SKILL.md` |
-| **Tier 2** | Operational & Behavioral Gate | Code, workflows, tools, skills, rules, agent definitions, or tests. | Reviewer sign-off required; QA worker verifies, posts structured receipts to the PR, leaves PR open for sign-off, and releases task as `done`. | `wf-finish.md`, `wf-code-task-base.md`, `wf-qa.md`, `plugins/ida/skills/reify/SKILL.md` |
-| **Tier 3** | Critical Hazard & Public Gate | Host infrastructure, credentials, manuscripts, public releases, or high external blast radius. | Exclusive principal review and merge; agents strictly forbidden from merging. QA worker verifies, posts receipts, leaves open, and releases task as `done`. | `wf-finish.md`, `wf-code-task-base.md`, `wf-qa.md`, `plugins/ida/skills/reify/SKILL.md` |
+| **Tier 1** | Autonomous QA-Merge | Low-risk changes: pure documentation, specifications, formatting, typing stubs (`.pyi`). | Independent QA worker merges autonomously on verified pass (`gh pr merge --squash`) and releases task as `done`. | `wf-finish.md`, `wf-code-task-base.md`, `wf-qa.md` |
+| **Tier 2** | Operational & Behavioral Gate | Code, workflows, tools, skills, rules, agent definitions, or tests. | Reviewer sign-off required; QA worker verifies, posts structured receipts to the PR, leaves PR open for sign-off, and releases task as `done`. | `wf-finish.md`, `wf-code-task-base.md`, `wf-qa.md` |
+| **Tier 3** | Critical Hazard & Public Gate | Host infrastructure, credentials, manuscripts, public releases, or high external blast radius. | Exclusive principal review and merge; agents strictly forbidden from merging. QA worker verifies, posts receipts, leaves open, and releases task as `done`. | `wf-finish.md`, `wf-code-task-base.md`, `wf-qa.md` |
 
 Enforcement operates through workflow merge gates (`instructions`, `imperative`):
 Finish and QA templates direct QA workers to semantically evaluate PR risk against the taxonomy in a clean context. For verified Tier 1 PRs, QA workers merge autonomously via `gh pr merge --squash` and release the QA task as `done`. For Tier 2 and Tier 3 PRs, QA workers verify claims, post structured receipts to the PR, and leave the PR open for reviewer or principal sign-off. Under headless worker and review lifecycle rules, both implementation workers and QA workers complete as `done` with the PR URL recorded on the task record so that `/dispatch` unblocks QA immediately and `/reconcile` tracks merge without human wait states; no task rests or releases into `review` for human merge gates.
@@ -153,6 +153,8 @@ The framework enforces a strict ordering invariant across all pull request lifec
 $$\text{Review Generated} \longrightarrow \text{Review Posted to PR Thread} \longrightarrow \text{PR Marked Ready / User Approval Requested}$$
 
 Under no circumstances is a pull request submitted for user approval, tagged for user review, or reported in an awaiting-approval disposition without an agent-generated review already present on the pull request thread.
+
+Workflow templates set the process, including whether a PR gets a review before user approval and how much; skills and agent definitions only compose workflows into tasks and leave no part of that process to agent judgement. All pre-approval review requirements and draft gating invariants are defined exclusively within workflow templates.
 
 Enforcement operates through native platform mechanisms and workflow gates ([`specs/workflows/proportionate-pr-review-before-approval.md`](../workflows/proportionate-pr-review-before-approval.md)):
 

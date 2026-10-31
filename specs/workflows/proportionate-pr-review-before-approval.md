@@ -35,7 +35,11 @@ As a workflow author and executor, I want the pre-approval review requirement to
 
 ## Design
 
-### 1. The Core Invariant
+### 1. Placement: Workflows Set the Process; Skills Compose
+
+In accordance with [[aops-composable-workflow-system]], workflow templates set the process, including whether a PR gets a review before Nic's approval and how much. Skills and agent definitions only compose workflows into tasks and leave no part of that process to agent judgement. Every process requirement governing pull request review, draft status, and approval gating is stated within a workflow template (`wf-*.md`); skills and agents carry no process of their own.
+
+### 2. The Core Invariant
 
 The framework enforces a strict ordering invariant across all pull request lifecycles:
 
@@ -43,7 +47,7 @@ $$\text{Review Generated} \longrightarrow \text{Review Posted to PR Thread} \lon
 
 Under no circumstances is a pull request submitted for user approval, tagged for user review, or reported in an awaiting-approval disposition without an agent-generated review already present on the pull request thread.
 
-### 2. Gating Mechanisms
+### 3. Gating Mechanisms
 
 To guarantee this invariant across all execution paths while respecting headless worker boundaries:
 
@@ -62,7 +66,7 @@ To guarantee this invariant across all execution paths while respecting headless
    - Progression workflows auditing open pull requests inspect the pull request thread for completed reviews. If required reviews are absent, the workflow initiates or coordinates the review before advancing merge gates.
    - Sweep workflows categorize unreviewed pull requests requiring approval as queued for review with a designated review step, strictly forbidding classification as awaiting user approval.
 
-### 3. Review Depth and Presentation Standards
+### 4. Review Depth and Presentation Standards
 
 The depth, composition, and presentation of the pre-approval review are calibrated directly against the three-tier risk taxonomy:
 
@@ -72,7 +76,7 @@ The depth, composition, and presentation of the pre-approval review are calibrat
 | **Tier 2: Medium Risk** | Code, workflows, tools, skills, rules, agent definitions, or tests. | Dual-lens focused review. | Compliance lens + Verification lens. | Structured review comment with PASS/FAIL verdict, rule compliance checklist, and acceptance verification receipts. |
 | **Tier 3: High Risk** | Infrastructure, security, credentials, public releases, breaking changes. | Multi-lens dialectical review. | Supervisor coordination across Strategic Congruence, Compliance, and Verification lenses. | Comprehensive dialectical review with synthesis table, formal premise checks, and explicit risk boundary audit. |
 
-### 4. Per-Workflow Delivery Guarantees
+### 5. Per-Workflow Delivery Guarantees
 
 The pre-approval review gate applies across all inventoried workflow classes:
 
@@ -94,5 +98,13 @@ The pre-approval review gate applies across all inventoried workflow classes:
 5. **Composite and Spec Workflows** (Specification and Framework Change Templates):
    - Multi-stage specifications opening draft pull requests for design review ensure that independent multi-lens reviews are posted to the pull request before human approval is requested.
 
-6. **Session Handover and Exit Surfaces** (Session Handover and Dump Templates):
-   - Automated pull request creation during session exit defaults to draft status whenever the deliverable requires subsequent review or user approval.
+6. **Session Handover and Exit Skills** (Session Handover Template and Dump Skill):
+   - Workflow templates set the process, not skills: session exit skills (`/dump`) carry no process rules of their own and create pull requests strictly as governed by the task's composed workflow template, leaving no gating decisions to agent judgement.
+
+## Regulatory Experiment Record
+
+- **Hypothesis:** Placing pre-approval review requirements and draft gating exclusively within workflow templates ensures every pull request requiring user approval carries a posted proportionate review before approval is sought, while preserving architectural boundaries where skills and agent definitions only compose workflows into tasks and state no process of their own.
+- **What moved:** Process requirements, risk-calibrated review depth, and draft PR gating moved entirely into workflow templates (`wf-*.md`) across universal and project tiers; skills (`/dump`) and agent definitions are stripped of process rules and maintain pure composition/execution semantics.
+- **On what evidence:** Nic's ruling on PR #3260 (2026-10-31) that workflow templates set the process rather than agent opinions or skills; observed defects where unreviewed PRs were submitted for user approval.
+- **Observation / Promotion Criteria:** Pull requests requiring user approval carry visible agent reviews on their threads prior to ready notification, with 0 process requirements stated in skills or agent definitions.
+- **Kill / Escalation Criteria:** If unreviewed PRs continue reaching the user, escalate via automated repository branch protection or CI check gates rather than adding process rules to agent personas or skills.
