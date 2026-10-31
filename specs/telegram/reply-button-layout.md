@@ -34,6 +34,19 @@ As an operator receiving agent recommendations in chat, I want direct accept and
 - **AC-3.1** Every reply that carries default message actions attaches `[✅ Accept recommendation]` and `[❌ Decline recommendation]` alongside `[🧐 Check logic]` and `[💡 Explain]`. Passing `actions: false` suppresses all default action buttons including both recommendation buttons; setting `predefined_row: true` places them together on row 0.
 - **AC-3.2** Tapping `[✅ Accept recommendation]` or `[❌ Decline recommendation]` acknowledges the callback, edits the Telegram message card to show the user's choice (`Selected: <label> ✅`), removes the recommendation buttons from the inline keyboard while preserving other buttons (Details, Review diff, Check logic, Explain), and delivers an event to Ida (`accept_recommendation` or `decline_recommendation`) naming the target message ID, text excerpt, and whether Nic accepted or declined the recommendation.
 
+### US-4 Caller-Supplied Reply Button Tap Acknowledgement
+
+As an operator tapping a custom option button on an agent reply card (such as a workflow, skill, or decision choice), I want the button tap immediately acknowledged in the Telegram client, the card marked with my chosen label, and the choice forwarded to the agent, so that I receive instant visual feedback without waiting on the receiving session or triggering repeated taps.
+
+- **AC-4.1 (Immediate Tap Acknowledgement & In-Place Selection)** Given an operator taps any caller-supplied reply button on a message card, when the callback arrives, then:
+  1. The callback query is answered immediately via `answerCallbackQuery` to dismiss the client spinner.
+  2. The message card is edited to append `Selected: <label> ✅` to the text or caption.
+  3. Caller option buttons are removed from the card's inline keyboard while preserving active predefined buttons (such as `🔍 Details`, `🔍 Review diff`, feedback buttons, or action buttons).
+  4. An inbound event is dispatched to the active agent session with `event: "button_tap"`, `content: "tapped <label>"`, `callback_prefix`, `payload`, `label`, and target message identity.
+  - _Check_: `plugins/ida-telegram/test/reply-buttons.test.ts` (`AC3: defect check: tapping caller-supplied reply button acknowledges callback, marks card, preserves Details button, and delivers event to session`).
+- **AC-4.2 (Universal Callback Acknowledgement Across All Button Families)** Every callback-button family emitted by the plugin (`reply` caller buttons, predefined action buttons `logic_check`/`explain`/`reasons`, recommendation buttons `accept_recommendation`/`decline_recommendation`, feedback buttons `fb:*`, question buttons `q:*`, and permission buttons `perm:*`) immediately acknowledges incoming callback queries via `answerCallbackQuery`. Client-side WebApp buttons (`web_app` for Details, Review diff, Mini App review, and caller Mini Apps) are exempt because Telegram handles WebApps client-side without emitting `callback_query` updates.
+  - _Check_: `plugins/ida-telegram/test/reply-buttons.test.ts` (`AC4: defect check: every callback-button family emitted by the plugin acknowledges callback query immediately`).
+
 ## Design
 
 ### 1. Custom Button Layouts (US-1)
@@ -89,3 +102,24 @@ As an operator receiving agent recommendations in chat, I want direct accept and
 4. **Verification Checks:**
    - Attachment, suppression, and row consolidation checked by `plugins/ida-telegram/test/recommendation-actions.test.ts` (AC1) and `plugins/ida-telegram/test/reply-buttons.test.ts` (AC2).
    - Tapping, card marking, button filtering, and event delivery checked by `plugins/ida-telegram/test/recommendation-actions.test.ts` (AC2) and `plugins/ida-telegram/test/inbound.test.ts`.
+
+### 4. Caller-Supplied Button Tap Acknowledgement (US-4)
+
+1. **Immediate Client Acknowledgement:**
+   When any `callback_query` arrives for a caller-supplied button, the bot calls `answerCallbackQuery` immediately with `callback_query_id: cb.id`, dismissing the loading spinner in the operator's client without waiting for turn completion or downstream session execution.
+
+2. **In-Place Card Marking & Filtering:**
+   - Appends `\n\nSelected: <label> ✅` to the message text or caption (stripping previous selection if already present to prevent duplicate markings on retry).
+   - Filters out all caller-supplied option buttons from `inline_keyboard` so the operator cannot double-submit choices, while preserving active predefined buttons (such as `🔍 Details`, `🔍 Review diff`, feedback buttons, and predefined action buttons).
+   - If the message was sent with audio or caption, updates the message caption; falls back to unformatted plain text if Telegram rejects formatted entities.
+
+3. **Channel Event Delivery:**
+   - Dispatches `button_tap` inbound event to the active session via `emitChannelEvent`:
+     - `content`: `"tapped <label>"`
+     - `meta`: `event: "button_tap"`, `callback_id`, `callback_prefix`, `payload`, `label`, `target_message_id`, `chat_id`, `user_id`, and `message_thread_id` / `thread_id` when inside a forum thread.
+
+4. **Universal Callback Acknowledgement Contract:**
+   All callback-button families emitted by the plugin (`reply` caller buttons, predefined action buttons, recommendation buttons, feedback buttons, question cards, and permission cards) immediately acknowledge incoming callback queries via `answerCallbackQuery`. Client-side WebApp buttons (`web_app` for Details, Review diff, Mini App review, and caller Mini Apps) are exempt because Telegram handles WebApps client-side without emitting `callback_query` updates.
+
+5. **Verification Checks:**
+   - Checked by `plugins/ida-telegram/test/reply-buttons.test.ts` (AC3 for caller-supplied button tap, card marking, Details preservation, and session delivery; AC4 for immediate acknowledgement across all emitted callback-button families).
