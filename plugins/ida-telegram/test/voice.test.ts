@@ -58,7 +58,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
       apiBaseUrl: "https://api.telegram.org",
       role: "primary",
       isPrimary: true,
-      allowFrom: [8860530746],
+      allowFrom: [1111111111],
       maxChatChars: 1200,
       voiceReplies: "off" as const,
       voiceTranscribeCmd: "",
@@ -108,7 +108,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
         params: {
           name: "reply",
           arguments: {
-            chat_id: 8860530746,
+            chat_id: 1111111111,
             text: "**This is a voice reply.**\n• First bullet with `code`.\n>! Tier 2 evidence quote that goes behind Details.",
             detail: "## Tier 3 Detail\nExtra context.",
             voice: true,
@@ -128,7 +128,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
       expect(apiCalls.map((c) => c.method)).toEqual(["sendVoice"]);
       const voiceCall = apiCalls[0];
       expect(voiceCall.isMultipart).toBe(true);
-      expect(voiceCall.body.chat_id).toBe("8860530746");
+      expect(voiceCall.body.chat_id).toBe("1111111111");
       expect(voiceCall.body.voice.text).toBe("OggS-fake-opus-audio");
 
       // speak.sh received the Tier 1 text as a file at $1
@@ -177,7 +177,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
       apiBaseUrl: "https://api.telegram.org",
       role: "primary",
       isPrimary: true,
-      allowFrom: [8860530746],
+      allowFrom: [1111111111],
       maxChatChars: 1500,
       voiceReplies: "off" as const,
       voiceTranscribeCmd: "",
@@ -222,7 +222,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
         params: {
           name: "reply",
           arguments: {
-            chat_id: 8860530746,
+            chat_id: 1111111111,
             text: longTier1,
             voice: true,
             buttons: [{ label: "Go ahead (Recommended)" }, { label: "Hold" }],
@@ -264,7 +264,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
       apiBaseUrl: "https://api.telegram.org",
       role: "primary",
       isPrimary: true,
-      allowFrom: [8860530746],
+      allowFrom: [1111111111],
       maxChatChars: 1200,
       voiceReplies: "off" as const,
       voiceTranscribeCmd: "",
@@ -300,7 +300,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
         params: {
           name: "reply",
           arguments: {
-            chat_id: 8860530746,
+            chat_id: 1111111111,
             text: "**This is a voice reply.**",
             voice: true,
           },
@@ -344,7 +344,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
       apiBaseUrl: "https://api.telegram.org",
       role: "primary",
       isPrimary: true,
-      allowFrom: [8860530746],
+      allowFrom: [1111111111],
       maxChatChars: 1200,
       voiceReplies: "mirror" as const,
       voiceTranscribeCmd: transcribeScript,
@@ -379,14 +379,14 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
       const bot = new TelegramBotClient(config, broker, permRelay, () => {});
       const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
 
-      // 1. Simulate inbound voice note from Nic
+      // 1. Simulate inbound voice note from the user
       await (bot as any).handleUpdate({
         update_id: 10,
         message: {
           message_id: 300,
           date: 1700000000,
-          chat: { id: 8860530746, type: "private" },
-          from: { id: 8860530746, is_bot: false, first_name: "Nic" },
+          chat: { id: 1111111111, type: "private" },
+          from: { id: 1111111111, is_bot: false, first_name: "Alex" },
           voice: { file_id: "vf_1", duration: 5 },
         },
       });
@@ -401,7 +401,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
         params: {
           name: "reply",
           arguments: {
-            chat_id: 8860530746,
+            chat_id: 1111111111,
             text: "**Mirrored voice answer.**",
           },
         },
@@ -410,14 +410,14 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
       expect(res1.voiceSent).toBe(true);
       expect(apiCalls.map((c) => c.method)).toEqual(["sendVoice"]);
 
-      // 3. Simulate inbound plain text message from Nic
+      // 3. Simulate inbound plain text message from the user
       await (bot as any).handleUpdate({
         update_id: 11,
         message: {
           message_id: 301,
           date: 1700000010,
-          chat: { id: 8860530746, type: "private" },
-          from: { id: 8860530746, is_bot: false, first_name: "Nic" },
+          chat: { id: 1111111111, type: "private" },
+          from: { id: 1111111111, is_bot: false, first_name: "Alex" },
           text: "Now a text message",
         },
       });
@@ -432,7 +432,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
         params: {
           name: "reply",
           arguments: {
-            chat_id: 8860530746,
+            chat_id: 1111111111,
             text: "**Mirrored text answer.**",
           },
         },
@@ -465,7 +465,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
       apiBaseUrl: "https://api.telegram.org",
       role: "primary",
       isPrimary: true,
-      allowFrom: [8860530746],
+      allowFrom: [1111111111],
       maxChatChars: 1200,
       voiceReplies: "off" as const,
       voiceTranscribeCmd: transcribeScript,
@@ -506,8 +506,8 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
         message: {
           message_id: 401,
           date: 1700000100,
-          chat: { id: 8860530746, type: "private" },
-          from: { id: 8860530746, is_bot: false, first_name: "Nic" },
+          chat: { id: 1111111111, type: "private" },
+          from: { id: 1111111111, is_bot: false, first_name: "Alex" },
           voice: { file_id: "vf_fresh_1", duration: 8 },
         },
       });
@@ -561,10 +561,11 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
     chmodSync(transcribeScript, 0o755);
 
     const config = loadConfig({
+      MINI_APP_URL: "https://ida.example.test",
       TELEGRAM_BOT_TOKEN: "test-token",
       STATE_DIR: stateDir,
       VOICE_TRANSCRIBE_CMD: transcribeScript,
-      ALLOWED_USER_IDS: "8860530746",
+      ALLOWED_USER_IDS: "1111111111",
     });
 
     const broker = new QuestionBroker(stateDir);
@@ -594,8 +595,8 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
         message: {
           message_id: 501,
           date: 1700000200,
-          chat: { id: 8860530746, type: "private" },
-          from: { id: 8860530746, is_bot: false, first_name: "Nic" },
+          chat: { id: 1111111111, type: "private" },
+          from: { id: 1111111111, is_bot: false, first_name: "Alex" },
           voice: { file_id: "vf_cred_1", duration: 5 },
         },
       });
@@ -642,7 +643,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
         return new Response(
           JSON.stringify({
             ok: true,
-            result: { message_id: 3193, chat: { id: 8860530746 } },
+            result: { message_id: 3193, chat: { id: 1111111111 } },
           }),
           { status: 200, headers: { "Content-Type": "application/json" } }
         );
@@ -650,7 +651,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
       return new Response(
         JSON.stringify({
           ok: true,
-          result: { message_id: 3194, chat: { id: 8860530746 } },
+          result: { message_id: 3194, chat: { id: 1111111111 } },
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       );
@@ -659,6 +660,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
     try {
       // Installed-plugin environment where VOICE_SPEAK_CMD is set to bare "speak.sh"
       const cfg = loadConfig({
+        MINI_APP_URL: "https://ida.example.test",
         CLAUDE_PLUGIN_ROOT: installedPluginRoot,
         STATE_DIR: stateDir,
         VOICE_SPEAK_CMD: "speak.sh",
@@ -678,7 +680,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
 
       const formatted = formatMarkdownToEntities("Voice reply from installed plugin");
       const res = await bot.sendReply({
-        chatId: 8860530746,
+        chatId: 1111111111,
         formatted,
         voice: true,
       });
@@ -689,6 +691,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
 
       // Verify that unresolvable bare command reproduces "Executable not found in $PATH"
       const unresolvableCfg = loadConfig({
+        MINI_APP_URL: "https://ida.example.test",
         CLAUDE_PLUGIN_ROOT: installedPluginRoot,
         STATE_DIR: stateDir,
         VOICE_SPEAK_CMD: "nonexistent-speak.sh",
@@ -702,7 +705,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
         () => {}
       );
       const resUnresolvable = await unresolvableBot.sendReply({
-        chatId: 8860530746,
+        chatId: 1111111111,
         formatted,
         voice: true,
       });
@@ -724,6 +727,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
     const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-voice-cfg-"));
     try {
       const cfg = loadConfig({
+        MINI_APP_URL: "https://ida.example.test",
         STATE_DIR: stateDir,
         VOICE_SPEAK_CMD: "",
       });
@@ -747,6 +751,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
       writeFileSync(join(stateDir, "speak.sh"), "#!/bin/sh\n", { mode: 0o755 });
 
       const cfg = loadConfig({
+        MINI_APP_URL: "https://ida.example.test",
         STATE_DIR: stateDir,
       });
       expect(cfg.voiceTranscribeCmd).toBe(join(stateDir, "transcribe.sh"));
@@ -970,11 +975,12 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
     chmodSync(speakScript, 0o755);
 
     const config = loadConfig({
+      MINI_APP_URL: "https://ida.example.test",
       IDA_TELEGRAM_ROLE: "primary",
       TELEGRAM_BOT_TOKEN: "test-token",
       STATE_DIR: stateDir,
       VOICE_SPEAK_CMD: speakScript,
-      ALLOWED_USER_IDS: "8860530746",
+      ALLOWED_USER_IDS: "1111111111",
     });
 
     const store = new PluginStore(stateDir);
@@ -1015,7 +1021,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
         params: {
           name: "reply",
           arguments: {
-            chat_id: 8860530746,
+            chat_id: 1111111111,
             text: "**Voice out credential test.**\n• Bullet one.",
             voice: true,
           },

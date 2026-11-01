@@ -3,8 +3,6 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import { resolveBotCommands, type TelegramBotCommand } from "./telegram/commands.js";
 
-export const DEFAULT_MINI_APP_URL = "https://ida.suzor.com";
-
 export interface PluginConfig {
   botToken: string;
   apiBaseUrl: string;
@@ -73,8 +71,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
     .filter((n) => !isNaN(n));
 
   const socketPath = mergedEnv.SOCKET_PATH || join(stateDir, "bridge.sock");
-  const rawMiniAppUrl = (mergedEnv.MINI_APP_URL || mergedEnv.IDA_WEB_URL || DEFAULT_MINI_APP_URL).trim();
-  const miniAppUrl = (rawMiniAppUrl || DEFAULT_MINI_APP_URL).replace(/\/+$/, "");
+  const miniAppUrl = (mergedEnv.MINI_APP_URL || mergedEnv.IDA_WEB_URL || "").trim().replace(/\/+$/, "");
+  if (!miniAppUrl) {
+    throw new Error(
+      "[ida-telegram] MINI_APP_URL (or IDA_WEB_URL) is not set: configure the public URL of this plugin's Mini App in the environment or $STATE_DIR/.env"
+    );
+  }
 
   // Voice transcribe candidate resolution per spec_7a9caca5 FR-7.5
   const transcribeCandidates = [

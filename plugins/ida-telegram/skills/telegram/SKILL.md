@@ -39,7 +39,7 @@ Every reply sent over Telegram automatically carries inline action buttons with 
 - **Explain (`💡 Explain`):** Requests more detail on that specific message statement (`event: "explain"`).
   - Reply expanding that message in greater detail with context, underlying rationale, and evidence.
 - **Reasons (`🧾`):** Requests the underlying argument and evidence chain behind that specific message statement (`event: "reasons"`), answering "how do you know that?".
-  - Returns the arguments behind the message verbatim (Chained Toulmin Argdown blocks), one per link of the chain, each labelled with who argued it and to whom (e.g. `Prime to Nic`, `Sara to Prime`, `worker to Sara`), nested by delegation depth, in the reply's details (`detail` parameter).
+  - Returns the arguments behind the message verbatim (Chained Toulmin Argdown blocks), one per link of the chain, each labelled with who argued it and to whom (e.g. `Prime to user`, `Sara to Prime`, `worker to Sara`), nested by delegation depth, in the reply's details (`detail` parameter).
   - A link whose argument cannot be found is named as missing (e.g. `[Missing argument: no premise-check record found for ...]`), never paraphrased.
   - Chat text provides a concise summary (~100 words) with the primary takeaway and the chain structure, referencing the Details page for the full verbatim Argdown blocks.
 - **Accept recommendation (`✅`):** Marks the card and notifies Ida that the user accepted the recommendation (`event: "accept_recommendation"`).
@@ -91,5 +91,5 @@ Every reply sent over Telegram automatically carries inline action buttons with 
 
 ## Bot Commands
 
-- **Bare commands:** When a native Telegram menu command arrives without arguments, follow the default action or skill specified in the event metadata (`meta.default_action` or `meta.skill`).
+- **Bare commands:** When a native Telegram menu command arrives without arguments (`meta.command`), invoke the skill of that name (underscores in the command stand for hyphens in the skill name) on the current conversation: act on the message it replies to or the active topic, or ask the user what the command should act on.
 - **Commands with arguments:** When user arguments are provided with a command, process them within the target workflow.

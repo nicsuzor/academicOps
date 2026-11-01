@@ -105,7 +105,7 @@ As an operator tapping a custom option button on an agent reply card (such as a 
 
 3. **Event Delivery:**
    The bot delivers an inbound event to Ida (`event: "accept_recommendation"` or `event: "decline_recommendation"`), including:
-   - `content`: `"Nic accepted the recommendation for message <id>: \"<excerpt>\"."` or `"Nic declined the recommendation for message <id>: \"<excerpt>\"."`
+   - `content`: `"The user accepted the recommendation for message <id>: \"<excerpt>\"."` or `"The user declined the recommendation for message <id>: \"<excerpt>\"."`
    - `meta`: `target_message_id`, `target_excerpt`, `action`, `event`, `recommendation` (`"accepted"` / `"declined"`), `choice` (`"accept"` / `"decline"`), `label`, `chat_id`, `user_id`.
 
 4. **Verification Checks:**

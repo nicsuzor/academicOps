@@ -1,12 +1,14 @@
-# GitHub Ruleset: main requires fully green releases
-# Ruleset ID: none yet (not created live)
-# Applied to: refs/heads/main of nicsuzor/academicOps
+# GitHub Ruleset (DRAFT, NOT LIVE): main requires fully green releases
+# Ruleset ID: none. No ruleset is live on refs/heads/main of nicsuzor/academicOps,
+# so GitHub enforces none of the rules below on main today.
 #
-# Record of the ruleset to create. Creating it needs repository admin:
-#   POST repos/nicsuzor/academicOps/rulesets
-#
-# Merges to main are absolutely restricted to fully green releases:
-# Lint, Type Check, and Pytest pass on the PR head; no bypass is allowed.
+# A proposal only; do not apply it as written. main is written by the release
+# pipeline's direct `git push origin HEAD:main` (scripts/publish-dist-to-main.sh),
+# not by a pull request. With no bypass actor, the pull_request and
+# required_status_checks rules below would reject that push and stop publishing.
+# Applying it needs a bypass actor for the publishing identity first, and
+# repository admin: POST repos/nicsuzor/academicOps/rulesets
+# (scripts/sync_main_ruleset.py refuses to apply it without a bypass actor).
 
 name: main requires fully green releases
 

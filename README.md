@@ -86,12 +86,13 @@ Install what you need -- plugins are separately installable and loosely coupled:
 ```bash
 claude mcp add --transport http --scope user services <your PKB MCP endpoint>
 claude plugin marketplace add nicsuzor/academicOps@dist
-claude plugin install pkb@academicOps
-claude plugin install aops@academicOps
+claude plugin install ida@academicOps
+claude plugin install rbg@academicOps
+claude plugin install tools@academicOps
 ```
 
-`orchestrate`, `rbg`, `tools`, `ts`, and `aops-debug` install the same way as
-`aops`, with no `--config`.
+`ida-telegram` and `aops-debug` install the same way as `ida`, with no
+`--config`.
 
 Requirements: Claude Code (or Antigravity), and Docker if you want polecat's containerised workers.
 

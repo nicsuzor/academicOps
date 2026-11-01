@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 """Sync branch protection ruleset for main to GitHub via gh api.
 
-Reads .github/rulesets/main-requires-review.yml and ensures the ruleset
-is created and active on nicsuzor/academicOps targeting refs/heads/main.
+Reads .github/rulesets/main-requires-review.yml and creates or updates the
+ruleset on nicsuzor/academicOps targeting refs/heads/main.
+
+The release pipeline publishes to main by a direct push
+(scripts/publish-dist-to-main.sh), which a pull_request or
+required_status_checks rule rejects unless the pushing identity is a bypass
+actor. So this script refuses to apply a ruleset that has such a rule and no
+bypass actor.
 """
 
 import json
@@ -36,6 +42,19 @@ def main() -> int:
         "rules": data.get("rules", []),
     }
     payload_json = json.dumps(payload, indent=2)
+
+    push_blocking = {"pull_request", "required_status_checks", "update"}
+    if not payload["bypass_actors"] and any(
+        r.get("type") in push_blocking for r in payload["rules"]
+    ):
+        print(
+            "ERROR: refusing to apply: the ruleset has a rule that rejects the "
+            "release pipeline's direct push to main "
+            f"({', '.join(sorted(push_blocking))}) and no bypass_actors. Add the "
+            "publishing identity as a bypass actor first.",
+            file=sys.stderr,
+        )
+        return 1
 
     print("Target ruleset payload:")
     print(payload_json)
