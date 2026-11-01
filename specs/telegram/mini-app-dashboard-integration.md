@@ -74,6 +74,26 @@ As an operator managing multiple concurrent agent streams and background tasks, 
 - **AC-7.4** Given an active item in the unified view, when the item is answered, permitted/denied, reviewed, or when its underlying task transitions to a terminal state (`done` or `cancelled`) with recorded evidence, then the item transitions out of the pending view; if closed without resolution, an audited reason must be recorded.
 - **AC-7.5** Given a pending decision, permission request, or review in the unified view, when the operator acts directly within the dashboard interface, then the resolution is dispatched to the originating agent bridge and updates the corresponding source state across connected channels.
 
+### US-8 Multi-Instance Bridge Discovery and Upstream Proxying
+
+As an operator running multiple concurrent agent instances (such as primary and persona channels), I want the dashboard proxy layer to dynamically discover and route to each running agent's local HTTP/SSE bridge, so that every instance's state is queryable and streamable through the central dashboard perimeter.
+
+- **AC-8.1** Given a set of running agent instances configured in the dashboard environment, when querying `GET /api/app/instances`, then the response lists all registered instances with their identifier, display label, and connectivity status (`online` or `offline`).
+- **AC-8.2** Given an instance-scoped REST request (`GET /api/app/instances/:instance/anchor`, `/questions`, or `/review`), when the upstream agent instance is reachable, then the dashboard forwards the request to that instance's local bridge with upstream authorization, returning the live JSON payload and monotonic sequence number.
+- **AC-8.3** Given an instance-scoped event stream request (`GET /api/app/instances/:instance/events`), when the upstream agent bridge emits SSE frames, then the dashboard streams the frames in real time with sequence numbers intact, relays reconnection parameters (`Last-Event-ID` or `?since`), and emits periodic keepalive comments.
+- **AC-8.4** Given a request to an upstream agent instance that is unreachable, stopped, or disconnected, when the dashboard attempts to proxy the request, then the proxy responds with HTTP 503 Service Unavailable and a structured error payload without crashing or blocking other instances.
+
+### US-9 Dual-Surface (/agent and /app) Multi-Instance State and Action Routing
+
+As an operator supervising and directing work from either the desktop `/agent` interface or the mobile Mini App (`/app/`), I want to view live state and dispatch actions to any running agent instance, so that my directives reach the target agent directly and update connected chat channels immediately.
+
+- **AC-9.1** Given the desktop `/agent` interface, when the operator selects an active agent instance from the instance selector, then the interface hydrates that instance's live cognitive anchor, token metrics, and recent turns, and establishes an active SSE stream to that instance's event endpoint.
+- **AC-9.2** Given the `/agent` interface switched to the embedded shell view, when an agent instance is selected, then the embedded iframe synchronizes to `/app/?instance=:instance`, binding the shell directly to the selected instance.
+- **AC-9.3** Given the standalone Mini App loaded via chat client or browser with an `instance` query parameter, when initialised, then all API requests for state snapshots, event streaming, and operator actions automatically route to that specific instance's bridge.
+- **AC-9.4** Given a pending structured decision or tool permission on either interface, when the operator submits a choice or allow/deny decision, then the action dispatches to `POST /api/app/instances/:instance/questions/answer` or `POST /api/app/instances/:instance/review/permission`, unblocking the agent session and updating the corresponding chat card in place.
+- **AC-9.5** Given a freeform prompt or halt directive submitted through the interface, when dispatched to `POST /api/app/instances/:instance/message` or `POST /api/app/instances/:instance/stop`, then the target agent receives the directive into its active session context and halts or responds accordingly.
+- **AC-9.6** Given a client issuing a request to an instance-scoped endpoint without an instance identifier (such as `/api/app/anchor`), when received by the dashboard, then the server rejects the request with HTTP 400 Bad Request requiring an explicit instance parameter.
+
 ## Design
 
 ### 1. Unified Serving and Perimeter Authentication (US-1)
@@ -93,9 +113,9 @@ The agent interface must serve two client topologies: (a) standalone mobile acce
 
 1. **Perimeter Ingress and Bridge Transport:**
    - The primary dashboard ingress terminates at the central web application.
-   - Standalone client routes are published under `/app/*` (static bundle and responsive standalone shell) and API endpoints under `/api/app/*`.
+   - Standalone client routes are published under `/app/*` (static bundle and responsive standalone shell) and API endpoints under `/api/app/*` (with multi-instance routes scoped under `/api/app/instances/:instance/*`).
    - Desktop operators access the embedded view under the primary dashboard layout at `/agent`.
-   - **Bridge Transport:** The agent process hosts the internal HTTP/1.1 and SSE channel bridge on a private loopback interface or internal service mesh, proxied by the dashboard service layer or accessed directly over private network mesh.
+   - **Bridge Transport:** The agent process hosts the internal HTTP/1.1 and SSE channel bridge on a private loopback interface or internal service mesh, proxied by the dashboard service layer or accessed directly over private network mesh as specified under multi-instance proxy architecture.
 2. **Authentication Flow:**
    - **Mode A (Telegram Launch):** The client transmits the cryptographic initialization payload via `POST /api/app/auth`. The server verifies the cryptographic hash against the bot secret token using HMAC-SHA256, validates timestamp freshness (maximum age: 3600 seconds), and checks user identity against the authorized operator list. On success, the server issues an HTTP-only, secure, strict SameSite session cookie (`ida_session`) with a 1-hour expiry.
    - **Mode B (Dashboard Perimeter and Service Bridge):** For requests arriving from the dashboard domain or internal services:
@@ -369,3 +389,136 @@ Every acceptance criterion defined in US-7 maps directly to an observable verifi
 | **AC-7.3** | Non-Vanishing Invariant | Given active pending items in the dashboard view, simulate an agent process kill (`SIGKILL`) or container restart; verify that upon bridge reconnect, all pending items remain intact in the view without loss or eviction. |
 | **AC-7.4** | Explicit Exit and Lifecycle Transitions | Given an active question and task item, verify they remain visible until: (a) calling `POST /api/app/<instance>/questions/answer` removes the question from the active view, and (b) updating the task to `status: done` with completion summary removes the task item. Unresolved deletion requests lacking terminal status or reasons are rejected. |
 | **AC-7.5** | Direct In-View Resolution | Given a decision card in the unified dashboard view, submitting an option selection via `POST /api/dashboard/resolve` dispatches the resolution to the originating agent's bridge (`/api/app/<instance>/questions/answer`), verifies that the agent session receives the answer event, and confirms that connected Telegram cards update. |
+
+### 8. Multi-Instance Bridge Discovery and Upstream Proxy Architecture (US-8)
+
+#### 8.1 Context and Problem
+
+Multiple agent instances execute concurrently across distinct bots, personas, and work streams, each hosting an independent HTTP/1.1 and SSE state bridge bound to an internal loopback port or service mesh interface. The operational dashboard acts as the single authenticated perimeter gateway. The dashboard backend must discover and maintain reverse-proxy routing to each upstream bridge without cross-instance interference or hard-coded sample data.
+
+#### 8.2 Architectural Options
+
+- **Option 8.1 (Direct Client Connection):** Require the client browser to connect directly to each agent's individual HTTP port.
+  - _Trade-off:_ Fails perimeter authentication requirements, requires opening multiple external ports or tunnels, and breaks in mobile WebViews.
+- **Option 8.2 (Centralized Reverse Proxy Gateway -- Recommended):** The dashboard backend acts as a reverse proxy and event relay. It exposes a unified routing prefix (`/api/app/instances/:instance/*`) and maps incoming requests to configured upstream bridge endpoints.
+  - _Recommendation Rationale:_ Enforces perimeter security at a single ingress point, abstracts internal port allocations, and allows graceful fault isolation when individual agents are stopped or restarted.
+
+#### 8.3 Upstream Proxy Contract
+
+1. **Instance Configuration:**
+   - The dashboard daemon ingests an instance registry from environment configuration:
+     ```json
+     [
+       {
+         "id": "prime",
+         "label": "Primary Coordinator",
+         "bridgeUrl": "http://127.0.0.1:8093",
+         "bridgeToken": "shared-bridge-token"
+       },
+       {
+         "id": "persona-1",
+         "label": "Specialist Persona",
+         "bridgeUrl": "http://127.0.0.1:8094",
+         "bridgeToken": "shared-bridge-token"
+       }
+     ]
+     ```
+   - Each entry defines the unique instance slug (`id`), display label, internal HTTP bridge base URL, and optional bridge authentication token.
+2. **Discovery Endpoint (`GET /api/app/instances`):**
+   - Returns the active registry:
+     ```json
+     {
+       "instances": [
+         {
+           "id": "prime",
+           "label": "Primary Coordinator",
+           "status": "online"
+         },
+         {
+           "id": "persona-1",
+           "label": "Specialist Persona",
+           "status": "online"
+         }
+       ]
+     }
+     ```
+   - The `status` field reflects real-time connectivity derived from upstream health checks or recent bridge interaction.
+3. **Ingress Path Translation and Forwarding:**
+   - **Instance-Scoped Routes:** Requests to `/api/app/instances/:instance/:endpoint` are mapped directly to `<bridgeUrl>/api/app/:endpoint`.
+   - **Missing Instance Parameter:** Requests to `/api/app/:endpoint` omitting the instance identifier reject with HTTP 400 Bad Request (`{"error": "Missing instance identifier", "message": "Specify instance via /api/app/instances/:instance/:endpoint"}`).
+   - **Authentication Forwarding:** The dashboard proxy strips perimeter assertion headers, validates the perimeter session, and injects the configured `X-Bridge-Token` or `Authorization: Bearer <bridgeToken>` before forwarding to the local bridge.
+4. **SSE Event Stream Proxying (`GET /api/app/instances/:instance/events`):**
+   - The proxy opens an upstream SSE connection to `<bridgeUrl>/api/app/events`, relaying any incoming `Last-Event-ID` or `?since=` parameter.
+   - Event chunks are piped downstream to the authenticated client with headers:
+     ```http
+     Content-Type: text/event-stream
+     Cache-Control: no-cache, no-transform
+     Connection: keep-alive
+     X-Accel-Buffering: no
+     ```
+   - The proxy maintains a 15-second heartbeat timer: if the upstream bridge emits no frame within 15 seconds, the proxy injects `: keepalive\n\n` downstream.
+5. **Fault Isolation and Reconnection:**
+   - If an upstream agent bridge is down or unreachable:
+     - REST requests return HTTP 503 Service Unavailable: `{"error": "Instance unavailable", "instance": ":instance", "status": "offline"}`.
+     - SSE connections emit a synthetic event `event: instance_status\ndata: {"status": "offline", "instance": ":instance"}\n\n` and attempt reconnecting with exponential backoff (1s, 2s, 5s) up to 30 seconds before terminating the stream.
+
+### 9. Dual-Surface UI Navigation and Bidirectional Action Delivery (US-9)
+
+#### 9.1 Context and Problem
+
+Operators switch between two presentation surfaces: the desktop operational dashboard (`/agent`) and the mobile Mini App (`/app/`). Both surfaces must bind dynamically to any configured agent instance and guarantee that decisions, permissions, steering directives, and emergency stops route accurately to that instance.
+
+#### 9.2 `/agent` Desktop Interface Multi-Instance Contract
+
+1. **Instance Selector:**
+   - The header displays an instance selector populated from `GET /api/app/instances`.
+   - The active instance is maintained in client state, populated from the URL query parameter `?instance=:instance`.
+   - When no instance is specified in the URL query parameter, the interface displays an instance selection prompt requiring the operator to choose an active instance before rendering state.
+2. **Dynamic Binding:**
+   - Changing the active instance:
+     - Closes the active SSE connection to the previous instance.
+     - Fetches fresh cognitive anchor and recent turns from `/api/app/instances/:instance/anchor`.
+     - Opens a new SSE event stream to `/api/app/instances/:instance/events`.
+   - If the selected instance is offline, the interface displays an offline banner with the last known timestamp, disabling action controls while preserving inspection of historical turns.
+3. **Embedded Shell Synchronization:**
+   - When the operator switches between `Overview` and `Embedded Mini App Shell`, the embedded iframe points to `/app/?instance=:instance`.
+   - When the user changes the instance in the desktop header, the iframe `src` updates automatically to maintain instance parity.
+
+#### 9.3 Standalone Mini App (`/app/`) Multi-Instance Contract
+
+1. **Target Instance Resolution:**
+   - The Mini App binds to an agent instance through explicit launch parameters:
+     1. URL query parameter: `?instance=:instance`.
+     2. Telegram WebApp start parameter: `tgWebAppStartParam` (passed via direct bot deep-link).
+   - If opened without an instance parameter, the application displays an instance selection prompt requiring the operator to choose an active agent instance before rendering state.
+2. **Instance Indicator and Switcher:**
+   - The Mini App header displays an instance indicator badge showing the current agent label and connectivity indicator.
+   - Tapping the badge opens an instance selection sheet allowing the operator to switch instances without reloading the application shell.
+3. **Scoped Network Client:**
+   - All REST fetch calls (`/anchor`, `/questions`, `/review`) and SSE subscriptions (`/events`) automatically prepend the resolved instance prefix `/api/app/instances/:instance/`.
+
+#### 9.4 Bidirectional Action Dispatch Protocol
+
+Actions dispatched from either `/agent` or `/app/` route to the instance's bridge:
+
+| Action | Ingress Route | Target Agent Bridge Handling |
+| - | - | - |
+| **Answer Question** | `POST /api/app/instances/:instance/questions/answer` | Resolves question in agent broker, unblocks waiting turn, broadcasts `question_resolved` over SSE, and updates chat card in place. |
+| **Tool Permission** | `POST /api/app/instances/:instance/review/permission` | Resolves permission relay promise with `allow` or `deny`, resumes paused tool execution, broadcasts `permission_resolved`, and edits chat card. |
+| **Operator Directive** | `POST /api/app/instances/:instance/message` | Injects directive text as inbound turn into the agent session, appends to recent turns, and broadcasts `turn_recorded`. |
+| **Session Stop** | `POST /api/app/instances/:instance/stop` | Emits high-priority halt interrupt into agent session, records reason, updates chat card to `*Halted via Dashboard*`, and returns status summary. |
+
+#### 9.5 Verification and Criteria Mapping
+
+| Criterion | Target Requirement | Verification Check & Observable Proof |
+| - | - | - |
+| **AC-8.1** | Instance Configuration & Discovery | Given configured instances in environment, `GET /api/app/instances` returns HTTP 200 with JSON matching registry schema, showing IDs, labels, and online statuses. |
+| **AC-8.2** | Upstream REST Proxying | Given two running agent bridges on distinct ports, `GET /api/app/instances/prime/anchor` and `GET /api/app/instances/persona-1/anchor` return distinct anchor payloads reflecting each agent's live state. |
+| **AC-8.3** | Upstream SSE Event Proxying | Given an active SSE connection to `/api/app/instances/:instance/events`, triggering an anchor mutation on the upstream agent produces an `event: anchor` frame downstream within 500ms with sequence number intact. |
+| **AC-8.4** | Upstream Fault Isolation | Given one stopped agent instance and one running instance, querying the stopped instance returns HTTP 503 with `status: "offline"`, while queries to the running instance succeed with HTTP 200. |
+| **AC-9.1** | `/agent` Instance Switching | Given `/agent` UI, selecting a different instance in the dropdown triggers a snapshot load and reconnects the SSE listener to the selected instance without full page reload. |
+| **AC-9.2** | Embedded Shell Synchronization | Given `/agent` in embedded view, changing the selected instance in the header updates the iframe URL to `/app/?instance=:instance`. |
+| **AC-9.3** | Mini App Instance Scoping | Given `/app/?instance=persona-1`, inspecting network requests verifies all API calls target `/api/app/instances/persona-1/*`. |
+| **AC-9.4** | Action Resolution & Card Edit | Given a pending question on an instance, `POST /api/app/instances/:instance/questions/answer` returns HTTP 200, unblocks the agent session, and updates the associated chat card. |
+| **AC-9.5** | Steering & Halt Dispatch | Given an active agent session, `POST /api/app/instances/:instance/stop` dispatches halt interrupt, resulting in execution suspension and updated card status. |
+| **AC-9.6** | Explicit Missing Instance Rejection | Given a request to an instance-scoped endpoint omitting the instance slug (e.g. `GET /api/app/anchor`), the proxy rejects with HTTP 400 Bad Request requiring explicit instance parameter. |
