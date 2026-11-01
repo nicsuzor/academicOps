@@ -294,5 +294,91 @@ describe("Progressive disclosure: Overflow handling", () => {
       rmSync(stateDir, { recursive: true, force: true });
     }
   });
+
+  describe("Details page labels: References vs Real Overflow (AC1 & AC2)", () => {
+    test("AC1: reply whose Details page holds only references ends in a label stating Details holds references, with no 'continued' wording (overflow case)", () => {
+      const p1 = "Here is the summary on cap rivets and webbing joins:\n- Cap rivets provide high shear strength.\n- Webbing joins require reinforced box stitching.\n- Hot cutting prevents fraying.\n- Washers distribute load evenly across flexible webbing.";
+      const references = "## References\n\n- [1] Fastener Technology Handbook, 4th ed.\n- [2] Webbing Joinery Standard ISO 1234\n- [3] ASTM F568M Specification";
+      const fullText = `${p1}\n\n${references}`;
+
+      const result = processReplyOverflow({
+        text: fullText,
+        detail: undefined,
+        maxChatChars: 300,
+      });
+
+      expect(result.hasDetailsButton).toBe(true);
+      expect(result.chatText).toContain("… references in Details");
+      expect(result.chatText.toLowerCase()).not.toContain("continued");
+      expect(result.combinedDetail).toContain("## References");
+    });
+
+    test("AC1: reply whose Details page holds only references ends in a label stating Details holds references, with no 'continued' wording (explicit detail case)", () => {
+      const text = "Key takeaways:\n- High shear resistance.\n- Reinforced joins.";
+      const references = "## References\n\n- [1] Fastener Handbook\n- [2] ISO 1234";
+
+      const result = processReplyOverflow({
+        text,
+        detail: references,
+        maxChatChars: 1200,
+      });
+
+      expect(result.hasDetailsButton).toBe(true);
+      expect(result.chatText).toContain("… references in Details");
+      expect(result.chatText.toLowerCase()).not.toContain("continued");
+      expect(result.combinedDetail).toBe(references);
+    });
+
+    test("AC2: reply with real overflow and no references ends in '… continued in Details'", () => {
+      const p1 = "Paragraph 1: Primary takeaway regarding cap rivets. " + "A".repeat(300);
+      const p2 = "Paragraph 2: Detailed mechanics of deformation and alloy yield. " + "B".repeat(300);
+      const fullText = `${p1}\n\n${p2}`;
+
+      const result = processReplyOverflow({
+        text: fullText,
+        detail: undefined,
+        maxChatChars: 250,
+      });
+
+      expect(result.hasDetailsButton).toBe(true);
+      expect(result.chatText).toContain("… continued in Details");
+      expect(result.combinedDetail).toContain(p2);
+    });
+
+    test("AC2: reply with real overflow and references still ends in '… continued in Details'", () => {
+      const p1 = "Paragraph 1: Core findings on joint integrity. " + "A".repeat(300);
+      const p2 = "Paragraph 2: Substantive continuation discussing shear testing. " + "B".repeat(300);
+      const references = "## References\n\n- [1] ASTM F568M\n- [2] ISO 1234";
+      const fullText = `${p1}\n\n${p2}\n\n${references}`;
+
+      const result = processReplyOverflow({
+        text: fullText,
+        detail: undefined,
+        maxChatChars: 250,
+      });
+
+      expect(result.hasDetailsButton).toBe(true);
+      expect(result.chatText).toContain("… continued in Details");
+      expect(result.combinedDetail).toContain(p2);
+      expect(result.combinedDetail).toContain(references);
+    });
+
+    test("AC2: reply with real overflow and explicit detail containing references still ends in '… continued in Details'", () => {
+      const p1 = "Paragraph 1: Core summary. " + "A".repeat(300);
+      const p2 = "Paragraph 2: Real overflow paragraphs continuing the narrative. " + "B".repeat(300);
+      const references = "## References\n\n- [1] ASTM F568M";
+
+      const result = processReplyOverflow({
+        text: `${p1}\n\n${p2}`,
+        detail: references,
+        maxChatChars: 400,
+      });
+
+      expect(result.hasDetailsButton).toBe(true);
+      expect(result.chatText).toContain("… continued in Details");
+      expect(result.combinedDetail).toContain(p2);
+      expect(result.combinedDetail).toContain(references);
+    });
+  });
 });
 
