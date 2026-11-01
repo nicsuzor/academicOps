@@ -209,7 +209,7 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     const resultKb = (resultCardCall.payload.reply_markup as any).inline_keyboard as Array<Array<any>>;
     // Custom decision buttons appear on the result card alongside Details and Review diff buttons
     expect(resultKb.flat().some((b) => b.text === "Merge PR #418 (Recommended)" && b.callback_data === "decide:pr418:merge")).toBe(true);
-    expect(resultKb.flat().some((b) => b.text === "🔍 Details")).toBe(true);
+    expect(resultKb.flat().some((b) => b.text === "🔍")).toBe(true);
     expect(resultKb.flat().some((b) => b.text.includes("🔍 Review diff"))).toBe(true);
 
     // 3. Resolve Card 1 (single-select tap on option 0)

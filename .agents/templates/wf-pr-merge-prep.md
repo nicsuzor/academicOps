@@ -46,7 +46,7 @@ actually stands, not as it was last checked.
 
 This template ends where [[wf-signoff-loop]] begins. Merging is a ship-type
 act -- compose that gate to carry the review's findings and a recommendation
-to the principal. This template never merges the PR itself; producing
+to the principal. A review is required and a proportionate review is selected. This template never merges the PR itself; producing
 material for someone else's decision is the deliverable, not the decision.
 
 ## Not for

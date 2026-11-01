@@ -29,7 +29,7 @@ Specifies how tasks in `nicsuzor/academicOps` finish. All individual task change
 - **Releases to main**: A PR from the integration base branch into `main` merges only on explicit release approval.
 - **Commit messages and trailers**: Commits to public repositories must never carry PKB IDs or `Task:`, `Epic:`, or `Claude-Session:` trailers (`data-boundaries`). Task linkage is maintained in the private task record, not in public repository commits.
 - **QA review**:
-  - **Required**: For any changes touching plugins, hooks, skills, agents, runtimes, or scripts, except for low-risk internal changes below. `/reify` mints a follow-up verifying task.
+  - **Required**: For any changes touching plugins, hooks, skills, agents, runtimes, or scripts, except for low-risk internal changes below. A review is required and a proportionate review is selected. `/reify` mints a follow-up verifying task.
   - **Low-risk internal changes (chiefly bugfixes)**: Get no separate verification run. Where a blocked dependent exists waiting on the fix (`blocks` or inbound `depends_on` / `needs`), the parent epic handles sequencing the dependent task's next run; workers never mint verification follow-up tasks.
   - **None**: For pure documentation, notes, or prompt triage changes with no functional impact.
 

@@ -33,7 +33,7 @@ Defines the universal baseline contract for how tasks finish when a repository l
 - **Merge**: For verified standalone Tier 1 PRs, QA worker merges upon verified pass. For Tier 2 and Tier 3 PRs (and combined spec-and-feature PRs), reviewer sign-off merges the PR; QA worker verifies, posts receipts, and leaves the PR open. The primary implementation task releases `done` upon PR filing to unblock QA; when the PR merges, the parent epic progresses.
 - **Commit messages and trailers**: Commits to public repositories must never carry PKB IDs or `Task:`, `Epic:`, or `Claude-Session:` trailers (`data-boundaries`). Task linkage is maintained in the private task record, not in public repository commits.
 - **QA review**:
-  - **Functional changes** (code, schema, or runtime changes): Require independent QA, except for low-risk internal changes below. `/reify` mints a follow-up verifying task dependent on the implementation task.
+  - **Functional changes** (code, schema, or runtime changes): Require independent QA, except for low-risk internal changes below. A review is required and a proportionate review is selected. `/reify` mints a follow-up verifying task dependent on the implementation task.
   - **Low-risk internal changes (chiefly bugfixes)**: Get no separate verification run. Where a blocked dependent exists waiting on the fix (`blocks` or inbound `needs` / `depends_on`), the parent epic handles sequencing the dependent task's next run; workers never mint verification follow-up tasks.
   - **Documentation, notes, or trivial chore changes**: No QA follow-up required unless explicitly requested in the task objective.
 
