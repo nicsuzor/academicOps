@@ -63,7 +63,7 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     const pending = broker2.getPendingQuestions();
     expect(pending.some((q) => q.id === qid)).toBe(true);
 
-    // Nic taps option 2: Canary
+    // The user taps option 2: Canary
     const resolution = await broker2.resolveAnswer(qid, 1); // index 1 is Canary
     expect(resolution).not.toBeNull();
     expect(resolution?.cardText).toContain("Selected: Canary ✅");
@@ -144,7 +144,7 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
           questions: [
             {
               header: "Value model weight",
-              question: "Raise `urgency` weight on cliff tasks?\n>! Facts: `aops_5ff43ec0` showed 3 cliff tasks ranked below routine cleanup.",
+              question: "Raise `urgency` weight on cliff tasks?\n>! Facts: `aops_00000002` showed 3 cliff tasks ranked below routine cleanup.",
               options: [
                 { label: "Raise to 2.5x (Recommended)", description: "Prioritizes due-within-48h tasks immediately" },
                 { label: "Keep at 1.5x", description: "Preserve current focus balance" },
@@ -193,7 +193,7 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       params: {
         name: "reply",
         arguments: {
-          text: "**PR #418 ready to merge** — `polecat/aops_a54ef4e6` passes all 40 tests.\n>! Changed `questions.ts`, `bot.ts`, `server.ts`.",
+          text: "**PR #418 ready to merge** — `polecat/aops_00000003` passes all 40 tests.\n>! Changed `questions.ts`, `bot.ts`, `server.ts`.",
           detail: "## Full Diff Summary\n- Fixed batch truncation\n- Added entity formatting",
           review: { repo: "nicsuzor/academicOps", pr: 418 },
           buttons: [
@@ -223,7 +223,7 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       update_id: 501,
       callback_query: {
         id: "cb_1",
-        from: { id: 999, first_name: "Nic" },
+        from: { id: 999, first_name: "Alex" },
         message: { message_id: 101, chat: { id: 999, type: "private" }, text: card1Payload.text as string },
         data: `q:${q1.id}:0:0`,
       },
@@ -244,7 +244,7 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       update_id: 502,
       callback_query: {
         id: "cb_2a",
-        from: { id: 999, first_name: "Nic" },
+        from: { id: 999, first_name: "Alex" },
         message: { message_id: 102, chat: { id: 999, type: "private" }, text: sentCards[1].payload.text as string },
         data: `q:${q2.id}:0:0`,
       },
@@ -256,7 +256,7 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       update_id: 503,
       callback_query: {
         id: "cb_2b",
-        from: { id: 999, first_name: "Nic" },
+        from: { id: 999, first_name: "Alex" },
         message: { message_id: 102, chat: { id: 999, type: "private" }, text: sentCards[1].payload.text as string },
         data: `q:${q2.id}:0:2`,
       },
@@ -268,7 +268,7 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       update_id: 504,
       callback_query: {
         id: "cb_2c",
-        from: { id: 999, first_name: "Nic" },
+        from: { id: 999, first_name: "Alex" },
         message: { message_id: 102, chat: { id: 999, type: "private" }, text: sentCards[1].payload.text as string },
         data: `q:${q2.id}:0:done`,
       },
@@ -282,7 +282,7 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       update_id: 505,
       callback_query: {
         id: "cb_3_other",
-        from: { id: 999, first_name: "Nic" },
+        from: { id: 999, first_name: "Alex" },
         message: { message_id: 103, chat: { id: 999, type: "private" }, text: sentCards[2].payload.text as string },
         data: `q:${q3.id}:0:other`,
       },
@@ -295,12 +295,12 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     expect(forceReplyCall).toBeDefined();
     const promptMsgId = nextMessageId;
 
-    // Nic replies to the force_reply prompt with custom text
+    // The user replies to the force_reply prompt with custom text
     await (bot as any).handleUpdate({
       update_id: 506,
       message: {
         message_id: 900,
-        from: { id: 999, first_name: "Nic" },
+        from: { id: 999, first_name: "Alex" },
         chat: { id: 999, type: "private" },
         date: 1700000000,
         text: "Approve v3 layout, but keep font size at 15px",
@@ -322,7 +322,7 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       update_id: 507,
       callback_query: {
         id: "cb_4_merge",
-        from: { id: 999, first_name: "Nic" },
+        from: { id: 999, first_name: "Alex" },
         message: {
           message_id: 104,
           chat: { id: 999, type: "private" },
@@ -541,7 +541,7 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       update_id: 800,
       callback_query: {
         id: "cb_800",
-        from: { id: 999, is_bot: false, first_name: "Nic" },
+        from: { id: 999, is_bot: false, first_name: "Alex" },
         message: { message_id: 301, date: 1700000000, chat: { id: 999, type: "private" }, text: "Deploy hotfix now?" },
         data: `q:${q.id}:0:0`,
       },

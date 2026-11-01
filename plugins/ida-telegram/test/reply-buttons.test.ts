@@ -10,11 +10,12 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
-  const allowFrom = 8860530746;
+  const allowFrom = 1111111111;
 
   function setupTest() {
     const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-btn-layout-"));
     const config = loadConfig({
+      MINI_APP_URL: "https://ida.example.test",
       TELEGRAM_BOT_TOKEN: "test-token",
       IDA_TELEGRAM_ROLE: "primary",
       ALLOWED_USER_IDS: String(allowFrom),
@@ -569,7 +570,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           update_id: 601,
           callback_query: {
             id: "cb_caller_1",
-            from: { id: allowFrom, is_bot: false, first_name: "Nic" },
+            from: { id: allowFrom, is_bot: false, first_name: "Alex" },
             message: {
               message_id: messageId,
               date: Date.now(),
@@ -622,6 +623,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
     test("AC3: defect check: tapping caller-supplied button on voice note message updates caption and acknowledges callback", async () => {
       const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-voice-btn-"));
       const config = loadConfig({
+        MINI_APP_URL: "https://ida.example.test",
         TELEGRAM_BOT_TOKEN: "test-token",
         IDA_TELEGRAM_ROLE: "primary",
         ALLOWED_USER_IDS: String(allowFrom),
@@ -661,7 +663,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           update_id: 602,
           callback_query: {
             id: "cb_voice_btn_1",
-            from: { id: allowFrom, is_bot: false, first_name: "Nic" },
+            from: { id: allowFrom, is_bot: false, first_name: "Alex" },
             message: {
               message_id: messageId,
               date: Date.now(),
@@ -709,7 +711,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           update_id: 701,
           callback_query: {
             id: "cb_family_caller",
-            from: { id: allowFrom, is_bot: false, first_name: "Nic" },
+            from: { id: allowFrom, is_bot: false, first_name: "Alex" },
             message: { message_id: messageId, chat: { id: allowFrom, type: "private" }, text: "Prompt" },
             data: "action:CustomAction",
           },
@@ -722,7 +724,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           update_id: 702,
           callback_query: {
             id: "cb_family_lc",
-            from: { id: allowFrom, is_bot: false, first_name: "Nic" },
+            from: { id: allowFrom, is_bot: false, first_name: "Alex" },
             message: { message_id: messageId, chat: { id: allowFrom, type: "private" }, text: "Prompt" },
             data: "logic_check",
           },
@@ -734,7 +736,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           update_id: 703,
           callback_query: {
             id: "cb_family_explain",
-            from: { id: allowFrom, is_bot: false, first_name: "Nic" },
+            from: { id: allowFrom, is_bot: false, first_name: "Alex" },
             message: { message_id: messageId, chat: { id: allowFrom, type: "private" }, text: "Prompt" },
             data: "explain",
           },
@@ -746,7 +748,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           update_id: 704,
           callback_query: {
             id: "cb_family_reasons",
-            from: { id: allowFrom, is_bot: false, first_name: "Nic" },
+            from: { id: allowFrom, is_bot: false, first_name: "Alex" },
             message: { message_id: messageId, chat: { id: allowFrom, type: "private" }, text: "Prompt" },
             data: "reasons",
           },
@@ -759,7 +761,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           update_id: 705,
           callback_query: {
             id: "cb_family_accept",
-            from: { id: allowFrom, is_bot: false, first_name: "Nic" },
+            from: { id: allowFrom, is_bot: false, first_name: "Alex" },
             message: { message_id: messageId, chat: { id: allowFrom, type: "private" }, text: "Prompt" },
             data: "accept_recommendation",
           },
@@ -771,7 +773,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           update_id: 706,
           callback_query: {
             id: "cb_family_decline",
-            from: { id: allowFrom, is_bot: false, first_name: "Nic" },
+            from: { id: allowFrom, is_bot: false, first_name: "Alex" },
             message: { message_id: messageId, chat: { id: allowFrom, type: "private" }, text: "Prompt" },
             data: "decline_recommendation",
           },
@@ -784,7 +786,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           update_id: 707,
           callback_query: {
             id: "cb_family_fb_up",
-            from: { id: allowFrom, is_bot: false, first_name: "Nic" },
+            from: { id: allowFrom, is_bot: false, first_name: "Alex" },
             message: { message_id: messageId, chat: { id: allowFrom, type: "private" }, text: "Prompt" },
             data: "fb:up",
           },
@@ -796,7 +798,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           update_id: 708,
           callback_query: {
             id: "cb_family_fb_down",
-            from: { id: allowFrom, is_bot: false, first_name: "Nic" },
+            from: { id: allowFrom, is_bot: false, first_name: "Alex" },
             message: { message_id: messageId, chat: { id: allowFrom, type: "private" }, text: "Prompt" },
             data: "fb:down",
           },
@@ -816,7 +818,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           update_id: 709,
           callback_query: {
             id: "cb_family_q",
-            from: { id: allowFrom, is_bot: false, first_name: "Nic" },
+            from: { id: allowFrom, is_bot: false, first_name: "Alex" },
             message: { message_id: messageId, chat: { id: allowFrom, type: "private" }, text: "Question" },
             data: `q:${qid}:0:0`,
           },
@@ -830,7 +832,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           update_id: 710,
           callback_query: {
             id: "cb_family_perm",
-            from: { id: allowFrom, is_bot: false, first_name: "Nic" },
+            from: { id: allowFrom, is_bot: false, first_name: "Alex" },
             message: { message_id: messageId, chat: { id: allowFrom, type: "private" }, text: "Permission" },
             data: `perm:allow:${perm.id}`,
           },

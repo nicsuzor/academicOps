@@ -1,7 +1,6 @@
-import { DEFAULT_MINI_APP_URL, PluginConfig } from "../config.js";
+import { PluginConfig } from "../config.js";
 import { FormattedMessage, formatMarkdownToEntities } from "./format.js";
 import { parseInboundUpdate, TelegramUpdate } from "./inbound.js";
-import { resolveBotCommands } from "./commands.js";
 import { QuestionBroker, matchOptionIndex } from "./questions.js";
 import { FeedbackManager } from "./feedback.js";
 import { prepareVoiceText, buildVoiceInEvent } from "./voice.js";
@@ -283,7 +282,7 @@ export class TelegramBotClient {
       }
     }
 
-    const miniAppBaseUrl = (this.config.miniAppUrl || DEFAULT_MINI_APP_URL).replace(/\/+$/, "");
+    const miniAppBaseUrl = this.config.miniAppUrl.replace(/\/+$/, "");
 
     const detailsBtn: Record<string, unknown> | undefined = detailsId
       ? {
@@ -678,10 +677,7 @@ export class TelegramBotClient {
       return false;
     }
 
-    const commands =
-      this.config.botCommands && this.config.botCommands.length > 0
-        ? this.config.botCommands
-        : resolveBotCommands();
+    const commands = this.config.botCommands ?? [];
 
     if (commands.length === 0) {
       return false;
@@ -1189,7 +1185,7 @@ export class TelegramBotClient {
         const targetExcerpt = cb.message.text || this.getMessageExcerpt(cb.message.message_id) || "";
         const action = isAccept ? "accept_recommendation" : "decline_recommendation";
         const decision = isAccept ? "accepted" : "declined";
-        const content = `Nic ${decision} the recommendation for message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""}.`;
+        const content = `The user ${decision} the recommendation for message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""}.`;
 
         const meta: Record<string, string> = {
           event: action,

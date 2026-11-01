@@ -11,14 +11,15 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
-  const allowFrom = [8860530746];
+  const allowFrom = [1111111111];
 
   test("reply attaches [🧐 Check logic], [💡 Explain], and [🧾 Reasons] buttons by default", async () => {
     const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-actions-def-"));
     const config = loadConfig({
+      MINI_APP_URL: "https://ida.example.test",
       TELEGRAM_BOT_TOKEN: "test-token",
       IDA_TELEGRAM_ROLE: "primary",
-      ALLOWED_USER_IDS: "8860530746",
+      ALLOWED_USER_IDS: "1111111111",
       STATE_DIR: stateDir,
       VOICE_REPLIES: "off",
     });
@@ -47,7 +48,7 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
         params: {
           name: "reply",
           arguments: {
-            chat_id: 8860530746,
+            chat_id: 1111111111,
             text: "**Key finding:** The database migration completed with 0 errors.",
           },
         },
@@ -81,9 +82,10 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
   test("reply with actions: false suppresses action buttons", async () => {
     const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-actions-off-"));
     const config = loadConfig({
+      MINI_APP_URL: "https://ida.example.test",
       TELEGRAM_BOT_TOKEN: "test-token",
       IDA_TELEGRAM_ROLE: "primary",
-      ALLOWED_USER_IDS: "8860530746",
+      ALLOWED_USER_IDS: "1111111111",
       STATE_DIR: stateDir,
       VOICE_REPLIES: "off",
     });
@@ -112,7 +114,7 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
         params: {
           name: "reply",
           arguments: {
-            chat_id: 8860530746,
+            chat_id: 1111111111,
             text: "System notification without action buttons.",
             actions: false,
           },
@@ -131,9 +133,10 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
   test("AC1: pressing logic-check button delivers request naming message and Ida replies with premise-check verdict", async () => {
     const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-ac1-"));
     const config = loadConfig({
+      MINI_APP_URL: "https://ida.example.test",
       TELEGRAM_BOT_TOKEN: "test-token",
       IDA_TELEGRAM_ROLE: "primary",
-      ALLOWED_USER_IDS: "8860530746",
+      ALLOWED_USER_IDS: "1111111111",
       STATE_DIR: stateDir,
       VOICE_REPLIES: "off",
     });
@@ -167,7 +170,7 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
         params: {
           name: "reply",
           arguments: {
-            chat_id: 8860530746,
+            chat_id: 1111111111,
             text: messageText,
           },
         },
@@ -178,11 +181,11 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
         update_id: 501,
         callback_query: {
           id: "cb_lc_1",
-          from: { id: 8860530746, is_bot: false, first_name: "Nic" },
+          from: { id: 1111111111, is_bot: false, first_name: "Alex" },
           message: {
             message_id: 2003,
             date: Date.now(),
-            chat: { id: 8860530746, type: "private" },
+            chat: { id: 1111111111, type: "private" },
             text: messageText,
             reply_markup: {
               inline_keyboard: [[{ text: "🧐 Check logic", callback_data: "logic_check" }, { text: "💡 Explain", callback_data: "explain" }]],
@@ -231,7 +234,7 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
         params: {
           name: "reply",
           arguments: {
-            chat_id: 8860530746,
+            chat_id: 1111111111,
             text: verdictText,
             reply_to: 2003,
           },
@@ -255,9 +258,10 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
   test("AC2: pressing explain button delivers request naming message and Ida replies expanding that message", async () => {
     const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-ac2-"));
     const config = loadConfig({
+      MINI_APP_URL: "https://ida.example.test",
       TELEGRAM_BOT_TOKEN: "test-token",
       IDA_TELEGRAM_ROLE: "primary",
-      ALLOWED_USER_IDS: "8860530746",
+      ALLOWED_USER_IDS: "1111111111",
       STATE_DIR: stateDir,
       VOICE_REPLIES: "off",
     });
@@ -291,7 +295,7 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
         params: {
           name: "reply",
           arguments: {
-            chat_id: 8860530746,
+            chat_id: 1111111111,
             text: messageText,
           },
         },
@@ -302,11 +306,11 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
         update_id: 502,
         callback_query: {
           id: "cb_exp_1",
-          from: { id: 8860530746, is_bot: false, first_name: "Nic" },
+          from: { id: 1111111111, is_bot: false, first_name: "Alex" },
           message: {
             message_id: 2004,
             date: Date.now(),
-            chat: { id: 8860530746, type: "private" },
+            chat: { id: 1111111111, type: "private" },
             text: messageText,
             reply_markup: {
               inline_keyboard: [[{ text: "🧐 Check logic", callback_data: "logic_check" }, { text: "💡 Explain", callback_data: "explain" }]],
@@ -343,7 +347,7 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
         params: {
           name: "reply",
           arguments: {
-            chat_id: 8860530746,
+            chat_id: 1111111111,
             text: explanationText,
             reply_to: 2004,
           },
@@ -366,9 +370,10 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
   test("AC2: pressing reasons button marks card and delivers request naming message to Ida", async () => {
     const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-ac2-reasons-"));
     const config = loadConfig({
+      MINI_APP_URL: "https://ida.example.test",
       TELEGRAM_BOT_TOKEN: "test-token",
       IDA_TELEGRAM_ROLE: "primary",
-      ALLOWED_USER_IDS: "8860530746",
+      ALLOWED_USER_IDS: "1111111111",
       STATE_DIR: stateDir,
       VOICE_REPLIES: "off",
     });
@@ -402,7 +407,7 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
         params: {
           name: "reply",
           arguments: {
-            chat_id: 8860530746,
+            chat_id: 1111111111,
             text: messageText,
           },
         },
@@ -413,11 +418,11 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
         update_id: 503,
         callback_query: {
           id: "cb_rsn_1",
-          from: { id: 8860530746, is_bot: false, first_name: "Nic" },
+          from: { id: 1111111111, is_bot: false, first_name: "Alex" },
           message: {
             message_id: 2005,
             date: Date.now(),
-            chat: { id: 8860530746, type: "private" },
+            chat: { id: 1111111111, type: "private" },
             text: messageText,
             reply_markup: {
               inline_keyboard: [[
@@ -463,9 +468,10 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
   test("AC3: Ida handles reasons event by returning multi-level verbatim argument chain in details", async () => {
     const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-ac3-reasons-"));
     const config = loadConfig({
+      MINI_APP_URL: "https://ida.example.test",
       TELEGRAM_BOT_TOKEN: "test-token",
       IDA_TELEGRAM_ROLE: "primary",
-      ALLOWED_USER_IDS: "8860530746",
+      ALLOWED_USER_IDS: "1111111111",
       STATE_DIR: stateDir,
       VOICE_REPLIES: "off",
     });
@@ -487,7 +493,7 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
       const bot = new TelegramBotClient(config, broker, permRelay, () => {});
       const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
 
-      // Verbatim Argdown for Level 1 (Ida Prime -> Nic)
+      // Verbatim Argdown for Level 1 (Ida Prime -> Test User)
       const primeArgdown = [
         "```argdown",
         "===",
@@ -549,14 +555,14 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
         "# Reasons & Argument Chain for Message 2005",
         "",
         "## Delegation Chain Overview",
-        "- Level 1: Ida Prime → Nic (User)",
+        "- Level 1: Ida Prime → Test User (User)",
         "  - Level 2: Sara → Ida Prime",
         "    - Level 3: Worker (rbg) → Sara",
         "      - Level 4: Worker (analyst) → Worker (rbg) [MISSING]",
         "",
         "---",
         "",
-        "### Level 1: Ida Prime → Nic (User)",
+        "### Level 1: Ida Prime → Test User (User)",
         primeArgdown,
         "",
         "### Level 2: Sara → Ida Prime",
@@ -584,7 +590,7 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
         params: {
           name: "reply",
           arguments: {
-            chat_id: 8860530746,
+            chat_id: 1111111111,
             text: chatSummaryText,
             detail: reasonsDetail,
             reply_to: 2005,
@@ -618,7 +624,7 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
       expect(storedDetail?.markdown).toContain(rbgArgdown);
 
       // Senders and recipients labeled per link
-      expect(storedDetail?.markdown).toContain("Level 1: Ida Prime → Nic");
+      expect(storedDetail?.markdown).toContain("Level 1: Ida Prime → Test User");
       expect(storedDetail?.markdown).toContain("Level 2: Sara → Ida Prime");
       expect(storedDetail?.markdown).toContain("Level 3: Worker (rbg) → Sara");
 
@@ -641,11 +647,11 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
       update_id: 503,
       callback_query: {
         id: "cb_lc_2",
-        from: { id: 8860530746, is_bot: false, first_name: "Nic" },
+        from: { id: 1111111111, is_bot: false, first_name: "Alex" },
         message: {
           message_id: 3001,
           date: Date.now(),
-          chat: { id: 8860530746, type: "private" },
+          chat: { id: 1111111111, type: "private" },
           text: "Here is statement A.",
         },
         data: "logic_check",
@@ -664,11 +670,11 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
       update_id: 504,
       callback_query: {
         id: "cb_exp_2",
-        from: { id: 8860530746, is_bot: false, first_name: "Nic" },
+        from: { id: 1111111111, is_bot: false, first_name: "Alex" },
         message: {
           message_id: 3002,
           date: Date.now(),
-          chat: { id: 8860530746, type: "private" },
+          chat: { id: 1111111111, type: "private" },
           text: "Here is statement B.",
         },
         data: "explain",
@@ -687,11 +693,11 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
       update_id: 505,
       callback_query: {
         id: "cb_rsn_2",
-        from: { id: 8860530746, is_bot: false, first_name: "Nic" },
+        from: { id: 1111111111, is_bot: false, first_name: "Alex" },
         message: {
           message_id: 3003,
           date: Date.now(),
-          chat: { id: 8860530746, type: "private" },
+          chat: { id: 1111111111, type: "private" },
           text: "Here is statement C.",
         },
         data: "reasons",

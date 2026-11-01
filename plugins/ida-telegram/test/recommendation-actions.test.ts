@@ -10,11 +10,12 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 describe("Message Actions: Recommendation Buttons (AC1, AC2)", () => {
-  const allowFrom = 8860530746;
+  const allowFrom = 1111111111;
 
   function setupTest() {
     const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-rec-"));
     const config = loadConfig({
+      MINI_APP_URL: "https://ida.example.test",
       TELEGRAM_BOT_TOKEN: "test-token",
       IDA_TELEGRAM_ROLE: "primary",
       ALLOWED_USER_IDS: String(allowFrom),
@@ -190,7 +191,7 @@ describe("Message Actions: Recommendation Buttons (AC1, AC2)", () => {
         update_id: 101,
         callback_query: {
           id: "cb_acc_1",
-          from: { id: allowFrom, is_bot: false, first_name: "Nic" },
+          from: { id: allowFrom, is_bot: false, first_name: "Alex" },
           message: {
             message_id: messageId,
             date: Date.now(),
@@ -233,7 +234,7 @@ describe("Message Actions: Recommendation Buttons (AC1, AC2)", () => {
       expect(event.meta.event).toBe("accept_recommendation");
       expect(event.meta.target_message_id).toBe(String(messageId));
       expect(event.content).toContain(String(messageId));
-      expect(event.content).toMatch(/Nic accepted (the )?recommendation/i);
+      expect(event.content).toMatch(/the user accepted (the )?recommendation/i);
     } finally {
       cleanup();
     }
@@ -264,7 +265,7 @@ describe("Message Actions: Recommendation Buttons (AC1, AC2)", () => {
         update_id: 102,
         callback_query: {
           id: "cb_dec_1",
-          from: { id: allowFrom, is_bot: false, first_name: "Nic" },
+          from: { id: allowFrom, is_bot: false, first_name: "Alex" },
           message: {
             message_id: messageId,
             date: Date.now(),
@@ -307,7 +308,7 @@ describe("Message Actions: Recommendation Buttons (AC1, AC2)", () => {
       expect(event.meta.event).toBe("decline_recommendation");
       expect(event.meta.target_message_id).toBe(String(messageId));
       expect(event.content).toContain(String(messageId));
-      expect(event.content).toMatch(/Nic declined (the )?recommendation/i);
+      expect(event.content).toMatch(/the user declined (the )?recommendation/i);
     } finally {
       cleanup();
     }
