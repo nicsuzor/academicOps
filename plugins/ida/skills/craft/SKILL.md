@@ -14,7 +14,7 @@ Author and review agent-facing instructions, personas, and workflow templates fo
 2. **Specify process, not keystrokes**: State when to invoke a capability and what outcome proves it worked. Omit basic sub-steps or flags the agent already knows.
 3. **One component, one job**: Keep instructions and templates focused on their singular purpose. Dispatch to peer skills rather than summarizing their internals. Leave another agent's domain to that agent: name the hand-off, never how it does its work.
 4. **State the contract, not the neighbour**: Specify what a component needs as input and delivers as output. Never couple to specific neighbour names or slugs; composing agents decide what fills each slot.
-5. **Decouple persona from execution (Who vs How)**: Personas establish persistent identity, authority boundaries, and behavioral tone; skills define modular, reusable execution recipes. Personas name capabilities without inlining skill mechanics; skills specify operational contracts without binding to specific personas.
+5. **Decouple persona from execution (Who vs How)**: Personas establish persistent identity, authority boundaries, and behavioral tone; skills define modular, reusable execution recipes. Personas name capabilities without inlining skill mechanics; skills specify operational contracts, and where one agent owns a skill the skill names that owner in one line so callers route to it, with the body otherwise written for any capable agent.
 6. **Progressive disclosure over monolithic injection**: Expose only routing metadata upfront; load procedural bodies just-in-time, and offload dense references to on-demand files.
 7. **Write for a headless worker**: Assume unattended, asynchronous execution with no interactive human in the loop. A step never pauses or waits for human input; explicit approval boundaries terminate the task and wire dependent tasks as blocked.
 8. **Promise only what the executor delivers**: Output contracts list only artifacts and state the executing agent itself produces. Another party's subsequent act (human sign-off, reviewer verdict) is never an executor deliverable.
@@ -33,7 +33,7 @@ Maintain strict architectural separation between agent definitions and skill ins
 2. **Skills (The "How")**: Modular, transient workflow packages loaded just-in-time when invoked. Define step-by-step procedures, tool calling sequences, input/output contracts, and validation criteria.
 3. **Linking and Decoupling**:
    - **Personas never inline skill mechanics**: An agent persona names available skills or declares tool access, but never prescribes a skill's internal steps, modes, or argument flags. Skills evolve without requiring persona updates.
-   - **Skills never couple to specific personas**: Instructions define objective contracts executable by any capable agent. Avoid persona-specific language, names, or assumptions.
+   - **Skills name an owner, never a persona's mechanics**: Instructions define objective contracts executable by any capable agent. A skill one agent is responsible for states that owner once (description and opening line) and nothing else about the persona; the procedure carries no persona-specific language or assumptions.
 
 ### Three-Level Progressive Disclosure
 

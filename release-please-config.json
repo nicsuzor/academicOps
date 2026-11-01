@@ -18,6 +18,7 @@
   ],
   "packages": {
     ".": {
+      "release-as": "1.0.0",
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {

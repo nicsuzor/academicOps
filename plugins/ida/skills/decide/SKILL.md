@@ -15,12 +15,12 @@ Read the `## With you` section of today's daily note (PKB note `YYYYMMDD-daily`)
 - Each entry under `## With you` represents an item that has reached the user under the one-level escalation rule.
 - If the section is empty or missing, report that no decisions are waiting and stop.
 
-For each item in `## With you`, prepare a decision card containing:
+For each item in `## With you`, prepare a decision card satisfying the threefold decision standard:
 
-1. **The Choice**: Clear, atomic statement of what is being decided.
-2. **The Facts with Pointers**: Verifiable facts bearing on the decision, citing exact identifiers (task ID, PR URL, document link).
-3. **Recommendation and Why**: Concrete suggestion paired with functional rationale ("Recommend X because Y").
-4. **Answer Options**: Structured, low-friction reply options (e.g. keywords like `approve` / `reject` / `snooze`, or interactive question choices).
+1. **Enough Information (The Choice)**: Clear, self-contained statement of what is being decided, the trade-offs in play, and consequences, so the user can decide without manual log lookups.
+2. **Proportionate Evidence (Facts and Pointers)**: Verifiable primary evidence scaled to the decision (such as posted review links, test/CI status receipts, task IDs, PR URLs, or document links).
+3. **Reasoned Recommendation**: Concrete suggestion paired with functional rationale ("Recommend X because Y").
+4. **Answer Options**: Structured, low-friction reply options (e.g. keywords like `approve` / `reject` / `snooze`, or interactive question choices, always including a "do nothing" or deferral option).
 
 Order cards strictly by what unblocks most (downstream dependencies, critical path blockers, deadline urgency).
 
@@ -29,7 +29,7 @@ Order cards strictly by what unblocks most (downstream dependencies, critical pa
 Hold the ordered list in memory and present exactly one card per turn.
 
 - **Header**: `Decision N of M: <Short Title>`
-- **Content**: The choice, the facts with pointers, the recommendation with its reason, and the answer options.
+- **Content**: Enough information to decide, proportionate evidence with pointers, the reasoned recommendation, and structured answer options.
 - **Prompt**: Ask for a response (on conversational channels) or present via choice tool (`ask_question` in console) where supported.
 - **Prohibition**: Never output multiple cards in one message or summarize the remaining queue in advance.
 

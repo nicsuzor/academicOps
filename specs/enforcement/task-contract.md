@@ -65,6 +65,7 @@ this contract does not restate.
 - **Task body brevity invariant** -- task bodies are strictly concise (50-150 words for atomic tasks at capture), structured around `Goal`, `Deliverable`, `Scope`, `Acceptance criteria`, and `Pointers` ([`specs/meta/naming-and-decisions.md`](../meta/naming-and-decisions.md), [`plugins/ida/agents/pauli.md`](../../plugins/ida/agents/pauli.md)) and expanded by [`/reify`](../../plugins/ida/skills/reify/SKILL.md) into the dispatchable contract (`Ask`, `Goal`, `Context`, `Acceptance`, `Instructions`, `Output`, `Report`, `Appendix: Sources`). Extraneous narrative sections (`Background`, `References`, `Implementation Plan`) and prose task links are prohibited.
 - **Graph edge economy invariant** -- setting `parent_id` is already an intrinsic graph edge; redundant wiring between descendants/siblings under the same parent without specific interactions is prohibited.
 - **Outcome-oriented task contract invariant** -- task acceptance criteria and instructions define observable end-state conditions and verification criteria rather than implementation mechanisms ([`outcome-oriented-tasks.md`](outcome-oriented-tasks.md)). `Goal`, `Acceptance`, and `Instructions` must contain zero line numbers, line ranges, or narrow slice prescriptions. Reification of multi-file or architectural changes under `wf-code-task-base` preserves a distinct Stage 1 (Design) task preceding Stage 2 (Build).
+- **Brief and stage satisfiability invariant** -- task acceptance criteria, report requirements, and delegation briefs must be bounded strictly to artifacts and state produced by the assigned worker before release. Downstream pipeline outcomes (such as pull request URLs from subsequent workers, merged code branches, or decisions delegated to future stages) must never be demanded of early-stage workers, dispatchers, or planning agents.
 - **Full-context file inspection invariant** -- workers must read target repository files in full before executing edits. Keyhole line-slice reads (`read_file` with narrow line windows around advisory line hints) in isolation without prior whole-file context are strictly prohibited; advisory line hints are starting pointers only. Files exceeding single-page tool limits are inspected via sequential discovery before editing.
 - **Evidence contract** -- at `release_task` / `complete_task`; the completion
   claim must carry independent-verification evidence bound to artifact state,
@@ -76,15 +77,11 @@ this contract does not restate.
   is a legal terminal outcome, not a failure; that spec owns partial
   semantics, which this bullet does not restate). `/pull` mandates invoking
   `/dump` for the final handover and for logging results at the end of every
-  job, whatever its release status (`done`, `partial`, `review`, `failed`,
+  job, whatever its release status (`done`, `partial`, `failed`,
   `cancelled`, or `in_progress`), and `/dump`'s `release_task` body update
   includes a report argument (per [`premise-check`](../../plugins/ida/skills/premise-check/SKILL.md))
   whose conclusion answers each original direction given or question posed by
-  its ask id. A worker whose deliverable
-  is a PR releases its task `review` once the PR is open and exits; the
-  repository merges it and `/reconcile` writes `done` on the merge, which
-  unblocks dependent follow-ups (QA, deploy); `partial` is reserved strictly for the
-  worker's own unfinished acceptance items. Only silent, undisclosed
+  its ask id. A worker whose deliverable is a PR releases its task `done` once the PR is open with branch and `pr_url` recorded, local tests verified, and exits; releasing `done` immediately unblocks dependent follow-ups (QA, deploy) on the task graph; `partial` is reserved strictly for the worker's own unfinished acceptance items. Only silent, undisclosed
   abandonment is garbage-collected (H10): incentive-first, this machinery is the
   backstop, not the mechanism agents are expected to lean on. Its floor is the
   task server predicate -- the contract is only as strong as that floor.

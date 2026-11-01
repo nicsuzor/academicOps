@@ -46,10 +46,10 @@ Any change falling outside the eligible scope, code that executes lacking unit t
 
 1. Implement the minimal change, with unit tests where it touches code that executes; write no test for instruction text or docs.
 2. Verify automated test suite and linters pass locally.
-3. Deliver via the repository's permitted shortened route (e.g. auto-merging PR or direct push).
+3. Deliver via the repository's permitted shortened route (e.g. auto-merging PR or direct push); if delivered via a draft PR, mark it ready for review once its code step completes, without waiting for approval.
 4. Verify all destination tests are green after merge or rebase. If destination tests fail, set the task status to `failed` and document the failure logs on the task record so it is escalated; do not repeat or retry the delivery within the same session.
 5. Record verifiable evidence on the task (test execution output, commit SHA or PR URL).
 6. Release the task:
    - As `done` if destination tests pass green, without minting follow-up review tasks.
    - As `failed` if destination tests fail after merge or rebase, escalating for triage.
-   - As standard handoff status (e.g. `review`) if fallback to the standard delivery process was triggered prior to delivery.
+   - As standard handoff status (e.g. `partial` if blocked, or `done` if delivered via standard PR) if fallback to the standard delivery process was triggered prior to delivery. Never release as `review`.

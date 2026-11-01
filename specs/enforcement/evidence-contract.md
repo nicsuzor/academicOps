@@ -64,6 +64,7 @@ As an agent that could not finish, I want failure and partial delivery to be com
 
 - "I could not do X, because Y" meets the contract.
 - A partial report carries evidence for what shipped and discloses the deferred remainder under the partial-work coverage partition (`tested | declared-deferred | illegal-gap`, [partial-work spec](../polecat/spec-partial-work-tight-loop-delivery.md)).
+- An ask whose demand was unfulfillable by construction at the reporter's stopping point is satisfied when the conclusion validly establishes unreachability. Checkers link the conclusion and do not fail or loop the reporter for an impossible demand.
 - A deliverable is complete when the writer's own acceptance items are met, whatever follow-up depends on it.
 
 ### 7. Directions relayed intact
@@ -71,6 +72,8 @@ As an agent that could not finish, I want failure and partial delivery to be com
 As the user, I want my directions to reach a worker as I gave them, so that an agent in the chain cannot add to what I asked.
 
 - A relayed direction cites the original ask, and every detail, constraint and method in it can be derived from that ask. When composing a dispatch or relaying a direction, the dispatching agent derives instructions faithfully from the original ask and task record without reading primary sources to verify claims; workers inspect sources and execute.
+- A brief demands only what the recipient can hold at the point it stops. Coordinators and dispatchers never demand downstream pipeline outcomes (such as pull request URLs from subsequent workers, merge states, or decisions delegated to future stages).
+- A receiving agent verifies brief satisfiability at intake before logging deliverables, refusing with `REVISE` any direction demanding deliverables belonging to subsequent pipeline stages or unfulfillable at its stopping point.
 
 ### 8. Explanations are not reasons (hearsay)
 
@@ -208,10 +211,10 @@ flowchart TD
 
 ### Invariants and state transitions
 
-1. **Direction derivation and frozen acceptance:** Incoming directions derive strictly from the originating ask (`tg-<id>` or `<task id>/AC<n>`). Any unverified caller method or template prescription is refused. Dispatching agents derive instructions faithfully from the ask and task record without inspecting target repository sources to verify claims, and deliverables are recorded as a frozen acceptance checklist on the task record before work begins.
+1. **Direction derivation, brief satisfiability, and frozen acceptance:** Incoming directions derive strictly from the originating ask (`tg-<id>` or `<task id>/AC<n>`). Receiving agents verify direction derivation and brief satisfiability at intake, refusing (`REVISE`) directions that include unverified caller method/template prescriptions or that demand downstream pipeline deliverables unfulfillable at the recipient's stopping point. Dispatching agents derive instructions faithfully from the ask and task record without inspecting target repository sources to verify claims, and deliverables are recorded as a frozen acceptance checklist on the task record before work begins.
 2. **Durable authoring:** Deliverables and findings are stored in durable repositories or PKB records rather than ephemeral paths. Reports open with the original ask verbatim and follow standard premise-check structure. Each material premise carries its closed-vocabulary basis and self-contained pointer; observed premises quote deciding values inline; nearest alternate states are ruled out; negative claims cite tested limits; and hearsay is excluded by tracing causes to runtime evidence.
 3. **Arrival and gating:** User prompts hydrate from the PKB and proceed without arming. Incoming agent reports and directions arm the universal premise-check gate across all agents, holding dispatch, messaging, user questions, and stop actions until a verdict is recorded.
-4. **Semantic evaluation and sufficiency:** Checkers accept observed premises with direct pointers as given without reopening, while ranking PKB nodes and peer writing as unchecked. Material steps are tested for sufficiency (obvious, authority-backed, cited verdict, or cheap to reverse); unbacked high-stakes warrants are decomposed, and missing premises are returned for evidence. Checkers formulate a seven-line checker reason.
+4. **Semantic evaluation and sufficiency:** Checkers accept observed premises with direct pointers as given without reopening, while ranking PKB nodes and peer writing as unchecked. Material steps are tested for sufficiency (obvious, authority-backed, cited verdict, or cheap to reverse); unbacked high-stakes warrants are decomposed, and missing premises are returned for evidence. Under `Answered`, an ask whose demand was unfulfillable by construction at the reporter's stopping point is satisfied when the conclusion validly establishes unreachability, linking the conclusion (`← (n)`) rather than marking `unanswered` or issuing `REVISE`/`FAIL`. Checkers formulate a seven-line checker reason.
 5. **Deterministic machine validation:** The verdict recorder validates the argdown block using deterministic native checks (syntax, connectedness, undercut targets, and at least one inference line on PASS). Format-only defects are waived and rewritten into standard form on PASS, while substantive defects or zero inference lines require REVISE or FAIL. Valid verdicts mint a verification ID, emit a telemetry span, disarm the gate, and record task verdicts.
 6. **Upward relay:** Relayed claims derive exclusively from checked lines in the validated argument without reading sources of record, explicitly name their validated argument line from the relay field, inherit the weakest basis among premises, and travel with their verification ID.
 

@@ -21,14 +21,22 @@
 
 ## Enforcement
 
-- [ENFORCEMENT-MAP.md](ENFORCEMENT-MAP.md) -- single source of truth mapping axioms, agent instructions, work-unit, escalated delivery, and workflow contracts, and the evidence contract to their live enforcement mechanisms.
+- [ENFORCEMENT-MAP.md](ENFORCEMENT-MAP.md) -- concise cross-reference table mapping rules to their live enforcement mechanisms.
+- [enforcement/enforcement-map.md](enforcement/enforcement-map.md) -- specification governing the enforcement map schema, inclusion boundaries, and concision invariants.
+- [enforcement/class-spec-review-and-map-discipline.md](enforcement/class-spec-review-and-map-discipline.md) -- systemic design for class-spec review, runtime workflow composition, and enforcement map discipline.
 - [enforcement/enforcement.md](enforcement/enforcement.md) -- governing principle, regulatory tools, mechanism categories, and proportional intervention.
 - [enforcement/task-contract.md](enforcement/task-contract.md) -- the work-unit contract (claim → release).
 - [enforcement/escalated-delivery-contract.md](enforcement/escalated-delivery-contract.md) -- in-session escalated delivery contract (`ida_held`, `/mine` surfacing pass, and the Workers-Append rule).
 - [enforcement/workflow.md](enforcement/workflow.md) -- the four-step workflow shape and review-depth call.
 - [enforcement/decision-steps-and-followup-placement.md](enforcement/decision-steps-and-followup-placement.md) -- decision steps on design research and task follow-up structural placement invariants.
+- [enforcement/human-readability-first.md](enforcement/human-readability-first.md) -- design for the human-readability-first universal axiom and tripartite no-shitty-NLP clarification.
+- [enforcement/release-as-done-lifecycle.md](enforcement/release-as-done-lifecycle.md) -- release-as-done task lifecycle, autonomous QA dispatch unblocking, and retirement of agent review status.
+- [enforcement/rule-handling-and-escalation.md](enforcement/rule-handling-and-escalation.md) -- rule handling, waivers, one-way PKB linking, and mandatory upward escalation.
 - [enforcement/evidence-contract.md](enforcement/evidence-contract.md) -- the universal claim-evidence shape.
 - [enforcement/evidence-contract-enforcement.md](enforcement/evidence-contract-enforcement.md) -- the reminders, gate, and proportional interventions that hold agents to the evidence contract.
+- [enforcement/preventing-over-engineering.md](enforcement/preventing-over-engineering.md) -- eliminating over-engineered mechanical software builds and enforcing agentic-first workflows.
+- [enforcement/direct-user-instructions.md](enforcement/direct-user-instructions.md) -- direct user instruction execution and authority boundary.
+- [enforcement/reviewer-class-standard-check.md](enforcement/reviewer-class-standard-check.md) -- reviewer class-standard verification across changed files in candidate changes.
 - [enforcement/auto-mode-classifier.md](enforcement/auto-mode-classifier.md) -- Claude Code auto-mode classifier design and cost model.
 - [enforcement/handback-format-design.md](enforcement/handback-format-design.md) -- premise-check handback format design review: empirical sample, Toulmin structure preservation, and migration plan.
 
@@ -44,11 +52,12 @@
 
 ## Telegram
 
-- [telegram/command-menus.md](telegram/command-menus.md) -- native Telegram bot command menu registration and routing contract across conversational agent personas.
+- [telegram/command-menus.md](telegram/command-menus.md) -- native Telegram bot command menu: registration of the configured `TELEGRAM_BOT_COMMANDS` list and delivery of command taps to the agent.
 - [telegram/message-actions.md](telegram/message-actions.md) -- inline message action buttons (`Check logic`, `Explain`, `Reasons`), callback tap events, and multi-level argument chain response contract.
 - [telegram/mini-app-dashboard-integration.md](telegram/mini-app-dashboard-integration.md) -- integration plan and interface specification for serving the Telegram Mini App from the overwhelm dashboard with dynamic state and bi-directional communication.
 - [telegram/reactions.md](telegram/reactions.md) -- Telegram reaction handling contract, platform-authoritative validation, and unified shared reaction legend across bot personas.
-- [telegram/reply-button-layout.md](telegram/reply-button-layout.md) -- reply button layout customization and consolidated predefined row specification.
+- [telegram/reply-button-layout.md](telegram/reply-button-layout.md) -- reply button layout customization, consolidated predefined row, and tap acknowledgement specification.
+- [telegram/shunt-handover.md](telegram/shunt-handover.md) -- single-command conversation handover from any session to Telegram across local, remote-control, and cloud environments.
 - [telegram/threaded-conversations.md](telegram/threaded-conversations.md) -- threaded Telegram conversations and topic message routing by default without configuration.
 
 ## Tools
@@ -58,7 +67,9 @@
 ## Workflows
 
 - [workflows/workflow.md](workflows/workflow.md) -- the four-stage pipeline and where workflow components come from.
+- [workflows/plan-view.md](workflows/plan-view.md) -- formal plan view generation and redrawing on decomposed objectives.
 - [workflows/conceptual-review-workflow.md](workflows/conceptual-review-workflow.md) -- composable-lens multi-agent review of intellectual artifacts.
+- [workflows/default-dialectic-review.md](workflows/default-dialectic-review.md) -- dialectical multi-agent evaluation as the workflow library's default independent review stage.
 - [workflows/research-decomposition.md](workflows/research-decomposition.md) -- research-specific decomposition primitives and sequencing.
 - [workflows/reconcile.md](workflows/reconcile.md) -- GitHub ↔ PKB task-graph reconciliation.
 - [workflows/strategic-review.md](workflows/strategic-review.md) -- design intent for the parallel-review-and-reconcile quality gate.

@@ -78,7 +78,6 @@ async function authenticateRequest(req: Request, ctx: WebContext): Promise<boole
       teamDomain: ctx.config.cfAccessTeamDomain,
       allowedEmails: ctx.config.cfAccessAllowedEmails,
       certsUrl: ctx.config.cfAccessCertsUrl,
-      replayCache: ctx.store?.getReplayCache ? ctx.store.getReplayCache() : undefined,
     });
     if (cfResult.valid) {
       return true;

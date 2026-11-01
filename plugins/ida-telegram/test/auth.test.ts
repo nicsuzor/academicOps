@@ -13,7 +13,7 @@ describe("Mini App Security: initData validation and session tokens", () => {
   const allowFrom = [12345678];
 
   function generateValidInitData(userId: number, authDateSeconds: number): string {
-    const userJson = JSON.stringify({ id: userId, first_name: "Nic", username: "nicsuzor" });
+    const userJson = JSON.stringify({ id: userId, first_name: "Alex", username: "testuser" });
     const params = new URLSearchParams();
     params.set("auth_date", authDateSeconds.toString());
     params.set("query_id", "AAG_TEST_123");
@@ -240,6 +240,16 @@ describe("Mini App Security: Cloudflare Access JWT validation (AC1, AC2)", () =>
 
   test("rejects assertion with mismatched issuer", async () => {
     const token = makeJwt({ iss: "https://evilteam.cloudflareaccess.com" });
+    const res = await verifyCfAccessJwt(token, {
+      keys: { "test-kid-1": pem },
+      teamDomain,
+    });
+    expect(res.valid).toBe(false);
+    expect(res.reason).toContain("issuer mismatch");
+  });
+
+  test("rejects assertion with missing issuer when teamDomain configured", async () => {
+    const token = makeJwt({ iss: undefined });
     const res = await verifyCfAccessJwt(token, {
       keys: { "test-kid-1": pem },
       teamDomain,

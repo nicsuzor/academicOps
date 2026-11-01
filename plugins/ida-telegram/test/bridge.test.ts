@@ -53,7 +53,7 @@ function makeCfAccessJwt(
 
 describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration.md)", () => {
   const botToken = "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11";
-  const allowedUserId = 8860530746;
+  const allowedUserId = 1111111111;
   const bridgeToken = "test-secret-bridge-token-xyz-12345";
   const sessionSecret = "test-session-secret-key-32bytes!";
   let testStateDir = "";
@@ -187,8 +187,8 @@ describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration
       expect(cfRes.status).toBe(401);
     });
 
-    test("AC1: A request carrying a forged, malformed, expired or replayed assertion is refused on every authenticated route", async () => {
-      const { baseUrl, store } = await createBridgeTestContext({
+    test("AC1: A request carrying a forged, malformed, or expired assertion is refused on every authenticated route", async () => {
+      const { baseUrl } = await createBridgeTestContext({
         cfAccessAud: testAud,
         cfAccessTeamDomain: testTeamDomain,
         cfAccessAllowedEmails: [testAllowedEmail],
@@ -199,10 +199,6 @@ describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration
       const forgedAssertion = makeCfAccessJwt({}, {}, otherPrivateKey);
       const malformedAssertion = "not.a.valid.jwt.token";
       const expiredAssertion = makeCfAccessJwt({ exp: now - 300 });
-      const replayedAssertion = makeCfAccessJwt({ jti: "replayed-nonce-123" });
-      if ((store as any).getReplayCache) {
-        (store as any).getReplayCache().add("replayed-nonce-123", now + 3600);
-      }
 
       const authenticatedRoutes: Array<{ method: string; path: string; body?: any }> = [
         { method: "GET", path: "/api/app/events" },
@@ -250,17 +246,6 @@ describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration
           ...(route.body ? { body: JSON.stringify(route.body) } : {}),
         });
         expect(expiredRes.status).toBe(401);
-
-        // 4. Replayed assertion
-        const replayedRes = await fetch(`${baseUrl}${route.path}`, {
-          method: route.method,
-          headers: {
-            "Cf-Access-Jwt-Assertion": replayedAssertion,
-            ...(route.body ? { "Content-Type": "application/json" } : {}),
-          },
-          ...(route.body ? { body: JSON.stringify(route.body) } : {}),
-        });
-        expect(replayedRes.status).toBe(401);
       }
     });
 
@@ -279,6 +264,29 @@ describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data).toBeDefined();
+    });
+
+    test("AC1: consecutive requests in one session with the same valid assertion succeed with 200", async () => {
+      const { baseUrl } = await createBridgeTestContext({
+        cfAccessAud: testAud,
+        cfAccessTeamDomain: testTeamDomain,
+        cfAccessAllowedEmails: [testAllowedEmail],
+        cfAccessKeys: { [testKeyId]: testPublicKeyPem },
+      } as any);
+
+      const validAssertion = makeCfAccessJwt();
+
+      // First request in session -> 200
+      const res1 = await fetch(`${baseUrl}/api/app/anchor`, {
+        headers: { "Cf-Access-Jwt-Assertion": validAssertion },
+      });
+      expect(res1.status).toBe(200);
+
+      // Second request in same session with same assertion -> 200
+      const res2 = await fetch(`${baseUrl}/api/app/questions`, {
+        headers: { "Cf-Access-Jwt-Assertion": validAssertion },
+      });
+      expect(res2.status).toBe(200);
     });
 
     test("1.2 Sequence numbers: monotonic seq counter increments across state mutations, present in REST snapshots and SSE stream", async () => {
@@ -353,7 +361,7 @@ describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration
         method: "POST",
         headers: authHeaders,
         body: JSON.stringify({
-          text: "Focus on task aops_9e5caaf0",
+          text: "Focus on task aops_00000004",
           priority: "high",
           chat_id: allowedUserId,
           message_id: 2001,
@@ -366,7 +374,7 @@ describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration
       expect(typeof data.seq).toBe("number");
 
       // Reaches agent session context
-      expect(emittedEvents.some((e) => e.content.includes("Focus on task aops_9e5caaf0"))).toBe(true);
+      expect(emittedEvents.some((e) => e.content.includes("Focus on task aops_00000004"))).toBe(true);
 
       // Edits the Telegram card
       expect(editedCards.some((c) => c.chatId === allowedUserId && c.messageId === 2001)).toBe(true);
@@ -498,7 +506,7 @@ describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration
         update_id: 991,
         callback_query: {
           id: "cb_late_q",
-          from: { id: allowedUserId, first_name: "Nic" },
+          from: { id: allowedUserId, first_name: "Alex" },
           data: `q:${q.questionId}:0:0`,
           message: {
             message_id: 3001,
@@ -520,7 +528,7 @@ describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration
         update_id: 992,
         callback_query: {
           id: "cb_late_perm",
-          from: { id: allowedUserId, first_name: "Nic" },
+          from: { id: allowedUserId, first_name: "Alex" },
           data: `perm:allow:perm_inv_1`,
           message: {
             message_id: 3002,
