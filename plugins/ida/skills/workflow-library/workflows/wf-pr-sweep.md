@@ -59,7 +59,7 @@ Sweep execution runs via parallel fan-out: a single coordinator fans out across 
      - `Queued for Feedback`: Blocked on requested changes or review feedback; next-step task queued.
      - `Queued for Conflicts`: Approved PR with merge conflicts against base branch; next-step conflict resolution task queued (PRs awaiting approval are never queued for conflicts).
      - `Blocked on Approval`: Green and reviewed, awaiting designated principal sign-off per project policy (mergeable not required before approval).
-     - `Merged`: Merged into base branch (for fully approved, green hotfixes where authorized).
+     - `Merged`: Merged into base branch (for green hotfixes directed by the user or confirmed by the front agent).
      - `Excluded`: Draft or automated release PR outside automated sweep scope.
    - File a closed summary task recording the full sweep disposition manifest.
 
