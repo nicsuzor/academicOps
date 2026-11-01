@@ -40,21 +40,26 @@ Sweep execution runs via parallel fan-out: a single coordinator fans out across 
 
 3. **Triage and Queue Next-Step Tasks**:
    - Decouple triage from execution: do not attempt inline multi-PR resolutions.
-   - For each PR requiring action:
+   - For each ready, non-draft PR requiring action:
      - Audit CI check status.
-     - Inspect review status: verify whether a proportionate review is posted on the PR thread.
-     - Check mergeability and base branch conflict state.
-     - If checks pass and approval is required, but no review is posted on the PR thread, classify as `Queued for Review` and queue a review task; strictly forbid classifying as `Blocked on Approval`.
-     - Identify the discrete next action needed (e.g. address review feedback, settle merge conflicts, conduct risk-tier review, or merge).
+     - Inspect review status (proportionate review, changes requested, or author feedback).
+     - Check approval status per project policy.
+     - Before approval, a PR requires green checks and review; mergeability against the base branch is not required before approval, and PRs awaiting approval must not be queued for conflict resolution or rebase.
+     - Identify the discrete next action needed:
+       - If unreviewed: conduct proportionate risk-tier review.
+       - If review feedback or changes requested: address feedback.
+       - If green, reviewed, but awaiting required approval: mark blocked on approval (do not queue conflict resolution).
+       - If approved (or autonomous merge authorized) and merge conflicts exist: queue task to bring branch up to date with base and resolve merge conflicts.
+       - If approved and clean: queue landing / merge.
      - Verify an existing open task covers this action, or queue a discrete follow-up task.
 
 4. **Compile Sweep Disposition Report**:
    - For every enumerated PR, record an explicit disposition:
-     - `Queued for Review`: Awaiting initial or proportionate review; next-step review task queued. PRs requiring approval that lack posted reviews are always categorized here.
+     - `Queued for Review`: Awaiting initial review; next-step task queued.
      - `Queued for Feedback`: Blocked on requested changes or review feedback; next-step task queued.
-     - `Queued for Conflicts`: Merge conflicts against base branch; next-step task queued.
-     - `Blocked on Approval`: CI checks green and proportionate review already posted on the PR thread, awaiting designated principal sign-off per project policy. If a review has not been posted on the PR thread, the PR must never be classified as `Blocked on Approval`.
-     - `Merged`: Merged into base branch (for fully approved, green hotfixes where authorized).
+     - `Queued for Conflicts`: Approved PR with merge conflicts against base branch; next-step conflict resolution task queued (PRs awaiting approval are never queued for conflicts).
+     - `Blocked on Approval`: Green and reviewed, awaiting designated principal sign-off per project policy (mergeable not required before approval).
+     - `Merged`: Merged into base branch (for green hotfixes directed by the user or confirmed by the front agent).
      - `Excluded`: Draft or automated release PR outside automated sweep scope.
    - File a closed summary task recording the full sweep disposition manifest.
 
@@ -67,7 +72,7 @@ Sweep execution runs via parallel fan-out: a single coordinator fans out across 
 
 - Must not merge automated release PRs without explicit human release approval.
 - Must not merge PRs lacking required project-level approvals or reviews.
+- Must not queue merge conflict resolution or rebase tasks for PRs that are awaiting approval.
 - Must not merge PRs with active changes-requested reviews or failing checks.
-- Must not classify any PR requiring approval as `Blocked on Approval` unless an agent-generated proportionate review has already been posted to the PR thread.
 - Must not execute complex multi-PR inline resolutions within the triage sweep.
 - Must not omit any evaluated PR from the sweep handback report.

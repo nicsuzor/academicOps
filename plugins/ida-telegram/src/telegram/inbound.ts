@@ -93,7 +93,6 @@ export function parseInboundUpdate(
   update: TelegramUpdate,
   allowFrom: number[],
   getExcerpt?: TargetExcerptFetcher,
-  persona?: string,
   getThread?: MessageThreadFetcher
 ): InboundChannelEvent | null {
   // 1. Text / Media Message
@@ -114,7 +113,7 @@ export function parseInboundUpdate(
       const cmdName = normalizeCommandName(rawCmdToken);
       const cmd = `/${cmdName}`;
       const args = parts.slice(1).join(" ").trim();
-      const cmdSpec = getBareCommandBehavior(cmdName, persona);
+      const cmdSpec = getBareCommandBehavior(cmdName);
 
       const meta: Record<string, string> = {
         event: "bot_command",

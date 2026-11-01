@@ -81,8 +81,9 @@ In a `polecat` container, plugin content is baked into the image at build time
 ## 2. Release path (`release/*` → `main` → publish)
 
 academicOps `main` holds the current release's source plus the built plugin objects
-previously published to the orphan `dist` branch. The build runs on every merge into `main`
-and writes its output to `main` only. Publishing to the legacy `nicsuzor/aops` mirror has
+of the newest release, release candidates included. Every published tag, and every merge
+into `main`, writes its build to `main` through one script, `scripts/publish-dist-to-main.sh`;
+nothing else writes built objects there. Publishing to the legacy `nicsuzor/aops` mirror has
 stopped as a trial. Merges into `main` are restricted to fully green releases, enforced by
 branch protection requiring all checks green (`Lint / Lint`, `Type Check / Type Check`,
 `Pytest / Pytest`) with no bypass allowed.
@@ -94,6 +95,10 @@ branch protection requiring all checks green (`Lint / Lint`, `Type Check / Type 
   The previous orphan `dist` branch (`@dist`) is superseded by `main`.
 - **Built plugin resolution**: Claude Code reads `.claude-plugin/marketplace.json` at the root
   of `main`, where each plugin points to `./<plugin>-claude` (also committed to `main`).
+  `<plugin>-agy` builds sit beside them.
+- **Release candidates reach `main`**: a host whose `academicOps` marketplace has auto-update on
+  receives each release candidate at its next session start. The GitHub Release tarballs carry
+  the same build, for Antigravity and for container images.
 - **Discontinued mirrors**: `nicsuzor/aops` is no longer updated or published to.
 
 ### How each release candidate is now published
@@ -103,21 +108,23 @@ branch protection requiring all checks green (`Lint / Lint`, `Type Check / Type 
 2. **Publishing release candidates.** Release candidates are published via GitHub pre-releases:
    - **Trigger conditions**: Pushing an RC tag matching `v*-rc*` (or pre-release tags `v*-*`, `v*rc*`, `v*beta*`, `v*alpha*`, `v*dev*`) on a release line (e.g. `v1.0-rc7` on `release/v1.0-rc0`), or manually triggering `.github/workflows/publish-release.yml` via `workflow_dispatch` with an RC `tag` input.
    - **Flags and options**: The workflow runs Pytest, validates PEP 440 version formatting (`build.version --validate`), builds distribution archives with `uv run python -m build.build --set-version <version>`, and attaches the tarballs (`dist/*.tar.gz`) to a GitHub Release marked explicitly with `--prerelease` (`gh release create ... --prerelease` or `gh release edit ... --prerelease`). Stable manifest coherence checks (G2) are skipped for RC builds as pre-releases are not tracked by `.release-please-manifest.json`.
-   - **Publish constraints**: RC builds publish exclusively to GitHub pre-releases. They never promote assets to production channels, never publish to container registries (GHCR), and never write or push to `main` (built plugin directory mirroring and root marketplace updates remain restricted to merges on `main`).
+   - **Publish to `main`**: after the GitHub Release, the same build is committed to `main` by `scripts/publish-dist-to-main.sh`, so the Claude Code marketplace on `main` always serves the newest release, candidates included (Nic, console, 2026-10-31). A manual run checks out the tag it names, not the branch it was started from.
+   - **Publish constraints**: RC builds never publish to container registries (GHCR).
 3. **Merging stable release into `main`.** Once a release candidate is validated and fully green, a pull request is merged from the release line into `main`. Branch protection on `main` requires all status checks to pass before merging, with no bypass allowed.
 4. **Build on merge.** Every merge into `main` triggers `.github/workflows/build-extension.yml`.
    The workflow:
    - Computes the version from `build.version`.
    - Runs `uv run python -m build.build --set-version <version>`.
-   - Mirrors built plugin directories (`<plugin>-claude/`, `<plugin>-agy/`, `<plugin>-openclaw/`, `cowork/`),
-     `.claude-plugin/marketplace.json`, and `.aops-image-metadata.json` directly to the root of `main`.
-   - Commits and pushes the built artifacts back to `main` with `[skip ci]`.
+   - Publishes with `scripts/publish-dist-to-main.sh`, which replaces each built directory
+     (`<plugin>-claude/`, `<plugin>-agy/`, `<plugin>-openclaw/`, `cowork/`) whole at the root of
+     `main`, writes `.claude-plugin/marketplace.json` and `.aops-image-metadata.json`, and commits
+     on the tip of `main` with `[skip ci]`.
    - Writes only to `main` (no writes to `dist` or `nicsuzor/aops`).
 5. **Stable GitHub Releases.** Annotated release tags (`vX.Y.Z`) pushed on `main` trigger `.github/workflows/publish-release.yml` to upload tarball archives (`dist/*.tar.gz`) to a stable GitHub Release.
 
 ### Automatic PR retargeting (`main` → `dev`)
 
-Because `main` is the published distribution and release branch rather than a direct development branch, pull requests must not target `main`. To prevent human or agent pull requests accidentally opened against `main` (which GitHub selects by default as the repository's default branch), `.github/workflows/auto-retarget-pr.yml` automatically flips any opened or reopened pull request whose base branch is `main` to target `dev` (excluding automated `release-please` PRs). Because `pull_request_target` workflows resolve from the default branch, the workflow file is preserved on `main` via `.github/workflows/build-extension.yml` on every publish.
+Because `main` is the published distribution and release branch rather than a direct development branch, pull requests must not target `main`. To prevent human or agent pull requests accidentally opened against `main` (which GitHub selects by default as the repository's default branch), `.github/workflows/auto-retarget-pr.yml` automatically flips any opened or reopened pull request whose base branch is `main` to target `dev` (excluding automated `release-please` PRs). Because `pull_request_target` workflows resolve from the default branch, `scripts/publish-dist-to-main.sh` copies the workflow file onto `main` on every publish.
 
 A manual rebuild against a specific commit: push a prerelease tag at that
 commit -- e.g. `git tag v<next>-rc.1 <sha> && git push origin v<next>-rc.1`.

@@ -3,7 +3,7 @@ id: wf-pr-merge-prep
 title: "wf-pr-merge-prep"
 type: template
 category: process
-description: Prepare an already-open PR for someone else's merge decision -- review it fully, fix what needs fixing, confirm it is actually green and mergeable, and write an honest summary into its own body. Select when a PR exists and needs readying for a principal's merge call. Not for authoring the PR's changes, not for a PR whose only reviewer is also its sole author (that is self-review, not this), and not a licence to merge it yourself.
+description: Prepare an already-open PR for someone else's merge decision -- review it fully, fix what needs fixing, confirm it is actually green and reviewed, and write an honest summary into its own body. Select when a PR exists and needs readying for a principal's merge call. Not for authoring the PR's changes, not for a PR whose only reviewer is also its sole author (that is self-review, not this), and not a licence to merge it yourself.
 tags:
   - wf-template
   - process
@@ -22,35 +22,32 @@ actually stands, not as it was last checked.
 
 1. **Review the diff in full.** Read what changed, not the PR's account of what
    changed. Note every concern -- correctness, scope creep, missed cases,
-   anything that would surprise the principal later. Coordinate an independent
-   review proportionate to the PR's risk tier and post the review findings to
-   the PR thread.
+   anything that would surprise the principal later.
 
 2. **Address what the review found.** Fix what can be fixed inside the PR's own
    diff. What can't be fixed here -- or shouldn't be, because it needs a call
    only the principal can make -- gets named, not silently dropped.
 
-3. **Confirm green and mergeable, against the world.** Query CI and merge
-   status directly (e.g. `gh pr checks`, `gh pr view --json
-   mergeable,mergeStateStatus`) -- a claim that it's green from an earlier
+3. **Confirm green, against the world.** Query CI status directly (e.g.
+   `gh pr checks`) -- a claim that it's green from an earlier
    pass, another node, or the PR author is not this. Where it isn't, that is
-   itself a finding, not something to wait out.
+   itself a finding, not something to wait out. A draft PR whose code step is
+   complete is marked ready for review. Mergeability is not required before
+   approval: do not rebase or resolve conflicts here; bringing the PR up to date
+   with its base and resolving conflicts happens after the principal approves,
+   just before merge.
 
-4. **Write an honest summary into the PR's own body and post review.** Use the
-   repo's PR template if it has one (fetch it, don't recall it); fill every
-   section with real content. Ensure the proportionate review receipts are
-   posted to the PR thread before handing to the sign-off gate. If the PR is in
-   draft state, convert it to ready (`gh pr ready`) only after review receipts
-   are posted. A summary is a defect report if the diff and the words disagree.
+4. **Write an honest summary into the PR's own body.** Use the repo's PR
+   template if it has one (fetch it, don't recall it); fill every section with
+   real content. A summary is a defect report if the diff and the words
+   disagree.
 
 ## Exit: hand it to the sign-off gate
 
-This template ends where `wf-signoff-loop` begins. Merging is a ship-type
+This template ends where [[wf-signoff-loop]] begins. Merging is a ship-type
 act -- compose that gate to carry the review's findings and a recommendation
-to the principal. The PR must have a proportionate agent review posted on its
-thread before handing off to the sign-off gate. This template never merges the
-PR itself; producing material for someone else's decision is the deliverable,
-not the decision.
+to the principal. This template never merges the PR itself; producing
+material for someone else's decision is the deliverable, not the decision.
 
 ## Not for
 

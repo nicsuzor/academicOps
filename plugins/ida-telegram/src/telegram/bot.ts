@@ -646,16 +646,15 @@ export class TelegramBotClient {
     return await this.callApi("editForumTopic", payload);
   }
 
-  public async registerCommands(persona?: string): Promise<boolean> {
+  public async registerCommands(): Promise<boolean> {
     if (!this.config.isPrimary) {
       return false;
     }
 
-    const commands = persona
-      ? resolveBotCommands(persona)
-      : (this.config.botCommands && this.config.botCommands.length > 0
-          ? this.config.botCommands
-          : resolveBotCommands(this.config.persona));
+    const commands =
+      this.config.botCommands && this.config.botCommands.length > 0
+        ? this.config.botCommands
+        : resolveBotCommands();
 
     if (commands.length === 0) {
       return false;
@@ -1284,7 +1283,6 @@ export class TelegramBotClient {
       update,
       this.config.allowFrom,
       (msgId) => this.getMessageExcerpt(msgId),
-      this.config.persona,
       (msgId) => this.getMessageThread(msgId)
     );
     if (event) {
