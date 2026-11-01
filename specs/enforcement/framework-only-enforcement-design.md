@@ -168,7 +168,7 @@ _Finding_: Zero active hooks or gates enforce workflow substance. All active cod
 
 1. **`specs/enforcement/complete-daily-runs.md` (190 lines)**
    - _Classification_: Workflow Substance.
-   - _Primary Evidence_: Nic on PR #3353 ("workflow instructions are not 'rules' that have to be enforced. the 'rule' is: follow the applicable fucking workflow") and PR #3291 / Issue #3314 ("what is this? this isn't a 'rule'... it certainly doesn't belong in a table that documents how rules for agents are enforced").
+   - _Primary Evidence_: The user on PR #3353 ("workflow instructions are not 'rules' that have to be enforced. the 'rule' is: follow the applicable fucking workflow") and PR #3291 / Issue #3314 ("what is this? this isn't a 'rule'... it certainly doesn't belong in a table that documents how rules for agents are enforced").
    - _Disposition_: Retire spec; delete file in Stage 2; ensure execution instructions remain in `tpl_daily` and `plugins/ida/skills/daily/SKILL.md`.
 2. **`specs/enforcement/human-readability-first.md` (182 lines)**
    - _Classification_: Axiom Restatement / Historical Vehicle.
@@ -226,7 +226,7 @@ _Finding_: Zero active hooks or gates enforce workflow substance. All active cod
    - _Evidence_: Issue #3314 ("what is this? this isn't a 'rule'. It's part of a spec; it certainly doesn't belong in a table that documents how rules for agents are enforced"). Telegram reaction emojis are plugin-specific workflow substance.
    - _Action_: Delete Row 56 from `specs/ENFORCEMENT-MAP.md`.
 2. **Row 58 (`Complete Daily Run Step Execution`)**:
-   - _Evidence_: Nic on PR #3353 ("workflow instructions are not 'rules' that have to be enforced. the 'rule' is: follow the applicable fucking workflow"). Daily note template steps are workflow substance.
+   - _Evidence_: The user on PR #3353 ("workflow instructions are not 'rules' that have to be enforced. the 'rule' is: follow the applicable fucking workflow"). Daily note template steps are workflow substance.
    - _Action_: Delete Row 58 from `specs/ENFORCEMENT-MAP.md`.
 3. **Row 39 (`Agentic-First Design & No Shitty NLP`)**:
    - _Evidence_: Redundant with universal axioms `no-over-engineering`, `judgment-non-delegable`, and `human-readability-first`.
