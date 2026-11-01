@@ -145,7 +145,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
       // Inline keyboard has the Details button
       const replyMarkup = JSON.parse(voiceCall.body.reply_markup);
       const flatButtons = replyMarkup.inline_keyboard.flat();
-      expect(flatButtons.some((b: any) => b.text === "🔍 Details")).toBe(true);
+      expect(flatButtons.some((b: any) => b.text === "🔍")).toBe(true);
 
       // Details page contains both the relocated Tier 2 quote and Tier 3 detail
       const storedDetail = store.getDetails(parsedResult.detailsId);

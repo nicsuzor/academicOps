@@ -131,7 +131,7 @@ describe("Progressive disclosure: Overflow handling", () => {
       expect(apiCalls[0].method).toBe("sendMessage");
 
       const flatButtons = (apiCalls[0].body.reply_markup?.inline_keyboard || []).flat();
-      const detailsButton = flatButtons.find((b: any) => b.text === "🔍 Details");
+      const detailsButton = flatButtons.find((b: any) => b.text === "🔍");
       expect(detailsButton).toBeDefined();
       expect(detailsButton?.web_app?.url).toMatch(/^https:\/\/.+\/app\/index\.html\?d=/);
       expect(detailsButton?.web_app?.url).toContain(`/app/index.html?d=${parsedResult.detailsId}`);
@@ -219,7 +219,7 @@ describe("Progressive disclosure: Overflow handling", () => {
 
       const parsedResult = JSON.parse((resp?.result as any)?.content?.[0]?.text || "{}");
       const flatButtons = (apiCalls[0].body.reply_markup?.inline_keyboard || []).flat();
-      const detailsButton = flatButtons.find((b: any) => b.text === "🔍 Details");
+      const detailsButton = flatButtons.find((b: any) => b.text === "🔍");
       expect(detailsButton).toBeDefined();
       expect(detailsButton?.web_app?.url).toBe(`https://ida.example.ts.net/app/index.html?d=${parsedResult.detailsId}`);
     } finally {

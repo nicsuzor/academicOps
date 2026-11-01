@@ -5,13 +5,22 @@ Matching `mcp__.*` tool calls, this hook injects a reserved `_session` object
 ({session_id, agent_id, prompt_id}) into `hookSpecificOutput.updatedInput`
 only when the receiving server uses caller session (`pkb`, `services`),
 preserving all original tool arguments.
+
+In a Claude Cowork session it changes nothing: Cowork refuses any MCP call
+whose input a plugin hook changed. The decision is `dispatch.is_cowork`, the
+same one the dispatcher makes, so the two entry points cannot drift apart.
 """
 
 from __future__ import annotations
 
 import json
 import sys
+from pathlib import Path
 from typing import Any
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from dispatch import is_cowork
 
 DEFAULT_SESSION_SERVERS = frozenset({"pkb", "services"})
 
@@ -86,6 +95,8 @@ def inject_caller_session(
 
 def main() -> int:
     raw = json.load(sys.stdin)
+    if is_cowork():
+        return 0
     output = inject_caller_session(raw)
     if output:
         print(json.dumps(output))

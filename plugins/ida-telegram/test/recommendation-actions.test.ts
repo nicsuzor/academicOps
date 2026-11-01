@@ -75,19 +75,19 @@ describe("Message Actions: Recommendation Buttons (AC1, AC2)", () => {
       const flatButtons = kb.flat();
 
       const acceptBtn = flatButtons.find((b: any) =>
-        b.callback_data === "accept_recommendation" || b.text.includes("Accept recommendation")
+        b.callback_data === "accept_recommendation"
       );
       const declineBtn = flatButtons.find((b: any) =>
-        b.callback_data === "decline_recommendation" || b.text.includes("Decline recommendation")
+        b.callback_data === "decline_recommendation"
       );
 
       expect(acceptBtn).toBeDefined();
       expect(acceptBtn.callback_data).toBe("accept_recommendation");
-      expect(acceptBtn.text).toContain("Accept recommendation");
+      expect(acceptBtn.text).toBe("✅");
 
       expect(declineBtn).toBeDefined();
       expect(declineBtn.callback_data).toBe("decline_recommendation");
-      expect(declineBtn.text).toContain("Decline recommendation");
+      expect(declineBtn.text).toBe("❌");
     } finally {
       cleanup();
     }
@@ -146,7 +146,7 @@ describe("Message Actions: Recommendation Buttons (AC1, AC2)", () => {
       expect(kb.length).toBeGreaterThanOrEqual(2);
 
       const firstRow = kb[0];
-      const detailsBtn = firstRow.find((b: any) => b.text === "🔍 Details");
+      const detailsBtn = firstRow.find((b: any) => b.text === "🔍");
       const logicCheckBtn = firstRow.find((b: any) => b.callback_data === "logic_check");
       const explainBtn = firstRow.find((b: any) => b.callback_data === "explain");
       const acceptBtn = firstRow.find((b: any) => b.callback_data === "accept_recommendation");
