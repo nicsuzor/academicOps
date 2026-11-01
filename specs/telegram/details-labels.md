@@ -38,7 +38,7 @@ Each category of Details content maps directly to a distinct presentation label:
    When chat text exceeds the configured limit (`maxChatChars`, default 1,200), paragraphs are fitted into an effective budget subtracting the maximum suffix length (`\n\n… continued in Details` or `\n\n… references in Details`).
 2. **Orphan Heading Prevention:**
    If the final fitted paragraph is a markdown heading (`#` through `######`) and remaining paragraphs exist, the heading is relocated to the beginning of the overflow content to avoid leaving an empty trailing heading in chat above the label.
-3. **Reference Detection (`isReferencesOnly`):**
+3. **Reference Detection:**
    Content is classified as references-only if:
    - Its opening line matches a reference header (such as `## References`, `### Sources`, `# Citations`, `## Bibliography`, `**References:**`, or `References:`) and all subsequent lines contain citations or subheadings without introducing non-reference narrative sections; or
    - Every non-empty line constitutes a citation, list item with links/citations (`- [1]`, `1. https://...`, `* [title](url)`), DOI, or wikilink pointer.

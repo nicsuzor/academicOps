@@ -423,8 +423,8 @@ describe("Progressive disclosure: Overflow handling", () => {
     });
 
     test("positive: recognizes wikilinks", () => {
-      expect(isReferencesOnly("[[kb_d1c793dd]]")).toBe(true);
-      expect(isReferencesOnly("- [[kb_d1c793dd]]\n- [[kb_4647fe46]]")).toBe(true);
+      expect(isReferencesOnly("[[sample-reference-note]]")).toBe(true);
+      expect(isReferencesOnly("- [[sample-reference-note]]\n- [[literature-source]]")).toBe(true);
     });
 
     test("positive: recognizes reference headers with items", () => {
