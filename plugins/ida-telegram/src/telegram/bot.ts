@@ -287,7 +287,7 @@ export class TelegramBotClient {
 
     const detailsBtn: Record<string, unknown> | undefined = detailsId
       ? {
-          text: "🔍 Details",
+          text: "🔍",
           web_app: { url: `${miniAppBaseUrl}/app/index.html?d=${detailsId}` },
         }
       : undefined;
@@ -307,11 +307,11 @@ export class TelegramBotClient {
 
     const actionBtns: Array<Record<string, unknown>> = [];
     if (actions !== false) {
-      actionBtns.push({ text: "🧐 Check logic", callback_data: "logic_check" });
+      actionBtns.push({ text: "🧐 Check", callback_data: "logic_check" });
       actionBtns.push({ text: "💡 Explain", callback_data: "explain" });
-      actionBtns.push({ text: "🧾 Reasons", callback_data: "reasons" });
-      actionBtns.push({ text: "✅ Accept recommendation", callback_data: "accept_recommendation" });
-      actionBtns.push({ text: "❌ Decline recommendation", callback_data: "decline_recommendation" });
+      actionBtns.push({ text: "🧾", callback_data: "reasons" });
+      actionBtns.push({ text: "✅", callback_data: "accept_recommendation" });
+      actionBtns.push({ text: "❌", callback_data: "decline_recommendation" });
     }
 
     if (predefinedRow === true) {
@@ -329,28 +329,28 @@ export class TelegramBotClient {
         inlineKeyboard.push(row);
       }
     } else {
-      // Default: Caller rows first, then separate predefined rows below
+      // Default: Caller rows first, then consolidated predefined rows below
       for (const row of callerRows) {
         inlineKeyboard.push(row);
       }
 
-      const actionRow: Array<Record<string, unknown>> = [];
       if (feedbackBtns.length > 0) {
-        actionRow.push(...feedbackBtns);
-      }
-      if (detailsBtn) {
-        actionRow.push(detailsBtn);
-      }
-      if (actionRow.length > 0) {
-        inlineKeyboard.push(actionRow);
+        inlineKeyboard.push(feedbackBtns);
       }
 
       if (reviewBtn) {
         inlineKeyboard.push([reviewBtn]);
       }
 
+      const predefinedDefaultRow: Array<Record<string, unknown>> = [];
+      if (detailsBtn) {
+        predefinedDefaultRow.push(detailsBtn);
+      }
       if (actionBtns.length > 0) {
-        inlineKeyboard.push(actionBtns);
+        predefinedDefaultRow.push(...actionBtns);
+      }
+      if (predefinedDefaultRow.length > 0) {
+        inlineKeyboard.push(predefinedDefaultRow);
       }
     }
 
@@ -1089,7 +1089,8 @@ export class TelegramBotClient {
         const isLogicCheck = data === "logic_check" || data.startsWith("logic_check:");
         const isExplain = data === "explain" || data.startsWith("explain:");
         const isReasons = data === "reasons" || data.startsWith("reasons:");
-        const label = matchedBtn?.text || (isLogicCheck ? "🧐 Check logic" : isExplain ? "💡 Explain" : "🧾 Reasons");
+        const defaultLabel = isLogicCheck ? "🧐 Check" : isExplain ? "💡 Explain" : "🧾 Reasons";
+        const label = matchedBtn?.text && matchedBtn.text !== "🧾" ? matchedBtn.text : defaultLabel;
         const originalText = cb.message.text || "";
 
         // Remove the action buttons row, but preserve other buttons (e.g. Details, Review diff)
@@ -1159,7 +1160,10 @@ export class TelegramBotClient {
         const matchedBtn = kbRows.flat().find((b) => b.callback_data === data);
         const isAccept = data === "accept_recommendation" || data.startsWith("accept_recommendation:");
         const defaultLabel = isAccept ? "✅ Accept recommendation" : "❌ Decline recommendation";
-        const label = matchedBtn?.text || defaultLabel;
+        const label =
+          matchedBtn?.text && matchedBtn.text !== "✅" && matchedBtn.text !== "❌"
+            ? matchedBtn.text
+            : defaultLabel;
         const originalText = cb.message.text || "";
 
         // Remove the recommendation buttons, but preserve other buttons (e.g. Details, Review diff, Check logic, Explain)
