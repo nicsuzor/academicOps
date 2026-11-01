@@ -37,7 +37,7 @@ As an operator receiving agent recommendations in chat, I want direct accept and
 
 - **AC-3.1** Every reply that carries default message actions attaches `[✅]` and `[❌]` alongside `[🧐 Check]`, `[💡 Explain]`, and `[🧾]`. Passing `actions: false` suppresses all default action buttons including both recommendation buttons; Details sits on the same row.
   - _Check_: `plugins/ida-telegram/test/recommendation-actions.test.ts` (AC1 default attachment and suppression) and `plugins/ida-telegram/test/reply-buttons.test.ts` (AC2).
-- **AC-3.2** Tapping `[✅]` or `[❌]` acknowledges the callback, edits the Telegram message card to show the user's choice (`Selected: <label> ✅`), removes the recommendation buttons from the inline keyboard while preserving other buttons (Details, Review diff, Check logic, Explain, Reasons), and delivers an event to Ida (`accept_recommendation` or `decline_recommendation`) naming the target message ID, text excerpt, and whether Nic accepted or declined the recommendation.
+- **AC-3.2** Tapping `[✅]` or `[❌]` acknowledges the callback, edits the Telegram message card to show the user's choice (`Selected: <label> ✅`), removes the recommendation buttons from the inline keyboard while preserving other buttons (Details, Review diff, Check logic, Explain, Reasons), and delivers an event to Ida (`accept_recommendation` or `decline_recommendation`) naming the target message ID, text excerpt, and whether the user accepted or declined the recommendation.
   - _Check_: `plugins/ida-telegram/test/recommendation-actions.test.ts` (AC2 tapping, card marking, button filtering, and event delivery).
 
 ## Design
