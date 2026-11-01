@@ -71,7 +71,7 @@ Six distinct surfaces generate or modify PKB body content today. An evaluation o
 In accordance with `specs/enforcement/enforcement-map.md`, the rule is entered into `specs/ENFORCEMENT-MAP.md` as an escalated multi-carrier rule combining universal project-rule instructions with mandatory reviewer verification:
 
 ```markdown
-| [Rule: Ban on Related Sections in PKB Bodies](enforcement/related-sections-ban.md) -- PKB graph density comes from header edges; dedicated related tasks or related notes sections in bodies are prohibited. | instructions, process | imperative, required gate | `.agents/rules/RULES.md:70`, `.agents/rules/pkb-body-linking.md:1-25`, `specs/enforcement/task-contract.md:65-75`, `plugins/ida/agents/pauli.md:63`, `plugins/ida/skills/dump/SKILL.md:20`, `wf-review.md:35` |
+| [Rule: Ban on Related Sections in PKB Bodies](enforcement/related-sections-ban.md) -- PKB graph density comes from header edges; dedicated related tasks or notes sections in bodies are prohibited. | instructions, process | imperative, required gate | `.agents/rules/RULES.md:70`, `.agents/rules/pkb-body-linking.md:1-25`, `specs/enforcement/task-contract.md:65-75`, `plugins/ida/agents/pauli.md:63`, `plugins/ida/skills/dump/SKILL.md:20`, `wf-review.md:35` |
 ```
 
 ### 3. Evidence for the Move
