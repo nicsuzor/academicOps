@@ -14,7 +14,7 @@ type: template
 
 ## What this step does
 
-Ends the current task at a decision that requires escalation for review. The worker files the complete artifact on the record and structures the approval boundary per the review rules (e.g. `partial` with a queued review task wired with `depends_on`, or an explicit decision task) so dependent work remains strictly blocked until approval is recorded. The task is not released as `done` while an approval decision is pending. Nothing beyond this point runs in the same task.
+Ends the current task at a decision that requires escalation for review. A review is required and a proportionate review is selected. The worker files the complete artifact on the record and structures the approval boundary per the review rules (e.g. `partial` with a queued review task wired with `depends_on`, or an explicit decision task) so dependent work remains strictly blocked until approval is recorded. The task is not released as `done` while an approval decision is pending. Nothing beyond this point runs in the same task.
 
 ## Procedure
 

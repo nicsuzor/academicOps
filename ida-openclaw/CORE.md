@@ -23,46 +23,18 @@ How you were launched decides which branch you work on; you do not.
 
 ## Project Repository Registry
 
-The canonical mapping of project slugs to their GitHub repositories (`owner/repo`). Every git clone, `gh` CLI invocation, and project lookup resolves from this registry:
-
-| Project Slug | Repository | Aliases | Description / Notes |
-| :- | :- | :- | :- |
-| `aops` | `nicsuzor/academicOps` | `academicOps` | academicOps framework |
-| `automod` | `nicsuzor/automod` |  | Content moderation research |
-| `brain` | `nicsuzor/brain` |  | Personal knowledge base (ACA_DATA) |
-| `buttermilk` | `qut-dmrc/buttermilk` |  | Buttermilk research toolkit |
-| `dotfiles` | `nicsuzor/dotfiles` |  | Shell config, scripts, system setup |
-| `explorations` | `nicsuzor/explorations` |  | Experimental projects and prototypes |
-| `ida` | `nicsuzor/ida` |  | Ida personal assistant and orchestrator |
-| `jr` | `nicsuzor/junior` | `junior` | Coordination and junior scratch space |
-| `labeler` | `nicsuzor/labeler` |  | CLI label maker printer tool |
-| `mem` | `nicsuzor/mem` |  | Rust CLI tools (aops, pkb binaries) |
-| `omcp` | `nicsuzor/omcp` |  | Outlook MCP server (email & calendar) |
-| `overwhelm-dashboard` | `nicsuzor/overwhelm-dashboard` | `overwhelm` | Overwhelm dashboard -- SvelteKit PKB visualization |
-| `sessions` | `nicsuzor/sessions` |  | academicOps state files and session configs |
-| `tja` | `nicsuzor/explorations` | `trans-journalists` | Trans journalists analysis (subdir `tja/` in explorations) |
-| `tox` | `nicsuzor/tox` |  | Toxicity detection model bias analysis |
-| `wikijuris` | `nicsuzor/wikijuris` |  | WikiJuris collaborative legal knowledge wiki |
-| `writing` | `nicsuzor/writing` |  | Personal academic writing workspace |
-| `zotmcp` | `nicsuzor/zotmcp` |  | MCP server for Zotero library |
-| `qut` | `nicsuzor/explorations` | `QUT` | QUT employment obligations (subdir in explorations; `is_repo: false`) |
-| `teaching` | `nicsuzor/explorations` |  | QUT teaching (sub-project of qut; `is_repo: false`) |
-| `research-supervision` | `nicsuzor/explorations` | `supervision` | QUT research/HDR supervision (sub-project of qut; `is_repo: false`) |
-| `service` | `nicsuzor/explorations` |  | Academic service (sub-project of qut; `is_repo: false`) |
-| `admin` | `nicsuzor/explorations` |  | Academic admin (sub-project of qut; `is_repo: false`) |
-| `engagement` | `nicsuzor/explorations` |  | Engagement & public comms (sub-project of qut; `is_repo: false`) |
-| `personal` | _None_ |  | Personal life, home, side projects (`is_repo: false`) |
+The mapping of project slugs to their GitHub repositories (`owner/repo`) is deployment data, not part of this plugin. Each deployment supplies its own registry in its instruction files (for example, its `CLAUDE.md` or an imported file), and every git clone, `gh` CLI invocation, and project lookup resolves from that registry.
 
 ## Decide or Escalate
 
-This section governs when an agent decides itself, defers, or escalates, across conversations, dispatch, workers, and returned work.
+This section governs when an agent decides itself, defers, or escalates, across conversations, dispatch, workers, and returned work. A direct instruction from the user supersedes general rules and policies without agent merit re-ruling.
 
 ### When to Decide, Defer, or Escalate
 
 - **DECIDE (act autonomously)**: A choice is within the agent's delegated scope, or governing axioms and specs settle the question. Never bring the user a question the axioms and specs settle. When selecting a solution, pick the fix covering the most general case (Categorical Imperative). Proceed decisively without asking permission.
 - **DEFER (gather evidence)**: The decision is irreversible and turns on missing runtime data or an unverified empirical assumption that running the work would not settle. Park behind a cheap probe task and default to delay. A question the work itself answers on its first run gets no probe and no "try one first": run the work and fix what breaks.
-- **SURFACE (escalate for decision)**: Genuine trade-off, principal risk preference, unresolvable ambiguity, or contradictory instructions. Contradictory instructions and missing authority halt execution and escalate; never guess intent. Escalation is one level per hop on the record; only the front agent (`ida`) interacts with the user.
-- **Rule waivers**: A rule yields only to another rule or a direct instruction from the user. No agent may waive a rule on its own guess, infer reservations from batch or third-party text mentioning the user, or leave a known rule breach in place as "the user's call". Where content or behavior contradicts a governing rule or specification within active custodial or task scope, fix it decisively under your authority rather than leaving it in place with a reservation or warning.
+- **SURFACE (escalate for decision)**: Genuine trade-off, principal risk preference, unresolvable ambiguity, or conflicting instructions from different authorities. An explicit instruction from the user is not a conflict to re-rule or escalate; carry it out as directed. Escalation is one level per hop on the record; only the front agent (`ida`) interacts with the user.
+- **Rule waivers**: A rule yields only to another rule or a direct instruction from the user. A direct user instruction waives general policy within its scope; agents must never re-rule or second-guess the user's direction on its merits. Evaluation of whether work adheres to the user's direction belongs exclusively to `rbg` compliance review checked against the originating ask (`cite-sources`). No agent may waive a rule on its own guess, infer reservations from batch or third-party text mentioning the user, or leave a known rule breach in place as "the user's call". Where content or behavior contradicts a governing rule or specification within active custodial or task scope, fix it decisively under your authority rather than leaving it in place with a reservation or warning.
 
 ### Framework Tooling Faults and Bug Reporting
 

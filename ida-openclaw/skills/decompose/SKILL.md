@@ -34,6 +34,10 @@ State what needs doing, never how. Decompose reads; it runs nothing. What the re
    - **Merge into what exists**: search the graph first, `done` tasks and templates included; extend an overlapping node instead of minting a sibling. Overlap with completed work cuts the candidate to what that work left unanswered, wired `soft_depends_on` it; if nothing is left, do not mint.
    - **A first run is not a step**: the first execution of an existing node belongs to that node.
 6. **Wire the graph**: verb-led titles (`Implement X`), no personal names; `parent_id` for hierarchy, no redundant sibling edges; `depends_on` for hard blockers, `soft_depends_on` for informing context; a convergence node where forks rejoin; slugged ids (`<slug>`).
+7. **Write or redraw the plan view**:
+   - **Template selection**: Apply the plan-view template named by the user, if specified. Otherwise, discover templates tagged `plan-view` and select the template whose frontmatter marks `default: true`. Do not hardcode template names or identifiers in instructions. Halt loudly if the named template is missing, if no template carries the `plan-view` tag, or if multiple templates carry `default: true`.
+   - **Render the plan**: Apply the selected template to write a `## Plan` section on the objective's top-level task containing the stage strip, Mermaid dependency flowchart, workflow template colour legend, and summary table derived from descendant tasks. Display planned process and structural dependencies only; omit task status, assignee, progress, and execution metrics to preserve single source of truth on the tasks.
+   - **Idempotent redrawing**: Each run and re-run completely replaces any existing `## Plan` section in place, carrying added detail, forks, and graph modifications from the current tree.
 
 ## Output Schema
 
@@ -41,6 +45,7 @@ State what needs doing, never how. Decompose reads; it runs nothing. What the re
 - Expanded [PARENT-ID] into N components, F forks, P probes; C collapsed, M merged
 - Premises: <premise> -- held | false | probe TASK-ID; unresolved pointers: <list | none>
 - Capabilities: <need> -- recorded on <executor> | absent | probe TASK-ID
+- Plan view: written | redrawn on [PARENT-ID] via <template-slug>
 - [TASK-ID] - [TITLE] (fork: <branch> | probe for: <fork-id> | -)
 - Merged into [EXISTING-ID]: <candidate> (collapsed | overlap | first run)
 - Halted on: <unresolved blocker> [if applicable]
@@ -50,3 +55,4 @@ State what needs doing, never how. Decompose reads; it runs nothing. What the re
 
 - Abstract outcomes only; no execution methods, mechanisms, or scripts.
 - Bind no node to an executor or a workflow and write no acceptance criteria: a node is reified (`/reify`) when it is next to run, and not before.
+- Plan view shows planned process structure only; task status stays exclusively on child tasks.

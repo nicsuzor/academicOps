@@ -343,7 +343,7 @@ class MiniDocument {
 
 function generateValidInitData(botToken: string, userId: number): string {
   const nowSeconds = Math.floor(Date.now() / 1000);
-  const userJson = JSON.stringify({ id: userId, first_name: "Nic", username: "nicsuzor" });
+  const userJson = JSON.stringify({ id: userId, first_name: "Alex", username: "testuser" });
   const params = new URLSearchParams();
   params.set("auth_date", nowSeconds.toString());
   params.set("query_id", "AAG_MINIAPP_TEST");
@@ -361,7 +361,7 @@ function generateValidInitData(botToken: string, userId: number): string {
 
 describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
   const botToken = "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11";
-  const allowedUserId = 8860530746;
+  const allowedUserId = 1111111111;
   const appDir = join(import.meta.dir, "..", "app");
   let testStateDir = "";
   let httpServer: ReturnType<typeof startWebServer> | null = null;
@@ -609,7 +609,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
             }
           );
           if (typeof (permRelay as any).setMessageInfo === "function") {
-            (permRelay as any).setMessageInfo("perm_edit_1", 8860530746, 501, "Permission request: *Edit*");
+            (permRelay as any).setMessageInfo("perm_edit_1", 1111111111, 501, "Permission request: *Edit*");
           }
           if (typeof (store as any).addReview === "function") {
             (store as any).addReview({ repo: "nicsuzor/academicOps", pr: 2920 });
@@ -641,7 +641,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
       await new Promise((r) => setTimeout(r, 30));
       expect(resolvedDecision).toBe("allow");
       expect(editedCards.length).toBe(1);
-      expect(editedCards[0].chatId).toBe(8860530746);
+      expect(editedCards[0].chatId).toBe(1111111111);
       expect(editedCards[0].messageId).toBe(501);
       expect(editedCards[0].text).toContain("Allowed via Mini App ✅");
 
@@ -676,7 +676,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
           ],
           multiSelect: true,
           allowOther: true,
-          chatId: 8860530746,
+          chatId: 1111111111,
           turnId: "turn_m1",
         });
         multiQid = q1.questionId;
@@ -691,7 +691,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
           ],
           multiSelect: false,
           allowOther: true,
-          chatId: 8860530746,
+          chatId: 1111111111,
           turnId: "turn_s2",
         });
         singleQid = q2.questionId;
@@ -702,7 +702,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
           question: "Adopt obsolete format?",
           options: [{ label: "Yes" }, { label: "No" }],
           multiSelect: false,
-          chatId: 8860530746,
+          chatId: 1111111111,
           turnId: "turn_s3",
           sessionId: "session_m3",
         });
@@ -772,7 +772,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
       setup: async ({ store, broker }) => {
         store.setAnchor({
           focus: "Fixing Mini App tabs",
-          taskId: "aops_263eba56",
+          taskId: "aops_00000001",
           waitingOn: ["PR #2920 review", "Tailscale funnel check"],
           delegations: ["marsha: runtime QA", "rbg: axiom review"],
           contextTokens: {
@@ -783,12 +783,12 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
         });
         if (typeof (store as any).recordTurn === "function") {
           (store as any).recordTurn("in", "Can you fix the Mini App tabs?");
-          (store as any).recordTurn("out", "Claimed aops_263eba56 and updating all four tabs.");
+          (store as any).recordTurn("out", "Claimed aops_00000001 and updating all four tabs.");
         }
         await broker.askUser({
           question: "Approve Mini App tab layout?",
           options: [{ label: "Yes (Recommended)" }, { label: "No" }],
-          chatId: 8860530746,
+          chatId: 1111111111,
         });
       },
     });
@@ -802,7 +802,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
 
     // Focus and task ID
     expect(document.getElementById("anchor-focus")?.textContent).toBe("Fixing Mini App tabs");
-    expect(document.getElementById("anchor-task")?.textContent).toBe("aops_263eba56");
+    expect(document.getElementById("anchor-task")?.textContent).toBe("aops_00000001");
 
     // Waiting-on items
     expect(text).toContain("PR #2920 review");
@@ -817,7 +817,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
 
     // Recent turns (in and out)
     expect(text).toContain("Can you fix the Mini App tabs?");
-    expect(text).toContain("Claimed aops_263eba56 and updating all four tabs.");
+    expect(text).toContain("Claimed aops_00000001 and updating all four tabs.");
 
     // Uptime
     const uptimeEl = document.getElementById("anchor-uptime");
@@ -842,7 +842,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
             { label: "Yes, give the request explicitly", description: "Provides direct request text upfront", recommended: true },
             { label: "No, leave as is", description: "Keep deriving from branch task ID" },
           ],
-          chatId: 8860530746,
+          chatId: 1111111111,
           turnId: "turn_rbg_1",
         });
 
@@ -850,13 +850,13 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
         await broker.askUser({
           header: "Value model weight",
           question: "Raise `urgency` weight on cliff tasks?",
-          context: ">! Facts: `aops_5ff43ec0` showed 3 cliff tasks ranked below routine cleanup.",
+          context: ">! Facts: `aops_00000002` showed 3 cliff tasks ranked below routine cleanup.",
           recommendation: "Raise to 2.5x to clear cliff tasks before routine work.",
           options: [
             { label: "Raise to 2.5x (Recommended)", description: "Prioritizes due-within-48h tasks immediately" },
             { label: "Keep at 1.5x", description: "Preserve current focus balance" },
           ],
-          chatId: 8860530746,
+          chatId: 1111111111,
           turnId: "turn_cliff_2",
         });
 
@@ -868,7 +868,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
             { label: "UTC+10 (AEST)" },
             { label: "UTC+1 (BST)" },
           ],
-          chatId: 8860530746,
+          chatId: 1111111111,
           turnId: "turn_neutral_3",
         });
       },
@@ -888,7 +888,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
     expect(qList!.querySelector(".q-context")).not.toBeNull();
 
     // Decision 2: Markdown context and recommendation are rendered
-    expect(text).toContain("Facts: aops_5ff43ec0 showed 3 cliff tasks ranked below routine cleanup.");
+    expect(text).toContain("Facts: aops_00000002 showed 3 cliff tasks ranked below routine cleanup.");
     expect(text).toContain("Raise to 2.5x to clear cliff tasks before routine work.");
 
     // Decision 3: Neutral question does NOT falsely mark option 0 as Recommended
@@ -987,7 +987,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
             { label: "Apply now (Recommended)", description: "Low traffic confirmed" },
             { label: "Hold until weekend", description: "Wait for maintenance window" },
           ],
-          chatId: 8860530746,
+          chatId: 1111111111,
           turnId: "turn_mig_1",
         });
         migQid = q1.questionId;
@@ -996,7 +996,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
           header: "Simple Confirmation",
           question: "Proceed with routine log flush?",
           options: [{ label: "Yes (Recommended)" }, { label: "No" }],
-          chatId: 8860530746,
+          chatId: 1111111111,
           turnId: "turn_flush_2",
         });
         simpleQid = q2.questionId;

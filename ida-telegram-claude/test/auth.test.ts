@@ -13,7 +13,7 @@ describe("Mini App Security: initData validation and session tokens", () => {
   const allowFrom = [12345678];
 
   function generateValidInitData(userId: number, authDateSeconds: number): string {
-    const userJson = JSON.stringify({ id: userId, first_name: "Nic", username: "nicsuzor" });
+    const userJson = JSON.stringify({ id: userId, first_name: "Alex", username: "testuser" });
     const params = new URLSearchParams();
     params.set("auth_date", authDateSeconds.toString());
     params.set("query_id", "AAG_TEST_123");
