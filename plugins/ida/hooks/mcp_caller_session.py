@@ -2,7 +2,8 @@
 """Claude Code PreToolUse hook for injecting caller session into MCP calls.
 
 Matching `mcp__.*` tool calls, this hook injects a reserved `_session` object
-({session_id, agent_id, prompt_id}) into `hookSpecificOutput.updatedInput`,
+({session_id, agent_id, prompt_id}) into `hookSpecificOutput.updatedInput`
+only when the receiving server uses caller session (`pkb`, `services`),
 preserving all original tool arguments.
 """
 
@@ -12,15 +13,50 @@ import json
 import sys
 from typing import Any
 
+DEFAULT_SESSION_SERVERS = frozenset({"pkb", "services"})
 
-def inject_caller_session(raw: dict[str, Any]) -> dict[str, Any]:
+
+def extract_mcp_server(tool_name: str) -> str:
+    """Extract MCP server name from tool name like mcp__server__tool or mcp__plugin_foo_server__tool."""
+    if not tool_name.startswith("mcp__"):
+        return ""
+    raw = tool_name[5:]
+    parts = raw.split("__")
+    if not parts or not parts[0]:
+        return ""
+    server_raw = parts[0]
+    if ":" in server_raw:
+        return server_raw.split(":")[-1]
+    if server_raw.startswith("plugin_"):
+        remainder = server_raw[7:]
+        if "_" in remainder:
+            _, server_name = remainder.split("_", 1)
+            return server_name
+        return remainder
+    return server_raw
+
+
+def uses_caller_session(
+    tool_name: str,
+    session_servers: frozenset[str] = DEFAULT_SESSION_SERVERS,
+) -> bool:
+    """Check if the target MCP server consumes _session."""
+    server = extract_mcp_server(tool_name)
+    return bool(server and server in session_servers)
+
+
+def inject_caller_session(
+    raw: dict[str, Any],
+    session_servers: frozenset[str] = DEFAULT_SESSION_SERVERS,
+) -> dict[str, Any]:
     """Inject `_session` into tool input if applicable.
 
     Stdin carries `session_id`, `prompt_id` and `tool_use_id`, plus `agent_id`
-    inside subagents.
+    inside subagents. Only MCP calls targeting servers that consume caller session
+    receive `_session`.
     """
     tool_name = raw.get("tool_name", "")
-    if tool_name and not tool_name.startswith("mcp__"):
+    if not uses_caller_session(tool_name, session_servers=session_servers):
         return {}
 
     tool_input = raw.get("tool_input")

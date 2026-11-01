@@ -17,6 +17,7 @@ The axioms in [`plugins/rbg/skills/axioms/`](../plugins/rbg/skills/axioms/) appl
 On top of them:
 
 - **Integration base branch**: Under feature freeze, active development and PRs target `release/v1.0-rc0`. All workflows resolve the active base branch from this definition; PRs targeting alternative branches must be retargeted.
+- **Pre-approval PR readiness and landing**: Under feature freeze, PRs requiring user approval must be green and independently reviewed, with review feedback addressed, before approval; mergeability is not required before approval. Do not rebase or resolve merge conflicts before approval. Bringing a PR up to date with its base branch and resolving conflicts happens after approval, just before merge.
 - **No duplication.** Anything two plugins need lives in `lib/` and is injected
   at build time. A second copy is a build failure.
 - **No defaults.** No endpoint, URL, host, path, token, or credential appears in
