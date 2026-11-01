@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { processReplyOverflow } from "../src/telegram/overflow.js";
+import { isReferencesOnly, processReplyOverflow } from "../src/telegram/overflow.js";
 
 describe("Progressive disclosure: Overflow handling", () => {
   test("short reply under max_chat_chars stays in chat with no overflow", () => {
@@ -378,6 +378,123 @@ describe("Progressive disclosure: Overflow handling", () => {
       expect(result.chatText).toContain("… continued in Details");
       expect(result.combinedDetail).toContain(p2);
       expect(result.combinedDetail).toContain(references);
+    });
+
+    test("AC-1.4: explicit detail with non-reference bullet lists leaves chat text intact without reference label", () => {
+      const text = "Key operational steps completed successfully.";
+      const detail = "- Step 1: Checked logs\n- Step 2: Restarted redis\n- Step 3: Verified health endpoints";
+
+      const result = processReplyOverflow({
+        text,
+        detail,
+        maxChatChars: 1200,
+      });
+
+      expect(result.chatText).toBe(text);
+      expect(result.chatText).not.toContain("… references in Details");
+      expect(result.chatText).not.toContain("… continued in Details");
+      expect(result.hasDetailsButton).toBe(true);
+      expect(result.hasOverflow).toBe(false);
+      expect(result.isReferencesOnly).toBe(false);
+      expect(result.combinedDetail).toBe(detail);
+    });
+  });
+
+  describe("isReferencesOnly classification (positive and negative cases)", () => {
+    test("positive: recognizes DOI references", () => {
+      expect(isReferencesOnly("doi:10.1000/182")).toBe(true);
+      expect(isReferencesOnly("- doi:10.1000/182\n- doi:10.1002/047084289X")).toBe(true);
+      expect(isReferencesOnly("1. doi:10.1000/182")).toBe(true);
+    });
+
+    test("positive: recognizes bracketed numeric and author-year citations", () => {
+      expect(isReferencesOnly("[1] Fastener Technology Handbook, 4th ed.")).toBe(true);
+      expect(isReferencesOnly("- [1] Fastener Technology Handbook\n- [2] ISO 1234 Standard")).toBe(true);
+      expect(isReferencesOnly("[Smith 2020] Analysis of Fasteners")).toBe(true);
+      expect(isReferencesOnly("- [Smith 2020] Analysis of Fasteners\n- [Jones et al., 2021] Metal Fatigue")).toBe(true);
+      expect(isReferencesOnly("- (Smith et al. 2020) Structural Integrity")).toBe(true);
+      expect(isReferencesOnly("1. [1] Fastener Technology Handbook")).toBe(true);
+    });
+
+    test("positive: recognizes markdown links and direct URLs", () => {
+      expect(isReferencesOnly("https://example.com/guide\nhttps://example.com/iso")).toBe(true);
+      expect(isReferencesOnly("- [Fastener Guide](https://example.com/guide)\n- [ISO Spec](https://example.com/iso)")).toBe(true);
+      expect(isReferencesOnly("* https://example.com/guide\n- https://example.com/iso")).toBe(true);
+    });
+
+    test("positive: recognizes wikilinks", () => {
+      expect(isReferencesOnly("[[kb_d1c793dd]]")).toBe(true);
+      expect(isReferencesOnly("- [[kb_d1c793dd]]\n- [[kb_4647fe46]]")).toBe(true);
+    });
+
+    test("positive: recognizes reference headers with items", () => {
+      expect(isReferencesOnly("## References\n\n- Fastener handbook\n- Rivet standard")).toBe(true);
+      expect(isReferencesOnly("### Sources\n\n- [1] First source")).toBe(true);
+      expect(isReferencesOnly("References:\n\n- Source A\n- Source B")).toBe(true);
+    });
+
+    test("negative: non-reference bullet lists (action items, steps, logs)", () => {
+      expect(isReferencesOnly("- Step 1: Checked logs\n- Step 2: Restarted redis")).toBe(false);
+      expect(isReferencesOnly("- Deploy update to staging\n- Run smoke test suite")).toBe(false);
+      expect(isReferencesOnly("* Investigated database latency\n* Scaled connection pool")).toBe(false);
+    });
+
+    test("negative: numbered procedural steps", () => {
+      expect(isReferencesOnly("1. First investigate the problem\n2. Next apply patch")).toBe(false);
+      expect(isReferencesOnly("1. Checked logs\n2. Restarted service")).toBe(false);
+    });
+
+    test("negative: narrative prose paragraphs", () => {
+      expect(isReferencesOnly("This is a substantive response discussing system architecture without citing sources.")).toBe(false);
+      expect(isReferencesOnly("## Investigation Notes\n- Step 1: Checked logs")).toBe(false);
+    });
+
+    test("negative: narrative list items that merely contain an inline link", () => {
+      expect(isReferencesOnly("- Followed instructions in [manual](https://example.com) to reboot\n- Completed verification")).toBe(false);
+    });
+  });
+
+  describe("Orphan heading prevention and edge cases", () => {
+    test("orphan heading is relocated to overflow when preceded by fitted content", () => {
+      const p1 = "Paragraph 1 with substantive summary. " + "A".repeat(200);
+      const heading = "### Next Steps";
+      const p2 = "Paragraph 2 detailing the next steps. " + "B".repeat(300);
+      const fullText = `${p1}\n\n${heading}\n\n${p2}`;
+
+      const result = processReplyOverflow({ text: fullText, maxChatChars: 350 });
+
+      expect(result.chatText).toContain("… continued in Details");
+      expect(result.chatText).not.toContain("### Next Steps");
+      expect(result.combinedDetail?.startsWith("### Next Steps")).toBe(true);
+      expect(result.combinedDetail).toContain(p2);
+    });
+
+    test("orphan heading edge case: when heading is sole paragraph before overflow, sentence budgeting prevents empty chat text", () => {
+      const heading = "### Investigation Findings";
+      const p1 = "First sentence of findings explains root cause. Second sentence elaborates on the database deadlock in worker threads. " + "D".repeat(400);
+      const fullText = `${heading}\n\n${p1}`;
+
+      const result = processReplyOverflow({ text: fullText, maxChatChars: 150 });
+
+      expect(result.chatText).toContain("### Investigation Findings");
+      expect(result.chatText).toContain("First sentence of findings explains root cause.");
+      expect(result.chatText).toContain("… continued in Details");
+      expect(result.chatText.startsWith("\n\n")).toBe(false);
+      expect(result.chatText.trim().length).toBeGreaterThan(0);
+      expect(result.combinedDetail).toContain("Second sentence elaborates");
+    });
+
+    test("orphan heading edge case: when heading is sole paragraph and subsequent content cannot be split, retains heading so chat text is not empty", () => {
+      const heading = "### UrgentNotice";
+      const p1 = "Z".repeat(500); // single unbreakable word
+      const fullText = `${heading}\n\n${p1}`;
+
+      const result = processReplyOverflow({ text: fullText, maxChatChars: 120 });
+
+      expect(result.chatText).toContain("### UrgentNotice");
+      expect(result.chatText).toContain("… continued in Details");
+      expect(result.chatText.startsWith("\n\n")).toBe(false);
+      expect(result.chatText.trim()).not.toBe("… continued in Details");
     });
   });
 });

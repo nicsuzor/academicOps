@@ -32,7 +32,8 @@ export function isReferencesOnly(content?: string): boolean {
 
   const refHeaderRegex = /^(?:#{1,6}\s+|\*{0,2}|_{0,2})(?:references|sources|citations|bibliography)(?:\s*&.*)?(?::|\*{0,2}|_{0,2})\s*$/i;
   const nonRefHeaderRegex = /^#{1,6}\s+/i;
-  const citationItemRegex = /^(?:(?:[-*+]|\d+\.|\(\d+\)|\[\d+\])\s+|\[.+\]\(.+\)|https?:\/\/|\[(?:[0-9]+|[A-Za-z]+(?:\s+et\s+al\.?)?,?\s*\d{4})\]|doi:|\[\[.+\]\])/i;
+  const citationItemRegex =
+    /^(?:(?:[-*+]|\d+\.|\(\d+\))\s+)?(?:\[.+\]\(.+\)|https?:\/\/|\[(?:[0-9]+|[A-Za-z]+(?:\s+et\s+al\.?)?,?\s*\d{4})\]|\((?:[A-Za-z]+(?:\s+et\s+al\.?)?,?\s*\d{4})\)|doi:|\[\[.+\]\])/i;
 
   if (refHeaderRegex.test(lines[0])) {
     for (let i = 1; i < lines.length; i++) {
@@ -126,14 +127,15 @@ export function processReplyOverflow(input: ProcessReplyInput): ProcessReplyResu
       // If even the first paragraph doesn't fit within budget, we take up to effectiveBudget at last sentence/word
       if (fittedParagraphs.length === 0) {
         let splitIdx = p.lastIndexOf(". ", effectiveBudget);
-        if (splitIdx === -1) {
-          splitIdx = p.lastIndexOf(" ", effectiveBudget);
+        let endIdx = splitIdx !== -1 ? splitIdx + 1 : -1;
+        if (endIdx === -1) {
+          endIdx = p.lastIndexOf(" ", effectiveBudget);
         }
-        if (splitIdx === -1) {
-          splitIdx = effectiveBudget;
+        if (endIdx === -1) {
+          endIdx = effectiveBudget;
         }
-        fittedParagraphs.push(p.substring(0, splitIdx).trim());
-        remainingParagraphs.push(p.substring(splitIdx).trimStart());
+        fittedParagraphs.push(p.substring(0, endIdx).trim());
+        remainingParagraphs.push(p.substring(endIdx).trimStart());
       } else {
         remainingParagraphs.push(p);
       }
@@ -151,8 +153,33 @@ export function processReplyOverflow(input: ProcessReplyInput): ProcessReplyResu
     remainingParagraphs.length > 0 &&
     /^#{1,6}\s+/.test(fittedParagraphs[fittedParagraphs.length - 1].trim())
   ) {
-    const orphanHeading = fittedParagraphs.pop()!;
-    remainingParagraphs.unshift(orphanHeading);
+    if (fittedParagraphs.length === 1) {
+      // If the heading is the ONLY paragraph that fitted, do not leave chatText empty.
+      // Attempt sentence/word budgeting into the next paragraph so chatText carries substantive content;
+      // if no substantive chunk fits, retain the heading so chatText is never sent empty.
+      const nextP = remainingParagraphs[0];
+      const remainingBudget = effectiveBudget - currentLen - 2;
+      if (remainingBudget > 20 && nextP) {
+        let splitIdx = nextP.lastIndexOf(". ", remainingBudget);
+        let endIdx = splitIdx !== -1 ? splitIdx + 1 : -1;
+        if (endIdx === -1) {
+          endIdx = nextP.lastIndexOf(" ", remainingBudget);
+        }
+        if (endIdx > 0) {
+          const fittedChunk = nextP.substring(0, endIdx).trim();
+          const remainingChunk = nextP.substring(endIdx).trimStart();
+          fittedParagraphs.push(fittedChunk);
+          if (remainingChunk) {
+            remainingParagraphs[0] = remainingChunk;
+          } else {
+            remainingParagraphs.shift();
+          }
+        }
+      }
+    } else {
+      const orphanHeading = fittedParagraphs.pop()!;
+      remainingParagraphs.unshift(orphanHeading);
+    }
   }
 
   const overflowText = remainingParagraphs.join("\n\n");
@@ -183,7 +210,11 @@ export function processReplyOverflow(input: ProcessReplyInput): ProcessReplyResu
     baseChatText.endsWith("… references in Details") ||
     baseChatText.endsWith("... references in Details");
 
-  const chatText = alreadyHasSuffix ? baseChatText : baseChatText + suffix;
+  const chatText = alreadyHasSuffix
+    ? baseChatText
+    : baseChatText
+      ? `${baseChatText}${suffix}`
+      : suffix.trimStart();
 
   return {
     chatText,
