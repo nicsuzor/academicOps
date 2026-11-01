@@ -142,7 +142,7 @@ sequenceDiagram
     participant Cloud as Cloud Session
     participant Graph as Task Graph
 
-    Operator->>Ida: /shunt <cloud-target>
+    Operator->>Ida: /shunt [cloud-target]
     Ida->>Bus: send_message(cloud_target, "shunt_request", {task_id, reply_to: "task_graph"})
     Ida->>Ida: Schedule bounded task polling (interval: 5s..30s, max: 180s)
     Bus->>Cloud: Delivery ("shunt_request")
@@ -177,55 +177,6 @@ In accordance with Telegram channel invariants, the shunted session never commun
 - **Tier 2 (Expandable evidence)**: Expandable quote (`>!`) containing the git branch, commit hash, and handover rationale.
 - **Tier 3 (Details page)**: Stored Details Markdown containing extended tool logs, test outputs, or background discussion, accessible via the `🔍 Details` Mini App button.
 - **Decision Cards**: If the target session left unresolved questions, they are formatted as vertical option buttons with the recommended action first.
-
-### 5. Rule and Skill Conflict Analysis with Drafted Amendments
-
-The introduction of `shunt` interacts with existing framework rules and skills. The following amendments resolve all identified seams:
-
-#### A. Amendment to `takeover` Command (`nicsuzor/ida:.claude/commands/takeover.md`)
-
-- _Conflict_: The legacy `takeover` command operates as an indiscriminate pull-based broadcast ("find sessions waiting on him and take over their side") and explicitly notes that cloud sessions cannot message back without providing a resolution protocol.
-- _Drafted Amendment_: Update `takeover.md` to delineate pull-based batch monitoring from targeted single-session shunts:
-  ```markdown
-  # Handover Integration in Takeover
-
-  When taking over conversations:
-
-  1. For targeted session transitions, prefer `/shunt <session-id>` to initiate structured state transfer.
-  2. In batch discovery, when reaching cloud sessions that cannot reply over the message bus, inspect their active tasks on the task graph for pending `## Handover` entries rather than reporting them as permanently unreachable.
-  ```
-
-#### B. Scoped Clarification to Polling Prohibition (`rules/polling.md`)
-
-- _Conflict_: Framework rules prohibit shell polling loops (`while`, `until`, `sleep`) in Bash. However, detecting cloud session handover requires observing task state changes over time because cloud targets cannot emit outbound bus events.
-- _Drafted Amendment_: Add an explicit platform boundary exception to `rules/polling.md`:
-  ```markdown
-  ## Asynchronous Platform Boundary Exception
-
-  Where a hardware, container, or network boundary enforces one-way communication (specifically, cloud execution environments unable to emit outbound message bus events), bounded task observation via harness timers or scheduled polling intervals is permitted, subject to:
-
-  1. Use of harness scheduling tools (`schedule` or timer mechanisms) rather than shell `sleep` loops;
-  2. Bounded backoff intervals with a mandatory maximum timeout;
-  3. Explicit failure reporting upon timeout expiry.
-  ```
-
-#### C. Harmonization with Telegram Channel Invariants (`ida-telegram` Specification)
-
-- _Conflict_: None. The design strictly preserves the invariant that only authorized Telegram bot instances (Prime, Actual, Audre) register Telegram MCP tools and poll the Telegram API. Relayed messages from target sessions are treated as internal data events and formatted through the standard Telegram agent presentation pipeline.
-
-#### D. Amendment to `ida-telegram` Telegram Skill (`skills/telegram/SKILL.md`)
-
-- _Conflict_: `SKILL.md` defines reply budgets and question card interactions but lacks guidance for presenting shunted sessions and handback digests.
-- _Drafted Amendment_: Add a section to `skills/telegram/SKILL.md`:
-  ```markdown
-  ## Shunted Conversations & Handover Notices
-
-  When assuming control of a conversation shunted from another session:
-
-  - Deliver an immediate Tier 1 announcement stating the shunted task and origin environment.
-  - Present pending decisions as native interactive question cards with option buttons, placing recommendations first.
-  - Maintain the ~100-word budget for chat, moving extended commit logs and environment states into Tier 2 collapsed quotes (`>!`) or the Mini App Details page.
-  ```
 
 ## Open questions
 
