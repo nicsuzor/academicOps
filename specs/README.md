@@ -56,6 +56,7 @@
 - [telegram/mini-app-dashboard-integration.md](telegram/mini-app-dashboard-integration.md) -- integration plan and interface specification for serving the Telegram Mini App from the overwhelm dashboard with dynamic state and bi-directional communication.
 - [telegram/reactions.md](telegram/reactions.md) -- Telegram reaction handling contract, platform-authoritative validation, and unified shared reaction legend across bot personas.
 - [telegram/reply-button-layout.md](telegram/reply-button-layout.md) -- reply button layout customization, consolidated predefined row, and tap acknowledgement specification.
+- [telegram/shunt-handover.md](telegram/shunt-handover.md) -- single-command conversation handover from any session to Telegram across local, remote-control, and cloud environments.
 - [telegram/threaded-conversations.md](telegram/threaded-conversations.md) -- threaded Telegram conversations and topic message routing by default without configuration.
 
 ## Tools
