@@ -17,6 +17,10 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.skip(
+    reason="Degraded capability hook disabled pending enforcement map confirmation that instructions alone are ineffective",
+)
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 IDA_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
 

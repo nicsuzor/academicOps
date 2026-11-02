@@ -617,3 +617,33 @@ def test_tool_span_with_tool_summary_parsed_by_phoenix_transcript():
     tool_step = turns[0].tool_steps[0]
     assert tool_step.title == "portal_codemode_execute"
     assert tool_step.action == "Claim task aops_fa4c6994"
+
+
+def test_resolve_session_id_handles_both_session_id_and_conversation_id():
+    """Verify resolve_session_id seamlessly resolves session_id, conversationId, and conversation_id."""
+    # 1. Payload has conversationId when looking for session_id
+    assert (
+        claude_code_tracer.resolve_session_id({"conversationId": "conv-123"}, "session_id")
+        == "conv-123"
+    )
+    # 2. Payload has session_id when looking for conversationId
+    assert (
+        claude_code_tracer.resolve_session_id({"session_id": "sess-456"}, "conversationId")
+        == "sess-456"
+    )
+    # 3. Payload has conversation_id snake_case
+    assert (
+        claude_code_tracer.resolve_session_id({"conversation_id": "conv-789"}, "session_id")
+        == "conv-789"
+    )
+    # 4. Neither present returns None when AOPS_SESSION_ID is unset
+    with patch.dict("os.environ", {}, clear=True):
+        assert claude_code_tracer.resolve_session_id({}, "session_id") is None
+    # 5. prefer_env=True resolves AOPS_SESSION_ID when set
+    with patch.dict("os.environ", {"AOPS_SESSION_ID": "env-session-root"}):
+        assert (
+            claude_code_tracer.resolve_session_id(
+                {"conversationId": "subagent-child"}, "conversationId", prefer_env=True
+            )
+            == "env-session-root"
+        )

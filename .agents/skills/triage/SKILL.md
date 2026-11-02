@@ -28,7 +28,7 @@ the tracking issues.
 
 ### 1. Select the transcript and gate on its quality
 
-- **Review only the session ID, transcript path, or session context passed in the
+- **Review only the session ID / conversation ID, transcript path, or session context passed in the
   prompt.** Never fall back to a random unreviewed transcript. With no target
   supplied, halt and report.
 - The current session may be reviewed by a fresh subagent, whose detached context
@@ -36,7 +36,7 @@ the tracking issues.
   grading its own work in the same context.
 - Verify `$AOPS_SESSIONS` is set and `$AOPS_SESSIONS/transcripts` exists; if not,
   stop and ask the user.
-- Resolve the session ID against `$AOPS_SESSIONS/transcripts/YYYY-MM/` and read
+- Resolve the session ID / conversation ID against `$AOPS_SESSIONS/transcripts/YYYY-MM/` and read
   the markdown. Each session also has HTML and JSON sidecars — see
   [`specs/transcript-pipeline.md`](../../../specs/transcript-pipeline.md#4-output-formats).
 - **Verify the transcript is complete and usable before analysing it.** If it is
@@ -90,8 +90,7 @@ instance, not the whole class.
 - Stamp review provenance in the daily note as one self-contained semantic chunk
   so the PKB indexes it: a heading `### Retro review stamp: session <SID>
   (<project>)`, tagged `#retro #reviewed #triage-retro #<project-tag>`, carrying
-  the verbatim `reviewed_by` block (agent, date, verdict, issues_filed, session
-  ID, transcript path). This indexed entry is the durable already-reviewed signal
+  the verbatim `reviewed_by` block (agent, date, verdict, issues_filed, session ID / conversation ID, transcript path). This indexed entry is the durable already-reviewed signal
   that prevents re-triaging the same transcript.
 - Run the test suite (`uv run pytest`) over any fix applied, then commit and open
   a PR referencing both the fix and the filed issues.

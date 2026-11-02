@@ -4,8 +4,6 @@ type: spec
 category: workflow
 status: settled
 settled_at: 2026-10-12
-task: aops_bed11e87
-epic: aops_ee1257cb
 depends_on: [flow-rule]
 tags: [spec, workflow, valuation, ranking, densify, deadlines, intake, email, pkb]
 ---

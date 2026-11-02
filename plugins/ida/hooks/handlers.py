@@ -84,6 +84,8 @@ _SEARCH_TIMEOUT_SECONDS = 5
 _MAX_INJECT_CHARS = 8000
 _TRUNCATION_MARKER = "\n[...truncated, output exceeded injection budget...]"
 _MAX_QUERY_CHARS = 8192
+_DEFAULT_SEARCH_LIMIT = 5
+_DEFAULT_SEARCH_DETAIL = "snippet"
 
 _PEER_PREAMBLE = re.compile(
     r"^(?:Another Claude session sent a message:\s*)+",
@@ -195,78 +197,31 @@ def extract_prompt_query(prompt: str) -> str:
     return text[:_MAX_QUERY_CHARS]
 
 
-# Cloudflare Access service-token pairs, in order of preference. The worker
-# pair comes first because it has no polecat dispatch access (Nic, tg 2369).
-_ACCESS_TOKEN_PAIRS = (
-    ("WORKER_MCP_TOKEN_ID", "WORKER_MCP_TOKEN_SECRET"),
-    ("DISPATCHER_MCP_TOKEN_ID", "DISPATCHER_MCP_TOKEN_SECRET"),
-    ("CF_ACCESS_CLIENT_ID", "CF_ACCESS_CLIENT_SECRET"),
-)
-
-
-def _read_client_mcp_headers() -> dict[str, str]:
-    """Read MCP headers from client configuration files (Claude and agy) when unset in env."""
-    headers: dict[str, str] = {}
-    config_paths = [
-        Path(os.environ.get("CLAUDE_CONFIG_DIR", Path.home() / ".claude")) / ".claude.json",
-        Path.home() / ".claude.json",
-        Path(os.environ.get("CLAUDE_CONFIG_DIR", Path.home() / ".claude")) / "mcp_config.json",
-        Path.home() / ".gemini" / "config" / "mcp_config.json",
-        Path.home() / ".gemini" / "antigravity-cli" / "mcp_config.json",
-    ]
-    for p in config_paths:
-        if p.is_file():
-            try:
-                data = json.loads(p.read_text(encoding="utf-8"))
-                servers = data.get("mcpServers", {})
-                for server_name in ("services", "pkb"):
-                    srv = servers.get(server_name)
-                    if isinstance(srv, dict):
-                        h = srv.get("headers")
-                        if isinstance(h, dict):
-                            for k, v in h.items():
-                                headers.setdefault(str(k), str(v))
-            except Exception as exc:
-                log.debug("Could not read client MCP config %s: %s", p, exc)
-    return headers
+# Cloudflare Access service-token credentials. The hook and runtime expect
+# a single canonical set of variable names: DISPATCHER_MCP_TOKEN_ID and
+# DISPATCHER_MCP_TOKEN_SECRET. Launching applications substitute the
+# appropriate keys (e.g. worker-scoped credentials for worker containers)
+# into these environment variables.
+_TOKEN_ID_VAR = "DISPATCHER_MCP_TOKEN_ID"
+_TOKEN_SECRET_VAR = "DISPATCHER_MCP_TOKEN_SECRET"
 
 
 def _resolve_mcp_headers() -> dict[str, str]:
-    """HTTP headers for the PKB endpoint.
+    """HTTP headers for the PKB endpoint, from the environment only.
 
-    Resolves from the environment first: `PKB_MCP_HEADERS` (JSON object) and
-    Cloudflare Access service-token pairs (`WORKER_MCP_TOKEN_*`, `DISPATCHER_MCP_TOKEN_*`,
-    or `CF_ACCESS_CLIENT_*`). If no Access client ID is set, falls back to reading
-    headers from client MCP configurations (~/.claude/.claude.json,
-    ~/.gemini/config/mcp_config.json) to authenticate local and crew sessions reliably.
+    The hook and runtime expect the canonical Cloudflare Access token pair:
+    `DISPATCHER_MCP_TOKEN_ID` and `DISPATCHER_MCP_TOKEN_SECRET`. Launching
+    applications substitute the appropriate keys for different surfaces and
+    use cases (such as worker-scoped credentials in isolated worker containers).
     """
-    headers: dict[str, str] = {}
-
-    env_headers = os.environ.get("PKB_MCP_HEADERS")
-    if env_headers:
-        try:
-            parsed = json.loads(env_headers)
-        except json.JSONDecodeError as exc:
-            log.warning("PKB_MCP_HEADERS is not valid JSON, ignoring it: %s", exc)
-        else:
-            if isinstance(parsed, dict):
-                headers.update({str(k): str(v) for k, v in parsed.items()})
-            else:
-                log.warning("PKB_MCP_HEADERS is not a JSON object, ignoring it")
-
-    for id_var, secret_var in _ACCESS_TOKEN_PAIRS:
-        cf_id = os.environ.get(id_var)
-        cf_secret = os.environ.get(secret_var)
-        if cf_id and cf_secret:
-            headers.setdefault("CF-Access-Client-Id", cf_id)
-            headers.setdefault("CF-Access-Client-Secret", cf_secret)
-            break
-
-    if "CF-Access-Client-Id" not in headers:
-        for k, v in _read_client_mcp_headers().items():
-            headers.setdefault(k, v)
-
-    return headers
+    cf_id = os.environ.get(_TOKEN_ID_VAR)
+    cf_secret = os.environ.get(_TOKEN_SECRET_VAR)
+    if cf_id and cf_secret:
+        return {
+            "CF-Access-Client-Id": cf_id,
+            "CF-Access-Client-Secret": cf_secret,
+        }
+    return {}
 
 
 def _tracer_state_dir() -> Path:
@@ -401,7 +356,7 @@ def _initialize_mcp_session(mcp_url: str, base_headers: dict[str, str]) -> str |
     except urllib.error.HTTPError as exc:
         if exc.code in (401, 403):
             raise RuntimeError(
-                f"the PKB endpoint refused authorisation (HTTP {exc.code}); check PKB_MCP_HEADERS, WORKER_MCP_TOKEN_ID / WORKER_MCP_TOKEN_SECRET, or DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
+                f"the PKB endpoint refused authorisation (HTTP {exc.code}); check DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
             ) from exc
         raise RuntimeError(
             f"the PKB endpoint failed with HTTP {exc.code} during initialize: {exc.reason}"
@@ -444,6 +399,8 @@ def _post_mcp_search(
     prompt_id: str | None = None,
     agent_id: str | None = None,
     surface: str | None = None,
+    limit: int = _DEFAULT_SEARCH_LIMIT,
+    detail: str = _DEFAULT_SEARCH_DETAIL,
 ) -> str | None:
     """Search the PKB over a single streamable-HTTP POST to PKB_MCP_URL."""
     sess_id = session_id if session_id is not None else (os.environ.get("AOPS_SESSION_ID") or "")
@@ -507,6 +464,8 @@ def _post_mcp_search(
             "name": tool_name,
             "arguments": {
                 "query": query,
+                "limit": limit,
+                "detail": detail,
                 "_session": session_payload,
             },
         },
@@ -543,7 +502,7 @@ def _post_mcp_search(
 
     if status in (401, 403):
         raise RuntimeError(
-            f"the PKB endpoint refused authorisation (HTTP {status}); check PKB_MCP_HEADERS, WORKER_MCP_TOKEN_ID / WORKER_MCP_TOKEN_SECRET, or DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
+            f"the PKB endpoint refused authorisation (HTTP {status}); check DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
         )
 
     session_needed = False
@@ -591,7 +550,7 @@ def _post_mcp_search(
             status, body = _execute_post(req_headers)
             if status in (401, 403):
                 raise RuntimeError(
-                    f"the PKB endpoint refused authorisation (HTTP {status}); check PKB_MCP_HEADERS, WORKER_MCP_TOKEN_ID / WORKER_MCP_TOKEN_SECRET, or DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
+                    f"the PKB endpoint refused authorisation (HTTP {status}); check DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
                 )
             if status != 200:
                 clean_body = " ".join(body.split())
@@ -616,6 +575,8 @@ def _run_pkb_search(
     prompt_id: str | None = None,
     agent_id: str | None = None,
     surface: str | None = None,
+    limit: int | None = None,
+    detail: str | None = None,
 ) -> str | None:
     query = extract_prompt_query(prompt)[:_MAX_QUERY_CHARS]
     if not query:
@@ -638,6 +599,10 @@ def _run_pkb_search(
         kwargs["agent_id"] = agent_id
     if surface is not None:
         kwargs["surface"] = surface
+    if limit is not None:
+        kwargs["limit"] = limit
+    if detail is not None:
+        kwargs["detail"] = detail
 
     if kwargs:
         return _post_mcp_search(mcp_url, query, headers, **kwargs)
@@ -864,6 +829,8 @@ def _export_session_id(ctx: HookContext) -> bool:
 
 PREMISE_CHECK_POINTER = (
     "Reports follow `premise-check`: written in its shape and checked on receipt."
+    " Load the skill (`ida:premise-check`) before writing or checking one;"
+    " its form is a restricted subset of Argdown."
 )
 
 
@@ -949,6 +916,7 @@ def _prepare_tracer_data(ctx: HookContext) -> dict[str, Any]:
     data = dict(ctx.raw)
     if ctx.session_id:
         data.setdefault("session_id", ctx.session_id)
+        data.setdefault("conversationId", ctx.session_id)
     if ctx.cwd:
         data.setdefault("cwd", ctx.cwd)
     if ctx.agent_type:
@@ -1033,45 +1001,10 @@ def agy_stop(ctx: HookContext) -> Result | None:
 
 
 def post_tool_degraded_check(ctx: HookContext) -> Result | None:
-    """Detect degraded capability flags in tool results and warn."""
-    tool_resp = ctx.raw.get("tool_response") or ctx.raw.get("toolResponse")
-    if not tool_resp:
-        return None
+    """Detect degraded capability flags in tool results and warn.
 
-    if isinstance(tool_resp, str):
-        try:
-            tool_resp = json.loads(tool_resp)
-        except Exception:
-            return None
-
-    if not isinstance(tool_resp, dict):
-        return None
-
-    has_degraded = False
-    details = []
-    if tool_resp.get("voiceSent") is False or tool_resp.get("voiceError"):
-        has_degraded = True
-        err = tool_resp.get("voiceError") or "voiceSent is false"
-        details.append(f"voiceError: {err}")
-
-    for k, v in tool_resp.items():
-        if k.endswith("_error") and v:
-            has_degraded = True
-            details.append(f"{k}: {v}")
-
-    if has_degraded:
-        msg_template, user_template = load_message_pair(ctx.hooks_dir, "degraded_capability")
-        if not msg_template:
-            msg_template = (
-                "Degraded capability failure detected in tool response. Under `halt-on-failure` and `fail-fast`:\n"
-                "- Do not silently swallow this degradation or treat the action as fully successful.\n"
-                "- Required: Report the capability failure verbatim to the user and log an escalation issue/task."
-            )
-        inject_text = f"{msg_template}\n\nDegraded output details:\n" + "\n".join(
-            f"- {d}" for d in details
-        )
-        return warn(inject_text, user_template)
-
+    Disabled pending enforcement map confirmation that instructions alone are ineffective.
+    """
     return None
 
 
@@ -1127,10 +1060,7 @@ def post_tool(ctx: HookContext) -> Result | None:
     emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_post_tool")
     agy_post_tool(ctx)
-    steps = (
-        post_tool_degraded_check,
-        hearsay_arm,
-    )
+    steps = (hearsay_arm,)
     return _merge([_run_handler(step, ctx) for step in steps])
 
 

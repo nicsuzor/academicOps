@@ -27,7 +27,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
         message_id: 102,
         date: Date.now(),
         chat: { id: 12345678, type: "private" },
-        from: { id: 12345678, is_bot: false, first_name: "Nic" },
+        from: { id: 12345678, is_bot: false, first_name: "Alex" },
         text: "Please inspect the latest commit.",
       },
     };
@@ -48,7 +48,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
         message_id: 103,
         date: Date.now(),
         chat: { id: 12345678, type: "private" },
-        from: { id: 12345678, is_bot: false, first_name: "Nic" },
+        from: { id: 12345678, is_bot: false, first_name: "Alex" },
         text: "Yes, proceed with option A.",
         reply_to_message: {
           message_id: 99,
@@ -71,7 +71,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
       message_reaction: {
         chat: { id: 12345678, type: "private" },
         message_id: 88,
-        user: { id: 12345678, is_bot: false, first_name: "Nic" },
+        user: { id: 12345678, is_bot: false, first_name: "Alex" },
         date: Date.now(),
         old_reaction: [],
         new_reaction: [{ type: "emoji", emoji: "🔥" }],
@@ -111,6 +111,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
         port: 0,
         stateDir,
         socketPath: join(stateDir, "hook.sock"),
+        miniAppUrl: "https://ida.example.test",
         botCommands: [],
       };
       const broker = new QuestionBroker(stateDir);
@@ -132,7 +133,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
         message_reaction: {
           chat: { id: 12345678, type: "private" },
           message_id: 500,
-          user: { id: 12345678, is_bot: false, first_name: "Nic" },
+          user: { id: 12345678, is_bot: false, first_name: "Alex" },
           date: Date.now(),
           old_reaction: [],
           new_reaction: [{ type: "emoji", emoji: "🔥" }],
@@ -153,7 +154,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
       update_id: 5,
       callback_query: {
         id: "cb_1",
-        from: { id: 12345678, is_bot: false, first_name: "Nic" },
+        from: { id: 12345678, is_bot: false, first_name: "Alex" },
         message: {
           message_id: 77,
           date: Date.now(),
@@ -178,7 +179,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
       update_id: 51,
       callback_query: {
         id: "cb_lc_1",
-        from: { id: 12345678, is_bot: false, first_name: "Nic" },
+        from: { id: 12345678, is_bot: false, first_name: "Alex" },
         message: {
           message_id: 88,
           date: Date.now(),
@@ -205,7 +206,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
       update_id: 52,
       callback_query: {
         id: "cb_exp_1",
-        from: { id: 12345678, is_bot: false, first_name: "Nic" },
+        from: { id: 12345678, is_bot: false, first_name: "Alex" },
         message: {
           message_id: 89,
           date: Date.now(),
@@ -227,6 +228,92 @@ describe("Inbound completeness: Updates routing and parsing", () => {
     expect(result?.content).toContain("explain");
   });
 
+  test("delivers reasons button tap event naming target message and excerpt", () => {
+    const update: TelegramUpdate = {
+      update_id: 53,
+      callback_query: {
+        id: "cb_rsn_1",
+        from: { id: 12345678, is_bot: false, first_name: "Alex" },
+        message: {
+          message_id: 90,
+          date: Date.now(),
+          chat: { id: 12345678, type: "private" },
+          text: "Statement needing argument chain.",
+        },
+        data: "reasons",
+      },
+    };
+
+    const result = parseInboundUpdate(update, allowFrom);
+    expect(result).not.toBeNull();
+    expect(result?.event).toBe("reasons");
+    expect(result?.meta.event).toBe("reasons");
+    expect(result?.meta.action).toBe("reasons");
+    expect(result?.meta.target_message_id).toBe("90");
+    expect(result?.meta.target_excerpt).toBe("Statement needing argument chain.");
+    expect(result?.content).toContain("90");
+    expect(result?.content).toContain("reasons");
+    expect(result?.content).toContain("How do you know that?");
+  });
+
+  test("delivers accept_recommendation button tap event naming target message and acceptance", () => {
+    const update: TelegramUpdate = {
+      update_id: 54,
+      callback_query: {
+        id: "cb_acc_1",
+        from: { id: 12345678, is_bot: false, first_name: "Alex" },
+        message: {
+          message_id: 91,
+          date: Date.now(),
+          chat: { id: 12345678, type: "private" },
+          text: "Recommended plan of action.",
+        },
+        data: "accept_recommendation",
+      },
+    };
+
+    const result = parseInboundUpdate(update, allowFrom);
+    expect(result).not.toBeNull();
+    expect(result?.event).toBe("accept_recommendation");
+    expect(result?.meta.event).toBe("accept_recommendation");
+    expect(result?.meta.action).toBe("accept_recommendation");
+    expect(result?.meta.recommendation).toBe("accepted");
+    expect(result?.meta.choice).toBe("accept");
+    expect(result?.meta.target_message_id).toBe("91");
+    expect(result?.meta.target_excerpt).toBe("Recommended plan of action.");
+    expect(result?.content).toContain("91");
+    expect(result?.content).toMatch(/the user accepted the recommendation/i);
+  });
+
+  test("delivers decline_recommendation button tap event naming target message and declination", () => {
+    const update: TelegramUpdate = {
+      update_id: 55,
+      callback_query: {
+        id: "cb_dec_1",
+        from: { id: 12345678, is_bot: false, first_name: "Alex" },
+        message: {
+          message_id: 92,
+          date: Date.now(),
+          chat: { id: 12345678, type: "private" },
+          text: "Alternate recommendation not desired.",
+        },
+        data: "decline_recommendation",
+      },
+    };
+
+    const result = parseInboundUpdate(update, allowFrom);
+    expect(result).not.toBeNull();
+    expect(result?.event).toBe("decline_recommendation");
+    expect(result?.meta.event).toBe("decline_recommendation");
+    expect(result?.meta.action).toBe("decline_recommendation");
+    expect(result?.meta.recommendation).toBe("declined");
+    expect(result?.meta.choice).toBe("decline");
+    expect(result?.meta.target_message_id).toBe("92");
+    expect(result?.meta.target_excerpt).toBe("Alternate recommendation not desired.");
+    expect(result?.content).toContain("92");
+    expect(result?.content).toMatch(/the user declined the recommendation/i);
+  });
+
   test("delivers bot commands as channel events", () => {
     const update: TelegramUpdate = {
       update_id: 6,
@@ -234,7 +321,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
         message_id: 104,
         date: Date.now(),
         chat: { id: 12345678, type: "private" },
-        from: { id: 12345678, is_bot: false, first_name: "Nic" },
+        from: { id: 12345678, is_bot: false, first_name: "Alex" },
         text: "/status detailed",
       },
     };
@@ -256,7 +343,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
         message_id: 105,
         date: Date.now(),
         chat: { id: 12345678, type: "private" },
-        from: { id: 12345678, is_bot: false, first_name: "Nic" },
+        from: { id: 12345678, is_bot: false, first_name: "Alex" },
         caption: "Screenshot of the terminal",
         photo: [{ file_id: "photo_small", file_size: 100 }, { file_id: "photo_large", file_size: 900 }],
       },
@@ -277,7 +364,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
         message_id: 106,
         date: Date.now(),
         chat: { id: 12345678, type: "private" },
-        from: { id: 12345678, is_bot: false, first_name: "Nic" },
+        from: { id: 12345678, is_bot: false, first_name: "Alex" },
         document: { file_id: "doc_file_1", file_name: "report.pdf" },
       },
     };
@@ -354,7 +441,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
           message_id: 201,
           date: 1700000000,
           chat: { id: 12345678, type: "private" },
-          from: { id: 12345678, is_bot: false, first_name: "Nic" },
+          from: { id: 12345678, is_bot: false, first_name: "Alex" },
           text: "Hello Ida",
           reply_to_message: {
             message_id: 199,
@@ -372,7 +459,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
           message_id: 202,
           date: 1700000001,
           chat: { id: 12345678, type: "private" },
-          from: { id: 12345678, is_bot: false, first_name: "Nic" },
+          from: { id: 12345678, is_bot: false, first_name: "Alex" },
           text: "/decide",
         },
       });
@@ -383,7 +470,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
         message_reaction: {
           chat: { id: 12345678, type: "private" },
           message_id: 201,
-          user: { id: 12345678, is_bot: false, first_name: "Nic" },
+          user: { id: 12345678, is_bot: false, first_name: "Alex" },
           date: 1700000002,
           old_reaction: [],
           new_reaction: [{ type: "emoji", emoji: "🔥" }],
@@ -395,7 +482,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
         update_id: 4,
         callback_query: {
           id: "cb_100",
-          from: { id: 12345678, is_bot: false, first_name: "Nic" },
+          from: { id: 12345678, is_bot: false, first_name: "Alex" },
           message: {
             message_id: 203,
             date: 1700000003,
@@ -416,7 +503,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
         update_id: 5,
         callback_query: {
           id: "cb_101",
-          from: { id: 12345678, is_bot: false, first_name: "Nic" },
+          from: { id: 12345678, is_bot: false, first_name: "Alex" },
           message: {
             message_id: 204,
             date: 1700000004,
@@ -432,7 +519,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
         update_id: 6,
         callback_query: {
           id: "cb_102",
-          from: { id: 12345678, is_bot: false, first_name: "Nic" },
+          from: { id: 12345678, is_bot: false, first_name: "Alex" },
           message: {
             message_id: 205,
             date: 1700000005,
@@ -450,7 +537,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
           message_id: 206,
           date: 1700000006,
           chat: { id: 12345678, type: "private" },
-          from: { id: 12345678, is_bot: false, first_name: "Nic" },
+          from: { id: 12345678, is_bot: false, first_name: "Alex" },
           caption: "Here is a photo",
           photo: [{ file_id: "ph_1", file_size: 1234 }],
         },
@@ -481,7 +568,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
         messageId: 207,
         chatId: 12345678,
         userId: 12345678,
-        userName: "Nic",
+        userName: "Alex",
         durationSec: 12,
         replyToMessageId: 201,
       });
@@ -571,7 +658,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
           message_id: 601,
           date: 1700000001,
           chat: { id: 12345678, type: "private" },
-          from: { id: 12345678, is_bot: false, first_name: "Nic" },
+          from: { id: 12345678, is_bot: false, first_name: "Alex" },
           text: "First message",
         },
       });
@@ -583,7 +670,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
           message_id: 602,
           date: 1700000002,
           chat: { id: 12345678, type: "private" },
-          from: { id: 12345678, is_bot: false, first_name: "Nic" },
+          from: { id: 12345678, is_bot: false, first_name: "Alex" },
           text: "Reply to earlier",
           reply_to_message: {
             message_id: 600,
@@ -601,7 +688,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
           message_id: 603,
           date: 1700000003,
           chat: { id: 12345678, type: "private" },
-          from: { id: 12345678, is_bot: false, first_name: "Nic" },
+          from: { id: 12345678, is_bot: false, first_name: "Alex" },
           photo: [{ file_id: "ph_603", file_size: 500 }],
         },
       });
@@ -613,7 +700,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
           message_id: 604,
           date: 1700000004,
           chat: { id: 12345678, type: "private" },
-          from: { id: 12345678, is_bot: false, first_name: "Nic" },
+          from: { id: 12345678, is_bot: false, first_name: "Alex" },
           text: "/decide",
         },
       });
@@ -625,7 +712,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
           message_id: 605,
           date: 1700000005,
           chat: { id: 12345678, type: "private" },
-          from: { id: 12345678, is_bot: false, first_name: "Nic" },
+          from: { id: 12345678, is_bot: false, first_name: "Alex" },
           voice: { file_id: "vf_605", duration: 4 },
         },
       });
@@ -657,7 +744,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
         update_id: 207,
         callback_query: {
           id: "cb_607",
-          from: { id: 12345678, is_bot: false, first_name: "Nic" },
+          from: { id: 12345678, is_bot: false, first_name: "Alex" },
           message: {
             message_id: 601,
             date: 1700000001,
@@ -674,7 +761,7 @@ describe("Inbound completeness: Updates routing and parsing", () => {
         message_reaction: {
           chat: { id: 12345678, type: "private" },
           message_id: 601,
-          user: { id: 12345678, is_bot: false, first_name: "Nic" },
+          user: { id: 12345678, is_bot: false, first_name: "Alex" },
           date: 1700000008,
           old_reaction: [],
           new_reaction: [{ type: "emoji", emoji: "🔥" }],

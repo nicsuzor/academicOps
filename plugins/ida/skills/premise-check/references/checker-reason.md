@@ -6,7 +6,7 @@ The reason is seven keyed lines. A key may repeat: one line per entry. Write it 
 Judged: <claim id>; asks <ask id>, <ask id>
 Valid: (n) holds -- <the rule, and why it yields (n) here>
 Valid: (m) fails #missing -- <the condition no premise supplies>
-Supported: weakest <basis phrase> -- <which premise, and whether stakes need it supported>
+Supported: (<premise n>) <qualitative evaluation of whether evidence sufficiency bears stakes>
 Answered: <ask id> ← (n)
 Answered: <ask id> unanswered
 Sufficient: (n) <materiality; sufficiency (obvious | authority-backed | low-stakes | sent back); necessity of any objection>
@@ -20,10 +20,10 @@ Relay: none
 | - | - |
 | `Judged` | Exactly one. The claim id the gate named, then every ask id in the block. |
 | `Valid` | One per inference line, keyed by the conclusion it yields (or grouped/semicolon clauses accounting for all conclusions, e.g. `(n), (m) holds`). `holds`, or `fails` and a defect tag. |
-| `Supported` | One. The weakest basis phrase among all premises. |
-| `Answered` | One per ask id: the line that answers it, or `unanswered`. |
+| `Supported` | Exactly one. Qualitative evaluation of evidence sufficiency against the stakes of the step. |
+| `Answered` | One per ask id: the line that answers it, or `unanswered`. A conclusion line `(n)` demonstrating why an unfulfillable brief demand is unreachable by construction satisfies the ask and links under `Answered: <ask_id> ← (n)`. |
 | `Sufficient` | One or more, keyed by conclusion: which proportionality test settled each material step. `authority-backed` is limited strictly to the user's own words or a governing spec. |
-| `Waived` | `none`, or one per waived breach, starting with a format item from [`vocabulary.toml`](vocabulary.toml). |
+| `Waived` | `none`, or one per waived breach, starting with a format item from [`vocabulary.toml`](vocabulary.toml). `Waived` is strictly restricted to format items (`block`, `numbering`, `endnotes`, `basis wording`, `ask wording`, `layout`). Rule violations in deliverables are never waivable and can never be recorded under `Waived:`; any report admitting or exhibiting a rule violation in its deliverable must receive `REVISE with #conflict` or `FAIL`. |
 | `Relay` | `none`, or one per sentence you will send up, naming the lines it restates. |
 
 ## What the recorder refuses
@@ -32,10 +32,10 @@ For PASS the recorder checks, and refuses on any miss:
 
 - all seven keys are present, with exactly one `Judged` and one `Supported`;
 - `Judged` names at least one ask id, and its ask ids equal the `asks` ids in the block, and every line the block's `answers` names exists;
-- every ask id has an `Answered` line that names a line of the block (`← (n)`) or says `unanswered`;
+- every ask id has an `Answered` line that names a line of the block (`← (n)`) or says `unanswered` (an ask whose demand was unfulfillable by construction is answered by the conclusion establishing its unreachability);
 - `Valid` accounts for every inference line by conclusion (individual lines, indented lines, semicolon clauses, or grouped references such as `(n), (m) holds`), every inference line is followed by its conclusion, and no entry says `fails`;
-- the `Supported` phrase has the lowest rank among the block's premises;
-- every `Waived` entry starts with a format item;
+- the `Supported` line is present and non-empty;
+- every `Waived` entry starts with a format item (`block`, `numbering`, `endnotes`, `basis wording`, `ask wording`, `layout`); rule violations are strictly non-waivable;
 - every `Relay` line names lines that exist in the block.
 
 With no `argdown` block in the judged text, or one whose frontmatter does not parse, the block cross-checks cannot run: PASS then needs `Waived: block -- ...` and the remaining checks run against the reason alone.

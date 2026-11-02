@@ -646,7 +646,7 @@ def handle_pre_invocation(data: dict, config: dict) -> None:
     session_id = resolve_session_id(data, "conversationId")
     if session_id is None:
         log.warning(
-            "handle_pre_invocation: no session id in payload ('conversationId' missing) "
+            "handle_pre_invocation: no session id in payload ('conversationId' / 'session_id' missing) "
             "and $AOPS_SESSION_ID unset — skipping span emission",
         )
         return
@@ -686,7 +686,7 @@ def handle_pre_tool(data: dict, config: dict) -> None:
     session_id = resolve_session_id(data, "conversationId")
     if session_id is None:
         log.warning(
-            "handle_pre_tool: no session id in payload ('conversationId' missing) "
+            "handle_pre_tool: no session id in payload ('conversationId' / 'session_id' missing) "
             "and $AOPS_SESSION_ID unset — skipping span emission",
         )
         return
@@ -770,7 +770,7 @@ def handle_post_tool(data: dict, config: dict) -> None:
     session_id = resolve_session_id(data, "conversationId")
     if session_id is None:
         log.warning(
-            "handle_post_tool: no session id in payload ('conversationId' missing) "
+            "handle_post_tool: no session id in payload ('conversationId' / 'session_id' missing) "
             "and $AOPS_SESSION_ID unset — skipping span emission",
         )
         return
@@ -872,7 +872,7 @@ def handle_stop(data: dict, config: dict) -> None:
     session_id = resolve_session_id(data, "conversationId")
     if session_id is None:
         log.warning(
-            "handle_stop: no session id in payload ('conversationId' missing) "
+            "handle_stop: no session id in payload ('conversationId' / 'session_id' missing) "
             "and $AOPS_SESSION_ID unset — skipping span emission",
         )
         return

@@ -21,7 +21,7 @@ task, where the posture is trust-the-method.
 
 - **Runtime workflow composition via [`/reify`](../../plugins/ida/skills/reify/SKILL.md) and [`workflow-library`](../../plugins/ida/skills/workflow-library/SKILL.md)** --
   task-template conventions, composable workflow templates across universal, PKB, and project tiers, and proof-of-compliance tool fields assemble a compliant workflow before the unit is dispatched.
-- **The supervisor loop** ([`sara.md`](../agents/sara.md)) -- the multi-tick
+- **The supervisor loop** ([`sara.md`](../agents/sara.md)) -- the
   delegate-and-verify loop that coordinates execution and verifies returned reports across a set of tasks.
 
 ## The four-step shape
@@ -32,7 +32,7 @@ A workflow is assembled at runtime from composable templates in the [`workflow-l
    settled before compute is spent executing it: [`/q`](../../plugins/ida/skills/q/SKILL.md) places and values the work on the graph ([R1](../workflows/graph-valuation.md#3-r1----placement-at-intake-q)), and [`/reify`](../../plugins/ida/skills/reify/SKILL.md) composes the workflow from templates, writes the dispatchable task (`queued`), and mints any downstream QA task (`needs: [<primary_task_id>]`). The previously separate standalone premise-gate ceremony at the spend surfaces ([`/pull`](../../plugins/ida/skills/pull/SKILL.md), [`/dispatch`](../../plugins/ida/skills/dispatch/SKILL.md)) is retired; dispatch surfaces trust the reified contract without re-judging the premise themselves. `/reify` plans only: it writes tasks to the graph and never dispatches or runs them itself.
 2. **Execution** -- the claimed worker executes the task ([`/pull`](../../plugins/ida/skills/pull/SKILL.md)) and hands over via [`/dump`](../../plugins/ida/skills/dump/SKILL.md). This span is
    trust-the-method: no process-level micromanagement during execution, with evidence-driven intervention
-   only if something goes wrong. When a task's deliverable is a pull request, the worker opens the PR, records `pr_url`, and releases the task as `review` without waiting for CI or merge; when the repository merges the PR, `/reconcile` transitions the task to `done`, unblocking dependent follow-ups.
+   only if something goes wrong. When a task's deliverable is a pull request, the worker opens the PR, records `pr_url` and branch, and releases the task as `done` without waiting for CI or merge; releasing `done` immediately unblocks dependent follow-ups (such as independent QA tasks); when the repository merges the PR, the parent epic progresses. In a spec-then-build workflow (one PR, opened by the build), Stage 1 records its design, any drafted spec change, and its review verdict in a PKB note the Stage 2 task points to; Stage 1 commits no plan or design file and opens no PR. After approval, the feature is built in Stage 2, which opens the PR into the base branch as a draft carrying the build and any spec change, with the spec still editable as more is learned; the PR flips to ready once the feature is written and proportionate review is posted to the PR thread, without waiting for approval; spec and feature merge together after full review. PR descriptions communicate what was done and the approach taken, keeping PRs readable and scannable without duplicating line-by-line diffs; instructions for PR formatting remain modular to allow project-level style overrides.
 3. **Rule-compliance review** -- the rule-compliance lens ([`rbg`](../../plugins/rbg/agents/rbg.md), [`wf-rbg.md`](../../plugins/ida/skills/workflow-library/workflows/wf-rbg.md), [`wf-review.md`](../../plugins/ida/skills/workflow-library/workflows/wf-review.md), [`/strategic-review`](../../plugins/ida/skills/strategic-review/SKILL.md)): did the artifact and handback follow the governing axioms and project rules?
    Evaluates the target artifact, contract, and handback against [`task-contract.md`](task-contract.md)'s
    `release_task` evidence gate (Work-Unit Contract) and the acceptance criteria
@@ -55,7 +55,7 @@ and evolve over time. Any surface satisfying the assembled workflow's
 requirements qualifies as an executor: an independent polecat session ([`/dispatch`](../../plugins/ida/skills/dispatch/SKILL.md)) that
 validates runtime behavior with [`/verify`](../../plugins/ida/skills/verify/SKILL.md) for code changes, or
 review subagents running [`/strategic-review`](../../plugins/ida/skills/strategic-review/SKILL.md) for rule compliance, strategic fit, and substantive quality.
-Proof is always written to the task record, typically as a downstream QA task (`needs: [<primary_task_id>]`) plus a `premise-check` verdict receipt.
+Proof is always written to the task record, structured either within a single task with internal subtasks or as child tasks under a dedicated epic (e.g. `Child 2: QA: <primary task title>`, `needs: [<child_1_id>]`), never as loose siblings under an external parent, plus a `premise-check` verdict receipt.
 GitHub Actions is one optional executor of code review, never the review system
 itself.
 
@@ -73,7 +73,9 @@ with no separate contract for "epic-shaped" work.
 How much of steps 3-4 run as standalone downstream review tasks versus how much is folded into the next run or a consolidated review pass is determined during [`/reify`](../../plugins/ida/skills/reify/SKILL.md) based on
 the task's risk and blast radius ([`plugins/ida/skills/reify/SKILL.md:85-98`](../../plugins/ida/skills/reify/SKILL.md), [`enforcement.md#pr-risk-taxonomy-enforcement`](enforcement.md#pr-risk-taxonomy-enforcement)):
 
-- **Substantive deliverables (features, refactors, multi-file changes)** -- `/reify` mints an independent downstream QA task (`Title: QA: <primary task title>`, `needs: [<primary_task_id>]`) that verifies the delivered artifact at runtime and evaluates PR risk against the three-tier taxonomy (`Tier 1` autonomous QA-merge vs `Tier 2` / `Tier 3` reviewer or principal sign-off).
+- **Substantive deliverables (features, refactors, multi-file changes)** -- structured per the follow-up placement invariant as a dedicated epic with child tasks (`Child 1: Primary Task`, `Child 2: QA: <primary task title>`, with `Child 2` `needs: [Child 1]`), never as loose siblings under an external parent, verifying the delivered artifact at runtime and evaluating PR risk against the three-tier taxonomy (`Tier 1` autonomous QA-merge vs `Tier 2` / `Tier 3` reviewer or principal sign-off).
+- **Design research tasks** -- `/reify` composes a dependent decision task assigned to the user (`assignee: user`) by default (`Title: Decide implementation route for <topic>`, `depends_on: [<research_task_id>]`) before downstream implementation tasks can unblock.
+- **Non-PR tasks (analyses, docs, research, operational tasks)** -- `/reify` mints a separate `QA: <task>` child task only where the composed workflow warrants an independent check (such as empirical analyses with replication requirements, high-impact policy or specification changes, or multi-step qualitative audits). Workflows that do not warrant a separate verification pass (routine documentation updates, straightforward queries, direct single-source summaries) mint no QA child. Across all tasks (both PR and non-PR tasks), worker self-release to `done` is standard upon fulfilling the frozen acceptance criteria; workers are never held in `review` awaiting a downstream gate.
 - **High-risk / wide blast radius** -- per-chunk review tasks wired with
   `depends_on`, each running its own rule-compliance and substantive QA pass before the
   next chunk starts.

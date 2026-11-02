@@ -1,10 +1,10 @@
 """Rule loading across three scopes for cope's evaluator.
 
 Axioms in ``skills/axioms/`` (the baseline) are loaded first; project rules in
-``$CWD/.agents/rules/*.md`` and user rules in ``$ACA_DATA/.agents/rules/*.md``
+``$CWD/.agents/rules/*.md`` and user rules in ``$COPE_USER_RULES_DIR/*.md``
 can only ADD new slugs, never override one already claimed by an earlier scope —
 narrower scopes add obligations and never weaken an axiom (specs/ARCHITECTURE.md,
-cope). ``$ACA_DATA`` has no default; its absence is an absent user-rules scope, not an
+cope). ``$COPE_USER_RULES_DIR`` has no default; its absence is an absent user-rules scope, not an
 error. A rule directory that is unreadable degrades to the scopes that did
 load — cope must never block a session on its own failure.
 
@@ -27,7 +27,7 @@ A scope that thins out says so on stderr (``DEGRADED:``), which the client
 captures into the transcript. That is the only channel these reports have: they
 do not reach the agent's response and they do not reach the person. Nothing here
 is rate-limited, because nothing here is read live. A rules directory nobody
-wrote and an ``$ACA_DATA`` nobody set are ordinary absences and stay silent —
+wrote and a ``$COPE_USER_RULES_DIR`` nobody set are ordinary absences and stay silent —
 see ``_layers``. A roster that loads to nothing is neither absence nor fault,
 and is named on the response once per session — see ``handlers.evaluate``.
 """
@@ -169,22 +169,22 @@ def _layers(plugin_root: Path, cwd: Path) -> list[_Layer]:
 
     An absent project-rules directory is the ordinary case — most projects carry no
     local rules — so it says nothing. An absent user-rules directory is a wrong
-    ``$ACA_DATA`` or a path that moved, since setting the variable is a claim
-    that the directory exists; that is reported. ``$ACA_DATA`` unset is not a
+    ``$COPE_USER_RULES_DIR`` or a path that moved, since setting the variable is a claim
+    that the directory exists; that is reported. ``$COPE_USER_RULES_DIR`` unset is not a
     mistake and stays silent.
     """
     layers = [
         _Layer(1, plugin_root / "skills" / "axioms", report_skips=False, absent_note=None),
         _Layer(2, cwd / ".agents" / "rules", report_skips=True, absent_note=None),
     ]
-    aca_data = os.environ.get("ACA_DATA")
-    if aca_data:
+    cope_user_rules_dir = os.environ.get("COPE_USER_RULES_DIR")
+    if cope_user_rules_dir:
         layers.append(
             _Layer(
                 3,
-                Path(aca_data) / ".agents" / "rules",
+                Path(cope_user_rules_dir),
                 report_skips=True,
-                absent_note="ACA_DATA is set, so this layer was expected",
+                absent_note="COPE_USER_RULES_DIR is set, so this layer was expected",
             )
         )
     return layers

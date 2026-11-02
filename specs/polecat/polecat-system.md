@@ -85,8 +85,7 @@ The container launcher (`polecat`) and worker image are maintained outside this 
    logs and transcripts are visible on the host live, not just at container exit.
    When the operator's config names a `rules_dir` (or `$POLECAT_RULES_DIR` is
    set), that host directory is mounted read-only at the container's own
-   `$ACA_DATA/.agents/rules/` (`/data/.agents/rules` -- `ENV ACA_DATA=/data` in
-   the `Dockerfile`), which is what makes cope/rbg's user-scoped rules reach a container;
+   `/etc/cope/rules` (`ENV COPE_USER_RULES_DIR=/etc/cope/rules`), which is what makes cope's user-scoped rules reach a container;
    absent, the container simply has no user-scoped rules, and a configured-but-unreadable
    directory is a hard failure before any container starts. The image is never
    pulled from a registry -- it must already be built locally or CI-produced; a
@@ -166,6 +165,12 @@ The container launcher (`polecat`) and worker image are maintained outside this 
    reaches stdout per invocation: on the seed-verification retry path, aborted
    attempt output is buffered and suppressed so callers never receive
    concatenated streams.
+9. **Completion record and event observability.** Container exit is recorded by
+   the exit listener, exported as OpenTelemetry `polecat.container.exit` spans,
+   and enqueued in the `polecat_events` event queue. There is no direct UNIX
+   domain socket (UDS) push or raw text injection into agent sessions;
+   downstream supervisors and reconcile passes consume completion events from
+   the event queue or trace store via the operational dashboard daemon bridge.
 
 ## What `run` does not do
 
@@ -176,4 +181,7 @@ stdout, quiet by default. There is no `start`, `finish`, `crew`, `nuke`, `swarm`
 directory, no workspace that survives past a single invocation, and no claiming,
 PR-filing, or status-setting performed by the CLI itself. Those either don't exist
 or are the invoked agent's own job, driven by the `pull` skill against the PKB
-task graph from inside the container.
+task graph from inside the container. There is no UDS socket push or interactive
+session injection of completion strings (such as `[polecat-exit]`); completion
+events are retrieved from the durable queue or observability spans by
+higher-level services.

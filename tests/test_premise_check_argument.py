@@ -391,10 +391,6 @@ _REFUSALS = {
         dict(drop=("Valid: (6)",), extra=(f"Valid: (6) fails {_DEFECT} -- no premise",)),
         "Valid says fails for (6)",
     ),
-    "supported_rank": (
-        dict(drop=("Supported",), extra=(f"Supported: weakest {_STRONG.phrase} -- all strong",)),
-        "the block's weakest premise is (3)",
-    ),
     "waived_item": (
         dict(drop=("Waived",), extra=("Waived: the warrant was vague -- fine",)),
         "Waived entries that do not start with a format item",
@@ -1283,9 +1279,8 @@ def test_waived_ask_wording_honored_when_block_is_not_none():
     assert failures_waived == []
 
 
-def test_waived_basis_wording_when_basis_is_none_without_escalating_low_rank():
-    """AC5: Honors Waived: basis wording when p.basis is None without escalating matched unchecked/assumed premises above rank=1."""
-    # Case 1: Premise with non-standard basis phrase (p.basis is None)
+def test_custom_and_omitted_basis_wording_accepted_without_rank_failures():
+    """AC5 / Stage 2: Custom basis wording or omitted basis trailers do not cause false-positive rank failures."""
     block_text = (
         "===\n"
         f"asks:\n  {ASK_A}: test\n"
@@ -1299,23 +1294,21 @@ def test_waived_basis_wording_when_basis_is_none_without_escalating_low_rank():
     assert arg is not None
     assert arg.premises[0].basis is None
 
-    # Without waiver: fails because basis is unmatched (rank 0)
-    reason_no_waiver = ra.parse_reason(
+    # Supported with natural language / descriptive reason passes without rank check failure
+    reason = ra.parse_reason(
         f"Judged: CID; asks {ASK_A}\n"
         "Valid: (2) holds -- warrant\n"
-        "Supported: weakest I read it -- direct logs\n"
+        "Supported: (1) verified from direct logs, bearing stakes\n"
         f"Answered: {ASK_A} ← (2)\n"
         "Sufficient: (2) obvious\n"
         "Waived: none\n"
         "Relay: none\n",
         _VOCAB,
     )
-    failures_no_waiver = ra.pass_failures(reason_no_waiver, arg, _VOCAB)
-    assert any(
-        "weakest premise is (1) 'an unmatched basis' (rank 0)" in f for f in failures_no_waiver
-    )
+    failures = ra.pass_failures(reason, arg, _VOCAB)
+    assert failures == []
 
-    # With Waived: basis wording: passes because p.basis is None is waived to match Supported
+    # Waived: basis wording is also parsed as a valid format item without failure
     reason_waived = ra.parse_reason(
         f"Judged: CID; asks {ASK_A}\n"
         "Valid: (2) holds -- warrant\n"
@@ -1326,39 +1319,958 @@ def test_waived_basis_wording_when_basis_is_none_without_escalating_low_rank():
         "Relay: none\n",
         _VOCAB,
     )
-    failures_waived = ra.pass_failures(reason_waived, arg, _VOCAB)
-    assert failures_waived == []
+    assert ra.pass_failures(reason_waived, arg, _VOCAB) == []
 
-    # Case 2: But matched unchecked (rank 1) or assumed (rank 0) CANNOT be escalated above rank 1
-    block_text_with_unchecked = (
+
+def test_clean_natural_language_block_without_notes_and_without_basis_trailers():
+    """Stage 2: Clean natural language blocks (no notes:, no -- <basis> trailers) parse and record PASS cleanly."""
+    block = (
         "===\n"
-        f"asks:\n  {ASK_A}: test\n"
+        f"asks:\n  {ASK_A}: is the feature working?\n"
         f"answers:\n  {ASK_A}: 3\n"
         "===\n\n"
-        "(1) Premise with custom wording. -- verified from logs\n"
-        "(2) Another premise that is unchecked. -- worker reported, unchecked\n"
-        "-- Warrant. Unless: def; status. --\n"
-        "(3) So, conclusion.\n"
+        "(1) Code modification was built and verified (read from `plugins/ida/hooks/report_argument.py:42`).\n"
+        "(2) Unit test suite executed cleanly with 0 failures (run: exit_code = 0).\n"
+        "-- When code changes and tests pass, feature is verified. Unless: test coverage incomplete; ruled out by full suite run. --\n"
+        "(3) So, the feature is working.\n"
     )
-    arg_unchecked = ra.parse_block(block_text_with_unchecked, _VOCAB)
-    assert arg_unchecked is not None
-    assert arg_unchecked.premises[0].basis is None
-    assert arg_unchecked.premises[1].basis is not None
-    assert arg_unchecked.premises[1].rank == 1
+    # Check syntax validation
+    valid, err, ast = ra.check_argdown_block(block)
+    assert valid is True, f"Syntax check failed: {err}"
+    assert ast is not None
 
-    # Checker attempts to claim Supported: weakest I read it (rank 3) with Waived: basis wording
-    reason_escalate_attempt = ra.parse_reason(
+    arg = ra.parse_block(block, _VOCAB)
+    assert arg is not None
+    assert arg.asks == [ASK_A]
+    assert arg.notes == {}
+    assert len(arg.premises) == 2
+    assert arg.premises[0].basis is None
+    assert arg.premises[1].basis is None
+
+    session_id = "s-clean-nat"
+    text = f"```argdown\n{block}```\n"
+    _arm_with_report(session_id, "CID-CLEAN", text=text)
+
+    # Checker records PASS with qualitative natural language under Supported:
+    reason = (
+        f"Judged: CID-CLEAN; asks {ASK_A}\n"
+        "Valid: (3) holds -- code changes and test suite execution verify behavior\n"
+        "Supported: (1) and (2) verified directly from source diffs and clean test suite run (exit_code=0)\n"
+        f"Answered: {ASK_A} ← (3)\n"
+        "Sufficient: (3) material; authority-backed; no objection\n"
+        "Waived: none\n"
+        "Relay: none\n"
+    )
+    tracer = _configured()
+    res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="CID-CLEAN",
+        verdict="PASS",
+        reason=reason,
+        tracer_mod=tracer,
+    )
+    assert res["ok"] is True
+    assert res["verdict"] == "PASS"
+    assert pcg.is_armed(session_id) is False
+
+    span_attrs = tracer.exported[0]["attributes"]
+    assert span_attrs["premise_check.weakest_basis_term"] == "semantic"
+    assert "exit_code=0" in span_attrs["premise_check.weakest_basis"]
+
+
+# ---------------------------------------------------------------------------
+# Refusal diagnostics and actionable remediation guidance (AC1, AC2)
+# ---------------------------------------------------------------------------
+
+
+def test_refusal_diagnostics_parenthesized_line_numbers_in_frontmatter_answers():
+    """AC1, AC2: Refusal explicitly lists defect and shows remediation for parenthesized line numbers."""
+    block = (
+        "===\n"
+        f"asks:\n  {ASK_A}: is the hook enforced?\n"
+        f"answers:\n  {ASK_A}: (2)\n"
+        "===\n\n"
+        "(1) Observation. -- I read it\n"
+        "-- Warrant. Unless: def; status. --\n"
+        "(2) So, conclusion.\n"
+    )
+    # Check directly via check_argdown_block
+    valid, error_msg, ast = ra.check_argdown_block(block)
+    assert valid is False
+    assert "Parenthesized line number in frontmatter answers" in error_msg
+    assert "Defect:" in error_msg
+    assert "Required remediation format:" in error_msg
+    assert f"{ASK_A}: 2" in error_msg
+
+    # Check via record_verdict
+    session_id = "s-diag-paren"
+    text = f"```argdown\n{block}```\n"
+    _arm_with_report(session_id, "CID", text=text)
+    reason = (
         f"Judged: CID; asks {ASK_A}\n"
-        "Valid: (3) holds -- warrant\n"
-        "Supported: weakest I read it -- logs\n"
+        "Valid: (2) holds -- warrant\n"
+        "Supported: weakest I read it -- direct logs\n"
+        f"Answered: {ASK_A} ← (2)\n"
+        "Sufficient: (2) obvious\n"
+        "Waived: none\n"
+        "Relay: none\n"
+    )
+    with pytest.raises(ValueError) as excinfo:
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id="CID",
+            verdict="PASS",
+            reason=reason,
+            tracer_mod=_configured(),
+        )
+    err = str(excinfo.value)
+    assert "PASS verdict refused for CID" in err
+    assert "Parenthesized line number in frontmatter answers" in err
+    assert "Required remediation format:" in err
+    assert f"{ASK_A}: 2" in err
+
+
+def test_refusal_diagnostics_unmapped_asks_in_frontmatter_answers():
+    """AC1, AC2: Refusal explicitly lists defect and shows remediation for unmapped asks."""
+    block = (
+        "===\n"
+        f"asks:\n  {ASK_A}: first ask\n  {ASK_B}: second ask\n"
+        f"answers:\n  {ASK_A}: 2\n"
+        "===\n\n"
+        "(1) Observation. -- I read it\n"
+        "-- Warrant. Unless: def; status. --\n"
+        "(2) So, conclusion.\n"
+    )
+    # Check directly via check_argdown_block
+    valid, error_msg, ast = ra.check_argdown_block(block)
+    assert valid is False
+    assert f"Unmapped ask(s) in frontmatter answers: {ASK_B}" in error_msg
+    assert "Defect:" in error_msg
+    assert "Required remediation format:" in error_msg
+    assert f"answers:\n  {ASK_B}: <line_number | none>" in error_msg
+
+    # Check via record_verdict
+    session_id = "s-diag-unmapped"
+    text = f"```argdown\n{block}```\n"
+    _arm_with_report(session_id, "CID", text=text)
+    reason = (
+        f"Judged: CID; asks {ASK_A}, {ASK_B}\n"
+        "Valid: (2) holds -- warrant\n"
+        "Supported: weakest I read it -- direct logs\n"
+        f"Answered: {ASK_A} ← (2)\n"
+        f"Answered: {ASK_B} ← (2)\n"
+        "Sufficient: (2) obvious\n"
+        "Waived: none\n"
+        "Relay: none\n"
+    )
+    with pytest.raises(ValueError) as excinfo:
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id="CID",
+            verdict="PASS",
+            reason=reason,
+            tracer_mod=_configured(),
+        )
+    err = str(excinfo.value)
+    assert "Unmapped ask(s) in frontmatter answers" in err
+    assert ASK_B in err
+    assert "Required remediation format:" in err
+
+
+def test_refusal_diagnostics_malformed_inference_line():
+    """AC1, AC2: Refusal explicitly lists defect and shows remediation for malformed inference line."""
+    block = (
+        "(1) Observation. -- I read it\n"
+        "-- Malformed inference line without closing dashes\n"
+        "(2) So, conclusion.\n"
+    )
+    valid, error_msg, ast = ra.check_argdown_block(block)
+    assert valid is False
+    assert "Malformed inference line (missing closing '--'):" in error_msg
+    assert "Defect:" in error_msg
+    assert "Required remediation format:" in error_msg
+    assert "-- <warrant rule>. Unless: <defeater>; <status>. --" in error_msg
+
+
+def test_refusal_diagnostics_markdown_numbered_list():
+    """AC1, AC2: Refusal explicitly lists defect and shows remediation for markdown numbers (1. instead of (1))."""
+    block = (
+        "1. Markdown numbered list item. -- I read it\n"
+        "-- Warrant. Unless: def; status. --\n"
+        "(2) So, conclusion.\n"
+    )
+    valid, error_msg, ast = ra.check_argdown_block(block)
+    assert valid is False
+    assert (
+        "Markdown numbered list '1. Markdown numbered list item. -- I read it' is not valid Argdown syntax"
+        in error_msg
+    )
+    assert "Defect:" in error_msg
+    assert "Required remediation format:" in error_msg
+    assert "(1) Markdown numbered list item. -- I read it -- <basis phrase>" in error_msg
+
+
+def test_refusal_diagnostics_premise_number_colon():
+    """AC1, AC2: Refusal explicitly lists defect and shows remediation for (1): instead of (1)."""
+    block = (
+        "(1): Premise with colon. -- I read it\n"
+        "-- Warrant. Unless: def; status. --\n"
+        "(2) So, conclusion.\n"
+    )
+    valid, error_msg, ast = ra.check_argdown_block(block)
+    assert valid is False
+    assert "Premise number followed by colon '(1):' is not valid Argdown syntax" in error_msg
+    assert "Defect:" in error_msg
+    assert "Required remediation format:" in error_msg
+    assert "(1) Premise with colon. -- I read it" in error_msg
+
+
+def test_refusal_diagnostics_orphan_statement():
+    """AC1, AC2: Refusal explicitly lists defect and shows remediation for orphan statement."""
+    block = (
+        "(1) Observation. -- I read it\n"
+        "-- Warrant. Unless: def; status. --\n"
+        "(2) So, conclusion.\n"
+        "[orphan_node]: Disconnected statement text\n"
+    )
+    valid, error_msg, ast = ra.check_argdown_block(block)
+    assert valid is False
+    assert "orphan statement 'orphan_node'" in error_msg
+    assert "Defect:" in error_msg
+    assert "Required remediation format:" in error_msg
+    assert "[orphan_node]: Disconnected statement text\n  +> (n)" in error_msg
+
+
+def test_refusal_diagnostics_undercut_targeting_statement():
+    """AC1, AC2: Refusal explicitly lists defect and shows remediation for undercut targeting statement."""
+    block = (
+        "(1) Observation. -- I read it\n"
+        "-- Warrant. Unless: def; status. --\n"
+        "(2) So, conclusion.\n"
+        "[objection]: Objection\n"
+        "  _> (1)\n"
+    )
+    valid, error_msg, ast = ra.check_argdown_block(block)
+    assert valid is False
+    assert "undercut from 'objection' targets statement '1' instead of an inference" in error_msg
+    assert "Defect:" in error_msg
+    assert "Required remediation format:" in error_msg
+    assert "Undercuts (_>) must target an inference bar title (<Inference>)" in error_msg
+
+
+def test_refusal_diagnostics_unclosed_frontmatter_fence():
+    """AC1, AC2: Refusal explicitly lists defect and shows remediation for unclosed frontmatter fence."""
+    block = f"===\nasks:\n  {ASK_A}: question\n(1) Observation. -- I read it\n"
+    valid, error_msg, ast = ra.check_argdown_block(block)
+    assert valid is False
+    assert "Unclosed frontmatter fence (missing closing '===')" in error_msg
+    assert "Defect:" in error_msg
+    assert "Required remediation format:" in error_msg
+
+
+def test_refusal_diagnostics_zero_inference_lines_in_reason():
+    """AC1, AC2: Refusal explicitly lists defect and shows remediation for 0 inference lines."""
+    block = (
+        "===\n"
+        f"asks:\n  {ASK_A}: question\n"
+        f"answers:\n  {ASK_A}: 1\n"
+        "===\n\n"
+        "(1) Bare observation without inferences. -- I read it\n"
+    )
+    session_id = "s-diag-0inf"
+    text = f"```argdown\n{block}```\n"
+    _arm_with_report(session_id, "CID", text=text)
+    reason = (
+        f"Judged: CID; asks {ASK_A}\n"
+        "Valid: (1) holds -- warrant\n"
+        "Supported: weakest I read it -- direct logs\n"
+        f"Answered: {ASK_A} ← (1)\n"
+        "Sufficient: (1) obvious\n"
+        "Waived: none\n"
+        "Relay: none\n"
+    )
+    with pytest.raises(ValueError) as excinfo:
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id="CID",
+            verdict="PASS",
+            reason=reason,
+            tracer_mod=_configured(),
+        )
+    err = str(excinfo.value)
+    assert "0 inference lines" in err
+    assert "Required remediation format:" in err
+    assert "-- <warrant rule>. Unless: <defeater>; <status>. --" in err
+
+
+# ---------------------------------------------------------------------------
+# Whitespace and Indentation Tolerance
+# ---------------------------------------------------------------------------
+
+
+def test_common_leading_indent_parses_identically_and_records_pass():
+    """AC1: A well-formed block carrying any common leading indent records PASS and parses identically."""
+    canonical_report = _report()
+    canonical_block = ra.extract_block(canonical_report)
+    assert canonical_block is not None
+    canonical_parsed = ra.parse_block(canonical_block, _VOCAB)
+    canonical_valid, canonical_err, canonical_ast = ra.check_argdown_block(canonical_block)
+    assert canonical_valid is True
+
+    for indent in ("  ", "    ", "\t"):
+        # Indent every non-empty line of the report
+        indented_report = "\n".join(
+            indent + ln if ln.strip() else "" for ln in canonical_report.splitlines()
+        )
+        indented_block = ra.extract_block(indented_report)
+        assert indented_block is not None, f"Failed to extract block with indent {indent!r}"
+
+        # 1. parse_block parses identically to canonical form
+        parsed = ra.parse_block(indented_block, _VOCAB)
+        assert parsed == canonical_parsed, f"parse_block differs for indent {indent!r}"
+
+        # Direct call to parse_block with indented text (without extract_block) also works
+        raw_indented_block = "\n".join(
+            indent + ln if ln.strip() else "" for ln in canonical_block.splitlines()
+        )
+        assert ra.parse_block(raw_indented_block, _VOCAB) == canonical_parsed
+
+        # 2. check_argdown_block parses identically
+        valid, err, ast = ra.check_argdown_block(indented_block)
+        assert valid is True, f"check_argdown_block failed for indent {indent!r}: {err}"
+        assert ast == canonical_ast
+
+        # 3. Records PASS on full hand-back-shaped report
+        sess = f"sess-indent-{len(indent)}"
+        cid = f"claim-indent-{len(indent)}"
+        _arm_with_report(sess, cid, text=indented_report)
+        attrs = pcv.record_verdict(
+            session_id=sess,
+            claim_id=cid,
+            verdict="PASS",
+            reason=_reason(cid),
+            tracer_mod=_configured(),
+        )
+        assert attrs["verdict"] == "PASS"
+
+
+def test_trailing_whitespace_parses_identically_to_canonical():
+    """AC2: Trailing whitespace (spaces and tabs) parses identically to the canonical form."""
+    canonical_block = ra.extract_block(_report())
+    assert canonical_block is not None
+    canonical_parsed = ra.parse_block(canonical_block, _VOCAB)
+    canonical_valid, canonical_err, canonical_ast = ra.check_argdown_block(canonical_block)
+
+    # Append trailing spaces and tabs to every line
+    trailing_block = "\n".join(ln + "  \t  " for ln in canonical_block.splitlines())
+
+    parsed = ra.parse_block(trailing_block, _VOCAB)
+    assert parsed == canonical_parsed
+
+    valid, err, ast = ra.check_argdown_block(trailing_block)
+    assert valid is True, f"check_argdown_block failed on trailing whitespace: {err}"
+    assert ast == canonical_ast
+
+
+def test_crlf_line_endings_parse_identically_to_canonical():
+    """AC2: CRLF endings parse identically to the canonical form."""
+    canonical_block = ra.extract_block(_report())
+    assert canonical_block is not None
+    canonical_parsed = ra.parse_block(canonical_block, _VOCAB)
+    canonical_valid, canonical_err, canonical_ast = ra.check_argdown_block(canonical_block)
+
+    crlf_block = canonical_block.replace("\n", "\r\n")
+
+    parsed = ra.parse_block(crlf_block, _VOCAB)
+    assert parsed == canonical_parsed
+
+    valid, err, ast = ra.check_argdown_block(crlf_block)
+    assert valid is True, f"check_argdown_block failed on CRLF: {err}"
+    assert ast == canonical_ast
+
+
+def test_added_blank_lines_parse_identically_to_canonical():
+    """AC2: Added blank lines parse identically to the canonical form."""
+    canonical_block = ra.extract_block(_report())
+    assert canonical_block is not None
+    canonical_parsed = ra.parse_block(canonical_block, _VOCAB)
+    canonical_valid, canonical_err, canonical_ast = ra.check_argdown_block(canonical_block)
+
+    # Insert extra blank lines inside frontmatter and between body items
+    added_blank = "\n\n".join(canonical_block.splitlines())
+
+    parsed = ra.parse_block(added_blank, _VOCAB)
+    assert parsed == canonical_parsed
+
+    valid, err, ast = ra.check_argdown_block(added_blank)
+    assert valid is True, f"check_argdown_block failed on added blank lines: {err}"
+    assert ast == canonical_ast
+
+
+def test_removed_blank_lines_parse_identically_to_canonical():
+    """AC2: Removed blank lines parse identically to the canonical form."""
+    canonical_block = ra.extract_block(_report())
+    assert canonical_block is not None
+    canonical_parsed = ra.parse_block(canonical_block, _VOCAB)
+    canonical_valid, canonical_err, canonical_ast = ra.check_argdown_block(canonical_block)
+
+    # Strip all empty lines
+    removed_blank = "\n".join(ln for ln in canonical_block.splitlines() if ln.strip())
+
+    parsed = ra.parse_block(removed_blank, _VOCAB)
+    assert parsed == canonical_parsed
+
+    valid, err, ast = ra.check_argdown_block(removed_blank)
+    assert valid is True, f"check_argdown_block failed on removed blank lines: {err}"
+    assert ast == canonical_ast
+
+
+def test_null_form_tolerates_indentation_and_trailing_whitespace():
+    """AC3: Null form declarations tolerate common leading indentation, tabs, and trailing whitespace."""
+    canonical_null = "===\nasks: none\n===\n[no claim]"
+    assert ra.is_null_form(canonical_null) is True
+
+    variations = [
+        "  ===\n  asks: none\n  ===\n  [no claim]",
+        "\t===\n\tasks: none\n\t===\n\t[no claim]",
+        "===   \nasks: none \t \n===   \n[no claim]  ",
+        "  asks: none\n  [no claim]",
+        "===\r\n  asks: none\r\n===\r\n  [no claim]\r\n",
+    ]
+    for text in variations:
+        assert ra.is_null_form(text) is True, f"is_null_form returned False for {text!r}"
+
+
+def test_differing_frontmatter_and_body_indentation_parses_identically():
+    """AC3: Different indentation levels between frontmatter and body parse identically."""
+    canonical_block = ra.extract_block(_report())
+    assert canonical_block is not None
+    canonical_parsed = ra.parse_block(canonical_block, _VOCAB)
+    canonical_valid, canonical_err, canonical_ast = ra.check_argdown_block(canonical_block)
+
+    split = ra._split_frontmatter(canonical_block.splitlines())
+    assert split is not None
+    fm, body = split
+
+    # Case A: Frontmatter at column 0, body indented by 4 spaces
+    block_a = f"===\n{fm}\n===\n" + "\n".join("    " + ln if ln.strip() else "" for ln in body)
+    assert ra.parse_block(block_a, _VOCAB) == canonical_parsed
+    valid, _, ast = ra.check_argdown_block(block_a)
+    assert valid is True
+    assert ast == canonical_ast
+
+    # Case B: Frontmatter indented by 4 spaces, body at column 0
+    fm_indented = "\n".join("    " + ln if ln.strip() else "" for ln in fm.splitlines())
+    block_b = f"    ===\n{fm_indented}\n    ===\n" + "\n".join(body)
+    assert ra.parse_block(block_b, _VOCAB) == canonical_parsed
+    valid, _, ast = ra.check_argdown_block(block_b)
+    assert valid is True
+    assert ast == canonical_ast
+
+
+def test_premise_indented_continuation_line_preserved_under_block_indent():
+    """AC3: Indented continuation lines under premises remain intact when the entire block has leading indent."""
+    block_text = (
+        "===\n"
+        f"asks:\n  {ASK_A}: question\n"
+        f"answers:\n  {ASK_A}: 2\n"
+        "===\n\n"
+        "(1) Observation quoting deciding value.\n"
+        f"    -- {_STRONG.phrase} ^a\n"
+        "-- Warrant rule. Unless: defeater; not ruled out. --\n"
+        "(2) So conclusion.\n"
+    )
+    parsed_unindented = ra.parse_block(block_text, _VOCAB)
+    assert parsed_unindented is not None
+    assert len(parsed_unindented.premises) == 1
+    assert parsed_unindented.premises[0].basis == _STRONG
+
+    # Indent the entire block by 2 spaces
+    indented_block = "\n".join("  " + ln if ln.strip() else "" for ln in block_text.splitlines())
+    parsed_indented = ra.parse_block(indented_block, _VOCAB)
+    assert parsed_indented == parsed_unindented
+    assert parsed_indented.premises[0].basis == _STRONG
+
+
+def test_altered_frontmatter_relative_nesting_changes_result():
+    """AC4: Whitespace that changes meaning still changes the result (frontmatter nesting)."""
+    # Case 1: answers nested under asks
+    malformed_nesting = (
+        "===\n"
+        f"asks:\n"
+        f"  {ASK_A}: question\n"
+        f"  answers:\n"
+        f"    {ASK_A}: 2\n"
+        "===\n\n"
+        "(1) Observation. -- I read it\n"
+        "-- Warrant. Unless: def; ok. --\n"
+        "(2) So conclusion.\n"
+    )
+    valid, err, _ = ra.check_argdown_block(malformed_nesting)
+    assert valid is False
+    assert "Missing 'answers:' section" in err
+
+    # Case 2: ask id not nested under asks (same column 0 as asks)
+    unindented_ask = (
+        "===\n"
+        f"asks:\n"
+        f"{ASK_A}: question\n"
+        f"answers:\n"
+        f"  {ASK_A}: 2\n"
+        "===\n\n"
+        "(1) Observation. -- I read it\n"
+        "-- Warrant. Unless: def; ok. --\n"
+        "(2) So conclusion.\n"
+    )
+    parsed = ra.parse_block(unindented_ask, _VOCAB)
+    assert parsed is not None
+    # Because ASK_A was at the root instead of under asks:, parsed.asks is empty
+    assert parsed.asks == []
+
+
+def test_split_inference_line_changes_result():
+    """AC4: Whitespace that changes meaning still changes the result (split inference line)."""
+    canonical_block = ra.extract_block(_report())
+    assert canonical_block is not None
+
+    # Split inference line across lines
+    split_block = canonical_block.replace(
+        "Unless: this runtime ignores hook output; not ruled out. --",
+        "\nUnless: this runtime ignores hook output; not ruled out. --",
+    )
+
+    # 1. check_argdown_block returns False with malformed inference defect
+    valid, err, _ = ra.check_argdown_block(split_block)
+    assert valid is False
+    assert "Malformed inference line (missing closing '--')" in err
+
+    # 2. record_verdict for PASS is refused
+    sess = "sess-split-inf"
+    cid = "claim-split-inf"
+    _arm_with_report(sess, cid, text=f"```argdown\n{split_block}\n```\n")
+    with pytest.raises(ValueError) as excinfo:
+        pcv.record_verdict(
+            session_id=sess,
+            claim_id=cid,
+            verdict="PASS",
+            reason=_reason(cid),
+            tracer_mod=_configured(),
+        )
+    assert "Malformed inference line" in str(excinfo.value)
+
+
+# ---------------------------------------------------------------------------
+# Indented hand-backs and unparsable blocks (AC1-AC5)
+# ---------------------------------------------------------------------------
+
+
+def test_indented_handback_four_inferences_parses_and_records_pass():
+    """AC1: A hand-back whose block opens '  ===\\n  asks:...', carrying a sound four-inference argument,
+    parses with 4 inference lines and records PASS; fails before the fix."""
+    ask_c = "tg-1992"
+    ask_d = "tg-1993"
+    block = (
+        "  ===\n"
+        f"  asks:\n"
+        f"    {ASK_A}: is step 1 ok?\n"
+        f"    {ASK_B}: is step 2 ok?\n"
+        f"    {ask_c}: is step 3 ok?\n"
+        f"    {ask_d}: is step 4 ok?\n"
+        f"  answers:\n"
+        f"    {ASK_A}: 2\n"
+        f"    {ASK_B}: 3\n"
+        f"    {ask_c}: 4\n"
+        f"    {ask_d}: 5\n"
+        "  ===\n\n"
+        "  (1) First premise. -- I did it\n"
+        "  -- Warrant 1. Unless: def1; not ruled out. --\n"
+        "  (2) So, first conclusion.\n"
+        "  -- Warrant 2. Unless: def2; not ruled out. --\n"
+        "  (3) So, second conclusion.\n"
+        "  -- Warrant 3. Unless: def3; not ruled out. --\n"
+        "  (4) So, third conclusion.\n"
+        "  -- Warrant 4. Unless: def4; not ruled out. --\n"
+        "  (5) So, fourth conclusion.\n"
+    )
+    # Check parse_block directly
+    parsed = ra.parse_block(block, _VOCAB)
+    assert parsed is not None
+    assert len(parsed.inferences) == 4
+    assert [inf.conclusion for inf in parsed.inferences] == [2, 3, 4, 5]
+
+    # Check record_verdict on hand-back text
+    session_id = "s-ac1-indented"
+    cid = "claim-ac1"
+    judged_text = f"## Report\n\n```argdown\n{block}```\n"
+    _arm_with_report(session_id, cid, text=judged_text)
+
+    reason = (
+        f"Judged: {cid}; asks {ASK_A}, {ASK_B}, {ask_c}, {ask_d}\n"
+        "Valid: (2) holds -- warrant 1\n"
+        "Valid: (3) holds -- warrant 2\n"
+        "Valid: (4) holds -- warrant 3\n"
+        "Valid: (5) holds -- warrant 4\n"
+        "Supported: weakest I did it -- (1)\n"
+        f"Answered: {ASK_A} ← (2)\n"
+        f"Answered: {ASK_B} ← (3)\n"
+        f"Answered: {ask_c} ← (4)\n"
+        f"Answered: {ask_d} ← (5)\n"
+        "Sufficient: (2), (3), (4), (5) obvious\n"
+        "Waived: none\n"
+        "Relay: none\n"
+    )
+    tracer = _configured()
+    result = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=cid,
+        verdict="PASS",
+        reason=reason,
+        tracer_mod=tracer,
+    )
+    assert result["ok"] is True
+    assert result["verdict"] == "PASS"
+    assert pcg.is_armed(session_id) is False
+    assert tracer.exported[0]["attributes"]["premise_check.inference_count"] == 4
+
+
+def test_nested_argdown_relations_under_common_indent_yields_same_structure():
+    """AC2: A block with nested Argdown relations under a common indent yields the same
+    relation structure as the same block unindented."""
+    unindented_block = (
+        "[S1]: Statement 1\n  +> [S2]\n    +> [S3]\n[S2]: Statement 2\n[S3]: Statement 3\n"
+    )
+    indented_block = (
+        "  [S1]: Statement 1\n"
+        "    +> [S2]\n"
+        "      +> [S3]\n"
+        "  [S2]: Statement 2\n"
+        "  [S3]: Statement 3\n"
+    )
+    valid_u, err_u, ast_u = ra.check_argdown_block(unindented_block)
+    assert valid_u is True, err_u
+    valid_i, err_i, ast_i = ra.check_argdown_block(indented_block)
+    assert valid_i is True, err_i
+    assert ast_u is not None and ast_i is not None
+    assert ast_u["relations"] == ast_i["relations"]
+    assert ast_u["statements"] == ast_i["statements"]
+
+
+def test_strict_structural_markers_remain_refused():
+    """AC3: Malformed inference lines, (n) numbering, answers: pointers and basis phrases
+    are refused after the change as before."""
+    # 1. Malformed inference line
+    block_bad_inf = (
+        "===\n"
+        f"asks:\n  {ASK_A}: q\n"
+        f"answers:\n  {ASK_A}: 2\n"
+        "===\n\n"
+        "(1) Observation. -- I read it\n"
+        "-- Malformed inference without closing dashes\n"
+        "(2) So, conclusion.\n"
+    )
+    valid, err, _ = ra.check_argdown_block(block_bad_inf)
+    assert valid is False
+    assert "Malformed inference line" in err
+
+    # 2. Malformed (n) numbering (markdown list item)
+    block_bad_num = (
+        "1. Markdown item. -- I read it\n-- Warrant. Unless: def; status. --\n(2) So, conclusion.\n"
+    )
+    valid, err, _ = ra.check_argdown_block(block_bad_num)
+    assert valid is False
+    assert "Markdown numbered list" in err
+
+    # 3. Malformed answers: pointer (unmapped ask)
+    block_bad_ans = (
+        "===\n"
+        f"asks:\n  {ASK_A}: q1\n  {ASK_B}: q2\n"
+        f"answers:\n  {ASK_A}: 2\n"
+        "===\n\n"
+        "(1) Observation. -- I read it\n"
+        "-- Warrant. Unless: def; status. --\n"
+        "(2) So, conclusion.\n"
+    )
+    valid, err, _ = ra.check_argdown_block(block_bad_ans)
+    assert valid is False
+    assert "Unmapped ask" in err
+
+    # 4. Malformed basis phrase (unknown phrase)
+    block_bad_basis = (
+        "(1) Observation. -- totally made up basis\n"
+        "-- Warrant. Unless: def; status. --\n"
+        "(2) So, conclusion.\n"
+    )
+    parsed = ra.parse_block(block_bad_basis, _VOCAB)
+    assert parsed is not None
+    assert parsed.premises[0].basis is None and parsed.premises[0].rank == 0
+
+
+def test_unparsable_block_yields_could_not_parse_refusal_not_0_inferences_and_leaves_gate_armed():
+    """AC4: An unparsable block yields a refusal stating the block could not be parsed,
+    never '0 inference lines', and the gate stays armed."""
+    session_id = "s-ac4-unparsable"
+    cid = "claim-unparsable"
+    unparsable_block = (
+        "===\n"
+        f"asks:\n  {ASK_A}: question\n"
+        f"answers:\n  {ASK_A}: 2\n"
+        "===\n\n"
+        "(1) Premise without warrant.\n"
+        "this line is unparsable gibberish that violates argdown syntax entirely\n"
+    )
+    judged_text = f"## Report\n\n```argdown\n{unparsable_block}```\n"
+    _arm_with_report(session_id, cid, text=judged_text)
+    assert pcg.is_armed(session_id) is True
+
+    reason = (
+        f"Judged: {cid}; asks {ASK_A}\n"
+        "Valid: (1) holds -- warrant\n"
+        "Supported: weakest I did it -- (1)\n"
+        f"Answered: {ASK_A} ← (1)\n"
+        "Sufficient: (1) obvious\n"
+        "Waived: none\n"
+        "Relay: none\n"
+    )
+    with pytest.raises(ValueError) as excinfo:
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id=cid,
+            verdict="PASS",
+            reason=reason,
+            tracer_mod=_configured(),
+        )
+
+    err = str(excinfo.value)
+    # Refusal states the block could not be parsed
+    assert (
+        "could not parse" in err.lower()
+        or "cannot parse" in err.lower()
+        or "no argdown block that parses" in err.lower()
+    )
+    # Refusal NEVER says "0 inference lines"
+    assert "0 inference lines" not in err
+    # Gate stays armed
+    assert pcg.is_armed(session_id) is True
+
+
+def test_unindented_handback_parses_identically_to_baseline():
+    """AC5: Unindented hand-backs parse as before; full test suite and linter green."""
+    report_text = _report()
+    block = ra.extract_block(report_text)
+    assert block is not None
+    parsed = ra.parse_block(block, _VOCAB)
+    assert parsed is not None
+    assert parsed.asks == [ASK_A, ASK_B]
+    assert len(parsed.inferences) == 2
+    assert [inf.conclusion for inf in parsed.inferences] == [4, 6]
+    valid, err, ast = ra.check_argdown_block(block)
+    assert valid is True
+
+
+def test_indented_premise_continuation_lines_with_dashes_parse_and_record_pass():
+    """Indented premise continuation lines starting with -- or — bind correctly as basis text
+    rather than opening a multiline inference bar, preserve basis_text, and pass record_verdict."""
+    block = (
+        "===\n"
+        f"asks:\n  {ASK_A}: is step 1 ok?\n"
+        f"answers:\n  {ASK_A}: 3\n"
+        "===\n\n"
+        "(1) [P1]: First premise statement.\n"
+        "  -- I read it\n"
+        "(2) [P2]: Second premise statement.\n"
+        "  — rule\n"
+        "-- Warrant 1. Unless: def1; not ruled out. --\n"
+        "(3) [C1]: So, first conclusion.\n"
+    )
+    parsed = ra.parse_block(block, _VOCAB)
+    assert parsed is not None
+    assert len(parsed.premises) == 2
+    assert parsed.premises[0].basis_text == "I read it"
+    assert parsed.premises[0].basis is not None and parsed.premises[0].basis.phrase == "I read it"
+    assert parsed.premises[1].basis_text == "rule"
+    assert parsed.premises[1].basis is not None and parsed.premises[1].basis.phrase == "rule"
+    assert len(parsed.inferences) == 1
+    assert parsed.inferences[0].conclusion == 3
+    assert parsed.inferences[0].text == "-- Warrant 1. Unless: def1; not ruled out. --"
+
+    session_id = "s-indented-continuation"
+    cid = "claim-indented-continuation"
+    judged_text = f"## Report\n\n```argdown\n{block}```\n"
+    _arm_with_report(session_id, cid, text=judged_text)
+
+    reason = (
+        f"Judged: {cid}; asks {ASK_A}\n"
+        "Valid: (3) holds -- warrant 1\n"
+        "Supported: weakest rule -- (2)\n"
         f"Answered: {ASK_A} ← (3)\n"
         "Sufficient: (3) obvious\n"
-        "Waived: basis wording -- custom phrase\n"
-        "Relay: none\n",
-        _VOCAB,
+        "Waived: none\n"
+        "Relay: none\n"
     )
-    failures_escalate = ra.pass_failures(reason_escalate_attempt, arg_unchecked, _VOCAB)
-    assert any(
-        "the block's weakest premise is (2) 'worker reported, unchecked' (rank 1)" in f
-        for f in failures_escalate
+    attr = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=cid,
+        verdict="PASS",
+        reason=reason,
+        tracer_mod=_configured(),
     )
+    assert attr["verdict"] == "PASS"
+
+
+# ---------------------------------------------------------------------------
+# Hotfix: #3398 (block shape), #3399 (transport decoding), #3382 (named defect)
+# ---------------------------------------------------------------------------
+
+
+def test_replay_issue_3398_turn_5_block_records_pass():
+    """AC1: Replay #3398 turn-5 block (asks/answers in list/label idiom) and recorder accepts PASS without waiver."""
+    block = (
+        "===\n"
+        "title: What is next on the user's work list\n"
+        "granularity:\n"
+        "  level: micro\n"
+        '  floor: "Task records and list output read from fixtures."\n'
+        "model:\n"
+        "  mode: strict\n"
+        "asks:\n"
+        "  - id: tg-3107\n"
+        '    text: "what\'s next on the list for work?"\n'
+        "answers:\n"
+        "  tg-3107: Next\n"
+        "===\n\n"
+        '(1) [Deadline sort]: The task list puts tasks with hard deadlines first and then sorts the rest by value. {basis: "observed", pointer: "mock_list_tasks default order", source: "cliff lane"}\n'
+        '(2) [First rows]: The first four rows are the policy decision and its options. {basis: "observed", pointer: "mock_list_tasks rows 1-4", source: "due dates"}\n'
+        '(3) [Options]: The submission and inquiry tasks are options under the parent decision. {basis: "observed", pointer: "frontmatter", source: "parent: decision-parent"}\n'
+        '(4) [Booking]: The user said they will book the team meeting tonight or tomorrow. {basis: "reported-by", pointer: "relay", source: "tonight or tomorrow"}\n'
+        '(5) [Review blocked]: The analysis plan review is blocked because prerequisite tasks are queued. {basis: "observed", pointer: "task-review", source: "blocked: true"}\n'
+        '-- Deadline-first warrant: The list\'s deadline-first order is the work order and a blocked task cannot start. Unless: the user ranks by something else today; not observed. {uses: [1, 2, 3, 4, 5], basis: "stated", pointer: "mock_list_tasks"} --\n'
+        "(6) [Next]: So, the next work is the policy decision with its inquiry option, then the compliance filing, and booking the team meeting. The analysis review is not yet open.\n"
+    )
+    report_text = f"## Report\n\n```argdown\n{block}```\n"
+    session_id = "s-3398-turn5"
+    claim_id = "claim-3398-turn5"
+    _arm_with_report(session_id, claim_id, text=report_text)
+
+    reason = (
+        f"Judged: {claim_id}; asks tg-3107\n"
+        "Valid: (6) holds -- deadline-first list order (1) applied to rows (2), folding options under their parent (3), adding the user's booking plan (4), excluding a blocked task (5) yields the stated next items\n"
+        "Supported: (1)(2)(3)(5) observed list output and task records with pointers; (4) relay of the user's words\n"
+        "Answered: tg-3107 ← (6)\n"
+        "Sufficient: (6) material; obvious; no objection\n"
+        "Waived: none\n"
+        "Relay: none\n"
+    )
+
+    result = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=claim_id,
+        verdict="PASS",
+        reason=reason,
+        tracer_mod=_configured(),
+    )
+    assert result["verdict"] == "PASS"
+    assert result["disarmed"] is True
+
+
+def test_entity_escaped_argdown_block_parses_identically_to_raw():
+    """AC2: Feed a block containing <Argument label> and &, entity-escaped as in #3399, and recorder parses identically."""
+    raw_block = (
+        "===\n"
+        "asks:\n"
+        "  tg-3107: what is next & when?\n"
+        "answers:\n"
+        "  tg-3107: 2\n"
+        "===\n\n"
+        "<Deadline order>\n"
+        "(1) [Observation]: Task & Engagement observations are ordered by deadline. -- I read it\n"
+        "-- Warrant: deadline order holds. Unless: overridden; not observed. --\n"
+        "(2) [Next]: So Next tasks are prioritized.\n"
+    )
+    escaped_block = (
+        "===\n"
+        "asks:\n"
+        "  tg-3107: what is next &amp; when?\n"
+        "answers:\n"
+        "  tg-3107: 2\n"
+        "===\n\n"
+        "&lt;Deadline order&gt;\n"
+        "(1) [Observation]: Task &amp; Engagement observations are ordered by deadline. -- I read it\n"
+        "-- Warrant: deadline order holds. Unless: overridden; not observed. --\n"
+        "(2) [Next]: So Next tasks are prioritized.\n"
+    )
+
+    # 1. Normalisation and validation parse identically
+    valid_raw, err_raw, ast_raw = ra.check_argdown_block(raw_block)
+    valid_esc, err_esc, ast_esc = ra.check_argdown_block(escaped_block)
+    assert valid_raw is True and err_raw == ""
+    assert valid_esc is True and err_esc == ""
+    assert ast_esc == ast_raw
+
+    # 2. Block parser produces identical Argument structures
+    parsed_raw = ra.parse_block(raw_block, _VOCAB)
+    parsed_esc = ra.parse_block(escaped_block, _VOCAB)
+    assert parsed_raw is not None
+    assert parsed_esc == parsed_raw
+
+    # 3. Verdict recording succeeds on the entity-escaped block without waivers
+    session_id = "s-3399-escaped"
+    claim_id = "claim-3399"
+    report_text = f"## Report\n\n```argdown\n{escaped_block}```\n"
+    _arm_with_report(session_id, claim_id, text=report_text)
+
+    reason = (
+        f"Judged: {claim_id}; asks tg-3107\n"
+        "Valid: (2) holds -- warrant applied to (1)\n"
+        "Supported: (1) direct observation\n"
+        "Answered: tg-3107 ← (2)\n"
+        "Sufficient: (2) obvious\n"
+        "Waived: none\n"
+        "Relay: none\n"
+    )
+    result = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=claim_id,
+        verdict="PASS",
+        reason=reason,
+        tracer_mod=_configured(),
+    )
+    assert result["verdict"] == "PASS"
+
+
+def test_reason_check_refusal_for_unparseable_block_names_failing_line_or_key():
+    """AC3: Reason-check refusal for an unparseable block names the failing line or key and expected shape."""
+    # A block with a syntax error (malformed inference line missing closing '--')
+    bad_block = (
+        "===\n"
+        "asks:\n"
+        "  tg-1: question\n"
+        "answers:\n"
+        "  tg-1: 2\n"
+        "===\n\n"
+        "(1) Observation premise.\n"
+        "-- Malformed warrant with no closing dashes\n"
+        "(2) So conclusion.\n"
+    )
+    judged_text = f"```argdown\n{bad_block}```\n"
+
+    reason = (
+        "Judged: claim-3382; asks tg-1\n"
+        "Valid: (2) holds -- warrant\n"
+        "Supported: (1) observation\n"
+        "Answered: tg-1 ← (2)\n"
+        "Sufficient: (2) obvious\n"
+        "Waived: none\n"
+        "Relay: none\n"
+    )
+
+    with pytest.raises(ValueError) as exc_info:
+        pcv.judge_reason("PASS", reason, judged_text)
+
+    msg = str(exc_info.value)
+    # The reason-check refusal must state that the reason fails checks,
+    # and explicitly name the failing line or key and the shape expected.
+    assert "the reason fails the recorder's checks" in msg
+    assert "the judged text has no argdown block that parses" in msg
+    assert "Malformed inference line" in msg or "missing closing '--'" in msg
+    assert "-- Malformed warrant with no closing dashes" in msg
+    assert "Required remediation format" in msg

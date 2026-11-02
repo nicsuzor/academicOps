@@ -15,10 +15,12 @@ Ida's custom Telegram channel and Mini App plugin for Claude Code.
   - Vertical numbered keyboard options with recommendation first.
   - Never blocks or assumes answers; delivers answers as channel notification events upon reply.
 - **Option Buttons & Message Actions:**
-  - `reply` takes `buttons` (one per row) for the answers to a question asked in the reply; a tap edits the card to `Selected: <label> ✅` and emits a `button_tap` channel event.
-  - Every reply automatically attaches `[🧐 Check logic]` and `[💡 Explain]` action buttons (unless `actions: false` is passed). Tapping `🧐 Check logic` delivers an inbound request naming the message for Ida to run a peer `premise-check`. Tapping `💡 Explain` delivers an inbound request for Ida to expand that message in more detail.
+  - `reply` takes `buttons` for the answers to a question asked in the reply; a tap edits the card to `Selected: <label> ✅` and emits a `button_tap` channel event. Supports 2D row arrays (`ReplyButtonOption[][]`), layout chunking via `button_layout` (e.g. `[3, 3, 2]`) or `buttons_per_row` (e.g. `4`), and per-button `row` properties, defaulting to 1 button per row when flat.
+  - Setting `predefined_row: true` groups all active predefined buttons (`🔍`, `🔍 Review diff`, `👍`/`👎`, `[🧐 Check]`, `[💡 Explain]`, `[🧾]`, `[✅]`, `[❌]`) onto a single consolidated first row above any caller buttons.
+  - Every reply automatically attaches `[🧐 Check]`, `[💡 Explain]`, `[🧾]`, `[✅]`, and `[❌]` action buttons (unless `actions: false` is passed), with `🔍` (Details) consolidated on the same row in default reply keyboards. Tapping `🧐 Check` delivers an inbound request naming the message for Ida to run a peer `premise-check`. Tapping `💡 Explain` delivers an inbound request for Ida to expand that message in more detail. Tapping `🧾` delivers an inbound request for Ida to provide the argument chain ("how do you know that?") with verbatim Argdown blocks attached in Details. Tapping `✅` or `❌` marks the card with the choice and delivers an event naming the message and whether the recommendation was accepted or declined.
 - **Mini App Security, Details, Review, Questions & Anchor:**
   - Loopback-only Bun HTTP server (`127.0.0.1:<port>`) serving `/app/*` and `/api/app/*`.
+  - `MINI_APP_URL` (or `IDA_WEB_URL`), required: the public URL at which this server is reachable, used for Mini App buttons. There is no default; the plugin refuses to start without it.
   - Telegram `initData` HMAC-SHA256 validation with 1-hour expiration and `allowFrom` whitelist check.
   - **Details tab (`FR-4.3`, `FR-1.6`):** Renders stored Details Markdown as formatted HTML (headings, inline formatting, collapsible `>!` quotes, syntax-highlighted code blocks, and HTML `<table>` elements).
   - **Review tab (`FR-4.4`, `FR-4.5`):** Displays live pending tool permission requests (`Bash` copyable scripts, `Edit`/`MultiEdit`/`Write` unified diffs, JSON inputs) with `Allow` / `Deny` actions that resolve the relay and edit the Telegram chat card (`Allowed via Mini App ✅`), alongside PR/branch diffs fetched via `GITHUB_TOKEN` with a file tree, syntax-highlighted hunks, and `Approve` / `Request changes` actions that emit channel events to Ida without mutating GitHub directly.
@@ -39,14 +41,16 @@ Ida's custom Telegram channel and Mini App plugin for Claude Code.
     - `VOICE_SPEAK_CMD`: Optional path override for speech synthesis command. Defaults to the bundled `${CLAUDE_PLUGIN_ROOT}/scripts/speak.sh`.
     - `GEMINI_TTS_VOICE`: Optional prebuilt voice name for Gemini TTS (default: `Aoede`).
     - `VOICE_REPLIES`: Speech synthesis reply policy: `off`, `mirror`, or `always` (default: `mirror`).
+- **Threaded Conversations by Default:**
+  - Messages arriving in Telegram forum topics or message threads are received with their thread identity (`meta.message_thread_id` and `meta.thread_id`).
+  - Outbound paths (`reply`, `ask_user` question cards, `force_reply` prompts for `✏️ Other`, message edits, and emoji reactions) automatically stay in that thread without requiring configuration or opt-in settings.
+  - Callers may optionally supply `message_thread_id` (or `thread_id`) explicitly to target a specific thread.
+  - Unthreaded chats maintain legacy behaviour with parameters omitted from outbound requests.
 - **Native Bot Commands:**
-  - Registers persona-tailored command menus via `setMyCommands` at `botCommandScopeChat` for each `allowFrom` chat on startup, surviving channel restarts and overriding `all_private_chats` defaults.
-  - Ida Prime registers `/decide`, `/q`, `/mine`, `/reconcile`, `/hydrate`, and `/up`.
-  - Strategic Ida registers `/strategize`, `/remember`, `/decompose`, `/q`, `/hydrate`, and `/up`.
-  - Persona is configured via `IDA_TELEGRAM_PERSONA` / `TELEGRAM_PERSONA` or inferred from `STATE_DIR` (`telegram-pauli` / `telegram-prime` -> `prime`, `telegram-ida` / `telegram-strategic` -> `strategic`).
-  - Custom JSON override via `TELEGRAM_BOT_COMMANDS` overrides persona defaults.
-  - Excludes reserved official-plugin commands (`/start`, `/help`, `/status`).
-  - Enriches bare menu taps (commands with no arguments) with each command's defined no-argument behavior (`meta.default_action` and `meta.skill`).
+  - Registers the native command menu via `setMyCommands` at `botCommandScopeChat` for each `allowFrom` chat on startup, surviving channel restarts and overriding `all_private_chats` defaults.
+  - The menu is the JSON list configured in `TELEGRAM_BOT_COMMANDS`; with none configured, no menu is registered. The plugin reads no other plugin's files to build it.
+  - Excludes reserved official-plugin commands (`/start`, `/help`, `/status`) and headless worker commands (`/pull`, `/dump`); hyphens in configured names become underscores.
+  - Commands reach the agent as typed (`meta.command`, `meta.args`); what a command does is set by the agent's instructions (`skills/telegram/SKILL.md`), not by plugin code.
 - **Concurrency & Host Locks:**
   - Gated to `IDA_TELEGRAM_ROLE=primary`.
   - Non-primary instances register zero tools, run no poller, and leave hooks inert.

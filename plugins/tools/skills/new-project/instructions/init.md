@@ -70,19 +70,13 @@ Create `.agents/INDEX.md` listing `README.md`, `.agents/CORE.md`, `docs/METHODOL
 
 ## Step 7: PKB integration
 
-Check for existing node, then create, via the `services` MCP server's code-mode interface (`portal_codemode_execute`; in agy via `call_mcp_tool` with `ServerName: "services"`, in Claude Code via `mcp__services__portal_codemode_execute`):
+Check for an existing project node via PKB search (`<title or slug>`). If a matching project node exists, halt and prompt the user. Otherwise, create a new project node:
 
-```javascript
-const results = await codemode.pkb_search({ query: "<title or slug>", limit: 10 });
-// If matching project node exists, halt and prompt user. Else:
-await codemode.pkb_create_task({
-  title: "Project: <title>",
-  type: "project",
-  body: "<description>",
-  tags: ["project-<slug>"],
-  parent: "<goal_id>" // if specified
-});
-```
+- `title`: "Project: <title>"
+- `type`: "project"
+- `body`: "<description>"
+- `tags`: ["project-<slug>"]
+- `parent`: "<goal_id>" (if specified)
 
 ## Step 8: Git & project registration
 

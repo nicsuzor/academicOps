@@ -21,17 +21,15 @@ Write and consolidate knowledge notes under `synthesize-not-accrete`. State curr
 
 ## Capture Workflow
 
-1. **Search**: Run `codemode.pkb_search({ query: "<topic>" })`.
+1. **Search**: Query existing notes for the topic.
 2. **Find canonical note**: Maintain one canonical note per primary topic (concept, tool, project). If a topic note exists, update it rather than creating a new one.
-3. **Augment in place**: Rewrite the relevant section to reflect current state via `codemode.pkb_update_body`. Replace superseded facts; do not append dated entries or provenance narratives. Grounding evidence lives in its own node linked by `[[wikilink]]`.
-4. **Create when novel**: Use `codemode.pkb_create({ type: "knowledge", ... })` for documents or `codemode.pkb_create({ type: "memory", ... })` for atomic facts only when no canonical topic matches.
-
-All PKB calls above go through the `services` MCP server's code-mode interface: `portal_codemode_execute` running `async () => await codemode.<pkb_op>(...)` (in agy via `call_mcp_tool` with `ServerName: "services"`, in Claude Code via `mcp__services__portal_codemode_execute`), always providing a concise 1-line `toolSummary` argument (e.g. `toolSummary: "Update canonical note for <topic>"`). There is no directly-invocable flat tool named `pkb__<op>` or `pkb-<op>`.
+3. **Augment in place**: Rewrite the relevant section to reflect current state. Replace superseded facts; do not append dated entries or provenance narratives. Grounding evidence lives in its own node linked by `[[wikilink]]`.
+4. **Create when novel**: Create documents (`type: knowledge`) or atomic facts (`type: memory`) only when no canonical topic matches.
 
 ### Graph Integration
 
 - **Densify relationships**: Link notes to peer concepts and navigation nodes with `[[wikilink]]` pointers **in the prose that needs them**. A wikilink anywhere in a body is a real graph edge (not read by the flow rule, pending FQ23). Do not author a `## Relationships`, `## Related`, `## See also`, or `## References` heading -- no code path reads body headings into edges, and a link parked in a list at the foot of a note is an edge without a reason attached. Task bodies express relationships via graph edges, never in prose.
-- **Frontmatter**: Set it when creating the node. `codemode.pkb_create` accepts `title`, `type`, `tags`, `confidence` (float 0–1), and `source` (a single string); `id`, `alias`, `permalink`, `created`, and `modified` are generated. When deriving a note from a PKB artefact, pass the artefact's PKB-relative path in `source` (or parent to a node whose file lives in that sub-project directory) so home-directory placement files the note in that sub-project directory rather than defaulting to `notes/`. Afterwards `batch_update` can change `title`, `type`, `tags` and the other task fields. Nothing else is writable -- unknown keys are rejected, not written -- so provenance beyond the one `source` string belongs in the body as a `[[wikilink]]` to its evidence node.
+- **Frontmatter**: Set it when creating the node. Node creation accepts `title`, `type`, `tags`, `confidence` (float 0–1), and `source` (a single string); `id`, `alias`, `permalink`, `created`, and `modified` are generated. When deriving a note from a PKB artefact, pass the artefact's PKB-relative path in `source` (or parent to a node whose file lives in that sub-project directory) so home-directory placement files the note in that sub-project directory rather than defaulting to `notes/`. Afterwards metadata updates can change `title`, `type`, `tags` and the other task fields. Nothing else is writable -- unknown keys are rejected, not written -- so provenance beyond the one `source` string belongs in the body as a `[[wikilink]]` to its evidence node.
 - **Legacy frontmatter**: a few older hand-written nodes carry `sources:`, `synthesized:`, `last_reviewed:`, or `maturity:`. These are unreachable through the current tools and no code reads them. Do not add them, do not treat their absence as a defect, and do not require them in a review.
 - **Navigation nodes**: Create or update `type: index` notes when a topic accumulates five or more notes. There is no `moc` type; writes specifying one are rejected.
 

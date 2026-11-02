@@ -606,9 +606,9 @@ class _StubReflexesEvaluator(BaseHTTPRequestHandler):
 def stub_evaluator_env(tmp_path):
     """Environment overrides pointing cope's hook at the loopback evaluator.
 
-    `ACA_DATA` is cleared and the OS temp directory redirected because the hook
+    `COPE_USER_RULES_DIR` is cleared and the OS temp directory redirected because the hook
     reports its own degradation on the same response (lib/hooks/degraded.py),
-    once per session, behind a marker file: an ambient `ACA_DATA` naming no
+    once per session, behind a marker file: an ambient `COPE_USER_RULES_DIR` naming no
     rules directory is a real fault, and a marker left in the real temp
     directory would decide whether the next run saw it.
     """
@@ -623,7 +623,7 @@ def stub_evaluator_env(tmp_path):
         "COPE_EVALUATOR_API_KEY": None,
         "COPE_EVALUATOR_TIMEOUT": "20",
         "COPE_EVALUATOR_TRACE_PATH": None,  # unset here; tests that want it set it themselves
-        "ACA_DATA": None,
+        "COPE_USER_RULES_DIR": None,
         "TMPDIR": str(marker_root),
     }
     server.shutdown()
@@ -881,7 +881,7 @@ def test_every_axiom_is_live_in_the_built_clients(pristine_dist, tmp_path, monke
     assert {json.loads(line)["slug"] for line in jsonl.splitlines()} == slugs
     assert {p.stem for p in (pristine_dist / "rbg-agy" / "rules").glob("*.md")} == slugs
 
-    monkeypatch.delenv("ACA_DATA", raising=False)
+    monkeypatch.delenv("COPE_USER_RULES_DIR", raising=False)
     spec = importlib.util.spec_from_file_location(
         "rbg_rules", _REPO_ROOT / "plugins" / "rbg" / "hooks" / "rules.py"
     )

@@ -10,6 +10,12 @@ description: Collaboratively develop a complete task/feature specification befor
 been identified. Purpose: a complete spec before implementation starts —
 implementation without this template first is scope-creep waiting to happen.
 
+## One PR, opened by the build
+
+- Stage 1 records its design, any drafted spec change, and its review verdict in a PKB note the Stage 2 task points to. Stage 1 commits no plan or design file and opens no PR.
+- Stage 2 opens the PR into the base branch as a draft, carrying the build and any spec change. The spec stays editable on that branch as the build teaches more.
+- Stage 2 marks the PR ready for review (`gh pr ready`) only after the proportionate review on the build is posted to the PR thread. That flip does not wait for approval: approval comes at the full review, and spec and feature merge together.
+
 ## Steps
 
 1. **Identify the target** — confirm a manual process worth automating, or a
@@ -29,9 +35,7 @@ implementation without this template first is scope-creep waiting to happen.
     axioms and rules (proportionality, single source of truth, closure) before
     review. Resolve any required changes before advancing.
 11. **Review** — record the full summary review on the record for review.
-12. **Finalize and submit** — open a PR for bazaar review; implementation
-    proceeds only after approval (compose [[wf-escalated-approval]] for the
-    go-ahead if the spec commits to something hard to walk back).
+12. **Finalize and submit** — as a standalone spec task, commit the spec on a feature branch and deliver it under the finish policy. As a Stage 1 design or spec task preceding a build, record the drafted spec change and the independent review verdict in a PKB note the Stage 2 task points to, open no PR, and release the task once independent review passes (or release as `partial` where an explicit user decision is required) so Stage 2 implementation remains gated until approval is recorded. Implementation proceeds on the build task, which opens the draft PR into the base branch carrying the build and spec change only after approval (compose [[wf-escalated-approval]] for the go-ahead if the spec commits to something hard to walk back), with the spec still editable; mark the draft PR ready for review (`gh pr ready`) once the feature is written and proportionate review is posted to the PR thread, without waiting for approval; spec and feature merge together after full review.
 
 ## Verification before proceeding to implementation
 
