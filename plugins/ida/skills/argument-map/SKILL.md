@@ -37,7 +37,7 @@ Produce three things:
 Rebuild the Excalidraw canvases, SVGs, and overview page automatically from the canonical Argdown source or PKB note:
 
 ```bash
-python3 plugins/ida/skills/argument-map/scripts/render.py <source-path-or-note-id> [--out <dir>]
+python3 "${CLAUDE_SKILL_DIR:-plugins/ida/skills/argument-map}/scripts/render.py" <source-path-or-note-id> [--out <dir>]
 ```
 
 Execution runs through the four-stage rebuild contract ([specs/tools/argument-map-rendering.md](../../../../specs/tools/argument-map-rendering.md)):

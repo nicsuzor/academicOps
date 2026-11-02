@@ -523,8 +523,13 @@ def _resolve_agent_and_parent_ids(
     if not local_agent_id:
         local_agent_id = state.get("session_id") or phoenix_session_id
 
-    parent_session_id = None
-    if local_agent_id and phoenix_session_id and local_agent_id != phoenix_session_id:
+    parent_session_id = state.get("parent_session_id")
+    if (
+        not parent_session_id
+        and local_agent_id
+        and phoenix_session_id
+        and local_agent_id != phoenix_session_id
+    ):
         parent_session_id = phoenix_session_id
 
     return phoenix_session_id, local_agent_id, parent_session_id
@@ -1633,7 +1638,16 @@ def _subagent_record(
     if record is None:
         current_trace = state.get("current_trace")
         if not current_trace:
-            return None
+            last_trace = state.get("last_trace")
+            if not last_trace:
+                return None
+            record = {
+                "agent_type": str(agent_type or ""),
+                "trace_id": last_trace["trace_id"],
+                "agent_span_id": last_trace["root_span_id"],
+            }
+            subagents[agent_id] = record
+            return record
         record = {
             "agent_type": str(agent_type or ""),
             "trace_id": current_trace["trace_id"],
@@ -1933,6 +1947,13 @@ def _complete_turn(
     if agent_id:
         root_attrs["agent.id"] = agent_id
         root_attrs["subagent.id"] = agent_id
+    if current_trace.get("handback_subagent_id"):
+        hb_id = current_trace["handback_subagent_id"]
+        root_attrs["subagent.id"] = hb_id
+        root_attrs["handback.subagent_id"] = hb_id
+        sub_rec = (state.get("subagents") or {}).get(hb_id)
+        if sub_rec and sub_rec.get("agent_type"):
+            root_attrs["subagent.name"] = _subagent_name(sub_rec["agent_type"])
     if parent_session_id:
         root_attrs["parent.session_id"] = parent_session_id
     if agent_name:
@@ -1943,6 +1964,10 @@ def _complete_turn(
     if prompt_preview:
         root_attrs["input.value"] = prompt_preview
         root_attrs["input.mime_type"] = "text/plain"
+    if current_trace.get("turn_source"):
+        root_attrs["turn.source"] = current_trace["turn_source"]
+        if "turn.trigger" not in root_attrs and prompt_preview:
+            root_attrs["turn.trigger"] = prompt_preview
     if final_output:
         root_attrs["output.value"] = final_output
         root_attrs["output.mime_type"] = "text/plain"
@@ -1989,7 +2014,7 @@ def _build_tool_span_record(
     start_ns: int,
     end_ns: int,
     trace_id: str,
-    root_span_id: str,
+    root_span_id: str | None = None,
     is_failure: bool = False,
     error_msg: str = "",
     span_id: str | None = None,
@@ -2165,6 +2190,10 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
 
     transcript_path = _get_cached_transcript_path(data, state, session_id)
     current_human_count = _count_human_messages(transcript_path) if transcript_path else 0
+    state["human_messages_consumed"] = max(
+        state.get("human_messages_consumed", 0) + 1,
+        current_human_count,
+    )
     turn_number = _next_turn_number(state, current_human_count)
 
     parent_trace_id = None
@@ -2198,6 +2227,17 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
         except Exception as e:
             log.debug("Failed to parent subagent: %s", e)
 
+    handback_subagent_id = None
+    if prompt:
+        import re
+
+        m = re.search(
+            r'<(?:agent-message|subagent-handback)[^>]*\b(?:from|agent|id)=["\']([^"\']+)["\']',
+            prompt,
+        )
+        if m:
+            handback_subagent_id = m.group(1)
+
     pending_turn = state.pop("pending_turn_trace", None) or {}
     state["current_trace"] = {
         "trace_id": parent_trace_id or pending_turn.get("trace_id") or _new_trace_id(),
@@ -2206,6 +2246,7 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
         "turn_start_ns": now_ns,
         "turn_number": turn_number,
         "prompt_preview": _truncate(prompt) if prompt else "",
+        "handback_subagent_id": handback_subagent_id,
         "human_count_at_start": max(0, turn_number - 1),
         "model_calls": [],
         "emitted_llm_span_count": 0,
@@ -2362,11 +2403,32 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
     if client_agent and not state.get("agent_name"):
         state["agent_name"] = client_agent
 
-    # Fallback: create a trace if UserPromptSubmit has not set one yet.
-    if not state.get("current_trace"):
+    subagent_id = _subagent_id(data)
+    if subagent_id:
+        _subagent_record(state, subagent_id, data.get("agent_type"))
+
+    # Fallback: create a trace if UserPromptSubmit has not set one yet,
+    # but ONLY for main-thread tool calls. In-process subagents run tools
+    # in their own subagent trace (parented under the dispatching Agent tool),
+    # so they must not create phantom turn roots for the main session.
+    if not state.get("current_trace") and not subagent_id:
         transcript_path = _get_cached_transcript_path(data, state, session_id)
         current_human_count = _count_human_messages(transcript_path) if transcript_path else 0
-        prompt_preview = _get_latest_human_message(transcript_path) if transcript_path else ""
+        consumed = state.get("human_messages_consumed", 0)
+
+        turn_source = None
+        if current_human_count > consumed:
+            prompt_preview = _get_latest_human_message(transcript_path) if transcript_path else ""
+            state["human_messages_consumed"] = current_human_count
+        else:
+            desc = _extract_debug_hook_description(data, data, "claude", "PreToolUse")
+            if desc and desc not in ("claude PreToolUse hook", tool_name):
+                prompt_preview = f"Tool: {tool_name} ({desc})"
+            elif tool_name:
+                prompt_preview = f"Tool: {tool_name}"
+            else:
+                prompt_preview = "Continuation"
+            turn_source = "tool"
 
         turn_number = _next_turn_number(state, max(0, current_human_count - 1))
 
@@ -2376,6 +2438,7 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
             "turn_start_ns": now_ns,
             "turn_number": turn_number,
             "prompt_preview": _truncate(prompt_preview) if prompt_preview else "",
+            "turn_source": turn_source,
             "human_count_at_start": max(0, current_human_count - 1),
             "model_calls": [],
             "emitted_llm_span_count": 0,
@@ -2388,7 +2451,7 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
         }
 
     current_trace = state.get("current_trace")
-    if current_trace:
+    if current_trace and not subagent_id:
         pmc = current_trace.setdefault(
             "pending_model_call",
             {
@@ -2486,13 +2549,16 @@ def _finish_tool_call(
             return
 
         current_trace = state.get("current_trace")
-        if not current_trace:
+        subagent_id = _subagent_id(data)
+        subagent = (
+            _subagent_record(state, subagent_id, data.get("agent_type")) if subagent_id else None
+        )
+        if not current_trace and not (subagent_id and subagent is not None):
             log.debug("No current trace for session %s in %s", session_id, event)
             return
 
         tool_name = data.get("tool_name", "unknown")
         data_tool_input = data.get("tool_input")
-        subagent_id = _subagent_id(data)
         current_tool, pending_key = _find_pending_tool_entry(
             state,
             tool_name,
@@ -2508,53 +2574,55 @@ def _finish_tool_call(
         pre_allocated_span_id = None if is_failure else current_tool.get("pre_allocated_span_id")
 
         tool_call_id = data.get("tool_use_id") or data.get("tool_call_id") or data.get("id")
-        subagent = (
-            _subagent_record(state, subagent_id, data.get("agent_type")) if subagent_id else None
-        )
 
-        # Move completed pending_model_call to model_calls
-        if (
-            current_trace.get("pending_model_call")
-            and "end_ns" in current_trace["pending_model_call"]
-        ):
-            pmc = current_trace.pop("pending_model_call")
-            current_trace.setdefault("model_calls", []).append(pmc)
+        # Move completed pending_model_call to model_calls (main-thread only)
+        if current_trace and not subagent_id:
+            if (
+                current_trace.get("pending_model_call")
+                and "end_ns" in current_trace["pending_model_call"]
+            ):
+                pmc = current_trace.pop("pending_model_call")
+                current_trace.setdefault("model_calls", []).append(pmc)
 
-        # Stage the next model call receiving this tool's response
-        tool_resp_str = (
-            json.dumps(tool_response)
-            if isinstance(tool_response, (dict, list))
-            else str(tool_response or "")
-        )
-        if "pending_model_call" not in current_trace:
-            current_trace["pending_model_call"] = {
-                "input_value": _truncate(tool_resp_str),
-                "input_mime": "application/json"
+            # Stage the next model call receiving this tool's response
+            tool_resp_str = (
+                json.dumps(tool_response)
                 if isinstance(tool_response, (dict, list))
-                else "text/plain",
-                "start_ns": end_ns,
-                "tool_calls": [],
-            }
-        else:
-            prev_in = current_trace["pending_model_call"].get("input_value", "")
-            current_trace["pending_model_call"]["input_value"] = _truncate(
-                f"{prev_in}\n{tool_resp_str}"
+                else str(tool_response or "")
             )
+            if "pending_model_call" not in current_trace:
+                current_trace["pending_model_call"] = {
+                    "input_value": _truncate(tool_resp_str),
+                    "input_mime": "application/json"
+                    if isinstance(tool_response, (dict, list))
+                    else "text/plain",
+                    "start_ns": end_ns,
+                    "tool_calls": [],
+                }
+            else:
+                prev_in = current_trace["pending_model_call"].get("input_value", "")
+                current_trace["pending_model_call"]["input_value"] = _truncate(
+                    f"{prev_in}\n{tool_resp_str}"
+                )
 
         # Emit any pending LLM spans whose token counts have landed in the transcript
-        transcript_path = _get_cached_transcript_path(data, state, session_id)
-        _emit_pending_llm_spans(state, transcript_path, config, subagent_id=subagent_id)
+        if current_trace:
+            transcript_path = _get_cached_transcript_path(data, state, session_id)
+            _emit_pending_llm_spans(state, transcript_path, config, subagent_id=subagent_id)
 
-        trace_id = current_trace["trace_id"]
         if subagent_id and subagent is not None:
             trace_id = subagent["trace_id"]
             parent_span_id = subagent["agent_span_id"]
-        else:
+        elif current_trace:
+            trace_id = current_trace["trace_id"]
             parent_span_id = (
                 _find_active_agent_span_id(state, pending_key, tool_name)
                 or current_trace.get("llm_span_by_tool_call", {}).get(str(tool_call_id or ""))
                 or current_trace["root_span_id"]
             )
+        else:
+            trace_id = _new_trace_id()
+            parent_span_id = None
         span_record = _build_tool_span_record(
             tool_name=tool_name,
             tool_input=tool_input,
@@ -2577,14 +2645,27 @@ def _finish_tool_call(
         if dispatched_id:
             span_record["attributes"]["agent.id"] = dispatched_id
             span_record["attributes"]["subagent.id"] = dispatched_id
-            _subagent_record(
+            rec = _subagent_record(
                 state,
                 dispatched_id,
                 tool_response.get("agentType") or (tool_input or {}).get("subagent_type"),
             )
+            is_async = (
+                isinstance(tool_response, dict)
+                and (
+                    bool(tool_response.get("isAsync"))
+                    or tool_response.get("status") == "async_launched"
+                )
+            ) or (isinstance(tool_input, dict) and bool(tool_input.get("run_in_background")))
+            if is_async and rec:
+                rec["is_async"] = True
+                rec["launch_ns"] = start_ns
+                rec["agent_span_id"] = span_record["span_id_hex"]
+                rec["trace_id"] = trace_id
+                rec["tool_input"] = tool_input
 
-        known_parents = _known_span_parents(current_trace)
-        if span_record["force_span_id"]:
+        known_parents = _known_span_parents(current_trace) if current_trace else {}
+        if span_record["force_span_id"] and current_trace:
             # Record the link before export so a later span this turn (e.g. the
             # turn root) can be checked against it.
             current_trace.setdefault("span_parents", {})[span_record["span_id_hex"]] = span_record[
@@ -2683,7 +2764,7 @@ def handle_stop(data: dict, config: dict) -> None:
 
 
 def handle_subagent_stop(data: dict, config: dict) -> None:
-    """Handle SubagentStop."""
+    """Handle SubagentStop: emit one span from launch to SubagentStop under the parent's Agent span."""
     session_id = resolve_session_id(data, "session_id")
     agent_id = _subagent_id(data)
     if session_id is None or agent_id is None:
@@ -2691,7 +2772,68 @@ def handle_subagent_stop(data: dict, config: dict) -> None:
             "handle_subagent_stop: payload lacks 'session_id' or 'agent_id' — skipping",
         )
         return
-    log.debug("handle_subagent_stop: session %s agent %s finished", session_id, agent_id)
+    end_ns = time.time_ns()
+    with _session_lock(session_id):
+        state = _load_state(session_id)
+        subagent = (state.get("subagents") or {}).get(agent_id)
+        if not subagent:
+            log.debug(
+                "handle_subagent_stop: session %s agent %s finished (no subagent record)",
+                session_id,
+                agent_id,
+            )
+            return
+
+        start_ns = subagent.get("launch_ns", end_ns - 1_000_000)
+        parent_span_id = subagent.get("agent_span_id")
+        trace_id = subagent.get("trace_id")
+        agent_type = subagent.get("agent_type") or data.get("agent_type")
+
+        phoenix_session_id, _, parent_session_id = _resolve_agent_and_parent_ids(state, data)
+        sub_name = _subagent_name(agent_type)
+        attrs: dict[str, Any] = {
+            "openinference.span.kind": "AGENT",
+            "session.id": phoenix_session_id,
+            "agent.id": agent_id,
+            "subagent.id": agent_id,
+        }
+        if parent_session_id:
+            attrs["parent.session_id"] = parent_session_id
+        if sub_name:
+            attrs["agent.name"] = sub_name
+        tool_in = subagent.get("tool_input") or {}
+        prompt_val = tool_in.get("prompt") or tool_in.get("description") or ""
+        if prompt_val:
+            attrs["input.value"] = _truncate(prompt_val)
+            attrs["input.mime_type"] = "text/plain"
+        msg = data.get("last_assistant_message") or data.get("message") or ""
+        if msg:
+            attrs["output.value"] = _truncate(msg)
+            attrs["output.mime_type"] = "text/plain"
+
+        (_, _, _, _, _, _, SpanKind, _, _, _) = _otel_imports()
+        span_record = {
+            "trace_id_hex": trace_id,
+            "span_id_hex": _new_span_id(),
+            "parent_span_id_hex": parent_span_id,
+            "name": f"subagent: {sub_name}" if sub_name else "subagent",
+            "kind": SpanKind.INTERNAL,
+            "start_ns": start_ns,
+            "end_ns": end_ns,
+            "attributes": attrs,
+            "force_span_id": True,
+        }
+        _build_and_export_spans(
+            config=config,
+            session_id=phoenix_session_id,
+            username=state.get("username"),
+            span_records=[span_record],
+            agent_id=agent_id,
+            parent_session_id=parent_session_id,
+            agent_name=sub_name,
+            cwd=state.get("cwd"),
+        )
+        _save_state(session_id, state)
 
 
 def _end_turn(session_id: str, state: dict) -> None:
@@ -3065,6 +3207,19 @@ def emit_debug_hook_span(
             trace_id = pending["trace_id"]
             parent_span_id = pending["root_span_id"]
 
+        full_payload_json = _redact_secrets(
+            json.dumps(raw_payload, ensure_ascii=False, default=str)
+            if not isinstance(raw_payload, str)
+            else raw_payload
+        )
+        dedup_key = f"{event}:{data.get('tool_use_id') or data.get('toolCallId') or ''}:{data.get('stepIdx') or data.get('step_index') or ''}:{hash(full_payload_json)}"
+        seen = state.setdefault("emitted_debug_events", [])
+        if dedup_key in seen:
+            return True
+        seen.append(dedup_key)
+        if len(seen) > 100:
+            state["emitted_debug_events"] = seen[-50:]
+
         if event != "SessionEnd":
             _save_state(session_id, state)
 
@@ -3072,11 +3227,6 @@ def emit_debug_hook_span(
         state,
         data,
         payload_key=payload_key,
-    )
-    full_payload_json = _redact_secrets(
-        json.dumps(raw_payload, ensure_ascii=False, default=str)
-        if not isinstance(raw_payload, str)
-        else raw_payload
     )
     hook_event_name = str(data.get("hook_event_name") or data.get("hookEventName") or event)
     attrs: dict[str, Any] = {

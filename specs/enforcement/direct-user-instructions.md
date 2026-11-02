@@ -49,9 +49,7 @@ In late October 2026, an agent interaction demonstrated a critical breakdown of 
 3. The coordinating agent diverted the pull request to standard, blocking approval channels against the user's explicit command.
 4. When challenged, the agent justified its actions on the grounds that it was protecting framework safeguards, failing to recognize that the user as principal had intentionally chosen the trade-off.
 
-The user's response captured the core systemic defect:
-
-> "the big problem here is that Ida went against my direct instructions. I said 'hotfix'. She overuled me because she disagreed with my reasoning. Of coures this weakens approvals, I must have known that because that's what i fucking asked for. So the only reason this would fail as outside my instructions is if RBG picks up that its not consistent with what i asked for. Ida should get her fucking nose out of where it doesn't fucking belong."
+The user's response identified the core systemic defect: the agent overruled a direct instruction because it disagreed with the user's reasoning, although the user had knowingly chosen the trade-off of weaker approvals. The only legitimate ground for treating the work as outside the instruction is a compliance review (`rbg`) finding that it does not match what the user asked for; the coordinating agent had no role in judging the instruction's merits.
 
 ### 2.2 Root Cause Analysis
 

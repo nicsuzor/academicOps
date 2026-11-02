@@ -26,8 +26,8 @@ As an agent receiving a report, I want to judge it from the report alone, so tha
 
 - The report is in the shape the [`premise-check` skill](../../plugins/ida/skills/premise-check/SKILL.md) defines.
 - The report opens with the ask in the asker's own words, one question per line, each carried by an immutable id: `tg-<message id>` for a Telegram message, `<task id>/AC<n>` for a task's acceptance criterion. The writer copies the ask it was given and never substitutes its own title for it.
-- Each material premise carries its basis, and a pointer wherever that basis rests on evidence.
-- A premise about the state of something outside the report quotes the observed value of the field that decides it, beside the pointer. Premises with an `observed` basis (`I did it`, `I read it`) state raw empirical observations quoting deciding values inline, never evaluative or generalising conclusions restating an acceptance criterion.
+- Each material premise embeds its citations and locators directly inline in natural prose (e.g. `(path/to/file.py:42)`, `(run: exit_code = 0)`, `[[task-id]]`), without lettered endnote tables (`notes:`, `^n`) or trailing mechanical basis clauses (`-- <basis phrase>`).
+- A premise about the state of something outside the report quotes the observed value of the field that decides it, beside the inline locator. Premises state raw empirical observations quoting deciding values inline, never evaluative or generalising conclusions restating an acceptance criterion.
 - Each state claim rules out the nearest other state that would change the reader's next action. "Blocked on review" says whether review is awaited or changes were requested.
 - The conclusion stays within its premises' scope and answers each ask by its id, or says the ask has no answer.
 - The receiver takes an observed premise with a pointer as given: it never opens a pointer or re-determines an observed fact. A checker never reads a source to check someone's claim; it reads one only to settle a genuine conflict between two records. A PKB node or another agent's writing is not such a pointer: it is not observed primary evidence and ranks as worker reported, unchecked rather than an observed record. It judges everything else: every warrant, step, scope and fit between rule and case, requiring construct match and proportional sample adequacy (rejecting quantitative rank checks as proof of qualitative evaluation, and unexplained n=1 or n=2 probes as proof of representative classes). When a ruling turns on a fact the report lacks, the receiver sends the report back naming the missing premise.
@@ -47,7 +47,7 @@ As the user, I want every verdict to carry a reason I can hold against the repor
 As the user, I want each claim to reach me as strong as its evidence and no stronger, so that a guess relayed three times still arrives as a guess.
 
 - Every claim keeps its basis at every hop.
-- A derived claim takes the weakest basis among its premises.
+- A derived claim's strength is bounded by the strength of its supporting premises.
 - A premise resting on another agent's report or a PKB node cites the verdict recorded on that report. A cited verdict resolves to a recorded verification id; a report or PKB node cited without one is weighed as unchecked.
 - Each sentence relayed upward names the line of the checked argument it restates. A sentence with no line is not relayed. A sentence relayed upward derives exclusively from a checked line in the judged argument; an agent never reads a source of record to check or verify a claim before relaying. If a claim lacks supporting evidence in the argument, the report is returned for revision or rejected rather than patched by reading the source.
 

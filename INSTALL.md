@@ -14,8 +14,9 @@ claude mcp add --transport http --scope user services <your PKB MCP endpoint>
 
 # 2. Install plugins from the marketplace:
 claude plugin marketplace add nicsuzor/academicOps@dist
-claude plugin install pkb@academicOps
-claude plugin install aops@academicOps
+claude plugin install ida@academicOps
+claude plugin install rbg@academicOps
+claude plugin install tools@academicOps
 ```
 
 The `services` MCP server is installed at user level across all surfaces, never shipped inside a plugin:
@@ -24,7 +25,7 @@ The `services` MCP server is installed at user level across all surfaces, never 
 - **Claude Code Cloud / Cowork**: The claude.ai account connector named `services`.
 - **Antigravity (agy)**: Configured in user-level MCP settings (`~/.gemini/antigravity-cli/settings.json` or `~/.gemini/antigravity-cli/mcp/services.json`).
 
-Plugins install with no `--config`: `orchestrate`, `rbg`, `tools`, `ts`, and `aops-debug` install the same way as `pkb` and `aops`.
+Plugins install with no `--config`: `ida-telegram` and `aops-debug` install the same way as `ida`, `rbg` and `tools`.
 
 Nothing else has a default. Set the environment variables each plugin needs
 before first use -- the full list is in [`README.md`](README.md#configure),

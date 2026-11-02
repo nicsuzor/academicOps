@@ -63,7 +63,19 @@ Every plugin hook shares one runtime, `lib/hooks/dispatch.py`, injected at
 build time. Which client-visible events fire, in what order, and the
 `refuse` / `block` / advisory disposition contract are stated there; this
 table names only which plugin registers which event and to what end, read
-from each plugin's own hooks/handlers.py (e.g. `plugins/ida/hooks/handlers.py`):
+from each plugin's own hooks/handlers.py (e.g. `plugins/ida/hooks/handlers.py`).
+
+One surface is excepted. In a Claude Cowork session (the Claude desktop app's
+Cowork surface) the ida hooks do nothing: no handler runs, no fire is logged,
+no input is changed. Cowork refuses any MCP call whose input a plugin hook
+changed and its sessions carry none of the environment `SessionStart` needs.
+The decision is `is_cowork` in `plugins/ida/hooks/dispatch.py`, made once in
+each hook entry point (`dispatch.py` and `mcp_caller_session.py`) before any
+other work, from Claude Code's own signal in the hook's inherited environment:
+`CLAUDE_CODE_IS_COWORK` set to `1` or `true`, or `CLAUDE_CODE_ENTRYPOINT` set
+to a Cowork entrypoint (`local-agent`, `local_agent`, `remote_cowork`,
+`remote_cowork_trigger`). Every other surface -- the CLI, the desktop app's
+Code tab, cloud sessions, agy -- is unchanged, `_session` injection included.
 
 | Plugin | Events registered | What it's for |
 | - | - | - |
