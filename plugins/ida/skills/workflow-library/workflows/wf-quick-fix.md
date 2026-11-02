@@ -31,7 +31,7 @@ Route delivery through whichever shortened PR or merge process the destination r
 
 A quick fix is exempt from post-hoc review (independent follow-up QA tasks, manual sign-off, or multi-agent review passes) if and only if:
 
-1. **Unit tests**: Where the change touches code that executes, it carries unit tests covering the modified behaviour. Instruction text and docs get no tests.
+1. **Unit tests**: Where the change touches code that executes, it carries unit tests covering the modified behaviour. Instruction text, configuration and docs get no tests; configuration -- values a program reads, such as settings, allowlists, policy entries, hostnames, environment and compose files, including such values written inside a script -- is not code that executes.
 2. **Green destination tests**: All test suites on the destination branch or target environment are confirmed green following the merge or rebase.
 
 If both conditions are met, the task concludes upon successful merge and verification without scheduling follow-up review.
@@ -44,7 +44,7 @@ Any change falling outside the eligible scope, code that executes lacking unit t
 
 ## Worker Completion Checklist
 
-1. Implement the minimal change, with unit tests where it touches code that executes; write no test for instruction text or docs.
+1. Implement the minimal change, with unit tests where it touches code that executes; write no test for instruction text, configuration or docs.
 2. Verify automated test suite and linters pass locally.
 3. Deliver via the repository's permitted shortened route (e.g. auto-merging PR or direct push).
 4. Verify all destination tests are green after merge or rebase. If destination tests fail, set the task status to `failed` and document the failure logs on the task record so it is escalated; do not repeat or retry the delivery within the same session.
