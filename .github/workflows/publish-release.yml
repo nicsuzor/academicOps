@@ -168,6 +168,8 @@ jobs:
       # The script comes from the commit this workflow runs from: a manual run
       # builds an older tag, whose tree may predate the script.
       - name: Publish distribution to main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           git show "${{ github.workflow_sha }}:scripts/publish-dist-to-main.sh" >"$RUNNER_TEMP/publish-dist-to-main.sh"

@@ -115,7 +115,7 @@ Client hook emitters preserve trace integrity and turn boundaries across the ses
    - **Background Subagent Run Span**: In Claude Code, background subagents (`status: "async_launched"`) track their execution across turns: when `SubagentStop` fires, an `AGENT` span spanning from launch to completion is emitted under the parent's `Agent` tool span.
    - **Hand-Back Turn Attribution**: When a subagent finishes and delivers a hand-back message to the parent (`<agent-message>`, `<subagent-handback>`, or agy `SYSTEM_MESSAGE` with `sender=<subagent_id>`), the receiving turn's root `CHAIN` span sets `subagent.id` and `handback.subagent_id`.
 5. **Ubiquitous Debug Spans**:
-   - Debug hook spans (`aops-debug`) are emitted by canonical `ida` handlers on every invocation across all surfaces (including cloud environments where optional debug plugins are not loaded), recording hook name, runtime status, duration, and error states.
+   - Debug hook spans (`aops-hook-debug`) are emitted by canonical `ida` handlers on every invocation across all surfaces (including cloud environments where optional debug plugins are not loaded), recording hook name, runtime status, duration, and error states.
 
 ### Debug Hook Span Contract (`aops-debug`)
 

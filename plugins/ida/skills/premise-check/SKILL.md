@@ -11,22 +11,28 @@ A report that rests on evidence ends in an argument whose final conclusion answe
 
 ## Writing the Report Argument
 
-End the report with one fenced `argdown` block formatted per `argdown-toulmin`.
+End the report with one fenced `argdown` block formatted per `argdown-toulmin`. Frontmatter may include document metadata (`title`, `granularity`, `model: mode: strict`), `asks` (as a map or list of records), and `answers` (mapping ask ID to line number, statement label, or `none`).
 
 ````text
 ```argdown
 ===
+title: <title>
+granularity:
+  level: micro
+  floor: "<floor description>"
+model:
+  mode: strict
 asks:
   <ask_id>: <the asker's own words, one question>
 answers:
-  <ask_id>: <number of the line that answers it>
+  <ask_id>: <number of the line that answers it, or statement label>
 ===
 
-(1) <premise with inline citation>.
+(1) [Label]: <premise with inline citation or attributes>.
 (2) <premise quoting deciding value inline>.
 (3) <missing premise, written in>.
 -- <warrant rule>. Unless: <defeater>; <ruled out by (n) | not ruled out | not tried>. --
-(4) So, <qualifier bought by (3)>, <conclusion>.
+(4) [Next]: So, <qualifier bought by (3)>, <conclusion>.
 ```
 ````
 
@@ -65,7 +71,7 @@ Premises state clean natural assertions citing sources and locators directly inl
 5. **The inference line**: Starts `--`, ends `--`, on one line: warrant rule, then `Unless: <defeater>; <status>`.
 6. **Chain conclusions**: Each step begins `So` and chains into subsequent steps.
 7. **Relay upward**: Relaying a report upward requires its premise-check verdict; name the line each relayed sentence restates. Relay sentences only from checked argument lines without reading sources. Never relay an argument with 0 inference lines or substantive defects as fact. Disclosed rule violations in a received report must be propagated upward in the relay and never dropped across hops. Relay only premises and conclusions; a struck doubt or an untried defeater is never relayed as a risk.
-8. **Method pairing line**: When an ask specifies a method, form, design, or value, the report carries a pairing line setting each specified feature beside what was done (e.g. `@file -> @./at-test-target.md`; `read back -> Read tool`), naming each departure with its reason, else `departures: none`. A detail in a method specification is load-bearing regardless of typography (quoted, backticked, or plain) unless the ask's purpose shows it free. Rewording that preserves the construct is not a departure; exact wording is not required where the construct is preserved.
+8. **Method pairing line**: When an ask specifies a method, form, design, or value, the report carries a pairing line setting each specified feature beside what was done (e.g. `@file -> @./at-test-target.md`; `read back -> Read tool`), naming each departure with its reason, else `departures: none`. A detail in a method specification is load-bearing regardless of typography (quoted, backticked, or plain) unless the ask's purpose shows them free. Rewording that preserves the construct is not a departure; exact wording is not required where the construct is preserved.
 
 ## Checking a Received Report or Direction
 

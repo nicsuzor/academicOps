@@ -67,5 +67,11 @@ fi
 git -c user.name="github-actions[bot]" \
     -c user.email="github-actions[bot]@users.noreply.github.com" \
     commit --quiet --no-verify -m "chore: publish v$VERSION distribution to main [skip ci]"
-git push origin HEAD:main
+
+if [ -n "${GITHUB_TOKEN:-}" ]; then
+    REPO="${GITHUB_REPOSITORY:-nicsuzor/academicOps}"
+    git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git" HEAD:main
+else
+    git push origin HEAD:main
+fi
 echo "Published v$VERSION to main ($(git rev-parse --short HEAD))"
