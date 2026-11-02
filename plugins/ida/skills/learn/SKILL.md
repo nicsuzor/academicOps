@@ -19,6 +19,7 @@ Dispatch `/learn` to **`pauli`** (`TypeName: "pauli"`), never `james`. Pauli ope
    - Do not fall back to inspecting, grepping, or reading repository source code.
 2. **Diagnose systemic cause from execution evidence**:
    - **Root causes are framework defects, never agent faults.** A root cause is never an agent's fault, capability limitation, choice, or action; it is always the framework's: the instructions, skills, workflows, contracts, or tools that led the agent to act as it did. An agent's action (e.g. dispatching to an agent without necessary credentials or access, rewording an ask, skipping a step, never delivering a result) is an intermediate event on the execution trace, never the root cause. When an agent acts, locate and quote the instruction, skill, workflow, or prompt text that led that agent to take that action, and identify the framework defect (missing constraint, contradictory rule, or ambiguous guidance) that permitted or caused the failure. Never cite an agent, its brief, its capabilities, or its choices as the root cause.
+   - **Login and authentication failures are configuration failures, not bugs.** Login and authentication failures (for example a server or service requiring re-authentication) are configuration failures, not bugs. `/learn` files no issue and posts no comment for them; return to the caller that the failure is a configuration failure.
    - **No passive voice; name the actor and quote the instruction.** Use active voice throughout all findings, issue descriptions, and reports; passive voice is strictly prohibited (e.g. "the run went to X" or "a file was modified" is forbidden). Every finding must explicitly state who acted by naming the specific actor (e.g. "Ida Prime sent the run to Pauli"), followed immediately by quoting the exact instruction, skill, or workflow text that led them to act (e.g. "The instructions provided to Ida in `<file>` state: `[extract]`"). Then state the framework defect in those instructions or tools.
    - Ground findings in observable runtime mechanisms shown in the trace (or session log if the surface does not emit traces): failing tool invocations, unexpected tool error payloads, schema mismatches, hook blocks, timeout spikes.
    - Describe what the session attempted and where execution broke down. The runtime execution record is the evidence; do not inspect source files or name responsible code lines.
@@ -32,6 +33,7 @@ Dispatch `/learn` to **`pauli`** (`TypeName: "pauli"`), never `james`. Pauli ope
    - _User/PKB_: User preferences, habits, or personal knowledge base.
    - _Framework_: Universal axioms, agent roles, or core tooling.
 5. **File issues or post evidence-bump comments**:
+   - File no issue and post no comment for login or authentication failures.
    - For each finding, search existing issues within the owning repository for the error class before creating a new issue to avoid duplicate reports. Target the remote repository directly by name (`owner/repo`) for both search and issue/comment creation rather than relying on a local checkout.
    - When the evidence belongs to an issue that already exists, summarise that evidence into an evidence-bump comment on that existing issue; do not file a separate issue for the evidence.
    - When no existing issue covers the finding, file in the owning repository:
@@ -50,3 +52,5 @@ Return a markdown report containing:
 - **Verification miss**: The check that should have caught the instance, and why it did not.
 - **Impact estimate**: Projected frequency and severity.
 - **Artifacts**: Links to the filed issue(s) or evidence-bump comment(s) (evidence-bump comment when an existing issue tracks the failure; otherwise handler's failure only if the primary failure is handled, or both the general bug and verification miss if unhandled).
+
+For login or authentication failures, return to the caller that the failure is a configuration failure (file no issue and post no comment).
