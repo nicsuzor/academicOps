@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import { PluginStore } from "../store.js";
+import { buildMiniAppUrl } from "./bot.js";
 
 export interface QuestionOption {
   label: string;
@@ -263,7 +264,7 @@ export class QuestionBroker {
     return this.renderQuestionCard(id);
   }
 
-  public renderQuestionCard(id: string, miniAppUrl?: string): QuestionCard | null {
+  public renderQuestionCard(id: string, miniAppUrl?: string, instance?: string): QuestionCard | null {
     const q = this.questions.get(id);
     if (!q) return null;
 
@@ -318,10 +319,9 @@ export class QuestionBroker {
 
     const detailsId = q.detailsId || q.details_id;
     if (detailsId && miniAppUrl) {
-      const baseUrl = miniAppUrl.replace(/\/+$/, "");
       buttons.push({
         text: "🔍 Details",
-        web_app: { url: `${baseUrl}/app/index.html?d=${detailsId}` },
+        web_app: { url: buildMiniAppUrl(miniAppUrl, { d: detailsId, instance }) },
       });
     }
 

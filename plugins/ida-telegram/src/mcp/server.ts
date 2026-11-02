@@ -376,7 +376,7 @@ export class StdioMcpServer {
         this.store.recordTurn("out", q.header ? `${q.header}: ${q.question}` : q.question);
 
         if (!isMiniAppOnly && this.bot) {
-          const card = this.broker.renderQuestionCard(result.questionId, this.config.miniAppUrl);
+          const card = this.broker.renderQuestionCard(result.questionId, this.config.miniAppUrl, this.config.instance);
           if (card) {
             await this.bot.sendQuestionCard(defaultChatId, result.questionId, card, effectiveThreadId);
           }

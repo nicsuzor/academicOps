@@ -17,6 +17,41 @@ import { tmpdir } from "node:os";
 
 const execFileAsync = promisify(execFile);
 
+export function buildMiniAppUrl(baseUrl: string, options: { d?: string; tab?: string; instance?: string }): string {
+  const cleanBase = baseUrl.trim().replace(/\/+$/, "");
+  let url: URL;
+  try {
+    url = new URL(cleanBase);
+  } catch {
+    const pathSuffix = cleanBase.includes("/app") ? "" : "/app/index.html";
+    const sep = cleanBase.includes("?") ? "&" : "?";
+    const params = new URLSearchParams();
+    if (options.instance) params.set("instance", options.instance);
+    if (options.d) params.set("d", options.d);
+    if (options.tab) params.set("tab", options.tab);
+    const qs = params.toString();
+    return `${cleanBase}${pathSuffix}${qs ? sep + qs : ""}`;
+  }
+
+  if (!url.pathname.endsWith("/app") && !url.pathname.includes("/app/")) {
+    url.pathname = `${url.pathname.replace(/\/+$/, "")}/app/index.html`;
+  } else if (url.pathname.endsWith("/app") || url.pathname.endsWith("/app/")) {
+    url.pathname = `${url.pathname.replace(/\/+$/, "")}/index.html`;
+  }
+
+  if (options.instance && !url.searchParams.has("instance")) {
+    url.searchParams.set("instance", options.instance);
+  }
+  if (options.d) {
+    url.searchParams.set("d", options.d);
+  }
+  if (options.tab) {
+    url.searchParams.set("tab", options.tab);
+  }
+
+  return url.toString();
+}
+
 export interface ReplyButtonOption {
   label: string;
   callback_data?: string;
@@ -287,7 +322,12 @@ export class TelegramBotClient {
     const detailsBtn: Record<string, unknown> | undefined = detailsId
       ? {
           text: "🔍",
-          web_app: { url: `${miniAppBaseUrl}/app/index.html?d=${detailsId}` },
+          web_app: {
+            url: buildMiniAppUrl(this.config.miniAppUrl, {
+              d: detailsId,
+              instance: this.config.instance,
+            }),
+          },
         }
       : undefined;
 
@@ -300,7 +340,12 @@ export class TelegramBotClient {
     const reviewBtn: Record<string, unknown> | undefined = review
       ? {
           text: `🔍 Review diff (${review.repo}#${review.pr || ""})`,
-          web_app: { url: `${miniAppBaseUrl}/app/index.html?tab=review` },
+          web_app: {
+            url: buildMiniAppUrl(this.config.miniAppUrl, {
+              tab: "review",
+              instance: this.config.instance,
+            }),
+          },
         }
       : undefined;
 
@@ -587,7 +632,12 @@ export class TelegramBotClient {
       inline_keyboard.push([
         {
           text: "🔍 Review in Mini App",
-          web_app: { url: `${this.config.miniAppUrl}/app/index.html?tab=review` },
+          web_app: {
+            url: buildMiniAppUrl(this.config.miniAppUrl, {
+              tab: "review",
+              instance: this.config.instance,
+            }),
+          },
         },
       ]);
     }
