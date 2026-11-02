@@ -47,6 +47,52 @@ def test_validate_payload_accepts_when_integration_bypass_present():
     assert err == ""
 
 
+def test_validate_payload_allows_non_push_blocking_rules_without_bypass():
+    """Ruleset with only deletion and non_fast_forward rules passes without bypass actors."""
+    data = {
+        "name": "basic protection",
+        "target": "branch",
+        "enforcement": "active",
+        "conditions": {"ref_name": {"include": ["refs/heads/main"], "exclude": []}},
+        "bypass_actors": [],
+        "rules": [{"type": "deletion"}, {"type": "non_fast_forward"}],
+    }
+    payload = sync_main_ruleset.build_payload(data)
+    valid, err = sync_main_ruleset.validate_payload(payload)
+    assert valid
+    assert err == ""
+
+
+def test_validate_payload_handles_none_rules():
+    """validate_payload does not raise TypeError when payload rules is None or empty."""
+    payload = {
+        "name": "empty rules",
+        "target": "branch",
+        "enforcement": "active",
+        "conditions": {"ref_name": {"include": ["refs/heads/main"]}},
+        "bypass_actors": [],
+        "rules": None,
+    }
+    valid, err = sync_main_ruleset.validate_payload(payload)
+    assert valid
+    assert err == ""
+
+
+def test_build_payload_handles_none_rules():
+    """build_payload normalizes None rules to an empty list."""
+    data = {
+        "name": "test ruleset",
+        "target": "branch",
+        "enforcement": "active",
+        "conditions": {"ref_name": {"include": ["refs/heads/main"]}},
+        "bypass_actors": None,
+        "rules": None,
+    }
+    payload = sync_main_ruleset.build_payload(data)
+    assert payload["rules"] == []
+    assert payload["bypass_actors"] == []
+
+
 def test_build_payload_preserves_structure():
     """build_payload correctly extracts standard ruleset fields."""
     data = {

@@ -33,16 +33,15 @@ def build_payload(data: dict) -> dict:
         "enforcement": data["enforcement"],
         "conditions": data["conditions"],
         "bypass_actors": data.get("bypass_actors") or [],
-        "rules": data.get("rules", []),
+        "rules": data.get("rules") or [],
     }
 
 
 def validate_payload(payload: dict) -> tuple[bool, str]:
     """Validate that push-blocking rules have a bypass actor for the release pipeline."""
     push_blocking = {"pull_request", "required_status_checks", "update"}
-    if not payload.get("bypass_actors") and any(
-        r.get("type") in push_blocking for r in payload.get("rules", [])
-    ):
+    rules = payload.get("rules") or []
+    if not payload.get("bypass_actors") and any(r.get("type") in push_blocking for r in rules):
         return False, (
             "ERROR: refusing to apply: the ruleset has a rule that rejects the "
             "release pipeline's direct push to main "
@@ -86,21 +85,30 @@ def main() -> int:
 
     rulesets = json.loads(res.stdout)
     existing_id = None
+
+    # First pass: match exact ruleset name
     for r in rulesets:
-        # Check if ruleset targets main or matches name
-        r_id = r["id"]
-        detail_res = subprocess.run(
-            ["gh", "api", f"repos/{REPO}/rulesets/{r_id}"],
-            capture_output=True,
-            text=True,
-        )
-        if detail_res.returncode == 0:
-            detail = json.loads(detail_res.stdout)
-            inc = detail.get("conditions", {}).get("ref_name", {}).get("include", [])
-            if "refs/heads/main" in inc or detail.get("name") == data["name"]:
-                existing_id = r_id
-                print(f"Found matching ruleset ID: {existing_id}")
-                break
+        if r.get("name") == data["name"]:
+            existing_id = r["id"]
+            print(f"Found matching ruleset ID by name: {existing_id}")
+            break
+
+    # Second pass: if no exact name match, check rulesets targeting refs/heads/main
+    if not existing_id:
+        for r in rulesets:
+            r_id = r["id"]
+            detail_res = subprocess.run(
+                ["gh", "api", f"repos/{REPO}/rulesets/{r_id}"],
+                capture_output=True,
+                text=True,
+            )
+            if detail_res.returncode == 0:
+                detail = json.loads(detail_res.stdout)
+                inc = detail.get("conditions", {}).get("ref_name", {}).get("include", [])
+                if "refs/heads/main" in inc:
+                    existing_id = r_id
+                    print(f"Found matching ruleset ID by target branch: {existing_id}")
+                    break
 
     if existing_id:
         print(f"Updating ruleset {existing_id}...")
