@@ -152,13 +152,11 @@ A single incident that is a **bug** is fixed immediately from one report. A sing
 
 ## PR Risk Taxonomy Enforcement
 
-Pull request review and merge authority is governed by a three-tier risk taxonomy. Because evaluating the operational hazard, semantic intent, and blast radius of a change inherently requires qualitative judgment, risk tier classification is executed natively by agentic verification workflows ([`wf-finish.md`](../../plugins/ida/skills/workflow-library/workflows/wf-finish.md), [`wf-code-task-base.md`](../../plugins/ida/skills/workflow-library/workflows/wf-code-task-base.md), [`wf-qa.md`](../../plugins/ida/skills/workflow-library/workflows/wf-qa.md), [`plugins/ida/skills/reify/SKILL.md`](../../plugins/ida/skills/reify/SKILL.md)) rather than deterministic CI scripts or path heuristics ([`judgment-non-delegable`](../../plugins/rbg/skills/axioms/judgment-non-delegable.md)):
+Pull request review and merge authority is governed by a three-tier risk taxonomy. Because evaluating the operational hazard, semantic intent, and blast radius of a change inherently requires qualitative judgment, risk tier classification is executed natively by agentic verification workflows ([`wf-finish.md`](../../plugins/ida/skills/workflow-library/workflows/wf-finish.md), [`wf-code-task-base.md`](../../plugins/ida/skills/workflow-library/workflows/wf-code-task-base.md), [`wf-qa.md`](../../plugins/ida/skills/workflow-library/workflows/wf-qa.md)) rather than deterministic CI scripts or path heuristics ([`judgment-non-delegable`](../../plugins/rbg/skills/axioms/judgment-non-delegable.md)):
 
 | Tier | Category | Scope / Characteristics | Merge Authority | Carrier Mechanism |
 | :- | :- | :- | :- | :- |
-| Tier | Category | Scope / Characteristics | Merge Authority | Carrier Mechanism |
-| :- | :- | :- | :- | :- |
-| **Tier 1** | Autonomous QA-Merge | Low-risk standalone changes: pure documentation, standalone retrospective specifications with no following build, formatting, typing stubs (`.pyi`). (A spec or design stage preceding a feature build records on the PKB and opens no PR; the following build opens the only PR carrying any spec change, and both merge together after full review.) | Independent QA worker merges autonomously on verified pass (`gh pr merge --squash`) and releases task as `done`. | `wf-finish.md`, `wf-code-task-base.md`, `wf-qa.md` |
+| **Tier 1** | Autonomous QA-Merge | Low-risk changes: pure documentation, specifications, formatting, typing stubs (`.pyi`). | Independent QA worker merges autonomously on verified pass (`gh pr merge --squash`) and releases task as `done`. | `wf-finish.md`, `wf-code-task-base.md`, `wf-qa.md` |
 | **Tier 2** | Operational & Behavioral Gate | Code, workflows, tools, skills, rules, agent definitions, or tests. | Reviewer sign-off required; QA worker verifies, posts structured receipts to the PR, leaves PR open for sign-off, and releases task as `done`. | `wf-finish.md`, `wf-code-task-base.md`, `wf-qa.md` |
 | **Tier 3** | Critical Hazard & Public Gate | Host infrastructure, credentials, manuscripts, public releases, or high external blast radius. | Exclusive principal review and merge; agents strictly forbidden from merging. QA worker verifies, posts receipts, leaves open, and releases task as `done`. | `wf-finish.md`, `wf-code-task-base.md`, `wf-qa.md` |
 
@@ -171,7 +169,7 @@ Before approval (by the principal or designated reviewer), a pull request requir
 
 ### Non-PR Task Verification and Lifecycle
 
-For tasks that do not produce pull requests (such as empirical analyses, documentation updates, research tasks, and operational maintenance), modular workflow templates define an independent downstream `QA: <task>` child task only where the composed workflow warrants an independent check (such as empirical analyses requiring numerical replication, high-impact specification changes, or formal qualitative audits). Workflows that do not warrant an additional verification pass define no QA child.
+For tasks that do not produce pull requests (such as empirical analyses, documentation updates, research tasks, and operational maintenance), workflow templates define whether a task warrants an independent verification check (such as empirical analyses requiring numerical replication, high-impact specification changes, or formal qualitative audits). Workflows that do not warrant an additional verification pass compose no QA follow-up.
 
 Worker self-release to `done` applies across all tasks (PR and non-PR): when a worker satisfies all frozen acceptance criteria with concrete verifiable evidence recorded in its handback report, it releases the task directly to `done`. Workers are never forced into `review` awaiting external verification. If a separate QA task was minted, that QA task executes independently against the completed artifact; if the QA check fails, the QA worker releases its own task as `failed` with diagnostic evidence.
 
