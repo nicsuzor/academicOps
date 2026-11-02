@@ -55,7 +55,7 @@ Every reply sent over Telegram automatically carries inline action buttons with 
   - _Lifecycle states:_
     - `👀` inbound: message received and being read/assessed.
     - `✍` captured: note, decision, intake, or task persisted to knowledge base.
-    - `🐱` dispatched (polecat): work briefed and dispatched to an isolated background worker (a polecat holds it).
+    - `🐳` dispatched (polecat): work briefed and dispatched to an isolated background worker (a polecat holds it).
     - `🕊` dispatched (subagent): work delegated to an internal subagent (a subagent holds it).
     - `🤔` waiting: a question, choice, or clarification is pending user reply in chat.
     - `💔` blocked or failed: execution halted or hit an external blocker (reply details the refusal).
