@@ -784,23 +784,35 @@ _LOCAL_COMMAND_PREFIXES = (
 def _is_human_message(entry: dict) -> bool:
     """True for a transcript entry that is a prompt opening a turn.
 
-    Counts ``type=user`` entries whose content is a string: typed prompts and
-    skill or custom slash-command prompts (``<command-message>...``). Does not
-    count tool results (list content), ``isMeta`` entries (e.g. the
-    ``<local-command-caveat>``), ``isCompactSummary`` entries, the
-    ``<command-name>`` / ``<local-command-stdout>`` entries of local slash
-    commands, or the ``<bash-input>`` / ``<bash-stdout>`` entries of bash mode,
-    since none of those fire UserPromptSubmit.
+    Counts ``type=user`` entries whose content is either a prompt string or a list
+    of user content blocks (e.g. multi-modal text/image blocks). Does not count
+    tool results (messages where any content block has ``type=tool_result``),
+    ``isMeta`` entries (e.g. the ``<local-command-caveat>``), ``isCompactSummary``
+    entries, the ``<command-name>`` / ``<local-command-stdout>`` entries of local
+    slash commands, or the ``<bash-input>`` / ``<bash-stdout>`` entries of bash
+    mode, since none of those fire UserPromptSubmit.
     """
     if entry.get("type") != "user":
         return False
     if entry.get("isMeta") or entry.get("isCompactSummary"):
         return False
     content = entry.get("message", {}).get("content", "")
-    # Tool result messages have content as a list; human messages have a string
-    if not isinstance(content, str):
-        return False
-    return not content.lstrip().startswith(_LOCAL_COMMAND_PREFIXES)
+    if isinstance(content, str):
+        return not content.lstrip().startswith(_LOCAL_COMMAND_PREFIXES)
+    if isinstance(content, list):
+        if not content:
+            return False
+        if any(isinstance(b, dict) and b.get("type") == "tool_result" for b in content):
+            return False
+        text_parts: list[str] = []
+        for b in content:
+            if isinstance(b, dict) and b.get("type") == "text":
+                text_parts.append(str(b.get("text") or ""))
+            elif isinstance(b, str):
+                text_parts.append(b)
+        combined_text = "".join(text_parts).lstrip()
+        return not combined_text.startswith(_LOCAL_COMMAND_PREFIXES)
+    return False
 
 
 def _count_human_messages(transcript_path: str) -> int:
@@ -2206,7 +2218,7 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
         "turn_start_ns": now_ns,
         "turn_number": turn_number,
         "prompt_preview": _truncate(prompt) if prompt else "",
-        "human_count_at_start": max(0, turn_number - 1),
+        "human_count_at_start": current_human_count,
         "model_calls": [],
         "emitted_llm_span_count": 0,
         "pending_model_call": {
@@ -2233,6 +2245,13 @@ def _get_latest_human_message(transcript_path: str) -> str:
                     content = entry.get("message", {}).get("content", "")
                     if isinstance(content, str):
                         last = content
+                    elif isinstance(content, list):
+                        parts = [
+                            b.get("text", "")
+                            for b in content
+                            if isinstance(b, dict) and b.get("type") == "text"
+                        ]
+                        last = "\n".join(p for p in parts if p)
             except json.JSONDecodeError:
                 pass
         return last
