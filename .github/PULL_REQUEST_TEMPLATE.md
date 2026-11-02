@@ -1,8 +1,8 @@
 <!-- Reviewer-decision structure -- fill each section; keep it scannable as a
      decision aid. A maintainer should be able to evaluate and decide to
      approve in ~60s. State the outcome first. Link to specs or diff rather
-     than restating them in prose. Drop or omit only sections explicitly
-     marked optional when not applicable.
+     than restating them in prose. Issues may go in GitHub comments, but specs may not.
+     Drop or omit only sections explicitly marked optional when not applicable.
 
      Note: polecat workers use this structure when opening or updating a PR
      (see .agents/templates/wf-finish.md). Applies to automated agent PRs and
@@ -20,7 +20,7 @@ One or two plain sentences: what this changes and why it exists. Lead with the c
 
 ## Alignment
 
-What task, ruling, spec, or user directive this serves, and what is unblocked.
+What task, ruling, spec, or user directive this serves, and what is unblocked. Issues may go in GitHub comments, but specs may not.
 
 ## Approach
 
