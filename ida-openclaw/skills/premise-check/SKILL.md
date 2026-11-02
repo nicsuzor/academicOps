@@ -11,22 +11,28 @@ A report that rests on evidence ends in an argument whose final conclusion answe
 
 ## Writing the Report Argument
 
-End the report with one fenced `argdown` block formatted per `argdown-toulmin`.
+End the report with one fenced `argdown` block formatted per `argdown-toulmin`. Frontmatter may include document metadata (`title`, `granularity`, `model: mode: strict`), `asks` (as a map or list of records), and `answers` (mapping ask ID to line number, statement label, or `none`).
 
 ````text
 ```argdown
 ===
+title: <title>
+granularity:
+  level: micro
+  floor: "<floor description>"
+model:
+  mode: strict
 asks:
   <ask_id>: <the asker's own words, one question>
 answers:
-  <ask_id>: <number of the line that answers it>
+  <ask_id>: <number of the line that answers it, or statement label>
 ===
 
-(1) <premise with inline citation>.
+(1) [Label]: <premise with inline citation or attributes>.
 (2) <premise quoting deciding value inline>.
 (3) <missing premise, written in>.
 -- <warrant rule>. Unless: <defeater>; <ruled out by (n) | not ruled out | not tried>. --
-(4) So, <qualifier bought by (3)>, <conclusion>.
+(4) [Next]: So, <qualifier bought by (3)>, <conclusion>.
 ```
 ````
 

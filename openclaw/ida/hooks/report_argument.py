@@ -18,6 +18,7 @@ module keeps no copy of it.
 
 from __future__ import annotations
 
+import html
 import re
 import tempfile
 import textwrap
@@ -226,13 +227,15 @@ class Argument:
 
 
 def normalise_argdown_block(text: str) -> str:
-    """Normalise meaning-free whitespace in an Argdown block.
+    """Normalise meaning-free whitespace and transport decoding in an Argdown block.
 
-    Strips CRLF endings, trailing whitespace on every line, and removes common
+    Decodes HTML entities (e.g. &lt;, &gt;, &amp;) introduced by transport envelopes,
+    strips CRLF endings, trailing whitespace on every line, and removes common
     leading indentation across the block while preserving relative indentation.
     """
     if not text:
         return ""
+    text = html.unescape(text)
     text = text.replace("\r\n", "\n").replace("\r", "\n")
     lines = [ln.rstrip() for ln in text.splitlines()]
     dedented = textwrap.dedent("\n".join(lines))
@@ -321,6 +324,8 @@ def parse_block(block: str, vocab: Vocabulary) -> Argument | None:
         return None
     frontmatter, body = split
     arg = Argument()
+    numbered_map: dict[int, str] = {}
+    raw_answers: dict[str, Any] = {}
     if frontmatter is not None:
         try:
             data = yaml.safe_load(frontmatter)
@@ -329,12 +334,28 @@ def parse_block(block: str, vocab: Vocabulary) -> Argument | None:
         data = {} if data is None else data
         if not isinstance(data, dict):
             return None
-        sections = {k: data.get(k) or {} for k in ("asks", "answers", "notes")}
-        if not all(isinstance(v, dict) for v in sections.values()):
-            return None
-        arg.asks = [str(k) for k in sections["asks"]]
-        arg.answers = {str(k): _answer_value(v) for k, v in sections["answers"].items()}
-        arg.notes = {str(k): str(v) for k, v in sections["notes"].items()}
+        asks_raw = data.get("asks")
+        if isinstance(asks_raw, dict):
+            arg.asks = [str(k) for k in asks_raw.keys()]
+        elif isinstance(asks_raw, list):
+            arg.asks = [
+                str(item["id"]) if isinstance(item, dict) and "id" in item else str(item)
+                for item in asks_raw
+            ]
+        elif isinstance(asks_raw, str) and asks_raw.strip().lower() != "none":
+            arg.asks = [asks_raw.strip()]
+        else:
+            arg.asks = []
+
+        answers_raw = data.get("answers") or {}
+        if isinstance(answers_raw, dict):
+            raw_answers = {str(k): _answer_value(v) for k, v in answers_raw.items()}
+        else:
+            raw_answers = {}
+
+        notes_raw = data.get("notes") or {}
+        if isinstance(notes_raw, dict):
+            arg.notes = {str(k): str(v) for k, v in notes_raw.items()}
 
     # Collect logical lines in body, joining multi-line inference bars:
     body_lines: list[str] = []
@@ -380,17 +401,39 @@ def parse_block(block: str, vocab: Vocabulary) -> Argument | None:
             continue
         if m := _NUMBERED.match(stripped):
             n = int(m.group("n"))
-            arg.lines[n] = m.group("text")
+            rest = m.group("text")
+            arg.lines[n] = rest
+            m_title = re.match(r"^\[(?P<title>[^\]]+)\](?::\s*(?P<text>.*))?$", rest)
+            if m_title:
+                numbered_map[n] = m_title.group("title").strip()
+            else:
+                numbered_map[n] = str(n)
             if after_inference is not None:
                 after_inference.conclusion = n
                 arg.conclusions.append(n)
             else:
-                basis_text = _premise_basis(m.group("text"))
+                basis_text = _premise_basis(rest)
                 basis = match_basis(basis_text, vocab) if basis_text else None
-                arg.premises.append(Premise(n, m.group("text"), basis_text, basis))
+                arg.premises.append(Premise(n, rest, basis_text, basis))
             after_inference = None
             continue
         after_inference = None
+
+    title_to_line: dict[str, int] = {}
+    for num, title in numbered_map.items():
+        title_to_line[title] = num
+        title_to_line[title.strip("[]")] = num
+
+    for k, v in raw_answers.items():
+        if isinstance(v, str):
+            clean_v = v.strip().strip("[]")
+            if clean_v in title_to_line:
+                arg.answers[k] = title_to_line[clean_v]
+            else:
+                arg.answers[k] = v
+        else:
+            arg.answers[k] = v
+
     return arg
 
 
@@ -459,6 +502,8 @@ def check_argdown_block(
     block_text = normalise_argdown_block(block_text)
     lines = block_text.splitlines()
 
+    fm_data: dict[str, Any] | None = None
+
     # 1. Frontmatter check
     start = next((i for i, ln in enumerate(lines) if ln.strip()), None)
     body_lines = textwrap.dedent("\n".join(lines)).splitlines()
@@ -520,14 +565,38 @@ def check_argdown_block(
         if fm_data:
             asks_val = fm_data.get("asks")
             answers_val = fm_data.get("answers")
-            if asks_val and isinstance(asks_val, dict):
+            ask_ids: list[str] = []
+            if asks_val is not None:
+                if isinstance(asks_val, dict):
+                    ask_ids = [str(k) for k in asks_val.keys()]
+                elif isinstance(asks_val, list):
+                    for item in asks_val:
+                        if isinstance(item, dict) and "id" in item:
+                            ask_ids.append(str(item["id"]))
+                        elif isinstance(item, str):
+                            ask_ids.append(item.strip())
+                        else:
+                            return (
+                                False,
+                                f"Argdown frontmatter error:\n"
+                                f"Defect: Invalid ask item in 'asks:' list: {item!r}. Must have 'id' key or be string.\n"
+                                f"Required remediation format:\n"
+                                f"asks:\n"
+                                f"  - id: <ask_id>\n"
+                                f"    text: <description>",
+                                None,
+                            )
+                elif isinstance(asks_val, str) and asks_val.strip().lower() != "none":
+                    ask_ids = [asks_val.strip()]
+
+            if ask_ids:
                 if answers_val is None:
                     return (
                         False,
                         "Argdown frontmatter error:\n"
                         "Defect: Missing 'answers:' section in frontmatter when 'asks:' is defined.\n"
                         "Required remediation format:\n"
-                        "answers:\n" + "\n".join(f"  {k}: <line_number | none>" for k in asks_val),
+                        "answers:\n" + "\n".join(f"  {k}: <line_number | none>" for k in ask_ids),
                         None,
                     )
                 if not isinstance(answers_val, dict):
@@ -536,17 +605,17 @@ def check_argdown_block(
                         "Argdown frontmatter error:\n"
                         f"Defect: 'answers:' section must be a mapping of ask IDs to line numbers, got {type(answers_val).__name__}.\n"
                         "Required remediation format:\n"
-                        "answers:\n" + "\n".join(f"  {k}: <line_number | none>" for k in asks_val),
+                        "answers:\n" + "\n".join(f"  {k}: <line_number | none>" for k in ask_ids),
                         None,
                     )
-                unmapped = [k for k in asks_val if k not in answers_val]
+                unmapped = [k for k in ask_ids if k not in answers_val]
                 if unmapped:
                     return (
                         False,
                         f"Argdown frontmatter error:\n"
                         f"Defect: Unmapped ask(s) in frontmatter answers: {', '.join(unmapped)}.\n"
-                        f"Required remediation format:\n"
-                        f"answers:\n" + "\n".join(f"  {k}: <line_number | none>" for k in unmapped),
+                        "Required remediation format:\n"
+                        "answers:\n" + "\n".join(f"  {k}: <line_number | none>" for k in unmapped),
                         None,
                     )
                 parenthesized_answers = []
@@ -569,22 +638,18 @@ def check_argdown_block(
                         f"{remedy_lines}",
                         None,
                     )
-                invalid_answers = [
-                    (k, str(v))
-                    for k, v in answers_val.items()
-                    if not isinstance(v, int)
-                    and str(v).strip().lower() != "none"
-                    and not re.match(r"^\(\d+\)$", str(v).strip())
+                invalid_structure = [
+                    (k, str(v)) for k, v in answers_val.items() if isinstance(v, (list, dict))
                 ]
-                if invalid_answers:
-                    defect_items = ", ".join(f"'{k}: {v}'" for k, v in invalid_answers)
+                if invalid_structure:
+                    defect_items = ", ".join(f"'{k}: {v}'" for k, v in invalid_structure)
                     return (
                         False,
                         f"Argdown frontmatter error:\n"
-                        f"Defect: Invalid answer value in frontmatter answers: {defect_items}. Must be an integer line number or 'none'.\n"
+                        f"Defect: Invalid answer value in frontmatter answers: {defect_items}. Must be an integer line number, statement title, or 'none'.\n"
                         f"Required remediation format:\n"
                         f"answers:\n"
-                        + "\n".join(f"  {k}: <line_number | none>" for k, _ in invalid_answers),
+                        + "\n".join(f"  {k}: <line_number | none>" for k, _ in invalid_structure),
                         None,
                     )
 
@@ -803,6 +868,33 @@ def check_argdown_block(
         "relations": relations,
         "inferences": inferences,
     }
+
+    if fm_data and isinstance(fm_data.get("answers"), dict):
+        answers_dict = fm_data["answers"]
+        known_titles = set(statements.keys()) | set(numbered_map.values())
+        known_titles_clean = {t.strip("[]") for t in known_titles}
+        invalid_answers = []
+        for k, v in answers_dict.items():
+            if isinstance(v, int) and not isinstance(v, bool):
+                continue
+            s_v = str(v).strip()
+            if s_v.lower() == "none" or s_v.isdigit():
+                continue
+            clean_v = s_v.strip("[]")
+            if clean_v not in known_titles and clean_v not in known_titles_clean:
+                invalid_answers.append((k, s_v))
+        if invalid_answers:
+            defect_items = ", ".join(f"'{k}: {v}'" for k, v in invalid_answers)
+            return (
+                False,
+                f"Argdown frontmatter error:\n"
+                f"Defect: Invalid answer value in frontmatter answers: {defect_items}. "
+                f"Must be an integer line number, known statement title, or 'none'.\n"
+                f"Required remediation format:\n"
+                f"answers:\n"
+                + "\n".join(f"  {k}: <line_number | title | none>" for k, _ in invalid_answers),
+                ast_data,
+            )
 
     # Machine Check 1: Undercut check: any undercut (_>) must target an inference
     for r in relations:
@@ -1165,6 +1257,8 @@ def pass_failures(
     block: Argument | None,
     vocab: Vocabulary,
     is_null: bool = False,
+    block_text: str | None = None,
+    block_error: str | None = None,
 ) -> list[str]:
     """Every check a PASS reason fails, per the skill's "What the recorder refuses"."""
     if reason.no_claim and set(reason.entries) == {"Judged"}:
@@ -1287,9 +1381,19 @@ def pass_failures(
             f"({', '.join(vocab.format_items)}): " + "; ".join(repr(e) for e in bad_waived)
         )
     if block is None and not block_waived:
-        failures.append(
-            "the judged text has no argdown block that parses: PASS needs 'Waived: block -- ...'"
-        )
+        defect_msg: str | None = block_error
+        if defect_msg is None and block_text is not None:
+            valid, err, _ = check_argdown_block(block_text)
+            if not valid and err:
+                defect_msg = err
+        if defect_msg:
+            failures.append(
+                f"the judged text has no argdown block that parses:\n{defect_msg}\nPASS needs 'Waived: block -- ...'"
+            )
+        else:
+            failures.append(
+                "the judged text has no argdown block that parses: PASS needs 'Waived: block -- ...'"
+            )
 
     for entry in reason.get("Relay"):
         if _is_none(entry):
