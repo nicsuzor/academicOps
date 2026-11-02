@@ -256,6 +256,98 @@ def test_turn_opened_by_pre_tool_continues_after_resume(tracer_env, exporter):
     assert _turn_numbers(exporter) == [1, 2]
 
 
+def test_unprompted_turn_root_carries_own_trigger_not_repeated_prompt(tracer_env, exporter):
+    """A turn starting without a new user prompt (e.g. continuation or unprompted tool)
+    carries its own trigger as input.value and turn.source, rather than repeating
+    the earlier turn's prompt."""
+    _hook(cct.handle_user_prompt_submit, tracer_env, prompt="first prompt")
+    _append_prompt(tracer_env, "first prompt")
+    _hook(cct.handle_stop, tracer_env, last_assistant_message="first reply")
+
+    # Turn 2 starts via PreToolUse without a new UserPromptSubmit or new transcript entry
+    _hook(
+        cct.handle_pre_tool,
+        tracer_env,
+        tool_name="Bash",
+        tool_input={"command": "ls -la", "description": "list files"},
+        tool_use_id="t2",
+    )
+    _hook(cct.handle_stop, tracer_env, last_assistant_message="second reply")
+
+    roots = exporter.named("claude-code-turn")
+    assert len(roots) == 2
+    turn1, turn2 = roots
+    assert turn1.attributes["input.value"] == "first prompt"
+    assert turn1.attributes["output.value"] == "first reply"
+
+    assert turn2.attributes.get("input.value") != "first prompt"
+    assert "Bash" in turn2.attributes.get("input.value", "")
+    assert turn2.attributes.get("turn.source") == "tool"
+    assert turn2.attributes["output.value"] == "second reply"
+
+
+def test_subagent_background_tool_does_not_create_phantom_repeated_prompt_turn(
+    tracer_env, exporter
+):
+    """In-process subagent background tool calls while the main turn is closed
+    must not open a phantom turn root that repeats the parent turn's prompt."""
+    # Turn 1: Main thread dispatches a subagent
+    _hook(cct.handle_user_prompt_submit, tracer_env, prompt="scheduled task")
+    _append_prompt(tracer_env, "scheduled task")
+    tin = {"subagent_type": "sweeper", "prompt": "run sweep"}
+    _hook(cct.handle_pre_tool, tracer_env, tool_name="Agent", tool_input=tin, tool_use_id="a1")
+    _hook(
+        cct.handle_post_tool,
+        tracer_env,
+        tool_name="Agent",
+        tool_input=tin,
+        tool_use_id="a1",
+        tool_response={"agentId": "sub_1", "agentType": "sweeper"},
+    )
+    _hook(cct.handle_stop, tracer_env, last_assistant_message="sweeper running")
+
+    # Background subagent executes a tool call while main turn is closed
+    sub_tool_in = {"command": "echo check"}
+    _hook(
+        cct.handle_pre_tool,
+        tracer_env,
+        agent_id="sub_1",
+        agent_type="sweeper",
+        tool_name="Bash",
+        tool_input=sub_tool_in,
+        tool_use_id="st1",
+    )
+    _hook(
+        cct.handle_post_tool,
+        tracer_env,
+        agent_id="sub_1",
+        agent_type="sweeper",
+        tool_name="Bash",
+        tool_input=sub_tool_in,
+        tool_use_id="st1",
+        tool_response={"stdout": "check"},
+    )
+
+    # Hand-back arrives from subagent
+    _hook(
+        cct.handle_user_prompt_submit,
+        tracer_env,
+        prompt="<agent-message from='sub_1'>done</agent-message>",
+    )
+    _append_prompt(tracer_env, "<agent-message from='sub_1'>done</agent-message>")
+    _hook(cct.handle_stop, tracer_env, last_assistant_message="finished all work")
+
+    roots = exporter.named("claude-code-turn")
+    # Must only have 2 real turn roots, not 3 (no phantom turn root)
+    assert len(roots) == 2, (
+        f"Expected 2 turn roots, found {len(roots)}: {[r.attributes.get('input.value') for r in roots]}"
+    )
+    assert roots[0].attributes["input.value"] == "scheduled task"
+    assert roots[0].attributes["output.value"] == "sweeper running"
+    assert roots[1].attributes["input.value"] == "<agent-message from='sub_1'>done</agent-message>"
+    assert roots[1].attributes["output.value"] == "finished all work"
+
+
 # --- turn_number: entries that are not prompts ----------------------------------
 #
 # Entry shapes as Claude Code writes them. A typed or skill prompt carries
