@@ -19,6 +19,27 @@ The framework enforces **no programmatic, deterministic, or mechanical verdict o
 
 Apart from the exception above, the only **mechanical** enforcement is **structural prevention**: credential and workspace isolation, delivery guards (such as stray PR auto-retargeting from distribution branches to `dev` via `.github/workflows/auto-retarget-pr.yml` and repository ruleset push protection locking `main` against direct pushes and non-release PR merges with release pipeline bypass), model pins. Prevention by construction -- never reactive detection, never content-sniffing, never a deterministic pass/fail on the substance of an agent's work.
 
+## The framework-workflow enforcement line
+
+Enforcement in academicOps is strictly defined as **framework-level process rules** (compliance with our processes), never **workflow-substance rules** (which govern the substance of what is done in client repos or domain-specific workflows).
+
+- **Framework-level process rules**: Universal behavioral and process invariants governing how agents operate within the framework regardless of repository, task domain, or client project. These include universal axioms ([`plugins/rbg/skills/axioms/`](../../plugins/rbg/skills/axioms/)), task lifecycle contracts (`claim_task` -> `release_task` with verified evidence), authority boundaries, data boundaries, headless worker invariants, and independent review gates.
+- **Workflow-substance rules**: Domain-specific instructions, procedures, business logic, heuristics, or formats governing the substance of client repository work or specific operational routines (e.g. correspondence watermarks, Telegram reply button layouts or reaction legends, dbt model transformations, streamlit layout schemas, literature search strategies).
+- **Core doctrine**: Workflow substance lives strictly as **instructions inside their workflows** (`wf-*.md` or `SKILL.md`), NEVER as framework-level enforcement rules, NEVER in `specs/enforcement/`, and NEVER on the universal enforcement register ([`specs/ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md)).
+- **The only framework rule for workflows**: The framework rule is simply: **follow the applicable workflow**. When an agent fails to follow an existing workflow, the root cause is poor compliance with workflows (or that the workflow instructions were unclear or missing), NOT a missing framework enforcement rule. Adding a bespoke framework rule, spec, or gate for a specific workflow is an over-engineering defect.
+
+### The operational test for rule classification
+
+When authoring, evaluating, or reviewing any proposed or existing rule, specification, hook, or enforcement-map row, apply this three-step test:
+
+1. **Domain-Independence Test**: Does the requirement apply universally to _any_ unit of work across all client repositories, domains, and tasks (e.g. how tasks are claimed, cited, verified, proven with evidence, bounded for safety/PII, or reported)?
+   - _If YES:_ It is a candidate **framework-process rule**.
+   - _If NO_ (it is specific to email sweeps, Telegram messaging, dbt transformations, paper peer-reviews, daily note formatting, or other domain tasks): It is a **workflow-substance rule**.
+2. **Substance vs. Process Test**: Does the requirement prescribe _what_ domain content, heuristics, or business logic to execute, OR _how_ the framework's operating processes (authority, evidence, truth maintenance, lifecycle) are complied with?
+   - If it prescribes domain substance or workflow execution details, it MUST live solely as an instruction inside that workflow template (`wf-*.md`) or skill (`SKILL.md`). It is NOT an enforcement rule, MUST NOT be given a spec in `specs/enforcement/`, and MUST NOT appear on `specs/ENFORCEMENT-MAP.md`.
+3. **General Compliance Test**: If an agent failed to follow the instruction, does the failure stem from an absence of a general framework rule, or from failing to follow the applicable workflow?
+   - The framework rule is: _follow the applicable workflow_. The remedy is to improve the clarity of the workflow instructions or enforce existing framework process rules (e.g. `do-one-thing`, `cite-sources`), NEVER to invent a new bespoke enforcement rule, spec, or gate for that workflow.
+
 ### Regulatory tools
 
 Enforcement is risk-reduction; compliance is probabalistic, not guaranteed.
@@ -118,6 +139,7 @@ The rule-compliance review lens (`rbg`, coordinated via `strategic-review` or `w
 4. **Show, don't tell.** Where compliance is claimed, require information that demonstrates it.
 5. **Never guess.** With no evidence either way, current placement holds.
 6. **Agentic-first over mechanical code.** Smarts belong to agents; code is a permanent maintenance liability. Never build scripts, CLI tools, or programmatic wrappers where an agent workflow instructing agents to exercise qualitative judgment meets the request.
+7. **Proportion measures mechanism necessity and change size across both code and prose.** A change that touches multiple files, adds specifications, introduces calibration schemes, or registers enforcement-map rows where a simple instruction or workflow edit suffices is disproportional and an over-engineering defect. Meeting a request with the least mechanism means the smallest change that works, never expanding small wording edits into cross-tier architectural projects.
 
 ## Evidence loop -- how the framework learns
 
