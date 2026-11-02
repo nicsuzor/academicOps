@@ -830,7 +830,7 @@ def _export_session_id(ctx: HookContext) -> bool:
 PREMISE_CHECK_POINTER = (
     "Reports follow `premise-check`: written in its shape and checked on receipt."
     " Load the skill (`ida:premise-check`) before writing or checking one;"
-    " its Argdown dialect is not public Argdown."
+    " its form is a restricted subset of Argdown."
 )
 
 
