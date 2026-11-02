@@ -366,7 +366,10 @@ def _initialize_mcp_session(mcp_url: str, base_headers: dict[str, str]) -> str |
             f"the PKB endpoint did not answer within {_SEARCH_TIMEOUT_SECONDS} seconds"
         ) from exc
     except urllib.error.URLError as exc:
-        if isinstance(exc.reason, TimeoutError):
+        if (
+            isinstance(exc.reason, (TimeoutError, socket.timeout))
+            or "timed out" in str(exc.reason).lower()
+        ):
             raise TimeoutError(
                 f"the PKB endpoint did not answer within {_SEARCH_TIMEOUT_SECONDS} seconds"
             ) from exc
@@ -484,7 +487,10 @@ def _post_mcp_search(
                 f"the PKB endpoint did not answer within {_SEARCH_TIMEOUT_SECONDS} seconds"
             ) from exc
         except urllib.error.URLError as exc:
-            if isinstance(exc.reason, TimeoutError):
+            if (
+                isinstance(exc.reason, (TimeoutError, socket.timeout))
+                or "timed out" in str(exc.reason).lower()
+            ):
                 raise TimeoutError(
                     f"the PKB endpoint did not answer within {_SEARCH_TIMEOUT_SECONDS} seconds"
                 ) from exc
@@ -525,7 +531,19 @@ def _post_mcp_search(
         elif status == 200:
             raise RuntimeError(f"PKB MCP error: {err_obj}")
 
+    if (err_obj is not None and "session" in str(err_obj).lower()) or (
+        "session" in body.lower() and status in (400, 404, 422)
+    ):
+        session_needed = True
+
     if session_needed:
+        cache_path = _session_cache_path()
+        try:
+            if cache_path.is_file():
+                cache_path.unlink()
+        except OSError:
+            pass
+        req_headers.pop("mcp-session-id", None)
         new_session = _initialize_mcp_session(mcp_url, req_headers)
         if new_session:
             req_headers["mcp-session-id"] = new_session
