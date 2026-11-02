@@ -1633,7 +1633,16 @@ def _subagent_record(
     if record is None:
         current_trace = state.get("current_trace")
         if not current_trace:
-            return None
+            last_trace = state.get("last_trace")
+            if not last_trace:
+                return None
+            record = {
+                "agent_type": str(agent_type or ""),
+                "trace_id": last_trace["trace_id"],
+                "agent_span_id": last_trace["root_span_id"],
+            }
+            subagents[agent_id] = record
+            return record
         record = {
             "agent_type": str(agent_type or ""),
             "trace_id": current_trace["trace_id"],
@@ -1943,6 +1952,10 @@ def _complete_turn(
     if prompt_preview:
         root_attrs["input.value"] = prompt_preview
         root_attrs["input.mime_type"] = "text/plain"
+    if current_trace.get("turn_source"):
+        root_attrs["turn.source"] = current_trace["turn_source"]
+        if "turn.trigger" not in root_attrs and prompt_preview:
+            root_attrs["turn.trigger"] = prompt_preview
     if final_output:
         root_attrs["output.value"] = final_output
         root_attrs["output.mime_type"] = "text/plain"
@@ -1989,7 +2002,7 @@ def _build_tool_span_record(
     start_ns: int,
     end_ns: int,
     trace_id: str,
-    root_span_id: str,
+    root_span_id: str | None = None,
     is_failure: bool = False,
     error_msg: str = "",
     span_id: str | None = None,
@@ -2165,6 +2178,10 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
 
     transcript_path = _get_cached_transcript_path(data, state, session_id)
     current_human_count = _count_human_messages(transcript_path) if transcript_path else 0
+    state["human_messages_consumed"] = max(
+        state.get("human_messages_consumed", 0) + 1,
+        current_human_count,
+    )
     turn_number = _next_turn_number(state, current_human_count)
 
     parent_trace_id = None
@@ -2362,11 +2379,32 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
     if client_agent and not state.get("agent_name"):
         state["agent_name"] = client_agent
 
-    # Fallback: create a trace if UserPromptSubmit has not set one yet.
-    if not state.get("current_trace"):
+    subagent_id = _subagent_id(data)
+    if subagent_id:
+        _subagent_record(state, subagent_id, data.get("agent_type"))
+
+    # Fallback: create a trace if UserPromptSubmit has not set one yet,
+    # but ONLY for main-thread tool calls. In-process subagents run tools
+    # in their own subagent trace (parented under the dispatching Agent tool),
+    # so they must not create phantom turn roots for the main session.
+    if not state.get("current_trace") and not subagent_id:
         transcript_path = _get_cached_transcript_path(data, state, session_id)
         current_human_count = _count_human_messages(transcript_path) if transcript_path else 0
-        prompt_preview = _get_latest_human_message(transcript_path) if transcript_path else ""
+        consumed = state.get("human_messages_consumed", 0)
+
+        turn_source = None
+        if current_human_count > consumed:
+            prompt_preview = _get_latest_human_message(transcript_path) if transcript_path else ""
+            state["human_messages_consumed"] = current_human_count
+        else:
+            desc = _extract_debug_hook_description(data, data, "claude", "PreToolUse")
+            if desc and desc not in ("claude PreToolUse hook", tool_name):
+                prompt_preview = f"Tool: {tool_name} ({desc})"
+            elif tool_name:
+                prompt_preview = f"Tool: {tool_name}"
+            else:
+                prompt_preview = "Continuation"
+            turn_source = "tool"
 
         turn_number = _next_turn_number(state, max(0, current_human_count - 1))
 
@@ -2376,6 +2414,7 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
             "turn_start_ns": now_ns,
             "turn_number": turn_number,
             "prompt_preview": _truncate(prompt_preview) if prompt_preview else "",
+            "turn_source": turn_source,
             "human_count_at_start": max(0, current_human_count - 1),
             "model_calls": [],
             "emitted_llm_span_count": 0,
@@ -2388,7 +2427,7 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
         }
 
     current_trace = state.get("current_trace")
-    if current_trace:
+    if current_trace and not subagent_id:
         pmc = current_trace.setdefault(
             "pending_model_call",
             {
@@ -2486,13 +2525,16 @@ def _finish_tool_call(
             return
 
         current_trace = state.get("current_trace")
-        if not current_trace:
+        subagent_id = _subagent_id(data)
+        subagent = (
+            _subagent_record(state, subagent_id, data.get("agent_type")) if subagent_id else None
+        )
+        if not current_trace and not (subagent_id and subagent is not None):
             log.debug("No current trace for session %s in %s", session_id, event)
             return
 
         tool_name = data.get("tool_name", "unknown")
         data_tool_input = data.get("tool_input")
-        subagent_id = _subagent_id(data)
         current_tool, pending_key = _find_pending_tool_entry(
             state,
             tool_name,
@@ -2508,53 +2550,55 @@ def _finish_tool_call(
         pre_allocated_span_id = None if is_failure else current_tool.get("pre_allocated_span_id")
 
         tool_call_id = data.get("tool_use_id") or data.get("tool_call_id") or data.get("id")
-        subagent = (
-            _subagent_record(state, subagent_id, data.get("agent_type")) if subagent_id else None
-        )
 
-        # Move completed pending_model_call to model_calls
-        if (
-            current_trace.get("pending_model_call")
-            and "end_ns" in current_trace["pending_model_call"]
-        ):
-            pmc = current_trace.pop("pending_model_call")
-            current_trace.setdefault("model_calls", []).append(pmc)
+        # Move completed pending_model_call to model_calls (main-thread only)
+        if current_trace and not subagent_id:
+            if (
+                current_trace.get("pending_model_call")
+                and "end_ns" in current_trace["pending_model_call"]
+            ):
+                pmc = current_trace.pop("pending_model_call")
+                current_trace.setdefault("model_calls", []).append(pmc)
 
-        # Stage the next model call receiving this tool's response
-        tool_resp_str = (
-            json.dumps(tool_response)
-            if isinstance(tool_response, (dict, list))
-            else str(tool_response or "")
-        )
-        if "pending_model_call" not in current_trace:
-            current_trace["pending_model_call"] = {
-                "input_value": _truncate(tool_resp_str),
-                "input_mime": "application/json"
+            # Stage the next model call receiving this tool's response
+            tool_resp_str = (
+                json.dumps(tool_response)
                 if isinstance(tool_response, (dict, list))
-                else "text/plain",
-                "start_ns": end_ns,
-                "tool_calls": [],
-            }
-        else:
-            prev_in = current_trace["pending_model_call"].get("input_value", "")
-            current_trace["pending_model_call"]["input_value"] = _truncate(
-                f"{prev_in}\n{tool_resp_str}"
+                else str(tool_response or "")
             )
+            if "pending_model_call" not in current_trace:
+                current_trace["pending_model_call"] = {
+                    "input_value": _truncate(tool_resp_str),
+                    "input_mime": "application/json"
+                    if isinstance(tool_response, (dict, list))
+                    else "text/plain",
+                    "start_ns": end_ns,
+                    "tool_calls": [],
+                }
+            else:
+                prev_in = current_trace["pending_model_call"].get("input_value", "")
+                current_trace["pending_model_call"]["input_value"] = _truncate(
+                    f"{prev_in}\n{tool_resp_str}"
+                )
 
         # Emit any pending LLM spans whose token counts have landed in the transcript
-        transcript_path = _get_cached_transcript_path(data, state, session_id)
-        _emit_pending_llm_spans(state, transcript_path, config, subagent_id=subagent_id)
+        if current_trace:
+            transcript_path = _get_cached_transcript_path(data, state, session_id)
+            _emit_pending_llm_spans(state, transcript_path, config, subagent_id=subagent_id)
 
-        trace_id = current_trace["trace_id"]
         if subagent_id and subagent is not None:
             trace_id = subagent["trace_id"]
             parent_span_id = subagent["agent_span_id"]
-        else:
+        elif current_trace:
+            trace_id = current_trace["trace_id"]
             parent_span_id = (
                 _find_active_agent_span_id(state, pending_key, tool_name)
                 or current_trace.get("llm_span_by_tool_call", {}).get(str(tool_call_id or ""))
                 or current_trace["root_span_id"]
             )
+        else:
+            trace_id = _new_trace_id()
+            parent_span_id = None
         span_record = _build_tool_span_record(
             tool_name=tool_name,
             tool_input=tool_input,
@@ -2583,8 +2627,8 @@ def _finish_tool_call(
                 tool_response.get("agentType") or (tool_input or {}).get("subagent_type"),
             )
 
-        known_parents = _known_span_parents(current_trace)
-        if span_record["force_span_id"]:
+        known_parents = _known_span_parents(current_trace) if current_trace else {}
+        if span_record["force_span_id"] and current_trace:
             # Record the link before export so a later span this turn (e.g. the
             # turn root) can be checked against it.
             current_trace.setdefault("span_parents", {})[span_record["span_id_hex"]] = span_record[
