@@ -25,6 +25,33 @@ RULESET_FILE = (
 )
 
 
+def build_payload(data: dict) -> dict:
+    """Build the GitHub Ruleset API payload dictionary from parsed YAML."""
+    return {
+        "name": data["name"],
+        "target": data["target"],
+        "enforcement": data["enforcement"],
+        "conditions": data["conditions"],
+        "bypass_actors": data.get("bypass_actors") or [],
+        "rules": data.get("rules", []),
+    }
+
+
+def validate_payload(payload: dict) -> tuple[bool, str]:
+    """Validate that push-blocking rules have a bypass actor for the release pipeline."""
+    push_blocking = {"pull_request", "required_status_checks", "update"}
+    if not payload.get("bypass_actors") and any(
+        r.get("type") in push_blocking for r in payload.get("rules", [])
+    ):
+        return False, (
+            "ERROR: refusing to apply: the ruleset has a rule that rejects the "
+            "release pipeline's direct push to main "
+            f"({', '.join(sorted(push_blocking))}) and no bypass_actors. Add the "
+            "publishing identity as a bypass actor first."
+        )
+    return True, ""
+
+
 def main() -> int:
     if not RULESET_FILE.exists():
         print(f"ERROR: {RULESET_FILE} does not exist", file=sys.stderr)
@@ -33,28 +60,13 @@ def main() -> int:
     with open(RULESET_FILE, encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
-    payload = {
-        "name": data["name"],
-        "target": data["target"],
-        "enforcement": data["enforcement"],
-        "conditions": data["conditions"],
-        "bypass_actors": data.get("bypass_actors") or [],
-        "rules": data.get("rules", []),
-    }
-    payload_json = json.dumps(payload, indent=2)
-
-    push_blocking = {"pull_request", "required_status_checks", "update"}
-    if not payload["bypass_actors"] and any(
-        r.get("type") in push_blocking for r in payload["rules"]
-    ):
-        print(
-            "ERROR: refusing to apply: the ruleset has a rule that rejects the "
-            "release pipeline's direct push to main "
-            f"({', '.join(sorted(push_blocking))}) and no bypass_actors. Add the "
-            "publishing identity as a bypass actor first.",
-            file=sys.stderr,
-        )
+    payload = build_payload(data)
+    valid, err_msg = validate_payload(payload)
+    if not valid:
+        print(err_msg, file=sys.stderr)
         return 1
+
+    payload_json = json.dumps(payload, indent=2)
 
     print("Target ruleset payload:")
     print(payload_json)
