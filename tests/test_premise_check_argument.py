@@ -2115,3 +2115,162 @@ def test_indented_premise_continuation_lines_with_dashes_parse_and_record_pass()
         tracer_mod=_configured(),
     )
     assert attr["verdict"] == "PASS"
+
+
+# ---------------------------------------------------------------------------
+# Hotfix: #3398 (block shape), #3399 (transport decoding), #3382 (named defect)
+# ---------------------------------------------------------------------------
+
+
+def test_replay_issue_3398_turn_5_block_records_pass():
+    """AC1: Replay #3398 turn-5 block (asks/answers in list/label idiom) and recorder accepts PASS without waiver."""
+    block = (
+        "===\n"
+        "title: What is next on the user's work list\n"
+        "granularity:\n"
+        "  level: micro\n"
+        '  floor: "Task records and list output read from fixtures."\n'
+        "model:\n"
+        "  mode: strict\n"
+        "asks:\n"
+        "  - id: tg-3107\n"
+        '    text: "what\'s next on the list for work?"\n'
+        "answers:\n"
+        "  tg-3107: Next\n"
+        "===\n\n"
+        '(1) [Deadline sort]: The task list puts tasks with hard deadlines first and then sorts the rest by value. {basis: "observed", pointer: "mock_list_tasks default order", source: "cliff lane"}\n'
+        '(2) [First rows]: The first four rows are the policy decision and its options. {basis: "observed", pointer: "mock_list_tasks rows 1-4", source: "due dates"}\n'
+        '(3) [Options]: The submission and inquiry tasks are options under the parent decision. {basis: "observed", pointer: "frontmatter", source: "parent: decision-parent"}\n'
+        '(4) [Booking]: The user said they will book the team meeting tonight or tomorrow. {basis: "reported-by", pointer: "relay", source: "tonight or tomorrow"}\n'
+        '(5) [Review blocked]: The analysis plan review is blocked because prerequisite tasks are queued. {basis: "observed", pointer: "task-review", source: "blocked: true"}\n'
+        '-- Deadline-first warrant: The list\'s deadline-first order is the work order and a blocked task cannot start. Unless: the user ranks by something else today; not observed. {uses: [1, 2, 3, 4, 5], basis: "stated", pointer: "mock_list_tasks"} --\n'
+        "(6) [Next]: So, the next work is the policy decision with its inquiry option, then the compliance filing, and booking the team meeting. The analysis review is not yet open.\n"
+    )
+    report_text = f"## Report\n\n```argdown\n{block}```\n"
+    session_id = "s-3398-turn5"
+    claim_id = "claim-3398-turn5"
+    _arm_with_report(session_id, claim_id, text=report_text)
+
+    reason = (
+        f"Judged: {claim_id}; asks tg-3107\n"
+        "Valid: (6) holds -- deadline-first list order (1) applied to rows (2), folding options under their parent (3), adding the user's booking plan (4), excluding a blocked task (5) yields the stated next items\n"
+        "Supported: (1)(2)(3)(5) observed list output and task records with pointers; (4) relay of the user's words\n"
+        "Answered: tg-3107 ← (6)\n"
+        "Sufficient: (6) material; obvious; no objection\n"
+        "Waived: none\n"
+        "Relay: none\n"
+    )
+
+    result = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=claim_id,
+        verdict="PASS",
+        reason=reason,
+        tracer_mod=_configured(),
+    )
+    assert result["verdict"] == "PASS"
+    assert result["disarmed"] is True
+
+
+def test_entity_escaped_argdown_block_parses_identically_to_raw():
+    """AC2: Feed a block containing <Argument label> and &, entity-escaped as in #3399, and recorder parses identically."""
+    raw_block = (
+        "===\n"
+        "asks:\n"
+        "  tg-3107: what is next & when?\n"
+        "answers:\n"
+        "  tg-3107: 2\n"
+        "===\n\n"
+        "<Deadline order>\n"
+        "(1) [Observation]: Task & Engagement observations are ordered by deadline. -- I read it\n"
+        "-- Warrant: deadline order holds. Unless: overridden; not observed. --\n"
+        "(2) [Next]: So Next tasks are prioritized.\n"
+    )
+    escaped_block = (
+        "===\n"
+        "asks:\n"
+        "  tg-3107: what is next &amp; when?\n"
+        "answers:\n"
+        "  tg-3107: 2\n"
+        "===\n\n"
+        "&lt;Deadline order&gt;\n"
+        "(1) [Observation]: Task &amp; Engagement observations are ordered by deadline. -- I read it\n"
+        "-- Warrant: deadline order holds. Unless: overridden; not observed. --\n"
+        "(2) [Next]: So Next tasks are prioritized.\n"
+    )
+
+    # 1. Normalisation and validation parse identically
+    valid_raw, err_raw, ast_raw = ra.check_argdown_block(raw_block)
+    valid_esc, err_esc, ast_esc = ra.check_argdown_block(escaped_block)
+    assert valid_raw is True and err_raw == ""
+    assert valid_esc is True and err_esc == ""
+    assert ast_esc == ast_raw
+
+    # 2. Block parser produces identical Argument structures
+    parsed_raw = ra.parse_block(raw_block, _VOCAB)
+    parsed_esc = ra.parse_block(escaped_block, _VOCAB)
+    assert parsed_raw is not None
+    assert parsed_esc == parsed_raw
+
+    # 3. Verdict recording succeeds on the entity-escaped block without waivers
+    session_id = "s-3399-escaped"
+    claim_id = "claim-3399"
+    report_text = f"## Report\n\n```argdown\n{escaped_block}```\n"
+    _arm_with_report(session_id, claim_id, text=report_text)
+
+    reason = (
+        f"Judged: {claim_id}; asks tg-3107\n"
+        "Valid: (2) holds -- warrant applied to (1)\n"
+        "Supported: (1) direct observation\n"
+        "Answered: tg-3107 ← (2)\n"
+        "Sufficient: (2) obvious\n"
+        "Waived: none\n"
+        "Relay: none\n"
+    )
+    result = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=claim_id,
+        verdict="PASS",
+        reason=reason,
+        tracer_mod=_configured(),
+    )
+    assert result["verdict"] == "PASS"
+
+
+def test_reason_check_refusal_for_unparseable_block_names_failing_line_or_key():
+    """AC3: Reason-check refusal for an unparseable block names the failing line or key and expected shape."""
+    # A block with a syntax error (malformed inference line missing closing '--')
+    bad_block = (
+        "===\n"
+        "asks:\n"
+        "  tg-1: question\n"
+        "answers:\n"
+        "  tg-1: 2\n"
+        "===\n\n"
+        "(1) Observation premise.\n"
+        "-- Malformed warrant with no closing dashes\n"
+        "(2) So conclusion.\n"
+    )
+    judged_text = f"```argdown\n{bad_block}```\n"
+
+    reason = (
+        "Judged: claim-3382; asks tg-1\n"
+        "Valid: (2) holds -- warrant\n"
+        "Supported: (1) observation\n"
+        "Answered: tg-1 ← (2)\n"
+        "Sufficient: (2) obvious\n"
+        "Waived: none\n"
+        "Relay: none\n"
+    )
+
+    with pytest.raises(ValueError) as exc_info:
+        pcv.judge_reason("PASS", reason, judged_text)
+
+    msg = str(exc_info.value)
+    # The reason-check refusal must state that the reason fails checks,
+    # and explicitly name the failing line or key and the shape expected.
+    assert "the reason fails the recorder's checks" in msg
+    assert "the judged text has no argdown block that parses" in msg
+    assert "Malformed inference line" in msg or "missing closing '--'" in msg
+    assert "-- Malformed warrant with no closing dashes" in msg
+    assert "Required remediation format" in msg
