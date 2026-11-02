@@ -2126,10 +2126,10 @@ def test_replay_issue_3398_turn_5_block_records_pass():
     """AC1: Replay #3398 turn-5 block (asks/answers in list/label idiom) and recorder accepts PASS without waiver."""
     block = (
         "===\n"
-        "title: What is next on Nic's work list\n"
+        "title: What is next on the user's work list\n"
         "granularity:\n"
         "  level: micro\n"
-        '  floor: "Task records and list output read from the PKB on 2026-11-02."\n'
+        '  floor: "Task records and list output read from fixtures."\n'
         "model:\n"
         "  mode: strict\n"
         "asks:\n"
@@ -2138,23 +2138,23 @@ def test_replay_issue_3398_turn_5_block_records_pass():
         "answers:\n"
         "  tg-3107: Next\n"
         "===\n\n"
-        '(1) [Deadline sort]: The task list puts tasks with hard deadlines first and then sorts the rest by value. {basis: "observed", pointer: "pkb_list_tasks default order", source: "cliff lane"}\n'
-        '(2) [First rows]: The first four rows are the crossbench decision and options. {basis: "observed", pointer: "pkb_list_tasks rows 1-4", source: "due dates"}\n'
-        '(3) [Options]: The feed-choice and Senate inquiry tasks are options under the crossbench decision. {basis: "observed", pointer: "frontmatter", source: "parent: admin_78fc1f3f"}\n'
-        '(4) [Booking]: Nic said he will book the workload meeting tonight or tomorrow. {basis: "reported-by", pointer: "relay", source: "tonight or tomorrow"}\n'
-        '(5) [TJA blocked]: The TJA plan review is blocked because the notebooks it depends on are queued. {basis: "observed", pointer: "tja_plan_review", source: "blocked: true"}\n'
-        '-- Deadline-first warrant: The list\'s deadline-first order is Nic\'s work order and a blocked task cannot start. Unless: Nic ranks by something else today; not observed. {uses: [1, 2, 3, 4, 5], basis: "stated", pointer: "pkb_list_tasks"} --\n'
-        "(6) [Next]: So, Nic's next work is the crossbench decision (5 Nov) with its Senate inquiry option (9 Nov), then the BAS (11 Nov), and booking the workload meeting (3 Nov). The TJA plan review is not yet open.\n"
+        '(1) [Deadline sort]: The task list puts tasks with hard deadlines first and then sorts the rest by value. {basis: "observed", pointer: "mock_list_tasks default order", source: "cliff lane"}\n'
+        '(2) [First rows]: The first four rows are the policy decision and its options. {basis: "observed", pointer: "mock_list_tasks rows 1-4", source: "due dates"}\n'
+        '(3) [Options]: The submission and inquiry tasks are options under the parent decision. {basis: "observed", pointer: "frontmatter", source: "parent: decision-parent"}\n'
+        '(4) [Booking]: The user said they will book the team meeting tonight or tomorrow. {basis: "reported-by", pointer: "relay", source: "tonight or tomorrow"}\n'
+        '(5) [Review blocked]: The analysis plan review is blocked because prerequisite tasks are queued. {basis: "observed", pointer: "task-review", source: "blocked: true"}\n'
+        '-- Deadline-first warrant: The list\'s deadline-first order is the work order and a blocked task cannot start. Unless: the user ranks by something else today; not observed. {uses: [1, 2, 3, 4, 5], basis: "stated", pointer: "mock_list_tasks"} --\n'
+        "(6) [Next]: So, the next work is the policy decision with its inquiry option, then the compliance filing, and booking the team meeting. The analysis review is not yet open.\n"
     )
     report_text = f"## Report\n\n```argdown\n{block}```\n"
     session_id = "s-3398-turn5"
-    claim_id = "claim-8daa2599"
+    claim_id = "claim-3398-turn5"
     _arm_with_report(session_id, claim_id, text=report_text)
 
     reason = (
         f"Judged: {claim_id}; asks tg-3107\n"
-        "Valid: (6) holds -- deadline-first list order (1) applied to rows (2), folding options under their parent (3), adding Nic's own booking plan (4), excluding a blocked task (5) yields the stated next items\n"
-        "Supported: (1)(2)(3)(5) observed list output and task records with pointers; (4) relay of Nic's own words, matches what he said\n"
+        "Valid: (6) holds -- deadline-first list order (1) applied to rows (2), folding options under their parent (3), adding the user's booking plan (4), excluding a blocked task (5) yields the stated next items\n"
+        "Supported: (1)(2)(3)(5) observed list output and task records with pointers; (4) relay of the user's words\n"
         "Answered: tg-3107 ← (6)\n"
         "Sufficient: (6) material; obvious; no objection\n"
         "Waived: none\n"
