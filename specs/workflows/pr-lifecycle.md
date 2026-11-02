@@ -13,7 +13,7 @@ Specifies the pull request lifecycle workflows: separating discovery and triage 
 
 As a workflow coordinator, I want the sweep workflow to fan out in parallel across open pull requests to evaluate each against project policy, queue a discrete next-step task for each item needing action, and record a closed summary task of outstanding items, so that discovery is decoupled from execution and I can decide when and how to dispatch resolutions without redundant execution passes.
 
-- **AC-1.1** Given an open pull request requiring progression (e.g. initial review, feedback resolution, merge conflict rebase, or landing), when the sweep workflow processes the PR, then it queues an existing task or creates and queues a follow-up task targeting that PR's discrete next step, rather than executing the resolution inline.
+- **AC-1.1** Given an open pull request requiring progression (e.g. initial review, feedback resolution, post-approval merge conflict rebase, or landing), when the sweep workflow processes the PR, then it queues an existing task or creates and queues a follow-up task targeting that PR's discrete next step, rather than executing the resolution inline. Before approval, a PR requires only green checks and proportionate review; mergeability is not required before approval, and PRs awaiting approval are not queued for conflict resolution or rebase.
 - **AC-1.2** Given candidate pull requests across target repositories, the sweep coordinator fans out across them in parallel rather than executing sequentially or requiring separate execution modes.
 - **AC-1.3** Given the completion of all PR evaluations in a sweep run, when the sweep finishes, then it files a closed task recording the sweep inventory and listing all outstanding queued tasks for the coordinator to review and dispatch.
 
@@ -33,7 +33,7 @@ The sweep workflow operates exclusively as a discovery and triage mechanism, dis
 1. **Parallel Fan-Out**: The sweep coordinator queries open pull requests and evaluates candidates in parallel. There is a single execution model: parallel fan-out across PRs.
 2. **Project Policy Resolution**: PRs are evaluated against project-specific branch and merge policies. Target base branches are specified in project-level configuration (e.g. `.agents/CORE.md`) rather than hardcoded in workflow templates.
 3. **Queue Next-Step Tasks**: For each PR requiring action:
-   - Identify the single next required action (e.g. run risk-tier review, address requested changes, resolve base merge conflicts, or land approved PR).
+   - Identify the single next required action (e.g. run risk-tier review, address requested changes, resolve base merge conflicts on approved PRs, or land approved PR). PRs awaiting approval that are green and reviewed are classified as blocked on approval without queuing conflict resolution or rebase tasks.
    - If an existing open task covers this action, ensure it is set to queued status.
    - If no task exists, create and queue a follow-up task scoped strictly to that PR's next action.
    - The sweep workflow does not execute resolutions inline.
@@ -41,7 +41,7 @@ The sweep workflow operates exclusively as a discovery and triage mechanism, dis
 
 ### 2. Move-Along Parallel Fan-Out (Trial)
 
-The move-along workflow advances an individual PR through check auditing, proportionate review, feedback resolution, merge conflict settlement, and landing:
+The move-along workflow advances an individual PR through check auditing, proportionate review, feedback resolution, post-approval merge conflict settlement, and landing. Before approval, a PR must be green and reviewed; bringing it up to date with its base branch and resolving conflicts happens after approval, just before merge:
 
 1. **Single-Worker Fan-Out Option**: Where an individual PR requires multiple independent checks or reviews, the dispatcher may assign the task to a single worker instructed to fan out sub-operations in parallel (e.g. concurrently dispatching review lenses or running test suites in parallel subagents).
 2. **Trial Designation**: This fan-out pattern is formally designated as an empirical trial. The principal evaluates system performance and token economy from specimen runs before determining whether to retain or refine the pattern.

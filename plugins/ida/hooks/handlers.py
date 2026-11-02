@@ -197,47 +197,31 @@ def extract_prompt_query(prompt: str) -> str:
     return text[:_MAX_QUERY_CHARS]
 
 
-# Cloudflare Access service-token pairs, in order of preference. The worker
-# pair comes first because it has no polecat dispatch access (Nic, tg 2369).
-_ACCESS_TOKEN_PAIRS = (
-    ("WORKER_MCP_TOKEN_ID", "WORKER_MCP_TOKEN_SECRET"),
-    ("DISPATCHER_MCP_TOKEN_ID", "DISPATCHER_MCP_TOKEN_SECRET"),
-)
+# Cloudflare Access service-token credentials. The hook and runtime expect
+# a single canonical set of variable names: DISPATCHER_MCP_TOKEN_ID and
+# DISPATCHER_MCP_TOKEN_SECRET. Launching applications substitute the
+# appropriate keys (e.g. worker-scoped credentials for worker containers)
+# into these environment variables.
+_TOKEN_ID_VAR = "DISPATCHER_MCP_TOKEN_ID"
+_TOKEN_SECRET_VAR = "DISPATCHER_MCP_TOKEN_SECRET"
 
 
 def _resolve_mcp_headers() -> dict[str, str]:
     """HTTP headers for the PKB endpoint, from the environment only.
 
-    `PKB_MCP_HEADERS` is a JSON object of header name to value.
-    A Cloudflare Access service-token pair supplies the Access headers: the
-    worker pair `WORKER_MCP_TOKEN_ID` / `WORKER_MCP_TOKEN_SECRET` by default,
-    because it has no polecat dispatch access, else the dispatcher pair
-    `DISPATCHER_MCP_TOKEN_ID` / `DISPATCHER_MCP_TOKEN_SECRET`. A malformed
-    `PKB_MCP_HEADERS` is logged and ignored, never silently swallowed.
+    The hook and runtime expect the canonical Cloudflare Access token pair:
+    `DISPATCHER_MCP_TOKEN_ID` and `DISPATCHER_MCP_TOKEN_SECRET`. Launching
+    applications substitute the appropriate keys for different surfaces and
+    use cases (such as worker-scoped credentials in isolated worker containers).
     """
-    headers: dict[str, str] = {}
-
-    env_headers = os.environ.get("PKB_MCP_HEADERS")
-    if env_headers:
-        try:
-            parsed = json.loads(env_headers)
-        except json.JSONDecodeError as exc:
-            log.warning("PKB_MCP_HEADERS is not valid JSON, ignoring it: %s", exc)
-        else:
-            if isinstance(parsed, dict):
-                headers.update({str(k): str(v) for k, v in parsed.items()})
-            else:
-                log.warning("PKB_MCP_HEADERS is not a JSON object, ignoring it")
-
-    for id_var, secret_var in _ACCESS_TOKEN_PAIRS:
-        cf_id = os.environ.get(id_var)
-        cf_secret = os.environ.get(secret_var)
-        if cf_id and cf_secret:
-            headers.setdefault("CF-Access-Client-Id", cf_id)
-            headers.setdefault("CF-Access-Client-Secret", cf_secret)
-            break
-
-    return headers
+    cf_id = os.environ.get(_TOKEN_ID_VAR)
+    cf_secret = os.environ.get(_TOKEN_SECRET_VAR)
+    if cf_id and cf_secret:
+        return {
+            "CF-Access-Client-Id": cf_id,
+            "CF-Access-Client-Secret": cf_secret,
+        }
+    return {}
 
 
 def _tracer_state_dir() -> Path:
@@ -372,7 +356,7 @@ def _initialize_mcp_session(mcp_url: str, base_headers: dict[str, str]) -> str |
     except urllib.error.HTTPError as exc:
         if exc.code in (401, 403):
             raise RuntimeError(
-                f"the PKB endpoint refused authorisation (HTTP {exc.code}); check PKB_MCP_HEADERS, WORKER_MCP_TOKEN_ID / WORKER_MCP_TOKEN_SECRET, or DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
+                f"the PKB endpoint refused authorisation (HTTP {exc.code}); check DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
             ) from exc
         raise RuntimeError(
             f"the PKB endpoint failed with HTTP {exc.code} during initialize: {exc.reason}"
@@ -382,7 +366,10 @@ def _initialize_mcp_session(mcp_url: str, base_headers: dict[str, str]) -> str |
             f"the PKB endpoint did not answer within {_SEARCH_TIMEOUT_SECONDS} seconds"
         ) from exc
     except urllib.error.URLError as exc:
-        if isinstance(exc.reason, TimeoutError):
+        if (
+            isinstance(exc.reason, (TimeoutError, socket.timeout))
+            or "timed out" in str(exc.reason).lower()
+        ):
             raise TimeoutError(
                 f"the PKB endpoint did not answer within {_SEARCH_TIMEOUT_SECONDS} seconds"
             ) from exc
@@ -500,7 +487,10 @@ def _post_mcp_search(
                 f"the PKB endpoint did not answer within {_SEARCH_TIMEOUT_SECONDS} seconds"
             ) from exc
         except urllib.error.URLError as exc:
-            if isinstance(exc.reason, TimeoutError):
+            if (
+                isinstance(exc.reason, (TimeoutError, socket.timeout))
+                or "timed out" in str(exc.reason).lower()
+            ):
                 raise TimeoutError(
                     f"the PKB endpoint did not answer within {_SEARCH_TIMEOUT_SECONDS} seconds"
                 ) from exc
@@ -512,7 +502,7 @@ def _post_mcp_search(
 
     if status in (401, 403):
         raise RuntimeError(
-            f"the PKB endpoint refused authorisation (HTTP {status}); check PKB_MCP_HEADERS, WORKER_MCP_TOKEN_ID / WORKER_MCP_TOKEN_SECRET, or DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
+            f"the PKB endpoint refused authorisation (HTTP {status}); check DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
         )
 
     session_needed = False
@@ -541,14 +531,26 @@ def _post_mcp_search(
         elif status == 200:
             raise RuntimeError(f"PKB MCP error: {err_obj}")
 
+    if (err_obj is not None and "session" in str(err_obj).lower()) or (
+        "session" in body.lower() and status in (400, 404, 422)
+    ):
+        session_needed = True
+
     if session_needed:
+        cache_path = _session_cache_path()
+        try:
+            if cache_path.is_file():
+                cache_path.unlink()
+        except OSError:
+            pass
+        req_headers.pop("mcp-session-id", None)
         new_session = _initialize_mcp_session(mcp_url, req_headers)
         if new_session:
             req_headers["mcp-session-id"] = new_session
             status, body = _execute_post(req_headers)
             if status in (401, 403):
                 raise RuntimeError(
-                    f"the PKB endpoint refused authorisation (HTTP {status}); check PKB_MCP_HEADERS, WORKER_MCP_TOKEN_ID / WORKER_MCP_TOKEN_SECRET, or DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
+                    f"the PKB endpoint refused authorisation (HTTP {status}); check DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
                 )
             if status != 200:
                 clean_body = " ".join(body.split())
@@ -827,11 +829,14 @@ def _export_session_id(ctx: HookContext) -> bool:
 
 PREMISE_CHECK_POINTER = (
     "Reports follow `premise-check`: written in its shape and checked on receipt."
+    " Load the skill (`ida:premise-check`) before writing or checking one;"
+    " its form is a restricted subset of Argdown."
 )
 
 
 def session_start(ctx: HookContext) -> Result | None:
     """Handle SessionStart for Claude Code and SessionStart for agy."""
+    emit_debug_span(ctx)
     metadata = _format_session_metadata(ctx)
     parts = [
         metadata,
@@ -1030,6 +1035,7 @@ def user_prompt_submit(ctx: HookContext) -> Result | None:
 
     ctx = replace(ctx, prompt_id=prompt_id)
 
+    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_user_prompt_submit")
     agy_user_prompt_submit(ctx)
     steps = (
@@ -1043,6 +1049,7 @@ def user_prompt_submit(ctx: HookContext) -> Result | None:
 
 def pre_tool(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical PreToolUse."""
+    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_pre_tool")
     agy_pre_tool(ctx)
     return _run_handler(hearsay_handler, ctx)
@@ -1050,6 +1057,7 @@ def pre_tool(ctx: HookContext) -> Result | None:
 
 def post_tool(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical PostToolUse."""
+    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_post_tool")
     agy_post_tool(ctx)
     steps = (hearsay_arm,)
@@ -1058,63 +1066,95 @@ def post_tool(ctx: HookContext) -> Result | None:
 
 def post_tool_batch(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical PostToolBatch."""
+    emit_debug_span(ctx)
     return _run_handler(rule_against_hearsay, ctx)
 
 
 def post_tool_failure(ctx: HookContext) -> Result | None:
+    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_post_tool_failure")
     return None
 
 
 def subagent_start(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical SubagentStart."""
+    emit_debug_span(ctx)
     return _run_handler(honest_output, ctx)
 
 
 def stop(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical Stop."""
+    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_stop")
     agy_stop(ctx)
     return _run_handler(hearsay_handler, ctx)
 
 
 def subagent_stop(ctx: HookContext) -> Result | None:
+    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_subagent_stop")
     return None
 
 
 def stop_failure(ctx: HookContext) -> Result | None:
+    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_stop_failure")
     return None
 
 
 def permission_request(ctx: HookContext) -> Result | None:
+    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_permission_request")
     return None
 
 
 def permission_denied(ctx: HookContext) -> Result | None:
+    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_permission_denied")
     return None
 
 
 def notification(ctx: HookContext) -> Result | None:
+    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_notification")
     return None
 
 
 def pre_compact(ctx: HookContext) -> Result | None:
+    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_pre_compact")
     return None
 
 
 def post_compact(ctx: HookContext) -> Result | None:
+    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_post_compact")
     return None
 
 
 def session_end(ctx: HookContext) -> Result | None:
+    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_session_end")
+    return None
+
+
+def emit_debug_span(ctx: HookContext) -> Result | None:
+    """Export an aops-debug span for any hook event on every surface the hook tracer runs on."""
+    if claude_code_tracer is None:
+        return None
+    try:
+        data = _prepare_tracer_data(ctx)
+        config = claude_code_tracer.discover_config(data)
+        if config is not None:
+            claude_code_tracer.emit_debug_hook_span(
+                data,
+                config,
+                client=ctx.client,
+                event=ctx.event,
+                raw_payload=ctx.raw,
+            )
+    except Exception as exc:
+        log.debug("Debug hook span export failed (%s): %s", ctx.event, exc)
     return None
 
 
