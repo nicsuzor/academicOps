@@ -789,23 +789,35 @@ _LOCAL_COMMAND_PREFIXES = (
 def _is_human_message(entry: dict) -> bool:
     """True for a transcript entry that is a prompt opening a turn.
 
-    Counts ``type=user`` entries whose content is a string: typed prompts and
-    skill or custom slash-command prompts (``<command-message>...``). Does not
-    count tool results (list content), ``isMeta`` entries (e.g. the
-    ``<local-command-caveat>``), ``isCompactSummary`` entries, the
-    ``<command-name>`` / ``<local-command-stdout>`` entries of local slash
-    commands, or the ``<bash-input>`` / ``<bash-stdout>`` entries of bash mode,
-    since none of those fire UserPromptSubmit.
+    Counts ``type=user`` entries whose content is either a prompt string or a list
+    of user content blocks (e.g. multi-modal text/image blocks). Does not count
+    tool results (messages where any content block has ``type=tool_result``),
+    ``isMeta`` entries (e.g. the ``<local-command-caveat>``), ``isCompactSummary``
+    entries, the ``<command-name>`` / ``<local-command-stdout>`` entries of local
+    slash commands, or the ``<bash-input>`` / ``<bash-stdout>`` entries of bash
+    mode, since none of those fire UserPromptSubmit.
     """
     if entry.get("type") != "user":
         return False
     if entry.get("isMeta") or entry.get("isCompactSummary"):
         return False
     content = entry.get("message", {}).get("content", "")
-    # Tool result messages have content as a list; human messages have a string
-    if not isinstance(content, str):
-        return False
-    return not content.lstrip().startswith(_LOCAL_COMMAND_PREFIXES)
+    if isinstance(content, str):
+        return not content.lstrip().startswith(_LOCAL_COMMAND_PREFIXES)
+    if isinstance(content, list):
+        if not content:
+            return False
+        if any(isinstance(b, dict) and b.get("type") == "tool_result" for b in content):
+            return False
+        text_parts: list[str] = []
+        for b in content:
+            if isinstance(b, dict) and b.get("type") == "text":
+                text_parts.append(str(b.get("text") or ""))
+            elif isinstance(b, str):
+                text_parts.append(b)
+        combined_text = "".join(text_parts).lstrip()
+        return not combined_text.startswith(_LOCAL_COMMAND_PREFIXES)
+    return False
 
 
 def _count_human_messages(transcript_path: str) -> int:
@@ -823,6 +835,81 @@ def _count_human_messages(transcript_path: str) -> int:
         return count
     except Exception:
         return 0
+
+
+def _extract_human_message_text(entry: dict) -> str:
+    """Extract plain text from a human user message entry."""
+    msg = entry.get("message", {})
+    content = msg.get("content", "")
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = [
+            b.get("text", "") for b in content if isinstance(b, dict) and b.get("type") == "text"
+        ]
+        return "\n".join(p for p in parts if p)
+    return ""
+
+
+def _resolve_verified_human_count_at_start(
+    transcript_path: str,
+    prompt: str,
+    prompt_preview: str = "",
+    turn_number: int = 1,
+) -> int | None:
+    """Find the verified human_count_at_start for the current turn in the transcript.
+
+    When transcript discovery is delayed, the transcript was unavailable at
+    UserPromptSubmit. This function locates the current turn's user prompt entry
+    in the now-available transcript and returns the count of human messages
+    preceding it.
+
+    If the current turn's prompt cannot be identified in the transcript (e.g.
+    the transcript hasn't been written to disk yet, or only contains earlier
+    turns), returns None so usage joins are deferred.
+    """
+    if not transcript_path or not os.path.exists(transcript_path):
+        return None
+
+    try:
+        lines = Path(transcript_path).read_text(encoding="utf-8").splitlines()
+        human_entries: list[dict[str, Any]] = []
+        for line in lines:
+            if not line.strip():
+                continue
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if _is_human_message(entry):
+                human_entries.append(entry)
+
+        if not human_entries:
+            return None
+
+        target_prompt = (prompt or prompt_preview).strip()
+
+        # If we have a prompt to match, search backwards (the active turn's prompt
+        # is the most recent matching user message in the transcript)
+        if target_prompt:
+            for idx in range(len(human_entries) - 1, -1, -1):
+                text = _extract_human_message_text(human_entries[idx]).strip()
+                if text == target_prompt:
+                    return idx
+                if prompt_preview.endswith("...[truncated]"):
+                    prefix = prompt_preview[:-14].strip()
+                    if prefix and text.startswith(prefix):
+                        return idx
+
+        # If this is the very first turn of the session and only 1 human message exists in the transcript,
+        # there are no prior turns
+        if turn_number <= 1 and len(human_entries) == 1:
+            return 0
+
+        return None
+    except Exception as e:
+        log.debug("Failed resolving verified boundary from %s: %s", transcript_path, e)
+        return None
 
 
 def _next_turn_number(state: dict, prior_human_count: int) -> int:
@@ -1794,12 +1881,33 @@ def _emit_pending_llm_spans(
     if emitted >= len(model_calls):
         return
 
-    human_count_at_start = current_trace.get("human_count_at_start", 0)
-    usages = _extract_model_usages_from_transcript(transcript_path, human_count_at_start)
+    human_count_at_start = current_trace.get("human_count_at_start")
+    if human_count_at_start is None:
+        if transcript_path and os.path.exists(transcript_path):
+            verified = _resolve_verified_human_count_at_start(
+                transcript_path,
+                current_trace.get("prompt", ""),
+                current_trace.get("prompt_preview", ""),
+                turn_number=current_trace.get("turn_number", 1),
+            )
+            if verified is not None:
+                human_count_at_start = verified
+                current_trace["human_count_at_start"] = verified
+                state["human_messages_consumed"] = max(
+                    state.get("human_messages_consumed", 0),
+                    verified + 1,
+                )
 
-    if retry_delay_s > 0 and len(usages) < len(model_calls):
-        time.sleep(retry_delay_s)
+    if human_count_at_start is None:
+        if not force_remaining:
+            # Defer usage joins until a verified boundary is available
+            return
+        usages = []
+    else:
         usages = _extract_model_usages_from_transcript(transcript_path, human_count_at_start)
+        if retry_delay_s > 0 and len(usages) < len(model_calls):
+            time.sleep(retry_delay_s)
+            usages = _extract_model_usages_from_transcript(transcript_path, human_count_at_start)
 
     unemitted = model_calls[emitted:]
     if not unemitted:
@@ -2189,11 +2297,17 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
         state.pop("pending_tools", None)
 
     transcript_path = _get_cached_transcript_path(data, state, session_id)
-    current_human_count = _count_human_messages(transcript_path) if transcript_path else 0
-    state["human_messages_consumed"] = max(
-        state.get("human_messages_consumed", 0) + 1,
-        current_human_count,
-    )
+    if transcript_path and os.path.exists(transcript_path):
+        current_human_count = _count_human_messages(transcript_path)
+        human_count_at_start: int | None = current_human_count
+        state["human_messages_consumed"] = max(
+            state.get("human_messages_consumed", 0) + 1,
+            current_human_count,
+        )
+    else:
+        current_human_count = state.get("human_messages_consumed", 0)
+        human_count_at_start = None
+
     turn_number = _next_turn_number(state, current_human_count)
 
     parent_trace_id = None
@@ -2245,9 +2359,10 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
         "parent_span_id": parent_span_id,
         "turn_start_ns": now_ns,
         "turn_number": turn_number,
+        "prompt": prompt,
         "prompt_preview": _truncate(prompt) if prompt else "",
         "handback_subagent_id": handback_subagent_id,
-        "human_count_at_start": max(0, turn_number - 1),
+        "human_count_at_start": human_count_at_start,
         "model_calls": [],
         "emitted_llm_span_count": 0,
         "pending_model_call": {
@@ -2274,6 +2389,13 @@ def _get_latest_human_message(transcript_path: str) -> str:
                     content = entry.get("message", {}).get("content", "")
                     if isinstance(content, str):
                         last = content
+                    elif isinstance(content, list):
+                        parts = [
+                            b.get("text", "")
+                            for b in content
+                            if isinstance(b, dict) and b.get("type") == "text"
+                        ]
+                        last = "\n".join(p for p in parts if p)
             except json.JSONDecodeError:
                 pass
         return last
