@@ -592,8 +592,26 @@ export class TelegramBotClient {
         this.store.setLastCard(chatId, res.result.message_id, card.text);
       }
       this.recordMessageExcerpt(res.result.message_id, formatted.plainText);
+      return res;
     }
-    return res;
+
+    // If Telegram rejects formatted entities, resend once as plain text per FR-1.5
+    const fallbackRes = await this.callApi("sendMessage", {
+      chat_id: chatId,
+      ...(effectiveThreadId !== undefined ? { message_thread_id: effectiveThreadId } : {}),
+      text: formatted.plainText,
+      reply_markup: { inline_keyboard },
+    });
+    if (fallbackRes?.ok && fallbackRes?.result?.message_id) {
+      this.broker.setMessageId(qid, fallbackRes.result.message_id);
+      this.recordMessageThread(fallbackRes.result.message_id, effectiveThreadId);
+      if (this.store) {
+        this.store.setLastCard(chatId, fallbackRes.result.message_id, card.text);
+      }
+      this.recordMessageExcerpt(fallbackRes.result.message_id, formatted.plainText);
+      return fallbackRes;
+    }
+    return fallbackRes || res;
   }
 
   public async sendPermissionCard(

@@ -90,14 +90,21 @@ async function main() {
   });
 
   client.on("end", () => {
-    let qid = "q_telegram";
+    let res;
     try {
-      const res = JSON.parse(responseData);
-      if (res.questionId) qid = res.questionId;
+      res = JSON.parse(responseData.trim());
     } catch {
-      // Ignore parse failure
+      process.stderr.write(`ida-telegram AskUserQuestion hook error: failed to parse socket response: ${responseData}\n`);
+      process.exit(1);
     }
 
+    if (!res || res.status !== "ok" || !res.questionId) {
+      const errMsg = res?.error || "Failed to deliver question card over Telegram";
+      process.stderr.write(`ida-telegram AskUserQuestion hook error: ${errMsg}\n`);
+      process.exit(1);
+    }
+
+    const qid = res.questionId;
     const reason = `Question ${qid} posted to the user over Telegram. Do not assume an answer; continue other work or end your turn.`;
     const output = {
       decision: "block",
