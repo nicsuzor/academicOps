@@ -46,6 +46,7 @@ As an operator, once a question I was asked has been answered, by any channel, i
 - **AC-4.1** Given a pending question in the Mini App's outstanding list, when the question is answered or resolved in the asking session, then the agent resolves or closes the question and it leaves the outstanding list without manual intervention.
 - **AC-4.2** Given a pending question in the Mini App's outstanding list, when the question is answered outside the Mini App and outside the asking session (such as via a plain Telegram reply to the question card), then the question transitions to answered and leaves the outstanding list without manual intervention.
 - **AC-4.3** Given a posted question that has not been answered in any channel, when viewing the outstanding questions list, then the question remains listed and pending.
+- **AC-4.4** Given a question whose Telegram delivery fails (via API error, network failure, missing bot, or missing messageId), when delivery failure occurs, then the failure is detected and surfaced immediately to the asking agent (the PreToolUse hook denies with a delivery failure reason, the MCP `ask_user` tool returns an error, and a `question_delivery_failed` channel notification is emitted), the question is marked status `failed` in the broker and excluded from pending questions, and any legacy undelivered questions without a messageId are swept and marked failed on startup.
 
 ### US-5 Retirement of Standalone Hosting and Infrastructure Consolidation
 
@@ -231,6 +232,11 @@ The operator must be able to interact with the active agent directly from the da
    - When a question is answered on any channel -- directly within the asking agent session (via session tool resolution), via a plain Telegram reply to the question card or prompt message, or inside the Mini App -- the question broker transitions the question status from pending to answered or closed.
    - The question is immediately excluded from `GET /api/app/questions` and leaves the Mini App outstanding questions list without requiring the operator to manually dismiss it.
    - Any question that has not been answered across any channel persists in the store and remains listed as pending.
+5. **Delivery Verification and Failure Isolation:**
+   - When a question card cannot be delivered to Telegram (due to Telegram Bot API failure, network dropouts, missing bot client, or missing chat/thread target), the system must never report delivery success.
+   - The PreToolUse hook denies tool execution with a delivery failure reason, the MCP `ask_user` tool returns an error (yielding JSON-RPC `isError: true`), and a `question_delivery_failed` channel event is emitted to the asking session.
+   - The broker marks the question status as `failed` with the recorded failure reason, excluding it from active pending questions.
+   - On broker startup, any legacy questions left in `pending` status without a confirmed `messageId` (and not marked `mini_app_only` or `chat: false`) are swept, marked `failed`, and broadcast as `question_delivery_failed` notifications.
 
 ### 5. Retirement of Standalone Hosting and Infrastructure Consolidation (US-5)
 

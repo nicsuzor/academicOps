@@ -99,7 +99,7 @@ async function main() {
         deliveryError = res.error || "Delivery to Telegram failed";
       }
     } catch {
-      // Ignore parse failure
+      deliveryError = "Malformed or unparseable response from Telegram bridge socket";
     }
 
     const reason = deliveryError

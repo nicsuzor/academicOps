@@ -1263,7 +1263,7 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       stateDir: testStateDir,
       socketPath,
       port: 8093,
-      miniAppUrl: "https://dash.suzor.com/app",
+      miniAppUrl: "https://ida.example.test",
       isPrimary: true,
       maxChatChars: 1200,
       voiceTranscribeCmd: "",
@@ -1331,6 +1331,66 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     }
   });
 
+  test("PreToolUse hook surfaces delivery failure when bridge socket returns malformed or non-JSON data", async () => {
+    const { createServer } = await import("node:net");
+    const { spawn } = await import("node:child_process");
+    const { mkdirSync, unlinkSync, existsSync } = await import("node:fs");
+
+    mkdirSync(testStateDir, { recursive: true });
+    const socketPath = join(testStateDir, "malformed_hook.sock");
+    if (existsSync(socketPath)) unlinkSync(socketPath);
+
+    const server = createServer((client) => {
+      client.on("data", () => {
+        client.write("MALFORMED_NON_JSON_RESPONSE\n");
+      });
+    });
+
+    await new Promise<void>((resolve) => server.listen(socketPath, () => resolve()));
+
+    try {
+      const hookScript = join(import.meta.dir, "..", "hooks", "ask-user-question.js");
+      const stdout = await new Promise<string>((resolve, reject) => {
+        const proc = spawn("node", [hookScript], {
+          env: {
+            ...process.env,
+            IDA_TELEGRAM_ROLE: "primary",
+            STATE_DIR: testStateDir,
+            SOCKET_PATH: socketPath,
+          },
+        });
+        let out = "";
+        proc.stdout.on("data", (d) => (out += d.toString()));
+        proc.on("error", reject);
+        proc.on("close", () => resolve(out));
+        proc.stdin.write(
+          JSON.stringify({
+            tool_name: "AskUserQuestion",
+            turn_id: "turn_malformed_test",
+            tool_input: {
+              questions: [
+                {
+                  question: "Question with broken socket?",
+                  options: [{ label: "Yes" }, { label: "No" }],
+                },
+              ],
+            },
+          }) + "\n"
+        );
+        proc.stdin.end();
+      });
+
+      const parsed = JSON.parse(stdout.trim());
+      expect(parsed.decision).toBe("block");
+      expect(parsed.reason).toContain("Failed to deliver question");
+      expect(parsed.reason).toContain("Malformed or unparseable response");
+      expect(parsed.reason).not.toContain("posted to the user over Telegram");
+    } finally {
+      server.close();
+      if (existsSync(socketPath)) unlinkSync(socketPath);
+    }
+  });
+
   test("AC2: a delivered question raises no such signal", async () => {
     const { createBridgeServer } = await import("../server.js");
     const { spawn } = await import("node:child_process");
@@ -1358,7 +1418,7 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       stateDir: testStateDir,
       socketPath,
       port: 8093,
-      miniAppUrl: "https://dash.suzor.com/app",
+      miniAppUrl: "https://ida.example.test",
       isPrimary: true,
       maxChatChars: 1200,
       voiceTranscribeCmd: "",
@@ -1445,7 +1505,7 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       stateDir: testStateDir,
       socketPath: join(testStateDir, "mcp_test.sock"),
       port: 8093,
-      miniAppUrl: "https://dash.suzor.com/app",
+      miniAppUrl: "https://ida.example.test",
       isPrimary: true,
       maxChatChars: 1200,
       voiceTranscribeCmd: "",
