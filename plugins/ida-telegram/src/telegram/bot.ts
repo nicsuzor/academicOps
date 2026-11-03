@@ -584,16 +584,25 @@ export class TelegramBotClient {
     if (effectiveThreadId !== undefined) {
       payload.message_thread_id = effectiveThreadId;
     }
-    const res = await this.callApi("sendMessage", payload);
-    if (res?.ok && res?.result?.message_id) {
-      this.broker.setMessageId(qid, res.result.message_id);
-      this.recordMessageThread(res.result.message_id, effectiveThreadId);
-      if (this.store) {
-        this.store.setLastCard(chatId, res.result.message_id, card.text);
+    try {
+      const res = await this.callApi("sendMessage", payload);
+      if (res?.ok && res?.result?.message_id) {
+        this.broker.setMessageId(qid, res.result.message_id);
+        this.recordMessageThread(res.result.message_id, effectiveThreadId);
+        if (this.store) {
+          this.store.setLastCard(chatId, res.result.message_id, card.text);
+        }
+        this.recordMessageExcerpt(res.result.message_id, formatted.plainText);
+        return { ok: true, messageId: res.result.message_id, result: res.result };
       }
-      this.recordMessageExcerpt(res.result.message_id, formatted.plainText);
+      const errorMsg = res?.description || res?.error || "Telegram sendMessage returned non-ok or missing message_id";
+      this.broker.markDeliveryFailed(qid, errorMsg);
+      return { ok: false, error: errorMsg, description: errorMsg };
+    } catch (err) {
+      const errorMsg = String(err);
+      this.broker.markDeliveryFailed(qid, errorMsg);
+      return { ok: false, error: errorMsg, description: errorMsg };
     }
-    return res;
   }
 
   public async sendPermissionCard(

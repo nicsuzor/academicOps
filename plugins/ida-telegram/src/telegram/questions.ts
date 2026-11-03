@@ -43,7 +43,7 @@ export interface StoredQuestion extends QuestionPayload {
   text: string;
   createdAt: string;
   created_at: string;
-  status: "pending" | "answered" | "closed";
+  status: "pending" | "answered" | "closed" | "failed";
   sessionId?: string;
   session_id?: string;
   turnId?: string;
@@ -64,6 +64,7 @@ export interface StoredQuestion extends QuestionPayload {
   mini_app_only?: boolean;
   miniAppOnly?: boolean;
   chat?: boolean;
+  deliveryError?: string;
 }
 
 export interface QuestionButton {
@@ -213,6 +214,31 @@ export class QuestionBroker {
       q.messageId = messageId;
       this.saveState();
     }
+  }
+
+  public markDeliveryFailed(id: string, error: string) {
+    const q = this.questions.get(id);
+    if (q) {
+      q.status = "failed";
+      q.deliveryError = error;
+      this.saveState();
+    }
+  }
+
+  public sweepUndeliveredQuestions(): StoredQuestion[] {
+    const undelivered: StoredQuestion[] = [];
+    for (const q of this.questions.values()) {
+      const isMiniAppOnly = Boolean(q.mini_app_only || q.miniAppOnly || q.chat === false);
+      if (q.status === "pending" && !isMiniAppOnly && !q.messageId) {
+        q.status = "failed";
+        q.deliveryError = q.deliveryError || "Undelivered question: no Telegram messageId recorded";
+        undelivered.push(q);
+      }
+    }
+    if (undelivered.length > 0) {
+      this.saveState();
+    }
+    return undelivered;
   }
 
   public setPromptMessageId(id: string, promptMessageId: number) {

@@ -91,14 +91,21 @@ async function main() {
 
   client.on("end", () => {
     let qid = "q_telegram";
+    let deliveryError = null;
     try {
       const res = JSON.parse(responseData);
       if (res.questionId) qid = res.questionId;
+      if (res.status === "error" || res.status === "failed" || res.error || res.delivered === false) {
+        deliveryError = res.error || "Delivery to Telegram failed";
+      }
     } catch {
       // Ignore parse failure
     }
 
-    const reason = `Question ${qid} posted to the user over Telegram. Do not assume an answer; continue other work or end your turn.`;
+    const reason = deliveryError
+      ? `Failed to deliver question ${qid} over Telegram: ${deliveryError}`
+      : `Question ${qid} posted to the user over Telegram. Do not assume an answer; continue other work or end your turn.`;
+
     const output = {
       decision: "block",
       reason,

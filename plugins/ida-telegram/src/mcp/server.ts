@@ -375,10 +375,44 @@ export class StdioMcpServer {
         postedIds.push(result.questionId);
         this.store.recordTurn("out", q.header ? `${q.header}: ${q.question}` : q.question);
 
-        if (!isMiniAppOnly && this.bot) {
+        if (!isMiniAppOnly) {
+          if (!this.bot || !defaultChatId) {
+            const errorMsg = "Telegram bot is unavailable or no authorized chat configured";
+            this.broker.markDeliveryFailed(result.questionId, errorMsg);
+            this.emitChannelNotification(`Question delivery failed: ${errorMsg}`, {
+              event: "question_delivery_failed",
+              question_id: result.questionId,
+              error: errorMsg,
+              turn_id: q.turn_id || q.turnId || topTurnId,
+              session_id: q.session_id || q.sessionId || topSessionId,
+            });
+            throw new Error(`Failed to deliver question ${result.questionId} over Telegram: ${errorMsg}`);
+          }
           const card = this.broker.renderQuestionCard(result.questionId, this.config.miniAppUrl, this.config.instance);
           if (card) {
-            await this.bot.sendQuestionCard(defaultChatId, result.questionId, card, effectiveThreadId);
+            const sendRes = await this.bot.sendQuestionCard(defaultChatId, result.questionId, card, effectiveThreadId);
+            if (!sendRes?.ok) {
+              const errorMsg = sendRes?.error || "Telegram sendMessage failed";
+              this.emitChannelNotification(`Question delivery failed: ${errorMsg}`, {
+                event: "question_delivery_failed",
+                question_id: result.questionId,
+                error: errorMsg,
+                turn_id: q.turn_id || q.turnId || topTurnId,
+                session_id: q.session_id || q.sessionId || topSessionId,
+              });
+              throw new Error(`Failed to deliver question ${result.questionId} over Telegram: ${errorMsg}`);
+            }
+          } else {
+            const errorMsg = "Failed to render question card";
+            this.broker.markDeliveryFailed(result.questionId, errorMsg);
+            this.emitChannelNotification(`Question delivery failed: ${errorMsg}`, {
+              event: "question_delivery_failed",
+              question_id: result.questionId,
+              error: errorMsg,
+              turn_id: q.turn_id || q.turnId || topTurnId,
+              session_id: q.session_id || q.sessionId || topSessionId,
+            });
+            throw new Error(`Failed to deliver question ${result.questionId} over Telegram: ${errorMsg}`);
           }
         }
       }
