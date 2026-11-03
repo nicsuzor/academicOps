@@ -421,3 +421,356 @@ def test_delayed_transcript_usage_resolves_on_later_flush(tracer_env, exporter):
     attrs_2 = llm_spans[1].attributes or {}
     assert attrs_2["llm.token_count.prompt"] == 210
     assert attrs_2["llm.token_count.completion"] == 30
+
+
+# ---------------------------------------------------------------------------
+# Coverage gap regression guards (multi-modal blocks & diverged turn count)
+# ---------------------------------------------------------------------------
+
+
+def test_multi_modal_content_blocks_in_user_prompt_extracts_tokens(tracer_env, exporter):
+    """User prompt containing multi-modal content blocks (list of text/image blocks) extracts tokens."""
+    prior_usage = {
+        "input_tokens": 100,
+        "output_tokens": 20,
+        "cache_read_input_tokens": 200,
+        "cache_creation_input_tokens": 0,
+    }
+    usage = {
+        "input_tokens": 300,
+        "output_tokens": 50,
+        "cache_read_input_tokens": 1500,
+        "cache_creation_input_tokens": 100,
+    }
+
+    # Seed transcript with prior turn 1
+    _write_transcript(
+        tracer_env,
+        [
+            _user_entry("Turn 1 prompt"),
+            _assistant_entry("msg_1", "claude-sonnet-4", prior_usage),
+        ],
+    )
+
+    # Turn 2: User submits prompt
+    cct.handle_user_prompt_submit(
+        {
+            "session_id": SESSION,
+            "prompt": "Analyze this screenshot",
+            "transcript_path": str(tracer_env),
+        },
+        CONFIG,
+    )
+
+    # Transcript records Turn 2 user message with list of content blocks (multi-modal / attachment)
+    multimodal_user_entry = {
+        "type": "user",
+        "timestamp": "2026-10-24T00:00:02.000Z",
+        "message": {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "Analyze this screenshot"},
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "image/png",
+                        "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+                    },
+                },
+            ],
+        },
+    }
+    _write_transcript(
+        tracer_env,
+        [
+            _user_entry("Turn 1 prompt"),
+            _assistant_entry("msg_1", "claude-sonnet-4", prior_usage),
+            multimodal_user_entry,
+            _assistant_entry("msg_multimodal", "claude-sonnet-4", usage),
+        ],
+    )
+
+    # 3. Model finishes turn 2
+    cct.handle_stop(
+        {
+            "session_id": SESSION,
+            "last_assistant_message": "Analysis complete.",
+            "transcript_path": str(tracer_env),
+        },
+        CONFIG,
+    )
+
+    llm_spans = exporter.kind("LLM")
+    assert len(llm_spans) == 1, f"Expected 1 LLM span, got {len(llm_spans)}"
+    span = llm_spans[0]
+    attrs = span.attributes or {}
+
+    assert attrs["llm.model_name"] == "claude-sonnet-4"
+    assert attrs["llm.token_count.prompt"] == 300 + 1500 + 100
+    assert attrs["llm.token_count.completion"] == 50
+    assert attrs["llm.token_count.total"] == 300 + 1500 + 100 + 50
+    assert attrs.get("llm.token_count.type") != "estimated"
+
+
+def test_diverged_turn_number_and_prior_messages_extracts_tokens(tracer_env, exporter):
+    """Tracer correctly tracks transcript boundaries even when state turn_number diverges from transcript count."""
+    prior_usage = {
+        "input_tokens": 100,
+        "output_tokens": 20,
+        "cache_read_input_tokens": 500,
+        "cache_creation_input_tokens": 0,
+    }
+    current_usage = {
+        "input_tokens": 200,
+        "output_tokens": 40,
+        "cache_read_input_tokens": 800,
+        "cache_creation_input_tokens": 0,
+    }
+
+    # Seed transcript with 1 prior turn
+    _write_transcript(
+        tracer_env,
+        [
+            _user_entry("Prior prompt"),
+            _assistant_entry("msg_prior", "claude-sonnet-4", prior_usage),
+        ],
+    )
+
+    # Seed state with a diverged turn_number (e.g. 5 due to resumed session or skipped commands)
+    state = {
+        "session_id": SESSION,
+        "turn_number": 5,
+        "transcript_path": str(tracer_env),
+    }
+    cct._save_state(SESSION, state)
+
+    # Start turn 6 via handle_user_prompt_submit
+    cct.handle_user_prompt_submit(
+        {
+            "session_id": SESSION,
+            "prompt": "Current prompt",
+            "transcript_path": str(tracer_env),
+        },
+        CONFIG,
+    )
+
+    # Transcript gets current turn entries (now 2 user entries total in transcript)
+    _write_transcript(
+        tracer_env,
+        [
+            _user_entry("Prior prompt"),
+            _assistant_entry("msg_prior", "claude-sonnet-4", prior_usage),
+            _user_entry("Current prompt"),
+            _assistant_entry("msg_current", "claude-opus-5-5", current_usage),
+        ],
+    )
+
+    cct.handle_stop(
+        {
+            "session_id": SESSION,
+            "last_assistant_message": "Turn 6 complete.",
+            "transcript_path": str(tracer_env),
+        },
+        CONFIG,
+    )
+
+    llm_spans = exporter.kind("LLM")
+    assert len(llm_spans) == 1, f"Expected 1 LLM span, got {len(llm_spans)}"
+    span = llm_spans[0]
+    attrs = span.attributes or {}
+
+    # Must match msg_current, NOT estimated 0-token fallback and NOT msg_prior
+    assert attrs["llm.model_name"] == "claude-opus-5-5"
+    assert attrs["llm.token_count.prompt"] == 200 + 800
+    assert attrs["llm.token_count.completion"] == 40
+    assert attrs.get("llm.token_count.type") != "estimated"
+
+
+def test_delayed_transcript_discovery_does_not_misattribute_prior_usage(tracer_env, exporter):
+    """When transcript is unavailable at UserPromptSubmit but resolves later,
+
+    prior turn usages must not be misattributed to the current turn.
+    """
+    prior_usage = {
+        "input_tokens": 100,
+        "output_tokens": 20,
+        "cache_read_input_tokens": 500,
+        "cache_creation_input_tokens": 0,
+    }
+    current_usage = {
+        "input_tokens": 350,
+        "output_tokens": 60,
+        "cache_read_input_tokens": 1000,
+        "cache_creation_input_tokens": 50,
+    }
+
+    # Turn 1: User prompt submit and complete
+    cct.handle_user_prompt_submit(
+        {
+            "session_id": SESSION,
+            "prompt": "Prior prompt",
+            "transcript_path": str(tracer_env),
+        },
+        CONFIG,
+    )
+    _write_transcript(
+        tracer_env,
+        [
+            _user_entry("Prior prompt"),
+            _assistant_entry("msg_prior", "claude-sonnet-4", prior_usage),
+        ],
+    )
+    cct.handle_stop(
+        {
+            "session_id": SESSION,
+            "last_assistant_message": "Turn 1 complete.",
+            "transcript_path": str(tracer_env),
+        },
+        CONFIG,
+    )
+
+    # Clear exporter spans from Turn 1
+    exporter.spans.clear()
+
+    # Turn 2: UserPromptSubmit fires with transcript unavailable (e.g. delayed discovery)
+    cct.handle_user_prompt_submit(
+        {
+            "session_id": SESSION,
+            "prompt": "Turn 2 prompt",
+            "transcript_path": None,
+        },
+        CONFIG,
+    )
+
+    # Now transcript is populated with Turn 2 entries on disk
+    _write_transcript(
+        tracer_env,
+        [
+            _user_entry("Prior prompt"),
+            _assistant_entry("msg_prior", "claude-sonnet-4", prior_usage),
+            _user_entry("Turn 2 prompt"),
+            _assistant_entry("msg_current", "claude-opus-5-5", current_usage),
+        ],
+    )
+
+    # Turn 2 completes, and transcript path is now discovered / provided
+    cct.handle_stop(
+        {
+            "session_id": SESSION,
+            "last_assistant_message": "Turn 2 complete.",
+            "transcript_path": str(tracer_env),
+        },
+        CONFIG,
+    )
+
+    llm_spans = exporter.kind("LLM")
+    assert len(llm_spans) == 1, f"Expected 1 LLM span, got {len(llm_spans)}"
+    attrs = llm_spans[0].attributes or {}
+
+    # Must accurately match msg_current (Turn 2), NOT msg_prior (Turn 1)
+    assert attrs["llm.model_name"] == "claude-opus-5-5"
+    assert attrs["llm.token_count.prompt"] == 350 + 1000 + 50
+    assert attrs["llm.token_count.completion"] == 60
+    assert attrs["llm.token_count.total"] == 350 + 1000 + 50 + 60
+    assert attrs.get("llm.token_count.type") != "estimated"
+
+
+def test_delayed_transcript_without_current_turn_defers_and_does_not_misattribute_prior(
+    tracer_env, exporter
+):
+    """When transcript is delayed and does not yet contain the current prompt,
+
+    usage join is deferred during tools and falls back to estimated rather than
+    misattributing prior turn usage.
+    """
+    prior_usage = {
+        "input_tokens": 100,
+        "output_tokens": 20,
+        "cache_read_input_tokens": 500,
+        "cache_creation_input_tokens": 0,
+    }
+
+    # Turn 1: User prompt submit and complete
+    cct.handle_user_prompt_submit(
+        {
+            "session_id": SESSION,
+            "prompt": "Prior prompt",
+            "transcript_path": str(tracer_env),
+        },
+        CONFIG,
+    )
+    _write_transcript(
+        tracer_env,
+        [
+            _user_entry("Prior prompt"),
+            _assistant_entry("msg_prior", "claude-sonnet-4", prior_usage),
+        ],
+    )
+    cct.handle_stop(
+        {
+            "session_id": SESSION,
+            "last_assistant_message": "Turn 1 complete.",
+            "transcript_path": str(tracer_env),
+        },
+        CONFIG,
+    )
+
+    exporter.spans.clear()
+
+    # Turn 2: Starts with delayed transcript
+    cct.handle_user_prompt_submit(
+        {
+            "session_id": SESSION,
+            "prompt": "Turn 2 new prompt",
+            "transcript_path": None,
+        },
+        CONFIG,
+    )
+
+    # Tool executes, transcript path is passed, but transcript STILL only has Turn 1
+    cct.handle_pre_tool(
+        {
+            "session_id": SESSION,
+            "tool_name": "Bash",
+            "tool_input": {"command": "echo 1"},
+            "tool_use_id": "toolu_t2",
+            "transcript_path": str(tracer_env),
+        },
+        CONFIG,
+    )
+    cct.handle_post_tool(
+        {
+            "session_id": SESSION,
+            "tool_name": "Bash",
+            "tool_input": {"command": "echo 1"},
+            "tool_response": "1\n",
+            "tool_use_id": "toolu_t2",
+            "transcript_path": str(tracer_env),
+        },
+        CONFIG,
+    )
+
+    # Tool span emitted, but LLM span DEFERRED (boundary unverified; does not misattribute Turn 1)
+    assert len(exporter.kind("TOOL")) == 1
+    assert len(exporter.kind("LLM")) == 0
+
+    # Now turn ends with Stop without transcript ever writing Turn 2 prompt
+    cct.handle_stop(
+        {
+            "session_id": SESSION,
+            "last_assistant_message": "Done.",
+            "transcript_path": str(tracer_env),
+        },
+        CONFIG,
+    )
+
+    llm_spans = exporter.kind("LLM")
+    assert len(llm_spans) == 2
+    for s in llm_spans:
+        attrs = s.attributes or {}
+        # Must NOT take msg_prior's model or token counts
+        assert attrs["llm.model_name"] == "claude"
+        assert attrs.get("llm.token_count.type") == "estimated"
+        assert attrs["llm.token_count.prompt"] == 0
+        assert attrs["llm.token_count.completion"] == 0

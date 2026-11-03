@@ -16,8 +16,8 @@ async function main() {
     join(process.env.STATE_DIR || join(homedir(), ".claude", "channels", "telegram"), "bridge.sock");
 
   if (!existsSync(socketPath)) {
-    // Socket missing: inert, exit 0
-    process.exit(0);
+    process.stderr.write(`ida-telegram AskUserQuestion hook error: Telegram bridge socket not found at ${socketPath}\n`);
+    process.exit(1);
   }
 
   let inputData = "";
@@ -90,22 +90,22 @@ async function main() {
   });
 
   client.on("end", () => {
-    let qid = "q_telegram";
-    let deliveryError = null;
+    let res;
     try {
-      const res = JSON.parse(responseData);
-      if (res.questionId) qid = res.questionId;
-      if (res.status === "error" || res.status === "failed" || res.error || res.delivered === false) {
-        deliveryError = res.error || "Delivery to Telegram failed";
-      }
+      res = JSON.parse(responseData.trim());
     } catch {
-      deliveryError = "Malformed or unparseable response from Telegram bridge socket";
+      process.stderr.write(`ida-telegram AskUserQuestion hook error: failed to parse socket response: ${responseData}\n`);
+      process.exit(1);
     }
 
-    const reason = deliveryError
-      ? `Failed to deliver question ${qid} over Telegram: ${deliveryError}`
-      : `Question ${qid} posted to the user over Telegram. Do not assume an answer; continue other work or end your turn.`;
+    if (!res || res.status !== "ok" || !res.questionId || res.error || res.delivered === false) {
+      const errMsg = res?.error || "Failed to deliver question card over Telegram";
+      process.stderr.write(`ida-telegram AskUserQuestion hook error: ${errMsg}\n`);
+      process.exit(1);
+    }
 
+    const qid = res.questionId;
+    const reason = `Question ${qid} posted to the user over Telegram. Do not assume an answer; continue other work or end your turn.`;
     const output = {
       decision: "block",
       reason,
@@ -119,10 +119,13 @@ async function main() {
     process.exit(0);
   });
 
-  client.on("error", () => {
-    // Socket connection error: inert
-    process.exit(0);
+  client.on("error", (err) => {
+    process.stderr.write(`ida-telegram AskUserQuestion hook error: socket connection failed: ${err.message}\n`);
+    process.exit(1);
   });
 }
 
-main().catch(() => process.exit(0));
+main().catch((err) => {
+  process.stderr.write(`ida-telegram AskUserQuestion hook error: ${err?.message || err}\n`);
+  process.exit(1);
+});

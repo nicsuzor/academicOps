@@ -16,17 +16,7 @@ Fetch the canonical template from the knowledge base using MCP:
 
 ## 2. Complete Step Execution Contract
 
-Every daily note run must execute Steps 0 through 7 in sequential order to completion:
-
-- **Step 0**: Read existing daily note content and enrich it (preserve user annotations, elevate verbatim requests, itemize merged PR checklists).
-- **Step 1**: Read user asks from the graph and group into dense thematic objectives.
-- **Step 1.5**: Triage mobile captures in `notes/mobile-captures/`.
-- **Step 2**: Situate verbatim requests into tracking tasks and situated work tasks.
-- **Step 3**: Read today's agenda (correspondence sweep, email, and calendar).
-- **Step 4**: Reconcile the graph (`wf-reconcile`).
-- **Step 5**: Collect open PRs needing the user across repositories.
-- **Step 6**: Assemble state via graph review subagent.
-- **Step 7**: Write the note to the PKB and read it back.
+Every daily note run must execute Steps 0 through 7 of `tpl_daily` in sequential order to completion, as that template defines them. This skill does not restate the steps; where anything here and `tpl_daily` differ, `tpl_daily` governs.
 
 ### Execution Invariants
 
@@ -36,7 +26,8 @@ Every daily note run must execute Steps 0 through 7 in sequential order to compl
 
 ## 3. Conversational Handover
 
-When invoked via interactive or chat channels (such as Telegram):
+When invoked via interactive or chat channels (such as Telegram), reply with the note's top layer, readable in under a minute:
 
-1. Summarize today's priorities and progress scannably (under one minute reading time).
-2. Highlight open decisions needing the user from `## With you`.
+1. The note's `## Start here` item: what to do first, its first step and what is ready.
+2. Today's fixed times and anything overdue owed to other people, from `## Today`.
+3. How many decisions wait in `## With you`, naming the top one, with `/decide` offered for the rest.

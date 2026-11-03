@@ -595,7 +595,25 @@ export class TelegramBotClient {
         this.recordMessageExcerpt(res.result.message_id, formatted.plainText);
         return { ok: true, messageId: res.result.message_id, result: res.result };
       }
-      const errorMsg = res?.description || res?.error || "Telegram sendMessage returned non-ok or missing message_id";
+      this.recordMessageExcerpt(res?.result?.message_id, formatted.plainText);
+
+      // If Telegram rejects formatted entities, resend once as plain text per FR-1.5
+      const fallbackRes = await this.callApi("sendMessage", {
+        chat_id: chatId,
+        ...(effectiveThreadId !== undefined ? { message_thread_id: effectiveThreadId } : {}),
+        text: formatted.plainText,
+        reply_markup: { inline_keyboard },
+      });
+      if (fallbackRes?.ok && fallbackRes?.result?.message_id) {
+        this.broker.setMessageId(qid, fallbackRes.result.message_id);
+        this.recordMessageThread(fallbackRes.result.message_id, effectiveThreadId);
+        if (this.store) {
+          this.store.setLastCard(chatId, fallbackRes.result.message_id, card.text);
+        }
+        this.recordMessageExcerpt(fallbackRes.result.message_id, formatted.plainText);
+        return { ok: true, messageId: fallbackRes.result.message_id, result: fallbackRes.result };
+      }
+      const errorMsg = fallbackRes?.description || fallbackRes?.error || res?.description || res?.error || "Telegram sendMessage returned non-ok or missing message_id";
       this.broker.markDeliveryFailed(qid, errorMsg);
       return { ok: false, error: errorMsg, description: errorMsg };
     } catch (err) {

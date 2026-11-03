@@ -1286,7 +1286,7 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
 
     try {
       const hookScript = join(import.meta.dir, "..", "hooks", "ask-user-question.js");
-      const stdout = await new Promise<string>((resolve, reject) => {
+      const { stdout, stderr, exitCode } = await new Promise<{ stdout: string; stderr: string; exitCode: number | null }>((resolve) => {
         const proc = spawn("node", [hookScript], {
           env: {
             ...process.env,
@@ -1296,9 +1296,10 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
           },
         });
         let out = "";
+        let err = "";
         proc.stdout.on("data", (d) => (out += d.toString()));
-        proc.on("error", reject);
-        proc.on("close", () => resolve(out));
+        proc.stderr.on("data", (d) => (err += d.toString()));
+        proc.on("close", (code) => resolve({ stdout: out, stderr: err, exitCode: code }));
         proc.stdin.write(
           JSON.stringify({
             tool_name: "AskUserQuestion",
@@ -1316,11 +1317,9 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
         proc.stdin.end();
       });
 
-      const parsed = JSON.parse(stdout.trim());
-      expect(parsed.decision).toBe("block");
-      // The failure must be surfaced to the asking agent, not reporting delivery success
-      expect(parsed.reason).toContain("Failed to deliver question");
-      expect(parsed.reason).not.toContain("posted to the user over Telegram");
+      expect(exitCode).not.toBe(0);
+      expect(stderr).toContain("Bad Request: chat not found");
+      expect(stdout).not.toContain("posted to the user over Telegram");
       expect(channelEvents.some((e) => e.meta.event === "question_delivery_failed")).toBe(true);
 
       const pending = broker.getPendingQuestions();
@@ -1350,7 +1349,7 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
 
     try {
       const hookScript = join(import.meta.dir, "..", "hooks", "ask-user-question.js");
-      const stdout = await new Promise<string>((resolve, reject) => {
+      const { stdout, stderr, exitCode } = await new Promise<{ stdout: string; stderr: string; exitCode: number | null }>((resolve) => {
         const proc = spawn("node", [hookScript], {
           env: {
             ...process.env,
@@ -1360,9 +1359,10 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
           },
         });
         let out = "";
+        let err = "";
         proc.stdout.on("data", (d) => (out += d.toString()));
-        proc.on("error", reject);
-        proc.on("close", () => resolve(out));
+        proc.stderr.on("data", (d) => (err += d.toString()));
+        proc.on("close", (code) => resolve({ stdout: out, stderr: err, exitCode: code }));
         proc.stdin.write(
           JSON.stringify({
             tool_name: "AskUserQuestion",
@@ -1380,11 +1380,9 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
         proc.stdin.end();
       });
 
-      const parsed = JSON.parse(stdout.trim());
-      expect(parsed.decision).toBe("block");
-      expect(parsed.reason).toContain("Failed to deliver question");
-      expect(parsed.reason).toContain("Malformed or unparseable response");
-      expect(parsed.reason).not.toContain("posted to the user over Telegram");
+      expect(exitCode).not.toBe(0);
+      expect(stderr).toContain("failed to parse socket response");
+      expect(stdout).not.toContain("posted to the user over Telegram");
     } finally {
       server.close();
       if (existsSync(socketPath)) unlinkSync(socketPath);
@@ -1408,7 +1406,7 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       getLastThreadId: () => undefined,
       sendQuestionCard: async (chatId: number, qid: string) => {
         broker.setMessageId(qid, 54321);
-        return { ok: true, messageId: 54321 };
+        return { ok: true, messageId: 54321, result: { message_id: 54321 } };
       },
     } as any;
 
@@ -1489,6 +1487,144 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     }
   });
 
+  test("AC1 & AC2: reproduces vanished buttons when bridge server captures null bot at startup, and verifies fix delivers card with buttons and messageId", async () => {
+    const { createConnection } = await import("node:net");
+    const { createBridgeServer } = await import("../server.js");
+    const { TelegramBotClient } = await import("../src/telegram/bot.js");
+
+    const socketPath = join(testStateDir, "repro_bridge.sock");
+    const config = {
+      botToken: "test-token",
+      apiBaseUrl: "https://api.telegram.org",
+      role: "primary",
+      isPrimary: true,
+      allowFrom: [999],
+      maxChatChars: 1200,
+      port: 8095,
+      stateDir: testStateDir,
+      socketPath,
+      voiceReplies: "off" as const,
+      botCommands: [],
+      miniAppUrl: "https://ida.example.ts.net",
+    };
+
+    const store = new PluginStore(testStateDir);
+    const broker = new QuestionBroker(testStateDir);
+    const permRelay = new PermissionRelay();
+    const sentCards: any[] = [];
+
+    // Simulate startup sequence in server.ts:
+    // bot starts as null, server is created with getter/bot, bot is instantiated shortly after
+    let bot: TelegramBotClient | null = null;
+
+    // Passing getter (() => bot) so createBridgeServer resolves live bot instance dynamically
+    const server = createBridgeServer(config as any, broker, (() => bot) as any);
+    await new Promise<void>((resolve) => server.listen(socketPath, () => resolve()));
+
+    // Bot is instantiated after server starts listening (exact server.ts startup lifecycle)
+    bot = new TelegramBotClient(config as any, broker, permRelay, () => {});
+    (bot as any).sendQuestionCard = async (chatId: number, qid: string, card: any) => {
+      sentCards.push({ chatId, qid, card });
+      broker.setMessageId(qid, 42001);
+      return { ok: true, result: { message_id: 42001 } };
+    };
+
+    try {
+      const client = createConnection(socketPath);
+      const resPromise = new Promise<string>((resolve) => {
+        client.on("data", (d) => resolve(d.toString()));
+      });
+
+      client.write(
+        JSON.stringify({
+          type: "ask_user",
+          questions: [
+            {
+              question: "Confirm deployment of fix for vanished buttons?",
+              header: "Deployment Question",
+              options: [{ label: "Approve (Recommended)" }, { label: "Reject" }],
+            },
+          ],
+        }) + "\n"
+      );
+
+      const rawRes = await resPromise;
+      const res = JSON.parse(rawRes.trim());
+      expect(res.status).toBe("ok");
+
+      // Verify chat card WAS sent and buttons are present
+      expect(sentCards.length).toBe(1);
+      expect(sentCards[0].chatId).toBe(999);
+      expect(sentCards[0].card.buttons.length).toBeGreaterThanOrEqual(2);
+      expect(sentCards[0].card.buttons[0].text).toContain("Approve (Recommended)");
+
+      // Verify messageId was recorded on the stored question
+      const storedQ = broker.getQuestion(res.questionId);
+      expect(storedQ).toBeDefined();
+      expect(storedQ!.messageId).toBe(42001);
+    } finally {
+      server.close();
+    }
+  });
+
+  test("AC2: ask_user returns error and does not report question posted when Telegram API fails", async () => {
+    const { TelegramBotClient } = await import("../src/telegram/bot.js");
+
+    const config = {
+      botToken: "test-token",
+      allowFrom: [999],
+      stateDir: testStateDir,
+      socketPath: join(testStateDir, "err_hook.sock"),
+      port: 0,
+      miniAppUrl: "https://ida.example.ts.net",
+      isPrimary: true,
+      maxChatChars: 1200,
+      voiceReplies: "off" as const,
+      botCommands: [],
+    };
+
+    const store = new PluginStore(testStateDir);
+    const broker = new QuestionBroker(testStateDir);
+    const permRelay = new PermissionRelay();
+
+    const bot = new TelegramBotClient(config as any, broker, permRelay, () => {});
+    // Simulate Telegram sendMessage failing
+    (bot as any).callApi = async (method: string) => {
+      if (method === "sendMessage") {
+        return { ok: false, description: "Bad Request: chat not found" };
+      }
+      return { ok: true };
+    };
+
+    const mcp = new StdioMcpServer(config as any, store, broker, bot, permRelay);
+
+    const askResp = await mcp.handleMessage({
+      jsonrpc: "2.0",
+      id: 88,
+      method: "tools/call",
+      params: {
+        name: "ask_user",
+        arguments: {
+          questions: [
+            {
+              question: "Will this fail?",
+              options: [{ label: "Yes" }, { label: "No" }],
+            },
+          ],
+        },
+      },
+    });
+
+    const parsed = typeof (askResp as any)?.result?.content?.[0]?.text === "string"
+      ? JSON.parse((askResp as any).result.content[0].text)
+      : (askResp as any)?.result;
+
+    // Must NOT report "Question ... posted to the user" when send failed
+    expect(parsed.success).toBe(false);
+    expect(parsed.error).toContain("chat not found");
+    expect((askResp as any)?.isError).toBe(true);
+  });
+
   test("ask_user MCP tool surfaces failure when delivery fails and succeeds without failure signal when delivered", async () => {
     const { StdioMcpServer } = await import("../src/mcp/server.js");
     const { PluginStore } = await import("../src/store.js");
@@ -1547,7 +1683,7 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     });
 
     expect(failCall?.isError).toBe(true);
-    expect(failCall?.result?.content?.[0]?.text).toContain("Failed to deliver question");
+    expect(failCall?.result?.content?.[0]?.text).toContain("Telegram network error");
     expect(channelEvents.some((e) => e.meta.event === "question_delivery_failed")).toBe(true);
 
     // When bot succeeds delivery
@@ -1556,7 +1692,7 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       getLastThreadId: () => undefined,
       sendQuestionCard: async (chatId: number, qid: string) => {
         broker.setMessageId(qid, 991122);
-        return { ok: true, messageId: 991122 };
+        return { ok: true, messageId: 991122, result: { message_id: 991122 } };
       },
     } as any;
 
@@ -1630,8 +1766,156 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     expect(stuckDoc?.status).toBe("failed");
     expect(stuckDoc?.deliveryError).toContain("no Telegram messageId");
   });
+
+  test("AC2: PreToolUse hook on AskUserQuestion fails fast when socket does not exist or connection fails", async () => {
+    const { spawn } = await import("node:child_process");
+    const { mkdirSync } = await import("node:fs");
+
+    mkdirSync(testStateDir, { recursive: true });
+    const missingSocketPath = join(testStateDir, "nonexistent.sock");
+    const hookScript = join(import.meta.dir, "..", "hooks", "ask-user-question.js");
+
+    const { stderr, exitCode } = await new Promise<{ stderr: string; exitCode: number | null }>((resolve) => {
+      const proc = spawn("node", [hookScript], {
+        env: {
+          ...process.env,
+          IDA_TELEGRAM_ROLE: "primary",
+          STATE_DIR: testStateDir,
+          SOCKET_PATH: missingSocketPath,
+        },
+      });
+      let stderrData = "";
+      proc.stderr.on("data", (d) => (stderrData += d.toString()));
+      proc.on("close", (code) => resolve({ stderr: stderrData, exitCode: code }));
+      proc.stdin.write(
+        JSON.stringify({
+          tool_name: "AskUserQuestion",
+          turn_id: "turn_missing_sock",
+          tool_input: {
+            questions: [{ question: "Missing socket test?", options: [{ label: "OK" }] }],
+          },
+        }) + "\n"
+      );
+      proc.stdin.end();
+    });
+
+    expect(exitCode).not.toBe(0);
+    expect(stderr).toContain("Telegram bridge socket not found");
+  });
+
+  test("AC2: PreToolUse hook on AskUserQuestion fails fast on socket delivery error instead of claiming delivery", async () => {
+    const { createServer } = await import("node:net");
+    const { spawn } = await import("node:child_process");
+    const { mkdirSync } = await import("node:fs");
+
+    mkdirSync(testStateDir, { recursive: true });
+    const socketPath = join(testStateDir, "err_bridge.sock");
+
+    // Server returns an error response indicating delivery failure
+    const server = createServer((client) => {
+      let buf = "";
+      client.on("data", (chunk) => {
+        buf += chunk.toString();
+        if (buf.includes("\n")) {
+          client.write(JSON.stringify({ status: "error", error: "Failed to deliver question card over Telegram: chat not found" }) + "\n");
+        }
+      });
+    });
+
+    await new Promise<void>((resolve) => server.listen(socketPath, () => resolve()));
+
+    try {
+      const hookScript = join(import.meta.dir, "..", "hooks", "ask-user-question.js");
+      const { stdout, stderr, exitCode } = await new Promise<{ stdout: string; stderr: string; exitCode: number | null }>((resolve) => {
+        const proc = spawn("node", [hookScript], {
+          env: {
+            ...process.env,
+            IDA_TELEGRAM_ROLE: "primary",
+            STATE_DIR: testStateDir,
+            SOCKET_PATH: socketPath,
+          },
+        });
+        let stdoutData = "";
+        let stderrData = "";
+        proc.stdout.on("data", (d) => (stdoutData += d.toString()));
+        proc.stderr.on("data", (d) => (stderrData += d.toString()));
+        proc.on("close", (code) => resolve({ stdout: stdoutData, stderr: stderrData, exitCode: code }));
+        proc.stdin.write(
+          JSON.stringify({
+            tool_name: "AskUserQuestion",
+            turn_id: "turn_err_99",
+            tool_input: {
+              questions: [
+                {
+                  question: "Failing question test",
+                  options: [{ label: "Option 1" }],
+                },
+              ],
+            },
+          }) + "\n"
+        );
+        proc.stdin.end();
+      });
+
+      // Hook must fail fast (exit non-zero) and surface error on stderr
+      expect(exitCode).not.toBe(0);
+      expect(stderr).toContain("Failed to deliver question card over Telegram");
+      // Must NOT claim question was posted to user
+      expect(stdout).not.toContain("posted to the user over Telegram");
+    } finally {
+      server.close();
+    }
+  });
+
+  test("AC1.3: sendQuestionCard falls back to plain text send when formatted entities are rejected", async () => {
+    const { TelegramBotClient } = await import("../src/telegram/bot.js");
+
+    const config = {
+      botToken: "test-token",
+      allowFrom: [999],
+      stateDir: testStateDir,
+      socketPath: join(testStateDir, "fallback_hook.sock"),
+      port: 0,
+      miniAppUrl: "https://ida.example.ts.net",
+      isPrimary: true,
+      maxChatChars: 1200,
+      voiceReplies: "off" as const,
+      botCommands: [],
+    };
+
+    const broker = new QuestionBroker(testStateDir);
+    const permRelay = new PermissionRelay();
+    const calls: Array<{ method: string; payload: any }> = [];
+
+    const bot = new TelegramBotClient(config as any, broker, permRelay, () => {});
+    (bot as any).callApi = async (method: string, payload: any) => {
+      calls.push({ method, payload });
+      // First sendMessage with entities fails
+      if (method === "sendMessage" && payload.entities) {
+        return { ok: false, description: "Bad Request: can't parse entities" };
+      }
+      // Fallback sendMessage without entities succeeds
+      if (method === "sendMessage" && !payload.entities) {
+        return { ok: true, result: { message_id: 88888 } };
+      }
+      return { ok: true };
+    };
+
+    const q = await broker.askUser({
+      question: "Fallback test question?",
+      options: [{ label: "OK" }],
+      chatId: 999,
+    });
+
+    const card = broker.renderQuestionCard(q.questionId)!;
+    const sendRes = await bot.sendQuestionCard(999, q.questionId, card);
+
+    expect(sendRes.ok).toBe(true);
+    expect(sendRes.result.message_id).toBe(88888);
+    // Verified fallback plain text call was made with keyboard intact
+    expect(calls.length).toBe(2);
+    expect(calls[1].payload.entities).toBeUndefined();
+    expect(calls[1].payload.reply_markup.inline_keyboard.length).toBeGreaterThanOrEqual(1);
+    expect(broker.getQuestion(q.questionId)!.messageId).toBe(88888);
+  });
 });
-
-
-
-
