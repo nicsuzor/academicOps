@@ -98,7 +98,7 @@ async function main() {
       process.exit(1);
     }
 
-    if (!res || res.status !== "ok" || !res.questionId) {
+    if (!res || res.status !== "ok" || !res.questionId || res.error || res.delivered === false) {
       const errMsg = res?.error || "Failed to deliver question card over Telegram";
       process.stderr.write(`ida-telegram AskUserQuestion hook error: ${errMsg}\n`);
       process.exit(1);

@@ -376,18 +376,53 @@ export class StdioMcpServer {
         });
         if (!isMiniAppOnly) {
           if (!this.bot) {
-            return { success: false, error: "Telegram bot client is not running" };
+            const errorMsg = "Telegram bot client is not running";
+            this.broker.markDeliveryFailed(result.questionId, errorMsg);
+            this.emitChannelNotification(`Question delivery failed: ${errorMsg}`, {
+              event: "question_delivery_failed",
+              question_id: result.questionId,
+              error: errorMsg,
+              turn_id: q.turn_id || q.turnId || topTurnId,
+              session_id: q.session_id || q.sessionId || topSessionId,
+            });
+            return { success: false, error: errorMsg, questionId: result.questionId };
           }
           if (!defaultChatId) {
-            return { success: false, error: "No allowed chat ID configured for Telegram questions" };
+            const errorMsg = "No allowed chat ID configured for Telegram questions";
+            this.broker.markDeliveryFailed(result.questionId, errorMsg);
+            this.emitChannelNotification(`Question delivery failed: ${errorMsg}`, {
+              event: "question_delivery_failed",
+              question_id: result.questionId,
+              error: errorMsg,
+              turn_id: q.turn_id || q.turnId || topTurnId,
+              session_id: q.session_id || q.sessionId || topSessionId,
+            });
+            return { success: false, error: errorMsg, questionId: result.questionId };
           }
           const card = this.broker.renderQuestionCard(result.questionId, this.config.miniAppUrl, this.config.instance);
           if (!card) {
-            return { success: false, error: `Failed to render question card for ${result.questionId}` };
+            const errorMsg = `Failed to render question card for ${result.questionId}`;
+            this.broker.markDeliveryFailed(result.questionId, errorMsg);
+            this.emitChannelNotification(`Question delivery failed: ${errorMsg}`, {
+              event: "question_delivery_failed",
+              question_id: result.questionId,
+              error: errorMsg,
+              turn_id: q.turn_id || q.turnId || topTurnId,
+              session_id: q.session_id || q.sessionId || topSessionId,
+            });
+            return { success: false, error: errorMsg, questionId: result.questionId };
           }
           const sendRes = await this.bot.sendQuestionCard(defaultChatId, result.questionId, card, effectiveThreadId);
           if (!sendRes?.ok || !sendRes?.result?.message_id) {
-            const desc = sendRes?.description || "Failed to deliver question card over Telegram";
+            const desc = sendRes?.description || sendRes?.error || "Failed to deliver question card over Telegram";
+            this.broker.markDeliveryFailed(result.questionId, desc);
+            this.emitChannelNotification(`Question delivery failed: ${desc}`, {
+              event: "question_delivery_failed",
+              question_id: result.questionId,
+              error: desc,
+              turn_id: q.turn_id || q.turnId || topTurnId,
+              session_id: q.session_id || q.sessionId || topSessionId,
+            });
             return { success: false, error: desc, questionId: result.questionId };
           }
         }

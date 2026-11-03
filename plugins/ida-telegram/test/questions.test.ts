@@ -1236,6 +1236,257 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     expect(found.status).toBe("pending");
   });
 
+  test("AC1: a test in which a question's delivery fails shows the failure surfaced to the asking agent", async () => {
+    const { createBridgeServer } = await import("../server.js");
+    const { spawn } = await import("node:child_process");
+    const { mkdirSync, unlinkSync, existsSync } = await import("node:fs");
+
+    mkdirSync(testStateDir, { recursive: true });
+    const socketPath = join(testStateDir, "ac1_delivery_fail.sock");
+    if (existsSync(socketPath)) unlinkSync(socketPath);
+
+    const broker = new QuestionBroker(testStateDir);
+    const channelEvents: Array<{ content: string; meta: Record<string, unknown> }> = [];
+
+    // Mock bot whose delivery to Telegram fails
+    const mockBot = {
+      getLastThreadId: () => undefined,
+      sendQuestionCard: async (chatId: number, qid: string) => {
+        broker.markDeliveryFailed(qid, "Bad Request: chat not found");
+        return { ok: false, error: "Bad Request: chat not found" };
+      },
+    } as any;
+
+    const config = {
+      botToken: "test-token",
+      allowFrom: [999],
+      stateDir: testStateDir,
+      socketPath,
+      port: 8093,
+      miniAppUrl: "https://ida.example.test",
+      isPrimary: true,
+      maxChatChars: 1200,
+      voiceTranscribeCmd: "",
+      voiceSpeakCmd: "",
+      voiceReplies: "off" as const,
+      botCommands: [],
+      instance: "prime",
+    };
+
+    const server = createBridgeServer(
+      config as any,
+      broker,
+      mockBot,
+      (content, meta) => {
+        channelEvents.push({ content, meta });
+      }
+    );
+
+    await new Promise<void>((resolve) => server.listen(socketPath, () => resolve()));
+
+    try {
+      const hookScript = join(import.meta.dir, "..", "hooks", "ask-user-question.js");
+      const { stdout, stderr, exitCode } = await new Promise<{ stdout: string; stderr: string; exitCode: number | null }>((resolve) => {
+        const proc = spawn("node", [hookScript], {
+          env: {
+            ...process.env,
+            IDA_TELEGRAM_ROLE: "primary",
+            STATE_DIR: testStateDir,
+            SOCKET_PATH: socketPath,
+          },
+        });
+        let out = "";
+        let err = "";
+        proc.stdout.on("data", (d) => (out += d.toString()));
+        proc.stderr.on("data", (d) => (err += d.toString()));
+        proc.on("close", (code) => resolve({ stdout: out, stderr: err, exitCode: code }));
+        proc.stdin.write(
+          JSON.stringify({
+            tool_name: "AskUserQuestion",
+            turn_id: "turn_ac1_fail",
+            tool_input: {
+              questions: [
+                {
+                  question: "Undelivered question?",
+                  options: [{ label: "Yes" }, { label: "No" }],
+                },
+              ],
+            },
+          }) + "\n"
+        );
+        proc.stdin.end();
+      });
+
+      expect(exitCode).not.toBe(0);
+      expect(stderr).toContain("Bad Request: chat not found");
+      expect(stdout).not.toContain("posted to the user over Telegram");
+      expect(channelEvents.some((e) => e.meta.event === "question_delivery_failed")).toBe(true);
+
+      const pending = broker.getPendingQuestions();
+      expect(pending.some((q) => q.question === "Undelivered question?")).toBe(false);
+    } finally {
+      server.close();
+      if (existsSync(socketPath)) unlinkSync(socketPath);
+    }
+  });
+
+  test("PreToolUse hook surfaces delivery failure when bridge socket returns malformed or non-JSON data", async () => {
+    const { createServer } = await import("node:net");
+    const { spawn } = await import("node:child_process");
+    const { mkdirSync, unlinkSync, existsSync } = await import("node:fs");
+
+    mkdirSync(testStateDir, { recursive: true });
+    const socketPath = join(testStateDir, "malformed_hook.sock");
+    if (existsSync(socketPath)) unlinkSync(socketPath);
+
+    const server = createServer((client) => {
+      client.on("data", () => {
+        client.write("MALFORMED_NON_JSON_RESPONSE\n");
+      });
+    });
+
+    await new Promise<void>((resolve) => server.listen(socketPath, () => resolve()));
+
+    try {
+      const hookScript = join(import.meta.dir, "..", "hooks", "ask-user-question.js");
+      const { stdout, stderr, exitCode } = await new Promise<{ stdout: string; stderr: string; exitCode: number | null }>((resolve) => {
+        const proc = spawn("node", [hookScript], {
+          env: {
+            ...process.env,
+            IDA_TELEGRAM_ROLE: "primary",
+            STATE_DIR: testStateDir,
+            SOCKET_PATH: socketPath,
+          },
+        });
+        let out = "";
+        let err = "";
+        proc.stdout.on("data", (d) => (out += d.toString()));
+        proc.stderr.on("data", (d) => (err += d.toString()));
+        proc.on("close", (code) => resolve({ stdout: out, stderr: err, exitCode: code }));
+        proc.stdin.write(
+          JSON.stringify({
+            tool_name: "AskUserQuestion",
+            turn_id: "turn_malformed_test",
+            tool_input: {
+              questions: [
+                {
+                  question: "Question with broken socket?",
+                  options: [{ label: "Yes" }, { label: "No" }],
+                },
+              ],
+            },
+          }) + "\n"
+        );
+        proc.stdin.end();
+      });
+
+      expect(exitCode).not.toBe(0);
+      expect(stderr).toContain("failed to parse socket response");
+      expect(stdout).not.toContain("posted to the user over Telegram");
+    } finally {
+      server.close();
+      if (existsSync(socketPath)) unlinkSync(socketPath);
+    }
+  });
+
+  test("AC2: a delivered question raises no such signal", async () => {
+    const { createBridgeServer } = await import("../server.js");
+    const { spawn } = await import("node:child_process");
+    const { mkdirSync, unlinkSync, existsSync } = await import("node:fs");
+
+    mkdirSync(testStateDir, { recursive: true });
+    const socketPath = join(testStateDir, "ac2_delivery_ok.sock");
+    if (existsSync(socketPath)) unlinkSync(socketPath);
+
+    const broker = new QuestionBroker(testStateDir);
+    const channelEvents: Array<{ content: string; meta: Record<string, unknown> }> = [];
+
+    // Mock bot whose delivery to Telegram succeeds
+    const mockBot = {
+      getLastThreadId: () => undefined,
+      sendQuestionCard: async (chatId: number, qid: string) => {
+        broker.setMessageId(qid, 54321);
+        return { ok: true, messageId: 54321, result: { message_id: 54321 } };
+      },
+    } as any;
+
+    const config = {
+      botToken: "test-token",
+      allowFrom: [999],
+      stateDir: testStateDir,
+      socketPath,
+      port: 8093,
+      miniAppUrl: "https://ida.example.test",
+      isPrimary: true,
+      maxChatChars: 1200,
+      voiceTranscribeCmd: "",
+      voiceSpeakCmd: "",
+      voiceReplies: "off" as const,
+      botCommands: [],
+      instance: "prime",
+    };
+
+    const server = createBridgeServer(
+      config as any,
+      broker,
+      mockBot,
+      (content, meta) => {
+        channelEvents.push({ content, meta });
+      }
+    );
+
+    await new Promise<void>((resolve) => server.listen(socketPath, () => resolve()));
+
+    try {
+      const hookScript = join(import.meta.dir, "..", "hooks", "ask-user-question.js");
+      const stdout = await new Promise<string>((resolve, reject) => {
+        const proc = spawn("node", [hookScript], {
+          env: {
+            ...process.env,
+            IDA_TELEGRAM_ROLE: "primary",
+            STATE_DIR: testStateDir,
+            SOCKET_PATH: socketPath,
+          },
+        });
+        let out = "";
+        proc.stdout.on("data", (d) => (out += d.toString()));
+        proc.on("error", reject);
+        proc.on("close", () => resolve(out));
+        proc.stdin.write(
+          JSON.stringify({
+            tool_name: "AskUserQuestion",
+            turn_id: "turn_ac2_ok",
+            tool_input: {
+              questions: [
+                {
+                  question: "Delivered question?",
+                  options: [{ label: "Yes" }, { label: "No" }],
+                },
+              ],
+            },
+          }) + "\n"
+        );
+        proc.stdin.end();
+      });
+
+      const parsed = JSON.parse(stdout.trim());
+      expect(parsed.decision).toBe("block");
+      // Succeeded delivery reports posted to user and raises no failure signal
+      expect(parsed.reason).toContain("posted to the user over Telegram");
+      expect(parsed.reason).not.toContain("Failed to deliver");
+      expect(channelEvents.some((e) => e.meta.event === "question_delivery_failed")).toBe(false);
+
+      const pending = broker.getPendingQuestions();
+      const found = pending.find((q) => q.question === "Delivered question?");
+      expect(found).toBeDefined();
+      expect(found?.messageId).toBe(54321);
+      expect(found?.status).toBe("pending");
+    } finally {
+      server.close();
+      if (existsSync(socketPath)) unlinkSync(socketPath);
+    }
+  });
+
   test("AC1 & AC2: reproduces vanished buttons when bridge server captures null bot at startup, and verifies fix delivers card with buttons and messageId", async () => {
     const { createConnection } = await import("node:net");
     const { createBridgeServer } = await import("../server.js");
@@ -1372,6 +1623,148 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     expect(parsed.success).toBe(false);
     expect(parsed.error).toContain("chat not found");
     expect((askResp as any)?.isError).toBe(true);
+  });
+
+  test("ask_user MCP tool surfaces failure when delivery fails and succeeds without failure signal when delivered", async () => {
+    const { StdioMcpServer } = await import("../src/mcp/server.js");
+    const { PluginStore } = await import("../src/store.js");
+    const { PermissionRelay } = await import("../src/mcp/permissions.js");
+
+    const store = new PluginStore(testStateDir);
+    const broker = new QuestionBroker(testStateDir);
+    const permRelay = new PermissionRelay(testStateDir);
+    const channelEvents: Array<{ content: string; meta: Record<string, unknown> }> = [];
+
+    const config = {
+      botToken: "test-token",
+      allowFrom: [999],
+      stateDir: testStateDir,
+      socketPath: join(testStateDir, "mcp_test.sock"),
+      port: 8093,
+      miniAppUrl: "https://ida.example.test",
+      isPrimary: true,
+      maxChatChars: 1200,
+      voiceTranscribeCmd: "",
+      voiceSpeakCmd: "",
+      voiceReplies: "off" as const,
+      botCommands: [],
+      instance: "prime",
+    };
+
+    // When bot fails delivery
+    const failingBot = {
+      getLastThreadId: () => undefined,
+      sendQuestionCard: async (chatId: number, qid: string) => {
+        broker.markDeliveryFailed(qid, "Telegram network error");
+        return { ok: false, error: "Telegram network error" };
+      },
+    } as any;
+
+    const failingServer = new StdioMcpServer(config as any, store, broker, failingBot, permRelay);
+    failingServer.emitChannelNotification = (content, meta) => {
+      channelEvents.push({ content, meta });
+    };
+
+    const failCall = await failingServer.handleMessage({
+      jsonrpc: "2.0",
+      id: "req_fail_1",
+      method: "tools/call",
+      params: {
+        name: "ask_user",
+        arguments: {
+          questions: [
+            {
+              question: "Will this fail?",
+              options: [{ label: "Yes" }, { label: "No" }],
+            },
+          ],
+        },
+      },
+    });
+
+    expect(failCall?.isError).toBe(true);
+    expect(failCall?.result?.content?.[0]?.text).toContain("Telegram network error");
+    expect(channelEvents.some((e) => e.meta.event === "question_delivery_failed")).toBe(true);
+
+    // When bot succeeds delivery
+    channelEvents.length = 0;
+    const succeedingBot = {
+      getLastThreadId: () => undefined,
+      sendQuestionCard: async (chatId: number, qid: string) => {
+        broker.setMessageId(qid, 991122);
+        return { ok: true, messageId: 991122, result: { message_id: 991122 } };
+      },
+    } as any;
+
+    const succeedingServer = new StdioMcpServer(config as any, store, broker, succeedingBot, permRelay);
+    succeedingServer.emitChannelNotification = (content, meta) => {
+      channelEvents.push({ content, meta });
+    };
+
+    const okCall = await succeedingServer.handleMessage({
+      jsonrpc: "2.0",
+      id: "req_ok_1",
+      method: "tools/call",
+      params: {
+        name: "ask_user",
+        arguments: {
+          questions: [
+            {
+              question: "Will this succeed?",
+              options: [{ label: "Yes" }, { label: "No" }],
+            },
+          ],
+        },
+      },
+    });
+
+    expect(okCall?.isError).toBeUndefined();
+    expect(okCall?.result?.content?.[0]?.text).toContain("posted to the user");
+    expect(okCall?.result?.content?.[0]?.text).not.toContain("Failed to deliver");
+    expect(channelEvents.some((e) => e.meta.event === "question_delivery_failed")).toBe(false);
+  });
+
+  test("sweepUndeliveredQuestions detects legacy questions left pending with no messageId and marks them failed", async () => {
+    const broker = new QuestionBroker(testStateDir);
+
+    // Create a question stuck in pending with no messageId (legacy failure shape per issue 3415)
+    const qStuck = await broker.askUser({
+      question: "Legacy stuck question with no messageId?",
+      options: [{ label: "Yes" }, { label: "No" }],
+      turnId: "turn_legacy_stuck",
+      chatId: 999,
+      chat: true,
+      mini_app_only: false,
+    });
+
+    // Create a delivered question with messageId
+    const qDelivered = await broker.askUser({
+      question: "Delivered question with messageId?",
+      options: [{ label: "Yes" }, { label: "No" }],
+      chatId: 999,
+    });
+    broker.setMessageId(qDelivered.questionId, 882244);
+
+    // Create a mini_app_only question with no messageId (valid, should stay pending)
+    const qMiniApp = await broker.askUser({
+      question: "Mini app only question?",
+      options: [{ label: "Yes" }, { label: "No" }],
+      mini_app_only: true,
+    });
+
+    const swept = broker.sweepUndeliveredQuestions();
+    expect(swept.some((q) => q.id === qStuck.questionId)).toBe(true);
+    expect(swept.some((q) => q.id === qDelivered.questionId)).toBe(false);
+    expect(swept.some((q) => q.id === qMiniApp.questionId)).toBe(false);
+
+    const pending = broker.getPendingQuestions();
+    expect(pending.some((q) => q.id === qStuck.questionId)).toBe(false);
+    expect(pending.some((q) => q.id === qDelivered.questionId)).toBe(true);
+    expect(pending.some((q) => q.id === qMiniApp.questionId)).toBe(true);
+
+    const stuckDoc = broker.getQuestion(qStuck.questionId);
+    expect(stuckDoc?.status).toBe("failed");
+    expect(stuckDoc?.deliveryError).toContain("no Telegram messageId");
   });
 
   test("AC2: PreToolUse hook on AskUserQuestion fails fast when socket does not exist or connection fails", async () => {
@@ -1526,7 +1919,3 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     expect(broker.getQuestion(q.questionId)!.messageId).toBe(88888);
   });
 });
-
-
-
-

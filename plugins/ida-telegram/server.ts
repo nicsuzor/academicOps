@@ -122,6 +122,18 @@ async function main() {
       webContext.editTelegramCard(chatId, messageId, text, replyMarkup)
     );
 
+    // Sweep undelivered questions that were left pending with no messageId
+    const undelivered = broker.sweepUndeliveredQuestions();
+    for (const q of undelivered) {
+      mcpServer.emitChannelNotification(`Undelivered question ${q.id} detected: ${q.deliveryError || "No messageId recorded"}`, {
+        event: "question_delivery_failed",
+        question_id: q.id,
+        error: q.deliveryError || "No messageId recorded",
+        turn_id: q.turnId || q.turn_id,
+        session_id: q.sessionId || q.session_id,
+      });
+    }
+
     // Start background polling
     bot.startPolling().catch((e) => console.error("[ida-telegram] Polling stopped:", e));
   }
@@ -168,6 +180,7 @@ export function createBridgeServer(
           const activeBot = getBot();
           if (req.type === "ask_user") {
             const postedIds: string[] = [];
+            const failedDeliveries: Array<{ questionId: string; error: string }> = [];
             const topMiniAppOnly = req.mini_app_only === true || req.chat === false;
             const topThreadId = (req.message_thread_id ?? req.thread_id) as number | undefined;
             const defaultChatId = config.allowFrom[0];
@@ -202,26 +215,56 @@ export function createBridgeServer(
                 sessionId: q.sessionId || q.session_id || req.session_id || req.sessionId,
               });
 
-              if (activeBot && !isMiniAppOnly) {
-                const card = broker.renderQuestionCard(result.questionId, config.miniAppUrl, config.instance);
-                if (!card) {
-                  client.write(JSON.stringify({ status: "error", error: `Failed to render question card for ${result.questionId}` }) + "\n");
-                  return;
-                }
-                if (defaultChatId) {
-                  const sendRes = await activeBot.sendQuestionCard(defaultChatId, result.questionId, card, effectiveThreadId);
-                  if (!sendRes?.ok || !sendRes?.result?.message_id) {
-                    const desc = sendRes?.description || "Failed to deliver question card over Telegram";
-                    client.write(JSON.stringify({ status: "error", error: desc, questionId: result.questionId }) + "\n");
-                    return;
+              if (!isMiniAppOnly) {
+                if (!activeBot || !defaultChatId) {
+                  const errorMsg = "Telegram bot is unavailable or no authorized chat configured";
+                  broker.markDeliveryFailed(result.questionId, errorMsg);
+                  failedDeliveries.push({ questionId: result.questionId, error: errorMsg });
+                } else {
+                  const card = broker.renderQuestionCard(result.questionId, config.miniAppUrl, config.instance);
+                  if (card) {
+                    const sendRes = await activeBot.sendQuestionCard(defaultChatId, result.questionId, card, effectiveThreadId);
+                    if (!sendRes?.ok || !sendRes?.result?.message_id) {
+                      const errorMsg = sendRes?.description || sendRes?.error || "Telegram sendMessage failed";
+                      broker.markDeliveryFailed(result.questionId, errorMsg);
+                      failedDeliveries.push({ questionId: result.questionId, error: errorMsg });
+                    } else {
+                      postedIds.push(result.questionId);
+                    }
+                  } else {
+                    const errorMsg = `Failed to render question card for ${result.questionId}`;
+                    broker.markDeliveryFailed(result.questionId, errorMsg);
+                    failedDeliveries.push({ questionId: result.questionId, error: errorMsg });
                   }
                 }
+              } else {
+                postedIds.push(result.questionId);
               }
-
-              postedIds.push(result.questionId);
             }
 
-            client.write(JSON.stringify({ status: "ok", questionId: postedIds[0], questionIds: postedIds }) + "\n");
+            if (failedDeliveries.length > 0) {
+              const failed = failedDeliveries[0];
+              if (emitChannelNotification) {
+                emitChannelNotification(`Question delivery failed: ${failed.error}`, {
+                  event: "question_delivery_failed",
+                  question_id: failed.questionId,
+                  error: failed.error,
+                  turn_id: req.turn_id || req.turnId,
+                  session_id: req.session_id || req.sessionId,
+                });
+              }
+              client.write(
+                JSON.stringify({
+                  status: "error",
+                  error: failed.error,
+                  questionId: failed.questionId,
+                  questionIds: postedIds,
+                  failedDeliveries,
+                }) + "\n"
+              );
+            } else {
+              client.write(JSON.stringify({ status: "ok", questionId: postedIds[0], questionIds: postedIds }) + "\n");
+            }
           } else if (req.type === "close_question") {
             const questionId = req.question_id || req.questionId || req.id;
             const reason = typeof req.reason === "string" ? req.reason.trim() : "";
