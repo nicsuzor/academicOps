@@ -281,14 +281,14 @@ Closing this operational loop requires resolving two distinct architectural choi
 
 ##### Historical Trajectory and Design Evolution
 
-- **Retired Baseline: Per-Session Unix Domain Socket Push (PR #3216):** The initial attempt to notify dispatching sessions relied on a host script listening for container exits and pushing `[polecat-exit]` text lines directly into agent session processes via Unix Domain Sockets in `/tmp/cc-socks/`. This mechanism was retired and PR #3216 was closed unmerged because it broke across five fundamental structural boundaries:
+- **Retired Baseline: Per-Session Unix Domain Socket Push:** The initial attempt to notify dispatching sessions relied on a host script listening for container exits and pushing `[polecat-exit]` text lines directly into agent session processes via Unix Domain Sockets in `/tmp/cc-socks/`. This mechanism was retired because it broke across five fundamental structural boundaries:
   1. _Host Container Isolation:_ The desktop environment was decoupled into an independent container, isolating its `/tmp` directory and network namespace from worker containers and other host tools.
   2. _Process ID Fragility:_ Agent sessions lacked deterministic socket names, forcing the relay script to guess target sockets based on process names, thread scans, and alphabetical ordering.
   3. _Unauthenticated Stdin Injection:_ Injecting unescaped text into an active agent's stdin violated message provenance, caused syntax parsing confusion, and risked corrupting interactive turns.
   4. _Silent Event Loss:_ The relay script marked events as handled even when falling back to arbitrary sockets or when delivery failed, dropping completion signals silently.
   5. _Axiom Non-Compliance:_ Ad-hoc fallback heuristics and silent error swallowing directly breached core platform axioms (anti-fallback, fail-fast, and single source of truth).
-- **Settled Baseline: Queue Consumption and Channel Bridge Waking (Option 3C, PR #3252):** Option 3C settled the baseline architecture where the container runtime listener records container exits in a persistent database queue (`polecat_events`), and the operational dashboard daemon acts as the unified event consumer. The daemon consumes the queue and incoming repository webhooks, coalescing events over a configurable debounce window (10-60 seconds) and waking connected supervisory sessions over its authenticated HTTP/SSE channel bridge.
-- **Operator Design Explorations:** The human operator subsequently requested visual evaluation of several design alternatives to close the loop:
+- **Settled Baseline: Queue Consumption and Channel Bridge Waking (Option 3C):** Option 3C settled the baseline architecture where the container runtime listener records container exits in a persistent database queue (`polecat_events`), and the operational dashboard daemon acts as the unified event consumer. The daemon consumes the queue and incoming repository webhooks, coalescing events over a configurable debounce window (10-60 seconds) and waking connected supervisory sessions over its authenticated HTTP/SSE channel bridge.
+- **Architectural Design Explorations:** Several design alternatives evaluate how to close the loop effectively:
   1. _Agent Polling Buffer:_ Whether the dashboard should support an indexed event store where agents poll for completed workers and GitHub hook results on demand.
   2. _Multi-Source Inbound Webhooks:_ Expanding the dashboard ingress to ingest arbitrary external webhooks and operational alerts.
   3. _Two-Way Notification Hub:_ Establishing a bi-directional notification pipeline connecting inbound webhooks with outbound operator chat cards and mobile pushes.
@@ -296,7 +296,7 @@ Closing this operational loop requires resolving two distinct architectural choi
 
 #### 6.2 Architectural Options for Closing the Loop
 
-##### Option 6.A (Retired Baseline): Per-Session Unix Domain Socket Push (`[polecat-exit]`, PR #3216)
+##### Option 6.A (Retired Baseline): Per-Session Unix Domain Socket Push (`[polecat-exit]`)
 
 The container runtime exit listener triggers a host Python relay script upon container termination. The script scans `/tmp/cc-socks/` for active agent sockets, matches target sessions via process heuristics, and injects raw text lines (`[polecat-exit] <task_id> <exit_code>`) directly into the agent process stdin.
 
@@ -324,7 +324,7 @@ flowchart LR
     FS -->|"[polecat-exit] injection"| STDIN
 ```
 
-##### Option 6.B (Settled Baseline 3C): Queue Consumption and Channel Bridge Waking (PR #3252)
+##### Option 6.B (Settled Baseline 3C): Queue Consumption and Channel Bridge Waking
 
 The container runtime exit listener writes every container exit into a persistent database queue table (`polecat_events`). The operational dashboard daemon polls the database table for unacknowledged records, correlates them with active tasks, and consumes inbound GitHub webhooks. The daemon coalesces events within a configurable debounce window (10-60 seconds) and delivers high-priority notification turns to connected supervisory agent sessions over the authenticated HTTP/SSE channel bridge (`/api/app/instances/:instance/events`).
 
@@ -364,7 +364,7 @@ flowchart TD
     SSE_SRV -->|"SSE event push"| SESS
 ```
 
-##### Option 6.C: Dashboard Event Store with Agent Polling Buffer (tg 2792)
+##### Option 6.C: Dashboard Event Store with Agent Polling Buffer
 
 The operational dashboard exposes an inbound ingestion endpoint for GitHub webhooks and worker exits. Received events are assigned monotonic sequence numbers (`seq`) and appended to an indexed event buffer in dashboard memory or local storage. Agent sessions do not receive unprompted push notifications; instead, agents query the dashboard periodically via a REST endpoint (`GET /api/app/events?since=<seq>`) or an MCP read tool to discover recent completions.
 
@@ -393,7 +393,7 @@ flowchart TD
     GH -->|"POST webhook"| INGRESS
 ```
 
-##### Option 6.D: Direct Unified Webhook Endpoint for GitHub and Worker Pushes (2026-11-04 Ask)
+##### Option 6.D: Direct Unified Webhook Endpoint for GitHub and Worker Pushes
 
 The operational dashboard exposes a unified HTTP webhook ingress gateway (`POST /api/webhooks/*`). External GitHub webhooks post directly to this endpoint with HMAC-SHA256 signature headers. Concurrently, the container runtime exit listener (`polecat-mcp`) publishes worker exit callbacks via direct HTTP POST to `POST /api/webhooks/workers` immediately upon container termination, authenticated via a shared bearer secret. Upon receipt, the dashboard validates the payload and immediately pushes a reactive wake notification over the SSE channel bridge into the active supervisor session.
 
@@ -422,7 +422,7 @@ flowchart TD
     GH -->|"Direct HTTP POST"| INGRESS
 ```
 
-##### Option 6.E: Multi-Source Webhook Gateway and Two-Way Notification Hub (tg 2792)
+##### Option 6.E: Multi-Source Webhook Gateway and Two-Way Notification Hub
 
 The operational dashboard serves as a centralized, bi-directional operational communication hub. Inbound: The dashboard exposes generalized webhook endpoints (`POST /api/webhooks/:source`) capable of ingesting and normalizing heterogeneous webhooks from GitHub, container runtimes, external CI/CD pipelines, and infrastructure monitoring systems into canonical operational event envelopes. Outbound: The dashboard integrates a two-way notification dispatcher capable of routing events and agent directives across multiple communication sinks, including active agent SSE streams, Telegram chat cards, mobile push notifications, and external webhook callbacks.
 
@@ -455,6 +455,9 @@ flowchart TD
         DISP -->|"Outbound push"| NTFY
         DISP -->|"Outbound callback"| CB
     end
+    GH -->|"POST webhook"| GW
+    PW -->|"POST exit"| GW
+    EXT -->|"POST alert"| GW
     SESS -.->|"POST /api/app/notifications/dispatch"| DISP
 ```
 
@@ -462,7 +465,7 @@ flowchart TD
 
 The following matrix evaluates the five loop-closing architectural options across critical operational dimensions:
 
-| Evaluation Dimension | Option 6.A: UDS Push (Retired) | Option 6.B: 3C Baseline (PR #3252) | Option 6.C: Polling Buffer (tg 2792) | Option 6.D: Direct Webhook (2026-11-04) | Option 6.E: Multi-Source Hub (tg 2792) |
+| Evaluation Dimension | Option 6.A: UDS Push (Retired) | Option 6.B: 3C Baseline | Option 6.C: Polling Buffer | Option 6.D: Direct Webhook Push | Option 6.E: Multi-Source Hub |
 | :- | :- | :- | :- | :- | :- |
 | **Ingress Mechanism** | Local filesystem socket | Persistent DB queue (`polecat_events`) | Inbound HTTP to indexed memory/DB | Direct HTTP POST from GitHub & worker | Multi-source HTTP webhook gateway |
 | **Delivery Mechanism** | Stdin raw text injection | SSE push turn over HTTP bridge | Client-initiated REST polling | SSE push turn over HTTP bridge | SSE push turn + two-way multi-channel |
@@ -472,7 +475,7 @@ The following matrix evaluates the five loop-closing architectural options acros
 | **Network & Isolation Fit** | Fails (breaks across containers) | Excellent (shared DB/service layer) | Good (HTTP REST query) | Excellent (internal network + ingress) | Excellent (unified perimeter ingress) |
 | **Authentication Standard** | None (unauthenticated socket write) | Internal DB trust + Webhook HMAC | Perimeter bearer / session token | HMAC SHA-256 + Bearer secret | Modular HMAC + Bearer + Tokens |
 | **Anti-Polling Compliance** | Passes | Passes | **Fails** (requires agent polling) | Passes | Passes |
-| **Implementation Scope** | Dead end (unmerged PR #3216) | Merged in PR #3252 | Low | Low-Medium | Medium |
+| **Implementation Scope** | Retired baseline (rejected) | Settled baseline | Low | Low-Medium | Medium |
 
 ##### Recommendation First: Refined Option 3C with Direct Push Ingress (Hybrid Architecture)
 
@@ -504,7 +507,7 @@ flowchart TD
         MCP["polecat-mcp listener"]
         WAL[("Write-ahead ledger<br/>(polecat_events queue)")]
         CF["Cloudflare Access perimeter<br/>(Scoped webhook bypass)"]
-        INT_NET["Internal Docker network<br/>(http://overwhelm-dash:3000)"]
+        INT_NET["Internal Docker network<br/>(http://dashboard:3000)"]
     end
 
     subgraph DashboardDaemon["Operational Dashboard Gateway"]
@@ -614,7 +617,7 @@ The direct webhook design resolves four load-bearing inquiries grounded in verif
 1. **Cloudflare Access Perimeter Reachability for GitHub:**
    - _Inquiry:_ Can external GitHub webhook deliveries reach the dashboard path through the Cloudflare Access security perimeter?
    - _Verified Evidence:_ The central dashboard domain is protected by Cloudflare Access. By default, Cloudflare Access enforces authentication policies (e.g. Google OAuth and Telegram OIDC on path-scoped `/app/*` and `/api/app/*` routes). GitHub webhook deliveries originate from GitHub's public IP ranges without Cloudflare session cookies or JWT identity assertions.
-   - _Architectural Rule:_ To admit GitHub webhooks without compromising dashboard security, a specific path-scoped Cloudflare Access application must be configured for `/api/webhooks/*` with a **Bypass** policy (or verified by an edge worker). Cryptographic authenticity is strictly delegated to and enforced by the dashboard endpoint via HMAC-SHA256 signature verification (`X-Hub-Signature-256`).
+   - _Architectural Rule:_ To admit GitHub webhooks without compromising dashboard security, a specific path-scoped Cloudflare Access application must be configured for public webhook paths (`/api/webhooks/github` and `/api/webhooks/public/*`) with a **Bypass** policy (or verified by an edge worker). Cryptographic authenticity is strictly delegated to and enforced by the dashboard endpoint via HMAC-SHA256 signature verification (`X-Hub-Signature-256`). Internal worker exit callbacks (`POST /api/webhooks/workers`) are restricted to internal network interfaces and rejected with HTTP 401 Unauthorized if arriving from external untrusted routes without internal bridge credentials.
 2. **Sender Authentication and Authorization Boundaries:**
    - _Inquiry:_ How is each sender authenticated at the ingress boundary?
    - _Verified Evidence:_ Senders are partitioned by trust domain:
@@ -623,7 +626,7 @@ The direct webhook design resolves four load-bearing inquiries grounded in verif
      - _Third-Party Webhooks:_ Authenticated via source-specific tokens or HMAC signatures registered in the dashboard configuration.
 3. **Local Host Reachability of Container Runtime to Dashboard:**
    - _Inquiry:_ Can the container runtime exit listener running on the host reach the dashboard service directly?
-   - _Verified Evidence:_ Both the dashboard web service and the container runtime components execute on the same host environment within a common Docker container network bridge. The container runtime reaches the dashboard via internal Docker DNS (`http://overwhelm-dash:3000`) or private host loopback without traversing the external public internet or Cloudflare Access perimeter.
+   - _Verified Evidence:_ Both the dashboard web service and the container runtime components execute on the same host environment within a common Docker container network bridge. The container runtime reaches the dashboard via internal Docker DNS (`http://dashboard:3000`) or private host loopback without traversing the external public internet or Cloudflare Access perimeter.
 4. **Downtime Fault Semantics and Zero-Loss Guarantees:**
    - _Inquiry:_ What happens to worker completion events emitted while the dashboard is down, restarting, or upgrading?
    - _Verified Evidence:_ If worker exit notifications relied solely on ephemeral HTTP POST callbacks (Option 6.D alone), any exit occurring during dashboard downtime would be lost permanently. Under the recommended hybrid model, the container runtime writes to the persistent `polecat_events` queue _before_ executing the direct HTTP POST. If the HTTP push fails due to connection refusal or HTTP 5xx errors, the event remains unacknowledged in the persistent queue. Upon dashboard startup, the daemon drains all unacknowledged events from `polecat_events`, guaranteeing zero event loss across all failure modes.
