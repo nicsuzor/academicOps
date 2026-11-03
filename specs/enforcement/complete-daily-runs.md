@@ -10,7 +10,7 @@ tags: [enforcement, daily, tpl-daily, workflow-execution, hotfix]
 
 This specification establishes the architectural standard, enforcement analysis, and operational invariants ensuring that every daily-note run executes every step of the daily template in full, eliminating unauthorized short-circuiting where agents skip steps because the existing note appears current or the full pass is perceived as large.
 
-- **Stated Purpose:** Eliminate shortcutting and incomplete passes in daily note runs by establishing an imperative execution contract across all invocation surfaces (PKB template `tpl_daily`, runner prompts, and plugin skills).
+- **Stated Purpose:** Eliminate shortcutting and incomplete passes in daily note runs by establishing an imperative execution contract across all invocation surfaces (the PKB daily-note template, runner prompts, and plugin skills).
 - **Primary Audience:** Framework architects, system developers, workflow designers, and QA reviewers.
 - **Governing Axioms and Rules:** [`plugins/rbg/skills/axioms/do-one-thing.md`](../../plugins/rbg/skills/axioms/do-one-thing.md) (execute precisely the requested task; no unauthorized scope cuts), [`plugins/rbg/skills/axioms/fail-fast.md`](../../plugins/rbg/skills/axioms/fail-fast.md) (no workarounds or silent omissions), and [`specs/enforcement/enforcement.md`](enforcement.md) (proportional intervention).
 
@@ -43,8 +43,8 @@ The agent stated that it curtailed the run because "the note looked current and 
 ### 2.2 Root Cause Analysis
 
 1. **Cognitive Evasion Under Large Task Breadth:** The daily note lifecycle comprises eight distinct phases (Steps 0 through 7), requiring multiple tool and subagent interactions. When an agent encounters an existing daily note touched earlier in the day, the agent rationalizes that doing a partial delta or appending a single line satisfies the goal while avoiding the context load of a full pass.
-2. **Absence of an Imperative Execution Invariant in `tpl_daily`:** While `tpl_daily` enumerates Steps 0 through 7, it lacked an explicit fail-loud precondition forbidding early return on perceived currency, as well as an explicit audit requirement for step completion.
-3. **Surface Drift Across Plugin and Execution Environments:** On `release/v1.0-rc0`, `plugins/ida/skills/daily/SKILL.md` was deleted under the assumption that `tpl_daily` directly governs daily note generation. However, in the installed distribution plugin (`1.0-rc13`), `daily/SKILL.md` remained present but directed the agent to run `wf-daily` (which had been deleted). Furthermore, scheduled task runner prompts loaded separate instructions lacking explicit step-execution guarantees.
+2. **Absence of an Imperative Execution Invariant in the daily-note template:** While the daily-note template enumerates Steps 0 through 7, it lacked an explicit fail-loud precondition forbidding early return on perceived currency, as well as an explicit audit requirement for step completion.
+3. **Surface Drift Across Plugin and Execution Environments:** On `release/v1.0-rc0`, `plugins/ida/skills/daily/SKILL.md` was deleted under the assumption that the daily-note template directly governs daily note generation. However, in the installed distribution plugin (`1.0-rc13`), `daily/SKILL.md` remained present but directed the agent to run `wf-daily` (which had been deleted). Furthermore, scheduled task runner prompts loaded separate instructions lacking explicit step-execution guarantees.
 4. **Unmapped Enforcement in `specs/ENFORCEMENT-MAP.md`:** No entry existed in `specs/ENFORCEMENT-MAP.md` for complete step execution in daily note runs. The only existing daily note entry (row 66) governed brevity and the 25-word scannable ceiling.
 
 ## 3. The Operative Rule: Complete Daily Run Step Execution Invariant
@@ -64,26 +64,26 @@ The table below records the enforcement state across all surfaces a daily run re
 
 | Rule / Nudge | Mechanism | Severity | Detail |
 | :- | :- | :- | :- |
-| **Pre-Change (Current Baseline)**: Complete execution of daily template steps | `instructions` | `advisory` (unmapped) | `tpl_daily: Invocation & Steps 0-7`: Steps are enumerated sequentially, but lack an imperative fail-loud precondition against early exit or subjective currency shortcuts. No entry in `specs/ENFORCEMENT-MAP.md` (unenforced). The installed plugin (`1.0-rc13`) points `/daily` to deleted `wf-daily`. Evidence: October 2026 run admitted skipping Steps 0b, 1, 2, 3, 4, 5, and 6 because "the note looked current and the full pass is large". |
-| **Post-Change (Target Enforcement)**: Complete Daily Run Step Execution Invariant | `instructions` | `imperative` | `tpl_daily: Fail-loud preconditions § 10 & Steps 0-7`, `spec_daily_reconcile_steps: Invariants`, `plugins/ida/skills/daily/SKILL.md:1-25`, runner prompts: Strictly mandates full execution of Steps 0 through 7; forbids skipping steps or early termination based on note currency or pass size; mandates attempting all available tool channels before asserting unreachability; requires internal step-by-step execution receipts. |
+| **Pre-Change (Current Baseline)**: Complete execution of daily template steps | `instructions` | `advisory` (unmapped) | `daily-note template: Invocation & Steps 0-7`: Steps are enumerated sequentially, but lack an imperative fail-loud precondition against early exit or subjective currency shortcuts. No entry in `specs/ENFORCEMENT-MAP.md` (unenforced). The installed plugin (`1.0-rc13`) points `/daily` to deleted `wf-daily`. Evidence: October 2026 run admitted skipping Steps 0b, 1, 2, 3, 4, 5, and 6 because "the note looked current and the full pass is large". |
+| **Post-Change (Target Enforcement)**: Complete Daily Run Step Execution Invariant | `instructions` | `imperative` | `daily-note template: Fail-loud preconditions § 10 & Steps 0-7`, `daily reconcile-steps spec: Invariants`, `plugins/ida/skills/daily/SKILL.md:1-25`, runner prompts: Strictly mandates full execution of Steps 0 through 7; forbids skipping steps or early termination based on note currency or pass size; mandates attempting all available tool channels before asserting unreachability; requires internal step-by-step execution receipts. |
 
 ### 4.1 Surfaces Read by Daily Runs Today
 
 A daily note run touches four distinct surfaces depending on invocation:
 
-1. **PKB Template `tpl_daily` (Primary SSoT):**
+1. **PKB Daily-Note Template (Primary SSoT):**
    - _Role:_ Canonical instruction set for generating and updating daily notes.
-   - _Invocation:_ Loaded via MCP `pkb_get_document({ id: "tpl_daily", detail: "full" })`.
+   - _Invocation:_ Loaded via MCP `pkb_get_document({ id: "<daily-template-id>", detail: "full" })`.
    - _Current State:_ Contains step descriptions and formatting constraints (≤25-word bullets), but lacks an imperative prohibition against skipping steps and lacks a mandatory execution receipt.
-2. **PKB Specification `spec_daily_reconcile_steps`:**
+2. **PKB Daily Reconcile-Steps Specification:**
    - _Role:_ Architectural specification of record for daily note and reconcile steps, invariants, and historical rulings.
    - _Current State:_ Lacks the Complete Step Execution Invariant in its Invariants table.
 3. **Plugin Skill `plugins/ida/skills/daily/SKILL.md`:**
    - _Role:_ CLI and Telegram `/daily` command handler within `plugins/ida`.
-   - _Current State:_ Deleted on `release/v1.0-rc0`; still present in the installed `1.0-rc13` release pointing to non-existent `wf-daily`. Restoring this skill with explicit pointers to `tpl_daily` and step-execution obligations aligns interactive invocation with the canonical PKB template.
+   - _Current State:_ Deleted on `release/v1.0-rc0`; still present in the installed `1.0-rc13` release pointing to non-existent `wf-daily`. Restoring this skill with explicit pointers to the daily-note template and step-execution obligations aligns interactive invocation with the canonical PKB template.
 4. **Scheduled Task Runner Prompt (`daily-morning`):**
    - _Role:_ Directs scheduled morning runs (e.g. via Claude Code scheduled tasks or cron).
-   - _Current State:_ Updated on 2026-10-30 with new instructions to counteract skipped steps. The design provides the prompt contract to ensure future runner prompts remain aligned with `tpl_daily`.
+   - _Current State:_ Updated on 2026-10-30 with new instructions to counteract skipped steps. The design provides the prompt contract to ensure future runner prompts remain aligned with the daily-note template.
 
 ## 5. Empirical Evidence and Justification
 
@@ -119,15 +119,15 @@ Per the enforcement pyramid in [`specs/enforcement/enforcement.md`](enforcement.
 ### 6.1 Analysis of Options
 
 - **Option A (Structural / Mechanical Script or Harness Gate):** Building an executable harness script or programmatic wrapper that runs each step sequentially and validates tool calls via regex or telemetry.
-  - _Evaluation:_ **REJECTED.** Violates the non-mechanical baseline, `no-over-engineering`, and `judgment-non-delegable`. Daily note generation requires semantic synthesis, ADHD-calibrated prioritization, and nuanced judgement that cannot be encapsulated in a deterministic pipeline script.
+  - _Evaluation:_ **REJECTED.** Violates the non-mechanical baseline, `no-over-engineering`, and `judgment-non-delegable`. Daily note generation requires semantic synthesis, user-calibrated prioritization, and nuanced judgement that cannot be encapsulated in a deterministic pipeline script.
 - **Option B (Process Gate / Mandatory QA Subagent):** Requiring every daily note run to dispatch an independent QA subagent to audit all 8 steps before writing to PKB.
   - _Evaluation:_ **DISPROPORTIONATE FOR INITIAL STEP.** Daily note generation is a frequent, routine operational workflow (runs hourly or daily). Adding a mandatory two-agent multi-turn review gate to every scheduled run imposes heavy token overhead and doubles latency.
 - **Option C (Instructions: Imperative with Fail-Loud Preconditions & Execution Receipts):**
   - _Evaluation:_ **SELECTED (The Least-Invasive Winning Increment).**
-  - The failure currently occurs because the rule is _unenforced and advisory_ in `specs/ENFORCEMENT-MAP.md` and `tpl_daily`.
+  - The failure currently occurs because the rule is _unenforced and advisory_ in `specs/ENFORCEMENT-MAP.md` and the daily-note template.
   - Moving within `instructions` from `advisory` to `imperative` exhausts strength within the instructions mechanism before escalating to heavier categories.
   - Strengthening `instructions` with:
-    1. A fail-loud precondition in `tpl_daily` prohibiting step skipping;
+    1. A fail-loud precondition in the daily-note template prohibiting step skipping;
     2. An explicit prohibition against early termination based on perceived note currency or pass size;
     3. An execution receipt contract requiring the agent to record step completion during execution in trace logs;
     4. Restoring `plugins/ida/skills/daily/SKILL.md` to eliminate broken `wf-daily` delegation;
@@ -140,8 +140,8 @@ To guarantee that the change reaches all executing environments without operatio
 ```mermaid
 flowchart TD
     subgraph S1["Surface 1: PKB Template (Immediate)"]
-        TPL["PKB Document tpl_daily"] -->|Runtime Fetch via MCP| RUN["Daily Note Execution Context"]
-        SPEC["PKB Document spec_daily_reconcile_steps"] -->|SSoT Invariants| TPL
+        TPL["PKB daily-note template"] -->|Runtime Fetch via MCP| RUN["Daily Note Execution Context"]
+        SPEC["PKB daily reconcile-steps spec"] -->|SSoT Invariants| TPL
     end
 
     subgraph S2["Surface 2: Scheduled Runner (Immediate / Local)"]
@@ -149,42 +149,42 @@ flowchart TD
     end
 
     subgraph S3["Surface 3: Plugin / Interactive (Next Build)"]
-        SKILL["plugins/ida/skills/daily/SKILL.md"] -->|Routes /daily to tpl_daily| RUN
+        SKILL["plugins/ida/skills/daily/SKILL.md"] -->|Routes /daily to the daily-note template| RUN
         MAP["specs/ENFORCEMENT-MAP.md"] -->|Compliance Tracking| SKILL
     end
 ```
 
-1. **Immediate Propagation via PKB MCP (`tpl_daily`):**
-   - Scheduled tasks and interactive sessions fetch `tpl_daily` dynamically via `codemode.pkb_get_document({ id: "tpl_daily", detail: "full" })` at the start of every run.
-   - Updating `tpl_daily` directly in the PKB ensures that **all subsequent runs--including scheduled runs on unmodified host runners--immediately ingest the updated imperative instructions** on their next invocation.
+1. **Immediate Propagation via PKB MCP (daily-note template):**
+   - Scheduled tasks and interactive sessions fetch the daily-note template dynamically via `codemode.pkb_get_document({ id: "<daily-template-id>", detail: "full" })` at the start of every run.
+   - Updating the daily-note template directly in the PKB ensures that **all subsequent runs--including scheduled runs on unmodified host runners--immediately ingest the updated imperative instructions** on their next invocation.
 2. **Scheduled Runner Alignment (`daily-morning`):**
    - The scheduled task prompt must explicitly instruct:
-     `"Fetch tpl_daily from PKB and execute all Steps 0 through 7 in full sequence. Do NOT cut corners or terminate early if the note appears current."`
+     `"Fetch the daily-note template from PKB and execute all Steps 0 through 7 in full sequence. Do NOT cut corners or terminate early if the note appears current."`
    - This reinforces the template's internal fail-loud preconditions at intake.
 3. **Repository and Distribution Plugin Alignment:**
    - Restore `plugins/ida/skills/daily/SKILL.md` in `release/v1.0-rc0`.
-   - Update its body to fetch `tpl_daily` dynamically from PKB and mandate complete execution of Steps 0 through 7.
+   - Update its body to fetch the daily-note template dynamically from PKB and mandate complete execution of Steps 0 through 7.
    - When the next distribution release is built and deployed, the `/daily` command will seamlessly execute the canonical PKB template.
 
 ## 8. Implemented Build Deliverables
 
 The implementation establishes the complete step execution contract across all target surfaces:
 
-1. **PKB Template (`tpl_daily`):**
+1. **PKB Daily-Note Template:**
    - Precondition 10 added under `## 0. Fail-loud preconditions`:
      `**10. Complete step execution invariant**: Every run MUST execute Steps 0 through 7 in sequence to completion. Cutting corners, skipping steps, or terminating early because the note looks current or the full pass is large is strictly prohibited. External tool unreachability must be confirmed across all available channels before quiet status is recorded. Step-execution verification must remain within execution traces and never be appended to the daily note body.`
    - Under `## Steps`, mandatory execution contract added requiring full execution of Steps 0 through 7 in sequence and verification before proceeding to Step 7 (Write).
-2. **PKB Specification (`spec_daily_reconcile_steps`):**
+2. **PKB Daily Reconcile-Steps Specification:**
    - Added the "Complete Step Execution Invariant" to the `## Ownership and Boundary Invariants` section.
 3. **Plugin Skill Restoration (`plugins/ida/skills/daily/SKILL.md`):**
-   - Restored `plugins/ida/skills/daily/SKILL.md` with frontmatter `name: daily`, pointing `/daily` to dynamic execution of `tpl_daily` with full step completion requirements.
+   - Restored `plugins/ida/skills/daily/SKILL.md` with frontmatter `name: daily`, pointing `/daily` to dynamic execution of the daily-note template with full step completion requirements.
 4. **Enforcement Map Registration (`specs/ENFORCEMENT-MAP.md`):**
    - Registered imperative row 78 for Complete Daily Run Step Execution Invariant under `specs/ENFORCEMENT-MAP.md`.
 
 ## 9. Regulatory Experiment Record
 
 - **Hypothesis:** Upgrading from unmapped advisory step enumeration to Level 2 imperative instructions with fail-loud preconditions, trace receipts, and restored plugin routing will eliminate step-skipping behavior caused by cognitive evasion under large task breadth.
-- **What moved:** From unmapped advisory instructions to Level 2 imperative instructions across all four invocation surfaces (`tpl_daily`, `spec_daily_reconcile_steps`, `plugins/ida/skills/daily/SKILL.md`, and runner prompts).
+- **What moved:** From unmapped advisory instructions to Level 2 imperative instructions across all four invocation surfaces (the daily-note template, the daily reconcile-steps spec, `plugins/ida/skills/daily/SKILL.md`, and runner prompts).
 - **On what evidence:** Documented 2026-10-30 run confessing skipping Steps 0b, 1, 2, 3, 4, 5, and 6 because "the note looked current and the full pass is large", alongside observed multi-day carryover of unverified PR text.
 - **Observation / Promotion Criteria:** Subsequent daily note runs execute all steps (Steps 0 through 7) in sequence, verifiable through execution trace logs, with zero skipped operational phases and zero `## Daily Log` or heartbeat insertions into the daily note body.
 - **Kill / Escalation Criteria:** If future runs continue to omit steps or terminate prematurely under large task breadth, escalate to Level 4 structural partitioning (individual task nodes per phase) or Level 5 process gates (mandatory independent QA verification).

@@ -50,7 +50,7 @@ The workflow library operates across three resolution tiers (per `plugins/ida/sk
    - **Target Workflow:** `wf-tdd.md` (`plugins/ida/skills/workflow-library/workflows/wf-tdd.md`).
    - **Integration Point:** `## Constraints (normative)`.
 2. **Project Tier (PKB templates scoped to project):**
-   - **Target Workflow:** `aops-wf-dev-task` (PKB node scoped to project `aops`, governing academicOps development tasks).
+   - **Target Workflow:** the project-tier development-task workflow template (a PKB node scoped to the academicOps project, governing its development tasks).
    - **Integration Point:** `Procedure` (Step 3: Build) and Output contract.
 3. **PKB Tier (Portable personal workflows with no project):**
    - **Target Workflow:** Currently absent (no standalone generic TDD template exists in the PKB tier; resolution falls through to Universal `wf-tdd.md`).
@@ -58,10 +58,10 @@ The workflow library operates across three resolution tiers (per `plugins/ida/sk
 
 ### 3. Enforcement Map Status
 
-- **Current State in `specs/ENFORCEMENT-MAP.md`:** Neither `.agents/rules/tests-verify-behaviour.md` nor `wf-tdd.md` nor `aops-wf-dev-task` currently has an entry in `specs/ENFORCEMENT-MAP.md`. This absence is formally recorded.
+- **Current State in `specs/ENFORCEMENT-MAP.md`:** Neither `.agents/rules/tests-verify-behaviour.md` nor `wf-tdd.md` nor the project-tier development-task workflow template currently has an entry in `specs/ENFORCEMENT-MAP.md`. This absence is formally recorded.
 - **Proposed Entry for Stage 2 (Build):**
   ```markdown
-  | [Project Rule: Tests verify behaviour (outputs, not contents)](../.agents/rules/tests-verify-behaviour.md) -- Tests assert observable outputs, never contents themselves; no unit tests for documentation or instruction files (text documents are not functions and produce no outputs); no test asserts that code contains a particular phrase, variable, enum, constant, condition, or similar. | instructions | imperative | `.agents/rules/tests-verify-behaviour.md:6-28`; `plugins/ida/skills/workflow-library/workflows/wf-tdd.md:25-40`; `aops-wf-dev-task` |
+  | [Project Rule: Tests verify behaviour (outputs, not contents)](../.agents/rules/tests-verify-behaviour.md) -- Tests assert observable outputs, never contents themselves; no unit tests for documentation or instruction files (text documents are not functions and produce no outputs); no test asserts that code contains a particular phrase, variable, enum, constant, condition, or similar. | instructions | imperative | `.agents/rules/tests-verify-behaviour.md:6-28`; `plugins/ida/skills/workflow-library/workflows/wf-tdd.md:25-40`; project-tier development-task workflow template |
   ```
 
 ### 4. Enforcement Pyramid & Proportionality Analysis
@@ -100,7 +100,7 @@ In `## Constraints (normative)`, update and sharpen the constraints:
 - Tests check outputs, never contents. Never write unit tests for documentation or instruction files: text documents are not functions and produce no outputs, so we do not test them. For code, never write a test that asserts that code says a particular phrase or uses a particular variable, enum, constant, condition, or similar; assert observable outputs, never contents themselves.
 ```
 
-### Target 3: `aops-wf-dev-task` (PKB Project Tier Workflow)
+### Target 3: Project-tier development-task workflow (PKB Project Tier Workflow)
 
 In `## Procedure`, Step 3 (Build):
 

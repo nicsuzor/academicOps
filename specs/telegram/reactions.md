@@ -25,7 +25,7 @@ As an operator interacting with multiple bot personas across chat windows, I wan
   - `👀` : Inbound message received and being read/assessed.
   - `✍` : Captured: note, decision, intake, or task persisted to knowledge base.
   - `👨‍💻` : Working locally (in-session): execution handled directly by the receiving persona in its active session (bot itself holds it).
-  - `🐱` : Dispatched (polecat): briefed and dispatched to an isolated background worker (a polecat holds it).
+  - `🐳` : Dispatched (polecat): briefed and dispatched to an isolated background worker (a polecat holds it).
   - `🕊` : Dispatched (subagent): delegated to an internal subagent (a subagent holds it).
   - `🤝` : Dispatched (peer): briefed and handed off to an independent peer agent (a peer holds it, e.g. Sara or Pauli).
   - `👌` : Understood / addition taken on: acknowledged an addition, modification, or constraint taken on to existing work or direction.
@@ -33,7 +33,7 @@ As an operator interacting with multiple bot personas across chat windows, I wan
   - `💔` : Blocked or failed: execution halted or hit an external blocker (reply details the refusal).
   - `🎉` : Completed: task answered or resolved with substantive reply.
   - `🫡` : Acknowledged: request handled/completed where no substantive reply was owed.
-- **AC-2.2** Given work execution or delegation, when work is executed directly in-session, then all personas react with `👨‍💻` ("the bot holds it locally"); when work is handed to an isolated background worker, then all personas react with `🐱` ("a polecat holds it"); when work is delegated to an internal subagent, then all personas react with `🕊` ("a subagent holds it"); and when work is briefed and handed off to an independent peer agent, then all personas react with `🤝` ("a peer holds it").
+- **AC-2.2** Given work execution or delegation, when work is executed directly in-session, then all personas react with `👨‍💻` ("the bot holds it locally"); when work is handed to an isolated background worker, then all personas react with `🐳` ("a polecat holds it"); when work is delegated to an internal subagent, then all personas react with `🕊` ("a subagent holds it"); and when work is briefed and handed off to an independent peer agent, then all personas react with `🤝` ("a peer holds it").
 - **AC-2.3** Given communicative feedback or content-specific reactions, when an agent or operator reacts to message substance, then every reaction carries exactly one semantic meaning across all personas:
   - `👎` : Negative feedback on substance / report failure (prompts autonomous remediation).
   - `👍` : Affirmative confirmation or approval.
@@ -74,7 +74,7 @@ All agent personas operating over Telegram share a single reaction legend. Each 
 | `👀` | Lifecycle | Inbound received | Automatically applied upon message arrival while reading and planning |
 | `✍` | Lifecycle | Captured | Applied when note, decision, intake, or task is persisted to knowledge base |
 | `👨‍💻` | Lifecycle | Working locally | Applied when work is executed directly by the receiving persona in-session (bot itself holds it) |
-| `🐱` | Lifecycle | Dispatched (polecat) | Applied when work is briefed and launched to an isolated background worker (a polecat holds it) |
+| `🐳` | Lifecycle | Dispatched (polecat) | Applied when work is briefed and launched to an isolated background worker (a polecat holds it) |
 | `🕊` | Lifecycle | Dispatched (subagent) | Applied when work is delegated to an internal subagent (a subagent holds it) |
 | `🤝` | Lifecycle | Dispatched (peer) | Applied when work is briefed and handed off to an independent peer agent (a peer holds it, e.g. Sara or Pauli) |
 | `👌` | Lifecycle | Understood / Addition taken on | Applied when acknowledging an addition, modification, or constraint taken on to active work |
@@ -101,7 +101,7 @@ To prevent semantic collision:
 3. Every execution surface has a distinct holding reaction:
    - `👨‍💻`: Local in-session execution (the bot persona itself holds it).
    - `🕊`: Internal subagent delegation (a subagent holds it).
-   - `🐱`: Isolated background worker dispatch (a polecat holds it).
+   - `🐳`: Isolated background worker dispatch (a polecat holds it).
    - `🤝`: Independent peer agent delegation (a peer holds it).
 4. `👌` provides a dedicated acknowledgment for additions and mid-flight constraints taken on, distinct from initial receipt (`👀`) and complete acknowledgement where no reply was owed (`🫡`).
 
@@ -118,7 +118,7 @@ Implementation tasks must satisfy seven outcome-level build criteria, each valid
 
 | Build Criterion | Outcome Description | Verification Check |
 | :- | :- | :- |
-| **BC-1: Unified Legend in Instructions** | Agent instructions define the unified shared legend with `🐱` for polecat work and `🕊` for subagent work, with no conflicting definitions across personas. | Inspection of agent instructions shows the unified legend documented with `🐱` for polecats and `🕊` for subagents and no conflicting reaction mappings. |
+| **BC-1: Unified Legend in Instructions** | Agent instructions define the unified shared legend with `🐳` for polecat work and `🕊` for subagent work, with no conflicting definitions across personas. | Inspection of agent instructions shows the unified legend documented with `🐳` for polecats and `🕊` for subagents and no conflicting reaction mappings. |
 | **BC-2: Normalization & Single-Grapheme Validation** | Normalization cleans Unicode variation selectors, maps canonical equivalents, validates single grapheme clusters, and accepts arbitrary valid single emojis. | Demonstration that arbitrary valid emojis normalize cleanly, variation selectors are stripped, and multi-emoji payloads are rejected upfront. |
 | **BC-3: Authoritative Error Propagation** | The reaction tool and bot client propagate Telegram API responses directly, returning failure with Telegram's verbatim error on rejection. | Demonstration that Telegram `REACTION_INVALID` responses return failure carrying Telegram's verbatim error description, and accepted reactions return success. |
 | **BC-4: Regression & Automated Invariants** | Automatic reaction behavior (such as `👀` on inbound messages) and lifecycle transitions remain fully operational. | Successful execution of the full regression test suite with zero test failures. |

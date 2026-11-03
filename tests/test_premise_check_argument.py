@@ -391,10 +391,6 @@ _REFUSALS = {
         dict(drop=("Valid: (6)",), extra=(f"Valid: (6) fails {_DEFECT} -- no premise",)),
         "Valid says fails for (6)",
     ),
-    "supported_rank": (
-        dict(drop=("Supported",), extra=(f"Supported: weakest {_STRONG.phrase} -- all strong",)),
-        "the block's weakest premise is (3)",
-    ),
     "waived_item": (
         dict(drop=("Waived",), extra=("Waived: the warrant was vague -- fine",)),
         "Waived entries that do not start with a format item",
@@ -1283,9 +1279,8 @@ def test_waived_ask_wording_honored_when_block_is_not_none():
     assert failures_waived == []
 
 
-def test_waived_basis_wording_when_basis_is_none_without_escalating_low_rank():
-    """AC5: Honors Waived: basis wording when p.basis is None without escalating matched unchecked/assumed premises above rank=1."""
-    # Case 1: Premise with non-standard basis phrase (p.basis is None)
+def test_custom_and_omitted_basis_wording_accepted_without_rank_failures():
+    """AC5 / Stage 2: Custom basis wording or omitted basis trailers do not cause false-positive rank failures."""
     block_text = (
         "===\n"
         f"asks:\n  {ASK_A}: test\n"
@@ -1299,23 +1294,21 @@ def test_waived_basis_wording_when_basis_is_none_without_escalating_low_rank():
     assert arg is not None
     assert arg.premises[0].basis is None
 
-    # Without waiver: fails because basis is unmatched (rank 0)
-    reason_no_waiver = ra.parse_reason(
+    # Supported with natural language / descriptive reason passes without rank check failure
+    reason = ra.parse_reason(
         f"Judged: CID; asks {ASK_A}\n"
         "Valid: (2) holds -- warrant\n"
-        "Supported: weakest I read it -- direct logs\n"
+        "Supported: (1) verified from direct logs, bearing stakes\n"
         f"Answered: {ASK_A} ← (2)\n"
         "Sufficient: (2) obvious\n"
         "Waived: none\n"
         "Relay: none\n",
         _VOCAB,
     )
-    failures_no_waiver = ra.pass_failures(reason_no_waiver, arg, _VOCAB)
-    assert any(
-        "weakest premise is (1) 'an unmatched basis' (rank 0)" in f for f in failures_no_waiver
-    )
+    failures = ra.pass_failures(reason, arg, _VOCAB)
+    assert failures == []
 
-    # With Waived: basis wording: passes because p.basis is None is waived to match Supported
+    # Waived: basis wording is also parsed as a valid format item without failure
     reason_waived = ra.parse_reason(
         f"Judged: CID; asks {ASK_A}\n"
         "Valid: (2) holds -- warrant\n"
@@ -1326,42 +1319,63 @@ def test_waived_basis_wording_when_basis_is_none_without_escalating_low_rank():
         "Relay: none\n",
         _VOCAB,
     )
-    failures_waived = ra.pass_failures(reason_waived, arg, _VOCAB)
-    assert failures_waived == []
+    assert ra.pass_failures(reason_waived, arg, _VOCAB) == []
 
-    # Case 2: But matched unchecked (rank 1) or assumed (rank 0) CANNOT be escalated above rank 1
-    block_text_with_unchecked = (
+
+def test_clean_natural_language_block_without_notes_and_without_basis_trailers():
+    """Stage 2: Clean natural language blocks (no notes:, no -- <basis> trailers) parse and record PASS cleanly."""
+    block = (
         "===\n"
-        f"asks:\n  {ASK_A}: test\n"
+        f"asks:\n  {ASK_A}: is the feature working?\n"
         f"answers:\n  {ASK_A}: 3\n"
         "===\n\n"
-        "(1) Premise with custom wording. -- verified from logs\n"
-        "(2) Another premise that is unchecked. -- worker reported, unchecked\n"
-        "-- Warrant. Unless: def; status. --\n"
-        "(3) So, conclusion.\n"
+        "(1) Code modification was built and verified (read from `plugins/ida/hooks/report_argument.py:42`).\n"
+        "(2) Unit test suite executed cleanly with 0 failures (run: exit_code = 0).\n"
+        "-- When code changes and tests pass, feature is verified. Unless: test coverage incomplete; ruled out by full suite run. --\n"
+        "(3) So, the feature is working.\n"
     )
-    arg_unchecked = ra.parse_block(block_text_with_unchecked, _VOCAB)
-    assert arg_unchecked is not None
-    assert arg_unchecked.premises[0].basis is None
-    assert arg_unchecked.premises[1].basis is not None
-    assert arg_unchecked.premises[1].rank == 1
+    # Check syntax validation
+    valid, err, ast = ra.check_argdown_block(block)
+    assert valid is True, f"Syntax check failed: {err}"
+    assert ast is not None
 
-    # Checker attempts to claim Supported: weakest I read it (rank 3) with Waived: basis wording
-    reason_escalate_attempt = ra.parse_reason(
-        f"Judged: CID; asks {ASK_A}\n"
-        "Valid: (3) holds -- warrant\n"
-        "Supported: weakest I read it -- logs\n"
+    arg = ra.parse_block(block, _VOCAB)
+    assert arg is not None
+    assert arg.asks == [ASK_A]
+    assert arg.notes == {}
+    assert len(arg.premises) == 2
+    assert arg.premises[0].basis is None
+    assert arg.premises[1].basis is None
+
+    session_id = "s-clean-nat"
+    text = f"```argdown\n{block}```\n"
+    _arm_with_report(session_id, "CID-CLEAN", text=text)
+
+    # Checker records PASS with qualitative natural language under Supported:
+    reason = (
+        f"Judged: CID-CLEAN; asks {ASK_A}\n"
+        "Valid: (3) holds -- code changes and test suite execution verify behavior\n"
+        "Supported: (1) and (2) verified directly from source diffs and clean test suite run (exit_code=0)\n"
         f"Answered: {ASK_A} ← (3)\n"
-        "Sufficient: (3) obvious\n"
-        "Waived: basis wording -- custom phrase\n"
-        "Relay: none\n",
-        _VOCAB,
+        "Sufficient: (3) material; authority-backed; no objection\n"
+        "Waived: none\n"
+        "Relay: none\n"
     )
-    failures_escalate = ra.pass_failures(reason_escalate_attempt, arg_unchecked, _VOCAB)
-    assert any(
-        "the block's weakest premise is (2) 'worker reported, unchecked' (rank 1)" in f
-        for f in failures_escalate
+    tracer = _configured()
+    res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="CID-CLEAN",
+        verdict="PASS",
+        reason=reason,
+        tracer_mod=tracer,
     )
+    assert res["ok"] is True
+    assert res["verdict"] == "PASS"
+    assert pcg.is_armed(session_id) is False
+
+    span_attrs = tracer.exported[0]["attributes"]
+    assert span_attrs["premise_check.weakest_basis_term"] == "semantic"
+    assert "exit_code=0" in span_attrs["premise_check.weakest_basis"]
 
 
 # ---------------------------------------------------------------------------
@@ -2101,3 +2115,162 @@ def test_indented_premise_continuation_lines_with_dashes_parse_and_record_pass()
         tracer_mod=_configured(),
     )
     assert attr["verdict"] == "PASS"
+
+
+# ---------------------------------------------------------------------------
+# Hotfix: #3398 (block shape), #3399 (transport decoding), #3382 (named defect)
+# ---------------------------------------------------------------------------
+
+
+def test_replay_issue_3398_turn_5_block_records_pass():
+    """AC1: Replay #3398 turn-5 block (asks/answers in list/label idiom) and recorder accepts PASS without waiver."""
+    block = (
+        "===\n"
+        "title: What is next on the user's work list\n"
+        "granularity:\n"
+        "  level: micro\n"
+        '  floor: "Task records and list output read from fixtures."\n'
+        "model:\n"
+        "  mode: strict\n"
+        "asks:\n"
+        "  - id: tg-3107\n"
+        '    text: "what\'s next on the list for work?"\n'
+        "answers:\n"
+        "  tg-3107: Next\n"
+        "===\n\n"
+        '(1) [Deadline sort]: The task list puts tasks with hard deadlines first and then sorts the rest by value. {basis: "observed", pointer: "mock_list_tasks default order", source: "cliff lane"}\n'
+        '(2) [First rows]: The first four rows are the policy decision and its options. {basis: "observed", pointer: "mock_list_tasks rows 1-4", source: "due dates"}\n'
+        '(3) [Options]: The submission and inquiry tasks are options under the parent decision. {basis: "observed", pointer: "frontmatter", source: "parent: decision-parent"}\n'
+        '(4) [Booking]: The user said they will book the team meeting tonight or tomorrow. {basis: "reported-by", pointer: "relay", source: "tonight or tomorrow"}\n'
+        '(5) [Review blocked]: The analysis plan review is blocked because prerequisite tasks are queued. {basis: "observed", pointer: "task-review", source: "blocked: true"}\n'
+        '-- Deadline-first warrant: The list\'s deadline-first order is the work order and a blocked task cannot start. Unless: the user ranks by something else today; not observed. {uses: [1, 2, 3, 4, 5], basis: "stated", pointer: "mock_list_tasks"} --\n'
+        "(6) [Next]: So, the next work is the policy decision with its inquiry option, then the compliance filing, and booking the team meeting. The analysis review is not yet open.\n"
+    )
+    report_text = f"## Report\n\n```argdown\n{block}```\n"
+    session_id = "s-3398-turn5"
+    claim_id = "claim-3398-turn5"
+    _arm_with_report(session_id, claim_id, text=report_text)
+
+    reason = (
+        f"Judged: {claim_id}; asks tg-3107\n"
+        "Valid: (6) holds -- deadline-first list order (1) applied to rows (2), folding options under their parent (3), adding the user's booking plan (4), excluding a blocked task (5) yields the stated next items\n"
+        "Supported: (1)(2)(3)(5) observed list output and task records with pointers; (4) relay of the user's words\n"
+        "Answered: tg-3107 ← (6)\n"
+        "Sufficient: (6) material; obvious; no objection\n"
+        "Waived: none\n"
+        "Relay: none\n"
+    )
+
+    result = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=claim_id,
+        verdict="PASS",
+        reason=reason,
+        tracer_mod=_configured(),
+    )
+    assert result["verdict"] == "PASS"
+    assert result["disarmed"] is True
+
+
+def test_entity_escaped_argdown_block_parses_identically_to_raw():
+    """AC2: Feed a block containing <Argument label> and &, entity-escaped as in #3399, and recorder parses identically."""
+    raw_block = (
+        "===\n"
+        "asks:\n"
+        "  tg-3107: what is next & when?\n"
+        "answers:\n"
+        "  tg-3107: 2\n"
+        "===\n\n"
+        "<Deadline order>\n"
+        "(1) [Observation]: Task & Engagement observations are ordered by deadline. -- I read it\n"
+        "-- Warrant: deadline order holds. Unless: overridden; not observed. --\n"
+        "(2) [Next]: So Next tasks are prioritized.\n"
+    )
+    escaped_block = (
+        "===\n"
+        "asks:\n"
+        "  tg-3107: what is next &amp; when?\n"
+        "answers:\n"
+        "  tg-3107: 2\n"
+        "===\n\n"
+        "&lt;Deadline order&gt;\n"
+        "(1) [Observation]: Task &amp; Engagement observations are ordered by deadline. -- I read it\n"
+        "-- Warrant: deadline order holds. Unless: overridden; not observed. --\n"
+        "(2) [Next]: So Next tasks are prioritized.\n"
+    )
+
+    # 1. Normalisation and validation parse identically
+    valid_raw, err_raw, ast_raw = ra.check_argdown_block(raw_block)
+    valid_esc, err_esc, ast_esc = ra.check_argdown_block(escaped_block)
+    assert valid_raw is True and err_raw == ""
+    assert valid_esc is True and err_esc == ""
+    assert ast_esc == ast_raw
+
+    # 2. Block parser produces identical Argument structures
+    parsed_raw = ra.parse_block(raw_block, _VOCAB)
+    parsed_esc = ra.parse_block(escaped_block, _VOCAB)
+    assert parsed_raw is not None
+    assert parsed_esc == parsed_raw
+
+    # 3. Verdict recording succeeds on the entity-escaped block without waivers
+    session_id = "s-3399-escaped"
+    claim_id = "claim-3399"
+    report_text = f"## Report\n\n```argdown\n{escaped_block}```\n"
+    _arm_with_report(session_id, claim_id, text=report_text)
+
+    reason = (
+        f"Judged: {claim_id}; asks tg-3107\n"
+        "Valid: (2) holds -- warrant applied to (1)\n"
+        "Supported: (1) direct observation\n"
+        "Answered: tg-3107 ← (2)\n"
+        "Sufficient: (2) obvious\n"
+        "Waived: none\n"
+        "Relay: none\n"
+    )
+    result = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=claim_id,
+        verdict="PASS",
+        reason=reason,
+        tracer_mod=_configured(),
+    )
+    assert result["verdict"] == "PASS"
+
+
+def test_reason_check_refusal_for_unparseable_block_names_failing_line_or_key():
+    """AC3: Reason-check refusal for an unparseable block names the failing line or key and expected shape."""
+    # A block with a syntax error (malformed inference line missing closing '--')
+    bad_block = (
+        "===\n"
+        "asks:\n"
+        "  tg-1: question\n"
+        "answers:\n"
+        "  tg-1: 2\n"
+        "===\n\n"
+        "(1) Observation premise.\n"
+        "-- Malformed warrant with no closing dashes\n"
+        "(2) So conclusion.\n"
+    )
+    judged_text = f"```argdown\n{bad_block}```\n"
+
+    reason = (
+        "Judged: claim-3382; asks tg-1\n"
+        "Valid: (2) holds -- warrant\n"
+        "Supported: (1) observation\n"
+        "Answered: tg-1 ← (2)\n"
+        "Sufficient: (2) obvious\n"
+        "Waived: none\n"
+        "Relay: none\n"
+    )
+
+    with pytest.raises(ValueError) as exc_info:
+        pcv.judge_reason("PASS", reason, judged_text)
+
+    msg = str(exc_info.value)
+    # The reason-check refusal must state that the reason fails checks,
+    # and explicitly name the failing line or key and the shape expected.
+    assert "the reason fails the recorder's checks" in msg
+    assert "the judged text has no argdown block that parses" in msg
+    assert "Malformed inference line" in msg or "missing closing '--'" in msg
+    assert "-- Malformed warrant with no closing dashes" in msg
+    assert "Required remediation format" in msg

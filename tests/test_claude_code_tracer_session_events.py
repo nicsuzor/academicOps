@@ -256,6 +256,98 @@ def test_turn_opened_by_pre_tool_continues_after_resume(tracer_env, exporter):
     assert _turn_numbers(exporter) == [1, 2]
 
 
+def test_unprompted_turn_root_carries_own_trigger_not_repeated_prompt(tracer_env, exporter):
+    """A turn starting without a new user prompt (e.g. continuation or unprompted tool)
+    carries its own trigger as input.value and turn.source, rather than repeating
+    the earlier turn's prompt."""
+    _hook(cct.handle_user_prompt_submit, tracer_env, prompt="first prompt")
+    _append_prompt(tracer_env, "first prompt")
+    _hook(cct.handle_stop, tracer_env, last_assistant_message="first reply")
+
+    # Turn 2 starts via PreToolUse without a new UserPromptSubmit or new transcript entry
+    _hook(
+        cct.handle_pre_tool,
+        tracer_env,
+        tool_name="Bash",
+        tool_input={"command": "ls -la", "description": "list files"},
+        tool_use_id="t2",
+    )
+    _hook(cct.handle_stop, tracer_env, last_assistant_message="second reply")
+
+    roots = exporter.named("claude-code-turn")
+    assert len(roots) == 2
+    turn1, turn2 = roots
+    assert turn1.attributes["input.value"] == "first prompt"
+    assert turn1.attributes["output.value"] == "first reply"
+
+    assert turn2.attributes.get("input.value") != "first prompt"
+    assert "Bash" in turn2.attributes.get("input.value", "")
+    assert turn2.attributes.get("turn.source") == "tool"
+    assert turn2.attributes["output.value"] == "second reply"
+
+
+def test_subagent_background_tool_does_not_create_phantom_repeated_prompt_turn(
+    tracer_env, exporter
+):
+    """In-process subagent background tool calls while the main turn is closed
+    must not open a phantom turn root that repeats the parent turn's prompt."""
+    # Turn 1: Main thread dispatches a subagent
+    _hook(cct.handle_user_prompt_submit, tracer_env, prompt="scheduled task")
+    _append_prompt(tracer_env, "scheduled task")
+    tin = {"subagent_type": "sweeper", "prompt": "run sweep"}
+    _hook(cct.handle_pre_tool, tracer_env, tool_name="Agent", tool_input=tin, tool_use_id="a1")
+    _hook(
+        cct.handle_post_tool,
+        tracer_env,
+        tool_name="Agent",
+        tool_input=tin,
+        tool_use_id="a1",
+        tool_response={"agentId": "sub_1", "agentType": "sweeper"},
+    )
+    _hook(cct.handle_stop, tracer_env, last_assistant_message="sweeper running")
+
+    # Background subagent executes a tool call while main turn is closed
+    sub_tool_in = {"command": "echo check"}
+    _hook(
+        cct.handle_pre_tool,
+        tracer_env,
+        agent_id="sub_1",
+        agent_type="sweeper",
+        tool_name="Bash",
+        tool_input=sub_tool_in,
+        tool_use_id="st1",
+    )
+    _hook(
+        cct.handle_post_tool,
+        tracer_env,
+        agent_id="sub_1",
+        agent_type="sweeper",
+        tool_name="Bash",
+        tool_input=sub_tool_in,
+        tool_use_id="st1",
+        tool_response={"stdout": "check"},
+    )
+
+    # Hand-back arrives from subagent
+    _hook(
+        cct.handle_user_prompt_submit,
+        tracer_env,
+        prompt="<agent-message from='sub_1'>done</agent-message>",
+    )
+    _append_prompt(tracer_env, "<agent-message from='sub_1'>done</agent-message>")
+    _hook(cct.handle_stop, tracer_env, last_assistant_message="finished all work")
+
+    roots = exporter.named("claude-code-turn")
+    # Must only have 2 real turn roots, not 3 (no phantom turn root)
+    assert len(roots) == 2, (
+        f"Expected 2 turn roots, found {len(roots)}: {[r.attributes.get('input.value') for r in roots]}"
+    )
+    assert roots[0].attributes["input.value"] == "scheduled task"
+    assert roots[0].attributes["output.value"] == "sweeper running"
+    assert roots[1].attributes["input.value"] == "<agent-message from='sub_1'>done</agent-message>"
+    assert roots[1].attributes["output.value"] == "finished all work"
+
+
 # --- turn_number: entries that are not prompts ----------------------------------
 #
 # Entry shapes as Claude Code writes them. A typed or skill prompt carries
@@ -947,3 +1039,97 @@ def test_aops_debug_agy_events_carry_full_payload_without_raw_payload_duplicatio
         expected_tool = raw_extra["toolCall"]["name"]
         assert span.attributes.get("tool.name") == expected_tool
         assert span.attributes.get("tool.type") == expected_tool
+
+
+def test_claude_code_background_subagent_run_span(tracer_env, exporter, monkeypatch):
+    """A background Claude Code subagent's run shows as one span from launch to
+    SubagentStop, under the parent's Agent span."""
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://collector.invalid:4318")
+    sub_agent_id = "subagent-bg-456"
+
+    # 1. Turn starts
+    _hook(cct.handle_user_prompt_submit, tracer_env, prompt="Run background worker")
+
+    # 2. Parent launches background subagent
+    tool_input = {"subagent_type": "james", "prompt": "audit task"}
+    tool_response = {"isAsync": True, "status": "async_launched", "agentId": sub_agent_id}
+
+    _hook(
+        cct.handle_pre_tool,
+        tracer_env,
+        tool_name="Agent",
+        tool_input=tool_input,
+        tool_use_id="toolu_agent_01",
+    )
+    _hook(
+        cct.handle_post_tool,
+        tracer_env,
+        tool_name="Agent",
+        tool_input=tool_input,
+        tool_response=tool_response,
+        tool_use_id="toolu_agent_01",
+    )
+
+    (parent_agent_span,) = exporter.named("Agent")
+    assert parent_agent_span.attributes["openinference.span.kind"] == "AGENT"
+    assert parent_agent_span.attributes["agent.id"] == sub_agent_id
+
+    # 3. SubagentStop fires when background agent finishes
+    _hook(
+        cct.handle_subagent_stop,
+        tracer_env,
+        agent_id=sub_agent_id,
+        agent_type="james",
+        last_assistant_message="Subagent task completed.",
+    )
+
+    # Subagent run span must show under parent's Agent span
+    run_spans = [
+        s
+        for s in exporter.spans
+        if s.attributes.get("agent.id") == sub_agent_id and s != parent_agent_span
+    ]
+    assert len(run_spans) == 1
+    run_span = run_spans[0]
+    assert run_span.attributes["openinference.span.kind"] == "AGENT"
+    assert run_span.parent is not None
+    assert run_span.parent.span_id == parent_agent_span.context.span_id
+    assert run_span.start_time <= run_span.end_time
+    assert run_span.attributes["subagent.id"] == sub_agent_id
+    assert run_span.attributes.get("agent.name") == "james"
+
+
+def test_claude_code_handback_turn_names_subagent(tracer_env, exporter, monkeypatch):
+    """The hand-back turn carries an attribute naming the subagent."""
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://collector.invalid:4318")
+    sub_agent_id = "subagent-bg-789"
+
+    # Subagent returns to parent in a new turn
+    handback_prompt = f'<agent-message from="{sub_agent_id}">Here is the report</agent-message>'
+    _hook(cct.handle_user_prompt_submit, tracer_env, prompt=handback_prompt)
+    _hook(cct.handle_stop, tracer_env, last_assistant_message="Report received.")
+
+    (turn_root,) = exporter.named("claude-code-turn")
+    assert turn_root.attributes.get("subagent.id") == sub_agent_id
+
+
+def test_ida_handlers_emit_debug_spans_without_aops_debug_plugin(tracer_env, exporter, monkeypatch):
+    """Debug spans are emitted on every surface the hook tracer runs on, cloud sessions included,
+    even when aops-debug plugin is not loaded."""
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://collector.invalid:4318")
+
+    ctx = dispatch.HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        session_id=SESSION,
+        raw={"session_id": SESSION, "prompt": "Hello"},
+    )
+
+    # Run UserPromptSubmit through ida's handlers
+    ida_handlers = handlers.HANDLERS.get("UserPromptSubmit", [])
+    for h in ida_handlers:
+        h(ctx)
+
+    dbg_spans = exporter.named("aops-debug.UserPromptSubmit")
+    assert len(dbg_spans) == 1
+    assert dbg_spans[0].attributes["session.id"] == SESSION

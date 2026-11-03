@@ -10,11 +10,12 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
-  const allowFrom = 8860530746;
+  const allowFrom = 1111111111;
 
   function setupTest() {
     const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-btn-layout-"));
     const config = loadConfig({
+      MINI_APP_URL: "https://ida.example.test",
       TELEGRAM_BOT_TOKEN: "test-token",
       IDA_TELEGRAM_ROLE: "primary",
       ALLOWED_USER_IDS: String(allowFrom),
@@ -235,7 +236,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
         const kb = apiCalls[0].body.reply_markup?.inline_keyboard || [];
         expect(kb.length).toBe(1);
         expect(kb[0].length).toBe(1);
-        expect(kb[0][0].text).toBe("🔍 Details");
+        expect(kb[0][0].text).toBe("🔍");
         expect(kb[0][0].web_app).toBeDefined();
       } finally {
         cleanup();
@@ -267,12 +268,12 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
         const kb = apiCalls[0].body.reply_markup?.inline_keyboard || [];
         expect(kb.length).toBe(1);
         expect(kb[0].length).toBe(6);
-        expect(kb[0][0].text).toBe("🔍 Details");
-        expect(kb[0][1].text).toBe("🧐 Check logic");
+        expect(kb[0][0].text).toBe("🔍");
+        expect(kb[0][1].text).toBe("🧐 Check");
         expect(kb[0][2].text).toBe("💡 Explain");
-        expect(kb[0][3].text).toBe("🧾 Reasons");
-        expect(kb[0][4].text).toBe("✅ Accept recommendation");
-        expect(kb[0][5].text).toBe("❌ Decline recommendation");
+        expect(kb[0][3].text).toBe("🧾");
+        expect(kb[0][4].text).toBe("✅");
+        expect(kb[0][5].text).toBe("❌");
       } finally {
         cleanup();
       }
@@ -322,12 +323,12 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
         // Row 2: Caller row 2 [B5, B6, B7, B8]
         expect(kb.length).toBe(3);
         expect(kb[0].map((b: any) => b.text)).toEqual([
-          "🔍 Details",
-          "🧐 Check logic",
+          "🔍",
+          "🧐 Check",
           "💡 Explain",
-          "🧾 Reasons",
-          "✅ Accept recommendation",
-          "❌ Decline recommendation",
+          "🧾",
+          "✅",
+          "❌",
         ]);
         expect(kb[1].map((b: any) => b.text)).toEqual(["B1", "B2", "B3", "B4"]);
         expect(kb[2].map((b: any) => b.text)).toEqual(["B5", "B6", "B7", "B8"]);
@@ -336,7 +337,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
       }
     });
 
-    test("defect check: without predefined_row, Details and actions remain on separate rows below caller buttons", async () => {
+    test("defect check: without predefined_row, Details and actions sit together on a single row below caller buttons", async () => {
       const { mcp, apiCalls, cleanup } = setupTest();
       try {
         const resp = await mcp.handleMessage({
@@ -361,17 +362,16 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
         const kb = apiCalls[0].body.reply_markup?.inline_keyboard || [];
         // Default behaviour:
         // Row 0: Caller buttons ([Caller Button])
-        // Row 1: Details ([🔍 Details])
-        // Row 2: Actions ([🧐 Check logic, 💡 Explain, 🧾 Reasons, ✅ Accept recommendation, ❌ Decline recommendation])
-        expect(kb.length).toBe(3);
+        // Row 1: Predefined row ([🔍, 🧐 Check, 💡 Explain, 🧾, ✅, ❌])
+        expect(kb.length).toBe(2);
         expect(kb[0].map((b: any) => b.text)).toEqual(["Caller Button"]);
-        expect(kb[1].map((b: any) => b.text)).toEqual(["🔍 Details"]);
-        expect(kb[2].map((b: any) => b.text)).toEqual([
-          "🧐 Check logic",
+        expect(kb[1].map((b: any) => b.text)).toEqual([
+          "🔍",
+          "🧐 Check",
           "💡 Explain",
-          "🧾 Reasons",
-          "✅ Accept recommendation",
-          "❌ Decline recommendation",
+          "🧾",
+          "✅",
+          "❌",
         ]);
       } finally {
         cleanup();
@@ -401,9 +401,9 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
         const kbOff = apiCalls[0].body.reply_markup?.inline_keyboard || [];
         const flatOff = kbOff.flat();
         expect(flatOff.find((b: any) => b.text === "💡 Explain")).toBeUndefined();
-        expect(flatOff.find((b: any) => b.text === "🧾 Reasons")).toBeUndefined();
+        expect(flatOff.find((b: any) => b.text === "🧾")).toBeUndefined();
         expect(flatOff.find((b: any) => b.callback_data === "reasons")).toBeUndefined();
-        expect(flatOff.find((b: any) => b.text === "🔍 Details")).toBeDefined();
+        expect(flatOff.find((b: any) => b.text === "🔍")).toBeDefined();
 
         // Case 2: default actions (actions: true) attaches both Explain and Reasons to predefined row
         await mcp.handleMessage({
@@ -424,11 +424,114 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
         const kbOn = apiCalls[1].body.reply_markup?.inline_keyboard || [];
         const actionRow = kbOn[0];
         expect(actionRow.map((b: any) => b.text)).toEqual([
-          "🧐 Check logic",
+          "🧐 Check",
           "💡 Explain",
-          "🧾 Reasons",
-          "✅ Accept recommendation",
-          "❌ Decline recommendation",
+          "🧾",
+          "✅",
+          "❌",
+        ]);
+      } finally {
+        cleanup();
+      }
+    });
+  });
+
+  describe("Compact action buttons and default single-row Details (AC1, AC2, AC3)", () => {
+    test("AC1: default reply keyboard has Reasons, Accept, Decline and Details carrying no label text beside icon", async () => {
+      const { mcp, apiCalls, cleanup } = setupTest();
+      try {
+        await mcp.handleMessage({
+          jsonrpc: "2.0",
+          id: 101,
+          method: "tools/call",
+          params: {
+            name: "reply",
+            arguments: {
+              chat_id: allowFrom,
+              text: "Default reply message",
+              detail: "Deep detail payload",
+            },
+          },
+        });
+
+        const kb = apiCalls[0].body.reply_markup?.inline_keyboard || [];
+        const flatButtons = kb.flat();
+
+        const reasonsBtn = flatButtons.find((b: any) => b.callback_data === "reasons");
+        const acceptBtn = flatButtons.find((b: any) => b.callback_data === "accept_recommendation");
+        const declineBtn = flatButtons.find((b: any) => b.callback_data === "decline_recommendation");
+        const detailsBtn = flatButtons.find((b: any) => b.web_app !== undefined);
+
+        expect(reasonsBtn).toBeDefined();
+        expect(reasonsBtn.text).toBe("🧾");
+        expect(acceptBtn).toBeDefined();
+        expect(acceptBtn.text).toBe("✅");
+        expect(declineBtn).toBeDefined();
+        expect(declineBtn.text).toBe("❌");
+        expect(detailsBtn).toBeDefined();
+        expect(detailsBtn.text).toBe("🔍");
+      } finally {
+        cleanup();
+      }
+    });
+
+    test("AC2: Check logic and Explain carry concise labels readable at phone width", async () => {
+      const { mcp, apiCalls, cleanup } = setupTest();
+      try {
+        await mcp.handleMessage({
+          jsonrpc: "2.0",
+          id: 102,
+          method: "tools/call",
+          params: {
+            name: "reply",
+            arguments: {
+              chat_id: allowFrom,
+              text: "Default reply message",
+            },
+          },
+        });
+
+        const kb = apiCalls[0].body.reply_markup?.inline_keyboard || [];
+        const flatButtons = kb.flat();
+
+        const checkBtn = flatButtons.find((b: any) => b.callback_data === "logic_check");
+        const explainBtn = flatButtons.find((b: any) => b.callback_data === "explain");
+
+        expect(checkBtn).toBeDefined();
+        expect(checkBtn.text).toBe("🧐 Check");
+        expect(explainBtn).toBeDefined();
+        expect(explainBtn.text).toBe("💡 Explain");
+      } finally {
+        cleanup();
+      }
+    });
+
+    test("AC3: Details sits on the same row as other predefined buttons in the default reply keyboard", async () => {
+      const { mcp, apiCalls, cleanup } = setupTest();
+      try {
+        await mcp.handleMessage({
+          jsonrpc: "2.0",
+          id: 103,
+          method: "tools/call",
+          params: {
+            name: "reply",
+            arguments: {
+              chat_id: allowFrom,
+              text: "Default reply message",
+              detail: "Deep detail payload",
+            },
+          },
+        });
+
+        const kb = apiCalls[0].body.reply_markup?.inline_keyboard || [];
+        expect(kb.length).toBe(1);
+        expect(kb[0].map((b: any) => b.text)).toEqual([
+          "🔍",
+          "🧐 Check",
+          "💡 Explain",
+          "🧾",
+          "✅",
+          "❌",
         ]);
       } finally {
         cleanup();
@@ -467,7 +570,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           update_id: 601,
           callback_query: {
             id: "cb_caller_1",
-            from: { id: allowFrom, is_bot: false, first_name: "Nic" },
+            from: { id: allowFrom, is_bot: false, first_name: "Alex" },
             message: {
               message_id: messageId,
               date: Date.now(),
@@ -520,6 +623,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
     test("AC3: defect check: tapping caller-supplied button on voice note message updates caption and acknowledges callback", async () => {
       const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-voice-btn-"));
       const config = loadConfig({
+        MINI_APP_URL: "https://ida.example.test",
         TELEGRAM_BOT_TOKEN: "test-token",
         IDA_TELEGRAM_ROLE: "primary",
         ALLOWED_USER_IDS: String(allowFrom),
@@ -559,7 +663,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           update_id: 602,
           callback_query: {
             id: "cb_voice_btn_1",
-            from: { id: allowFrom, is_bot: false, first_name: "Nic" },
+            from: { id: allowFrom, is_bot: false, first_name: "Alex" },
             message: {
               message_id: messageId,
               date: Date.now(),
@@ -607,7 +711,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           update_id: 701,
           callback_query: {
             id: "cb_family_caller",
-            from: { id: allowFrom, is_bot: false, first_name: "Nic" },
+            from: { id: allowFrom, is_bot: false, first_name: "Alex" },
             message: { message_id: messageId, chat: { id: allowFrom, type: "private" }, text: "Prompt" },
             data: "action:CustomAction",
           },
@@ -620,7 +724,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           update_id: 702,
           callback_query: {
             id: "cb_family_lc",
-            from: { id: allowFrom, is_bot: false, first_name: "Nic" },
+            from: { id: allowFrom, is_bot: false, first_name: "Alex" },
             message: { message_id: messageId, chat: { id: allowFrom, type: "private" }, text: "Prompt" },
             data: "logic_check",
           },
@@ -632,7 +736,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           update_id: 703,
           callback_query: {
             id: "cb_family_explain",
-            from: { id: allowFrom, is_bot: false, first_name: "Nic" },
+            from: { id: allowFrom, is_bot: false, first_name: "Alex" },
             message: { message_id: messageId, chat: { id: allowFrom, type: "private" }, text: "Prompt" },
             data: "explain",
           },
@@ -644,7 +748,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           update_id: 704,
           callback_query: {
             id: "cb_family_reasons",
-            from: { id: allowFrom, is_bot: false, first_name: "Nic" },
+            from: { id: allowFrom, is_bot: false, first_name: "Alex" },
             message: { message_id: messageId, chat: { id: allowFrom, type: "private" }, text: "Prompt" },
             data: "reasons",
           },
@@ -657,7 +761,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           update_id: 705,
           callback_query: {
             id: "cb_family_accept",
-            from: { id: allowFrom, is_bot: false, first_name: "Nic" },
+            from: { id: allowFrom, is_bot: false, first_name: "Alex" },
             message: { message_id: messageId, chat: { id: allowFrom, type: "private" }, text: "Prompt" },
             data: "accept_recommendation",
           },
@@ -669,7 +773,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           update_id: 706,
           callback_query: {
             id: "cb_family_decline",
-            from: { id: allowFrom, is_bot: false, first_name: "Nic" },
+            from: { id: allowFrom, is_bot: false, first_name: "Alex" },
             message: { message_id: messageId, chat: { id: allowFrom, type: "private" }, text: "Prompt" },
             data: "decline_recommendation",
           },
@@ -682,7 +786,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           update_id: 707,
           callback_query: {
             id: "cb_family_fb_up",
-            from: { id: allowFrom, is_bot: false, first_name: "Nic" },
+            from: { id: allowFrom, is_bot: false, first_name: "Alex" },
             message: { message_id: messageId, chat: { id: allowFrom, type: "private" }, text: "Prompt" },
             data: "fb:up",
           },
@@ -694,7 +798,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           update_id: 708,
           callback_query: {
             id: "cb_family_fb_down",
-            from: { id: allowFrom, is_bot: false, first_name: "Nic" },
+            from: { id: allowFrom, is_bot: false, first_name: "Alex" },
             message: { message_id: messageId, chat: { id: allowFrom, type: "private" }, text: "Prompt" },
             data: "fb:down",
           },
@@ -714,7 +818,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           update_id: 709,
           callback_query: {
             id: "cb_family_q",
-            from: { id: allowFrom, is_bot: false, first_name: "Nic" },
+            from: { id: allowFrom, is_bot: false, first_name: "Alex" },
             message: { message_id: messageId, chat: { id: allowFrom, type: "private" }, text: "Question" },
             data: `q:${qid}:0:0`,
           },
@@ -728,7 +832,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           update_id: 710,
           callback_query: {
             id: "cb_family_perm",
-            from: { id: allowFrom, is_bot: false, first_name: "Nic" },
+            from: { id: allowFrom, is_bot: false, first_name: "Alex" },
             message: { message_id: messageId, chat: { id: allowFrom, type: "private" }, text: "Permission" },
             data: `perm:allow:${perm.id}`,
           },

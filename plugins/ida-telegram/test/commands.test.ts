@@ -1,61 +1,74 @@
 import { describe, expect, test, mock } from "bun:test";
-import {
-  DEFAULT_IDA_COMMANDS,
-  RESERVED_COMMANDS,
-  discoverInstalledSkills,
-  resolveBotCommands,
-  getBareCommandBehavior,
-  parseSkillMarkdown,
-  normalizeCommandName,
-} from "../src/telegram/commands.js";
+import { readFileSync } from "node:fs";
+import { RESERVED_COMMANDS, resolveBotCommands, normalizeCommandName } from "../src/telegram/commands.js";
 import { parseInboundUpdate, type TelegramUpdate } from "../src/telegram/inbound.js";
 import { TelegramBotClient } from "../src/telegram/bot.js";
 import { loadConfig } from "../src/config.js";
 import { QuestionBroker } from "../src/telegram/questions.js";
 import { PermissionRelay } from "../src/mcp/permissions.js";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { mkdtempSync } from "node:fs";
+import { join } from "node:path";
 import { tmpdir } from "node:os";
 
+const MENU_JSON = JSON.stringify([
+  { command: "decide", description: "Go through open decisions" },
+  { command: "q", description: "Capture an ask" },
+]);
+
+function commandUpdate(text: string): TelegramUpdate {
+  return {
+    update_id: 200,
+    message: {
+      message_id: 301,
+      date: Date.now(),
+      chat: { id: 1111111111, type: "private" },
+      from: { id: 1111111111, is_bot: false, first_name: "Alex" },
+      text,
+    },
+  };
+}
+
 describe("Native Telegram bot commands for Ida (FR-8.1)", () => {
-  test("resolveBotCommands uses defaults and filters reserved commands from custom JSON override", () => {
-    const defaultCommands = resolveBotCommands();
-    expect(defaultCommands.length).toBeGreaterThan(0);
-    expect(defaultCommands).toEqual(
-      DEFAULT_IDA_COMMANDS.map(({ command, description }) => ({ command, description }))
-    );
+  test("resolveBotCommands returns only the configured menu, filtering reserved and worker commands", () => {
+    expect(resolveBotCommands()).toEqual([]);
+    expect(resolveBotCommands("")).toEqual([]);
+    expect(resolveBotCommands("not json")).toEqual([]);
 
     const customJson = JSON.stringify([
       { command: "/decide", description: "Custom decide" },
       { command: "start", description: "Reserved should be filtered" },
       { command: "status", description: "Reserved status filtered" },
+      { command: "pull", description: "Worker command filtered" },
+      { command: "dump", description: "Worker command filtered" },
+      { command: "strategic-review", description: "Hyphen normalised" },
       { command: "q", description: "Custom capture" },
     ]);
-    const resolved = resolveBotCommands(customJson);
-    expect(resolved).toEqual([
+    expect(resolveBotCommands(customJson)).toEqual([
       { command: "decide", description: "Custom decide" },
+      { command: "strategic_review", description: "Hyphen normalised" },
       { command: "q", description: "Custom capture" },
     ]);
+    for (const reserved of RESERVED_COMMANDS) {
+      expect(resolveBotCommands(customJson).map((c) => c.command)).not.toContain(reserved);
+    }
   });
 
-  test("strictly excludes headless worker lifecycle commands (pull, dump) from discovered skills and resolved menus", () => {
-    const discovered = discoverInstalledSkills();
-    const discoveredCommands = discovered.map((c) => c.command);
-    expect(discoveredCommands).not.toContain("pull");
-    expect(discoveredCommands).not.toContain("dump");
+  test("the plugin builds no menu from other plugins' files: no config means an empty menu", () => {
+    const cfg = loadConfig({ MINI_APP_URL: "https://ida.example.test", STATE_DIR: mkdtempSync(join(tmpdir(), "ida-tg-cmd-empty-")) });
+    expect(cfg.botCommands).toEqual([]);
 
-    const resolved = resolveBotCommands();
-    const resolvedCommands = resolved.map((c) => c.command);
-    expect(resolvedCommands).not.toContain("pull");
-    expect(resolvedCommands).not.toContain("dump");
+    const source = readFileSync(join(import.meta.dir, "..", "src", "telegram", "commands.ts"), "utf-8");
+    expect(source).not.toMatch(/node:fs|SKILL\.md|readdirSync/);
   });
 
   test("registerCommands calls setMyCommands scoped to each allowFrom chat and survives restart", async () => {
     const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-cmd-"));
     const config = loadConfig({
+      MINI_APP_URL: "https://ida.example.test",
       TELEGRAM_BOT_TOKEN: "test-token",
       IDA_TELEGRAM_ROLE: "primary",
-      TELEGRAM_ALLOW_FROM: "8860530746,12345678",
+      TELEGRAM_ALLOW_FROM: "1111111111,12345678",
+      TELEGRAM_BOT_COMMANDS: MENU_JSON,
       STATE_DIR: stateDir,
     });
 
@@ -94,16 +107,17 @@ describe("Native Telegram bot commands for Ida (FR-8.1)", () => {
       const bot1 = new TelegramBotClient(config, broker, permRelay, () => {});
       await bot1.registerCommands();
 
+      expect(config.botCommands.length).toBe(2);
       expect(apiCalls.filter((c) => c.method === "setMyCommands").length).toBe(2);
       expect(apiCalls[0].payload).toEqual({
         commands: config.botCommands,
-        scope: { type: "chat", chat_id: 8860530746 },
+        scope: { type: "chat", chat_id: 1111111111 },
       });
 
       // Simulate channel restart with a fresh TelegramBotClient instance and verify via getMyCommands
       const bot2 = new TelegramBotClient(config, broker, permRelay, () => {});
       await bot2.registerCommands();
-      const menuAfterRestart = await bot2.getRegisteredCommands(8860530746);
+      const menuAfterRestart = await bot2.getRegisteredCommands(1111111111);
 
       expect(menuAfterRestart).toEqual(config.botCommands);
     } finally {
@@ -111,239 +125,53 @@ describe("Native Telegram bot commands for Ida (FR-8.1)", () => {
     }
   });
 
-  test("tapped bare command with no argument reaches Ida with defined no-argument behavior", () => {
-    const allowFrom = [8860530746];
-
-    for (const cmdSpec of DEFAULT_IDA_COMMANDS) {
-      const update: TelegramUpdate = {
-        update_id: 200,
-        message: {
-          message_id: 301,
-          date: Date.now(),
-          chat: { id: 8860530746, type: "private" },
-          from: { id: 8860530746, is_bot: false, first_name: "Nic" },
-          text: `/${cmdSpec.command}`,
-        },
-      };
-
-      const event = parseInboundUpdate(update, allowFrom);
-      expect(event).not.toBeNull();
-      expect(event?.event).toBe("bot_command");
-      expect(event?.meta.command).toBe(`/${cmdSpec.command}`);
-      expect(event?.meta.args).toBe("");
-      expect(event?.meta.skill).toBe(cmdSpec.skill);
-      expect(event?.meta.default_action).toBe(cmdSpec.bareAction);
-      expect(event?.content).toContain(`/${cmdSpec.command}`);
-      expect(event?.content).toContain(cmdSpec.bareAction);
-    }
-  });
-
-  test("command with arguments preserves user arguments and does not overwrite with bare fallback", () => {
-    const allowFrom = [8860530746];
-    const update: TelegramUpdate = {
-      update_id: 201,
-      message: {
-        message_id: 302,
-        date: Date.now(),
-        chat: { id: 8860530746, type: "private" },
-        from: { id: 8860530746, is_bot: false, first_name: "Nic" },
-        text: "/q Review ARC Discovery draft by Friday",
-      },
-    };
-
-    const event = parseInboundUpdate(update, allowFrom);
-    expect(event).not.toBeNull();
-    expect(event?.event).toBe("bot_command");
-    expect(event?.meta.command).toBe("/q");
-    expect(event?.meta.args).toBe("Review ARC Discovery draft by Friday");
-    expect(event?.meta.skill).toBe("ida:q");
-    expect(event?.content).toBe("/q Review ARC Discovery draft by Friday");
-  });
-
-  test("command with @botname suffix is normalized cleanly", () => {
-    const allowFrom = [8860530746];
-    const update: TelegramUpdate = {
-      update_id: 202,
-      message: {
-        message_id: 303,
-        date: Date.now(),
-        chat: { id: 8860530746, type: "private" },
-        from: { id: 8860530746, is_bot: false, first_name: "Nic" },
-        text: "/decide@ida_bot",
-      },
-    };
-
-    const event = parseInboundUpdate(update, allowFrom);
+  test("bare command reaches Ida as the command alone, with no plugin-defined action", () => {
+    const event = parseInboundUpdate(commandUpdate("/decide"), [1111111111]);
     expect(event).not.toBeNull();
     expect(event?.event).toBe("bot_command");
     expect(event?.meta.command).toBe("/decide");
     expect(event?.meta.args).toBe("");
-    expect(event?.meta.skill).toBe("ida:decide");
-    expect(event?.meta.default_action).toBe(getBareCommandBehavior("/decide")?.bareAction);
+    expect(event?.meta.skill).toBeUndefined();
+    expect(event?.meta.default_action).toBeUndefined();
+    expect(event?.content).toBe("/decide");
   });
 
-  test("AC1: loadConfig and resolveBotCommands produce uniform command menus across any persona environment configuration", () => {
-    const defaultCfg = loadConfig({});
-    const strategicCfg = loadConfig({ IDA_TELEGRAM_PERSONA: "strategic" });
-    const primeCfg = loadConfig({ TELEGRAM_PERSONA: "prime" });
-    const audreCfg = loadConfig({ IDA_TELEGRAM_PERSONA: "audre", TELEGRAM_PERSONA: "audre" });
-
-    expect(defaultCfg.botCommands.length).toBeGreaterThan(0);
-    expect(strategicCfg.botCommands).toEqual(defaultCfg.botCommands);
-    expect(primeCfg.botCommands).toEqual(defaultCfg.botCommands);
-    expect(audreCfg.botCommands).toEqual(defaultCfg.botCommands);
-
-    // Verify all registered commands come from discovered skills
-    const discovered = discoverInstalledSkills();
-    const expected = discovered.map(({ command, description }) => ({ command, description }));
-    expect(defaultCfg.botCommands).toEqual(expected);
+  test("command with arguments preserves user arguments", () => {
+    const event = parseInboundUpdate(commandUpdate("/q Review ARC Discovery draft by Friday"), [1111111111]);
+    expect(event?.event).toBe("bot_command");
+    expect(event?.meta.command).toBe("/q");
+    expect(event?.meta.args).toBe("Review ARC Discovery draft by Friday");
+    expect(event?.content).toBe("/q Review ARC Discovery draft by Friday");
   });
 
-  test("AC2: telegram-prime, telegram-actual, telegram-audre and telegram-ida folders yield the same menu", () => {
-    const baseDir = join(tmpdir(), "aops-test-channels");
-    const prime = loadConfig({ STATE_DIR: join(baseDir, "telegram-prime") });
-    const actual = loadConfig({ STATE_DIR: join(baseDir, "telegram-actual") });
-    const audre = loadConfig({ STATE_DIR: join(baseDir, "telegram-audre") });
-    const ida = loadConfig({ STATE_DIR: join(baseDir, "telegram-ida") });
-
-    expect(prime.botCommands.length).toBeGreaterThan(0);
-    expect(actual.botCommands).toEqual(prime.botCommands);
-    expect(audre.botCommands).toEqual(prime.botCommands);
-    expect(ida.botCommands).toEqual(prime.botCommands);
+  test("command with @botname suffix is normalized cleanly", () => {
+    expect(normalizeCommandName("/decide@ida_bot")).toBe("decide");
+    const event = parseInboundUpdate(commandUpdate("/decide@ida_bot"), [1111111111]);
+    expect(event?.meta.command).toBe("/decide");
+    expect(event?.meta.args).toBe("");
   });
 
-  test("AC3: registered menu matches Telegram functional specification FR-8.1", () => {
-    const commands = discoverInstalledSkills();
-    const commandNames = commands.map((c) => c.command);
-
-    // Headless worker commands are strictly excluded
-    expect(commandNames).not.toContain("pull");
-    expect(commandNames).not.toContain("dump");
-
-    // Every installed skill is included
-    expect(commandNames).toContain("decide");
-    expect(commandNames).toContain("q");
-    expect(commandNames).toContain("mine");
-    expect(commandNames).toContain("reconcile");
-    expect(commandNames).toContain("hydrate");
-    expect(commandNames).toContain("up");
-    expect(commandNames).toContain("reify");
-    expect(commandNames).toContain("dispatch");
-    expect(commandNames).toContain("strategize");
-    expect(commandNames).toContain("remember");
-    expect(commandNames).toContain("decompose");
-    expect(commandNames).toContain("strategic_review");
-    expect(commandNames).toContain("argument_map");
-
-    // All command names match valid Telegram identifiers: [a-z0-9_]{1,32}
-    for (const cmd of commands) {
-      expect(/^[a-z0-9_]{1,32}$/.test(cmd.command)).toBe(true);
-      expect(cmd.description.length).toBeGreaterThanOrEqual(1);
-      expect(cmd.description.length).toBeLessThanOrEqual(256);
-      expect(RESERVED_COMMANDS.includes(cmd.command as any)).toBe(false);
+  test("every persona and state folder gets the same configured menu", () => {
+    const baseDir = join(tmpdir(), "ida-tg-test-channels");
+    const cfgs = [
+      loadConfig({ MINI_APP_URL: "https://ida.example.test", TELEGRAM_BOT_COMMANDS: MENU_JSON, IDA_TELEGRAM_PERSONA: "strategic", STATE_DIR: join(baseDir, "telegram-a") }),
+      loadConfig({ MINI_APP_URL: "https://ida.example.test", TELEGRAM_BOT_COMMANDS: MENU_JSON, TELEGRAM_PERSONA: "prime", STATE_DIR: join(baseDir, "telegram-b") }),
+    ];
+    for (const cfg of cfgs) {
+      expect(cfg.botCommands).toEqual(resolveBotCommands(MENU_JSON));
     }
+  });
+});
 
-    // Zero-argument commands attach their defined action
-    const decideSpec = getBareCommandBehavior("decide");
-    expect(decideSpec?.bareAction).toContain("decision card");
-
-    const reconcileSpec = getBareCommandBehavior("reconcile");
-    expect(reconcileSpec?.bareAction).toContain("reconcile");
-
-    // Hyphenated skills are mapped to snake_case
-    const strategicReviewSpec = getBareCommandBehavior("strategic_review");
-    expect(strategicReviewSpec?.skill).toBe("ida:strategic-review");
-
-    const argumentMapSpec = getBareCommandBehavior("argument_map");
-    expect(argumentMapSpec?.skill).toBe("ida:argument-map");
-
-    // Registered menu via resolveBotCommands matches discoverInstalledSkills
-    const resolved = resolveBotCommands();
-    expect(resolved).toEqual(commands.map(({ command, description }) => ({ command, description })));
+describe("Mini App URL configuration", () => {
+  test("loadConfig fails when no Mini App URL is configured, rather than falling back to a default", () => {
+    const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-no-url-"));
+    expect(() => loadConfig({ STATE_DIR: stateDir })).toThrow(/MINI_APP_URL/);
   });
 
-  test("AC5: adding, removing or renaming a skill changes the registered menu with no edit to plugin code, and every skill appears with a distinct, valid command name", () => {
-    const testSkillsDir = mkdtempSync(join(tmpdir(), "aops-test-skills-"));
-
-    try {
-      // 1. Initial set of skills: skill-one and skill-two
-      const skill1Dir = join(testSkillsDir, "skill-one");
-      const skill2Dir = join(testSkillsDir, "skill-two");
-      mkdirSync(skill1Dir, { recursive: true });
-      mkdirSync(skill2Dir, { recursive: true });
-
-      writeFileSync(
-        join(skill1Dir, "SKILL.md"),
-        `---\nname: skill-one\ndescription: First test skill\n---\n# Skill One\n`
-      );
-      writeFileSync(
-        join(skill2Dir, "SKILL.md"),
-        `---\nname: skill-two\ndescription: Second test skill\n---\n# Skill Two\n`
-      );
-
-      let menu = resolveBotCommands(undefined, { skillsDirs: [testSkillsDir] });
-      expect(menu.map((c) => c.command)).toEqual(["skill_one", "skill_two"]);
-
-      // 2. Add a new skill: skill-three
-      const skill3Dir = join(testSkillsDir, "skill-three");
-      mkdirSync(skill3Dir, { recursive: true });
-      writeFileSync(
-        join(skill3Dir, "SKILL.md"),
-        `---\nname: skill-three\ndescription: Third test skill\n---\n# Skill Three\n`
-      );
-
-      menu = resolveBotCommands(undefined, { skillsDirs: [testSkillsDir] });
-      expect(menu.map((c) => c.command)).toEqual(["skill_one", "skill_three", "skill_two"]);
-
-      // 3. Remove a skill: skill-one
-      rmSync(skill1Dir, { recursive: true, force: true });
-      menu = resolveBotCommands(undefined, { skillsDirs: [testSkillsDir] });
-      expect(menu.map((c) => c.command)).toEqual(["skill_three", "skill_two"]);
-
-      // 4. Rename a skill: skill-two -> renamed-action
-      const renamedDir = join(testSkillsDir, "renamed-action");
-      mkdirSync(renamedDir, { recursive: true });
-      writeFileSync(
-        join(renamedDir, "SKILL.md"),
-        `---\nname: renamed-action\ndescription: Renamed action description\n---\n# Renamed Action\n`
-      );
-      rmSync(skill2Dir, { recursive: true, force: true });
-
-      menu = resolveBotCommands(undefined, { skillsDirs: [testSkillsDir] });
-      expect(menu.map((c) => c.command)).toEqual(["renamed_action", "skill_three"]);
-
-      // 5. Collision handling across two plugin roots
-      const pluginADir = mkdtempSync(join(tmpdir(), "plugin-a-"));
-      const pluginBDir = mkdtempSync(join(tmpdir(), "plugin-b-"));
-
-      const pluginASkill = join(pluginADir, "skills", "audit");
-      const pluginBSkill = join(pluginBDir, "skills", "audit");
-      mkdirSync(pluginASkill, { recursive: true });
-      mkdirSync(pluginBSkill, { recursive: true });
-
-      writeFileSync(
-        join(pluginASkill, "SKILL.md"),
-        `---\nname: audit\ndescription: Plugin A audit\n---\n`
-      );
-      writeFileSync(
-        join(pluginBSkill, "SKILL.md"),
-        `---\nname: audit\ndescription: Plugin B audit\n---\n`
-      );
-
-      const collisionMenu = resolveBotCommands(undefined, { pluginRoots: [pluginADir, pluginBDir] });
-      const collisionCmds = collisionMenu.map((c) => c.command);
-
-      // Verify each gets a distinct, valid command name matching [a-z0-9_]{1,32}
-      expect(collisionCmds.length).toBe(2);
-      expect(new Set(collisionCmds).size).toBe(2);
-      for (const cmd of collisionCmds) {
-        expect(/^[a-z0-9_]{1,32}$/.test(cmd)).toBe(true);
-      }
-
-      rmSync(pluginADir, { recursive: true, force: true });
-      rmSync(pluginBDir, { recursive: true, force: true });
-    } finally {
-      rmSync(testSkillsDir, { recursive: true, force: true });
-    }
+  test("loadConfig takes the Mini App URL from config and strips trailing slashes", () => {
+    const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-url-"));
+    expect(loadConfig({ STATE_DIR: stateDir, MINI_APP_URL: "https://ida.example.test/" }).miniAppUrl).toBe("https://ida.example.test");
+    expect(loadConfig({ STATE_DIR: stateDir, IDA_WEB_URL: "https://web.example.test" }).miniAppUrl).toBe("https://web.example.test");
   });
 });

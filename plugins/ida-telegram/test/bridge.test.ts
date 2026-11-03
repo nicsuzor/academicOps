@@ -53,7 +53,7 @@ function makeCfAccessJwt(
 
 describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration.md)", () => {
   const botToken = "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11";
-  const allowedUserId = 8860530746;
+  const allowedUserId = 1111111111;
   const bridgeToken = "test-secret-bridge-token-xyz-12345";
   const sessionSecret = "test-session-secret-key-32bytes!";
   let testStateDir = "";
@@ -361,7 +361,7 @@ describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration
         method: "POST",
         headers: authHeaders,
         body: JSON.stringify({
-          text: "Focus on task aops_9e5caaf0",
+          text: "Focus on task aops_00000004",
           priority: "high",
           chat_id: allowedUserId,
           message_id: 2001,
@@ -374,7 +374,7 @@ describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration
       expect(typeof data.seq).toBe("number");
 
       // Reaches agent session context
-      expect(emittedEvents.some((e) => e.content.includes("Focus on task aops_9e5caaf0"))).toBe(true);
+      expect(emittedEvents.some((e) => e.content.includes("Focus on task aops_00000004"))).toBe(true);
 
       // Edits the Telegram card
       expect(editedCards.some((c) => c.chatId === allowedUserId && c.messageId === 2001)).toBe(true);
@@ -506,7 +506,7 @@ describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration
         update_id: 991,
         callback_query: {
           id: "cb_late_q",
-          from: { id: allowedUserId, first_name: "Nic" },
+          from: { id: allowedUserId, first_name: "Alex" },
           data: `q:${q.questionId}:0:0`,
           message: {
             message_id: 3001,
@@ -528,7 +528,7 @@ describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration
         update_id: 992,
         callback_query: {
           id: "cb_late_perm",
-          from: { id: allowedUserId, first_name: "Nic" },
+          from: { id: allowedUserId, first_name: "Alex" },
           data: `perm:allow:perm_inv_1`,
           message: {
             message_id: 3002,

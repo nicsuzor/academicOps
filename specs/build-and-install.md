@@ -84,9 +84,10 @@ academicOps `main` holds the current release's source plus the built plugin obje
 of the newest release, release candidates included. Every published tag, and every merge
 into `main`, writes its build to `main` through one script, `scripts/publish-dist-to-main.sh`;
 nothing else writes built objects there. Publishing to the legacy `nicsuzor/aops` mirror has
-stopped as a trial. Merges into `main` are restricted to fully green releases, enforced by
-branch protection requiring all checks green (`Lint / Lint`, `Type Check / Type Check`,
-`Pytest / Pytest`) with no bypass allowed.
+stopped as a trial. Direct pushes and non-release merges into `main` are blocked for everyone,
+repository admins included, enforced by GitHub branch protection / ruleset (`deletion`,
+`non_fast_forward`, and `update` rules on `refs/heads/main`) with only the release-pipeline
+automation (GitHub Actions integration id 2921286) allowed to bypass.
 
 ### What changed for installs
 
@@ -108,9 +109,11 @@ branch protection requiring all checks green (`Lint / Lint`, `Type Check / Type 
 2. **Publishing release candidates.** Release candidates are published via GitHub pre-releases:
    - **Trigger conditions**: Pushing an RC tag matching `v*-rc*` (or pre-release tags `v*-*`, `v*rc*`, `v*beta*`, `v*alpha*`, `v*dev*`) on a release line (e.g. `v1.0-rc7` on `release/v1.0-rc0`), or manually triggering `.github/workflows/publish-release.yml` via `workflow_dispatch` with an RC `tag` input.
    - **Flags and options**: The workflow runs Pytest, validates PEP 440 version formatting (`build.version --validate`), builds distribution archives with `uv run python -m build.build --set-version <version>`, and attaches the tarballs (`dist/*.tar.gz`) to a GitHub Release marked explicitly with `--prerelease` (`gh release create ... --prerelease` or `gh release edit ... --prerelease`). Stable manifest coherence checks (G2) are skipped for RC builds as pre-releases are not tracked by `.release-please-manifest.json`.
-   - **Publish to `main`**: after the GitHub Release, the same build is committed to `main` by `scripts/publish-dist-to-main.sh`, so the Claude Code marketplace on `main` always serves the newest release, candidates included (Nic, console, 2026-10-31). A manual run checks out the tag it names, not the branch it was started from.
+   - **Publish to `main`**: after the GitHub Release, the same build is committed to `main` by `scripts/publish-dist-to-main.sh`, so the Claude Code marketplace on `main` always serves the newest release, candidates included. A manual run checks out the tag it names, not the branch it was started from.
    - **Publish constraints**: RC builds never publish to container registries (GHCR).
-3. **Merging stable release into `main`.** Once a release candidate is validated and fully green, a pull request is merged from the release line into `main`. Branch protection on `main` requires all status checks to pass before merging, with no bypass allowed.
+3. **Publishing stable release to `main`.** Stable releases reach `main` via `release-please`
+   or a forced manual build pipeline executing `scripts/publish-dist-to-main.sh` under the release
+   automation integration bypass. Direct human or admin pushes to `main` are blocked.
 4. **Build on merge.** Every merge into `main` triggers `.github/workflows/build-extension.yml`.
    The workflow:
    - Computes the version from `build.version`.
@@ -124,7 +127,13 @@ branch protection requiring all checks green (`Lint / Lint`, `Type Check / Type 
 
 ### Automatic PR retargeting (`main` → `dev`)
 
-Because `main` is the published distribution and release branch rather than a direct development branch, pull requests must not target `main`. To prevent human or agent pull requests accidentally opened against `main` (which GitHub selects by default as the repository's default branch), `.github/workflows/auto-retarget-pr.yml` automatically flips any opened or reopened pull request whose base branch is `main` to target `dev` (excluding automated `release-please` PRs). Because `pull_request_target` workflows resolve from the default branch, `scripts/publish-dist-to-main.sh` copies the workflow file onto `main` on every publish.
+Because `main` is the published distribution and release branch rather than a direct development branch,
+pull requests must not target `main`. `dev` is the active development branch and default target for PRs.
+To prevent human or agent pull requests accidentally opened against `main` (which GitHub selects by default
+as the repository's default branch), `.github/workflows/auto-retarget-pr.yml` automatically flips any opened
+or reopened pull request whose base branch is `main` to target `dev` (excluding automated `release-please` PRs).
+Because `pull_request_target` workflows resolve from the default branch, `scripts/publish-dist-to-main.sh`
+copies the workflow file onto `main` on every publish.
 
 A manual rebuild against a specific commit: push a prerelease tag at that
 commit -- e.g. `git tag v<next>-rc.1 <sha> && git push origin v<next>-rc.1`.

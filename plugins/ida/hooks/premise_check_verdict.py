@@ -246,16 +246,27 @@ def judge_reason(token: str, reason: str, judged_text: str | None) -> dict[str, 
     vocab = ra.load_vocabulary()
     parsed = ra.parse_reason(reason, vocab)
     block_text = ra.extract_block(judged_text)
+    block_err: str | None = None
     if token == "PASS" and block_text is not None and not ra.is_null_form(block_text):
         if "block" not in parsed.waived_items(vocab):
             valid, parser_output, _ = ra.check_argdown_block(block_text)
             if not valid:
-                raise ValueError(
-                    f"PASS refused -- could not parse argdown block in judged text:\n{parser_output}"
-                )
-    block = ra.parse_block(block_text, vocab) if block_text is not None else None
+                block_err = parser_output
+
+    block = (
+        ra.parse_block(block_text, vocab)
+        if (block_text is not None and block_err is None)
+        else None
+    )
     if token == "PASS":
-        failures = ra.pass_failures(parsed, block, vocab, is_null=ra.is_null_form(block_text))
+        failures = ra.pass_failures(
+            parsed,
+            block,
+            vocab,
+            is_null=ra.is_null_form(block_text),
+            block_text=block_text,
+            block_error=block_err,
+        )
         if failures:
             formatted = []
             for f in failures:

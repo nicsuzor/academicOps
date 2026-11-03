@@ -23,7 +23,7 @@ describe("Threaded Conversations Support", () => {
           message_thread_id: 4242,
           date: Date.now(),
           chat: { id: 12345678, type: "supergroup" },
-          from: { id: 12345678, is_bot: false, first_name: "Nic" },
+          from: { id: 12345678, is_bot: false, first_name: "Alex" },
           text: "Message in thread 4242",
         },
       };
@@ -43,7 +43,7 @@ describe("Threaded Conversations Support", () => {
           message_thread_id: 4242,
           date: Date.now(),
           chat: { id: 12345678, type: "supergroup" },
-          from: { id: 12345678, is_bot: false, first_name: "Nic" },
+          from: { id: 12345678, is_bot: false, first_name: "Alex" },
           text: "/q new task idea",
         },
       };
@@ -63,7 +63,7 @@ describe("Threaded Conversations Support", () => {
           message_thread_id: 4242,
           date: Date.now(),
           chat: { id: 12345678, type: "supergroup" },
-          from: { id: 12345678, is_bot: false, first_name: "Nic" },
+          from: { id: 12345678, is_bot: false, first_name: "Alex" },
           document: { file_id: "doc123", file_name: "report.pdf" },
           caption: "Here is the report",
         },
@@ -81,7 +81,7 @@ describe("Threaded Conversations Support", () => {
         update_id: 4,
         callback_query: {
           id: "cb_1",
-          from: { id: 12345678, is_bot: false, first_name: "Nic" },
+          from: { id: 12345678, is_bot: false, first_name: "Alex" },
           message: {
             message_id: 200,
             message_thread_id: 4242,
@@ -117,6 +117,7 @@ describe("Threaded Conversations Support", () => {
     test("reply tool call stays in thread by default without explicit thread setting", async () => {
       const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-th-reply-"));
       const config = loadConfig({
+        MINI_APP_URL: "https://ida.example.test",
         TELEGRAM_BOT_TOKEN: "test-token",
         IDA_TELEGRAM_ROLE: "primary",
         ALLOWED_USER_IDS: "12345678",
@@ -149,7 +150,7 @@ describe("Threaded Conversations Support", () => {
             message_thread_id: 4242,
             date: Date.now(),
             chat: { id: 12345678, type: "supergroup" },
-            from: { id: 12345678, is_bot: false, first_name: "Nic" },
+            from: { id: 12345678, is_bot: false, first_name: "Alex" },
             text: "Let's discuss in this thread",
           },
         });
@@ -191,6 +192,7 @@ describe("Threaded Conversations Support", () => {
       chmodSync(mockSpeakScript, 0o755);
 
       const config = loadConfig({
+        MINI_APP_URL: "https://ida.example.test",
         TELEGRAM_BOT_TOKEN: "test-token",
         IDA_TELEGRAM_ROLE: "primary",
         ALLOWED_USER_IDS: "12345678",
@@ -233,7 +235,7 @@ describe("Threaded Conversations Support", () => {
             message_thread_id: 4242,
             date: Date.now(),
             chat: { id: 12345678, type: "supergroup" },
-            from: { id: 12345678, is_bot: false, first_name: "Nic" },
+            from: { id: 12345678, is_bot: false, first_name: "Alex" },
             text: "Send voice note in this thread",
           },
         });
@@ -270,6 +272,7 @@ describe("Threaded Conversations Support", () => {
     test("ask_user question card stays in thread by default without explicit thread setting", async () => {
       const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-th-q-"));
       const config = loadConfig({
+        MINI_APP_URL: "https://ida.example.test",
         TELEGRAM_BOT_TOKEN: "test-token",
         IDA_TELEGRAM_ROLE: "primary",
         ALLOWED_USER_IDS: "12345678",
@@ -301,7 +304,7 @@ describe("Threaded Conversations Support", () => {
             message_thread_id: 4242,
             date: Date.now(),
             chat: { id: 12345678, type: "supergroup" },
-            from: { id: 12345678, is_bot: false, first_name: "Nic" },
+            from: { id: 12345678, is_bot: false, first_name: "Alex" },
             text: "Need your recommendation",
           },
         });
@@ -341,6 +344,7 @@ describe("Threaded Conversations Support", () => {
     test("force_reply prompt for other in question card stays in thread", async () => {
       const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-th-other-"));
       const config = loadConfig({
+        MINI_APP_URL: "https://ida.example.test",
         TELEGRAM_BOT_TOKEN: "test-token",
         IDA_TELEGRAM_ROLE: "primary",
         ALLOWED_USER_IDS: "12345678",
@@ -376,7 +380,7 @@ describe("Threaded Conversations Support", () => {
           update_id: 13,
           callback_query: {
             id: "cb_other",
-            from: { id: 12345678, is_bot: false, first_name: "Nic" },
+            from: { id: 12345678, is_bot: false, first_name: "Alex" },
             message: {
               message_id: 504,
               message_thread_id: 4242,
@@ -402,6 +406,7 @@ describe("Threaded Conversations Support", () => {
     test("react tool call and status reaction stay on the threaded message with no configuration", async () => {
       const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-th-react-"));
       const config = loadConfig({
+        MINI_APP_URL: "https://ida.example.test",
         TELEGRAM_BOT_TOKEN: "test-token",
         IDA_TELEGRAM_ROLE: "primary",
         ALLOWED_USER_IDS: "12345678",
@@ -433,7 +438,7 @@ describe("Threaded Conversations Support", () => {
             message_thread_id: 4242,
             date: Date.now(),
             chat: { id: 12345678, type: "supergroup" },
-            from: { id: 12345678, is_bot: false, first_name: "Nic" },
+            from: { id: 12345678, is_bot: false, first_name: "Alex" },
             text: "Message to react to",
           },
         });
@@ -478,6 +483,7 @@ describe("Threaded Conversations Support", () => {
     test("edit_message tool call edits threaded message in-place without configuration", async () => {
       const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-th-edit-"));
       const config = loadConfig({
+        MINI_APP_URL: "https://ida.example.test",
         TELEGRAM_BOT_TOKEN: "test-token",
         IDA_TELEGRAM_ROLE: "primary",
         ALLOWED_USER_IDS: "12345678",
@@ -509,7 +515,7 @@ describe("Threaded Conversations Support", () => {
             message_thread_id: 4242,
             date: Date.now(),
             chat: { id: 12345678, type: "supergroup" },
-            from: { id: 12345678, is_bot: false, first_name: "Nic" },
+            from: { id: 12345678, is_bot: false, first_name: "Alex" },
             text: "Message to edit",
           },
         });
@@ -547,6 +553,7 @@ describe("Threaded Conversations Support", () => {
     test("inbound reaction event in a thread carries thread identity", async () => {
       const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-th-rx-"));
       const config = loadConfig({
+        MINI_APP_URL: "https://ida.example.test",
         TELEGRAM_BOT_TOKEN: "test-token",
         IDA_TELEGRAM_ROLE: "primary",
         ALLOWED_USER_IDS: "12345678",
@@ -580,7 +587,7 @@ describe("Threaded Conversations Support", () => {
             message_thread_id: 4242,
             date: Date.now(),
             chat: { id: 12345678, type: "supergroup" },
-            from: { id: 12345678, is_bot: false, first_name: "Nic" },
+            from: { id: 12345678, is_bot: false, first_name: "Alex" },
             text: "Message to react to",
           },
         });
@@ -593,7 +600,7 @@ describe("Threaded Conversations Support", () => {
           message_reaction: {
             chat: { id: 12345678, type: "supergroup" },
             message_id: 105,
-            user: { id: 12345678, is_bot: false, first_name: "Nic" },
+            user: { id: 12345678, is_bot: false, first_name: "Alex" },
             date: Date.now(),
             old_reaction: [],
             new_reaction: [{ type: "emoji", emoji: "👍" }],
@@ -614,6 +621,7 @@ describe("Threaded Conversations Support", () => {
     test("unthreaded message does not attach message_thread_id and outbound reply remains unthreaded", async () => {
       const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-unth-"));
       const config = loadConfig({
+        MINI_APP_URL: "https://ida.example.test",
         TELEGRAM_BOT_TOKEN: "test-token",
         IDA_TELEGRAM_ROLE: "primary",
         ALLOWED_USER_IDS: "12345678",
@@ -645,7 +653,7 @@ describe("Threaded Conversations Support", () => {
             message_id: 201,
             date: Date.now(),
             chat: { id: 12345678, type: "private" },
-            from: { id: 12345678, is_bot: false, first_name: "Nic" },
+            from: { id: 12345678, is_bot: false, first_name: "Alex" },
             text: "Direct unthreaded message",
           },
         };
@@ -684,6 +692,7 @@ describe("Threaded Conversations Support", () => {
     test("rename_thread renames the active thread in the chat via editForumTopic", async () => {
       const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-th-rename-act-"));
       const config = loadConfig({
+        MINI_APP_URL: "https://ida.example.test",
         TELEGRAM_BOT_TOKEN: "test-token",
         IDA_TELEGRAM_ROLE: "primary",
         ALLOWED_USER_IDS: "12345678",
@@ -715,7 +724,7 @@ describe("Threaded Conversations Support", () => {
             message_thread_id: 4242,
             date: Date.now(),
             chat: { id: 12345678, type: "supergroup" },
-            from: { id: 12345678, is_bot: false, first_name: "Nic" },
+            from: { id: 12345678, is_bot: false, first_name: "Alex" },
             text: "Message in thread 4242",
           },
         });
@@ -755,6 +764,7 @@ describe("Threaded Conversations Support", () => {
     test("rename_thread renames an explicitly specified thread ID with optional icon", async () => {
       const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-th-rename-exp-"));
       const config = loadConfig({
+        MINI_APP_URL: "https://ida.example.test",
         TELEGRAM_BOT_TOKEN: "test-token",
         IDA_TELEGRAM_ROLE: "primary",
         ALLOWED_USER_IDS: "12345678",
@@ -813,6 +823,7 @@ describe("Threaded Conversations Support", () => {
     test("rename_thread returns clear error when name is empty or missing", async () => {
       const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-th-rename-err-"));
       const config = loadConfig({
+        MINI_APP_URL: "https://ida.example.test",
         TELEGRAM_BOT_TOKEN: "test-token",
         IDA_TELEGRAM_ROLE: "primary",
         ALLOWED_USER_IDS: "12345678",
@@ -852,6 +863,7 @@ describe("Threaded Conversations Support", () => {
     test("rename_thread returns clear error when no thread ID can be resolved", async () => {
       const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-th-rename-noth-"));
       const config = loadConfig({
+        MINI_APP_URL: "https://ida.example.test",
         TELEGRAM_BOT_TOKEN: "test-token",
         IDA_TELEGRAM_ROLE: "primary",
         ALLOWED_USER_IDS: "12345678",
@@ -890,6 +902,7 @@ describe("Threaded Conversations Support", () => {
     test("rename_thread returns clear error when Telegram Bot API rejects rename", async () => {
       const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-th-rename-rej-"));
       const config = loadConfig({
+        MINI_APP_URL: "https://ida.example.test",
         TELEGRAM_BOT_TOKEN: "test-token",
         IDA_TELEGRAM_ROLE: "primary",
         ALLOWED_USER_IDS: "12345678",
