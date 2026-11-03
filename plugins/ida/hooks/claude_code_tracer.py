@@ -2297,8 +2297,7 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
         state.pop("pending_tools", None)
 
     transcript_path = _get_cached_transcript_path(data, state, session_id)
-    has_transcript = bool(transcript_path and os.path.exists(transcript_path))
-    if has_transcript:
+    if transcript_path and os.path.exists(transcript_path):
         current_human_count = _count_human_messages(transcript_path)
         human_count_at_start: int | None = current_human_count
         state["human_messages_consumed"] = max(
