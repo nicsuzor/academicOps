@@ -23,7 +23,7 @@ As an agent or practitioner ending a work session, I want `dump` to act as the s
 
 As the principal reviewing daily progress, I want `dump` to record one consolidated status pointer per touched project in the daily note with its immediate next step, so that project status is scannable at a glance without cluttering the note with fragmented task logs.
 
-- **AC-2.1 (One consolidated pointer per touched project)**: Given a session that modified files or updated tasks across one or more projects, when `dump` compiles its final updates, then it writes exactly one consolidated bullet per touched project into the daily note under the preserved daily work section (`Today's work`), stating the project's current state.
+- **AC-2.1 (One consolidated pointer per touched project)**: Given a session that modified files or updated tasks across one or more projects, when `dump` compiles its final updates, then in interactive or coordinator sessions it writes exactly one consolidated bullet per touched project into the daily note under the preserved daily work section (`Today's work`) stating the project's current state; in headless worker sessions, it emits the consolidated project pointer in the handover block on the record to avoid multi-writer race conditions.
 - **AC-2.2 (Project next-step integration)**: Given each project pointer added to the daily note, when `dump` formats the line, then it appends the verified direct follow-up pointer or resumption prompt defined under US-5, or omits the next step if no follow-up exists.
 - **AC-2.3 (Preserved block isolation and clean absorption)**: Given the daily note formatting contract where named sections are preserved across automated note composition runs, when `dump` appends project pointers, then it writes them exclusively into the designated preserved daily work section, allowing the subsequent daily note sweep to absorb completed milestones into structured summary views without losing in-flight pointers.
 
@@ -31,16 +31,16 @@ As the principal reviewing daily progress, I want `dump` to record one consolida
 
 As a maintainer tracking project evolution on the knowledge graph, I want any ad-hoc session that modified project files without an existing task to create a retroactive task documenting the work, so that repository changes are never orphaned from the graph.
 
-- **AC-3.1 (Retroactive task for unparented file changes)**: Given a worker session that executed ad-hoc commands or modifications resulting in uncommitted or committed changes to repository project files (source code, tests, configuration, specifications) without an assigned or existing task, when `dump` executes, then the skill requires creating a retroactive task on the knowledge graph that documents the completed changes, records the commit SHA, and releases the task as complete with verification evidence.
+- **AC-3.1 (Retroactive task for unparented file changes)**: Given an ad-hoc session that executed commands or modifications resulting in uncommitted or committed changes to repository project files (source code, tests, configuration, specifications) without an assigned or existing task, when `dump` executes, then the skill requires creating a retroactive task on the knowledge graph that documents the semantic goal, touched files, commit SHA, and verified deliverable, releasing the task as complete with evidence. Dispatched headless workers making unparented edits outside their claimed task boundary treat it as a containment breach under `fail-fast`.
 - **AC-3.2 (Exemption for routing work)**: Given an ad-hoc session performing operational routing, dispatching, task triage, or reviewing queues without modifying repository project files, when `dump` executes, then the session is exempt from retroactive task creation.
 - **AC-3.3 (Exemption for ephemeral minor edits)**: Given an ad-hoc session executing minor adjustments directly at the user's instruction (such as fixing a minor typo or updating a transient comment) where the information holds no enduring institutional value and would not be useful thirty days later, when `dump` executes, then the session is exempt from retroactive task creation.
 
 ### US-4 Durable fact capture and PKB conflict repair
 
-As a knowledge system maintaining durable institutional truth, I want `dump` to capture findings that will remain valuable over six months and invoke the knowledge base custodian to repair or retire conflicting, incorrect, irrelevant, or stale notes encountered during the session, so that knowledge never degrades.
+As a knowledge system maintaining durable institutional truth, I want `dump` to capture findings that will remain valuable over six months and offer them to the knowledge base custodian while reporting conflicting or stale notes for repair, so that knowledge never degrades.
 
 - **AC-4.1 (Six-month durable fact offering)**: Given verified architectural decisions, operational constraints, environment invariants, or factual discoveries made during the session that will remain relevant in six months, when `dump` runs, then it offers these durable facts to the knowledge base custodian (`pauli`) as content (or records them under `## Durable Facts` in the handover block and task record if running in an isolated execution context where the custodian cannot be messaged directly).
-- **AC-4.2 (Repairing defective or conflicting knowledge)**: Given conflicting, incorrect, irrelevant, demonstrably false, or outdated knowledge base information encountered during the session, when `dump` runs, then it explicitly directs the knowledge base custodian (`pauli`) to correct the contradictions, prune stale content, and update the canonical topic notes on sight.
+- **AC-4.2 (Reporting defective or conflicting knowledge for repair)**: Given conflicting, incorrect, irrelevant, demonstrably false, or outdated knowledge base information encountered during the session, when `dump` runs, then it reports the contradiction to the knowledge base custodian (`pauli`) for on-sight correction and pruning under standing custodial authority.
 
 ### US-5 Disciplined next-step pointers and resumption prompts
 
@@ -72,38 +72,42 @@ The `dump` skill serves as the single universal exit gate for all interactive, a
 
 Under the daily note architecture, the daily note is composed by a scheduled routine that writes the note whole and preserves designated sections verbatim: `### My priorities` (for the user's manual priorities) and `## Today's work` (for in-flight session work).
 
-To prevent daily note clutter while ensuring cross-project visibility:
+To prevent daily note clutter while ensuring cross-project visibility and concurrency safety across execution surfaces:
 
 - **Consolidation**: `dump` inspects all modified repository files and updated tasks across the session to determine which projects were touched.
-- **Single Bullet Per Project**: For each touched project, `dump` writes exactly one consolidated bullet into `## Today's work`:
-  ```markdown
-  - **<project-name>**: <latest status in 10-20 words> -- Next: <pointer or prompt>
-  ```
-- **Absorption**: When the subsequent automated daily run executes, the daily sweep reads `## Today's work` alongside graph state. Finished milestones are absorbed into structured sections (`## Done for you` or `## Your work`), while active threads remain visible until completed.
+- **Session Tier Distinction**:
+  - _Interactive / Coordinator Sessions_: For each touched project, `dump` writes exactly one consolidated bullet into `## Today's work`:
+    ```markdown
+    - **<project-name>**: <latest status in 10-20 words> -- Next: <pointer or prompt>
+    ```
+  - _Headless / Isolated Worker Sessions_: Concurrent polecats executing in isolated containers must not write directly to the shared daily note file to prevent race conditions and write contention. Instead, headless workers emit their consolidated project status and next-step pointer in the structured handover block on the record (`wf-handover`). Subsequent automated daily note sweeps or reconcile passes absorb these records into the daily note.
+- **Absorption**: When the subsequent automated daily run executes, the daily sweep reads `## Today's work` alongside graph state and completed worker handover records. Finished milestones are absorbed into structured sections (`## Done for you` or `## Your work`), while active threads remain visible until completed.
 
 ### 3. Retroactive Task Creation Protocol
 
-To uphold the principle that repository file changes must be auditable and linked to the knowledge graph:
+To uphold the principle that repository file changes must be auditable and linked to the knowledge graph without degrading the graph into an ad-hoc commit log:
 
-- **Trigger**: Any session that ran without an active task and made durable modifications to repository files (source code, configuration, tests, schemas, specifications) must create a retroactive task before exiting.
-- **Procedure**:
+- **Trigger**: Any ad-hoc interactive session that ran without an active task and made durable modifications to repository files (source code, configuration, tests, schemas, specifications) must create a retroactive task before exiting.
+- **Semantic Integrity**: A retroactive task must not be an empty dummy commit hash log. It must capture the semantic intent, outcome, touched scope, and completed deliverable, anchoring the unparented change to the graph.
+- **Worker Containment Boundary**: Headless workers dispatched on an assigned task (`pull`) are strictly bound to their task scope. A headless worker that modifies files outside its assigned task boundary commits a containment breach and must halt and release as `partial` or `failed` under `fail-fast`, rather than masking the breach via automated retroactive task minting.
+- **Procedure (Interactive / Ad-Hoc Sessions)**:
   1. Mint a task on the knowledge graph via the task creation tool with `classification: implementation` or `chore`.
   2. Set `task_title` to a concise imperative description of the completed work.
-  3. Include in the body a summary of changes, the list of touched files, and the git commit SHA.
-  4. Release the task immediately as `done`, supplying `completion_evidence` referencing the commit SHA and diff.
+  3. Include in the body a clear statement of the goal, summary of changes, the list of touched files, and the git commit SHA.
+  4. Release the task immediately as `done`, supplying `completion_evidence` referencing the commit SHA and verified diff.
 - **Explicit Exemptions**:
   1. _Routing Work_: Triage sweeps, dispatching workers, queue inspections, and conversational inquiries that do not alter repository project files require no task.
   2. _Ephemeral Minor Edits_: Minor edits requested directly by the user (such as fixing a minor typo or updating an ephemeral comment) where knowing about the change will definitely not be useful thirty days later are exempt from retroactive task creation.
 
 ### 4. Durable Fact Retention and Knowledge Graph Repair
 
-This specification aligns the `dump` skill with the framework's knowledge management architecture:
+This specification aligns the `dump` skill with the framework's knowledge management architecture (`specs/agents/offering-filing-and-retiring-pkb-facts.md`):
 
 - **Six-Month Threshold**: During session exit, the agent reviews decisions, discoveries, and verified state. Any fact that represents an enduring constraint, architectural decision, or verified environment invariant with a utility horizon of six months or longer must be preserved.
-- **Routing to the Custodian**:
+- **Offering to the Custodian**:
   - In connected/interactive sessions, the agent offers the durable facts directly to the knowledge base custodian (`pauli`) as content, leaving note formatting, topic merging, and anti-sprawl checks to the custodian.
   - In isolated or headless worker sessions where subagent communication is unavailable, the worker records the facts under a dedicated `## Durable Facts` section in the task record and handover summary, where the custodian harvests them during regular reconcile sweeps.
-- **Retirement and Repair on Sight**: When a session uncovers contradictory, demonstrably false, stale, or obsolete knowledge base documents, the agent directly invokes the custodian (`pauli`) to correct or retire the defective notes on sight, ensuring that obsolete information does not linger across sessions.
+- **Reporting Defective Knowledge for Repair**: When a session uncovers contradictory, demonstrably false, stale, or obsolete knowledge base documents, the agent reports the contradiction and affected notes to the custodian (`pauli`) for on-sight correction and pruning under Pauli's standing custodial authority.
 
 ### 5. Disciplined Next-Step Rules ("Park on a Downward Slope")
 
@@ -172,7 +176,7 @@ The following rows will be updated in `specs/ENFORCEMENT-MAP.md` during downstre
 | [Axiom: Single Source of Truth](../plugins/rbg/skills/axioms/single-source-of-truth.md) -- Maintain exactly one authoritative copy of every fact, rule, or artifact without duplication, retiring or repairing conflicting knowledge base content on sight. | instructions, structural, process | imperative, protection, required gate | `build/build.py:42-95`, `plugins/ida/skills/dump/SKILL.md`, `plugins/ida/agents/pauli.md`, `plugins/ida/skills/remember/SKILL.md:10-48`, `wf-reconcile.md:15-50` |
 | [Axiom: Honest Epistemics](../plugins/rbg/skills/axioms/honest-epistemics.md) -- State unknowns explicitly, tailor claims strictly to evidence, and prohibit inventing speculative next steps during session handover. | instructions, JIT injection, structural, process | imperative, warning, block, required gate | `plugins/rbg/skills/axioms/honest-epistemics.md:9-11`, `plugins/ida/skills/dump/SKILL.md`, `plugins/ida/skills/premise-check/SKILL.md:49-123` |
 | [Axiom: Full Observability](../plugins/rbg/skills/axioms/full-observability.md) -- Accompany every discrete modification with a git commit and push, print session IDs in handovers, and record consolidated project updates in the daily note. | instructions, structural, process, post-hoc | imperative, protection, required gate, observability | `plugins/rbg/skills/axioms/full-observability.md:9`, `plugins/ida/skills/dump/SKILL.md`, `claude_code_tracer.py:1-180`, `agy_tracer.py:1-140` |
-| [Project Rule: Headless Workers Cannot Pause for a Person](../.agents/rules/headless-workers.md) -- Workers operate headlessly without prompting users mid-task; releases hand back on the task record and provide resumption prompts when interrupted. | instructions, structural, process | imperative, block, required gate | `.agents/rules/headless-workers.md:1-18`, `plugins/ida/skills/dump/SKILL.md`, `plugins/ida/skills/pull/SKILL.md:14-39` |
+| [Project Rule: Headless Workers Cannot Pause for a Person](../.agents/rules/headless-workers.md) -- Workers operate headlessly without prompting users mid-task; releases hand back on the task record and provide resumption prompts when interrupted. | instructions, structural, process | imperative, block, required gate | `.agents/rules/headless-workers.md:1-13`, `plugins/ida/skills/dump/SKILL.md`, `plugins/ida/skills/pull/SKILL.md:14-39` |
 
 ### 10. Outcome-Level Verification Checks (Fresh Agent Run against Baseline)
 
