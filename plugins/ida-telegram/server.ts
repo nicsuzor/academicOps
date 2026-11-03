@@ -70,10 +70,9 @@ async function main() {
     );
   });
 
-  // Start Mini App HTTP loopback server
-  const appDir = join(import.meta.dir, "app");
-  const httpServer = startWebServer(webContext, appDir);
-  console.error(`[ida-telegram] Mini App server running at http://127.0.0.1:${config.port}/app/`);
+  // Start internal state and event bridge HTTP loopback server (AC-5.2)
+  const httpServer = startWebServer(webContext);
+  console.error(`[ida-telegram] Internal state and event bridge running at http://127.0.0.1:${config.port}/api/app/`);
 
   // Start Unix Domain Socket bridge for PreToolUse hooks (0600 permissions)
   if (existsSync(config.socketPath)) {
@@ -191,7 +190,7 @@ export function createBridgeServer(
               postedIds.push(result.questionId);
 
               if (bot && !isMiniAppOnly) {
-                const card = broker.renderQuestionCard(result.questionId);
+                const card = broker.renderQuestionCard(result.questionId, config.miniAppUrl, config.instance);
                 if (card && defaultChatId) {
                   await bot.sendQuestionCard(defaultChatId, result.questionId, card, effectiveThreadId);
                 }

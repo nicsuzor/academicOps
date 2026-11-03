@@ -17,6 +17,7 @@ How the framework holds agents to the [evidence contract](evidence-contract.md).
 As the user, I want each agent reminded of the contract at the moment it writes or receives a report, and the chain held until a received report has a recorded verdict, so that the contract is followed without being repeated every turn.
 
 - The format lives only in the `premise-check` skill. Every other instruction file, reminder and gate message names the skill and adds nothing to it.
+- Each reminder tells the agent to load the skill before writing or checking, not only to follow it: a skill named but not loaded leaves the writer to fill the block from general Argdown priors outside the skill's restricted subset, which the recorder refuses ([#3228](https://github.com/nicsuzor/academicOps/issues/3228)).
 - Each reminder fires once, at its moment, and is a line or two long.
 - Agents cannot dispatch, message, reply on a channel or stop while a report or direction that arrived as an incoming agent message awaits a verdict.
 - Agents judge each report. Parsers and presence checks confirm well-formedness only, under [enforcement.md](enforcement.md)'s governing principle. Format-only defects on an argument with at least one inference line (`>= 1`) are waivable on PASS and rewritten by the receiver; 0 inference lines or substantive defects require REVISE or FAIL and cannot pass or relay upward as fact.
@@ -30,9 +31,9 @@ As the user, I want each agent reminded of the contract at the moment it writes 
 
 | Moment | Agents | Reminder |
 | - | - | - |
-| Session start, resume and compaction | All | One line: reports follow `premise-check`, written in its shape and checked on receipt ([`plugins/ida/hooks/handlers.py:817-858`](../../plugins/ida/hooks/handlers.py#L817-L858)) |
-| A subagent starts (`SubagentStart`) | All subagents | Your reply is a report; write it per the skill ([`plugins/ida/hooks/handlers.py:136-141,1094-1096`](../../plugins/ida/hooks/handlers.py#L136-L141)) |
-| A report or direction arrives (`UserPromptSubmit` or `PostToolBatch`) | All | Check it per the skill; if a direction, check that it derives from `## Ask` and refuse unverified prescriptions before logging deliverables; if a report isn't in shape, REVISE and return it ([`plugins/ida/hooks/handlers.py:891-895,1086-1088`](../../plugins/ida/hooks/handlers.py#L891-L895), [`plugins/ida/hooks/hearsay_gate.py:805-845,881-949`](../../plugins/ida/hooks/hearsay_gate.py#L805-L845)) |
+| Session start, resume and compaction | All | One line: reports follow `premise-check`, written in its shape and checked on receipt; load the skill before writing or checking one ([`plugins/ida/hooks/handlers.py:817-858`](../../plugins/ida/hooks/handlers.py#L817-L858)) |
+| A subagent starts (`SubagentStart`) | All subagents | Your reply is a report; load the skill before writing it, and write it in the skill's form ([`plugins/ida/hooks/handlers.py:136-141,1094-1096`](../../plugins/ida/hooks/handlers.py#L136-L141)) |
+| A report or direction arrives (`UserPromptSubmit` or `PostToolBatch`) | All | Load the skill if not loaded this turn and check it per the skill; if a direction, check that it derives from `## Ask` and refuse unverified prescriptions before logging deliverables; if a report isn't in shape, REVISE and return it ([`plugins/ida/hooks/handlers.py:891-895,1086-1088`](../../plugins/ida/hooks/handlers.py#L891-L895), [`plugins/ida/hooks/hearsay_gate.py:805-845,881-949`](../../plugins/ida/hooks/hearsay_gate.py#L805-L845)) |
 | Gate refusal or `Stop` block | All | At most two lines naming the claim id and the skill; one line for the user ([`plugins/ida/hooks/hearsay_gate.py:487-510,886-949`](../../plugins/ida/hooks/hearsay_gate.py#L487-L510)) |
 
 A report arrives as a foreground subagent's result, a background subagent's notification, or a peer message. Each harness carries these moments on its own hook events; the event map is in [ARCHITECTURE.md](../ARCHITECTURE.md).
