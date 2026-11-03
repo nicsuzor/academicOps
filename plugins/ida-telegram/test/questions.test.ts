@@ -1371,6 +1371,43 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     // Must NOT report "Question ... posted to the user" when send failed
     expect(parsed.success).toBe(false);
     expect(parsed.error).toContain("chat not found");
+    expect((askResp as any)?.isError).toBe(true);
+  });
+
+  test("AC2: PreToolUse hook on AskUserQuestion fails fast when socket does not exist or connection fails", async () => {
+    const { spawn } = await import("node:child_process");
+    const { mkdirSync } = await import("node:fs");
+
+    mkdirSync(testStateDir, { recursive: true });
+    const missingSocketPath = join(testStateDir, "nonexistent.sock");
+    const hookScript = join(import.meta.dir, "..", "hooks", "ask-user-question.js");
+
+    const { stderr, exitCode } = await new Promise<{ stderr: string; exitCode: number | null }>((resolve) => {
+      const proc = spawn("node", [hookScript], {
+        env: {
+          ...process.env,
+          IDA_TELEGRAM_ROLE: "primary",
+          STATE_DIR: testStateDir,
+          SOCKET_PATH: missingSocketPath,
+        },
+      });
+      let stderrData = "";
+      proc.stderr.on("data", (d) => (stderrData += d.toString()));
+      proc.on("close", (code) => resolve({ stderr: stderrData, exitCode: code }));
+      proc.stdin.write(
+        JSON.stringify({
+          tool_name: "AskUserQuestion",
+          turn_id: "turn_missing_sock",
+          tool_input: {
+            questions: [{ question: "Missing socket test?", options: [{ label: "OK" }] }],
+          },
+        }) + "\n"
+      );
+      proc.stdin.end();
+    });
+
+    expect(exitCode).not.toBe(0);
+    expect(stderr).toContain("Telegram bridge socket not found");
   });
 
   test("AC2: PreToolUse hook on AskUserQuestion fails fast on socket delivery error instead of claiming delivery", async () => {

@@ -130,9 +130,11 @@ export class StdioMcpServer {
 
       try {
         const result = await this.executeTool(toolName, args);
+        const isError = typeof result === "object" && result !== null && (result as Record<string, unknown>).success === false;
         return {
           jsonrpc: "2.0",
           id,
+          ...(isError ? { isError: true } : {}),
           result: {
             content: [{ type: "text", text: typeof result === "string" ? result : JSON.stringify(result) }],
           },

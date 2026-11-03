@@ -16,8 +16,8 @@ async function main() {
     join(process.env.STATE_DIR || join(homedir(), ".claude", "channels", "telegram"), "bridge.sock");
 
   if (!existsSync(socketPath)) {
-    // Socket missing: inert, exit 0
-    process.exit(0);
+    process.stderr.write(`ida-telegram AskUserQuestion hook error: Telegram bridge socket not found at ${socketPath}\n`);
+    process.exit(1);
   }
 
   let inputData = "";
@@ -119,10 +119,13 @@ async function main() {
     process.exit(0);
   });
 
-  client.on("error", () => {
-    // Socket connection error: inert
-    process.exit(0);
+  client.on("error", (err) => {
+    process.stderr.write(`ida-telegram AskUserQuestion hook error: socket connection failed: ${err.message}\n`);
+    process.exit(1);
   });
 }
 
-main().catch(() => process.exit(0));
+main().catch((err) => {
+  process.stderr.write(`ida-telegram AskUserQuestion hook error: ${err?.message || err}\n`);
+  process.exit(1);
+});
