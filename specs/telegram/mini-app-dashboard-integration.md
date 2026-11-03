@@ -1,6 +1,6 @@
 ---
 title: Telegram Mini App Dashboard Integration
-status: ready
+status: draft
 ---
 
 # Telegram Mini App Dashboard Integration
@@ -59,11 +59,15 @@ As an operator, I want all agent interface surfaces hosted and routed exclusivel
 
 ### US-6 Unified Operational Event Ingestion and Session Waking
 
-As an autonomous framework supervisor, I want the operational dashboard daemon to ingest asynchronous infrastructure events (`polecat_events` and repository webhooks) and wake agent sessions across its HTTP/SSE channel bridge, so that task completions, pull request updates, and repository events trigger immediate supervision and reconciliation passes without client polling loops or ad-hoc host socket relays.
+As an autonomous framework supervisor or human operator, I want the operational dashboard to ingest asynchronous infrastructure events (worker container completions, repository webhooks, and external operational notifications) and wake agent sessions across its HTTP/SSE channel bridge, so that task completions, pull request updates, and external events trigger immediate supervision and reconciliation passes without client polling loops, data loss, or ad-hoc host socket relays.
 
 - **AC-6.1** Given completed worker containers recorded in `polecat_events`, when unacknowledged completion events are present, then the daemon consumes the events, dispatches a wake notification to the active supervisor session over the bridge, and marks the events acknowledged.
-- **AC-6.2** Given an inbound repository webhook (such as PR review comments, CI status completion, or PR merges), when received by the dashboard daemon's webhook ingress, then the daemon translates the event into a structured session event and wakes the target agent session.
+- **AC-6.2** Given an inbound repository webhook (such as PR review comments, CI status completion, or PR merges), when received by the dashboard daemon's webhook ingress, then the daemon validates the payload signature, translates the event into a structured operational event, and wakes the target agent session.
 - **AC-6.3** Given an active agent session connected over the HTTP/SSE bridge, when an operational event is dispatched, then the bridge delivers the structured notification to the session within the configured debounce window.
+- **AC-6.4** Given an active supervisor session awaiting completion signals, when events arrive at the dashboard, then notifications are pushed reactively into the session context without requiring the agent to poll the dashboard.
+- **AC-6.5** Given a direct worker exit callback (`POST /api/webhooks/workers`), when received from the container runtime, then the dashboard validates the bearer credential, records or correlates the task exit, and delivers an immediate reactive wake notification to the supervisor session.
+- **AC-6.6** Given an arbitrary external notification source, when authenticated at the webhook ingress, then the dashboard normalizes the payload into a structured operational event and routes it to subscribed sessions or outward to operator alert channels.
+- **AC-6.7** Given a dashboard daemon outage or restart, when events arrive or were queued during downtime, then unacknowledged events persisted in the write-ahead event queue are flushed as a batch snapshot upon daemon recovery, ensuring zero event loss.
 
 ### US-7 Unified Pending Decisions and Owed Items View
 
@@ -268,27 +272,361 @@ The conversational agent plugin previously bundled an internal HTTP server and d
 
 #### 6.1 Context and Problem
 
-Background worker containers operate headless and asynchronously. Distributed task completion and external repository activity (such as pull request reviews, CI check completions, and branch merges) must wake active supervisor sessions promptly without relying on client polling loops or host-specific socket daemons.
+Background worker containers (polecats) operate headless and asynchronously in isolated worktrees. External repository activity--including pull request reviews, automated CI check suite completions, branch merges, and third-party monitoring alerts--occurs outside the local agent process boundary. Active supervisory agents (such as primary coordinators and dispatchers) must receive completion signals and operational events promptly to evaluate returned evidence, perform verification and premise checks, advance dependent workflows, or close the loop with the operator.
 
-#### 6.2 Event Ingestion and Delivery Architecture
+Closing this operational loop requires resolving two distinct architectural choices that must not be conflated:
 
-The operational dashboard daemon centralises operational event ingestion across worker container exits and repository webhooks, acting as the singular session bridge:
+1. **Ingress:** How events reach the central operational dashboard (queue polling, direct HTTP webhook push, or filesystem socket relays).
+2. **Delivery:** How agent sessions learn of ingested events (reactive Server-Sent Events push wakeups, client polling buffers, or raw process stdin injection).
 
-1. **Worker Completion Event Ingestion:**
-   - The daemon continuously monitors the unacknowledged queue of worker completion events emitted by the container runtime exit listener.
-   - Completions are debounced over a short window (10–60 seconds) to coalesce concurrent container exits into a single supervisory notification turn.
-   - Each notification carries the task identifier, container reference, exit code, terminal task status, and execution duration.
-   - Upon confirmed delivery to the session bridge, the daemon marks the processed events acknowledged in the queue.
-2. **Repository Webhook Ingestion:**
-   - The dashboard daemon hosts an authenticated webhook ingress endpoint protected by cryptographic signature verification.
-   - The ingress accepts repository lifecycle events, including pull request mutations, review submissions, and automated check completions.
-   - Inbound webhook events matching active supervisory contexts are translated into structured operational notifications.
-3. **Session Waking and Turn Dispatch:**
-   - Operational notifications are delivered to the active supervisor session over the authenticated HTTP channel bridge as high-priority inbound turns.
-   - Receipt of a notification induces an immediate reactive execution turn in the supervisor session to evaluate returned evidence, perform verification, and advance dependent workflows.
-4. **Offline Session Persistence Invariant:**
-   - When no active supervisor session is connected to the channel bridge, unacknowledged events remain persisted in the event queue without expiration or loss.
-   - Upon supervisor session connection or bridge re-attachment, the daemon flushes all unacknowledged events as a consolidated batch snapshot, waking the session to reconcile accumulated state.
+##### Historical Trajectory and Design Evolution
+
+- **Retired Baseline: Per-Session Unix Domain Socket Push (PR #3216):** The initial attempt to notify dispatching sessions relied on a host script listening for container exits and pushing `[polecat-exit]` text lines directly into agent session processes via Unix Domain Sockets in `/tmp/cc-socks/`. This mechanism was retired and PR #3216 was closed unmerged because it broke across five fundamental structural boundaries:
+  1. _Host Container Isolation:_ The desktop environment was decoupled into an independent container, isolating its `/tmp` directory and network namespace from worker containers and other host tools.
+  2. _Process ID Fragility:_ Agent sessions lacked deterministic socket names, forcing the relay script to guess target sockets based on process names, thread scans, and alphabetical ordering.
+  3. _Unauthenticated Stdin Injection:_ Injecting unescaped text into an active agent's stdin violated message provenance, caused syntax parsing confusion, and risked corrupting interactive turns.
+  4. _Silent Event Loss:_ The relay script marked events as handled even when falling back to arbitrary sockets or when delivery failed, dropping completion signals silently.
+  5. _Axiom Non-Compliance:_ Ad-hoc fallback heuristics and silent error swallowing directly breached core platform axioms (anti-fallback, fail-fast, and single source of truth).
+- **Settled Baseline: Queue Consumption and Channel Bridge Waking (Option 3C, PR #3252):** Option 3C settled the baseline architecture where the container runtime listener records container exits in a persistent database queue (`polecat_events`), and the operational dashboard daemon acts as the unified event consumer. The daemon consumes the queue and incoming repository webhooks, coalescing events over a configurable debounce window (10-60 seconds) and waking connected supervisory sessions over its authenticated HTTP/SSE channel bridge.
+- **Operator Design Explorations:** The human operator subsequently requested visual evaluation of several design alternatives to close the loop:
+  1. _Agent Polling Buffer:_ Whether the dashboard should support an indexed event store where agents poll for completed workers and GitHub hook results on demand.
+  2. _Multi-Source Inbound Webhooks:_ Expanding the dashboard ingress to ingest arbitrary external webhooks and operational alerts.
+  3. _Two-Way Notification Hub:_ Establishing a bi-directional notification pipeline connecting inbound webhooks with outbound operator chat cards and mobile pushes.
+  4. _Direct Webhook Push Endpoint:_ Whether a single dashboard webhook endpoint could receive both external GitHub events and direct push callbacks from the worker container runtime (eliminating daemon queue-polling latency), how that differs from existing options, and whether it replaces or refines Option 3C.
+
+#### 6.2 Architectural Options for Closing the Loop
+
+##### Option 6.A (Retired Baseline): Per-Session Unix Domain Socket Push (`[polecat-exit]`, PR #3216)
+
+The container runtime exit listener triggers a host Python relay script upon container termination. The script scans `/tmp/cc-socks/` for active agent sockets, matches target sessions via process heuristics, and injects raw text lines (`[polecat-exit] <task_id> <exit_code>`) directly into the agent process stdin.
+
+- **What it carries:** Unstructured text string containing container exit code, task identifier, and container reference.
+- **Who polls or is notified:** Local socket listener in the agent session process receives the injected text line.
+- **Trade-offs:** Avoids external HTTP dependencies, but introduces irrecoverable failure modes: filesystem path coupling, lack of message authentication, inability to span isolated container network namespaces, and silent drops when target processes terminate.
+
+```mermaid
+flowchart LR
+    subgraph WorkerContainer["Worker Container"]
+        PW["polecat runner"]
+    end
+    subgraph HostRelay["Host Environment"]
+        MCP["polecat-mcp (exit listener)"]
+        SOCK["UDS Relay Script"]
+        FS["/tmp/cc-socks/claude-code-*.sock"]
+    end
+    subgraph AgentSession["Agent Process"]
+        STDIN["Process stdin (raw text)"]
+    end
+
+    PW -->|"Docker exit"| MCP
+    MCP -->|"Trigger"| SOCK
+    SOCK -->|"PID guess & write"| FS
+    FS -->|"[polecat-exit] injection"| STDIN
+```
+
+##### Option 6.B (Settled Baseline 3C): Queue Consumption and Channel Bridge Waking (PR #3252)
+
+The container runtime exit listener writes every container exit into a persistent database queue table (`polecat_events`). The operational dashboard daemon polls the database table for unacknowledged records, correlates them with active tasks, and consumes inbound GitHub webhooks. The daemon coalesces events within a configurable debounce window (10-60 seconds) and delivers high-priority notification turns to connected supervisory agent sessions over the authenticated HTTP/SSE channel bridge (`/api/app/instances/:instance/events`).
+
+- **What it carries:** Structured worker completion records (`task_id`, `container_id`, `exit_code`, `status`, `duration`) and repository webhook events (`check_suite`, `pull_request`, `review`).
+- **Who polls or is notified:** The dashboard daemon polls the persistent queue table; the supervisory agent session is notified reactively via SSE push turns without polling.
+- **Trade-offs:** Provides maximum durability and zero event loss across dashboard or agent restarts (unacknowledged events remain persisted in the queue). However, worker completion signals incur a polling latency floor imposed by the daemon's query cadence and debounce window.
+
+```mermaid
+flowchart TD
+    subgraph Execution["Worker Execution"]
+        PW["polecat container"]
+    end
+    subgraph Storage["Persistent Host Storage"]
+        MCP["polecat-mcp listener"]
+        Q[("polecat_events queue<br/>(SQLite / persistent table)")]
+    end
+    subgraph GitHub["GitHub SCM"]
+        GH["GitHub webhooks"]
+    end
+    subgraph Dashboard["Operational Dashboard Daemon"]
+        POLL["Queue consumer daemon"]
+        WH["Webhook ingress endpoint"]
+        COAL["Debounce coalescer (10-60s)"]
+        SSE_SRV["HTTP/SSE channel bridge"]
+    end
+    subgraph Supervisor["Supervisor Session"]
+        SESS["Active agent session<br/>(/api/app/events)"]
+    end
+
+    PW -->|"Exit code"| MCP
+    MCP -->|"INSERT exit event"| Q
+    Q -->|"Poll unacked events"| POLL
+    GH -->|"POST webhook"| WH
+    POLL --> COAL
+    WH --> COAL
+    COAL -->|"High-priority turn"| SSE_SRV
+    SSE_SRV -->|"SSE event push"| SESS
+```
+
+##### Option 6.C: Dashboard Event Store with Agent Polling Buffer (tg 2792)
+
+The operational dashboard exposes an inbound ingestion endpoint for GitHub webhooks and worker exits. Received events are assigned monotonic sequence numbers (`seq`) and appended to an indexed event buffer in dashboard memory or local storage. Agent sessions do not receive unprompted push notifications; instead, agents query the dashboard periodically via a REST endpoint (`GET /api/app/events?since=<seq>`) or an MCP read tool to discover recent completions.
+
+- **What it carries:** Normalized event objects with monotonic sequence identifiers, timestamps, event categories, and structured payload bodies.
+- **Who polls or is notified:** The agent session polls the dashboard REST API periodically (every 2-30 seconds); no proactive wake turns are pushed.
+- **Trade-offs:** Simplifies client implementation for stateless or pull-only worker scripts that cannot host listening servers. However, it introduces significant notification latency, consumes recurring API requests and context tokens in polling loops, and directly violates the project's strict prohibition against agent polling loops.
+
+```mermaid
+flowchart TD
+    subgraph Senders["Event Senders"]
+        PW["polecat-mcp"]
+        GH["GitHub webhooks"]
+    end
+    subgraph Dashboard["Operational Dashboard"]
+        INGRESS["Webhook & exit ingress"]
+        STORE[("Indexed event store<br/>(monotonic seq)")]
+        REST["REST event endpoint<br/>(GET /api/app/events?since=seq)"]
+        INGRESS --> STORE --> REST
+    end
+    subgraph Agent["Polling Agent Session"]
+        POLLER["Agent recurring poll loop<br/>(every 2-30s)"]
+        POLLER -->|"GET ?since=seq"| REST
+    end
+
+    PW -->|"POST event"| INGRESS
+    GH -->|"POST webhook"| INGRESS
+```
+
+##### Option 6.D: Direct Unified Webhook Endpoint for GitHub and Worker Pushes (2026-11-04 Ask)
+
+The operational dashboard exposes a unified HTTP webhook ingress gateway (`POST /api/webhooks/*`). External GitHub webhooks post directly to this endpoint with HMAC-SHA256 signature headers. Concurrently, the container runtime exit listener (`polecat-mcp`) publishes worker exit callbacks via direct HTTP POST to `POST /api/webhooks/workers` immediately upon container termination, authenticated via a shared bearer secret. Upon receipt, the dashboard validates the payload and immediately pushes a reactive wake notification over the SSE channel bridge into the active supervisor session.
+
+- **What it carries:** GitHub repository event payloads and worker container exit payloads (`task_id`, `session_id`, `exit_code`, `status`, `summary`, `pr_url`, `completion_evidence`).
+- **Who polls or is notified:** Both external senders push directly into the dashboard via HTTP POST; the dashboard pushes directly to active supervisor sessions via SSE. Nobody polls.
+- **Trade-offs:** Delivers sub-second end-to-end notification latency (<100ms) by eliminating daemon queue-polling intervals. However, if implemented as a pure replacement for Option 3C without persistent queueing, events emitted while the dashboard is down or restarting would be permanently dropped.
+
+```mermaid
+flowchart TD
+    subgraph Senders["Direct Push Senders"]
+        PW["polecat-mcp<br/>(local container network)"]
+        GH["GitHub<br/>(Cloudflare bypass)"]
+    end
+    subgraph Dashboard["Operational Dashboard Server"]
+        INGRESS["Unified webhook ingress<br/>(POST /api/webhooks/*)"]
+        AUTH["Auth & signature verification<br/>(HMAC / Bearer secret)"]
+        SSE_SRV["Reactive SSE channel bridge"]
+        INGRESS --> AUTH --> SSE_SRV
+    end
+    subgraph Supervisor["Supervisor Session"]
+        SESS["Active agent session<br/>(Sub-second reactive wake)"]
+        SSE_SRV ==>|"Real-time SSE push wake (<100ms)"| SESS
+    end
+
+    PW -->|"Direct HTTP POST"| INGRESS
+    GH -->|"Direct HTTP POST"| INGRESS
+```
+
+##### Option 6.E: Multi-Source Webhook Gateway and Two-Way Notification Hub (tg 2792)
+
+The operational dashboard serves as a centralized, bi-directional operational communication hub. Inbound: The dashboard exposes generalized webhook endpoints (`POST /api/webhooks/:source`) capable of ingesting and normalizing heterogeneous webhooks from GitHub, container runtimes, external CI/CD pipelines, and infrastructure monitoring systems into canonical operational event envelopes. Outbound: The dashboard integrates a two-way notification dispatcher capable of routing events and agent directives across multiple communication sinks, including active agent SSE streams, Telegram chat cards, mobile push notifications, and external webhook callbacks.
+
+- **What it carries:** Canonical operational event envelopes (`seq`, `source`, `event_type`, `correlation`, `status`, `summary`, `payload`, `timestamp`) across all inbound sources; outbound notification alerts and action prompts.
+- **Who polls or is notified:** External services push in; the dashboard pushes inbound events to subscribed agent sessions via SSE; agents push outbound notifications through the dashboard to operator channels.
+- **Trade-offs:** Establishes a complete, extensible event and alerting fabric across the entire multi-agent ecosystem. Requires maintaining ingress signature validators and payload normalization mappers for each external provider.
+
+```mermaid
+flowchart TD
+    subgraph Inbound["Inbound Webhook Sources"]
+        GH["GitHub webhooks"]
+        PW["polecat-mcp exits"]
+        EXT["External CI / monitoring alerts"]
+    end
+    subgraph Dashboard["Operational Dashboard Hub"]
+        GW["Multi-source webhook ingress"]
+        NORM["Event normalizer & monotonic seq"]
+        DISP["Two-way notification dispatcher"]
+        GW --> NORM --> DISP
+    end
+    subgraph InternalSessions["Active Agent Sessions"]
+        SESS["Supervisor sessions<br/>(Inbound SSE wake)"]
+        DISP ==>|"Inbound reactive turn"| SESS
+    end
+    subgraph Outbound["Outbound Notification Sinks"]
+        TG["Telegram chat cards"]
+        NTFY["Mobile push (ntfy)"]
+        CB["External webhooks"]
+        DISP -->|"Outbound alert"| TG
+        DISP -->|"Outbound push"| NTFY
+        DISP -->|"Outbound callback"| CB
+    end
+    SESS -.->|"POST /api/app/notifications/dispatch"| DISP
+```
+
+#### 6.3 Consolidated Trade-Off Matrix and Decision Choice
+
+The following matrix evaluates the five loop-closing architectural options across critical operational dimensions:
+
+| Evaluation Dimension | Option 6.A: UDS Push (Retired) | Option 6.B: 3C Baseline (PR #3252) | Option 6.C: Polling Buffer (tg 2792) | Option 6.D: Direct Webhook (2026-11-04) | Option 6.E: Multi-Source Hub (tg 2792) |
+| :- | :- | :- | :- | :- | :- |
+| **Ingress Mechanism** | Local filesystem socket | Persistent DB queue (`polecat_events`) | Inbound HTTP to indexed memory/DB | Direct HTTP POST from GitHub & worker | Multi-source HTTP webhook gateway |
+| **Delivery Mechanism** | Stdin raw text injection | SSE push turn over HTTP bridge | Client-initiated REST polling | SSE push turn over HTTP bridge | SSE push turn + two-way multi-channel |
+| **Notification Latency** | Low (<100ms, when working) | Moderate (10-60s debounce window) | High (2-30s polling interval) | Sub-second (<100ms) | Sub-second (<100ms) |
+| **Agent Polling Overhead** | None | None | High (recurring API/token churn) | None | None |
+| **Downtime Loss Resilience** | Zero (silent drops on failure) | Maximum (durable queue replay) | High (persisted buffer replay) | Low (lost if dashboard down) | Medium (buffer replay on reconnect) |
+| **Network & Isolation Fit** | Fails (breaks across containers) | Excellent (shared DB/service layer) | Good (HTTP REST query) | Excellent (internal network + ingress) | Excellent (unified perimeter ingress) |
+| **Authentication Standard** | None (unauthenticated socket write) | Internal DB trust + Webhook HMAC | Perimeter bearer / session token | HMAC SHA-256 + Bearer secret | Modular HMAC + Bearer + Tokens |
+| **Anti-Polling Compliance** | Passes | Passes | **Fails** (requires agent polling) | Passes | Passes |
+| **Implementation Scope** | Dead end (unmerged PR #3216) | Merged in PR #3252 | Low | Low-Medium | Medium |
+
+##### Recommendation First: Refined Option 3C with Direct Push Ingress (Hybrid Architecture)
+
+**Recommendation:** Adopt a **Hybrid Architecture that refines Option 3C by combining Option 6.D (Direct Push Ingress) with Option 6.B (Persistent Write-Ahead Queue Backup) and the multi-source routing of Option 6.E**.
+
+**Architectural Rationale:**
+
+1. **Sub-Second Latency without Axiom Compromise:** Option 6.D eliminates the 10-60 second daemon queue-polling delay by allowing the worker runtime exit listener to push directly into the dashboard webhook endpoint via HTTP POST, inducing immediate sub-second SSE wake turns in active supervisor sessions. This complies fully with the framework's strict prohibition against agent polling loops.
+2. **Refining Rather than Replacing Option 3C:** Direct webhook push must **refine** Option 3C rather than replace it. In a pure push architecture (Option 6.D alone), any worker container terminating while the dashboard is restarting, upgrading, or offline drops its exit event irretrievably. By retaining `polecat_events` as an authoritative write-ahead ledger, the container runtime listener executes a dual-write:
+   - _Primary Ledger:_ The exit is written durably to `polecat_events`.
+   - _Fast-Path Push:_ The exit listener immediately fires a direct HTTP POST to the dashboard.
+   - _Recovery Replay:_ If the direct POST fails (e.g. dashboard unreachable), the event remains unacknowledged in the persistent queue. When the dashboard daemon starts up, it sweeps unacknowledged records from `polecat_events`, guaranteeing zero event loss across downtime.
+3. **Unified Perimeter Security:** Ingesting external GitHub webhooks, internal worker exit pushes, and third-party alert webhooks through the central dashboard perimeter leverages established cryptographic verification standards (HMAC-SHA256 for GitHub, bearer authorization for internal runtimes) while eliminating fragile filesystem socket relays.
+4. **Two-Way Notification Extensibility:** Incorporating Option 6.E's two-way notification pipeline allows supervisory agents to not only receive reactive wakes from background tasks, but also dispatch proactive alerts and decision prompts directly to operator chat cards and mobile notifications.
+
+#### 6.4 Target Architecture and Ingress Protocol Contracts
+
+The recommended hybrid loop-closing architecture operates according to the following contracts:
+
+```mermaid
+flowchart TD
+    subgraph Execution["Worker & SCM Ingress"]
+        PW["polecat worker exit"]
+        GH["GitHub webhook"]
+        EXT["Third-party alert webhook"]
+    end
+
+    subgraph HostRuntime["Host & Network Layer"]
+        MCP["polecat-mcp listener"]
+        WAL[("Write-ahead ledger<br/>(polecat_events queue)")]
+        CF["Cloudflare Access perimeter<br/>(Scoped webhook bypass)"]
+        INT_NET["Internal Docker network<br/>(http://overwhelm-dash:3000)"]
+    end
+
+    subgraph DashboardDaemon["Operational Dashboard Gateway"]
+        WH_INGRESS["Webhook & push ingress<br/>(/api/webhooks/*)"]
+        AUTH_VAL["Signature & bearer auth"]
+        REPLAY_BUF[("Sliding replay buffer<br/>(monotonic seq)")]
+        DRAIN_DAEMON["Startup queue drainer<br/>(reads unacked polecat_events)"]
+        BRIDGE["HTTP/SSE session bridge"]
+        OUT_DISP["Two-way notification dispatcher"]
+
+        WH_INGRESS --> AUTH_VAL --> REPLAY_BUF --> BRIDGE
+        DRAIN_DAEMON --> REPLAY_BUF
+        AUTH_VAL --> OUT_DISP
+    end
+
+    subgraph Sessions["Agent Supervision"]
+        ACTIVE["Active supervisor session<br/>(Sub-second reactive wake)"]
+        RECONN["Reconnecting session<br/>(?since=seq replay)"]
+        BRIDGE ==>|"Instant SSE wake (<100ms)"| ACTIVE
+        REPLAY_BUF -.->|"Replay on reconnect"| RECONN
+    end
+
+    subgraph OperatorChannels["Operator Alert Sinks"]
+        TG_CARD["Telegram chat card update"]
+        NTFY_PUSH["Mobile push (ntfy)"]
+        OUT_DISP --> TG_CARD
+        OUT_DISP --> NTFY_PUSH
+    end
+
+    PW -->|"1. Container exit"| MCP
+    MCP -->|"2a. Durable write"| WAL
+    MCP -->|"2b. Fast-path POST push"| INT_NET --> WH_INGRESS
+    GH -->|"POST webhook"| CF --> WH_INGRESS
+    EXT -->|"POST webhook"| CF --> WH_INGRESS
+    WAL -.->|"Startup / recovery drain"| DRAIN_DAEMON
+```
+
+##### 1. GitHub Webhook Ingress (`POST /api/webhooks/github`)
+
+- **Security & Headers:**
+  - Headers: `X-GitHub-Event: <event>`, `X-Hub-Signature-256: sha256=<hmac>`
+  - The endpoint validates the HMAC-SHA256 signature against the configured repository webhook secret (`GITHUB_WEBHOOK_SECRET`). Requests failing verification are rejected with HTTP 401 Unauthorized.
+- **Payload Handling:**
+  - Ingests repository events: `check_suite` (completed), `pull_request` (opened, closed, merged), `pull_request_review` (submitted), and `workflow_run` (completed).
+  - Normalizes payloads into canonical operational events, assigns the next monotonic sequence number (`seq`), and broadcasts to the active supervisor session.
+
+##### 2. Worker Exit Callback Ingress (`POST /api/webhooks/workers`)
+
+- **Security & Headers:**
+  - Headers: `Authorization: Bearer <bridge_token>` or `X-Bridge-Token: <token>`
+  - Validates the bearer credential against the platform's configured bridge secret.
+- **Request Body Contract:**
+  ```json
+  {
+    "task_id": "task_1234abcd",
+    "session_id": "session_5678ef01",
+    "exit_code": 0,
+    "status": "done",
+    "summary": "Completed deliverables against criteria AC1-AC4",
+    "pr_url": "https://github.com/org/repo/pull/100",
+    "completion_evidence": "Report verified and passing unit tests",
+    "duration_seconds": 142.5,
+    "timestamp": "2026-11-04T00:15:30Z"
+  }
+  ```
+- **Execution Behaviour:**
+  - The dashboard marks the task transition, appends the record to the in-memory sliding-window replay buffer, acknowledges receipt with HTTP 200, and emits an immediate `worker_completed` event frame over the SSE stream to connected supervisor sessions.
+  - If the active session is connected, receipt induces an unprompted reactive turn for review and workflow progression.
+
+##### 3. Generic Inbound Webhook Ingress (`POST /api/webhooks/generic/:source`)
+
+- **Security & Headers:**
+  - Headers: `Authorization: Bearer <token>` or source-specific signature headers.
+- **Payload Handling:**
+  - Wraps arbitrary JSON alert payloads from external CI, uptime monitors, or external services into canonical operational event envelopes tagged with `source: ":source"` and monotonic sequence IDs.
+
+##### 4. Two-Way Outbound Notification Dispatch (`POST /api/app/notifications/dispatch`)
+
+- **Security & Headers:**
+  - Headers: `Authorization: Bearer <bridge_token>` or valid session cookie.
+- **Request Body Contract:**
+  ```json
+  {
+    "target": "telegram" | "ntfy" | "all",
+    "priority": "normal" | "urgent",
+    "title": "Build Failed on PR #100",
+    "message": "Integration test suite failed in CI step 3",
+    "action_url": "https://github.com/org/repo/pull/100"
+  }
+  ```
+- **Execution Behaviour:**
+  - Dispatches immediate notifications outward: posting or editing Telegram chat cards and pushing mobile alert banners via notification relays.
+
+##### 5. Replay Buffer and Downtime Recovery Invariants
+
+1. **Sliding-Window Event Buffer:**
+   - The dashboard daemon maintains an in-memory ring buffer (last 500 events) indexed by monotonic sequence counter `seq`.
+   - Connected clients specify `?since=<seq>` or header `Last-Event-ID: <seq>`. Any missed events within the buffer window replay immediately upon connection.
+2. **Persistent Write-Ahead Queue Drainage:**
+   - Upon service initialisation, the dashboard daemon queries `polecat_events` for any rows marked `unacknowledged = 1`.
+   - All unacknowledged exits are ingested, assigned sequence numbers, emitted into the SSE stream as a consolidated recovery batch snapshot, and marked acknowledged in the database queue table. This guarantees zero event loss even if the dashboard was offline when workers finished.
+
+#### 6.5 Operational Invariants and Load-Bearing Architecture Inquiries
+
+The direct webhook design resolves four load-bearing inquiries grounded in verified primary evidence:
+
+1. **Cloudflare Access Perimeter Reachability for GitHub:**
+   - _Inquiry:_ Can external GitHub webhook deliveries reach the dashboard path through the Cloudflare Access security perimeter?
+   - _Verified Evidence:_ The central dashboard domain is protected by Cloudflare Access. By default, Cloudflare Access enforces authentication policies (e.g. Google OAuth and Telegram OIDC on path-scoped `/app/*` and `/api/app/*` routes). GitHub webhook deliveries originate from GitHub's public IP ranges without Cloudflare session cookies or JWT identity assertions.
+   - _Architectural Rule:_ To admit GitHub webhooks without compromising dashboard security, a specific path-scoped Cloudflare Access application must be configured for `/api/webhooks/*` with a **Bypass** policy (or verified by an edge worker). Cryptographic authenticity is strictly delegated to and enforced by the dashboard endpoint via HMAC-SHA256 signature verification (`X-Hub-Signature-256`).
+2. **Sender Authentication and Authorization Boundaries:**
+   - _Inquiry:_ How is each sender authenticated at the ingress boundary?
+   - _Verified Evidence:_ Senders are partitioned by trust domain:
+     - _GitHub Webhooks:_ Authenticated via HMAC-SHA256 signatures generated with the repository webhook secret. Payloads failing cryptographic verification are rejected with HTTP 401.
+     - _Worker Runtime Callbacks:_ Authenticated via shared bearer token (`Authorization: Bearer <IDA_BRIDGE_TOKEN>`) matching the internal daemon bridge secret.
+     - _Third-Party Webhooks:_ Authenticated via source-specific tokens or HMAC signatures registered in the dashboard configuration.
+3. **Local Host Reachability of Container Runtime to Dashboard:**
+   - _Inquiry:_ Can the container runtime exit listener running on the host reach the dashboard service directly?
+   - _Verified Evidence:_ Both the dashboard web service and the container runtime components execute on the same host environment within a common Docker container network bridge. The container runtime reaches the dashboard via internal Docker DNS (`http://overwhelm-dash:3000`) or private host loopback without traversing the external public internet or Cloudflare Access perimeter.
+4. **Downtime Fault Semantics and Zero-Loss Guarantees:**
+   - _Inquiry:_ What happens to worker completion events emitted while the dashboard is down, restarting, or upgrading?
+   - _Verified Evidence:_ If worker exit notifications relied solely on ephemeral HTTP POST callbacks (Option 6.D alone), any exit occurring during dashboard downtime would be lost permanently. Under the recommended hybrid model, the container runtime writes to the persistent `polecat_events` queue _before_ executing the direct HTTP POST. If the HTTP push fails due to connection refusal or HTTP 5xx errors, the event remains unacknowledged in the persistent queue. Upon dashboard startup, the daemon drains all unacknowledged events from `polecat_events`, guaranteeing zero event loss across all failure modes.
 
 ### 7. Unified Pending Decisions and Owed Items View (US-7)
 
@@ -361,7 +699,7 @@ Each item rendered in the unified view carries standardized visual and metadata 
 | **Classification** | All | Explicit category chip: `Decision` (question card), `Permission` (tool authorization), `Review` (artifact/diff), or `Owed Item` (task deliverable). |
 | **Summary & Prompt** | All | The core question text, shell script command preview, pull request title, or task objective. |
 | **Context & Drill-down** | Decisions / Reviews / Owed | Primary recommendation highlighted first for decisions; expandable `>!` collapsible quotes or details modal for fuller background; unified diff viewer for code/permission reviews; task parent chain for owed items. |
-| **Freshness & Urgency** | All | Relative elapsed time since creation (e.g. `2h ago`), urgency indicator (P0–P4), and stalled warning markers for inactive work streams (>24h without progress). |
+| **Freshness & Urgency** | All | Relative elapsed time since creation (e.g. `2h ago`), urgency indicator (P0-P4), and stalled warning markers for inactive work streams (>24h without progress). |
 | **Resolution Actions** | All | In-place interactive controls: vertical option buttons for decisions, `Allow`/`Deny` for permissions, `Approve`/`Request Changes` for reviews, and status update / claim controls for task items. |
 
 #### 7.4 Guaranteed Retention and Item Exit Lifecycle
@@ -528,3 +866,14 @@ Actions dispatched from either `/agent` or `/app/` route to the instance's bridg
 | **AC-9.4** | Action Resolution & Card Edit | Given a pending question on an instance, `POST /api/app/instances/:instance/questions/answer` returns HTTP 200, unblocks the agent session, and updates the associated chat card. |
 | **AC-9.5** | Steering & Halt Dispatch | Given an active agent session, `POST /api/app/instances/:instance/stop` dispatches halt interrupt, resulting in execution suspension and updated card status. |
 | **AC-9.6** | Explicit Missing Instance Rejection | Given a request to an instance-scoped endpoint omitting the instance slug (e.g. `GET /api/app/anchor`), the proxy rejects with HTTP 400 Bad Request requiring explicit instance parameter. |
+
+## Open questions
+
+- **Closing the Loop Architecture Selection:** Which design option should be approved for closing the operational loop between GitHub, background worker containers, external notifications, and agent sessions?
+  - _Recommendation First:_ Adopt **Refined Option 3C + Direct Push Ingress with Dual-Write Queue Backup (Hybrid Architecture from Options 6.D & 6.E)**. Direct HTTP push provides sub-second session wakeups (<100ms) without daemon polling latency, while retaining the persistent `polecat_events` queue as a write-ahead replay log guarantees zero event loss during dashboard downtime. This strictly adheres to the anti-polling axiom, eliminates client polling loops, and extends smoothly to two-way operator notification channels.
+  - _Options Considered:_
+    - Option 6.A (Retired): Per-Session Unix Domain Socket Push (rejected due to namespace isolation, PID matching heuristics, and ack-on-fallback silent drops).
+    - Option 6.B (Settled Baseline 3C): Queue Ingestion & Session Bridge Waking (durable, but relies on daemon polling interval over `polecat_events`).
+    - Option 6.C: Dashboard Event Store with Agent Polling Buffer (rejected due to token burn, latency, and anti-polling axiom violation).
+    - Option 6.D: Direct Unified Webhook Endpoint for GitHub and Worker Pushes (sub-second latency; refines 3C when paired with write-ahead queue).
+    - Option 6.E: Multi-Source Webhook Gateway and Two-Way Notification Hub (unifies inbound event waking and outbound operator notifications).
