@@ -130,9 +130,11 @@ export class StdioMcpServer {
 
       try {
         const result = await this.executeTool(toolName, args);
+        const isError = typeof result === "object" && result !== null && (result as Record<string, unknown>).success === false;
         return {
           jsonrpc: "2.0",
           id,
+          ...(isError ? { isError: true } : {}),
           result: {
             content: [{ type: "text", text: typeof result === "string" ? result : JSON.stringify(result) }],
           },
@@ -372,15 +374,26 @@ export class StdioMcpServer {
           mini_app_only: isMiniAppOnly,
           chat: !isMiniAppOnly,
         });
-        postedIds.push(result.questionId);
-        this.store.recordTurn("out", q.header ? `${q.header}: ${q.question}` : q.question);
-
-        if (!isMiniAppOnly && this.bot) {
+        if (!isMiniAppOnly) {
+          if (!this.bot) {
+            return { success: false, error: "Telegram bot client is not running" };
+          }
+          if (!defaultChatId) {
+            return { success: false, error: "No allowed chat ID configured for Telegram questions" };
+          }
           const card = this.broker.renderQuestionCard(result.questionId, this.config.miniAppUrl, this.config.instance);
-          if (card) {
-            await this.bot.sendQuestionCard(defaultChatId, result.questionId, card, effectiveThreadId);
+          if (!card) {
+            return { success: false, error: `Failed to render question card for ${result.questionId}` };
+          }
+          const sendRes = await this.bot.sendQuestionCard(defaultChatId, result.questionId, card, effectiveThreadId);
+          if (!sendRes?.ok || !sendRes?.result?.message_id) {
+            const desc = sendRes?.description || "Failed to deliver question card over Telegram";
+            return { success: false, error: desc, questionId: result.questionId };
           }
         }
+
+        postedIds.push(result.questionId);
+        this.store.recordTurn("out", q.header ? `${q.header}: ${q.question}` : q.question);
       }
 
       if (postedIds.length === 1) {
