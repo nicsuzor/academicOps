@@ -952,4 +952,289 @@ describe("Threaded Conversations Support", () => {
       }
     });
   });
+
+  describe("AC5: Thread Creation (create_thread)", () => {
+    test("create_thread opens a titled thread from main chat and subsequent reply is sent inside it", async () => {
+      const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-th-create-act-"));
+      const config = loadConfig({
+        MINI_APP_URL: "https://ida.example.test",
+        TELEGRAM_BOT_TOKEN: "test-token",
+        IDA_TELEGRAM_ROLE: "primary",
+        ALLOWED_USER_IDS: "12345678",
+        STATE_DIR: stateDir,
+      });
+
+      const store = new PluginStore(config.stateDir);
+      const broker = new QuestionBroker(config.stateDir);
+      const permRelay = new PermissionRelay();
+
+      const apiCalls: Array<{ method: string; body: any }> = [];
+      const origFetch = globalThis.fetch;
+      globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+        const method = String(url).split("/").pop() || "";
+        const body = init?.body ? JSON.parse(String(init.body)) : {};
+        apiCalls.push({ method, body });
+        if (method === "createForumTopic") {
+          return new Response(
+            JSON.stringify({
+              ok: true,
+              result: {
+                message_thread_id: 7777,
+                name: "New Research Discussion",
+                icon_color: 7322096,
+              },
+            }),
+            { status: 200 }
+          );
+        }
+        return new Response(JSON.stringify({ ok: true, result: { message_id: 901 } }), { status: 200 });
+      }) as typeof fetch;
+
+      try {
+        const bot = new TelegramBotClient(config, broker, permRelay, () => {}, store);
+        const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
+
+        // 1. Inbound unthreaded message from main chat
+        await (bot as any).handleUpdate({
+          update_id: 40,
+          message: {
+            message_id: 401,
+            date: Date.now(),
+            chat: { id: 12345678, type: "supergroup" },
+            from: { id: 12345678, is_bot: false, first_name: "Alex" },
+            text: "Let's move to a new topic",
+          },
+        });
+        apiCalls.length = 0;
+
+        // 2. Agent invokes create_thread
+        const createRes = await mcp.handleMessage({
+          jsonrpc: "2.0",
+          id: 20,
+          method: "tools/call",
+          params: {
+            name: "create_thread",
+            arguments: {
+              name: "New Research Discussion",
+            },
+          },
+        });
+
+        const createCall = apiCalls.find((c) => c.method === "createForumTopic");
+        expect(createCall).toBeDefined();
+        expect(createCall?.body.chat_id).toBe(12345678);
+        expect(createCall?.body.name).toBe("New Research Discussion");
+
+        expect(createRes?.result).toBeDefined();
+        const contentText = (createRes?.result as any)?.content?.[0]?.text;
+        const parsed = JSON.parse(contentText);
+        expect(parsed.success).toBe(true);
+        expect(parsed.message_thread_id).toBe(7777);
+        expect(parsed.thread_id).toBe(7777);
+        expect(parsed.name).toBe("New Research Discussion");
+
+        apiCalls.length = 0;
+
+        // 3. Subsequent reply without thread parameter lands in thread 7777
+        const replyRes = await mcp.handleMessage({
+          jsonrpc: "2.0",
+          id: 21,
+          method: "tools/call",
+          params: {
+            name: "reply",
+            arguments: {
+              text: "Carrying on inside the new thread.",
+            },
+          },
+        });
+
+        const replyParsed = JSON.parse((replyRes?.result as any)?.content?.[0]?.text || "{}");
+        expect(replyParsed.success).toBe(true);
+
+        const sendMsgCall = apiCalls.find((c) => c.method === "sendMessage");
+        expect(sendMsgCall).toBeDefined();
+        expect(sendMsgCall?.body.chat_id).toBe(12345678);
+        expect(sendMsgCall?.body.message_thread_id).toBe(7777);
+      } finally {
+        globalThis.fetch = origFetch;
+        rmSync(stateDir, { recursive: true, force: true });
+      }
+    });
+
+    test("create_thread forwards optional icon_color and icon_custom_emoji_id", async () => {
+      const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-th-create-opt-"));
+      const config = loadConfig({
+        MINI_APP_URL: "https://ida.example.test",
+        TELEGRAM_BOT_TOKEN: "test-token",
+        IDA_TELEGRAM_ROLE: "primary",
+        ALLOWED_USER_IDS: "12345678",
+        STATE_DIR: stateDir,
+      });
+
+      const store = new PluginStore(config.stateDir);
+      const broker = new QuestionBroker(config.stateDir);
+      const permRelay = new PermissionRelay();
+
+      const apiCalls: Array<{ method: string; body: any }> = [];
+      const origFetch = globalThis.fetch;
+      globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+        const method = String(url).split("/").pop() || "";
+        const body = init?.body ? JSON.parse(String(init.body)) : {};
+        apiCalls.push({ method, body });
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            result: {
+              message_thread_id: 8888,
+              name: "Styled Topic",
+              icon_color: 9367192,
+              icon_custom_emoji_id: "emoji_123",
+            },
+          }),
+          { status: 200 }
+        );
+      }) as typeof fetch;
+
+      try {
+        const bot = new TelegramBotClient(config, broker, permRelay, () => {}, store);
+        const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
+
+        const res = await mcp.handleMessage({
+          jsonrpc: "2.0",
+          id: 22,
+          method: "tools/call",
+          params: {
+            name: "create_thread",
+            arguments: {
+              chat_id: 12345678,
+              name: "Styled Topic",
+              icon_color: 9367192,
+              icon_custom_emoji_id: "emoji_123",
+            },
+          },
+        });
+
+        const createCall = apiCalls.find((c) => c.method === "createForumTopic");
+        expect(createCall).toBeDefined();
+        expect(createCall?.body.chat_id).toBe(12345678);
+        expect(createCall?.body.name).toBe("Styled Topic");
+        expect(createCall?.body.icon_color).toBe(9367192);
+        expect(createCall?.body.icon_custom_emoji_id).toBe("emoji_123");
+
+        const contentText = (res?.result as any)?.content?.[0]?.text;
+        const parsed = JSON.parse(contentText);
+        expect(parsed.success).toBe(true);
+        expect(parsed.message_thread_id).toBe(8888);
+      } finally {
+        globalThis.fetch = origFetch;
+        rmSync(stateDir, { recursive: true, force: true });
+      }
+    });
+
+    test("create_thread returns clear error when name is empty or missing or exceeds 128 characters", async () => {
+      const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-th-create-val-"));
+      const config = loadConfig({
+        MINI_APP_URL: "https://ida.example.test",
+        TELEGRAM_BOT_TOKEN: "test-token",
+        IDA_TELEGRAM_ROLE: "primary",
+        ALLOWED_USER_IDS: "12345678",
+        STATE_DIR: stateDir,
+      });
+
+      const store = new PluginStore(config.stateDir);
+      const broker = new QuestionBroker(config.stateDir);
+      const permRelay = new PermissionRelay();
+
+      try {
+        const bot = new TelegramBotClient(config, broker, permRelay, () => {}, store);
+        const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
+
+        // Empty name
+        const emptyRes = await mcp.handleMessage({
+          jsonrpc: "2.0",
+          id: 23,
+          method: "tools/call",
+          params: {
+            name: "create_thread",
+            arguments: {
+              name: "   ",
+            },
+          },
+        });
+        const emptyParsed = JSON.parse((emptyRes?.result as any)?.content?.[0]?.text || "{}");
+        expect(emptyParsed.success).toBe(false);
+        expect(emptyParsed.error).toContain("Missing name");
+
+        // Too long name (> 128 chars)
+        const longRes = await mcp.handleMessage({
+          jsonrpc: "2.0",
+          id: 24,
+          method: "tools/call",
+          params: {
+            name: "create_thread",
+            arguments: {
+              name: "a".repeat(129),
+            },
+          },
+        });
+        const longParsed = JSON.parse((longRes?.result as any)?.content?.[0]?.text || "{}");
+        expect(longParsed.success).toBe(false);
+        expect(longParsed.error).toContain("128 characters");
+      } finally {
+        rmSync(stateDir, { recursive: true, force: true });
+      }
+    });
+
+    test("create_thread returns clear error when Telegram Bot API rejects creation", async () => {
+      const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-th-create-rej-"));
+      const config = loadConfig({
+        MINI_APP_URL: "https://ida.example.test",
+        TELEGRAM_BOT_TOKEN: "test-token",
+        IDA_TELEGRAM_ROLE: "primary",
+        ALLOWED_USER_IDS: "12345678",
+        STATE_DIR: stateDir,
+      });
+
+      const store = new PluginStore(config.stateDir);
+      const broker = new QuestionBroker(config.stateDir);
+      const permRelay = new PermissionRelay();
+
+      const origFetch = globalThis.fetch;
+      globalThis.fetch = (async () => {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            error_code: 400,
+            description: "Bad Request: not enough rights to create a topic",
+          }),
+          { status: 400 }
+        );
+      }) as typeof fetch;
+
+      try {
+        const bot = new TelegramBotClient(config, broker, permRelay, () => {}, store);
+        const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
+
+        const res = await mcp.handleMessage({
+          jsonrpc: "2.0",
+          id: 25,
+          method: "tools/call",
+          params: {
+            name: "create_thread",
+            arguments: {
+              name: "Forbidden Topic",
+            },
+          },
+        });
+
+        const contentText = (res?.result as any)?.content?.[0]?.text;
+        const parsed = JSON.parse(contentText);
+        expect(parsed.success).toBe(false);
+        expect(parsed.error).toBe("Bad Request: not enough rights to create a topic");
+      } finally {
+        globalThis.fetch = origFetch;
+        rmSync(stateDir, { recursive: true, force: true });
+      }
+    });
+  });
 });
