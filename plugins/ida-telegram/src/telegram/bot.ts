@@ -749,6 +749,41 @@ export class TelegramBotClient {
     return await this.callApi("editForumTopic", payload);
   }
 
+  public async createForumTopic(
+    chatId: number,
+    name: string,
+    options?: {
+      iconColor?: number;
+      iconCustomEmojiId?: string;
+    }
+  ): Promise<{
+    ok: boolean;
+    result?: {
+      message_thread_id: number;
+      name: string;
+      icon_color?: number;
+      icon_custom_emoji_id?: string;
+    };
+    description?: string;
+    error_code?: number;
+  }> {
+    const payload: Record<string, unknown> = {
+      chat_id: chatId,
+      name,
+    };
+    if (options?.iconColor !== undefined) {
+      payload.icon_color = options.iconColor;
+    }
+    if (options?.iconCustomEmojiId !== undefined) {
+      payload.icon_custom_emoji_id = options.iconCustomEmojiId;
+    }
+    const res = await this.callApi("createForumTopic", payload);
+    if (res?.ok && res?.result?.message_thread_id) {
+      this.lastThreadIdByChat.set(chatId, res.result.message_thread_id);
+    }
+    return res;
+  }
+
   public async registerCommands(): Promise<boolean> {
     if (!this.config.isPrimary) {
       return false;

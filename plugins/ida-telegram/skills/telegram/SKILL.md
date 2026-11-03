@@ -82,6 +82,7 @@ Every reply sent over Telegram automatically carries inline action buttons with 
 
 - **Thread confinement by default:** In Telegram supergroups with forum topics enabled, messages arriving in a thread are tagged with `meta.message_thread_id` and `meta.thread_id`. All outbound paths (replies, voice notes, question cards, edits, and reactions) automatically stay in that thread without configuration.
 - **Explicit target overriding:** If work requires posting into a specific topic, pass `message_thread_id` (or `thread_id`) explicitly to `reply` or `ask_user`.
+- **Opening new threads:** When starting a dedicated discussion, branching off a topic, or when the user asks to open the conversation in a new window or thread, create a new forum topic using `create_thread({ name: "..." })`. Once created, the new thread automatically becomes active and subsequent replies (`reply`, `ask_user`, etc.) land inside it without needing an explicit thread ID.
 - **Renaming threads:** When a conversation shifts focus or a thread requires a descriptive title, rename the forum topic using `rename_thread({ name: "..." })`. If `message_thread_id` is omitted, the active thread is renamed automatically.
 
 ## Voice
