@@ -19,7 +19,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
         chat_id: { type: "integer", description: "Telegram chat ID (defaults to primary user)" },
         message_thread_id: {
           type: "integer",
-          description: "Telegram message thread ID (for forum supergroups; defaults to active thread)",
+          description: "Telegram message thread ID (for forum supergroups or topics-enabled chats; defaults to active thread)",
         },
         thread_id: { type: "integer", description: "Alias for message_thread_id" },
         text: { type: "string", description: "Markdown text for chat (tier 1 and 2)" },
@@ -122,7 +122,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
         session_id: { type: "string", description: "Session ID for correlating with the asking session" },
         message_thread_id: {
           type: "integer",
-          description: "Telegram message thread ID (for forum supergroups; defaults to active thread)",
+          description: "Telegram message thread ID (for forum supergroups or topics-enabled chats; defaults to active thread)",
         },
         thread_id: { type: "integer", description: "Alias for message_thread_id" },
         chat: {
@@ -269,6 +269,35 @@ export const MCP_TOOLS: ToolDefinition[] = [
         icon_custom_emoji_id: {
           type: "string",
           description: "Optional custom emoji ID for the topic icon (pass empty string to remove)",
+        },
+      },
+      required: ["name"],
+    },
+  },
+  {
+    name: "create_thread",
+    description:
+      "Create a new Telegram forum topic (thread) with a given title. Sets the active thread so subsequent replies land inside it.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        chat_id: { type: "integer", description: "Telegram chat ID (defaults to primary user)" },
+        name: {
+          type: "string",
+          description: "Name for the new thread (1-128 characters)",
+        },
+        title: {
+          type: "string",
+          description: "Alias for name",
+        },
+        icon_color: {
+          type: "integer",
+          description:
+            "Optional RGB color of topic icon (e.g. 7322096, 16766590, 13338331, 9367192, 16749490, 16478047)",
+        },
+        icon_custom_emoji_id: {
+          type: "string",
+          description: "Optional custom emoji ID for the topic icon",
         },
       },
       required: ["name"],

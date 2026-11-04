@@ -22,7 +22,7 @@ Authors a complete, unambiguous technical specification grounded in the evidence
 
 ## Procedure
 
-1. **Problem statement and target** -- define the problem, caller/system context, and required capabilities.
+1. **Problem statement and user stories** -- define the problem and the human user stories it serves (`specs/meta/writing-specs.md`). Every user story must be written from the perspective of a human person whom the system serves (the user, researcher, operator, developer, or reader) -- never an agent, persona, worker, or internal component (`As an agent, I want...`). Agents do not want anything; an agent is given capabilities in order to fulfil human user requirements.
 2. **Architecture and data flow** -- describe the components and what each owns, and external integration points.
 3. **Interface contracts** -- define data types, function signatures, schemas, or protocols with precision.
 4. **Acceptance criteria** -- formulate concrete, observable, and falsifiable acceptance criteria for completion.

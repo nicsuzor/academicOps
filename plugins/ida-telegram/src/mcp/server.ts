@@ -257,10 +257,21 @@ export class StdioMcpServer {
           actions: args.actions as boolean | undefined,
         });
 
+        if (!sendRes || sendRes.ok === false || sendRes.success === false) {
+          return {
+            success: false,
+            error: sendRes?.error || "Failed to deliver reply",
+            messageId: sendRes?.messageId,
+          };
+        }
+
         const out: Record<string, unknown> = {
           success: true,
           messageId: sendRes?.messageId,
         };
+        if (sendRes?.messageThreadId !== undefined) {
+          out.message_thread_id = sendRes.messageThreadId;
+        }
         if (detailsId !== undefined) {
           out.detailsId = detailsId;
         }
@@ -555,6 +566,47 @@ export class StdioMcpServer {
         await this.bot.editMessage(chatId, messageId, text);
       }
       return { success: true };
+    }
+
+    if (name === "create_thread" || name === "create_topic" || name === "create_forum_topic") {
+      const chatId = (args.chat_id as number) || defaultChatId;
+      const newName =
+        typeof args.name === "string"
+          ? args.name.trim()
+          : typeof args.title === "string"
+            ? args.title.trim()
+            : "";
+      const iconColor = (args.icon_color ?? args.iconColor) as number | undefined;
+      const iconCustomEmojiId = (args.icon_custom_emoji_id ?? args.iconCustomEmojiId) as string | undefined;
+
+      if (!newName) {
+        return { success: false, error: "Missing name: thread name must be a non-empty string" };
+      }
+      if (newName.length > 128) {
+        return { success: false, error: "Thread name cannot exceed 128 characters" };
+      }
+      if (!chatId) {
+        return { success: false, error: "Missing chat ID: provide chat_id or configure allowed user" };
+      }
+
+      if (this.bot) {
+        const res = await this.bot.createForumTopic(chatId, newName, {
+          iconColor,
+          iconCustomEmojiId,
+        });
+        if (!res?.ok || !res?.result?.message_thread_id) {
+          return { success: false, error: res?.description || "Failed to create thread" };
+        }
+        return {
+          success: true,
+          chat_id: chatId,
+          message_thread_id: res.result.message_thread_id,
+          thread_id: res.result.message_thread_id,
+          name: res.result.name || newName,
+        };
+      }
+
+      return { success: false, error: "Telegram bot client is not available" };
     }
 
     if (name === "rename_thread" || name === "rename_topic" || name === "edit_forum_topic") {
