@@ -509,6 +509,77 @@ def test_revise_and_fail_take_any_reason_and_still_parse_keyed_lines(token):
     assert pcg.is_armed(f"s-{token}") is False
 
 
+def _parenthesised_report() -> str:
+    return _report(_frontmatter(answers=f"{ASK_A}: (4)\n  {ASK_B}: (6)"))
+
+
+def test_pass_refused_on_parenthesised_answers_without_a_numbering_waiver():
+    _arm_with_report("s-paren", "CID", text=_parenthesised_report())
+    with pytest.raises(ValueError, match=r"Waived: numbering"):
+        pcv.record_verdict(
+            session_id="s-paren",
+            claim_id="CID",
+            verdict="PASS",
+            reason=_reason("CID"),
+            tracer_mod=_configured(),
+        )
+    assert pcg.is_armed("s-paren") is True
+
+
+def test_pass_records_parenthesised_answers_under_a_numbering_waiver():
+    _arm_with_report("s-paren-w", "CID", text=_parenthesised_report())
+    tracer = _configured()
+    reason = _reason(
+        "CID",
+        drop=("Waived:",),
+        extra=("Waived: numbering -- answers wrote (4) and (6) for 4 and 6",),
+    )
+    pcv.record_verdict(
+        session_id="s-paren-w", claim_id="CID", verdict="PASS", reason=reason, tracer_mod=tracer
+    )
+    attrs = tracer.exported[0]["attributes"]
+    assert attrs["premise_check.verdict"] == "PASS"
+    assert attrs["premise_check.waived_items"] == ["numbering"]
+    assert pcg.is_armed("s-paren-w") is False
+
+
+def _format_reason(format_line: str) -> str:
+    return _reason("CID", drop=("Waived:", "Relay:"), extra=(format_line, "Relay: none"))
+
+
+def test_revise_records_a_format_only_send_back():
+    _arm_with_report("s-fmt", "CID", text=_parenthesised_report())
+    tracer = _configured()
+    reason = _format_reason("Format: numbering -- answers write (4) and (6); write 4 and 6")
+    pcv.record_verdict(
+        session_id="s-fmt", claim_id="CID", verdict="REVISE", reason=reason, tracer_mod=tracer
+    )
+    attrs = tracer.exported[0]["attributes"]
+    assert attrs["premise_check.verdict"] == "REVISE"
+    assert attrs["premise_check.format_items"] == ["numbering"]
+    assert pcg.is_armed("s-fmt") is False
+
+
+@pytest.mark.parametrize(
+    ("token", "format_line"),
+    [
+        ("REVISE", "Format: the reasoning is weak"),
+        ("FAIL", "Format: numbering -- answers write (4) and (6)"),
+    ],
+)
+def test_format_line_does_not_carry_fail_or_a_non_format_item(token, format_line):
+    _arm_with_report(f"s-fmt-{token}", "CID", text=_parenthesised_report())
+    with pytest.raises(ValueError, match=rf"{token} refused"):
+        pcv.record_verdict(
+            session_id=f"s-fmt-{token}",
+            claim_id="CID",
+            verdict=token,
+            reason=_format_reason(format_line),
+            tracer_mod=_configured(),
+        )
+    assert pcg.is_armed(f"s-fmt-{token}") is True
+
+
 # ---------------------------------------------------------------------------
 # 3. Span attributes and the judged-text link
 # ---------------------------------------------------------------------------
@@ -2274,3 +2345,142 @@ def test_reason_check_refusal_for_unparseable_block_names_failing_line_or_key():
     assert "Malformed inference line" in msg or "missing closing '--'" in msg
     assert "-- Malformed warrant with no closing dashes" in msg
     assert "Required remediation format" in msg
+
+
+# ---------------------------------------------------------------------------
+# Orphan conclusions: a line the report relies on that no inference bar yields
+# ---------------------------------------------------------------------------
+
+_ORPHAN_ASK = "ask-thread"
+
+
+def _orphan_conclusion_report() -> str:
+    """One bar yields (3); (4) is written as a further conclusion with no bar of its own."""
+    return (
+        "Report.\n\n"
+        "```argdown\n"
+        "===\n"
+        "asks:\n"
+        f"  {_ORPHAN_ASK}: where do replies land?\n"
+        "answers:\n"
+        f"  {_ORPHAN_ASK}: 4\n"
+        "===\n\n"
+        '(1) Replies went to thread "#" (plugin log line 12).\n'
+        "(2) The plugin has no rule for the reply thread when none is set (server.ts:40).\n"
+        "-- A send with no thread rule lands wherever the client defaults. "
+        "Unless: a default is configured; ruled out by (2). --\n"
+        '(3) So, replies with no thread set land in "#".\n'
+        "(4) So, after a restart or any message outside a thread, replies land in a "
+        "thread the reader cannot open.\n"
+        "```\n"
+    )
+
+
+def _orphan_conclusion_reason(answered: int = 4, relay: str = "none") -> str:
+    return "\n".join(
+        [
+            f"Judged: CID; asks {_ORPHAN_ASK}",
+            "Valid: (3) holds -- (2) meets the rule",
+            "Supported: (1) (2) observed directly",
+            f"Answered: {_ORPHAN_ASK} ← ({answered})",
+            f"Sufficient: ({answered}) material; obvious; no objection",
+            "Waived: none",
+            f"Relay: {relay}",
+        ]
+    )
+
+
+@pytest.mark.parametrize(
+    "reason_kw",
+    [
+        pytest.param({}, id="answering-line"),
+        pytest.param(
+            {"answered": 3, "relay": '"replies land in a thread the reader cannot open" ← (4)'},
+            id="relayed-line",
+        ),
+    ],
+)
+def test_pass_refused_when_a_relied_on_line_is_a_conclusion_no_bar_yields(reason_kw):
+    """A conclusion the report relies on with no inference bar cannot pass.
+
+    The only bar yields (3); (4) is a further conclusion nobody argued for. The
+    reason keys Valid by the one bar, so every other cross-check is satisfied.
+    """
+    session_id = "s-orphan-conclusion"
+    text = _orphan_conclusion_report()
+    if reason_kw.get("answered") == 3:
+        text = text.replace(f"  {_ORPHAN_ASK}: 4\n", f"  {_ORPHAN_ASK}: 3\n")
+    _arm_with_report(session_id, "CID", text=text)
+    tracer = _configured()
+    with pytest.raises(ValueError) as exc:
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id="CID",
+            verdict="PASS",
+            reason=_orphan_conclusion_reason(**reason_kw),
+            tracer_mod=tracer,
+        )
+    message = str(exc.value)
+    assert "(4)" in message and "no inference bar" in message
+    assert "#missing" in _VOCAB.defect_tags
+    assert "#missing" in message and "REVISE" in message
+    assert tracer.exported == []
+    assert pcg.is_armed(session_id) is True
+
+
+def test_revise_naming_the_orphan_conclusion_as_missing_is_recorded():
+    """The send-back the refusal points to is recordable as it stands."""
+    session_id = "s-orphan-revise"
+    _arm_with_report(session_id, "CID", text=_orphan_conclusion_report())
+    reason = _orphan_conclusion_reason().replace(
+        "Valid: (3) holds -- (2) meets the rule",
+        "Valid: (3) holds -- (2) meets the rule\n"
+        "Valid: (4) fails #missing -- no inference bar yields (4)",
+    )
+    result = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="CID",
+        verdict="REVISE",
+        reason=reason,
+        tracer_mod=_configured(),
+    )
+    assert result["verdict"] == "REVISE"
+
+
+def test_waiving_the_block_does_not_lift_the_orphan_conclusion_refusal():
+    """A format waiver on a block that parses still leaves the unbarred line unjudged."""
+    session_id = "s-orphan-waived"
+    _arm_with_report(session_id, "CID", text=_orphan_conclusion_report())
+    tracer = _configured()
+    reason = _orphan_conclusion_reason().replace("Waived: none", "Waived: block -- layout")
+    with pytest.raises(ValueError) as exc:
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id="CID",
+            verdict="PASS",
+            reason=reason,
+            tracer_mod=tracer,
+        )
+    assert "orphan conclusion: line (4)" in str(exc.value)
+    assert tracer.exported == []
+    assert pcg.is_armed(session_id) is True
+
+
+@pytest.mark.parametrize("opening", ["So far", "So long as nothing changes,", "So much"])
+def test_premise_opening_with_so_but_no_connective_may_still_answer(opening):
+    """'So far ...' and the like open a premise, not a conclusion."""
+    session_id = "s-orphan-so-far"
+    text = (
+        _orphan_conclusion_report()
+        .replace("(2) The plugin has", f"(2) {opening} the plugin has")
+        .replace(f"  {_ORPHAN_ASK}: 4\n", f"  {_ORPHAN_ASK}: 2\n")
+    )
+    _arm_with_report(session_id, "CID", text=text)
+    result = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="CID",
+        verdict="PASS",
+        reason=_orphan_conclusion_reason(answered=2),
+        tracer_mod=_configured(),
+    )
+    assert result["verdict"] == "PASS"
