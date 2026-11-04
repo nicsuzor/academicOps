@@ -257,10 +257,21 @@ export class StdioMcpServer {
           actions: args.actions as boolean | undefined,
         });
 
+        if (!sendRes || sendRes.ok === false || sendRes.success === false) {
+          return {
+            success: false,
+            error: sendRes?.error || "Failed to deliver reply",
+            messageId: sendRes?.messageId,
+          };
+        }
+
         const out: Record<string, unknown> = {
           success: true,
           messageId: sendRes?.messageId,
         };
+        if (sendRes?.messageThreadId !== undefined) {
+          out.message_thread_id = sendRes.messageThreadId;
+        }
         if (detailsId !== undefined) {
           out.detailsId = detailsId;
         }
