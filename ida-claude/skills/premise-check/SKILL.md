@@ -119,7 +119,7 @@ When checking an inference line or deliverable where the ask specifies a method,
 ## Recording the Verdict
 
 - **PASS**: Every inference holds, every ask is answered, evidence sufficiency bears the stakes, and at least one inference line is tested (>= 1). Format-only defects on a substantively sound argument with >= 1 inference line are waived under `Waived:` and rewritten into standard form by the receiver before relaying upward. Rule violations in deliverables can never be waived.
-- **REVISE**: Name the line, defect tag (`#missing`, `#scope-drift`, `#conflict`, `#unanswered`, `#undercut`, `#construct-drift`, `#method-gap`), and remedy. Mandatory for substantive defects, rule violations in delivered work (return with `#conflict`), or 0 inference lines (bare assertions); cannot be relayed upward as fact. Return to sender.
+- **REVISE**: Name the line, defect tag (`#missing`, `#scope-drift`, `#conflict`, `#unanswered`, `#undercut`, `#construct-drift`, `#method-gap`), and remedy. Mandatory for substantive defects, rule violations in delivered work (return with `#conflict`), or 0 inference lines (bare assertions); cannot be relayed upward as fact. Return to sender. To send back a sound argument for a format slip you will not waive, keep every `Valid:` line `holds` and add `Format: <format item> -- <what to fix>`; never record a format slip as a reasoning defect.
 - **FAIL**: Conclusion does not answer the ask or contradicts evidence. Mandatory for substantive defects; cannot be relayed upward as fact.
 
 Write the reason as the seven keyed lines:

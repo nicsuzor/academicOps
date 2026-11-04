@@ -242,6 +242,38 @@ def normalise_argdown_block(text: str) -> str:
     return dedented.strip("\n")
 
 
+_ANSWERS_KEY = re.compile(r"^answers\s*:\s*$")
+_PAREN_ANSWER_LINE = re.compile(
+    r"^(?P<head>\s+[^:\s][^:]*:\s*)(?P<q>[\"']?)\(\s*(?P<n>\d+)\s*\)(?P=q)\s*$"
+)
+
+
+def unparenthesise_answers(block_text: str) -> str:
+    """Rewrite ``<ask>: (n)`` as ``<ask>: n`` in the frontmatter's ``answers:`` mapping.
+
+    The recorder applies this only when the checker waives ``numbering``, so a
+    parenthesised answering line is judged as the line it names.
+    """
+    lines = block_text.splitlines()
+    split = _split_frontmatter(lines)
+    if split is None or split[0] is None:
+        return block_text
+    start = next(i for i, ln in enumerate(lines) if ln.strip())
+    in_answers = False
+    for i in range(start + 1, len(lines)):
+        line = lines[i]
+        if line.strip() == _FRONTMATTER_FENCE:
+            break
+        if _ANSWERS_KEY.match(line):
+            in_answers = True
+            continue
+        if in_answers and line.strip() and not line.startswith((" ", "\t")):
+            in_answers = False
+        if in_answers and (m := _PAREN_ANSWER_LINE.match(line)):
+            lines[i] = f"{m.group('head')}{m.group('n')}"
+    return "\n".join(lines)
+
+
 def extract_block(text: str | None) -> str | None:
     """Body of the last ```argdown fenced block in ``text``, or None."""
     if not text:
@@ -635,7 +667,10 @@ def check_argdown_block(
                         f"Argdown frontmatter requires raw integer line numbers without parentheses, or 'none'.\n"
                         f"Required remediation format:\n"
                         f"answers:\n"
-                        f"{remedy_lines}",
+                        f"{remedy_lines}\n"
+                        f"A checker judging a sound argument records this format slip instead: "
+                        f"PASS with 'Waived: numbering -- <what was off>', or REVISE with "
+                        f"'Format: numbering -- <what to fix>'.",
                         None,
                     )
                 invalid_structure = [

@@ -40,7 +40,17 @@ For PASS the recorder checks, and refuses on any miss:
 
 With no `argdown` block in the judged text, or one whose frontmatter does not parse, the block cross-checks cannot run: PASS then needs `Waived: block -- ...` and the remaining checks run against the reason alone.
 
-REVISE and FAIL are recorded with any reason; write the keyed lines you have, because they are what the sender fixes against.
+A parenthesised answering line (`answers: <ask>: (6)`) is a `numbering` slip: `Waived: numbering -- ...` lets PASS judge it as the line it names.
+
+## REVISE and FAIL
+
+Write the keyed lines you have, because they are what the sender fixes against. When `Valid:` lines are present and all say `holds`, the recorder refuses REVISE and FAIL unless an ask is `unanswered`, or, for REVISE only, the reason carries a format slip to fix:
+
+```text
+Format: <format item> -- <what is off, and the fix>
+```
+
+`Format:` names a format item from [`vocabulary.toml`](vocabulary.toml), one line per slip. It is the send-back for a sound argument; a format slip is never written as `Valid: (n) fails`.
 
 ## A message that makes no claim
 

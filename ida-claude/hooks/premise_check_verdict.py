@@ -4,7 +4,8 @@
 A verdict is one token (PASS, REVISE, FAIL) and the checker's reason. A PASS
 reason must carry every keyed line of the skill's checker reason and pass
 the mechanical cross-checks against the judged text the gate stored at arm
-time; REVISE and FAIL take any reason. The reason may come from a file or stdin
+time; REVISE and FAIL need a failing step, an unanswered ask, or (REVISE only)
+a ``Format:`` slip when their Valid lines all hold. The reason may come from a file or stdin
 so that free text stays off the command line, where harness guards scan it.
 
 A verdict is recorded only once its span is exported: an unconfigured tracer or
@@ -318,7 +319,7 @@ def judge_reason(token: str, reason: str, judged_text: str | None) -> dict[str, 
     """
     vocab = ra.load_vocabulary()
     parsed = ra.parse_reason(reason, vocab)
-    block_text = ra.extract_block(judged_text)
+    block_text = _block_as_waived(ra.extract_block(judged_text), parsed, vocab)
     block_err: str | None = None
     if token == "PASS" and block_text is not None and not ra.is_null_form(block_text):
         if "block" not in parsed.waived_items(vocab):
@@ -373,17 +374,46 @@ def judge_reason(token: str, reason: str, judged_text: str | None) -> dict[str, 
                         if re.search(r"^\s*asks?\s*:.*?\bunanswered\b", line, re.IGNORECASE):
                             has_unanswered = True
                             break
-                if not has_unanswered:
+                has_format = token == "REVISE" and bool(_format_items(reason, vocab))
+                if not has_unanswered and not has_format:
                     raise ValueError(
                         f"{token} refused -- reason has Valid entries that all hold and no "
                         f"Ask: ... -> unanswered; {token} requires at least one failing "
-                        f"inference step ('Valid: (n) fails -- <defect>') or unanswered ask.\n"
-                        f"Required remediation format: For {token}, record at least one failing step or unanswered ask:\n"
+                        f"inference step ('Valid: (n) fails -- <defect>') or unanswered ask"
+                        + (", or a format defect to fix" if token == "REVISE" else "")
+                        + ".\n"
+                        f"Required remediation format: For {token}, record at least one of:\n"
                         f"  Valid: (n) fails #<defect-tag> -- <explanation of failure>\n"
-                        f"  # or:\n"
                         f"  Answered: <ask_id> unanswered"
+                        + (
+                            f"\n  Format: <format item> -- <what to fix>   "
+                            f"(format items: {', '.join(vocab.format_items)})"
+                            if token == "REVISE"
+                            else ""
+                        )
                     )
-    return ra.span_attributes(parsed, block, vocab)
+    attrs = ra.span_attributes(parsed, block, vocab)
+    if token == "REVISE" and (items := _format_items(reason, vocab)):
+        attrs["premise_check.format_items"] = items
+    return attrs
+
+
+_FORMAT_LINE = re.compile(r"^\s*Format\s*:\s*(?P<value>.+)$")
+
+
+def _format_items(reason: str, vocab: Any) -> list[str]:
+    """Format items named by the reason's ``Format:`` lines (a REVISE for a format slip)."""
+    entries = [
+        m.group("value").strip() for ln in reason.splitlines() if (m := _FORMAT_LINE.match(ln))
+    ]
+    return ra._parse_waived_entries(entries, vocab)[0] if entries else []
+
+
+def _block_as_waived(block_text: str | None, parsed: Any, vocab: Any) -> str | None:
+    """The judged block with a waived ``numbering`` slip in ``answers`` normalised."""
+    if block_text is not None and "numbering" in parsed.waived_items(vocab):
+        return ra.unparenthesise_answers(block_text)
+    return block_text
 
 
 def record_verdict(
@@ -450,7 +480,9 @@ def record_verdict(
         vocab = ra.load_vocabulary()
         parsed_reason = ra.parse_reason(reason, vocab)
         if "block" not in parsed_reason.waived_items(vocab):
-            valid, parser_output, _ = ra.check_argdown_block(block_text)
+            valid, parser_output, _ = ra.check_argdown_block(
+                _block_as_waived(block_text, parsed_reason, vocab) or block_text
+            )
             if not valid:
                 raise ValueError(
                     f"PASS verdict refused for {cid}: could not parse argdown block:\n{parser_output}"
