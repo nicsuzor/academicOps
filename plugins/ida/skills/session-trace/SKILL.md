@@ -91,3 +91,4 @@ the recipe from [references/sql-recipes.md](references/sql-recipes.md).
   - When a subagent runs under its own distinct `session.id`, the child session carries no explicit parent
     attribute in its span metadata; correlate them using Recipe F (matching prompt text, time window, and agent type).
 - Phoenix tool spans prove execution rather than logical entailment or sufficiency; auditing and QA must inspect durable primary deliverables rather than ephemeral container paths, evaluating whether observed evidence logically entails the claimed outcomes.
+- Do not compute turns or durations in ad-hoc SQL: spans store no turn entity. Find candidate session IDs with Recipe A, then run `phoenix_transcript.py`.
