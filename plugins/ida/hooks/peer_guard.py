@@ -17,26 +17,11 @@ from dispatch import HookContext, Kind, Result, refuse
 _SUBAGENT_TOOLS = frozenset({"agent", "invoke_subagent", "task"})
 _MESSAGE_TOOLS = frozenset({"sendmessage", "send_message"})
 
-_DEFAULT_BLOCKED_PEERS = ("pauli", "sara")
+BLOCKED_PEERS = frozenset({"pauli", "sara"})
 _REFUSAL_MESSAGE = (
     "The main Ida cannot ask Pauli or Sara directly. "
     'Delegate your ask through an internal sub-Ida (subagent_type: "ida:ida") instead.'
 )
-
-
-def _load_blocked_peers() -> tuple[str, ...]:
-    try:
-        import tomllib
-
-        policy_path = Path(__file__).resolve().parents[3] / "tests" / "policy.toml"
-        if policy_path.is_file():
-            data = tomllib.loads(policy_path.read_text(encoding="utf-8"))
-            peers = data.get("ida", {}).get("peer_guard", {}).get("blocked_peers")
-            if peers:
-                return tuple(str(p).lower().strip() for p in peers)
-    except Exception:
-        pass
-    return _DEFAULT_BLOCKED_PEERS
 
 
 def peer_guard(ctx: HookContext) -> Result | None:
@@ -72,8 +57,11 @@ def peer_guard(ctx: HookContext) -> Result | None:
     normalized = target_str.lower()
     base = normalized.split(":")[-1].split("@")[0].strip()
 
-    blocked = _load_blocked_peers()
-    if base in blocked or normalized in blocked or any(f":{p}" in normalized for p in blocked):
+    if (
+        base in BLOCKED_PEERS
+        or normalized in BLOCKED_PEERS
+        or any(f":{p}" in normalized for p in BLOCKED_PEERS)
+    ):
         return refuse(_REFUSAL_MESSAGE)
 
     return None
