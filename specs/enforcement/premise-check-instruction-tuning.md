@@ -234,7 +234,7 @@ A core design requirement is determining the authoritative location for the repo
 | **DRY Compliance** | **Poor**: 3 copies drift when schemas update | **Good**: Single rule in shared context | **Excellent**: Pure SSoT in skill; zero duplication |
 | **Context Overhead** | Low (only when persona or skill is loaded) | High (burns prompt budget on every turn for all agents) | Minimal (JIT delivery only when subagents spawn or report) |
 | **Risk to `agy` Behavior** | **Low**: Preserves currently working configuration | **High**: Modifying `james.md` risks degrading proven execution calibration | **Zero**: Leaves `james.md` completely untouched per Nic's explicit ruling |
-| **Compliance with Rulings** | Fails long-term DRY convergence | Violates binding ruling (tg 507 & note_eaf88c3e: `james.md` unchanged until Nic decides) | **Fully Compliant**: Satisfies SSoT while honoring all rulings |
+| **Compliance with Rulings** | Fails long-term DRY convergence | Violates binding ruling (tg 507 & framework ruling: `james.md` unchanged until Nic decides) | **Fully Compliant**: Satisfies SSoT while honoring all rulings |
 
 ### Recommendation Rationale
 
