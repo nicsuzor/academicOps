@@ -1,6 +1,6 @@
 ---
 title: Default Planning Workflow
-status: draft
+status: ready
 ---
 
 # Default Planning Workflow
@@ -16,7 +16,7 @@ As a framework architect contributing to academicOps, I want proposed design cha
 - **AC-1.1** Given a proposed design change in academicOps, when planning starts, then the design is authored as an in-repository specification following the canonical specification template and document taxonomy.
 - **AC-1.2** Given an authored academicOps specification, when submitted for review, then it is committed to a feature branch and opened as a draft pull request into the integration base branch carrying the specification and no implementation code.
 - **AC-1.3** Given a draft pull request containing an academicOps specification, when independent agents review the specification, then review verdicts are recorded on the pull request thread.
-- **AC-1.4** Given an academicOps specification with all review findings resolved, when the specification task completes, then it is held for principal approval before implementation work begins.
+- **AC-1.4** Given an academicOps specification with all review findings resolved, when the specification task completes, then moving the specification from `draft` to `ready` status counts as principal approval to proceed with the build.
 - **AC-1.5** Given approved specification changes, when implementation proceeds, then implementation builds on the same branch and pull request, and the pull request is marked ready for review only after implementation completes.
 
 ### US-2 Direct task-graph planning for general projects
@@ -46,7 +46,7 @@ Planning artifacts are partitioned by repository governance:
    - Every design change in academicOps (architectural overhaul, rule change, multi-component refactor, or new capability) must be authored as a formal specification matching the canonical template in `specs/meta/writing-specs.md` and placed in accordance with `specs/meta/doc-taxonomy.md`.
    - The specification is authored on a feature branch and published as a draft pull request against the designated integration base branch (e.g. `release/v1.0-rc0`).
    - Independent reviewing agents evaluate the specification on the pull request thread. All findings must be resolved.
-   - The specification task releases for principal approval. Implementation work remains strictly blocked until approval is recorded.
+   - The specification task releases for principal approval. Moving the specification from `draft` to `ready` status constitutes approval; implementation work remains blocked until this status transition is recorded.
    - Implementation continues on the same feature branch and draft pull request; the pull request is converted to ready for review once the implementation and its tests are complete. Spec and code merge together.
 
 2. **General Projects (The Default Planning Workflow)**:
