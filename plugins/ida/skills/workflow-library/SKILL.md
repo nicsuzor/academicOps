@@ -31,7 +31,7 @@ The project is the `project` field of the task being composed for, or the projec
 
 A project template's id is `<project>-<slug>`, so the same slug can exist in several projects. Strip the `<project>-` prefix to get the slug that shadows lower tiers.
 
-Both PKB tiers resolve from the graph alone, so a session needs no checkout of the project's repository. A repository's `.agents/templates/` directory is not a tier. Specifications and code deliver together on single pull requests into integration branches, with plans maintained on the knowledge base task graph.
+Both PKB tiers resolve from the graph alone, so a session needs no checkout of the project's repository. A repository's `.agents/templates/` directory is not a tier.
 
 Enumerate and read universal templates using file tools (`Glob`, `Read`) rather than `Bash`, so resolution succeeds under non-interactive and `dontAsk` permission modes.
 

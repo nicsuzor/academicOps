@@ -12,9 +12,9 @@ implementation without this template first is scope-creep waiting to happen.
 
 ## One PR, opened by the build
 
-- Stage 1 records its design, any drafted spec change, and its review verdict in a PKB note the Stage 2 task points to. Stage 1 commits no plan or design file and opens no PR.
+- Stage 1 records its design, any drafted spec change, and its independent agent review verdicts in a PKB note the Stage 2 task points to. Stage 1 commits no plan or design file and opens no PR.
 - Stage 2 opens the PR into the base branch as a draft, carrying the build and any spec change. The spec stays editable on that branch as the build teaches more.
-- Stage 2 marks the PR ready for review (`gh pr ready`) only after the proportionate review on the build is posted to the PR thread. That flip does not wait for approval: approval comes at the full review, and spec and feature merge together.
+- Stage 2 marks the PR ready for review (`gh pr ready`) only after the proportionate review on the build is posted to the PR thread by independent agents. That flip does not wait for approval: approval comes at the full review, and spec and feature merge together.
 
 ## Steps
 
@@ -31,11 +31,11 @@ implementation without this template first is scope-creep waiting to happen.
    for any other criterion, how it is verified.
 8. **Implementation approach** — components, data flow, risk assessment.
 9. **Effort and risk** — estimates, mitigation plans.
-10. **Rule-compliance review** — verify the draft specification against framework
-    axioms and rules (proportionality, single source of truth, closure) before
-    review. Resolve any required changes before advancing.
-11. **Review** — record the full summary review on the record for review.
-12. **Finalize and submit** — as a standalone spec task, commit the spec on a feature branch and deliver it under the finish policy. As a Stage 1 design or spec task preceding a build, record the drafted spec change and the independent agent review verdicts in a PKB note the Stage 2 task points to, open no PR, and release the task as `done` once independent agent review passes (or release as `partial` where an explicit user decision on competing design alternatives is required), never releasing as `review` and never putting a spec to the user for approval on its own. Implementation proceeds on the build task, which carries the build and spec change onto the feature branch and opens the draft PR into the base branch, with the spec still editable; mark the draft PR ready for review (`gh pr ready`) once the feature is written and proportionate review by independent agents is posted to the PR thread, without waiting for approval; spec and feature reach the user on that single PR and merge together after full review.
+10. **Rule-compliance review** — obtain an independent agent review of the draft
+    specification against framework axioms and rules (proportionality, single
+    source of truth, closure). Resolve any required changes before advancing.
+11. **Review** — record the independent agent review verdicts on the PKB task or note.
+12. **Finalize and submit** — for a Stage 1 design or spec task preceding a build, record the drafted spec change and the independent agent review verdicts in a PKB note the Stage 2 task points to, open no PR, and release the task as `done` once independent agent review passes (or release as `partial` where an explicit user decision on competing design alternatives is required), never releasing as `review` and never putting a spec to the user for approval on its own. Implementation proceeds on the build task (or a bounded single-task change updating spec and code together), which carries the build and spec change onto the feature branch and opens the single draft PR into `dev`, with the spec still editable; mark the draft PR ready for review (`gh pr ready`) once the feature is written and proportionate review by independent agents is posted to the PR thread, without waiting for approval; spec and feature reach the user on that single PR and merge together after full review.
 
 ## Verification before proceeding to implementation
 

@@ -71,7 +71,7 @@ with no separate contract for "epic-shaped" work.
 ### Risk-scaled review depth
 
 How much of steps 3-4 run as standalone downstream review tasks versus how much is folded into the next run or a consolidated review pass is determined during [`/reify`](../../plugins/ida/skills/reify/SKILL.md) based on
-the task's risk and blast radius ([`plugins/ida/skills/reify/SKILL.md:85-98`](../../plugins/ida/skills/reify/SKILL.md), [`enforcement.md#pr-risk-taxonomy-enforcement`](enforcement.md#pr-risk-taxonomy-enforcement)):
+the task's risk and blast radius ([`plugins/ida/skills/reify/SKILL.md:80-88`](../../plugins/ida/skills/reify/SKILL.md), [`enforcement.md#pr-risk-taxonomy-enforcement`](enforcement.md#pr-risk-taxonomy-enforcement)):
 
 - **Substantive deliverables (features, refactors, multi-file changes)** -- structured per the follow-up placement invariant as a dedicated epic with child tasks (`Child 1: Primary Task`, `Child 2: QA: <primary task title>`, with `Child 2` `needs: [Child 1]`), never as loose siblings under an external parent, verifying the delivered artifact at runtime and evaluating PR risk against the three-tier taxonomy (`Tier 1` autonomous QA-merge vs `Tier 2` / `Tier 3` reviewer or principal sign-off).
 - **Design research tasks** -- `/reify` composes a dependent decision task assigned to the user (`assignee: user`) by default (`Title: Decide implementation route for <topic>`, `depends_on: [<research_task_id>]`) before downstream implementation tasks can unblock.
