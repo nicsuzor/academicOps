@@ -43,6 +43,7 @@
 - [enforcement/reviewer-class-standard-check.md](enforcement/reviewer-class-standard-check.md) -- reviewer class-standard verification across changed files in candidate changes.
 - [enforcement/auto-mode-classifier.md](enforcement/auto-mode-classifier.md) -- Claude Code auto-mode classifier design and cost model.
 - [enforcement/handback-format-design.md](enforcement/handback-format-design.md) -- premise-check handback format design review: empirical sample, Toulmin structure preservation, and migration plan.
+- [enforcement/premise-check-rejection-load-instruction.md](enforcement/premise-check-rejection-load-instruction.md) -- premise-check load instructions in argument rejections and refusals across hearsay gate, verdict recorder, and checker surfaces.
 
 ## Polecat
 

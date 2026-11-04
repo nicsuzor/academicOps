@@ -43,6 +43,14 @@ _ATTR_BLOCK = re.compile(r"\{(?P<attrs>[^{}]+)\}\s*$")
 _BASIS_ATTR = re.compile(r"\bbasis\s*:\s*(?:\"([^\"]+)\"|'([^']+)'|([^,}\n]+))")
 _LINE_REF = re.compile(r"\((?P<n>\d+)\)")
 _ARROW = re.compile(r"←|<-")
+# A line written as a conclusion: the form opens every step with the connective
+# "So" (after an optional ``[Label]:``), whether or not a bar sits above it.
+# "So" followed by punctuation or a clause is the connective; "So far", "So long
+# as", "So much" and the like open an ordinary sentence, and "So-called" is a word.
+_CONCLUSION_MARK = re.compile(
+    r"^(?:\[[^\]]+\]:?\s*)?so(?:\s*[,:;]|\s+(?!(?:far|long|much|many|few|little)\b))",
+    re.IGNORECASE,
+)
 _VALID_ENTRY = re.compile(
     r"^\s*(?P<lines>(?:\(\d+\)(?:\s*(?:,|and)\s*)*)+)\s+(?P<word>holds?|fails?)\b(?P<rest>.*)$",
     re.IGNORECASE,
@@ -1280,6 +1288,13 @@ def remediation_for_failure(failure: str) -> str:
             "Required remediation: Fix syntax/formatting so the argdown block parses, "
             "or record 'Waived: block -- <justification>'."
         )
+    if "is a conclusion no inference bar yields" in failure:
+        return (
+            "Required remediation: the missing bar is the report writer's #missing, not the "
+            "checker's to supply or to drop from Valid. Send the report back:\n"
+            "  Valid: (n) fails #missing -- no inference bar yields (n)\n"
+            "  verdict.py --claim <id> --verdict REVISE --reason-file <path>"
+        )
     if "Relay names" in failure:
         return (
             'Required remediation format:\nRelay: "<sentence to relay>" ← (n)\n# or:\nRelay: none'
@@ -1442,6 +1457,41 @@ def pass_failures(
                 failures.append(
                     f"Relay names lines not in the block ({', '.join(map(str, absent))}): {entry!r}"
                 )
+    # Not lifted by a block waiver: a format waiver never stands in for a missing bar.
+    if block is not None:
+        failures.extend(_orphan_conclusion_failures(reason, block))
+    return failures
+
+
+def _orphan_conclusion_failures(reason: Reason, block: Argument) -> list[str]:
+    """Lines the report relies on that are written as conclusions with no bar above them.
+
+    A line is relied on when the block's ``answers`` or the reason's ``Answered``
+    or ``Relay`` names it. Structure only: the line's form (opens with "So") and
+    its place (no inference bar yields it), never what it says.
+    """
+    relied: dict[int, list[str]] = {}
+    for ask, n in block.answers.items():
+        if isinstance(n, int):
+            relied.setdefault(n, []).append(f"answers {ask}")
+    for a in reason.answered():
+        if a and a[1] is not None:
+            relied.setdefault(a[1], []).append(f"Answered {a[0]}")
+    for entry in reason.get("Relay"):
+        if not _is_none(entry):
+            for n in relay_refs(entry):
+                relied.setdefault(n, []).append("Relay")
+    barred = set(block.conclusions)
+    failures = []
+    for n in sorted(relied):
+        text = block.lines.get(n)
+        if text is None or n in barred or not _CONCLUSION_MARK.match(text.strip()):
+            continue
+        uses = ", ".join(dict.fromkeys(relied[n]))
+        failures.append(
+            f"orphan conclusion: line ({n}) is a conclusion no inference bar yields, "
+            f"and the report relies on it ({uses}); no Valid line can judge it"
+        )
     return failures
 
 
