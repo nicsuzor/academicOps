@@ -5,6 +5,11 @@ description: A test earns its place by catching a plausible defect in code that 
 
 ## Tests verify behaviour, not our own code
 
+We test outputs; we never test contents themselves.
+
+- **No unit tests for documentation or instruction files**: Text documents are not functions and produce no outputs, so we do not test them.
+- **Code tests check outputs, never contents**: We never write a test that asserts that code says a particular phrase or uses a particular variable, enum, constant, condition, or similar. Tests assert observable outputs and behavioral contracts of functions and execution, never internal contents.
+
 A test exercises behaviour of code that executes, through its public interface, and fails when that behaviour breaks. Before writing one, name the defect it catches: a plausible bug in logic someone could get wrong. Mutation check: if you introduced that bug, the test must fail; if the test still passes, or it passes against the code before your change, it guards nothing and is not written.
 
 These are defects, not tests:

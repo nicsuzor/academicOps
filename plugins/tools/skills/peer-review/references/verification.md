@@ -11,7 +11,7 @@ Adversarial verification validates draft claims against the source document. Exe
 ## Six Core Techniques
 
 1. **Verbatim-quote sweep**: Grep source text for every quoted string. A null grep is a presumptive **BLOCKER**; applicants easily disprove fabricated or misattributed quotes.
-2. **Tool-backed arithmetic**: Recompute totals and sub-totals via calculation tools (`python3 -c "..."`). Never cite an unverified figure.
+2. **Tool-backed arithmetic**: Recompute totals and sub-totals via calculation tools (`uv run python -c "..."`). Never cite an unverified figure.
 3. **Documented absence search**: Support claims that a topic is absent by searching terms and documented synonyms across the document.
 4. **Inspect original PDF pages**: Read GANTT charts, budget tables, and complex figures directly from PDF pages, as text extractors mangle layouts.
 5. **Cross-field consistency**: Cross-check project dates against funding rules, investigator FTE against career stage declarations, and budget text against budget tables.

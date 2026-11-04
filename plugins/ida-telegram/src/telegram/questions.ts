@@ -1,35 +1,76 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
+import { PluginStore } from "../store.js";
+import { buildMiniAppUrl } from "./bot.js";
 
 export interface QuestionOption {
   label: string;
   description?: string;
+  recommended?: boolean;
 }
 
 export interface QuestionPayload {
   question: string;
   header?: string;
+  context?: string;
+  recommendation?: string;
   options: QuestionOption[];
   multiSelect?: boolean;
   allowOther?: boolean;
   turnId?: string;
+  turn_id?: string;
+  sessionId?: string;
+  session_id?: string;
+  messageThreadId?: number;
+  message_thread_id?: number;
+  threadId?: number;
+  thread_id?: number;
+  text?: string;
   chatId?: number;
+  detail?: string;
+  details?: string;
+  detailsId?: string;
+  details_id?: string;
+  mini_app_only?: boolean;
+  miniapp_only?: boolean;
+  miniAppOnly?: boolean;
+  chat?: boolean;
 }
 
 export interface StoredQuestion extends QuestionPayload {
   id: string;
+  text: string;
   createdAt: string;
-  status: "pending" | "answered";
+  created_at: string;
+  status: "pending" | "answered" | "closed" | "failed";
+  sessionId?: string;
+  session_id?: string;
+  turnId?: string;
+  turn_id?: string;
+  messageThreadId?: number;
+  message_thread_id?: number;
+  threadId?: number;
+  thread_id?: number;
   selectedOptions?: number[];
   answeredChoice?: string;
+  closedReason?: string;
+  closedAt?: string;
   messageId?: number;
   promptMessageId?: number;
+  detail?: string;
+  detailsId?: string;
+  details_id?: string;
+  mini_app_only?: boolean;
+  miniAppOnly?: boolean;
+  chat?: boolean;
+  deliveryError?: string;
 }
 
 export interface QuestionButton {
   text: string;
-  callbackData: string;
+  callbackData?: string;
+  web_app?: { url: string };
 }
 
 export interface QuestionCard {
@@ -43,11 +84,31 @@ export interface QuestionAnswerEvent {
   question: string;
   choice: string;
   turn_id?: string;
+  session_id?: string;
+  message_thread_id?: string;
+  thread_id?: string;
+}
+
+export interface QuestionClosedEvent {
+  event: "question_closed";
+  question_id: string;
+  question: string;
+  reason: string;
+  turn_id?: string;
+  session_id?: string;
+  message_thread_id?: string;
+  thread_id?: string;
 }
 
 export interface ResolveAnswerResult {
   cardText: string;
   channelEvent: QuestionAnswerEvent;
+  question: StoredQuestion;
+}
+
+export interface CloseQuestionResult {
+  cardText: string;
+  channelEvent: QuestionClosedEvent;
   question: StoredQuestion;
 }
 
@@ -68,6 +129,20 @@ export class QuestionBroker {
         const raw = readFileSync(this.questionsFilePath, "utf-8");
         const list: StoredQuestion[] = JSON.parse(raw);
         for (const q of list) {
+          if (!q.text && q.question) q.text = q.question;
+          if (!q.created_at && q.createdAt) q.created_at = q.createdAt;
+          if (!q.createdAt && q.created_at) q.createdAt = q.created_at;
+          if (!q.turn_id && q.turnId) q.turn_id = q.turnId;
+          if (!q.turnId && q.turn_id) q.turnId = q.turn_id;
+          if (!q.session_id && q.sessionId) q.session_id = q.sessionId;
+          if (!q.sessionId && q.session_id) q.sessionId = q.session_id;
+          if (q.messageThreadId === undefined && q.message_thread_id !== undefined) q.messageThreadId = q.message_thread_id;
+          if (q.message_thread_id === undefined && q.messageThreadId !== undefined) q.message_thread_id = q.messageThreadId;
+          if (!q.detailsId && (q as any).details_id) q.detailsId = (q as any).details_id;
+          if (!q.details_id && q.detailsId) q.details_id = q.detailsId;
+          if (!q.detail && (q as any).details) q.detail = (q as any).details;
+          if (!q.mini_app_only && (q as any).miniAppOnly) q.mini_app_only = (q as any).miniAppOnly;
+          if (!q.miniAppOnly && q.mini_app_only) q.miniAppOnly = q.mini_app_only;
           this.questions.set(q.id, q);
         }
       } catch {
@@ -90,14 +165,37 @@ export class QuestionBroker {
     message: string;
   }> {
     const id = "q_" + randomBytes(4).toString("hex");
-    const turnId = payload.turnId || (payload as { turn_id?: string }).turn_id;
+    const turnId = payload.turnId || payload.turn_id;
+    const sessionId = payload.sessionId || payload.session_id;
+    const messageThreadId = payload.messageThreadId ?? payload.message_thread_id ?? payload.threadId ?? payload.thread_id;
+    const text = payload.text || payload.question;
+    const createdAt = new Date().toISOString();
+    const isMiniAppOnly = Boolean(
+      payload.mini_app_only || payload.miniapp_only || payload.miniAppOnly || payload.chat === false
+    );
+    const detailText = payload.detail || payload.details;
+    let detailsId = payload.detailsId || payload.details_id;
+
+    if (!detailsId && detailText) {
+      const store = new PluginStore(this.stateDir);
+      detailsId = store.storeDetails(detailText);
+    }
+
     const stored: StoredQuestion = {
       ...payload,
-      ...(turnId ? { turnId } : {}),
       id,
-      createdAt: new Date().toISOString(),
+      text,
+      question: text,
+      createdAt,
+      created_at: createdAt,
       status: "pending",
       selectedOptions: [],
+      ...(turnId ? { turnId, turn_id: turnId } : {}),
+      ...(sessionId ? { sessionId, session_id: sessionId } : {}),
+      ...(messageThreadId !== undefined ? { messageThreadId, message_thread_id: messageThreadId, threadId: messageThreadId, thread_id: messageThreadId } : {}),
+      ...(detailText ? { detail: detailText } : {}),
+      ...(detailsId ? { detailsId, details_id: detailsId } : {}),
+      ...(isMiniAppOnly ? { mini_app_only: true, miniAppOnly: true, chat: false } : { chat: true }),
     };
 
     this.questions.set(id, stored);
@@ -118,6 +216,31 @@ export class QuestionBroker {
     }
   }
 
+  public markDeliveryFailed(id: string, error: string) {
+    const q = this.questions.get(id);
+    if (q) {
+      q.status = "failed";
+      q.deliveryError = error;
+      this.saveState();
+    }
+  }
+
+  public sweepUndeliveredQuestions(): StoredQuestion[] {
+    const undelivered: StoredQuestion[] = [];
+    for (const q of this.questions.values()) {
+      const isMiniAppOnly = Boolean(q.mini_app_only || q.miniAppOnly || q.chat === false);
+      if (q.status === "pending" && !isMiniAppOnly && !q.messageId) {
+        q.status = "failed";
+        q.deliveryError = q.deliveryError || "Undelivered question: no Telegram messageId recorded";
+        undelivered.push(q);
+      }
+    }
+    if (undelivered.length > 0) {
+      this.saveState();
+    }
+    return undelivered;
+  }
+
   public setPromptMessageId(id: string, promptMessageId: number) {
     const q = this.questions.get(id);
     if (q) {
@@ -129,6 +252,15 @@ export class QuestionBroker {
   public findQuestionByPromptMessageId(promptMessageId: number): StoredQuestion | undefined {
     for (const q of this.questions.values()) {
       if (q.status === "pending" && q.promptMessageId === promptMessageId) {
+        return q;
+      }
+    }
+    return undefined;
+  }
+
+  public findQuestionByMessageId(messageId: number): StoredQuestion | undefined {
+    for (const q of this.questions.values()) {
+      if (q.status === "pending" && q.messageId === messageId) {
         return q;
       }
     }
@@ -158,12 +290,20 @@ export class QuestionBroker {
     return this.renderQuestionCard(id);
   }
 
-  public renderQuestionCard(id: string): QuestionCard | null {
+  public renderQuestionCard(id: string, miniAppUrl?: string, instance?: string): QuestionCard | null {
     const q = this.questions.get(id);
     if (!q) return null;
 
     let text = q.header ? `**${q.header}**\n\n` : "";
     text += q.question;
+
+    if (q.context) {
+      text += `\n\n>! ${q.context}`;
+    }
+
+    if (q.recommendation) {
+      text += `\n\n**Recommendation:** ${q.recommendation}`;
+    }
 
     if (q.options.some((opt) => opt.description)) {
       const optionLines = q.options.map((opt, idx) =>
@@ -200,6 +340,14 @@ export class QuestionBroker {
       buttons.push({
         text: "✏️ Other",
         callbackData: `q:${id}:0:other`,
+      });
+    }
+
+    const detailsId = q.detailsId || q.details_id;
+    if (detailsId && miniAppUrl) {
+      buttons.push({
+        text: "🔍 Details",
+        web_app: { url: buildMiniAppUrl(miniAppUrl, { d: detailsId, instance }) },
       });
     }
 
@@ -249,15 +397,74 @@ export class QuestionBroker {
     const formattedQuestion = qLines.join("\n");
     const headerPrefix = q.header ? `**${q.header}**\n\n` : "";
     const cardText = `${headerPrefix}${formattedQuestion}\n\nSelected: ${choice} ✅`;
+    const threadId = q.messageThreadId ?? q.message_thread_id ?? q.threadId ?? q.thread_id;
     const channelEvent: QuestionAnswerEvent = {
       event: "question_answered",
       question_id: id,
       question: q.question,
       choice,
-      ...(q.turnId ? { turn_id: q.turnId } : {}),
+      ...(q.turnId || q.turn_id ? { turn_id: q.turnId || q.turn_id } : {}),
+      ...(q.sessionId || q.session_id ? { session_id: q.sessionId || q.session_id } : {}),
+      ...(threadId !== undefined ? { message_thread_id: String(threadId), thread_id: String(threadId) } : {}),
+    };
+
+    return { cardText, channelEvent, question: q };
+  }
+
+  public async closeQuestion(id: string, reason: string): Promise<CloseQuestionResult | null> {
+    const trimmedReason = reason?.trim();
+    if (!trimmedReason) {
+      throw new Error("Missing reason: closing a question requires an explicit stated reason");
+    }
+    const q = this.questions.get(id);
+    if (!q || q.status !== "pending") return null;
+
+    q.status = "closed";
+    q.closedReason = trimmedReason;
+    q.closedAt = new Date().toISOString();
+    this.saveState();
+
+    const qLines = q.question.split("\n");
+    qLines[0] = `**${qLines[0]}**`;
+    const formattedQuestion = qLines.join("\n");
+    const headerPrefix = q.header ? `**${q.header}**\n\n` : "";
+    const cardText = `${headerPrefix}${formattedQuestion}\n\nClosed: ${trimmedReason}`;
+    const threadId = q.messageThreadId ?? q.message_thread_id ?? q.threadId ?? q.thread_id;
+    const channelEvent: QuestionClosedEvent = {
+      event: "question_closed",
+      question_id: id,
+      question: q.question,
+      reason: trimmedReason,
+      ...(q.turnId || q.turn_id ? { turn_id: q.turnId || q.turn_id } : {}),
+      ...(q.sessionId || q.session_id ? { session_id: q.sessionId || q.session_id } : {}),
+      ...(threadId !== undefined ? { message_thread_id: String(threadId), thread_id: String(threadId) } : {}),
     };
 
     return { cardText, channelEvent, question: q };
   }
 }
+
+export function matchOptionIndex(
+  q: StoredQuestion,
+  text: string
+): { optionIndex: number } | null {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const numMatch = trimmed.match(/^(\d+)$/);
+  if (numMatch) {
+    const idx = parseInt(numMatch[1], 10) - 1;
+    if (idx >= 0 && idx < q.options.length) {
+      return { optionIndex: idx };
+    }
+  }
+  const lower = trimmed.toLowerCase();
+  const labelIdx = q.options.findIndex((opt) => opt.label.trim().toLowerCase() === lower);
+  if (labelIdx !== -1) {
+    return { optionIndex: labelIdx };
+  }
+  return null;
+}
+
 

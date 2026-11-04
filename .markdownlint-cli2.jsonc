@@ -35,6 +35,11 @@
     ".claude/**",
     "**/archived/**",
     "dist/**",
-    "tests/transcripts/fixtures/**"
+    "tests/transcripts/fixtures/**",
+    "*-claude/**",
+    "*-agy/**",
+    "*-openclaw/**",
+    "cowork/**",
+    "openclaw/**"
   ]
 }

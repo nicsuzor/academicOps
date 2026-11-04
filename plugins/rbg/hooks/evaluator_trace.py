@@ -42,7 +42,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import sys
 import tempfile
 import uuid
 from collections.abc import Callable
@@ -188,11 +187,6 @@ def sink_for(
             "concurrency": evaluator.MAX_CONCURRENCY,
             "sweep_temperature": temperature,
         }
-        try:
-            _append(config.path, record)
-        except OSError as exc:
-            if not reported_failure:
-                print(f"rbg trace: could not write to {config.path}: {exc!r}", file=sys.stderr)
-                reported_failure = True
+        _append(config.path, record)
 
     return _on_outcome

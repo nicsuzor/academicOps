@@ -78,11 +78,16 @@ trap 'rm -rf "$TMP"' EXIT
 
 unzip -q "$OUT/doc.docx" -d "$TMP"
 if [[ -d "$TMP/word/media" ]]; then
-  cp "$TMP/word/media/"* "$OUT/figures/" 2>/dev/null || true
+  shopt -s nullglob
+  media_files=("$TMP/word/media/"*)
+  shopt -u nullglob
+  if (( ${#media_files[@]} > 0 )); then
+    cp "${media_files[@]}" "$OUT/figures/"
+  fi
 fi
 
 # Manifest of extracted figures
-( cd "$OUT/figures" && ls -1 2>/dev/null | sort -V ) > "$OUT/figures/MANIFEST.txt" || true
+( cd "$OUT/figures" && ls -1 | sort -V ) > "$OUT/figures/MANIFEST.txt"
 
-N=$(wc -l < "$OUT/figures/MANIFEST.txt" 2>/dev/null || echo 0)
+N=$(wc -l < "$OUT/figures/MANIFEST.txt")
 echo "→ done. markdown=$(wc -c <"$OUT/doc.md") bytes, docx=$(wc -c <"$OUT/doc.docx") bytes, figures=$N" >&2

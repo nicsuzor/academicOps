@@ -32,12 +32,12 @@
 
 ### Commit Messages
 
-Use descriptive messages. Include task ID if working on a tracked task:
+Use descriptive messages. Reference the issue number if closing a tracked issue:
 
 ```
 <descriptive summary>
 
-Closes: <task-id>
+Closes #<issue-number>
 ```
 
 ### What NOT to Do

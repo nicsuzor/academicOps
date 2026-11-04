@@ -91,7 +91,7 @@ pkb-excalidraw FILE screenshot [--out <path>] [--format svg|png] [--no-backgroun
 - **Invariants**: Text binds to container (`containerId`/`boundElements`); arrows bind both ends (`startBinding`/`endBinding`).
 - Change text with `set-text` or `fit`, which update `text` and `originalText` together. Change any other property with `update <id> --set '<json>'`.
 - Validate after every edit with `pkb-excalidraw FILE check` and `pkb-excalidraw FILE overlap`. `check` does not flag line-wrap-only differences between `text` and `originalText`.
-- Requires `pkb-excalidraw` from `mem >= v0.3.101` (carrying `mem#691`) or newer, which natively trims `connect` arrow endpoints to shape outlines and mints valid fractional index keys.
+- Requires `pkb-excalidraw` from `mem >= v0.3.101` or newer, which natively trims `connect` arrow endpoints to shape outlines and mints valid fractional index keys.
 - **Structural arrow binding check and edge editability**: Inspect every arrow against Excalidraw's element schema so edges remain interactively selectable and draggable in the Excalidraw editor:
   1. `startBinding` and `endBinding` must be valid objects with `elementId` matching existing elements, numeric `focus` (between -1.0 and 1.0), numeric `gap`, and optional `fixedPoint` (`[x_ratio, y_ratio]` normalized between 0.0 and 1.0).
   2. Reciprocal `boundElements`: The source and target elements must each list `{ "id": arrow_id, "type": "arrow" }` in `boundElements`.

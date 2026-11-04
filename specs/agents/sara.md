@@ -11,11 +11,10 @@ tags: [spec, polecat, architecture, supervisor]
 
 # Supervisor Architecture
 
-The supervisor is the framework's delegate-and-verify process: a stateless tick that
-selects or creates work, dispatches it to workers, evaluates the results, and persists
-state for the next tick. It operates at every scale -- a single epic, a multi-epic
-release, or conversational orchestration of background workers -- using the same
-discipline at each.
+The supervisor is the framework's delegate-and-verify process: it selects or creates
+work, dispatches it to workers, evaluates the results, and persists state across invocations.
+It operates at every scale -- a single epic, a multi-epic release, or conversational
+orchestration of background workers -- using the same discipline at each.
 
 ## User Story
 
@@ -29,13 +28,12 @@ fire-and-forgotten.
 
 ## Routing: Surface and Cadence
 
-Routing is a cadence-and-placement choice over one unified worker contract
-([[specs/enforcement/task-contract.md]]); the user does not have to specify. The
-orchestrator picks the surface (in-session subagent | polecat | agent team) and
-the cadence (wait vs fire-and-forget) for latency and isolation convenience;
-eligibility and deliverable shape are surface-agnostic -- the deliverable is
-whatever output URL the assembled workflow specifies. A literature review and a
-code change are the same contract with different assembled workflows.
+Questions and lookups are answered directly by the session that receives them;
+the task dispatch pipeline is used only for real code changes. For code changes,
+routing is a cadence-and-placement choice over one unified worker contract
+([[specs/enforcement/task-contract.md]]); the orchestrator picks the surface
+(in-session subagent | polecat | agent team) and the cadence (wait vs
+fire-and-forget) for latency and isolation convenience.
 
 Placement heuristics:
 
@@ -66,6 +64,10 @@ Every delegation MUST leave an inspectable trace; nothing is fire-and-forgotten:
   events at `$POLECAT_HOME/transcripts/<task-id>.jsonl`; session transcripts under
   `$AOPS_SESSIONS`). Where a surface does not yet persist transcripts automatically,
   this is a target requirement, not yet enforced.
+- **Completion record**: container termination is recorded by the Docker exit
+  listener, emitted as OpenTelemetry `polecat.container.exit` spans, and queued in
+  `polecat_events`. There is no UDS socket push into supervisor sessions; completion
+  events are delivered to the supervisor via the dashboard daemon bridge.
 - **Verdict**: the supervisor's evaluation outcome is recorded on the task or epic
   ledger, so any later reader can see what was accepted and why.
 
@@ -79,40 +81,14 @@ Supervision covers:
 - Conversational orchestration of background workers (e.g. "don't get involved
   yourself, make sure it gets done")
 
-The supervisor is driven tick-by-tick by `/loop`; cross-tick state lives entirely in
-the task body, so any instance can resume from where a prior one left off.
-
-## Contract
-
-Every supervisor tick performs the same four concerns:
-
-| Concern | What it does | Who decides |
-| - | - | - |
-| **Select** | Choose which tasks to work on next | Agent (LLM judgment) |
-| **Dispatch** | Send tasks to workers (routing rules above) | Polecat or subagent |
-| **Evaluate** | Judge whether worker output is acceptable | Agent (LLM judgment) |
-| **Persist** | Record state for recovery across invocations | Task body (PKB) |
-
-Evaluation yields one of four outcomes: **Accept** (meets criteria, move on),
-**Accept-partial** (the handed-back `partial` chunk passes its clauses -- see
-[[specs/polecat/spec-partial-work-tight-loop-delivery.md]] §3 -- refused choices
-are surfaced as decisions and continue tasks carry the remainder; the supervisor
-accepts the chunk and routes the remainder rather than treating it as Revise or
-Fail), **Revise** (specific problems found, create a new worker task with
-feedback), or **Fail** (fundamental issues or retry budget exhausted, escalate to
-a human).
-
-The supervisor stays responsible for the work until it reaches a terminal state -- it
-does not fire-and-forget. Responsibility is not polling: a tick is woken by a worker
-terminating or by a bound the supervisor set at dispatch, and it establishes state by
-reading durable evidence, never by asking a running worker how it is going.
+State lives entirely in the task body, so any instance can resume from where a prior one left off.
 
 ## Status Lifecycle
 
 ```
 queued → in_progress → done (deliverable accepted)
                 │
-                ├→ review (transient: worker needs help; moved on by reconcile)
+                ├→ [review retired from worker release; manual human hold only]
                 ├→ partial (terminal: chunk handed back, remainder carried by
                 │           continue tasks -- see
                 │           [[specs/polecat/spec-partial-work-tight-loop-delivery.md]] §4)

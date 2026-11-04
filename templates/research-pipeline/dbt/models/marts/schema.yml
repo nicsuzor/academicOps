@@ -1,0 +1,19 @@
+version: 2
+
+models:
+  - name: fct_evaluation_summary
+    description: "Summary mart aggregating evaluated models across model types"
+    columns:
+      - name: model_type
+        description: "Primary key group dimension"
+        tests:
+          - unique
+          - not_null
+      - name: total_models
+        description: "Total distinct models in this category"
+        tests:
+          - not_null
+      - name: open_weight_count
+        description: "Count of open-weight models in this category"
+        tests:
+          - not_null

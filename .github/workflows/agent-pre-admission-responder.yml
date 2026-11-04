@@ -269,17 +269,6 @@ jobs:
             echo "committed=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Upload Claude session artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: claude-session-responder-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            ~/.claude/projects/
-            ~/.claude/sessions/
-          if-no-files-found: ignore
-          retention-days: 30
-
       - name: Check OTel tracer status
         if: always()
         run: |

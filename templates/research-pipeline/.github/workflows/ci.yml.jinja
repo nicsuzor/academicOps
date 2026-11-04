@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, dev]
+  pull_request:
+
+jobs:
+  dbt:
+    name: dbt CI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Parse dbt project
+        run: uv run dbt parse --project-dir dbt --profiles-dir dbt
+{% if sql_engine == 'duckdb' %}
+
+      - name: Seed test data
+        run: uv run dbt seed --project-dir dbt --profiles-dir dbt
+        env:
+          DUCKDB_PATH: data/local_cache.duckdb
+
+      - name: Run dbt models
+        run: uv run dbt run --project-dir dbt --profiles-dir dbt
+        env:
+          DUCKDB_PATH: data/local_cache.duckdb
+
+      - name: Run dbt tests
+        run: uv run dbt test --project-dir dbt --profiles-dir dbt
+        env:
+          DUCKDB_PATH: data/local_cache.duckdb
+
+      - name: Verify Parquet export
+        run: uv run python scripts/export_parquet.py
+        env:
+          DUCKDB_PATH: data/local_cache.duckdb
+{% elif sql_engine == 'bigquery' %}
+
+      - name: Run BigQuery tests
+        if: "${{ '{{' }} env.GCP_SA_KEY != '' {{ '}}' }}"
+        run: |
+          echo "$GCP_SA_KEY" > /tmp/gcp_key.json
+          export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp_key.json
+          uv run dbt run --project-dir dbt --profiles-dir dbt
+          uv run dbt test --project-dir dbt --profiles-dir dbt
+        env:
+          GCP_SA_KEY: "${{ '{{' }} secrets.GCP_SA_KEY {{ '}}' }}"
+          BIGQUERY_PROJECT: "${{ '{{' }} secrets.BIGQUERY_PROJECT {{ '}}' }}"
+          BIGQUERY_DATASET: "${{ '{{' }} secrets.BIGQUERY_DATASET {{ '}}' }}"
+{% endif %}

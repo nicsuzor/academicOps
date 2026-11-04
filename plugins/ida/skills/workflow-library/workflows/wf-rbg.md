@@ -3,7 +3,7 @@ alias:
   - wf-rbg
   - wf-rule-check
   - wf-rbg-review
-description: Universal rule-compliance review gate -- evaluate candidate artifact, change, or decision against axioms and governing rules, returning an APPROVE, SUGGEST, REVISE, or REJECT verdict with required changes.
+description: Universal compliance review -- evaluate candidate artifact, change, or decision against universal axioms, governing rules, scope of delegated authority (ultra vires), and the enforcement pyramid, returning a PASS, REVISE, or FAIL verdict with required changes.
 id: wf-rbg
 tags:
   - wf-template
@@ -11,42 +11,41 @@ tags:
   - rbg
   - rules
   - compliance
-  - gate
 title: Rule-Compliance Review
 type: template
 ---
 
 ## What this step does
 
-Universal rule-compliance review gate: evaluates an artifact, specification, design proposal, code change, or decision against governing rules with rigorous logical judgment. Exercises direct judgment rather than mechanical pattern-matching.
+Universal compliance review (`rbg`): evaluates an artifact, specification, design proposal, code change, or decision for compliance with universal axioms, project-local rules, scope of delegated authority (_ultra vires_), data boundaries, and the enforcement pyramid's least-invasive intervention hierarchy. Exercises direct logical judgment against the intent behind the rule, the intended and incidental uses of the work, and the gravity of the situation rather than mechanical pattern-matching.
 
 ## Input contract
 
-The invoking workflow provides:
+Draws its brief from the shared review briefing. Additional role-specific inputs:
 
-1. **Target artifact** -- the document, specification, design proposal, code diff, or decision under review.
-2. **Context and intent** -- commission objective, task acceptance criteria, or parent task context.
-3. **Rule sources** -- assembled in priority order:
-   - Framework axioms: the `rbg:axioms` skill (inviolable baseline).
-   - Project-local rules: `$CWD/.agents/rules/`.
-   - Account-scoped rules: read from active PKB rules.
+- **Rule sources** -- assembled in priority order:
+  - Framework axioms: the `rbg:axioms` skill (inviolable baseline).
+  - Project-local rules: `$CWD/.agents/rules/`.
+  - User-scoped rules: read from active PKB documents with `type: rule` (optional).
+  - Enforcement architecture: `specs/enforcement/enforcement.md` (when behavior-shaping mechanisms are touched).
 
 ## Procedure
 
-1. **Assemble active rules** -- load governing axioms and project rules before judging; never rule from memory.
-2. **Judge proportion first** -- state the smallest mechanism meeting the request across its class before reading the artifact; reject excess machinery under `proportionate`.
-3. **Evaluate against rules** -- test the artifact against governing axioms (categorical imperative, closure, data boundaries, fail-fast, full observability, honest epistemics, non-delegable qualitative judgment, single source of truth).
+1. **Assemble active rules** -- load governing axioms, project rules, and companion specs (e.g. `specs/enforcement/enforcement.md`) before judging; never rule from memory.
+2. **Evaluate proportion, non-mechanical baseline, and scope of authority upfront (Gate 0)** -- from the originating request in the shared review briefing, state the non-mechanical baseline: can this request be fulfilled by an agent workflow (`wf-*`), prompt instructions (`SKILL.md`), or existing tools without new executable code? If YES, and the artifact builds a script, CLI, or test harness, immediately halt and issue `FAIL` under `no-over-engineering` and `proportionate` before reading the diff or line-by-line repo auditing. State the smallest mechanism meeting the request across its class before reading the artifact or its diff, and check whether the artifact stays within the authority granted by the request. If the artifact acts _ultra vires_ or is materially disproportionate under `proportionate` and `do-one-thing`, stop immediately and issue `FAIL` before line-by-line repo auditing. Preserve full rule coverage when the artifact is proportionate and within scope.
+3. **Evaluate compliance and per-claim fail-fast** -- test the artifact against governing axioms (categorical imperative, closure, data boundaries, excellence, fail-fast, full observability, honest epistemics, human readability first, no over-engineering, non-delegable qualitative judgment, proportionate, single source of truth) and verify that any behavior-shaping change respects the enforcement pyramid (`specs/enforcement/enforcement.md`, defaulting to least-invasive instructions before adding mechanical gates). Verify that specifications evaluate work from the human principal's perspective (`excellence`, `process-not-actor.md`), never casting an agent, persona, or worker as the user in `## User stories` (`As an agent, I want...`), since agents do not want anything and are given capabilities only to fulfil human user requirements. Verify that skills creating or assembling tasks (such as `plugins/ida/skills/reify/SKILL.md`) do not embed hardcoded workflow branching or QA restrictions, enforcing Single Source of Truth (`single-source-of-truth`) and Runtime Workflow Composition (`runtime-workflow-composition.md`). For any added or modified row in `specs/ENFORCEMENT-MAP.md`, verify entry validity: every row must **only** reference a specific rule derived from our axioms (`plugins/rbg/skills/axioms/`) and applicable to agents working in any third-party project (never a repository-local project rule, subsystem feature specification, or workflow; workflows are not rules and do not enforce rules, and creating or modifying workflows must not produce token enforcement map rows, as the only applicable rule is "agents must follow workflows given to them" and nothing more than that). For candidate publications and trust-boundary transitions, evaluate the full published surface against destination repository visibility under `data-boundaries`. Apply per-claim fail-fast: if a cited claim, path, or authority is falsified, record `UNMET` / violation immediately without searching the repository to author a fix.
 4. **Determine required changes vs suggested improvements**:
    - A _Required Change_ names a rule violation, its likelihood and consequence, and costs less than the failure it prevents.
    - Anything else is a _Suggested Improvement_. Where the work exceeds the request, require less, not more.
-5. **Issue verdict**: exactly one of `APPROVE`, `SUGGEST`, `REVISE`, or `REJECT`.
+5. **Review boundaries** -- confine evaluation strictly to the artifact text/diff and governing rule/spec sources (including companion-spec checks). Does not test functional requirement satisfaction, execute runtime tests/probes, or perform whole-codebase omission scans (the quality role, `marsha`), and does not evaluate the core premise, PKB strategic direction, or congruence with existing graph material (the strategic congruence role, `pauli`).
+6. **Issue verdict**: exactly one of `PASS`, `REVISE`, or `FAIL`.
 
 ## Verdict contract
 
-The review returns structured Markdown conforming to:
+The review returns structured Markdown (standard sections and bullet lists formatted for human readability, never programmatic JSON/YAML schemas) conforming to:
 
 ```markdown
-## RBG Review: **[APPROVE | SUGGEST | REVISE | REJECT]**
+## RBG Review: **[PASS | REVISE | FAIL]**
 
 [1-2 line summary of confidence and overall assessment]
 
@@ -59,14 +58,13 @@ The review returns structured Markdown conforming to:
 - **[Rule Name]**: [Improvement suggestion] ([pinpoint reference])
 ```
 
-- **APPROVE:** Work satisfies rules, exhibits coherent reasoning, and carries valid evidentiary support. Advance to the next workflow stage or deliver.
-- **SUGGEST:** Trivial or mechanical improvements identified. The author applies straightforward fixes in place and advances.
-- **REVISE:** Material deficiencies or missing proof requiring remediation. The author addresses the required changes and re-submits for review before advancing.
-- **REJECT:** Fundamental rule contradiction, ungrounded assertions, or disproportionate work. The workflow halts; excess machinery is cut or the proposal is cancelled/redesigned.
+- **PASS:** Work satisfies governing rules, stays within its delegated authority, exhibits coherent reasoning, and carries valid evidentiary support (with any non-blocking suggestions noted under Suggested Improvements).
+- **REVISE:** Material deficiencies or missing proof requiring remediation within the accepted scope.
+- **FAIL:** Fundamental rule contradiction, ungrounded assertions, _ultra vires_ overreach, or disproportionate work.
 
 ## Output contract
 
-The structured review artifact containing exactly one verdict token, itemized required changes with pinpoint citations, and suggested improvements.
+The structured review artifact containing exactly one verdict token (`PASS`, `REVISE`, or `FAIL`), itemized required changes with pinpoint citations, and suggested improvements.
 
 ## When to include
 

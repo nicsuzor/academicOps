@@ -57,7 +57,16 @@ def _is_human_message_agy(entry: dict) -> bool:
 
 
 def _is_turn_start_entry_agy(entry: dict) -> bool:
-    return entry.get("type") in ("USER_INPUT", "SYSTEM_MESSAGE")
+    entry_type = entry.get("type")
+    if entry_type == "USER_INPUT":
+        return True
+    if entry_type == "SYSTEM_MESSAGE":
+        content = str(entry.get("content") or "").lower()
+        return not (
+            "injected by a sessionstart hook" in content
+            or ("session:" in content and "host:" in content and "cwd:" in content)
+        )
+    return False
 
 
 def _resolve_transcript_path_agy(data: dict, state: dict, session_id: str) -> str:
@@ -201,6 +210,27 @@ def _export_tool_span_agy(
         data,
         "conversationId",
     )
+
+    span_record["attributes"]["session.id"] = phoenix_session_id
+    if parent_session_id:
+        span_record["attributes"]["parent.session_id"] = parent_session_id
+
+    if tool_record.get("tool_name") == "invoke_subagent":
+        child_sid = None
+        if isinstance(tool_response, dict):
+            child_sid = tool_response.get("conversationId")
+        elif isinstance(tool_response, str):
+            import re
+
+            m = re.search(r'"conversationId":\s*"([^"]+)"', tool_response)
+            if m:
+                child_sid = m.group(1)
+        if child_sid:
+            span_record["attributes"]["subagent.child_session_id"] = child_sid
+            state.setdefault("child_subagents", {})[child_sid] = {
+                "span_id": span_record.get("span_id_hex"),
+                "trace_id": tool_record.get("trace_id"),
+            }
 
     _build_and_export_spans(
         config=config,
@@ -495,6 +525,21 @@ def _init_turn_state_agy(
     entries = _read_transcript_entries_agy(transcript_path)
     human_count = sum(1 for e in entries if _is_human_message_agy(e))
 
+    parent_sess_id = state.get("parent_session_id")
+    if not parent_sess_id and entries:
+        import re
+
+        for entry in entries:
+            content = entry.get("content", "")
+            if isinstance(content, str) and "sender=" in content:
+                m = re.search(r'\bsender=["\']?([^\s,>"\']+)["\']?', content)
+                if m and m.group(1) != session_id:
+                    parent_sess_id = m.group(1)
+                    break
+    if parent_sess_id:
+        state["parent_session_id"] = parent_sess_id
+        state["phoenix_session_id"] = parent_sess_id
+
     # Anchor turn at the latest USER_INPUT or SYSTEM_MESSAGE entry in transcript.jsonl
     start_line_index = len(entries)
     turn_prompt = ""
@@ -503,6 +548,14 @@ def _init_turn_state_agy(
             start_line_index = idx
             turn_prompt = entries[idx].get("content", "")
             break
+
+    handback_subagent_id = None
+    if turn_prompt and "sender=" in turn_prompt:
+        import re
+
+        m = re.search(r'\bsender=["\']?([^\s,>"\']+)["\']?', turn_prompt)
+        if m and m.group(1) != session_id:
+            handback_subagent_id = m.group(1)
 
     # Count GENERIC entries before this turn (or before the latest PLANNER_RESPONSE if mid-turn)
     if from_mid_turn and entries:
@@ -556,9 +609,10 @@ def _init_turn_state_agy(
         except Exception as e:
             log.debug("Failed to parent agy subagent: %s", e)
 
+    pending_turn = state.pop("pending_turn_trace", None) or {}
     state["current_trace"] = {
-        "trace_id": parent_trace_id if parent_trace_id else _new_trace_id(),
-        "root_span_id": _new_span_id(),
+        "trace_id": parent_trace_id or pending_turn.get("trace_id") or _new_trace_id(),
+        "root_span_id": pending_turn.get("root_span_id") or _new_span_id(),
         "parent_span_id": parent_span_id,
         "turn_start_ns": now_ns,
         "turn_number": turn_number,
@@ -566,6 +620,7 @@ def _init_turn_state_agy(
         "start_line_index": start_line_index,
         "turn_prompt": turn_prompt,
         "prompt_preview": _truncate(turn_prompt) if turn_prompt else "",
+        "handback_subagent_id": handback_subagent_id,
     }
     state["surface"] = "agy"
     state["pending_tools"] = {}
@@ -575,7 +630,12 @@ def _init_turn_state_agy(
 
 def _end_turn_agy(session_id: str, state: dict) -> None:
     """Clear per-turn trace state while preserving session-level counters and emitted steps."""
-    state.pop("current_trace", None)
+    ct = state.pop("current_trace", None)
+    if isinstance(ct, dict) and ct.get("trace_id") and ct.get("root_span_id"):
+        state["last_trace"] = {
+            "trace_id": ct["trace_id"],
+            "root_span_id": ct["root_span_id"],
+        }
     state.pop("pending_tools", None)
     state.pop("deferred_tool_spans", None)
     _save_state(session_id, state)
@@ -586,7 +646,7 @@ def handle_pre_invocation(data: dict, config: dict) -> None:
     session_id = resolve_session_id(data, "conversationId")
     if session_id is None:
         log.warning(
-            "handle_pre_invocation: no session id in payload ('conversationId' missing) "
+            "handle_pre_invocation: no session id in payload ('conversationId' / 'session_id' missing) "
             "and $AOPS_SESSION_ID unset — skipping span emission",
         )
         return
@@ -626,7 +686,7 @@ def handle_pre_tool(data: dict, config: dict) -> None:
     session_id = resolve_session_id(data, "conversationId")
     if session_id is None:
         log.warning(
-            "handle_pre_tool: no session id in payload ('conversationId' missing) "
+            "handle_pre_tool: no session id in payload ('conversationId' / 'session_id' missing) "
             "and $AOPS_SESSION_ID unset — skipping span emission",
         )
         return
@@ -710,7 +770,7 @@ def handle_post_tool(data: dict, config: dict) -> None:
     session_id = resolve_session_id(data, "conversationId")
     if session_id is None:
         log.warning(
-            "handle_post_tool: no session id in payload ('conversationId' missing) "
+            "handle_post_tool: no session id in payload ('conversationId' / 'session_id' missing) "
             "and $AOPS_SESSION_ID unset — skipping span emission",
         )
         return
@@ -812,7 +872,7 @@ def handle_stop(data: dict, config: dict) -> None:
     session_id = resolve_session_id(data, "conversationId")
     if session_id is None:
         log.warning(
-            "handle_stop: no session id in payload ('conversationId' missing) "
+            "handle_stop: no session id in payload ('conversationId' / 'session_id' missing) "
             "and $AOPS_SESSION_ID unset — skipping span emission",
         )
         return
@@ -903,6 +963,9 @@ def handle_stop(data: dict, config: dict) -> None:
         if agent_id:
             chain_attrs["agent.id"] = agent_id
             chain_attrs["subagent.id"] = agent_id
+        if ct.get("handback_subagent_id"):
+            chain_attrs["subagent.id"] = ct["handback_subagent_id"]
+            chain_attrs["handback.subagent_id"] = ct["handback_subagent_id"]
         if parent_session_id:
             chain_attrs["parent.session_id"] = parent_session_id
         if agent_name:
@@ -912,6 +975,11 @@ def handle_stop(data: dict, config: dict) -> None:
         # add a span's own tokens to its descendants', so totals on the CHAIN
         # root would count every turn twice.
         other_records: list[dict[str, Any]] = list(llm_spans)
+        for sp in other_records:
+            sp_attrs = sp.setdefault("attributes", {})
+            sp_attrs["session.id"] = phoenix_session_id
+            if parent_session_id:
+                sp_attrs["parent.session_id"] = parent_session_id
 
         # Emit CHAIN span
         chain_span = {

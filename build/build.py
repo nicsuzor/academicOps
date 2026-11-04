@@ -92,6 +92,12 @@ def _stage_plugin(plugin: Plugin, stage_dir: Path, version: str) -> None:
     plugin_pyproject = plugin.source_dir / "pyproject.toml"
     plugin_uvlock = plugin.source_dir / "uv.lock"
 
+    shared_tracer = repo_root / "plugins" / "ida" / "hooks" / "claude_code_tracer.py"
+    staged_hooks_dir = stage_dir / "hooks"
+    staged_tracer = staged_hooks_dir / "claude_code_tracer.py"
+    if staged_hooks_dir.is_dir() and shared_tracer.is_file() and not staged_tracer.exists():
+        shutil.copy2(shared_tracer, staged_tracer)
+
     if plugin_pyproject.exists():
         shutil.copy2(plugin_pyproject, stage_dir / "pyproject.toml")
         if plugin_uvlock.exists():
@@ -188,25 +194,21 @@ def generate_image_metadata(
     commit_sha = ""
     short_sha = ""
     is_dirty = False
-    try:
-        sha_res = subprocess.run(
-            ["git", "-C", str(project_root), "rev-parse", "HEAD"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if sha_res.returncode == 0 and sha_res.stdout:
-            commit_sha = sha_res.stdout.strip()
-            short_sha = commit_sha[:8]
-        status_res = subprocess.run(
-            ["git", "-C", str(project_root), "status", "--porcelain"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        is_dirty = status_res.returncode == 0 and bool(status_res.stdout.strip())
-    except Exception:
-        pass
+    sha_res = subprocess.run(
+        ["git", "-C", str(project_root), "rev-parse", "HEAD"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    commit_sha = sha_res.stdout.strip()
+    short_sha = commit_sha[:8]
+    status_res = subprocess.run(
+        ["git", "-C", str(project_root), "status", "--porcelain"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    is_dirty = bool(status_res.stdout.strip())
 
     dist_ref = os.environ.get("AOPS_DIST_REF", "dev")
     repo_url = os.environ.get("AOPS_REPO_URL", "https://github.com/nicsuzor/academicOps.git")

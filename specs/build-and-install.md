@@ -26,7 +26,7 @@ under `plugins/`, mirroring the table in `ARCHITECTURE.md`.
 | `make build` | Assembles `dist/` for every plugin, clients (Claude, agy, openclaw) and channels (cowork, openclaw). |
 | `make install-dev` | `build`, then registers `dist/` as the local `aops` marketplace and installs every plugin from it (`aops@aops`). |
 | `make uninstall-dev` | Removes the local marketplace and its installs, then restores the released `academicOps` marketplace. |
-| `make install` | Registers `nicsuzor/academicOps@dist` as the `academicOps` marketplace and installs every plugin from it. |
+| `make install` | Registers `nicsuzor/academicOps@main` as the `academicOps` marketplace and installs every plugin from it. |
 | `make test` | `uv run pytest tests/`. |
 | `make lint` | `ruff check .`. |
 | `make format` | `ruff format .` + `dprint fmt`. |
@@ -78,40 +78,62 @@ plugin cache whenever plugin definitions, instructions, or dependencies change.
 In a `polecat` container, plugin content is baked into the image at build time
 (`Dockerfile`, `AOPS_DIST_SOURCE`), and rebuilding the image is the refresh path.
 
-## 2. Release path (`dev` → tag → publish)
+## 2. Release path (`dev` → `main` → publish)
 
-`release-please` manages version bumps from conventional commits; merging the
-release PR it opens creates the stable `vX.Y.Z` tag. Pushing any `v*` tag fires
-`.github/workflows/build-extension.yml`, run from the tagged commit:
+academicOps `main` holds the current release's source plus the built plugin objects
+of the newest release, release candidates included. Every published tag, and every merge
+into `main`, writes its build to `main` through one script, `scripts/publish-dist-to-main.sh`;
+nothing else writes built objects there. Publishing to the legacy `nicsuzor/aops` mirror has
+stopped as a trial. Direct pushes and non-release merges into `main` are blocked for everyone,
+repository admins included, enforced by GitHub branch protection / ruleset (`deletion`,
+`non_fast_forward`, and `update` rules on `refs/heads/main`) with only the release-pipeline
+automation (GitHub Actions integration id 2921286) allowed to bypass.
 
-1. **Resolve build context.** A tag shaped `vX.Y.Z-<suffix>` (`-rc.N`, `-dev.N`,
-   `-beta.N`, …) is a prerelease/"testing" build; a plain `vX.Y.Z` tag is stable.
-2. **Checkout.** The tagged commit, plus the `dist` branch (the publish target)
-   and `nicsuzor/aops` (the mirror target) at separate paths.
-3. **Compute and validate version.** The tag, verbatim, with the leading `v` stripped.
-   The workflow validates that the version is a valid PEP 440 Python package version
-   (`uv run python -m build.version --validate <version>`), failing closed before any
-   build, publish, or release step if unparseable. `release-please.yml` similarly validates
-   any manual `release_as` input and the committed `pyproject.toml` version before
-   `release-please-action` tags. For a stable tag, the workflow asserts the tag,
-   `pyproject.toml`'s `version`, and `.release-please-manifest.json` all agree, and aborts
-   the release if they don't.
-4. **Build.** `uv run python -m build.build --set-version <version>`.
-5. **Publish to `dist` and `nicsuzor/aops`.** Every built plugin directory under `dist/` is mirrored
-   to the root of the `dist` branch (an orphan branch; plugin dirs and
-   `.claude-plugin/marketplace.json` live at its root), along with
-   `pr-pipeline.yml` and the workflow files it references, so external
-   consumers can pin `uses: nicsuzor/academicOps/.github/workflows/pr-pipeline.yml@dist`.
-   The identical distribution tree is mirrored onto `nicsuzor/aops` (`main` and `dist` branches)
-   for consumers installing directly from `nicsuzor/aops`.
-   This step runs for both stable and prerelease tags -- prerelease builds ship
-   to `dist` too, as a semver prerelease version, so a client chooses whether to
-   install one rather than being force-upgraded.
-6. **Docker (stable tags only).** Builds and pushes
-   `ghcr.io/nicsuzor/aops-crew:v<version>` and `:latest` from the `Dockerfile`,
-   cloning the `dist` branch just published.
-7. **GitHub Release.** Uploads every `dist/*.tar.gz` archive to a release tagged
-   `v<version>`, `--prerelease` for a testing build.
+### What changed for installs
+
+- **Marketplace ref**: Users install from `main` of `nicsuzor/academicOps` using
+  `claude plugin marketplace add nicsuzor/academicOps` (or `nicsuzor/academicOps@main`).
+  The previous orphan `dist` branch (`@dist`) is superseded by `main`.
+- **Built plugin resolution**: Claude Code reads `.claude-plugin/marketplace.json` at the root
+  of `main`, where each plugin points to `./<plugin>-claude` (also committed to `main`).
+  `<plugin>-agy` builds sit beside them.
+- **Release candidates reach `main`**: a host whose `academicOps` marketplace has auto-update on
+  receives each release candidate at its next session start. The GitHub Release tarballs carry
+  the same build, for Antigravity and for container images.
+- **Discontinued mirrors**: `nicsuzor/aops` is no longer updated or published to.
+
+### How each release candidate is now published
+
+1. **Active development and validation.** Work proceeds on `dev`.
+   Pull requests into `dev` run the full `pr-pipeline.yml` suite (Lint, Type Check, Pytest).
+2. **Publishing release candidates.** Release candidates are published via GitHub pre-releases:
+   - **Trigger conditions**: Pushing an RC tag matching `v*-rc*` (or pre-release tags `v*-*`, `v*rc*`, `v*beta*`, `v*alpha*`, `v*dev*`) on `dev` or a release line, or manually triggering `.github/workflows/publish-release.yml` via `workflow_dispatch` with an RC `tag` input.
+   - **Flags and options**: The workflow runs Pytest, validates PEP 440 version formatting (`build.version --validate`), builds distribution archives with `uv run python -m build.build --set-version <version>`, and attaches the tarballs (`dist/*.tar.gz`) to a GitHub Release marked explicitly with `--prerelease` (`gh release create ... --prerelease` or `gh release edit ... --prerelease`). Stable manifest coherence checks (G2) are skipped for RC builds as pre-releases are not tracked by `.release-please-manifest.json`.
+   - **Publish to `main`**: after the GitHub Release, the same build is committed to `main` by `scripts/publish-dist-to-main.sh`, so the Claude Code marketplace on `main` always serves the newest release, candidates included. A manual run checks out the tag it names, not the branch it was started from.
+   - **Publish constraints**: RC builds never publish to container registries (GHCR).
+3. **Publishing stable release to `main`.** Stable releases reach `main` via `release-please`
+   (triggered on pushes to `dev`) or a forced manual build pipeline executing
+   `scripts/publish-dist-to-main.sh` under the release automation integration bypass. Direct human or admin pushes to `main` are blocked.
+4. **Build on merge.** Every merge into `main` triggers `.github/workflows/build-extension.yml`.
+   The workflow:
+   - Computes the version from `build.version`.
+   - Runs `uv run python -m build.build --set-version <version>`.
+   - Publishes with `scripts/publish-dist-to-main.sh`, which replaces each built directory
+     (`<plugin>-claude/`, `<plugin>-agy/`, `<plugin>-openclaw/`, `cowork/`) whole at the root of
+     `main`, writes `.claude-plugin/marketplace.json` and `.aops-image-metadata.json`, and commits
+     on the tip of `main` with `[skip ci]`.
+   - Writes only to `main` (no writes to `dist` or `nicsuzor/aops`).
+5. **Stable GitHub Releases.** Annotated release tags (`vX.Y.Z`) pushed on `main` trigger `.github/workflows/publish-release.yml` to upload tarball archives (`dist/*.tar.gz`) to a stable GitHub Release.
+
+### Automatic PR retargeting (`main` → `dev`)
+
+Because `main` is the published distribution and release branch rather than a direct development branch,
+pull requests must not target `main`. `dev` is the active development branch and default target for PRs.
+To prevent human or agent pull requests accidentally opened against `main` (which GitHub selects by default
+as the repository's default branch), `.github/workflows/auto-retarget-pr.yml` automatically flips any opened
+or reopened pull request whose base branch is `main` to target `dev` (excluding automated `release-please` PRs).
+Because `pull_request_target` workflows resolve from the default branch, `scripts/publish-dist-to-main.sh`
+copies the workflow file onto `main` on every publish.
 
 A manual rebuild against a specific commit: push a prerelease tag at that
 commit -- e.g. `git tag v<next>-rc.1 <sha> && git push origin v<next>-rc.1`.
@@ -120,7 +142,7 @@ commit -- e.g. `git tag v<next>-rc.1 <sha> && git push origin v<next>-rc.1`.
 
 - **Plugin enabled but `/hooks` doesn't list its events.** Claude Code couldn't
   read `hooks/hooks.json` -- usually a JSON syntax error or an unresolvable
-  command path. Inspect with `python3 -c "import json; json.load(open('hooks/hooks.json'))"`.
+  command path. Inspect with `uv run python -c "import json; json.load(open('hooks/hooks.json'))"`.
 - **A local dev install (`make install-dev`) isn't shadowing a release install,
   or vice versa.** Check `claude plugin marketplace list` for both `aops` (dev)
   and `academicOps` (release) -- a stale one of either can silently win. Run
