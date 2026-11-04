@@ -7,7 +7,7 @@ allowed-tools: [Skill, AskUserQuestion, mcp__services__*]
 
 # /q -- Strategic Intake & Graph Placement
 
-Capture natural-language asks and situate them on the strategic graph: parented, connected, and valued at intake per `specs/workflows/graph-valuation.md`. The task dispatch pipeline is used for any durable deliverable -- including agent workflows, instruction updates, specifications, and code changes. Questions and lookups that can be answered in-turn are answered directly without queueing tasks.
+Capture natural-language asks and situate them on the strategic graph: parented, connected, and valued at intake per `specs/workflows/graph-valuation.md`. The task dispatch pipeline is used for any durable deliverable -- including agent workflows, instruction updates, specifications, and code changes. Plans, designs, and decisions are captured directly on the task graph, never as markdown plan files in target repositories. Questions and lookups that can be answered in-turn are answered directly without queueing tasks.
 
 ## Placement and Valuation
 

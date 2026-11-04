@@ -21,6 +21,7 @@
 - [agents/face-ida-triage-and-tracked-requests.md](agents/face-ida-triage-and-tracked-requests.md) -- face-Ida triage decision, subagent twin verification, tracked-request closed-loop delivery, and retirement of legacy /mine tracking.
 - [agents/compliance-consequences-removal.md](agents/compliance-consequences-removal.md) -- removal of volunteered compliance and conflict-of-interest consequences in decision conversations.
 - [agents/authoritative-user-task-reports.md](agents/authoritative-user-task-reports.md) -- authoritative user task reports deciding task state and ministerial lifecycle execution in Pauli.
+- [agents/decision-queue-boundaries.md](agents/decision-queue-boundaries.md) -- decision-queue boundaries, informational query list-routing, conversational pacing, and preservation of collaborative design exploration.
 - [agents/external-state-recheck.md](agents/external-state-recheck.md) -- targeted external-state verification and read-only GitHub query authority for the knowledge base custodian.
 
 ## Enforcement
@@ -28,23 +29,17 @@
 - [ENFORCEMENT-MAP.md](ENFORCEMENT-MAP.md) -- concise cross-reference table mapping rules to their live enforcement mechanisms.
 - [enforcement/enforcement-map.md](enforcement/enforcement-map.md) -- specification governing the enforcement map schema, inclusion boundaries, and concision invariants.
 - [enforcement/framework-only-enforcement-design.md](enforcement/framework-only-enforcement-design.md) -- design defining enforcement strictly as framework-level process rules, establishing rule classification test, and inventorying specs and mechanisms for removal.
-- [enforcement/class-spec-review-and-map-discipline.md](enforcement/class-spec-review-and-map-discipline.md) -- systemic design for class-spec review, runtime workflow composition, and enforcement map discipline.
 - [enforcement/enforcement.md](enforcement/enforcement.md) -- governing principle, regulatory tools, mechanism categories, and proportional intervention.
 - [enforcement/task-contract.md](enforcement/task-contract.md) -- the work-unit contract (claim → release).
-- [enforcement/escalated-delivery-contract.md](enforcement/escalated-delivery-contract.md) -- in-session escalated delivery contract (`ida_held`, `/mine` surfacing pass, and the Workers-Append rule).
 - [enforcement/workflow.md](enforcement/workflow.md) -- the four-step workflow shape and review-depth call.
-- [enforcement/decision-steps-and-followup-placement.md](enforcement/decision-steps-and-followup-placement.md) -- decision steps on design research and task follow-up structural placement invariants.
-- [enforcement/human-readability-first.md](enforcement/human-readability-first.md) -- design for the human-readability-first universal axiom and tripartite no-shitty-NLP clarification.
-- [enforcement/release-as-done-lifecycle.md](enforcement/release-as-done-lifecycle.md) -- release-as-done task lifecycle, autonomous QA dispatch unblocking, and retirement of agent review status.
-- [enforcement/rule-handling-and-escalation.md](enforcement/rule-handling-and-escalation.md) -- rule handling, waivers, one-way PKB linking, and mandatory upward escalation.
 - [enforcement/evidence-contract.md](enforcement/evidence-contract.md) -- the universal claim-evidence shape.
 - [enforcement/evidence-contract-enforcement.md](enforcement/evidence-contract-enforcement.md) -- the reminders, gate, and proportional interventions that hold agents to the evidence contract.
-- [enforcement/preventing-over-engineering.md](enforcement/preventing-over-engineering.md) -- eliminating over-engineered mechanical software builds and enforcing agentic-first workflows.
-- [enforcement/direct-user-instructions.md](enforcement/direct-user-instructions.md) -- direct user instruction execution and authority boundary.
 - [enforcement/reviewer-class-standard-check.md](enforcement/reviewer-class-standard-check.md) -- reviewer class-standard verification across changed files in candidate changes.
+- [enforcement/coordinator-failure-enforcement.md](enforcement/coordinator-failure-enforcement.md) -- design enforcement moves and observable build criteria for five coordinator failure classes.
 - [enforcement/auto-mode-classifier.md](enforcement/auto-mode-classifier.md) -- Claude Code auto-mode classifier design and cost model.
 - [enforcement/handback-format-design.md](enforcement/handback-format-design.md) -- premise-check handback format design review: empirical sample, Toulmin structure preservation, and migration plan.
 - [enforcement/premise-check-rejection-load-instruction.md](enforcement/premise-check-rejection-load-instruction.md) -- premise-check load instructions in argument rejections and refusals across hearsay gate, verdict recorder, and checker surfaces.
+- [enforcement/premise-check-instruction-tuning.md](enforcement/premise-check-instruction-tuning.md) -- instruction and refusal message tuning to eliminate format errors across report sender and checker surfaces.
 
 ## Polecat
 
