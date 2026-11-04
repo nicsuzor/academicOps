@@ -11,7 +11,7 @@ Valid: (j) fails #conflict -- <the rule the step breaches>
 Supported: (<premise n>) <qualitative evaluation of whether evidence sufficiency bears stakes>
 Answered: <ask id> ← (n)
 Answered: <ask id> unanswered
-Sufficient: (n) <materiality; the stakes in words; sufficiency (obvious | authority-backed | low-stakes | sent back); necessity of any objection>
+Sufficient: (n) <materiality; the stakes in words; sufficiency (obvious | authority-backed | cited verdict | low-stakes (only a conclusion bearing no stakes) | sent back); necessity of any objection>
 Waived: none
 Waived: <format item> -- <what was off, and why the step could still be judged>
 Relay: "<sentence you will send up>" ← (n), (m)
