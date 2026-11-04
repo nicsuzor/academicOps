@@ -9,15 +9,18 @@ The backend is an allowlisted SQLite database; use JSON extraction (`->>` or
 Code) by calling `codemode.phoenix_execute`.
 
 **A0 -- resolve a `trace_id` to its `session.id`.** Then pivot every subsequent
-query onto `session.id`.
+query onto `session.id`. `trace_id` and the project name live on `traces` and
+`projects`, not on `spans`; join through `spans.trace_rowid`.
 
 ```sql
-SELECT JSON_EXTRACT(attributes, '$.session.id') AS session_id,
-       project_name, COUNT(*) AS span_count,
-       MIN(start_time) AS first_seen, MAX(start_time) AS last_seen
-FROM spans
-WHERE trace_id = '<32_HEX_TRACE_ID>'
-GROUP BY session_id, project_name
+SELECT JSON_EXTRACT(s.attributes, '$.session.id') AS session_id,
+       p.name AS project, COUNT(*) AS span_count,
+       MIN(s.start_time) AS first_seen, MAX(s.start_time) AS last_seen
+FROM spans s
+JOIN traces t ON t.id = s.trace_rowid
+JOIN projects p ON p.id = t.project_rowid
+WHERE t.trace_id = '<32_HEX_TRACE_ID>'
+GROUP BY session_id, p.name
 ```
 
 **A -- session discovery and error check.**
@@ -91,13 +94,18 @@ WHERE JSON_EXTRACT(attributes, '$.session.id') = '<SESSION_UUID>'
 GROUP BY name
 ```
 
-**F -- correlate a spawned subagent's own session.** The child carries no
-attribute pointing at the parent. Match its root turn to the exact prompt text
-the parent's `Agent` call sent (visible in the parent's `AGENT` span, Recipe G)
-and to time proximity -- the child's first span lands within seconds. A named
-subagent's root turn opens `<teammate-message teammate_id="team-lead">...`, so
-match on the tail of the parent's prompt. Then pull the child's full span list
-with Recipe B.
+**F -- correlate a spawned subagent's own session.** When a child worker or subagent
+runs under its own `session.id` (standard in `agy` via `invoke_subagent`, and in `claude`
+for detached/background sessions), the child carries no attribute pointing at the parent.
+
+- In `agy`, the parent's `invoke_subagent` tool span output returns `{"conversationId": "<uuid>"}`,
+  which matches the child's `session.id` directly. Messages from the subagent arrive in the parent
+  as `<SYSTEM_MESSAGE sender="<uuid>">[Message] ...`. If known, query the child's spans directly with Recipe B.
+- If the child `session.id` is not known from the parent, match its root turn to the prompt text the parent
+  sent (visible in the parent's dispatch span: `AGENT` / `Agent` in `claude`, `TOOL` / `invoke_subagent` in `agy`)
+  and to time proximity -- the child's first span lands within seconds. In `claude`, a named subagent's root turn
+  may open `<teammate-message teammate_id="...">...`, so match on the tail of the parent's prompt. Then pull
+  the child's full span list with Recipe B.
 
 ```sql
 SELECT JSON_EXTRACT(attributes, '$.session.id') AS session_id, span_id, start_time,
@@ -109,19 +117,19 @@ WHERE span_kind = 'CHAIN' AND (parent_id IS NULL OR parent_id = '')
 ORDER BY start_time ASC
 ```
 
-**G -- dispatch-mode fingerprint.** Read the `AGENT` spans' `output.value` to
-tell a named host teammate from a background task from a container.
+**G -- dispatch-mode fingerprint.** Read dispatch spans (`AGENT` or `TOOL`) to
+tell a named host teammate from a background task, an `agy` subagent, or a container.
 
 ```sql
-SELECT span_id, status_code, latency_ms, start_time,
+SELECT span_id, name, span_kind, status_code, latency_ms, start_time,
        attributes->>'output.value' AS full_output
 FROM spans
 WHERE JSON_EXTRACT(attributes, '$.session.id') = '<PARENT_SESSION_UUID>'
-  AND span_kind = 'AGENT'
+  AND (span_kind = 'AGENT' OR name = 'invoke_subagent')
 ORDER BY start_time ASC
 ```
 
-- **Named teammate (host)** -- output is
+- **Claude Code named teammate (host)** -- output is
   `{"status": "teammate_spawned", "teammate_id": "<name>@session-<slug>", "agent_type": "...", "tmux_session_name": "...", ...}`
   and it emits `<teammate-message>` turns to the parent. A payload
   `{"type":"idle_notification","idleReason":"available","result":"..."}` is the teammate bus,
@@ -131,11 +139,14 @@ ORDER BY start_time ASC
   for that turn: a report, or only a status such as waiting on a peer.
   Its span's duration is spawn latency, not the worker's runtime (see the
   span-store facts read above).
-- **Unnamed background task** -- output is
+- **Claude Code unnamed background task** -- output is
   `{"isAsync": true, "status": "async_launched", "agentId": "...", "outputFile": "...", "canReadOutputFile": false}`.
   This mode does have an OTel-visible close: search the parent session for
   `attributes->>'input.value' LIKE '%task-notification%'` to find
   `<task-notification><status>completed</status>...<usage><duration_ms>N</duration_ms></usage></task-notification>`.
+- **Antigravity (`agy`) subagent** -- `invoke_subagent` tool span output contains
+  `{"conversationId": "<child-session-id>"}`. The subagent executes in its own session; replies
+  and completions reach the parent as `<SYSTEM_MESSAGE sender="<child-session-id>">[Message] ...`.
 - **Polecat container** -- writes `$AOPS_SESSIONS/logs/.../run.json`,
   `polecat-session-hooks.jsonl`, and container stdout logs. Never emits teammate
   bus messages.
@@ -152,10 +163,12 @@ GROUP BY name, span_kind
 ORDER BY n DESC
 ```
 
-Zero `SendMessage`/`send_message` rows in a named-teammate session are not
-silence: the teammate's final reply reaches the parent as the `result` of its
-`idle_notification` (Recipe G), so read the parent before concluding nothing was
-reported. Cross-check the agent type's declared `Tools:` allowlist before
+Zero `SendMessage`/`send_message` rows in a child session are not silence
+if the report was returned via another channel: in Claude Code named teammates,
+the final reply reaches the parent as the `result` of an `idle_notification`
+(Recipe G); in `agy`, a subagent's final output reaches the parent as a
+`<SYSTEM_MESSAGE>` (Recipe G). Read the parent session before concluding nothing
+was reported. Cross-check the agent type's declared `Tools:` allowlist before
 attributing silence to a bug in its behaviour rather than its tool grant.
 
 Dispatch queries through `codemode.phoenix_execute` using an async Python block:
@@ -175,14 +188,34 @@ Inside `phoenix_execute`, the block can `await call_tool("executeSql", {"sql": .
 several times and return one combined object -- use it to collapse a multi-query
 pass into a single round-trip.
 
+## Cross-session search (find text across many sessions)
+
+Use this route when the question has no session id: "every prompt mentioning X",
+"which sessions called tool Y". Do not hand-write SQL turn by turn and let each
+result sit in your context: every later call re-reads it.
+
+1. **Filter and project on the server.** Put the text match, the agent or tool
+   filter and a bounded `start_time` window in `WHERE`; select ids, timestamps and
+   `SUBSTR(...)` snippets, never whole `input.value`/`output.value`. A whole-payload
+   pull can hit the 4 MiB response limit and fail.
+2. **Write rows to a file, not to your context.** In the same `phoenix_execute`
+   block, loop pages with `LIMIT`/`OFFSET` (or `start_time` keyset), append the rows
+   to a file in session scratch, and return only the row count and the first few ids.
+3. **Read by anchor.** `grep -n` or `sed -n` the file for the rows you need and quote
+   those. Do not read the whole file back.
+4. **One query per block where you can.** Each extra model turn re-reads your whole
+   base context, so fewer turns save about as much as smaller returns.
+
+SQL is capped at 2 KiB per call. Keep one-off aggregations in code mode as above.
+
 ## Gotchas
 
 | Symptom | Cause | Fix |
 | - | - | - |
 | `executeSql` result "exceeds maximum allowed tokens", dumped to a `.txt` file | Query returned too many rows, or unbounded `input.value`/`output.value` columns | Narrow with `SUBSTR(...)` and a tighter `WHERE`/`LIMIT`; if already dumped, read the saved file with `jq` rather than re-querying |
-| `{"data":[],"next_cursor":null}` searching for a session by id | Queried `session.id` with a 32-hex `trace_id` | Resolve via `WHERE trace_id = '<32_HEX>'` (Recipe A0) first |
+| `{"data":[],"next_cursor":null}` searching for a session by id | Queried `session.id` with a 32-hex `trace_id` | Resolve via `WHERE t.trace_id = '<32_HEX>'` on the joined `traces` table (Recipe A0) first |
 | MCP tool calls missing from the agent's response | The agent grepped answers off disk instead of executing tools | `SELECT count(*) FROM spans WHERE span_kind='TOOL' AND attributes->>'session.id'='<UUID>'` |
 | Report asserts items "not done" or "failed" with no tool evidence | Agent assumed the outcome after 0 tool calls or a single search miss | Recipe D: distinguish 0 tool calls (never attempted) from tool executions that failed |
-| Named subagent never returns / repeats `idle_notification` forever | `name` on the `Agent` call spawns a persistent teammate with no OTel-visible exit event (Recipe G) | Do not wait on the tool call; watch the parent for an inbound `<teammate-message>`, and check the child's own session (Recipe F) |
-| Named subagent did real work but sent no report message | Its final reply reaches the parent as the `result` of an `idle_notification`, not as a `SendMessage` | Recipe G: read the teammate's `idle_notification` in the parent session before checking its tool grant (Recipe H) |
+| Named subagent never returns / repeats `idle_notification` forever | In Claude Code, `name` on `Agent` call spawns a persistent teammate with no OTel-visible exit event (Recipe G) | Do not wait on the tool call; watch the parent for an inbound `<teammate-message>`, and check the child's own session (Recipe F). In `agy`, inspect subagent session via `conversationId` |
+| Subagent did real work but sent no report message | Final reply reaches parent via parent channel (`result` of `idle_notification` in Claude Code, `<SYSTEM_MESSAGE>` in `agy`), not necessarily as `SendMessage`/`send_message` | Recipe G: read teammate `idle_notification` or `<SYSTEM_MESSAGE>` in parent session before checking its tool grant (Recipe H) |
 | A container run emits only `CHAIN` spans, with zero `TOOL`/`LLM` spans | Telemetry is not being forwarded from the container | Check the trace endpoint variable in the container's environment |

@@ -23,6 +23,9 @@ one is covered.
 | - | - |
 | GH issue closed via `Closes #N` → PKB task carrying `gates_on` for it | Not built -- forward-issue leg, below |
 | Closed-not-merged PR that was legitimately superseded | Built |
+| Failed tasks from workers (e.g. QA or review failures) → next actions decided from parent epic | Built |
+| Multi-part task / verbatim note request partially resolved by merged PR → itemize completed vs incomplete elements | Built |
+| Task in `review` covered by a review/QA task, open PR, or complete evidence | Built -- transitioned to `done` |
 | Manual `gh issue close` with `state_reason: not_planned` or `duplicate` | Not built -- forward-issue leg, below |
 | PKB task done → GH issue comment/close beyond the native `Closes #N` commit convention | Not built -- reverse direction, M3 |
 
@@ -32,13 +35,14 @@ one is covered.
    workflows and skills invoke it; they do not re-implement it.
 2. **No shitty NLP.** Mechanical matching is allowed only on guaranteed-structured surfaces
    (frontmatter fields, the GH API's `closingIssuesReferences`, frontmatter URLs). Anywhere prose
-   is involved, an agent reads it.
+   is involved, an agent reads it ([`human-readability-first`](../../plugins/rbg/skills/axioms/human-readability-first.md)).
 3. **State lives in PKB frontmatter.** Deltas between GH state and PKB state surface through a
    short-lived event log, which is a queue of unprocessed deltas, not state.
 4. **All task writes go through PKB MCP.** That is the concurrency primitive.
 5. **Nothing is flagged for a person without a surface that renders it.** The sweep's own
    synthesized result is that surface. A `needs_user_call` flag with no consumer that renders it
-   is a `halt-on-failure` violation.
+   is a `halt-on-failure` violation. Escalated user decisions fold into the daily note's `## With you`;
+   reconcile never writes execution logs, commit dumps, or raw mutation lists to the daily note.
 6. **Reverse direction defaults to comment-only** on GH, citing PKB task ID and closing commit
    SHA. Auto-close the GH issue only for framework-owned repos, and only where the task carries
    an explicit `closes_issues:` marker (never `gates_on:`).
@@ -46,6 +50,9 @@ one is covered.
    this work with PKB MCP, `gh`, and Read/Write.
 8. **The implementing agent owns file layout, naming, invocation grammar, and verification
    approach**, defended by the constraints above.
+9. **Failed task sequencing lives in the parent epic.** Workers never create or name follow-up tasks,
+   and release `failed` on failure. Reconcile reads `failed` tasks within its sweep window,
+   examines failure root causes and evidence, and determines next actions from the parent epic.
 
 ## Invocation contexts
 

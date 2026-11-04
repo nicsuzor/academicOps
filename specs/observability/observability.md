@@ -27,6 +27,8 @@ As the user, I want every session across every execution surface to export compl
 - **AC-2.2** Given a completed turn triggered by direct user input, a channel message, a cross-session peer message, or a background notification, when the user opens the turn trace in `academicOps`, then the turn root span (`CHAIN`) carries non-empty `input.value` and `output.value` with the final assistant reply, and child `LLM` spans carry `openinference.span.kind = "LLM"`, model name, prompt/completion/total token counts, and secret-scrubbed prompt and completion message arrays (including any expanded skill instructions loaded during the turn).
 - **AC-2.3** Given a turn in which tools execute, runtime hooks evaluate gates or inject context, or rule/verdict evaluations run, when the user inspects the turn trace, then every tool span (`TOOL`) carries secret-scrubbed input, output, tool name, and call ID, every hook action emits a child span recording the hook event, gate, decision, and injected or refusal text, and every evaluation span parents under the active turn root span in the same `trace_id`.
 - **AC-2.4** Given a session on any surface, when spans or resources are exported to the trace store, then `agent.name` is attached only when explicitly reported by the client hook payload or set via the `AOPS_AGENT_NAME` environment variable; with no reported name or environment variable, `agent.name` is omitted across all spans and resources with no directory heuristics, settings-file scans, or fallback defaults (subagent spans retain their explicit subagent type).
+- **AC-2.5** Given a model call executed during a turn on a client-hook surface, when its `LLM` span reaches the trace store, then the span carries complete input and output message payloads from the client invocation, with model name and token counts (`prompt`, `completion`, `total`, `cache_read`, `cache_write`) resolved and attached prior to turn-root span completion, and calls whose counts are delayed in the session transcript resolved on subsequent emissions or final flush.
+- **AC-2.6** Given a debug hook span emitted by the `aops-debug` plugin for any hook event on Claude Code or agy, when the span is exported to the trace store, then the span carries the full secret-scrubbed hook payload in `input.value` (`input.mime_type = "application/json"`) and identifying metadata attributes (`hook.plugin`, `hook.client`, `hook.event`, `hook.event_name`, `session.id`, `description`, and for tool calls `tool.name`, `tool.type`, and `tool.call_id`) without duplicating the payload into `hook.raw_payload`.
 
 ### US-3 Correlate upstream MCP service spans with the calling session
 
@@ -34,7 +36,7 @@ As the user, I want task-graph and container-dispatch MCP service calls to attac
 
 - **AC-3.1** Given a client or worker session invoking an upstream MCP service directly or through a gateway, when the service handles the request, then the service span shares the caller's `trace_id`, parents under the caller's tool span, carries the caller's `session.id`, records the transport connection ID separately in `mcp.session_id`, and stamps `task.id` whenever the call targets a task.
 - **AC-3.2** Given an MCP request arriving without an explicit client session identifier, when the service exports its span, then the transport connection ID is recorded in `mcp.session_id` and `session.id` remains unset.
-- **AC-3.3** Given a client session on any surface calling any MCP tool, when the call leaves the client, then it carries the caller's `session.id`. A client that can rewrite tool arguments (Claude Code's `PreToolUse` hook matching `mcp__.*`, which receives `session_id`, `agent_id`, and `prompt_id`) supplies it mechanically, as the reserved `_session` argument object via `hookSpecificOutput.updatedInput`. A client that cannot do so learns its own `session.id` at session start and supplies `_session` by instruction. The service side of this contract, including binding, gateway connections, and refusal of unattributed writes, is the PKB server's `caller-session` spec in `nicsuzor/mem`.
+- **AC-3.3** Given a client session on any surface calling an MCP tool whose server consumes caller session (`pkb`, `services`), when the call leaves the client, then it carries the caller's `session.id`. A client that can rewrite tool arguments (Claude Code's `PreToolUse` hook matching `mcp__.*`, which receives `session_id`, `agent_id`, and `prompt_id`) supplies it mechanically to servers that consume caller session, as the reserved `_session` argument object via `hookSpecificOutput.updatedInput`, while leaving calls to other MCP servers without `_session`. A client that cannot do so learns its own `session.id` at session start and supplies `_session` by instruction. The service side of this contract, including binding, gateway connections, and refusal of unattributed writes, is the PKB server's `caller-session` spec in `nicsuzor/mem`.
 - **AC-3.4** Given a gateway that multiplexes several client sessions over one upstream connection, when it relays a call, then it forwards the caller's `_session` values upstream as the `x-session-id` header, together with the caller's `traceparent`. It never lets one caller's id carry over to another caller's call.
 
 ### US-4 Observe live and exited worker containers across dispatch routes
@@ -73,7 +75,7 @@ Observability signals are persisted across four surfaces: the **Task Graph** (ta
 | **`task.id`** | **Supervisor verdict & mistake recovery** | `verdict_id`, `verdict`, `verdict_session_id`; on replacement tasks `revises_verdict_id`, `revises_task_id` | Verdict spans with `task.id = <task.id>` carry `verdict.id`, `claim.id`, `verdict`, `verdict.reason`, supervisor `session.id`, `worker.session_id`, and `worker.span_id`; retry spans carry `revises.verdict_id` | -- |
 | **`session.id`** | **Session turns, model calls, tools & hooks** | -- | All spans with `session.id = <session.id>` (grouped in the Sessions view, one `trace_id` per turn) | Harvested log/transcript files keyed by `<session.id>` under `<sessions_root>/logs/<date>/<task.id>/` |
 | **`session.id`** | **Tasks composed, claimed, or mutated** | Tasks where `reified_by_session_id`, `session_id`, `origin.session_id`, or `verdict_session_id` equals `<session.id>` | Client and MCP service spans in `session.id = <session.id>` where `task.id IS NOT NULL` | Container label `polecat.session_id = <session.id>` paired with `polecat.task_id` |
-| **`session.id`** | **Spawned workers, subagents & peer sessions** | Tasks where `parent_session_id = <session.id>` | Subagents: shared `session.id` plus `agent.id`, `subagent.id`, and `parent.span_id` (spawning tool call `span_id`). Worker containers: parent dispatch span carries `worker.session_id`; worker spans carry `parent.session_id = <session.id>`. Peer sessions: sender message `TOOL` span and receiver turn `CHAIN` root span share `aops.team`, `aops.message.id`, `aops.message.hash`, and `peer.session_id` | Container label `polecat.parent_session_id = <session.id>` |
+| **`session.id`** | **Spawned workers, subagents & peer sessions** | Tasks where `parent_session_id = <session.id>` | Subagents: shared `session.id` plus `agent.id`, `subagent.id`, and `parent.span_id` (spawning tool call `span_id`). agy subagents derive parent link from incoming message `sender=` and carry `parent.session_id`, while parent `invoke_subagent` carries `subagent.child_session_id`. Background subagents in Claude Code emit an `AGENT` run span from launch to `SubagentStop` under the parent's `Agent` tool span. Hand-back turns carry `subagent.id` and `handback.subagent_id`. Worker containers: parent dispatch span carries `worker.session_id`; worker spans carry `parent.session_id = <session.id>`. Peer sessions: sender message `TOOL` span and receiver turn `CHAIN` root span share `aops.team`, `aops.message.id`, `aops.message.hash`, and `peer.session_id` | Container label `polecat.parent_session_id = <session.id>` |
 | **`session.id`** | **Verdicts rendered by or on the session** | Tasks where `verdict_session_id = <session.id>` or `session_id = <session.id>` | Verdict spans where `session.id = <session.id>` (as supervisor) or `worker.session_id = <session.id>` (as judged worker or peer) | -- |
 | **`verdict.id`** | **Supervisor session & turn trace** | Task record with `verdict_id = <verdict.id>` carries `verdict_session_id` | Verdict span with `verdict.id = <verdict.id>` (or `claim.id = <claim.id>`) carries supervisor `session.id`, `trace_id`, and `parent_id` (turn root span) | -- |
 | **`verdict.id`** | **Judged worker session & report text** | Task record with `verdict_id = <verdict.id>` carries worker `session_id` and `## Report` | Verdict span carries `worker.session_id`, `worker.agent_id`, `worker.span_id`, `task.id`, and the judged report argument in `input.value` | Logs for `task.id` in `<sessions_root>/logs/<date>/<task.id>/` |
@@ -92,18 +94,80 @@ In addition to the hop correlation keys above, spans in `academicOps` satisfy th
 | **Hook decisions and verdict spans (`aops.hook.*`, `verdict.*`, `claim.id`)** | Runtime hooks that inject context, arm or disarm a gate, or block/warn on an action emit a child span under the active turn carrying `aops.hook.event`, `aops.hook.gate`, `aops.hook.decision` (`"allow"`, `"block"`, `"warn"`, `"inject"`, `"arm"`, or `"disarm"`), and the injected or refusal text in `output.value` (US-2). Supervisor report evaluations across subagent returns, peer messages, and container task-record handbacks emit a verdict span carrying the correlation keys in the hop table above so every acceptance or rejection (`PASS`, `REVISE`, `FAIL`) is auditable from the trace store and task record alike (US-1). |
 | **MCP service correlation (`mcp.session_id`, W3C `traceparent`)** | MCP gateways forward W3C `traceparent`, the caller's `session.id`, and active `task.id` to upstream MCP services (US-3). Upstream services parent their spans under the caller's tool span, populate `session.id` exclusively from an explicit client session ID supplied by the caller, record the transport connection ID in `mcp.session_id` so stateless calls never create synthetic sessions, and stamp `task.id` on task-targeted operations. |
 | **Worker container streaming and log archive (`polecat.*`, `<sessions_root>/logs/<date>/<task.id>/`)** | Worker containers stream unbuffered output events during execution for live inspection alongside live trace spans, and persist their internal CLI logs and session transcripts to `<sessions_root>/logs/<date>/<task.id>/` before container removal so diagnostic records survive container cleanup (US-4). |
+| **Debug hook spans (`aops-debug.*`)** | Debug hook spans emitted by `aops-debug` across all Claude Code and `agy` hook events carry the full secret-scrubbed hook payload in `input.value` and identifying metadata, threading into the active turn trace without duplicating into `hook.raw_payload`. Most users should not install this plugin; it is only useful while developing to debug hooks (US-2). |
 | **Single canonical emitter and test isolation** | Each surface is instrumented by one canonical emitter exporting complete, secret-scrubbed spans, with duplicate or redacted secondary exporters disabled once turn, `LLM`, subagent, and hook-parenting completeness hold (US-5). Automated test runs emit zero spans to the production trace store. |
 
-### Hook Tracer Atomic Emission Contract
+### Client Hook Emission Contract
 
-To eliminate telemetry loss and transcript parsing races, the hook tracer (`plugins/ida/hooks/claude_code_tracer.py`) adheres to an atomic emission contract:
+Client hook emitters preserve trace integrity and turn boundaries across the session lifecycle:
 
-1. **Atomic Emit Rule**: Every hook emits telemetry synchronously and atomically directly from its hook invocation payload. Hooks do not read transcripts to reconstruct turns or extract spans, nor do they carry turn state across completed turns.
-2. **Turn State Boundaries**: Turn state (`state["current_trace"]` and `state["pending_tools"]`) is maintained only during the active open turn from `UserPromptSubmit` (or fallback at `PreToolUse`) until `Stop` or `StopFailure`.
-3. **Payload-Driven Output**:
-   - `UserPromptSubmit`: Seeds `turn_number`, captures the prompt text from payload for `input.value` (`prompt_preview`), and opens `state["current_trace"]`.
-   - `PreToolUse`: Records pending tool call (`tool_name`, `tool_input`, `start_ns`) in `state["pending_tools"]`, pre-allocating span IDs for Agent/Task tools. If no trace is currently active, opens a fallback trace.
-   - `PostToolUse` / `PostToolUseFailure`: Emits a `TOOL` span populated from payload `tool_input` and `tool_response` (with secrets redacted) under the active turn root or parent Agent span.
-   - `Stop` / `StopFailure`: Captures `last_assistant_message` directly from the hook payload (supporting string, content block list, or dictionary formats), stores it in `last_llm_output`, emits the completed `CHAIN` turn root span with non-empty `output.value`, and clears turn state via `_end_turn`.
-   - `PermissionRequest` / `PermissionDenied` / `Notification` / `PostCompact`: Emit child `CHAIN` spans under the active turn root directly from event payload attributes.
-   - `SessionEnd`: Closes any remaining unclosed turn root span and deletes session state.
+1. **Direct Payload Emission**: Hook emitters populate span attributes directly from their event payloads. Prompts, tool inputs and responses, assistant messages, and execution lifecycle timestamps originate from hook invocations. Emitters do not parse transcripts to reconstruct turns or message content, with one narrow exception: each model call's token counts (`prompt`, `completion`, and cache counts) and model name are resolved from the session transcript and attached to the hook-derived `LLM` span prior to turn completion.
+2. **Turn State Lifecycle**: Turn state spans the active turn from prompt submission until turn completion. Each completed turn closes all open tool and model spans, emits the turn root span, and resets active turn state.
+3. **Lifecycle Phase Emission**:
+   - **Prompt Submission**: Opens the turn trace, records the prompt in the turn root span's input, and opens the initial model call.
+   - **Tool Invocation**: Records the model call that issued the tool, joins token counts and model name from the session transcript, emits the `LLM` span, and stages the tool call.
+   - **Tool Completion**: Emits the `TOOL` span under the active turn root or parent subagent span, and stages the subsequent model call receiving the tool result.
+   - **Turn Completion**: Records the final model output from the completion event payload, joins token counts and model name from the transcript, emits the final `LLM` span, emits the completed `CHAIN` turn root span with non-empty output, and cleans up active turn state.
+   - **Mid-Turn Events**: Permissions, notifications, and context events emit child spans under the active turn root directly from event attributes.
+   - **Session Teardown**: Emits any remaining unclosed turn or model spans and terminates session state.
+4. **Subagent Linking and Session Grouping**:
+   - **agy Subagent Correlation**: agy child subagents receive no propagated OpenTelemetry environment variables (`traceparent`, `AOPS_SESSION_ID`) or transcript headers. Child subagents extract their parent session from the `sender=<parent_session_id>` field in their initial `SYSTEM_MESSAGE`. All spans emitted by the child set `session.id` to the parent's session identifier and attach `parent.session_id`. On the parent side, `invoke_subagent` tool spans attach `subagent.child_session_id`.
+   - **Background Subagent Run Span**: In Claude Code, background subagents (`status: "async_launched"`) track their execution across turns: when `SubagentStop` fires, an `AGENT` span spanning from launch to completion is emitted under the parent's `Agent` tool span.
+   - **Hand-Back Turn Attribution**: When a subagent finishes and delivers a hand-back message to the parent (`<agent-message>`, `<subagent-handback>`, or agy `SYSTEM_MESSAGE` with `sender=<subagent_id>`), the receiving turn's root `CHAIN` span sets `subagent.id` and `handback.subagent_id`.
+5. **Ubiquitous Debug Spans**:
+   - Debug hook spans (`aops-hook-debug`) are emitted by canonical `ida` handlers on every invocation across all surfaces (including cloud environments where optional debug plugins are not loaded), recording hook name, runtime status, duration, and error states.
+
+### Model Call Coverage and Residual Boundaries (US-5, US-6)
+
+The hook-based tracer achieves full operational model-call parity against native OpenTelemetry for observable execution while explicitly bounding client-internal operations:
+
+1. **Covered Classes**:
+   - **Main-Thread Model Requests**: Every model call that produces a tool execution or final assistant response in an active turn emits an `LLM` span joined with exact token counts (`input_tokens`, `output_tokens`, `cache_read_input_tokens`, `cache_creation_input_tokens`) and model name from the transcript.
+   - **Multi-Modal and Block Prompts**: User prompt entries carrying structured lists of content blocks (e.g. text blocks, images, attachments) are properly recognized as turn boundaries without mistaking them for tool result lists.
+   - **Resumed Sessions & Diverged Turn Counts**: Turn boundary detection keys off prior transcript prompt count (`current_human_count`) rather than monotonically incremented session turn numbers, ensuring correct token attribution even when turns diverge or sessions resume.
+
+2. **Residual Boundaries (Client-Internal Operations)**:
+   - **Internal Intent & Classifier Calls** (`agent_classifier`, `auto_mode`, `hook_prompt`): Fast internal model calls invoked directly by the Claude Code binary for intent classification, permission evaluations, and prompt hook conditions. No hook fires and no transcript entries exist; these cannot be intercepted without binary modifications.
+   - **Internal Summaries** (`agent_summary`, `away_summary`): Internal post-subagent or session-resumption summaries generated by the CLI for terminal display. No hook events or transcript records exist.
+   - **Tool-Internal Invocations** (`web_search_tool`, `web_fetch_apply`): Query formulation and content filtering internal to built-in search and fetch tools. These are represented at the orchestration layer by the `WebSearch` / `WebFetch` `RETRIEVER` span with full input and output documents.
+   - **Compaction** (`compact`): In-turn context compaction model calls triggered during an active turn are represented at the turn level by the `Compact` `CHAIN` span carrying the `compact_summary` from `PostCompact`. Manual `/compact` invocations executed between turns outside an active turn root emit no spans and remain an unobserved client-internal residual under the Client Hook Emission Contract.
+   - **Detached Subagent Traces** (`agent.custom`, `agent.builtin.general-purpose`): Background subagents operating asynchronously outside the active parent turn are represented at the orchestration layer by the parent's `Agent` span and `SubagentStop` lifecycle rather than unparented 1-span traces with null parent IDs. Subagent assistant messages reside in isolated subagent transcripts; arbitrary file parsing is excluded under the Client Hook Emission Contract.
+
+### Debug Hook Span Contract (`aops-debug`)
+
+Spans emitted by the `aops-debug` plugin for hook events on Claude Code and `agy` carry full untruncated (secret-redacted) payload text in `input.value` alongside identifying metadata, threaded into the turn trace. The payload is not duplicated into `hook.raw_payload`.
+
+> [!NOTE]
+> **Justification**: Most users should not install the `aops-debug` plugin; it is only useful while developing to debug hooks. Full hook payload text is preserved in `input.value` for debugging, but duplication into `hook.raw_payload` is eliminated to avoid redundant attribute payload doubling.
+
+#### Span Fields and Attributes
+
+| Attribute | Type | Presence | Description |
+| :- | :- | :- | :- |
+| `name` | string | Always | Formatted as `aops-debug.<event>` (e.g. `aops-debug.PreToolUse`, `aops-debug.SessionStart`). |
+| `openinference.span.kind` | string | Always | Set to `"CHAIN"`. |
+| `hook.plugin` | string | Always | Set to `"aops-debug"`. |
+| `hook.client` | string | Always | Client name (`"claude"` or `"agy"`). |
+| `hook.event` | string | Always | Canonical hook event name (e.g. `"PreToolUse"`, `"Stop"`, `"SessionStart"`). |
+| `hook.event_name` | string | Always | Wire event name reported in payload or normalized event name. |
+| `session.id` | string | Always | Owning session UUID. |
+| `input.value` | string | Always | Full secret-redacted hook payload serialized as JSON. |
+| `input.mime_type` | string | Always | Set to `"application/json"`. |
+| `description` | string | Always | Concise action summary or description extracted from `toolSummary`, `toolAction`, `description`, `Description`, or fallback `<client> <event> hook`. |
+| `tool.name` | string | Tool events | Tool name/type (e.g. `"Bash"`, `"invoke_subagent"`). |
+| `tool.type` | string | Tool events | Tool name/type alias matching `tool.name`. |
+| `tool.call_id` | string | Tool events with ID | Client tool use/call identifier (`tool_use_id` or `toolCallId`). |
+| `tool.summary` | string | Tool events with summary | Extracted tool summary matching `description`. |
+
+#### Excluded Duplicate Attributes
+
+- `hook.raw_payload`: eliminated to prevent duplicating the payload JSON already present in `input.value`.
+
+#### Verification Mapping
+
+| Criterion | Requirement | Verification Check |
+| :- | :- | :- |
+| **AC-1** Payload in `input.value` without duplication | Spans carry full secret-redacted payload in `input.value` and do not duplicate into `hook.raw_payload`. | `tests/test_claude_code_tracer_session_events.py` asserts presence of full payload text in `input.value`, secret redaction, and absence of `hook.raw_payload` across 30 Claude Code and 5 agy hook events. |
+| **AC-2** Identifying Metadata Retention | Every hook call yields one span whose attributes identify event, description, tool type, and session. | Parametrized tests assert `hook.plugin`, `hook.client`, `hook.event`, `session.id`, `description`, `tool.name`, and `tool.type` across all events. |
+| **AC-3** Governing Spec | Spec states contract, field inventory, and justification. | Documented in `specs/observability/observability.md`. |
+| **AC-4** Delivery Verification | Clean PR into `release/v1.0-rc0` with passing suite and linters. | Full pytest suite and `make lint` green. |

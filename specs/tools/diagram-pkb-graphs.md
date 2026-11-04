@@ -130,7 +130,7 @@ On handover the agent reports:
 
 Tests compute every expected value (node, edge and badge counts, invalid edges, longest title) from mem's export of the career-set fixture (GV-F1) at test time. None is hard-coded.
 
-## Open decisions (Nic)
+## Open decisions (The user)
 
 Each is the drawing side of a decision the mem spec also holds open; the mem number is given so that one ruling settles both.
 

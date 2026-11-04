@@ -262,19 +262,16 @@ def always_on_policies(rules_dir: Path) -> list[tuple[str, str]]:
     """Every ``trigger: always_on`` rule under ``rules_dir``, body only.
 
     The same marker cope evaluates on, so warming these warms what the hook
-    will actually ask about. An unreadable file is skipped: warmup is best
-    effort by construction.
+    will actually ask about.
     """
     policies: list[tuple[str, str]] = []
-    try:
-        paths = sorted(rules_dir.glob("*.md"))
-    except OSError:
+    if not rules_dir.is_dir():
         return policies
+    paths = sorted(rules_dir.glob("*.md"))
     for path in paths:
-        try:
-            text = path.read_text(encoding="utf-8")
-        except OSError:
+        if not path.is_file():
             continue
+        text = path.read_text(encoding="utf-8")
         fields, body = _frontmatter_and_body(text)
         if fields.get("trigger") == "always_on" and body.strip():
             policies.append((path.stem, body.strip()))

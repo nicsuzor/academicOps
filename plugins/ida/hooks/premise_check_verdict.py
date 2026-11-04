@@ -17,6 +17,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -26,6 +27,33 @@ import report_argument as ra
 from premise_check_gate import disarm, get_judged, get_state, is_armed, mint_verification_id
 
 VERDICTS: tuple[str, ...] = ("PASS", "REVISE", "FAIL")
+
+_TASK_ID_RE = re.compile(
+    r"^(?:task|epic|aops|wf)[_-][a-zA-Z0-9_-]+$"
+    r"|^(?:[a-z][a-z0-9-]*[_-])?[0-9a-f]{8}$"
+    r"|^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    r"|^(?:engine-)?task-\d+$",
+    re.IGNORECASE,
+)
+_NON_TASK_PREFIXES = ("claim-", "verdict-", "report-", "toolu_")
+_KNOWN_NON_TASK_IDS = {"ns", "default", "academicops", "aops"}
+
+
+def is_task_id(identifier: str) -> bool:
+    """Return True if identifier resembles a task or epic ID."""
+    if not identifier:
+        return False
+    tid = identifier.strip()
+    low = tid.lower()
+    if low in _KNOWN_NON_TASK_IDS:
+        return False
+    if any(low.startswith(p) for p in _NON_TASK_PREFIXES):
+        return False
+    if _TASK_ID_RE.match(tid):
+        return True
+    if re.match(r"^[a-z][a-z0-9_.-]*[_-][0-9a-f]{6,}$", tid, re.IGNORECASE):
+        return True
+    return False
 
 
 def _import_claude_code_tracer() -> Any:
@@ -248,6 +276,40 @@ def emit_claim_span(
     return True
 
 
+def emit_hearsay_span(
+    tracer_mod: Any,
+    session_id: str,
+    claim_id: str,
+    event: str,
+    judged_ref: str | None = None,
+    attributes: dict[str, Any] | None = None,
+    config: dict[str, Any] | None = None,
+) -> bool:
+    """Ship one TOOL span for this hearsay check via claude_code_tracer's pipeline."""
+    attrs: dict[str, Any] = {
+        "hearsay.claim_id": claim_id,
+        "hearsay.event": event,
+        "hearsay.status": "armed",
+        "premise_check.claim_id": claim_id,
+    }
+    if judged_ref:
+        attrs["hearsay.judged_ref"] = judged_ref
+        attrs["premise_check.judged_ref"] = judged_ref
+    if attributes:
+        attrs.update(attributes)
+
+    _export_tool_span(
+        tracer_mod,
+        session_id,
+        "hearsay_check",
+        {"claim_id": claim_id, "event": event},
+        {"status": "armed"},
+        attrs,
+        config,
+    )
+    return True
+
+
 def judge_reason(token: str, reason: str, judged_text: str | None) -> dict[str, Any]:
     """Parse the reason against the judged block; for PASS, refuse on any failed check.
 
@@ -257,14 +319,70 @@ def judge_reason(token: str, reason: str, judged_text: str | None) -> dict[str, 
     vocab = ra.load_vocabulary()
     parsed = ra.parse_reason(reason, vocab)
     block_text = ra.extract_block(judged_text)
-    block = ra.parse_block(block_text, vocab) if block_text is not None else None
+    block_err: str | None = None
+    if token == "PASS" and block_text is not None and not ra.is_null_form(block_text):
+        if "block" not in parsed.waived_items(vocab):
+            valid, parser_output, _ = ra.check_argdown_block(block_text)
+            if not valid:
+                block_err = parser_output
+
+    block = (
+        ra.parse_block(block_text, vocab)
+        if (block_text is not None and block_err is None)
+        else None
+    )
     if token == "PASS":
-        failures = ra.pass_failures(parsed, block, vocab)
+        failures = ra.pass_failures(
+            parsed,
+            block,
+            vocab,
+            is_null=ra.is_null_form(block_text),
+            block_text=block_text,
+            block_error=block_err,
+        )
         if failures:
+            formatted = []
+            for f in failures:
+                remedy = ra.remediation_for_failure(f)
+                if remedy:
+                    formatted.append(f"{f}\n{remedy}")
+                else:
+                    formatted.append(f)
             raise ValueError(
                 "PASS refused -- the reason fails the recorder's checks "
-                "(see the premise-check skill's checker reason):\n- " + "\n- ".join(failures)
+                "(see the premise-check skill's checker reason):\n- " + "\n- ".join(formatted)
             )
+    elif token in ("REVISE", "FAIL"):
+        valid_lines = parsed.get("Valid")
+        if valid_lines:
+            valid_entries = parsed.valid_entries()
+            all_hold = all(m is not None and m.group("word") == "holds" for m in valid_entries)
+            if all_hold:
+                has_unanswered = False
+                for ans in parsed.answered():
+                    if ans is not None and ans[1] is None:
+                        has_unanswered = True
+                        break
+                if not has_unanswered:
+                    for entry in parsed.get("Answered"):
+                        if "unanswered" in entry.lower():
+                            has_unanswered = True
+                            break
+                if not has_unanswered:
+                    for line in reason.splitlines():
+                        if re.search(r"^\s*asks?\s*:.*?\bunanswered\b", line, re.IGNORECASE):
+                            has_unanswered = True
+                            break
+                if not has_unanswered:
+                    raise ValueError(
+                        f"{token} refused -- reason has Valid entries that all hold and no "
+                        f"Ask: ... -> unanswered; {token} requires at least one failing "
+                        f"inference step ('Valid: (n) fails -- <defect>') or unanswered ask.\n"
+                        f"Required remediation format: For {token}, record at least one failing step or unanswered ask:\n"
+                        f"  Valid: (n) fails #<defect-tag> -- <explanation of failure>\n"
+                        f"  # or:\n"
+                        f"  Answered: <ask_id> unanswered"
+                    )
     return ra.span_attributes(parsed, block, vocab)
 
 
@@ -275,6 +393,7 @@ def record_verdict(
     reason: str = "",
     title: str | None = None,
     tracer_mod: Any | None = None,
+    machine: bool = False,
 ) -> dict[str, Any]:
     """Validate, emit the span, and disarm the premise check."""
     cid = (claim_id or "").strip()
@@ -288,19 +407,58 @@ def record_verdict(
     if not reason:
         raise ValueError("a verdict needs a reason; got none")
 
-    if not is_armed(session_id):
-        raise ValueError(f"no premise check is currently armed for session {session_id!r}")
+    armed = is_armed(session_id)
+    is_task_claim = is_task_id(cid)
 
-    state = get_state(session_id)
-    expected_id = state.get("claim_id")
-    valid_ids = state.get("claim_ids") or ([expected_id] if expected_id else [])
-    if cid != expected_id and cid not in valid_ids:
-        raise ValueError(
-            f"unknown or mismatched report id {cid!r}; gate is armed for {expected_id!r}"
-        )
+    if not armed:
+        if not is_task_claim:
+            raise ValueError(f"no premise check is currently armed for session {session_id!r}")
+        state = get_state(session_id)
+    else:
+        state = get_state(session_id)
+        expected_id = state.get("claim_id")
+        valid_ids = state.get("claim_ids") or ([expected_id] if expected_id else [])
+        if cid != expected_id and cid not in valid_ids:
+            if not is_task_claim:
+                raise ValueError(
+                    f"unknown or mismatched report id {cid!r}; gate is armed for {expected_id!r}"
+                )
 
     judged_text, judged_ref = get_judged(session_id, cid)
+    if is_task_claim and not judged_ref:
+        judged_ref = cid
+    block_text = ra.extract_block(judged_text)
+
+    entry = (state.get("judged") or {}).get(cid, {})
+    block_expected = bool(entry.get("block_expected") or state.get("block_expected"))
+    is_peer = block_expected or any(
+        str(judged_ref or "").startswith(prefix)
+        for prefix in ("<cross-session-message", "<teammate-message", "<task-notification")
+    )
+    if token == "PASS" and is_peer and block_text is None:
+        raise ValueError(
+            "PASS refused -- no argument block in judged text: an absent block cannot pass; "
+            "send the message back for revision\n"
+            "Defect: The judged text does not contain a fenced ```argdown block.\n"
+            "Required remediation: Peer messages must end with a valid ```argdown block. "
+            "Return the message for revision:\n"
+            "  verdict.py --claim <id> --verdict REVISE --reason-file <path>"
+        )
+
+    # Machine check on Argdown block for PASS verdicts unless block is waived
+    if token == "PASS" and block_text is not None and not ra.is_null_form(block_text):
+        vocab = ra.load_vocabulary()
+        parsed_reason = ra.parse_reason(reason, vocab)
+        if "block" not in parsed_reason.waived_items(vocab):
+            valid, parser_output, _ = ra.check_argdown_block(block_text)
+            if not valid:
+                raise ValueError(
+                    f"PASS verdict refused for {cid}: could not parse argdown block:\n{parser_output}"
+                )
+
     attributes = judge_reason(token, reason, judged_text)
+    if machine:
+        attributes["premise_check.machine"] = True
     attributes["premise_check.judged_ref"] = judged_ref or ""
     attributes["premise_check.judged_text_sha256"] = (
         hashlib.sha256(judged_text.encode("utf-8")).hexdigest() if judged_text is not None else ""
@@ -330,6 +488,7 @@ def record_verdict(
         reason,
         verification_id=verification_id,
         title=clean_title,
+        machine=bool(attributes.get("premise_check.machine")),
     )
 
     result: dict[str, Any] = {
@@ -337,10 +496,12 @@ def record_verdict(
         "verification_id": verification_id,
         "claim_id": cid,
         "verdict": token,
+        "reason": reason,
         "span_emitted": True,
         "span_error": None,
         "disarmed": True,
         "no_claim": bool(attributes.get("premise_check.no_claim")),
+        "machine": bool(attributes.get("premise_check.machine")),
     }
     if clean_title:
         result["title"] = clean_title
@@ -465,7 +626,6 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--verdict",
-        required=True,
         type=str.upper,
         choices=VERDICTS,
         help="PASS, REVISE or FAIL.",
@@ -475,7 +635,7 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Optional short title for the verification.",
     )
-    reason = parser.add_mutually_exclusive_group(required=True)
+    reason = parser.add_mutually_exclusive_group()
     reason.add_argument("--reason", help="The checker's reason, inline.")
     reason.add_argument(
         "--reason-file",
@@ -495,6 +655,20 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 1
+
+    if not args.verdict:
+        print(
+            "premise_check_verdict: error: the following arguments are required: --verdict",
+            file=sys.stderr,
+        )
+        return 2
+
+    if not args.reason and not args.reason_file:
+        print(
+            "premise_check_verdict: error: one of --reason or --reason-file is required",
+            file=sys.stderr,
+        )
+        return 2
 
     try:
         text = args.reason if args.reason is not None else _read_reason(args.reason_file)

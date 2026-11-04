@@ -63,9 +63,9 @@ describe("Mini App static server confinement", () => {
     await expect404("/app/escape.txt");
   });
 
-  test("legitimate assets are served", async () => {
+  test("static /app/* assets are decommissioned and return 404 (AC-5.2)", async () => {
     for (const p of ["/app", "/app/", "/app/index.html", "/app/app.js"]) {
-      expect((await fetch(base + p)).status).toBe(200);
+      expect((await fetch(base + p)).status).toBe(404);
     }
   });
 });

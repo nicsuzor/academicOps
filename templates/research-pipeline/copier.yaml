@@ -1,0 +1,44 @@
+_min_copier_version: "9.0.0"
+_templates_suffix: ".jinja"
+_envops:
+  autoescape: false
+
+project_name:
+  type: str
+  help: "Project repository name (slug)"
+  default: "research-project"
+
+project_title:
+  type: str
+  help: "Human-readable project title"
+  default: "Quantitative Research Pipeline"
+
+description:
+  type: str
+  help: "Short description of the research project"
+  default: "Reproducible research data transformation and analysis pipeline"
+
+author_name:
+  type: str
+  help: "Author or researcher name"
+  default: "Researcher"
+
+sql_engine:
+  type: str
+  help: "SQL transformation engine"
+  choices:
+    - duckdb
+    - bigquery
+  default: "duckdb"
+
+bigquery_project:
+  type: str
+  help: "GCP BigQuery project ID (only if sql_engine == 'bigquery')"
+  default: "my-gcp-project"
+  when: "{{ sql_engine == 'bigquery' }}"
+
+bigquery_dataset:
+  type: str
+  help: "BigQuery dataset name (only if sql_engine == 'bigquery')"
+  default: "analytics"
+  when: "{{ sql_engine == 'bigquery' }}"

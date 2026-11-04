@@ -6,7 +6,7 @@
 #   PUT repos/nicsuzor/academicOps/rulesets/13762049
 #
 # dev merges on green: Lint and Pytest pass on the PR head; no approval is
-# required. Review into main is the human gate (main-requires-review.yml).
+# required. No ruleset gates main (main-requires-review.yml is a draft, not live).
 
 name: PR Review and Merge rules
 

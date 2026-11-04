@@ -47,7 +47,7 @@ Every hook across the plugins is deterministic, lightweight, and single-purpose.
 
 | Plugin | Canonical Event | Target Client | Required Context / Env | Injected Payload / Action | WHY (Purpose & Rationale) |
 | :- | :- | :- | :- | :- | :- |
-| `ida` | `UserPromptSubmit` | Both (Claude Code & AGY) | `PKB_MCP_URL`, plus a credential: `PKB_MCP_HEADERS`, or `WORKER_MCP_TOKEN_ID` + `_SECRET` (else `DISPATCHER_MCP_TOKEN_ID` + `_SECRET`) ([INSTALL.md](INSTALL.md#prompt-hydration-credentials)) | Strategic context search instructions & relevant PKB history. | **Pillar 1 (Situation):** Ground every user prompt in historical knowledge and prior decisions before acting. |
+| `ida` | `UserPromptSubmit` | Both (Claude Code & AGY) | `PKB_MCP_URL`, plus credential: `DISPATCHER_MCP_TOKEN_ID` + `_SECRET` (launching apps substitute worker keys in worker containers; [INSTALL.md](INSTALL.md#prompt-hydration-credentials)) | Strategic context search instructions & relevant PKB history. | **Pillar 1 (Situation):** Ground every user prompt in historical knowledge and prior decisions before acting. |
 | `rbg` | `PreToolUse` | Claude Code | `COPE_EVALUATOR_*` (Local Reflexes LLM model) | Parallel rule compliance advisory with matched rule text & reasoning. | **Pillar 4 (Enforcement L1):** Non-blocking, turn-by-turn evaluation of tool calls against active rules via a fast local model. |
 | `rbg` | `UserPromptSubmit` | AGY (`PreInvocation`) | Live rule set files | Summary roster of active rules for the turn. | Provides rule visibility on surfaces that lack tool-call interception. |
 | `orchestrate` | `PostToolBatch` | Claude Code | none | Non-blocking reminder carrying the handback doctrine: a subagent's report is second-hand, so expect proof with it and send back anything without proof. Emits nothing unless the batch contains an `Agent` call. | Binds the **receiver** the instant a synchronous report lands. Verifying, re-running, or completing the work on the worker's behalf is never the receiver's job. |
@@ -86,12 +86,13 @@ Install what you need -- plugins are separately installable and loosely coupled:
 ```bash
 claude mcp add --transport http --scope user services <your PKB MCP endpoint>
 claude plugin marketplace add nicsuzor/academicOps@dist
-claude plugin install pkb@academicOps
-claude plugin install aops@academicOps
+claude plugin install ida@academicOps
+claude plugin install rbg@academicOps
+claude plugin install tools@academicOps
 ```
 
-`orchestrate`, `rbg`, `tools`, `ts`, and `aops-debug` install the same way as
-`aops`, with no `--config`.
+`ida-telegram` and `aops-debug` install the same way as `ida`, with no
+`--config`.
 
 Requirements: Claude Code (or Antigravity), and Docker if you want polecat's containerised workers.
 

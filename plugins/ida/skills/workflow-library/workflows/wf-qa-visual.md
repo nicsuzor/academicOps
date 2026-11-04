@@ -1,7 +1,7 @@
 ---
 alias:
   - wf-qa-visual
-description: Fills wf-qa evaluate slot for rendered output -- capture artifact images and judge multimodally against criteria.
+description: Fills evaluate slot for rendered output -- capture artifact images and judge multimodally against criteria.
 id: wf-qa-visual
 status: ready
 tags:
@@ -14,7 +14,7 @@ type: template
 
 ## What this step does
 
-Fills the evaluate slot of [[wf-qa]] for something a person looks at: how the evidence is captured,
+Fills the evaluate slot for rendered output for something a person looks at: how the evidence is captured,
 and how it is judged. Criteria assembly and the verdict contract belong to the parent and are not
 restated here. Do not dispatch it standalone -- without the parent there are no criteria to judge
 against.

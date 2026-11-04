@@ -118,14 +118,14 @@ jobs:
           prompt: |
             You are the Sleep Cycle consolidation agent running in maintenance mode.
             Read the remember skill and consolidation reference for full instructions:
-              ${{ github.workspace }}/_aops/plugins/pkb/skills/remember/SKILL.md
-              ${{ github.workspace }}/_aops/plugins/pkb/skills/remember/references/consolidation.md
+              ${{ github.workspace }}/_aops/plugins/ida/skills/remember/SKILL.md
+              ${{ github.workspace }}/_aops/plugins/ida/skills/remember/references/consolidation.md
 
-            Work through the consolidation stages in order (Stages 1 through 8) as
-            defined in consolidation.md.
+            Work through the consolidation stages in order (Stages 1 through 9) as
+            defined in the "Cycle Stages" section of consolidation.md.
 
             Use your judgment about what needs attention. Skip stages where there's
-            nothing to do — but always run Stage 1 (baseline) and Stage 8 (self-check).
+            nothing to do — but always run Stage 1 (baseline) and Stage 9 (audit output).
 
             Read the **Invariants** section in `remember/SKILL.md` and the
             **Focus** section in consolidation.md; a focus below scopes the cycle.
@@ -141,9 +141,10 @@ jobs:
             - **No PKB MCP server** — you are working directly with markdown files.
                Use Grep/Glob to search, Write/Edit to create/modify files. Do NOT
                reference mcp__services__pkb__* tools. Changes sync to PKB consumers via git push.
-            - **Sub-agent dispatch (Phases 2, 4, quality review)**: when you
-               delegate to `pkb:pauli` sub-agents, you MUST pass the explicit
-               `tools` list per the "Sub-Agent Dispatch" section in consolidation.md.
+            - **Sub-agent dispatch (Stages 2, 3, 9)**: when you
+               delegate to `ida:pauli` sub-agents (defined in
+               `_aops/plugins/ida/agents/pauli.md`), you MUST pass an explicit
+               `tools` list.
                Pauli's default profile lacks `Bash`, `Glob`, `Edit`, and the PKB
                MCP tools — without an explicit `tools` arg the sub-agent will only
                see `Read` and `Skill` and cannot do consolidation work. On CI
@@ -159,16 +160,16 @@ jobs:
               phase and missing tool for each.
             - Email/calendar MCP tools are NOT available on GitHub Actions.
               Degrade gracefully per the skill instructions (flag instead of verify).
-            - Transcript mining (Phase 2): requires $AOPS_SESSIONS. Skip if not available.
+            - Transcript mining (Stage 2): requires $AOPS_SESSIONS. Skip if not available.
             - **Output**: Mechanical work (dedup, index refresh, graph maintenance)
               commits directly to main. Knowledge work (new notes, synthesis, MOCs)
               commits to a branch `sleep/consolidation-$(date +%Y-%m-%d-%H%M)` and
-              creates a PR. The PR is reviewed by /qa before merging.
+              creates a PR. The PR is reviewed by /ida:verify before merging.
             - Write a summary of what you did to $GITHUB_STEP_SUMMARY. Include:
               - **Sub-agent halt count (FIRST LINE if non-zero)** with phase + missing tool for each
               - Phase completion status
-              - Knowledge notes created/updated (Phase 4)
-              - Audit findings (Stage 8)
+              - Knowledge notes created/updated (Stage 3)
+              - Audit findings (Stage 9)
               - Graph health delta (Stage 1 baseline vs Stage 7)
               - PR URL if consolidation PR was created
 
