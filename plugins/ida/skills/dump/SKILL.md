@@ -1,6 +1,6 @@
 ---
 name: dump
-description: Routine session exit and handover -- commit and push work, create retroactive tasks for unparented changes, record consolidated project updates, capture durable facts, release tasks, and emit a final report. Use when completing work, resetting context, transitioning environments, or pausing. Exclude for in-session updates (use reconcile).
+description: Routine session exit and handover -- commit and push work, create retroactive tasks for unparented changes and operational faults, record consolidated project updates, capture durable facts, release tasks, and emit a final report. Use when completing work, resetting context, transitioning environments, or pausing. Exclude for in-session updates (use reconcile).
 ---
 
 # Dump -- Session Exit and Handover
@@ -16,16 +16,17 @@ Execute the routine, calm wrap-up across all session terminations: task completi
 3. For pull requests (`gh pr create`), target the diverged base branch (e.g. `--base "${BASE_BRANCH:-${POLECAT_BASE_BRANCH}}"`).
 4. Record the branch name and commit SHA in the final report.
 
-### 2. Retroactive Tasks for Unparented Project Edits
+### 2. Retroactive Tasks for Unparented Project Edits and Operational Faults
 
-If an ad-hoc or interactive session modified repository project files (source, tests, configuration, specifications) without an assigned task, create a retroactive task on the knowledge graph before exit:
+If an ad-hoc or interactive session modified repository project files without an assigned task, or diagnosed and fixed/recovered from a significant operational fault without modifying repository files, create a retroactive task on the knowledge graph before exit:
 
-- Document the semantic goal, touched files, commit SHA, and verified deliverable.
-- Release the task immediately as `done` with completion evidence.
-- **Exemptions**:
-  1. _Routing work_: Triage sweeps, dispatching workers, queue inspections, and conversational inquiries that do not alter repository project files require no task.
-  2. _Ephemeral minor edits_: Minor edits requested directly by the user (such as fixing a typo or updating a transient comment) where knowing about the change will not be useful thirty days later require no task.
-- _Headless workers_: Dispatched workers on assigned tasks are strictly bound to their task boundary; unparented edits outside that boundary are a containment breach under `fail-fast` -- halt and release `partial` or `failed`.
+1. **Minting & Parentage**: Mint a task via task creation tools with `classification: chore` or `implementation`, linking `parent` to the relevant project or standing operational epic (preventing orphan root tasks). Provide a concise, verb-led imperative title (e.g. `Recover gateway from 502 outage`).
+2. **Canonical Body Format**: Format the body using the canonical 5-section concise template (`Goal`, `Deliverable`, `Scope`, `Acceptance criteria`, `Pointers`) per `synthesize-not-accrete`. Diagnostic logs and recovery checks belong in completion metadata (`status: done` release evidence); enduring architectural insights belong in durable topic notes offered to Pauli.
+3. **Immediate Release**: Release the task immediately as `done` with completion evidence detailing touched files and commit SHA, or operational recovery actions and verified health check.
+4. **Significant Fault Threshold**: Covers service downtime/degradation (HTTP 500/502/503, inaccessible endpoints), crashed or leaking containerized services/daemons requiring manual restarts, authentication/credential failures, and latent defects diagnosed to root cause.
+5. **Routine Operations Exempt**: Status checks, health pings, inspecting healthy logs, ephemeral local container restarts during normal development without an underlying fault, routing sweeps, and conversational queries require no task. Minor user-directed edits not useful 30 days later require no task.
+6. **Bug Tracking Demarcation**: Retroactive tasks capture the operational recovery chore on the graph. Latent software defects or code bugs are filed on GitHub issues ("Bugs go on GitHub only").
+7. **Headless Workers**: Dispatched workers on assigned tasks are strictly bound to their task boundary; unparented edits or external faults are a containment breach under `fail-fast` -- record observations for handover and release `partial` or `failed` rather than minting unrelated retroactive tasks.
 
 ### 3. Capture Durable Facts and Repair Contradictions
 
@@ -64,11 +65,16 @@ The status above is the task's release status. PASS, REVISE and FAIL are the che
 
 ### 5. Consolidated Daily Note Project Updates
 
-Determine all projects touched during the session (modified files or updated tasks):
+Determine all projects touched during the session (modified files, updated tasks, or major operational finds without code changes):
 
-- _Interactive / Coordinator Sessions_: Write exactly one consolidated bullet per touched project into the daily note under `## Today's work`:
-  `- **<project-name>**: <latest status in 10-20 words> -- Next: <pointer or resumption prompt>`
-- _Headless / Isolated Worker Sessions_: Emit the consolidated project status in the handover block on the record to prevent concurrent write contention; subsequent daily sweeps absorb them.
+- **Triggers**: Projects touched are determined by (1) repository files modified, (2) claimed or retroactive tasks updated, or (3) major operational finds or service recoveries achieved without code changes.
+- **Major Find Threshold**: Remediating a significant service outage/fault, isolating root causes of systemic issues, or significant empirical discoveries that invalidate hypotheses or uncover critical risks. Routine commands, status queries, or pure triage sweeps are exempt. Shared service/daemon recoveries attribute to the relevant platform infrastructure project.
+- **Recording Format**:
+  - _Interactive / Coordinator Sessions_: Write exactly one consolidated bullet per touched project into the daily note under `## Today's work`:
+    `- **<project-name>**: <latest status or major find in 10-20 words> -- Next: <pointer or resumption prompt>`
+    If the completed recovery has no follow-up task or resumption prompt, omit the `-- Next: ...` suffix:
+    `- **<project-name>**: <latest status or major find in 10-20 words>`
+  - _Headless / Isolated Worker Sessions_: Emit the consolidated project status in the handover block on the record to prevent write contention; subsequent daily sweeps absorb them.
 
 ### 6. Disciplined Next-Step Determination
 

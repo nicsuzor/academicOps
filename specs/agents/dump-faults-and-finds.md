@@ -1,6 +1,6 @@
 ---
 title: Dump Skill Triggers for Operational Faults and Major Finds
-status: draft
+status: ready
 type: spec
 tags: [dump, session-lifecycle, handover, pkb, retroactive-tasks, daily-note]
 ---
@@ -130,3 +130,11 @@ The following rows will be updated in `specs/ENFORCEMENT-MAP.md` during downstre
 | :- | :- | :- | :- |
 | [Axiom: Durable Capture](../plugins/rbg/skills/axioms/durable-capture.md) -- Capture knowledge not verdicts, update existing documents rather than creating duplicates, create retroactive tasks for unparented file changes and significant operational fault recoveries, and route durable facts to the knowledge base custodian. | instructions, JIT injection, process | imperative, warning, required gate | `plugins/rbg/skills/axioms/durable-capture.md:9`, `plugins/ida/skills/dump/SKILL.md`, `plugins/ida/skills/remember/SKILL.md:10-70`, `plugins/ida/skills/q/SKILL.md:12-65`, `wf-reconcile.md:1-55` |
 | [Axiom: Full Observability](../plugins/rbg/skills/axioms/full-observability.md) -- Persist material actions in git commits and knowledge graph tasks with clear rationale, print session IDs in handovers, and record consolidated project updates in the daily note for modified files and major operational finds. | instructions, structural, process, post-hoc | imperative, protection, required gate, observability | `plugins/rbg/skills/axioms/full-observability.md:9`, `plugins/ida/skills/dump/SKILL.md`, `claude_code_tracer.py:1-180`, `agy_tracer.py:1-140` |
+
+### 8. Regulatory Experiment Record
+
+- **Hypothesis:** Expanding Level 2 imperative instructions in `dump` to explicitly mandate retroactive tasks for operational fault recoveries (even without repository file edits) and daily note project update bullets for major finds (even without code modifications) will prevent unrecorded operational work and unobserved service recoveries without inducing spurious task creation for routine operations.
+- **What moved:** From narrow instructions tying retroactive tasks and daily note bullets strictly to modified repository project files to Level 2 imperative instructions in `plugins/ida/skills/dump/SKILL.md` covering operational fault recoveries and major non-code diagnostic finds with clear routine-operation exemptions.
+- **On what evidence:** Empirical incident on 2026-11-04 where an operational session recovered polecat.suzor.com from an HTTP 502 outage by restarting containers but omitted a retroactive task and daily note bullet, stating: "Task: Ad-hoc ops, no PKB task. I only restarted containers and edited no repo files, so no retroactive task was needed", prompting the user directive to mandate retroactive tasks and daily note bullets for major finds even when no code changes.
+- **Observation / Promotion Criteria:** In subsequent operational sessions, service recoveries (502 outages, daemon crashes, gateway fixes) result in a created and completed retroactive chore on the PKB graph with recovery evidence, and major diagnostic discoveries produce a daily note project bullet, while routine health checks, log inspections, and benign development container restarts remain exempt.
+- **Kill / Escalation Criteria:** If agents continue omitting retroactive tasks for significant service outages, escalate to Level 3 prompt-injection reminder hooks on session exit or Level 5 process gating (requiring supervisor verification of operational handovers). If agents over-generate retroactive tasks for routine benign container operations, refine demarcation criteria.
