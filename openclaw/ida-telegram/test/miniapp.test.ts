@@ -436,10 +436,8 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
     httpServer = startWebServer(webContext, appDir);
     const baseUrl = `http://127.0.0.1:${httpServer.port}`;
 
-    const indexHtmlRes = await fetch(`${baseUrl}/app/index.html`);
-    const indexHtml = await indexHtmlRes.text();
-    const appJsRes = await fetch(`${baseUrl}/app/app.js`);
-    const appJs = await appJsRes.text();
+    const indexHtml = readFileSync(join(appDir, "index.html"), "utf-8");
+    const appJs = readFileSync(join(appDir, "app.js"), "utf-8");
 
     const document = new MiniDocument(indexHtml);
     let sessionCookie = "";

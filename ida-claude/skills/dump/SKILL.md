@@ -1,33 +1,51 @@
 ---
 name: dump
-description: Session exit and handover -- commit and push work, release claimed PKB tasks, and emit a final report. Use when completing, pausing, or handing off a session. Exclude for in-session updates (use reconcile).
+description: Routine session exit and handover -- commit and push work, create retroactive tasks for unparented changes, record consolidated project updates, capture durable facts, release tasks, and emit a final report. Use when completing work, resetting context, transitioning environments, or pausing. Exclude for in-session updates (use reconcile).
 ---
 
-# Dump -- Session Exit
+# Dump -- Session Exit and Handover
 
-Finalize session work and provide a structured handover before exit.
+Execute the routine, calm wrap-up across all session terminations: task completion, context reset, environment transition, or external user pause.
 
-## Handover Process
+## Procedure
 
 ### 1. Save and Push Work
 
-1. Commit all modified files. If work is incomplete, describe what is partial in the commit message.
-2. Deliver commits only where the task's Output names. If Output says nothing is pushed or names only a PKB task or note, do not push. If Output names a branch or pull request, push commits to that remote branch (`git push`). If the PR is a draft and its code step is complete, mark it ready for review (`gh pr ready`) without waiting for approval. Ephemeral container and session scratch paths (`<appDataDir>/brain/`, `/tmp/`, unpushed container working trees) vanish on exit; non-git evaluation datasets, specimen tables, and reports must be persisted in the PKB with durable pointers rather than stored in ephemeral directories.
+1. Stage specific modified files (never blanket `add -A`) and commit. If work is incomplete, describe what is partial in the commit message.
+2. Deliver commits only where the task's Output names. If Output says nothing is pushed or names only a PKB task or note, do not push. If Output names a branch or pull request, push commits to that remote branch (`git push`). If the PR is a draft and its code step is complete, mark it ready for review (`gh pr ready`) without waiting for approval. Ephemeral container and session scratch paths (`<appDataDir>/brain/`, `/tmp/`, unpushed working trees) vanish on exit; persist non-git evaluation datasets, specimen tables, and reports in the PKB with durable pointers.
 3. For pull requests (`gh pr create`), target the diverged base branch (e.g. `--base "${BASE_BRANCH:-${POLECAT_BASE_BRANCH}}"`).
 4. Record the branch name and commit SHA in the final report.
 
-### 2. Release Claimed Tasks
+### 2. Retroactive Tasks for Unparented Project Edits
 
-For each claimed task (releasing child tasks first), update the task body so its `## Report` section records the outcome and the `premise-check` report argument (written per the `premise-check` report-form reference, asked by the task's frozen ask ids), then release the task via `pkb_release_task` with the appropriate terminal status:
+If an ad-hoc or interactive session modified repository project files (source, tests, configuration, specifications) without an assigned task, create a retroactive task on the knowledge graph before exit:
 
-- `done`: All acceptance criteria are fully met with verified evidence recorded in the task's Report section: quoted output, `file:line` citations, counts, the specimen run where requested, and the report argument answering each `<task id>/AC<n>` from that evidence. When the deliverable is a PR, the worker pushes the branch, opens the PR, records `pr_url` and branch, and releases `done`. An empty, template, or bare-assertion report is released as `partial`.
-- `partial`: The worker's own acceptance items remain unfinished -- a scope seam, an external dependency, or a missing tool. Never release as `partial` because a dependent check (QA, merge, deploy) remains to run. Workers document what was completed and what remains unfinished in `reason` and `## Report`; workers never create or name follow-up tasks, and reports carry no 'Next task' pointer (the reconcile pass and parent epic handle next actions).
-- `review`: Reserved exclusively for manual human holds applied directly by the user. Workers and automated sessions never set or release `review`. If work requires an escalated decision or has incomplete items, release `partial` with documented reason.
-- `failed`: The task cannot be completed, has reached a terminal failure, or a check failed (e.g. QA or review). Document failure evidence and root cause. Never file fix tasks or follow-up tasks; the reconcile pass notes failed tasks and decides next actions from the parent epic.
+- Document the semantic goal, touched files, commit SHA, and verified deliverable.
+- Release the task immediately as `done` with completion evidence.
+- **Exemptions**:
+  1. _Routing work_: Triage sweeps, dispatching workers, queue inspections, and conversational inquiries that do not alter repository project files require no task.
+  2. _Ephemeral minor edits_: Minor edits requested directly by the user (such as fixing a typo or updating a transient comment) where knowing about the change will not be useful thirty days later require no task.
+- _Headless workers_: Dispatched workers on assigned tasks are strictly bound to their task boundary; unparented edits outside that boundary are a containment breach under `fail-fast` -- halt and release `partial` or `failed`.
+
+### 3. Capture Durable Facts and Repair Contradictions
+
+1. **Durable Facts (Six-Month Threshold)**: Review decisions, constraints, and verified environment invariants learned during the session. If a fact holds enduring institutional value across a six-month horizon:
+   - In interactive sessions, offer the fact directly to the knowledge base custodian (`pauli`) as content.
+   - In headless or isolated worker sessions, record the facts under `## Durable Facts` in the task record and handover summary for custodian collection.
+2. **Knowledge Base Repair on Sight**: When encountering conflicting, incorrect, irrelevant, demonstrably false, or outdated knowledge base information during the session, report the contradiction and affected notes to the custodian (`pauli`) for on-sight correction and pruning.
+
+### 4. Release Claimed Tasks
+
+For each claimed task (releasing child tasks first), update the task body so its `## Report` section records the outcome and the `premise-check` report argument (asked by the task's frozen ask ids), then release the task via `pkb_release_task`, passing the active `session_id`:
+
+- `done`: All acceptance criteria are fully met with verified evidence recorded in the task's Report section: quoted output, `file:line` citations, counts, specimen runs, and the report argument answering each `<task id>/AC<n>`. When the deliverable is a PR, push the branch, open the PR, record `pr_url` and branch, and release `done`. An empty, template, or bare-assertion report is released as `partial`.
+- `partial`: The worker's own acceptance items remain unfinished -- a scope seam, an external dependency, a context reset, or a missing tool. Never release as `partial` because a dependent check (QA, merge, deploy) remains to run. Document what was completed and what remains unfinished in `reason` and `## Report`.
+- `failed`: Terminal failure, unrecoverable blocker, or check failure (e.g. QA or review). Document failure evidence and root cause.
 - `cancelled`: Task is obsolete or invalidated. Document reason.
 - `in_progress`: Use only if an active successor session is immediately continuing work.
+- `review`: Never set or release `review`. Reserved exclusively for manual human holds applied directly by the user.
 
-Task report format (for the `release_task` body update in `## Report` and the session task summary):
+Task report format (for `release_task` body update in `## Report` and session task summary):
 
 ````markdown
 ### Task: <task-id> (<title>) -- <status>
@@ -42,26 +60,42 @@ Task report format (for the `release_task` body update in `## Report` and the se
 ```
 ````
 
-The status above is the task's release status. PASS, REVISE and FAIL are the checker's verdict on this argument, recorded by whoever checks it under `## Premise-Check Verdict`; a worker never writes a verdict on its own report.
+The status above is the task's release status. PASS, REVISE and FAIL are the checker's verdict on this argument, recorded by whoever checks it under `## Premise-Check Verdict`; a worker never writes a verdict on its own report. If the release tool is unavailable, record the failure trace and list claimed task IDs in the final report.
 
-If the release tool is unavailable, record the failure trace and list claimed task IDs in the final report.
+### 5. Consolidated Daily Note Project Updates
 
-### 3. Emit Final Handover Report
+Determine all projects touched during the session (modified files or updated tasks):
 
-Compile the overall session outcome:
+- _Interactive / Coordinator Sessions_: Write exactly one consolidated bullet per touched project into the daily note under `## Today's work`:
+  `- **<project-name>**: <latest status in 10-20 words> -- Next: <pointer or resumption prompt>`
+- _Headless / Isolated Worker Sessions_: Emit the consolidated project status in the handover block on the record to prevent concurrent write contention; subsequent daily sweeps absorb them.
+
+### 6. Disciplined Next-Step Determination
+
+Workers never sequence work or invent speculative follow-ups ("park on a downward slope"):
+
+1. _Pre-Existing Dependent Work_: If an authorized follow-up task, child QA task, or review task already exists on the graph, provide an explicit pointer (`[[task-id]]` or URL).
+2. _Interrupted Work_: If a task is released as `partial` or `in_progress` (context boundary, environment migration, user halt), provide a self-contained 2-4 sentence resumption prompt detailing current state, touched files, and exact starting instructions for a fresh agent.
+3. _Fully Completed Work_: If the task is `done` and no pre-existing dependent task exists on the graph, state `None`.
+
+### 7. Emit Final Handover Report
+
+Compile the overall session outcome with session traceability:
 
 ```markdown
 ## Handover: <agent> <session-id / conversation-id>
 
-1. **Task**: Task id and title.
-2. **Summary**: Concise synthesis of findings and modifications.
+1. **Task**: <task-id and title, or "Ad-hoc / Retroactive: <id>">
+2. **Summary**: Concise synthesis of findings, modifications, and outcomes.
 3. **Status & Safeguards**:
-   - STATUS: <release status: done | partial | failed | cancelled | in_progress>
+   - STATUS: <done | partial | failed | cancelled | in_progress>
    - GATE: <the acceptance criterion id tested, and observed result against it>
    - CONFIDENCE: <high | med | low> + <what single check would falsify this>
    - CONFOUND CHECK: <did a clean-room/differential control run? result? -- or "NOT RUN">
 4. **Output**: <branch + commit SHA> | <PR or artifact link>
-5. **Argument**: The `argdown` block recorded under the task's `## Report`.
-6. **Limitations**: Unresolved items, out-of-scope elements, and verbatim error outputs.
-7. **Rule Violations**: [None | Disclosed violations with rule citations and reasons]
+5. **Next step**: <[[task-id]] pointer | Resumption prompt | None>
+6. **Durable Facts**: [None | List of durable facts offered to Pauli or recorded for collection]
+7. **Argument**: The `argdown` block recorded under the task's `## Report`.
+8. **Limitations**: Unresolved items, out-of-scope elements, and verbatim error outputs.
+9. **Rule Violations**: [None | Disclosed violations with rule citations and reasons]
 ```

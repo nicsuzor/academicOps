@@ -81,6 +81,9 @@ describe("Telegram Reactions & Shared Legend (specs/telegram/reactions.md)", () 
     expect(normalizeReaction("🐱")).toBe("🐱");
     expect(normalizeReaction("🕊")).toBe("🕊");
     expect(normalizeReaction("🎉")).toBe("🎉");
+    expect(normalizeReaction("👨‍💻")).toBe("👨‍💻");
+    expect(normalizeReaction("🤝")).toBe("🤝");
+    expect(normalizeReaction("👌")).toBe("👌");
 
     // Rejects multi-emoji strings upfront
     expect(normalizeReaction("💩🦄")).toBeNull();
@@ -153,6 +156,58 @@ describe("Telegram Reactions & Shared Legend (specs/telegram/reactions.md)", () 
       chat_id: 12345,
       message_id: 102,
       reaction: [{ type: "emoji", emoji: "🕊" }],
+    });
+  });
+
+  test("BC-7: Grapheme Validation and Telegram Acceptance for Added Emojis (👨‍💻, 🤝, 👌)", async () => {
+    const store = new PluginStore(tempDir);
+    const broker = new QuestionBroker(tempDir);
+    const permRelay = new PermissionRelay();
+    const bot = new TelegramBotClient(config, broker, permRelay, () => {}, store);
+    const server = new StdioMcpServer(config, store, broker, bot, permRelay);
+
+    apiResponses.set("setMessageReaction", { ok: true, result: true });
+
+    // Local execution: 👨‍💻
+    const localRes = await (server as any).executeTool("react", {
+      chat_id: 12345,
+      message_id: 201,
+      reaction: "👨‍💻",
+    });
+    expect(localRes).toEqual({ success: true, reaction: "👨‍💻" });
+
+    // Peer dispatch: 🤝
+    const peerRes = await (server as any).executeTool("react", {
+      chat_id: 12345,
+      message_id: 202,
+      reaction: "🤝",
+    });
+    expect(peerRes).toEqual({ success: true, reaction: "🤝" });
+
+    // Understood / addition taken on: 👌
+    const additionRes = await (server as any).executeTool("react", {
+      chat_id: 12345,
+      message_id: 203,
+      reaction: "👌",
+    });
+    expect(additionRes).toEqual({ success: true, reaction: "👌" });
+
+    const calls = apiCalls.filter((c) => c.url.endsWith("/setMessageReaction"));
+    expect(calls.length).toBe(3);
+    expect(calls[0].body).toEqual({
+      chat_id: 12345,
+      message_id: 201,
+      reaction: [{ type: "emoji", emoji: "👨‍💻" }],
+    });
+    expect(calls[1].body).toEqual({
+      chat_id: 12345,
+      message_id: 202,
+      reaction: [{ type: "emoji", emoji: "🤝" }],
+    });
+    expect(calls[2].body).toEqual({
+      chat_id: 12345,
+      message_id: 203,
+      reaction: [{ type: "emoji", emoji: "👌" }],
     });
   });
 

@@ -1,1 +1,1 @@
-Your reply to this message is a report: write it per the `premise-check` skill.
+Your reply to this message is a report. Load the `premise-check` skill (`ida:premise-check`) now, before you write it, and write it in that skill's form, a restricted subset of Argdown, so do not write the block from memory.

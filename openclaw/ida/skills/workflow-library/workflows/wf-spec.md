@@ -14,11 +14,11 @@ type: template
 
 Authors a complete, unambiguous technical specification grounded in the evidence available to it. Establishes system architecture, data models, public interfaces, observable acceptance criteria, and, for code that executes, integration test plans before any implementation code is written.
 
-## One branch, one PR
+## One PR, opened by the build
 
-- Stage 1 opens a **draft** PR into the base branch carrying the spec or design, and its review verdict is recorded on that PR. Stage 1 never merges on its own.
-- Stage 2 builds on Stage 1's branch and pushes to the same PR. The spec stays editable on that branch as the build teaches more.
-- Stage 2 marks the PR ready for review once the feature is written. That flip does not wait for approval: approval comes at the full review, and spec and feature merge together.
+- Stage 1 records its design, any drafted spec change, and its review verdict in a PKB note the Stage 2 task points to. Stage 1 commits no plan or design file and opens no PR.
+- Stage 2 opens the PR into the base branch as a draft, carrying the build and any spec change. The spec stays editable on that branch as the build teaches more.
+- Stage 2 marks the PR ready for review (`gh pr ready`) only after the proportionate review on the build is posted to the PR thread. That flip does not wait for approval: approval comes at the full review, and spec and feature merge together.
 
 ## Procedure
 
@@ -28,7 +28,7 @@ Authors a complete, unambiguous technical specification grounded in the evidence
 4. **Acceptance criteria** -- formulate concrete, observable, and falsifiable acceptance criteria for completion.
 5. **Test and verification strategy** -- for code that executes, specify test cases (unit, integration, regression) validating each criterion; for any other criterion, how it is verified.
 6. **Rule-compliance review** -- verify the draft specification against governing axioms (proportionality, single source of truth, closure) before finalizing or submitting for review. Remediate any `REVISE` findings before delivery.
-7. **Submit and PR lifecycle** -- commit the spec on a feature branch. When running as a Stage 1 design or spec task preceding a build, open the PR as a draft (`gh pr create --draft`) targeting the base branch, record the review verdict on that PR, and release the task once independent review passes so Stage 2 implementation remains gated until approval is recorded. The spec task never merges on its own. The Stage 2 build continues on the same branch and PR; once the feature is written, mark the draft PR ready for review (`gh pr ready`) without waiting for approval; spec and feature merge together after full review.
+7. **Submit and PR lifecycle** -- as a standalone spec task, commit the spec on a feature branch and deliver it under the finish policy. As a Stage 1 design or spec task preceding a build, record the drafted spec change and the independent review verdict in a PKB note the Stage 2 task points to, open no PR, and release the task once independent review passes (or release as `partial` where an explicit user decision is required) so Stage 2 implementation remains gated until approval is recorded. The Stage 2 build opens the PR into the base branch as a draft carrying the build and any spec change, keeping the spec editable; once the feature is written, mark the draft PR ready for review (`gh pr ready`) only after proportionate review is posted to the PR thread, without waiting for approval; spec and feature merge together after full review.
 
 ## Output contract
 
@@ -38,7 +38,8 @@ A complete specification artifact (full spec, not a summary) that someone other 
 - Concrete interface definitions and signatures.
 - Itemized acceptance criteria, each mapped to its test where code executes, or to its verification otherwise.
 - Rule-compliance review verdict (`APPROVE` or resolved `SUGGEST`).
-- For a Stage 1 design or spec task: the draft PR on the feature branch awaiting following implementation, with the review verdict recorded on the PR.
+- For a standalone spec task: the complete spec committed on the feature branch and delivered under the finish policy.
+- For a Stage 1 design or spec task: the drafted spec change and the independent review verdict recorded in a PKB note the Stage 2 task points to, with no PR opened.
 
 ## When to include
 
