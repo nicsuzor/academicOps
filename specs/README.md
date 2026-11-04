@@ -21,7 +21,7 @@
 - [agents/face-ida-triage-and-tracked-requests.md](agents/face-ida-triage-and-tracked-requests.md) -- face-Ida triage decision, subagent twin verification, tracked-request closed-loop delivery, and retirement of legacy /mine tracking.
 - [agents/compliance-consequences-removal.md](agents/compliance-consequences-removal.md) -- removal of volunteered compliance and conflict-of-interest consequences in decision conversations.
 - [agents/authoritative-user-task-reports.md](agents/authoritative-user-task-reports.md) -- authoritative user task reports deciding task state and ministerial lifecycle execution in Pauli.
-- [agents/external-state-recheck.md](agents/external-state-recheck.md) -- targeted external-state recheck and read-only GitHub query authority in Pauli.
+- [agents/external-state-recheck.md](agents/external-state-recheck.md) -- targeted external-state verification and read-only GitHub query authority for the knowledge base custodian.
 
 ## Enforcement
 
