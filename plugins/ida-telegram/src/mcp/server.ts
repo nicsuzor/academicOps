@@ -257,7 +257,7 @@ export class StdioMcpServer {
           actions: args.actions as boolean | undefined,
         });
 
-        if (sendRes?.ok === false || sendRes?.success === false) {
+        if (!sendRes || sendRes.ok === false || sendRes.success === false) {
           return {
             success: false,
             error: sendRes?.error || "Failed to deliver reply",
