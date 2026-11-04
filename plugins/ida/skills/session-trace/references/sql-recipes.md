@@ -13,11 +13,11 @@ query onto `session.id`.
 
 ```sql
 SELECT JSON_EXTRACT(attributes, '$.session.id') AS session_id,
-       project_name, COUNT(*) AS span_count,
+       COUNT(*) AS span_count,
        MIN(start_time) AS first_seen, MAX(start_time) AS last_seen
 FROM spans
 WHERE trace_id = '<32_HEX_TRACE_ID>'
-GROUP BY session_id, project_name
+GROUP BY session_id
 ```
 
 **A -- session discovery and error check.**

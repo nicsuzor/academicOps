@@ -62,3 +62,4 @@ the recipe from [references/sql-recipes.md](references/sql-recipes.md).
 - Subagents share the dispatching session's `session.id`; a spawned worker session
   carries no attribute naming its parent (Recipe F correlates them).
 - Score what a session did on its tool-call spans, not on what its report says.
+- Do not compute turns or durations in ad-hoc SQL: spans store no turn entity. Find candidate session IDs with Recipe A, then run `phoenix_transcript.py`.
