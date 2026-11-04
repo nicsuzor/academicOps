@@ -39,7 +39,8 @@ Dispatch `/learn` to **`pauli`** (`TypeName: "pauli"`), never `james`. Pauli ope
    - When no existing issue covers the finding, file in the owning repository:
      - When the primary failure is already well known and has a handler, file one issue for the handler's failure only.
      - When the primary failure is not already handled, file both issues (the general bug and the verification miss).
-   - Ground the issue description or evidence-bump comment in the execution record (tool calls, error payloads, latencies). Strip personal names, credentials, file paths containing sensitive usernames, and raw environment details.
+   - Format every filed issue using the standard template in `references/issue-template.md`, completing each section with concrete trace data and omitting speculation.
+   - Ground the issue description or evidence-bump comment in the execution record (tool calls, error payloads, latencies). Strip personal names, credentials, file paths containing sensitive usernames, raw environment details, session IDs, private telemetry domains (`*.suzor.com`), and PKB IDs (`aops_...`, `task_...`, `mem_...`).
 6. **No direct fixes**:
    - Diagnose only; do not propose fixes, select enforcement mechanisms, or open tasks to implement remedies. Findings serve as evidence for the framework enforcement loop (`specs/enforcement/enforcement.md`).
 
