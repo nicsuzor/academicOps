@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.0.1](https://github.com/nicsuzor/academicOps/compare/v1.0.0...v1.0.1) (2026-11-04)
+
+### Bug Fixes
+
+- **premise-check:** let checkers record a format slip without calling it a reasoning flaw ([35583ea](https://github.com/nicsuzor/academicOps/commit/35583eac67bb658c888a18e863af369cab3c1fdb))
+- **premise-check:** let checkers record a format slip without calling it a reasoning flaw ([e18cc0a](https://github.com/nicsuzor/academicOps/commit/e18cc0a868ede719bf572be75c861d089383da5e))
+- **release:** drop the 1.0.0 version pin and target dev ([7f97bc4](https://github.com/nicsuzor/academicOps/commit/7f97bc44b3b9be10d22128b9679484e05893f7e7))
+- **release:** drop the 1.0.0 version pin and target dev ([e6ba0ac](https://github.com/nicsuzor/academicOps/commit/e6ba0acd79f50fcdf9af80f5eb3ecf5167e1c55b))
+
+### CI/CD
+
+- **release:** restrict release-please workflow trigger to dev ([aa47740](https://github.com/nicsuzor/academicOps/commit/aa477401a97628d575f676bd40c6acbeae32add2))
+- **release:** restrict release-please workflow trigger to dev ([8a8f16d](https://github.com/nicsuzor/academicOps/commit/8a8f16dcc8de2a626b3a619c2ad3079b98a44a59))
+
 ## [1.0.0](https://github.com/nicsuzor/academicOps/compare/v1.0.0...v1.0.0) (2026-11-04)
 
 ### Documentation
