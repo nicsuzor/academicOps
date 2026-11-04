@@ -30,7 +30,7 @@ Capture natural-language asks and situate them on the strategic graph: parented,
    - `hard`: The user explicitly states the date is hard, or a published real-loss date proposed `hard`.
      Never derive a date from urgency.
 9. **Effort**: Record `effort` duration string when the input states it or work is a known kind (read by the cliff lane).
-10. **Decisions and decomposition probes**: When input is a choice between options, wire each option `alternative` to the decision node `D`. Empirical probes/spikes wire `settles` to `D` ($q \in (0, 1]$).
+10. **Decisions and decomposition probes**: A task that has options to choose between with no commitment to doing anything immediately beyond choosing is created as a single task with the choices and instructions on how to make the decision in its body (never with subtasks or separate option nodes). Only where competing branches are decomposed further into distinct nodes, wire each option node `alternative` to the decision node `D`. Empirical probes wire `settles` to `D` ($q \in (0, 1]$).
 11. **Do not write**: `intent`, `severity`, `stakeholder` as a weight, target worth, `set_by: user`, `soft_depends_on`, or `supersedes`.
 
 ## Headless Context (Email, Mobile Capture)

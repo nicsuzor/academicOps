@@ -55,19 +55,18 @@ Decisions and open questions are structural properties of the graph, not static 
 
 ```mermaid
 flowchart TD
-    Upstream["Upstream Task"] --> OptionA["Option A: Architecture A (mutually blocking)"]
-    Upstream --> OptionB["Option B: Architecture B (mutually blocking)"]
-    OptionA -.->|depends_on / conflicts| OptionB
-    OptionB -.->|depends_on / conflicts| OptionA
-    OptionA --> Downstream["Downstream Implementation"]
-    OptionB --> Downstream
+    Upstream["Upstream Task"] --> Decision["Decision Node D"]
+    OptionA["Option A: Decomposed Branch A"] -.->|alternative| Decision
+    OptionB["Option B: Decomposed Branch B"] -.->|alternative| Decision
+    Decision --> Downstream["Downstream Implementation"]
 ```
 
 ### Representation Principles
 
-1. **Mutually Exclusive Option Nodes:**
-   - When a design fork or architectural choice arises, represent the alternatives as concrete option branches/nodes (e.g. `Option A: Use SQLite` and `Option B: Use DuckDB`) wired with `alternative` edges to the decision node `D` (FQ8).
-   - Choosing an option resolves the decision, adopting the selected branch and cancelling the competing alternative.
+1. **Option Nodes Only Where Decomposed Further:**
+   - Forks are separated into concrete option nodes (e.g. `Option A: Use SQLite` and `Option B: Use DuckDB`) wired with `alternative` edges to the decision node `D` (FQ8) **only where the competing branches are decomposed further** into distinct downstream work.
+   - A task that has options to choose between but no commitment to doing anything immediately beyond choosing must **not** be created with subtasks or separate option nodes; instead, it is created as a single task with the choices in the task body and instructions about how to make the decision.
+   - Where option nodes are created for decomposed branches, dependencies are strictly one-sided (`depends_on` on the waiting task) and option nodes must never use mutual blocking edges. Choosing an option resolves the decision, adopting the selected branch and cancelling the competing alternative. Downstream tasks depend on the decision node or the adopted branch.
 2. **Dynamic Emergence of Questions:**
    - Open architectural decisions are surfaced dynamically by agents inspecting graph topology (detecting unresolved option forks on the critical path) rather than by querying a bucket of stale "decision" tickets.
 3. **Empirical Unknowns as Probes:**

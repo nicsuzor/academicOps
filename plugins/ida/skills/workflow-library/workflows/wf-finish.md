@@ -34,7 +34,7 @@ Defines the universal baseline contract for how tasks finish when a repository l
 - **Commit messages and trailers**: Commits to public repositories must never carry PKB IDs or `Task:`, `Epic:`, or `Claude-Session:` trailers (`data-boundaries`). Task linkage is maintained in the private task record, not in public repository commits.
 - **QA review**:
   - **Functional changes** (code, schema, or runtime changes): Require independent QA by agents, except for low-risk internal changes below. A review by independent agents is required and a proportionate review is selected. `/reify` mints a follow-up verifying task dependent on the implementation task.
-  - **Low-risk internal changes (chiefly bugfixes)**: Get no separate verification run. Where a blocked dependent exists waiting on the fix (`blocks` or inbound `needs` / `depends_on`), the parent epic handles sequencing the dependent task's next run; workers never mint verification follow-up tasks.
+  - **Low-risk internal changes (chiefly bugfixes)**: Get no separate verification run. Where a blocked dependent exists waiting on the fix (inbound `depends_on` or `needs` on the dependent task), the parent epic handles sequencing the dependent task's next run; workers never mint verification follow-up tasks.
   - **Documentation, notes, or trivial chore changes**: No QA follow-up required unless explicitly requested in the task objective.
 
 ## Worker Completion Checklist
@@ -58,4 +58,4 @@ When QA review is required for standard functional changes, `/reify` mints a fol
 
 ### Low-risk internal bugfixes (next-run review)
 
-When the task is a low-risk internal change, chiefly a bugfix, mint no separate verification run on the fix task. Where a blocked dependent exists waiting on the fix (`blocks` or inbound `needs` / `depends_on`), the parent epic handles sequencing the dependent task's next run; workers never mint verification follow-up tasks. Where no blocked dependent exists, the fix finishes on its PR without a separate verification run.
+When the task is a low-risk internal change, chiefly a bugfix, mint no separate verification run on the fix task. Where a blocked dependent exists waiting on the fix (inbound `depends_on` or `needs` on the dependent task), the parent epic handles sequencing the dependent task's next run; workers never mint verification follow-up tasks. Where no blocked dependent exists, the fix finishes on its PR without a separate verification run.
