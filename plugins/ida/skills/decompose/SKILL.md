@@ -6,7 +6,7 @@ description: Expand one situated objective into an abstract graph of sub-objecti
 
 # /decompose -- Expand an objective into an abstract graph
 
-**Object: one objective.** The output is its sub-objectives, forks and probes with their edges: nodes that say what must become true, bound to no executor and no workflow. Decompose early, as soon as the objective is captured, because its sub-objectives are what other objectives' tasks intersect with; a task minted elsewhere can only account for them once they exist. Expand only as far as reliable inference reaches now, and stop at the first unknown. The PKB custodian (Pauli) runs this skill.
+**Object: one objective.** The output is its sub-objectives, forks and probes with their edges: nodes that say what must become true, bound to no executor and no workflow. Objectives and plans are expanded exclusively into abstract graph nodes, never into repository plan files. Decompose early, as soon as the objective is captured, because its sub-objectives are what other objectives' tasks intersect with; a task minted elsewhere can only account for them once they exist. Expand only as far as reliable inference reaches now, and stop at the first unknown. The PKB custodian (Pauli) runs this skill.
 
 State what needs doing, never how. Decompose reads; it runs nothing. What the record cannot settle becomes a probe on the graph.
 
