@@ -6,6 +6,7 @@
 - [build-and-install.md](build-and-install.md) -- local install and release pipeline.
 - [transcript-pipeline.md](transcript-pipeline.md) -- session-transcript ingestion, normalization, and output.
 - [observability/observability.md](observability/observability.md) -- cross-surface observability and correlation across the task graph, trace store, container runtime, and session log archive.
+- [observability/telemetry-failure-surfacing.md](observability/telemetry-failure-surfacing.md) -- surfacing telemetry configuration failures, export refusals, and network errors across all emitters with session gating policy options.
 - [meta/doc-taxonomy.md](meta/doc-taxonomy.md) -- the five document kinds and where each lives.
 - [meta/writing-specs.md](meta/writing-specs.md) -- the spec template and the rules every spec follows.
 - [meta/naming-and-decisions.md](meta/naming-and-decisions.md) -- task naming, filename standards, and graph-relationship decision representation.
@@ -18,10 +19,15 @@
 - [agents/sleep-cycle.md](agents/sleep-cycle.md) -- the periodic consolidation agent.
 - [agents/ida-supervision-migration.md](agents/ida-supervision-migration.md) -- which supervision capabilities move to ida, the checkpoints that gate each increment of autonomy, and what never moves.
 - [agents/face-ida-triage-and-tracked-requests.md](agents/face-ida-triage-and-tracked-requests.md) -- face-Ida triage decision, subagent twin verification, tracked-request closed-loop delivery, and retirement of legacy /mine tracking.
+- [agents/compliance-consequences-removal.md](agents/compliance-consequences-removal.md) -- removal of volunteered compliance and conflict-of-interest consequences in decision conversations.
+- [agents/authoritative-user-task-reports.md](agents/authoritative-user-task-reports.md) -- authoritative user task reports deciding task state and ministerial lifecycle execution in Pauli.
 
 ## Enforcement
 
-- [ENFORCEMENT-MAP.md](ENFORCEMENT-MAP.md) -- single source of truth mapping axioms, agent instructions, work-unit, escalated delivery, and workflow contracts, and the evidence contract to their live enforcement mechanisms.
+- [ENFORCEMENT-MAP.md](ENFORCEMENT-MAP.md) -- concise cross-reference table mapping rules to their live enforcement mechanisms.
+- [enforcement/enforcement-map.md](enforcement/enforcement-map.md) -- specification governing the enforcement map schema, inclusion boundaries, and concision invariants.
+- [enforcement/framework-only-enforcement-design.md](enforcement/framework-only-enforcement-design.md) -- design defining enforcement strictly as framework-level process rules, establishing rule classification test, and inventorying specs and mechanisms for removal.
+- [enforcement/class-spec-review-and-map-discipline.md](enforcement/class-spec-review-and-map-discipline.md) -- systemic design for class-spec review, runtime workflow composition, and enforcement map discipline.
 - [enforcement/enforcement.md](enforcement/enforcement.md) -- governing principle, regulatory tools, mechanism categories, and proportional intervention.
 - [enforcement/task-contract.md](enforcement/task-contract.md) -- the work-unit contract (claim → release).
 - [enforcement/escalated-delivery-contract.md](enforcement/escalated-delivery-contract.md) -- in-session escalated delivery contract (`ida_held`, `/mine` surfacing pass, and the Workers-Append rule).
@@ -33,8 +39,12 @@
 - [enforcement/evidence-contract.md](enforcement/evidence-contract.md) -- the universal claim-evidence shape.
 - [enforcement/evidence-contract-enforcement.md](enforcement/evidence-contract-enforcement.md) -- the reminders, gate, and proportional interventions that hold agents to the evidence contract.
 - [enforcement/preventing-over-engineering.md](enforcement/preventing-over-engineering.md) -- eliminating over-engineered mechanical software builds and enforcing agentic-first workflows.
+- [enforcement/direct-user-instructions.md](enforcement/direct-user-instructions.md) -- direct user instruction execution and authority boundary.
+- [enforcement/reviewer-class-standard-check.md](enforcement/reviewer-class-standard-check.md) -- reviewer class-standard verification across changed files in candidate changes.
 - [enforcement/coordinator-failure-enforcement.md](enforcement/coordinator-failure-enforcement.md) -- design enforcement moves and observable build criteria for five coordinator failure classes.
 - [enforcement/auto-mode-classifier.md](enforcement/auto-mode-classifier.md) -- Claude Code auto-mode classifier design and cost model.
+- [enforcement/handback-format-design.md](enforcement/handback-format-design.md) -- premise-check handback format design review: empirical sample, Toulmin structure preservation, and migration plan.
+- [enforcement/premise-check-rejection-load-instruction.md](enforcement/premise-check-rejection-load-instruction.md) -- premise-check load instructions in argument rejections and refusals across hearsay gate, verdict recorder, and checker surfaces.
 
 ## Polecat
 
@@ -48,11 +58,13 @@
 
 ## Telegram
 
-- [telegram/command-menus.md](telegram/command-menus.md) -- native Telegram bot command menu registration and routing contract across conversational agent personas.
+- [telegram/command-menus.md](telegram/command-menus.md) -- native Telegram bot command menu: registration of the configured `TELEGRAM_BOT_COMMANDS` list and delivery of command taps to the agent.
 - [telegram/message-actions.md](telegram/message-actions.md) -- inline message action buttons (`Check logic`, `Explain`, `Reasons`), callback tap events, and multi-level argument chain response contract.
 - [telegram/mini-app-dashboard-integration.md](telegram/mini-app-dashboard-integration.md) -- integration plan and interface specification for serving the Telegram Mini App from the overwhelm dashboard with dynamic state and bi-directional communication.
+- [telegram/question-delivery.md](telegram/question-delivery.md) -- delivery guarantee for structured questions over Telegram, confirmed button rendering, dynamic bot resolution, and fast failure surfacing.
 - [telegram/reactions.md](telegram/reactions.md) -- Telegram reaction handling contract, platform-authoritative validation, and unified shared reaction legend across bot personas.
-- [telegram/reply-button-layout.md](telegram/reply-button-layout.md) -- reply button layout customization and consolidated predefined row specification.
+- [telegram/reply-button-layout.md](telegram/reply-button-layout.md) -- reply button layout customization, consolidated predefined row, and tap acknowledgement specification.
+- [telegram/shunt-handover.md](telegram/shunt-handover.md) -- single-command conversation handover from any session to Telegram across local, remote-control, and cloud environments.
 - [telegram/threaded-conversations.md](telegram/threaded-conversations.md) -- threaded Telegram conversations and topic message routing by default without configuration.
 
 ## Tools
@@ -62,7 +74,11 @@
 ## Workflows
 
 - [workflows/workflow.md](workflows/workflow.md) -- the four-stage pipeline and where workflow components come from.
+- [workflows/default-planning.md](workflows/default-planning.md) -- repository specs for academicOps design changes and PKB task plans for general work.
+- [workflows/plan-view.md](workflows/plan-view.md) -- formal plan view generation and redrawing on decomposed objectives.
 - [workflows/conceptual-review-workflow.md](workflows/conceptual-review-workflow.md) -- composable-lens multi-agent review of intellectual artifacts.
+- [workflows/default-dialectic-review.md](workflows/default-dialectic-review.md) -- dialectical multi-agent evaluation as the workflow library's default independent review stage.
+- [workflows/pr-lifecycle.md](workflows/pr-lifecycle.md) -- PR lifecycle workflows: sweep task queuing and move-along fan-out.
 - [workflows/research-decomposition.md](workflows/research-decomposition.md) -- research-specific decomposition primitives and sequencing.
 - [workflows/reconcile.md](workflows/reconcile.md) -- GitHub ↔ PKB task-graph reconciliation.
 - [workflows/strategic-review.md](workflows/strategic-review.md) -- design intent for the parallel-review-and-reconcile quality gate.

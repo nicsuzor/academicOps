@@ -19,7 +19,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
         chat_id: { type: "integer", description: "Telegram chat ID (defaults to primary user)" },
         message_thread_id: {
           type: "integer",
-          description: "Telegram message thread ID (for forum supergroups; defaults to active thread)",
+          description: "Telegram message thread ID (for forum supergroups or topics-enabled chats; defaults to active thread)",
         },
         thread_id: { type: "integer", description: "Alias for message_thread_id" },
         text: { type: "string", description: "Markdown text for chat (tier 1 and 2)" },
@@ -103,7 +103,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
         message_id: { type: "integer", description: "Message ID to react to" },
         reaction: {
           type: "string",
-          description: "Emoji reaction string (e.g. 🐱 for polecat, 🕊 for subagent, or other shared legend reaction)",
+          description: "Emoji reaction string (e.g. 🐳 for polecat, 🕊 for subagent, or other shared legend reaction)",
         },
         message_thread_id: { type: "integer", description: "Optional thread ID" },
         thread_id: { type: "integer", description: "Alias for message_thread_id" },
@@ -122,7 +122,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
         session_id: { type: "string", description: "Session ID for correlating with the asking session" },
         message_thread_id: {
           type: "integer",
-          description: "Telegram message thread ID (for forum supergroups; defaults to active thread)",
+          description: "Telegram message thread ID (for forum supergroups or topics-enabled chats; defaults to active thread)",
         },
         thread_id: { type: "integer", description: "Alias for message_thread_id" },
         chat: {

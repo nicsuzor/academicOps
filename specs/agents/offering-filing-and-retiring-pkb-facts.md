@@ -1,0 +1,140 @@
+---
+title: Offering, Filing, and Retiring Knowledge Base Facts
+status: ready
+type: spec
+tags: [pkb, capture, curation, remember, agents, skills, learn]
+---
+
+# Offering, Filing, and Retiring Knowledge Base Facts
+
+This specification establishes the framework protocol across all agents and worker lifecycle skills to systematically recognize and offer durable facts to the knowledge base custodian (`pauli`), defines the filing and concision standards the custodian applies to prevent knowledge sprawl, unifies the rules governing the retirement of conflicting, unnecessary, demonstrably false, and stale content by reference to governing knowledge base specifications, and establishes a working route for tool and framework faults diagnosed under `/learn` within the custodian's knowledge graph boundary.
+
+## User stories
+
+### US-1 Capturing and routing durable facts to the custodian
+
+As a user interacting with or relying on autonomous agents, I want any agent or worker that encounters or discovers a durable fact to recognise it and offer it to the knowledge base custodian (or record it where the custodian can collect it), so that institutional knowledge is preserved reliably without uncoordinated graph curation.
+
+- **AC-1.1 (Generic fact offering)**: Given any agent encountering or discovering a durable fact (a user decision, an architectural constraint, a verified finding about current system state, or an incorrect knowledge base statement) during conversation, dispatch, execution, or review, when the agent processes the turn, then the agent offers the fact to the knowledge base custodian as content without mutating knowledge base notes directly or minting unprompted backlog tasks.
+- **AC-1.2 (Headless / isolated worker recording)**: Given an agent or worker operating in an isolated or headless execution context where direct communication with the custodian is unavailable, when it encounters or discovers a durable fact during task execution or session completion, then it records the fact under a dedicated `## Durable Facts` section in the task record and handover summary so the custodian collects it during truth maintenance.
+- **AC-1.3 (Coordination role boundaries)**: Given an agent coordinating tasks or supervising reviews, when managing execution or synthesizing findings, then the agent leaves direct graph curation, consolidation, and pruning to the custodian and offers any durable facts to the custodian as content.
+
+### US-2 Filing offered facts without sprawl and at calibrated detail
+
+As a user querying or navigating the knowledge base, I want the knowledge base custodian to file facts into canonical topics without sprawl and at calibrated concision, so that notes remain compact, accurate, and easily retrievable.
+
+- **AC-2.1 (Search-first canonical filing)**: Given the knowledge base custodian receiving an offered fact or collecting facts from completed task records and handover summaries, when filing the fact, then the custodian queries existing topic notes and augments the canonical note in place, creating a new document only when the fact represents a genuinely novel domain concept with no matching canonical note.
+- **AC-2.2 (High-density concision)**: Given the custodian incorporating an offered fact into the knowledge base, when updating or creating a note, then the custodian extracts durable principles, architectural decisions, invariants, and verified current-state findings while discarding ephemeral execution trivia, line numbers, temporary debugging outputs, and transient timestamps, keeping note bodies concise and within standard length budgets (30–80 lines).
+- **AC-2.3 (Automated collection from task records)**: Given completed task records or session handover summaries containing unfiled durable facts under a dedicated durable facts section, when the custodian performs graph maintenance, hydration, or consolidation, then the custodian ingests the facts into the appropriate canonical topic notes and marks them incorporated.
+- **AC-2.4 (One note per subject decided by knowledge base specification rules)**: Given the custodian filing an offered fact or consolidating topic notes, when updating the knowledge base, then the custodian adheres to the one-subject-one-note rule defined in the governing knowledge base specification, co-locating the substantive ruling and its operational or enforcement status in the single canonical topic note, with both the custodian's instructions and the `remember` skill deciding this rule strictly by the knowledge base specification's definition rather than stating the rule a second time.
+
+### US-3 Unified content retirement on sight across custodian and skills
+
+As a user relying on knowledge base truth, I want conflicting, unnecessary, demonstrably false, and stale content retired or corrected immediately on sight, so that the knowledge base never preserves misleading assertions or duplicate records.
+
+- **AC-3.1 (Retirement on sight)**: Given conflicting, unnecessary, demonstrably false, or stale content encountered in the knowledge base, when the custodian or an agent performing knowledge consolidation discovers the defect, then the agent resolves, corrects, or removes the content immediately on sight without deferring to a later pass, filing a maintenance ticket, or reserving it as the user's call.
+- **AC-3.2 (Resolving contradictions)**: Given contradictory assertions between knowledge base documents or between a note and live verified reality, when consolidating knowledge, then the agent resolves the contradiction to verified current state, updates the canonical note, and deletes the losing assertion outright without recording historical debate.
+- **AC-3.3 (Deduplication)**: Given duplicate notes, overlapping concepts, or undigested observation scraps, when consolidating knowledge, then the agent merges the durable insight into the single canonical topic note and removes the redundant note immediately.
+- **AC-3.4 (Correcting false claims)**: Given an assertion in the knowledge base that contradicts live system state or primary source verification, when encountered, then the agent deletes or corrects the false statement immediately on sight.
+- **AC-3.5 (Archive versus delete decided by knowledge base specification rules)**: Given an agent retiring, cleaning, or consolidating content in the knowledge base, when deciding between archiving and deleting a document or atomic memory, then both the custodian instructions and the `remember` skill decide archive versus delete strictly by the three-part test in the governing knowledge base specification (user-requested records and cited evidence nodes retained in place under `status: archived`; superseded statements of state deleted outright), stating the rule neither a second time nor authoring competing criteria.
+
+### US-4 Routing tool and framework faults diagnosed under /learn
+
+As a user or dispatcher relying on root-cause analysis, I want the knowledge base custodian (`pauli`) to have a working route for tool and framework faults diagnosed under `/learn`, so that diagnosed defects are reliably queued and filed on GitHub even though the custodian's own execution surface reaches only the knowledge base graph.
+
+- **AC-4.1 (Task queueing for GitHub issue filing)**: Given the custodian completing a root-cause diagnosis under `/learn` that identifies a tool or framework defect requiring a new GitHub issue or evidence-bump comment, when the custodian finishes the diagnosis, then the custodian creates a queued task node on the knowledge base graph carrying the rendered issue payload formatted to the standard issue template defined for `/learn`, enabling downstream executors with repository access to file the issue on GitHub.
+- **AC-4.2 (Structured diagnostic handback report)**: Given the custodian executing `/learn`, when the custodian returns its diagnosis, then the custodian records the full diagnostic report (including execution evidence, root mechanism, verification miss, and formatted issue payload) in the task handback report on the graph, ensuring the caller or dispatcher can act on the defect without requiring the custodian to invoke repository or shell tools directly.
+- **AC-4.3 (Preserving graph boundary and bug separation)**: Given the custodian diagnosing faults under `/learn`, when routing the defect, then the custodian preserves the invariant that knowledge notes do not hold bug logs or issue commentary by filing the fault strictly as a queued task node on the graph and never as a knowledge note body or append.
+
+## Design
+
+### Behavioral Contract
+
+1. **Observer vs. Custodian Model**:
+   - **Knowledge Observers (all agents and workers)**: Any agent encountering a durable fact during interaction, dispatch, review, or execution recognizes it as such. A durable fact is defined as: an explicit user or system decision, an architectural constraint, a verified finding about current system behavior, or an incorrect or missing assertion in the knowledge base. Observers do not perform direct graph surgery or mutate knowledge notes; they deliver the raw fact, context, and source pointer to the custodian.
+   - **Knowledge Custodian (`pauli`)**: Acts as the sole curator and synthesizer of the knowledge base graph. Evaluates incoming facts, identifies canonical topic homes, updates notes in place, rejects sprawl and noise, and polices the knowledge graph for decay.
+   - **Relief of Coordination Roles from Direct Curation**: Coordination agents (such as `james`) are relieved of direct knowledge base pruning, deletion, and consolidation duties, aligning them strictly with lead execution and review supervision under the principle of doing one thing.
+
+2. **Dual-Path Fact Delivery**:
+   - **Direct Delivery**: When communicating in session or over the agent message bus, the observing agent sends the fact directly to the custodian as content with its source pointer.
+   - **Asynchronous Pickup**: For isolated or headless workers operating without subagent messaging tools by architectural design, the designated native channel is recording the fact in the task record under `## Durable Facts` and in the final handover report emitted by `dump`. The custodian scans these records during routine graph maintenance and consolidation passes, extracts the facts, updates the canonical notes, and marks them incorporated.
+
+3. **Anti-Sprawl Filing & Concision Standard**:
+   - **Search-First, Augment-in-Place**: The custodian searches for existing topic notes before creating any document. One canonical note per topic. New documents are created only for novel concepts with zero semantic overlap with existing topics.
+   - **One Note Per Subject by Knowledge Base Specification Reference**: Decisions on one note per subject are governed by the rules in the governing knowledge base specification, stating the rule neither a second time nor authoring competing definitions in custodian instructions or skills. Substantive rulings and operational or enforcement status live together in the same note, and duplicate notes on an existing subject are merged immediately.
+   - **High-Density Invariants**: Notes capture durable invariants, operational contracts, and transferable principles. Operational noise (execution transcripts, stack traces, temporary line numbers, environment-specific scratch paths) is stripped prior to writing.
+   - **Concision Ceiling**: Notes are bounded to 30–80 lines (<1,500 characters) so that documents can be read and rewritten whole.
+
+4. **Unified Four-Category Retirement Rule**:
+   - **Conflicting**: Resolve to current verified truth, update the canonical note, and delete the losing claim outright.
+   - **Unnecessary**: Consolidate overlapping notes into the single canonical note and delete the duplicate.
+   - **Demonstrably False**: Delete or correct immediately upon discovery. False claims degrade semantic retrieval and must not persist.
+   - **Stale (Archive vs Delete by Knowledge Base Specification Reference)**: Decisions on archive versus delete are governed strictly by the three-part operational test in the governing knowledge base specification, stating the rule neither a second time nor authoring competing definitions in custodian instructions or skills: user-requested records and cited evidence nodes are retained in place in the knowledge base under `status: archived` (hidden from default search and hydration), while superseded statements of state are deleted outright without tombstones.
+
+5. **Fault Routing Contract for `/learn`**:
+   - **Custodian Execution Boundary**: Pauli executes the `/learn` skill strictly from session traces (`ida:session-trace`) and the knowledge base graph. Pauli possesses no repository tools, shell execution access, or GitHub credentials and cannot invoke `gh issue create` or push commits.
+   - **Bug Separation Invariant**: Bugs and framework defects are issues, not knowledge note bodies, appended findings, or current-state sections. Knowledge notes never hold bug tracking logs.
+   - **Working Route via Knowledge Base Task Queueing**: When a diagnosis under `/learn` identifies a tool or framework defect requiring a new GitHub issue or evidence-bump comment, the custodian formats the report using the standard issue template established for `/learn` (in `plugins/ida/skills/learn/references/issue-template.md`) and creates a queued task node (`type: task`) on the knowledge base graph under the appropriate container epic or project. The task carries the rendered issue payload and acceptance criteria directing a repository-capable executor to file the issue or comment via GitHub CLI.
+   - **Diagnostic Handback**: The custodian records the complete diagnostic report (trace evidence, root mechanism, verification miss, scope and impact, and rendered issue payload) in its task handback report, enabling immediate inspection and handoff without violating the custodian's graph-only boundary.
+
+### Instruction Surfaces and Enforcement-Map Placement
+
+The following inventory identifies the primary instruction surfaces governing how agents recognize, offer, file, and retire knowledge base facts, and how `/learn` faults are routed, along with their placement in `specs/ENFORCEMENT-MAP.md`:
+
+| Area | Surface | Scope & Current Text | Enforcement-Map Placement | Required Action |
+| :- | :- | :- | :- | :- |
+| **Agent Personas** | `plugins/ida/agents/ida.md`, `sara.md`, `marsha.md` | Persona definitions; currently lack general direction to recognize durable facts or offer them to the custodian. | `unenforced` | Add generic imperative rule directing agents to recognize durable facts (decisions, constraints, verified findings, incorrect lines) and offer them to the custodian as content. |
+| **Agent Persona** | `plugins/ida/agents/james.md` | Currently instructs James to curate, delete, and consolidate the structured knowledge graph directly. | `specs/ENFORCEMENT-MAP.md` under `[Axiom: Do One Thing]` | Replace direct curation instructions with a clear directive to offer durable facts to the custodian, leaving graph curation to the custodian. |
+| **Agent Persona** | `plugins/ida/agents/pauli.md` | Directs Pauli to maintain the graph and delete out of date content, but lacks anti-sprawl filing detail, references to the knowledge base specification's archive/one-note rules, and a working route for `/learn` faults. | `specs/ENFORCEMENT-MAP.md` under `[Axiom: Do One Thing]` and `[Axiom: Single Source of Truth]` | Clarify anti-sprawl filing and concision; mandate that decisions on archive vs delete and one note per subject follow the governing knowledge base specification rules stating neither rule a second time; provide working route for `/learn` faults by queueing tasks on the graph. |
+| **Skills** | `plugins/ida/skills/pull/SKILL.md`, `plugins/ida/skills/dump/SKILL.md` | Worker execution and session finalization skills; contain no instructions for handling durable facts met during execution. | `specs/ENFORCEMENT-MAP.md` under `[Axiom: Durable Capture]` | Add instructions to recognize durable facts during execution and offer them to the custodian, or record them under `## Durable Facts` in task record and handover summary if operating in an isolated context. |
+| **Skill** | `plugins/ida/skills/remember/SKILL.md` | Currently directs outright deletion without archival, contradicting custodian instructions and the knowledge base specification. | `specs/ENFORCEMENT-MAP.md` under `[Axiom: Single Source of Truth]` | Mandate that decisions on archive versus delete and one note per subject follow the governing knowledge base specification rules, stating neither rule a second time; note that `/learn` faults route to tasks on the graph. |
+| **Skill** | `plugins/ida/skills/learn/SKILL.md` | Instructs Pauli to run `/learn` and file issues/comments directly in GitHub, which exceeds Pauli's graph-only boundary. | `specs/ENFORCEMENT-MAP.md` under `[Axiom: Do One Thing]` and `[Axiom: Categorical Imperative]` | Establish the standard issue template in `references/issue-template.md` during implementation; instruct Pauli to format issues using that template and queue tasks on the knowledge base graph for repository-capable workers to file, recording the diagnosis in the task handback report. |
+
+### Proportional Intervention Options Pass
+
+In accordance with `specs/enforcement/enforcement.md`, this intervention is evaluated through the enforcement pyramid from least-invasive to most-invasive:
+
+| Level | Mechanism Category | Evaluation and Disposition |
+| :- | :- | :- |
+| 1 | `doctrine only` | **Insufficient.** Universal axioms (`Durable Capture`, `Single Source of Truth`, `Do One Thing`) establish high-level intent, but existing instructions contained explicit contradictions (e.g. `remember` forbidding `archived` while `pauli` used it) and left Pauli without a working route for `/learn` issue filing. Doctrine alone cannot resolve contradictory instructions or missing execution routes. |
+| 2 | `instructions` (`imperative`) | **Adopted.** Adding clear, imperative instructions across agent personas (`pauli`, `james`, observer agents) and skills (`pull`, `dump`, `remember`, `learn`) provides the least-invasive, most proportionate mechanism. Instructions operate at the exact cognitive point of deliberation without imposing rigid mechanical wrappers, API overhead, or brittle scripts. |
+| 3 | `JIT injection` | **Rejected.** Dynamic hook injection of reminders on every tool use would consume significant token budget and cause conversational friction without improving semantic comprehension of facts or diagnoses. |
+| 4 | `structural` | **Rejected.** Deterministic keyword filters, AST sniffers, or regex scrapers cannot reliably assess whether an assertion represents a durable fact, whether an issue report is complete, or whether an edit satisfies one-note-per-subject, violating the axiom that judgment is non-delegable. |
+| 5 | `process` | **Adopted for verification.** Independent PR review lenses evaluate candidate instruction changes to verify compliance with craftsmanship standards, authority boundaries, and quality requirements. |
+| 6 | `post-hoc` | **Adopted for observation.** Normal session traces and git commit history record fact-offering events, graph updates, and `/learn` diagnostic task queueing for ongoing observability. |
+
+### Evidence for the Move
+
+1. **Direct User Directive**: The framework principal explicitly ordered this capability: to ensure agents recognise important facts, offer them to Pauli, file facts without sprawl at calibrated detail, actively consolidate knowledge, and clean conflicting, unnecessary, false, and stale information.
+2. **Single Source of Truth Alignment with Knowledge Base Specification**: The governing knowledge base specification is the authoritative source for the archive-versus-delete test and the one-subject-one-note rule. Re-stating or paraphrasing these rules across agent definitions and skills creates drift and contradicts the single source of truth axiom. Instructions and skills must govern these decisions by explicit reference to the specification.
+3. **Resolving the Custodian Tool and Authority Boundary Seam**: The principal ruled that Pauli runs `/learn`, never James. However, Pauli's agent definition restricts it to the knowledge base graph without repository, shell, or GitHub CLI access. Command-level instructions directing Pauli to file GitHub issues directly resulted in execution failures or halts. Establishing an explicit task-queueing route on the graph for `/learn` diagnoses resolves the seam while preserving Pauli's graph-only boundary and the invariant that bug logs do not belong in knowledge notes.
+4. **Role Boundary Realignment**: Coordination agents previously carried instructions to delete, consolidate, and prune the knowledge base directly. This violated the core division of labor where Pauli is the sole knowledge base custodian, creating a risk of conflicting simultaneous graph edits during parallel execution.
+5. **Preventing Knowledge Sprawl**: Prior practice suffered from sprawl due to agents creating shallow, fragmented notes or leaving valuable decisions buried inside ephemeral task records. Establishing an explicit anti-sprawl filing rule with clear concision limits protects knowledge retrieval performance.
+
+### Enforcement Map Extract (for Downstream Implementation)
+
+The following rows will be updated in `specs/ENFORCEMENT-MAP.md` during downstream implementation when the instruction text is merged, consolidating controls strictly under active governing axioms:
+
+| Rule | Mechanism | Severity | Detail |
+| :- | :- | :- | :- |
+| [Axiom: Durable Capture](../plugins/rbg/skills/axioms/durable-capture.md) -- Capture knowledge not verdicts, update existing documents rather than creating duplicates, and route durable facts to Pauli. | instructions, JIT injection, process | imperative, warning, required gate | `plugins/rbg/skills/axioms/durable-capture.md`, `plugins/ida/agents/ida.md`, `plugins/ida/agents/sara.md`, `plugins/ida/agents/james.md`, `plugins/ida/agents/marsha.md`, `plugins/ida/agents/pauli.md`, `plugins/ida/skills/pull/SKILL.md`, `plugins/ida/skills/dump/SKILL.md`, `plugins/ida/skills/remember/SKILL.md`, `wf-reconcile.md` |
+| [Axiom: Single Source of Truth](../plugins/rbg/skills/axioms/single-source-of-truth.md) -- Maintain exactly one authoritative copy of every fact, rule, or artifact without duplication; decide archive vs delete and one note per subject by knowledge base spec rules without restatement. | instructions, structural, process | imperative, protection, required gate | `plugins/ida/agents/pauli.md`, `plugins/ida/skills/remember/SKILL.md`, `wf-reconcile.md` |
+| [Axiom: Do One Thing](../plugins/rbg/skills/axioms/do-one-thing.md) -- Execute precisely the requested task to specified standard, keeping agents within delegated authority; Pauli routes /learn faults via graph tasks without exceeding graph-only boundary. | instructions, structural, process | imperative, scoped, required gate | `plugins/rbg/skills/axioms/do-one-thing.md`, `plugins/ida/agents/ida.md`, `plugins/ida/agents/pauli.md`, `plugins/ida/agents/james.md`, `plugins/ida/agents/sara.md`, `plugins/ida/skills/pull/SKILL.md`, `plugins/ida/skills/learn/SKILL.md`, `wf-task-base.md` |
+| [Axiom: Categorical Imperative](../plugins/rbg/skills/axioms/categorical-imperative.md) -- Justify actions as general rule application; standardize /learn fault diagnosis and issue template formatting across the failure class. | instructions, process | imperative, required gate | `plugins/rbg/skills/axioms/categorical-imperative.md`, `plugins/ida/skills/learn/SKILL.md`, `plugins/ida/skills/learn/references/issue-template.md` |
+
+### Outcome-Level Build Criteria (for Downstream Implementation)
+
+Stage 2 implementation must satisfy the following verifiable criteria across the specified instruction files, verified by fresh agent runs:
+
+- **BC-1 (Generic Fact Offering in Agent Personas)**: Agent persona instructions carry the generic imperative rule directing agents to recognize durable facts (decisions, constraints, verified current-state findings, or incorrect knowledge base claims) and offer them to the custodian as content without directly editing notes or creating tasks.
+  - _Verification_: A fresh agent run given a conversation revealing an architectural decision verifies that the agent formats and offers the fact to Pauli as content rather than calling knowledge note mutation tools directly.
+- **BC-2 (Coordination Scope Realignment)**: Coordination persona instructions (`plugins/ida/agents/james.md`) replace direct knowledge graph curation instructions with a requirement to recognize durable facts and offer them to the custodian as content, leaving graph curation to the custodian.
+  - _Verification_: A fresh agent run given a multi-task reconciliation prompt verifies that James delegates graph pruning and note updates to Pauli.
+- **BC-3 (Worker Skills Fact Handling)**: Worker lifecycle skills (`plugins/ida/skills/pull/SKILL.md` and `plugins/ida/skills/dump/SKILL.md`) instruct workers to recognize durable facts and offer them to the custodian, or record them under `## Durable Facts` in the task record and handover summary if operating in an isolated context where the custodian is unreachable.
+  - _Verification_: A fresh agent run executing a task in headless mode verifies that uncovered durable facts are recorded under `## Durable Facts` in the task body and handover report.
+- **BC-4 (Custodian Anti-Sprawl Filing & Concision)**: The custodian instructions (`plugins/ida/agents/pauli.md`) specify the anti-sprawl filing process (search first, augment canonical notes in place, create new notes only for novel concepts) and concision thresholds (retaining principles and verified state, stripping execution trivia, targeting 30–80 lines).
+  - _Verification_: A fresh agent run prompting Pauli with an offered finding verifies that Pauli searches for existing topics and updates the canonical note in place within 30–80 lines rather than generating a new document.
+- **BC-5 (Archive vs Delete and One Note Per Subject by Knowledge Base Specification Rules)**: Both custodian instructions (`plugins/ida/agents/pauli.md`) and knowledge curation skills (`plugins/ida/skills/remember/SKILL.md`) explicitly govern decisions on archive versus delete and one note per subject by referencing the rules in the governing knowledge base specification, stating neither rule's operational test or criteria a second time.
+  - _Verification_: A fresh agent run prompting Pauli and an agent using `/remember` to clean superseded notes and consolidate rulings confirms that both agents decide archive vs delete (transcripts/evidence archived; superseded state deleted) and one note per subject (ruling and enforcement state co-located) by direct application of the governing knowledge base specification, with zero duplicate rule definitions in their own files.
+- **BC-6 (Pauli Working Route for `/learn` Diagnosed Faults)**: Custodian instructions (`plugins/ida/agents/pauli.md`) and `/learn` skill instructions (`plugins/ida/skills/learn/SKILL.md`) establish that Pauli executes `/learn` within its graph-only boundary, formatting diagnosed tool and framework faults using the standard issue template established in `references/issue-template.md`, creating a queued task node on the knowledge base graph for a repository-capable worker to file on GitHub or post an evidence-bump comment, and recording the diagnosis in the task handback report, without attempting direct GitHub CLI tool calls or recording bug logs in knowledge notes.
+  - _Verification_: A fresh agent run dispatching `/learn` to Pauli on a session trace containing a tool fault verifies that Pauli formats the issue per `references/issue-template.md`, mints a queued task on the graph for GitHub filing, and includes the full diagnostic report in its task handback report, making zero GitHub CLI tool calls.

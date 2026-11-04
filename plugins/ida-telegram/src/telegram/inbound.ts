@@ -1,4 +1,4 @@
-import { getBareCommandBehavior, normalizeCommandName } from "./commands.js";
+import { normalizeCommandName } from "./commands.js";
 
 export interface TelegramUser {
   id: number;
@@ -93,7 +93,6 @@ export function parseInboundUpdate(
   update: TelegramUpdate,
   allowFrom: number[],
   getExcerpt?: TargetExcerptFetcher,
-  persona?: string,
   getThread?: MessageThreadFetcher
 ): InboundChannelEvent | null {
   // 1. Text / Media Message
@@ -114,7 +113,6 @@ export function parseInboundUpdate(
       const cmdName = normalizeCommandName(rawCmdToken);
       const cmd = `/${cmdName}`;
       const args = parts.slice(1).join(" ").trim();
-      const cmdSpec = getBareCommandBehavior(cmdName, persona);
 
       const meta: Record<string, string> = {
         event: "bot_command",
@@ -134,10 +132,6 @@ export function parseInboundUpdate(
         meta.user = msg.from.first_name;
       }
 
-      if (cmdSpec) {
-        meta.skill = cmdSpec.skill;
-      }
-
       if (msg.reply_to_message) {
         meta.reply_to_message_id = String(msg.reply_to_message.message_id);
         if (msg.quote?.text) {
@@ -145,15 +139,6 @@ export function parseInboundUpdate(
         } else if (msg.reply_to_message.text) {
           meta.quoted_text = msg.reply_to_message.text.substring(0, 300);
         }
-      }
-
-      if (!args && cmdSpec) {
-        meta.default_action = cmdSpec.bareAction;
-        return {
-          event: "bot_command",
-          content: `${cmd} — ${cmdSpec.bareAction}`,
-          meta,
-        };
       }
 
       return {
@@ -379,7 +364,7 @@ export function parseInboundUpdate(
       }
       return {
         event: "accept_recommendation",
-        content: `Nic accepted the recommendation for message ${cb.message?.message_id ?? ""}${targetExcerpt ? `: "${targetExcerpt}"` : ""}.`,
+        content: `The user accepted the recommendation for message ${cb.message?.message_id ?? ""}${targetExcerpt ? `: "${targetExcerpt}"` : ""}.`,
         meta,
       };
     }
@@ -400,7 +385,7 @@ export function parseInboundUpdate(
       }
       return {
         event: "decline_recommendation",
-        content: `Nic declined the recommendation for message ${cb.message?.message_id ?? ""}${targetExcerpt ? `: "${targetExcerpt}"` : ""}.`,
+        content: `The user declined the recommendation for message ${cb.message?.message_id ?? ""}${targetExcerpt ? `: "${targetExcerpt}"` : ""}.`,
         meta,
       };
     }

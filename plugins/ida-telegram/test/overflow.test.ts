@@ -71,7 +71,7 @@ describe("Progressive disclosure: Overflow handling", () => {
     expect(result.combinedDetail).toContain(existingDetail);
   });
 
-  test("FR-1.3: a reply sent with detail carries a 🔍 Details button whose link opens that detailsId even when MINI_APP_URL is unset", async () => {
+  test("FR-1.3: a reply sent with detail carries a 🔍 Details button whose link opens that detailsId under the configured MINI_APP_URL", async () => {
     const { loadConfig } = await import("../src/config.js");
     const { StdioMcpServer } = await import("../src/mcp/server.js");
     const { TelegramBotClient } = await import("../src/telegram/bot.js");
@@ -84,9 +84,10 @@ describe("Progressive disclosure: Overflow handling", () => {
 
     const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-details-btn-"));
     const config = loadConfig({
+      MINI_APP_URL: "https://ida.example.test",
       TELEGRAM_BOT_TOKEN: "test-token",
       IDA_TELEGRAM_ROLE: "primary",
-      ALLOWED_USER_IDS: "8860530746",
+      ALLOWED_USER_IDS: "1111111111",
       STATE_DIR: stateDir,
       VOICE_REPLIES: "off",
     });
@@ -115,7 +116,7 @@ describe("Progressive disclosure: Overflow handling", () => {
         params: {
           name: "reply",
           arguments: {
-            chat_id: 8860530746,
+            chat_id: 1111111111,
             text: "**Headline:** Summary in chat.\n\n>! Collapsible note. Tap Details for specs and sources.",
             detail: "## Q1 Specs\n\n- Detailed specification and source links.",
           },
@@ -131,7 +132,7 @@ describe("Progressive disclosure: Overflow handling", () => {
       expect(apiCalls[0].method).toBe("sendMessage");
 
       const flatButtons = (apiCalls[0].body.reply_markup?.inline_keyboard || []).flat();
-      const detailsButton = flatButtons.find((b: any) => b.text === "🔍 Details");
+      const detailsButton = flatButtons.find((b: any) => b.text === "🔍");
       expect(detailsButton).toBeDefined();
       expect(detailsButton?.web_app?.url).toMatch(/^https:\/\/.+\/app\/index\.html\?d=/);
       expect(detailsButton?.web_app?.url).toContain(`/app/index.html?d=${parsedResult.detailsId}`);
@@ -181,7 +182,7 @@ describe("Progressive disclosure: Overflow handling", () => {
     const config = loadConfig({
       TELEGRAM_BOT_TOKEN: "test-token",
       IDA_TELEGRAM_ROLE: "primary",
-      ALLOWED_USER_IDS: "8860530746",
+      ALLOWED_USER_IDS: "1111111111",
       STATE_DIR: stateDir,
       VOICE_REPLIES: "off",
     });
@@ -210,7 +211,7 @@ describe("Progressive disclosure: Overflow handling", () => {
         params: {
           name: "reply",
           arguments: {
-            chat_id: 8860530746,
+            chat_id: 1111111111,
             text: "Summary with configured IDA_WEB_URL.",
             detail: "Full details markdown.",
           },
@@ -219,7 +220,7 @@ describe("Progressive disclosure: Overflow handling", () => {
 
       const parsedResult = JSON.parse((resp?.result as any)?.content?.[0]?.text || "{}");
       const flatButtons = (apiCalls[0].body.reply_markup?.inline_keyboard || []).flat();
-      const detailsButton = flatButtons.find((b: any) => b.text === "🔍 Details");
+      const detailsButton = flatButtons.find((b: any) => b.text === "🔍");
       expect(detailsButton).toBeDefined();
       expect(detailsButton?.web_app?.url).toBe(`https://ida.example.ts.net/app/index.html?d=${parsedResult.detailsId}`);
     } finally {
@@ -241,9 +242,10 @@ describe("Progressive disclosure: Overflow handling", () => {
 
     const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-no-details-"));
     const config = loadConfig({
+      MINI_APP_URL: "https://ida.example.test",
       TELEGRAM_BOT_TOKEN: "test-token",
       IDA_TELEGRAM_ROLE: "primary",
-      ALLOWED_USER_IDS: "8860530746",
+      ALLOWED_USER_IDS: "1111111111",
       STATE_DIR: stateDir,
       VOICE_REPLIES: "off",
     });
@@ -272,7 +274,7 @@ describe("Progressive disclosure: Overflow handling", () => {
         params: {
           name: "reply",
           arguments: {
-            chat_id: 8860530746,
+            chat_id: 1111111111,
             text: "**Short reply:** No detail attached and under maxChatChars.",
           },
         },

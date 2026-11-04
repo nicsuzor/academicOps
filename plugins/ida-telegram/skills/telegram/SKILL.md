@@ -22,7 +22,7 @@ The user reads on a phone between other commitments. Cognitive load is the bindi
 
 - **Inbound ask routing:** Questions and lookups received from the user are answered in the receiving session through an internal subagent it spawns, never in its main context; the task dispatch pipeline is used only for real code changes. Never send inbound questions or lookups into the dispatch pipeline.
 - **Option buttons on questions:** Provide selectable option buttons whenever asking questions so the user can reply with a single tap. Use multi-row layouts (`button_layout`, `buttons_per_row`, or 2D button arrays) when offering multiple options (such as skill or checklist proposals) to keep choices compact on mobile screens.
-- **Predefined row consolidation:** Pass `predefined_row: true` on `reply` to consolidate all active system actions (`🔍 Details`, `[🧐 Check logic]`, `[💡 Explain]`, `[🧾 Reasons]`, `[✅ Accept recommendation]`, `[❌ Decline recommendation]`) onto a single default header row above custom option buttons.
+- **Predefined row consolidation:** In default reply keyboards, Details (`🔍`) sits on the same row as predefined action buttons; pass `predefined_row: true` on `reply` to consolidate all active system actions (`🔍`, `[🧐 Check]`, `[💡 Explain]`, `[🧾]`, `[✅]`, `[❌]`) onto a single default header row above custom option buttons.
 - **Mini App-only questions:** To keep chat clear of decisions best reviewed in the dashboard, set `mini_app_only: true` (or `chat: false`) on `ask_user` or individual questions. The question appears interactively in the Mini App without posting a card to chat.
 - **Enough information and proportionate evidence:** Every question or decision request to the user must provide enough self-contained information to make the decision and evidence proportionate to the decision. Provide deep context, evidence, logs, or detailed tradeoffs in the `detail` parameter of a question. The Mini App displays a `🔍 Details` button on the question card that opens this fuller background on demand, keeping the card compact.
 - **Asynchronous by default with reasoned recommendation:** Post questions with structured options, placing the recommended choice first (`"(Recommended)"`) supported by functional reasoning. When no recommendation is available, offer to have one assessed.
@@ -31,20 +31,20 @@ The user reads on a phone between other commitments. Cognitive load is the bindi
 
 ## Message Action Buttons (Logic Check, Explain, Reasons & Recommendation)
 
-Every reply sent over Telegram automatically carries inline action buttons: `[🧐 Check logic]`, `[💡 Explain]`, `[🧾 Reasons]`, `[✅ Accept recommendation]`, and `[❌ Decline recommendation]`:
+Every reply sent over Telegram automatically carries inline action buttons with compact, phone-friendly labels: `[🧐 Check]`, `[💡 Explain]`, `[🧾]`, `[✅]`, and `[❌]`:
 
-- **Logic check (`🧐 Check logic`):** Requests a formal logic check on that specific message statement (`event: "logic_check"`).
+- **Logic check (`🧐 Check`):** Requests a formal logic check on that specific message statement (`event: "logic_check"`).
   - Apply the formal premise-check procedure: test whether the inference is valid, the premises supported, the ask answered, and warrants sufficient.
   - Reply with the verdict (`PASS`, `REVISE`, or `FAIL`) and its reason (`Judged · Valid · Supported · Answered · Sufficient · Waived · Relay`).
 - **Explain (`💡 Explain`):** Requests more detail on that specific message statement (`event: "explain"`).
   - Reply expanding that message in greater detail with context, underlying rationale, and evidence.
-- **Reasons (`🧾 Reasons`):** Requests the underlying argument and evidence chain behind that specific message statement (`event: "reasons"`), answering "how do you know that?".
-  - Returns the arguments behind the message verbatim (Chained Toulmin Argdown blocks), one per link of the chain, each labelled with who argued it and to whom (e.g. `Prime to Nic`, `Sara to Prime`, `worker to Sara`), nested by delegation depth, in the reply's details (`detail` parameter).
+- **Reasons (`🧾`):** Requests the underlying argument and evidence chain behind that specific message statement (`event: "reasons"`), answering "how do you know that?".
+  - Returns the arguments behind the message verbatim (Chained Toulmin Argdown blocks), one per link of the chain, each labelled with who argued it and to whom (e.g. `Prime to user`, `Sara to Prime`, `worker to Sara`), nested by delegation depth, in the reply's details (`detail` parameter).
   - A link whose argument cannot be found is named as missing (e.g. `[Missing argument: no premise-check record found for ...]`), never paraphrased.
   - Chat text provides a concise summary (~100 words) with the primary takeaway and the chain structure, referencing the Details page for the full verbatim Argdown blocks.
-- **Accept recommendation (`✅ Accept recommendation`):** Marks the card and notifies Ida that the user accepted the recommendation (`event: "accept_recommendation"`).
+- **Accept recommendation (`✅`):** Marks the card and notifies Ida that the user accepted the recommendation (`event: "accept_recommendation"`).
   - Act on the accepted recommendation or confirm execution.
-- **Decline recommendation (`❌ Decline recommendation`):** Marks the card and notifies Ida that the user declined the recommendation (`event: "decline_recommendation"`).
+- **Decline recommendation (`❌`):** Marks the card and notifies Ida that the user declined the recommendation (`event: "decline_recommendation"`).
   - Acknowledge declination, avoid proceeding with the declined course, and offer alternatives or seek clarification if needed.
 
 ## Reactions & Feedback
@@ -55,7 +55,7 @@ Every reply sent over Telegram automatically carries inline action buttons: `[�
   - _Lifecycle states:_
     - `👀` inbound: message received and being read/assessed.
     - `✍` captured: note, decision, intake, or task persisted to knowledge base.
-    - `🐱` dispatched (polecat): work briefed and dispatched to an isolated background worker (a polecat holds it).
+    - `🐳` dispatched (polecat): work briefed and dispatched to an isolated background worker (a polecat holds it).
     - `🕊` dispatched (subagent): work delegated to an internal subagent (a subagent holds it).
     - `🤔` waiting: a question, choice, or clarification is pending user reply in chat.
     - `💔` blocked or failed: execution halted or hit an external blocker (reply details the refusal).
@@ -80,7 +80,8 @@ Every reply sent over Telegram automatically carries inline action buttons: `[�
 
 ## Threaded Conversations
 
-- **Thread confinement by default:** In Telegram supergroups with forum topics enabled, messages arriving in a thread are tagged with `meta.message_thread_id` and `meta.thread_id`. All outbound paths (replies, voice notes, question cards, edits, and reactions) automatically stay in that thread without configuration.
+- **Thread confinement by default:** In Telegram supergroups or topics-enabled chats, messages arriving in a thread are tagged with `meta.message_thread_id` and `meta.thread_id`. All outbound paths (replies, voice notes, question cards, edits, and reactions) automatically stay in that thread without configuration.
+- **Routing when no thread is defined:** When replying to a message sent outside any thread, the reply attaches directly to that inbound message via reply parameters so it lands in the chat context where the user wrote, rather than falling into an unopenable General `#` topic. Active thread memory is preserved across server restarts. Outbound thread verification catches unexpected thread destinations rather than reporting silent success.
 - **Explicit target overriding:** If work requires posting into a specific topic, pass `message_thread_id` (or `thread_id`) explicitly to `reply` or `ask_user`.
 - **Renaming threads:** When a conversation shifts focus or a thread requires a descriptive title, rename the forum topic using `rename_thread({ name: "..." })`. If `message_thread_id` is omitted, the active thread is renamed automatically.
 
@@ -91,5 +92,5 @@ Every reply sent over Telegram automatically carries inline action buttons: `[�
 
 ## Bot Commands
 
-- **Bare commands:** When a native Telegram menu command arrives without arguments, follow the default action or skill specified in the event metadata (`meta.default_action` or `meta.skill`).
+- **Bare commands:** When a native Telegram menu command arrives without arguments (`meta.command`), invoke the skill of that name (underscores in the command stand for hyphens in the skill name) on the current conversation: act on the message it replies to or the active topic, or ask the user what the command should act on.
 - **Commands with arguments:** When user arguments are provided with a command, process them within the target workflow.

@@ -7,6 +7,10 @@
 #
 # Created: 2026-02-27
 # Last updated from live: 2026-03-03
+#
+# NOT LIVE: on 2026-11-02 the repository's ruleset list no longer held this
+# ruleset, and no rule applied to the default branch (main). GitHub enforces
+# nothing in this file; it is a record of the deleted ruleset.
 
 name: Copilot review for default branch
 

@@ -122,8 +122,8 @@ jobs:
 
             ## Instructions
             Read the unified memory skill for knowledge standards and transcript mining guidance:
-              ${{ github.workspace }}/_aops/plugins/pkb/skills/remember/SKILL.md
-              ${{ github.workspace }}/_aops/plugins/pkb/skills/remember/references/consolidation.md
+              ${{ github.workspace }}/_aops/plugins/ida/skills/remember/SKILL.md
+              ${{ github.workspace }}/_aops/plugins/ida/skills/remember/references/consolidation.md
 
             ## Environment
             - Brain repo (knowledge base): ${{ github.workspace }}
@@ -141,8 +141,8 @@ jobs:
                ${{ inputs.session_id && format('- Process ONLY session: {0}', inputs.session_id) || '' }}
 
             2. **Convert transcripts** to readable format:
-               - Use `uv run python ${{ github.workspace }}/_aops/aops/scripts/transcript.py`
-                 to generate readable markdown from JSONL
+               - Use `PYTHONPATH=${{ github.workspace }}/_aops/lib/py uv run --directory ${{ github.workspace }}/_aops python -m transcripts.runner <session file> --no-sync`
+                 to generate readable markdown from JSONL (see `_aops/specs/transcript-pipeline.md`, Invocation)
                - Or read the generated .md transcript if already processed
 
             3. **For each transcript** (up to ${{ inputs.max_transcripts || '10' }}):
@@ -177,8 +177,9 @@ jobs:
               reference mcp__services__pkb__* tools. Changes sync to PKB consumers via git push.
             - Time budget: 25 minutes. Exit cleanly when time is up.
             - **Sub-agent dispatch**: if you delegate any per-transcript work to
-              a `pkb:pauli` sub-agent, pass the explicit `tools` list per
-              the "Sub-Agent Dispatch" section in consolidation.md. On CI: `Bash,
+              an `ida:pauli` sub-agent (defined in
+              `_aops/plugins/ida/agents/pauli.md`), pass an explicit `tools`
+              list. On CI: `Bash,
               Glob, Grep, Read, Write, Edit, Skill` (omit mcp__services__pkb__*
               — not available). `Edit` is restricted to transcript frontmatter
               under `_sessions/` only. Without an explicit `tools` arg pauli sees
