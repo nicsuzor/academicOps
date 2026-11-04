@@ -70,7 +70,7 @@ Premises state clean natural assertions citing sources and locators directly inl
 4. **Inline citations**: Citations and pointers live directly inline with the claims they support. Lettered endnote pointers (`^n`, `notes:`) are dropped.
 5. **The inference line**: Starts `--`, ends `--`, on one line: warrant rule, then `Unless: <defeater>; <status>`.
 6. **Chain conclusions**: Each step begins `So` and chains into subsequent steps.
-7. **Relay upward**: Relaying a report upward requires its premise-check verdict; name the line each relayed sentence restates. Relay sentences only from checked argument lines without reading sources. Never relay an argument with 0 inference lines or substantive defects as fact. Disclosed rule violations in a received report must be propagated upward in the relay and never dropped across hops. Relay only premises and conclusions; a struck doubt or an untried defeater is never relayed as a risk.
+7. **Relay upward**: Relaying a report upward requires its premise-check verdict; name the line each relayed sentence restates. Relay sentences only from checked argument lines without reading sources. Never relay an argument with 0 inference lines or substantive defects as fact. Disclosed rule violations in a received report must be propagated upward in the relay and never dropped across hops. Relay only premises and conclusions, each with its qualifier; a struck doubt is never relayed as a risk.
 8. **Method pairing line**: When an ask specifies a method, form, design, or value, the report carries a pairing line setting each specified feature beside what was done (e.g. `@file -> @./at-test-target.md`; `read back -> Read tool`), naming each departure with its reason, else `departures: none`. A detail in a method specification is load-bearing regardless of typography (quoted, backticked, or plain) unless the ask's purpose shows them free. Rewording that preserves the construct is not a departure; exact wording is not required where the construct is preserved.
 
 ## Checking a Received Report or Direction
@@ -86,24 +86,30 @@ When an incoming direction arrives from another agent:
 
 ### Reports
 
-Take observed premises with a pointer as given: never open a pointer or redo the work. A checker never reads a source to check someone's claim; it reads one only to settle a genuine conflict between two records. When a claim lacks evidence or rests on an unchecked basis, do not inspect the source: record REVISE or FAIL naming the defect. A doubt is a claim. A defeater, risk or "I haven't checked" the writer raises with no basis for thinking it true (`not tried`, with no reason given that the step would fail) is a speculation, not a defect in the argument: it neither undercuts the step nor becomes a finding. Strike it: judge Valid as if it were absent, relay nothing from it, and send nothing back for it. Where the work itself shows the answer on its first run, the doubt is never worth a probe, a trial run or a lookup; asked about it, answer that it had no basis. A PKB node or peer writing ranks as `worker reported, unchecked`.
+Take observed premises with a pointer as given: never open a pointer or redo the work. A checker never reads a source to check someone's claim; it reads one only to settle a genuine conflict between two records, and keeps that settling read. When a claim lacks evidence or rests on an unchecked basis, do not inspect the source: record REVISE or FAIL naming the defect. A PKB node or peer writing ranks as `worker reported, unchecked`.
+
+**Strike only a baseless doubt that a route will work when run.** A worry the writer raises that a route, tool or step may fail when run, with no reason given that it would (`not tried`), is a speculation: strike it -- judge Valid as if it were absent, relay nothing from it, send nothing back for it. The work shows the answer on its first run, so it is never worth a probe, a trial run or a lookup; asked about it, answer that no reason was given.
+
+**An admitted unchecked premise is never struck.** When the writer says a load-bearing premise is unchecked ("haven't checked", "worker reported", "assumed", a defeater on a fact the step rests on left `not tried`), that premise is weak, not a doubt. Judge it under Supported: the conclusion must carry the qualifier it buys, and where it cannot bear the step's stakes, record `Valid: (n) fails #insufficient-for-stakes`.
 
 In addition to the four inference tests, the checker examines the entire report (prose and argument) for rule compliance in the delivered work:
 
 | Test | Passes when | Failure looks like |
 | - | - | - |
-| **Rule-Consistent** | The actions, omissions, and claims in the delivered work do not contradict standing axioms, project rules, or specifications. Disclosing an out-of-scope breach under Rule 4 is compliant escalation. | Report states or admits leaving a rule breach in place in its own deliverable, waives a rule without a higher rule or direct user directive, or describes an action forbidden by a standing rule. |
+| **Rule-Consistent** | The actions, omissions, and claims in the delivered work do not contradict standing axioms, project rules, or specifications. Disclosing an out-of-scope breach under Rule 4 is compliant escalation. | Report states or admits leaving a rule breach in place in its own deliverable, waives a rule without a higher rule or direct user directive, or describes an action forbidden by a standing rule. Record it as `Valid: (n) fails #conflict` on the step the breach touches. |
 
 Run four tests on every inference line:
 
 | Test | Passes when | Failure looks like |
 | - | - | - |
-| **Valid** | Premises meet every condition of the warrant; conclusion is no wider than premises; construct matches and sample is adequate; all specified methods, forms, designs, and values are paired and accounted for. | Missing condition; unruled defeater that has a basis (a baseless one is struck, not ruled on); scope drift (`#scope-drift`); construct mismatch or drift (`#construct-drift`: unnamed departure or silent substitution of specified method, form, design, or value); method gap (`#method-gap`: method cannot observe what is claimed); sample inadequacy (unexplained n=1 or n=2 probes asserted as proof of representative classes). |
-| **Supported** | Each premise is supported by evidence that can bear the step's stakes. Checked qualitatively against task stakes using semantic reasoning. | High-stakes step resting on unbacked or unchecked assertion. |
+| **Valid** | Premises meet every condition of the warrant; conclusion is no wider than premises; construct matches and sample is adequate; all specified methods, forms, designs, and values are paired and accounted for. | Missing condition; unruled defeater that has a basis or names an unchecked fact the step rests on (only a baseless doubt that a route will work when run is struck); premise too weak for the step's stakes (`#insufficient-for-stakes`); rule breach (`#conflict`); scope drift (`#scope-drift`); construct mismatch or drift (`#construct-drift`: unnamed departure or silent substitution of specified method, form, design, or value); method gap (`#method-gap`: method cannot observe what is claimed); sample inadequacy (unexplained n=1 or n=2 probes asserted as proof of representative classes). |
+| **Supported** | Each premise is supported by evidence that can bear the step's stakes. Checked qualitatively against task stakes using semantic reasoning. | High-stakes step resting on unbacked or unchecked assertion, admitted unchecked premise included; a claim bound for the user about live state (configuration, repository, code, PR, merge, running work) whose premise is a report of it (task status, peer writing, PKB node) rather than its source of record. Record it on the step as `Valid: (n) fails #insufficient-for-stakes`. |
 | **Answered** | Final conclusion answers what each ask ID needs in substance. An ask whose demand was unfulfillable by construction at the reporter's stopping point is satisfied when the conclusion establishes unreachability; checkers must link the conclusion (`← (n)`) and not mark it `unanswered` or issue REVISE/FAIL. | Narrower conclusion; relayer acceptance items substituted for ask needs; marking an ask unanswered when its unreachability by construction is validly established. |
-| **Sufficient** | Proportionality holds: materiality, sufficiency (obvious, authority-backed, low-stakes), and necessity. A task's primary ask or acceptance criterion is never low-stakes or obvious. | Complex unbacked warrant on high-stakes step without decomposition; treating a primary ask or acceptance criterion as low-stakes or obvious. |
+| **Sufficient** | Proportionality holds: materiality, sufficiency (obvious, authority-backed, low-stakes), and necessity, with the step's stakes named in words. | Complex unbacked warrant on high-stakes step without decomposition; settling a stakes-bearing conclusion (below) as low-stakes or reversible; treating a primary ask or acceptance criterion as obvious. Record it as `Valid: (n) fails #insufficient-for-stakes`. |
 
-Proportionality: accept warrants as stated when obvious, authority-backed (strictly limited to user words or governing spec), backed by a cited verdict, or cheap to reverse. A task's primary ask or acceptance criterion is never low-stakes or obvious. Send back for decomposition only when complex, unbacked, or high-stakes.
+Proportionality: accept warrants as stated when obvious, authority-backed (strictly limited to user words or governing spec), backed by a cited verdict, or cheap to reverse. A conclusion bears stakes when it answers an ask (a task's primary ask or acceptance criterion included), is relayed to the user, or authorises a merge, send or approval; "low-stakes", "reversible" and "cheap to reverse" never settle it, and its premises must bear those stakes themselves. Send back for decomposition only when complex, unbacked, or high-stakes.
+
+**Every reasoning failure is recorded on a `Valid:` line.** The recorder refuses REVISE and FAIL when every `Valid:` line holds and no ask is unanswered (REVISE also passes on a `Format:` slip), so a Supported, Sufficient or Rule-Consistent failure is written as `Valid: (n) fails <tag> -- <why>` on the step it breaks: `#insufficient-for-stakes` for premises too weak for the stakes, `#conflict` for a rule breach.
 
 #### Fidelity Procedure
 
@@ -119,7 +125,7 @@ When checking an inference line or deliverable where the ask specifies a method,
 ## Recording the Verdict
 
 - **PASS**: Every inference holds, every ask is answered, evidence sufficiency bears the stakes, and at least one inference line is tested (>= 1). Format-only defects on a substantively sound argument with >= 1 inference line are waived under `Waived:` and rewritten into standard form by the receiver before relaying upward. Rule violations in deliverables can never be waived.
-- **REVISE**: Name the line, defect tag (`#missing`, `#scope-drift`, `#conflict`, `#unanswered`, `#undercut`, `#construct-drift`, `#method-gap`), and remedy. Mandatory for substantive defects, rule violations in delivered work (return with `#conflict`), or 0 inference lines (bare assertions); cannot be relayed upward as fact. Return to sender. To send back a sound argument for a format slip you will not waive, keep every `Valid:` line `holds` and add `Format: <format item> -- <what to fix>`; never record a format slip as a reasoning defect.
+- **REVISE**: Name the line, defect tag (`#missing`, `#scope-drift`, `#conflict`, `#unanswered`, `#undercut`, `#construct-drift`, `#method-gap`, `#insufficient-for-stakes`), and remedy. Mandatory for substantive defects, rule violations in delivered work (return with `#conflict`), or 0 inference lines (bare assertions); cannot be relayed upward as fact. Return to sender. To send back a sound argument for a format slip you will not waive, keep every `Valid:` line `holds` and add `Format: <format item> -- <what to fix>`; never record a format slip as a reasoning defect.
 - **FAIL**: Conclusion does not answer the ask or contradicts evidence. Mandatory for substantive defects; cannot be relayed upward as fact.
 
 Write the reason as the seven keyed lines:
@@ -129,7 +135,7 @@ Judged: <claim id>; asks <ask id>, <ask id>
 Valid: (n) holds -- <rule and why it yields (n) here>
 Supported: (<premise n>) <qualitative explanation of evidence sufficiency against stakes>
 Answered: <ask id> ← (n)
-Sufficient: (n) material; <obvious | authority-backed | low-stakes>; no objection
+Sufficient: (n) material; <the stakes in words>; <obvious | authority-backed | low-stakes>; no objection
 Waived: none | <format item> -- <justification>
 Relay: "<sentence to relay>" ← (n) | none
 ```

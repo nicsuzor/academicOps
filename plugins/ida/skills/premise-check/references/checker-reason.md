@@ -6,10 +6,12 @@ The reason is seven keyed lines. A key may repeat: one line per entry. Write it 
 Judged: <claim id>; asks <ask id>, <ask id>
 Valid: (n) holds -- <the rule, and why it yields (n) here>
 Valid: (m) fails #missing -- <the condition no premise supplies>
+Valid: (k) fails #insufficient-for-stakes -- <the stakes, and why the premises cannot bear them>
+Valid: (j) fails #conflict -- <the rule the step breaches>
 Supported: (<premise n>) <qualitative evaluation of whether evidence sufficiency bears stakes>
 Answered: <ask id> ← (n)
 Answered: <ask id> unanswered
-Sufficient: (n) <materiality; sufficiency (obvious | authority-backed | low-stakes | sent back); necessity of any objection>
+Sufficient: (n) <materiality; the stakes in words; sufficiency (obvious | authority-backed | low-stakes | sent back); necessity of any objection>
 Waived: none
 Waived: <format item> -- <what was off, and why the step could still be judged>
 Relay: "<sentence you will send up>" ← (n), (m)
@@ -20,9 +22,9 @@ Relay: none
 | - | - |
 | `Judged` | Exactly one. The claim id the gate named, then every ask id in the block. |
 | `Valid` | One per inference line, keyed by the conclusion it yields (or grouped/semicolon clauses accounting for all conclusions, e.g. `(n), (m) holds`). `holds`, or `fails` and a defect tag. |
-| `Supported` | Exactly one. Qualitative evaluation of evidence sufficiency against the stakes of the step. |
+| `Supported` | Exactly one. Qualitative evaluation of evidence sufficiency against the stakes of the step. A premise that cannot bear them, an admitted unchecked one included, also fails its step on a `Valid` line (`#insufficient-for-stakes`). |
 | `Answered` | One per ask id: the line that answers it, or `unanswered`. A conclusion line `(n)` demonstrating why an unfulfillable brief demand is unreachable by construction satisfies the ask and links under `Answered: <ask_id> ← (n)`. |
-| `Sufficient` | One or more, keyed by conclusion: which proportionality test settled each material step. `authority-backed` is limited strictly to the user's own words or a governing spec. |
+| `Sufficient` | One or more, keyed by conclusion: the step's stakes in words, and which proportionality test settled it. `authority-backed` is limited strictly to the user's own words or a governing spec. `low-stakes` never settles a conclusion that answers an ask, is relayed to the user, or authorises a merge, send or approval. |
 | `Waived` | `none`, or one per waived breach, starting with a format item from [`vocabulary.toml`](vocabulary.toml). `Waived` is strictly restricted to format items (`block`, `numbering`, `endnotes`, `basis wording`, `ask wording`, `layout`). Rule violations in deliverables are never waivable and can never be recorded under `Waived:`; any report admitting or exhibiting a rule violation in its deliverable must receive `REVISE with #conflict` or `FAIL`. |
 | `Relay` | `none`, or one per sentence you will send up, naming the lines it restates. |
 
@@ -44,7 +46,7 @@ A parenthesised answering line (`answers: <ask>: (6)`) is a `numbering` slip: `W
 
 ## REVISE and FAIL
 
-Write the keyed lines you have, because they are what the sender fixes against. When `Valid:` lines are present and all say `holds`, the recorder refuses REVISE and FAIL unless an ask is `unanswered`, or, for REVISE only, the reason carries a format slip to fix:
+Write the keyed lines you have, because they are what the sender fixes against. Every reasoning failure goes on a `Valid` line, whichever test found it: premises too weak for the stakes are `Valid: (n) fails #insufficient-for-stakes`, a rule breach is `Valid: (n) fails #conflict`. When `Valid:` lines are present and all say `holds`, the recorder refuses REVISE and FAIL unless an ask is `unanswered`, or, for REVISE only, the reason carries a format slip to fix:
 
 ```text
 Format: <format item> -- <what is off, and the fix>
