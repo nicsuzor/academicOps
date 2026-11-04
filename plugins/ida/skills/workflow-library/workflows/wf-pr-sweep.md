@@ -42,11 +42,11 @@ Sweep execution runs via parallel fan-out: a single coordinator fans out across 
    - Decouple triage from execution: the sweep does not execute inline resolutions or perform merges. It queues tasks for the next step, either queuing an existing task or creating a follow-up and queuing that.
    - For each ready, non-draft PR requiring action:
      - Audit CI check status.
-     - Inspect review status (proportionate review, changes requested, or author feedback).
+     - Inspect review status (proportionate review by independent agents posted to the PR, changes requested, or author feedback).
      - Check approval status per project policy.
-     - Before approval, a PR requires green checks and review; mergeability against the base branch is not required before approval, and PRs awaiting approval must not be queued for conflict resolution or rebase.
+     - Before approval, a PR requires green checks and review by independent agents posted to the PR; mergeability against the base branch is not required before approval, and PRs awaiting approval must not be queued for conflict resolution or rebase.
      - Identify the discrete next action needed:
-       - If unreviewed: queue task to conduct proportionate risk-tier review.
+       - If unreviewed: queue task to conduct proportionate risk-tier review by independent agents and post verdicts to the PR.
        - If review feedback or changes requested: queue task to address feedback.
        - If green, reviewed, but awaiting required approval: mark blocked on approval (do not queue conflict resolution or rebase).
        - If approved (or autonomous merge authorized) and merge conflicts exist: queue task to bring branch up to date with base and resolve merge conflicts.

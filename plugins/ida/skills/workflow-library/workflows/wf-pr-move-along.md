@@ -29,12 +29,12 @@ Drives an individual open pull request through its progression lifecycle: confir
      - Target base branch is defined by project rules.
      - Merge authority (such as autonomous merge on green, human sign-off gate, or release cut approval) is determined by project policy.
      - When no project override exists, fallback to standard risk-tier governance: low-risk changes merge on independent verification; operational or high-risk changes require reviewer sign-off.
-     - Pre-approval readiness: Before approval, a PR must be green and reviewed; mergeability against the base branch is not required before approval. A draft PR whose code step is complete is marked ready for review (`gh pr ready`) without waiting for approval.
+     - Pre-approval readiness: Before approval, a PR must be green and reviewed by independent agents; mergeability against the base branch is not required before approval. A draft PR whose code step is complete is marked ready for review (`gh pr ready`) without waiting for approval.
 
 2. **Audit CI Checks and Proportionate Review**:
    - Query CI pipeline status on the latest head commit. All required checks must pass cleanly.
-   - Verify that a review proportionate to the PR's blast radius and risk tier has been recorded.
-   - If the PR lacks proportionate review, coordinate a fresh independent review before advancing.
+   - Verify that a review by independent agents proportionate to the PR's blast radius and risk tier has been recorded, with verdicts posted to the PR.
+   - If the PR lacks proportionate review by independent agents, coordinate a fresh independent agent review and post verdicts to the PR before advancing.
 
 3. **Address Review Feedback and Requested Changes**:
    - Inspect open review threads, comments, and review states.
@@ -43,7 +43,7 @@ Drives an individual open pull request through its progression lifecycle: confir
 
 4. **Verify Approval and Readiness**:
    - Check whether required approvals are recorded per project policy.
-   - Before approval, a PR only requires green checks and proportionate review; do not rebase or resolve merge conflicts before approval.
+   - Before approval, a PR only requires green checks and proportionate review by independent agents posted to the PR; do not rebase or resolve merge conflicts before approval.
    - If the PR is gated on external human approval, unmerged dependencies, or substantive author revisions, leave the PR open and record an explicit disposition reason.
 
 5. **Settle Merge Conflicts and Land**:

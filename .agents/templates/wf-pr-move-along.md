@@ -26,7 +26,7 @@ Specifies how open pull requests in `nicsuzor/academicOps` are moved along to re
   - Standard features and structural changes: Require explicit approval from the repository owner before merging.
   - Changes requested: A PR with an active "changes requested" review must not merge under any circumstances.
   - Release pull requests (`release-please`): Excluded from autonomous merging; merge only on explicit manual release approval.
-- **Pre-approval readiness**: Before owner approval, a PR must be green and reviewed, with review feedback addressed; mergeability is not required before approval. Do not rebase or resolve merge conflicts before approval. Bringing a PR up to date with its base branch and resolving conflicts happens after approval, just before merge. A draft PR whose code step is complete is marked ready for review (`gh pr ready`) without waiting for approval.
+- **Pre-approval readiness**: Before owner approval, a PR must be green and reviewed by independent agents, with review feedback addressed; mergeability is not required before approval. Do not rebase or resolve merge conflicts before approval. Bringing a PR up to date with its base branch and resolving conflicts happens after approval, just before merge. A draft PR whose code step is complete is marked ready for review (`gh pr ready`) without waiting for approval.
 - **Commit hygiene**: Commits to public repositories must never carry private task, note, or session identifiers, or commit trailers.
 
 ## Obligations
@@ -38,7 +38,7 @@ Specifies how open pull requests in `nicsuzor/academicOps` are moved along to re
 
 2. **Audit CI Checks and Proportionate Review**:
    - Query automated checks (`gh pr checks`). All required test, lint, and type check suites must pass cleanly.
-   - Verify that the PR has undergone a review proportionate to its risk tier. If review is absent, dispatch an independent review before proceeding.
+   - Verify that the PR has undergone a review by independent agents proportionate to its risk tier, with verdicts posted to the PR. If review is absent, dispatch an independent agent review before proceeding.
 
 3. **Resolve Review Feedback and Requested Changes**:
    - Inspect existing review threads and reviews.
@@ -47,7 +47,7 @@ Specifies how open pull requests in `nicsuzor/academicOps` are moved along to re
 
 4. **Verify Approvals and Pre-Approval Readiness**:
    - Verify whether required approvals are recorded per the merge authority policy.
-   - Before owner approval, verify checks are green and proportionate review is recorded with feedback addressed. Do not rebase or resolve conflicts before approval; mergeability is not required before approval.
+   - Before owner approval, verify checks are green and proportionate review by independent agents is recorded on the PR with feedback addressed. Do not rebase or resolve conflicts before approval; mergeability is not required before approval.
    - If the PR is awaiting owner approval, leave the PR open with its disposition documented (e.g. awaiting owner approval: green and reviewed, mergeable not required).
 
 5. **Settle Conflicts and Execute Landing**:
