@@ -87,7 +87,7 @@ The following table inventories current session startup hook registration across
 
 #### Justification of Draft Plugin `CORE.md` Files Against the Four Tests
 
-Every plugin's draft `CORE.md` is evaluated against the four tests from `aops_9d2493ac`:
+Every plugin's draft `CORE.md` is evaluated against the four tests for startup injection:
 
 1. **Valuable to all agents in every deployment**: States cross-cutting requirements and routing entry points needed by any executing agent.
 2. **Values filled in and working**: Every pointer, tool, skill name, and endpoint is operational and active.
