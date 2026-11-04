@@ -509,6 +509,77 @@ def test_revise_and_fail_take_any_reason_and_still_parse_keyed_lines(token):
     assert pcg.is_armed(f"s-{token}") is False
 
 
+def _parenthesised_report() -> str:
+    return _report(_frontmatter(answers=f"{ASK_A}: (4)\n  {ASK_B}: (6)"))
+
+
+def test_pass_refused_on_parenthesised_answers_without_a_numbering_waiver():
+    _arm_with_report("s-paren", "CID", text=_parenthesised_report())
+    with pytest.raises(ValueError, match=r"Waived: numbering"):
+        pcv.record_verdict(
+            session_id="s-paren",
+            claim_id="CID",
+            verdict="PASS",
+            reason=_reason("CID"),
+            tracer_mod=_configured(),
+        )
+    assert pcg.is_armed("s-paren") is True
+
+
+def test_pass_records_parenthesised_answers_under_a_numbering_waiver():
+    _arm_with_report("s-paren-w", "CID", text=_parenthesised_report())
+    tracer = _configured()
+    reason = _reason(
+        "CID",
+        drop=("Waived:",),
+        extra=("Waived: numbering -- answers wrote (4) and (6) for 4 and 6",),
+    )
+    pcv.record_verdict(
+        session_id="s-paren-w", claim_id="CID", verdict="PASS", reason=reason, tracer_mod=tracer
+    )
+    attrs = tracer.exported[0]["attributes"]
+    assert attrs["premise_check.verdict"] == "PASS"
+    assert attrs["premise_check.waived_items"] == ["numbering"]
+    assert pcg.is_armed("s-paren-w") is False
+
+
+def _format_reason(format_line: str) -> str:
+    return _reason("CID", drop=("Waived:", "Relay:"), extra=(format_line, "Relay: none"))
+
+
+def test_revise_records_a_format_only_send_back():
+    _arm_with_report("s-fmt", "CID", text=_parenthesised_report())
+    tracer = _configured()
+    reason = _format_reason("Format: numbering -- answers write (4) and (6); write 4 and 6")
+    pcv.record_verdict(
+        session_id="s-fmt", claim_id="CID", verdict="REVISE", reason=reason, tracer_mod=tracer
+    )
+    attrs = tracer.exported[0]["attributes"]
+    assert attrs["premise_check.verdict"] == "REVISE"
+    assert attrs["premise_check.format_items"] == ["numbering"]
+    assert pcg.is_armed("s-fmt") is False
+
+
+@pytest.mark.parametrize(
+    ("token", "format_line"),
+    [
+        ("REVISE", "Format: the reasoning is weak"),
+        ("FAIL", "Format: numbering -- answers write (4) and (6)"),
+    ],
+)
+def test_format_line_does_not_carry_fail_or_a_non_format_item(token, format_line):
+    _arm_with_report(f"s-fmt-{token}", "CID", text=_parenthesised_report())
+    with pytest.raises(ValueError, match=rf"{token} refused"):
+        pcv.record_verdict(
+            session_id=f"s-fmt-{token}",
+            claim_id="CID",
+            verdict=token,
+            reason=_format_reason(format_line),
+            tracer_mod=_configured(),
+        )
+    assert pcg.is_armed(f"s-fmt-{token}") is True
+
+
 # ---------------------------------------------------------------------------
 # 3. Span attributes and the judged-text link
 # ---------------------------------------------------------------------------
