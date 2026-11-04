@@ -95,13 +95,13 @@ Every current specification, project rule, axiom, hook, gate, and enforcement-ma
 | `evidence-contract-enforcement.md` | Framework-Process | **KEEP** | Specifies JIT reminders, hearsay gate, and premise-check recorder. |
 | `reviewer-class-standard-check.md` | Framework-Process | **KEEP** | Governs Marsha's quality verification against document taxonomy standards. |
 | `user-rules.md` | Framework-Process | **KEEP** | Governs `COPE_USER_RULES_DIR` and PKB `type: rule` sourcing contracts. |
-| `brief-satisfiability.md` | Framework-Process | **CONSOLIDATE** into `task-contract.md` | Governs brief reachability. Can live cleanly as an invariant in `task-contract.md`. |
+| `brief-satisfiability.md` | Framework-Process | **KEEP** | Governs brief reachability across agent boundaries; retained standalone alongside the summary invariant in `task-contract.md`. |
 | `direct-user-instructions.md` | Framework-Process | **RETIRE** (Consolidate into `RULES.md`) | 181 lines containing historical incident narratives. Operative rule already in `RULES.md`. Violates `current-state-only`. |
 | `rule-handling-and-escalation.md` | Framework-Process | **RETIRE** (Consolidate into `RULES.md`) | 340 lines. Operative rules (waivers, one-way linking, mandatory escalation) already live in `RULES.md`. |
 | `release-as-done-lifecycle.md` | Framework-Process | **RETIRE** (Consolidate into `task-contract.md`) | 632 lines reciting historical refactoring diffs. Rule is simple: workers release finished work as `done`, never `review`. |
 | `preventing-over-engineering.md` | Framework-Process | **RETIRE** (Consolidate into `axioms/`) | 246 lines with 70-line autopsy of PR #3196. Defective definition narrowed to code vs workflows (#3360). |
 | `decision-steps-and-followup-placement.md` | Framework-Process | **DEMOTE** to `specs/meta/naming-and-decisions.md` | 248 lines. Governs graph node structure; belongs in planning metadata spec, not enforcement. |
-| `escalated-delivery-contract.md` | Framework-Process | **CONSOLIDATE** into `face-ida-triage-and-tracked-requests.md` | 285 lines; half is `[NOT BUILT]`. Active surfacing logic belongs in face-Ida spec. |
+| `escalated-delivery-contract.md` | Framework-Process | **RETIRE** | 283 lines; half is `[NOT BUILT]`, and active surfacing logic already lives canonically in `/mine`, `wf-escalated-approval`, and `wf-reconcile` (covered by `face-ida-triage-and-tracked-requests.md`). |
 | `outcome-oriented-tasks.md` | Framework-Process | **RETIRE** (Consolidate into `task-contract.md` & `pull/SKILL.md`) | 112 lines. Outcome criteria belong in `task-contract.md`; whole-file reads belong in worker skills. |
 | `human-readability-first.md` | Axiom Restatement | **REMOVE / RETIRE** | 182 lines. Spec was a temporary vehicle to add the axiom; axiom is already live in `skills/axioms/`. Violates SSoT (#3365). |
 | `decision-request-axiom-clarification.md` | Axiom Restatement | **REMOVE / RETIRE** | 51 lines. Pure restatement of `exercise-authority` axiom (enough information, proportionate evidence, recommendation). (#3363, #3365). |
@@ -216,23 +216,31 @@ _Finding_: Zero active hooks or gates enforce workflow substance. All active cod
 1. **`specs/enforcement/decision-steps-and-followup-placement.md` (248 lines)**
    - _Classification_: Graph Planning Architecture.
    - _Disposition_: Demote from `specs/enforcement/` to `specs/meta/naming-and-decisions.md` (where decision representation and epic hierarchy are canonically specified).
-2. **`specs/enforcement/escalated-delivery-contract.md` (285 lines)**
-   - _Classification_: Agent Triage / Surfacing Architecture.
-   - _Disposition_: Consolidate active surfacing mechanisms (`/mine`, `ida_held`) into `specs/agents/face-ida-triage-and-tracked-requests.md` and retire unbuilt mechanical queue designs.
+2. **`specs/enforcement/escalated-delivery-contract.md` (283 lines)**
+   - _Classification_: Agent Triage / Surfacing Architecture (Redundant / Unbuilt).
+   - _Disposition_: Retire spec outright and delete file in Stage 2; active surfacing mechanisms (`/mine`, `wf-escalated-approval`, `wf-reconcile`) already live canonically in `specs/agents/face-ida-triage-and-tracked-requests.md`, and the remaining mechanical queue designs are `[NOT BUILT]`.
 
 #### 4.3 Enforcement-Map Rows to Purge
 
 1. **Row 56 (`Telegram Shared Reaction Legend`)**:
-   - _Evidence_: Issue #3314 ("what is this? this isn't a 'rule'. It's part of a spec; it certainly doesn't belong in a table that documents how rules for agents are enforced"). Telegram reaction emojis are plugin-specific workflow substance.
+   - _What moved_: Removed from universal enforcement map; demoted to plugin-specific workflow instructions in `plugins/ida-telegram/skills/telegram/SKILL.md` and `specs/telegram/reactions.md`.
+   - _On what evidence_: User feedback on Issue #3314 and PR #3291 ("what is this? this isn't a 'rule'... it certainly doesn't belong in a table that documents how rules for agents are enforced"). Telegram reaction emojis are plugin-specific workflow substance.
+   - _Observation / What will show it worked_: Telegram reaction emoji handling remains functional via skill instructions without cluttering universal framework enforcement; zero regression in bot reactions.
    - _Action_: Delete Row 56 from `specs/ENFORCEMENT-MAP.md`.
 2. **Row 58 (`Complete Daily Run Step Execution`)**:
-   - _Evidence_: The user on PR #3353 ("workflow instructions are not 'rules' that have to be enforced. the 'rule' is: follow the applicable fucking workflow"). Daily note template steps are workflow substance.
+   - _What moved_: Removed from universal enforcement map; demoted to workflow template instructions in `tpl_daily` and `plugins/ida/skills/daily/SKILL.md`.
+   - _On what evidence_: The user on PR #3353 ("workflow instructions are not 'rules' that have to be enforced. the 'rule' is: follow the applicable fucking workflow") and Issue #3314. Daily note template steps are workflow substance.
+   - _Observation / What will show it worked_: Daily runs continue to execute steps 0-7 via template fail-loud preconditions and skill routing without misclassifying routine template instructions as framework-level enforcement rules.
    - _Action_: Delete Row 58 from `specs/ENFORCEMENT-MAP.md`.
 3. **Row 39 (`Agentic-First Design & No Shitty NLP`)**:
-   - _Evidence_: Redundant with universal axioms `no-over-engineering`, `judgment-non-delegable`, and `human-readability-first`.
+   - _What moved_: Purged redundant row from universal enforcement map; consolidated under governing universal axioms `no-over-engineering`, `judgment-non-delegable`, and `human-readability-first`.
+   - _On what evidence_: Issue #3360 and #3365. Rule was an un-escalated duplicate of universal axioms.
+   - _Observation / What will show it worked_: Compliance reviews continue to enforce qualitative judgment and agentic workflows via universal axioms without duplicate entries on the map.
    - _Action_: Delete Row 39 from `specs/ENFORCEMENT-MAP.md`.
 4. **Row 42 (`No Fallbacks`)**:
-   - _Evidence_: Redundant with universal axioms `fail-fast` and `halt-on-failure`.
+   - _What moved_: Purged redundant row from universal enforcement map; consolidated under governing universal axioms `fail-fast` and `halt-on-failure`.
+   - _On what evidence_: Issue #3359 and #3363. Project rule restated universal axioms without adding a non-instruction carrier.
+   - _Observation / What will show it worked_: Workers and hooks continue to fail loudly on infrastructure errors under universal axioms without duplicate map rows.
    - _Action_: Delete Row 42 from `specs/ENFORCEMENT-MAP.md`.
 
 #### 4.4 Unindexed Rule Files to Delete
@@ -271,9 +279,9 @@ Every issue listed in the task direction is explicitly answered below:
 
 The downstream implementation task (Stage 2: Build -- "Build the framework-only enforcement line and remove the listed specs and mechanisms") will execute the following concrete operations based on this reviewed design:
 
-1. **Delete Retired Specs**: Remove 11 retired specifications from `specs/enforcement/`:
-   `complete-daily-runs.md`, `human-readability-first.md`, `decision-request-axiom-clarification.md`, `current-state-only-rules.md`, `outputs-not-contents-testing-rule.md`, `release-as-done-lifecycle.md`, `preventing-over-engineering.md`, `class-spec-review-and-map-discipline.md`, `direct-user-instructions.md`, `rule-handling-and-escalation.md`, `outcome-oriented-tasks.md`.
-2. **Move/Demote Specs**: Move `decision-steps-and-followup-placement.md` into `specs/meta/naming-and-decisions.md`; consolidate `escalated-delivery-contract.md` into `specs/agents/face-ida-triage-and-tracked-requests.md`.
+1. **Delete Retired Specs**: Remove 12 retired specifications from `specs/enforcement/`:
+   `complete-daily-runs.md`, `human-readability-first.md`, `decision-request-axiom-clarification.md`, `current-state-only-rules.md`, `outputs-not-contents-testing-rule.md`, `release-as-done-lifecycle.md`, `preventing-over-engineering.md`, `class-spec-review-and-map-discipline.md`, `direct-user-instructions.md`, `rule-handling-and-escalation.md`, `outcome-oriented-tasks.md`, `escalated-delivery-contract.md`.
+2. **Move/Demote Specs**: Move `decision-steps-and-followup-placement.md` into `specs/meta/naming-and-decisions.md`.
 3. **Delete Unindexed Rules**: Delete `.agents/rules/to-separate.md`.
 4. **Purge Enforcement Map Rows**: Delete Rows 56, 58, 39, and 42 from `specs/ENFORCEMENT-MAP.md`.
 5. **Update Axioms & Agent Instructions**:
