@@ -4,7 +4,8 @@
 A verdict is one token (PASS, REVISE, FAIL) and the checker's reason. A PASS
 reason must carry every keyed line of the skill's checker reason and pass
 the mechanical cross-checks against the judged text the gate stored at arm
-time; REVISE and FAIL take any reason. The reason may come from a file or stdin
+time; REVISE and FAIL need a failing step, an unanswered ask, or (REVISE only)
+a ``Format:`` slip when their Valid lines all hold. The reason may come from a file or stdin
 so that free text stays off the command line, where harness guards scan it.
 
 A verdict is recorded only once its span is exported: an unconfigured tracer or
@@ -203,6 +204,79 @@ def emit_override_span(
     return True
 
 
+def emit_claim_span(
+    tracer_mod: Any,
+    session_id: str,
+    claim_id: str,
+    argdown_text: str,
+    title: str | None = None,
+    config: dict[str, Any] | None = None,
+    attributes: dict[str, Any] | None = None,
+) -> bool:
+    """Ship one TOOL span for filed claims via claude_code_tracer's pipeline.
+
+    Returns True when the OTLP exporter reported SUCCESS for the span; raises
+    RuntimeError when tracing is unconfigured or the export was not acknowledged.
+    """
+    vocab = ra.load_vocabulary()
+    block_text = ra.extract_block(argdown_text)
+    if block_text is None:
+        block_text = argdown_text.strip()
+    block = ra.parse_block(block_text, vocab)
+    if block is None:
+        raise ValueError("failed to parse argdown block")
+    if not block.asks:
+        raise ValueError("argdown block carries no ask ids")
+
+    tool_input: dict[str, Any] = {
+        "claim_id": claim_id,
+        "status": "to_be_verified",
+        "ask_ids": list(block.asks),
+        "argdown": block_text,
+    }
+    if title:
+        tool_input["title"] = title
+    tool_response: dict[str, Any] = {
+        "status": "filed",
+        "claim_count": len(block.asks),
+        "premise_count": len(block.premises),
+        "inference_count": len(block.inferences),
+    }
+
+    attrs: dict[str, Any] = {
+        "premise_check.claim_id": claim_id,
+        "premise_check.status": "to_be_verified",
+        "premise_check.ask_ids": list(block.asks),
+        "premise_check.has_block": True,
+        "premise_check.argdown_text": tracer_mod._truncate(block_text),
+        "premise_check.argdown_sha256": hashlib.sha256(block_text.encode("utf-8")).hexdigest(),
+        "premise_check.inference_count": len(block.inferences),
+        "premise_check.premise_count": len(block.premises),
+    }
+    if title:
+        attrs["premise_check.title"] = title
+    if block.premises:
+        weakest = block.weakest()
+        if weakest is not None and weakest.basis is not None:
+            attrs["premise_check.weakest_basis"] = weakest.basis.phrase
+            attrs["premise_check.weakest_basis_term"] = weakest.basis.term
+        elif weakest is not None:
+            attrs["premise_check.weakest_basis"] = weakest.basis_text or ""
+            attrs["premise_check.weakest_basis_term"] = "unmatched"
+    attrs.update(attributes or {})
+
+    _export_tool_span(
+        tracer_mod,
+        session_id,
+        "premise_check_claim",
+        tool_input,
+        tool_response,
+        attrs,
+        config,
+    )
+    return True
+
+
 def emit_hearsay_span(
     tracer_mod: Any,
     session_id: str,
@@ -245,7 +319,7 @@ def judge_reason(token: str, reason: str, judged_text: str | None) -> dict[str, 
     """
     vocab = ra.load_vocabulary()
     parsed = ra.parse_reason(reason, vocab)
-    block_text = ra.extract_block(judged_text)
+    block_text = _block_as_waived(ra.extract_block(judged_text), parsed, vocab)
     block_err: str | None = None
     if token == "PASS" and block_text is not None and not ra.is_null_form(block_text):
         if "block" not in parsed.waived_items(vocab):
@@ -300,17 +374,46 @@ def judge_reason(token: str, reason: str, judged_text: str | None) -> dict[str, 
                         if re.search(r"^\s*asks?\s*:.*?\bunanswered\b", line, re.IGNORECASE):
                             has_unanswered = True
                             break
-                if not has_unanswered:
+                has_format = token == "REVISE" and bool(_format_items(reason, vocab))
+                if not has_unanswered and not has_format:
                     raise ValueError(
                         f"{token} refused -- reason has Valid entries that all hold and no "
                         f"Ask: ... -> unanswered; {token} requires at least one failing "
-                        f"inference step ('Valid: (n) fails -- <defect>') or unanswered ask.\n"
-                        f"Required remediation format: For {token}, record at least one failing step or unanswered ask:\n"
+                        f"inference step ('Valid: (n) fails -- <defect>') or unanswered ask"
+                        + (", or a format defect to fix" if token == "REVISE" else "")
+                        + ".\n"
+                        f"Required remediation format: For {token}, record at least one of:\n"
                         f"  Valid: (n) fails #<defect-tag> -- <explanation of failure>\n"
-                        f"  # or:\n"
                         f"  Answered: <ask_id> unanswered"
+                        + (
+                            f"\n  Format: <format item> -- <what to fix>   "
+                            f"(format items: {', '.join(vocab.format_items)})"
+                            if token == "REVISE"
+                            else ""
+                        )
                     )
-    return ra.span_attributes(parsed, block, vocab)
+    attrs = ra.span_attributes(parsed, block, vocab)
+    if token == "REVISE" and (items := _format_items(reason, vocab)):
+        attrs["premise_check.format_items"] = items
+    return attrs
+
+
+_FORMAT_LINE = re.compile(r"^\s*Format\s*:\s*(?P<value>.+)$")
+
+
+def _format_items(reason: str, vocab: Any) -> list[str]:
+    """Format items named by the reason's ``Format:`` lines (a REVISE for a format slip)."""
+    entries = [
+        m.group("value").strip() for ln in reason.splitlines() if (m := _FORMAT_LINE.match(ln))
+    ]
+    return ra._parse_waived_entries(entries, vocab)[0] if entries else []
+
+
+def _block_as_waived(block_text: str | None, parsed: Any, vocab: Any) -> str | None:
+    """The judged block with a waived ``numbering`` slip in ``answers`` normalised."""
+    if block_text is not None and "numbering" in parsed.waived_items(vocab):
+        return ra.unparenthesise_answers(block_text)
+    return block_text
 
 
 def record_verdict(
@@ -377,7 +480,9 @@ def record_verdict(
         vocab = ra.load_vocabulary()
         parsed_reason = ra.parse_reason(reason, vocab)
         if "block" not in parsed_reason.waived_items(vocab):
-            valid, parser_output, _ = ra.check_argdown_block(block_text)
+            valid, parser_output, _ = ra.check_argdown_block(
+                _block_as_waived(block_text, parsed_reason, vocab) or block_text
+            )
             if not valid:
                 raise ValueError(
                     f"PASS verdict refused for {cid}: could not parse argdown block:\n{parser_output}"
@@ -435,6 +540,56 @@ def record_verdict(
     return result
 
 
+def record_claims(
+    session_id: str = "",
+    claim_id: str = "",
+    argdown_text: str = "",
+    title: str | None = None,
+    tracer_mod: Any | None = None,
+) -> dict[str, Any]:
+    """Validate argdown claims and emit the telemetry span to the OTel/Phoenix endpoint."""
+    cid = (claim_id or "").strip()
+    if not cid:
+        raise ValueError("claims need a claim id (e.g. task id); got none")
+    text = (argdown_text or "").strip()
+    if not text:
+        raise ValueError("claims need argdown content; got none")
+
+    vocab = ra.load_vocabulary()
+    block_text = ra.extract_block(text)
+    if block_text is None:
+        block_text = text
+    block = ra.parse_block(block_text, vocab)
+    if block is None:
+        raise ValueError("failed to parse argdown block")
+    if not block.asks:
+        raise ValueError("argdown block carries no ask ids")
+
+    if tracer_mod is None:
+        tracer_mod = _import_claude_code_tracer()
+
+    clean_title = (title or "").strip() or None
+    emit_claim_span(
+        tracer_mod,
+        session_id,
+        cid,
+        block_text,
+        title=clean_title,
+    )
+
+    result: dict[str, Any] = {
+        "ok": True,
+        "claim_id": cid,
+        "status": "to_be_verified",
+        "ask_ids": list(block.asks),
+        "span_emitted": True,
+        "span_error": None,
+    }
+    if clean_title:
+        result["title"] = clean_title
+    return result
+
+
 def _read_reason(path: str) -> str:
     if path == "-":
         return sys.stdin.read()
@@ -442,6 +597,50 @@ def _read_reason(path: str) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Support claim subcommand
+    if argv and argv[0] in ("claim", "claims", "file-claims"):
+        claim_parser = argparse.ArgumentParser(
+            prog="premise_check_verdict.py claim",
+            description="File premise-check argdown claims to OTEL / Phoenix.",
+        )
+        claim_parser.add_argument(
+            "--claim",
+            "--task",
+            dest="claim",
+            required=True,
+            help="Identifier of the claim or task.",
+        )
+        claim_parser.add_argument(
+            "--title",
+            default=None,
+            help="Optional short title for the claim or task.",
+        )
+        content_group = claim_parser.add_mutually_exclusive_group(required=True)
+        content_group.add_argument("--argdown", help="The argdown block, inline.")
+        content_group.add_argument(
+            "--argdown-file",
+            help="Read argdown from this file, or from stdin when '-'.",
+        )
+        claim_parser.add_argument(
+            "--session",
+            default=os.environ.get("AOPS_SESSION_ID", ""),
+            help="Session id. Defaults to $AOPS_SESSION_ID.",
+        )
+        cargs = claim_parser.parse_args(argv[1:])
+        text = cargs.argdown if cargs.argdown is not None else _read_reason(cargs.argdown_file)
+        try:
+            result = record_claims(
+                session_id=cargs.session,
+                claim_id=cargs.claim,
+                argdown_text=text,
+                title=cargs.title,
+            )
+        except (OSError, ValueError, RuntimeError, ImportError) as exc:
+            print(f"premise_check_claim: {exc}", file=sys.stderr)
+            return 1
+        print(json.dumps(result))
+        return 0
+
     parser = argparse.ArgumentParser(
         prog="premise_check_verdict.py",
         description="Record a premise-check verdict and disarm the premise check.",

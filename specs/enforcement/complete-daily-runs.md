@@ -44,7 +44,7 @@ The agent stated that it curtailed the run because "the note looked current and 
 
 1. **Cognitive Evasion Under Large Task Breadth:** The daily note lifecycle comprises eight distinct phases (Steps 0 through 7), requiring multiple tool and subagent interactions. When an agent encounters an existing daily note touched earlier in the day, the agent rationalizes that doing a partial delta or appending a single line satisfies the goal while avoiding the context load of a full pass.
 2. **Absence of an Imperative Execution Invariant in the daily-note template:** While the daily-note template enumerates Steps 0 through 7, it lacked an explicit fail-loud precondition forbidding early return on perceived currency, as well as an explicit audit requirement for step completion.
-3. **Surface Drift Across Plugin and Execution Environments:** On `release/v1.0-rc0`, `plugins/ida/skills/daily/SKILL.md` was deleted under the assumption that the daily-note template directly governs daily note generation. However, in the installed distribution plugin (`1.0-rc13`), `daily/SKILL.md` remained present but directed the agent to run `wf-daily` (which had been deleted). Furthermore, scheduled task runner prompts loaded separate instructions lacking explicit step-execution guarantees.
+3. **Surface Drift Across Plugin and Execution Environments:** On `dev`, `plugins/ida/skills/daily/SKILL.md` was deleted under the assumption that the daily-note template directly governs daily note generation. However, in the installed distribution plugin (`1.0-rc13`), `daily/SKILL.md` remained present but directed the agent to run `wf-daily` (which had been deleted). Furthermore, scheduled task runner prompts loaded separate instructions lacking explicit step-execution guarantees.
 4. **Unmapped Enforcement in `specs/ENFORCEMENT-MAP.md`:** No entry existed in `specs/ENFORCEMENT-MAP.md` for complete step execution in daily note runs. The only existing daily note entry (row 66) governed brevity and the 25-word scannable ceiling.
 
 ## 3. The Operative Rule: Complete Daily Run Step Execution Invariant
@@ -80,7 +80,7 @@ A daily note run touches four distinct surfaces depending on invocation:
    - _Current State:_ Lacks the Complete Step Execution Invariant in its Invariants table.
 3. **Plugin Skill `plugins/ida/skills/daily/SKILL.md`:**
    - _Role:_ CLI and Telegram `/daily` command handler within `plugins/ida`.
-   - _Current State:_ Deleted on `release/v1.0-rc0`; still present in the installed `1.0-rc13` release pointing to non-existent `wf-daily`. Restoring this skill with explicit pointers to the daily-note template and step-execution obligations aligns interactive invocation with the canonical PKB template.
+   - _Current State:_ Deleted on `dev`; still present in the installed `1.0-rc13` release pointing to non-existent `wf-daily`. Restoring this skill with explicit pointers to the daily-note template and step-execution obligations aligns interactive invocation with the canonical PKB template.
 4. **Scheduled Task Runner Prompt (`daily-morning`):**
    - _Role:_ Directs scheduled morning runs (e.g. via Claude Code scheduled tasks or cron).
    - _Current State:_ Updated on 2026-10-30 with new instructions to counteract skipped steps. The design provides the prompt contract to ensure future runner prompts remain aligned with the daily-note template.
@@ -162,7 +162,7 @@ flowchart TD
      `"Fetch the daily-note template from PKB and execute all Steps 0 through 7 in full sequence. Do NOT cut corners or terminate early if the note appears current."`
    - This reinforces the template's internal fail-loud preconditions at intake.
 3. **Repository and Distribution Plugin Alignment:**
-   - Restore `plugins/ida/skills/daily/SKILL.md` in `release/v1.0-rc0`.
+   - Restore `plugins/ida/skills/daily/SKILL.md` in `dev`.
    - Update its body to fetch the daily-note template dynamically from PKB and mandate complete execution of Steps 0 through 7.
    - When the next distribution release is built and deployed, the `/daily` command will seamlessly execute the canonical PKB template.
 
