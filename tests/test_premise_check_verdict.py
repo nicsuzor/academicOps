@@ -186,6 +186,37 @@ def test_task_record_handback_verdict_records_with_construct_drift():
     assert span["attributes"]["premise_check.defect_tag_count"] == 1
 
 
+def test_revise_recorded_when_only_failure_is_insufficient_for_stakes():
+    """A sufficiency failure written on a Valid line records REVISE and its tag."""
+    tracer = _StubTracer()
+    task_id = "proj_0000abcd"
+
+    reason = (
+        f"Judged: {task_id}; asks {task_id}/AC1\n"
+        "Valid: (3) fails #insufficient-for-stakes -- the merge it authorises rests on "
+        "a worker's unchecked report that review passed\n"
+        "Supported: (2) worker reported, unchecked; cannot bear a merge\n"
+        f"Answered: {task_id}/AC1 ← (3)\n"
+        "Sufficient: (3) material; authorises a merge; sent back\n"
+        "Waived: none\n"
+        "Relay: none"
+    )
+
+    res = pcv.record_verdict(
+        session_id="supervisor-session-insufficient",
+        claim_id=task_id,
+        verdict="REVISE",
+        reason=reason,
+        title="sufficiency failure",
+        tracer_mod=tracer,
+    )
+
+    assert res["ok"] is True
+    assert res["verdict"] == "REVISE"
+    attrs = tracer.exported[0]["spans"][0]["attributes"]
+    assert attrs["premise_check.defect_tags"] == ["#insufficient-for-stakes"]
+
+
 def test_non_task_claim_refused_when_unarmed():
     """Non-task claim ids still refuse with 'no premise check is currently armed' when unarmed."""
     tracer = _StubTracer()

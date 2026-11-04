@@ -89,6 +89,10 @@ Prompt hydration (`search_the_pkb`, detailed in [`specs/agents/prompt-hydration.
 - **Session attribution metadata**: Every hydration query passes a `_session` payload containing `session_id`, `prompt_id`, `agent_id`, `caller: "hook"`, and `surface` (`"agy"`, `"github-actions"`, or `"claude-code"`), matching `prompt_id` across the MCP request and hook span.
 - **Quiet failure & empty handling**: Injects nothing on empty or whitespace search results; on server/network failure, injects a single concise line naming the failure cause without dumping stack traces or polluting agent context.
 
+### Plugin startup delivery channel (JIT injection)
+
+Every plugin runs a `SessionStart` hook that injects a plugin-scoped `CORE.md` (at most 20 lines) into ambient session context, providing concise guidance for that plugin's features without extraneous or agent-specific text ([`specs/agents/startup-core-routing.md`](../agents/startup-core-routing.md)).
+
 ## Proportionality and force of intervention
 
 Enforcement is chosen by **proportionality, frequency, scope, and force of intervention**, assessed in context rather than as a mechanical ladder.

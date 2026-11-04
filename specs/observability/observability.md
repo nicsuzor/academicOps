@@ -170,4 +170,4 @@ Spans emitted by the `aops-debug` plugin for hook events on Claude Code and `agy
 | **AC-1** Payload in `input.value` without duplication | Spans carry full secret-redacted payload in `input.value` and do not duplicate into `hook.raw_payload`. | `tests/test_claude_code_tracer_session_events.py` asserts presence of full payload text in `input.value`, secret redaction, and absence of `hook.raw_payload` across 30 Claude Code and 5 agy hook events. |
 | **AC-2** Identifying Metadata Retention | Every hook call yields one span whose attributes identify event, description, tool type, and session. | Parametrized tests assert `hook.plugin`, `hook.client`, `hook.event`, `session.id`, `description`, `tool.name`, and `tool.type` across all events. |
 | **AC-3** Governing Spec | Spec states contract, field inventory, and justification. | Documented in `specs/observability/observability.md`. |
-| **AC-4** Delivery Verification | Clean PR into `release/v1.0-rc0` with passing suite and linters. | Full pytest suite and `make lint` green. |
+| **AC-4** Delivery Verification | Clean PR into `dev` with passing suite and linters. | Full pytest suite and `make lint` green. |
