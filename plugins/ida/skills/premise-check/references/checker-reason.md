@@ -37,6 +37,7 @@ For PASS the recorder checks, and refuses on any miss:
 - the `Supported` line is present and non-empty;
 - every `Waived` entry starts with a format item (`block`, `numbering`, `endnotes`, `basis wording`, `ask wording`, `layout`); rule violations are strictly non-waivable;
 - every `Relay` line names lines that exist in the block.
+- no line that the block's `answers`, an `Answered` line or a `Relay` line names is written as a conclusion (`So, ...`) with no inference bar yielding it. That orphan conclusion has no `Valid` line to judge it; the missing bar is the report writer's `#missing`, sent back with REVISE (`Valid: (n) fails #missing -- ...`).
 
 With no `argdown` block in the judged text, or one whose frontmatter does not parse, the block cross-checks cannot run: PASS then needs `Waived: block -- ...` and the remaining checks run against the reason alone.
 
