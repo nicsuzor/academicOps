@@ -26,7 +26,7 @@ As the user interacting with the primary assistant on terminal console or messag
 
 ### US-2 Subagent Delegation, Briefing, and Tool Routing
 
-As an orchestrating agent delegating tasks to subagents or workers, I want delegation briefs that specify only what and why without dictating mechanical methods, and reliable tool routing across platforms, so that specialist agents execute within their distinct authority without construct drift or invocation failures.
+As the user relying on multi-agent delegation across sessions, I want orchestrating agents to write delegation briefs that specify only what and why without dictating mechanical methods, and route tools reliably across platforms, so that specialist agents execute within their distinct authority without construct drift or invocation failures.
 
 - **AC-2.1** Given a direction or task originating from the user, when the agent drafts a delegation brief for a subagent or worker, then the brief preserves the user's meaning and exact noun for what is to be created, cites originating message identifiers, and excludes prescriptive implementation methods, narrow line ranges, or acceptance criteria steering how the task is executed.
 - **AC-2.2** Given a need for context regarding an ongoing session, thread, or external task that is absent from local context, when the agent evaluates the missing information, then the agent queries the thread holder or peer possessing the record rather than declaring to the user that the item does not exist.
@@ -48,7 +48,7 @@ As the user receiving updates over a dedicated Telegram channel, I want message 
 
 ### US-4 Repository Boundaries, Git Hygiene, and State Invariants
 
-As a contributor or automated worker across framework repositories, I want clear data boundaries, commit hygiene, and state invariants, so that sensitive internal metadata is never leaked to public destinations and commitments are persisted reliably.
+As a repository owner or contributor across framework repositories, I want clear data boundaries, commit hygiene, and state invariants, so that sensitive internal metadata is never leaked to public destinations and commitments are persisted reliably.
 
 - **AC-4.1** Given a commit, pull request body, or merge message prepared for a public destination repository, when the agent creates the git artifact, then all session trailers, attribution footers, and internal knowledge base identifiers are strictly excluded, overriding any automated harness attribution reminders.
 - **AC-4.2** Given an interaction where the agent agrees to modify its future behavior or adopt a correction, when the agent replies, then the agent accompanies any behavioral commitment with a same-turn write to an instruction file, rule, hook, or task record that persists the change past session boundaries.

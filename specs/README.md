@@ -21,6 +21,7 @@
 - [agents/face-ida-triage-and-tracked-requests.md](agents/face-ida-triage-and-tracked-requests.md) -- face-Ida triage decision, subagent twin verification, tracked-request closed-loop delivery, and retirement of legacy /mine tracking.
 - [agents/compliance-consequences-removal.md](agents/compliance-consequences-removal.md) -- removal of volunteered compliance and conflict-of-interest consequences in decision conversations.
 - [agents/authoritative-user-task-reports.md](agents/authoritative-user-task-reports.md) -- authoritative user task reports deciding task state and ministerial lifecycle execution in Pauli.
+- [agents/decision-queue-boundaries.md](agents/decision-queue-boundaries.md) -- decision-queue boundaries, informational query list-routing, conversational pacing, and preservation of collaborative design exploration.
 
 ## Enforcement
 
@@ -41,9 +42,11 @@
 - [enforcement/preventing-over-engineering.md](enforcement/preventing-over-engineering.md) -- eliminating over-engineered mechanical software builds and enforcing agentic-first workflows.
 - [enforcement/direct-user-instructions.md](enforcement/direct-user-instructions.md) -- direct user instruction execution and authority boundary.
 - [enforcement/reviewer-class-standard-check.md](enforcement/reviewer-class-standard-check.md) -- reviewer class-standard verification across changed files in candidate changes.
+- [enforcement/coordinator-failure-enforcement.md](enforcement/coordinator-failure-enforcement.md) -- design enforcement moves and observable build criteria for five coordinator failure classes.
 - [enforcement/auto-mode-classifier.md](enforcement/auto-mode-classifier.md) -- Claude Code auto-mode classifier design and cost model.
 - [enforcement/handback-format-design.md](enforcement/handback-format-design.md) -- premise-check handback format design review: empirical sample, Toulmin structure preservation, and migration plan.
 - [enforcement/premise-check-rejection-load-instruction.md](enforcement/premise-check-rejection-load-instruction.md) -- premise-check load instructions in argument rejections and refusals across hearsay gate, verdict recorder, and checker surfaces.
+- [enforcement/premise-check-instruction-tuning.md](enforcement/premise-check-instruction-tuning.md) -- instruction and refusal message tuning to eliminate format errors across report sender and checker surfaces.
 
 ## Polecat
 

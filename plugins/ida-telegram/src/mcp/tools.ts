@@ -275,6 +275,35 @@ export const MCP_TOOLS: ToolDefinition[] = [
     },
   },
   {
+    name: "create_thread",
+    description:
+      "Create a new Telegram forum topic (thread) with a given title. Sets the active thread so subsequent replies land inside it.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        chat_id: { type: "integer", description: "Telegram chat ID (defaults to primary user)" },
+        name: {
+          type: "string",
+          description: "Name for the new thread (1-128 characters)",
+        },
+        title: {
+          type: "string",
+          description: "Alias for name",
+        },
+        icon_color: {
+          type: "integer",
+          description:
+            "Optional RGB color of topic icon (e.g. 7322096, 16766590, 13338331, 9367192, 16749490, 16478047)",
+        },
+        icon_custom_emoji_id: {
+          type: "string",
+          description: "Optional custom emoji ID for the topic icon",
+        },
+      },
+      required: ["name"],
+    },
+  },
+  {
     name: "download_attachment",
     description: "Download a Telegram attachment or voice note to a local path.",
     inputSchema: {
