@@ -43,6 +43,14 @@ _ATTR_BLOCK = re.compile(r"\{(?P<attrs>[^{}]+)\}\s*$")
 _BASIS_ATTR = re.compile(r"\bbasis\s*:\s*(?:\"([^\"]+)\"|'([^']+)'|([^,}\n]+))")
 _LINE_REF = re.compile(r"\((?P<n>\d+)\)")
 _ARROW = re.compile(r"←|<-")
+# A line written as a conclusion: the form opens every step with the connective
+# "So" (after an optional ``[Label]:``), whether or not a bar sits above it.
+# "So" followed by punctuation or a clause is the connective; "So far", "So long
+# as", "So much" and the like open an ordinary sentence, and "So-called" is a word.
+_CONCLUSION_MARK = re.compile(
+    r"^(?:\[[^\]]+\]:?\s*)?so(?:\s*[,:;]|\s+(?!(?:far|long|much|many|few|little)\b))",
+    re.IGNORECASE,
+)
 _VALID_ENTRY = re.compile(
     r"^\s*(?P<lines>(?:\(\d+\)(?:\s*(?:,|and)\s*)*)+)\s+(?P<word>holds?|fails?)\b(?P<rest>.*)$",
     re.IGNORECASE,
@@ -240,6 +248,38 @@ def normalise_argdown_block(text: str) -> str:
     lines = [ln.rstrip() for ln in text.splitlines()]
     dedented = textwrap.dedent("\n".join(lines))
     return dedented.strip("\n")
+
+
+_ANSWERS_KEY = re.compile(r"^answers\s*:\s*$")
+_PAREN_ANSWER_LINE = re.compile(
+    r"^(?P<head>\s+[^:\s][^:]*:\s*)(?P<q>[\"']?)\(\s*(?P<n>\d+)\s*\)(?P=q)\s*$"
+)
+
+
+def unparenthesise_answers(block_text: str) -> str:
+    """Rewrite ``<ask>: (n)`` as ``<ask>: n`` in the frontmatter's ``answers:`` mapping.
+
+    The recorder applies this only when the checker waives ``numbering``, so a
+    parenthesised answering line is judged as the line it names.
+    """
+    lines = block_text.splitlines()
+    split = _split_frontmatter(lines)
+    if split is None or split[0] is None:
+        return block_text
+    start = next(i for i, ln in enumerate(lines) if ln.strip())
+    in_answers = False
+    for i in range(start + 1, len(lines)):
+        line = lines[i]
+        if line.strip() == _FRONTMATTER_FENCE:
+            break
+        if _ANSWERS_KEY.match(line):
+            in_answers = True
+            continue
+        if in_answers and line.strip() and not line.startswith((" ", "\t")):
+            in_answers = False
+        if in_answers and (m := _PAREN_ANSWER_LINE.match(line)):
+            lines[i] = f"{m.group('head')}{m.group('n')}"
+    return "\n".join(lines)
 
 
 def extract_block(text: str | None) -> str | None:
@@ -635,7 +675,10 @@ def check_argdown_block(
                         f"Argdown frontmatter requires raw integer line numbers without parentheses, or 'none'.\n"
                         f"Required remediation format:\n"
                         f"answers:\n"
-                        f"{remedy_lines}",
+                        f"{remedy_lines}\n"
+                        f"A checker judging a sound argument records this format slip instead: "
+                        f"PASS with 'Waived: numbering -- <what was off>', or REVISE with "
+                        f"'Format: numbering -- <what to fix>'.",
                         None,
                     )
                 invalid_structure = [
@@ -1245,6 +1288,13 @@ def remediation_for_failure(failure: str) -> str:
             "Required remediation: Fix syntax/formatting so the argdown block parses, "
             "or record 'Waived: block -- <justification>'."
         )
+    if "is a conclusion no inference bar yields" in failure:
+        return (
+            "Required remediation: the missing bar is the report writer's #missing, not the "
+            "checker's to supply or to drop from Valid. Send the report back:\n"
+            "  Valid: (n) fails #missing -- no inference bar yields (n)\n"
+            "  verdict.py --claim <id> --verdict REVISE --reason-file <path>"
+        )
     if "Relay names" in failure:
         return (
             'Required remediation format:\nRelay: "<sentence to relay>" ← (n)\n# or:\nRelay: none'
@@ -1407,6 +1457,41 @@ def pass_failures(
                 failures.append(
                     f"Relay names lines not in the block ({', '.join(map(str, absent))}): {entry!r}"
                 )
+    # Not lifted by a block waiver: a format waiver never stands in for a missing bar.
+    if block is not None:
+        failures.extend(_orphan_conclusion_failures(reason, block))
+    return failures
+
+
+def _orphan_conclusion_failures(reason: Reason, block: Argument) -> list[str]:
+    """Lines the report relies on that are written as conclusions with no bar above them.
+
+    A line is relied on when the block's ``answers`` or the reason's ``Answered``
+    or ``Relay`` names it. Structure only: the line's form (opens with "So") and
+    its place (no inference bar yields it), never what it says.
+    """
+    relied: dict[int, list[str]] = {}
+    for ask, n in block.answers.items():
+        if isinstance(n, int):
+            relied.setdefault(n, []).append(f"answers {ask}")
+    for a in reason.answered():
+        if a and a[1] is not None:
+            relied.setdefault(a[1], []).append(f"Answered {a[0]}")
+    for entry in reason.get("Relay"):
+        if not _is_none(entry):
+            for n in relay_refs(entry):
+                relied.setdefault(n, []).append("Relay")
+    barred = set(block.conclusions)
+    failures = []
+    for n in sorted(relied):
+        text = block.lines.get(n)
+        if text is None or n in barred or not _CONCLUSION_MARK.match(text.strip()):
+            continue
+        uses = ", ".join(dict.fromkeys(relied[n]))
+        failures.append(
+            f"orphan conclusion: line ({n}) is a conclusion no inference bar yields, "
+            f"and the report relies on it ({uses}); no Valid line can judge it"
+        )
     return failures
 
 
