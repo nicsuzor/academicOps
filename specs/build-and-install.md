@@ -112,8 +112,8 @@ automation (GitHub Actions integration id 2921286) allowed to bypass.
    - **Publish to `main`**: after the GitHub Release, the same build is committed to `main` by `scripts/publish-dist-to-main.sh`, so the Claude Code marketplace on `main` always serves the newest release, candidates included. A manual run checks out the tag it names, not the branch it was started from.
    - **Publish constraints**: RC builds never publish to container registries (GHCR).
 3. **Publishing stable release to `main`.** Stable releases reach `main` via `release-please`
-   or a forced manual build pipeline executing `scripts/publish-dist-to-main.sh` under the release
-   automation integration bypass. Direct human or admin pushes to `main` are blocked.
+   (triggered on pushes to `dev`) or a forced manual build pipeline executing
+   `scripts/publish-dist-to-main.sh` under the release automation integration bypass. Direct human or admin pushes to `main` are blocked.
 4. **Build on merge.** Every merge into `main` triggers `.github/workflows/build-extension.yml`.
    The workflow:
    - Computes the version from `build.version`.
