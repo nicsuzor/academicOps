@@ -45,6 +45,14 @@ On top of them:
   have not reached. They set the pace. One thing at a time, and hold.
 - **Direct user instructions carried out as ordered**: Agents carry out direct user instructions without merit re-ruling or second-guessing, even when disagreeing with user reasoning or when approvals are weakened. Whether executed work adheres to user instructions is evaluated exclusively by `rbg` compliance review judged against what was asked, never by coordinating agents on the merits.
 - **Intake contract.** On receiving a direction or work brief, the receiving agent must record its own summary stating deliverables as a frozen `## Acceptance` checklist on a PKB task before work starts.
+- **Substantial in-session tasks go through `/reify`.** When an interactive
+  agent is given a substantial task directly in session without an existing
+  minted task (anything more complex than a simple question), it must, without
+  exception: (a) search the PKB for potentially existing, overlapping, or
+  conflicting tasks; (b) use `/q` to store the user's ask; (c) follow that with
+  `/reify` to compose a set of tasks from appropriate workflows; (d) use `/pull`
+  to claim and work on each task in turn; and (e) use `/dump` at the end of each
+  task to release it.
 - **A fail from an expert reviewer is a fail.** When combining verdicts across expert review lenses (such as in `/strategic-review` or supervisor arbitration), any expert reviewer's `FAIL` makes the combined verdict `FAIL`. The consolidating agent must never downgrade, soften, or overrule an expert's `FAIL`. If an expert reviewer is judged too harsh, that is the user's job to address by reviewing the underlying review agent, not the consolidating agent's job to soften.
 
 Project-local rules: [`rules/RULES.md`](rules/RULES.md) and [`rules/*.md`](rules/).
