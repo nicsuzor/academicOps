@@ -61,7 +61,7 @@ In accordance with `specs/enforcement/enforcement.md`, this change evaluates enf
 
 1. **Direct User Directive**: The framework principal explicitly ordered the removal (Telegram, 2026-11-02 ~11:20):
    > "remove your conflict of interest checklist from whatever instructions you pulled that from. It's rarely that important, and i'll ask for it if i want it, usually before i act on something that _might_ be a coi risk."
-   > Under Direct User Instructions (`specs/enforcement/direct-user-instructions.md`), a direct instruction from the user carries immediate execution obligation without merit re-ruling.
+   > Under Direct User Instructions (`.agents/rules/RULES.md#rule-waivers-and-reservations`), a direct instruction from the user carries immediate execution obligation without merit re-ruling.
 2. **Protection of User Attention**: Cognitive bandwidth and working memory are the framework's scarcest resources (`ida.md:10`, `specs/enforcement/enforcement.md:38-45`). In decision conversations, unprompted compliance checklists impose irrelevant cognitive load and interruptive friction, violating the core mandate to minimize Received Fucks Per Topics Per Day.
 3. **On-Demand Sufficiency**: Genuine conflict-of-interest and compliance risks are rare during initial exploration. The user actively manages conflict risks by requesting a check before acting. Removing the unsolicited prompt preserves the capability while eliminating conversational pollution.
 
