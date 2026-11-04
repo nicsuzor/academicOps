@@ -27,6 +27,7 @@ On top of them:
 - **Installed runtime plugins are strictly read-only.** Never write to or edit `~/.gemini/config/plugins/` or `~/.claude/plugins/`. All modifications belong in the source repository.
 - **Never edit a tracked file through a shell.** No heredoc, `python3 -c`,
   `sed -i`, or `awk`. Use Read/Write/Edit. If they cannot do it, stop and report.
+- **Scratch files go in the repo's own `scratch/` directory, never in `/tmp` or the harness scratchpad.** The auto-mode classifier sends the user a permission prompt for every Bash call that reads or writes outside the working directory; that includes the premise-check recorder's `--reason-file` and any argdown file the parser validates. Write the file with the Write tool, then run the recorder or parser as one plain command on one file: no heredocs, `for` loops, `sed`, or `find -exec`, which the classifier cannot read and also sends to the user.
 - **Commit immediately, and push.** After any change, commit with a short,
   descriptive message — this container is ephemeral and uncommitted work
   disappears with it. Never write `.bak`/`.orig`/copy-suffixed files; git
@@ -64,4 +65,4 @@ JSON, and TOML files; and `uv run ruff format` / `uv run ruff check --fix` for P
 
 ## Workspaces and worktrees
 
-- NEVER create git worktrees, clones, or scratch directories inside the repository or under `.agents/`. Use `$POLECAT_HOME/worktrees` instead.
+- NEVER create git worktrees or clones inside the repository or under `.agents/`. Use `$POLECAT_HOME/worktrees` instead.
