@@ -49,7 +49,7 @@ states and invariants, and the reason for each design choice.>
 
 **Self-contained.** A reader needs no other file to understand the spec. Where the feature needs something from its surroundings, the spec states that need as its own requirement ("each claim arrives with a pointer to its evidence") and leaves the supplier unnamed. The spec carries no links to other specs, rules, agents, harnesses or code. The test: a change to any other feature never forces an edit here.
 
-**The contract, not its enforcement.** A spec defines what the feature promises. The checks, gates, reminders and reviews that hold parties to that promise belong in their own spec, or, when simple, in `ENFORCEMENT-MAP.md`.
+**The contract, not its enforcement.** A spec defines what the feature promises. The checks, gates, reminders and reviews that hold parties to that promise belong in their own spec. When editing `ENFORCEMENT-MAP.md`, every row must only reference a specific rule derived from our axioms and applicable to agents working in any third-party project; workflows and feature specs are not rules, do not enforce rules, and must never produce token enforcement map rows (as the only applicable rule for workflows is "agents must follow workflows given to them" and nothing more than that).
 
 **Positive and direct.** Each sentence states what is true and who does it: "the receiver checks every pointer", not "the sender is not responsible for pointers". Non-goals, exclusions and disclaimers stay out; whatever the spec leaves unstated is out of scope.
 

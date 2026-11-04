@@ -4,7 +4,7 @@ id: enforcement_map
 
 # Enforcement map
 
-The enforcement map is a concise cross-reference table showing what kind of enforcement is applied to each rule. It is not a summary of specifications or workflows. See [`enforcement/enforcement.md`](enforcement/enforcement.md) for governing principles and [`enforcement/enforcement-map.md`](enforcement/enforcement-map.md) for schema and inclusion rules.
+The enforcement map is a concise cross-reference table showing what kind of enforcement is applied to each rule. When editing the enforcement map, every row must **only** reference a specific rule derived from our axioms ([`plugins/rbg/skills/axioms/`](../plugins/rbg/skills/axioms/)) and applicable to agents working in any third-party project -- never repository-local project rules, subsystem feature specifications, or workflows. Workflows are not rules and do not enforce rules; creating or modifying workflows must not produce token enforcement map rows, as the only applicable rule is "agents must follow workflows given to them" and nothing more than that. See [`enforcement/enforcement.md`](enforcement/enforcement.md) for governing principles and [`enforcement/enforcement-map.md`](enforcement/enforcement-map.md) for schema and inclusion rules.
 
 **Universal axiom baseline (applies to every `trigger: always_on` axiom below):**
 
