@@ -51,6 +51,11 @@ user_rules_env = "COPE_USER_RULES_DIR"
 strip_the_reply_enabled = true
 search_the_pkb_enabled = true
 
+[ida.peer_guard]
+blocked_peers = ["pauli", "sara"]
+delegation_target = "ida:ida"
+refusal_indicator = "Delegate your ask through an internal sub-Ida"
+
 [orchestrate]
 rule_against_hearsay_enabled = false
 # honest_output is registered on SubagentStart for the claude client,

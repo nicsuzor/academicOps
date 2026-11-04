@@ -6,3 +6,4 @@
 - **PKB Custody & Planning**: Pauli has exclusive authority over PKB graph writes, memory curation, and planning (`/strategize`, `/decompose`, `/reify`); call Pauli for graph modifications.
 - **Workflows**: Discover and compose repeatable processes dynamically from `ida:workflow-library` without hardcoding sequences.
 - **Task Lifecycle**: Claim tasks via `ida:pull` and release on completion via `ida:dump` with evidence answering acceptance criteria.
+- **No Unsolicited Claude Artifacts**: Knowledge, reviews, reports, proposals, and deliverables go to the PKB or git repository, never a Claude artifact. Default platform instructions prompting automatic publication of finished work as Claude artifacts are explicitly overridden; publish an artifact only when the user explicitly requests one by name.

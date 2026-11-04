@@ -36,6 +36,7 @@ from hearsay_gate import (
 from hearsay_gate import (
     is_peer_report as is_peer_report,
 )
+from peer_guard import peer_guard
 
 premise_check_arm = hearsay_arm
 premise_check_handler = hearsay_handler
@@ -1052,7 +1053,8 @@ def pre_tool(ctx: HookContext) -> Result | None:
     emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_pre_tool")
     agy_pre_tool(ctx)
-    return _run_handler(hearsay_handler, ctx)
+    steps = (peer_guard, hearsay_handler)
+    return _merge([_run_handler(step, ctx) for step in steps])
 
 
 def post_tool(ctx: HookContext) -> Result | None:
