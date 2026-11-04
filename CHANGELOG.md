@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.1.0](https://github.com/nicsuzor/academicOps/compare/v1.0.1...v1.1.0) (2026-11-04)
+
+
+### Features
+
+* **ida:** add dump triggers for operational faults and major finds ([2592b09](https://github.com/nicsuzor/academicOps/commit/2592b09b78aec7282e719ae68b396f6c3af9efcd))
+* **ida:** specify and implement dump triggers for operational faults and major finds ([5763897](https://github.com/nicsuzor/academicOps/commit/5763897b61ddbe07d3fa0a22fbf03a46ca9e6094))
+* **startup:** design per-plugin CORE.md startup injection ([352dda0](https://github.com/nicsuzor/academicOps/commit/352dda0e064cb4eab6912789d64b66da86fdd7b6))
+
+
+### Bug Fixes
+
+* **ida-telegram:** ensure null sendReply result surfaces as explicit failure ([d8a0de0](https://github.com/nicsuzor/academicOps/commit/d8a0de09ed797be95653465430655e7b943c6862))
+* **ida-telegram:** route unthreaded replies to inbound message and verify outbound thread ([44e9bee](https://github.com/nicsuzor/academicOps/commit/44e9bee2d9141d3f02ea25a652e07d15bea37cbe))
+* **ida-telegram:** route unthreaded replies to inbound message and verify outbound thread ([c2a77a0](https://github.com/nicsuzor/academicOps/commit/c2a77a047e2ea4e35ca190ed834829ebc94049d6)), closes [#3462](https://github.com/nicsuzor/academicOps/issues/3462) [#3463](https://github.com/nicsuzor/academicOps/issues/3463)
+* **premise-check:** keep the orphan-conclusion refusal under a block waiver; read "So" only as a connective ([6fb6ab5](https://github.com/nicsuzor/academicOps/commit/6fb6ab5922324007c7d97594bd889861cf974633))
+* **premise-check:** refuse a PASS that relies on a conclusion no inference bar yields ([f1359c5](https://github.com/nicsuzor/academicOps/commit/f1359c52e93593b4397b4c70107245b8e2fea187))
+
+
+### Documentation
+
+* **specs:** add Ida deployment startup rules migration spec ([2784e64](https://github.com/nicsuzor/academicOps/commit/2784e64ebd3d51c4fc57572133c9dc3a27789686))
+* **specs:** extend knowledge base facts spec with archive, one-note, and learn filing rules ([109aca3](https://github.com/nicsuzor/academicOps/commit/109aca39e3b9b0349bc829688627c7721bb205f7))
+* **spec:** specify default planning workflow for repo specs and task-graph plans ([4088b42](https://github.com/nicsuzor/academicOps/commit/4088b42aaa512895b5d476a885a74007648d2bd2))
+* **specs:** redact private domain from dump triggers spec and polish custodian wording ([5655e5c](https://github.com/nicsuzor/academicOps/commit/5655e5c50388087aac059f7442e388d09accc5ce))
+* **specs:** resolve strategic review findings for dump triggers spec ([fa8d890](https://github.com/nicsuzor/academicOps/commit/fa8d89061468562106a90872f9d0d587bb69e01e))
+* **specs:** retarget release/v1.0-rc0 references to dev ([77d7df1](https://github.com/nicsuzor/academicOps/commit/77d7df157d9a9b1ee0670a3fa7c9a22847a54162))
+* **specs:** retarget release/v1.0-rc0 references to dev ([4f9020b](https://github.com/nicsuzor/academicOps/commit/4f9020bb9e5587c9bc0c93d2b0e4ecf12b62446e))
+* **specs:** specify dump skill triggers for operational faults and major finds ([a1016ad](https://github.com/nicsuzor/academicOps/commit/a1016ad44c54a9a101a0dfbdfd275c2c0494b8f8))
+* **specs:** specify premise-check load instructions in argument rejections ([3dec986](https://github.com/nicsuzor/academicOps/commit/3dec9868972f02ee92440bce728c7e652dffde5f))
+* **specs:** update default planning to treat draft to ready transition as approval ([526878e](https://github.com/nicsuzor/academicOps/commit/526878ef95d6b7777b3a6dde900f38b7e5f83d46))
+
 ## [1.0.1](https://github.com/nicsuzor/academicOps/compare/v1.0.0...v1.0.1) (2026-11-04)
 
 ### Bug Fixes
