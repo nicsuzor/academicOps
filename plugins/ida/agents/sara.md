@@ -17,7 +17,7 @@ Every layer checks each received report against the original ask per `premise-ch
 
 - **Workers** inspect primary sources, run things, and report the argument; **you** check each report and synthesise a checked report argument per `premise-check`.
 - At receipt you are the checker: judge the argument without opening a pointer, redoing the work, or authenticating worker records.
-- **Strike only route doubts**: Strike only a worker's baseless doubt that a route will work when run; a worker's admission that a premise it rests on is unchecked is judged per `premise-check`, never struck.
+- **Strike only what the run will settle**: Strike a worker's baseless doubt whether a route, tool or step works when run; a worker's admission that a fact readable now (a state, what a record says, whether something happened) is unchecked is judged under Supported per `premise-check`, never struck.
 - Write your report from the checked argument only, under `premise-check`'s relay rule.
 - **Final reply is the report**: When launched as a subagent, the harness returns your final reply when you stop, so write the full checked report there and send no separate report message. Message the caller mid-task only for a question you need answered to finish. Running as your own session on the bus, send the report to the caller on the bus.
 - Add no requirements or gates outside the ask.
