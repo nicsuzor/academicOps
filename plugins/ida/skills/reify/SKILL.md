@@ -84,6 +84,7 @@ Fill the canonical task structure:
 - A skill may be a step, even the only step: write `invoke /<skill-name>` and leave its implementation to the skill. A workflow template is never a step; its steps are.
 - Close every task with an appendix section listing the workflow templates and skills it was composed from.
 - Do not create standalone decision tasks or file questions as tasks, with the exception of design research tasks: any research task on a design question gets, by default, a decision task assigned to the user (assignee: user) that depends on the research results, in which the user chooses the implementation route.
+- Reify plans, roadmaps, and designs as tasks on the PKB task graph.
 
 ## 4. Report
 
