@@ -105,16 +105,16 @@ flowchart TD
 
 ### Class 4: Subsystem Spec Accumulation and Boundary Erosion in the Enforcement Map
 
-- **Symptom & Defect:** `specs/ENFORCEMENT-MAP.md` accumulates subsystem feature specifications, background daemons, and general workflow summaries rather than governing agent behavioral rules.
+- **Symptom & Defect:** `specs/ENFORCEMENT-MAP.md` accumulates repository-local project rules, subsystem feature specifications, background daemons, and token workflow rows rather than specific rules derived from our axioms and applicable to agents working in any third-party project.
 - **Systemic Cause:**
-  - Ambiguous introductory framing led agents to treat `ENFORCEMENT-MAP.md` as an inventory table for all touched components.
-  - Reviewers verified pinpoint reference integrity (whether files and line numbers exist) without verifying entry validity (whether the entry is an agent rule).
+  - Ambiguous introductory framing and broad rule inclusion language led agents to treat `ENFORCEMENT-MAP.md` as an inventory table for project rules, workflows, and touched components.
+  - Reviewers verified pinpoint reference integrity (whether files and line numbers exist) or accepted project-local rules and workflows without verifying that every entry only references a specific rule derived from our axioms (`plugins/rbg/skills/axioms/`) and applicable to agents working in any third-party project.
 - **Carrying Mechanisms Today:**
   - `specs/enforcement/enforcement.md:14,46-54`.
   - `specs/ENFORCEMENT-MAP.md:5-14`.
-  - `.agents/rules/RULES.md` (`Enforcement changes run through options pass`).
-- **Architectural Invariant:** Formally established in companion specification [`enforcement-map.md`](enforcement-map.md): `specs/ENFORCEMENT-MAP.md` is strictly a concise cross-reference table documenting what kind of enforcement mechanism is applied to each governing RULE (axioms and project rules). Subsystem feature specs belong in `specs/<subsystem>/<name>.md`, not in the enforcement map. RBG verifies entry validity for any map modification.
-- **Enforcement Move & Evidence:** Fix at source in documentation framing, paired with an imperative review instruction for RBG to verify entry validity on enforcement map diffs.
+  - `.agents/rules/RULES.md` (`Enforcement changes run through the pyramid and update the spec`).
+- **Architectural Invariant:** Formally established in companion specification [`enforcement-map.md`](enforcement-map.md): `specs/ENFORCEMENT-MAP.md` is strictly a concise cross-reference table where every row **only** references a specific rule derived from our axioms (`plugins/rbg/skills/axioms/`) and applicable to agents working in any third-party project. Workflows are not rules and do not enforce rules; creating or modifying workflows must not produce token enforcement map rows, as the only applicable rule is "agents must follow workflows given to them" and nothing more than that. Subsystem feature specs belong in `specs/<subsystem>/<name>.md` and repository-local project rules belong in `.agents/rules/`, not in the enforcement map. RBG verifies entry validity for any map modification.
+- **Enforcement Move & Evidence:** Fix at source in documentation framing and project rules, paired with an imperative review instruction for RBG to verify entry validity on enforcement map diffs.
 
 ## One-Step Enforcement Moves & Proportionality Analysis
 
@@ -128,7 +128,7 @@ In accordance with the enforcement pyramid options pass ([`specs/enforcement/enf
 | **Task Composition Modularity (`reify/SKILL.md`)** | `instructions`, `imperative` (with embedded workflow logic) | Fix at source (`instructions`, `imperative`): purge hardcoded workflow rules; pure template composition | SSoT and runtime-workflow-composition rules already exist; embedding workflow logic into `reify` was a direct SSoT violation requiring cleanup at the source. |
 | **RBG Task Composition Review Duty** | `instructions`, `advisory` (general axiom check) | Escalate to `instructions`, `imperative` (explicit SSoT & runtime-composition check on task skills in `rbg.md`, `wf-rbg.md`) | Field evidence proved reviewers pass hardcoded workflow logic unless explicitly instructed to verify task skills against SSoT and `runtime-workflow-composition.md`. |
 | **Enforcement Map Purpose Definition** | `doctrine only` (ambiguous intro statements) | Fix at source (`instructions`, `imperative` in `specs/ENFORCEMENT-MAP.md` and `specs/enforcement/enforcement.md`) | Ambiguity in the document's introductory framing led agents to treat it as a subsystem changelog; clarifying the definition resolves the root cause. |
-| **RBG Enforcement Map Entry-Validity Review** | `process`, `required gate` (pinpoint ref check only) | Escalate within `instructions`, `imperative` in `rbg.md` & `wf-rbg.md` to verify Entry Validity | Review evidence showed reviewers approved subsystem entries because line pinpoints existed; RBG must evaluate whether the entry represents an agent rule. |
+| **RBG Enforcement Map Entry-Validity Review** | `process`, `required gate` (pinpoint ref check only) | Escalate within `instructions`, `imperative` in `rbg.md` & `wf-rbg.md` to verify Entry Validity | Review evidence showed reviewers approved subsystem, project-rule, and workflow entries because line pinpoints existed; RBG must verify that every row only references a specific axiom-derived rule applicable to agents in any third-party project and that workflows never produce token rows. |
 
 ## Architectural Foundation & Sibling Spec Alignment
 
@@ -145,7 +145,7 @@ The architecture establishes the following behavioural invariants across the sys
 1. **Operational Interface Boundary:** Agent personas and operational skills define strictly operational triggers, preconditions, execution boundaries, and completion contracts. External daemon topologies, container listeners, and telemetry span names remain outside agent prompt context.
 2. **Pure Workflow Composition:** Task reification skills assemble tasks exclusively through dynamic composition of modular workflow templates. Task generation logic embeds no hardcoded task categories, branching paths, or ad-hoc review gating rules.
 3. **Class-Specification Verification:** Review processes evaluate every modified file against the governing standard for its document taxonomy class, rejecting out-of-class details, instruction bloat, and architectural violations regardless of feature acceptance criteria, as governed by [`reviewer-class-standard-check.md`](reviewer-class-standard-check.md).
-4. **Enforcement Register Discipline:** The enforcement map records strictly active behavioral rules and their enforcement mechanisms within a concise cross-reference schema, excluding feature descriptions and workflow summaries, as governed by [`enforcement-map.md`](enforcement-map.md).
+4. **Enforcement Register Discipline:** Every row in `specs/ENFORCEMENT-MAP.md` only references a specific rule derived from our axioms (`plugins/rbg/skills/axioms/`) and applicable to agents working in any third-party project, excluding repository-local project rules, feature descriptions, and workflow rows (since workflows are not rules and do not enforce rules beyond "agents must follow workflows given to them" and nothing more than that), as governed by [`enforcement-map.md`](enforcement-map.md).
 
 ## Verification & Observability Metrics
 
@@ -154,4 +154,4 @@ The effectiveness of these systemic fixes will be observed and measured across f
 1. **Instruction Cleanliness:** Zero references to internal daemon queues, Docker exit listeners, or backend telemetry plumbing in `plugins/*/agents/*.md` and `plugins/*/skills/*/SKILL.md`.
 2. **Review Catch Rate:** Marsha's QA reviews explicitly evaluate changed files against class specs (`/craft`, `doc-taxonomy.md`, `enforcement.md`), catching and rejecting non-actionable implementation details before merge.
 3. **Task Composition Modularity:** `plugins/ida/skills/reify/SKILL.md` remains strictly under 80 lines and contains zero task-category branching logic. Reified tasks derive their full structure from workflow templates.
-4. **Enforcement Map Hygiene:** `specs/ENFORCEMENT-MAP.md` contains 100% rule cross-reference rows, with zero subsystem feature specifications or workflow lifecycle summaries.
+4. **Enforcement Map Hygiene:** `specs/ENFORCEMENT-MAP.md` contains 100% specific axiom-derived rule cross-reference rows applicable to agents in any third-party project, with zero repository-local project rules, subsystem feature specifications, or token workflow rows.

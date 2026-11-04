@@ -21,8 +21,8 @@ implementation without this template first is scope-creep waiting to happen.
 1. **Identify the target** — confirm a manual process worth automating, or a
    feature worth specifying.
 2. **Create the spec document** from the standard template.
-3. **Problem statement** — collaborative: what, why, for whom.
-4. **Acceptance criteria** — defined with the principal perspective, including a persona paragraph and any
+3. **Problem statement and user stories** -- collaborative: what, why, and for which human user. User stories must always be written from the perspective of a human person whom the system serves, never an agent, persona, worker, or internal component (`As an agent, I want...`); agents do not want anything and are given capabilities only to fulfil human user requirements.
+4. **Acceptance criteria** -- defined from the human principal's perspective, including a persona paragraph and any
    qualitative dimensions, not just mechanical checks.
 5. **Scope** — propose initial scope, explicitly define boundaries (what's out).
 6. **Dependencies** — required infrastructure/data; document error handling.
