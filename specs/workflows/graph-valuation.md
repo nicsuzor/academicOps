@@ -50,9 +50,11 @@ triage. If a commitment or project exceeds affordable loss, it is rejected, paus
 before entering the graph. Flow maths is kept unpolluted by subjective risk gating.
 
 **Decomposition probes and Value of Information (FQ8).** When resolving architectural or empirical
-uncertainties during decomposition, agents create explicit decision nodes `D` with `alternative` options,
-and wire exploratory spikes or research probes via `settles` edges. The engine routes decision value
-(EVPI) directly to the probe.
+uncertainties during decomposition where competing branches are decomposed further, agents create explicit
+decision nodes `D` with `alternative` option nodes (whereas a task with options to choose between and no
+immediate commitment beyond choosing keeps the choices and decision instructions inside the single task without
+subtasks or option nodes), and wire exploratory spikes or research probes via `settles` edges. The engine routes
+decision value (EVPI) directly to the probe.
 
 **Opening futures and capital stocks (S27).** Foundational investments (reputation, funding reserves,
 infrastructure, relationships) that expand future optionality are wired to capital stock hubs. Rather than
@@ -168,10 +170,12 @@ Covers U8, U9, U10, U11, S7, S24, S27, I7, I9.
    a date from urgency.
 10. **Effort.** Record `effort` when the input states it or the work is a known kind. The cliff lane
     reads it (FR:425).
-11. **Decisions & Decomposition Probes (FQ8, EVPI).** When the input is a choice between options, wire
-    each option `alternative` to the decision node `D`. When resolving architectural or empirical
-    uncertainties during decomposition (`decompose`), create spike/probe tasks wired with `settles`
-    to `D` ($q \in (0, 1]$). The engine computes EVPI and allocates decision value to the probe.
+11. **Decisions & Decomposition Probes (FQ8, EVPI).** When an input is a choice between options with no
+    commitment to doing anything immediately beyond choosing, keep the choices and instructions on how to make
+    the decision inside the single task without subtasks or option nodes. Only where competing option branches
+    are decomposed further during decomposition (`decompose`), wire each option node `alternative` to the
+    decision node `D`, and create spike/probe tasks wired with `settles` to `D` ($q \in (0, 1]$). The engine
+    computes EVPI and allocates decision value to the probe.
 12. **Do not write:** `intent` (FQ10), `severity` (FQ24), `stakeholder` as a weight
     (FQ25), target worth, `soft_depends_on`, or `supersedes` (FR:448).
 
