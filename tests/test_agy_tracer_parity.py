@@ -428,3 +428,264 @@ def test_long_turn_llm_span_attributes_stay_within_otel_128_limit(tmp_path: Path
         assert attrs.get("openinference.span.kind") == "LLM"
         assert "input.value" in attrs
         assert "output.value" in attrs
+
+
+def test_agy_subagent_parent_link_and_child_session_id(tmp_path: Path):
+    """When parent invokes invoke_subagent, the tool span carries subagent.child_session_id.
+    When child subagent runs, its spans carry parent.session_id and session.id equal to parent
+    session id, extracted from sender= in the child's first SYSTEM_MESSAGE."""
+    state_store: dict[str, dict] = {}
+
+    def load_state(sid: str) -> dict:
+        return json.loads(json.dumps(state_store.get(sid, {})))
+
+    def save_state(sid: str, st: dict) -> None:
+        state_store[sid] = json.loads(json.dumps(st))
+
+    def delete_state(sid: str) -> None:
+        state_store.pop(sid, None)
+
+    exported_records: list[dict] = []
+
+    def mock_export(config, session_id, username, span_records, parent_session_id=None, **kwargs):
+        for r in span_records:
+            r["_exported_session_id"] = session_id
+            r["_exported_parent_session_id"] = parent_session_id
+            exported_records.append(r)
+
+    parent_session = "parent-sess-uuid"
+    child_session = "child-subagent-uuid"
+    config = {"endpoint": "localhost:4317"}
+
+    parent_transcript = tmp_path / "parent_transcript.jsonl"
+    parent_transcript.write_text("", encoding="utf-8")
+
+    child_transcript = tmp_path / "child_transcript.jsonl"
+    child_transcript.write_text("", encoding="utf-8")
+
+    with (
+        patch("agy_tracer._load_state", side_effect=load_state),
+        patch("agy_tracer._save_state", side_effect=save_state),
+        patch("agy_tracer._delete_state", side_effect=delete_state),
+        patch("agy_tracer._build_and_export_spans", side_effect=mock_export),
+        patch("agy_tracer._session_lock"),
+    ):
+        # 1. Parent initiates invoke_subagent tool call
+        _append_jsonl(
+            parent_transcript, {"step_index": 0, "type": "USER_INPUT", "content": "Delegate task"}
+        )
+        agy_tracer.handle_pre_invocation(
+            {
+                "conversationId": parent_session,
+                "transcriptPath": str(parent_transcript),
+            },
+            config,
+        )
+
+        subagent_output = (
+            "Created At: 2026-10-30T22:38:53Z\n"
+            "Completed At: 2026-10-30T22:38:54Z\n"
+            "Created the following subagent:\n"
+            "{\n"
+            f'  "conversationId":  "{child_session}",\n'
+            f'  "logAbsoluteUri":  "file:///home/nic/.gemini/antigravity-cli/brain/{child_session}/.system_generated/logs/transcript.jsonl"\n'
+            "}\n"
+        )
+        _append_jsonl(
+            parent_transcript,
+            {
+                "step_index": 1,
+                "source": "MODEL",
+                "type": "PLANNER_RESPONSE",
+                "tool_calls": [
+                    {
+                        "name": "invoke_subagent",
+                        "args": {"TypeName": "research", "Prompt": "Investigate"},
+                    }
+                ],
+            },
+        )
+        agy_tracer.handle_pre_tool(
+            {
+                "conversationId": parent_session,
+                "transcriptPath": str(parent_transcript),
+                "toolCall": {
+                    "name": "invoke_subagent",
+                    "args": {"TypeName": "research", "Prompt": "Investigate"},
+                },
+            },
+            config,
+        )
+        _append_jsonl(
+            parent_transcript,
+            {
+                "step_index": 2,
+                "source": "MODEL",
+                "type": "GENERIC",
+                "content": subagent_output,
+            },
+        )
+        agy_tracer.handle_post_tool(
+            {
+                "conversationId": parent_session,
+                "transcriptPath": str(parent_transcript),
+                "toolCall": {
+                    "name": "invoke_subagent",
+                    "args": {"TypeName": "research", "Prompt": "Investigate"},
+                },
+            },
+            config,
+        )
+
+        # Verify parent's invoke_subagent span
+        invoke_spans = [
+            r
+            for r in exported_records
+            if r.get("attributes", {}).get("tool.name") == "invoke_subagent"
+        ]
+        assert len(invoke_spans) == 1
+        assert invoke_spans[0]["attributes"].get("subagent.child_session_id") == child_session
+
+        # 2. Child runs: receives prompt from parent via SYSTEM_MESSAGE with sender=parent-sess-uuid
+        exported_records.clear()
+        _append_jsonl(
+            child_transcript,
+            {
+                "step_index": 0,
+                "source": "SYSTEM",
+                "type": "SYSTEM_MESSAGE",
+                "content": f"[Message] timestamp=2026-10-30T22:38:53Z sender={parent_session} priority=MESSAGE_PRIORITY_HIGH content=Investigate",
+            },
+        )
+        agy_tracer.handle_pre_invocation(
+            {
+                "conversationId": child_session,
+                "transcriptPath": str(child_transcript),
+            },
+            config,
+        )
+
+        # Child executes a tool
+        _append_jsonl(
+            child_transcript,
+            {
+                "step_index": 1,
+                "source": "MODEL",
+                "type": "PLANNER_RESPONSE",
+                "tool_calls": [{"name": "run_command", "args": {"CommandLine": "ls"}}],
+            },
+        )
+        agy_tracer.handle_pre_tool(
+            {
+                "conversationId": child_session,
+                "transcriptPath": str(child_transcript),
+                "toolCall": {"name": "run_command", "args": {"CommandLine": "ls"}},
+            },
+            config,
+        )
+        _append_jsonl(
+            child_transcript,
+            {"step_index": 2, "source": "MODEL", "type": "GENERIC", "content": "file1.txt\n"},
+        )
+        agy_tracer.handle_post_tool(
+            {
+                "conversationId": child_session,
+                "transcriptPath": str(child_transcript),
+                "toolCall": {"name": "run_command", "args": {"CommandLine": "ls"}},
+            },
+            config,
+        )
+
+        # Child completes turn
+        _append_jsonl(
+            child_transcript,
+            {
+                "step_index": 3,
+                "source": "MODEL",
+                "type": "PLANNER_RESPONSE",
+                "content": "All done.",
+            },
+        )
+        agy_tracer.handle_stop(
+            {
+                "conversationId": child_session,
+                "transcriptPath": str(child_transcript),
+                "last_assistant_message": "All done.",
+            },
+            config,
+        )
+
+        # Every child span must carry parent.session_id and session.id equal to parent
+        assert len(exported_records) >= 2
+        for r in exported_records:
+            assert r["_exported_session_id"] == parent_session
+            assert r["_exported_parent_session_id"] == parent_session
+            assert r["attributes"].get("parent.session_id") == parent_session
+            assert r["attributes"].get("session.id") == parent_session
+
+
+def test_agy_handback_turn_names_subagent(tmp_path: Path):
+    """When a message arrives from a subagent, the hand-back turn root span names the subagent."""
+    state_store: dict[str, dict] = {}
+
+    def load_state(sid: str) -> dict:
+        return json.loads(json.dumps(state_store.get(sid, {})))
+
+    def save_state(sid: str, st: dict) -> None:
+        state_store[sid] = json.loads(json.dumps(st))
+
+    exported_records: list[dict] = []
+
+    def mock_export(config, session_id, username, span_records, **kwargs):
+        exported_records.extend(span_records)
+
+    session_id = "parent-session-handback"
+    child_subagent_id = "subagent-worker-1"
+    config = {"endpoint": "localhost:4317"}
+    transcript = tmp_path / "transcript.jsonl"
+
+    with (
+        patch("agy_tracer._load_state", side_effect=load_state),
+        patch("agy_tracer._save_state", side_effect=save_state),
+        patch("agy_tracer._delete_state"),
+        patch("agy_tracer._build_and_export_spans", side_effect=mock_export),
+        patch("agy_tracer._session_lock"),
+    ):
+        # A subagent message arrives in parent
+        msg_content = f"<SYSTEM_MESSAGE>\n[Message] timestamp=2026-10-30T22:39:38Z sender={child_subagent_id} priority=MESSAGE_PRIORITY_HIGH content=Done work\n</SYSTEM_MESSAGE>"
+        _append_jsonl(
+            transcript,
+            {"step_index": 0, "type": "SYSTEM_MESSAGE", "content": msg_content},
+        )
+        agy_tracer.handle_pre_invocation(
+            {
+                "conversationId": session_id,
+                "transcriptPath": str(transcript),
+            },
+            config,
+        )
+        _append_jsonl(
+            transcript,
+            {
+                "step_index": 1,
+                "source": "MODEL",
+                "type": "PLANNER_RESPONSE",
+                "content": "Acknowledged result.",
+            },
+        )
+        agy_tracer.handle_stop(
+            {
+                "conversationId": session_id,
+                "transcriptPath": str(transcript),
+                "last_assistant_message": "Acknowledged result.",
+            },
+            config,
+        )
+
+        turn_roots = [
+            r
+            for r in exported_records
+            if r.get("attributes", {}).get("openinference.span.kind") == "CHAIN"
+        ]
+        assert len(turn_roots) == 1
+        assert turn_roots[0]["attributes"].get("subagent.id") == child_subagent_id

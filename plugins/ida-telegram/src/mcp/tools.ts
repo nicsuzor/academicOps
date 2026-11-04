@@ -103,7 +103,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
         message_id: { type: "integer", description: "Message ID to react to" },
         reaction: {
           type: "string",
-          description: "Emoji reaction string (e.g. 🐱 for polecat, 🕊 for subagent, or other shared legend reaction)",
+          description: "Emoji reaction string (e.g. 🐳 for polecat, 🕊 for subagent, or other shared legend reaction)",
         },
         message_thread_id: { type: "integer", description: "Optional thread ID" },
         thread_id: { type: "integer", description: "Alias for message_thread_id" },

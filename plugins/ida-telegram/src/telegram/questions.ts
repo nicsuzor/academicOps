@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import { PluginStore } from "../store.js";
+import { buildMiniAppUrl } from "./bot.js";
 
 export interface QuestionOption {
   label: string;
@@ -42,7 +43,7 @@ export interface StoredQuestion extends QuestionPayload {
   text: string;
   createdAt: string;
   created_at: string;
-  status: "pending" | "answered" | "closed";
+  status: "pending" | "answered" | "closed" | "failed";
   sessionId?: string;
   session_id?: string;
   turnId?: string;
@@ -63,6 +64,7 @@ export interface StoredQuestion extends QuestionPayload {
   mini_app_only?: boolean;
   miniAppOnly?: boolean;
   chat?: boolean;
+  deliveryError?: string;
 }
 
 export interface QuestionButton {
@@ -214,6 +216,31 @@ export class QuestionBroker {
     }
   }
 
+  public markDeliveryFailed(id: string, error: string) {
+    const q = this.questions.get(id);
+    if (q) {
+      q.status = "failed";
+      q.deliveryError = error;
+      this.saveState();
+    }
+  }
+
+  public sweepUndeliveredQuestions(): StoredQuestion[] {
+    const undelivered: StoredQuestion[] = [];
+    for (const q of this.questions.values()) {
+      const isMiniAppOnly = Boolean(q.mini_app_only || q.miniAppOnly || q.chat === false);
+      if (q.status === "pending" && !isMiniAppOnly && !q.messageId) {
+        q.status = "failed";
+        q.deliveryError = q.deliveryError || "Undelivered question: no Telegram messageId recorded";
+        undelivered.push(q);
+      }
+    }
+    if (undelivered.length > 0) {
+      this.saveState();
+    }
+    return undelivered;
+  }
+
   public setPromptMessageId(id: string, promptMessageId: number) {
     const q = this.questions.get(id);
     if (q) {
@@ -263,7 +290,7 @@ export class QuestionBroker {
     return this.renderQuestionCard(id);
   }
 
-  public renderQuestionCard(id: string, miniAppUrl?: string): QuestionCard | null {
+  public renderQuestionCard(id: string, miniAppUrl?: string, instance?: string): QuestionCard | null {
     const q = this.questions.get(id);
     if (!q) return null;
 
@@ -318,10 +345,9 @@ export class QuestionBroker {
 
     const detailsId = q.detailsId || q.details_id;
     if (detailsId && miniAppUrl) {
-      const baseUrl = miniAppUrl.replace(/\/+$/, "");
       buttons.push({
         text: "🔍 Details",
-        web_app: { url: `${baseUrl}/app/index.html?d=${detailsId}` },
+        web_app: { url: buildMiniAppUrl(miniAppUrl, { d: detailsId, instance }) },
       });
     }
 

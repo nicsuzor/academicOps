@@ -76,5 +76,7 @@ override_vars = [
   "AOP_FORCE",
   "AOP_OVERRIDE",
 ]
+claim_tool_name = "premise_check_claim"
+claim_status = "to_be_verified"
 armed_indicator = "Premise-check gate armed by"
 direction_checklist_indicator = "frozen acceptance checklist"
