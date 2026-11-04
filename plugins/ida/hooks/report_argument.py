@@ -43,9 +43,14 @@ _ATTR_BLOCK = re.compile(r"\{(?P<attrs>[^{}]+)\}\s*$")
 _BASIS_ATTR = re.compile(r"\bbasis\s*:\s*(?:\"([^\"]+)\"|'([^']+)'|([^,}\n]+))")
 _LINE_REF = re.compile(r"\((?P<n>\d+)\)")
 _ARROW = re.compile(r"←|<-")
-# A line written as a conclusion: the form opens every step with "So"
-# (after an optional ``[Label]:``), whether or not a bar sits above it.
-_CONCLUSION_MARK = re.compile(r"^(?:\[[^\]]+\]:?\s*)?so(?=[\s,:;.]|$)", re.IGNORECASE)
+# A line written as a conclusion: the form opens every step with the connective
+# "So" (after an optional ``[Label]:``), whether or not a bar sits above it.
+# "So" followed by punctuation or a clause is the connective; "So far", "So long
+# as", "So much" and the like open an ordinary sentence, and "So-called" is a word.
+_CONCLUSION_MARK = re.compile(
+    r"^(?:\[[^\]]+\]:?\s*)?so(?:\s*[,:;]|\s+(?!(?:far|long|much|many|few|little)\b))",
+    re.IGNORECASE,
+)
 _VALID_ENTRY = re.compile(
     r"^\s*(?P<lines>(?:\(\d+\)(?:\s*(?:,|and)\s*)*)+)\s+(?P<word>holds?|fails?)\b(?P<rest>.*)$",
     re.IGNORECASE,
@@ -1452,7 +1457,8 @@ def pass_failures(
                 failures.append(
                     f"Relay names lines not in the block ({', '.join(map(str, absent))}): {entry!r}"
                 )
-    if block is not None and not block_waived:
+    # Not lifted by a block waiver: a format waiver never stands in for a missing bar.
+    if block is not None:
         failures.extend(_orphan_conclusion_failures(reason, block))
     return failures
 

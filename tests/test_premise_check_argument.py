@@ -2445,3 +2445,42 @@ def test_revise_naming_the_orphan_conclusion_as_missing_is_recorded():
         tracer_mod=_configured(),
     )
     assert result["verdict"] == "REVISE"
+
+
+def test_waiving_the_block_does_not_lift_the_orphan_conclusion_refusal():
+    """A format waiver on a block that parses still leaves the unbarred line unjudged."""
+    session_id = "s-orphan-waived"
+    _arm_with_report(session_id, "CID", text=_orphan_conclusion_report())
+    tracer = _configured()
+    reason = _orphan_conclusion_reason().replace("Waived: none", "Waived: block -- layout")
+    with pytest.raises(ValueError) as exc:
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id="CID",
+            verdict="PASS",
+            reason=reason,
+            tracer_mod=tracer,
+        )
+    assert "orphan conclusion: line (4)" in str(exc.value)
+    assert tracer.exported == []
+    assert pcg.is_armed(session_id) is True
+
+
+@pytest.mark.parametrize("opening", ["So far", "So long as nothing changes,", "So much"])
+def test_premise_opening_with_so_but_no_connective_may_still_answer(opening):
+    """'So far ...' and the like open a premise, not a conclusion."""
+    session_id = "s-orphan-so-far"
+    text = (
+        _orphan_conclusion_report()
+        .replace("(2) The plugin has", f"(2) {opening} the plugin has")
+        .replace(f"  {_ORPHAN_ASK}: 4\n", f"  {_ORPHAN_ASK}: 2\n")
+    )
+    _arm_with_report(session_id, "CID", text=text)
+    result = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="CID",
+        verdict="PASS",
+        reason=_orphan_conclusion_reason(answered=2),
+        tracer_mod=_configured(),
+    )
+    assert result["verdict"] == "PASS"
