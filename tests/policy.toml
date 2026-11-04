@@ -8,9 +8,17 @@ stop_events = []
 
 [hooks.messages]
 # Messages that ship with no .user.md because they have no second reader
-no_user_counterpart = { "rbg: ruleset" = "agy-only injection; agy has no user channel", "rbg: classifier-prompt" = "evaluator request payload, never injected into a session", "aops: quiet" = "the silence gate; a systemMessage here would itself be the mention of delegated work the gate exists to withhold" }
+no_user_counterpart = { "rbg: ruleset" = "agy-only injection; agy has no user channel", "rbg: classifier-prompt" = "evaluator request payload, never injected into a session" }
 # Messages that ship user-blind and SHOULD NOT (defect list)
 known_user_blind = { "rbg: rule-check" = "stop-side block with no line for the person; needs the pair, not [0]" }
+
+[hooks.degraded_capability]
+# Keys in tool response that indicate degraded capability failure
+degraded_keys = ["voiceError", "transcript_error"]
+
+[hooks.mcp_caller_session]
+# MCP servers that consume _session for caller attribution
+session_servers = ["pkb", "services"]
 
 [pkb]
 # Is search_the_pkb enabled and returning a Result?
@@ -35,6 +43,9 @@ valid_statuses = [
 [rbg.evaluate]
 # The PreToolUse rule evaluator (cope) is currently disabled
 enabled = false
+
+[rbg.rules]
+user_rules_env = "COPE_USER_RULES_DIR"
 
 [ida]
 strip_the_reply_enabled = true
@@ -67,3 +78,5 @@ override_vars = [
 ]
 claim_tool_name = "premise_check_claim"
 claim_status = "to_be_verified"
+armed_indicator = "Premise-check gate armed by"
+direction_checklist_indicator = "frozen acceptance checklist"

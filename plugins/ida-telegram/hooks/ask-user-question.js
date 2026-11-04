@@ -16,8 +16,8 @@ async function main() {
     join(process.env.STATE_DIR || join(homedir(), ".claude", "channels", "telegram"), "bridge.sock");
 
   if (!existsSync(socketPath)) {
-    // Socket missing: inert, exit 0
-    process.exit(0);
+    process.stderr.write(`ida-telegram AskUserQuestion hook error: Telegram bridge socket not found at ${socketPath}\n`);
+    process.exit(1);
   }
 
   let inputData = "";
@@ -44,13 +44,30 @@ async function main() {
   }
 
   const toolInput = payload.tool_input || payload.toolInput || {};
-  const turnId = payload.turn_id || payload.turnId || payload.tool_use_id || payload.session_id;
-  const questions = toolInput.questions || [
+  const turnId = payload.turn_id || payload.turnId || payload.tool_use_id;
+  const sessionId = payload.session_id || payload.sessionId;
+  const topChat = typeof toolInput.chat === "boolean" ? toolInput.chat : undefined;
+  const topMiniAppOnly = toolInput.mini_app_only ?? toolInput.miniapp_only ?? toolInput.miniAppOnly;
+  const rawQuestions = toolInput.questions || [
     {
       question: toolInput.question || "Input requested",
+      header: toolInput.header,
+      context: toolInput.context,
+      detail: toolInput.detail || toolInput.details,
+      recommendation: toolInput.recommendation,
       options: toolInput.options || [{ label: "Acknowledge" }],
+      multiSelect: toolInput.multiSelect,
+      allowOther: toolInput.allowOther,
+      mini_app_only: topMiniAppOnly,
+      chat: topChat,
     },
   ];
+  const questions = rawQuestions.map((q) => ({
+    ...q,
+    mini_app_only: q.mini_app_only ?? q.miniapp_only ?? q.miniAppOnly ?? topMiniAppOnly,
+    chat: q.chat ?? topChat,
+    detail: q.detail || q.details,
+  }));
 
   // Send to question broker over Unix domain socket
   const client = createConnection(socketPath);
@@ -59,6 +76,7 @@ async function main() {
     client.write(
       JSON.stringify({
         type: "ask_user",
+        session_id: sessionId,
         turn_id: turnId,
         questions,
       }) + "\n"
@@ -72,14 +90,21 @@ async function main() {
   });
 
   client.on("end", () => {
-    let qid = "q_telegram";
+    let res;
     try {
-      const res = JSON.parse(responseData);
-      if (res.questionId) qid = res.questionId;
+      res = JSON.parse(responseData.trim());
     } catch {
-      // Ignore parse failure
+      process.stderr.write(`ida-telegram AskUserQuestion hook error: failed to parse socket response: ${responseData}\n`);
+      process.exit(1);
     }
 
+    if (!res || res.status !== "ok" || !res.questionId || res.error || res.delivered === false) {
+      const errMsg = res?.error || "Failed to deliver question card over Telegram";
+      process.stderr.write(`ida-telegram AskUserQuestion hook error: ${errMsg}\n`);
+      process.exit(1);
+    }
+
+    const qid = res.questionId;
     const reason = `Question ${qid} posted to the user over Telegram. Do not assume an answer; continue other work or end your turn.`;
     const output = {
       decision: "block",
@@ -94,10 +119,13 @@ async function main() {
     process.exit(0);
   });
 
-  client.on("error", () => {
-    // Socket connection error: inert
-    process.exit(0);
+  client.on("error", (err) => {
+    process.stderr.write(`ida-telegram AskUserQuestion hook error: socket connection failed: ${err.message}\n`);
+    process.exit(1);
   });
 }
 
-main().catch(() => process.exit(0));
+main().catch((err) => {
+  process.stderr.write(`ida-telegram AskUserQuestion hook error: ${err?.message || err}\n`);
+  process.exit(1);
+});

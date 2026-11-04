@@ -32,6 +32,9 @@ MARKETPLACE = TESTDATA / "marketplace.toml"
         "1.0.0+g12345678",
         "v1.0.0",
         "v0.10.26",
+        "1.0-rc7",
+        "v1.0-rc7",
+        "v1.0-rc0",
     ],
 )
 def test_validate_version_accepts_valid_pep440(valid_version: str) -> None:

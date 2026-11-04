@@ -1,7 +1,12 @@
 import { PluginStore } from "../store.js";
 import { QuestionBroker } from "../telegram/questions.js";
 import { PermissionRelay } from "../mcp/permissions.js";
-import { verifySessionToken, verifyTelegramInitData, createSessionToken } from "./auth.js";
+import {
+  verifySessionToken,
+  verifyTelegramInitData,
+  createSessionToken,
+  verifyCfAccessJwt,
+} from "./auth.js";
 import { fetchPrDiff, FormattedPrDiff } from "./review.js";
 import { PluginConfig } from "../config.js";
 
@@ -41,7 +46,7 @@ export function broadcastSseEvent(event: string, data: any, seq: number) {
   }
 }
 
-function authenticateRequest(req: Request, ctx: WebContext): boolean {
+async function authenticateRequest(req: Request, ctx: WebContext): Promise<boolean> {
   // Mode A: Cookie ida_session
   const cookieHeader = req.headers.get("Cookie") || "";
   const match = cookieHeader.match(/ida_session=([^;]+)/);
@@ -67,13 +72,23 @@ function authenticateRequest(req: Request, ctx: WebContext): boolean {
   // Mode B: Perimeter identity assertion header
   const cfHeader = req.headers.get("Cf-Access-Jwt-Assertion");
   if (cfHeader && cfHeader.trim().length > 0) {
-    return true;
+    const cfResult = await verifyCfAccessJwt(cfHeader.trim(), {
+      keys: ctx.config.cfAccessKeys,
+      aud: ctx.config.cfAccessAud,
+      teamDomain: ctx.config.cfAccessTeamDomain,
+      allowedEmails: ctx.config.cfAccessAllowedEmails,
+      certsUrl: ctx.config.cfAccessCertsUrl,
+    });
+    if (cfResult.valid) {
+      return true;
+    }
+    return false;
   }
 
   return false;
 }
 
-export function handleApiRequest(req: Request, ctx: WebContext): Response | Promise<Response> {
+export async function handleApiRequest(req: Request, ctx: WebContext): Promise<Response> {
   const url = new URL(req.url);
   const path = url.pathname;
 
@@ -109,8 +124,26 @@ export function handleApiRequest(req: Request, ctx: WebContext): Response | Prom
     })();
   }
 
+  // 2. Details: GET /api/app/details/:id
+  // Details pages are immutable Tier 3 message overflow pages with high-entropy unguessable capability IDs (d_<hex>).
+  // They are read-only and publicly accessible to recipients opening the 🔍 Details button.
+  if (path.startsWith("/api/app/details/") && req.method === "GET") {
+    const id = path.substring("/api/app/details/".length);
+    const details = ctx.store.getDetails(id);
+    if (!details) {
+      return new Response(JSON.stringify({ error: "Details page not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify(details), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   // All other /api/app/* routes require valid session cookie or perimeter/bridge credentials
-  if (!authenticateRequest(req, ctx)) {
+  if (!(await authenticateRequest(req, ctx))) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { "Content-Type": "application/json" },
@@ -231,21 +264,6 @@ export function handleApiRequest(req: Request, ctx: WebContext): Response | Prom
     })();
   }
 
-  // 4. Details: GET /api/app/details/:id
-  if (path.startsWith("/api/app/details/")) {
-    const id = path.substring("/api/app/details/".length);
-    const details = ctx.store.getDetails(id);
-    if (!details) {
-      return new Response(JSON.stringify({ error: "Details page not found" }), {
-        status: 404,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-    return new Response(JSON.stringify(details), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
 
   // 5. Questions: GET /api/app/questions, POST /api/app/questions/answer
   if (path === "/api/app/questions" && req.method === "GET") {
@@ -297,6 +315,89 @@ export function handleApiRequest(req: Request, ctx: WebContext): Response | Prom
           status: 200,
           headers: { "Content-Type": "application/json" },
         });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: String(e) }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+    })();
+  }
+
+  if (
+    (path === "/api/app/questions/close" || path.match(/^\/api\/app\/questions\/([^/]+)\/close$/)) &&
+    req.method === "POST"
+  ) {
+    return (async () => {
+      try {
+        let body: any = {};
+        try {
+          body = await req.json();
+        } catch {
+          // Empty body ok
+        }
+        const pathMatch = path.match(/^\/api\/app\/questions\/([^/]+)\/close$/);
+        const questionId = pathMatch ? pathMatch[1] : (body.question_id || body.questionId || body.id);
+        const rawReason = body.reason || body.stated_reason || body.statedReason;
+        const reason = typeof rawReason === "string" ? rawReason.trim() : "";
+
+        if (!questionId) {
+          return new Response(JSON.stringify({ error: "Missing question_id" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        if (!reason) {
+          return new Response(JSON.stringify({ error: "Missing reason: closing a question requires an explicit stated reason" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        const result = await ctx.broker.closeQuestion(questionId, reason);
+        if (!result) {
+          return new Response(JSON.stringify({ error: "Question not found or not pending" }), {
+            status: 404,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        if (ctx.editTelegramCard && result.question.chatId && result.question.messageId) {
+          await ctx.editTelegramCard(result.question.chatId, result.question.messageId, result.cardText, { inline_keyboard: [] });
+        }
+
+        ctx.emitChannelEvent(
+          result.channelEvent.event,
+          `Question closed: ${result.channelEvent.reason}`,
+          result.channelEvent as unknown as Record<string, unknown>
+        );
+
+        const seq = ctx.store.nextSeq("question_closed", {
+          question_id: questionId,
+          reason: result.channelEvent.reason,
+          turn_id: result.channelEvent.turn_id,
+          session_id: result.channelEvent.session_id,
+        });
+        broadcastSseEvent("question_closed", {
+          question_id: questionId,
+          reason: result.channelEvent.reason,
+          turn_id: result.channelEvent.turn_id,
+          session_id: result.channelEvent.session_id,
+        }, seq);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            closed_at: result.question.closedAt,
+            closure: result,
+            seq,
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
       } catch (e) {
         return new Response(JSON.stringify({ error: String(e) }), {
           status: 400,

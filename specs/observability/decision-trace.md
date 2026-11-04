@@ -25,16 +25,17 @@ the session that made it and a clear answer from an agent, without it taking
 forever or costing a leg, so that I can understand and audit what an agent did
 and why.
 
-- **AC-1.1** Given a full session id, a session slug, or a trace id, when the
+- **AC-1.1** Given a full session ID / conversation ID, a session slug, or a trace id, when the
   question is asked, then the agent resolves it to the owning session and
   fetches that session's spans from the trace store in one paged request
   sequence filtered on `session.id`, with no per-span or per-turn queries.
 - **AC-1.2** Given a session's spans, when the transcript is assembled, then it
-  is a single markdown file with a table of contents linking to one header per
-  turn, and within each turn, in order, the incoming prompt, each model call,
-  each tool call, and the final reply. Prompts, tool inputs and outputs, and
-  model context are placed in folded `<details>` sections, and no content is
-  truncated.
+  generates two files: the full markdown transcript (`<slug>.transcript.md`) with a table
+  of contents linking to one header per turn, and a condensed outline (`<slug>.outline.md`)
+  beside it. Within each turn, in order, the incoming prompt, each model call, each tool
+  call, and the final reply. Prompts, tool inputs and outputs, and model context are placed
+  in folded `<details>` sections, and no content is truncated. Both files are persisted
+  to durable storage.
 - **AC-1.3** Given the transcript, when it is read, then every turn, model call
   and tool call shows its wall-clock duration; every model call shows its model,
   fresh input, cache read, cache write and output tokens and its estimated cost;
@@ -52,6 +53,10 @@ and why.
   `PHOENIX_MCP_PROJECT`) are provided, when the script attempts to resolve the
   endpoint, then it halts immediately with an error and supplies no default
   values or fallbacks.
+- **AC-1.8** Given generated transcript and outline markdown files, when rendered,
+  then every turn in each markdown output links to its session (`/redirects/sessions/{session_id}`)
+  and to its own root span(s) (`/redirects/spans/{span_id}`) in Phoenix, with the Phoenix UI base
+  URL resolved from `--ui-base-url`, `PHOENIX_UI_URL`, or derived from the Phoenix endpoint.
 
 ## Design
 
@@ -73,6 +78,9 @@ The script resolves Phoenix endpoint configuration from explicit flags (`--base-
 `--project`) or from standard polecat MCP server environment variables (`PHOENIX_MCP_URL`,
 `PHOENIX_MCP_PROJECT`). With neither provided, the script supplies no default value and
 fails fast (`ConfigError`). There are no fallback variables or silent default projects.
+Phoenix UI base URL for deep-links is resolved from `--ui-base-url`, `PHOENIX_UI_URL`, or
+derived from the Phoenix endpoint (mapping MCP gateway URLs like `https://mcp.<domain>/mcp`
+to `https://phoenix.<domain>`).
 
 The script pages `GET /v1/projects/{project}/spans?attribute=session.id:<id>`
 to exhaustion, 1,000 spans a page: about one second per page on the reference
@@ -85,7 +93,9 @@ another way (for instance through an MCP proxy) can be rendered offline.
 - **Turns** are clusters of root spans whose time windows overlap. Two emitters
   often each open a root for the same turn (a hook-based tracer's `CHAIN` turn
   and a client's native interaction span); clustering joins them without
-  depending on either.
+  depending on either. Every turn header in both the full transcript and condensed outline
+  renders direct markdown links to the Phoenix session (`/redirects/sessions/{session_id}`)
+  and the turn's root span(s) (`/redirects/spans/{span_id}`).
 - **Tool calls** are deduplicated on their call id (`tool.call_id`,
   `tool_use_id`, `tool.id`, `gen_ai.tool.call.id`). The rendered call takes its
   input and output from the span that holds them whole and its duration from the
@@ -94,7 +104,8 @@ another way (for instance through an MCP proxy) can be rendered offline.
   Assistant text comes from `output.value`, `llm.output_messages` or
   `response.model_output`; the context the call received is folded.
 - **Subagents** sharing the session are labelled from `agent.name` / `agent.id`
-  where an emitter sets them.
+  where an emitter sets them; subagents running in distinct sessions (such as `agy`
+  subagents) are correlated via prompt matching and dispatch spans.
 
 ### Metrics
 

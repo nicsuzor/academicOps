@@ -1,4 +1,4 @@
-"""Behavioural tests for rbg's dual-layer rule channel.
+"""Behavioural tests for rbg's rule channel (turn-by-turn check and stop gate).
 
 Every case here runs the *real* shipped `dispatch.py` as a subprocess with a
 synthetic hook payload on stdin, against a plugin directory staged the way
@@ -70,7 +70,7 @@ def parsed(proc) -> dict | None:
 
 
 # ---------------------------------------------------------------------------
-# Layer 2: the stop gate
+# Stop gate (rule_check)
 # ---------------------------------------------------------------------------
 
 
@@ -224,13 +224,13 @@ def test_a_block_on_a_non_blockable_event_degrades_and_says_so(staged):
 
 
 # ---------------------------------------------------------------------------
-# Layer 1 stays advisory — the constraint that outranks the feature
+# Turn-by-turn check stays advisory — the constraint that outranks the feature
 # ---------------------------------------------------------------------------
 
 
 def test_pretooluse_with_no_evaluator_is_a_clean_no_op(staged):
     """Unconfigured is a legitimate state, not a fault: no output, no network,
-    exit 0. Layer 2 firing on the same plugin must not change that."""
+    exit 0. The stop gate firing on the same plugin must not change that."""
     proc = fire(
         staged, "claude", "PreToolUse", {"tool_name": "Bash", "tool_input": {"command": "ls"}}
     )

@@ -1,4 +1,4 @@
-import { getBareCommandBehavior, normalizeCommandName } from "./commands.js";
+import { normalizeCommandName } from "./commands.js";
 
 export interface TelegramUser {
   id: number;
@@ -15,6 +15,7 @@ export interface TelegramChat {
 
 export interface TelegramMessage {
   message_id: number;
+  message_thread_id?: number;
   date: number;
   chat: TelegramChat;
   from?: TelegramUser;
@@ -56,12 +57,25 @@ export interface TelegramUpdate {
 }
 
 export interface InboundChannelEvent {
-  event: "message" | "reaction" | "button_tap" | "bot_command" | "voice" | "attachment" | "miniapp";
+  event:
+    | "message"
+    | "reaction"
+    | "button_tap"
+    | "bot_command"
+    | "voice"
+    | "attachment"
+    | "miniapp"
+    | "logic_check"
+    | "explain"
+    | "reasons"
+    | "accept_recommendation"
+    | "decline_recommendation";
   content: string;
   meta: Record<string, string>;
 }
 
 export type TargetExcerptFetcher = (messageId: number) => string | undefined;
+export type MessageThreadFetcher = (messageId: number) => number | undefined;
 
 export function sanitizeChannelMeta(raw: Record<string, unknown>): Record<string, string> {
   const out: Record<string, string> = {};
@@ -78,7 +92,8 @@ export function sanitizeChannelMeta(raw: Record<string, unknown>): Record<string
 export function parseInboundUpdate(
   update: TelegramUpdate,
   allowFrom: number[],
-  getExcerpt?: TargetExcerptFetcher
+  getExcerpt?: TargetExcerptFetcher,
+  getThread?: MessageThreadFetcher
 ): InboundChannelEvent | null {
   // 1. Text / Media Message
   if (update.message) {
@@ -98,7 +113,6 @@ export function parseInboundUpdate(
       const cmdName = normalizeCommandName(rawCmdToken);
       const cmd = `/${cmdName}`;
       const args = parts.slice(1).join(" ").trim();
-      const cmdSpec = getBareCommandBehavior(cmdName);
 
       const meta: Record<string, string> = {
         event: "bot_command",
@@ -109,12 +123,13 @@ export function parseInboundUpdate(
         user_id: String(userId),
       };
 
-      if (msg.from?.first_name) {
-        meta.user = msg.from.first_name;
+      if (msg.message_thread_id !== undefined) {
+        meta.message_thread_id = String(msg.message_thread_id);
+        meta.thread_id = String(msg.message_thread_id);
       }
 
-      if (cmdSpec) {
-        meta.skill = cmdSpec.skill;
+      if (msg.from?.first_name) {
+        meta.user = msg.from.first_name;
       }
 
       if (msg.reply_to_message) {
@@ -124,15 +139,6 @@ export function parseInboundUpdate(
         } else if (msg.reply_to_message.text) {
           meta.quoted_text = msg.reply_to_message.text.substring(0, 300);
         }
-      }
-
-      if (!args && cmdSpec) {
-        meta.default_action = cmdSpec.bareAction;
-        return {
-          event: "bot_command",
-          content: `${cmd} — ${cmdSpec.bareAction}`,
-          meta,
-        };
       }
 
       return {
@@ -150,6 +156,11 @@ export function parseInboundUpdate(
         chat_id: String(msg.chat.id),
         user_id: String(userId),
       };
+
+      if (msg.message_thread_id !== undefined) {
+        meta.message_thread_id = String(msg.message_thread_id);
+        meta.thread_id = String(msg.message_thread_id);
+      }
 
       if (msg.from?.first_name) {
         meta.user = msg.from.first_name;
@@ -198,6 +209,11 @@ export function parseInboundUpdate(
         user_id: String(userId),
       };
 
+      if (msg.message_thread_id !== undefined) {
+        meta.message_thread_id = String(msg.message_thread_id);
+        meta.thread_id = String(msg.message_thread_id);
+      }
+
       if (msg.from?.first_name) {
         meta.user = msg.from.first_name;
       }
@@ -230,6 +246,7 @@ export function parseInboundUpdate(
     const added = rx.new_reaction.map((r) => r.emoji).filter(Boolean).join(" ");
     const removed = rx.old_reaction.map((r) => r.emoji).filter(Boolean).join(" ");
     const targetExcerpt = getExcerpt ? getExcerpt(rx.message_id) : undefined;
+    const threadId = getThread ? getThread(rx.message_id) : undefined;
 
     const meta: Record<string, string> = {
       event: "reaction",
@@ -239,6 +256,11 @@ export function parseInboundUpdate(
       added,
       removed,
     };
+
+    if (threadId !== undefined) {
+      meta.message_thread_id = String(threadId);
+      meta.thread_id = String(threadId);
+    }
 
     if (targetExcerpt !== undefined) {
       meta.target_excerpt = targetExcerpt;
@@ -272,11 +294,100 @@ export function parseInboundUpdate(
       user_id: String(userId),
     };
 
+    if (cb.message?.message_thread_id !== undefined) {
+      meta.message_thread_id = String(cb.message.message_thread_id);
+      meta.thread_id = String(cb.message.message_thread_id);
+    }
+
     if (cb.message?.message_id !== undefined) {
       meta.target_message_id = String(cb.message.message_id);
     }
     if (cb.message?.chat.id !== undefined) {
       meta.chat_id = String(cb.message.chat.id);
+    }
+
+    if (callbackPrefix === "logic_check" || rawData === "logic_check") {
+      const targetExcerpt = cb.message?.text || (getExcerpt && cb.message?.message_id ? getExcerpt(cb.message.message_id) : undefined);
+      meta.event = "logic_check";
+      meta.action = "logic_check";
+      if (targetExcerpt) {
+        meta.target_excerpt = targetExcerpt;
+      }
+      return {
+        event: "logic_check",
+        content: `Give me a logic check on message ${cb.message?.message_id ?? ""}${targetExcerpt ? `: "${targetExcerpt}"` : ""} as if you were receiving it from a peer.`,
+        meta,
+      };
+    }
+
+    if (callbackPrefix === "explain" || rawData === "explain") {
+      const targetExcerpt = cb.message?.text || (getExcerpt && cb.message?.message_id ? getExcerpt(cb.message.message_id) : undefined);
+      meta.event = "explain";
+      meta.action = "explain";
+      if (targetExcerpt) {
+        meta.target_excerpt = targetExcerpt;
+      }
+      return {
+        event: "explain",
+        content: `Please explain message ${cb.message?.message_id ?? ""}${targetExcerpt ? `: "${targetExcerpt}"` : ""} in more detail.`,
+        meta,
+      };
+    }
+
+    if (callbackPrefix === "reasons" || rawData === "reasons") {
+      const targetExcerpt = cb.message?.text || (getExcerpt && cb.message?.message_id ? getExcerpt(cb.message.message_id) : undefined);
+      meta.event = "reasons";
+      meta.action = "reasons";
+      if (targetExcerpt) {
+        meta.target_excerpt = targetExcerpt;
+      }
+      return {
+        event: "reasons",
+        content: `How do you know that? Show the reasons and argument chain behind message ${cb.message?.message_id ?? ""}${targetExcerpt ? `: "${targetExcerpt}"` : ""}.`,
+        meta,
+      };
+    }
+
+    if (
+      callbackPrefix === "accept_recommendation" ||
+      rawData === "accept_recommendation" ||
+      callbackPrefix === "accept_rec" ||
+      rawData === "accept_rec"
+    ) {
+      const targetExcerpt = cb.message?.text || (getExcerpt && cb.message?.message_id ? getExcerpt(cb.message.message_id) : undefined);
+      meta.event = "accept_recommendation";
+      meta.action = "accept_recommendation";
+      meta.recommendation = "accepted";
+      meta.choice = "accept";
+      if (targetExcerpt) {
+        meta.target_excerpt = targetExcerpt;
+      }
+      return {
+        event: "accept_recommendation",
+        content: `The user accepted the recommendation for message ${cb.message?.message_id ?? ""}${targetExcerpt ? `: "${targetExcerpt}"` : ""}.`,
+        meta,
+      };
+    }
+
+    if (
+      callbackPrefix === "decline_recommendation" ||
+      rawData === "decline_recommendation" ||
+      callbackPrefix === "decline_rec" ||
+      rawData === "decline_rec"
+    ) {
+      const targetExcerpt = cb.message?.text || (getExcerpt && cb.message?.message_id ? getExcerpt(cb.message.message_id) : undefined);
+      meta.event = "decline_recommendation";
+      meta.action = "decline_recommendation";
+      meta.recommendation = "declined";
+      meta.choice = "decline";
+      if (targetExcerpt) {
+        meta.target_excerpt = targetExcerpt;
+      }
+      return {
+        event: "decline_recommendation",
+        content: `The user declined the recommendation for message ${cb.message?.message_id ?? ""}${targetExcerpt ? `: "${targetExcerpt}"` : ""}.`,
+        meta,
+      };
     }
 
     return {

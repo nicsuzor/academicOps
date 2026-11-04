@@ -2,8 +2,8 @@
 # See https://pre-commit.com for more info
 
 repos:
-  # Commit-time secret backstop (Layer 2). Complements the
-  # write-time scrub in lib/py/transcripts/domain/secret_redaction.py (Layer 1)
+  # Commit-time secret backstop. Complements the
+  # write-time scrub in lib/py/transcripts/domain/secret_redaction.py
   # with an independently-maintained scanner rather than a forked pattern set.
   # Allowlist for synthetic test fixtures lives in .gitleaks.toml.
   - repo: https://github.com/gitleaks/gitleaks

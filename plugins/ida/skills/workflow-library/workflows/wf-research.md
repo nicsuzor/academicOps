@@ -31,6 +31,10 @@ A grounded research artifact providing:
 - Clear statement of constraints (e.g. backward compatibility, resource bounds).
 - Recommended approach and its justification.
 
+## Composition
+
+When `/reify` composes a research task investigating an open design question or architectural alternatives, `/reify` automatically creates a dependent decision task assigned to the user (`assignee: user`) on the graph (Title: `Decide implementation route for <topic>`, `depends_on: [<research_task_id>]`), strictly blocking downstream implementation until the decision is recorded. Tasks requiring review or follow-up are structured as a single task with internal subtasks or as an epic with child tasks, never as loose siblings.
+
 ## When to include
 
 Any task where the problem space, architectural pattern, or technology choice is uncertain and requires upfront investigation before specification or implementation.

@@ -34,4 +34,4 @@ Evaluate every external claim across two axes:
 
 ## Corpus-Level Consistency
 
-When external feedback addresses multiple reviews within a round, evaluate phrase repetition and consistency as a whole-set pass across all documents ([[voice-and-detemplating]]), rather than per-application silos.
+When external feedback addresses multiple reviews within a round, evaluate phrase repetition and consistency as a whole-set pass across all documents (see `voice-and-detemplating.md`), rather than per-application silos.

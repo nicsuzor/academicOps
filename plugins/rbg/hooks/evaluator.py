@@ -287,12 +287,10 @@ def _timeout() -> float:
         return DEFAULT_TIMEOUT_SECONDS
     try:
         value = float(raw)
-    except ValueError:
-        _note(f"COPE_EVALUATOR_TIMEOUT={raw!r} is not a number; using {DEFAULT_TIMEOUT_SECONDS}s")
-        return DEFAULT_TIMEOUT_SECONDS
+    except ValueError as exc:
+        raise ValueError(f"COPE_EVALUATOR_TIMEOUT={raw!r} is not a number") from exc
     if value <= 0:
-        _note(f"COPE_EVALUATOR_TIMEOUT={raw!r} is not positive; using {DEFAULT_TIMEOUT_SECONDS}s")
-        return DEFAULT_TIMEOUT_SECONDS
+        raise ValueError(f"COPE_EVALUATOR_TIMEOUT={raw!r} is not positive")
     return value
 
 
@@ -407,10 +405,7 @@ def check(
     def _emit(outcome: EvalOutcome) -> None:
         if on_outcome is None:
             return
-        try:
-            on_outcome(outcome)
-        except Exception:  # noqa: BLE001 - a trace sink must never break the sweep it traces
-            pass
+        on_outcome(outcome)
 
     def run(slug: str, policy: str) -> Verdict:
         remaining = deadline - time.monotonic()

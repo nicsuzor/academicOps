@@ -24,13 +24,14 @@ Estimates and writes approximate worth for target nodes on the bounded continuou
    - Positive aspirations: From +0.05 up to +1.00, with core commitments (accreditation, livelihood) around +0.70 to +0.80, up to +1.00 for top-tier moonshots.
    - Negative anti-targets: Mirrored from -0.05 down to -1.00 for ruinous catastrophe.
    - Hub targets: Configure capital stocks (reputation, funding reserve, infrastructure) as hubs (S27).
-2. **Estimate approximate worth**: Work out the best approximate worth for each unpriced target using what serves the target, open work behind it, and existing severity as an anchor prompt.
-3. **Write to graph**: Write the estimated `worth` directly to the target node using `pkb.update_task(id=..., worth=...)`.
-4. **Leave intent untouched**: Never write, modify, or clear `intent` when pricing targets; `intent` remains reserved and untouched.
-5. **Evidence and justification**: Attach the evidence justification to the target record explaining the estimated worth calculation.
-6. **Consistency pass**: Verify ordering is transitive and relative ratios hold across targets in the same domain.
-7. **Rely on graph corrections**: Do not pause, poll, or block for human sign-off; record the estimates directly on the graph where corrections are made as needed.
-8. **New targets**: Agents never create target nodes; work fitting no existing target is recorded as a finding.
+2. **Inspect node links**: Go through the node's links before setting its price. Inspect incoming and outgoing edges (`serves`, `depends_on`, `part_of`, `supports`), checking edge quantum, effect, and whether linked work is decomposed and active, so valuation reflects the real work and dependencies connected to the node.
+3. **Estimate approximate worth**: Work out the best approximate worth for each unpriced target using the inspected links, open work behind it, and existing severity as an anchor prompt.
+4. **Write to graph**: Write the estimated `worth` directly to the target node using `pkb.update_task(id=..., worth=...)`.
+5. **Leave intent untouched**: Never write, modify, or clear `intent` when pricing targets; `intent` remains reserved and untouched.
+6. **Evidence and justification**: Attach the evidence justification to the target record explaining the estimated worth calculation.
+7. **Consistency pass**: Verify ordering is transitive and relative ratios hold across targets in the same domain.
+8. **Rely on graph corrections**: Do not pause, poll, or block for human sign-off; record the estimates directly on the graph where corrections are made as needed.
+9. **New targets**: Agents never create target nodes; work fitting no existing target is recorded as a finding.
 
 ## Output contract
 

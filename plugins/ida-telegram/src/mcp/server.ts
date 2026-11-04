@@ -8,6 +8,7 @@ import { TelegramBotClient } from "../telegram/bot.js";
 import { sanitizeChannelMeta } from "../telegram/inbound.js";
 import { splitVoiceTier2Quotes } from "../telegram/voice.js";
 import { PermissionRelay } from "./permissions.js";
+import { broadcastSseEvent } from "../web/routes.js";
 
 export class StdioMcpServer {
   private config: PluginConfig;
@@ -129,9 +130,11 @@ export class StdioMcpServer {
 
       try {
         const result = await this.executeTool(toolName, args);
+        const isError = typeof result === "object" && result !== null && (result as Record<string, unknown>).success === false;
         return {
           jsonrpc: "2.0",
           id,
+          ...(isError ? { isError: true } : {}),
           result: {
             content: [{ type: "text", text: typeof result === "string" ? result : JSON.stringify(result) }],
           },
@@ -191,6 +194,7 @@ export class StdioMcpServer {
       const text = (args.text as string) || "";
       const detail = args.detail as string | undefined;
       const chatId = (args.chat_id as number) || defaultChatId;
+      const messageThreadId = (args.message_thread_id ?? args.thread_id) as number | undefined;
       const replyTo = args.reply_to as number | undefined;
 
       // FR-7.1: Determine whether voice reply is requested explicitly or via voice_replies setting
@@ -239,12 +243,18 @@ export class StdioMcpServer {
       if (this.bot) {
         const sendRes = await this.bot.sendReply({
           chatId,
+          messageThreadId,
           formatted,
           detailsId,
-          buttons: args.buttons as Array<{ label: string; callback_data?: string; url?: string; web_app?: string }> | undefined,
+          buttons: args.buttons as any,
+          buttonLayout: (args.button_layout ?? args.buttonLayout) as number[] | number | undefined,
+          buttonsPerRow: (args.buttons_per_row ?? args.buttonsPerRow) as number | undefined,
+          predefinedRow: (args.predefined_row ?? args.predefined_buttons_row ?? args.predefinedRow) as boolean | undefined,
           voice: isVoice,
           replyTo,
+          feedback: typeof args.feedback === "boolean" ? args.feedback : undefined,
           review: reviewArg,
+          actions: args.actions as boolean | undefined,
         });
 
         const out: Record<string, unknown> = {
@@ -280,21 +290,47 @@ export class StdioMcpServer {
       }
 
       if (this.bot) {
-        await this.bot.setReaction(chatId, messageId, norm);
+        const res = await this.bot.setReaction(chatId, messageId, norm);
+        if (!res.ok) {
+          return { success: false, error: res.error || "Reaction failed" };
+        }
       }
       return { success: true, reaction: norm };
     }
 
     if (name === "ask_user") {
       const topTurnId = (args.turn_id as string | undefined) || (args.turnId as string | undefined);
+      const topSessionId =
+        (args.session_id as string | undefined) ||
+        (args.sessionId as string | undefined) ||
+        ((args._session as any)?.session_id as string | undefined);
+      const topThreadId = (args.message_thread_id ?? args.thread_id) as number | undefined;
+      const topMiniAppOnly = Boolean(
+        args.mini_app_only || args.miniapp_only || args.miniAppOnly || args.chat === false
+      );
+      const topDetail = (args.detail as string | undefined) || (args.details as string | undefined);
       const questions = (args.questions as Array<{
         question: string;
         header?: string;
-        options: Array<{ label: string; description?: string }>;
+        context?: string;
+        recommendation?: string;
+        options: Array<{ label: string; description?: string; recommended?: boolean }>;
         multiSelect?: boolean;
         allowOther?: boolean;
         turn_id?: string;
         turnId?: string;
+        session_id?: string;
+        sessionId?: string;
+        message_thread_id?: number;
+        thread_id?: number;
+        detail?: string;
+        details?: string;
+        detailsId?: string;
+        details_id?: string;
+        mini_app_only?: boolean;
+        miniapp_only?: boolean;
+        miniAppOnly?: boolean;
+        chat?: boolean;
       }>) || [];
 
       if (questions.length === 0) {
@@ -303,30 +339,180 @@ export class StdioMcpServer {
 
       const postedIds: string[] = [];
       for (const q of questions) {
+        const isMiniAppOnly = Boolean(
+          topMiniAppOnly ||
+          q.mini_app_only === true ||
+          q.miniapp_only === true ||
+          q.miniAppOnly === true ||
+          q.chat === false
+        );
+        const detailText = q.detail || q.details || topDetail;
+
+        let detailsId = q.detailsId || q.details_id;
+        if (!detailsId && detailText) {
+          detailsId = this.store.storeDetails(detailText);
+        }
+
+        const effectiveThreadId =
+          (q.message_thread_id ?? q.thread_id ?? topThreadId) ??
+          this.bot?.getLastThreadId(defaultChatId);
+
         const result = await this.broker.askUser({
           question: q.question,
           header: q.header,
+          context: q.context,
+          recommendation: q.recommendation,
           options: q.options,
           multiSelect: q.multiSelect,
           allowOther: q.allowOther,
           turnId: q.turn_id || q.turnId || topTurnId,
+          sessionId: q.session_id || q.sessionId || topSessionId,
           chatId: defaultChatId,
+          messageThreadId: effectiveThreadId,
+          detail: detailText,
+          detailsId,
+          mini_app_only: isMiniAppOnly,
+          chat: !isMiniAppOnly,
         });
-        postedIds.push(result.questionId);
-        this.store.recordTurn("out", q.header ? `${q.header}: ${q.question}` : q.question);
-
-        if (this.bot) {
-          const card = this.broker.renderQuestionCard(result.questionId);
-          if (card) {
-            await this.bot.sendQuestionCard(defaultChatId, result.questionId, card);
+        if (!isMiniAppOnly) {
+          if (!this.bot) {
+            const errorMsg = "Telegram bot client is not running";
+            this.broker.markDeliveryFailed(result.questionId, errorMsg);
+            this.emitChannelNotification(`Question delivery failed: ${errorMsg}`, {
+              event: "question_delivery_failed",
+              question_id: result.questionId,
+              error: errorMsg,
+              turn_id: q.turn_id || q.turnId || topTurnId,
+              session_id: q.session_id || q.sessionId || topSessionId,
+            });
+            return { success: false, error: errorMsg, questionId: result.questionId };
+          }
+          if (!defaultChatId) {
+            const errorMsg = "No allowed chat ID configured for Telegram questions";
+            this.broker.markDeliveryFailed(result.questionId, errorMsg);
+            this.emitChannelNotification(`Question delivery failed: ${errorMsg}`, {
+              event: "question_delivery_failed",
+              question_id: result.questionId,
+              error: errorMsg,
+              turn_id: q.turn_id || q.turnId || topTurnId,
+              session_id: q.session_id || q.sessionId || topSessionId,
+            });
+            return { success: false, error: errorMsg, questionId: result.questionId };
+          }
+          const card = this.broker.renderQuestionCard(result.questionId, this.config.miniAppUrl, this.config.instance);
+          if (!card) {
+            const errorMsg = `Failed to render question card for ${result.questionId}`;
+            this.broker.markDeliveryFailed(result.questionId, errorMsg);
+            this.emitChannelNotification(`Question delivery failed: ${errorMsg}`, {
+              event: "question_delivery_failed",
+              question_id: result.questionId,
+              error: errorMsg,
+              turn_id: q.turn_id || q.turnId || topTurnId,
+              session_id: q.session_id || q.sessionId || topSessionId,
+            });
+            return { success: false, error: errorMsg, questionId: result.questionId };
+          }
+          const sendRes = await this.bot.sendQuestionCard(defaultChatId, result.questionId, card, effectiveThreadId);
+          if (!sendRes?.ok || !sendRes?.result?.message_id) {
+            const desc = sendRes?.description || sendRes?.error || "Failed to deliver question card over Telegram";
+            this.broker.markDeliveryFailed(result.questionId, desc);
+            this.emitChannelNotification(`Question delivery failed: ${desc}`, {
+              event: "question_delivery_failed",
+              question_id: result.questionId,
+              error: desc,
+              turn_id: q.turn_id || q.turnId || topTurnId,
+              session_id: q.session_id || q.sessionId || topSessionId,
+            });
+            return { success: false, error: desc, questionId: result.questionId };
           }
         }
+
+        postedIds.push(result.questionId);
+        this.store.recordTurn("out", q.header ? `${q.header}: ${q.question}` : q.question);
       }
 
       if (postedIds.length === 1) {
         return `Question ${postedIds[0]} posted to the user. Do not assume an answer; continue other work or end your turn.`;
       }
       return `Questions ${postedIds.join(", ")} posted to the user. Do not assume an answer; continue other work or end your turn.`;
+    }
+
+    if (name === "answer_question") {
+      const questionId = (args.question_id as string) || (args.questionId as string) || (args.id as string);
+      const choice = typeof args.choice === "string" ? args.choice.trim() : undefined;
+      const optionIndex = typeof args.option_index === "number" ? args.option_index : undefined;
+      if (!questionId) {
+        return { success: false, error: "Missing question_id" };
+      }
+      if (!choice && optionIndex === undefined) {
+        return { success: false, error: "Missing answer: provide choice or option_index" };
+      }
+      const result = await this.broker.resolveAnswer(questionId, optionIndex !== undefined ? optionIndex : "other", choice);
+      if (!result) {
+        return { success: false, error: "Question not found or not pending" };
+      }
+      if (this.bot && result.question.chatId && result.question.messageId) {
+        await this.bot.editMessage(result.question.chatId, result.question.messageId, result.cardText, { inline_keyboard: [] });
+      }
+      this.emitChannelNotification(`Question answered: ${result.channelEvent.choice}`, {
+        event: result.channelEvent.event,
+        ...result.channelEvent,
+      });
+      if (this.store) {
+        const seq = this.store.nextSeq("question_resolved", {
+          question_id: questionId,
+          choice: result.channelEvent.choice,
+          turn_id: result.channelEvent.turn_id,
+        });
+        broadcastSseEvent("question_resolved", {
+          question_id: questionId,
+          choice: result.channelEvent.choice,
+          turn_id: result.channelEvent.turn_id,
+        }, seq);
+      }
+      return { success: true, question_id: questionId, choice: result.channelEvent.choice };
+    }
+
+    if (name === "close_question") {
+      const questionId = (args.question_id as string) || (args.questionId as string) || (args.id as string);
+      const reason = typeof args.reason === "string" ? args.reason.trim() : "";
+      if (!questionId) {
+        return { success: false, error: "Missing question_id" };
+      }
+      if (!reason) {
+        return { success: false, error: "Missing reason: closing a question requires an explicit stated reason" };
+      }
+      const result = await this.broker.closeQuestion(questionId, reason);
+      if (!result) {
+        return { success: false, error: "Question not found or not pending" };
+      }
+      if (this.bot && result.question.chatId && result.question.messageId) {
+        await this.bot.editMessage(result.question.chatId, result.question.messageId, result.cardText, { inline_keyboard: [] });
+      }
+      this.emitChannelNotification(`Question closed: ${result.channelEvent.reason}`, {
+        event: result.channelEvent.event,
+        ...result.channelEvent,
+      });
+      if (this.store) {
+        const seq = this.store.nextSeq("question_closed", {
+          question_id: questionId,
+          reason: result.channelEvent.reason,
+          turn_id: result.channelEvent.turn_id,
+          session_id: result.channelEvent.session_id,
+        });
+        broadcastSseEvent("question_closed", {
+          question_id: questionId,
+          reason: result.channelEvent.reason,
+          turn_id: result.channelEvent.turn_id,
+          session_id: result.channelEvent.session_id,
+        }, seq);
+      }
+      return { success: true, question_id: questionId, reason: result.channelEvent.reason };
+    }
+
+    if (name === "list_questions") {
+      const pending = this.broker.getPendingQuestions();
+      return { success: true, count: pending.length, questions: pending };
     }
 
     if (name === "anchor") {
@@ -369,6 +555,48 @@ export class StdioMcpServer {
         await this.bot.editMessage(chatId, messageId, text);
       }
       return { success: true };
+    }
+
+    if (name === "rename_thread" || name === "rename_topic" || name === "edit_forum_topic") {
+      const chatId = (args.chat_id as number) || defaultChatId;
+      const messageThreadId =
+        ((args.message_thread_id ?? args.thread_id) as number | undefined) ??
+        this.bot?.getLastThreadId(chatId);
+      const newName =
+        typeof args.name === "string"
+          ? args.name.trim()
+          : typeof args.title === "string"
+            ? args.title.trim()
+            : "";
+      const iconCustomEmojiId = (args.icon_custom_emoji_id ?? args.iconCustomEmojiId) as string | undefined;
+
+      if (!newName) {
+        return { success: false, error: "Missing name: thread name must be a non-empty string" };
+      }
+      if (newName.length > 128) {
+        return { success: false, error: "Thread name cannot exceed 128 characters" };
+      }
+      if (messageThreadId === undefined || isNaN(messageThreadId)) {
+        return {
+          success: false,
+          error: "Missing thread ID: pass message_thread_id or invoke inside an active thread",
+        };
+      }
+
+      if (this.bot) {
+        const res = await this.bot.editForumTopic(chatId, messageThreadId, newName, iconCustomEmojiId);
+        if (!res?.ok) {
+          return { success: false, error: res?.description || "Failed to rename thread" };
+        }
+        return {
+          success: true,
+          chat_id: chatId,
+          message_thread_id: messageThreadId,
+          name: newName,
+        };
+      }
+
+      return { success: false, error: "Telegram bot client is not available" };
     }
 
     throw new Error(`Unknown tool: ${name}`);

@@ -1,18 +1,18 @@
-"""Guards academicOps's own commit-time secret gate (Layer 2).
+"""Guards academicOps's own commit-time secret gate.
 
-`lib/py/transcripts/domain/secret_redaction.py` (Layer 1) scrubs known
+`lib/py/transcripts/domain/secret_redaction.py` (write-time scrub) scrubs known
 credential shapes at write time, inside this repo's transcript pipeline. This
 module guards the commit-time backstop for the repo as a whole: a `gitleaks`
 pre-commit hook, declared in `.pre-commit-config.yaml`. It is deliberately an
-independently-maintained scanner rather than a hook that forks Layer 1's
-pattern set — see the comment above the hook entry.
+independently-maintained scanner rather than a hook that forks the write-time
+scrub's pattern set — see the comment above the hook entry.
 
 These tests are mutation-valid the way
 `tests/transcripts/test_secret_redaction.py::TestWiringIntoArtifacts` is: they
 assert on the hook actually blocking a staged commit, and prove the guard goes
 red when the HOOK is removed — not merely when the pattern set is broken. A
 test that only proves gitleaks recognises a pattern in isolation is the exact
-mistake that let this layer disappear once already.
+mistake that let this commit-time gate disappear once already.
 """
 
 from __future__ import annotations

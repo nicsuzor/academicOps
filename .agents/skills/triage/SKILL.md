@@ -28,7 +28,7 @@ the tracking issues.
 
 ### 1. Select the transcript and gate on its quality
 
-- **Review only the session ID, transcript path, or session context passed in the
+- **Review only the session ID / conversation ID, transcript path, or session context passed in the
   prompt.** Never fall back to a random unreviewed transcript. With no target
   supplied, halt and report.
 - The current session may be reviewed by a fresh subagent, whose detached context
@@ -36,7 +36,7 @@ the tracking issues.
   grading its own work in the same context.
 - Verify `$AOPS_SESSIONS` is set and `$AOPS_SESSIONS/transcripts` exists; if not,
   stop and ask the user.
-- Resolve the session ID against `$AOPS_SESSIONS/transcripts/YYYY-MM/` and read
+- Resolve the session ID / conversation ID against `$AOPS_SESSIONS/transcripts/YYYY-MM/` and read
   the markdown. Each session also has HTML and JSON sidecars — see
   [`specs/transcript-pipeline.md`](../../../specs/transcript-pipeline.md#4-output-formats).
 - **Verify the transcript is complete and usable before analysing it.** If it is
@@ -90,8 +90,7 @@ instance, not the whole class.
 - Stamp review provenance in the daily note as one self-contained semantic chunk
   so the PKB indexes it: a heading `### Retro review stamp: session <SID>
   (<project>)`, tagged `#retro #reviewed #triage-retro #<project-tag>`, carrying
-  the verbatim `reviewed_by` block (agent, date, verdict, issues_filed, session
-  ID, transcript path). This indexed entry is the durable already-reviewed signal
+  the verbatim `reviewed_by` block (agent, date, verdict, issues_filed, session ID / conversation ID, transcript path). This indexed entry is the durable already-reviewed signal
   that prevents re-triaging the same transcript.
 - Run the test suite (`uv run pytest`) over any fix applied, then commit and open
   a PR referencing both the fix and the filed issues.
@@ -174,19 +173,19 @@ classify each:
 | `defer` | Real but blocked or low-criticality. | Apply defer label and revisit-by date. | `triaged-defer` |
 
 Apply low blast-radius dispositions autonomously. Gate only on an ambiguous
-classification, an add-or-escalate enforcement proposal (step 2 below), or a hard
+classification, an enforcement proposal (step 2 below), or a hard
 halt (locked merge gate, irreversible operation).
 
-### 2. Enforcement-escalation review
+### 2. Enforcement review
 
-Before assigning a disposition to any proposal that **adds or escalates** a rule:
+Before assigning a disposition to any proposal that **adds or modifies** a rule or mechanism:
 
 1. Generalise the failure into a root-cause category.
 2. Map it to existing mechanisms in the enforcement map and the axioms.
-3. Classify it as a _propagation failure_ (fix via L1 propagation) or an
-   _escalation candidate_ (requires cost-benefit analysis and ≥3 recurrence
+3. Classify it as a _propagation failure_ (fix via instruction propagation) or a
+   _mechanism candidate_ (requires proportionality analysis and ≥3 recurrence
    links).
-4. Default to the cheapest tier, L1 propagation. Flag any enforcement change not
+4. Default to instruction propagation unless context, frequency, and risk justify a stronger intervention. Flag any enforcement change not
    reflected in `specs/enforcement/enforcement.md` as a pipeline gap.
 
 ### 3. Report the cycle
@@ -207,7 +206,7 @@ Before assigning a disposition to any proposal that **adds or escalates** a rule
 ### Needs human triage / decision (waiting)
 
 - #Z (rubric ambiguous: <reason>)
-- <add-or-escalate proposal>: cost-ladder reasoning + ≥3 recurrence links
+- <enforcement proposal>: proportionality reasoning + ≥3 recurrence links
 ```
 
 ### 4. Execution rules

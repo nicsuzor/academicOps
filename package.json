@@ -1,0 +1,8 @@
+{
+  "name": "academicops",
+  "private": true,
+  "description": "Academic Operations Framework",
+  "dependencies": {
+    "@argdown/cli": "^2.0.0"
+  }
+}

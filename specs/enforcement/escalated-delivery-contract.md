@@ -1,16 +1,16 @@
 ---
 id: enforcement-escalated-delivery-contract
-title: In-Session Enforcement -- The Escalated Delivery Contract (Layer 2.5)
+title: In-Session Enforcement -- The Escalated Delivery Contract
 type: spec
 status: draft
 tags: [enforcement, escalated-delivery, task-contract, verification, surfacing, ida]
 ---
 
-# In-Session Enforcement -- The Escalated Delivery Contract (Layer 2.5)
+# In-Session Enforcement -- The Escalated Delivery Contract
 
 ## 1. Problem Statement & Specimen Diagnostics
 
-The academicOps framework enforces rigorous boundaries on task execution: Layer 2 ([`task-contract.md`](task-contract.md)) requires `claim_task` → `release_task` with verifiable evidence written to the PKB task record, and every claim at a task boundary meets the [evidence contract](evidence-contract.md).
+The academicOps framework enforces rigorous boundaries on task execution: the [Work-Unit Contract](task-contract.md) requires `claim_task` → `release_task` with verifiable evidence written to the PKB task record, and every claim at a task boundary meets the [evidence contract](evidence-contract.md).
 
 However, an architectural blind spot exists between **task graph completion** and **escalated delivery**:
 
@@ -18,15 +18,13 @@ However, an architectural blind spot exists between **task graph completion** an
 
 ### 1.1 Primary Specimen: The Undelivered Cost Table (2026-10-01)
 
-- **Originating Ask:** The user asked via Telegram (2026-10-01 11:32 UTC):
-  > _"get me a good review of the agent work that we did today. i want to see a table that shows time and tokens per agent per task / prompt, including where the work was done, what subagents were invoked, how much each cost, etc."_
+- **Originating Ask:** The user asked via Telegram for a review of that day's agent work, including a table of time, tokens and cost per agent per task, where the work ran and which subagents were invoked.
 - **Execution & Storage:** Dispatched to a worker session. The worker extracted Phoenix traces, generated the table, appended it to that day's daily note, recorded the completion summary on the task, and released the task `done`.
 - **Failure Point:**
   1. _Task Contract Deficit (`specs/enforcement/task-contract.md:23-24`):_ The operative return contract states: _"evidence + an output URL, written to the PKB task record."_ Writing to the task record or daily note satisfies the contract text verbatim.
   2. _Reconcile False Positive:_ Peer reconcile checked that the artifact existed on disk and matched the prompt requirements. It accepted `done`. Reconcile had no awareness of whether the artifact reached the human requester.
-  3. _Severed Front-of-House Handoff:_ Front-of-house coordinator (Ida Prime) treated task closure as terminal without an outbound delivery step back to the originating Telegram channel.
-  4. _Omission & Follow-Up:_ The table sat unseen in the daily note. The user was forced to ask hours later (2026-10-01 22:49 UTC):
-     > _"where's the costs table i asked for?"_ … _"and find a way so that you don't forget things i ask you for again please"_
+  3. _Severed Front-of-House Handoff:_ Front-of-house coordinator (Ida) treated task closure as terminal without an outbound delivery step back to the originating Telegram channel.
+  4. _Omission & Follow-Up:_ The table sat unseen in the daily note. Hours later the user had to ask where the table was, and asked for a way to stop asks being forgotten again.
 
 ### 1.2 Secondary Specimen: Unticked Review Fixes Released Done (2026-10-01)
 
@@ -55,13 +53,13 @@ However, an architectural blind spot exists between **task graph completion** an
 
 ## 2. Architecture & Data Flow
 
-The Escalated Delivery Contract sits at **Layer 2.5** of the enforcement pyramid: between single work-unit execution (Layer 2) and system-wide peer truth maintenance (Layer 3).
+The **Escalated Delivery Contract** bridges single work-unit execution ([Work-Unit Contract](task-contract.md)) and multi-task workflow verification and reconciliation ([Workflow](workflow.md)). Current implementation across skills and workflow templates is catalogued in [`specs/ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md#work-unit-escalated-delivery-and-workflow-contracts): [`plugins/ida/skills/mine/SKILL.md`](../../plugins/ida/skills/mine/SKILL.md) implements the `/mine` surfacing command (`ida-tracked` tag, `status: ida_held`, and `trigger: /mine`), [`plugins/ida/skills/workflow-library/workflows/wf-escalated-approval.md`](../../plugins/ida/skills/workflow-library/workflows/wf-escalated-approval.md) and [`wf-reconcile.md`](../../plugins/ida/skills/workflow-library/workflows/wf-reconcile.md) implement one-level-per-hop escalation on the record and the Workers-Append rule, and [`plugins/ida/skills/decide/SKILL.md`](../../plugins/ida/skills/decide/SKILL.md) surfaces pending decisions; the `origin` / `delivery_evidence` frontmatter schema and mechanical `pkb_release_task` check in §3.1–§3.2 remain target design (`[NOT BUILT]`).
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor User as User (Telegram / Interactive)
-    participant Ida as Ida Prime (Front-of-House)
+    participant Ida as Ida (Front-of-House)
     participant PKB as PKB Graph
     participant Worker as Worker (Polecat / Subagent)
     participant Reconcile as Peer Reconcile
@@ -146,9 +144,9 @@ The escalated delivery gate covers **both** completed tasks with human origin an
 
 ### 2.4 Status for Ida-Held Tasks: `ida_held`
 
-In accordance with the user's 2026-09-15 alternative to _"change graph states"_, this spec settles on one formal status name: **`ida_held`**.
+In accordance with the user's earlier direction to change graph states, this spec settles on one formal status name: **`ida_held`**.
 
-As noted by Ida Prime (2026-10-02):
+As noted by the front-of-house Ida (2026-10-02):
 
 > _"the spec must give Ida-held follow-ups a status. Neither queued (dispatchable) nor blocked (external dependency) fits."_
 
@@ -180,7 +178,7 @@ Not all human asks belong under Ida's task tree. Many asks are domain tasks that
 
 To prevent project work from either being mis-parented under Ida's task tree or falling through the cracks:
 
-1. **The `ida-tracked` Tag:** Tasks tracked inside domain project trees that require Ida Prime's follow-up or delivery are tagged with `ida-tracked` (in frontmatter `tags: [..., ida-tracked]`).
+1. **The `ida-tracked` Tag:** Tasks tracked inside domain project trees that require the front-of-house Ida's follow-up or delivery are tagged with `ida-tracked` (in frontmatter `tags: [..., ida-tracked]`).
 2. **Surfacing Pass:** The bare surfacing pass queries:
    - All tasks under Ida's task tree with `assignee: ida` and `status: ida_held`.
    - All tasks across the entire graph outside Ida's task tree carrying the `ida-tracked` tag.

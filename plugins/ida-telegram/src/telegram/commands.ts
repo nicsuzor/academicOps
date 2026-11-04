@@ -3,84 +3,36 @@ export interface TelegramBotCommand {
   description: string;
 }
 
-export interface IdaCommandSpec extends TelegramBotCommand {
-  skill: string;
-  bareAction: string;
-}
-
 /**
  * Commands consumed by the official Telegram plugin that must not be reused
- * for Ida's command menu (kb_ee859e3f).
+ * for Ida's command menu (Telegram functional specification FR-8.1).
  */
 export const RESERVED_COMMANDS = ["start", "help", "status"] as const;
 
 /**
- * Chosen native Telegram commands for Ida (aops_telegram_native_commands, FR-8.1):
- *
- * 1. /decide — Walk through open decisions from today's daily note one at a time
- *    (replaces the retired /gather and /morning-decisions per aops_8949023b).
- * 2. /q — Stage 1 intake and capture onto the strategic task graph.
- * 3. /mine — Track a must-not-drop ask across sessions, or pass through tracked tasks.
- * 4. /reconcile — Run wf-reconcile truth maintenance and update today's daily note.
- * 5. /hydrate — Fast disambiguation search over the PKB graph.
- * 6. /up — Step up a level on the last correction and fix the structural class.
+ * Headless worker lifecycle commands that must never appear in conversational menus
+ * per headless-workers.md and the Telegram functional specification FR-8.1.
  */
-export const DEFAULT_IDA_COMMANDS: readonly IdaCommandSpec[] = [
-  {
-    command: "decide",
-    description: "Walk through open decisions from today's daily note one at a time",
-    skill: "ida:decide",
-    bareAction:
-      "Invoke /ida:decide: read the '## With you' section of today's daily note and present the first open decision card.",
-  },
-  {
-    command: "q",
-    description: "Capture an ask or idea onto the strategic task graph",
-    skill: "ida:q",
-    bareAction:
-      "Invoke /ida:q: if this command replies to a message or follows an uncaptured ask in chat, capture it onto the graph; otherwise ask the user what to capture.",
-  },
-  {
-    command: "mine",
-    description: "Track a must-not-drop ask or pass through tracked tasks",
-    skill: "ida:mine",
-    bareAction:
-      "Invoke /ida:mine with no argument: pass through all ida-tracked tasks, advance what is due, and report items needing a decision.",
-  },
-  {
-    command: "reconcile",
-    description: "Reconcile the task graph and update today's daily note",
-    skill: "ida:reconcile",
-    bareAction:
-      "Invoke /ida:reconcile: run wf-reconcile truth maintenance over returned work and update '## With you' in today's daily note.",
-  },
-  {
-    command: "hydrate",
-    description: "Disambiguate terms or hydrate current conversation context",
-    skill: "ida:hydrate",
-    bareAction:
-      "Invoke /ida:hydrate: if replying to a message or active topic, extract ambiguous terms and return a PKB shortlist; otherwise ask which terms to hydrate.",
-  },
-  {
-    command: "up",
-    description: "Step up a level on the last correction and fix the class",
-    skill: "ida:up",
-    bareAction:
-      "Invoke /ida:up on the user's last correction: identify the structural class, check why existing rules did not fire, and make the structural fix.",
-  },
-];
+export const WORKER_COMMANDS = ["pull", "dump"] as const;
 
 export function normalizeCommandName(raw: string): string {
   const withoutSlash = raw.trim().replace(/^\/+/, "");
   const withoutBotMention = withoutSlash.split("@")[0] || "";
-  return withoutBotMention.toLowerCase();
+  return withoutBotMention.toLowerCase().replace(/-/g, "_").replace(/[^a-z0-9_]/g, "");
 }
 
+/**
+ * Resolves the native command menu from the operator's configured JSON list
+ * (`TELEGRAM_BOT_COMMANDS`). The plugin builds no menu of its own: what each
+ * command does is left to the agent's instructions. Unset or invalid config
+ * yields an empty menu.
+ */
 export function resolveBotCommands(customJson?: string): TelegramBotCommand[] {
-  const reservedSet = new Set<string>(RESERVED_COMMANDS);
-
-  if (customJson && customJson.trim().length > 0) {
+  if (!customJson || !customJson.trim()) return [];
+  const excludedSet = new Set<string>([...RESERVED_COMMANDS, ...WORKER_COMMANDS]);
+  try {
     const parsed = JSON.parse(customJson) as Array<{ command: string; description: string }>;
+    if (!Array.isArray(parsed)) return [];
     return parsed
       .map((entry) => ({
         command: normalizeCommandName(entry.command),
@@ -89,19 +41,12 @@ export function resolveBotCommands(customJson?: string): TelegramBotCommand[] {
       .filter(
         (entry) =>
           /^[a-z0-9_]{1,32}$/.test(entry.command) &&
-          !reservedSet.has(entry.command) &&
+          !excludedSet.has(entry.command) &&
           entry.description.length >= 1 &&
           entry.description.length <= 256
       );
+  } catch (err) {
+    console.error("[ida-telegram] Error parsing TELEGRAM_BOT_COMMANDS JSON:", err);
+    return [];
   }
-
-  return DEFAULT_IDA_COMMANDS.map(({ command, description }) => ({
-    command,
-    description,
-  }));
-}
-
-export function getBareCommandBehavior(rawCommand: string): IdaCommandSpec | undefined {
-  const normalized = normalizeCommandName(rawCommand);
-  return DEFAULT_IDA_COMMANDS.find((c) => c.command === normalized);
 }
