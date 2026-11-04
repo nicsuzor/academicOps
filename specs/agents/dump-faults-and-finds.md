@@ -1,6 +1,6 @@
 ---
 title: Dump Skill Triggers for Operational Faults and Major Finds
-status: ready
+status: draft
 type: spec
 tags: [dump, session-lifecycle, handover, pkb, retroactive-tasks, daily-note]
 ---
@@ -43,18 +43,17 @@ The retroactive task protocol in `dump` requires capturing durable operational c
   - Latent system defects diagnosed to root cause, even if the immediate fix is an operational command (e.g., cache flush, container restart) and the code fix is deferred.
 - **Demarcation: Routine Operations (Exempt)**:
   - Routine system inspections, status checks, or running diagnostic queries that report healthy state.
-  - Ephemeral container restarts performed as standard initialization during routine development setup.
+  - Ephemeral container restarts performed as standard initialization during routine development setup without an underlying fault.
   - Routing work: triage sweeps, queue inspections, passing messages, dispatching workers.
   - Conversational inquiries and informational queries that alter no files and uncover no faults.
+- **Bug Tracking Demarcation**:
+  - The retroactive task captures the operational recovery chore on the knowledge graph.
+  - Any latent software defect or underlying code bug uncovered during the incident is filed as an issue on the issue tracker ("Bugs go on GitHub only"), rather than tracking software bug backlogs inside ephemeral task descriptions.
 - **Procedure**:
-  1. Mint a task on the knowledge graph via the task creation interface with `classification: chore` or `implementation`.
-  2. Provide a concise, verb-led imperative task title describing the recovery or fix.
-  3. Include in the task body:
-     - **Goal / Problem**: The observed symptoms and service impact.
-     - **Diagnosis / Root Cause**: The underlying failure mechanism identified.
-     - **Remediation**: The exact operational commands or interventions executed.
-     - **Verification**: Evidence demonstrating that the service or component is restored and functional.
-  4. Release the task immediately as complete (`status: done`) with completion evidence.
+  1. Mint a task on the knowledge graph via the task creation interface with `classification: chore` or `implementation`, specifying a `parent` node linking to the relevant project or standing operational epic (e.g., platform infrastructure or operations) to prevent orphan root tasks.
+  2. Provide a concise, verb-led imperative task title describing the recovery or fix (e.g., `Recover gateway from 502 outage`).
+  3. Format the task body using the canonical 5-section concise template (`Goal`, `Deliverable`, `Scope`, `Acceptance criteria`, `Pointers`) per standard task brevity invariants (`synthesize-not-accrete`). Specific CLI execution traces, diagnostic logs, and recovery checks belong in task completion metadata (`status: done` release evidence), while enduring architectural insights belong in durable topic notes offered to the knowledge base custodian.
+  4. Release the task immediately as complete (`status: done`), supplying `completion_evidence` detailing the recovery actions and verified health check.
 
 ### 2. Major Find Daily Note Project Update Trigger
 
@@ -71,10 +70,16 @@ The consolidated daily note project update protocol in `dump` ensures visibility
 - **Demarcation: Routine Operations (Exempt)**:
   - Running standard commands, exploratory queries, or routine maintenance checks that yield expected results.
   - Pure routing, queue triage, or dispatch operations with no novel findings.
+- **Project Attribution**:
+  - Recoveries of shared infrastructure services, daemons, or gateways attribute to the relevant platform infrastructure project.
 - **Recording Format**:
   - _Interactive / Coordinator Sessions_: Write exactly one consolidated bullet per touched project into the daily note under `## Today's work`:
     ```markdown
     - **<project-name>**: <latest status or major find in 10-20 words> -- Next: <pointer or resumption prompt>
+    ```
+    If the completed recovery has no follow-up task or resumption prompt, omit the `-- Next: ...` suffix:
+    ```markdown
+    - **<project-name>**: <latest status or major find in 10-20 words>
     ```
   - _Headless / Isolated Worker Sessions_: Emit the consolidated project status in the handover block on the record to prevent concurrent multi-writer race conditions; automated daily note sweeps absorb them.
 
@@ -103,7 +108,11 @@ Any measure intended to shape agent behavior must run through the enforcement py
 **One-Step Placement**:
 The change is implemented as a single, cohesive update to the `dump` skill instructions (`plugins/ida/skills/dump/SKILL.md`), updating the retroactive task creation section and the daily note project update section, paired with updating the enforcement map.
 
-### 5. Evidence for the Move
+### 5. Open questions
+
+None. All triggering thresholds, demarcations, task schemas, and outcome-level build criteria are resolved.
+
+### 6. Evidence for the Move
 
 1. **Direct User Directive**:
    - The framework principal directed (console, 2026-11-04): "you found and fixed a pretty big bug, so you should have created a task. Make sure that the /ida:dump instructions make that point -- add a bullet to the daily list if you find something major, even if you don't change the code."
@@ -113,7 +122,7 @@ The change is implemented as a single, cohesive update to the `dump` skill instr
    - Because the previous `dump` skill instructions tied retroactive tasks strictly to modifying repository project files and daily note updates to projects with touched files or tasks, the agent strictly followed the letter of the instructions and omitted both the task and the daily note bullet.
    - This failure provides direct empirical evidence that the existing instruction boundary is under-inclusive, necessitating an explicit expansion to cover significant faults and major finds.
 
-### 6. Enforcement Map Extract (for Downstream Implementation)
+### 7. Enforcement Map Extract (for Downstream Implementation)
 
 The following rows will be updated in `specs/ENFORCEMENT-MAP.md` during downstream implementation (Stage 2) when the skill instructions are merged:
 
