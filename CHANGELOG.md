@@ -2,15 +2,13 @@
 
 ## [1.0.0](https://github.com/nicsuzor/academicOps/compare/v1.0.0...v1.0.0) (2026-11-04)
 
-
 ### Documentation
 
-* **specs:** specify loop-closing options and direct-webhook architecture in dashboard integration spec ([0fc5116](https://github.com/nicsuzor/academicOps/commit/0fc5116cf82ebe84638d495874375b8e4324f002))
-
+- **specs:** specify loop-closing options and direct-webhook architecture in dashboard integration spec ([0fc5116](https://github.com/nicsuzor/academicOps/commit/0fc5116cf82ebe84638d495874375b8e4324f002))
 
 ### Miscellaneous
 
-* **release:** merge release/v1.0-rc0 into dev ([91be947](https://github.com/nicsuzor/academicOps/commit/91be94710e3cb65f3e3beb818e60145a76379cbb))
+- **release:** merge release/v1.0-rc0 into dev ([91be947](https://github.com/nicsuzor/academicOps/commit/91be94710e3cb65f3e3beb818e60145a76379cbb))
 
 ## [0.10.26](https://github.com/nicsuzor/academicOps/compare/v0.10.25...v0.10.26) (2026-10-23)
 
