@@ -22,7 +22,7 @@ As an operator observing session execution, I want to view the agent's current f
 
 As an operator directing the agent, I want to answer structured multiple-choice questions with recommendations and contextual drill-down, so that I can resolve design choices and clarifications asynchronously.
 
-- **AC-2.1** Given a newly posted question emitted by the agent, then the interface displays an interactive card presenting selection options with the primary recommendation highlighted first.
+- **AC-2.1** Given a newly posted question emitted by the agent, when the card renders in the interface, then it presents selection options with the primary recommendation highlighted first.
 - **AC-2.2** Given a question carrying extended background context (`detail`), when rendered in the interface, then the card displays a details action that opens the background modal.
 - **AC-2.3** Given a question configured as Mini-App-only (`mini_app_only: true` or `chat: false`), when emitted by the agent, then the card renders in the Mini App interface without dispatching a card to Telegram chat.
 - **AC-2.4** Given a pending question card, when the operator selects choices or enters custom text and submits, then the agent receives the answer payload within 100 milliseconds, unblocking execution, and the card transitions to resolved.
@@ -48,7 +48,7 @@ As an operator, I want answered questions dismissed automatically regardless of 
 
 - **AC-5.1** Given a pending question, when answered within the asking agent session or via the Mini App, then the question transitions to resolved and leaves the pending list without manual intervention.
 - **AC-5.2** Given a pending question, when answered via a plain Telegram reply to the chat card, then the question transitions to answered and leaves the pending list.
-- **AC-5.3** Given a question whose Telegram delivery fails, then the failure is surfaced immediately to the asking agent, marked failed in the broker, and excluded from active pending questions.
+- **AC-5.3** Given a pending question, when Telegram API delivery fails, then the failure is surfaced immediately to the asking agent, marked failed in the broker, and excluded from active pending questions.
 
 ## Design
 
