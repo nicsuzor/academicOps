@@ -535,16 +535,9 @@ def main(argv: list[str]) -> int:
     raw: dict[str, Any] = {}
     if not sys.stdin.isatty():
         try:
-            content = sys.stdin.read()
-            if content.strip():
-                loaded = json.loads(content)
-                if not isinstance(loaded, dict):
-                    print("dispatch: hook input must be a JSON object", file=sys.stderr)
-                    return 2
-                raw = loaded
-        except json.JSONDecodeError as exc:
-            print(f"dispatch: hook input is not valid JSON: {exc}", file=sys.stderr)
-            return 2
+            raw = json.load(sys.stdin)
+        except json.JSONDecodeError:
+            raw = {}
 
     # In a Claude Cowork session the hooks do nothing: no fire is logged, no
     # handler runs, nothing is printed. The payload is read first so the

@@ -56,15 +56,14 @@ As a repository owner or contributor across framework repositories, I want clear
 - **AC-4.4** Given a proposed decision or approval gate for the user, when the agent prepares the request, then the agent checks standing rulings and prior user directions, and executes approved courses autonomously without presenting redundant approval gates.
 - **AC-4.5** Given an unresolved review finding or failing review verdict on active work within the agent's authority, when the agent reviews the status, then the agent resolves the finding or rejects it with written reasons autonomously rather than converting authorized fixes into user decision requests.
 
-### US-5 Main-Ida Subagent Relay, Peer Guard Hook, and Knowledge Capture
+### US-5 Main-Ida Subagent Relay and Knowledge Capture
 
-As the user interacting with Ida across sessions and platforms, I want the conversational front Ida to delegate work strictly through internal sub-Idas rather than attempting direct peer dispatch to Pauli or Sara, with structural enforcement preventing accidental bypass, and durable knowledge preserved in the PKB rather than ephemeral artifacts, so that delegation invariants hold reliably.
+As the user interacting with Ida across sessions and platforms, I want the conversational front Ida to delegate work strictly through internal sub-Idas rather than attempting direct peer dispatch to Pauli or Sara, and durable knowledge preserved in the PKB rather than ephemeral artifacts, so that delegation invariants hold reliably.
 
 - **AC-5.1 (Prohibition on Unsolicited Claude Artifacts)** Given any deliverable, review, report, analysis, or proposal produced by an agent loading `plugins/ida`, when the artifact is produced, then the output is persisted in the PKB (or git repository target), and platform defaults prompting automatic creation of Claude artifacts are explicitly overridden unless the user requests one by name.
 - **AC-5.2 (Mandatory Sub-Ida Delegation)** Given a user request for information, diagnosis, or task execution, when the conversational main Ida initiates the work, then the main Ida delegates strictly to an internal sub-Ida (`subagent_type: "ida:ida"`) and is prohibited from invoking or messaging `ida:pauli` or `ida:sara` directly.
 - **AC-5.3 (Methodology Routing to Pauli & Guess Flagging)** Given a user question regarding how to perform work (methodology, step ordering, decomposition), when Ida addresses the request, then the domain is identified as Pauli's, and any immediate conversational response from Ida is explicitly flagged up front as an unverified guess.
 - **AC-5.4 (Session State Clash Settling & Last-Known-State)** Given claims about external reality or live status, when Ida prepares statements for the user, then claims are tested against the active session's own evidence before relaying to settle contradictions rather than relaying clashes as truth, and external reality is recognized as last-known-state rather than continuous physical fact.
-- **AC-5.5 (Structural Peer Guard Hook)** Given a `PreToolUse` event on subagent invocation or messaging tools targeting Pauli or Sara from the main thread (`agent_id` empty), then the hook returns dispatch disposition `Kind.REFUSE` with platform wire format `permissionDecision: "deny"`, failing closed with exit code 2 on invalid or non-object JSON while permitting subagents (`agent_id` present) to pass through.
 
 ## Design
 
@@ -100,9 +99,6 @@ The framework partitions migrated rules across five canonical destination files,
 
 5. **`plugins/ida/agents/sara.md`** (Dispatcher and Epistemic Gatekeeper):
    - Briefing Hygiene: Relay what and why, never how (strike method clauses, preserve user nouns, forbid output steering); explicit subagent typing and unnamed spawning lifecycle.
-
-6. **`plugins/ida/hooks/peer_guard.py`** (Main-Ida Structural Peer Guard):
-   - Structural Prevention: Refuses main-thread `PreToolUse` events spawning or messaging Pauli or Sara directly with `Kind.REFUSE` (`permissionDecision: "deny"`), failing closed on invalid or non-object JSON while permitting subagents to pass through.
 
 ### 2. Enforcement Placement and Pyramid Gradations
 
@@ -140,7 +136,6 @@ In accordance with the enforcement pyramid (`specs/enforcement/enforcement.md`),
 | **Prohibition on unsolicited Claude artifacts** | `plugins/ida/CORE.md` | `instructions` | `imperative` | Quality review (`wf-qa`) |
 | **Main-Ida sub-Ida delegation & methodology routing** | `plugins/ida/agents/ida.md` | `instructions` | `imperative` | Conversational review |
 | **Session state clash settling & last-known-state** | `plugins/ida/agents/ida.md` | `instructions` | `imperative` | Premise-check audit |
-| **Main-Ida structural peer guard hook** | `plugins/ida/hooks/peer_guard.py`, `plugins/ida/hooks/handlers.py` | `structural` | `block` | Automated test (`test_peer_guard.py`) |
 
 ### 3. Invariants and Boundaries
 
@@ -150,8 +145,8 @@ In accordance with the enforcement pyramid (`specs/enforcement/enforcement.md`),
 
 ## 4. Regulatory Experiment Record
 
-- **Hypothesis:** Establishing Level 2 imperative instructions in `plugins/ida/CORE.md` overriding default Claude artifact generation, eliminating the line 30 in-session peer loophole in `plugins/ida/agents/ida.md`, and backing delegation invariants with a Level 4 structural peer guard hook (`peer_guard.py`) will eliminate main-Ida peer bypass defects and unsolicited artifact creation across all execution surfaces.
-- **What moved:** From permissive in-session peer clauses (`In-session peers: Ida may run Sara and Pauli in session instead of using the bus`) and unenforced artifact defaults to Level 1/2 imperative instructions in `CORE.md` and `agents/ida.md`, reinforced by a Level 4 structural `PreToolUse` refusal hook (`peer_guard.py`) denying main-thread subagent spawns and messages to Pauli or Sara.
+- **Hypothesis:** Establishing Level 2 imperative instructions in `plugins/ida/CORE.md` overriding default Claude artifact generation, and eliminating the line 30 in-session peer loophole in `plugins/ida/agents/ida.md` in favor of mandatory sub-Ida delegation (`ida:ida`), will eliminate main-Ida peer bypass defects and unsolicited artifact creation across all execution surfaces without invasive mechanical hooks.
+- **What moved:** From permissive in-session peer clauses (`In-session peers: Ida may run Sara and Pauli in session instead of using the bus`) and unenforced artifact defaults to Level 2 imperative instructions in `CORE.md` and `agents/ida.md`.
 - **On what evidence:** Empirical incident on 2026-11-04 (~20:30 UTC) where an Ida session on academicOps v1.0.1 continued to bypass sub-Ida delegation and dispatch directly to peers on the main thread because fixes developed in the deployment repository lived only locally and were absent from plugin distribution packages.
-- **Observation / Promotion Criteria:** In subsequent conversational sessions loading `plugins/ida`, the main Ida never invokes or messages Pauli or Sara directly, delegates all execution work through internal sub-Idas (`ida:ida`), routes methodology questions to Pauli while flagging immediate views as guesses, persists all knowledge in the PKB without generating unsolicited Claude artifacts, and any accidental direct peer call is deterministically refused with `permissionDecision: "deny"`.
-- **Kill / Escalation Criteria:** If the structural hook experiences false positives on legitimate subagent execution or fails to block variant peer tool calls, refine hook matching in `peer_guard.py`. If agents attempt to bypass the hook via alternate tools or scripts, escalate to container-level tool capability restrictions.
+- **Observation / Promotion Criteria:** In subsequent conversational sessions loading `plugins/ida`, the main Ida never invokes or messages Pauli or Sara directly, delegates all execution work through internal sub-Idas (`ida:ida`), routes methodology questions to Pauli while flagging immediate views as guesses, and persists all knowledge in the PKB without generating unsolicited Claude artifacts.
+- **Kill / Escalation Criteria:** If Level 2 instructions repeatedly fail to prevent direct peer calls across sessions and evidence demonstrates that prompt-level instructions are systematically ignored, record the failure history and file a full specification before evaluating escalation to structural enforcement.
