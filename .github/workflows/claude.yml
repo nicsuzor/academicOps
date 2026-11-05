@@ -120,7 +120,7 @@ jobs:
         if: always()
         run: |
           if [ "${{ steps.claude.outcome }}" != "success" ]; then
-            echo "::error::Claude agent run failed. Session artifacts uploaded for post-mortem analysis."
+            echo "::error::Claude agent run failed."
             exit 1
           else
             echo "::notice::Claude agent run completed successfully."
@@ -189,7 +189,7 @@ jobs:
         if: always()
         run: |
           if [ "${{ steps.claude.outcome }}" != "success" ]; then
-            echo "::error::Claude agent run failed. Session artifacts uploaded for post-mortem analysis."
+            echo "::error::Claude agent run failed."
             exit 1
           else
             echo "::notice::Claude agent run completed successfully."

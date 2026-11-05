@@ -53,10 +53,11 @@ if [ -f "$DIST/.aops-image-metadata.json" ]; then
     paths+=(.aops-image-metadata.json)
 fi
 
+rm -rf .github/workflows
 if [ -f "$SRC/.github/workflows/auto-retarget-pr.yml" ]; then
     mkdir -p .github/workflows
     cp "$SRC/.github/workflows/auto-retarget-pr.yml" .github/workflows/auto-retarget-pr.yml
-    paths+=(.github/workflows/auto-retarget-pr.yml)
+    paths+=(.github/workflows)
 fi
 
 git add -f -A -- "${paths[@]}"
