@@ -64,6 +64,84 @@ export type ReplyButtonsInput =
   | ReplyButtonOption[]
   | ReplyButtonOption[][];
 
+export function buildInlineKeyboardRows(
+  buttons?: ReplyButtonsInput,
+  buttonLayout?: number[] | number,
+  buttonsPerRow?: number
+): Array<Array<Record<string, unknown>>> {
+  const callerRows: Array<Array<Record<string, unknown>>> = [];
+  if (!buttons || buttons.length === 0) {
+    return callerRows;
+  }
+
+  const formatBtn = (b: ReplyButtonOption): Record<string, unknown> => {
+    const btnObj: Record<string, unknown> = { text: b.label };
+    if (b.callback_data) {
+      btnObj.callback_data = b.callback_data;
+    } else if (b.url) {
+      btnObj.url = b.url;
+    } else if (b.web_app) {
+      btnObj.web_app = { url: b.web_app };
+    } else {
+      btnObj.callback_data = `action:${b.label}`;
+    }
+    return btnObj;
+  };
+
+  if (Array.isArray(buttons[0])) {
+    // Direct 2D array of rows
+    for (const row of buttons as ReplyButtonOption[][]) {
+      callerRows.push(row.map(formatBtn));
+    }
+  } else {
+    const flatButtons = buttons as ReplyButtonOption[];
+    const hasRowProp = flatButtons.some((b) => typeof b.row === "number");
+    if (hasRowProp) {
+      const rowMap = new Map<number, ReplyButtonOption[]>();
+      for (const b of flatButtons) {
+        const r = b.row ?? 0;
+        if (!rowMap.has(r)) rowMap.set(r, []);
+        rowMap.get(r)!.push(b);
+      }
+      const sortedRows = Array.from(rowMap.keys()).sort((a, b) => a - b);
+      for (const r of sortedRows) {
+        callerRows.push(rowMap.get(r)!.map(formatBtn));
+      }
+    } else if (Array.isArray(buttonLayout) && buttonLayout.length > 0) {
+      let offset = 0;
+      for (const count of buttonLayout) {
+        if (offset >= flatButtons.length) break;
+        const slice = flatButtons.slice(offset, offset + count);
+        callerRows.push(slice.map(formatBtn));
+        offset += count;
+      }
+      if (offset < flatButtons.length) {
+        const remCount = buttonLayout[buttonLayout.length - 1] || 1;
+        while (offset < flatButtons.length) {
+          const slice = flatButtons.slice(offset, offset + remCount);
+          callerRows.push(slice.map(formatBtn));
+          offset += remCount;
+        }
+      }
+    } else if (typeof buttonLayout === "number" && buttonLayout > 0) {
+      for (let i = 0; i < flatButtons.length; i += buttonLayout) {
+        callerRows.push(flatButtons.slice(i, i + buttonLayout).map(formatBtn));
+      }
+    } else if (typeof buttonsPerRow === "number" && buttonsPerRow > 0) {
+      for (let i = 0; i < flatButtons.length; i += buttonsPerRow) {
+        callerRows.push(flatButtons.slice(i, i + buttonsPerRow).map(formatBtn));
+      }
+    } else {
+      // Default: 1 button per row
+      for (const b of flatButtons) {
+        callerRows.push([formatBtn(b)]);
+      }
+    }
+  }
+
+  return callerRows;
+}
+
 export interface SendReplyOptions {
   chatId: number;
   messageThreadId?: number;
@@ -334,74 +412,8 @@ export class TelegramBotClient {
     // Build inline keyboard
     const inlineKeyboard: Array<Array<Record<string, unknown>>> = [];
 
-    const formatBtn = (b: ReplyButtonOption): Record<string, unknown> => {
-      const btnObj: Record<string, unknown> = { text: b.label };
-      if (b.callback_data) {
-        btnObj.callback_data = b.callback_data;
-      } else if (b.url) {
-        btnObj.url = b.url;
-      } else if (b.web_app) {
-        btnObj.web_app = { url: b.web_app };
-      } else {
-        btnObj.callback_data = `action:${b.label}`;
-      }
-      return btnObj;
-    };
-
     // Build custom caller button rows (AC1)
-    const callerRows: Array<Array<Record<string, unknown>>> = [];
-    if (buttons && buttons.length > 0) {
-      if (Array.isArray(buttons[0])) {
-        // Direct 2D array of rows
-        for (const row of buttons as ReplyButtonOption[][]) {
-          callerRows.push(row.map(formatBtn));
-        }
-      } else {
-        const flatButtons = buttons as ReplyButtonOption[];
-        const hasRowProp = flatButtons.some((b) => typeof b.row === "number");
-        if (hasRowProp) {
-          const rowMap = new Map<number, ReplyButtonOption[]>();
-          for (const b of flatButtons) {
-            const r = b.row ?? 0;
-            if (!rowMap.has(r)) rowMap.set(r, []);
-            rowMap.get(r)!.push(b);
-          }
-          const sortedRows = Array.from(rowMap.keys()).sort((a, b) => a - b);
-          for (const r of sortedRows) {
-            callerRows.push(rowMap.get(r)!.map(formatBtn));
-          }
-        } else if (Array.isArray(buttonLayout) && buttonLayout.length > 0) {
-          let offset = 0;
-          for (const count of buttonLayout) {
-            if (offset >= flatButtons.length) break;
-            const slice = flatButtons.slice(offset, offset + count);
-            callerRows.push(slice.map(formatBtn));
-            offset += count;
-          }
-          if (offset < flatButtons.length) {
-            const remCount = buttonLayout[buttonLayout.length - 1] || 1;
-            while (offset < flatButtons.length) {
-              const slice = flatButtons.slice(offset, offset + remCount);
-              callerRows.push(slice.map(formatBtn));
-              offset += remCount;
-            }
-          }
-        } else if (typeof buttonLayout === "number" && buttonLayout > 0) {
-          for (let i = 0; i < flatButtons.length; i += buttonLayout) {
-            callerRows.push(flatButtons.slice(i, i + buttonLayout).map(formatBtn));
-          }
-        } else if (typeof buttonsPerRow === "number" && buttonsPerRow > 0) {
-          for (let i = 0; i < flatButtons.length; i += buttonsPerRow) {
-            callerRows.push(flatButtons.slice(i, i + buttonsPerRow).map(formatBtn));
-          }
-        } else {
-          // Default: 1 button per row
-          for (const b of flatButtons) {
-            callerRows.push([formatBtn(b)]);
-          }
-        }
-      }
-    }
+    const callerRows = buildInlineKeyboardRows(buttons, buttonLayout, buttonsPerRow);
 
     const miniAppBaseUrl = this.config.miniAppUrl.replace(/\/+$/, "");
 
@@ -957,6 +969,171 @@ export class TelegramBotClient {
       });
     }
     return res;
+  }
+
+  public async closeForumTopic(
+    chatId: number,
+    messageThreadId: number
+  ): Promise<{ ok: boolean; result?: boolean; description?: string; error_code?: number }> {
+    return await this.callApi("closeForumTopic", {
+      chat_id: chatId,
+      message_thread_id: messageThreadId,
+    });
+  }
+
+  public async reopenForumTopic(
+    chatId: number,
+    messageThreadId: number
+  ): Promise<{ ok: boolean; result?: boolean; description?: string; error_code?: number }> {
+    return await this.callApi("reopenForumTopic", {
+      chat_id: chatId,
+      message_thread_id: messageThreadId,
+    });
+  }
+
+  public async deleteForumTopic(
+    chatId: number,
+    messageThreadId: number
+  ): Promise<{ ok: boolean; result?: boolean; description?: string; error_code?: number }> {
+    const res = await this.callApi("deleteForumTopic", {
+      chat_id: chatId,
+      message_thread_id: messageThreadId,
+    });
+    if (res?.ok) {
+      if (this.lastThreadIdByChat.get(chatId) === messageThreadId) {
+        this.lastThreadIdByChat.delete(chatId);
+      }
+      if (this.lastInboundThreadIdByChat.get(chatId) === messageThreadId) {
+        this.lastInboundThreadIdByChat.delete(chatId);
+      }
+      if (this.store) {
+        const state = this.store.getChatState(chatId);
+        if (state?.activeThreadId === messageThreadId || state?.lastInboundThreadId === messageThreadId) {
+          this.store.updateChatState(chatId, {
+            activeThreadId: state.activeThreadId === messageThreadId ? undefined : state.activeThreadId,
+            lastInboundThreadId: state.lastInboundThreadId === messageThreadId ? undefined : state.lastInboundThreadId,
+          });
+        }
+      }
+    }
+    return res;
+  }
+
+  public async pinChatMessage(
+    chatId: number,
+    messageId: number,
+    disableNotification = true
+  ): Promise<{ ok: boolean; result?: boolean; description?: string; error_code?: number }> {
+    return await this.callApi("pinChatMessage", {
+      chat_id: chatId,
+      message_id: messageId,
+      disable_notification: disableNotification,
+    });
+  }
+
+  public async unpinChatMessage(
+    chatId: number,
+    messageId?: number
+  ): Promise<{ ok: boolean; result?: boolean; description?: string; error_code?: number }> {
+    const payload: Record<string, unknown> = { chat_id: chatId };
+    if (messageId !== undefined) {
+      payload.message_id = messageId;
+    }
+    return await this.callApi("unpinChatMessage", payload);
+  }
+
+  public async unpinAllForumTopicMessages(
+    chatId: number,
+    messageThreadId: number
+  ): Promise<{ ok: boolean; result?: boolean; description?: string; error_code?: number }> {
+    return await this.callApi("unpinAllForumTopicMessages", {
+      chat_id: chatId,
+      message_thread_id: messageThreadId,
+    });
+  }
+
+  public async unpinAllChatMessages(
+    chatId: number
+  ): Promise<{ ok: boolean; result?: boolean; description?: string; error_code?: number }> {
+    return await this.callApi("unpinAllChatMessages", {
+      chat_id: chatId,
+    });
+  }
+
+  public async forwardMessages(options: {
+    chatId: number;
+    fromChatId: number;
+    messageIds: number[];
+    messageThreadId?: number;
+    disableNotification?: boolean;
+    protectContent?: boolean;
+  }): Promise<{ ok: boolean; result?: Array<{ message_id: number }>; description?: string; error_code?: number }> {
+    const payload: Record<string, unknown> = {
+      chat_id: options.chatId,
+      from_chat_id: options.fromChatId,
+      message_ids: options.messageIds,
+    };
+    if (options.messageThreadId !== undefined) {
+      payload.message_thread_id = options.messageThreadId;
+    }
+    if (options.disableNotification !== undefined) {
+      payload.disable_notification = options.disableNotification;
+    }
+    if (options.protectContent !== undefined) {
+      payload.protect_content = options.protectContent;
+    }
+    return await this.callApi("forwardMessages", payload);
+  }
+
+  public async copyMessages(options: {
+    chatId: number;
+    fromChatId: number;
+    messageIds: number[];
+    messageThreadId?: number;
+    disableNotification?: boolean;
+    protectContent?: boolean;
+    removeCaption?: boolean;
+  }): Promise<{ ok: boolean; result?: Array<{ message_id: number }>; description?: string; error_code?: number }> {
+    const payload: Record<string, unknown> = {
+      chat_id: options.chatId,
+      from_chat_id: options.fromChatId,
+      message_ids: options.messageIds,
+    };
+    if (options.messageThreadId !== undefined) {
+      payload.message_thread_id = options.messageThreadId;
+    }
+    if (options.disableNotification !== undefined) {
+      payload.disable_notification = options.disableNotification;
+    }
+    if (options.protectContent !== undefined) {
+      payload.protect_content = options.protectContent;
+    }
+    if (options.removeCaption !== undefined) {
+      payload.remove_caption = options.removeCaption;
+    }
+    return await this.callApi("copyMessages", payload);
+  }
+
+  public async deleteMessages(
+    chatId: number,
+    messageIds: number[]
+  ): Promise<{ ok: boolean; result?: boolean; description?: string; error_code?: number }> {
+    return await this.callApi("deleteMessages", {
+      chat_id: chatId,
+      message_ids: messageIds,
+    });
+  }
+
+  public async editMessageReplyMarkup(
+    chatId: number,
+    messageId: number,
+    inlineKeyboard: Array<Array<Record<string, unknown>>>
+  ): Promise<{ ok: boolean; result?: boolean | any; description?: string; error_code?: number }> {
+    return await this.callApi("editMessageReplyMarkup", {
+      chat_id: chatId,
+      message_id: messageId,
+      reply_markup: { inline_keyboard: inlineKeyboard },
+    });
   }
 
   public async registerCommands(): Promise<boolean> {
