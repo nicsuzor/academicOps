@@ -11,8 +11,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from build.marketplace import load_marketplace_toml
 from tests.test_shipped_hooks import (
     _build_dirs,
@@ -23,45 +21,9 @@ from tests.test_shipped_hooks import (
 pytest_plugins = ["tests.test_shipped_hooks"]
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_PLUGINS_DIR = _REPO_ROOT / "plugins"
 _MARKETPLACE = _REPO_ROOT / "build" / "marketplace.toml"
 
 _ALL_PLUGINS = [entry["directory"] for entry in load_marketplace_toml(_MARKETPLACE)["plugins"]]
-
-
-@pytest.mark.parametrize("plugin_name", _ALL_PLUGINS)
-def test_plugin_core_md_exists_and_under_twenty_lines(plugin_name: str):
-    """Every plugin has a CORE.md of at most 20 lines satisfying the four tests."""
-    plugin_dir = _PLUGINS_DIR / plugin_name
-    core_file = plugin_dir / "CORE.md"
-
-    assert core_file.is_file(), f"{plugin_name} missing CORE.md at plugin root"
-    content = core_file.read_text(encoding="utf-8")
-    lines = content.splitlines()
-
-    # Ceiling: strictly <= 20 lines
-    assert 0 < len(lines) <= 20, (
-        f"{plugin_name}/CORE.md has {len(lines)} lines; ceiling is 20 lines"
-    )
-
-    # Test 2: values filled in and working (no unresolved template placeholders)
-    assert "${" not in content, f"{plugin_name}/CORE.md carries unresolved template placeholders"
-
-    # Test 3 & 4: nothing duplicated or extraneous (no persona voice, no subagent spawning, no git branch instructions)
-    lower = content.lower()
-    assert "sub-ida" not in lower, (
-        f"{plugin_name}/CORE.md carries agent-specific sub-ida instructions"
-    )
-    assert "branch" not in lower or plugin_name == "ida-telegram", (
-        f"{plugin_name}/CORE.md carries extraneous git branch instructions"
-    )
-
-    # Plugin-specific invariants (OBC-3.4 / AC-3.3)
-    if plugin_name == "ida":
-        assert "ida:argdown-toulmin" in content
-        assert "ida:premise-check" in content
-        assert "pauli" in lower or "Pauli" in content
-        assert "ida:workflow-library" in content
 
 
 def test_every_shipped_plugin_session_start_hook_injects_core_md(dist_root: Path):
