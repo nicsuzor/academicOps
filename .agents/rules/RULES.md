@@ -14,6 +14,8 @@ axiom alone.
 
 Before proposing, adding, or modifying an enforcement mechanism, run through the enforcement pyramid options against [`specs/enforcement/enforcement.md`](../../specs/enforcement/enforcement.md) first, testing least-invasive options across its controlled vocabulary and strength gradations before escalating. Default to instructions: instructions work in the large majority of cases; the burden of proof is on adding a mechanism.
 
+No new hooks without a full spec. No new mechanical enforcement of any kind without a full spec and a decision history filed to show enforcement map escalation step by step.
+
 Any change that adds, modifies, escalates, or retires an enforcement mechanism
 updates [`specs/enforcement/enforcement.md`](../../specs/enforcement/enforcement.md)
 in the same PR, so the spec still describes reality after merge.
