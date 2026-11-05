@@ -40,13 +40,11 @@ token the client holds for its own `services` connection, so it needs its own
 credential in the environment the client is launched from (the container or
 launchd environment, not the agent's shell).
 
-The hook and runtime expect canonical Cloudflare Access service-token credentials:
+The hook and runtime resolve credentials in order of precedence:
 
-- `DISPATCHER_MCP_TOKEN_ID` and `DISPATCHER_MCP_TOKEN_SECRET` -- the Cloudflare Access
-  service token pair. The hook itself and everything running in the framework
-  expects only this set of names. Launching apps substitute the appropriate keys
-  for different surfaces and use cases (for example, substituting worker-scoped
-  keys without polecat dispatch access for isolated worker containers).
+- `PKB_MCP_HEADERS` -- JSON-encoded object of HTTP headers to attach to every MCP HTTP request.
+- `WORKER_MCP_TOKEN_ID` and `WORKER_MCP_TOKEN_SECRET` -- Cloudflare Access service token pair scoped for worker execution environments. Takes precedence over dispatcher tokens when set.
+- `DISPATCHER_MCP_TOKEN_ID` and `DISPATCHER_MCP_TOKEN_SECRET` -- Cloudflare Access service token pair for dispatcher / interactive sessions. Used when worker tokens are unset.
 
 **Check it is working.** A grounded turn carries
 `<academicOps PKB search results>` in its hook context. A failing one carries

@@ -980,6 +980,22 @@ def _otel_imports():
 # per call; this caps one failed export at roughly a second.
 _EXPORT_TIMEOUT_S = 2
 
+
+def _resolve_export_timeout(timeout_s: float | None = None) -> float:
+    if timeout_s is not None:
+        return float(timeout_s)
+    env_timeout = os.environ.get("OTEL_EXPORTER_OTLP_TRACES_TIMEOUT") or os.environ.get(
+        "OTEL_EXPORTER_OTLP_TIMEOUT"
+    )
+    if env_timeout:
+        try:
+            val = float(env_timeout)
+            return val / 1000.0 if val > 1000 else val
+        except ValueError:
+            pass
+    return float(_EXPORT_TIMEOUT_S)
+
+
 # CA bundles a proxied export trusts when the OTel certificate variables are
 # unset. A TLS-re-terminating egress proxy (e.g. a Claude Code cloud session)
 # publishes its CA through these.
@@ -1028,8 +1044,10 @@ def _create_exporter(
     endpoint: str,
     headers: dict | None = None,
     protocol: str = "",
+    timeout_s: float | None = None,
 ) -> Any:
     """Create an OTel span exporter. Raises on initialization failure."""
+    timeout = _resolve_export_timeout(timeout_s)
     prefer_http = protocol in ("http/protobuf", "http/json", "http")
 
     if prefer_http:
@@ -1041,7 +1059,7 @@ def _create_exporter(
         return HTTPSpanExporter(
             endpoint=endpoint,
             headers=headers if headers else None,
-            timeout=_EXPORT_TIMEOUT_S,
+            timeout=timeout,
             **_proxy_http_kwargs(endpoint),
         )
 
@@ -1059,7 +1077,7 @@ def _create_exporter(
         endpoint=endpoint,
         headers=headers if headers else None,
         insecure=insecure,
-        timeout=_EXPORT_TIMEOUT_S,
+        timeout=timeout,
     )
 
 
@@ -1410,6 +1428,7 @@ def _build_and_export_spans(
     known_parents: dict[str, str | None] | None = None,
     service_name: str | None = None,
     surface: str | None = None,
+    timeout_s: float | None = None,
 ) -> bool:
     """Create spans from records and export via OTLP gRPC (with fallbacks).
 
@@ -1493,6 +1512,9 @@ def _build_and_export_spans(
                 service_name = env_srv
     if not service_name:
         service_name = "aops-claude-hooks"
+
+    if timeout_s is None and service_name == "aops-verdict-hooks":
+        timeout_s = 5.0
 
     if surface is None:
         surface = config.get("surface") or config.get("aops.surface")
@@ -1583,18 +1605,32 @@ def _build_and_export_spans(
             headers = {}
             if config.get("api_key"):
                 api_key_str = config["api_key"]
-                if "=" in api_key_str and ":" not in api_key_str and "Bearer" not in api_key_str:
+                if "=" in api_key_str:
                     for item in api_key_str.split(","):
                         if "=" in item:
                             k, v = item.split("=", 1)
+                            headers[k.strip()] = v.strip()
+                        elif ":" in item:
+                            k, v = item.split(":", 1)
                             headers[k.strip()] = v.strip()
                 elif ":" in api_key_str:
                     for item in api_key_str.split(","):
                         if ":" in item:
                             k, v = item.split(":", 1)
                             headers[k.strip()] = v.strip()
-                else:
-                    headers["authorization"] = f"Bearer {api_key_str}"
+                elif api_key_str.strip():
+                    headers["authorization"] = f"Bearer {api_key_str.strip()}"
+
+            if "CF-Access-Client-Id" not in headers:
+                cf_id = os.environ.get("CF_ACCESS_CLIENT_ID") or os.environ.get(
+                    "CF-Access-Client-Id"
+                )
+                cf_sec = os.environ.get("CF_ACCESS_CLIENT_SECRET") or os.environ.get(
+                    "CF-Access-Client-Secret"
+                )
+                if cf_id and cf_sec:
+                    headers["CF-Access-Client-Id"] = cf_id
+                    headers["CF-Access-Client-Secret"] = cf_sec
 
             if project_name and "openinference-project-name" not in headers:
                 headers["openinference-project-name"] = project_name
@@ -1603,6 +1639,7 @@ def _build_and_export_spans(
                 endpoint=config["endpoint"],
                 headers=headers if headers else None,
                 protocol=config.get("protocol", ""),
+                timeout_s=timeout_s,
             )
             if not exporter:
                 log.warning("Failed to create any OTel span exporter")

@@ -381,3 +381,76 @@ def test_revise_allowed_when_valid_empty():
     )
     assert res["ok"] is True
     assert res["verdict"] == "REVISE"
+
+
+def test_record_verdict_retries_on_transient_span_export_failure():
+    """AC: record_verdict retries span export when initial attempt fails transients and succeeds on retry."""
+    call_count = 0
+
+    class _FlakyTracer(_StubTracer):
+        def _build_and_export_spans(self, *args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise TimeoutError("connection timed out")
+            return super()._build_and_export_spans(*args, **kwargs)
+
+    tracer = _FlakyTracer()
+    session_id = "s-retry-test"
+    task_id = "aops_2bc1b139"
+    reason = (
+        f"Judged: {task_id}; asks tg-1\n"
+        "Valid: (1) holds -- step holds\n"
+        "Valid: (2) fails #missing -- condition not proven\n"
+        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
+        "Answered: tg-1 ← (2)\n"
+        "Sufficient: (2) material; low-stakes\n"
+        "Waived: block -- reviewed\n"
+        "Relay: none"
+    )
+
+    res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=task_id,
+        verdict="REVISE",
+        reason=reason,
+        tracer_mod=tracer,
+    )
+    assert res["ok"] is True
+    assert call_count == 2
+    assert len(tracer.exported) == 1
+
+
+def test_record_verdict_raises_after_max_retries_exhausted():
+    """AC: record_verdict raises RuntimeError when span export fails all retries."""
+    call_count = 0
+
+    class _AlwaysFailingTracer(_StubTracer):
+        def _build_and_export_spans(self, *args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            raise TimeoutError("persistent timeout")
+
+    tracer = _AlwaysFailingTracer()
+    session_id = "s-fail-test"
+    task_id = "aops_2bc1b139"
+    reason = (
+        f"Judged: {task_id}; asks tg-1\n"
+        "Valid: (1) holds -- step holds\n"
+        "Valid: (2) fails #missing -- condition not proven\n"
+        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
+        "Answered: tg-1 ← (2)\n"
+        "Sufficient: (2) material; low-stakes\n"
+        "Waived: block -- reviewed\n"
+        "Relay: none"
+    )
+
+    with pytest.raises(RuntimeError, match="OTel span export failed"):
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id=task_id,
+            verdict="REVISE",
+            reason=reason,
+            tracer_mod=tracer,
+        )
+    assert call_count == 3

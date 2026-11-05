@@ -418,7 +418,7 @@ def test_record_verdict_fails_and_stays_armed_on_unacknowledged_export():
             tracer_mod=tracer,
         )
 
-    assert len(tracer.exported) == 1
+    assert len(tracer.exported) == 3
     assert pcg.is_armed(session_id) is True
 
 

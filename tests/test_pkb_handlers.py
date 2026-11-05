@@ -47,6 +47,7 @@ def no_ambient_pkb_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     for var in (
         "PKB_MCP_URL",
+        "PKB_MCP_HEADERS",
         "DISPATCHER_MCP_TOKEN",
         "WORKER_MCP_TOKEN",
         "WORKER_MCP_TOKEN_ID",
@@ -240,9 +241,8 @@ def test_extract_prompt_query_keeps_typed_prompt_that_quotes_a_channel_tag():
 
 
 def test_resolve_mcp_headers_reads_environment():
-    legacy_var = "".join(["PKB_", "MCP_", "HEADERS"])
-    with patch.dict(os.environ, {legacy_var: json.dumps({"X-Custom": "val"})}, clear=True):
-        assert handlers._resolve_mcp_headers() == {}
+    with patch.dict(os.environ, {"PKB_MCP_HEADERS": json.dumps({"X-Custom": "val"})}, clear=True):
+        assert handlers._resolve_mcp_headers() == {"X-Custom": "val"}
 
     with patch.dict(
         os.environ,
@@ -255,14 +255,32 @@ def test_resolve_mcp_headers_reads_environment():
         }
 
 
-def test_resolve_mcp_headers_ignores_retired_worker_pair():
-    """The hook expects only DISPATCHER_MCP_TOKEN_*; worker pairs are not read by the hook."""
+def test_resolve_mcp_headers_reads_worker_pair_with_precedence():
+    """Worker pair takes precedence over dispatcher pair; both are supported."""
     with patch.dict(
         os.environ,
         {"WORKER_MCP_TOKEN_ID": "wid", "WORKER_MCP_TOKEN_SECRET": "wsec"},
         clear=True,
     ):
-        assert handlers._resolve_mcp_headers() == {}
+        assert handlers._resolve_mcp_headers() == {
+            "CF-Access-Client-Id": "wid",
+            "CF-Access-Client-Secret": "wsec",
+        }
+
+    with patch.dict(
+        os.environ,
+        {
+            "WORKER_MCP_TOKEN_ID": "wid",
+            "WORKER_MCP_TOKEN_SECRET": "wsec",
+            "DISPATCHER_MCP_TOKEN_ID": "did",
+            "DISPATCHER_MCP_TOKEN_SECRET": "dsec",
+        },
+        clear=True,
+    ):
+        assert handlers._resolve_mcp_headers() == {
+            "CF-Access-Client-Id": "wid",
+            "CF-Access-Client-Secret": "wsec",
+        }
 
 
 def test_resolve_mcp_headers_ignores_half_a_pair():
@@ -286,12 +304,11 @@ def test_resolve_mcp_headers_ignores_half_a_pair():
         assert handlers._resolve_mcp_headers() == {}
 
 
-def test_resolve_mcp_headers_ignores_legacy_variable(caplog):
-    legacy_var = "".join(["PKB_", "MCP_", "HEADERS"])
-    with patch.dict(os.environ, {legacy_var: "{not json"}, clear=True):
+def test_resolve_mcp_headers_logs_malformed_json(caplog):
+    with patch.dict(os.environ, {"PKB_MCP_HEADERS": "{not json"}, clear=True):
         with caplog.at_level("WARNING"):
             assert handlers._resolve_mcp_headers() == {}
-    assert not any(legacy_var in r.getMessage() for r in caplog.records)
+    assert any("PKB_MCP_HEADERS" in r.getMessage() for r in caplog.records)
 
 
 def test_http_failure_surfaces_as_hook_failure_naming_the_error():
@@ -736,7 +753,6 @@ def test_search_the_pkb_unauthenticated_when_credentials_unset(
 
 def test_search_the_pkb_injected_message_on_401(staged_hooks: Path, http_mcp_server):
     """AC: HTTP 401 injects a message naming refusal, 401, and canonical token variables, with red trace recorded."""
-    legacy_var = "".join(["PKB_", "MCP_", "HEADERS"])
     http_mcp_server.set_response(401, body="Unauthorized")
     env = dict(os.environ)
     env["PKB_MCP_URL"] = http_mcp_server.url
@@ -760,9 +776,9 @@ def test_search_the_pkb_injected_message_on_401(staged_hooks: Path, http_mcp_ser
     assert injected.startswith("aops hooks: handler 'search_the_pkb' failed")
     assert "refused authorisation" in injected
     assert "401" in injected
-    assert legacy_var not in injected
-    assert "WORKER_MCP_TOKEN_ID" not in injected
-    assert "WORKER_MCP_TOKEN_SECRET" not in injected
+    assert "PKB_MCP_HEADERS" in injected
+    assert "WORKER_MCP_TOKEN_ID" in injected
+    assert "WORKER_MCP_TOKEN_SECRET" in injected
     assert "DISPATCHER_MCP_TOKEN_ID" in injected
     assert "DISPATCHER_MCP_TOKEN_SECRET" in injected
     assert len(http_mcp_server.requests) == 1
@@ -771,7 +787,6 @@ def test_search_the_pkb_injected_message_on_401(staged_hooks: Path, http_mcp_ser
 
 def test_search_the_pkb_injected_message_on_403(staged_hooks: Path, http_mcp_server):
     """AC: HTTP 403 injects a message naming refusal, 403, and canonical token variables, with red trace recorded."""
-    legacy_var = "".join(["PKB_", "MCP_", "HEADERS"])
     http_mcp_server.set_response(403, body="Forbidden")
     env = dict(os.environ)
     env["PKB_MCP_URL"] = http_mcp_server.url
@@ -795,9 +810,9 @@ def test_search_the_pkb_injected_message_on_403(staged_hooks: Path, http_mcp_ser
     assert injected.startswith("aops hooks: handler 'search_the_pkb' failed")
     assert "refused authorisation" in injected
     assert "403" in injected
-    assert legacy_var not in injected
-    assert "WORKER_MCP_TOKEN_ID" not in injected
-    assert "WORKER_MCP_TOKEN_SECRET" not in injected
+    assert "PKB_MCP_HEADERS" in injected
+    assert "WORKER_MCP_TOKEN_ID" in injected
+    assert "WORKER_MCP_TOKEN_SECRET" in injected
     assert "DISPATCHER_MCP_TOKEN_ID" in injected
     assert "DISPATCHER_MCP_TOKEN_SECRET" in injected
     assert len(http_mcp_server.requests) == 1
@@ -829,16 +844,15 @@ def test_search_the_pkb_injected_message_on_unreachable(staged_hooks: Path):
     assert "unreachable" in injected
 
 
-def test_search_the_pkb_ignores_legacy_headers_and_authenticates_with_canonical_pair(
+def test_search_the_pkb_authenticates_with_pkb_mcp_headers_or_token_pairs(
     http_mcp_server, monkeypatch, tmp_path
 ):
-    """AC2: With only a canonical pair set, the PKB hook authenticates; with legacy headers set and no pair, it does not use it."""
-    legacy_var = "".join(["PKB_", "MCP_", "HEADERS"])
+    """AC: With PKB_MCP_HEADERS, worker token pair, or dispatcher token pair, the hook authenticates carrying the appropriate headers."""
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("PKB_MCP_URL", http_mcp_server.url)
 
-    # 1. With legacy headers set and no canonical pair, the hook does NOT send the legacy header
-    monkeypatch.setenv(legacy_var, json.dumps({"X-Legacy-Header": "forbidden"}))
+    # 1. With PKB_MCP_HEADERS set, the hook sends custom headers
+    monkeypatch.setenv("PKB_MCP_HEADERS", json.dumps({"X-Custom-Auth": "bearer-123"}))
     monkeypatch.delenv("WORKER_MCP_TOKEN_ID", raising=False)
     monkeypatch.delenv("WORKER_MCP_TOKEN_SECRET", raising=False)
     monkeypatch.delenv("DISPATCHER_MCP_TOKEN_ID", raising=False)
@@ -854,10 +868,12 @@ def test_search_the_pkb_ignores_legacy_headers_and_authenticates_with_canonical_
     )
     handlers.search_the_pkb(ctx1)
     assert len(http_mcp_server.requests) == 1
-    assert "x-legacy-header" not in http_mcp_server.requests[0]["headers"]
+    assert http_mcp_server.requests[0]["headers"]["x-custom-auth"] == "bearer-123"
 
-    # 2. With only a canonical pair set, the hook authenticates carrying the token pair
-    monkeypatch.delenv(legacy_var, raising=False)
+    # 2. With worker token pair set, the hook sends CF-Access headers with worker tokens (precedence over dispatcher)
+    monkeypatch.delenv("PKB_MCP_HEADERS", raising=False)
+    monkeypatch.setenv("WORKER_MCP_TOKEN_ID", "wid123")
+    monkeypatch.setenv("WORKER_MCP_TOKEN_SECRET", "wsec456")
     monkeypatch.setenv("DISPATCHER_MCP_TOKEN_ID", "did123")
     monkeypatch.setenv("DISPATCHER_MCP_TOKEN_SECRET", "dsec456")
 
@@ -871,8 +887,25 @@ def test_search_the_pkb_ignores_legacy_headers_and_authenticates_with_canonical_
     )
     handlers.search_the_pkb(ctx2)
     assert len(http_mcp_server.requests) == 2
-    assert http_mcp_server.requests[1]["headers"]["cf-access-client-id"] == "did123"
-    assert http_mcp_server.requests[1]["headers"]["cf-access-client-secret"] == "dsec456"
+    assert http_mcp_server.requests[1]["headers"]["cf-access-client-id"] == "wid123"
+    assert http_mcp_server.requests[1]["headers"]["cf-access-client-secret"] == "wsec456"
+
+    # 3. With only dispatcher token pair set, the hook sends dispatcher tokens
+    monkeypatch.delenv("WORKER_MCP_TOKEN_ID", raising=False)
+    monkeypatch.delenv("WORKER_MCP_TOKEN_SECRET", raising=False)
+
+    ctx3 = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        session_id="s3",
+        raw={"prompt": "prompt 3"},
+        hooks_dir=PKB_HOOKS,
+        agent_type="ida:ida",
+    )
+    handlers.search_the_pkb(ctx3)
+    assert len(http_mcp_server.requests) == 3
+    assert http_mcp_server.requests[2]["headers"]["cf-access-client-id"] == "did123"
+    assert http_mcp_server.requests[2]["headers"]["cf-access-client-secret"] == "dsec456"
 
 
 def test_search_the_pkb_session_fallback_and_caching(monkeypatch, tmp_path):

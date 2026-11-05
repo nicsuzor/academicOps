@@ -114,17 +114,51 @@ def _export_tool_span(
     record["attributes"]["aops.surface"] = surface
 
     username = os.environ.get("USER") or os.environ.get("USERNAME") or None
-    try:
-        exported = tracer_mod._build_and_export_spans(
-            config=config,
-            session_id=phoenix_session_id,
-            username=username,
-            span_records=[record],
-            service_name="aops-verdict-hooks",
-            surface=surface,
-        )
-    except Exception as exc:
-        raise RuntimeError(f"premise_check_verdict: OTel span export failed: {exc!r}") from exc
+    max_attempts = 3
+    last_exc: Exception | None = None
+    exported = False
+    for attempt in range(max_attempts):
+        try:
+            exported = tracer_mod._build_and_export_spans(
+                config=config,
+                session_id=phoenix_session_id,
+                username=username,
+                span_records=[record],
+                service_name="aops-verdict-hooks",
+                surface=surface,
+                timeout_s=5.0,
+            )
+            if exported is True:
+                break
+        except TypeError:
+            try:
+                exported = tracer_mod._build_and_export_spans(
+                    config=config,
+                    session_id=phoenix_session_id,
+                    username=username,
+                    span_records=[record],
+                    service_name="aops-verdict-hooks",
+                    surface=surface,
+                )
+                if exported is True:
+                    break
+            except Exception as exc:
+                last_exc = exc
+                if attempt < max_attempts - 1:
+                    time.sleep(0.2 * (attempt + 1))
+                    continue
+        except Exception as exc:
+            last_exc = exc
+            if attempt < max_attempts - 1:
+                time.sleep(0.2 * (attempt + 1))
+                continue
+        if exported is not True and attempt < max_attempts - 1:
+            time.sleep(0.2 * (attempt + 1))
+
+    if last_exc is not None and not exported:
+        raise RuntimeError(
+            f"premise_check_verdict: OTel span export failed: {last_exc!r}"
+        ) from last_exc
     if exported is not True:
         raise RuntimeError("premise_check_verdict: OTel span export failed")
 
