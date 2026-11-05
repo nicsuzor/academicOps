@@ -14,7 +14,7 @@ Review, customize, and allocate the native Telegram command menu for Ida.
 1. **Sample recent invocations:** Query execution telemetry spans (or inspect recent session logs) for skill runs and menu taps across interactive sessions and subagents to gather empirical invocation frequencies.
 2. **Discover candidate skills and workflows:**
    - Enumerate installed skills across plugins (`plugins/*/skills/`) and common workflow templates.
-   - Include operator-facing coordination skills (`reify`, `dispatch`, `mine`, `reconcile`, `daily`).
+   - Include operator-facing coordination skills (`reify`, `dispatch`, `reconcile`, `daily`).
    - Strictly exclude reserved platform commands (`start`, `help`, `status`) and headless worker lifecycle commands (`pull`, `dump`).
 3. **Separate interactive menus from headless workers (`headless-workers.md`):**
    - Telegram command menus exclusively serve interactive operator sessions. Headless worker lifecycle commands (`pull`, `dump`) must never appear on conversational menus or in candidate pools.
@@ -25,7 +25,7 @@ Review, customize, and allocate the native Telegram command menu for Ida.
 
 Apply qualitative judgment to evaluate candidate commands for the shared menu:
 
-- **Shared Menu Allocation:** Prioritize high-frequency operational triage, quick capture, decision walk-throughs, task queueing, disambiguation, daily briefings, and worker dispatch (e.g. `/decide`, `/q`, `/mine`, `/reconcile`, `/hydrate`, `/up`, `/reify`, `/dispatch`, `/daily`).
+- **Shared Menu Allocation:** Prioritize high-frequency operational triage, quick capture, decision walk-throughs, task queueing, disambiguation, daily briefings, and worker dispatch (e.g. `/decide`, `/q`, `/reconcile`, `/hydrate`, `/up`, `/reify`, `/dispatch`, `/daily`).
 - **Composite commands:** Propose single-tap composite commands where recurring multi-step patterns or common briefings are identified (such as `/daily`).
 - **Command identifier normalization & platform constraints:**
   - Convert kebab-case skill and workflow names to valid Telegram command identifiers (`snake_case`) by replacing hyphens with underscores (e.g. `strategic-review` $\rightarrow$ `/strategic_review`, `argument-map` $\rightarrow$ `/argument_map`, `menu-proposal` $\rightarrow$ `/menu_proposal`, `session-trace` $\rightarrow$ `/session_trace`).

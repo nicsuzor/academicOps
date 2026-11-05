@@ -18,7 +18,7 @@
 - [agents/prompt-hydration.md](agents/prompt-hydration.md) -- prompt hydration.
 - [agents/sleep-cycle.md](agents/sleep-cycle.md) -- the periodic consolidation agent.
 - [agents/ida-supervision-migration.md](agents/ida-supervision-migration.md) -- which supervision capabilities move to ida, the checkpoints that gate each increment of autonomy, and what never moves.
-- [agents/face-ida-triage-and-tracked-requests.md](agents/face-ida-triage-and-tracked-requests.md) -- face-Ida triage decision, subagent twin verification, tracked-request closed-loop delivery, and retirement of legacy /mine tracking.
+- [agents/face-ida-triage-and-tracked-requests.md](agents/face-ida-triage-and-tracked-requests.md) -- face-Ida triage decision, subagent twin verification, and tracked-request closed-loop delivery.
 - [agents/compliance-consequences-removal.md](agents/compliance-consequences-removal.md) -- removal of volunteered compliance and conflict-of-interest consequences in decision conversations.
 - [agents/authoritative-user-task-reports.md](agents/authoritative-user-task-reports.md) -- authoritative user task reports deciding task state and ministerial lifecycle execution in Pauli.
 - [agents/decision-queue-boundaries.md](agents/decision-queue-boundaries.md) -- decision-queue boundaries, informational query list-routing, conversational pacing, and preservation of collaborative design exploration.
