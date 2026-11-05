@@ -6,6 +6,10 @@
 # Events that the RBG stop gate will block on. Currently empty because rbg hooks are disabled.
 stop_events = []
 
+[rbg.inject_ruleset]
+# The UserPromptSubmit/PreInvocation rule set injector is currently disabled
+enabled = false
+
 [hooks.messages]
 # Messages that ship with no .user.md because they have no second reader
 no_user_counterpart = { "rbg: ruleset" = "agy-only injection; agy has no user channel", "rbg: classifier-prompt" = "evaluator request payload, never injected into a session" }

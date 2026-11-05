@@ -1021,8 +1021,14 @@ def test_registered_handler_events_are_exactly_the_wired_events(dist_root):
                 allowed_missing.update(_wires_for("PostToolBatch"))
             if not p.get("honest_output_enabled", True):
                 allowed_missing.update(_wires_for("SubagentStart"))
-        elif name == "rbg" and not _policy.get("rbg", {}).get("evaluate", {}).get("enabled", True):
-            allowed_missing.update(_wires_for("PreToolUse"))
+        elif name == "rbg":
+            if not _policy.get("rbg", {}).get("evaluate", {}).get("enabled", True):
+                allowed_missing.update(_wires_for("PreToolUse"))
+            if not _policy.get("rbg", {}).get("stop_gate", {}).get("stop_events"):
+                allowed_missing.update(_wires_for("Stop"))
+                allowed_missing.update(_wires_for("SubagentStop"))
+            if not _policy.get("rbg", {}).get("inject_ruleset", {}).get("enabled", False):
+                allowed_missing.update(_wires_for("UserPromptSubmit"))
         elif name == "ida" and not _policy.get("ida", {}).get("strip_the_reply_enabled", True):
             allowed_missing.update(_wires_for("PostToolBatch"))
             allowed_missing.update(_wires_for("Stop"))
