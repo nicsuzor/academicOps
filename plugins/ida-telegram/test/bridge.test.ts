@@ -361,7 +361,7 @@ describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration
         method: "POST",
         headers: authHeaders,
         body: JSON.stringify({
-          text: "Focus on task aops_00000004",
+          text: "Focus on task demo_00000004",
           priority: "high",
           chat_id: allowedUserId,
           message_id: 2001,
@@ -374,7 +374,7 @@ describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration
       expect(typeof data.seq).toBe("number");
 
       // Reaches agent session context
-      expect(emittedEvents.some((e) => e.content.includes("Focus on task aops_00000004"))).toBe(true);
+      expect(emittedEvents.some((e) => e.content.includes("Focus on task demo_00000004"))).toBe(true);
 
       // Edits the Telegram card
       expect(editedCards.some((c) => c.chatId === allowedUserId && c.messageId === 2001)).toBe(true);

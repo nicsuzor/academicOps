@@ -359,7 +359,7 @@ function generateValidInitData(botToken: string, userId: number): string {
   return params.toString();
 }
 
-describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
+describe("Mini App Tabs (specification FR-4.3 to FR-4.7)", () => {
   const botToken = "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11";
   const allowedUserId = 1111111111;
   const appDir = join(import.meta.dir, "..", "app");
@@ -770,7 +770,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
       setup: async ({ store, broker }) => {
         store.setAnchor({
           focus: "Fixing Mini App tabs",
-          taskId: "aops_00000001",
+          taskId: "demo_00000001",
           waitingOn: ["PR #2920 review", "Tailscale funnel check"],
           delegations: ["marsha: runtime QA", "rbg: axiom review"],
           contextTokens: {
@@ -781,7 +781,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
         });
         if (typeof (store as any).recordTurn === "function") {
           (store as any).recordTurn("in", "Can you fix the Mini App tabs?");
-          (store as any).recordTurn("out", "Claimed aops_00000001 and updating all four tabs.");
+          (store as any).recordTurn("out", "Claimed demo_00000001 and updating all four tabs.");
         }
         await broker.askUser({
           question: "Approve Mini App tab layout?",
@@ -800,7 +800,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
 
     // Focus and task ID
     expect(document.getElementById("anchor-focus")?.textContent).toBe("Fixing Mini App tabs");
-    expect(document.getElementById("anchor-task")?.textContent).toBe("aops_00000001");
+    expect(document.getElementById("anchor-task")?.textContent).toBe("demo_00000001");
 
     // Waiting-on items
     expect(text).toContain("PR #2920 review");
@@ -815,7 +815,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
 
     // Recent turns (in and out)
     expect(text).toContain("Can you fix the Mini App tabs?");
-    expect(text).toContain("Claimed aops_00000001 and updating all four tabs.");
+    expect(text).toContain("Claimed demo_00000001 and updating all four tabs.");
 
     // Uptime
     const uptimeEl = document.getElementById("anchor-uptime");
@@ -848,7 +848,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
         await broker.askUser({
           header: "Value model weight",
           question: "Raise `urgency` weight on cliff tasks?",
-          context: ">! Facts: `aops_00000002` showed 3 cliff tasks ranked below routine cleanup.",
+          context: ">! Facts: `demo_00000002` showed 3 cliff tasks ranked below routine cleanup.",
           recommendation: "Raise to 2.5x to clear cliff tasks before routine work.",
           options: [
             { label: "Raise to 2.5x (Recommended)", description: "Prioritizes due-within-48h tasks immediately" },
@@ -886,7 +886,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
     expect(qList!.querySelector(".q-context")).not.toBeNull();
 
     // Decision 2: Markdown context and recommendation are rendered
-    expect(text).toContain("Facts: aops_00000002 showed 3 cliff tasks ranked below routine cleanup.");
+    expect(text).toContain("Facts: demo_00000002 showed 3 cliff tasks ranked below routine cleanup.");
     expect(text).toContain("Raise to 2.5x to clear cliff tasks before routine work.");
 
     // Decision 3: Neutral question does NOT falsely mark option 0 as Recommended
