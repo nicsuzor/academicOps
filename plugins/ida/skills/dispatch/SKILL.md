@@ -26,17 +26,16 @@ Start one polecat worker per ready task, in parallel, through the project's disp
 
 Confirm each worker started. A worker that failed to start is a halt: report the task id and the failure verbatim.
 
-## 3. Receive completion events
+## 3. Report and stop (fire-and-forget)
 
-Do not poll workers or wait on a timer (no status checking loops, no sleep loops, no cron timers). The dispatching session learns of worker completion from completion notifications delivered to the session rather than polling or timers.
+Dispatch is fire-and-forget: the worker records its result on the task graph. Once the workers start, output the dispatch report and end your turn immediately:
 
-## 4. Act on completion
+- Output one line per task: title, id, and the worker started (container name), or the `/reify` hand-back and why.
+- Never wait for a worker to finish in the dispatch turn, and never call or block on event-stream tools (such as `polecat_polecat_events`), status checks, sleep loops, or timers.
 
-When a completion notification arrives, act on it immediately:
+## 4. Act on a completed worker (separate invocation or turn)
 
-- **Done (`status=done`, `exit_code=0`)**: The worker delivered. Read downstream tasks on the graph (e.g. QA follow-up or review task) whose `needs` dependencies are now satisfied, and dispatch any that are ready. Trigger `/verify` on the deliverable or `/reconcile` as needed.
+Worker outputs (`status`, `completion_evidence`, `pr_url`) return on the PKB task graph after the container exits. When a session is invoked in a separate turn or invocation to check or `/reconcile` a completed worker (or woken by an external completion notification):
+
+- **Done (`status=done`, `exit_code=0`)**: Read the worker's report on the task record and check it per `premise-check`. Read downstream tasks on the graph whose `needs` dependencies are now satisfied, and dispatch any that are ready. Trigger `/verify` on the deliverable or `/reconcile` as needed.
 - **Partial or Failed (`status=partial` or `status=failed`, or `exit_code!=0`)**: Inspect the failure reason recorded on the task and container logs. If unfinished work remains, route the follow-up through `/reify` or escalate per fail-fast.
-
-## 5. Report
-
-Output one line per task: title, id, and the worker started (container name), or the `/reify` hand-back and why.
