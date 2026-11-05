@@ -954,13 +954,14 @@ def hearsay_arm(ctx: HookContext) -> Result | None:
             agent_tmpl = (
                 "Premise-check gate armed by {claim_id}: no argument block supplied; "
                 "send the message back for revision per the `premise-check` skill "
-                "(an absent block cannot pass).\n{command}"
+                "(an absent block cannot pass). Instruct the sender to load the skill "
+                "(`ida:premise-check`) before resending.\n{command}"
             )
         inject = agent_tmpl.format(claim_id=claim_id, command=cmd)
         user_msg = (
             user_tmpl.format(claim_id=claim_id)
             if user_tmpl
-            else f"Premise-check gate armed by {claim_id} (no argument block supplied; send back for revision)."
+            else f"Premise-check gate armed by {claim_id} (no argument block supplied; send back for revision with instruction to load ida:premise-check)."
         )
         return warn(inject, user_msg)
 
