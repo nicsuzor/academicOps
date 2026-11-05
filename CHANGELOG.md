@@ -1,5 +1,75 @@
 # Changelog
 
+## [1.2.0](https://github.com/nicsuzor/academicOps/compare/v1.1.0...v1.2.0) (2026-11-05)
+
+### Features
+
+- **agents:** add targeted external-state recheck and read-only gh authority to Pauli ([515acff](https://github.com/nicsuzor/academicOps/commit/515acff1d6fcff4df71eb2d0f53b7035cda72779))
+- **agents:** add targeted external-state recheck and read-only gh authority to Pauli ([f05cfea](https://github.com/nicsuzor/academicOps/commit/f05cfeac208326fe39cc6bb11c512504c991db92))
+- **core:** add scratch-directory rule and ignore scratch/ ([f1680d3](https://github.com/nicsuzor/academicOps/commit/f1680d354b5406b2e60a3c60ade573c494d47950))
+- **enforcement:** design enforcement moves for five coordinator failure classes ([5d09751](https://github.com/nicsuzor/academicOps/commit/5d09751462bc26f6d20cbf89f232b25450d4b514))
+- **enforcement:** specify premise-check instruction and refusal tuning for format error reduction ([4bba7be](https://github.com/nicsuzor/academicOps/commit/4bba7be3d8a89ea5a71850476395d9e4d2fb04a6))
+- **enforcement:** specify premise-check instruction and refusal tuning for format error reduction ([304eeff](https://github.com/nicsuzor/academicOps/commit/304eeff6ba5015402dc2fbfb8647fc8fed274618))
+- **ida-telegram:** implement topic and message management tools ([fea34fc](https://github.com/nicsuzor/academicOps/commit/fea34fc1fff92ff9204bb58bcc8a5de608dc4866))
+- **instructions:** require interactive agents to reify substantial in-session tasks ([b7575b6](https://github.com/nicsuzor/academicOps/commit/b7575b6f1b47e81a3d782fd747d6e983a08d2f7b))
+- **instructions:** require interactive agents to reify substantial in-session tasks ([f4017fd](https://github.com/nicsuzor/academicOps/commit/f4017fd3948960bf666abca44c00e916bb3c2171))
+- **learn:** add standard github issue template and instruct agents to follow it ([7aa772c](https://github.com/nicsuzor/academicOps/commit/7aa772c5368d327f68e9d6b7a4b790f6ee03b861))
+- **premise-check:** instruct sender to load skill on argument rejections and refusals ([6909fb7](https://github.com/nicsuzor/academicOps/commit/6909fb71b17711f0338815143f492def941032da))
+- **premise-check:** instruct sender to load skill on argument rejections and refusals ([2726da0](https://github.com/nicsuzor/academicOps/commit/2726da07edf8e9aa8d827e3e00971733e2b2f1e5))
+- **startup:** build per-plugin CORE.md startup injection hooks ([135b99a](https://github.com/nicsuzor/academicOps/commit/135b99a03a1c62ff1ad5d9ee22b0aa3d9048b7a0))
+- **startup:** build per-plugin CORE.md startup injection hooks ([d0ec3c6](https://github.com/nicsuzor/academicOps/commit/d0ec3c6ebac8182da7061c387c00668a6ec6d36d))
+- **telegram:** add create_thread tool to open forum topics ([44fd25f](https://github.com/nicsuzor/academicOps/commit/44fd25fcee0d9f49e342ad1284eb80bfae1a6c4f))
+- **workflows:** support sweep task queuing and move-along fan-out trial ([1ac85d9](https://github.com/nicsuzor/academicOps/commit/1ac85d99601627c0fe50a29607a1a855d091b636))
+
+### Bug Fixes
+
+- **enforcement:** redact private PKB note identifier from premise-check spec ([e26ddf8](https://github.com/nicsuzor/academicOps/commit/e26ddf8a995b66dfa13afaba66359986b779af09))
+- **enforcement:** remove workflow rows from enforcement map ([7210f00](https://github.com/nicsuzor/academicOps/commit/7210f00d0646abd50da38e8c82cca579c2737b0c))
+- **ida-telegram:** remove internal PKB identifiers from code comments and tests ([3d85391](https://github.com/nicsuzor/academicOps/commit/3d853919ffc9dad6401d848eb5ef7c4602d9ce55))
+- **ida:** separate fire-and-forget dispatch turns from completed-worker checks and keep lookups in-turn ([03950da](https://github.com/nicsuzor/academicOps/commit/03950da2338f0e7c7abf03254b6bc3e693600c37))
+- **ida:** separate fire-and-forget dispatch turns from completed-worker checks and keep lookups in-turn ([99ca701](https://github.com/nicsuzor/academicOps/commit/99ca70160c4d8392ceee92c41bd9e98c201a8217))
+- **instructions:** replace mutual-blocking modelling of options with alternative links ([2e01836](https://github.com/nicsuzor/academicOps/commit/2e01836f28b5aef06a88a19e1a07490d7b8d13b1))
+- **instructions:** separate forks into alternative option nodes only when decomposed further ([1b1a4ce](https://github.com/nicsuzor/academicOps/commit/1b1a4ce20780c21a46076d4c9120ec64c76d19e2))
+- **review:** resolve RBG compliance findings on test style and index fidelity ([805649c](https://github.com/nicsuzor/academicOps/commit/805649c7097d4281c1f78463401aa372b6797af0))
+- **session-trace:** remove non-existent spans.project_name from Recipe A0 and clarify turn limits ([e2719d3](https://github.com/nicsuzor/academicOps/commit/e2719d3e46930e3bb565c5225ec5dd6859763f19))
+- **session-trace:** remove non-existent spans.project_name from Recipe A0 and forbid ad-hoc SQL turn clustering ([4e4831a](https://github.com/nicsuzor/academicOps/commit/4e4831af9d3ff35a880b3e3ce56761800e6427ea))
+- **specs:** remove project-local scratch rule from global enforcement map ([1be522c](https://github.com/nicsuzor/academicOps/commit/1be522cd11b3e2b6718814a16ae2de5f95b29d57))
+- **workflows:** ensure publish script removes legacy workflows and upload steps from main ([70431ca](https://github.com/nicsuzor/academicOps/commit/70431ca0ce4731416de00473152be43126ceb318))
+- **workflows:** ensure publish script removes legacy workflows from main ([eb59a68](https://github.com/nicsuzor/academicOps/commit/eb59a68e3319c7a7890e5f9f93d975a049c3875c))
+
+### Code Refactoring
+
+- **learn:** move issue template to .github/ISSUE_TEMPLATE and revert enforcement map ([be3986a](https://github.com/nicsuzor/academicOps/commit/be3986a3bead13325dc868adb4b9250c6ac0ed45))
+
+### Documentation
+
+- **enforcement,specs:** restrict enforcement map to axiom-derived universal rules and require human user stories ([3b85997](https://github.com/nicsuzor/academicOps/commit/3b859978e21ba325ae9c9fc73c84dc750bdd5e5e))
+- **enforcement:** address review comments on coordinator failure spec ([0e120f3](https://github.com/nicsuzor/academicOps/commit/0e120f378b15d253b202e9c06a74f781fda52964))
+- **enforcement:** require full spec and filed escalation history for hooks and mechanical enforcement ([ea5adbf](https://github.com/nicsuzor/academicOps/commit/ea5adbfc5beac5730e2a4197c7cd75a1cb824085))
+- **enforcement:** require full spec and filed escalation history for hooks and mechanical enforcement ([1bcfc4d](https://github.com/nicsuzor/academicOps/commit/1bcfc4d568daaa9bf12d4445662c823528abfdb8))
+- **enforcement:** retire specs and map rows per framework-only enforcement design ([f1efe91](https://github.com/nicsuzor/academicOps/commit/f1efe91741be8a92a6112b2b6d3416d328898839))
+- **enforcement:** retire the specs and map rows listed in the framework-only enforcement design ([51fd4ac](https://github.com/nicsuzor/academicOps/commit/51fd4ac14f91e6fd6c10c90608586272fcedb7b7))
+- **enforcement:** specify PR review compliance and RBG verdict enforcement ([e84692d](https://github.com/nicsuzor/academicOps/commit/e84692dbf23d60dfc158e2861c3fb36f523c2eb3))
+- **spec:** align default planning workflow so specs reach dev with code ([fab2a70](https://github.com/nicsuzor/academicOps/commit/fab2a700ee74d5057f44bacf6656bbe3fbf12274))
+- **specs:** format AC-2.1 and AC-5.3 as Given/When/Then ([535ce72](https://github.com/nicsuzor/academicOps/commit/535ce72190d90940a995fee7ef1ddaa100426aca))
+- **specs:** refer to the user generically instead of personal name ([c49328a](https://github.com/nicsuzor/academicOps/commit/c49328a906800c4b3b1918a912fe87a4d6fc61cb))
+- **specs:** refer to the user generically instead of personal name ([f61efff](https://github.com/nicsuzor/academicOps/commit/f61effffd4c7f836c95dd22ac91c13643162167f))
+- **specs:** rewrite external-state-recheck user stories for the human user and align enforcement map extract ([844ad89](https://github.com/nicsuzor/academicOps/commit/844ad898ad3ce7a4306e292cdf3eb00b821addc7))
+- **specs:** shorten specification standard to one-read size and align Mini App spec ([2f316c5](https://github.com/nicsuzor/academicOps/commit/2f316c513751f308c99c0a550a783e8b5f98e774))
+- **specs:** specify decision-queue boundaries, pacing, and design exploration ([6c5ee32](https://github.com/nicsuzor/academicOps/commit/6c5ee324489cadbb84a8c5b7e75bb5aee036a36a))
+- **specs:** specify decision-queue boundaries, pacing, and design exploration ([c186a1b](https://github.com/nicsuzor/academicOps/commit/c186a1ba2882940325f6d0fbf6b344ba7c8366a3))
+- **specs:** specify targeted external-state recheck and read-only query authority in Pauli ([30c54d8](https://github.com/nicsuzor/academicOps/commit/30c54d8dfb20234c371addf17b16d4019c64b9a1))
+- **specs:** state the james.md and no-new-gates choices as plain spec, without user rulings ([571faae](https://github.com/nicsuzor/academicOps/commit/571faae2f5a5060dab1203818f87a03d296b79eb))
+- **workflows:** resolve dialectical review findings across planning spec and templates ([f89752c](https://github.com/nicsuzor/academicOps/commit/f89752c9ddc9852aab8a386db1693b428cc91bf8))
+
+### Miscellaneous
+
+- merge origin/dev and resolve workflow template conflicts ([524e0a6](https://github.com/nicsuzor/academicOps/commit/524e0a6a8c9b9314452b2f96a51236d94b2ba039))
+- merge origin/dev into feat/coordinator-enforcement-design ([1dd0c87](https://github.com/nicsuzor/academicOps/commit/1dd0c87605aa54104b7f1dc8fbb9a15e18f02827))
+- merge origin/dev into polecat/aops_08c442de and align enforcement map with axiom-only rule ([8e40be8](https://github.com/nicsuzor/academicOps/commit/8e40be815817836b8067bc02880fd68a59eb3b5a))
+- **session-trace:** merge origin/dev and resolve conflicts in SKILL.md and sql-recipes.md ([ba80d42](https://github.com/nicsuzor/academicOps/commit/ba80d42e146175bae2db12cc1a4546d564c96853))
+- **specs:** merge origin/dev () and retain both new agent spec index entries in specs/README.md ([30d7929](https://github.com/nicsuzor/academicOps/commit/30d7929290329699acdb10e31085e02e8946b5f1))
+
 ## [1.1.0](https://github.com/nicsuzor/academicOps/compare/v1.0.1...v1.1.0) (2026-11-04)
 
 ### Features
