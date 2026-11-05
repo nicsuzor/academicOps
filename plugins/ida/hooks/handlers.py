@@ -842,6 +842,15 @@ def session_start(ctx: HookContext) -> Result | None:
         metadata,
         PREMISE_CHECK_POINTER,
     ]
+    core_path = (
+        ctx.hooks_dir.parent
+        if ctx.hooks_dir and str(ctx.hooks_dir) != "."
+        else Path(__file__).resolve().parent.parent
+    ) / "CORE.md"
+    if core_path.is_file():
+        core_text = core_path.read_text(encoding="utf-8").strip()
+        if core_text:
+            parts.append(core_text)
     user_parts = [metadata]
     stale_warning = os.environ.get("AOPS_IMAGE_STALENESS_WARNING") or ctx.raw.get(
         "image_staleness_warning"
