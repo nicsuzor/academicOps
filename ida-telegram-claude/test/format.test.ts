@@ -53,7 +53,7 @@ describe("Progressive disclosure: Format and Entities", () => {
     expect(stdQuotes.length).toBe(0);
   });
 
-  test("groups consecutive standard > lines into a single blockquote entity per spec_7a9caca5 FR-1.2", () => {
+  test("groups consecutive standard > lines into a single blockquote entity per format specification FR-1.2", () => {
     const text = "> Line 1\n> Line 2\n\nBody";
     const { plainText, entities } = formatMarkdownToEntities(text);
 

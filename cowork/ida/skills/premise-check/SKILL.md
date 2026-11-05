@@ -48,7 +48,7 @@ asks: none
 ```
 ````
 
-The null form clears the premise-check gate with no agent action. When an expected block is absent, the gate does not open: PASS is refused, and the receiver must return it for revision (`REVISE` "no argument supplied").
+The null form clears the premise-check gate with no agent action. When an expected block is absent, the gate does not open: PASS is refused, and the receiver must return it for revision (`REVISE` "no argument supplied"), instructing the sender: "No argument block supplied. Load the `premise-check` skill (`ida:premise-check`) before writing your report; its Argdown dialect is a restricted subset of Argdown, so do not write the block from memory."
 
 ### Source Attribution Guidance
 
@@ -81,7 +81,7 @@ When an incoming direction arrives from another agent:
 
 1. Verify that every instruction and requirement derives faithfully from `## Ask` (or active user directives).
 2. Verify brief satisfiability: evaluate whether all demanded deliverables can be produced by your own role and route before terminating. Refuse (`REVISE`) directions demanding deliverables belonging to subsequent pipeline stages or unfulfillable by construction at your stopping point.
-3. Refuse (`REVISE`) unverified caller method or template prescriptions before logging deliverables. A caller may pass only `## Ask` (verbatim with ID), strategic fit/context, and the objective or skill invocation.
+3. Refuse (`REVISE`) unverified caller method or template prescriptions before logging deliverables, instructing the caller to load `ida:premise-check` before reformulating the direction. A caller may pass only `## Ask` (verbatim with ID), strategic fit/context, and the objective or skill invocation.
 4. Once verified, log deliverables as a frozen `## Acceptance` checklist on a PKB task before work starts.
 
 ### Reports
@@ -127,7 +127,7 @@ When checking an inference line or deliverable where the ask specifies a method,
 ## Recording the Verdict
 
 - **PASS**: Every inference holds, every ask is answered, evidence sufficiency bears the stakes, and at least one inference line is tested (>= 1). Format-only defects on a substantively sound argument with >= 1 inference line are waived under `Waived:` and rewritten into standard form by the receiver before relaying upward. Rule violations in deliverables can never be waived.
-- **REVISE**: Name the line, defect tag (`#missing`, `#scope-drift`, `#conflict`, `#unanswered`, `#undercut`, `#construct-drift`, `#method-gap`, `#insufficient-for-stakes`), and remedy. Mandatory for substantive defects, rule violations in delivered work (return with `#conflict`), or 0 inference lines (bare assertions); cannot be relayed upward as fact. Return to sender. To send back a sound argument for a format slip you will not waive, keep every `Valid:` line `holds` and add `Format: <format item> -- <what to fix>`; never record a format slip as a reasoning defect.
+- **REVISE**: Name the line, defect tag (`#missing`, `#scope-drift`, `#conflict`, `#unanswered`, `#undercut`, `#construct-drift`, `#method-gap`, `#insufficient-for-stakes`), and remedy, and instruct the sender: "Load the `premise-check` skill (`ida:premise-check`) before writing your revised report." (For absent blocks returned as `REVISE "no argument supplied"`, state: "No argument block supplied. Load the `premise-check` skill (`ida:premise-check`) before writing your report; its Argdown dialect is a restricted subset of Argdown, so do not write the block from memory.") Mandatory for substantive defects, rule violations in delivered work (return with `#conflict`), or 0 inference lines (bare assertions); cannot be relayed upward as fact. Return to sender. To send back a sound argument for a format slip you will not waive, keep every `Valid:` line `holds` and add `Format: <format item> -- <what to fix>`; never record a format slip as a reasoning defect.
 - **FAIL**: Conclusion does not answer the ask or contradicts evidence. Mandatory for substantive defects; cannot be relayed upward as fact.
 
 Write the reason as the seven keyed lines:

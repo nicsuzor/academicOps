@@ -1,1 +1,1 @@
-Premise-check gate armed by {claim_id} (no argument block supplied; send back for revision).
+Premise-check gate armed by {claim_id} (no argument block supplied; send back for revision with instruction to load ida:premise-check).

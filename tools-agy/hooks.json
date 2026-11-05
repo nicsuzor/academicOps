@@ -1,0 +1,10 @@
+{
+  "tools": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "uv run --project . python hooks/dispatch.py agy SessionStart"
+      }
+    ]
+  }
+}

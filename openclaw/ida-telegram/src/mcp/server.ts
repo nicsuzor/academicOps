@@ -4,7 +4,7 @@ import { PluginStore } from "../store.js";
 import { QuestionBroker } from "../telegram/questions.js";
 import { processReplyOverflow } from "../telegram/overflow.js";
 import { formatMarkdownToEntities, normalizeReaction } from "../telegram/format.js";
-import { TelegramBotClient } from "../telegram/bot.js";
+import { TelegramBotClient, buildInlineKeyboardRows, ReplyButtonsInput } from "../telegram/bot.js";
 import { sanitizeChannelMeta } from "../telegram/inbound.js";
 import { splitVoiceTier2Quotes } from "../telegram/voice.js";
 import { PermissionRelay } from "./permissions.js";
@@ -568,6 +568,47 @@ export class StdioMcpServer {
       return { success: true };
     }
 
+    if (name === "create_thread" || name === "create_topic" || name === "create_forum_topic") {
+      const chatId = (args.chat_id as number) || defaultChatId;
+      const newName =
+        typeof args.name === "string"
+          ? args.name.trim()
+          : typeof args.title === "string"
+            ? args.title.trim()
+            : "";
+      const iconColor = (args.icon_color ?? args.iconColor) as number | undefined;
+      const iconCustomEmojiId = (args.icon_custom_emoji_id ?? args.iconCustomEmojiId) as string | undefined;
+
+      if (!newName) {
+        return { success: false, error: "Missing name: thread name must be a non-empty string" };
+      }
+      if (newName.length > 128) {
+        return { success: false, error: "Thread name cannot exceed 128 characters" };
+      }
+      if (!chatId) {
+        return { success: false, error: "Missing chat ID: provide chat_id or configure allowed user" };
+      }
+
+      if (this.bot) {
+        const res = await this.bot.createForumTopic(chatId, newName, {
+          iconColor,
+          iconCustomEmojiId,
+        });
+        if (!res?.ok || !res?.result?.message_thread_id) {
+          return { success: false, error: res?.description || "Failed to create thread" };
+        }
+        return {
+          success: true,
+          chat_id: chatId,
+          message_thread_id: res.result.message_thread_id,
+          thread_id: res.result.message_thread_id,
+          name: res.result.name || newName,
+        };
+      }
+
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+
     if (name === "rename_thread" || name === "rename_topic" || name === "edit_forum_topic") {
       const chatId = (args.chat_id as number) || defaultChatId;
       const messageThreadId =
@@ -604,6 +645,350 @@ export class StdioMcpServer {
           chat_id: chatId,
           message_thread_id: messageThreadId,
           name: newName,
+        };
+      }
+
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+
+    if (name === "close_thread" || name === "close_topic" || name === "close_forum_topic") {
+      const chatId = (args.chat_id as number) || defaultChatId;
+      const messageThreadId =
+        ((args.message_thread_id ?? args.thread_id) as number | undefined) ??
+        this.bot?.getLastThreadId(chatId);
+
+      if (!chatId) {
+        return { success: false, error: "Missing chat ID: provide chat_id or configure allowed user" };
+      }
+      if (messageThreadId === undefined || isNaN(messageThreadId)) {
+        return {
+          success: false,
+          error: "Missing thread ID: pass message_thread_id or invoke inside an active thread",
+        };
+      }
+      if (messageThreadId === 1) {
+        return { success: false, error: "Cannot modify or delete the General forum topic" };
+      }
+
+      if (this.bot) {
+        const res = await this.bot.closeForumTopic(chatId, messageThreadId);
+        if (!res?.ok) {
+          return { success: false, error: res?.description || "Failed to close thread" };
+        }
+        return {
+          success: true,
+          chat_id: chatId,
+          message_thread_id: messageThreadId,
+          closed: true,
+        };
+      }
+
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+
+    if (name === "reopen_thread" || name === "reopen_topic" || name === "reopen_forum_topic") {
+      const chatId = (args.chat_id as number) || defaultChatId;
+      const messageThreadId =
+        ((args.message_thread_id ?? args.thread_id) as number | undefined) ??
+        this.bot?.getLastThreadId(chatId);
+
+      if (!chatId) {
+        return { success: false, error: "Missing chat ID: provide chat_id or configure allowed user" };
+      }
+      if (messageThreadId === undefined || isNaN(messageThreadId)) {
+        return {
+          success: false,
+          error: "Missing thread ID: pass message_thread_id or invoke inside an active thread",
+        };
+      }
+      if (messageThreadId === 1) {
+        return { success: false, error: "Cannot modify or delete the General forum topic" };
+      }
+
+      if (this.bot) {
+        const res = await this.bot.reopenForumTopic(chatId, messageThreadId);
+        if (!res?.ok) {
+          return { success: false, error: res?.description || "Failed to reopen thread" };
+        }
+        return {
+          success: true,
+          chat_id: chatId,
+          message_thread_id: messageThreadId,
+          reopened: true,
+        };
+      }
+
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+
+    if (name === "delete_thread" || name === "delete_topic" || name === "delete_forum_topic") {
+      const chatId = (args.chat_id as number) || defaultChatId;
+      const messageThreadId =
+        ((args.message_thread_id ?? args.thread_id) as number | undefined) ??
+        this.bot?.getLastThreadId(chatId);
+
+      if (!chatId) {
+        return { success: false, error: "Missing chat ID: provide chat_id or configure allowed user" };
+      }
+      if (messageThreadId === undefined || isNaN(messageThreadId)) {
+        return {
+          success: false,
+          error: "Missing thread ID: pass message_thread_id or invoke inside an active thread",
+        };
+      }
+      if (messageThreadId === 1) {
+        return { success: false, error: "Cannot modify or delete the General forum topic" };
+      }
+
+      if (this.bot) {
+        const res = await this.bot.deleteForumTopic(chatId, messageThreadId);
+        if (!res?.ok) {
+          return { success: false, error: res?.description || "Failed to delete thread" };
+        }
+        return {
+          success: true,
+          chat_id: chatId,
+          message_thread_id: messageThreadId,
+          deleted: true,
+        };
+      }
+
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+
+    if (name === "pin_message" || name === "pin_chat_message") {
+      const chatId = (args.chat_id as number) || defaultChatId;
+      const messageId = args.message_id as number;
+      const disableNotification =
+        typeof args.disable_notification === "boolean" ? args.disable_notification : true;
+
+      if (!chatId) {
+        return { success: false, error: "Missing chat ID: provide chat_id or configure allowed user" };
+      }
+      if (messageId === undefined || isNaN(messageId)) {
+        return { success: false, error: "Missing message_id: provide message_id to pin" };
+      }
+
+      if (this.bot) {
+        const res = await this.bot.pinChatMessage(chatId, messageId, disableNotification);
+        if (!res?.ok) {
+          return { success: false, error: res?.description || "Failed to pin message" };
+        }
+        return {
+          success: true,
+          chat_id: chatId,
+          message_id: messageId,
+          pinned: true,
+        };
+      }
+
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+
+    if (name === "unpin_message" || name === "unpin_chat_message") {
+      const chatId = (args.chat_id as number) || defaultChatId;
+      const messageId = args.message_id as number | undefined;
+
+      if (!chatId) {
+        return { success: false, error: "Missing chat ID: provide chat_id or configure allowed user" };
+      }
+
+      if (this.bot) {
+        const res = await this.bot.unpinChatMessage(chatId, messageId);
+        if (!res?.ok) {
+          return { success: false, error: res?.description || "Failed to unpin message" };
+        }
+        const out: Record<string, unknown> = {
+          success: true,
+          chat_id: chatId,
+          unpinned: true,
+        };
+        if (messageId !== undefined) {
+          out.message_id = messageId;
+        }
+        return out;
+      }
+
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+
+    if (name === "unpin_all_messages" || name === "unpin_all_chat_messages") {
+      const chatId = (args.chat_id as number) || defaultChatId;
+      const messageThreadId = (args.message_thread_id ?? args.thread_id) as number | undefined;
+
+      if (!chatId) {
+        return { success: false, error: "Missing chat ID: provide chat_id or configure allowed user" };
+      }
+
+      if (this.bot) {
+        if (messageThreadId !== undefined) {
+          const res = await this.bot.unpinAllForumTopicMessages(chatId, messageThreadId);
+          if (!res?.ok) {
+            return { success: false, error: res?.description || "Failed to unpin all topic messages" };
+          }
+          return {
+            success: true,
+            chat_id: chatId,
+            message_thread_id: messageThreadId,
+            unpinned_all: true,
+          };
+        } else {
+          const res = await this.bot.unpinAllChatMessages(chatId);
+          if (!res?.ok) {
+            return { success: false, error: res?.description || "Failed to unpin all chat messages" };
+          }
+          return {
+            success: true,
+            chat_id: chatId,
+            unpinned_all: true,
+          };
+        }
+      }
+
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+
+    if (name === "forward_messages") {
+      const chatId = (args.chat_id as number) || defaultChatId;
+      const fromChatId = (args.from_chat_id as number) || chatId;
+      const messageThreadId =
+        ((args.message_thread_id ?? args.thread_id) as number | undefined) ??
+        this.bot?.getLastThreadId(chatId);
+      const messageIds = args.message_ids as number[];
+
+      if (!Array.isArray(messageIds) || messageIds.length === 0 || messageIds.length > 100) {
+        return { success: false, error: "Batch size must be between 1 and 100 messages" };
+      }
+      if (!chatId) {
+        return { success: false, error: "Missing chat ID: provide chat_id or configure allowed user" };
+      }
+
+      if (this.bot) {
+        const res = await this.bot.forwardMessages({
+          chatId,
+          fromChatId,
+          messageIds,
+          messageThreadId,
+          disableNotification: args.disable_notification as boolean | undefined,
+          protectContent: args.protect_content as boolean | undefined,
+        });
+        if (!res?.ok || !Array.isArray(res.result)) {
+          return { success: false, error: res?.description || "Failed to forward messages" };
+        }
+        const forwardedIds = res.result.map((m: any) => m.message_id);
+        const out: Record<string, unknown> = {
+          success: true,
+          chat_id: chatId,
+          forwarded_count: forwardedIds.length,
+          message_ids: forwardedIds,
+        };
+        if (messageThreadId !== undefined) {
+          out.message_thread_id = messageThreadId;
+        }
+        return out;
+      }
+
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+
+    if (name === "copy_messages") {
+      const chatId = (args.chat_id as number) || defaultChatId;
+      const fromChatId = (args.from_chat_id as number) || chatId;
+      const messageThreadId =
+        ((args.message_thread_id ?? args.thread_id) as number | undefined) ??
+        this.bot?.getLastThreadId(chatId);
+      const messageIds = args.message_ids as number[];
+
+      if (!Array.isArray(messageIds) || messageIds.length === 0 || messageIds.length > 100) {
+        return { success: false, error: "Batch size must be between 1 and 100 messages" };
+      }
+      if (!chatId) {
+        return { success: false, error: "Missing chat ID: provide chat_id or configure allowed user" };
+      }
+
+      if (this.bot) {
+        const res = await this.bot.copyMessages({
+          chatId,
+          fromChatId,
+          messageIds,
+          messageThreadId,
+          disableNotification: args.disable_notification as boolean | undefined,
+          protectContent: args.protect_content as boolean | undefined,
+          removeCaption: args.remove_caption as boolean | undefined,
+        });
+        if (!res?.ok || !Array.isArray(res.result)) {
+          return { success: false, error: res?.description || "Failed to copy messages" };
+        }
+        const copiedIds = res.result.map((m: any) => m.message_id);
+        const out: Record<string, unknown> = {
+          success: true,
+          chat_id: chatId,
+          copied_count: copiedIds.length,
+          message_ids: copiedIds,
+        };
+        if (messageThreadId !== undefined) {
+          out.message_thread_id = messageThreadId;
+        }
+        return out;
+      }
+
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+
+    if (name === "delete_messages") {
+      const chatId = (args.chat_id as number) || defaultChatId;
+      const messageIds = args.message_ids as number[];
+
+      if (!Array.isArray(messageIds) || messageIds.length === 0 || messageIds.length > 100) {
+        return { success: false, error: "Batch size must be between 1 and 100 messages" };
+      }
+      if (!chatId) {
+        return { success: false, error: "Missing chat ID: provide chat_id or configure allowed user" };
+      }
+
+      if (this.bot) {
+        const res = await this.bot.deleteMessages(chatId, messageIds);
+        if (!res?.ok) {
+          return { success: false, error: res?.description || "Failed to delete messages" };
+        }
+        return {
+          success: true,
+          chat_id: chatId,
+          deleted_count: messageIds.length,
+          message_ids: messageIds,
+        };
+      }
+
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+
+    if (name === "edit_message_reply_markup" || name === "edit_message_buttons") {
+      const chatId = (args.chat_id as number) || defaultChatId;
+      const messageId = args.message_id as number;
+
+      if (messageId === undefined || isNaN(messageId)) {
+        return { success: false, error: "Missing message_id" };
+      }
+      if (!chatId) {
+        return { success: false, error: "Missing chat ID: provide chat_id or configure allowed user" };
+      }
+
+      if (this.bot) {
+        const buttons = args.buttons as ReplyButtonsInput | undefined;
+        const buttonLayout = (args.button_layout ?? args.buttonLayout) as number[] | number | undefined;
+        const buttonsPerRow = (args.buttons_per_row ?? args.buttonsPerRow) as number | undefined;
+        const inlineKeyboard = buildInlineKeyboardRows(buttons, buttonLayout, buttonsPerRow);
+
+        const res = await this.bot.editMessageReplyMarkup(chatId, messageId, inlineKeyboard);
+        if (res?.ok) {
+          return { success: true, chat_id: chatId, message_id: messageId };
+        }
+        if (res?.description?.toLowerCase().includes("message is not modified")) {
+          return { success: true, chat_id: chatId, message_id: messageId, not_modified: true };
+        }
+        return {
+          success: false,
+          error: res?.description || "Failed to edit message reply markup",
         };
       }
 

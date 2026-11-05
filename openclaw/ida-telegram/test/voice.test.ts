@@ -738,7 +738,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
     }
   });
 
-  test("loadConfig probes candidate paths in order per spec_7a9caca5", async () => {
+  test("loadConfig probes candidate paths in order per specification", async () => {
     const { loadConfig } = await import("../src/config.js");
     const { mkdtempSync, rmSync, writeFileSync } = await import("node:fs");
     const { join } = await import("node:path");

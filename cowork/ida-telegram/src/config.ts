@@ -79,7 +79,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
     );
   }
 
-  // Voice transcribe candidate resolution per spec_7a9caca5 FR-7.5
+  // Voice transcribe candidate resolution per Telegram voice specification FR-7.5
   const transcribeCandidates = [
     join(stateDir, "transcribe.sh"),
     join(homedir(), ".claude", "channels", "telegram", "transcribe.sh"),
@@ -120,7 +120,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
     }
   }
 
-  // Voice speak candidate resolution per spec_7a9caca5 FR-7.2 & FR-7.5
+  // Voice speak candidate resolution per Telegram voice specification FR-7.2 & FR-7.5
   const bundledSpeak = mergedEnv.CLAUDE_PLUGIN_ROOT
     ? join(mergedEnv.CLAUDE_PLUGIN_ROOT, "scripts", "speak.sh")
     : join(import.meta.dir, "..", "scripts", "speak.sh");
