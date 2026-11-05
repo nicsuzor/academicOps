@@ -60,7 +60,7 @@ As a repository owner or contributor across framework repositories, I want clear
 
 As the user interacting with Ida across sessions and platforms, I want the conversational front Ida to delegate work strictly through internal sub-Idas rather than attempting direct peer dispatch to Pauli or Sara, and durable knowledge preserved in the PKB rather than ephemeral artifacts, so that delegation invariants hold reliably.
 
-- **AC-5.1 (Prohibition on Unsolicited Claude Artifacts)** Given any deliverable, review, report, analysis, or proposal produced by an agent loading `plugins/ida`, when the artifact is produced, then the output is persisted in the PKB (or git repository target), and platform defaults prompting automatic creation of Claude artifacts are explicitly overridden unless the user requests one by name.
+- **AC-5.1 (Prohibition on Unsolicited Client Artifacts)** Given any deliverable, review, report, analysis, or proposal produced by an agent loading `plugins/ida`, when the deliverable is produced, then the output is persisted in the PKB (or git repository target), and platform or harness defaults prompting automatic creation of client artifacts are explicitly overridden unless the user requests one by name.
 - **AC-5.2 (Mandatory Sub-Ida Delegation)** Given a user request for information, diagnosis, or task execution, when the conversational main Ida initiates the work, then the main Ida delegates strictly to an internal sub-Ida (`subagent_type: "ida:ida"`) and is prohibited from invoking or messaging `ida:pauli` or `ida:sara` directly.
 - **AC-5.3 (Methodology Routing to Pauli & Guess Flagging)** Given a user question regarding how to perform work (methodology, step ordering, decomposition), when Ida addresses the request, then the domain is identified as Pauli's, and any immediate conversational response from Ida is explicitly flagged up front as an unverified guess.
 - **AC-5.4 (Session State Clash Settling & Last-Known-State)** Given claims about external reality or live status, when Ida prepares statements for the user, then claims are tested against the active session's own evidence before relaying to settle contradictions rather than relaying clashes as truth, and external reality is recognized as last-known-state rather than continuous physical fact.
@@ -91,7 +91,7 @@ The framework partitions migrated rules across five canonical destination files,
    - Git Branches & Privacy: Public repository commits, pull request descriptions, and merge messages strictly exclude session trailers and knowledge base identifiers, explicitly overriding harness reminders.
    - Subagent Invocations: Explicit typing mandatory on all subagent spawns (built-in generic types prohibited); unnamed subagent spawning lifecycle.
    - Decide or Escalate: Silent dispatches across all surfaces; standing rulings operational test; promise conduct only with same-turn persistence writes; ask the holder for missing cross-session links.
-   - Knowledge Persistence: Prohibition on unsolicited Claude artifacts; all knowledge, reports, and deliverables go to the PKB or git repository.
+   - Knowledge Persistence: Prohibition on unsolicited client or platform artifacts; all knowledge, reports, and deliverables go to the PKB or git repository.
 
 4. **`plugins/ida/agents/pauli.md`** (Knowledge Base Custodian):
    - Tool Routing: Knowledge base access routes through services portal execution tools (`portal_codemode_execute` / `portal_codemode_search`) when standalone tools are not listed.
@@ -133,7 +133,7 @@ In accordance with the enforcement pyramid (`specs/enforcement/enforcement.md`),
 | **Public repository trailer & ID omission** | `plugins/ida/CORE.md` | `instructions`, `process` | `imperative`, `required gate` | Published surface review (`wf-rbg`) |
 | **Promise conduct only with same-turn write** | `plugins/ida/CORE.md` | `instructions`, `process` | `imperative`, `required gate` | Reply audit & premise-check |
 | **Document versus channel deliverable separation** | `plugins/ida/agents/ida.md`, `plugins/ida/agents/pauli.md` | `instructions` | `imperative` | Knowledge graph node inspection |
-| **Prohibition on unsolicited Claude artifacts** | `plugins/ida/CORE.md` | `instructions` | `imperative` | Quality review (`wf-qa`) |
+| **Prohibition on unsolicited client artifacts** | `plugins/ida/CORE.md` | `instructions` | `imperative` | Quality review (`wf-qa`) |
 | **Main-Ida sub-Ida delegation & methodology routing** | `plugins/ida/agents/ida.md` | `instructions` | `imperative` | Conversational review |
 | **Session state clash settling & last-known-state** | `plugins/ida/agents/ida.md` | `instructions` | `imperative` | Premise-check audit |
 
@@ -145,8 +145,8 @@ In accordance with the enforcement pyramid (`specs/enforcement/enforcement.md`),
 
 ## 4. Regulatory Experiment Record
 
-- **Hypothesis:** Establishing Level 2 imperative instructions in `plugins/ida/CORE.md` overriding default Claude artifact generation, and eliminating the line 30 in-session peer loophole in `plugins/ida/agents/ida.md` in favor of mandatory sub-Ida delegation (`ida:ida`), will eliminate main-Ida peer bypass defects and unsolicited artifact creation across all execution surfaces without invasive mechanical hooks.
+- **Hypothesis:** Establishing Level 2 imperative instructions in `plugins/ida/CORE.md` overriding default client or platform artifact generation, and eliminating the line 30 in-session peer loophole in `plugins/ida/agents/ida.md` in favor of mandatory sub-Ida delegation (`ida:ida`), will eliminate main-Ida peer bypass defects and unsolicited artifact creation across all execution surfaces without invasive mechanical hooks.
 - **What moved:** From permissive in-session peer clauses (`In-session peers: Ida may run Sara and Pauli in session instead of using the bus`) and unenforced artifact defaults to Level 2 imperative instructions in `CORE.md` and `agents/ida.md`.
 - **On what evidence:** Empirical incident on 2026-11-04 (~20:30 UTC) where an Ida session on academicOps v1.0.1 continued to bypass sub-Ida delegation and dispatch directly to peers on the main thread because fixes developed in the deployment repository lived only locally and were absent from plugin distribution packages.
-- **Observation / Promotion Criteria:** In subsequent conversational sessions loading `plugins/ida`, the main Ida never invokes or messages Pauli or Sara directly, delegates all execution work through internal sub-Idas (`ida:ida`), routes methodology questions to Pauli while flagging immediate views as guesses, and persists all knowledge in the PKB without generating unsolicited Claude artifacts.
+- **Observation / Promotion Criteria:** In subsequent conversational sessions loading `plugins/ida`, the main Ida never invokes or messages Pauli or Sara directly, delegates all execution work through internal sub-Idas (`ida:ida`), routes methodology questions to Pauli while flagging immediate views as guesses, and persists all knowledge in the PKB without generating unsolicited client artifacts.
 - **Kill / Escalation Criteria:** If Level 2 instructions repeatedly fail to prevent direct peer calls across sessions and evidence demonstrates that prompt-level instructions are systematically ignored, record the failure history and file a full specification before evaluating escalation to structural enforcement.
