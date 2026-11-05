@@ -381,3 +381,214 @@ def test_revise_allowed_when_valid_empty():
     )
     assert res["ok"] is True
     assert res["verdict"] == "REVISE"
+
+
+def test_pass_refused_absent_block_instructs_load_premise_check():
+    """US-2 AC-2.1: Refusal on absent block instructs returning for revision and loading ida:premise-check."""
+    tracer = _StubTracer()
+    session_id = "s-absent-block-pass"
+    claim_id = "claim-absent-1"
+
+    hg.arm(
+        session_id=session_id,
+        claim_id=claim_id,
+        judged_text="Result text without an argdown block.",
+        judged_ref=claim_id,
+        block_expected=True,
+    )
+
+    reason = (
+        f"Judged: {claim_id}; asks tg-1\n"
+        "Valid: (1) holds -- ok\n"
+        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
+        "Answered: tg-1 ← (1)\n"
+        "Sufficient: (1) obvious\n"
+        "Waived: none\n"
+        "Relay: none"
+    )
+
+    with pytest.raises(ValueError) as excinfo:
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id=claim_id,
+            verdict="PASS",
+            reason=reason,
+            tracer_mod=tracer,
+        )
+
+    err = str(excinfo.value)
+    assert "PASS refused -- no argument block in judged text" in err
+    assert "Load the premise-check skill (`ida:premise-check`)" in err
+
+
+def test_pass_refused_unparsable_block_instructs_load_premise_check():
+    """US-2 AC-2.2: Refusal on syntax error in argdown block instructs loading ida:premise-check."""
+    tracer = _StubTracer()
+    session_id = "s-syntax-err-pass"
+    claim_id = "claim-syntax-1"
+
+    bad_argdown = (
+        "```argdown\n===\nasks: [aops_1234]\nanswers: invalid yaml\n===\n(1) Observation.\n```"
+    )
+
+    hg.arm(
+        session_id=session_id,
+        claim_id=claim_id,
+        judged_text=bad_argdown,
+        judged_ref=claim_id,
+        block_expected=True,
+    )
+
+    reason = (
+        f"Judged: {claim_id}; asks aops_1234\n"
+        "Valid: (1) holds -- ok\n"
+        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
+        "Answered: aops_1234 ← (1)\n"
+        "Sufficient: (1) obvious\n"
+        "Waived: none\n"
+        "Relay: none"
+    )
+
+    with pytest.raises(ValueError) as excinfo:
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id=claim_id,
+            verdict="PASS",
+            reason=reason,
+            tracer_mod=tracer,
+        )
+
+    err = str(excinfo.value)
+    assert f"PASS verdict refused for {claim_id}: could not parse argdown block:" in err
+    assert "instruct the sender to load `ida:premise-check` before resending" in err
+
+
+def test_pass_refused_zero_inference_lines_instructs_load_premise_check():
+    """US-2 AC-2.3: Refusal on 0 inference lines instructs loading ida:premise-check."""
+    tracer = _StubTracer()
+    session_id = "s-zero-inf-pass"
+    claim_id = "claim-zero-inf"
+
+    zero_inf_block = (
+        "```argdown\n"
+        "===\n"
+        "asks:\n"
+        "  q1: test\n"
+        "answers:\n"
+        "  q1: 1\n"
+        "===\n"
+        f"(1) Bare observation without inference. -- {_ANY_BASIS}\n"
+        "```"
+    )
+
+    hg.arm(
+        session_id=session_id,
+        claim_id=claim_id,
+        judged_text=zero_inf_block,
+        judged_ref=claim_id,
+        block_expected=True,
+    )
+
+    reason = (
+        f"Judged: {claim_id}; asks q1\n"
+        "Valid: (1) holds -- ok\n"
+        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
+        "Answered: q1 ← (1)\n"
+        "Sufficient: (1) obvious\n"
+        "Waived: none\n"
+        "Relay: none"
+    )
+
+    with pytest.raises(ValueError) as excinfo:
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id=claim_id,
+            verdict="PASS",
+            reason=reason,
+            tracer_mod=tracer,
+        )
+
+    err = str(excinfo.value)
+    assert "0 inference lines" in err
+    assert "instruct the author to load `ida:premise-check` before rewriting" in err
+
+
+def test_pass_refused_missing_keyed_lines_instructs_load_premise_check():
+    """US-2 AC-2.4: Refusal on missing reason keys instructs loading ida:premise-check."""
+    tracer = _StubTracer()
+    session_id = "s-missing-keys-pass"
+    claim_id = "claim-missing-keys"
+
+    valid_block = (
+        "```argdown\n"
+        "===\n"
+        "asks:\n"
+        "  q1: test\n"
+        "answers:\n"
+        "  q1: 2\n"
+        "===\n"
+        f"(1) Fact. -- {_ANY_BASIS}\n"
+        "-- rule. Unless: def; not tried. --\n"
+        "(2) So, conclusion.\n"
+        "```"
+    )
+
+    hg.arm(
+        session_id=session_id,
+        claim_id=claim_id,
+        judged_text=valid_block,
+        judged_ref=claim_id,
+        block_expected=True,
+    )
+
+    # Incomplete reason: omits Supported, Answered, Sufficient, Waived, Relay
+    incomplete_reason = f"Judged: {claim_id}; asks q1\nValid: (2) holds -- ok\n"
+
+    with pytest.raises(ValueError) as excinfo:
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id=claim_id,
+            verdict="PASS",
+            reason=incomplete_reason,
+            tracer_mod=tracer,
+        )
+
+    err = str(excinfo.value)
+    assert "missing keyed lines" in err
+    assert (
+        "Load the skill (`ida:premise-check`) to inspect the required format before resubmitting."
+        in err
+    )
+
+
+def test_revise_and_fail_refused_all_valid_instructs_load_premise_check():
+    """US-2 AC-2.5: Inconsistent REVISE/FAIL refusal instructs loading ida:premise-check."""
+    tracer = _StubTracer()
+    session_id = "s-inconsistent-revise"
+    task_id = "aops_2bc1b139"
+
+    reason_all_hold = (
+        f"Judged: {task_id}; asks tg-1\n"
+        "Valid: (1) holds -- the rule yields (1)\n"
+        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
+        "Answered: tg-1 ← (1)\n"
+        "Sufficient: (1) material; low-stakes\n"
+        "Waived: block -- reviewed\n"
+        "Relay: none"
+    )
+
+    for verdict in ("REVISE", "FAIL"):
+        with pytest.raises(ValueError) as excinfo:
+            pcv.record_verdict(
+                session_id=session_id,
+                claim_id=task_id,
+                verdict=verdict,
+                reason=reason_all_hold,
+                tracer_mod=tracer,
+            )
+        err = str(excinfo.value)
+        assert f"{verdict} refused -- reason has Valid entries that all hold" in err
+        assert (
+            "Load the premise-check skill (`ida:premise-check`) to inspect the required format before resubmitting."
+            in err
+        )

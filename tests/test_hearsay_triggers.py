@@ -366,6 +366,11 @@ def test_post_tool_hearsay_arm_unifies_null_form_and_block_expected(tmp_path, mo
     res_absent = handlers.hearsay_arm(ctx_post_absent)
     assert res_absent is not None
     assert "no argument block supplied" in res_absent.inject_text
+    assert (
+        "Instruct the sender to load the skill (`ida:premise-check`) before resending."
+        in res_absent.inject_text
+    )
+    assert "instruction to load ida:premise-check" in (res_absent.user_text or "")
     assert pcg.is_armed(session_absent) is True
     st_absent = pcg.get_state(session_absent)
     assert st_absent.get("block_expected") is True
