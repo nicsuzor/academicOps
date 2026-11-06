@@ -408,13 +408,28 @@ def _post_mcp_search(
     sess_id = session_id if session_id is not None else (os.environ.get("AOPS_SESSION_ID") or "")
     tp = traceparent or _resolve_tracer_traceparent(sess_id)
 
+    root_sess_id = sess_id
+    resolved_agent_id = agent_id or ""
+    if "/" in sess_id:
+        root_sess_id, suffix = sess_id.split("/", 1)
+        if not resolved_agent_id:
+            resolved_agent_id = suffix
+
     pid = prompt_id or ""
-    if not pid and sess_id:
+    if sess_id:
         tracer_file = _tracer_state_dir() / f"{sess_id}.json"
         if tracer_file.is_file():
             try:
                 tdata = json.loads(tracer_file.read_text(encoding="utf-8"))
-                pid = (tdata.get("current_trace") or {}).get("prompt_id") or ""
+                phx_sid = tdata.get("phoenix_session_id")
+                if phx_sid:
+                    phx_root = str(phx_sid).split("/", 1)[0]
+                    if phx_root and phx_root != sess_id:
+                        root_sess_id = phx_root
+                        if not resolved_agent_id:
+                            resolved_agent_id = sess_id
+                if not pid:
+                    pid = (tdata.get("current_trace") or {}).get("prompt_id") or ""
             except Exception:
                 pass
     if not pid:
@@ -438,7 +453,7 @@ def _post_mcp_search(
         "User-Agent": "academicOps/0.10 (prompt-hydration)",
         "Content-Type": "application/json",
         "Accept": "application/json, text/event-stream",
-        "x-session-id": sess_id,
+        "x-session-id": root_sess_id,
         "traceparent": tp,
     }
     if headers:
@@ -452,9 +467,9 @@ def _post_mcp_search(
     prefix = os.environ.get("PKB_MCP_TOOL_PREFIX", "pkb_")
     tool_name = f"{prefix}search"
     session_payload = {
-        "session_id": sess_id,
+        "session_id": root_sess_id,
         "prompt_id": pid,
-        "agent_id": agent_id or "",
+        "agent_id": resolved_agent_id,
         "caller": "hook",
         "surface": surface or _resolve_surface(),
     }
@@ -945,7 +960,22 @@ def agy_session_pointer(ctx: HookContext) -> Result | None:
             f.write(datetime.now().astimezone().isoformat())
     except FileExistsError:
         return None
-    return warn(PREMISE_CHECK_POINTER)
+    pointer_text = PREMISE_CHECK_POINTER
+    try:
+        tracer_file = _tracer_state_dir() / f"{ctx.session_id}.json"
+        if tracer_file.is_file():
+            tdata = json.loads(tracer_file.read_text(encoding="utf-8"))
+            phx_sid = tdata.get("phoenix_session_id")
+            if phx_sid:
+                phx_root = str(phx_sid).split("/", 1)[0]
+                if phx_root and phx_root != ctx.session_id:
+                    pointer_text = (
+                        f"{PREMISE_CHECK_POINTER}\n"
+                        f"caller_session: {phx_root} | agent_id: {ctx.session_id}"
+                    )
+    except Exception:
+        pass
+    return warn(pointer_text)
 
 
 honesty_on_peer_message = honest_output
@@ -1146,9 +1176,9 @@ def user_prompt_submit(ctx: HookContext) -> Result | None:
 
     ctx = replace(ctx, prompt_id=prompt_id)
 
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_user_prompt_submit")
     agy_user_prompt_submit(ctx)
+    emit_debug_span(ctx)
     steps = (
         agy_session_pointer,
         search_the_pkb,
@@ -1160,9 +1190,9 @@ def user_prompt_submit(ctx: HookContext) -> Result | None:
 
 def pre_tool(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical PreToolUse."""
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_pre_tool")
     agy_pre_tool(ctx)
+    emit_debug_span(ctx)
     return _run_handler(hearsay_handler, ctx)
 
 

@@ -761,3 +761,84 @@ def test_verdict_reports_clear_diagnostic_when_no_session_or_state(tmp_path, mon
     err = capsys.readouterr().err
     assert "no session id" in err
     assert "no session state available" in err
+
+
+def test_subagent_verdict_span_uses_root_phoenix_session_id_and_subagent_active_trace(monkeypatch):
+    """When record_verdict is called inside a subagent session, _export_tool_span loads the
+    subagent's own state file (for current_trace) and exports the span under the root
+    phoenix_session_id with agent_id and parent_session_id."""
+    monkeypatch.delenv("AOPS_SESSION_ID", raising=False)
+    tracer = _StubTracer()
+    sub_session = "subagent-verdict-sess"
+    root_session = "root-verdict-sess"
+    sub_trace_id = "a" * 32
+    sub_root_span_id = "b" * 16
+
+    state_map = {
+        sub_session: {
+            "session_id": sub_session,
+            "phoenix_session_id": root_session,
+            "parent_session_id": root_session,
+            "current_trace": {
+                "trace_id": sub_trace_id,
+                "root_span_id": sub_root_span_id,
+            },
+        }
+    }
+    tracer._load_state = lambda sid: state_map.get(sid, {})
+    tracer._resolve_agent_and_parent_ids = lambda state, data=None, session_key="session_id": (
+        state.get("phoenix_session_id") or state.get("session_id"),
+        state.get("session_id")
+        if state.get("phoenix_session_id") != state.get("session_id")
+        else "",
+        state.get("parent_session_id"),
+    )
+
+    exported_calls: list[dict[str, Any]] = []
+
+    def capture_export(*, config, session_id, username, span_records, **kw):
+        exported_calls.append(
+            {
+                "session_id": session_id,
+                "spans": span_records,
+                "kwargs": kw,
+            }
+        )
+        return True
+
+    tracer._build_and_export_spans = capture_export
+
+    claim_id = "claim-subagent-1"
+    hg.arm(
+        session_id=sub_session,
+        claim_id=claim_id,
+        judged_text="report",
+        judged_ref=claim_id,
+        block_expected=False,
+    )
+    reason = (
+        f"Judged: {claim_id}; asks tg-1\n"
+        "Valid: (2) fails #missing -- condition not met\n"
+        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
+        "Answered: tg-1 ← (2)\n"
+        "Sufficient: (2) material; low-stakes\n"
+        "Waived: block -- task handback review\n"
+        "Relay: none"
+    )
+
+    res = pcv.record_verdict(
+        session_id=sub_session,
+        claim_id=claim_id,
+        verdict="REVISE",
+        reason=reason,
+        tracer_mod=tracer,
+    )
+    assert res["ok"] is True
+    assert len(exported_calls) == 1
+    call = exported_calls[0]
+    assert call["session_id"] == root_session
+    assert call["kwargs"].get("agent_id") == sub_session
+    assert call["kwargs"].get("parent_session_id") == root_session
+    span = call["spans"][0]
+    assert span["trace_id_hex"] == sub_trace_id
+    assert span["parent_span_id_hex"] == sub_root_span_id

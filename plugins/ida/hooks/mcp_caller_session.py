@@ -75,11 +75,36 @@ def inject_caller_session(
         updated_input = {}
 
     session: dict[str, Any] = {}
-    session_id = raw.get("session_id") or raw.get("conversationId") or raw.get("conversation_id")
-    if session_id is not None:
-        session["session_id"] = session_id
+    raw_session_id = (
+        raw.get("session_id") or raw.get("conversationId") or raw.get("conversation_id")
+    )
+    inferred_agent_id: str | None = None
+    root_session_id: str | None = None
+    if raw_session_id is not None:
+        raw_sid_str = str(raw_session_id)
+        if "/" in raw_sid_str:
+            root_session_id, inferred_agent_id = raw_sid_str.split("/", 1)
+        else:
+            root_session_id = raw_sid_str
+            try:
+                state_file = Path.home() / ".claude" / "tracer" / f"{raw_sid_str}.json"
+                if state_file.is_file():
+                    sdata = json.loads(state_file.read_text(encoding="utf-8"))
+                    phx_sid = sdata.get("phoenix_session_id")
+                    if phx_sid:
+                        phx_root = str(phx_sid).split("/", 1)[0]
+                        if phx_root and phx_root != raw_sid_str:
+                            root_session_id = phx_root
+                            inferred_agent_id = raw_sid_str
+            except Exception:
+                pass
+
+    if root_session_id is not None:
+        session["session_id"] = root_session_id
     if raw.get("agent_id") is not None:
         session["agent_id"] = raw["agent_id"]
+    elif inferred_agent_id:
+        session["agent_id"] = inferred_agent_id
     if raw.get("prompt_id") is not None:
         session["prompt_id"] = raw["prompt_id"]
 

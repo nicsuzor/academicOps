@@ -1426,3 +1426,50 @@ def test_post_mcp_search_reinitializes_on_session_error(tmp_path: Path):
         # Verify cache was updated with the fresh session
         cached = json.loads(cache_file.read_text(encoding="utf-8"))
         assert cached.get("session_id") == "new-fresh-session"
+
+
+def test_search_the_pkb_uses_root_phoenix_session_id_for_subagent_turn(
+    http_mcp_server, monkeypatch, tmp_path
+):
+    """When search_the_pkb runs inside a subagent session whose tracer state has phoenix_session_id
+    pointing to the root session, both x-session-id and _session.session_id use the root session ID
+    and _session.agent_id carries the subagent session ID."""
+    tracer_dir = tmp_path / ".claude" / "tracer"
+    tracer_dir.mkdir(parents=True, exist_ok=True)
+    trace_id = "11112222333344441111222233334444"
+    span_id = "1111222233334444"
+    state_file = tracer_dir / "subagent-sess-42.json"
+    state_file.write_text(
+        json.dumps(
+            {
+                "session_id": "subagent-sess-42",
+                "phoenix_session_id": "root-sess-01",
+                "parent_session_id": "root-sess-01",
+                "current_trace": {
+                    "trace_id": trace_id,
+                    "root_span_id": span_id,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("PKB_MCP_URL", http_mcp_server.url)
+
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        session_id="subagent-sess-42",
+        raw={"prompt": "search from subagent"},
+        hooks_dir=PKB_HOOKS,
+        agent_type="ida:pauli",
+    )
+    res = handlers.search_the_pkb(ctx)
+    assert res is not None
+    assert len(http_mcp_server.requests) == 1
+
+    req = http_mcp_server.requests[0]
+    assert req["headers"].get("x-session-id") == "root-sess-01"
+    sess = req["json"]["params"]["arguments"]["_session"]
+    assert sess["session_id"] == "root-sess-01"
+    assert sess["agent_id"] == "subagent-sess-42"
