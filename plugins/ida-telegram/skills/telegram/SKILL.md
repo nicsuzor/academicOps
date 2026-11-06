@@ -11,7 +11,15 @@ Core interaction rules determine message content; these rules govern presentatio
 
 The user reads on a phone between other commitments. Cognitive load is the binding constraint.
 
+- **Setup & pre-reply loading:** Load `ida-telegram:telegram` before sending the first reply. Pass `reply_to` when referencing or replying to messages over two or three turns back.
 - **Length budget (~100 words):** Keep chat replies strictly budgeted to ~100 words unless detail was requested. Lead with a bold headline and concise bullets. A summary is functional, not a length cap: a summary of a plan or proposal explains how the plan fixes each problem (the mechanism), using Tier 2 and Tier 3 to carry depth without dropping the mechanism.
+- **Bare identifiers prohibited:** Never send a bare identifier (task, PR, issue, commit, session, or Telegram message ID) without a plain-language descriptive gloss and clickable URL where available.
+- **Local 24-hour time:** Present timestamps and scheduling information in local 24-hour time.
+- **Complete in one message without spilling:** Keep replies and summaries whole in chat without spilling essential content to detail views; details hold deep context and logs, not the remainder of the message.
+- **One decision per message:** Format decision requests with a two-line context summary, a reasoned recommendation on the choice itself, and expandable spoiler blocks (`>!`) for background or logs.
+- **Multi-bot single delivery:** Each item reaches the user once on its designated bot. Never echo another bot's window or volunteer unprompted status on threads held on another bot.
+- **In-place updates:** Update existing messages in-place via message editing (`edit_message`) to append late-arriving links, branch names, or identifiers rather than posting follow-up messages.
+- **Cross-channel handover:** When a request originates on a non-Telegram channel (such as console), suppress Telegram intake or progress notices during execution; transmit a concise one- or two-line summary upon completion so the user can pick up asynchronously without scrolling.
 - **One conclusion per message:** When a message carries two or more major conclusions, send each as a separate message, one per conclusion, so the user can react to each individually.
 - **Tier 1 (Chat):** Lead with a bold one-line headline stating the takeaway or decision needed, followed by concise bullet points.
 - **Tier 2 (Expandable evidence):** Place receipts, quotes, and evidence in expandable blockquotes (`>!`). Telegram renders these collapsed by default so the user opens them on demand. Use standard blockquotes (`>`) for ordinary quotes.
@@ -49,7 +57,8 @@ Every reply sent over Telegram automatically carries inline action buttons with 
 
 ## Reactions & Feedback
 
-- **Act on a 👎 reaction:** When the user adds a 👎 reaction to a message (a `reaction` event whose `added` contains 👎), treat it as feedback on substance -- the failure or blocker the message reported -- not on how the message was written. Act directly on the reported failure (investigate, fix, unblock, or replan) without asking the user to classify the reaction or critique the wording.
+- **Act on semantic reactions:** When the user adds a 👎 reaction to a message (a `reaction` event whose `added` contains 👎), treat it as feedback on substance -- the failure or blocker the message reported -- not on how the message was written. Act directly on the reported failure (investigate, fix, unblock, or replan) without asking the user to classify the reaction or critique the wording. Negative user reactions (such as `😡`) route directly to systemic error diagnosis (`/learn`); thinking reactions (`🤔`) route to an immediate status investigation and report of current progress.
+- **Reaction-only completion:** Completed background work or handled requests requiring no user action or decision receive only a reaction update (such as `🫡`, `✍`, or `🐳`), eliminating chatter.
 - **Inbound message status:** The channel marks inbound messages with 👀 upon arrival.
 - **Shared reaction legend:** All bot personas share a single reaction legend with exactly one meaning per reaction and one reaction per state. Telegram authoritatively validates reactions; unsupported reactions surface platform errors directly.
   - _Lifecycle states:_
@@ -101,6 +110,7 @@ Every reply sent over Telegram automatically carries inline action buttons with 
 
 ## Voice
 
+- **Phonetic dictation resolution:** When processing voice notes or dictated messages, resolve odd words as possible homophones in context, relaying the fitting interpretation while noting the original transcription where ambiguity remains.
 - **Inbound voice:** Spoken voice notes from the user are transcribed automatically before reaching the agent. If transcription fails (`transcript_error`), report the failure and error immediately in chat and log an escalation; do not retry manually via Bash or silently drop it.
 - **Voice replies:** Mirror voice input with spoken audio replies for primary takeaways when voice response mode is enabled, keeping text captions in chat. If speech synthesis fails, report the failure verbatim and log an escalation rather than silently swallowing the degradation.
 
