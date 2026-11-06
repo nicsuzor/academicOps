@@ -14,6 +14,8 @@ axiom alone.
 
 Before proposing, adding, or modifying an enforcement mechanism, run through the enforcement pyramid options against [`specs/enforcement/enforcement.md`](../../specs/enforcement/enforcement.md) first, testing least-invasive options across its controlled vocabulary and strength gradations before escalating. Default to instructions: instructions work in the large majority of cases; the burden of proof is on adding a mechanism.
 
+No new hooks without a full spec. No new mechanical enforcement of any kind without a full spec and a decision history filed to show enforcement map escalation step by step.
+
 Any change that adds, modifies, escalates, or retires an enforcement mechanism
 updates [`specs/enforcement/enforcement.md`](../../specs/enforcement/enforcement.md)
 in the same PR, so the spec still describes reality after merge.
@@ -81,7 +83,7 @@ Task titles and filenames must be brief, descriptive, and unambiguous:
 
 Agents must never create un-actionable "decision" tasks or file conversational questions as backlog tickets. Where research investigates an open design question or architectural alternatives, it must by default include a decision task assigned to the user (`assignee: user`) that depends on the research findings to decide an implementation route before downstream implementation tasks can proceed.
 
-- **Represent forks as mutually exclusive option nodes:** Architectural choices and trade-offs are modelled on the graph as competing option nodes with mutual blocking edges. Choosing an option resolves the conflict and cancels the competing node, unblocking downstream dependencies.
+- **Separate forks into option nodes only where decomposed further:** Forks are separated into competing option nodes wired with `alternative` links to their decision node only where those branches are decomposed further. A task that has options to choose between but no commitment to doing anything immediately beyond choosing must not be created with subtasks or separate option nodes; create it with the choices in the task and instructions on how to make the decision. Dependencies are strictly one-sided (`depends_on` on the waiting task), and choosing an option resolves the decision, adopting the selected branch and cancelling competing option nodes.
 - **Model unknowns as empirical probes:** Missing information is gathered via focused probe tasks (`classification: probe`).
 - **Ask in-turn questions directly:** Interactive clarifications in an active session use `AskUserQuestion` directly rather than polluting the graph with un-actionable decision tasks.
 

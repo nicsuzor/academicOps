@@ -13,7 +13,7 @@ type: template
 
 Drives an individual open pull request through its progression lifecycle: confirming passing checks, securing a proportionate review, addressing review feedback, settling merge conflicts against the base branch post-approval, and executing or staging the merge according to project-local merge rules.
 
-A worker executing this workflow may coordinate parallel subagents to conduct independent checks or review lenses concurrently.
+**Single-Worker Parallel Fan-Out (Trial)**: A worker executing this workflow may be dispatched with an instruction to coordinate parallel subagents to conduct independent checks or review lenses concurrently. This capability is designated as an empirical trial evaluated on observed run performance.
 
 ## Input contract
 
@@ -29,7 +29,7 @@ A worker executing this workflow may coordinate parallel subagents to conduct in
      - Target base branch is defined by project rules.
      - Merge authority (such as autonomous merge on green, human sign-off gate, or release cut approval) is determined by project policy.
      - When no project override exists, fallback to standard risk-tier governance: low-risk changes merge on independent verification; operational or high-risk changes require reviewer sign-off.
-     - Pre-approval readiness: Before approval, a PR must be green and reviewed by independent agents; mergeability against the base branch is not required before approval.
+     - Pre-approval readiness: Before approval, a PR must be green and reviewed by independent agents; mergeability against the base branch is not required before approval. A draft PR whose code step is complete is marked ready for review (`gh pr ready`) without waiting for approval.
 
 2. **Audit CI Checks and Proportionate Review**:
    - Query CI pipeline status on the latest head commit. All required checks must pass cleanly.
@@ -38,7 +38,7 @@ A worker executing this workflow may coordinate parallel subagents to conduct in
 
 3. **Address Review Feedback and Requested Changes**:
    - Inspect open review threads, comments, and review states.
-   - Review comments and requested changes must be met by diff modifications on the feature branch or answered with substantiated rebuttals on the record.
+   - Review comments and requested changes must be met by diff modifications on the feature branch or answered with substantiated rebuttals on the record. Once the code step addressing feedback completes, ensure any draft PR is marked ready for review (`gh pr ready`).
    - A pull request with unresolved requested changes must not merge.
 
 4. **Verify Approval and Readiness**:

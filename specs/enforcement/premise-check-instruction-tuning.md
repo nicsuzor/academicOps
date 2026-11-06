@@ -233,14 +233,13 @@ A core design requirement is determining the authoritative location for the repo
 | **Locations** | `james.md`, `pull/SKILL.md`, `dump/SKILL.md` | `plugins/ida/CORE.md` or `.agents/rules/` | SSoT in `premise-check/SKILL.md`; JIT via `honesty.md`; lean pointers in `pull`/`dump`; `james.md` untouched |
 | **DRY Compliance** | **Poor**: 3 copies drift when schemas update | **Good**: Single rule in shared context | **Excellent**: Pure SSoT in skill; zero duplication |
 | **Context Overhead** | Low (only when persona or skill is loaded) | High (burns prompt budget on every turn for all agents) | Minimal (JIT delivery only when subagents spawn or report) |
-| **Risk to `agy` Behavior** | **Low**: Preserves currently working configuration | **High**: Modifying `james.md` risks degrading proven execution calibration | **Zero**: Leaves `james.md` completely untouched per Nic's explicit ruling |
-| **Compliance with Rulings** | Fails long-term DRY convergence | Violates binding ruling (tg 507 & framework ruling: `james.md` unchanged until Nic decides) | **Fully Compliant**: Satisfies SSoT while honoring all rulings |
+| **Risk to `agy` Behavior** | **Low**: Preserves currently working configuration | **High**: Modifying `james.md` risks degrading proven execution calibration | **Zero**: Leaves `james.md` completely untouched |
 
 ### Recommendation Rationale
 
 **Adopt Option 3.**
 
-1. **Preservation of `agy` Runtime Invariants:** In `agy`, `james` operates as the primary lead executor and review supervisor. Its persona prompt is tightly calibrated. Modifying `james.md` carries substantial risk of prompt-cache churn, tone drift, or instruction dilution. Nic's ruling in tg 507 explicitly mandated: _"`james.md` stays as it is for now, because it works well in agy."_
+1. **Preservation of `agy` Runtime Invariants:** In `agy`, `james` operates as the primary lead executor and review supervisor. Its persona prompt is tightly calibrated. Modifying `james.md` carries substantial risk of prompt-cache churn, tone drift, or instruction dilution. It works well in `agy`, so it stays as it is.
 2. **Single Source of Truth:** Per `evidence-contract-enforcement.md:19`, _"The format lives only in the `premise-check` skill. Every other instruction file, reminder and gate message names the skill and adds nothing to it."_ Defining the format once in `premise-check/SKILL.md` and referencing it via JIT reminders on `SubagentStart` (`honesty.md`) ensures authors receive the schema exactly when authoring reports without cluttering ambient prompt caches.
 
 ## Enforcement Pyramid and Map Alignment
@@ -260,7 +259,7 @@ flowchart TD
     style L4 fill:#ffebee,stroke:#d32f2f
 ```
 
-- **De-escalation & Conformance:** In strict adherence to binding ruling tg 2879, **no new hooks, gates, or mechanical recorder checks are introduced**. Enforcement relies exclusively on Level 1 (`instructions`) and Level 2 (`JIT injection` via prompt templates and actionable tool refusal strings).
+- **De-escalation & Conformance:** **No new hooks, gates, or mechanical recorder checks are introduced**. Enforcement relies exclusively on Level 1 (`instructions`) and Level 2 (`JIT injection` via prompt templates and actionable tool refusal strings).
 - **Proportionality Justification:** Historical format friction was caused by underspecified prompt reminders and uninformative error diagnostics, not an absence of mechanical restraint. Clarifying the prose and error guidance resolves the friction at minimum systemic cost.
 
 ### Enforcement Map Extract

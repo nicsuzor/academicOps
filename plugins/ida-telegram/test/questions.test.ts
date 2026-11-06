@@ -144,7 +144,7 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
           questions: [
             {
               header: "Value model weight",
-              question: "Raise `urgency` weight on cliff tasks?\n>! Facts: `aops_00000002` showed 3 cliff tasks ranked below routine cleanup.",
+              question: "Raise `urgency` weight on cliff tasks?\n>! Facts: `demo_00000002` showed 3 cliff tasks ranked below routine cleanup.",
               options: [
                 { label: "Raise to 2.5x (Recommended)", description: "Prioritizes due-within-48h tasks immediately" },
                 { label: "Keep at 1.5x", description: "Preserve current focus balance" },
@@ -162,9 +162,9 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
             },
             {
               header: "Design proposal",
-              question: "Adopt single-screen Question Canvas layout for `spec_7a9caca5`?",
+              question: "Adopt single-screen Question Canvas layout for Telegram mini-app?",
               options: [
-                { label: "Approve v3 layout (Recommended)", description: "Matches `kb_ee859e3f` native UI map" },
+                { label: "Approve v3 layout (Recommended)", description: "Matches native UI map" },
                 { label: "Revise layout", description: "Keep multi-tab drawer" },
               ],
             },
@@ -193,7 +193,7 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       params: {
         name: "reply",
         arguments: {
-          text: "**PR #418 ready to merge** — `polecat/aops_00000003` passes all 40 tests.\n>! Changed `questions.ts`, `bot.ts`, `server.ts`.",
+          text: "**PR #418 ready to merge** — `polecat/demo_00000003` passes all 40 tests.\n>! Changed `questions.ts`, `bot.ts`, `server.ts`.",
           detail: "## Full Diff Summary\n- Fixed batch truncation\n- Added entity formatting",
           review: { repo: "nicsuzor/academicOps", pr: 418 },
           buttons: [

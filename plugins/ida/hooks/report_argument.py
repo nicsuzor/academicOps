@@ -1163,21 +1163,14 @@ def remediation_for_failure(failure: str) -> str:
     """Return actionable remediation guidance for a pass failure message."""
     if "0 inference lines" in failure:
         return (
-            "Required remediation format: Add at least one inference bar followed by a conclusion:\n"
-            "(1) <empirical observation>. -- <basis phrase>\n"
-            "-- <warrant rule>. Unless: <defeater>; <status>. --\n"
-            "(2) So, <conclusion answering ask>."
+            "Required remediation format: Bare assertions cannot pass and require at least one inference bar followed by a conclusion. Return for revision and instruct the author to load `ida:premise-check` before rewriting:\n"
+            "  -- <warrant rule>. Unless: <defeater>; <status>. --\n"
+            "  (n) So, <conclusion>"
         )
     if "missing keyed lines" in failure:
         return (
-            "Required remediation format: Reason must include all 7 keyed lines:\n"
-            "Judged: <claim_id>; asks <ask_id>\n"
-            "Valid: (n) holds -- <rule and why it yields (n)>\n"
-            "Supported: (<premise n>) <qualitative reason / sufficiency evaluation>\n"
-            "Answered: <ask_id> ← (n)\n"
-            "Sufficient: (n) material; obvious; no objection\n"
-            "Waived: none\n"
-            "Relay: none"
+            "Required remediation format: Reason must include all 7 keyed lines per `ida:premise-check`. "
+            "Load the skill (`ida:premise-check`) to inspect the required format before resubmitting."
         )
     if "Judged ask ids" in failure and "do not equal" in failure:
         return (
@@ -1285,8 +1278,9 @@ def remediation_for_failure(failure: str) -> str:
         )
     if "the judged text has no argdown block that parses" in failure:
         return (
-            "Required remediation: Fix syntax/formatting so the argdown block parses, "
-            "or record 'Waived: block -- <justification>'."
+            "Required remediation: The argdown block failed syntax validation. Return the message "
+            "for revision and instruct the sender to load `ida:premise-check` before resending, "
+            "or waive under `Waived: block -- <reason>` if format-only."
         )
     if "is a conclusion no inference bar yields" in failure:
         return (

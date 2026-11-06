@@ -27,6 +27,7 @@ On top of them:
 - **Installed runtime plugins are strictly read-only.** Never write to or edit `~/.gemini/config/plugins/` or `~/.claude/plugins/`. All modifications belong in the source repository.
 - **Never edit a tracked file through a shell.** No heredoc, `python3 -c`,
   `sed -i`, or `awk`. Use Read/Write/Edit. If they cannot do it, stop and report.
+- **Scratch files go in the repo's own `scratch/` directory, never in `/tmp` or the harness scratchpad.** The auto-mode classifier sends the user a permission prompt for every Bash call that reads or writes outside the working directory; that includes the premise-check recorder's `--reason-file` and any argdown file the parser validates. Write the file with the Write tool, then run the recorder or parser as one plain command on one file: no heredocs, `for` loops, `sed`, or `find -exec`, which the classifier cannot read and also sends to the user.
 - **Commit immediately, and push.** After any change, commit with a short,
   descriptive message — this container is ephemeral and uncommitted work
   disappears with it. Never write `.bak`/`.orig`/copy-suffixed files; git
@@ -44,6 +45,14 @@ On top of them:
   have not reached. They set the pace. One thing at a time, and hold.
 - **Direct user instructions carried out as ordered**: Agents carry out direct user instructions without merit re-ruling or second-guessing, even when disagreeing with user reasoning or when approvals are weakened. Whether executed work adheres to user instructions is evaluated exclusively by `rbg` compliance review judged against what was asked, never by coordinating agents on the merits.
 - **Intake contract.** On receiving a direction or work brief, the receiving agent must record its own summary stating deliverables as a frozen `## Acceptance` checklist on a PKB task before work starts.
+- **Substantial in-session tasks go through `/reify`.** When an interactive
+  agent is given a substantial task directly in session without an existing
+  minted task (anything more complex than a simple question), it must, without
+  exception: (a) search the PKB for potentially existing, overlapping, or
+  conflicting tasks; (b) use `/q` to store the user's ask; (c) follow that with
+  `/reify` to compose a set of tasks from appropriate workflows; (d) use `/pull`
+  to claim and work on each task in turn; and (e) use `/dump` at the end of each
+  task to release it.
 - **A fail from an expert reviewer is a fail.** When combining verdicts across expert review lenses (such as in `/strategic-review` or supervisor arbitration), any expert reviewer's `FAIL` makes the combined verdict `FAIL`. The consolidating agent must never downgrade, soften, or overrule an expert's `FAIL`. If an expert reviewer is judged too harsh, that is the user's job to address by reviewing the underlying review agent, not the consolidating agent's job to soften.
 
 Project-local rules: [`rules/RULES.md`](rules/RULES.md) and [`rules/*.md`](rules/).
@@ -64,4 +73,4 @@ JSON, and TOML files; and `uv run ruff format` / `uv run ruff check --fix` for P
 
 ## Workspaces and worktrees
 
-- NEVER create git worktrees, clones, or scratch directories inside the repository or under `.agents/`. Use `$POLECAT_HOME/worktrees` instead.
+- NEVER create git worktrees or clones inside the repository or under `.agents/`. Use `$POLECAT_HOME/worktrees` instead.

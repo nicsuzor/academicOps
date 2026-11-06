@@ -23,6 +23,7 @@ As a workflow dispatcher, I want the move-along workflow to support dispatching 
 
 - **AC-2.1** Given an open pull request undergoing progression, when the move-along workflow is invoked, then it allows dispatching to a single worker with instructions to coordinate parallel subagent fan-out for independent operations on that PR (e.g. concurrent check verification and risk-tier review).
 - **AC-2.2** Given the adoption of single-worker parallel fan-out, when documenting the capability in the workflow contract, then it is explicitly designated as a trial subject to principal review based on observed execution performance.
+- **AC-2.3** Given a pull request workflow governing a code step, when that step completes, then any draft pull request is marked ready for review (`gh pr ready`) so review can proceed without waiting for approval.
 
 ## Design
 
@@ -33,15 +34,16 @@ The sweep workflow operates exclusively as a discovery and triage mechanism, dis
 1. **Parallel Fan-Out**: The sweep coordinator queries open pull requests and evaluates candidates in parallel. There is a single execution model: parallel fan-out across PRs.
 2. **Project Policy Resolution**: PRs are evaluated against project-specific branch and merge policies. Target base branches are specified in project-level configuration (e.g. `.agents/CORE.md`) rather than hardcoded in workflow templates.
 3. **Queue Next-Step Tasks**: For each PR requiring action:
-   - Identify the single next required action (e.g. run risk-tier review, address requested changes, resolve base merge conflicts on approved PRs, or land approved PR). PRs awaiting approval that are green and reviewed are classified as blocked on approval without queuing conflict resolution or rebase tasks.
+   - Identify the single next required action (e.g. run risk-tier review, address requested changes, resolve base merge conflicts on approved PRs, or land approved PR). PRs awaiting approval that are green and reviewed are classified as blocked on approval without queuing conflict resolution or rebase tasks. Where a draft PR's code step is complete, mark the PR ready for review (`gh pr ready`).
    - If an existing open task covers this action, ensure it is set to queued status.
-   - If no task exists, create and queue a follow-up task scoped strictly to that PR's next action.
+   - If no task exists, create and queue a follow-up task scoped strictly to that PR's next action and set it to queued status.
    - The sweep workflow does not execute resolutions inline.
-4. **Coordinator Summary Handoff**: Upon evaluating all open PRs, the sweep files a closed task recording the full disposition manifest and listing all queued task identifiers, providing the dispatching coordinator with an authoritative inventory to schedule or dispatch.
+4. **Coordinator Summary Handoff**: Upon evaluating all open PRs, the sweep files a closed task for itself recording the full disposition manifest and listing all outstanding queued tasks, providing the dispatching coordinator with an authoritative inventory to schedule or dispatch.
 
 ### 2. Move-Along Parallel Fan-Out (Trial)
 
-The move-along workflow advances an individual PR through check auditing, proportionate review, feedback resolution, post-approval merge conflict settlement, and landing. Before approval, a PR must be green and reviewed; bringing it up to date with its base branch and resolving conflicts happens after approval, just before merge:
+The move-along workflow advances an individual PR through check auditing, proportionate review, feedback resolution, post-approval merge conflict settlement, and landing. Before approval, a PR must be green and reviewed; a draft PR whose code step is complete is marked ready for review (`gh pr ready`) without waiting for approval. Bringing it up to date with its base branch and resolving conflicts happens after approval, just before merge:
 
 1. **Single-Worker Fan-Out Option**: Where an individual PR requires multiple independent checks or reviews, the dispatcher may assign the task to a single worker instructed to fan out sub-operations in parallel (e.g. concurrently dispatching review lenses or running test suites in parallel subagents).
 2. **Trial Designation**: This fan-out pattern is formally designated as an empirical trial. The principal evaluates system performance and token economy from specimen runs before determining whether to retain or refine the pattern.
+3. **Draft Transition on Code Step Completion**: Any pull request workflow governing a code step specifies that a draft PR is marked ready for review once that code step completes, ensuring reviews are never blocked on prior approvals.

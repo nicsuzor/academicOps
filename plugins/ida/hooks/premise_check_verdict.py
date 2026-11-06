@@ -382,7 +382,8 @@ def judge_reason(token: str, reason: str, judged_text: str | None) -> dict[str, 
                         f"inference step ('Valid: (n) fails -- <defect>') or unanswered ask"
                         + (", or a format defect to fix" if token == "REVISE" else "")
                         + ".\n"
-                        f"Required remediation format: For {token}, record at least one of:\n"
+                        f"Required remediation format: Reason must follow the schema in `ida:premise-check`. "
+                        f"For {token}, record at least one of:\n"
                         f"  Valid: (n) fails #<defect-tag> -- <explanation of failure>\n"
                         f"  Answered: <ask_id> unanswered"
                         + (
@@ -391,6 +392,7 @@ def judge_reason(token: str, reason: str, judged_text: str | None) -> dict[str, 
                             if token == "REVISE"
                             else ""
                         )
+                        + "\nLoad the premise-check skill (`ida:premise-check`) to inspect the required format before resubmitting."
                     )
     attrs = ra.span_attributes(parsed, block, vocab)
     if token == "REVISE" and (items := _format_items(reason, vocab)):
@@ -470,9 +472,10 @@ def record_verdict(
             "PASS refused -- no argument block in judged text: an absent block cannot pass; "
             "send the message back for revision\n"
             "Defect: The judged text does not contain a fenced ```argdown block.\n"
-            "Required remediation: Peer messages must end with a valid ```argdown block. "
-            "Return the message for revision:\n"
-            "  verdict.py --claim <id> --verdict REVISE --reason-file <path>"
+            "Required remediation: Return the message for revision and instruct the sender:\n"
+            "  Load the premise-check skill (`ida:premise-check`) before writing your report; "
+            "its Argdown dialect is a restricted subset of Argdown, so do not write the block from memory.\n"
+            "  Command: verdict.py --claim <id> --verdict REVISE --reason-file <path>"
         )
 
     # Machine check on Argdown block for PASS verdicts unless block is waived
@@ -485,7 +488,10 @@ def record_verdict(
             )
             if not valid:
                 raise ValueError(
-                    f"PASS verdict refused for {cid}: could not parse argdown block:\n{parser_output}"
+                    f"PASS verdict refused for {cid}: could not parse argdown block:\n{parser_output}\n"
+                    f"Required remediation: The argdown block failed syntax validation. Return the message "
+                    f"for revision and instruct the sender to load `ida:premise-check` before resending, "
+                    f"or waive under `Waived: block -- <reason>` if format-only."
                 )
 
     attributes = judge_reason(token, reason, judged_text)
