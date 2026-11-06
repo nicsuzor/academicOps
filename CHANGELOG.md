@@ -2,30 +2,28 @@
 
 ## [1.3.0](https://github.com/nicsuzor/academicOps/compare/v1.2.0...v1.3.0) (2026-11-06)
 
-
 ### Features
 
-* **ida:** port deployment delegation and knowledge persistence rules ([ec333db](https://github.com/nicsuzor/academicOps/commit/ec333db65c46cd627b50db226e1a4f702070306b))
-* **ida:** treat requested documents as durable PKB documents rather than emails ([b23b332](https://github.com/nicsuzor/academicOps/commit/b23b3325b9bd3947e6f11899a8b52e45d1c54128))
-* **ida:** treat requested documents as durable PKB documents rather than emails ([b5f5f51](https://github.com/nicsuzor/academicOps/commit/b5f5f51022d53b31b74f787613ec8e7f22406b53))
-* **learn:** propose workflow-first remedies and persist session transcripts ([bc31580](https://github.com/nicsuzor/academicOps/commit/bc315809f7fe9270f5d40f23228e639c0102031f))
-* **learn:** propose workflow-first remedies and persist session transcripts ([1b3eb06](https://github.com/nicsuzor/academicOps/commit/1b3eb0612c0262200959bfcdf4cea1b180797c51))
-* **rules:** land PKB write ruling and usage basics ([7272dd7](https://github.com/nicsuzor/academicOps/commit/7272dd72c4d3f557653b5e2c9f5baf7988ae6169))
-* **rules:** land PKB write ruling and usage basics in agent instructions ([af73094](https://github.com/nicsuzor/academicOps/commit/af73094b08d2353220bfd208b4eb35908e495d4c))
-* **workflows:** establish dialectical review as default review across templates and specs ([b545e23](https://github.com/nicsuzor/academicOps/commit/b545e231831275d23cbeb1a16e1418a461b94ebb))
-* **workflows:** make dialectical review the default review across templates and specs ([c508225](https://github.com/nicsuzor/academicOps/commit/c50822531fdd6de2d8bd10a17ae939332f9e9bd1))
-
+- **ida:** port deployment delegation and knowledge persistence rules ([ec333db](https://github.com/nicsuzor/academicOps/commit/ec333db65c46cd627b50db226e1a4f702070306b))
+- **ida:** treat requested documents as durable PKB documents rather than emails ([b23b332](https://github.com/nicsuzor/academicOps/commit/b23b3325b9bd3947e6f11899a8b52e45d1c54128))
+- **ida:** treat requested documents as durable PKB documents rather than emails ([b5f5f51](https://github.com/nicsuzor/academicOps/commit/b5f5f51022d53b31b74f787613ec8e7f22406b53))
+- **learn:** propose workflow-first remedies and persist session transcripts ([bc31580](https://github.com/nicsuzor/academicOps/commit/bc315809f7fe9270f5d40f23228e639c0102031f))
+- **learn:** propose workflow-first remedies and persist session transcripts ([1b3eb06](https://github.com/nicsuzor/academicOps/commit/1b3eb0612c0262200959bfcdf4cea1b180797c51))
+- **rules:** land PKB write ruling and usage basics ([7272dd7](https://github.com/nicsuzor/academicOps/commit/7272dd72c4d3f557653b5e2c9f5baf7988ae6169))
+- **rules:** land PKB write ruling and usage basics in agent instructions ([af73094](https://github.com/nicsuzor/academicOps/commit/af73094b08d2353220bfd208b4eb35908e495d4c))
+- **workflows:** establish dialectical review as default review across templates and specs ([b545e23](https://github.com/nicsuzor/academicOps/commit/b545e231831275d23cbeb1a16e1418a461b94ebb))
+- **workflows:** make dialectical review the default review across templates and specs ([c508225](https://github.com/nicsuzor/academicOps/commit/c50822531fdd6de2d8bd10a17ae939332f9e9bd1))
 
 ### Bug Fixes
 
-* **hooks:** resolve plugin version under agy plugin layout in SessionStart ([1a627e6](https://github.com/nicsuzor/academicOps/commit/1a627e6e377627c5db68a470990cf8d1c828c43a))
-* **hooks:** resolve plugin version under agy plugin layout in SessionStart ([fac4ac8](https://github.com/nicsuzor/academicOps/commit/fac4ac8cb1489e7088d13a9f6eeb00a99820585f))
-* **ida:** confine /decide to cold operational choices and preserve conversational pacing ([59cc723](https://github.com/nicsuzor/academicOps/commit/59cc72340b27960a66f12eafa4a3d83acee38bda))
-* **ida:** confine /decide to cold operational choices and preserve conversational pacing ([f69ed96](https://github.com/nicsuzor/academicOps/commit/f69ed9646d58ded415859ed33640e87fe622241e))
-* **ida:** resolve symlinked project path and session ID for premise-check verdict recording ([#3543](https://github.com/nicsuzor/academicOps/issues/3543), [#2798](https://github.com/nicsuzor/academicOps/issues/2798)) ([#3545](https://github.com/nicsuzor/academicOps/issues/3545)) ([932443d](https://github.com/nicsuzor/academicOps/commit/932443d35a33cbf442dc9c71cc1ccfb9c99a63b0))
-* **ida:** same-turn agy handback capture, idle notice filtering, and --judged-file verification ([#3546](https://github.com/nicsuzor/academicOps/issues/3546)) ([f845fca](https://github.com/nicsuzor/academicOps/commit/f845fcaeaa2c7d0c82eaec47668f5846e003cafa))
-* **ida:** use canonical DISPATCHER_MCP_TOKEN_ID and _SECRET across tracer and launchd ([58f33f7](https://github.com/nicsuzor/academicOps/commit/58f33f7ebec5f699dcb82d0dd1146bc85d8f0cf0))
-* **specs:** align enforcement map citations and prune redundant row ([af8351e](https://github.com/nicsuzor/academicOps/commit/af8351e62a1d360cec9b54552ebc509bb506fec2))
+- **hooks:** resolve plugin version under agy plugin layout in SessionStart ([1a627e6](https://github.com/nicsuzor/academicOps/commit/1a627e6e377627c5db68a470990cf8d1c828c43a))
+- **hooks:** resolve plugin version under agy plugin layout in SessionStart ([fac4ac8](https://github.com/nicsuzor/academicOps/commit/fac4ac8cb1489e7088d13a9f6eeb00a99820585f))
+- **ida:** confine /decide to cold operational choices and preserve conversational pacing ([59cc723](https://github.com/nicsuzor/academicOps/commit/59cc72340b27960a66f12eafa4a3d83acee38bda))
+- **ida:** confine /decide to cold operational choices and preserve conversational pacing ([f69ed96](https://github.com/nicsuzor/academicOps/commit/f69ed9646d58ded415859ed33640e87fe622241e))
+- **ida:** resolve symlinked project path and session ID for premise-check verdict recording ([#3543](https://github.com/nicsuzor/academicOps/issues/3543), [#2798](https://github.com/nicsuzor/academicOps/issues/2798)) ([#3545](https://github.com/nicsuzor/academicOps/issues/3545)) ([932443d](https://github.com/nicsuzor/academicOps/commit/932443d35a33cbf442dc9c71cc1ccfb9c99a63b0))
+- **ida:** same-turn agy handback capture, idle notice filtering, and --judged-file verification ([#3546](https://github.com/nicsuzor/academicOps/issues/3546)) ([f845fca](https://github.com/nicsuzor/academicOps/commit/f845fcaeaa2c7d0c82eaec47668f5846e003cafa))
+- **ida:** use canonical DISPATCHER_MCP_TOKEN_ID and _SECRET across tracer and launchd ([58f33f7](https://github.com/nicsuzor/academicOps/commit/58f33f7ebec5f699dcb82d0dd1146bc85d8f0cf0))
+- **specs:** align enforcement map citations and prune redundant row ([af8351e](https://github.com/nicsuzor/academicOps/commit/af8351e62a1d360cec9b54552ebc509bb506fec2))
 
 ## [1.2.0](https://github.com/nicsuzor/academicOps/compare/v1.1.0...v1.2.0) (2026-11-05)
 
