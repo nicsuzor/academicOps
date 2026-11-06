@@ -45,7 +45,7 @@ As a project planner, I want decisions between alternative options to remain as 
 
 A pull request review is incomplete and must not satisfy review obligations or mark review tasks as completed unless it includes an explicit rule-compliance verdict (`PASS`, `REVISE`, or `FAIL`) posted on the pull request by an independent reviewer who authored none of the commits under review.
 
-- **Independent specialist dispatch**: When executing pull request review workflows (`wf-pr-clear`, `wf-pr-sweep`, `wf-review`, `strategic-review`), reviews must not be collapsed into a monolithic generalist prompt. The review pipeline must explicitly dispatch the specialist compliance reviewer (`rbg` executing `wf-rbg`) alongside quality (`marsha`) and strategic congruence (`pauli`).
+- **Independent specialist dispatch**: When executing pull request review workflows (`wf-pr-clear`, `wf-pr-sweep`, `wf-dialectical-review`, `strategic-review`), reviews must not be collapsed into a monolithic generalist prompt. The review pipeline must explicitly dispatch the specialist compliance reviewer (`rbg` executing `wf-rbg`) alongside quality (`marsha`) and strategic congruence (`pauli`).
 - **Review satisfaction predicate**: Verification checks asserting review completion must verify the presence of the compliance verdict on GitHub, rejecting syntactic reviews that lack specialist rule evaluations.
 - **Independence verification**: The reviewing agent must confirm via git author metadata that it authored zero commits on the branch under review.
 
@@ -111,7 +111,7 @@ flowchart TD
     end
 
     subgraph OneStepFixes ["Least-Invasive One-Step Fixes"]
-        F1["Fix 1 (Process/Instruction): Strengthen wf-pr-clear & wf-review contracts; require explicit RBG verdict in acceptance criteria"]
+        F1["Fix 1 (Process/Instruction): Strengthen wf-pr-clear & wf-dialectical-review contracts; require explicit RBG verdict in acceptance criteria"]
         F2["Fix 2 (Spec/Instruction): Codify human-only user stories in writing-specs.md & process-not-actor.md; add RBG gate"]
         F3["Fix 3 (Rule/Process): Restrict ENFORCEMENT-MAP.md to axiom-derived universal rules; enforce native platform directories"]
         F4["Fix 4 (Instruction): Clarify decompose/SKILL.md & RULES.md to retain options within single decision tasks"]
@@ -128,7 +128,7 @@ flowchart TD
 - **Level of Intervention**: `instructions` (`imperative`) and `process` (`required gate`).
 - **Remedy**:
   1. Update `wf-pr-clear` obligation 4 to explicitly forbid monolithic subagent fallback: reviewing unreviewed pull requests must dispatch the specialist `rbg` compliance reviewer (`wf-rbg`).
-  2. In pull request review task templates (`wf-code-task-base`, `wf-review`), strengthen the acceptance criteria contract: review tasks cannot be marked `[x]` or released as `done` with mere evidence of a review link; acceptance requires the review link AND a valid recorded specialist rule-compliance verdict (`PASS`, `REVISE`, or `FAIL`).
+  2. In pull request review task templates (`wf-code-task-base`, `wf-dialectical-review`), strengthen the acceptance criteria contract: review tasks cannot be marked `[x]` or released as `done` with mere evidence of a review link; acceptance requires the review link AND a valid recorded specialist rule-compliance verdict (`PASS`, `REVISE`, or `FAIL`).
 - **Outcome-Level Criteria**: 100% of pull requests cleared by automated workers carry an independent specialist RBG compliance review posted on GitHub before the review task is released as `done`.
 
 #### Class 2 Fix: Codification of Human User Stories in Specifications

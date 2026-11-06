@@ -71,7 +71,7 @@ Six distinct surfaces generate or modify PKB body content today. An evaluation o
 In accordance with `specs/enforcement/enforcement-map.md`, the rule is entered into `specs/ENFORCEMENT-MAP.md` as an escalated multi-carrier rule combining universal project-rule instructions with mandatory reviewer verification:
 
 ```markdown
-| [Rule: Ban on Related Sections in PKB Bodies](enforcement/related-sections-ban.md) -- PKB graph density comes from header edges; dedicated related tasks or notes sections in bodies are prohibited. | instructions, process | imperative, required gate | `.agents/rules/RULES.md:70`, `.agents/rules/pkb-body-linking.md:1-25`, `specs/enforcement/task-contract.md:65-75`, `plugins/ida/agents/pauli.md:63`, `plugins/ida/skills/dump/SKILL.md:20`, `wf-review.md:35` |
+| [Rule: Ban on Related Sections in PKB Bodies](enforcement/related-sections-ban.md) -- PKB graph density comes from header edges; dedicated related tasks or notes sections in bodies are prohibited. | instructions, process | imperative, required gate | `.agents/rules/RULES.md:70`, `.agents/rules/pkb-body-linking.md:1-25`, `specs/enforcement/task-contract.md:65-75`, `plugins/ida/agents/pauli.md:63`, `plugins/ida/skills/dump/SKILL.md:20`, `wf-dialectical-review.md:35` |
 ```
 
 ### 3. Evidence for the Move
@@ -99,7 +99,7 @@ Following `specs/enforcement/enforcement.md`, intervention is calibrated to the 
    - Mechanical filters cannot distinguish between a prohibited "Related tasks" list, an authorized substantive prose discussion of a dependency, and an index node.
    - Substrate modifications in the PKB server represent heavier intervention that is premature before universal instructions and review gates are deployed.
 5. **`process` (`required gate`) (Selected as Companion Review Lens):**
-   - Reviewers (`marsha`, `rbg`, `pauli`) evaluate candidate changes, task bodies, and release handbacks against the related-sections ban during dialectical review and QA workflows (`wf-review`, `wf-qa`, `wf-strategic-fit`).
+   - Reviewers (`marsha`, `rbg`, `pauli`) evaluate candidate changes, task bodies, and release handbacks against the related-sections ban during dialectical review and QA workflows (`wf-dialectical-review`, `wf-qa`, `wf-strategic-fit`).
 6. **`post-hoc` (`observability`) (Retained):**
    - Phoenix span traces and graph audit queries monitor PKB write payloads to measure compliance across sessions.
 
@@ -115,7 +115,7 @@ The one-step move implements the rule across four synchronized areas:
    - Replaces the overly rigid "never link tasks" phrasing with the user's exact specification: header edges carry density, bodies link nodes only where discussed in text, MoCs link in body by definition, and dedicated related sections are strictly banned.
 4. **Release and Reporting Skills (`plugins/ida/skills/dump/SKILL.md`, `plugins/ida/skills/premise-check/SKILL.md`):**
    - Explicitly instructs workers that reporting evidence requires citing specific supporting facts, forbidding the compilation of related-work lists or basis catalogs.
-5. **Review Lens Verification (`specs/enforcement/reviewer-class-standard-check.md`, `wf-review.md`, `wf-qa.md`):**
+5. **Review Lens Verification (`specs/enforcement/reviewer-class-standard-check.md`, `wf-dialectical-review.md`, `wf-qa.md`):**
    - Instructs quality and compliance reviewers to verify that task bodies, release handbacks, and documentation PRs contain zero dedicated related-work sections.
 
 ### 6. Outcome-Level Build Criteria for Implementation (Stage 2: Build)
@@ -127,7 +127,7 @@ The implementation worker on Stage 2 must satisfy the following verifiable crite
 3. **Pauli Persona Calibration:** `plugins/ida/agents/pauli.md` accurately reflects the user's rule and exception definitions.
 4. **Release Reporting Guidelines:** `plugins/ida/skills/dump/SKILL.md` and `plugins/ida/skills/premise-check/SKILL.md` instruct workers that basis citations are strictly direct claim evidence, barring aggregate cross-reference lists.
 5. **Enforcement Register Update:** `specs/ENFORCEMENT-MAP.md` is updated with the new 4-column row complying with the concision and schema rules of `specs/enforcement/enforcement-map.md`.
-6. **Review Lens Integration:** Review templates (`wf-review.md`, `wf-qa.md`) include verification of the related-sections ban in artifact checks.
+6. **Review Lens Integration:** Review templates (`wf-dialectical-review.md`, `wf-qa.md`) include verification of the related-sections ban in artifact checks.
 
 ### 7. Baseline-vs-Changed Verification Protocol & Observable Impact
 
