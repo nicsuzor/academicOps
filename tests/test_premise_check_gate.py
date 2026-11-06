@@ -973,6 +973,11 @@ _AGY_WAKES_WITHOUT_REPORT = {
         "stop hook blocked termination due to reason: The user has automatically "
         "approved the artifact through their review policy. Proceed to execution."
     ),
+    "subagent_idle_with_response": _agy_message(
+        "system",
+        f"Subagent {_AGY_PEER} has gone idle. This was the subagent's most recent "
+        "response: I have completed the fix; the mini app loads [observed].",
+    ),
 }
 
 # Turn-starts that deliver another agent's report or direction.
@@ -982,11 +987,6 @@ _AGY_ARRIVALS = {
     ),
     "peer_direction": _agy_message(
         _AGY_PEER, "Use the hydrate skill against this ask, then report: the mini app loads?"
-    ),
-    "subagent_idle_with_response": _agy_message(
-        "system",
-        f"Subagent {_AGY_PEER} has gone idle. This was the subagent's most recent "
-        "response: I have completed the fix; the mini app loads [observed].",
     ),
 }
 
@@ -1027,6 +1027,99 @@ def test_agy_report_or_direction_arms_check(tmp_path: Path, arrival):
     claim_id = pcg.get_state(session_id)["claim_id"]
     judged_text, _ = pcg.get_judged(session_id, claim_id)
     assert "the mini app loads" in judged_text
+
+
+def test_agy_preinvocation_captures_send_message_without_transcript_lag(tmp_path: Path):
+    """AC1: In agy, PreInvocation gating ingests incoming subagent send_message reports on the turn
+
+    they arrive even when <SYSTEM_MESSAGE> entries have not flushed to transcript_full.jsonl (#3500),
+    and ignores subsequent sender=system 'Subagent <uuid> has gone idle' notices (#3544).
+    """
+    session_id = "sess-agy-lag-repro"
+    transcript_compact = tmp_path / "transcript.jsonl"
+    transcript_full = tmp_path / "transcript_full.jsonl"
+
+    report_argdown = (
+        "## Report\n"
+        "```argdown\n"
+        "===\n"
+        "asks:\n"
+        "  tg-1: 1\n"
+        "answers:\n"
+        "  tg-1: 1\n"
+        "===\n\n"
+        "(1) Fix delivered\n"
+        "-- rule --\n"
+        "(2) Verified\n"
+        "```"
+    )
+    subagent_msg = _agy_message(_AGY_PEER, report_argdown)
+
+    # Initial state: step 0 (initial prompt) in both transcripts
+    initial_step = {"step_index": 0, "type": "USER_INPUT", "content": "initial prompt"}
+    transcript_compact.write_text(json.dumps(initial_step) + "\n", encoding="utf-8")
+    transcript_full.write_text(json.dumps(initial_step) + "\n", encoding="utf-8")
+
+    # Turn 1: subagent send_message is appended to compact transcript,
+    # BUT has NOT flushed to transcript_full.jsonl yet!
+    handback_step = {"step_index": 1, "type": "SYSTEM_MESSAGE", "content": subagent_msg}
+    with transcript_compact.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(handback_step) + "\n")
+
+    # PreInvocation fires on Turn 1 (even if transcriptPath points to transcript_full.jsonl or transcript.jsonl)
+    ctx1 = dispatch.HookContext(
+        client="agy",
+        event="UserPromptSubmit",
+        session_id=session_id,
+        agent_type="ida:sara",
+        transcript_path=str(transcript_full),
+        raw={
+            "invocationNum": 0,
+            "transcriptPath": str(transcript_full),
+            "conversationId": session_id,
+        },
+    )
+
+    # Must capture Report 1 on the exact turn it arrives
+    res1 = pcg.premise_check_arm(ctx1)
+    assert res1 is not None
+    assert pcg.is_armed(session_id) is True
+    claim_id_1 = pcg.get_state(session_id)["claim_id"]
+    judged_text_1, _ = pcg.get_judged(session_id, claim_id_1)
+    assert "Fix delivered" in judged_text_1
+    assert "Verified" in judged_text_1
+
+    # Turn 2: Subagent calls finish and agy delivers sender=system idle notice
+    idle_msg = _agy_message(
+        "system",
+        f"Subagent {_AGY_PEER} has gone idle. This was the subagent's most recent response: Brief finish prose.",
+    )
+    idle_step = {"step_index": 2, "type": "SYSTEM_MESSAGE", "content": idle_msg}
+    with transcript_compact.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(idle_step) + "\n")
+    # Also flushes to transcript_full
+    with transcript_full.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(handback_step) + "\n")
+        f.write(json.dumps(idle_step) + "\n")
+
+    ctx2 = dispatch.HookContext(
+        client="agy",
+        event="UserPromptSubmit",
+        session_id=session_id,
+        agent_type="ida:sara",
+        transcript_path=str(transcript_full),
+        raw={
+            "invocationNum": 0,
+            "transcriptPath": str(transcript_full),
+            "conversationId": session_id,
+        },
+    )
+
+    # Idle notice must be ignored as a non-claim lifecycle event, not arming a false blockless gate
+    assert pcg.premise_check_arm(ctx2) is None
+    # Report 1 remains the armed claim
+    state2 = pcg.get_state(session_id)
+    assert state2.get("claim_id") == claim_id_1  # Report 1 remains the armed claim
 
 
 def test_absent_block_refuses_to_clear_gate_and_leaves_armed(monkeypatch):

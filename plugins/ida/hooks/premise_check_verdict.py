@@ -426,6 +426,8 @@ def record_verdict(
     title: str | None = None,
     tracer_mod: Any | None = None,
     machine: bool = False,
+    judged_file: str | Path | None = None,
+    judged_text: str | None = None,
 ) -> dict[str, Any]:
     """Validate, emit the span, and disarm the premise check."""
     cid = (claim_id or "").strip()
@@ -443,7 +445,7 @@ def record_verdict(
     is_task_claim = is_task_id(cid)
 
     if not armed:
-        if not is_task_claim:
+        if not is_task_claim and judged_file is None:
             raise ValueError(f"no premise check is currently armed for session {session_id!r}")
         state = get_state(session_id)
     else:
@@ -451,14 +453,22 @@ def record_verdict(
         expected_id = state.get("claim_id")
         valid_ids = state.get("claim_ids") or ([expected_id] if expected_id else [])
         if cid != expected_id and cid not in valid_ids:
-            if not is_task_claim:
+            if not is_task_claim and judged_file is None:
                 raise ValueError(
                     f"unknown or mismatched report id {cid!r}; gate is armed for {expected_id!r}"
                 )
 
-    judged_text, judged_ref = get_judged(session_id, cid)
-    if is_task_claim and not judged_ref:
-        judged_ref = cid
+    if judged_file is not None:
+        jf_path = Path(judged_file)
+        if not jf_path.is_file():
+            raise FileNotFoundError(f"judged file not found: {judged_file!r}")
+        judged_text = jf_path.read_text(encoding="utf-8")
+        judged_ref = str(judged_file)
+    elif judged_text is None:
+        judged_text, judged_ref = get_judged(session_id, cid)
+        if is_task_claim and not judged_ref:
+            judged_ref = cid
+
     block_text = ra.extract_block(judged_text)
 
     entry = (state.get("judged") or {}).get(cid, {})
@@ -467,16 +477,23 @@ def record_verdict(
         str(judged_ref or "").startswith(prefix)
         for prefix in ("<cross-session-message", "<teammate-message", "<task-notification")
     )
-    if token == "PASS" and is_peer and block_text is None:
-        raise ValueError(
-            "PASS refused -- no argument block in judged text: an absent block cannot pass; "
-            "send the message back for revision\n"
-            "Defect: The judged text does not contain a fenced ```argdown block.\n"
-            "Required remediation: Return the message for revision and instruct the sender:\n"
-            "  Load the premise-check skill (`ida:premise-check`) before writing your report; "
-            "its Argdown dialect is a restricted subset of Argdown, so do not write the block from memory.\n"
-            "  Command: verdict.py --claim <id> --verdict REVISE --reason-file <path>"
-        )
+
+    if token == "PASS":
+        if (is_peer or is_task_claim) and judged_text is None:
+            raise ValueError(
+                f"PASS refused -- missing gate storage for claim {cid!r}: no judged text was stored "
+                f"for this claim at arm time. Supply the report text using --judged-file <path>."
+            )
+        if is_peer and block_text is None:
+            raise ValueError(
+                "PASS refused -- no argument block in judged text: an absent block cannot pass; "
+                "send the message back for revision\n"
+                "Defect: The judged text does not contain a fenced ```argdown block.\n"
+                "Required remediation: Return the message for revision and instruct the sender:\n"
+                "  Load the premise-check skill (`ida:premise-check`) before writing your report; "
+                "its Argdown dialect is a restricted subset of Argdown, so do not write the block from memory.\n"
+                "  Command: verdict.py --claim <id> --verdict REVISE --reason-file <path>"
+            )
 
     # Machine check on Argdown block for PASS verdicts unless block is waived
     if token == "PASS" and block_text is not None and not ra.is_null_form(block_text):
@@ -673,6 +690,12 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Optional short title for the verification.",
     )
+    parser.add_argument(
+        "--judged-file",
+        dest="judged_file",
+        default=None,
+        help="Read the judged report or text from this file.",
+    )
     reason = parser.add_mutually_exclusive_group()
     reason.add_argument("--reason", help="The checker's reason, inline.")
     reason.add_argument(
@@ -716,6 +739,7 @@ def main(argv: list[str] | None = None) -> int:
             verdict=args.verdict,
             reason=text,
             title=args.title,
+            judged_file=args.judged_file,
         )
     except (OSError, ValueError, RuntimeError, ImportError) as exc:
         print(f"premise_check_verdict: {exc}", file=sys.stderr)

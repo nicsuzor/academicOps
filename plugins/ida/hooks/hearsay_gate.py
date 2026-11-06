@@ -332,28 +332,70 @@ def _is_session_start_or_harness_injection(content: str) -> bool:
     )
 
 
-def _agy_turn_start(ctx: HookContext) -> dict[str, Any] | None:
-    if ctx.raw.get("invocationNum", 0) != 0:
-        return None
-    path = ctx.transcript_path or ctx.raw.get("transcriptPath")
-    if not path:
-        return None
-    if not Path(path).is_file():
-        return None
-    with open(path, encoding="utf-8") as f:
-        lines = f.readlines()
-    for line in reversed(lines):
-        line = line.strip()
-        if not line:
-            continue
+def _agy_candidate_transcripts(ctx: HookContext) -> list[Path]:
+    raw_path = ctx.transcript_path or ctx.raw.get("transcriptPath")
+    candidates: list[Path] = []
+    if raw_path:
+        p = Path(raw_path)
+        if p.is_file():
+            candidates.append(p)
+        parent = p.parent
+        for alt_name in ("transcript.jsonl", "transcript_full.jsonl"):
+            alt_path = parent / alt_name
+            if alt_path.is_file() and alt_path not in candidates:
+                candidates.append(alt_path)
+    return candidates
+
+
+def _read_all_agy_entries(ctx: HookContext) -> list[dict[str, Any]]:
+    candidates = _agy_candidate_transcripts(ctx)
+    if not candidates:
+        return []
+    entries_by_index: dict[int, dict[str, Any]] = {}
+    fallback_entries: list[dict[str, Any]] = []
+
+    for path in candidates:
         try:
-            entry = json.loads(line)
-        except json.JSONDecodeError:
+            with open(path, encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        entry = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if not isinstance(entry, dict):
+                        continue
+                    step_idx = entry.get("step_index")
+                    if isinstance(step_idx, int):
+                        existing = entries_by_index.get(step_idx)
+                        if existing is None:
+                            entries_by_index[step_idx] = entry
+                        else:
+                            # Prefer entry with complete content if existing has truncated content
+                            if "content" in existing.get("truncated_fields", []):
+                                if "content" not in entry.get("truncated_fields", []):
+                                    entries_by_index[step_idx] = entry
+                    else:
+                        fallback_entries.append(entry)
+        except OSError:
             continue
-        if not isinstance(entry, dict):
-            continue
+
+    if entries_by_index:
+        return [entries_by_index[idx] for idx in sorted(entries_by_index.keys())]
+    return fallback_entries
+
+
+def _agy_turn_start(ctx: HookContext) -> dict[str, Any] | None:
+    entries = _read_all_agy_entries(ctx)
+    if not entries:
+        return None
+    for entry in reversed(entries):
         entry_type = entry.get("type")
         if entry_type == "USER_INPUT":
+            if ctx.raw.get("invocationNum", 0) != 0:
+                return None
             return entry
         if entry_type == "SYSTEM_MESSAGE":
             content = str(entry.get("content") or "")
@@ -367,10 +409,6 @@ _AGY_MESSAGE = re.compile(
     r"\[Message\][^\n]*?\bsender=(\S+)[^\n]*?\bcontent=(.*?)\s*(?:</SYSTEM_MESSAGE>\s*)?$",
     re.DOTALL,
 )
-_AGY_IDLE_RESPONSE = re.compile(
-    r"^Subagent \S+ has gone idle\. This was the subagent's most recent response:\s*(\S.*)$",
-    re.DOTALL,
-)
 
 
 def agy_arrival(content: str) -> str:
@@ -379,17 +417,15 @@ def agy_arrival(content: str) -> str:
     agy starts a SYSTEM_MESSAGE turn for every wake: the session's own command
     tasks and timers finishing (sender ``<conversation>/task-N``), system
     notices, stop-hook refusals, and messages from other agents. Only a message
-    whose sender is another agent's conversation, or a system notice quoting an
-    idle subagent's last response, carries a report or direction.
+    whose sender is another agent's conversation carries a report or direction.
+    Automated harness notices (including sender=system idle notices) are
+    non-claim lifecycle events and deliver none.
     """
     m = _AGY_MESSAGE.search(content)
     if not m:
         return ""
     sender, body = m.group(1), m.group(2).strip()
-    if sender == "system":
-        idle = _AGY_IDLE_RESPONSE.match(body)
-        return body if idle else ""
-    if "/" in sender:
+    if sender == "system" or "/" in sender:
         return ""
     return body
 
