@@ -65,7 +65,7 @@ Enforcement moves follow the proportionality framework and controlled vocabulary
 
 #### Class 1: Unbacked Behavioral Promises
 
-- **Breached Rule and Location**: `Axiom: Categorical Imperative` (`plugins/rbg/skills/axioms/categorical-imperative.md:8-10`), `Axiom: Durable Capture` (`plugins/rbg/skills/axioms/durable-capture.md:8-10`), and `Decide or Escalate` (`specs/agents/ida-interaction-rules.md:54,83`, `plugins/ida/agents/ida.md:25-34`).
+- **Breached Rule and Location**: `Axiom: Categorical Imperative` (`plugins/rbg/skills/axioms/categorical-imperative.md:8-10`), `Axiom: Durable Capture` (`plugins/rbg/skills/axioms/durable-capture.md:8-10`), and `Decide or Escalate` (`specs/agents/ida-interaction-rules.md:76-77`, `plugins/ida/agents/ida.md:25-34`).
 - **Circumstance of Failure**: When answering a user challenge or correcting operational behavior, the coordinator promises future operational conduct in conversation reply text (such as assuring that future items will be checked against rulings, or promising not to use specific tools) without either executing a corresponding in-turn persistent write (instruction edit, rule addition, configuration update, or tracked task creation) or citing an already-active persistent control. Outbound replies pass without verification because premise-checking gates arm only on incoming messages, allowing unbacked assurances to reach the user.
 - **Proposed One-Step Move**: Advance from Level 2 `instructions` (`imperative`) to Level 3 **`JIT injection`**.
 - **New Behaviour Design**:
