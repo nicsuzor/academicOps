@@ -525,17 +525,9 @@ def resolve_plugin_project_dir(script_path: Path) -> Path:
     for parent in resolved.parents:
         if (parent / "pyproject.toml").is_file():
             return parent
-    for parent in resolved.parents:
-        if (
-            parent.name in ("ida", "tools", "rbg", "aops-debug")
-            or (parent / "plugin.json").is_file()
-        ):
-            return parent
-    if len(resolved.parents) >= 4 and resolved.parents[2].name == "skills":
-        return resolved.parents[3]
-    if len(resolved.parents) >= 2 and resolved.parents[0].name == "hooks":
-        return resolved.parents[1]
-    return resolved.parent
+    raise FileNotFoundError(
+        f"Could not locate plugin project root with pyproject.toml from script {resolved}"
+    )
 
 
 def format_verdict_command(

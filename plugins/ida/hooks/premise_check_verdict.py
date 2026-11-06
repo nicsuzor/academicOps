@@ -654,28 +654,6 @@ def resolve_session_id(session_arg: str = "", claim_id: str = "") -> str:
                 except (json.JSONDecodeError, OSError):
                     continue
 
-        # 2. Armed/pending sessions, newest first
-        armed_candidates: list[tuple[float, str]] = []
-        all_candidates: list[tuple[float, str]] = []
-        for sfile in state_files:
-            try:
-                mtime = sfile.stat().st_mtime
-                data = json.loads(sfile.read_text(encoding="utf-8"))
-                sid = sfile.stem
-                all_candidates.append((mtime, sid))
-                if data.get("armed") or data.get("pending"):
-                    armed_candidates.append((mtime, sid))
-            except (json.JSONDecodeError, OSError):
-                continue
-
-        if armed_candidates:
-            armed_candidates.sort(key=lambda x: x[0], reverse=True)
-            return armed_candidates[0][1]
-
-        if all_candidates:
-            all_candidates.sort(key=lambda x: x[0], reverse=True)
-            return all_candidates[0][1]
-
     return ""
 
 
