@@ -51,28 +51,29 @@ Historical forensic evidence from the PKB establishes that titles shaped like `<
 
 ## 4. Graph-Relationship Decision Representation
 
-Decisions and open questions are structural properties of the graph, not static todo-list items. In accordance with the information-theoretic graph taxonomy:
+Decisions and open questions are structural properties of the graph, not static todo-list items. In accordance with ADR [[spec_e6d668b0]] (Unified Three-Relation Graph Model and Value Propagation):
 
 ```mermaid
 flowchart TD
-    Upstream["Upstream Task"] --> Decision["Decision Node D"]
-    OptionA["Option A: Decomposed Branch A"] -.->|alternative| Decision
-    OptionB["Option B: Decomposed Branch B"] -.->|alternative| Decision
-    Decision --> Downstream["Downstream Implementation"]
+    Scoping["Scoping Task / ADR\n(Candidate options in body)"] --> Decision{"Option Chosen"}
+    Probe["Empirical Probe\n(classification: probe)"] -.->|needs| Scoping
+    Decision --> Chosen["Adopted Task\n(parent: scoping_id)"]
+    Chosen --> Downstream["Downstream Implementation\n(needs: chosen_id)"]
 ```
 
 ### Representation Principles
 
-1. **Option Nodes Only Where Decomposed Further:**
-   - Forks are separated into concrete option nodes (e.g. `Option A: Use SQLite` and `Option B: Use DuckDB`) wired with `alternative` edges to the decision node `D` (FQ8) **only where the competing branches are decomposed further** into distinct downstream work.
-   - A task that has options to choose between but no commitment to doing anything immediately beyond choosing must **not** be created with subtasks or separate option nodes; instead, it is created as a single task with the choices in the task body and instructions about how to make the decision.
-   - Where option nodes are created for decomposed branches, dependencies are strictly one-sided (`depends_on` on the waiting task) and option nodes must never use mutual blocking edges. Choosing an option resolves the decision, adopting the selected branch and cancelling the competing alternative. Downstream tasks depend on the decision node or the adopted branch.
-2. **Dynamic Emergence of Questions:**
-   - Open architectural decisions are surfaced dynamically by agents inspecting graph topology (detecting unresolved option forks on the critical path) rather than by querying a bucket of stale "decision" tickets.
-3. **Empirical Unknowns as Probes:**
-   - Where a decision depends on missing runtime data or benchmarks, mint an empirical probe task (`classification: probe`, e.g. `Benchmark SQLite vs DuckDB query latency`). Wire the probe via a `settles` edge to the decision node `D` ($q \in (0, 1]$), allocating EVPI to it; blocked work wires `needs` to the probe.
-4. **Resolution by Pruning:**
-   - Deciding an option consists of selecting the winning node, completing/adopting it, and cancelling/pruning the competing node (`status: cancelled`). This immediately unblocks downstream dependency edges without manual decision-task administrative overhead.
+1. **Candidate Options Remain in Task Bodies (Retirement of Option Nodes & `alternative`):**
+   - Competing candidate options stay inside the body of the scoping task or ADR until chosen (retiring separate unchosen option nodes and `alternative` edges).
+   - A task that has options to choose between is created as a single task with the candidate choices and evaluation criteria inside the task body.
+   - When a choice is made, only the selected option is reified into an actionable task under `parent: <scoping_task_id>`. This prevents speculative unassigned task proliferation and prevents unchosen option nodes from cluttering the graph or blocking parent completion.
+2. **Dynamic Emergence of Decisions:**
+   - Architectural decisions are surfaced dynamically by agents inspecting scoping tasks with open options on the critical path rather than by querying a bucket of stale "decision" tickets.
+3. **Empirical Unknowns as Probes Valued via `needs`:**
+   - Where a decision depends on missing runtime benchmarks, data, or empirical findings, mint an empirical probe task (`classification: probe`, e.g. `Benchmark SQLite vs DuckDB query latency`). Wire the probe directly into the waiting task via standard execution prerequisite `needs: [<probe_task_id>]`.
+   - The probe receives worth directly through prerequisite backward induction via `needs` with Target-level $\max$ deduplication. Dedicated `settles` edges and `decision_value` EVPI calculations are retired.
+4. **Resolution by Reification:**
+   - Deciding an option consists of recording the decision in the scoping task/ADR and reifying the winning implementation task under `parent: <scoping_task_id>`. Downstream tasks depend on the reified implementation task via `needs`.
 
 ## 5. Task Body Brevity, Structure, and Canonical Template
 
@@ -82,7 +83,7 @@ Task bodies are executable instructions for cold executors, not project diaries,
 
 1. **Strictly Concise:** Task bodies are 50–150 words for atomic tasks (up to ~300 words for complex multi-outcome briefed units).
 2. **No Extraneous Sections:** Never add sections such as `Background`, `Narrative`, `References`, `Contextual Analysis`, `Task History`, or `Implementation Plan`.
-3. **No Prose Task Links:** Never link other tasks from within the body (e.g. no "blocks #123" or "relates to task X"). Task relationships live exclusively as graph edges (`depends_on`, `contributes_to`, `supersedes`).
+3. **No Prose Task Links:** Never link other tasks from within the body (e.g. no "blocks #123" or "relates to task X"). Task relationships live exclusively as upward graph edges (`parent`, `needs`, `serves`, `supersedes`).
 4. **Pointers Point to Knowledge, Not Tasks:** `[[wikilinks]]` in a task body point solely to durable knowledge (specs, notes, references) that the executor must consult, with a ≤1-clause statement of purpose.
 
 ### Canonical Task Template
@@ -145,6 +146,6 @@ Task bodies are executable instructions for cold executors, not project diaries,
 Graph density means meaningful semantic and causal connectivity, not redundant combinatorial wiring:
 
 1. **Parent/Child is Already an Edge:** Setting `parent_id` on a node automatically places and connects it within the parent's hierarchy.
-2. **No Redundant Descendant Wiring:** Do **not** wire edges between siblings or descendants under the same parent unless there is a specific, verifiable interaction (such as an explicit causal dependency `depends_on`, `supersedes`, or cross-branch data flow).
-3. **Density Means Causal and Strategic Edges:** Densify the graph by wiring edges carrying the FR edge contract (`label`: `serves`, `needs`, `supports`, `alternative`, `settles`; `quantum`; `probability`; `effect`: `helps` | `harms`; `justification`; `set_by: agent-proposed`).
+2. **No Redundant Descendant Wiring:** Do **not** wire edges between siblings or descendants under the same parent unless there is a specific, verifiable interaction (such as an explicit causal prerequisite `needs`, `supersedes`, or cross-branch data flow).
+3. **Density Means Causal and Strategic Edges:** Densify the graph by wiring edges carrying the three-relation contract (`parent`, `needs`, `serves`; with `quantum`, `probability`, `effect`, `justification`, `set_by: agent-proposed`). Contextual references are plain markdown `[[wikilinks]]` in `## Pointers`.
 4. **Review and Follow-Up Placement Invariant:** Every task requiring review or follow-up must be structured either as a single task with internal subtasks (if executable by the same agent in one session) or as a dedicated epic with separate child tasks (if multi-session or independent context is required); never as loose siblings under an external parent.

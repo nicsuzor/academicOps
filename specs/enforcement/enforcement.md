@@ -177,6 +177,12 @@ For tasks that do not produce pull requests (such as empirical analyses, documen
 
 Worker self-release to `done` applies across all tasks (PR and non-PR): when a worker satisfies all frozen acceptance criteria with concrete verifiable evidence recorded in its handback report, it releases the task directly to `done`. Workers are never forced into `review` awaiting external verification. If a separate QA task was minted, that QA task executes independently against the completed artifact; if the QA check fails, the QA worker releases its own task as `failed` with diagnostic evidence.
 
+### Worker State-Only Invariant & Parent Rollup Lifecycle
+
+Per ADR [[spec_e6d668b0]], a worker executing a task may only mutate that task's own state (checking off acceptance criteria, recording verifiable evidence, transitioning status). Workers never inspect or modify edges across other tasks, compute reverse graph dependencies, or mint follow-up verification tasks; unblocking and sequencing belong exclusively to the graph engine and dispatcher.
+
+When all open children under a composite task (`parent`) reach `done`, the composite task does not automatically close if it contains substantive acceptance criteria. Instead, it becomes `ready` for an explicit synthesis and sign-off pass. Background truth maintenance (`wf-reconcile`) is the authoritative process that detects completed child sets, verifies composite criteria, and transitions parent tasks.
+
 ### Operational Event Ingestion and Session Waking
 
 Worker container completion is recorded via the exit listener, OpenTelemetry `polecat.container.exit` spans, and the `polecat_events` MCP queue. The operational dashboard daemon (`specs/telegram/mini-app-dashboard-integration.md`) acts as the single consumer of `polecat_events` and repository webhooks, waking listening agent sessions over its authenticated HTTP/SSE channel bridge. Direct UNIX domain socket pushes (`[polecat-exit]`) and in-session client polling loops are retired.

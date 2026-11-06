@@ -33,7 +33,7 @@ A grounded research artifact providing:
 
 ## Composition
 
-When `/reify` composes a research task investigating an open design question or architectural alternatives, `/reify` automatically creates a dependent decision task assigned to the user (`assignee: user`) on the graph (Title: `Decide implementation route for <topic>`, `depends_on: [<research_task_id>]`), strictly blocking downstream implementation until the decision is recorded. Tasks requiring review or follow-up are structured as a single task with internal subtasks or as an epic with child tasks, never as loose siblings.
+When `/reify` composes a research task investigating an open design question or architectural alternatives, candidate options stay in the task body and `/reify` creates a dependent decision task assigned to the user (`assignee: user`) on the graph (Title: `Decide implementation route for <topic>`, `needs: [<research_task_id>]`), strictly blocking downstream implementation until the decision is recorded. Tasks requiring review or follow-up are structured as a single task with internal subtasks or as an epic with child tasks, never as loose siblings.
 
 ## When to include
 

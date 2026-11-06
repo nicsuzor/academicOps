@@ -7,13 +7,13 @@ description: Start polecat workers on queued tasks already on the graph, given t
 
 The task record is the whole message to the worker. Start it as written. The task dispatch pipeline is used for any durable deliverable -- including agent workflows, instruction updates, specifications, and code changes. Questions and lookups that can be answered in-turn are answered directly without queueing tasks. Never dispatch questions or lookups to workers.
 
-A polecat is a short-running container: it gets in, does its task, and gets out cleanly. Follow-up lives on the task graph, where the workflow puts it, never in a worker waiting for it.
+A polecat is a short-running container: it gets in, does its task, and gets out cleanly. Follow-up lives on the task graph, where the workflow puts it, never in a worker waiting for it. Dispatched workers operate under the worker state-only invariant: a worker may only mutate that task's own state (checking off criteria, recording verifiable evidence, transitioning status). Workers never inspect or modify edges across other tasks, compute reverse dependencies, or mint follow-up verification tasks; unblocking and sequencing belong exclusively to the graph engine and dispatcher.
 
 ## 1. Check each task is ready
 
 Read each task you were given; for a parent, read its children and take the ready ones.
 
-A task is ready when its status is `queued`, it has no open `needs` edges or incomplete children, it fills the `/reify` task template (Goal, Acceptance, Instructions, Output), and its Instructions conclude with the composed workflow's release step.
+A task is ready when its status is `queued`, it has no open `needs` edges or incomplete children, it fills the `/reify` task template (Goal, Acceptance, Instructions, Output), and its Instructions conclude with the composed workflow's release step. When all open children under a composite task (`parent`) reach `done`, the composite task does not automatically close if it contains substantive acceptance criteria; instead, it becomes `ready` for an explicit synthesis and sign-off pass managed by `/reconcile`.
 
 - A QA follow-up stays queued until its primary task releases `done`; once the primary task releases `done`, the QA follow-up's `needs` dependency is satisfied and it becomes ready for immediate dispatch.
 - A task that folds follow-ups into internal subtasks is ready when executable by the same agent in one session; only send to `/reify` when work requires independent sessions, personas, or approval gates that must be cut into an epic with child tasks.

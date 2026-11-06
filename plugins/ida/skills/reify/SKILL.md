@@ -31,7 +31,7 @@ Halt when composition comes up short: create nothing and report precisely what f
 
 ## 3. Write each task
 
-Structure work as a single task by default. Cut into dedicated epics with child tasks or internal subtasks only when the composed workflow or execution boundaries require independent sessions, distinct review personas, or approval gates. Wire `needs` dependencies where one unit requires another's output. Write tasks with status `queued`.
+Structure work as a single task by default. Cut into dedicated epics with child tasks or internal subtasks only when the composed workflow or execution boundaries require independent sessions, distinct review personas, or approval gates. Wire `needs` dependencies where one unit requires another's output. Top-level deliverable tasks wire `serves` to priced targets; subtasks never carry redundant `serves` edges (single injection invariant). Contextual references are plain markdown `[[wikilinks]]` under `## Pointers` (replacing `supports`/`soft_depends_on`). Write tasks with status `queued`.
 
 Fill the canonical task structure:
 
@@ -83,7 +83,8 @@ Fill the canonical task structure:
 - Change an existing task only for a defect you can point to in its text; otherwise leave it as written. Never rewrite its `## Ask` or renumber its criteria: a new criterion takes the next number, and no number is reused.
 - A skill may be a step, even the only step: write `invoke /<skill-name>` and leave its implementation to the skill. A workflow template is never a step; its steps are.
 - Close every task with an appendix section listing the workflow templates and skills it was composed from.
-- Do not create standalone decision tasks or file questions as tasks, with the exception of design research tasks: any research task on a design question gets, by default, a decision task assigned to the user (assignee: user) that depends on the research results, in which the user chooses the implementation route.
+- Do not create standalone decision tasks or file questions as tasks. Competing candidate options stay inside the body of the scoping task or ADR until chosen (retiring separate unchosen option nodes and `alternative` edges); when chosen, only the selected option is reified into an actionable task under `parent: <scoping_task_id>`. Diagnostic probes (`classification: probe`) are active tasks wired into scoping or downstream tasks via standard execution prerequisite `needs: [<probe_task_id>]`. Pointers point to durable knowledge via `[[wikilinks]]` in `## Pointers`, replacing `supports` / `soft_depends_on`.
+- Worker state-only invariant: workers executing a task may only mutate that task's own state (checking off criteria, recording verifiable evidence, transitioning status); workers never inspect or modify edges across other tasks or mint follow-up verification tasks.
 - Reify plans, roadmaps, and designs as tasks on the PKB task graph.
 
 ## 4. Report

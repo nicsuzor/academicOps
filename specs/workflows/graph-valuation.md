@@ -49,12 +49,12 @@ wiring capital stock hubs, proposing values, handling dates, retiring dead oppor
 triage. If a commitment or project exceeds affordable loss, it is rejected, paused, or escalated on the record
 before entering the graph. Flow maths is kept unpolluted by subjective risk gating.
 
-**Decomposition probes and Value of Information (FQ8).** When resolving architectural or empirical
-uncertainties during decomposition where competing branches are decomposed further, agents create explicit
-decision nodes `D` with `alternative` option nodes (whereas a task with options to choose between and no
-immediate commitment beyond choosing keeps the choices and decision instructions inside the single task without
-subtasks or option nodes), and wire exploratory spikes or research probes via `settles` edges. The engine routes
-decision value (EVPI) directly to the probe.
+**Decomposition probes and Value of Information (ADR [[spec_e6d668b0]]).** Competing candidate options
+stay inside the body of the scoping task or ADR until chosen (retiring `alternative` edges and unchosen option
+nodes). When chosen, only the selected branch is reified under `parent: <task_id>`. Empirical probes
+(`classification: probe`) are wired into dependent tasks via standard execution prerequisite `needs: [<probe_id>]`.
+Value flows via prerequisite backward induction with Target-level $\max$ deduplication; `settles`, `alternative`,
+and `decision_value` are retired.
 
 **Opening futures and capital stocks (S27).** Foundational investments (reputation, funding reserves,
 infrastructure, relationships) that expand future optionality are wired to capital stock hubs. Rather than
@@ -150,7 +150,7 @@ Covers U8, U9, U10, U11, S7, S24, S27, I7, I9.
    remains unpolluted by subjective risk gating.
 4. **Wire what it serves.** Add one edge per thing the work serves, crossing project boundaries
    where they apply (U11). Each edge carries the FR §5.1 fields:
-   - `label`: `serves`, `needs`, `supports`, `alternative` or `settles` (FR:322-329; FQ21).
+   - `label`: `serves`, `needs`, or `parent` (the three-relation model, ADR [[spec_e6d668b0]]). `supports`, `alternative`, and `settles` are retired.
    - `quantum` and `probability`, as a proposal in the FR §5.4/§5.5 words, or left empty when the
      agent cannot judge. Empty is read at the default quantum (S7).
    - `effect: harms` when the work puts a target at risk (S12, U13).
@@ -170,12 +170,12 @@ Covers U8, U9, U10, U11, S7, S24, S27, I7, I9.
    a date from urgency.
 10. **Effort.** Record `effort` when the input states it or the work is a known kind. The cliff lane
     reads it (FR:425).
-11. **Decisions & Decomposition Probes (FQ8, EVPI).** When an input is a choice between options with no
-    commitment to doing anything immediately beyond choosing, keep the choices and instructions on how to make
-    the decision inside the single task without subtasks or option nodes. Only where competing option branches
-    are decomposed further during decomposition (`decompose`), wire each option node `alternative` to the
-    decision node `D`, and create spike/probe tasks wired with `settles` to `D` ($q \in (0, 1]$). The engine
-    computes EVPI and allocates decision value to the probe.
+11. **Decisions & Decomposition Probes (ADR [[spec_e6d668b0]]).** Competing candidate options stay inside
+    the body of the scoping task or ADR until chosen (retiring separate option nodes and `alternative` edges).
+    When chosen, only the selected option is reified into an actionable task under `parent: <task_id>`. Diagnostic
+    probes (`classification: probe`) are active tasks wired into scoping or downstream tasks via standard
+    execution prerequisite `needs: [<probe_task_id>]`, receiving worth via prerequisite backward induction;
+    `decision_value`, `settles`, and `alternative` are retired.
 12. **Do not write:** `intent` (FQ10), `severity` (FQ24), `stakeholder` as a weight
     (FQ25), target worth, `soft_depends_on`, or `supersedes` (FR:448).
 
@@ -317,11 +317,12 @@ ranking. Agents do not ask "is this still ripe?" on a timer (S6; age is not stal
 
 ### 7.3 Decisions
 
-Covers U12, I10, FR §6.
+Covers U12, I10, ADR [[spec_e6d668b0]].
 
-A decision node keeps its `alternative` and `settles` edges. When a decision is made, the decision node is
-set `done` and the losing alternatives `cancelled`. Its `decision_value` then reads zero by the rule
-(I10). No agent sets an option's worth.
+Per ADR [[spec_e6d668b0]], competing candidate options stay inside the body of the scoping task or ADR until
+chosen, eliminating unchosen option nodes and `alternative` edges. Once decided, only the selected branch is
+reified into an actionable task under `parent: <task_id>`. Diagnostic probes connect via standard prerequisite
+`needs: [<probe_id>]`. `decision_value` is deprecated and retired alongside `settles` and `alternative`.
 
 ### 7.4 Explaining a weight
 
@@ -367,7 +368,7 @@ keeps pauli's rule "never raise the same non-blocking concern twice"
 | `plugins/ida/skills/remember/references/consolidation.md` | Adds a weekly densify stage that runs `wf-densify` (R3). |
 | `plugins/ida/skills/workflow-library/workflows/wf-reconcile.md` | Adds deadline upkeep (R5) and source-stated retirement (R6). :49 reserved fields add `deadline_class: hard` and target worth. |
 | `plugins/ida/skills/decide/SKILL.md` | Draws open items from the daily note (which carries ask queue items from reconcile per R7). |
-| `plugins/ida/skills/decompose/SKILL.md` | :21 and :30: probes wire `settles` and options wire `alternative` (FQ8). `depends_on` becomes `needs`; `soft_depends_on` becomes `supports` at the default quantum. |
+| `plugins/ida/skills/decompose/SKILL.md` | ADR [[spec_e6d668b0]]: wires only `parent`, `needs`, `serves`. Competing options stay inside task bodies; probes wire `needs`. `depends_on` normalized to `needs`; `supports`, `settles`, `alternative` retired. |
 | `plugins/ida/skills/reify/SKILL.md`, `plugins/ida/skills/dispatch/SKILL.md` | `depends_on` becomes `needs` in :20, :43, :79-80 and dispatch :14. Readiness keeps its meaning (FR:517). |
 | `plugins/ida/skills/pull/SKILL.md`, `plugins/ida/skills/dump/SKILL.md` | "wire directed `blocks` edges" becomes "wire a `needs` edge from the blocked task" (FR:334). |
 | `plugins/ida/skills/workflow-library/SKILL.md` and templates `wf-escalated-approval`, `wf-research-and-implement`, `wf-code-task-base`, `wf-finish` | `depends_on` becomes `needs` in the skill and the first three templates. The parent in `wf-finish` follows FQ1. |
@@ -378,7 +379,7 @@ keeps pauli's rule "never raise the same non-blocking concern twice"
 | PKB note _Email Triage Workflow Patterns & Guardrails_ | Adds the `opportunity` class, the date rule (R2.4) and the no-weight-from-sender rule (R2.5). |
 | PKB spec _Standing-Weight Elicitation Instrument_ | Superseded by R4 and FR §5.6. Agents estimate and write target worth directly with evidence; stored worth has no decay. |
 | `.agents/skills/triage/SKILL.md` | :219-220 "raise the `stated_weight`" becomes "add a row to the next densify batch". |
-| `specs/meta/naming-and-decisions.md` | :150 densify text changes to the FR edge contract. :68-76 option nodes become `alternative` edges. |
+| `specs/meta/naming-and-decisions.md` | ADR [[spec_e6d668b0]]: three-relation model (`parent`, `needs`, `serves`); candidate options stay inside task body; `alternative`, `settles`, `supports` retired. |
 | `specs/workflows/capture-intake.md`, `specs/workflows/research-decomposition.md`, `specs/enforcement/task-contract.md` | References to "valued at intake" now point to R1. The stale `brief` skill references (`specs/enforcement/task-contract.md:43`, `specs/workflows/research-decomposition.md:30`) are corrected to `/q`. |
 
 **Unchanged** (read in full; nothing to change): agy, axioms, craft, hydrate, learn,
