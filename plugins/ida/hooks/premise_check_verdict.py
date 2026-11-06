@@ -86,6 +86,11 @@ def _export_tool_span(
     if config is None:
         config = tracer_mod.discover_config()
     if config is None:
+        err_msg = (
+            "ERROR: Premise-check verdict cannot be recorded: OpenTelemetry tracing unconfigured (no endpoint). "
+            "Gate remains armed."
+        )
+        print(err_msg, file=sys.stderr)
         raise RuntimeError("premise_check_verdict: tracing is not configured (no OTel endpoint)")
 
     now_ns = time.time_ns()
@@ -124,8 +129,18 @@ def _export_tool_span(
             surface=surface,
         )
     except Exception as exc:
+        err_msg = (
+            f"ERROR: Premise-check verdict cannot be recorded: OpenTelemetry export failed ({exc!r}). "
+            "Gate remains armed."
+        )
+        print(err_msg, file=sys.stderr)
         raise RuntimeError(f"premise_check_verdict: OTel span export failed: {exc!r}") from exc
     if exported is not True:
+        err_msg = (
+            "ERROR: Premise-check verdict cannot be recorded: OpenTelemetry span export was not acknowledged. "
+            "Gate remains armed."
+        )
+        print(err_msg, file=sys.stderr)
         raise RuntimeError("premise_check_verdict: OTel span export failed")
 
 
@@ -553,7 +568,6 @@ def record_verdict(
         "verdict": token,
         "reason": reason,
         "span_emitted": True,
-        "span_error": None,
         "disarmed": True,
         "no_claim": bool(attributes.get("premise_check.no_claim")),
         "machine": bool(attributes.get("premise_check.machine")),
