@@ -619,6 +619,61 @@ def _read_reason(path: str) -> str:
     return Path(path).read_text(encoding="utf-8")
 
 
+def resolve_session_id(session_arg: str = "", claim_id: str = "") -> str:
+    """Resolve active session ID from CLI arg, environment, or on-disk session state."""
+    if session_arg and session_arg.strip():
+        return session_arg.strip()
+
+    for var in (
+        "AOPS_SESSION_ID",
+        "CLAUDE_SESSION_ID",
+        "SESSION_ID",
+        "ANTIGRAVITY_SESSION_ID",
+        "GEMINI_SESSION_ID",
+    ):
+        val = os.environ.get(var, "").strip()
+        if val:
+            return val
+
+    claude_env = os.environ.get("CLAUDE_ENV_FILE")
+    if claude_env and Path(claude_env).is_file():
+        try:
+            content = Path(claude_env).read_text(encoding="utf-8")
+            for line in content.splitlines():
+                if "AOPS_SESSION_ID=" in line:
+                    match = re.search(r'AOPS_SESSION_ID=["\']?([^"\'\s]+)', line)
+                    if match:
+                        return match.group(1).strip()
+        except OSError:
+            pass
+
+    from premise_check_gate import _state_dir
+
+    state_dir = _state_dir()
+    if state_dir.is_dir():
+        state_files = list(state_dir.glob("*.json"))
+        # 1. Match claim_id in state
+        if claim_id:
+            for sfile in state_files:
+                try:
+                    data = json.loads(sfile.read_text(encoding="utf-8"))
+                    cid = data.get("claim_id")
+                    cids = data.get("claim_ids") or []
+                    judged = data.get("judged") or {}
+                    last_verdict = data.get("last_verdict") or {}
+                    if (
+                        claim_id == cid
+                        or claim_id in cids
+                        or claim_id in judged
+                        or claim_id == last_verdict.get("claim_id")
+                    ):
+                        return sfile.stem
+                except (json.JSONDecodeError, OSError):
+                    continue
+
+    return ""
+
+
 def main(argv: list[str] | None = None) -> int:
     # Support claim subcommand
     if argv and argv[0] in ("claim", "claims", "file-claims"):
@@ -650,10 +705,17 @@ def main(argv: list[str] | None = None) -> int:
             help="Session id. Defaults to $AOPS_SESSION_ID.",
         )
         cargs = claim_parser.parse_args(argv[1:])
+        session_id = resolve_session_id(cargs.session, cargs.claim)
+        if not session_id:
+            print(
+                "premise_check_claim: no session id ($AOPS_SESSION_ID unset, --session not given, and no session state available)",
+                file=sys.stderr,
+            )
+            return 1
         text = cargs.argdown if cargs.argdown is not None else _read_reason(cargs.argdown_file)
         try:
             result = record_claims(
-                session_id=cargs.session,
+                session_id=session_id,
                 claim_id=cargs.claim,
                 argdown_text=text,
                 title=cargs.title,
@@ -710,9 +772,10 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
 
-    if not args.session:
+    session_id = resolve_session_id(args.session, args.claim)
+    if not session_id:
         print(
-            "premise_check_verdict: no session id ($AOPS_SESSION_ID unset and --session not given)",
+            "premise_check_verdict: no session id ($AOPS_SESSION_ID unset, --session not given, and no session state available)",
             file=sys.stderr,
         )
         return 1
@@ -734,7 +797,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         text = args.reason if args.reason is not None else _read_reason(args.reason_file)
         result = record_verdict(
-            session_id=args.session,
+            session_id=session_id,
             claim_id=args.claim,
             verdict=args.verdict,
             reason=text,
