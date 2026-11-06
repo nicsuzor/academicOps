@@ -2103,3 +2103,45 @@ def test_issue_3182_task_notification_unwraps_result_in_judged_text():
     assert "<usage>" not in judged_text
     assert "<task-id>" not in judged_text
     assert judged_text.startswith("I dispatched the fix to a worker.")
+
+
+def test_format_verdict_command_resolves_symlinked_skill_path_and_includes_session(
+    tmp_path, monkeypatch
+):
+    """AC1 (#3543): hook-formatted verdict commands resolve symlinked skill paths to the real
+    plugin project directory (with pyproject.toml) and include --session <session_id>."""
+    # Real plugin directory where pyproject.toml and opentelemetry live
+    real_plugin_dir = tmp_path / "real_plugin_ida"
+    real_skills = real_plugin_dir / "skills" / "premise-check" / "scripts"
+    real_skills.mkdir(parents=True)
+    real_script = real_skills / "verdict.py"
+    real_script.write_text("#!/usr/bin/env python3\n")
+    (real_plugin_dir / "pyproject.toml").write_text('[project]\nname = "ida"\nversion = "1.0.0"\n')
+
+    # Workspace directory with symlinked .agents/skills/premise-check
+    workspace = tmp_path / "workspace"
+    workspace_agents = workspace / ".agents"
+    workspace_skills = workspace_agents / "skills"
+    workspace_skills.mkdir(parents=True)
+    symlinked_skill = workspace_skills / "premise-check"
+    symlinked_skill.symlink_to(real_plugin_dir / "skills" / "premise-check")
+
+    symlinked_script = symlinked_skill / "scripts" / "verdict.py"
+    assert symlinked_script.is_file()
+
+    # Even if AOPS_SESSION_ID is set in the hook environment,
+    # the formatted command must resolve --project to real_plugin_dir and include --session <session_id>
+    monkeypatch.setenv("AOPS_SESSION_ID", "env-session-id")
+    cmd = pcg.format_verdict_command(
+        claim_id="claim-symlink-test",
+        hooks_dir=symlinked_skill,
+        session_id="target-session-xyz",
+    )
+    tokens = shlex.split(cmd)
+    assert "--project" in tokens
+    proj_idx = tokens.index("--project") + 1
+    assert Path(tokens[proj_idx]).resolve() == real_plugin_dir.resolve()
+    assert tokens[proj_idx] != str(workspace_agents)
+    assert "--session" in tokens
+    sess_idx = tokens.index("--session") + 1
+    assert tokens[sess_idx] == "target-session-xyz"

@@ -149,7 +149,9 @@ Format items: `block`, `numbering`, `basis wording`, `ask wording`, `layout` (en
 Record the verdict:
 
 ```bash
-uv run --project <plugin-dir> python <plugin-dir>/skills/premise-check/scripts/verdict.py --claim <claim_id> --verdict <PASS|REVISE|FAIL> --reason-file <path>
+uv run --project <plugin-dir> python <plugin-dir>/skills/premise-check/scripts/verdict.py --session <session_id> --claim <claim_id> --verdict <PASS|REVISE|FAIL> --reason-file <path>
 ```
+
+Resolve `<plugin-dir>` to the real installed plugin directory (`Path.resolve()` on symlinks, e.g. `~/.gemini/config/plugins/ida` in `agy` or `plugins/ida` in framework checkouts) so `uv run` uses the plugin environment with `opentelemetry.sdk`, and include `--session <session_id>` (from the turn message, daily note, or active session) when `$AOPS_SESSION_ID` is unset in subshells.
 
 The recorder refuses a PASS whose reason misses a test line or ask ID, contradicts the block, or fails machine checks (syntax error, orphan statement, misaimed undercut); on refusal, actionable errors are emitted to stderr while keeping the gate armed.

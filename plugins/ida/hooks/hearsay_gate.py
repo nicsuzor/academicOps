@@ -480,8 +480,15 @@ def is_foreground_dispatch(ctx: HookContext) -> bool:
 
 def _hooks_base(hooks_dir: Path | None = None) -> Path:
     if hooks_dir:
+        resolved_hooks = hooks_dir.resolve()
+        if (
+            resolved_hooks.parent / "skills" / "premise-check" / "scripts" / "verdict.py"
+        ).is_file() or (resolved_hooks / "premise_check_verdict.py").is_file():
+            return resolved_hooks
+        if resolved_hooks.is_dir() and resolved_hooks.name == "hooks":
+            return resolved_hooks
         if hooks_dir.is_absolute():
-            return hooks_dir
+            return resolved_hooks
         cand = (Path.cwd() / hooks_dir).resolve()
         if (cand.parent / "skills" / "premise-check" / "scripts" / "verdict.py").is_file() or (
             cand / "premise_check_verdict.py"
@@ -506,7 +513,29 @@ def resolve_verdict_script(hooks_dir: Path | None = None) -> Path:
     hook_script = (base / "premise_check_verdict.py").resolve()
     if hook_script.is_file():
         return hook_script
+    direct_skill = (base / "scripts" / "verdict.py").resolve()
+    if direct_skill.is_file():
+        return direct_skill
     return skill_script
+
+
+def resolve_plugin_project_dir(script_path: Path) -> Path:
+    """Resolve the real plugin project root directory (with pyproject.toml) for script_path."""
+    resolved = script_path.resolve()
+    for parent in resolved.parents:
+        if (parent / "pyproject.toml").is_file():
+            return parent
+    for parent in resolved.parents:
+        if (
+            parent.name in ("ida", "tools", "rbg", "aops-debug")
+            or (parent / "plugin.json").is_file()
+        ):
+            return parent
+    if len(resolved.parents) >= 4 and resolved.parents[2].name == "skills":
+        return resolved.parents[3]
+    if len(resolved.parents) >= 2 and resolved.parents[0].name == "hooks":
+        return resolved.parents[1]
+    return resolved.parent
 
 
 def format_verdict_command(
@@ -516,11 +545,10 @@ def format_verdict_command(
     verdict: str = "<PASS|REVISE|FAIL>",
     reason: str | None = None,
 ) -> str:
-    base = _hooks_base(hooks_dir)
-    plugin_dir = base.parent if base.name == "hooks" else base
-    script_path = resolve_verdict_script(hooks_dir)
-    quoted_project = shlex.quote(str(plugin_dir.resolve()))
-    quoted_script = shlex.quote(str(script_path.resolve()))
+    script_path = resolve_verdict_script(hooks_dir).resolve()
+    plugin_dir = resolve_plugin_project_dir(script_path).resolve()
+    quoted_project = shlex.quote(str(plugin_dir))
+    quoted_script = shlex.quote(str(script_path))
     quoted_claim = shlex.quote(claim_id)
     cmd = (
         f"uv run --project {quoted_project} python {quoted_script}"
@@ -530,8 +558,9 @@ def format_verdict_command(
         cmd += f" --reason {shlex.quote(reason)}"
     else:
         cmd += " --reason-file <path>"
-    if not os.environ.get("AOPS_SESSION_ID") and session_id:
-        cmd += f" --session {shlex.quote(session_id)}"
+    eff_session = session_id or os.environ.get("AOPS_SESSION_ID") or ""
+    if eff_session:
+        cmd += f" --session {shlex.quote(eff_session)}"
     return cmd
 
 
