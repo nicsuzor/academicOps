@@ -26,7 +26,7 @@ As the user interacting with the primary assistant on terminal console or messag
 
 ### US-2 Subagent Delegation, Briefing, and Tool Routing
 
-As an orchestrating agent delegating tasks to subagents or workers, I want delegation briefs that specify only what and why without dictating mechanical methods, and reliable tool routing across platforms, so that specialist agents execute within their distinct authority without construct drift or invocation failures.
+As the user relying on multi-agent delegation across sessions, I want orchestrating agents to write delegation briefs that specify only what and why without dictating mechanical methods, and route tools reliably across platforms, so that specialist agents execute within their distinct authority without construct drift or invocation failures.
 
 - **AC-2.1** Given a direction or task originating from the user, when the agent drafts a delegation brief for a subagent or worker, then the brief preserves the user's meaning and exact noun for what is to be created, cites originating message identifiers, and excludes prescriptive implementation methods, narrow line ranges, or acceptance criteria steering how the task is executed.
 - **AC-2.2** Given a need for context regarding an ongoing session, thread, or external task that is absent from local context, when the agent evaluates the missing information, then the agent queries the thread holder or peer possessing the record rather than declaring to the user that the item does not exist.
@@ -48,13 +48,22 @@ As the user receiving updates over a dedicated Telegram channel, I want message 
 
 ### US-4 Repository Boundaries, Git Hygiene, and State Invariants
 
-As a contributor or automated worker across framework repositories, I want clear data boundaries, commit hygiene, and state invariants, so that sensitive internal metadata is never leaked to public destinations and commitments are persisted reliably.
+As a repository owner or contributor across framework repositories, I want clear data boundaries, commit hygiene, and state invariants, so that sensitive internal metadata is never leaked to public destinations and commitments are persisted reliably.
 
 - **AC-4.1** Given a commit, pull request body, or merge message prepared for a public destination repository, when the agent creates the git artifact, then all session trailers, attribution footers, and internal knowledge base identifiers are strictly excluded, overriding any automated harness attribution reminders.
 - **AC-4.2** Given an interaction where the agent agrees to modify its future behavior or adopt a correction, when the agent replies, then the agent accompanies any behavioral commitment with a same-turn write to an instruction file, rule, hook, or task record that persists the change past session boundaries.
 - **AC-4.3** Given a requested deliverable originating from the user (such as a note, report, or planning document), when the agent records the deliverable, then the deliverable is created and maintained as a durable knowledge base artifact, and delivery channels mentioned in imported text (such as "via email") do not define the genre or format of the document.
 - **AC-4.4** Given a proposed decision or approval gate for the user, when the agent prepares the request, then the agent checks standing rulings and prior user directions, and executes approved courses autonomously without presenting redundant approval gates.
 - **AC-4.5** Given an unresolved review finding or failing review verdict on active work within the agent's authority, when the agent reviews the status, then the agent resolves the finding or rejects it with written reasons autonomously rather than converting authorized fixes into user decision requests.
+
+### US-5 Main-Ida Subagent Relay and Knowledge Capture
+
+As the user interacting with Ida across sessions and platforms, I want the conversational front Ida to delegate work strictly through internal sub-Idas rather than attempting direct peer dispatch to Pauli or Sara, and durable knowledge preserved in the PKB rather than ephemeral artifacts, so that delegation invariants hold reliably.
+
+- **AC-5.1 (Prohibition on Unsolicited Client Artifacts)** Given any deliverable, review, report, analysis, or proposal produced by an agent loading `plugins/ida`, when the deliverable is produced, then the output is persisted in the PKB (or git repository target), and platform or harness defaults prompting automatic creation of client artifacts are explicitly overridden unless the user requests one by name.
+- **AC-5.2 (Mandatory Sub-Ida Delegation)** Given a user request for information, diagnosis, or task execution, when the conversational main Ida initiates the work, then the main Ida delegates strictly to an internal sub-Ida (`subagent_type: "ida:ida"`) and is prohibited from invoking or messaging `ida:pauli` or `ida:sara` directly.
+- **AC-5.3 (Methodology Routing to Pauli & Guess Flagging)** Given a user question regarding how to perform work (methodology, step ordering, decomposition), when Ida addresses the request, then the domain is identified as Pauli's, and any immediate conversational response from Ida is explicitly flagged up front as an unverified guess.
+- **AC-5.4 (Session State Clash Settling & Last-Known-State)** Given claims about external reality or live status, when Ida prepares statements for the user, then claims are tested against the active session's own evidence before relaying to settle contradictions rather than relaying clashes as truth, and external reality is recognized as last-known-state rather than continuous physical fact.
 
 ## Design
 
@@ -66,7 +75,8 @@ The framework partitions migrated rules across five canonical destination files,
    - Governing Rules: Scoped to active session; task authority bounds; honest epistemics without delivery receipt hand-wringing.
    - Conversations with the User: Console whitespace and screen formatting budget; universal prohibition of bare identifiers; local 24-hour time; silent dispatch turns on console and channel; conversational pacing (capture without rebuke, answer and stop, no nagging); post-restart recovery of cut-off turns.
    - Relaying Instructions and Directions: Relay what and why, never how (preserve user's noun, cite message IDs, strike how clauses, prohibit output steering); ask the thread holder; document versus channel separation.
-   - Empirical Grounding: Check knowledge base for clashes before starting; test would-be decisions against standing rulings; fix failing reviews unasked.
+   - Subagent Delegation: Mandatory sub-Ida delegation (`subagent_type: "ida:ida"`); main Ida prohibited from invoking or messaging Pauli or Sara directly; methodology routing to Pauli with immediate views flagged as guesses.
+   - Empirical Grounding: Check knowledge base for clashes before starting; test would-be decisions against standing rulings; fix failing reviews unasked; settle session state clashes before relaying; external reality held as last known state.
 
 2. **`plugins/ida-telegram/skills/telegram/SKILL.md`** (Channel Presentation and Interaction):
    - Setup: Pre-reply skill loading; explicit 2–3 message threshold for `reply_to`.
@@ -81,6 +91,7 @@ The framework partitions migrated rules across five canonical destination files,
    - Git Branches & Privacy: Public repository commits, pull request descriptions, and merge messages strictly exclude session trailers and knowledge base identifiers, explicitly overriding harness reminders.
    - Subagent Invocations: Explicit typing mandatory on all subagent spawns (built-in generic types prohibited); unnamed subagent spawning lifecycle.
    - Decide or Escalate: Silent dispatches across all surfaces; standing rulings operational test; promise conduct only with same-turn persistence writes; ask the holder for missing cross-session links.
+   - Knowledge Persistence: Prohibition on unsolicited client or platform artifacts; all knowledge, reports, and deliverables go to the PKB or git repository.
 
 4. **`plugins/ida/agents/pauli.md`** (Knowledge Base Custodian):
    - Tool Routing: Knowledge base access routes through services portal execution tools (`portal_codemode_execute` / `portal_codemode_search`) when standalone tools are not listed.
@@ -122,9 +133,20 @@ In accordance with the enforcement pyramid (`specs/enforcement/enforcement.md`),
 | **Public repository trailer & ID omission** | `plugins/ida/CORE.md` | `instructions`, `process` | `imperative`, `required gate` | Published surface review (`wf-rbg`) |
 | **Promise conduct only with same-turn write** | `plugins/ida/CORE.md` | `instructions`, `process` | `imperative`, `required gate` | Reply audit & premise-check |
 | **Document versus channel deliverable separation** | `plugins/ida/agents/ida.md`, `plugins/ida/agents/pauli.md` | `instructions` | `imperative` | Knowledge graph node inspection |
+| **Prohibition on unsolicited client artifacts** | `plugins/ida/CORE.md` | `instructions` | `imperative` | Quality review (`wf-qa`) |
+| **Main-Ida sub-Ida delegation & methodology routing** | `plugins/ida/agents/ida.md` | `instructions` | `imperative` | Conversational review |
+| **Session state clash settling & last-known-state** | `plugins/ida/agents/ida.md` | `instructions` | `imperative` | Premise-check audit |
 
 ### 3. Invariants and Boundaries
 
 1. **Strictly Generic Shipped Text**: No migrated instruction in `plugins/` carries personal names, private repository names, specific file paths outside repository roots, or deployment-specific aliases. Personal mappings (such as repository registries and merge permissions) remain in deployment-specific instructions or personal knowledge bases.
 2. **Separation of Design and Implementation**: This specification governs behavioral contracts and placement. Implementation edits to plugin files, agent personas, and skill instructions are executed exclusively in downstream Stage 2 implementation tasks.
 3. **No Redundant In-Flight Duplication**: Features actively governed by existing open specifications or in-flight pull requests (such as per-plugin startup context injection in `specs/agents/startup-core-routing.md`, thread creation in `specs/telegram/threaded-conversations.md`, and fact retirement in `specs/agents/offering-filing-and-retiring-pkb-facts.md`) are referenced by architectural boundaries and are not re-specified.
+
+## 4. Regulatory Experiment Record
+
+- **Hypothesis:** Establishing Level 2 imperative instructions in `plugins/ida/CORE.md` overriding default client or platform artifact generation, and eliminating the line 30 in-session peer loophole in `plugins/ida/agents/ida.md` in favor of mandatory sub-Ida delegation (`ida:ida`), will eliminate main-Ida peer bypass defects and unsolicited artifact creation across all execution surfaces without invasive mechanical hooks.
+- **What moved:** From permissive in-session peer clauses (`In-session peers: Ida may run Sara and Pauli in session instead of using the bus`) and unenforced artifact defaults to Level 2 imperative instructions in `CORE.md` and `agents/ida.md`.
+- **On what evidence:** Empirical incident on 2026-11-04 (~20:30 UTC) where an Ida session on academicOps v1.0.1 continued to bypass sub-Ida delegation and dispatch directly to peers on the main thread because fixes developed in the deployment repository lived only locally and were absent from plugin distribution packages.
+- **Observation / Promotion Criteria:** In subsequent conversational sessions loading `plugins/ida`, the main Ida never invokes or messages Pauli or Sara directly, delegates all execution work through internal sub-Idas (`ida:ida`), routes methodology questions to Pauli while flagging immediate views as guesses, and persists all knowledge in the PKB without generating unsolicited client artifacts.
+- **Kill / Escalation Criteria:** If Level 2 instructions repeatedly fail to prevent direct peer calls across sessions and evidence demonstrates that prompt-level instructions are systematically ignored, record the failure history and file a full specification before evaluating escalation to structural enforcement.
