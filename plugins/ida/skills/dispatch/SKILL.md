@@ -13,7 +13,7 @@ A polecat is a short-running container: it gets in, does its task, and gets out 
 
 Read each task you were given; for a parent, read its children and take the ready ones.
 
-A task is ready when its status is `queued`, it has no open `needs` edges or incomplete children, it fills the `/reify` task template (Goal, Acceptance, Instructions, Output), and its Instructions conclude with the composed workflow's release step.
+A task is ready when its status is `queued`, it has no open `needs` edges or incomplete children, it fills the `/reify` task template (Goal, Acceptance, Instructions, Output), and its Instructions conclude with the composed workflow's release step (see [`specs/enforcement/task-contract.md`](../../../../specs/enforcement/task-contract.md) §Canonical Task Status Table for canonical status definitions).
 
 - A QA follow-up stays queued until its primary task releases `done`; once the primary task releases `done`, the QA follow-up's `needs` dependency is satisfied and it becomes ready for immediate dispatch.
 - A task that folds follow-ups into internal subtasks is ready when executable by the same agent in one session; only send to `/reify` when work requires independent sessions, personas, or approval gates that must be cut into an epic with child tasks.

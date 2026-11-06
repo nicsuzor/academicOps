@@ -27,6 +27,8 @@ Claim and execute a queued PKB task, directing subagents to deliver against stat
 
 ### 4. Validate Against Criteria
 
+Canonical task statuses, their definitions, and authority over who may set them are specified in [`specs/enforcement/task-contract.md`](../../../../specs/enforcement/task-contract.md) §Canonical Task Status Table.
+
 - Verify deliverables against literal acceptance criteria using primary evidence and pinpoint citations. An item is ticked only with evidence of that item itself; any other item stays unticked with its limit stated.
 - Mark the task `done` via `/dump` only when its `## Report` argument answers each `<task id>/AC<n>` from concrete evidence: quoted output, `file:line` citations, counts, and the specimen run where the task asks for one. Asserting that tests ran or that work was done without concrete evidence in the report is insufficient; if any acceptance item lacks evidence in the Report, release as `partial` naming the missing evidence.
 - Release as `done` or `partial` by default. A worker whose deliverable is a PR marks any draft PR ready for review as soon as its code step completes without waiting for approval, releases `done` once the PR is open, with `pr_url` and branch recorded on the record, and exits without waiting for CI, review or merge: releasing `done` immediately unblocks dependent QA and review follow-up tasks on the graph. `partial` is reserved strictly for the worker's own unfinished acceptance items. Never release as `review` or send a complete deliverable to `partial` because of a dependent check or follow-up.

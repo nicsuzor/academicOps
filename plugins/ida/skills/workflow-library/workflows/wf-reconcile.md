@@ -10,7 +10,7 @@ type: template
 
 ## What this step does
 
-Maintains truth over the task graph: establishes facts about in-flight work and landed changes, brings `review` tasks up to date with reality, checks returned work on the papers, writes items that have reached the user to today's daily note, and returns touched tasks to `inbox` for re-planning.
+Maintains truth over the task graph: establishes facts about in-flight work and landed changes, brings `review` tasks up to date with reality, checks returned work on the papers, writes items that have reached the user to today's daily note, and returns touched tasks to `inbox` for re-planning. (Canonical task statuses, their definitions, and authority over who may set them are specified exclusively in [`specs/enforcement/task-contract.md`](../../../../../specs/enforcement/task-contract.md) §Canonical Task Status Table.)
 
 ## Obligations
 

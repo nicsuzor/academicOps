@@ -31,7 +31,7 @@ Halt when composition comes up short: create nothing and report precisely what f
 
 ## 3. Write each task
 
-Structure work as a single task by default. Cut into dedicated epics with child tasks or internal subtasks only when the composed workflow or execution boundaries require independent sessions, distinct review personas, or approval gates. Wire `needs` dependencies where one unit requires another's output. Write tasks with status `queued`.
+Structure work as a single task by default. Cut into dedicated epics with child tasks or internal subtasks only when the composed workflow or execution boundaries require independent sessions, distinct review personas, or approval gates. Wire `needs` dependencies where one unit requires another's output. Write tasks with status `queued` (see [`specs/enforcement/task-contract.md`](../../../../specs/enforcement/task-contract.md) §Canonical Task Status Table for canonical status definitions and authority).
 
 Fill the canonical task structure:
 

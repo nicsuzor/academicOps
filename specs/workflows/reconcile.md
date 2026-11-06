@@ -10,7 +10,7 @@ tags: [spec, workflow, reconcile, github, pkb, closure-loop]
 
 The reconcile procedure itself lives in universal workflow template `wf-reconcile`
 (`plugins/ida/skills/workflow-library/workflows/wf-reconcile.md`) and is not
-restated here. This spec carries the design constraints that bind it, the frontmatter and
+restated here. Canonical task statuses, their definitions, and authority over who may set them are specified exclusively in [`specs/enforcement/task-contract.md`](../enforcement/task-contract.md) §Canonical Task Status Table. This spec carries the design constraints that bind it, the frontmatter and
 event-log surfaces it reads and writes, and the target shape of the GitHub-issue leg it does not
 yet cover.
 
