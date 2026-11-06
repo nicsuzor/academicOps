@@ -1,6 +1,6 @@
 ---
 title: Telemetry failure surfacing and session gating
-status: draft
+status: ready
 ---
 
 # Telemetry failure surfacing and session gating

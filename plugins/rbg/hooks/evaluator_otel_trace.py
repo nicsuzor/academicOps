@@ -513,6 +513,12 @@ def sink_for(
     sink alone).
     """
     if config is None:
+        if not getattr(sink_for, "_unconfigured_warned", False):
+            print(
+                "NOTICE: rbg evaluator OTel tracing unconfigured (COPE_EVALUATOR_OTEL_TRACE_PATH unset).",
+                file=sys.stderr,
+            )
+            sink_for._unconfigured_warned = True  # type: ignore[attr-defined]
         return None
 
     try:

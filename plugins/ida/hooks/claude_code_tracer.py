@@ -357,9 +357,100 @@ def resolve_agent_name(
     return os.environ.get("AOPS_AGENT_NAME", "").strip()
 
 
+def get_telemetry_failure_mode() -> str:
+    """Return the active telemetry failure mode: 'block' or 'warn'.
+
+    Default is 'block' in autonomous container dispatch workers (e.g. polecats)
+    where complete trace capture is non-negotiable, and 'warn' in interactive
+    local sessions and CI runners.
+    """
+    mode = os.environ.get("AOPS_TELEMETRY_FAILURE_MODE", "").strip().lower()
+    if mode in ("block", "warn"):
+        return mode
+    if (
+        os.environ.get("POLECAT_TASK")
+        or os.environ.get("POLECAT_TARGET_TASK")
+        or os.environ.get("AOPS_CONTAINER")
+    ):
+        return "block"
+    return "warn"
+
+
+def is_telemetry_configured() -> bool:
+    """Return True if an OpenTelemetry trace endpoint is configured."""
+    endpoint = (
+        os.environ.get("GENAI_ENGINE_TRACE_ENDPOINT")
+        or os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
+        or os.environ.get("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "")
+    ).strip()
+    return bool(endpoint)
+
+
+def sanitize_endpoint(endpoint: str) -> str:
+    """Scrub passwords and tokens from an endpoint URL."""
+    if not endpoint:
+        return ""
+    try:
+        from urllib.parse import urlparse, urlunparse
+
+        parsed = urlparse(endpoint)
+        if parsed.password:
+            netloc = f"{parsed.username}:<REDACTED>@{parsed.hostname}"
+            if parsed.port:
+                netloc += f":{parsed.port}"
+            return urlunparse(parsed._replace(netloc=netloc))
+    except Exception:
+        pass
+    return _redact_secrets(endpoint)
+
+
+def sanitize_headers(headers: Any) -> dict[str, str]:
+    """Sanitize HTTP response or request headers to exclude secret tokens."""
+    sensitive_keys = frozenset(
+        {
+            "authorization",
+            "proxy-authorization",
+            "cf-access-client-secret",
+            "cf-access-client-id",
+            "x-api-key",
+            "api-key",
+            "cookie",
+            "set-cookie",
+            "x-auth-token",
+        }
+    )
+    sanitized: dict[str, str] = {}
+    if not headers:
+        return sanitized
+    items = headers.items() if hasattr(headers, "items") else []
+    for k, v in items:
+        k_str = str(k)
+        if k_str.lower() in sensitive_keys:
+            sanitized[k_str] = "[REDACTED]"
+        else:
+            sanitized[k_str] = _redact_secrets(str(v))
+    return sanitized
+
+
+_UNCONFIGURED_WARNING_EMITTED: set[str] = set()
+
+
+def report_unconfigured_tracer_if_needed(session_id: str | None = None, caller: str = "") -> None:
+    """Surface unconfigured telemetry endpoint to stderr once per session or run."""
+    key = session_id or "global"
+    if key in _UNCONFIGURED_WARNING_EMITTED:
+        return
+    _UNCONFIGURED_WARNING_EMITTED.add(key)
+    caller_info = f" during {caller}" if caller else ""
+    print(
+        f"WARNING: OpenTelemetry tracing unconfigured{caller_info}: no trace endpoint set in environment",
+        file=sys.stderr,
+    )
+
+
 def discover_config(data: dict | None = None) -> dict | None:
     """Returns config dict with keys: api_key, task_id, endpoint, protocol (optional), project_name, cwd, agent_name.
-    Returns None if not configured (silent no-op)."""
+    Returns None if not configured."""
     api_key = (
         os.environ.get("GENAI_ENGINE_API_KEY")
         or os.environ.get("OTEL_EXPORTER_OTLP_HEADERS")
@@ -556,14 +647,27 @@ def _subagent_name(agent_type: Any) -> str:
 # State file helpers
 # ---------------------------------------------------------------------------
 
-STATE_DIR = Path.home() / ".claude" / "tracer"
+
+def _tracer_state_dir() -> Path:
+    env_dir = (
+        os.environ.get("AOPS_TRACER_STATE_DIR")
+        or os.environ.get("TRACER_STATE_DIR")
+        or os.environ.get("AOPS_TRACER_DIR")
+    )
+    if env_dir:
+        return Path(env_dir)
+    return Path.home() / ".claude" / "tracer"
+
+
+STATE_DIR = _tracer_state_dir()
 STATE_MAX_AGE_S = 48 * 3600
 
 
 def _state_path(session_id: str) -> Path:
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
-    path = (STATE_DIR / f"{session_id}.json").resolve()
-    if not path.is_relative_to(STATE_DIR.resolve()):
+    state_dir = _tracer_state_dir()
+    state_dir.mkdir(parents=True, exist_ok=True)
+    path = (state_dir / f"{session_id}.json").resolve()
+    if not path.is_relative_to(state_dir.resolve()):
         raise ValueError(f"Invalid session_id: {session_id!r}")
     return path
 
@@ -624,9 +728,10 @@ def _session_lock(session_id: str):
     This is necessary because Claude Code can run multiple tools in parallel,
     which causes multiple PostToolUse hook processes to fire concurrently.
     """
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
-    lock_path = (STATE_DIR / f"{session_id}.lock").resolve()
-    if not lock_path.is_relative_to(STATE_DIR.resolve()):
+    state_dir = _tracer_state_dir()
+    state_dir.mkdir(parents=True, exist_ok=True)
+    lock_path = (state_dir / f"{session_id}.lock").resolve()
+    if not lock_path.is_relative_to(state_dir.resolve()):
         raise ValueError(f"Invalid session_id: {session_id!r}")
 
     with open(lock_path, "w") as fh:
@@ -1393,6 +1498,211 @@ def _known_span_parents(current_trace: dict) -> dict[str, str | None]:
     return known
 
 
+try:
+    from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
+except ImportError:
+
+    class SpanExporter:  # type: ignore[no-redef]
+        pass
+
+    class SpanExportResult:  # type: ignore[no-redef]
+        SUCCESS = 0
+        FAILURE = 1
+
+
+class ErrorReportingExporter(SpanExporter):
+    """Wrapper around OTel SpanExporter that intercepts HTTP/gRPC errors and logs them to stderr."""
+
+    def __init__(
+        self,
+        target: Any = None,
+        session_id: str = "",
+        endpoint: str = "",
+        config: dict | None = None,
+        results_collector: list[bool] | None = None,
+    ) -> None:
+        if target is None and config is not None:
+            endpoint = config.get("endpoint", "")
+            target = _create_exporter(
+                endpoint=endpoint,
+                headers=config.get("headers"),
+                protocol=config.get("protocol", "http/protobuf"),
+            )
+        self._target = target
+        self._session_id = session_id
+        self._endpoint = endpoint or (config.get("endpoint", "") if config else "")
+        self._config_headers = config.get("headers") if config else None
+        self._results_collector = results_collector
+        self._last_status: int | None = None
+        self._last_headers: Any = None
+        self._last_body: str | None = None
+        self._last_error: Exception | None = None
+        self._last_duration: float = 0.0
+
+        # Wrap HTTP session if present
+        if hasattr(target, "_session") and hasattr(target._session, "post"):
+            orig_post = target._session.post
+            reporter_self = self
+
+            def instrumented_post(url: str, *args: Any, **kwargs: Any) -> Any:
+                t0 = time.time()
+                try:
+                    resp = orig_post(url, *args, **kwargs)
+                    reporter_self._last_duration = time.time() - t0
+                    reporter_self._last_status = getattr(resp, "status_code", None)
+                    reporter_self._last_headers = getattr(resp, "headers", None)
+                    try:
+                        reporter_self._last_body = resp.text
+                    except Exception:
+                        reporter_self._last_body = None
+                    return resp
+                except Exception as exc:
+                    reporter_self._last_duration = time.time() - t0
+                    reporter_self._last_error = exc
+                    raise
+
+            target._session.post = instrumented_post
+
+        # Wrap gRPC client if present
+        if hasattr(target, "_client") and hasattr(target._client, "Export"):
+            orig_export = target._client.Export
+            reporter_self = self
+
+            def instrumented_grpc_export(*args: Any, **kwargs: Any) -> Any:
+                t0 = time.time()
+                try:
+                    resp = orig_export(*args, **kwargs)
+                    reporter_self._last_duration = time.time() - t0
+                    return resp
+                except Exception as exc:
+                    reporter_self._last_duration = time.time() - t0
+                    reporter_self._last_error = exc
+                    raise
+
+            target._client.Export = instrumented_grpc_export
+
+    def export(self, spans: Any) -> Any:
+        if self._target is not None and hasattr(self._target, "export"):
+            try:
+                result = self._target.export(spans)
+            except Exception as exc:
+                self._last_error = exc
+                result = SpanExportResult.FAILURE
+        else:
+            result = (
+                SpanExportResult.FAILURE
+                if self._last_error or (self._last_status and self._last_status >= 400)
+                else SpanExportResult.SUCCESS
+            )
+
+        san_endpoint = sanitize_endpoint(self._endpoint)
+        if (
+            result == SpanExportResult.SUCCESS
+            and not self._last_error
+            and (self._last_status is None or self._last_status < 400)
+        ):
+            if self._results_collector is not None:
+                self._results_collector.append(True)
+            return result
+
+        if self._results_collector is not None:
+            self._results_collector.append(False)
+
+        status = self._last_status
+        headers = (
+            self._last_headers
+            if (isinstance(self._last_headers, dict) and self._last_headers)
+            else (self._config_headers or {})
+        )
+        err_exc = self._last_error
+        duration = self._last_duration
+
+        state = _load_state(self._session_id)
+
+        # 1. Auth refusal (401 or 403)
+        if status in (401, 403):
+            san_headers = sanitize_headers(headers)
+            status_code = status
+            print(
+                f"ERROR: OpenTelemetry export refused by collector (HTTP {status_code}) at {san_endpoint}. "
+                f"Authentication invalid or expired (headers: {san_headers}).",
+                file=sys.stderr,
+            )
+            log.error("OpenTelemetry export refused (HTTP %s) from %s", status_code, san_endpoint)
+            state["auth_failure"] = {
+                "status_code": status_code,
+                "endpoint": san_endpoint,
+                "timestamp": time.time(),
+                "count": 1,
+            }
+            state["telemetry_error"] = {
+                "type": "auth_refusal",
+                "status_code": status_code,
+                "endpoint": san_endpoint,
+            }
+            _save_state(self._session_id, state)
+            return SpanExportResult.FAILURE
+
+        # 2. Server error (5xx or gRPC INTERNAL/UNAVAILABLE/UNKNOWN)
+        if status is not None and status >= 500:
+            payload = _truncate(self._last_body or "")
+            print(
+                f"ERROR: OpenTelemetry export failed (collector server error HTTP {status}): "
+                f"endpoint {san_endpoint}, response: {payload}",
+                file=sys.stderr,
+            )
+            log.error("OpenTelemetry export failed (HTTP %s): %s", status, payload)
+            state["telemetry_error"] = {
+                "type": "server_error",
+                "status_code": status,
+                "endpoint": san_endpoint,
+                "payload": payload,
+            }
+            _save_state(self._session_id, state)
+            return SpanExportResult.FAILURE
+
+        # 3. Network timeout, connection refused, DNS failure
+        if err_exc is not None:
+            err_type = err_exc.__class__.__name__
+            dur_str = f"{duration:.2f}s"
+            print(
+                f"ERROR: OpenTelemetry export failed (network error): "
+                f"{err_type} connecting to {san_endpoint} (elapsed: {dur_str})",
+                file=sys.stderr,
+            )
+            log.error("OpenTelemetry export failed: %s to %s", err_type, san_endpoint)
+            state["telemetry_error"] = {
+                "type": "network_error",
+                "error_type": err_type,
+                "endpoint": san_endpoint,
+                "duration": duration,
+            }
+            _save_state(self._session_id, state)
+            return SpanExportResult.FAILURE
+
+        # 4. General failure
+        print(
+            f"ERROR: OpenTelemetry span export failed for endpoint {san_endpoint}",
+            file=sys.stderr,
+        )
+        state["telemetry_error"] = {
+            "type": "export_failure",
+            "endpoint": san_endpoint,
+            "message": "export failed",
+        }
+        _save_state(self._session_id, state)
+        return SpanExportResult.FAILURE
+
+    def shutdown(self) -> None:
+        if self._target is not None and hasattr(self._target, "shutdown"):
+            self._target.shutdown()
+
+    def force_flush(self, timeout_millis: int = 30000) -> bool:
+        if hasattr(self._target, "force_flush"):
+            return bool(self._target.force_flush(timeout_millis))
+        return True
+
+
 # ---------------------------------------------------------------------------
 # OTLP export helper
 # ---------------------------------------------------------------------------
@@ -1424,10 +1734,20 @@ def _build_and_export_spans(
     ``known_parents`` and the records earlier in this batch leads back to it,
     is exported without a parent (see ``_closes_parent_cycle``).
     """
-    from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
-
     export_results: list[bool] = []
     all_records_exported = True
+
+    # AC-2.3: Check if persistent authorization failure has been observed for this session
+    session_state = _load_state(session_id)
+    auth_fail = session_state.get("auth_failure")
+    if auth_fail and isinstance(auth_fail, dict):
+        status_code = auth_fail.get("status_code", 403)
+        af_endpoint = auth_fail.get("endpoint") or sanitize_endpoint(config.get("endpoint", ""))
+        print(
+            f"WARNING: OpenTelemetry export throttled due to persistent authorization rejection (HTTP {status_code}) for endpoint {af_endpoint}",
+            file=sys.stderr,
+        )
+        return False
 
     (
         trace,
@@ -1441,49 +1761,6 @@ def _build_and_export_spans(
         NonRecordingSpan,
         StatusCode,
     ) = _otel_imports()
-
-    class ErrorReportingExporter(SpanExporter):
-        def __init__(self, target: Any) -> None:
-            self._target = target
-
-        def export(self, spans: Any) -> SpanExportResult:
-            # OTel exporters log exceptions and HTTP errors to their module logger.
-            # We capture those logs during export to report them verbatim.
-            target_logger_name = self._target.__module__
-            target_logger = logging.getLogger(target_logger_name)
-
-            class CaptureHandler(logging.Handler):
-                def __init__(self) -> None:
-                    super().__init__()
-                    self.messages: list[str] = []
-
-                def emit(self, record: logging.LogRecord) -> None:
-                    self.messages.append(record.getMessage())
-
-            handler = CaptureHandler()
-            target_logger.addHandler(handler)
-            try:
-                try:
-                    res = self._target.export(spans)
-                except Exception:
-                    export_results.append(False)
-                    raise
-                export_results.append(res == SpanExportResult.SUCCESS)
-                if res != SpanExportResult.SUCCESS and handler.messages:
-                    error_text = "\n".join(handler.messages)
-                    print(f"ERROR: OTel span export failed: {error_text}")
-                    log.error("OTel span export failed: %s", error_text)
-                return res
-            finally:
-                target_logger.removeHandler(handler)
-
-        def shutdown(self) -> None:
-            self._target.shutdown()
-
-        def force_flush(self, timeout_millis: int = 30000) -> bool:
-            if hasattr(self._target, "force_flush"):
-                return bool(self._target.force_flush(timeout_millis))
-            return True
 
     if service_name is None:
         service_name = config.get("service_name")
@@ -1622,7 +1899,16 @@ def _build_and_export_spans(
 
             provider = TracerProvider(**kwargs)
 
-            provider.add_span_processor(SimpleSpanProcessor(ErrorReportingExporter(exporter)))
+            provider.add_span_processor(
+                SimpleSpanProcessor(
+                    ErrorReportingExporter(
+                        exporter,
+                        session_id=session_id,
+                        endpoint=config.get("endpoint", ""),
+                        results_collector=export_results,
+                    )
+                )
+            )
             tracer = provider.get_tracer("claude-code-tracer")
 
             ctx = None
@@ -3426,26 +3712,31 @@ def emit_debug_hook_span(
 # ---------------------------------------------------------------------------
 
 
-def main() -> None:
-    if len(sys.argv) < 2:
+def main(argv: list[str] | None = None) -> None:
+    args = argv if argv is not None else sys.argv
+    if len(args) < 2:
         print(
             "Usage: claude_code_tracer.py <pre_tool|post_tool|post_tool_failure|user_prompt_submit|stop|subagent_stop>",
             file=sys.stderr,
         )
         sys.exit(0)
 
-    event = sys.argv[1]
+    event = args[1]
 
+    data: dict[str, Any] = {}
     try:
         raw = sys.stdin.read()
-        data = json.loads(raw) if raw.strip() else {}
-    except json.JSONDecodeError as e:
-        log.warning("Failed to parse stdin JSON: %s", e)
+        if raw and raw.strip():
+            data = json.loads(raw)
+    except Exception:
         data = {}
 
     config = discover_config()
     if config is None:
-        log.debug("OTel tracer not configured, skipping tracing.")
+        report_unconfigured_tracer_if_needed(caller=f"event {event}")
+        mode = get_telemetry_failure_mode()
+        if mode == "block":
+            sys.exit(1)
         sys.exit(0)
 
     try:
