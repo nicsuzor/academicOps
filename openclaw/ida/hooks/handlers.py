@@ -664,10 +664,17 @@ def _resolve_plugin_version(ctx: HookContext) -> str | None:
     """Resolve the installed plugin version from env or manifest."""
     if ver := os.environ.get("AOPS_IMAGE_PLUGINS_VERSION"):
         return ver.strip()
-    if ctx.hooks_dir:
-        manifest_file = ctx.hooks_dir.parent / ".claude-plugin" / "plugin.json"
-        if manifest_file.is_file():
-            data = json.loads(manifest_file.read_text(encoding="utf-8"))
+    plugin_dir = (
+        ctx.hooks_dir.parent
+        if ctx.hooks_dir and str(ctx.hooks_dir) != "."
+        else Path(__file__).resolve().parent.parent
+    )
+    for candidate in (
+        plugin_dir / ".claude-plugin" / "plugin.json",
+        plugin_dir / "plugin.json",
+    ):
+        if candidate.is_file():
+            data = json.loads(candidate.read_text(encoding="utf-8"))
             if v := data.get("version"):
                 return str(v).strip()
     return None

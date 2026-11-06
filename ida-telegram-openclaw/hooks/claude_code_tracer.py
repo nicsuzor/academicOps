@@ -17,7 +17,7 @@ Hook events:
   stop               — complete the current trace and clean up session state
 
 Config priority (highest first):
-  1. Env vars: GENAI_ENGINE_API_KEY, GENAI_ENGINE_TASK_ID, GENAI_ENGINE_TRACE_ENDPOINT
+  1. Env vars: GENAI_ENGINE_API_KEY (or DISPATCHER_MCP_TOKEN_ID + DISPATCHER_MCP_TOKEN_SECRET), GENAI_ENGINE_TASK_ID, GENAI_ENGINE_TRACE_ENDPOINT
   2. Silent no-op if nothing configured
 """
 
@@ -365,6 +365,11 @@ def discover_config(data: dict | None = None) -> dict | None:
         or os.environ.get("OTEL_EXPORTER_OTLP_HEADERS")
         or os.environ.get("OTEL_EXPORTER_OTLP_TRACES_HEADERS", "")
     )
+    if not api_key:
+        cf_id = (os.environ.get("DISPATCHER_MCP_TOKEN_ID") or "").strip()
+        cf_secret = (os.environ.get("DISPATCHER_MCP_TOKEN_SECRET") or "").strip()
+        if cf_id and cf_secret:
+            api_key = f"CF-Access-Client-Id={cf_id},CF-Access-Client-Secret={cf_secret}"
     endpoint = (
         os.environ.get("GENAI_ENGINE_TRACE_ENDPOINT")
         or os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
@@ -1243,17 +1248,11 @@ def _redact_secrets(value: Any) -> str:
         os.environ.get("GH_TOKEN"),
         os.environ.get("GITHUB_TOKEN"),
         os.environ.get("AOPS_BOT_GH_TOKEN"),
-        os.environ.get("DISPATCHER_MCP_TOKEN"),
         os.environ.get("DISPATCHER_MCP_TOKEN_ID"),
         os.environ.get("DISPATCHER_MCP_TOKEN_SECRET"),
-        os.environ.get("WORKER_MCP_TOKEN"),
-        os.environ.get("WORKER_MCP_TOKEN_ID"),
-        os.environ.get("WORKER_MCP_TOKEN_SECRET"),
     ]
     for k, v in os.environ.items():
-        if (
-            k.endswith("_API_KEY") or k.endswith("_TOKEN_SECRET") or k.startswith("CF_ACCESS_")
-        ) and v:
+        if (k.endswith("_API_KEY") or k.endswith("_TOKEN_SECRET")) and v:
             secrets.append(v)
 
     for secret in secrets:
@@ -1595,6 +1594,12 @@ def _build_and_export_spans(
                             headers[k.strip()] = v.strip()
                 else:
                     headers["authorization"] = f"Bearer {api_key_str}"
+
+            cf_id = (os.environ.get("DISPATCHER_MCP_TOKEN_ID") or "").strip()
+            cf_secret = (os.environ.get("DISPATCHER_MCP_TOKEN_SECRET") or "").strip()
+            if cf_id and cf_secret and not any(k.lower() == "cf-access-client-id" for k in headers):
+                headers["CF-Access-Client-Id"] = cf_id
+                headers["CF-Access-Client-Secret"] = cf_secret
 
             if project_name and "openinference-project-name" not in headers:
                 headers["openinference-project-name"] = project_name

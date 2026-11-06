@@ -149,7 +149,9 @@ Format items: `block`, `numbering`, `basis wording`, `ask wording`, `layout` (en
 Record the verdict:
 
 ```bash
-uv run --project <plugin-dir> python <plugin-dir>/skills/premise-check/scripts/verdict.py --claim <claim_id> --verdict <PASS|REVISE|FAIL> --reason-file <path>
+uv run --project <plugin-dir> python <plugin-dir>/skills/premise-check/scripts/verdict.py --session <session_id> --claim <claim_id> --verdict <PASS|REVISE|FAIL> --reason-file <path> [--judged-file <path>]
 ```
 
-The recorder refuses a PASS whose reason misses a test line or ask ID, contradicts the block, or fails machine checks (syntax error, orphan statement, misaimed undercut); on refusal, actionable errors are emitted to stderr while keeping the gate armed.
+Resolve `<plugin-dir>` to the real installed plugin directory (`Path.resolve()` on symlinks) so `uv run` uses the plugin environment with `opentelemetry.sdk`, and include `--session <session_id>` (from the turn message, daily note, or active session) when `$AOPS_SESSION_ID` is unset in subshells. Pass `--judged-file <path>` when judging a report arriving out-of-band (e.g. read from a PKB task body or messages outside gate capture) so the recorder can verify the reason against the report's `argdown` block.
+
+The recorder refuses a PASS whose reason misses a test line or ask ID, contradicts the block, or fails machine checks (syntax error, orphan statement, misaimed undercut); on refusal, actionable errors are emitted to stderr while keeping the gate armed. When gate storage has no judged text and `--judged-file` is not provided, PASS is refused with a distinct missing gate storage diagnostic directing the caller to pass `--judged-file <path>`.

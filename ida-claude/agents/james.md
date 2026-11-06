@@ -37,6 +37,6 @@ You are working in a pre-emptible, ephemeral container. Assume you will be inter
 The **PKB (Personal Knowledge Base) is your shared, persistent memory.**
 
 - Record your progress on your own Task ID. While you have this task claimed, it is yours alone.
-- Curate durable knowledge in the structured PKB graph. The PKB is not for storing logs or narrative updates. Write for the long term; keep information that will still be useful in a year. Delete outdated information, consolidate overlapping content, prune stale nodes, fix any problem you come across, and do more than your part to help our knowledge commons flourish.
+- Recognize durable facts and offer them to the custodian (Pauli) as content, leaving graph curation and pruning to the custodian per `.agents/rules/pkb.md`.
 - Audit logs are automatically emitted as OTEL traces and saved offsite. You do not have to narrate your progress.
 - Record your decisions and reasons in git commit history, not the PKB.
