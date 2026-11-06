@@ -49,7 +49,7 @@ Enforcement in academicOps is strictly defined as **framework-level process rule
 
 1. **Framework-Level Process Rules**: Universal behavioral and process invariants governing how agents operate within the framework regardless of repository, task domain, or client project. These include:
    - Universal axioms ([`plugins/rbg/skills/axioms/`](../../plugins/rbg/skills/axioms/)): categorical imperative, cite sources, closure, costly ops approval, data boundaries, delay decisions, do one thing, durable capture, evidence immutable, excellence, exercise authority, explanations not reasons, fail-fast, full observability, halt on failure, honest epistemics, human readability first, judgment non-delegable, no over-engineering, proportionate, reasons, single source of truth.
-   - Core task lifecycle contracts: `claim_task` -> `release_task` with verified evidence, headless worker invariants (`headless-workers.md`), caller session injection (`caller-session.md`), current state only (`current-state-only.md`), no fallbacks (`no-fallbacks.md`), no shell polling (`polling.md`), and process not actor (`process-not-actor.md`).
+   - Core task lifecycle contracts: `claim_task` -> `release_task` with verified evidence, headless worker invariants (`headless-workers.md`), PKB writes and caller session injection (`pkb.md`), current state only (`current-state-only.md`), no fallbacks (`no-fallbacks.md`), no shell polling (`polling.md`), and process not actor (`process-not-actor.md`).
    - Independent verification gates: multi-lens PR review, premise-check evidence verification, and risk-scaled merge gates.
 2. **Workflow-Substance Rules**: Domain-specific instructions, procedures, business logic, heuristics, or formats governing the substance of client repository work or specific operational routines (e.g. correspondence watermarks, Telegram reply button layouts, reaction legends, dbt model transformations, streamlit schemas, academic literature review sampling).
 3. **Core Doctrine**: Workflow substance lives strictly as **instructions inside their workflows** (`wf-*.md` or `SKILL.md`), NEVER as framework-level enforcement rules, NEVER in `specs/enforcement/`, and NEVER on the universal enforcement register ([`specs/ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md)).
@@ -114,7 +114,7 @@ Every current specification, project rule, axiom, hook, gate, and enforcement-ma
 
 | File | Classification | Recommended Action | Evidence & Rationale |
 | :- | :- | :- | :- |
-| `caller-session.md` | Framework-Process | **KEEP** | Universal invariant: all MCP calls carry caller session object. |
+| `pkb.md` | Framework-Process | **KEEP** | Universal invariant: PKB write authority and usage; caller session on PKB and services MCP calls. |
 | `current-state-only.md` | Framework-Process | **KEEP** | Universal invariant: deprecated files deleted; no history in code/specs. |
 | `fix-defects-at-source.md` | Framework-Process | **KEEP** | Universal invariant: fix bugs where they live, no workarounds. |
 | `headless-workers.md` | Framework-Process | **KEEP** | Universal invariant: headless workers operate without human pause. |

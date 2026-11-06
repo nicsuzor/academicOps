@@ -11,7 +11,7 @@ Write and consolidate knowledge notes under `synthesize-not-accrete`. State curr
 
 - **Current facts only**: The PKB holds what is true now, one canonical note per topic. Logs, event records, narration of work done, and standing rules about how agents work do not belong in it.
 - **Rewrite in place**: A fact that is no longer true is deleted, not annotated. No superseded sections, changelogs, dated layers, or corrections that quote the old text.
-- **Extraction is every writer's duty**: When you find durable knowledge sitting in a task body, extract it to a knowledge note in the same pass. Do not leave it for a later sweep.
+- **Custodial curation**: Pauli exclusively curates knowledge notes per `.agents/rules/pkb.md`; other agents offer durable facts to Pauli or record them under `## Durable Facts` in task records.
 - **Search before writing**: Query existing notes before creating or updating.
 - **Never fabricate**: Record citable facts and direct implications; omit opinions on what should have happened.
 - **Resolve contradictions**: When sources disagree, state the resolved fact and delete the losing version -- do not record the disagreement. Where a retired premise would otherwise be re-derived by the next reader, keep one forward-looking line of warning and delete the reasoning it came from. If the conflict cannot be resolved from evidence, ask; do not file both claims and move on.
@@ -45,4 +45,4 @@ Consolidate episodic sources (daily notes, meeting notes, closed tasks) into can
 
 - **Synthesis over collection**: Synthesise underlying principles across sources; do not concatenate bullet lists.
 - **Repair drifted tasks**: Extract durable knowledge (models, architecture, decisions) to destination notes first, then rewrite the task body to minimal goal, deliverable, scope, checklist, and pointers.
-- **Retire primary records**: Delete episodic notes and replaced memories once their content is written to the destination node. Delete outright -- no tombstone, no `status: archived`, no archive copy. Git, session transcripts, and audit logs hold the history, and none of them is loaded on every retrieval.
+- **Retire primary records**: Decide archive versus delete and one note per subject by referencing the governing knowledge base specification rules, without restating criteria here.
