@@ -33,7 +33,7 @@ import time
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 # ---------------------------------------------------------------------------
 # Logging — stderr only so stdout stays clean for Claude hooks
@@ -386,49 +386,48 @@ def is_telemetry_configured() -> bool:
     return bool(endpoint)
 
 
+RESPONSE_HEADER_ALLOWLIST = frozenset(
+    {
+        "content-type",
+        "content-length",
+        "server",
+        "date",
+        "www-authenticate",
+        "retry-after",
+    }
+)
+
+
 def sanitize_endpoint(endpoint: str) -> str:
-    """Scrub passwords and tokens from an endpoint URL."""
+    """Scrub userinfo, credentials, query parameters, and fragments from an endpoint URL."""
     if not endpoint:
         return ""
     try:
         from urllib.parse import urlparse, urlunparse
 
         parsed = urlparse(endpoint)
-        if parsed.password:
-            netloc = f"{parsed.username}:<REDACTED>@{parsed.hostname}"
-            if parsed.port:
-                netloc += f":{parsed.port}"
-            return urlunparse(parsed._replace(netloc=netloc))
+        netloc = parsed.hostname or ""
+        if parsed.port:
+            netloc = f"{netloc}:{parsed.port}"
+        sanitized = urlunparse((parsed.scheme, netloc, parsed.path, "", "", ""))
+        return _redact_secrets(sanitized)
     except Exception:
         pass
     return _redact_secrets(endpoint)
 
 
 def sanitize_headers(headers: Any) -> dict[str, str]:
-    """Sanitize HTTP response or request headers to exclude secret tokens."""
-    sensitive_keys = frozenset(
-        {
-            "authorization",
-            "proxy-authorization",
-            "cf-access-client-secret",
-            "cf-access-client-id",
-            "x-api-key",
-            "api-key",
-            "cookie",
-            "set-cookie",
-            "x-auth-token",
-        }
-    )
+    """Sanitize HTTP response headers using an allowlist; never dump request secrets."""
     sanitized: dict[str, str] = {}
     if not headers:
         return sanitized
-    items = headers.items() if hasattr(headers, "items") else []
-    for k, v in items:
-        k_str = str(k)
-        if k_str.lower() in sensitive_keys:
-            sanitized[k_str] = "[REDACTED]"
-        else:
-            sanitized[k_str] = _redact_secrets(str(v))
+    from collections.abc import Mapping
+
+    if isinstance(headers, Mapping) or hasattr(headers, "items"):
+        for k, v in headers.items():
+            k_str = str(k)
+            if k_str.lower() in RESPONSE_HEADER_ALLOWLIST:
+                sanitized[k_str] = _redact_secrets(str(v))
     return sanitized
 
 
@@ -1498,16 +1497,19 @@ def _known_span_parents(current_trace: dict) -> dict[str, str | None]:
     return known
 
 
-try:
+if TYPE_CHECKING:
     from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
-except ImportError:
+else:
+    try:
+        from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
+    except ImportError:
 
-    class SpanExporter:  # type: ignore[no-redef]
-        pass
+        class SpanExporter:  # type: ignore[no-redef]
+            pass
 
-    class SpanExportResult:  # type: ignore[no-redef]
-        SUCCESS = 0
-        FAILURE = 1
+        class SpanExportResult:  # type: ignore[no-redef]
+            SUCCESS = 0
+            FAILURE = 1
 
 
 class ErrorReportingExporter(SpanExporter):
@@ -1540,8 +1542,9 @@ class ErrorReportingExporter(SpanExporter):
         self._last_duration: float = 0.0
 
         # Wrap HTTP session if present
-        if hasattr(target, "_session") and hasattr(target._session, "post"):
-            orig_post = target._session.post
+        target_session = getattr(target, "_session", None) if target is not None else None
+        if target_session is not None and hasattr(target_session, "post"):
+            orig_post = target_session.post
             reporter_self = self
 
             def instrumented_post(url: str, *args: Any, **kwargs: Any) -> Any:
@@ -1561,11 +1564,12 @@ class ErrorReportingExporter(SpanExporter):
                     reporter_self._last_error = exc
                     raise
 
-            target._session.post = instrumented_post
+            target_session.post = instrumented_post
 
         # Wrap gRPC client if present
-        if hasattr(target, "_client") and hasattr(target._client, "Export"):
-            orig_export = target._client.Export
+        target_client = getattr(target, "_client", None) if target is not None else None
+        if target_client is not None and hasattr(target_client, "Export"):
+            orig_export = target_client.Export
             reporter_self = self
 
             def instrumented_grpc_export(*args: Any, **kwargs: Any) -> Any:
@@ -1579,7 +1583,7 @@ class ErrorReportingExporter(SpanExporter):
                     reporter_self._last_error = exc
                     raise
 
-            target._client.Export = instrumented_grpc_export
+            target_client.Export = instrumented_grpc_export
 
     def export(self, spans: Any) -> Any:
         if self._target is not None and hasattr(self._target, "export"):
@@ -1609,11 +1613,7 @@ class ErrorReportingExporter(SpanExporter):
             self._results_collector.append(False)
 
         status = self._last_status
-        headers = (
-            self._last_headers
-            if (isinstance(self._last_headers, dict) and self._last_headers)
-            else (self._config_headers or {})
-        )
+        headers = self._last_headers if self._last_headers else {}
         err_exc = self._last_error
         duration = self._last_duration
 
@@ -1698,7 +1698,7 @@ class ErrorReportingExporter(SpanExporter):
             self._target.shutdown()
 
     def force_flush(self, timeout_millis: int = 30000) -> bool:
-        if hasattr(self._target, "force_flush"):
+        if self._target is not None and hasattr(self._target, "force_flush"):
             return bool(self._target.force_flush(timeout_millis))
         return True
 

@@ -88,7 +88,7 @@ def _export_tool_span(
     if config is None:
         err_msg = (
             "ERROR: Premise-check verdict cannot be recorded: OpenTelemetry tracing unconfigured (no endpoint). "
-            "Gate remains armed. Set OTel endpoint or configure PREMISE_CHECK_VERDICT_TRACING=optional."
+            "Gate remains armed."
         )
         print(err_msg, file=sys.stderr)
         raise RuntimeError("premise_check_verdict: tracing is not configured (no OTel endpoint)")
@@ -131,14 +131,14 @@ def _export_tool_span(
     except Exception as exc:
         err_msg = (
             f"ERROR: Premise-check verdict cannot be recorded: OpenTelemetry export failed ({exc!r}). "
-            "Gate remains armed. Set OTel endpoint or configure PREMISE_CHECK_VERDICT_TRACING=optional."
+            "Gate remains armed."
         )
         print(err_msg, file=sys.stderr)
         raise RuntimeError(f"premise_check_verdict: OTel span export failed: {exc!r}") from exc
     if exported is not True:
         err_msg = (
             "ERROR: Premise-check verdict cannot be recorded: OpenTelemetry span export was not acknowledged. "
-            "Gate remains armed. Set OTel endpoint or configure PREMISE_CHECK_VERDICT_TRACING=optional."
+            "Gate remains armed."
         )
         print(err_msg, file=sys.stderr)
         raise RuntimeError("premise_check_verdict: OTel span export failed")
@@ -517,33 +517,16 @@ def record_verdict(
     if tracer_mod is None:
         tracer_mod = _import_claude_code_tracer()
 
-    tracing_policy = os.environ.get("PREMISE_CHECK_VERDICT_TRACING", "required").lower()
-    span_emitted = False
-    span_error = None
-    untraced = False
-
-    try:
-        emit_verdict_span(
-            tracer_mod,
-            session_id,
-            cid,
-            token,
-            reason,
-            verification_id=verification_id,
-            title=clean_title,
-            attributes=attributes,
-        )
-        span_emitted = True
-    except RuntimeError as exc:
-        if tracing_policy == "optional":
-            untraced = True
-            span_error = str(exc)
-            print(
-                f"WARNING: Premise-check verdict recorded untraced ({exc}; PREMISE_CHECK_VERDICT_TRACING=optional).",
-                file=sys.stderr,
-            )
-        else:
-            raise
+    emit_verdict_span(
+        tracer_mod,
+        session_id,
+        cid,
+        token,
+        reason,
+        verification_id=verification_id,
+        title=clean_title,
+        attributes=attributes,
+    )
 
     disarm(
         session_id,
@@ -561,9 +544,7 @@ def record_verdict(
         "claim_id": cid,
         "verdict": token,
         "reason": reason,
-        "span_emitted": span_emitted,
-        "span_error": span_error,
-        "untraced": untraced,
+        "span_emitted": True,
         "disarmed": True,
         "no_claim": bool(attributes.get("premise_check.no_claim")),
         "machine": bool(attributes.get("premise_check.machine")),

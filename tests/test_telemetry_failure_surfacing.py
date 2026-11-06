@@ -172,7 +172,7 @@ def test_unconfigured_rbg_evaluator_emits_notice(capsys, tmp_path):
 
 def test_http_401_403_collector_rejection_logs_error_and_scrubs_secrets(capsys, monkeypatch):
     """AC-2.1: HTTP 401/403 logs error with endpoint, HTTP code, and scrubbed secrets."""
-    endpoint = "https://collector.example.com/v1/traces"
+    endpoint = "https://user:password123@collector.example.com/v1/traces?token=urlsecret#frag"
     secret_token = "secret-super-sensitive-token-12345"
     config = {
         "endpoint": endpoint,
@@ -186,6 +186,10 @@ def test_http_401_403_collector_rejection_logs_error_and_scrubs_secrets(capsys, 
     mock_resp = MagicMock()
     mock_resp.status_code = 403
     mock_resp.text = "Forbidden: Expired token"
+    mock_resp.headers = {
+        "Content-Type": "text/plain",
+        "WWW-Authenticate": "Bearer error=invalid_token",
+    }
 
     with patch("requests.Session.post", return_value=mock_resp):
         exporter = claude_code_tracer.ErrorReportingExporter(
@@ -196,13 +200,15 @@ def test_http_401_403_collector_rejection_logs_error_and_scrubs_secrets(capsys, 
 
     captured = capsys.readouterr()
     assert "ERROR: OpenTelemetry export refused by collector (HTTP 403)" in captured.err
-    assert endpoint in captured.err
+    assert "https://collector.example.com/v1/traces" in captured.err
     assert "Authentication invalid or expired" in captured.err
 
     # Scrubbing check
     assert secret_token not in captured.err
     assert "cf-secret-xyz" not in captured.err
-    assert "[REDACTED]" in captured.err
+    assert "password123" not in captured.err
+    assert "urlsecret" not in captured.err
+    assert "user:" not in captured.err
 
 
 def test_http_403_injects_diagnostic_notice_into_session(capsys, monkeypatch, tmp_path):
@@ -349,15 +355,14 @@ def test_export_timeout_bounding():
 
 
 # ==============================================================================
-# 4. Premise-Check Verdict Tracing Policy (Required vs Optional)
+# 4. Premise-Check Verdict Tracing Policy (Required Fail-Closed)
 # ==============================================================================
 
 
 def test_verdict_tracing_required_fails_closed_on_unconfigured(monkeypatch, capsys):
-    """AC-4.2: When required (default), unconfigured tracing raises RuntimeError and leaves gate armed."""
+    """AC-4.2: When unconfigured, recording verdict raises RuntimeError and leaves gate armed."""
     session_id = "sess-verdict-req"
     claim_id = "claim-test-01"
-    monkeypatch.setenv("PREMISE_CHECK_VERDICT_TRACING", "required")
 
     premise_check_gate.arm(
         session_id,
@@ -392,14 +397,12 @@ def test_verdict_tracing_required_fails_closed_on_unconfigured(monkeypatch, caps
     captured = capsys.readouterr()
     assert "ERROR: Premise-check verdict cannot be recorded" in captured.err
     assert "Gate remains armed" in captured.err
-    assert "PREMISE_CHECK_VERDICT_TRACING=optional" in captured.err
 
 
-def test_verdict_tracing_optional_warns_and_disarms(monkeypatch, capsys):
-    """AC-4.2: When optional, unconfigured tracing logs warning, disarms gate, and returns untraced=True."""
-    session_id = "sess-verdict-opt"
+def test_verdict_tracing_export_failure_fails_closed(monkeypatch, capsys):
+    """AC-4.2: When span export fails, recording verdict raises RuntimeError and leaves gate armed."""
+    session_id = "sess-verdict-fail"
     claim_id = "claim-test-02"
-    monkeypatch.setenv("PREMISE_CHECK_VERDICT_TRACING", "optional")
 
     premise_check_gate.arm(
         session_id,
@@ -419,21 +422,27 @@ def test_verdict_tracing_optional_warns_and_disarms(monkeypatch, capsys):
         "Relay: none"
     )
 
-    result = premise_check_verdict.record_verdict(
-        session_id=session_id,
-        claim_id=claim_id,
-        verdict="FAIL",
-        reason=reason,
-    )
+    with (
+        patch("claude_code_tracer._build_and_export_spans", return_value=False),
+        patch(
+            "claude_code_tracer.discover_config",
+            return_value={"endpoint": "https://collector.example.com"},
+        ),
+    ):
+        with pytest.raises(RuntimeError) as exc:
+            premise_check_verdict.record_verdict(
+                session_id=session_id,
+                claim_id=claim_id,
+                verdict="FAIL",
+                reason=reason,
+            )
 
-    assert result["ok"] is True
-    assert result["disarmed"] is True
-    assert result["untraced"] is True
-    assert result["span_emitted"] is False
-    assert result["span_error"] is not None
-
-    # Gate is disarmed!
-    assert not premise_check_gate.is_armed(session_id)
+    assert "OTel span export failed" in str(exc.value)
+    assert premise_check_gate.is_armed(session_id)
 
     captured = capsys.readouterr()
-    assert "WARNING: Premise-check verdict recorded untraced" in captured.err
+    assert (
+        "ERROR: Premise-check verdict cannot be recorded: OpenTelemetry span export was not acknowledged"
+        in captured.err
+    )
+    assert "Gate remains armed" in captured.err

@@ -180,3 +180,11 @@ Worker self-release to `done` applies across all tasks (PR and non-PR): when a w
 ### Operational Event Ingestion and Session Waking
 
 Worker container completion is recorded via the exit listener, OpenTelemetry `polecat.container.exit` spans, and the `polecat_events` MCP queue. The operational dashboard daemon (`specs/telegram/mini-app-dashboard-integration.md`) acts as the single consumer of `polecat_events` and repository webhooks, waking listening agent sessions over its authenticated HTTP/SSE channel bridge. Direct UNIX domain socket pushes (`[polecat-exit]`) and in-session client polling loops are retired.
+
+### Observability and Telemetry Failure Gating
+
+Enforcement of zero silent telemetry failures operates across client hooks, tracer runtimes, and verdict gates ([`specs/observability/telemetry-failure-surfacing.md`](../observability/telemetry-failure-surfacing.md)):
+
+- **JIT Injection & Structural Warnings (`warning`)**: On interactive surfaces and CI runners, unconfigured trace endpoints and export errors (HTTP 401/403 refusals, HTTP 5xx errors, connection timeouts) emit conspicuous standard error diagnostics with scrubbed credentials and inject actionable notices into the active session context via `handlers.session_start` and `handlers.telemetry_diagnostic_handler`.
+- **Configurable Structural Gating (`block` vs `warn`)**: Governed by `AOPS_TELEMETRY_FAILURE_MODE=block|warn`. Autonomous container dispatch workers (`POLECAT_TASK`, `POLECAT_TARGET_TASK`, or `AOPS_CONTAINER`) default to `block` (structural refusal on unconfigured tracing or tracer crash), guaranteeing full trace auditability for headless workers. Interactive local sessions and CI runners default to `warn` to prevent developer lockout.
+- **Report Verification Gate (`required gate`)**: Premise-check verdict recording strictly requires remote span export to Phoenix; any failure to export a span leaves the gate armed to prevent untraced handbacks.
