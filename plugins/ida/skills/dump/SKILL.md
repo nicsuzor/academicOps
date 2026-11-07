@@ -37,8 +37,6 @@ If an ad-hoc or interactive session modified repository project files without an
 
 ### 4. Release Claimed Tasks
 
-Canonical task statuses, their definitions, and authority over who may set them are specified exclusively in [`specs/enforcement/task-contract.md`](../../../../specs/enforcement/task-contract.md) §Canonical Task Status Table.
-
 For each claimed task (releasing child tasks first), update the task body so its `## Report` section records the outcome and the `premise-check` report argument (asked by the task's frozen ask ids), then release the task via `pkb_release_task`, passing the active `session_id`:
 
 - `done`: Release with verified evidence in `## Report` answering each `<task id>/AC<n>`. For PR deliverables, push the branch, open the PR, record `pr_url` and branch, and release `done`. If any acceptance item lacks evidence, release as `partial`.

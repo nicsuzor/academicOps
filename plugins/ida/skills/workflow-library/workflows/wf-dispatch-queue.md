@@ -11,7 +11,7 @@ type: template
 
 ## What this step does
 
-Moves ready work from the graph to workers through the user's choice: finds what is ready, shows it to the user ranked with a recommendation on each, and dispatches what the user approves. Authors no tasks and changes no ranking. Complements graph truth maintenance, which mints rework tasks but starts no worker. (For canonical task status definitions and authority, see [`specs/enforcement/task-contract.md`](../../../../../specs/enforcement/task-contract.md) §Canonical Task Status Table.)
+Moves ready work from the graph to workers through the user's choice: finds what is ready, shows it to the user ranked with a recommendation on each, and dispatches what the user approves. Authors no tasks and changes no ranking. Complements graph truth maintenance, which mints rework tasks but starts no worker.
 
 Three roles, in order: the PKB custodian finds and ranks; the front agent shows and asks; the dispatcher starts the workers. Any capable agent may hold a role.
 
