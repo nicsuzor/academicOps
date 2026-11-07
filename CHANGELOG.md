@@ -2,21 +2,19 @@
 
 ## [1.4.0](https://github.com/nicsuzor/academicOps/compare/v1.3.0...v1.4.0) (2026-11-07)
 
-
 ### Features
 
-* **ida:** groundwork-first decision making on open design choices ([4432f8b](https://github.com/nicsuzor/academicOps/commit/4432f8bc85f23aa0fe9830c612cf3139474b52ce))
-* **ida:** groundwork-first decision making on open design choices ([4369edc](https://github.com/nicsuzor/academicOps/commit/4369edc38b154a7d299026cbe1891d7ad468d23f))
-* **ida:** route knowledge tasks to custodian and execution to polecats ([3a34ed6](https://github.com/nicsuzor/academicOps/commit/3a34ed6e34c990e09cf39cfe8ec56b291e8b7417))
-* **ida:** route knowledge tasks to custodian and execution to polecats ([b74f991](https://github.com/nicsuzor/academicOps/commit/b74f991c5c67efbae18c13c4bd737e74f7838813))
-* **observability:** surface telemetry failures across emitters and support configurable session gating ([1774a70](https://github.com/nicsuzor/academicOps/commit/1774a7063b083262f76fda826368f7e6d8abd134))
-* **review:** implement reviewer self-fixes for uncontroversial issues ([1d7794d](https://github.com/nicsuzor/academicOps/commit/1d7794dc9894c9f2814fcde801643ca88696f576))
-
+- **ida:** groundwork-first decision making on open design choices ([4432f8b](https://github.com/nicsuzor/academicOps/commit/4432f8bc85f23aa0fe9830c612cf3139474b52ce))
+- **ida:** groundwork-first decision making on open design choices ([4369edc](https://github.com/nicsuzor/academicOps/commit/4369edc38b154a7d299026cbe1891d7ad468d23f))
+- **ida:** route knowledge tasks to custodian and execution to polecats ([3a34ed6](https://github.com/nicsuzor/academicOps/commit/3a34ed6e34c990e09cf39cfe8ec56b291e8b7417))
+- **ida:** route knowledge tasks to custodian and execution to polecats ([b74f991](https://github.com/nicsuzor/academicOps/commit/b74f991c5c67efbae18c13c4bd737e74f7838813))
+- **observability:** surface telemetry failures across emitters and support configurable session gating ([1774a70](https://github.com/nicsuzor/academicOps/commit/1774a7063b083262f76fda826368f7e6d8abd134))
+- **review:** implement reviewer self-fixes for uncontroversial issues ([1d7794d](https://github.com/nicsuzor/academicOps/commit/1d7794dc9894c9f2814fcde801643ca88696f576))
 
 ### Bug Fixes
 
-* **observability:** unify OTEL session.id threading across agy, Claude Code, subagents, and MCP calls ([6905763](https://github.com/nicsuzor/academicOps/commit/69057635dd1bc4c45d789cff35f67d3132419fee))
-* **observability:** unify OTEL session.id threading across agy, Claude Code, subagents, and MCP calls ([f74304d](https://github.com/nicsuzor/academicOps/commit/f74304da5bd9325be13a807188163ab91b450c73))
+- **observability:** unify OTEL session.id threading across agy, Claude Code, subagents, and MCP calls ([6905763](https://github.com/nicsuzor/academicOps/commit/69057635dd1bc4c45d789cff35f67d3132419fee))
+- **observability:** unify OTEL session.id threading across agy, Claude Code, subagents, and MCP calls ([f74304d](https://github.com/nicsuzor/academicOps/commit/f74304da5bd9325be13a807188163ab91b450c73))
 
 ## [1.3.0](https://github.com/nicsuzor/academicOps/compare/v1.2.0...v1.3.0) (2026-11-06)
 
