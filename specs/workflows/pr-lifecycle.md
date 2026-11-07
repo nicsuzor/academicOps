@@ -35,8 +35,8 @@ The sweep workflow operates exclusively as a discovery and triage mechanism, dis
 2. **Project Policy Resolution**: PRs are evaluated against project-specific branch and merge policies. Target base branches are specified in project-level configuration (e.g. `.agents/CORE.md`) rather than hardcoded in workflow templates.
 3. **Queue Next-Step Tasks**: For each PR requiring action:
    - Identify the single next required action (e.g. run risk-tier review, address requested changes, resolve base merge conflicts on approved PRs, or land approved PR). PRs awaiting approval that are green and reviewed are classified as blocked on approval without queuing conflict resolution or rebase tasks. Where a draft PR's code step is complete, mark the PR ready for review (`gh pr ready`).
-   - If an existing open task covers this action, ensure it is set to queued status.
-   - If no task exists, create and queue a follow-up task scoped strictly to that PR's next action and set it to queued status.
+   - If an existing open task covers this action, ensure it is set to `queued` status (see [`specs/enforcement/task-contract.md`](../enforcement/task-contract.md) §Canonical Task Status Table for canonical status definitions).
+   - If no task exists, create and queue a follow-up task scoped strictly to that PR's next action and set it to `queued` status.
    - The sweep workflow does not execute resolutions inline.
 4. **Coordinator Summary Handoff**: Upon evaluating all open PRs, the sweep files a closed task for itself recording the full disposition manifest and listing all outstanding queued tasks, providing the dispatching coordinator with an authoritative inventory to schedule or dispatch.
 
