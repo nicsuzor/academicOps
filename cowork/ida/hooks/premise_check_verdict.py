@@ -86,14 +86,39 @@ def _export_tool_span(
     if config is None:
         config = tracer_mod.discover_config()
     if config is None:
+        err_msg = (
+            "ERROR: Premise-check verdict cannot be recorded: OpenTelemetry tracing unconfigured (no endpoint). "
+            "Gate remains armed."
+        )
+        print(err_msg, file=sys.stderr)
         raise RuntimeError("premise_check_verdict: tracing is not configured (no OTel endpoint)")
 
     now_ns = time.time_ns()
     trace_id = tracer_mod._new_trace_id()
     parent_span_id = tracer_mod._new_span_id()
 
-    phoenix_session_id = os.environ.get("AOPS_SESSION_ID") or session_id
-    state = tracer_mod._load_state(phoenix_session_id)
+    env_session_id = os.environ.get("AOPS_SESSION_ID")
+    state = tracer_mod._load_state(session_id) if session_id else {}
+    if not state and env_session_id and env_session_id != session_id:
+        state = tracer_mod._load_state(env_session_id)
+
+    agent_id = None
+    parent_session_id = None
+    if state and hasattr(tracer_mod, "_resolve_agent_and_parent_ids"):
+        phoenix_session_id, agent_id, parent_session_id = tracer_mod._resolve_agent_and_parent_ids(
+            state
+        )
+    else:
+        raw_phx = (
+            (state.get("phoenix_session_id") if state else None) or env_session_id or session_id
+        )
+        phoenix_session_id = str(raw_phx).split("/", 1)[0]
+        if session_id and session_id != phoenix_session_id:
+            agent_id = session_id.split("/", 1)[1] if "/" in session_id else session_id
+            parent_session_id = (
+                state.get("parent_session_id") if state else None
+            ) or phoenix_session_id
+
     current_trace = state.get("current_trace") if state else None
     if current_trace:
         trace_id = current_trace["trace_id"]
@@ -114,18 +139,33 @@ def _export_tool_span(
     record["attributes"]["aops.surface"] = surface
 
     username = os.environ.get("USER") or os.environ.get("USERNAME") or None
+    export_kwargs: dict[str, Any] = {
+        "config": config,
+        "session_id": phoenix_session_id,
+        "username": username,
+        "span_records": [record],
+        "service_name": "aops-verdict-hooks",
+        "surface": surface,
+    }
+    if agent_id:
+        export_kwargs["agent_id"] = agent_id
+    if parent_session_id:
+        export_kwargs["parent_session_id"] = parent_session_id
     try:
-        exported = tracer_mod._build_and_export_spans(
-            config=config,
-            session_id=phoenix_session_id,
-            username=username,
-            span_records=[record],
-            service_name="aops-verdict-hooks",
-            surface=surface,
-        )
+        exported = tracer_mod._build_and_export_spans(**export_kwargs)
     except Exception as exc:
+        err_msg = (
+            f"ERROR: Premise-check verdict cannot be recorded: OpenTelemetry export failed ({exc!r}). "
+            "Gate remains armed."
+        )
+        print(err_msg, file=sys.stderr)
         raise RuntimeError(f"premise_check_verdict: OTel span export failed: {exc!r}") from exc
     if exported is not True:
+        err_msg = (
+            "ERROR: Premise-check verdict cannot be recorded: OpenTelemetry span export was not acknowledged. "
+            "Gate remains armed."
+        )
+        print(err_msg, file=sys.stderr)
         raise RuntimeError("premise_check_verdict: OTel span export failed")
 
 
@@ -553,7 +593,6 @@ def record_verdict(
         "verdict": token,
         "reason": reason,
         "span_emitted": True,
-        "span_error": None,
         "disarmed": True,
         "no_claim": bool(attributes.get("premise_check.no_claim")),
         "machine": bool(attributes.get("premise_check.machine")),

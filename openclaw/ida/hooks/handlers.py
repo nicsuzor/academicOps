@@ -10,6 +10,7 @@ import re
 import secrets
 import shlex
 import socket
+import sys
 import tempfile
 import time
 import urllib.error
@@ -25,6 +26,7 @@ from dispatch import (
     _merge,
     _run_handler,
     load_message_pair,
+    refuse,
     warn,
 )
 from hearsay_gate import (
@@ -225,18 +227,18 @@ def _resolve_mcp_headers() -> dict[str, str]:
 
 
 def _tracer_state_dir() -> Path:
-    env_dir = os.environ.get("TRACER_STATE_DIR") or os.environ.get("AOPS_TRACER_DIR")
+    env_dir = (
+        os.environ.get("AOPS_TRACER_STATE_DIR")
+        or os.environ.get("TRACER_STATE_DIR")
+        or os.environ.get("AOPS_TRACER_DIR")
+    )
     if env_dir:
         return Path(env_dir)
+    if claude_code_tracer is not None and hasattr(claude_code_tracer, "_tracer_state_dir"):
+        return claude_code_tracer._tracer_state_dir()
     if claude_code_tracer is not None and hasattr(claude_code_tracer, "STATE_DIR"):
-        state_dir = Path(claude_code_tracer.STATE_DIR)
-        if state_dir.is_absolute():
-            try:
-                return Path.home().joinpath(*state_dir.parts[-2:])
-            except Exception:
-                pass
-        return state_dir
-    return Path.home() / ".aops" / "tracer"
+        return Path(claude_code_tracer.STATE_DIR)
+    return Path.home() / ".claude" / "tracer"
 
 
 def _resolve_tracer_traceparent(session_id: str | None = None) -> str:
@@ -406,13 +408,28 @@ def _post_mcp_search(
     sess_id = session_id if session_id is not None else (os.environ.get("AOPS_SESSION_ID") or "")
     tp = traceparent or _resolve_tracer_traceparent(sess_id)
 
+    root_sess_id = sess_id
+    resolved_agent_id = agent_id or ""
+    if "/" in sess_id:
+        root_sess_id, suffix = sess_id.split("/", 1)
+        if not resolved_agent_id:
+            resolved_agent_id = suffix
+
     pid = prompt_id or ""
-    if not pid and sess_id:
+    if sess_id:
         tracer_file = _tracer_state_dir() / f"{sess_id}.json"
         if tracer_file.is_file():
             try:
                 tdata = json.loads(tracer_file.read_text(encoding="utf-8"))
-                pid = (tdata.get("current_trace") or {}).get("prompt_id") or ""
+                phx_sid = tdata.get("phoenix_session_id")
+                if phx_sid:
+                    phx_root = str(phx_sid).split("/", 1)[0]
+                    if phx_root and phx_root != sess_id:
+                        root_sess_id = phx_root
+                        if not resolved_agent_id:
+                            resolved_agent_id = sess_id
+                if not pid:
+                    pid = (tdata.get("current_trace") or {}).get("prompt_id") or ""
             except Exception:
                 pass
     if not pid:
@@ -436,7 +453,7 @@ def _post_mcp_search(
         "User-Agent": "academicOps/0.10 (prompt-hydration)",
         "Content-Type": "application/json",
         "Accept": "application/json, text/event-stream",
-        "x-session-id": sess_id,
+        "x-session-id": root_sess_id,
         "traceparent": tp,
     }
     if headers:
@@ -450,9 +467,9 @@ def _post_mcp_search(
     prefix = os.environ.get("PKB_MCP_TOOL_PREFIX", "pkb_")
     tool_name = f"{prefix}search"
     session_payload = {
-        "session_id": sess_id,
+        "session_id": root_sess_id,
         "prompt_id": pid,
-        "agent_id": agent_id or "",
+        "agent_id": resolved_agent_id,
         "caller": "hook",
         "surface": surface or _resolve_surface(),
     }
@@ -859,6 +876,35 @@ def session_start(ctx: HookContext) -> Result | None:
         if core_text:
             parts.append(core_text)
     user_parts = [metadata]
+
+    is_telemetry_ok = True
+    if claude_code_tracer is not None:
+        is_telemetry_ok = claude_code_tracer.is_telemetry_configured()
+    else:
+        is_telemetry_ok = bool(
+            os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
+            or os.environ.get("BETA_TRACING_ENDPOINT")
+            or os.environ.get("GENAI_ENGINE_TRACE_ENDPOINT")
+        )
+
+    mode = "warn"
+    if claude_code_tracer is not None:
+        mode = claude_code_tracer.get_telemetry_failure_mode()
+    elif os.environ.get("AOPS_TELEMETRY_FAILURE_MODE") == "block":
+        mode = "block"
+
+    if not is_telemetry_ok:
+        unconfigured_err = (
+            "WARNING: OpenTelemetry tracing unconfigured (endpoint or credentials unset). "
+            "Telemetry will NOT be exported."
+        )
+        print(unconfigured_err, file=sys.stderr)
+        unconfigured_ctx = "WARNING: OpenTelemetry tracing is unconfigured. Spans and metrics for this session are dropped."
+        parts.append(unconfigured_ctx)
+        user_parts.append(unconfigured_ctx)
+        if mode == "block":
+            return refuse("\n\n".join(parts), "\n\n".join(user_parts))
+
     stale_warning = os.environ.get("AOPS_IMAGE_STALENESS_WARNING") or ctx.raw.get(
         "image_staleness_warning"
     )
@@ -914,7 +960,22 @@ def agy_session_pointer(ctx: HookContext) -> Result | None:
             f.write(datetime.now().astimezone().isoformat())
     except FileExistsError:
         return None
-    return warn(PREMISE_CHECK_POINTER)
+    pointer_text = PREMISE_CHECK_POINTER
+    try:
+        tracer_file = _tracer_state_dir() / f"{ctx.session_id}.json"
+        if tracer_file.is_file():
+            tdata = json.loads(tracer_file.read_text(encoding="utf-8"))
+            phx_sid = tdata.get("phoenix_session_id")
+            if phx_sid:
+                phx_root = str(phx_sid).split("/", 1)[0]
+                if phx_root and phx_root != ctx.session_id:
+                    pointer_text = (
+                        f"{PREMISE_CHECK_POINTER}\n"
+                        f"caller_session: {phx_root} | agent_id: {ctx.session_id}"
+                    )
+    except Exception:
+        pass
+    return warn(pointer_text)
 
 
 honesty_on_peer_message = honest_output
@@ -1024,6 +1085,70 @@ def post_tool_degraded_check(ctx: HookContext) -> Result | None:
     return None
 
 
+def telemetry_diagnostic_handler(ctx: HookContext) -> Result | None:
+    """Inspect tracer state for telemetry errors and inject diagnostic notice into turn context."""
+    sess_id = (
+        ctx.session_id
+        or ctx.raw.get("session_id")
+        or ctx.raw.get("conversationId")
+        or os.environ.get("AOPS_SESSION_ID")
+    )
+    if not sess_id:
+        return None
+    tracer_file = _tracer_state_dir() / f"{sess_id}.json"
+    if not tracer_file.is_file():
+        return None
+    try:
+        tdata = json.loads(tracer_file.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+    err = tdata.get("telemetry_error")
+    if not err or err.get("reported_to_session"):
+        return None
+
+    err_type = err.get("type")
+    endpoint = err.get("endpoint", "unknown")
+
+    if err_type == "auth_refusal":
+        code = err.get("status_code", 401)
+        diag = (
+            f"ERROR: OpenTelemetry export refused by collector (HTTP {code}) at {endpoint}. "
+            "Authentication invalid or expired. Telemetry spans are being dropped."
+        )
+    elif err_type == "server_error":
+        code = err.get("status_code", 500)
+        diag = (
+            f"ERROR: OpenTelemetry collector returned HTTP {code} at {endpoint}. "
+            "Collector is failing to ingest spans."
+        )
+    elif err_type == "network_error":
+        net_err = err.get("error_type", "Timeout/ConnectionError")
+        diag = (
+            f"ERROR: OpenTelemetry export failed ({net_err}) connecting to {endpoint}. "
+            "Check network route or collector health."
+        )
+    else:
+        msg = err.get("message", "export failure")
+        diag = f"ERROR: OpenTelemetry export failed at {endpoint}: {msg}"
+
+    err["reported_to_session"] = True
+    try:
+        tracer_file.write_text(json.dumps(tdata), encoding="utf-8")
+    except Exception:
+        pass
+
+    mode = "warn"
+    if claude_code_tracer is not None:
+        mode = claude_code_tracer.get_telemetry_failure_mode()
+    elif os.environ.get("AOPS_TELEMETRY_FAILURE_MODE") == "block":
+        mode = "block"
+
+    if mode == "block":
+        return refuse(diag, user_text=diag)
+    return warn(diag, user_text=diag)
+
+
 def user_prompt_submit(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical UserPromptSubmit."""
     prompt_id = (
@@ -1051,9 +1176,9 @@ def user_prompt_submit(ctx: HookContext) -> Result | None:
 
     ctx = replace(ctx, prompt_id=prompt_id)
 
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_user_prompt_submit")
     agy_user_prompt_submit(ctx)
+    emit_debug_span(ctx)
     steps = (
         agy_session_pointer,
         search_the_pkb,
@@ -1065,9 +1190,9 @@ def user_prompt_submit(ctx: HookContext) -> Result | None:
 
 def pre_tool(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical PreToolUse."""
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_pre_tool")
     agy_pre_tool(ctx)
+    emit_debug_span(ctx)
     return _run_handler(hearsay_handler, ctx)
 
 
@@ -1076,7 +1201,7 @@ def post_tool(ctx: HookContext) -> Result | None:
     emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_post_tool")
     agy_post_tool(ctx)
-    steps = (hearsay_arm,)
+    steps = (hearsay_arm, telemetry_diagnostic_handler)
     return _merge([_run_handler(step, ctx) for step in steps])
 
 
@@ -1089,7 +1214,7 @@ def post_tool_batch(ctx: HookContext) -> Result | None:
 def post_tool_failure(ctx: HookContext) -> Result | None:
     emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_post_tool_failure")
-    return None
+    return _run_handler(telemetry_diagnostic_handler, ctx)
 
 
 def subagent_start(ctx: HookContext) -> Result | None:
@@ -1103,7 +1228,8 @@ def stop(ctx: HookContext) -> Result | None:
     emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_stop")
     agy_stop(ctx)
-    return _run_handler(hearsay_handler, ctx)
+    steps = (hearsay_handler, telemetry_diagnostic_handler)
+    return _merge([_run_handler(step, ctx) for step in steps])
 
 
 def subagent_stop(ctx: HookContext) -> Result | None:

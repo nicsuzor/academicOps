@@ -39,6 +39,7 @@ from claude_code_tracer import (
     _save_state,
     _session_lock,
     _truncate,
+    report_unconfigured_tracer_if_needed,
     resolve_agent_name,
     resolve_client_agent_name,
     resolve_session_id,
@@ -214,6 +215,9 @@ def _export_tool_span_agy(
     span_record["attributes"]["session.id"] = phoenix_session_id
     if parent_session_id:
         span_record["attributes"]["parent.session_id"] = parent_session_id
+    ct_bg_task = (state.get("current_trace") or {}).get("background_task_id")
+    if ct_bg_task:
+        span_record["attributes"]["agent.task_id"] = ct_bg_task
 
     if tool_record.get("tool_name") == "invoke_subagent":
         child_sid = None
@@ -526,19 +530,34 @@ def _init_turn_state_agy(
     human_count = sum(1 for e in entries if _is_human_message_agy(e))
 
     parent_sess_id = state.get("parent_session_id")
-    if not parent_sess_id and entries:
+    if not parent_sess_id and not state.get("parent_session_checked") and entries:
         import re
 
-        for entry in entries:
-            content = entry.get("content", "")
-            if isinstance(content, str) and "sender=" in content:
-                m = re.search(r'\bsender=["\']?([^\s,>"\']+)["\']?', content)
-                if m and m.group(1) != session_id:
-                    parent_sess_id = m.group(1)
-                    break
+        first_turn_entry = next((e for e in entries if _is_turn_start_entry_agy(e)), None)
+        if first_turn_entry is not None:
+            state["parent_session_checked"] = True
+            if first_turn_entry.get("type") == "SYSTEM_MESSAGE":
+                content = first_turn_entry.get("content", "")
+                if isinstance(content, str) and "sender=" in content:
+                    m = re.search(r'\bsender=["\']?([^\s,>"\']+)["\']?', content)
+                    if m:
+                        cand = m.group(1)
+                        if (
+                            cand != session_id
+                            and "/" not in cand
+                            and cand not in (state.get("child_subagents") or {})
+                        ):
+                            parent_sess_id = cand
     if parent_sess_id:
         state["parent_session_id"] = parent_sess_id
-        state["phoenix_session_id"] = parent_sess_id
+        root_phx = parent_sess_id
+        try:
+            pstate = _load_state(parent_sess_id)
+            if pstate and pstate.get("phoenix_session_id"):
+                root_phx = str(pstate["phoenix_session_id"]).split("/", 1)[0]
+        except Exception:
+            pass
+        state["phoenix_session_id"] = root_phx
 
     # Anchor turn at the latest USER_INPUT or SYSTEM_MESSAGE entry in transcript.jsonl
     start_line_index = len(entries)
@@ -550,12 +569,20 @@ def _init_turn_state_agy(
             break
 
     handback_subagent_id = None
+    background_task_id = None
     if turn_prompt and "sender=" in turn_prompt:
         import re
 
         m = re.search(r'\bsender=["\']?([^\s,>"\']+)["\']?', turn_prompt)
-        if m and m.group(1) != session_id:
-            handback_subagent_id = m.group(1)
+        if m:
+            sender_id = m.group(1)
+            if "/" in sender_id:
+                prefix, suffix = sender_id.split("/", 1)
+                if prefix == session_id and suffix:
+                    background_task_id = suffix
+            elif sender_id != session_id:
+                if sender_id != state.get("parent_session_id") or not _load_state(sender_id):
+                    handback_subagent_id = sender_id
 
     # Count GENERIC entries before this turn (or before the latest PLANNER_RESPONSE if mid-turn)
     if from_mid_turn and entries:
@@ -583,29 +610,36 @@ def _init_turn_state_agy(
     parent_trace_id = None
     parent_span_id = None
     psid = state.get("phoenix_session_id")
-    if psid and psid != session_id:
+    imm_parent = state.get("parent_session_id") or psid
+    if imm_parent and imm_parent != session_id:
         try:
-            pstate = _load_state(psid)
-            if pstate and pstate.get("current_trace"):
-                parent_trace_id = pstate["current_trace"]["trace_id"]
+            pstate = _load_state(imm_parent)
+            if pstate:
+                if pstate.get("current_trace"):
+                    parent_trace_id = pstate["current_trace"]["trace_id"]
+                child_meta = (pstate.get("child_subagents") or {}).get(session_id)
+                if isinstance(child_meta, dict):
+                    parent_trace_id = child_meta.get("trace_id") or parent_trace_id
+                    parent_span_id = child_meta.get("span_id") or parent_span_id
 
-            project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
-            if project_dir:
-                sanitized = project_dir.replace("/", "-")
-                sidecar = (
-                    Path.home()
-                    / ".claude"
-                    / "projects"
-                    / sanitized
-                    / psid
-                    / "subagents"
-                    / f"agent-{session_id}.meta.json"
-                )
-                if sidecar.exists():
-                    sdata = json.loads(sidecar.read_text(encoding="utf-8"))
-                    tuid = sdata.get("toolUseId")
-                    if tuid:
-                        parent_span_id = hashlib.sha256(tuid.encode()).hexdigest()[:16]
+            if not parent_span_id:
+                project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
+                if project_dir:
+                    sanitized = project_dir.replace("/", "-")
+                    sidecar = (
+                        Path.home()
+                        / ".claude"
+                        / "projects"
+                        / sanitized
+                        / imm_parent
+                        / "subagents"
+                        / f"agent-{session_id}.meta.json"
+                    )
+                    if sidecar.exists():
+                        sdata = json.loads(sidecar.read_text(encoding="utf-8"))
+                        tuid = sdata.get("toolUseId")
+                        if tuid:
+                            parent_span_id = hashlib.sha256(tuid.encode()).hexdigest()[:16]
         except Exception as e:
             log.debug("Failed to parent agy subagent: %s", e)
 
@@ -621,6 +655,7 @@ def _init_turn_state_agy(
         "turn_prompt": turn_prompt,
         "prompt_preview": _truncate(turn_prompt) if turn_prompt else "",
         "handback_subagent_id": handback_subagent_id,
+        "background_task_id": background_task_id,
     }
     state["surface"] = "agy"
     state["pending_tools"] = {}
@@ -641,9 +676,12 @@ def _end_turn_agy(session_id: str, state: dict) -> None:
     _save_state(session_id, state)
 
 
-def handle_pre_invocation(data: dict, config: dict) -> None:
+def handle_pre_invocation(data: dict, config: dict | None) -> None:
     """Handle PreInvocation (turn start)."""
     session_id = resolve_session_id(data, "conversationId")
+    if config is None:
+        report_unconfigured_tracer_if_needed(session_id, caller="agy_tracer")
+        return
     if session_id is None:
         log.warning(
             "handle_pre_invocation: no session id in payload ('conversationId' / 'session_id' missing) "
@@ -966,6 +1004,8 @@ def handle_stop(data: dict, config: dict) -> None:
         if ct.get("handback_subagent_id"):
             chain_attrs["subagent.id"] = ct["handback_subagent_id"]
             chain_attrs["handback.subagent_id"] = ct["handback_subagent_id"]
+        if ct.get("background_task_id"):
+            chain_attrs["agent.task_id"] = ct["background_task_id"]
         if parent_session_id:
             chain_attrs["parent.session_id"] = parent_session_id
         if agent_name:
@@ -980,6 +1020,8 @@ def handle_stop(data: dict, config: dict) -> None:
             sp_attrs["session.id"] = phoenix_session_id
             if parent_session_id:
                 sp_attrs["parent.session_id"] = parent_session_id
+            if ct.get("background_task_id"):
+                sp_attrs["agent.task_id"] = ct["background_task_id"]
 
         # Emit CHAIN span
         chain_span = {

@@ -83,7 +83,7 @@ Fill the canonical task structure:
 - Change an existing task only for a defect you can point to in its text; otherwise leave it as written. Never rewrite its `## Ask` or renumber its criteria: a new criterion takes the next number, and no number is reused.
 - A skill may be a step, even the only step: write `invoke /<skill-name>` and leave its implementation to the skill. A workflow template is never a step; its steps are.
 - Close every task with an appendix section listing the workflow templates and skills it was composed from.
-- Do not create standalone decision tasks or file questions as tasks, with the exception of design research tasks: any research task on a design question gets, by default, a decision task assigned to the user (assignee: user) that depends on the research results, in which the user chooses the implementation route.
+- Do not create standalone decision tasks or file questions as tasks. An agent given a task does the groundwork and makes the decision itself; it never files the task back to the user as their decision (`assignee: user`) unless the user explicitly directed to decide it themselves (tg 1013). Research tasks on open design questions evaluate alternatives and select the recommended implementation route directly.
 - Reify plans, roadmaps, and designs as tasks on the PKB task graph.
 
 ## 4. Report

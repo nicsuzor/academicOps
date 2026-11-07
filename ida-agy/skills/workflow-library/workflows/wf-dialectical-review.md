@@ -58,6 +58,10 @@ All three review components (`pauli`, `rbg`, `marsha`), whether dispatched as su
    - **Strategic Direction & Congruence (`pauli`)**: Evaluates the core premise, strategic direction, and congruence with the "seamless web" of existing material in the PKB (graph topology, prior art, existing specifications, topic notes, parent objectives, active sibling tasks, parsimony, and lifecycle coherence) from an inline graph-only brief (`PASS`, `REVISE`, or `FAIL`).
    - **Compliance (`rbg`)**: Evaluates compliance with universal axioms, project-local rules, scope of delegated authority (_ultra vires_), data boundaries, and the enforcement pyramid (`PASS`, `REVISE`, or `FAIL`). From the quoted request alone, state the non-mechanical baseline before reading the diff: if an agent workflow or instructions meet the request, building executable scripts or test harnesses is an over-engineered defect (`FAIL` under `no-over-engineering` and `proportionate`). State the smallest proportionate mechanism before reading the diff.
    - **Quality & Requirements Satisfaction (`marsha`)**: Evaluates whether the work actually delivers on its stated requirements and governing genre standard to an ambitious quality standard ("amazingly good", not merely working) across actual rendered multimodal outputs (never code alone or simulated renders) and runtime execution (`PASS`, `REVISE`, or `FAIL`), and audits primary materials when calibrated as a **high-risk request**. **If no governing standard, specifications, requirements, or acceptance criteria are available, treats that absence itself as an immediate critical failure signal (`FAIL`).**
+   - **Uncontroversial self-fixes vs non-deterministic findings**:
+     - When any reviewer or the supervisor identifies defects that can be readily resolved without controversy--such as updating language, correcting typos, scrubbing private identifiers or session trailers under `data-boundaries`, repairing dead relative links, or fixing markdown formatting--it applies the fix directly to the working tree, commits immediately with a conventional commit message (`fix(review): <concise description>`), and itemizes the repair in the handback report under `### Reviewer Self-Fixes Applied`.
+     - An artifact where all identified defects were uncontroversial and self-fixed must not be returned as `REVISE` solely for those issues; reviewers proceed to evaluate substantive criteria and issue `PASS` when substantive standards are satisfied.
+     - Issues with no reasonably deterministic solution (competing architectural trade-offs, missing specifications, scope expansion, broken core logic, or failing functional tests) must never be guessed; reviewers record them as actionable findings under `### Required Changes` / `### Findings` and return `REVISE` or `FAIL`.
 
 ## Input contract
 
@@ -92,10 +96,11 @@ The invoking workflow provides:
      - **Documentation claims vs current state**: A documentation note (`README.md`, knowledge note) stating a behaviour proves only what the document says, not current working state. Require a completed task record (`status: done` with verification evidence) or verified live state before accepting a claim that a problem or mechanism is obsolete; if it cannot be established definitively, record it as an **open question** rather than settled fact.
      - **Authority of cited PRs or code**: Before aligning an artifact with a cited PR or code reference, verify that it is authoritative -- whether it is the most recent merged change, reflects current working behaviour, and is supported by an authoritative specification or decision record.
 4. **Synthesis, Reconciled Verdict & Headless Release**:
-   - Supervisor reconciles component outputs into a single unified findings table, unresolved open questions (if any), and overall verdict (`PASS`, `REVISE`, or `FAIL`), recording resolved tensions and accepted trade-offs on the artifact's tracking record.
+   - Supervisor reconciles component outputs into a single unified findings table, itemizes all self-fixes applied across reviewers under `### Reviewer Self-Fixes Applied`, tracks unresolved open questions (if any), and determines the overall verdict (`PASS`, `REVISE`, or `FAIL`), recording resolved tensions and accepted trade-offs on the artifact's tracking record.
+   - If all surfaced issues were uncontroversial and self-fixed cleanly, the supervisor does not bounce the review to `REVISE` solely for those issues.
    - A `FAIL` from any expert reviewer (`pauli`, `rbg`, `marsha`) makes the combined verdict `FAIL`; the consolidating supervisor never downgrades or softens an expert's `FAIL`. If an expert reviewer is judged too harsh, that is the user's responsibility to fix by reviewing the underlying review agent, not the consolidating agent's job to soften.
    - **Headless Release Contract**: A review worker executing the default review workflow releases its task with terminal status strictly matching the review outcome:
-     - A `PASS` verdict releases the task as `done` with the structured review report and verification evidence.
+     - A `PASS` verdict releases the task as `done` with the structured review report, verification evidence, and itemized self-fixes.
      - A `REVISE` or `FAIL` verdict releases the task as `failed` (or `partial`), recording findings and defect tags in the release reason. The worker never prompts interactively, pauses for user input, or mints downstream tasks on the graph.
 
 ## Output contract
@@ -103,6 +108,7 @@ The invoking workflow provides:
 A unified review report containing:
 
 - Supervisor calibration summary (proportionality, model selection, rounds, primary-material audit scope, altitude, and governing genre standard).
+- Reviewer self-fixes applied (itemized under `### Reviewer Self-Fixes Applied` with commit references and defect types).
 - The itemized findings table mapping issues to reviewer components, feedback, dispositions, and any unresolved open questions.
 - The reconciled overall verdict (`PASS`, `REVISE`, or `FAIL`). Any expert reviewer's `FAIL` makes the combined verdict `FAIL`; the supervisor never downgrades or softens it.
 - Persistent write-back to the artifact's task record or review surface.
