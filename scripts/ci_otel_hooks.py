@@ -140,7 +140,17 @@ def _hook_script(python: str, tracer: Path, project: str) -> str:
     lines.append('    echo "Tracer failed for event \'$1\' (exit status $STATUS):" >> "$MARKER"')
     lines.append('    cat "$TMP_ERR" >> "$MARKER"')
     lines.append('    cat "$TMP_OUT" >> "$MARKER"')
-    lines.append('elif grep -q "OTel span export failed" "$TMP_ERR" "$TMP_OUT" 2>/dev/null; then')
+    lines.append(
+        'elif grep -qE "export refused \\(HTTP 40[13]\\)|refused by collector" "$TMP_ERR" "$TMP_OUT" 2>/dev/null; then'
+    )
+    lines.append('    echo "::error::OTel export refused by collector (HTTP 401/403)"')
+    lines.append('    echo "Tracer export refused (HTTP 401/403) for event \'$1\':" >> "$MARKER"')
+    lines.append('    cat "$TMP_ERR" >> "$MARKER"')
+    lines.append('    cat "$TMP_OUT" >> "$MARKER"')
+    lines.append(
+        'elif grep -qE "OpenTelemetry export failed|OTel span export failed|timed out|unreachable" "$TMP_ERR" "$TMP_OUT" 2>/dev/null; then'
+    )
+    lines.append('    echo "::warning::OTel export failed (network error or timeout)"')
     lines.append('    echo "Tracer export failed for event \'$1\':" >> "$MARKER"')
     lines.append('    cat "$TMP_ERR" >> "$MARKER"')
     lines.append('    cat "$TMP_OUT" >> "$MARKER"')
@@ -169,13 +179,19 @@ def build_settings(
 ) -> dict:
     if not os.environ.get("GENAI_ENGINE_TRACE_ENDPOINT", "").strip():
         print(
-            "::notice::GENAI_ENGINE_TRACE_ENDPOINT is not set; this agent run is not traced to Phoenix."
+            "::notice::Trace endpoint unset; run untraced (GENAI_ENGINE_TRACE_ENDPOINT is not set)."
+        )
+        print(
+            "NOTICE: OpenTelemetry tracing unconfigured in CI (GENAI_ENGINE_TRACE_ENDPOINT unset). Run is untraced."
         )
         return base
     if not os.environ.get("GENAI_ENGINE_API_KEY", "").strip():
         # A fork PR or a caller that doesn't pass the secret: the collector would
         # refuse every export, after making each tool call wait for it.
-        print("::notice::GENAI_ENGINE_API_KEY is not set; this agent run is not traced to Phoenix.")
+        print("::notice::Trace API key unset; run untraced (GENAI_ENGINE_API_KEY is not set).")
+        print(
+            "NOTICE: OpenTelemetry tracing unconfigured in CI (GENAI_ENGINE_API_KEY unset). Run is untraced."
+        )
         return base
 
     tracer_src = aops_root / TRACER_RELPATH
