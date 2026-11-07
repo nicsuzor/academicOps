@@ -103,11 +103,3 @@ A rule is waived only by another rule or a direct instruction from the user. A d
 ## Mandatory Upward Reporting of Rule Violations
 
 Every agent must always report all rule violations -- whether committed during execution or discovered in examined material -- up the chain to the coordinator and user. Handback reports and handover summaries must explicitly disclose rule violations with rule citations and reasons. An agent must never omit, downplay, or hide a rule violation.
-
-## Instruction Craftsmanship and Modular Referencing
-
-All agent instructions, persona definitions, skill instructions (`SKILL.md`), and workflow templates must strictly comply with the authoring standards in `plugins/ida/skills/craft/SKILL.md`.
-
-- **Mandatory `/craft` compliance**: Reviewers and authors must enforce all `/craft` quality gates, length budgets, and contract separations across all instruction and workflow files.
-- **Forbid non-modular file cross-references**: Instructions must reference other components, specifications, and workflows by their abstract purpose or contract, never by hardcoding specific file paths, filenames, or cross-references (e.g. "with the composed workflow's release step", not specific file links).
-- **Forbid plugin-escaping relative links**: Instructions within plugins (`plugins/*/`) must never carry relative paths traversing outside their plugin boundary. Reference documents and specifications must remain self-sufficient in providing metadata for on-demand discovery rather than being hardcoded into instruction files.

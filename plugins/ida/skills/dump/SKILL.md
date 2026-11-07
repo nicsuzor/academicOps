@@ -43,8 +43,6 @@ For each claimed task (releasing child tasks first), update the task body so its
 - `partial`: Release when the worker's own acceptance items remain unfinished (scope seam, external dependency, context reset, or missing tool). Document what was completed and what remains unfinished in `reason` and `## Report`.
 - `failed`: Release on terminal failure, unrecoverable blocker, or check failure (e.g. QA or review). Document failure evidence and root cause in `reason`.
 - `cancelled`: Release when task is obsolete or invalidated. Document reason in `reason`.
-- `in_progress`: Use only if an active successor session is immediately continuing work.
-- `review`: Never set or release `review`. Reserved exclusively for manual human holds applied directly by the user.
 
 Task report format (for `release_task` body update in `## Report` and session task summary):
 

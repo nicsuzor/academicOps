@@ -20,7 +20,6 @@ Author and review agent-facing instructions, personas, and workflow templates fo
 8. **Promise only what the executor delivers**: Output contracts list only artifacts and state the executing agent itself produces. Another party's subsequent act (human sign-off, reviewer verdict) is never an executor deliverable.
 9. **Verification must be real**: Demand direct inspection of live artifacts (outputs, logs, diffs) rather than relying on compliance checklists.
 10. **Instruction density over conversational prose**: Maximize high-signal constraints per token. Every line earns its place; eliminate incident stories, post-mortems, and historical rationales.
-11. **Modular reference by abstract purpose (No hardcoded file cross-references)**: Reference other components, specifications, workflows, and tools by their abstract purpose or contract, never by specific file paths, filenames, or cross-references (e.g. "with the composed workflow's release step", not specific file links). Cross-references inserted into instructions are rarely read by agents and create brittle coupling. Reference files and specifications in a modular design must be self-sufficient in providing discovery metadata (frontmatter descriptions, tags, routing summaries) that enables agents to find them when needed on demand, rather than hardcoding paths into instructions.
 
 ## The Deletion Test
 
@@ -114,16 +113,13 @@ Workflow templates (`type: template`) govern repeatable multi-stage execution an
 
 ## Quality Gates
 
-Every agent instruction, skill, persona definition, and subagent prompt must pass these six gates before merging:
+Every agent instruction, skill, persona definition, and subagent prompt must pass these five gates before merging:
 
 1. **Categorical generality (Categorical Imperative)**: Express rules in general terms covering the full class of situations. Prohibit hyper-specific quotas, rigid interaction numbers, or one-off compromises.
 2. **Entity abstraction (Name the process, not the actor)**: Refer to the principal as "the user", never by a personal proper noun or name. Refer to collaborators by role or capability.
-3. **No PKB leakage (Data Boundaries)**: Never include private PKB note or task IDs (`aops_...`, `task_...`, `mem_...`, `kb_...`) or Obsidian wikilinks (`[[...]]`) in distributed framework instruction files.
+3. **No PKB leakage (Data Boundaries)**: Never include private PKB note or task IDs (`aops_...`, `task_...`, `mem_...`, `kb_...`) or Obsidian wikilinks (`[[...]]`) in distributed framework instruction files. Use standard relative markdown links for file references.
 4. **Zero historical provenance**: Strictly eliminate incident stories, post-mortem recaps ("after an incident on..."), or PR/commit changelog citations. Instructions define what is true now, never how it came to be true.
 5. **Adjudication against empirical evidence**: When an instruction design choice or length budget is contested during review, cite the empirical findings and sources in `references/evidence.md`.
-6. **Modular referencing and plugin containment**:
-   - **No plugin-escaping relative links**: Instructions and skills within plugins must never contain relative links traversing outside their own plugin root (such as parent directory traversals reaching into repository root), ensuring plugins remain self-contained and portable when installed independently.
-   - **No hardcoded file cross-references in instructions**: Agent instructions and workflow templates must not embed hardcoded file paths or cross-references to other instruction, rule, or spec files. Reference components by their abstract purpose (e.g. "the composed workflow's release step") rather than specific file links. Reference files must be self-sufficient in providing metadata (descriptions, tags) for on-demand discovery.
 
 ## Agent Definitions
 
