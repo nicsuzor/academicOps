@@ -578,14 +578,14 @@ def resolve_session_id(
     env_value = os.environ.get("AOPS_SESSION_ID")
     if prefer_env:
         if env_value:
-            return env_value
+            return str(env_value).split("/", 1)[0]
         if payload_value:
-            return str(payload_value)
+            return str(payload_value).split("/", 1)[0]
         return None
     if payload_value:
         return str(payload_value)
     if env_value:
-        return env_value
+        return str(env_value)
     return None
 
 
@@ -596,7 +596,8 @@ def _phoenix_session_id(state: dict) -> str:
     before ``phoenix_session_id`` existed, so old in-flight sessions still
     export rather than crashing mid-turn.
     """
-    return state.get("phoenix_session_id") or state["session_id"]
+    raw = state.get("phoenix_session_id") or state["session_id"]
+    return str(raw).split("/", 1)[0]
 
 
 def _resolve_agent_and_parent_ids(
@@ -617,6 +618,13 @@ def _resolve_agent_and_parent_ids(
         )
     if not local_agent_id:
         local_agent_id = state.get("session_id") or phoenix_session_id
+
+    if (
+        isinstance(local_agent_id, str)
+        and phoenix_session_id
+        and local_agent_id.startswith(f"{phoenix_session_id}/")
+    ):
+        local_agent_id = local_agent_id.split("/", 1)[1]
 
     parent_session_id = state.get("parent_session_id")
     if (
@@ -1821,6 +1829,8 @@ def _build_and_export_spans(
     if agent_id:
         resource_attrs["agent.id"] = agent_id
         resource_attrs["subagent.id"] = agent_id
+        if str(agent_id).startswith("task-"):
+            resource_attrs["agent.task_id"] = str(agent_id)
     if parent_session_id:
         resource_attrs["parent.session_id"] = parent_session_id
     if task_id:
@@ -1959,6 +1969,8 @@ def _build_and_export_spans(
             if agent_id:
                 span.set_attribute("agent.id", agent_id)
                 span.set_attribute("subagent.id", agent_id)
+                if str(agent_id).startswith("task-"):
+                    span.set_attribute("agent.task_id", str(agent_id))
             if parent_session_id:
                 span.set_attribute("parent.session_id", parent_session_id)
             if username:
@@ -2549,6 +2561,75 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
         _start_turn(data, config, session_id)
 
 
+def _resolve_claude_subagent_parent(
+    session_id: str,
+    transcript_path: str = "",
+    candidate_parent_id: str | None = None,
+) -> tuple[str | None, str | None, str | None, str | None]:
+    """Resolve (phoenix_session_id, parent_session_id, parent_trace_id, parent_span_id) for a Claude Code subagent."""
+    import hashlib
+
+    sidecar: Path | None = None
+    immediate_parent: str | None = None
+
+    if transcript_path:
+        tp = Path(transcript_path)
+        if tp.parent.name == "subagents":
+            cand = tp.parent / f"agent-{session_id}.meta.json"
+            if cand.exists():
+                sidecar = cand
+                immediate_parent = tp.parent.parent.name
+
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
+    if sidecar is None and project_dir:
+        sanitized = project_dir.replace("/", "-")
+        base = Path.home() / ".claude" / "projects" / sanitized
+        if candidate_parent_id and candidate_parent_id != session_id:
+            cand = base / candidate_parent_id / "subagents" / f"agent-{session_id}.meta.json"
+            if cand.exists():
+                sidecar = cand
+                immediate_parent = candidate_parent_id
+        if sidecar is None and base.exists():
+            matches = list(base.glob(f"*/subagents/agent-{session_id}.meta.json"))
+            if matches:
+                sidecar = matches[0]
+                immediate_parent = sidecar.parent.parent.name
+
+    parent_span_id: str | None = None
+    if sidecar is not None:
+        try:
+            sdata = json.loads(sidecar.read_text(encoding="utf-8"))
+            tuid = sdata.get("toolUseId")
+            if tuid:
+                parent_span_id = hashlib.sha256(str(tuid).encode()).hexdigest()[:16]
+        except Exception as e:
+            log.debug("Failed reading subagent sidecar %s: %s", sidecar, e)
+
+    if not immediate_parent and candidate_parent_id and candidate_parent_id != session_id:
+        immediate_parent = candidate_parent_id
+
+    if not immediate_parent or immediate_parent == session_id:
+        return candidate_parent_id, None, None, parent_span_id
+
+    parent_trace_id: str | None = None
+    root_phoenix = immediate_parent
+    try:
+        pstate = _load_state(immediate_parent)
+        if pstate:
+            if isinstance(pstate.get("current_trace"), dict):
+                parent_trace_id = pstate["current_trace"].get("trace_id")
+            root_phoenix = pstate.get("phoenix_session_id") or immediate_parent
+        elif candidate_parent_id and candidate_parent_id != session_id:
+            root_phoenix = candidate_parent_id
+            rstate = _load_state(candidate_parent_id)
+            if rstate and isinstance(rstate.get("current_trace"), dict):
+                parent_trace_id = rstate["current_trace"].get("trace_id")
+    except Exception as e:
+        log.debug("Failed loading parent state for %s: %s", immediate_parent, e)
+
+    return str(root_phoenix).split("/", 1)[0], immediate_parent, parent_trace_id, parent_span_id
+
+
 def _start_turn(data: dict, config: dict, session_id: str) -> None:
     """Complete the previous turn and open a new one. Caller holds the session lock."""
     prompt = data.get("prompt", "")
@@ -2601,36 +2682,17 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
 
     turn_number = _next_turn_number(state, current_human_count)
 
-    parent_trace_id = None
-    parent_span_id = None
-    phoenix_session_id = state.get("phoenix_session_id")
-    if phoenix_session_id and phoenix_session_id != session_id:
-        try:
-            pstate = _load_state(phoenix_session_id)
-            if pstate and pstate.get("current_trace"):
-                parent_trace_id = pstate["current_trace"]["trace_id"]
-
-            import hashlib
-
-            project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
-            if project_dir:
-                sanitized = project_dir.replace("/", "-")
-                sidecar = (
-                    Path.home()
-                    / ".claude"
-                    / "projects"
-                    / sanitized
-                    / phoenix_session_id
-                    / "subagents"
-                    / f"agent-{session_id}.meta.json"
-                )
-                if sidecar.exists():
-                    sdata = __import__("json").loads(sidecar.read_text())
-                    tuid = sdata.get("toolUseId")
-                    if tuid:
-                        parent_span_id = hashlib.sha256(tuid.encode()).hexdigest()[:16]
-        except Exception as e:
-            log.debug("Failed to parent subagent: %s", e)
+    resolved_phoenix_id, resolved_parent_id, parent_trace_id, parent_span_id = (
+        _resolve_claude_subagent_parent(
+            session_id,
+            transcript_path or "",
+            state.get("phoenix_session_id"),
+        )
+    )
+    if resolved_phoenix_id:
+        state["phoenix_session_id"] = resolved_phoenix_id
+    if resolved_parent_id:
+        state["parent_session_id"] = resolved_parent_id
 
     handback_subagent_id = None
     if prompt:
@@ -2826,6 +2888,18 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
     # so they must not create phantom turn roots for the main session.
     if not state.get("current_trace") and not subagent_id:
         transcript_path = _get_cached_transcript_path(data, state, session_id)
+        resolved_phoenix_id, resolved_parent_id, parent_trace_id, parent_span_id = (
+            _resolve_claude_subagent_parent(
+                session_id,
+                transcript_path or "",
+                state.get("phoenix_session_id"),
+            )
+        )
+        if resolved_phoenix_id:
+            state["phoenix_session_id"] = resolved_phoenix_id
+        if resolved_parent_id:
+            state["parent_session_id"] = resolved_parent_id
+
         current_human_count = _count_human_messages(transcript_path) if transcript_path else 0
         consumed = state.get("human_messages_consumed", 0)
 
@@ -2846,8 +2920,9 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
         turn_number = _next_turn_number(state, max(0, current_human_count - 1))
 
         state["current_trace"] = {
-            "trace_id": _new_trace_id(),
+            "trace_id": parent_trace_id or _new_trace_id(),
             "root_span_id": _new_span_id(),
+            "parent_span_id": parent_span_id,
             "turn_start_ns": now_ns,
             "turn_number": turn_number,
             "prompt_preview": _truncate(prompt_preview) if prompt_preview else "",
@@ -3575,6 +3650,18 @@ def emit_debug_hook_span(
         client_agent = resolve_client_agent_name(data)
         if client_agent:
             state["agent_name"] = client_agent
+
+        if client != "agy" and not state.get("parent_session_id"):
+            tp = str(data.get("transcript_path") or state.get("transcript_path") or "")
+            res_phx, res_parent, _, _ = _resolve_claude_subagent_parent(
+                session_id,
+                tp,
+                state.get("phoenix_session_id"),
+            )
+            if res_phx:
+                state["phoenix_session_id"] = res_phx
+            if res_parent:
+                state["parent_session_id"] = res_parent
 
         current_trace = state.get("current_trace")
         last_trace = state.get("last_trace")

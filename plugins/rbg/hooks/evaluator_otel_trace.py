@@ -98,6 +98,7 @@ anywhere in this file.
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 import time
@@ -140,10 +141,44 @@ def resolve() -> Config | None:
     return Config(path=Path(raw))
 
 
+def _resolve_root_session_id(raw_session_id: Any) -> tuple[str | None, str | None]:
+    if not raw_session_id:
+        env_sid = os.environ.get("AOPS_SESSION_ID")
+        return (str(env_sid).split("/", 1)[0] if env_sid else None), None
+    sid_str = str(raw_session_id)
+    if "/" in sid_str:
+        root_sid, suffix = sid_str.split("/", 1)
+        return root_sid, suffix
+    try:
+        state_file = Path.home() / ".claude" / "tracer" / f"{sid_str}.json"
+        if state_file.is_file():
+            sdata = json.loads(state_file.read_text(encoding="utf-8"))
+            phx_sid = sdata.get("phoenix_session_id")
+            if phx_sid:
+                phx_root = str(phx_sid).split("/", 1)[0]
+                if phx_root and phx_root != sid_str:
+                    return phx_root, sid_str
+    except Exception:
+        pass
+    env_sid = os.environ.get("AOPS_SESSION_ID")
+    if env_sid:
+        env_root = str(env_sid).split("/", 1)[0]
+        if env_root and env_root != sid_str:
+            return env_root, sid_str
+    return sid_str, None
+
+
 def _attributes(record: dict[str, Any]) -> dict[str, Any]:
     """Span attributes cannot carry ``None`` — an absent field is omitted
     rather than sent as a sentinel that would misread as a real answer."""
-    return {key: value for key, value in record.items() if value is not None}
+    out = {key: value for key, value in record.items() if value is not None}
+    if "session_id" in record and "session.id" not in out:
+        root_sid, agent_sid = _resolve_root_session_id(record.get("session_id"))
+        if root_sid:
+            out["session.id"] = root_sid
+        if agent_sid and "agent.id" not in out:
+            out["agent.id"] = agent_sid
+    return out
 
 
 def _extract_parent_context() -> Any | None:
@@ -209,7 +244,13 @@ def _get_tracer(config: Config):
     from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 
     config.path.parent.mkdir(parents=True, exist_ok=True)
-    resource = Resource.create({"service.name": _RESOURCE_SERVICE_NAME})
+    resource = Resource.create(
+        {
+            "service.name": _RESOURCE_SERVICE_NAME,
+            "openinference.project.name": "academicOps",
+            "project.name": "academicOps",
+        }
+    )
     provider = TracerProvider(resource=resource)
     provider.add_span_processor(SimpleSpanProcessor(FileSpanExporter(str(config.path))))
     return provider.get_tracer(_TRACER_NAME)
