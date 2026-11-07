@@ -1,7 +1,7 @@
 ---
 status: "{proposed | accepted | rejected | deprecated | superseded by ADR-NNNN}"
 date: YYYY-MM-DD
-decision-makers: ["{role or agent}"]
+decision-makers: ["{role}"]
 ---
 
 # {Active imperative title: e.g. Use DuckDB for Analytical Transformations}

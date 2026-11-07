@@ -1,7 +1,7 @@
 ---
 status: "accepted"
 date: 2026-11-08
-decision-makers: ["framework-architect", "james"]
+decision-makers: ["framework-architect", "review-supervisor"]
 ---
 
 # Use MADR for Architectural Decisions
@@ -71,4 +71,4 @@ Chosen option: "Option 1: Project-Local MADR 4.0.0 (specs/decisions/ or docs/dec
 
 ## More Information
 
-Governed by [`specs/meta/architectural-decision-records.md`](../meta/architectural-decision-records.md). Composed during specification authoring via workflow template `wf-spec`.
+Governed by [`specs/meta/architectural-decision-records.md`](../meta/architectural-decision-records.md). Composed during specification authoring and architectural design.

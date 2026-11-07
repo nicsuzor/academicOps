@@ -17,7 +17,7 @@ Authors a complete, unambiguous technical specification grounded in the evidence
 ## Procedure
 
 1. **Problem statement and target** -- define the problem, caller/system context, and required capabilities.
-2. **Architecture and data flow** -- describe the components and what each owns, and external integration points. Scan `specs/decisions/INDEX.md` (or `docs/decisions/INDEX.md` in third-party projects) for settled trade-offs and historical constraints; where a significant architectural fork arises, author an Architectural Decision Record ([MADR](../../../../../specs/meta/architectural-decision-records.md)) in `specs/decisions/`.
+2. **Architecture and data flow** -- describe the components and what each owns, and external integration points. Scan the architectural decision index (`specs/decisions/INDEX.md` or the project decision index if present) for settled trade-offs and historical constraints; where a significant architectural fork arises, author an Architectural Decision Record in the project decision directory following the MADR standard.
 3. **Interface contracts** -- define data types, function signatures, schemas, or protocols with precision.
 4. **Acceptance criteria** -- formulate concrete, observable, and falsifiable acceptance criteria for completion.
 5. **Test and verification strategy** -- for code that executes, specify test cases (unit, integration, regression) validating each criterion; for any other criterion, how it is verified.
