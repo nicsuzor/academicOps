@@ -45,7 +45,7 @@ Historical forensic evidence from the PKB establishes that titles shaped like `<
 
 ### Resolution at the Source
 
-1. **Abolition of Un-actionable Decision Tickets & Preservation of Design Decision Gates:** Standalone "decision" tasks filed as holding bins for open conversational questions are strictly prohibited across all prompts, skills, and documentation. In contrast, structured decision tasks assigned to the user that resolve an explicit design research fork and unblock downstream implementation are authorized and mandatory for design research workflows, operating in harmony with option-node branching (§4).
+1. **Abolition of Un-actionable Decision Tickets & Groundwork-First Decisions:** Standalone "decision" tasks filed as holding bins for open conversational questions are strictly prohibited across all prompts, skills, and documentation. When an agent is given a task, it must do the groundwork and make the decision itself; it never files the task back to the user as their decision (`assignee: user`) unless the user explicitly requested to make that decision themselves (tg 1013). Research workflows evaluate options, select the recommended route, and unblock downstream work.
 2. **Proper Field Separation:** Identity and assignment are strictly confined to `assigned_to:` / `assignee:`.
 3. **Direct Interactive Resolution:** Interactive, in-session questions are asked immediately via `AskUserQuestion` rather than converted into backlog items.
 

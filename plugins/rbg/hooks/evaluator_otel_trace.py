@@ -479,6 +479,9 @@ def record_subagent_stop(
         raise
 
 
+_SINK_UNCONFIGURED_WARNED = False
+
+
 def sink_for(
     config: Config | None,
     ctx: HookContext,
@@ -512,7 +515,14 @@ def sink_for(
     Omitted, this generates its own (only relevant for a caller that runs this
     sink alone).
     """
+    global _SINK_UNCONFIGURED_WARNED
     if config is None:
+        if not _SINK_UNCONFIGURED_WARNED:
+            print(
+                "NOTICE: rbg evaluator OTel tracing unconfigured (COPE_EVALUATOR_OTEL_TRACE_PATH unset).",
+                file=sys.stderr,
+            )
+            _SINK_UNCONFIGURED_WARNED = True
         return None
 
     try:

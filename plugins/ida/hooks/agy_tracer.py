@@ -39,6 +39,7 @@ from claude_code_tracer import (
     _save_state,
     _session_lock,
     _truncate,
+    report_unconfigured_tracer_if_needed,
     resolve_agent_name,
     resolve_client_agent_name,
     resolve_session_id,
@@ -641,9 +642,12 @@ def _end_turn_agy(session_id: str, state: dict) -> None:
     _save_state(session_id, state)
 
 
-def handle_pre_invocation(data: dict, config: dict) -> None:
+def handle_pre_invocation(data: dict, config: dict | None) -> None:
     """Handle PreInvocation (turn start)."""
     session_id = resolve_session_id(data, "conversationId")
+    if config is None:
+        report_unconfigured_tracer_if_needed(session_id, caller="agy_tracer")
+        return
     if session_id is None:
         log.warning(
             "handle_pre_invocation: no session id in payload ('conversationId' / 'session_id' missing) "

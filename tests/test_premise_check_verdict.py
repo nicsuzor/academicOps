@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 
@@ -592,3 +593,171 @@ def test_revise_and_fail_refused_all_valid_instructs_load_premise_check():
             "Load the premise-check skill (`ida:premise-check`) to inspect the required format before resubmitting."
             in err
         )
+
+
+def test_verdict_reports_missing_gate_storage_distinctly_when_judged_text_is_none():
+    """AC2: verdict.py / record_verdict reports missing gate storage distinctly when judged_text is None."""
+    tracer = _StubTracer()
+    session_id = "sess-missing-gate-storage"
+    task_id = "aops_8830b768"
+
+    reason = (
+        f"Judged: {task_id}; asks tg-1\n"
+        "Valid: (1) holds -- rule\n"
+        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
+        "Answered: tg-1 ← (1)\n"
+        "Sufficient: (1) material; low-stakes\n"
+        "Waived: none\n"
+        "Relay: none"
+    )
+
+    with pytest.raises(ValueError) as excinfo:
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id=task_id,
+            verdict="PASS",
+            reason=reason,
+            tracer_mod=tracer,
+        )
+
+    err = str(excinfo.value)
+    assert "missing gate storage" in err.lower()
+    assert "no argument block in judged text" not in err
+
+
+def test_verdict_accepts_judged_file_to_verify_and_record_pass(tmp_path: Path):
+    """AC2: verdict.py / record_verdict accepts --judged-file <path> to verify and record against report argdown block."""
+    tracer = _StubTracer()
+    session_id = "sess-judged-file-test"
+    claim_id = "report-from-file"
+
+    report_content = """# Specimen Handback Report
+
+Here are the results of the subagent run.
+
+```argdown
+===
+asks:
+  tg-1: 1
+answers:
+  tg-1: 1
+===
+
+(1) The hotfix is verified on dev (run: exit_code = 0).
+-- rule --
+(2) Hotfix holds.
+```
+"""
+    judged_file = tmp_path / "report.md"
+    judged_file.write_text(report_content, encoding="utf-8")
+
+    reason = (
+        f"Judged: {claim_id}; asks tg-1\n"
+        "Valid: (2) holds -- rule\n"
+        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
+        "Answered: tg-1 ← (2)\n"
+        "Sufficient: (2) material; low-stakes\n"
+        "Waived: none\n"
+        "Relay: none"
+    )
+
+    # Calling with judged_file allows PASS to verify against the file and disarm/record
+    res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=claim_id,
+        verdict="PASS",
+        reason=reason,
+        tracer_mod=tracer,
+        judged_file=str(judged_file),
+    )
+    assert res["ok"] is True
+    assert res["verdict"] == "PASS"
+    assert res["verification_id"].startswith("verdict-")
+
+    # Also test CLI main invocation with --judged-file
+    reason_file = tmp_path / "reason.txt"
+    reason_file.write_text(reason, encoding="utf-8")
+    with patch.object(pcv, "_import_claude_code_tracer", return_value=tracer):
+        cli_rc = pcv.main(
+            [
+                "--claim",
+                claim_id,
+                "--verdict",
+                "PASS",
+                "--reason-file",
+                str(reason_file),
+                "--session",
+                session_id,
+                "--judged-file",
+                str(judged_file),
+            ]
+        )
+        assert cli_rc == 0
+
+
+def test_verdict_resolves_session_from_gate_state_when_unspecified(tmp_path, monkeypatch):
+    """AC2 (#3543, #2798): verdict.py resolves session ID across subshell invocations from gate state."""
+    gate_dir = tmp_path / "subshell_gate"
+    monkeypatch.setenv("AOPS_PREMISE_GATE_DIR", str(gate_dir))
+    monkeypatch.delenv("AOPS_SESSION_ID", raising=False)
+    monkeypatch.delenv("CLAUDE_SESSION_ID", raising=False)
+    monkeypatch.delenv("SESSION_ID", raising=False)
+
+    session_id = "subshell-session-abc"
+    claim_id = "claim-subshell-123"
+
+    hg.arm(
+        session_id=session_id,
+        claim_id=claim_id,
+        judged_text="Result text",
+        judged_ref=claim_id,
+    )
+    assert hg.is_armed(session_id) is True
+
+    # When --session is not passed, resolve_session_id should find session_id from state
+    resolved = pcv.resolve_session_id("", claim_id)
+    assert resolved == session_id
+
+    # And main() should resolve the session and record the verdict
+    tracer = _StubTracer()
+    monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: tracer)
+    reason_file = tmp_path / "reason.txt"
+    reason_file.write_text("no argument supplied; please supply argument block", encoding="utf-8")
+
+    code = pcv.main(
+        [
+            "--claim",
+            claim_id,
+            "--verdict",
+            "REVISE",
+            "--reason-file",
+            str(reason_file),
+        ]
+    )
+    assert code == 0
+    assert hg.is_armed(session_id) is False
+    assert hg.get_state(session_id)["last_verdict"]["verdict"] == "REVISE"
+
+
+def test_verdict_reports_clear_diagnostic_when_no_session_or_state(tmp_path, monkeypatch, capsys):
+    """AC2 (#3543, #2798): verdict.py reports a clear diagnostic when neither --session nor session state is available."""
+    gate_dir = tmp_path / "empty_gate"
+    monkeypatch.setenv("AOPS_PREMISE_GATE_DIR", str(gate_dir))
+    monkeypatch.delenv("AOPS_SESSION_ID", raising=False)
+    monkeypatch.delenv("CLAUDE_SESSION_ID", raising=False)
+    monkeypatch.delenv("SESSION_ID", raising=False)
+
+    code = pcv.main(
+        [
+            "--claim",
+            "claim-no-state",
+            "--verdict",
+            "REVISE",
+            "--reason",
+            "no argument supplied",
+        ]
+    )
+    assert code == 1
+    err = capsys.readouterr().err
+    assert "no session id" in err
+    assert "no session state available" in err

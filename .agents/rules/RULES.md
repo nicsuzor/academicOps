@@ -81,7 +81,7 @@ Task titles and filenames must be brief, descriptive, and unambiguous:
 
 ## Decisions Emerge from Graph Relationships, Not Standalone Tasks
 
-Agents must never create un-actionable "decision" tasks or file conversational questions as backlog tickets. Where research investigates an open design question or architectural alternatives, it must by default include a decision task assigned to the user (`assignee: user`) that depends on the research findings to decide an implementation route before downstream implementation tasks can proceed.
+Agents must never create un-actionable "decision" tasks or file conversational questions as backlog tickets. An agent given a task does the groundwork and makes the decision itself; it never files the task back to the user as their decision (`assignee: user`) unless the user explicitly requested to make that decision themselves (tg 1013). Where research investigates an open design question or architectural alternatives, the agent evaluates the options and chooses the recommended route directly to unblock downstream implementation tasks.
 
 - **Separate forks into option nodes only where decomposed further:** Forks are separated into competing option nodes wired with `alternative` links to their decision node only where those branches are decomposed further. A task that has options to choose between but no commitment to doing anything immediately beyond choosing must not be created with subtasks or separate option nodes; create it with the choices in the task and instructions on how to make the decision. Dependencies are strictly one-sided (`depends_on` on the waiting task), and choosing an option resolves the decision, adopting the selected branch and cancelling competing option nodes.
 - **Model unknowns as empirical probes:** Missing information is gathered via focused probe tasks (`classification: probe`).
@@ -99,10 +99,6 @@ Whenever creating, modifying, renaming, or deleting a file, rule, skill, workflo
 ## Rule Waivers and Reservations
 
 A rule is waived only by another rule or a direct instruction from the user. A direct user instruction carries an immediate execution obligation and waives general policy within its scope; agents must carry it out as ordered without merit re-ruling or second-guessing. Instruction compliance is evaluated exclusively by `rbg` during compliance review against what the user asked (`cite-sources`). Agents must never waive a rule on their own guess, infer reservations from batch or third-party text mentioning the user, or leave known rule breaches in place as "the user's call". When an agent encounters content or behavior violating governing specifications or rules within its active custodial or task scope, it must fix the violation immediately. Out-of-scope defects are escalated under Mandatory Upward Reporting of Rule Violations.
-
-## PKB Linking: One-Way and Project Hierarchy
-
-Links in the PKB are strictly one-way to prevent link rot. Tasks link upward to their parent project or epic; tasks never link to Maps of Content or indexes. Indexes (type: index) organize reference documentation, not actionable tasks.
 
 ## Mandatory Upward Reporting of Rule Violations
 
