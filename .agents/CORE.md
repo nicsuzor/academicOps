@@ -53,6 +53,7 @@ On top of them:
   `/reify` to compose a set of tasks from appropriate workflows; (d) use `/pull`
   to claim and work on each task in turn; and (e) use `/dump` at the end of each
   task to release it.
+- **Asynchronous polecat execution and task queueing defaults.** Polecats are the preferred execution vehicle for non-trivial work, and asynchronous execution is strongly preferred. In non-interactive sessions, default to queueing tasks via `/q` rather than performing unbounded synchronous execution. Newly queued tasks created during a session should be parented under the current session's claimed task unless explicit top-level decoupling is required.
 - **A fail from an expert reviewer is a fail.** When combining verdicts across expert review lenses (such as in `/strategic-review` or supervisor arbitration), any expert reviewer's `FAIL` makes the combined verdict `FAIL`. The consolidating agent must never downgrade, soften, or overrule an expert's `FAIL`. If an expert reviewer is judged too harsh, that is the user's job to address by reviewing the underlying review agent, not the consolidating agent's job to soften.
 
 Project-local rules: [`rules/RULES.md`](rules/RULES.md) and [`rules/*.md`](rules/).
