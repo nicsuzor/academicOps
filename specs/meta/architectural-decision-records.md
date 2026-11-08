@@ -16,14 +16,15 @@ As an architect or agent designing a subsystem, I want to capture a significant 
 - **AC-1.1** Given a significant architectural fork or design decision, when recorded, then it is authored as an immutable Markdown file adhering to the MADR 4.0.0 structure with YAML frontmatter containing `status`, `date`, and `decision-makers`.
 - **AC-1.2** Given an ADR document, when structured, then it contains concise sections for `Context and Problem Statement`, `Decision Drivers`, `Considered Options`, `Decision Outcome` with justification, and positive and negative `Consequences`.
 - **AC-1.3** Given an accepted ADR, when placed in the workspace, then it resides in the project decision directory (`specs/decisions/` in native aOps repositories, or `docs/decisions/` in third-party projects) named with a sequential number and kebab-case active-imperative slug (`NNNN-<slug>.md`) containing no personal names.
-- **AC-1.4** Given an existing decision that is superseded or reversed, when a new decision is adopted, then the previous ADR's frontmatter status transitions to `superseded` referencing the new ADR ID, and a new ADR is minted capturing the updated context and trade-offs.
+- **AC-1.4** Given an existing decision that is superseded or reversed, when a new decision is adopted, then the previous ADR's frontmatter status transitions to `superseded` referencing the new ADR ID, a new ADR is minted capturing the updated context and trade-offs, and affected subsystem specifications in `specs/` are updated in the same PR to maintain atomic consistency.
+- **AC-1.5** Given any commit that creates, modifies, deprecates, or supersedes an ADR, then `specs/decisions/INDEX.md` (or `docs/decisions/INDEX.md`) is updated in the same commit to prevent index drift.
 
 ### US-2 Inspect decision history without context window bloat
 
 As an agent initiating a design or planning task, I want to discover previously evaluated options and architectural constraints without loading hundreds of full decision documents, so that my active context window remains lean while avoiding re-proposing rejected options.
 
-- **AC-2.1** Given a workspace containing ADRs, when an agent queries architectural history, then it inspects a compact index table (e.g. `specs/decisions/INDEX.md` or `docs/decisions/INDEX.md`) containing one-line summaries with status, core rationale, and pointers, consuming no more than 20 tokens per decision entry.
-- **AC-2.2** Given an active subsystem specification in `specs/`, when describing target behavior, then the specification states only current target behaviors and contracts, carrying zero historical deliberations, dead-end debates, or discarded alternatives.
+- **AC-2.1** Given a workspace containing ADRs, when an agent queries architectural history, then it inspects a compact index table (e.g. `specs/decisions/INDEX.md` or `docs/decisions/INDEX.md`) containing one-line summaries with status, core rationale, and pointers, consuming approximately 40–50 tokens per decision entry.
+- **AC-2.2** Given an active subsystem specification in `specs/`, when describing target behavior, then the specification states only current target behaviors and contracts without historical deliberations, optionally referencing governing decisions via frontmatter `decisions: [ADR-NNNN]` for traceability.
 - **AC-2.3** Given an agent evaluating architectural alternatives during planning or design, when inspecting prior decisions, then the decision index enables selective retrieval of only the specific ADR documents whose scope intersects the target subsystem.
 
 ### US-3 Deploy portably in third-party target workspaces
@@ -100,7 +101,7 @@ Frequent reading of large decision logs exhausts LLM context windows and degrade
 ┌────────────────────────────────────────────────────────┐
 │ Level 1: Compact Decision Index (INDEX.md)             │
 │ - 1-line summary per ADR (ID, title, status, reason)   │
-│ - Injected/read during design intake (~15 tokens/ADR)  │
+│ - Injected/read during design intake (~40–50 tok/ADR)  │
 └──────────────────────────┬─────────────────────────────┘
                            │ Agent selects relevant ADR
                            ▼
@@ -114,11 +115,11 @@ Frequent reading of large decision logs exhausts LLM context windows and degrade
 1. **Separation of Target State vs Rationale**:
    - Subsystem specifications (`specs/<subsystem>/<name>.md`) define _what_ the system does and its observable invariants. Specs carry no historical provenance, dead-end debates, or discarded options.
    - ADRs define _why_ a specific architecture was chosen over alternatives.
-   - Subsystem specifications remain self-contained and uncoupled; ADRs identify the subsystems they affect, leaving active specifications free of historical baggage or external pointers.
+   - Subsystem specifications remain self-contained and uncoupled from historical debates. To support lean traceability, subsystem specifications may optionally declare governing decision IDs in YAML frontmatter (e.g. `decisions: [ADR-0001]`), but must not inline rationale, debates, or superseded options into specification prose.
 2. **Compact Decision Index (`INDEX.md`)**:
    - The decision directory maintains an `INDEX.md` containing a structured Markdown table summarizing all records.
    - Each row specifies: `ID`, `Date`, `Title`, `Status`, and `Summary Rationale` (a 1-sentence synopsis of why the winning option was chosen and what primary alternative was rejected).
-   - An index of 50 decisions consumes fewer than 1,000 tokens, enabling comprehensive historical awareness during feature planning without significant token spend.
+   - An index of 50 decisions consumes fewer than 2,500 tokens, enabling comprehensive historical awareness during feature planning without significant token spend.
 3. **On-Demand Retrieval**:
    - Planning and design processes instruct agents to consult the decision index during initial option generation.
    - If a proposed technology or architectural approach matches an existing or superseded decision, the agent reads that specific ADR file to examine documented failure modes and trade-offs.
@@ -135,7 +136,7 @@ aOps workflows execute across diverse repository topologies, from the core frame
    - Decision records authored in target repositories must never include private personal knowledge base (PKB) identifiers, private machine paths, user names, or internal telemetry URLs.
    - All references within ADRs use repository-relative paths (`specs/`, `src/`) or public RFC/documentation URLs.
 3. **Optional PKB Projection**:
-   - When an agent operates in a privileged environment with active PKB connectivity, it may project an index node into the PKB graph (e.g., node type `decision_reference` with attributes `repo`, `adr_id`, `title`, `status`, and `repo_relative_path`).
+   - When an agent operates in a privileged environment with active PKB connectivity, it may project an index node into the PKB graph using canonical node type `reference` (with tag `adr`, `source: <repo-relative-path>`, and attributes `repo`, `adr_id`, `title`, `status`).
    - The PKB node acts as a catalog pointer for cross-project search across the user's portfolio; the project-local repository remains the canonical authoritative text.
 
 ### 4. Decision Lifecycle & Evolution
@@ -146,3 +147,11 @@ Architectural decision records transition through defined lifecycle states:
 2. **Alternative Evaluation**: Candidate options are evaluated against explicit decision drivers, documenting distinct trade-offs, advantages, and drawbacks for each option.
 3. **Adoption & Review**: Upon review approval, the chosen option is documented with its deciding justification and the ADR status transitions to `accepted`.
 4. **Superseding**: When subsequent empirical evidence, scale shifts, or evolving requirements warrant replacing an existing architecture, a new ADR is drafted. Upon acceptance of the successor decision, the predecessor ADR's frontmatter status transitions to `superseded by ADR-NNNN`, preserving an unbroken historical lineage of architectural evolution without overwriting past rationale.
+
+### 5. Synchronization Invariants
+
+To avoid split-brain architectural states and silent index drift:
+
+1. **Atomic Index Synchronization**: Any commit that adds, modifies, deprecates, or supersedes an ADR must update `specs/decisions/INDEX.md` (or `docs/decisions/INDEX.md`) in the same commit, ensuring the compact table remains an exact mirror of the decision directory.
+2. **Atomic Spec Synchronization on Supersession**: When a new ADR supersedes an existing decision, any affected subsystem specifications in `specs/` whose target contracts change as a result must be updated in the same PR, preventing discrepancies between active behavioral contracts and recorded architectural rationale.
+3. **Specification Frontmatter Traceability**: Subsystem specifications may optionally include a frontmatter `decisions` sequence (e.g. `decisions: [ADR-0001]`) pointing to governing ADRs. Specifications state current contracts without historical narrative.

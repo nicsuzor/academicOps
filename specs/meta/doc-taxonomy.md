@@ -4,9 +4,9 @@ title: Documentation in aops -- where things go
 
 # Documentation in aops -- where things go
 
-Five kinds of document, partitioned by who reads them.
+Six kinds of document, partitioned by who reads them.
 
-**How to choose**: ask "who reads this?" -- an agent at runtime (instructions), a dev or auditor changing the system (specs), both agents and devs looking up the current truth (state), a script consuming machine output (audit-artifact), or a human using the framework (docs).
+**How to choose**: ask "who reads this?" -- an agent at runtime (instructions), a dev or auditor changing the system (specs), both agents and devs looking up the current truth (state), a script consuming machine output (audit-artifact), a human using the framework (docs), or an engineer tracing historical design rationale (ADRs).
 
 ## Instructions -- for agents executing
 

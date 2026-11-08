@@ -34,7 +34,7 @@ Chosen option: "Option 1: Project-Local MADR 4.0.0 (specs/decisions/ or docs/dec
 ### Consequences
 
 - Good, because specifications remain declarative and concise while architectural history is permanently preserved in git.
-- Good, because agents can scan `INDEX.md` (~15 tokens per ADR) to avoid re-litigating settled trade-offs without loading full decision texts.
+- Good, because agents can scan `INDEX.md` (~40–50 tokens per ADR) to avoid re-litigating settled trade-offs without loading full decision texts.
 - Good, because third-party repositories and CI runners have 100% functionality with zero dependency on central PKB services.
 - Good, because private PKB note IDs and personal infrastructure paths are completely prevented from leaking into public repositories.
 - Bad, because cross-project querying across separate repositories requires scanning local directories or relying on an optional PKB projection.

@@ -6,7 +6,7 @@ This directory contains the immutable Architectural Decision Records (ADRs) for 
 
 | ID | Date | Title | Status | Summary Rationale |
 | :- | :- | :- | :- | :- |
-| [ADR-0001](0001-use-madr-for-architectural-decisions.md) | 2026-11-08 | Use MADR for Architectural Decisions | Accepted | Adopt MADR 4.0.0 in `specs/decisions/` to provide version-controlled architectural history, isolate rationale from active specs, and support third-party repositories without external PKB coupling. |
+| [ADR-0001](0001-use-madr-for-architectural-decisions.md) | 2026-11-08 | Use MADR for Architectural Decisions | Accepted | Track git-local rationale separately from specs without external PKB dependencies. |
 
 ## Guidance for Agents
 
