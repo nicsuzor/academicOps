@@ -68,6 +68,7 @@ def test_longer_labelled_outer_passes() -> None:
     assert fence_collisions(body) == []
 
 
+@pytest.mark.integration
 def test_repo_markdown_has_no_fence_collisions() -> None:
     found = {
         str(p.relative_to(REPO_ROOT)): lines
