@@ -24,7 +24,7 @@ Call `/hydrate` on the objective, or on the task if given an ID.
 
 Call `/workflow-library` to select the modular workflow templates (`type: template`, including `wf-*`) and skills that govern the requested work. Workflows come from workflow templates: templates define the obligations, stages, reviews, and criteria. Do not add restrictions, follow-up gates, or verification processes outside those defined by the composed workflow templates.
 
-- **Workflow templates**: The worker cannot invoke templates directly. Read each selected template and interpret its stages into concise, numbered imperative steps in `## Instructions`. Do not copy narrative rationale, explanatory prose, or background.
+- **Workflow templates**: Read each selected template and interpret its stages into concise, numbered imperative steps in `## Instructions`. Do not copy narrative rationale, explanatory prose, or background.
 - **Skills**: The worker invokes skills. Write `invoke /<skill-name>` as the step and leave its procedure where the skill is maintained.
 - **Agentic-first**: Where a task involves qualitative judgment, sampling, curation, classification, or recommendation, compose an agent workflow rather than specifying deterministic scripts or wrappers.
 
