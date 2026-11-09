@@ -57,9 +57,12 @@ On top of them:
   code greps; and (e) use `/dump` at the end of each task to release it.
 - **Coordinator session boundaries**: Coordinator and interactive agents are
   strictly prohibited from running expensive test suites (`uv run pytest`,
-  `make test`, etc.) or large repository code greps/scans in-session. Any task
-  requiring code inspection, repository search sweeps, build runs, or test
-  execution must be delegated to isolated worker containers (`polecats`).
+  `make test`, etc.), build pipelines, or sweeping repository code greps/scans
+  in-session. Targeted read-only inspection of repository markdown files (such as
+  workflow templates in `.agents/templates/`, specifications in `specs/`, and project
+  rules) and single-file lookups needed for planning, review, or in-turn answers are
+  permitted. Substantial implementation, code modification, repository search sweeps,
+  or test execution must be delegated to isolated worker containers (`polecats`).
 - **A fail from an expert reviewer is a fail.** When combining verdicts across expert review lenses (such as in `/strategic-review` or supervisor arbitration), any expert reviewer's `FAIL` makes the combined verdict `FAIL`. The consolidating agent must never downgrade, soften, or overrule an expert's `FAIL`. If an expert reviewer is judged too harsh, that is the user's job to address by reviewing the underlying review agent, not the consolidating agent's job to soften.
 
 Project-local rules: [`rules/RULES.md`](rules/RULES.md) and [`rules/*.md`](rules/).
