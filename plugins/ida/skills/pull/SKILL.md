@@ -13,6 +13,7 @@ Claim and execute a queued PKB task, directing subagents to deliver against stat
 
 - Claim your assigned task ID via PKB task claiming tools (`pkb_claim_task`, setting `assignee` to your agent or role). If missing, locate it via PKB search.
 - Authority extends strictly to the claimed task and its descendants. If blocked by external dependencies, complete what is possible and release remaining work.
+- **Execution Surface**: `/pull` is intended for workers operating in an execution context (e.g. polecat containers). Coordinator agents in interactive sessions must not use `/pull` to execute substantial code modifications, deep file reading loops, or test suites in-session; substantial code tasks and test executions must be dispatched to isolated polecats via `/dispatch`.
 - **Intake Contract:** On receiving a direction or work brief, the receiving agent must record its own summary stating deliverables as a frozen `## Acceptance` checklist on a PKB task before work starts.
 
 ### 2. Execute and Supervise

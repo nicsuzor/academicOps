@@ -50,9 +50,16 @@ On top of them:
   minted task (anything more complex than a simple question), it must, without
   exception: (a) search the PKB for potentially existing, overlapping, or
   conflicting tasks; (b) use `/q` to store the user's ask; (c) follow that with
-  `/reify` to compose a set of tasks from appropriate workflows; (d) use `/pull`
-  to claim and work on each task in turn; and (e) use `/dump` at the end of each
-  task to release it.
+  `/reify` to compose a set of tasks from appropriate workflows; (d) dispatch
+  execution tasks (code changes, deep codebase inspections, test runs, builds)
+  to isolated polecats via `/dispatch`, or use `/pull` only for lightweight
+  in-session documentation or coordination tasks running no test suites or large
+  code greps; and (e) use `/dump` at the end of each task to release it.
+- **Coordinator session boundaries**: Coordinator and interactive agents are
+  strictly prohibited from running expensive test suites (`uv run pytest`,
+  `make test`, etc.) or large repository code greps/scans in-session. Any task
+  requiring code inspection, repository search sweeps, build runs, or test
+  execution must be delegated to isolated worker containers (`polecats`).
 - **A fail from an expert reviewer is a fail.** When combining verdicts across expert review lenses (such as in `/strategic-review` or supervisor arbitration), any expert reviewer's `FAIL` makes the combined verdict `FAIL`. The consolidating agent must never downgrade, soften, or overrule an expert's `FAIL`. If an expert reviewer is judged too harsh, that is the user's job to address by reviewing the underlying review agent, not the consolidating agent's job to soften.
 
 Project-local rules: [`rules/RULES.md`](rules/RULES.md) and [`rules/*.md`](rules/).

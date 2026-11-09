@@ -182,6 +182,10 @@ Worker self-release to `done` applies across all tasks (PR and non-PR): when a w
 
 Worker container completion is recorded via the exit listener, OpenTelemetry `polecat.container.exit` spans, and the `polecat_events` MCP queue. The operational dashboard daemon (`specs/telegram/mini-app-dashboard-integration.md`) acts as the single consumer of `polecat_events` and repository webhooks, waking listening agent sessions over its authenticated HTTP/SSE channel bridge. Direct UNIX domain socket pushes (`[polecat-exit]`) and in-session client polling loops are retired.
 
+### Coordinator Delegation and Execution Boundaries
+
+Interactive coordinator sessions exist to triage user requests, plan and reify tasks, curate knowledge on the PKB graph, and verify reported arguments. They do not execute heavy labour in-session. Coordinator agents are strictly prohibited from running expensive test suites (`uv run pytest`, `make test`), compiling builds, or executing sweeping codebase searches in-session (`instructions`, `imperative`). Any task requiring repository code inspection, sweeping code greps, build runs, or test execution must be delegated to isolated worker containers (`polecats`).
+
 ### Observability and Telemetry Failure Gating
 
 Enforcement of zero silent telemetry failures operates across client hooks, tracer runtimes, and verdict gates ([`specs/observability/telemetry-failure-surfacing.md`](../observability/telemetry-failure-surfacing.md)):

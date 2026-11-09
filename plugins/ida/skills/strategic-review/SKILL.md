@@ -21,7 +21,7 @@ Before dispatching reviewers, the Supervisor (`james`) loads the artifact, its o
 - **Proportionality (depth, rounds, model selection, and primary-material scope)**: Weigh the importance, risk, blast radius, and reversibility of the task or artifact at the start:
   - **High-stakes / high-risk / architectural work**: Allocate deeper refinement, multiple rounds of dialectical cross-examination, smarter, higher-capability models (`Model: "pro"`), and instruct `marsha` to audit primary materials.
   - **Low-stakes / routine / reversible checks**: Keep the review to a fast, single-pass sanity check with lighter models (`Model: "flash"` or `"flash_lite"`) and without primary-material expeditions to confirm the change is sound without wasting time and money.
-- **Altitude alignment & artifact-matched standard**: Define the target abstraction focus for the review and ensure reviewers apply the standard matching the artifact's genre (never applying task-handback sections like `## Ask` to non-task artifacts).
+- **Altitude alignment & artifact-matched standard**: Define the target abstraction focus for the review and ensure reviewers apply the standard matching the artifact's genre (never applying task-handback sections like `## Ask` to non-task artifacts). In interactive coordinator sessions, reviews remain strictly static semantic evaluations; coordinator sessions and in-session review subagents must never run expensive test suites (`uv run pytest`, `npm test`) or large codebase greps in-session. If runtime execution or test suite verification is required, dispatch an independent QA/verification task to an isolated polecat.
 
 ### 2. Deploy the Three Review Components in Parallel
 
