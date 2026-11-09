@@ -51,7 +51,7 @@ Audit generated notes for:
 
 1. Duplicate canonical/narrow pairs.
 2. Title-encoded dates or session IDs (`note-2026-04-18`).
-3. Provenance neither in the one writable `source` string nor carried by a `[[wikilink]]` to an evidence node.
+3. Historical provenance lists (such as frontmatter `sources:` arrays), session references, or narration of prior-state material -- prune on sight per CURRENT STATE ONLY.
 4. Missing frontmatter `confidence:` (a float 0-1; `pkb.create` accepts it, nothing else writes it).
 5. Status or progress tables misfiled in knowledge notes.
 6. Zero wikilinks to existing concepts.
@@ -60,8 +60,8 @@ Audit generated notes for:
 ## Cycle Stages
 
 1. **Baseline**: Run `pkb.status` and `pkb.get_stats`. Record document count and index freshness.
-2. **Mine transcripts**: Process unmined transcripts (up to 15 per cycle). Synthesise durable topics and record provenance as a `[[wikilink]]` to the transcript or evidence node -- `sources:` and `mined:` are not writable frontmatter; `update_task` and `batch_update` reject unknown keys. Do not edit transcript bodies.
-3. **Consolidate knowledge**: Extract durable content from daily notes, meeting notes, and closed tasks to canonical topic notes per the extraction method. Create navigation nodes (`type: index`) for clusters of 5+ notes -- there is no `moc` type. Delete episodic notes once their content is written at the destination.
+2. **Mine transcripts**: Process unmined transcripts (up to 15 per cycle). Synthesise durable topics into current state. The PKB is CURRENT STATE ONLY: do not record historical provenance lists (`sources:` or `mined:`) in frontmatter or accumulate obsolete session lists. Do not edit transcript bodies.
+3. **Consolidate knowledge**: Extract durable content from daily notes, meeting notes, and closed tasks to canonical topic notes per the extraction method. Rewrite notes to current state only; prune historical provenance lists and dead source references on sight. Create navigation nodes (`type: index`) for clusters of 5+ notes -- there is no `moc` type. Delete episodic notes once their content is written at the destination.
 4. **Reconcile data quality**:
    - _Duplicates_: Inspect candidates from `find_duplicates(mode="both")` semantically before merging.
    - _Staleness_: Delegate task staleness and closure to `/ida:reconcile sweep`, scoped to the cycle's window.

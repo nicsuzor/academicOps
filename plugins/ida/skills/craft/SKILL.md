@@ -118,7 +118,7 @@ Every agent instruction, skill, persona definition, and subagent prompt must pas
 1. **Categorical generality (Categorical Imperative)**: Express rules in general terms covering the full class of situations. Prohibit hyper-specific quotas, rigid interaction numbers, or one-off compromises.
 2. **Entity abstraction (Name the process, not the actor)**: Refer to the principal as "the user", never by a personal proper noun or name. Refer to collaborators by role or capability.
 3. **No PKB leakage (Data Boundaries)**: Never include private PKB note or task IDs (`aops_...`, `task_...`, `mem_...`, `kb_...`) or Obsidian wikilinks (`[[...]]`) in distributed framework instruction files. Use standard relative markdown links for file references.
-4. **Zero historical provenance**: Strictly eliminate incident stories, post-mortem recaps ("after an incident on..."), or PR/commit changelog citations. Instructions define what is true now, never how it came to be true.
+4. **Zero historical provenance (CURRENT STATE ONLY)**: Strictly eliminate incident stories, post-mortem recaps ("after an incident on..."), PR/commit changelog citations, or historical `sources:` frontmatter arrays. Instructions, workflow templates, and knowledge notes define what is true now, never how it came to be true. No instruction, skill, or workflow template may instruct agents to accumulate or maintain historical source lists or obsolete prior-state material.
 5. **Adjudication against empirical evidence**: When an instruction design choice or length budget is contested during review, cite the empirical findings and sources in `references/evidence.md`.
 
 ## Agent Definitions
