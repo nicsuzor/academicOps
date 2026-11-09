@@ -687,7 +687,7 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
     return None
 
 
-search_the_pkb.suppress_errors = True  # type: ignore[attr-defined]
+search_the_pkb.suppress_errors = True  # pyright: ignore[reportFunctionMemberAccess]
 
 
 def _scrub(value: object) -> str:
