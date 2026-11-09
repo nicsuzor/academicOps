@@ -250,6 +250,7 @@ export class StdioMcpServer {
         const out: Record<string, unknown> = {
           success: true,
           messageId: sendRes?.messageId,
+          message_id: sendRes?.messageId,
         };
         if (detailsId !== undefined) {
           out.detailsId = detailsId;
@@ -259,6 +260,7 @@ export class StdioMcpServer {
         }
         if (sendRes?.voiceMessageId !== undefined) {
           out.voiceMessageId = sendRes.voiceMessageId;
+          out.voice_message_id = sendRes.voiceMessageId;
         }
         if (sendRes?.voiceError !== undefined) {
           out.voiceError = sendRes.voiceError;
@@ -266,7 +268,7 @@ export class StdioMcpServer {
         return out;
       }
 
-      return { success: true, preview: formatted.plainText, detailsId };
+      return { success: true, preview: formatted.plainText, detailsId, message_id: 0, messageId: 0 };
     }
 
     if (name === "react") {
@@ -303,12 +305,14 @@ export class StdioMcpServer {
 
       const postedIds: string[] = [];
       for (const q of questions) {
+        const multiSelect = (q as any).multi_select !== undefined ? (q as any).multi_select : q.multiSelect;
+        const allowOther = (q as any).allow_custom !== undefined ? (q as any).allow_custom : q.allowOther;
         const result = await this.broker.askUser({
           question: q.question,
           header: q.header,
           options: q.options,
-          multiSelect: q.multiSelect,
-          allowOther: q.allowOther,
+          multiSelect,
+          allowOther,
           turnId: q.turn_id || q.turnId || topTurnId,
           chatId: defaultChatId,
         });
@@ -323,10 +327,15 @@ export class StdioMcpServer {
         }
       }
 
-      if (postedIds.length === 1) {
-        return `Question ${postedIds[0]} posted to the user. Do not assume an answer; continue other work or end your turn.`;
-      }
-      return `Questions ${postedIds.join(", ")} posted to the user. Do not assume an answer; continue other work or end your turn.`;
+      const msg = postedIds.length === 1
+        ? `Question ${postedIds[0]} posted to the user. Do not assume an answer; continue other work or end your turn.`
+        : `Questions ${postedIds.join(", ")} posted to the user. Do not assume an answer; continue other work or end your turn.`;
+
+      return {
+        question_ids: postedIds,
+        status: "posted",
+        message: msg,
+      };
     }
 
     if (name === "anchor") {

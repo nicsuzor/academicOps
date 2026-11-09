@@ -22,7 +22,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
         buttons: {
           type: "array",
           description:
-            "Inline option buttons, one per row. Attach one per answer whenever the reply asks Nic a question, recommendation first; a tap arrives as a button_tap channel event.",
+            "Inline option buttons, one per row. Attach one per answer whenever the reply asks the user a question, recommendation first; a tap arrives as a button_tap channel event.",
           items: {
             type: "object",
             properties: {
@@ -86,8 +86,10 @@ export const MCP_TOOLS: ToolDefinition[] = [
                   required: ["label"],
                 },
               },
-              multiSelect: { type: "boolean" },
-              allowOther: { type: "boolean" },
+              multi_select: { type: "boolean", description: "Whether multiple options may be selected" },
+              multiSelect: { type: "boolean", description: "Alias for multi_select" },
+              allow_custom: { type: "boolean", description: "Whether free-text responses are permitted" },
+              allowOther: { type: "boolean", description: "Alias for allow_custom" },
               turn_id: { type: "string" },
             },
             required: ["question", "options"],

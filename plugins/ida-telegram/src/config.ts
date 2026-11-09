@@ -22,6 +22,7 @@ export interface PluginConfig {
   miniAppUrl: string;
   botCommands: TelegramBotCommand[];
   bridgeToken?: string;
+  autoInterrupt: boolean;
 }
 
 function readDotEnvFile(envPath: string): Record<string, string> {
@@ -87,6 +88,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
     miniAppUrl,
     botCommands: resolveBotCommands(mergedEnv.TELEGRAM_BOT_COMMANDS),
     bridgeToken: mergedEnv.IDA_BRIDGE_TOKEN || mergedEnv.BRIDGE_TOKEN,
+    autoInterrupt: mergedEnv.TELEGRAM_AUTO_INTERRUPT !== "false",
   };
 }
 

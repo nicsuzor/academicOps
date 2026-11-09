@@ -478,19 +478,17 @@ export class TelegramBotClient {
             await this.handleUpdate(update);
           }
         } else if (res.error_code === 409) {
-          this.conflictCount++;
-          const delay = calculate409Backoff(this.conflictCount);
-          console.warn(`[ida-telegram] 409 Conflict: another poller active. Backing off for ${delay}ms`);
-
-          const now = Date.now();
-          if (now - this.lastAlertTime > 3600000) {
-            this.lastAlertTime = now;
-            this.emitChannelEvent("system_warning", "Warning: another poller is using this Telegram bot token.", {
-              type: "warning",
-            });
-          }
-
-          await new Promise((r) => setTimeout(r, delay));
+          // AC-4.2: Halt immediately and surface collision error without retrying
+          const errorMsg = `409 Conflict: another poller active: ${res.description || "Conflict"}`;
+          console.error(`[ida-telegram] ${errorMsg}`);
+          this.emitChannelEvent(errorMsg, {
+            event: "poller_collision",
+            error: "conflict",
+            error_code: "409",
+            description: res.description || "Conflict",
+          });
+          this.stopPolling();
+          return;
         }
       } catch (err) {
         console.error("[ida-telegram] Polling error:", err);
@@ -506,7 +504,30 @@ export class TelegramBotClient {
     releaseHostLock(this.config.stateDir);
   }
 
+  private emitEvent(content: string, meta: Record<string, unknown>, chatId?: number) {
+    if (this.store && !meta.session_id) {
+      const cid = chatId ?? (meta.chat_id ? parseInt(String(meta.chat_id), 10) : undefined);
+      if (cid !== undefined && !isNaN(cid)) {
+        const sess = this.store.getSession(cid);
+        if (sess) {
+          meta.session_id = sess;
+        }
+      }
+    }
+    this.emitChannelEvent(content, meta);
+  }
+
   private async handleUpdate(update: TelegramUpdate) {
+    // AC-1.2: Drop updates from unauthorized senders silently without invoking the agent or emitting a reply
+    const senderId =
+      update.message?.from?.id ??
+      update.message_reaction?.user?.id ??
+      update.callback_query?.from?.id;
+
+    if (senderId === undefined || !this.config.allowFrom.includes(senderId)) {
+      return;
+    }
+
     if (update.message?.message_id && (update.message.text || update.message.caption)) {
       this.recordMessageExcerpt(update.message.message_id, update.message.text || update.message.caption);
     }
@@ -531,9 +552,10 @@ export class TelegramBotClient {
         if (res) {
           const targetMsgId = pendingQ.messageId || update.message.reply_to_message.message_id;
           await this.editMessage(update.message.chat.id, targetMsgId, res.cardText, { inline_keyboard: [] });
-          this.emitChannelEvent(
+          this.emitEvent(
             `Question answered: ${res.channelEvent.choice}`,
-            res.channelEvent as unknown as Record<string, unknown>
+            res.channelEvent as unknown as Record<string, unknown>,
+            update.message.chat.id
           );
         }
         return;
@@ -611,9 +633,10 @@ export class TelegramBotClient {
         const res = await this.broker.resolveAnswer(qid, optIdx);
         if (res && cb.message) {
           await this.editMessage(cb.message.chat.id, cb.message.message_id, res.cardText, { inline_keyboard: [] });
-          this.emitChannelEvent(
+          this.emitEvent(
             `Question answered: ${res.channelEvent.choice}`,
-            res.channelEvent as unknown as Record<string, unknown>
+            res.channelEvent as unknown as Record<string, unknown>,
+            cb.message.chat.id
           );
         }
         return;
@@ -669,16 +692,20 @@ export class TelegramBotClient {
           { inline_keyboard: [] }
         );
 
-        this.emitChannelEvent(`tapped ${label}`, {
-          event: "button_tap",
-          callback_id: cb.id,
-          callback_prefix: callbackPrefix,
-          payload: data,
-          label,
-          target_message_id: String(cb.message.message_id),
-          chat_id: String(cb.message.chat.id),
-          user_id: String(cb.from.id),
-        });
+        this.emitEvent(
+          `tapped ${label}`,
+          {
+            event: "button_tap",
+            callback_id: cb.id,
+            callback_prefix: callbackPrefix,
+            payload: data,
+            label,
+            target_message_id: String(cb.message.message_id),
+            chat_id: String(cb.message.chat.id),
+            user_id: String(cb.from.id),
+          },
+          cb.message.chat.id
+        );
         return;
       }
     }
@@ -717,11 +744,15 @@ export class TelegramBotClient {
             replyToMessageId: update.message.reply_to_message?.message_id,
           });
 
-          this.emitChannelEvent(voiceEvent.content, {
-            ...voiceEvent.meta,
-            chat_id: String(update.message.chat.id),
-            user_id: update.message.from?.id !== undefined ? String(update.message.from.id) : undefined,
-          });
+          this.emitEvent(
+            voiceEvent.content,
+            {
+              ...voiceEvent.meta,
+              chat_id: String(update.message.chat.id),
+              user_id: update.message.from?.id !== undefined ? String(update.message.from.id) : undefined,
+            },
+            update.message.chat.id
+          );
           return;
         } catch (e) {
           const failEvent = buildVoiceInEvent({
@@ -729,11 +760,15 @@ export class TelegramBotClient {
             duration,
             messageId: update.message.message_id,
           });
-          this.emitChannelEvent(failEvent.content, {
-            ...failEvent.meta,
-            chat_id: String(update.message.chat.id),
-            user_id: update.message.from?.id !== undefined ? String(update.message.from.id) : undefined,
-          });
+          this.emitEvent(
+            failEvent.content,
+            {
+              ...failEvent.meta,
+              chat_id: String(update.message.chat.id),
+              user_id: update.message.from?.id !== undefined ? String(update.message.from.id) : undefined,
+            },
+            update.message.chat.id
+          );
           return;
         }
       }
@@ -762,7 +797,7 @@ export class TelegramBotClient {
           // Proceed with emitting attachment event even if download fails
         }
       }
-      this.emitChannelEvent(event.content, event.meta);
+      this.emitEvent(event.content, event.meta);
     }
   }
 }

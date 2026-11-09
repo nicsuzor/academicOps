@@ -6,6 +6,7 @@ import { PermissionRelay } from "./src/mcp/permissions.js";
 import { TelegramBotClient } from "./src/telegram/bot.js";
 import { StdioMcpServer } from "./src/mcp/server.js";
 import { startWebServer } from "./src/web/server.js";
+import { SharedTelegramChannelCore } from "./src/core/channel-core.js";
 import { createServer } from "node:net";
 import { existsSync, unlinkSync, chmodSync } from "node:fs";
 import { join } from "node:path";
@@ -20,6 +21,14 @@ async function main() {
   const permRelay = new PermissionRelay(config.stateDir);
 
   let bot: TelegramBotClient | null = null;
+
+  const channelCore = new SharedTelegramChannelCore({
+    config,
+    store,
+    broker,
+    bot: null,
+    permRelay,
+  });
 
   // Stdio MCP server
   const mcpServer = new StdioMcpServer(config, store, broker, null, permRelay);
@@ -92,15 +101,20 @@ async function main() {
         const line = raw.trim();
         try {
           const req = JSON.parse(line);
-          if (req.type === "ask_user") {
+          if (req.type === "reply" || req.type === "react" || req.type === "edit_message") {
+            const resp = await channelCore.handleIpcMessage(req);
+            client.write(JSON.stringify(resp) + "\n");
+          } else if (req.type === "ask_user") {
             const postedIds: string[] = [];
             for (const q of req.questions || []) {
+              const multiSelect = q.multi_select !== undefined ? q.multi_select : q.multiSelect;
+              const allowOther = q.allow_custom !== undefined ? q.allow_custom : q.allowOther;
               const result = await broker.askUser({
                 question: q.question,
                 header: q.header,
                 options: q.options,
-                multiSelect: q.multiSelect,
-                allowOther: q.allowOther,
+                multiSelect,
+                allowOther,
                 chatId: config.allowFrom[0],
                 turnId: q.turnId || req.turn_id,
               });
@@ -114,7 +128,14 @@ async function main() {
               }
             }
 
-            client.write(JSON.stringify({ status: "ok", questionId: postedIds[0], questionIds: postedIds }) + "\n");
+            client.write(
+              JSON.stringify({
+                status: "ok",
+                questionId: postedIds[0],
+                questionIds: postedIds,
+                question_ids: postedIds,
+              }) + "\n"
+            );
           }
         } catch {
           client.write(JSON.stringify({ error: "malformed request" }) + "\n");
@@ -151,6 +172,8 @@ async function main() {
     // Start background polling
     bot.startPolling().catch((e) => console.error("[ida-telegram] Polling stopped:", e));
   }
+
+  channelCore.bot = bot;
 
   // Connect bot instance to McpServer
   (mcpServer as any).bot = bot;
