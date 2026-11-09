@@ -65,6 +65,8 @@ time, find the session with Recipe A or F in [references/sql-recipes.md](referen
   `--by task`. Prices are list prices per million tokens; the dollar column is
   comparable spend, not an invoice. Gemini spans may carry no token counts.
 - `uv run python "${CLAUDE_SKILL_DIR:-plugins/ida/skills/session-trace}/scripts/phoenix_pkb_questions.py" --since <time>` -- query LLM call efficiency and subagent compute attribution for PKB question-answering turns across prompt windows. Supports `--since` / `--start`, `--until` / `--end`, `--channel` (`all` or `telegram`), `--session <prefix>`, and `--format` (`table` or `json`).
+- `uv run python "${CLAUDE_SKILL_DIR:-plugins/ida/skills/session-trace}/scripts/phoenix_premise_audit.py" <census|dossier|log|tally>` -- macro census,
+  candidate review dossiers (`--format <markdown|json|annotations>`), single-session premise-check logs, and mechanical confusion-matrix tallying across harnesses (`claude-code` vs `agy`). Used by `wf-premise-audit`.
 
 ## Cross-session search
 
