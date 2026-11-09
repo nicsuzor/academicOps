@@ -19,7 +19,9 @@ _spec.loader.exec_module(pt)
 SESSION = "11111111-2222-4333-8444-555555555555"
 
 
-def span(sid, name, kind, start, end, parent=None, **attributes):
+def span(
+    sid, name, kind, start, end, parent=None, status_code="UNSET", status_message="", **attributes
+):
     return {
         "name": name,
         "span_kind": kind,
@@ -27,7 +29,8 @@ def span(sid, name, kind, start, end, parent=None, **attributes):
         "parent_id": parent,
         "start_time": f"2026-10-01T00:00:{start:06.3f}+00:00",
         "end_time": f"2026-10-01T00:00:{end:06.3f}+00:00",
-        "status_code": "UNSET",
+        "status_code": status_code,
+        "status_message": status_message,
         "attributes": {"session.id": SESSION, **attributes},
     }
 
@@ -540,3 +543,338 @@ def test_transcript_and_outline_contain_phoenix_links_via_cli(tmp_path):
     assert session_link in outline
     assert "https://phoenix.example.com/redirects/spans/c1" in transcript
     assert "https://phoenix.example.com/redirects/spans/c1" in outline
+
+
+def test_extract_mcp_call_types():
+    """Verify extraction of services proxy MCP call types across harnesses and conventions."""
+    import phoenix_token_cost as ptc
+
+    # 1. Code-mode block with codemode.<tool>
+    code1 = "async () => { return await codemode.pkb_get_document({ id: 'doc_1' }); }"
+    assert ptc.extract_mcp_call_types(
+        "call_mcp_tool",
+        {
+            "ServerName": "services",
+            "ToolName": "portal_codemode_execute",
+            "Arguments": {"code": code1},
+        },
+    ) == ["pkb_get_document"]
+
+    # 2. Code-mode block with call_tool("<tool>")
+    code2 = 'res = await call_tool("executeSql", {"sql": "SELECT 1"})'
+    assert ptc.extract_mcp_call_types(
+        "portal_codemode_execute",
+        {"code": code2},
+    ) == ["executeSql"]
+
+    # 3. Direct agy call_mcp_tool to services
+    assert ptc.extract_mcp_call_types(
+        "call_mcp_tool",
+        {"ServerName": "services", "ToolName": "portal_list_servers"},
+    ) == ["portal_list_servers"]
+
+    # 4. Claude Code mcp__ convention
+    assert ptc.extract_mcp_call_types("mcp__services__portal_list_servers") == [
+        "portal_list_servers"
+    ]
+    assert ptc.extract_mcp_call_types("mcp__pkb__get_task") == ["get_task"]
+
+    # 5. Direct prefix convention
+    assert ptc.extract_mcp_call_types("pkb_search") == ["pkb_search"]
+    assert ptc.extract_mcp_call_types("phoenix_trace") == ["phoenix_trace"]
+    assert ptc.extract_mcp_call_types("mcp.search") == ["mcp.search"]
+
+    # 6. Non-MCP tools
+    assert ptc.extract_mcp_call_types("Bash", {"command": "ls"}) == []
+    assert ptc.extract_mcp_call_types("run_command", {"CommandLine": "pytest"}) == []
+
+
+def test_audit_artifact_and_mcp_metrics(tmp_path, capsys):
+    """AC1 & AC2: phoenix_transcript produces pre-aggregated audit artifact with tool latency and proxy MCP token spend."""
+    spans_data = [
+        span("i1", "interaction", "AGENT", 1.0, 10.0, user_prompt="Audit test"),
+        span(
+            "l1",
+            "llm_request",
+            "LLM",
+            1.1,
+            2.0,
+            "i1",
+            model="claude-opus-5-5",
+            input_tokens=100,
+            output_tokens=50,
+            cache_read_tokens=500,
+            cache_creation_tokens=50,
+            request_id="req_1",
+            **{"response.model_output": "Calling tools."},
+        ),
+        # Services proxy MCP tool call 1: pkb_get_task via portal_codemode_execute
+        span(
+            "t1",
+            "call_mcp_tool",
+            "TOOL",
+            2.1,
+            3.1,
+            "i1",
+            **{
+                "tool.call_id": "call_1",
+                "input.value": json.dumps(
+                    {
+                        "ServerName": "services",
+                        "ToolName": "portal_codemode_execute",
+                        "Arguments": {
+                            "code": "async () => { return await codemode.pkb_get_task({ id: 'aops_123' }); }"
+                        },
+                    }
+                ),
+            },
+        ),
+        # Services proxy MCP tool call 2: executeSql via portal_codemode_execute with error
+        span(
+            "t2",
+            "portal_codemode_execute",
+            "TOOL",
+            3.2,
+            5.2,
+            "i1",
+            status_code="ERROR",
+            status_message="timeout connecting to phoenix",
+            **{
+                "tool.call_id": "call_2",
+                "input.value": json.dumps(
+                    {"code": 'res = await call_tool("executeSql", {"sql": "SELECT 1"})'}
+                ),
+            },
+        ),
+        # Non-MCP tool: Bash
+        span(
+            "t3",
+            "Bash",
+            "TOOL",
+            5.5,
+            6.0,
+            "i1",
+            **{
+                "tool.call_id": "call_3",
+                "input.value": json.dumps({"command": "echo done"}),
+            },
+        ),
+    ]
+
+    spans_file = tmp_path / "spans.json"
+    spans_file.write_text(json.dumps({"data": spans_data}))
+    out = tmp_path / "session.transcript.md"
+
+    # Run phoenix_transcript CLI with --audit flag
+    ret = pt.main(
+        [
+            SESSION[:8],
+            "--from-file",
+            str(spans_file),
+            "--out",
+            str(out),
+            "--audit",
+        ]
+    )
+    assert ret == 0
+
+    # 1. Audit artifact is written beside transcript
+    audit_file = tmp_path / "session.audit.md"
+    assert audit_file.exists()
+    audit_text = audit_file.read_text()
+
+    # 2. Contains Model Token Spend table
+    assert "## Model Token Spend" in audit_text
+    assert "claude-opus-5-5" in audit_text
+
+    # 3. Contains Tool Execution & Latency table (AC1)
+    assert "## Tool Execution & Latency" in audit_text
+    assert "portal_codemode_execute" in audit_text
+    assert "call_mcp_tool" in audit_text
+    assert "Bash" in audit_text
+
+    # 4. Contains Services Proxy MCP Calls table (AC2)
+    assert "## Services Proxy MCP Calls" in audit_text
+    assert "pkb_get_task" in audit_text
+    assert "executeSql" in audit_text
+
+    # 5. Efficiency analysis
+    assert "## Efficiency Analysis" in audit_text
+    assert "Most expensive MCP call type:" in audit_text
+    assert "Slowest MCP call type (avg):" in audit_text
+
+    # 6. Errors section
+    assert "## Errors" in audit_text
+    assert "timeout connecting to phoenix" in audit_text
+
+    # 7. Captured stdout carries audit summary because --audit was supplied
+    captured = capsys.readouterr().out
+    assert "# Session Audit" in captured
+    assert "audit: " in captured
+
+
+def test_phoenix_token_cost_by_mcp(tmp_path, capsys):
+    """AC2: phoenix_token_cost --by mcp groups token spend by services proxy MCP call type."""
+    import phoenix_token_cost as ptc
+
+    saved_payload = {
+        "project": "academicOps",
+        "window": ["2026-10-01T00:00:00Z", "2026-10-01T00:01:00Z"],
+        "llm": [
+            span(
+                "l1",
+                "llm_request",
+                "LLM",
+                1.0,
+                2.0,
+                model="claude-opus-5",
+                input_tokens=1000,
+                output_tokens=100,
+                cache_read_tokens=5000,
+                cache_creation_tokens=200,
+            ),
+            span(
+                "l2",
+                "llm_request",
+                "LLM",
+                3.0,
+                4.0,
+                model="claude-opus-5",
+                input_tokens=2000,
+                output_tokens=200,
+                cache_read_tokens=8000,
+                cache_creation_tokens=0,
+            ),
+        ],
+        "tools": [
+            span(
+                "t1",
+                "call_mcp_tool",
+                "TOOL",
+                1.5,
+                2.5,
+                **{
+                    "input.value": json.dumps(
+                        {
+                            "ServerName": "services",
+                            "ToolName": "portal_codemode_execute",
+                            "Arguments": {"code": "await codemode.pkb_search({ query: 'test' })"},
+                        }
+                    )
+                },
+            ),
+            span(
+                "t2",
+                "portal_codemode_execute",
+                "TOOL",
+                3.5,
+                4.5,
+                **{
+                    "input.value": json.dumps(
+                        {"code": 'call_tool("executeSql", {"sql": "SELECT 1"})'}
+                    )
+                },
+            ),
+        ],
+        "chains": [span("c1", "chain", "CHAIN", 0.5, 5.0)],
+        "agents": [],
+    }
+
+    spans_file = tmp_path / "spans_mcp.json"
+    spans_file.write_text(json.dumps(saved_payload))
+
+    # 1. Plain text rendering
+    ret = ptc.main(
+        ["--since", "2026-10-01T00:00:00Z", "--from-file", str(spans_file), "--by", "mcp"]
+    )
+    assert ret == 0
+    out = capsys.readouterr().out
+    assert "Token cost by services proxy MCP call type" in out
+    assert "pkb_search" in out
+    assert "executeSql" in out
+
+    # 2. Markdown rendering
+    ret = ptc.main(
+        [
+            "--since",
+            "2026-10-01T00:00:00Z",
+            "--from-file",
+            str(spans_file),
+            "--by",
+            "mcp",
+            "--markdown",
+        ]
+    )
+    assert ret == 0
+    md_out = capsys.readouterr().out
+    assert "| mcp_call_type | calls | in | out | cache_rd | cache_wr | USD |" in md_out
+    assert "| pkb_search |" in md_out
+    assert "| executeSql |" in md_out
+
+    # 3. JSON rendering
+    ret = ptc.main(
+        [
+            "--since",
+            "2026-10-01T00:00:00Z",
+            "--from-file",
+            str(spans_file),
+            "--by",
+            "mcp",
+            "--json",
+        ]
+    )
+    assert ret == 0
+    parsed = json.loads(capsys.readouterr().out)
+    assert "rows" in parsed and "meta" in parsed
+    assert parsed["meta"]["by"] == "mcp"
+    mcp_names = {r["mcp_call_type"] for r in parsed["rows"]}
+    assert "pkb_search" in mcp_names
+    assert "executeSql" in mcp_names
+
+
+def test_audit_custom_out_and_sanitize_paths(tmp_path):
+    """Verify custom audit output destination and host path sanitization in audit artifact."""
+    spans_data = [
+        span(
+            "t1",
+            "call_mcp_tool",
+            "TOOL",
+            1,
+            2,
+            **{
+                "tool.call_id": "toolu_1",
+                "input.value": json.dumps(
+                    {
+                        "ServerName": "services",
+                        "ToolName": "portal_codemode_execute",
+                        "Arguments": {
+                            "code": "async () => { return await codemode.pkb_get_document({ path: '/home/nic/test.md' }); }"
+                        },
+                    }
+                ),
+            },
+        ),
+        span("i1", "interaction", "AGENT", 0.5, 2.5, user_prompt="Check file"),
+    ]
+    spans_file = tmp_path / "spans.json"
+    spans_file.write_text(json.dumps({"data": spans_data}))
+    out_transcript = tmp_path / "custom.transcript.md"
+    custom_audit = tmp_path / "reports" / "my_session_audit.md"
+
+    ret = pt.main(
+        [
+            SESSION[:8],
+            "--from-file",
+            str(spans_file),
+            "--out",
+            str(out_transcript),
+            "--audit-out",
+            str(custom_audit),
+            "--sanitize-paths",
+        ]
+    )
+    assert ret == 0
+    assert custom_audit.exists()
+    audit_content = custom_audit.read_text()
+    assert "/home/nic" not in audit_content
+    assert "~/test.md" in audit_content or "pkb_get_document" in audit_content

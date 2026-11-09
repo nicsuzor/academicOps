@@ -105,6 +105,127 @@ TASK_ID_RE = re.compile(
     r"^(?:[a-z][a-z0-9-]*[_-])?[0-9a-f]{8}$|^wf-[a-z0-9-]+$|^[a-z]+-[0-9a-f]{8}$"
 )
 
+# Services proxy MCP server names and patterns
+SERVICES_PROXY_SERVERS: set[str] = {
+    "services",
+    "pkb",
+    "phoenix",
+    "email",
+    "fusioncompute",
+    "konnect",
+    "labeler",
+    "notifications",
+}
+
+# Calls made from inside a code-mode block: codemode.<name>({...}) or call_tool("name", {...})
+CODE_CALL_RE = re.compile(
+    r"""(?:codemode\.(?P<a>[A-Za-z_]\w*)\s*\(|call_tool\(\s*["'](?P<b>[A-Za-z_][\w.-]*)["']\s*,)\s*\{(?P<args>[^{}]*)\}"""
+)
+INPUT_LABEL_RE = re.compile(r"^\[[^\]\n]+\]\s*\n")
+
+
+def parse_tool_args(value: Any) -> Any:
+    """Parse tool input arguments, stripping [TOOL INPUT: ...] labels if present."""
+    if isinstance(value, str):
+        value = INPUT_LABEL_RE.sub("", value.lstrip(), count=1).strip()
+        if value[:1] in ("{", "["):
+            try:
+                return json.loads(value)
+            except (ValueError, TypeError):
+                return value
+    elif isinstance(value, dict):
+        return value
+    return value
+
+
+def extract_mcp_call_types(
+    tool_name: str,
+    tool_input: Any = None,
+    service_name: str | None = None,
+) -> list[str]:
+    """Identify and extract services proxy MCP call types from a tool invocation.
+
+    Handles code-mode blocks, agy call_mcp_tool, Claude Code mcp__* conventions,
+    direct service-prefixed names, and span service.name attributes.
+    """
+    args = parse_tool_args(tool_input)
+    args_dict = args if isinstance(args, dict) else {}
+    inner_args = args_dict.get("Arguments") if isinstance(args_dict.get("Arguments"), dict) else {}
+
+    server_name = (
+        str(args_dict.get("ServerName") or inner_args.get("ServerName") or service_name or "")
+        .strip()
+        .lower()
+    )
+    target_tool = str(args_dict.get("ToolName") or inner_args.get("ToolName") or "").strip()
+
+    raw_code = (
+        args_dict.get("code")
+        or inner_args.get("code")
+        or (args_dict.get("Arguments") if isinstance(args_dict.get("Arguments"), str) else None)
+    )
+
+    is_codemode = (
+        "portal_codemode" in tool_name
+        or "portal_codemode" in target_tool
+        or (isinstance(raw_code, str) and ("codemode." in raw_code or "call_tool(" in raw_code))
+    )
+
+    if is_codemode and isinstance(raw_code, str):
+        calls: list[str] = []
+        for match in CODE_CALL_RE.finditer(raw_code):
+            c = match.group("a") or match.group("b")
+            if c and c not in calls:
+                calls.append(c)
+        if calls:
+            return calls
+        return ["portal_codemode_execute"]
+
+    if tool_name == "call_mcp_tool" or server_name in SERVICES_PROXY_SERVERS:
+        if target_tool:
+            return [target_tool]
+        if tool_name != "call_mcp_tool":
+            return [tool_name]
+
+    if tool_name.startswith("mcp__"):
+        parts = tool_name.split("__")
+        if len(parts) >= 3:
+            srv = parts[1].replace("plugin_aops_", "")
+            if srv in SERVICES_PROXY_SERVERS or (
+                len(parts) > 3 and parts[2] in SERVICES_PROXY_SERVERS
+            ):
+                subtool = "__".join(parts[2:])
+                if "portal_codemode" in subtool and isinstance(raw_code, str):
+                    calls = [
+                        m.group("a") or m.group("b")
+                        for m in CODE_CALL_RE.finditer(raw_code)
+                        if (m.group("a") or m.group("b"))
+                    ]
+                    if calls:
+                        return list(dict.fromkeys(calls))
+                return [subtool]
+
+    for prefix in ("pkb_", "phoenix_", "email_", "portal_", "mcp."):
+        if tool_name.startswith(prefix):
+            return [tool_name]
+
+    if service_name and service_name.lower() in SERVICES_PROXY_SERVERS:
+        return [
+            f"{service_name}_{tool_name}" if not tool_name.startswith(service_name) else tool_name
+        ]
+
+    return []
+
+
+def extract_mcp_call_types_from_span(s: Span) -> list[str]:
+    tname = str(s.get("name") or attr(s, "tool.name") or "")
+    tinput = attr(s, "input.value")
+    svc = attr(s, "service.name") or attr(s, "service")
+    if isinstance(svc, dict):
+        svc = svc.get("name")
+    return extract_mcp_call_types(tname, tinput, service_name=str(svc) if svc else None)
+
+
 CHANNEL_RE = re.compile(r'<channel source="(?:plugin:)?([a-z]+)')
 # ``ListAgents`` output opens with "This session is <name> [<ref>]" -- the only place a
 # Claude Code session states its own name. The ref is kept: names get reused across
@@ -504,6 +625,51 @@ def add(bucket: dict[str, Any], span: Span, tokens: dict[str, int] | None, cost:
     bucket["last"] = max(filter(None, [bucket["last"], started]))
 
 
+def parse_time_iso(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def build_mcp_timeline(
+    tool_spans: list[Span],
+) -> dict[str, list[tuple[datetime, datetime, list[str]]]]:
+    """Per session: ``(start_time, end_time, [mcp_call_types])`` for each tool span."""
+    timeline: dict[str, list[tuple[datetime, datetime, list[str]]]] = defaultdict(list)
+    for span in tool_spans:
+        call_types = extract_mcp_call_types_from_span(span)
+        if not call_types:
+            continue
+        start = parse_time_iso(str(span.get("start_time")))
+        end = parse_time_iso(str(span.get("end_time"))) or start
+        if start:
+            timeline[session_of(span)].append((start, end, call_types))
+    for sid in timeline:
+        timeline[sid].sort(key=lambda item: item[0])
+    return timeline
+
+
+def mcp_at(entries: list[tuple[datetime, datetime, list[str]]], when_dt: datetime) -> list[str]:
+    """Find the services proxy MCP call type active at or nearest to when_dt."""
+    if not entries:
+        return []
+    best_types: list[str] = []
+    min_dist = float("inf")
+    for start, end, types in entries:
+        if start <= when_dt <= end:
+            return types
+        dist = min(abs((start - when_dt).total_seconds()), abs((end - when_dt).total_seconds()))
+        if dist < min_dist:
+            min_dist = dist
+            best_types = types
+    if min_dist <= 120.0:
+        return best_types
+    return []
+
+
 def build_task_timeline(tool_spans: list[Span]) -> dict[str, list[tuple[str, str, bool]]]:
     """Per session: ``(start_time, task_id, strong)`` for every task-naming tool call."""
     timeline: dict[str, list[tuple[str, str, bool]]] = defaultdict(list)
@@ -555,6 +721,66 @@ def aggregate(
     labels: dict[str, str],
     by: str,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    if by == "mcp":
+        mcp_timeline = build_mcp_timeline(tools)
+        tool_counts: dict[str, int] = defaultdict(int)
+        for s in tools:
+            for ct in extract_mcp_call_types_from_span(s):
+                tool_counts[ct] += 1
+
+        buckets: dict[str, dict[str, Any]] = defaultdict(new_bucket)
+        unpriced: dict[str, int] = defaultdict(int)
+        uncounted: dict[str, int] = defaultdict(int)
+        total = new_bucket()
+
+        for span in llm:
+            sid = session_of(span)
+            model = str(attr(span, "llm.model_name", "?"))
+            tokens = tokens_of(span)
+            row = price_row(model, prices)
+            if tokens is None:
+                uncounted[model] += 1
+            elif row is None:
+                unpriced[model] += 1
+            cost = cost_usd(tokens, row) if tokens else 0.0
+
+            when_dt = parse_time_iso(str(span.get("start_time")))
+            call_types = mcp_at(mcp_timeline.get(sid, []), when_dt) if when_dt else []
+            if not call_types:
+                call_types = ["(non-mcp)"]
+            n_types = len(call_types)
+            for ct in call_types:
+                sub_tokens = {k: int(tokens[k] / n_types) for k in tokens} if tokens else None
+                sub_cost = cost / n_types
+                add(buckets[ct], span, sub_tokens, sub_cost)
+            add(total, span, tokens, cost)
+
+        # Ensure all executed MCP call types from tools are represented even if 0 LLM spans matched
+        for ct in tool_counts:
+            if ct not in buckets:
+                _ = buckets[ct]
+
+        rows: list[dict[str, Any]] = []
+        for ct, bucket in buckets.items():
+            calls = tool_counts.get(ct, bucket["calls"])
+            rows.append(
+                {
+                    "mcp_call_type": ct,
+                    "calls": calls,
+                    **bucket["tokens"],
+                    "cost": round(bucket["cost"], 2),
+                }
+            )
+        rows.sort(key=lambda r: (-r["cost"], -r["calls"], r["mcp_call_type"]))
+        meta = {
+            "calls": total["calls"],
+            "tokens": total["tokens"],
+            "cost": round(total["cost"], 2),
+            "unpriced_models": dict(unpriced),
+            "uncounted_models": dict(uncounted),
+        }
+        return rows, meta
+
     timeline = build_task_timeline(tools)
     chains_by: dict[str, list[Span]] = defaultdict(list)
     for s in sorted(chains, key=lambda s: str(s.get("start_time"))):
@@ -566,9 +792,9 @@ def aggregate(
     for s in tools:
         tools_by[session_of(s)].append(s)
 
-    buckets: dict[tuple[str, str], dict[str, Any]] = defaultdict(new_bucket)
-    unpriced: dict[str, int] = defaultdict(int)
-    uncounted: dict[str, int] = defaultdict(int)
+    buckets_by_pair: dict[tuple[str, str], dict[str, Any]] = defaultdict(new_bucket)
+    unpriced = defaultdict(int)
+    uncounted = defaultdict(int)
     total = new_bucket()
     for span in llm:
         sid = session_of(span)
@@ -585,11 +811,11 @@ def aggregate(
             if by == "task"
             else task_summary(timeline.get(sid, []))
         )
-        add(buckets[(sid, task)], span, tokens, cost)
+        add(buckets_by_pair[(sid, task)], span, tokens, cost)
         add(total, span, tokens, cost)
 
-    rows: list[dict[str, Any]] = []
-    for (sid, task), bucket in buckets.items():
+    rows = []
+    for (sid, task), bucket in buckets_by_pair.items():
         models = sorted(bucket["models"].items(), key=lambda kv: -kv[1])
         rows.append(
             {
@@ -640,6 +866,40 @@ def render(
     dropped: int,
     width: int,
 ) -> str:
+    if meta.get("by") == "mcp":
+        head = f"{'mcp_call_type':<32} {'calls':>6} {'in':>7} {'out':>7} {'cache_rd':>8} {'cache_wr':>8} {'USD':>8}"
+        lines = [
+            f"Token cost by services proxy MCP call type -- Phoenix project {project!r}, {iso(window[0])} -> {iso(window[1])}",
+            f"{meta['calls']} LLM calls after dropping {dropped} duplicate spans; total est. US${meta['cost']:.2f}",
+            "",
+            head,
+            "-" * len(head),
+        ]
+        for r in rows:
+            name = (
+                r["mcp_call_type"]
+                if len(r["mcp_call_type"]) <= 32
+                else r["mcp_call_type"][:31] + "~"
+            )
+            lines.append(
+                f"{name:<32} {r['calls']:>6} {fmt_k(r['in']):>7} {fmt_k(r['out']):>7} "
+                f"{fmt_k(r['cache_read']):>8} {fmt_k(r['cache_write']):>8} {r['cost']:>8.2f}"
+            )
+        t = meta["tokens"]
+        lines.append("-" * len(head))
+        lines.append(
+            f"{'total':<32} {meta['calls']:>6} {fmt_k(t['in']):>7} {fmt_k(t['out']):>7} "
+            f"{fmt_k(t['cache_read']):>8} {fmt_k(t['cache_write']):>8} {meta['cost']:>8.2f}"
+        )
+        if meta.get("unpriced_models"):
+            lines.append(f"unpriced models (cost 0): {meta['unpriced_models']}")
+        if meta.get("uncounted_models"):
+            lines.append(f"spans without token counts (calls only): {meta['uncounted_models']}")
+        lines.append(
+            "in = prompt - cache_read - cache_write; prices USD/M in PRICES (override --prices)"
+        )
+        return "\n".join(lines)
+
     head = f"{'session':<8} {'agent/role':<{width}} {'task':<24} {'model':<16} {'calls':>5} {'in':>7} {'out':>7} {'cache_rd':>8} {'cache_wr':>8} {'USD':>8}"
     lines = [
         f"Token cost by session -- Phoenix project {project!r}, {iso(window[0])} -> {iso(window[1])}",
@@ -677,6 +937,30 @@ def render_markdown(
     project: str,
     dropped: int,
 ) -> str:
+    if meta.get("by") == "mcp":
+        lines = [
+            f"Phoenix project `{project}`, {iso(window[0])} -> {iso(window[1])}: {meta['calls']} LLM calls "
+            f"({dropped} duplicate spans dropped), total est. US${meta['cost']:.2f}",
+            "",
+            "| mcp_call_type | calls | in | out | cache_rd | cache_wr | USD |",
+            "|---|---:|---:|---:|---:|---:|---:|",
+        ]
+        for r in rows:
+            lines.append(
+                f"| {r['mcp_call_type']} | {r['calls']} | {fmt_k(r['in'])} | {fmt_k(r['out'])} | "
+                f"{fmt_k(r['cache_read'])} | {fmt_k(r['cache_write'])} | {r['cost']:.2f} |"
+            )
+        t = meta["tokens"]
+        lines.append(
+            f"| **total** | {meta['calls']} | {fmt_k(t['in'])} | {fmt_k(t['out'])} | "
+            f"{fmt_k(t['cache_read'])} | {fmt_k(t['cache_write'])} | **{meta['cost']:.2f}** |"
+        )
+        if meta.get("unpriced_models"):
+            lines.append(f"\nUnpriced models (cost 0): `{meta['unpriced_models']}`")
+        if meta.get("uncounted_models"):
+            lines.append(f"\nSpans without token counts (calls only): `{meta['uncounted_models']}`")
+        return "\n".join(lines)
+
     lines = [
         f"Phoenix project `{project}`, {iso(window[0])} -> {iso(window[1])}: {meta['calls']} LLM calls "
         f"({dropped} duplicate spans dropped), total est. US${meta['cost']:.2f}",
@@ -713,7 +997,10 @@ def main(argv: list[str] | None = None) -> int:
         "--tz", default="+00:00", help="offset for naive --since/--until, e.g. +10:00 for AEST"
     )
     parser.add_argument(
-        "--by", choices=("session", "task"), default="session", help="row grain (default session)"
+        "--by",
+        choices=("session", "task", "mcp"),
+        default="session",
+        help="row grain (default session; 'mcp' groups by services proxy MCP call type)",
     )
     parser.add_argument("--session", help="only this session id (prefix ok)")
     parser.add_argument("--labels", help="JSON file: session-id prefix -> agent/role label")

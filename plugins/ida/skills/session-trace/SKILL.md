@@ -11,7 +11,7 @@ counts and millisecond latencies. Read it rather than a session's own account of
 ## Transcript: how did this decision get made
 
 ```bash
-uv run python "${CLAUDE_SKILL_DIR}/scripts/phoenix_transcript.py" <session-id / conversation-id | slug | trace-id> --out <dir>/<slug>.transcript.md [--sanitize-paths]
+uv run python "${CLAUDE_SKILL_DIR}/scripts/phoenix_transcript.py" <session-id / conversation-id | slug | trace-id> --out <dir>/<slug>.transcript.md [--audit] [--audit-out <path>] [--sanitize-paths]
 ```
 
 - Configuration is flags or environment: `--base-url` or `$PHOENIX_MCP_URL` (the Phoenix
@@ -20,8 +20,8 @@ uv run python "${CLAUDE_SKILL_DIR}/scripts/phoenix_transcript.py" <session-id / 
   flag nor variable set, the script supplies no default value and halts. Spans already fetched another
   way render with `--from-file spans.json`.
 - One paged fetch on `session.id`; a thousand-span session takes seconds.
-- It writes two files and prints the summary (totals, per-turn table, cost by model,
-  slowest steps, errors):
+- It writes three files and prints the summary (totals, per-turn table, cost by model,
+  tool execution and latency, services proxy MCP calls, slowest steps, errors):
   - `<slug>.transcript.md` -- the full record: one `## Turn N` per turn, one `### N.M`
     per model or tool call with its duration, tokens and cost, payloads folded in
     `<details>`, nothing truncated. Every turn links directly to its Phoenix session and span(s).
@@ -30,27 +30,32 @@ uv run python "${CLAUDE_SKILL_DIR}/scripts/phoenix_transcript.py" <session-id / 
     action summary (agy `toolAction` / `toolSummary`, Claude Code `description`), with a line beneath
     naming what it acted on: the calls and literal arguments inside a code-mode block,
     else the command, path or query. Every turn links directly to its Phoenix session and span(s).
+  - `<slug>.audit.md` -- pre-aggregated audit artifact: model token spend, tool execution and
+    latency statistics (invocations, total/avg/max duration, errors), services proxy MCP calls
+    grouped by call type (invocations, latency, attributed tokens, and estimated cost), and
+    efficiency analysis. Pass `--audit` to print this audit summary directly to stdout, or
+    `--audit-out <path>` to choose the audit output path.
 
 ## Deliverable and durable storage
 
-When session transcripts are requested, the primary output is the two generated files
-(`<slug>.transcript.md` full and `<slug>.outline.md` condensed). Both files must be saved
-to a durable destination (such as the PKB or a committed repository artifact), never left
-only on the local filesystem of an ephemeral container where files vanish on exit.
+When session transcripts are requested, the primary outputs are the generated files
+(`<slug>.transcript.md` full, `<slug>.outline.md` condensed, and `<slug>.audit.md` pre-aggregated audit).
+All files must be saved to a durable destination (such as the PKB or a committed repository artifact),
+never left only on the local filesystem of an ephemeral container where files vanish on exit.
 
 - **Persisting to the PKB**: Create durable notes (e.g. via `pkb_create` with `type: "note"`,
-  tags `["session-trace", "transcript"]` or `["session-trace", "outline"]`, linking to the
-  relevant task or session). Pass `--sanitize-paths` to `phoenix_transcript.py` (or sanitize
+  tags `["session-trace", "transcript"]`, `["session-trace", "outline"]`, or `["session-trace", "audit"]`,
+  linking to the relevant task or session). Pass `--sanitize-paths` to `phoenix_transcript.py` (or sanitize
   literal host filesystem paths like `/home/*` or `/Users/*`) so that PKB host-path rejection
   guards are not triggered during ingestion.
 - **Persisting to a repository**: Save the files under the designated project/evaluation path
   and commit them to the branch or PR.
 
-Read the summary, then the outline for the turns that bear on the question. Open a step's
-payload by its anchor (`grep -n 'id="t5-3"' <slug>.transcript.md`) rather than reading the
+Read the summary or audit artifact first, then the outline for the turns that bear on the question.
+Open a step's payload by its anchor (`grep -n 'id="t5-3"' <slug>.transcript.md`) rather than reading the
 whole transcript, because that is where the cost goes. Answer with the turn and step
 anchors where the decision was made, and provide the durable pointer (or path) to the
-persisted transcript and outline files.
+persisted transcript, outline, and audit files.
 
 To find the session: a full session ID / conversation ID, a slug, or a trace id all resolve. Given only a task or a
 time, find the session with Recipe A or F in [references/sql-recipes.md](references/sql-recipes.md).
@@ -61,9 +66,7 @@ time, find the session with Recipe A or F in [references/sql-recipes.md](referen
   `roots` and `orphans`) and a controller view. Check `meta.session_error_count`,
   `orphans`, `meta.trace_contamination` (traces shared with other sessions), and rank
   `subagents[]` by `collapsed_span_count` for the expensive branches.
-- `uv run python "${CLAUDE_SKILL_DIR:-plugins/ida/skills/session-trace}/scripts/phoenix_token_cost.py" --since <time>` -- spend ranked across sessions, or
-  `--by task`. Prices are list prices per million tokens; the dollar column is
-  comparable spend, not an invoice. Gemini spans may carry no token counts.
+- `uv run python "${CLAUDE_SKILL_DIR:-plugins/ida/skills/session-trace}/scripts/phoenix_token_cost.py" --since <time> [--by session|task|mcp]` -- spend ranked across sessions, by task, or grouped natively by services proxy MCP call type (`--by mcp`) detailing token spend and call counts across upstream tools (such as `pkb_search`, `pkb_get_task`, `executeSql`) without manual SQL string queries. Supports `--markdown` and `--json`. Prices are list prices per million tokens; the dollar column is comparable spend, not an invoice. Gemini spans may carry no token counts.
 
 ## Cross-session search
 

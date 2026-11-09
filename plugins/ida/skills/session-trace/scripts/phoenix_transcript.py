@@ -66,6 +66,7 @@ from phoenix_token_cost import (  # noqa: E402
     PROJECT_ENV_VAR,
     ConfigError,
     cost_usd,
+    extract_mcp_call_types,
     get_json,
     price_row,
     resolve_base_url,
@@ -1102,6 +1103,239 @@ def model_totals(turns: list[Turn]) -> dict[str, dict[str, Any]]:
     return totals
 
 
+def extract_mcp_call_types_from_step(step: Step) -> list[str]:
+    """Identify and extract services proxy MCP call types from a tool step."""
+    if step.kind != "tool":
+        return []
+    svc = None
+    for s in step.spans:
+        val = attr(s, "service.name") or attr(s, "service")
+        if isinstance(val, dict):
+            val = val.get("name")
+        if val:
+            svc = str(val)
+            break
+    return extract_mcp_call_types(step.title, step.tool_input, service_name=svc)
+
+
+def tool_metrics(turns: list[Turn]) -> list[dict[str, Any]]:
+    """Aggregate tool execution metrics: invocations, latencies, errors, and attributed cost."""
+    by_tool: dict[str, dict[str, Any]] = {}
+    for turn in turns:
+        n_tools = len(turn.tool_steps)
+        allocated_cost = turn.cost / n_tools if n_tools > 0 else 0.0
+        allocated_tokens = (
+            {
+                k: int(turn.token_total(k) / n_tools)
+                for k in ("in", "cache_read", "cache_write", "out")
+            }
+            if n_tools > 0
+            else empty_tokens()
+        )
+        for step in turn.tool_steps:
+            name = step.title
+            row = by_tool.setdefault(
+                name,
+                {
+                    "name": name,
+                    "calls": 0,
+                    "total_ms": 0.0,
+                    "min_ms": float("inf"),
+                    "max_ms": 0.0,
+                    "errors": 0,
+                    "cost": 0.0,
+                    **empty_tokens(),
+                },
+            )
+            row["calls"] += 1
+            row["total_ms"] += step.duration_ms
+            row["min_ms"] = min(row["min_ms"], step.duration_ms)
+            row["max_ms"] = max(row["max_ms"], step.duration_ms)
+            if step.error:
+                row["errors"] += 1
+            row["cost"] += allocated_cost
+            for k in ("in", "cache_read", "cache_write", "out"):
+                row[k] += allocated_tokens[k]
+
+    result = list(by_tool.values())
+    for r in result:
+        r["avg_ms"] = r["total_ms"] / r["calls"] if r["calls"] > 0 else 0.0
+        if r["min_ms"] == float("inf"):
+            r["min_ms"] = 0.0
+    result.sort(key=lambda r: (-r["calls"], -r["total_ms"]))
+    return result
+
+
+def services_proxy_mcp_metrics(turns: list[Turn]) -> list[dict[str, Any]]:
+    """Aggregate token usage and latency grouped by services proxy MCP call type."""
+    by_mcp: dict[str, dict[str, Any]] = {}
+    for turn in turns:
+        n_tools = len(turn.tool_steps)
+        allocated_cost = turn.cost / n_tools if n_tools > 0 else 0.0
+        allocated_tokens = (
+            {
+                k: int(turn.token_total(k) / n_tools)
+                for k in ("in", "cache_read", "cache_write", "out")
+            }
+            if n_tools > 0
+            else empty_tokens()
+        )
+        for step in turn.tool_steps:
+            mcp_types = extract_mcp_call_types_from_step(step)
+            if not mcp_types:
+                continue
+            n_mcp = len(mcp_types)
+            sub_cost = allocated_cost / n_mcp
+            sub_tokens = {k: int(allocated_tokens[k] / n_mcp) for k in allocated_tokens}
+            for mcp_type in mcp_types:
+                row = by_mcp.setdefault(
+                    mcp_type,
+                    {
+                        "call_type": mcp_type,
+                        "calls": 0,
+                        "total_ms": 0.0,
+                        "min_ms": float("inf"),
+                        "max_ms": 0.0,
+                        "errors": 0,
+                        "cost": 0.0,
+                        **empty_tokens(),
+                    },
+                )
+                row["calls"] += 1
+                row["total_ms"] += step.duration_ms / n_mcp
+                row["min_ms"] = min(row["min_ms"], step.duration_ms)
+                row["max_ms"] = max(row["max_ms"], step.duration_ms)
+                if step.error:
+                    row["errors"] += 1
+                row["cost"] += sub_cost
+                for k in ("in", "cache_read", "cache_write", "out"):
+                    row[k] += sub_tokens[k]
+
+    result = list(by_mcp.values())
+    for r in result:
+        r["avg_ms"] = r["total_ms"] / r["calls"] if r["calls"] > 0 else 0.0
+        if r["min_ms"] == float("inf"):
+            r["min_ms"] = 0.0
+    result.sort(key=lambda r: (-r["cost"], -r["calls"], -r["total_ms"]))
+    return result
+
+
+def render_audit(
+    turns: list[Turn],
+    session_id: str,
+    project: str,
+    spans: list[Span],
+    prices: dict[str, dict[str, float]],
+    ui_base_url: str | None = None,
+) -> str:
+    """Render a pre-aggregated structured session audit artifact."""
+    start = min(t.start for t in turns)
+    end = max(t.end for t in turns)
+    all_steps = [s for t in turns for s in t.steps]
+    tools = [s for s in all_steps if s.kind == "tool"]
+    models = model_totals(turns)
+    cost = sum(row["cost"] for row in models.values())
+    tokens = {
+        k: sum(row[k] for row in models.values())
+        for k in ("in", "cache_read", "cache_write", "out")
+    }
+    errors = [s for s in all_steps if s.error]
+    agents = sorted({s.agent for s in all_steps if s.agent})
+
+    lines = [
+        f"# Session Audit `{session_id}`",
+        "",
+        f"- **Project:** {project}",
+        f"- **Window:** {fmt_time(start)} → {fmt_time(end)} ({fmt_ms(ms_between(start, end))} wall)",
+        f"- **Turns:** {len(turns)} · **Model calls:** {sum(r['calls'] for r in models.values())} · "
+        f"**Tool calls:** {len(tools)} · **Errors:** {len(errors)} · **Spans:** {len(spans)}",
+        f"- **Tokens:** {token_line(tokens)}",
+        f"- **Estimated cost:** {fmt_usd(cost)} (list prices; comparable spend, not an invoice)",
+    ]
+    if agents:
+        lines.append(f"- **Subagents:** {', '.join(agents)}")
+    if ui_base_url and session_id:
+        lines.append(
+            f"- **Phoenix session:** [{session_id}]({ui_base_url}/redirects/sessions/{session_id})"
+        )
+
+    lines += [
+        "",
+        "## Model Token Spend",
+        "",
+        "| Model | Calls | In | Cache read | Cache write | Out | Cost |",
+        "| - | -: | -: | -: | -: | -: | -: |",
+    ]
+    for model, row in sorted(models.items(), key=lambda kv: -kv[1]["cost"]):
+        lines.append(
+            f"| {escape_cell(model)} | {row['calls']} | {fmt_n(row['in'])} | {fmt_n(row['cache_read'])} | "
+            f"{fmt_n(row['cache_write'])} | {fmt_n(row['out'])} | {fmt_usd(row['cost'])} |"
+        )
+
+    t_metrics = tool_metrics(turns)
+    if t_metrics:
+        lines += [
+            "",
+            "## Tool Execution & Latency",
+            "",
+            "| Tool | Invocations | Total Duration | Avg Latency | Max Latency | Errors | Attributed Cost |",
+            "| - | -: | -: | -: | -: | -: | -: |",
+        ]
+        for tm in t_metrics:
+            lines.append(
+                f"| {escape_cell(tm['name'])} | {tm['calls']} | {fmt_ms(tm['total_ms'])} | "
+                f"{fmt_ms(tm['avg_ms'])} | {fmt_ms(tm['max_ms'])} | {tm['errors']} | {fmt_usd(tm['cost'])} |"
+            )
+
+    mcp_metrics = services_proxy_mcp_metrics(turns)
+    if mcp_metrics:
+        lines += [
+            "",
+            "## Services Proxy MCP Calls",
+            "",
+            "| MCP Call Type | Invocations | Total Duration | Avg Latency | Max Latency | Errors | In | Cache Read | Out | Attributed Cost |",
+            "| - | -: | -: | -: | -: | -: | -: | -: | -: | -: |",
+        ]
+        for mm in mcp_metrics:
+            lines.append(
+                f"| {escape_cell(mm['call_type'])} | {mm['calls']} | {fmt_ms(mm['total_ms'])} | "
+                f"{fmt_ms(mm['avg_ms'])} | {fmt_ms(mm['max_ms'])} | {mm['errors']} | {fmt_n(mm['in'])} | "
+                f"{fmt_n(mm['cache_read'])} | {fmt_n(mm['out'])} | {fmt_usd(mm['cost'])} |"
+            )
+
+    lines += ["", "## Efficiency Analysis", ""]
+    if mcp_metrics:
+        most_expensive_mcp = max(mcp_metrics, key=lambda m: m["cost"])
+        slowest_mcp = max(mcp_metrics, key=lambda m: m["avg_ms"])
+        most_frequent_mcp = max(mcp_metrics, key=lambda m: m["calls"])
+        lines.append(
+            f"- **Most expensive MCP call type:** `{most_expensive_mcp['call_type']}` "
+            f"({fmt_usd(most_expensive_mcp['cost'])} across {most_expensive_mcp['calls']} calls)"
+        )
+        lines.append(
+            f"- **Slowest MCP call type (avg):** `{slowest_mcp['call_type']}` "
+            f"({fmt_ms(slowest_mcp['avg_ms'])} avg, max {fmt_ms(slowest_mcp['max_ms'])})"
+        )
+        lines.append(
+            f"- **Most frequent MCP call type:** `{most_frequent_mcp['call_type']}` "
+            f"({most_frequent_mcp['calls']} invocations)"
+        )
+    if t_metrics:
+        slowest_tool = max(t_metrics, key=lambda t: t["avg_ms"])
+        lines.append(
+            f"- **Slowest general tool (avg):** `{slowest_tool['name']}` ({fmt_ms(slowest_tool['avg_ms'])} avg)"
+        )
+
+    if errors:
+        lines += ["", "## Errors", ""]
+        for step in errors:
+            lines.append(
+                f"- [{step.number}](#{step.anchor}) {step.title}: `{escape_cell(step.error)}`"
+            )
+
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def render(
     turns: list[Turn],
     session_id: str,
@@ -1169,6 +1403,38 @@ def render(
             f"| {escape_cell(model)} | {row['calls']} | {fmt_n(row['in'])} | {fmt_n(row['cache_read'])} | "
             f"{fmt_n(row['cache_write'])} | {fmt_n(row['out'])} | {fmt_usd(row['cost'])} |"
         )
+
+    t_metrics = tool_metrics(turns)
+    if t_metrics:
+        summary += [
+            "",
+            "## Tool execution & latency",
+            "",
+            "| Tool | Invocations | Total Duration | Avg Latency | Max Latency | Errors | Attributed Cost |",
+            "| - | -: | -: | -: | -: | -: | -: |",
+        ]
+        for tm in t_metrics:
+            summary.append(
+                f"| {escape_cell(tm['name'])} | {tm['calls']} | {fmt_ms(tm['total_ms'])} | "
+                f"{fmt_ms(tm['avg_ms'])} | {fmt_ms(tm['max_ms'])} | {tm['errors']} | {fmt_usd(tm['cost'])} |"
+            )
+
+    mcp_metrics = services_proxy_mcp_metrics(turns)
+    if mcp_metrics:
+        summary += [
+            "",
+            "## Services proxy MCP calls",
+            "",
+            "| MCP Call Type | Invocations | Total Duration | Avg Latency | Max Latency | Errors | In | Cache Read | Out | Attributed Cost |",
+            "| - | -: | -: | -: | -: | -: | -: | -: | -: | -: |",
+        ]
+        for mm in mcp_metrics:
+            summary.append(
+                f"| {escape_cell(mm['call_type'])} | {mm['calls']} | {fmt_ms(mm['total_ms'])} | "
+                f"{fmt_ms(mm['avg_ms'])} | {fmt_ms(mm['max_ms'])} | {mm['errors']} | {fmt_n(mm['in'])} | "
+                f"{fmt_n(mm['cache_read'])} | {fmt_n(mm['out'])} | {fmt_usd(mm['cost'])} |"
+            )
+
     slowest = sorted((s for s in all_steps if s.kind != "other"), key=lambda s: -s.duration_ms)[
         :SLOWEST_STEPS
     ]
@@ -1315,6 +1581,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="transcript path (default ./<session-slug>.transcript.md); the outline is written beside it",
     )
     parser.add_argument(
+        "--audit",
+        action="store_true",
+        help="print pre-aggregated session audit summary directly to stdout",
+    )
+    parser.add_argument(
+        "--audit-out",
+        help="audit artifact path (default: beside transcript as <slug>.audit.md)",
+    )
+    parser.add_argument(
         "--sanitize-paths",
         action="store_true",
         help="sanitize literal host filesystem paths (e.g. /home/*, /Users/*) for durable PKB persistence",
@@ -1362,9 +1637,11 @@ def run(args: argparse.Namespace) -> int:
     text, outline, summary = render(
         turns, session_id, project, spans, prices, ui_base_url=ui_base_url
     )
+    audit = render_audit(turns, session_id, project, spans, prices, ui_base_url=ui_base_url)
     if getattr(args, "sanitize_paths", False):
         text = sanitize_paths(text)
         outline = sanitize_paths(outline)
+        audit = sanitize_paths(audit)
     out = (
         Path(args.out).expanduser() if args.out else Path.cwd() / f"{session_id[:8]}.transcript.md"
     )
@@ -1374,9 +1651,20 @@ def run(args: argparse.Namespace) -> int:
         out.name.removesuffix(".md").removesuffix(".transcript") + ".outline.md"
     )
     outline_path.write_text(outline)
+    audit_path = (
+        Path(args.audit_out).expanduser()
+        if getattr(args, "audit_out", None)
+        else out.with_name(out.name.removesuffix(".md").removesuffix(".transcript") + ".audit.md")
+    )
+    audit_path.parent.mkdir(parents=True, exist_ok=True)
+    audit_path.write_text(audit)
     print(f"transcript: {out} ({fmt_n(len(text))} chars)")
-    print(f"outline:    {outline_path} ({fmt_n(len(outline))} chars)\n")
-    print(summary)
+    print(f"outline:    {outline_path} ({fmt_n(len(outline))} chars)")
+    print(f"audit:      {audit_path} ({fmt_n(len(audit))} chars)\n")
+    if getattr(args, "audit", False):
+        print(audit)
+    else:
+        print(summary)
     return 0
 
 
