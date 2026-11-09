@@ -15,7 +15,7 @@ Coordinates a comprehensive sweep of open pull requests across repositories. Fan
 
 ## Execution
 
-Sweep execution runs via parallel fan-out: a single coordinator fans out across all open PRs in parallel (using concurrent subagents or queries), evaluating each PR independently and aggregating dispositions into a single sweep handback.
+Sweep execution runs via parallel fan-out: evaluate each PR independently and aggregate dispositions into a single sweep handback.
 
 ## Input contract
 

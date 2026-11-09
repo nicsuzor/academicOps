@@ -13,7 +13,7 @@ type: template
 
 Drives an individual open pull request through its progression lifecycle: confirming passing checks, securing a proportionate review, addressing review feedback, settling merge conflicts against the base branch post-approval, and executing or staging the merge according to project-local merge rules.
 
-**Single-Worker Parallel Fan-Out (Trial)**: A worker executing this workflow may be dispatched with an instruction to coordinate parallel subagents to conduct independent checks or review lenses concurrently. This capability is designated as an empirical trial evaluated on observed run performance.
+**Review lenses**: Conduct required independent checks or review lenses concurrently.
 
 ## Input contract
 

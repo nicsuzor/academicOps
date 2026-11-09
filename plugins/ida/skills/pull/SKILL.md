@@ -1,11 +1,11 @@
 ---
 name: pull
-description: Claim a queued PKB task, execute it to completion with subagents, record verified results, and hand over via /dump.
+description: Claim and execute a queued PKB task to completion, record verified results, and hand over via /dump.
 ---
 
 # Pull
 
-Claim and execute a queued PKB task, directing subagents to deliver against stated acceptance criteria, then invoke `/dump` to log results and hand over.
+Claim and execute a queued PKB task to deliver against stated acceptance criteria, coordinating subagents where appropriate, then invoke `/dump` to log results and hand over.
 
 ## Procedure
 
@@ -18,7 +18,7 @@ Claim and execute a queued PKB task, directing subagents to deliver against stat
 
 ### 2. Execute and Supervise
 
-- Coordinate subagents in parallel to execute task requirements.
+- Execute task requirements, coordinating subagents in parallel where warranted.
 - Break work into sequenced steps, managing failures upstream without applying hidden workarounds.
 - **Full-context file inspection**: Before modifying any repository file, the worker must read the entire target file in full to understand surrounding architecture, conventions, and helper abstractions. Keyhole line-slice reads (`read_file` with narrow line windows around advisory line hints) in isolation without prior whole-file context are strictly prohibited; line numbers are advisory starting pointers only. If a target file exceeds tool page limits, inspect the complete file via sequential discovery before editing.
 

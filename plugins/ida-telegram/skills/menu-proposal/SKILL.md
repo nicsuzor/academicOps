@@ -18,7 +18,7 @@ Review, customize, and allocate the native Telegram command menu for Ida.
    - Strictly exclude reserved platform commands (`start`, `help`, `status`) and headless worker lifecycle commands (`pull`, `dump`).
 3. **Separate interactive menus from headless workers (`headless-workers.md`):**
    - Telegram command menus exclusively serve interactive operator sessions. Headless worker lifecycle commands (`pull`, `dump`) must never appear on conversational menus or in candidate pools.
-   - Autonomous workers operate non-interactively and cannot pause for human input; the menu proposal workflow is designed exclusively for interactive operator dialogue and must never be dispatched to a headless worker.
+   - Telegram command menus serve interactive operator dialogue; do not dispatch this workflow to headless workers.
 4. **Inspect current allocations:** Read the active `TELEGRAM_BOT_COMMANDS` list in the channel's `$STATE_DIR/.env`.
 
 ### 2. Synthesize Considered Recommendations
@@ -34,7 +34,7 @@ Apply qualitative judgment to evaluate candidate commands for the shared menu:
 
 ### 3. Present Proposal Matrix
 
-Present a scannable proposal table to the user (in interactive operator sessions only; headless workers cannot pause for human input):
+Present a scannable proposal table to the user in interactive operator sessions:
 
 - **Candidate pool summary:** Total candidates inspected and current allocations in the shared menu.
 - **Recommendation table:**
