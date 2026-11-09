@@ -142,9 +142,13 @@ Task bodies are executable instructions for cold executors, not project diaries,
 
 ## 6. Graph Edge Economy & Hierarchy Invariant
 
-Graph density means meaningful semantic and causal connectivity, not redundant combinatorial wiring:
+Graph density means meaningful semantic and causal connectivity, not redundant combinatorial wiring (ADR-0002):
 
-1. **Parent/Child is Already an Edge:** Setting `parent_id` on a node automatically places and connects it within the parent's hierarchy.
-2. **No Redundant Descendant Wiring:** Do **not** wire edges between siblings or descendants under the same parent unless there is a specific, verifiable interaction (such as an explicit causal dependency `depends_on`, `supersedes`, or cross-branch data flow).
-3. **Density Means Causal and Strategic Edges:** Densify the graph by wiring edges carrying the FR edge contract (`label`: `serves`, `needs`, `supports`, `alternative`, `settles`; `quantum`; `probability`; `effect`: `helps` | `harms`; `justification`; `set_by: agent-proposed`).
-4. **Review and Follow-Up Placement Invariant:** Every task requiring review or follow-up must be structured either as a single task with internal subtasks (if executable by the same agent in one session) or as a dedicated epic with separate child tasks (if multi-session or independent context is required); never as loose siblings under an external parent.
+1. **Parent/Child is Already an Edge:** Setting `parent_id` (or `parent`) on a node automatically places and connects it within the parent's hierarchy. Subtasks inherit worth from composite parents via closed-form induction.
+2. **No Redundant Descendant or Child-to-Ancestor Wiring:** Do **not** wire edges between siblings or descendants under the same parent unless there is a specific, verifiable execution dependency (`needs`). Subtasks decomposed under a parent must **never** carry redundant `serves` edges to targets already served by their ancestors.
+3. **Three Edge Purposes & Parsimony:** Distinguish the three edge purposes strictly:
+   - **Weight Flow:** `serves` connects top-level deliverables to priced `target` nodes; `supports` connects auxiliary tasks that causally reduce effort or raise success probability. Both require explicit `quantum` and `probability`.
+   - **Work Sequencing:** `needs` connects a dependent task to its prerequisite task. Pure Boolean execution gate; carries neither quantum nor probability.
+   - **Structural Clustering:** Citations, references, and related artifacts are authored exclusively as markdown body wikilinks (`[[node_id]]` in `## Context` or `## Pointers`). Direct body references already act as clustering/interconnection edges in graph physics; duplicating them as formal frontmatter edges is strictly prohibited.
+4. **Stricter Semantics for `supports`:** A task supports another node only if executing it directly eases the effort, mitigates the risk, or raises the success odds of that node. Tracking, logging, and coordination tasks do **not** support the tasks they track (tracking has zero effect on the tracked task's difficulty); tracking tasks serve the strategic target of user understanding and are confined to that target.
+5. **Review and Follow-Up Placement Invariant:** Every task requiring review or follow-up must be structured either as a single task with internal subtasks (if executable by the same agent in one session) or as a dedicated epic with separate child tasks (if multi-session or independent context is required); never as loose siblings under an external parent.

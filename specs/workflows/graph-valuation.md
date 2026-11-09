@@ -49,12 +49,17 @@ wiring capital stock hubs, proposing values, handling dates, retiring dead oppor
 triage. If a commitment or project exceeds affordable loss, it is rejected, paused, or escalated on the record
 before entering the graph. Flow maths is kept unpolluted by subjective risk gating.
 
-**Decomposition probes and Value of Information (FQ8).** When resolving architectural or empirical
-uncertainties during decomposition where competing branches are decomposed further, agents create explicit
-decision nodes `D` with `alternative` option nodes (whereas a task with options to choose between and no
-immediate commitment beyond choosing keeps the choices and decision instructions inside the single task without
-subtasks or option nodes), and wire exploratory spikes or research probes via `settles` edges. The engine routes
-decision value (EVPI) directly to the probe.
+**Three purposes of graph edges and edge parsimony (ADR-0002).** Edges serve three distinct, non-overlapping purposes:
+
+1. **Weight flow (Strategic valuation):** Injects worth from priced targets down through the graph (`serves` pointing to targets, and `supports` where auxiliary work modifies difficulty or success probability). Both require explicit `quantum` and `probability`.
+2. **Sequencing of work (`needs` / execution prerequisite):** Defines strict temporal blocking (dependent $\to$ prerequisite). Purely Boolean execution gate; carries neither quantum nor probability.
+3. **Structural clustering, human understanding & strategic alignment:** Connects concepts, references, citations, and related artifacts. Represented exclusively as markdown `[[wikilinks]]` in the task body (`## Context`, `## Pointers`). Direct body references already act as clustering/interconnection edges in graph physics; duplicating them as formal frontmatter edges is strictly prohibited.
+
+**Project hierarchies and push-to-top rule.** Redundant child-to-ancestor links are prohibited. Weight links (`serves`) are pushed as far up the parent hierarchy chain as accurate (single injection at the deliverable level); subtasks inherit worth via closed-form induction. Weight links go exclusively to targets; weight propagates to other nodes via real blocking (`needs`) and supporting (`supports`) tasks.
+
+**Stricter semantics for `supports`.** Task $B$ `supports` task/target $A$ if and only if executing $B$ directly reduces the effort, cost, or difficulty of $A$, or increases $A$'s probability of success. A tracking or coordination task does NOT support the tasks it tracks (tracking makes zero difference to the tracked task's difficulty). A tracking task serves the strategic target of user understanding / observability and is confined to that target edge.
+
+**Decisions and empirical probes (ADR spec_e6d668b0).** Competing architectural or design options stay inside the body of the scoping task or ADR until chosen. When chosen, only the selected option is reified into an actionable task under `parent: <task_id>`. Empirical probes are active investigative tasks (`classification: probe`) wired to the scoping task via standard `needs: [<probe_task_id>]`. Stored `alternative` and `settles` edges are retired.
 
 **Opening futures and capital stocks (S27).** Foundational investments (reputation, funding reserves,
 infrastructure, relationships) that expand future optionality are wired to capital stock hubs. Rather than
@@ -78,17 +83,25 @@ top twenty. Everything else waits for the batch. Mid-conversation interruptions 
 
 **What goes.** The seven-word "stated weight" scale on links. Severity as an agent-set field.
 Defaulting new asks to "planned". Turning an email date into a deadline. `soft_depends_on` and
-`supersedes` wiring at intake. The weight-repair template becomes the densify template.
+`supersedes` wiring at intake. The weight-repair template becomes the densify template. Duplicate
+formal frontmatter edges for body citations. Tracking tasks linking `supports` to tracked tasks.
+Redundant child-to-ancestor weight edges. Stored `alternative` and `settles` edges.
 
 ## 1. Problem and target
 
-**Problem.** Agents set values today under instructions written for the old engine:
+**Problem.** Agents set values today under instructions written for the old engine, and link density suffered an over-correction:
 
 - `/q` wires `contributes_to` with "quantum and certainty" but no field contract
   (`plugins/ida/skills/q/SKILL.md:18`). It also defaults `intent` to 3
   (`plugins/ida/skills/q/SKILL.md:24`).
 - pauli authors "target severity magnitude vs contributing edge weight probability"
   (`plugins/ida/agents/pauli.md:104`).
+- Over-dense linking: ambiguous prohibitions on body interconnections led agents to duplicate every
+  markdown body wikilink as a formal frontmatter edge with weights.
+- Tracking tasks (e.g. `aops_9fd8f119`) authored frontmatter `supports` links to every task they tracked
+  (e.g. `task_52c31235`), misclassifying tracking as supporting the tracked tasks.
+- Redundant child-to-ancestor weight links: subtasks duplicated `serves` links to targets already served
+  by their parents, distorting flow induction.
 - The weight-repair template validates a seven-word scale that mixes amount with likelihood (S2).
 - No routine turns agent proposals into approved values at a sustainable rate (S7, U20).
 - Email dates become hard emergencies (calibration case 1, U1).
@@ -96,10 +109,17 @@ Defaulting new asks to "planned". Turning an email date into a deadline. `soft_d
 
 **Target.**
 
+- The three edge purposes are strictly distinguished: weight flow (`serves`/`supports`), sequencing
+  (`needs`), and structural clustering (markdown body wikilinks without frontmatter duplication).
 - Target worth is estimated and written directly by agents with evidence on the bounded continuous
   scale ($W_t \in [-1.0, 1.0]$), leaving `intent` untouched, with corrections made directly
   on the graph. Agents propose link values (`agent-proposed`), which are read at the default until
   calibrated (FR:474).
+- Weight links are pushed as far up the parent hierarchy as accurate (single injection invariant); subtasks
+  inherit worth via closed-form induction without redundant child-to-ancestor weight links.
+- Stricter semantics for `supports`: tracking tasks link to user understanding targets, never to tracked tasks.
+- Weight requirements contract: target weight edges require probability and quantum; `needs` edges require neither;
+  `supports` requires weights when propagating value.
 - Every categorical choice the flow rule moved out of the maths has exactly one agent owner here:
   deadline class, soft-to-hard, ripeness, triage, and human gates (S1, FR:422-433).
 
@@ -148,36 +168,57 @@ Covers U8, U9, U10, U11, S7, S24, S27, I7, I9.
    before admitting commitments. If prospective downside or commitment cost violates affordable loss,
    the agent flags it as a priority ask rather than admitting it to the flow. Flow maths
    remains unpolluted by subjective risk gating.
-4. **Wire what it serves.** Add one edge per thing the work serves, crossing project boundaries
-   where they apply (U11). Each edge carries the FR §5.1 fields:
-   - `label`: `serves`, `needs`, `supports`, `alternative` or `settles` (FR:322-329; FQ21).
-   - `quantum` and `probability`, as a proposal in the FR §5.4/§5.5 words, or left empty when the
-     agent cannot judge. Empty is read at the default quantum (S7).
-   - `effect: harms` when the work puts a target at risk (S12, U13).
-   - `justification`: one sentence on what the work delivers to the target.
-   - `set_by: agent-proposed`.
-5. **Capital Stock Hubs for Opening Futures (S27).** Foundational investments that expand future
+4. **Wire what it serves under the Three-Purpose Taxonomy (ADR-0002).**
+   Edges serve three distinct purposes. Agents must select the least mechanism required:
+   - **Purpose 1: Weight flow to targets (`serves`, `supports`).**
+     - `serves`: Connects a top-level deliverable task directly to a priced `target` node ($W_t \in [-1.0, 1.0]$). Injects worth into the work graph.
+     - `supports`: Connects an auxiliary task to an upstream task or target when and only when executing the supporting task directly reduces the effort, risk, or difficulty of the supported node, or increases its probability of success.
+     - **Weight contract for flow edges:** Requires explicit `quantum` (word or float $0.0..=1.0$) and `probability` (word or float $0.0..=1.0$, default 1.00). Ask the quantum question: "If this were never done and everything else were, how much of the target/task would be lost?".
+     - `effect: harms` when work endangers a target (S12, U13).
+     - `justification`: One sentence on what the work delivers to the target or how it assists the supported node.
+     - `set_by: agent-proposed`.
+   - **Purpose 2: Work sequencing (`needs`).**
+     - Points upward from a dependent task to its execution prerequisite task ($B \to A$).
+     - **Boolean contract:** Pure execution gate. Requires **neither** quantum nor probability (the engine reads blockers as $q=1.0, p=1.0$).
+   - **Purpose 3: Structural clustering, human understanding & strategic alignment (Body wikilinks).**
+     - Connects concepts, references, parent contexts, tracking targets, and cited documentation.
+     - Authored exclusively as markdown `[[wikilinks]]` in the task body (`## Context`, `## Pointers`, `## Report`).
+     - **Zero frontmatter duplication:** Direct references in task bodies already act as clustering/interconnection edges in graph physics and semantic search. Anything cited in the body must **not** have duplicate formal frontmatter edges with weights.
+5. **Project hierarchies and push-to-top rule.**
+   - Weight links (`serves`) must be pushed as far up the parent hierarchy chain as they can go and still be accurate. Wire `serves` exclusively on the highest task defining the deliverable.
+   - Subtasks inherit worth from their composite parent via closed-form induction ($V(C_i) = V(E) \times (p_{\text{task}})^{k-1}$). Subtasks must **never** carry redundant `serves` links to targets already served by ancestors.
+   - Child-to-ancestor weight edges are strictly prohibited.
+   - Weight links go exclusively to targets; weight propagates to other nodes via real blocking (`needs`) and supporting (`supports`) tasks.
+6. **Stricter semantics for `supports`.**
+   - Functional test: Task $B$ `supports` task/target $A$ if and only if executing $B$ causally changes $A$'s execution parameters (reduced effort, mitigated risk, higher success odds).
+   - **Tracking tasks do NOT support tracked tasks:** Creating a tracking task, observing progress, logging status, or assembling reports makes zero difference to the tracked task's difficulty or probability of completion.
+   - A tracking task serves the strategic target of user understanding (operational visibility, cognitive orientation). Its flow edge must be confined strictly to pointing at that user understanding target (via `serves` or `supports` to the target), never to the tracked tasks.
+   - Tracked tasks are referenced exclusively via markdown body wikilinks (`[[task_id]]`).
+7. **Capital Stock Hubs for Opening Futures (S27).** Foundational investments that expand future
    optionality (reputation, relationships, tool scaffolding, capital reserves) are wired directly
    to capital stock targets, avoiding speculative deep dependency trees.
-6. **Ask the quantum question as written:** "If this were never done and everything else were, how
-   much of the target would be lost?" (FR:346).
-7. **A bare idea stays bare.** An idea with no clear link to anything priced gets its container and
+8. **A bare idea stays bare.** An idea with no clear link to anything priced gets its container and
    no other edge (U9, I7). Inventing a link to make it count is a defect.
-8. **An opportunity is one node plus its edges** (I9, U10). Mark it as an opportunity: proposed as
+9. **An opportunity is one node plus its edges** (I9, U10). Mark it as an opportunity: proposed as
    `classification: opportunity`, with storage decided by the migration spec. Adding it changes no
    other node's fields: no reparenting, and no edits to the targets' worth.
-9. **Dates.** Record any date as `due` with a `deadline_class` set by R5's capture rule. Never derive
-   a date from urgency.
-10. **Effort.** Record `effort` when the input states it or the work is a known kind. The cliff lane
+10. **Dates.** Record any date as `due` with a `deadline_class` set by R5's capture rule. Never derive
+    a date from urgency.
+11. **Effort.** Record `effort` when the input states it or the work is a known kind. The cliff lane
     reads it (FR:425).
-11. **Decisions & Decomposition Probes (FQ8, EVPI).** When an input is a choice between options with no
+12. **Decisions & Empirical Probes (ADR spec_e6d668b0).** When an input is a choice between options with no
     commitment to doing anything immediately beyond choosing, keep the choices and instructions on how to make
-    the decision inside the single task without subtasks or option nodes. Only where competing option branches
-    are decomposed further during decomposition (`decompose`), wire each option node `alternative` to the
-    decision node `D`, and create spike/probe tasks wired with `settles` to `D` ($q \in (0, 1]$). The engine
-    computes EVPI and allocates decision value to the probe.
-12. **Do not write:** `intent` (FQ10), `severity` (FQ24), `stakeholder` as a weight
-    (FQ25), target worth, `soft_depends_on`, or `supersedes` (FR:448).
+    the decision inside the single task body without subtasks or option nodes. Competing options remain in the
+    task body or ADR until chosen. When chosen, only the selected option is reified into an actionable task under
+    `parent: <task_id>`. Empirical probes are active investigative tasks (`classification: probe`) wired to the
+    scoping task via standard `needs: [<probe_task_id>]`. Stored `alternative` and `settles` edges are retired.
+13. **Do not write:**
+    - `intent` (FQ10), `severity` (FQ24), `stakeholder` as a weight (FQ25), target worth, `soft_depends_on`, or `supersedes` (FR:448).
+    - Stored `alternative` or `settles` edges.
+    - Duplicate frontmatter edges for documents or tasks cited in markdown body wikilinks.
+    - `supports` edges from tracking/coordination tasks to the tasks they track.
+    - Redundant child-to-ancestor `serves` edges on decomposed subtasks.
+    - `quantum` or `probability` on `needs` prerequisite edges.
 
 **Headless context** (mobile capture, email). The same steps, headless with no interactive prompt.
 Where the container or the targets cannot be identified, leave the input untouched for the next
@@ -213,7 +254,8 @@ Covers S7, U20, FR:474, and FR:472.
 one batch and runs again only after the previous batch is answered or expires (R7).
 
 **Candidate pool.** Rows are drawn in this order. Pricing comes first, through R4, before any link
-batch.
+batch. Densify evaluates only genuine weight flow edges (`serves`, and valid `supports` that causally
+alter an upstream task or target). Converting markdown body citations into frontmatter edges is strictly prohibited.
 
 1. Edges at `set_by: migrated` that await confirmation: 51 `supports` quanta and 83 `serves` words
    on today's graph (FR:467-468).
@@ -315,13 +357,16 @@ ranking. Agents do not ask "is this still ripe?" on a timer (S6; age is not stal
 
 **Revival.** `inbox` restores the node with its edges intact.
 
-### 7.3 Decisions
+### 7.3 Decisions (ADR spec_e6d668b0)
 
 Covers U12, I10, FR §6.
 
-A decision node keeps its `alternative` and `settles` edges. When a decision is made, the decision node is
-set `done` and the losing alternatives `cancelled`. Its `decision_value` then reads zero by the rule
-(I10). No agent sets an option's worth.
+Per ADR `spec_e6d668b0`, standalone decision backlog nodes with stored `alternative` and `settles` edges
+are retired. When a task requires selecting among competing design or architectural options with no commitment
+beyond choosing, the candidate options and evaluation criteria remain inside the body of the scoping task
+or ADR. When chosen, only the selected option is reified into an actionable task under `parent: <task_id>`.
+Empirical probes or spikes are active tasks (`classification: probe`) wired to the scoping task via standard
+`needs: [<probe_task_id>]`. No agent authors stored `alternative` or `settles` edges.
 
 ### 7.4 Explaining a weight
 
@@ -393,9 +438,16 @@ agents james, marsha, rbg, sara; and all tools-plugin skills.
 
 ## 10. Interface contracts
 
-**Edge write.** Every agent edge write carries the FR §5.1 fields, with `set_by` in
-`{agent-proposed, user}`. `migrated` is written only by the migration. Direct writes use `agent-proposed`. Each write is followed by a
-`pkb.get_task` readback with no `parse_warnings`.
+**Edge write contracts by purpose (ADR-0002).** All edge authoring strictly follows the 3-purpose taxonomy:
+
+| Edge Purpose | Label / Representation | Target Node Type | Required Frontmatter Fields | Mathematical / Engine Behaviour |
+| :- | :- | :- | :- | :- |
+| **1. Weight Flow** | `serves` | `target` (priced) | `to`, `quantum`, `probability`, `effect`, `justification`, `set_by` | Injects worth: $V(E) = W_t \times q \times p$. Pushed to top-level deliverable. |
+| **1. Weight Flow** | `supports` | `target` or `task` | `to`, `quantum`, `probability`, `effect`, `justification`, `set_by` | Value modifier for auxiliary work causally reducing effort or raising success odds. Forbidden for tracking. |
+| **2. Work Sequencing** | `needs` | `task` | `to` | Boolean execution prerequisite. Unblocks when prerequisite is `done`. Engine treats as $q=1.0, p=1.0$. Quantum and probability are NOT written. |
+| **3. Structural Clustering** | `[[node_id]]` | Any (task, note, spec) | None in frontmatter; written as markdown wikilinks in body | Natural clustering for graph physics and search. Zero frontmatter duplication. |
+
+Direct writes use `set_by: agent-proposed`. Each write is followed by a `pkb.get_task` readback with no `parse_warnings`.
 
 **Batch message.** The §5 table, numbered 1..n with n ≤ 50, preceded by one line giving the pool
 size and how many rows remain.
@@ -457,6 +509,11 @@ Each test can be checked by an observer reading the graph or a transcript.
 | A17 | Weights explain themselves | Ask "why does X carry this?" for 5 nodes. Each answer names priced targets and routes matching X's `stake` map. | U18, I12 |
 | A18 | Harms are wired, not netted | `/q` on work that advances one target and endangers another. It produces two edges, one `helps` and one `harms`, and the flow output shows both figures non-zero. | S12, S16, I15 |
 | A19 | Every changed file changed as §9 says | Diff of the implementation PR against §9: every row is present, and no unlisted skill changed. | this spec |
+| A20 | Three edge purposes distinguished | Verify edge taxonomy distinguishes (1) weight flow to targets, (2) sequencing via `needs`, and (3) clustering via body wikilinks without frontmatter duplication. | ADR-0002, AC2 |
+| A21 | Zero duplicate frontmatter edges for body citations | Inspect tasks with markdown body citations (e.g. `task_52c31235`). Verify no duplicate frontmatter edges are authored for nodes cited in body prose. | ADR-0002, AC2 |
+| A22 | Project hierarchy single injection | Inspect subtasks under an epic or composite task. Verify subtasks carry no redundant child-to-ancestor `serves` links to targets already served by their parent. | ADR-0002, AC3 |
+| A23 | Strict supports semantics | Inspect tracking and coordination tasks (e.g. `aops_9fd8f119`). Verify they do not link `supports` to tracked tasks, and link only to user understanding targets. | ADR-0002, AC4 |
+| A24 | Weight contracts enforced | Verify `needs` edges carry neither quantum nor probability; verify target weight edges (`serves`) and `supports` carry explicit quantum and probability. | ADR-0002, AC5 |
 
 ## 12. Settled decisions
 
@@ -499,6 +556,11 @@ All questions K1–K11 are settled under the product-grade workflow redesign:
 - An email date becoming a hard deadline, and a stakeholder name raising priority.
 - `blocks` edges in `/pull` and `/dump`.
 - The weight-repair template.
+- Duplicating markdown body citations as formal frontmatter edges with weights.
+- Wiring `supports` from tracking or coordination tasks to the tasks they track.
+- Authoring redundant child-to-ancestor `serves` weight edges on decomposed subtasks.
+- Stating `quantum` or `probability` on `needs` prerequisite edges.
+- Authoring stored `alternative` and `settles` edges (superseded by ADR `spec_e6d668b0`).
 
 ## 14. Traceability
 
