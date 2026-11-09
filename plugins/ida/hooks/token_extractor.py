@@ -308,7 +308,11 @@ def resolve_gemini_tokens(
             except Exception:
                 pass
 
-    if reported_input_tokens is not None or reported_output_tokens is not None:
+    if (
+        reported_input_tokens is not None
+        or reported_output_tokens is not None
+        or reported_cache_read_tokens is not None
+    ):
         fresh = int(reported_input_tokens or 0)
         cached = int(reported_cache_read_tokens or 0)
         completion = int(reported_output_tokens or 0)

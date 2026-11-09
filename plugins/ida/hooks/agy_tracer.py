@@ -468,9 +468,12 @@ def _extract_llm_spans_for_turn_agy(
                         attrs["llm.token_count.prompt"] = tok["prompt"]
                         attrs["llm.token_count.completion"] = tok["completion"]
                         attrs["llm.token_count.total"] = tok["total"]
-                        if tok.get("cache_read"):
-                            attrs["llm.token_count.prompt_details.cache_read"] = tok["cache_read"]
-                            attrs["llm.token_count.prompt_details.cache_write"] = 0
+                        attrs["llm.token_count.prompt_details.cache_read"] = (
+                            tok.get("cache_read", 0) or 0
+                        )
+                        attrs["llm.token_count.prompt_details.cache_write"] = (
+                            tok.get("cache_write", 0) or 0
+                        )
                         attrs["llm.token_count.type"] = tok["type"]
                         attrs["llm.token_count.provenance"] = tok["type"]
                         attrs["llm.token_count.estimate_method"] = tok["estimate_method"]
