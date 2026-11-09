@@ -1673,6 +1673,7 @@ def _make_stub_tracer_dir(target_dir: Path) -> Path:
     return stub_dir
 
 
+@pytest.mark.integration
 def test_printed_command_runs_from_different_cwd_under_claude_code_and_agy(tmp_path):
     import os
     import subprocess
@@ -1765,6 +1766,7 @@ def test_printed_command_runs_from_different_cwd_under_claude_code_and_agy(tmp_p
         assert pcg.is_armed(session_id) is False
 
 
+@pytest.mark.integration
 def test_printed_command_runs_with_relative_hooks_dir_from_plugin_cwd(tmp_path, monkeypatch):
     import os
     import subprocess

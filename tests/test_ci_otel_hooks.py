@@ -11,6 +11,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.integration
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "ci_otel_hooks.py"
 TRACER = REPO_ROOT / "plugins" / "ida" / "hooks" / "claude_code_tracer.py"

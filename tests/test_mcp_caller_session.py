@@ -8,6 +8,8 @@ import sys
 import tomllib
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 IDA_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
 HOOK_SCRIPT = IDA_HOOKS / "mcp_caller_session.py"
@@ -82,6 +84,7 @@ def test_hook_includes_agent_id_in_subagent():
     assert session["prompt_id"] == "prompt-uuid-turn"
 
 
+@pytest.mark.integration
 def test_hook_subprocess_execution():
     """End-to-end execution of the script as a subprocess reading stdin and emitting JSON stdout."""
     payload = {
@@ -111,6 +114,7 @@ def test_hook_subprocess_execution():
     }
 
 
+@pytest.mark.integration
 def test_hook_subprocess_fails_on_malformed_stdin():
     """Verify that malformed JSON on stdin fails fast with a non-zero exit code."""
     proc = subprocess.run(
