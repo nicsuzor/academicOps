@@ -68,6 +68,7 @@ from phoenix_token_cost import (  # noqa: E402
     cost_usd,
     get_json,
     price_row,
+    raw_cost_usd,
     resolve_base_url,
 )
 
@@ -268,6 +269,7 @@ class Step:
     model: str = ""
     tokens: dict[str, int] = field(default_factory=dict)
     cost: float = 0.0
+    raw_cost: float = 0.0
     text: str = ""
     context: str = ""
     tool_input: Any = None
@@ -307,6 +309,10 @@ class Turn:
     @property
     def cost(self) -> float:
         return sum(s.cost for s in self.model_steps)
+
+    @property
+    def raw_cost(self) -> float:
+        return sum(getattr(s, "raw_cost", 0.0) for s in self.model_steps)
 
     def token_total(self, key: str) -> int:
         return sum(s.tokens.get(key, 0) for s in self.model_steps)
@@ -750,6 +756,7 @@ def group_attr(group: list[Span], keys: tuple[str, ...]) -> Any:
 def build_model_step(span: Span, prices: dict[str, dict[str, float]], session_id: str) -> Step:
     model = str(first_attr(span, MODEL_KEYS) or "unknown model")
     tokens = tokens_of(span)
+    row = price_row(model, prices)
     return Step(
         kind="model",
         start=start_of(span),
@@ -758,7 +765,8 @@ def build_model_step(span: Span, prices: dict[str, dict[str, float]], session_id
         title=model,
         model=model,
         tokens=tokens,
-        cost=cost_usd(tokens, price_row(model, prices)),
+        cost=cost_usd(tokens, row),
+        raw_cost=raw_cost_usd(tokens, row),
         text=model_text(span),
         context=model_context(span),
         agent=agent_label(span, session_id),
@@ -1094,11 +1102,16 @@ def model_totals(turns: list[Turn]) -> dict[str, dict[str, Any]]:
     totals: dict[str, dict[str, Any]] = {}
     for turn in turns:
         for step in turn.model_steps:
-            row = totals.setdefault(step.model, {"calls": 0, "cost": 0.0, **empty_tokens()})
+            row = totals.setdefault(
+                step.model, {"calls": 0, "cost": 0.0, "raw_cost": 0.0, **empty_tokens()}
+            )
             row["calls"] += 1
             row["cost"] += step.cost
+            row["raw_cost"] += getattr(step, "raw_cost", 0.0)
             for key in ("in", "cache_read", "cache_write", "out"):
                 row[key] += step.tokens.get(key, 0)
+    for row in totals.values():
+        row["savings"] = max(0.0, row["raw_cost"] - row["cost"])
     return totals
 
 
@@ -1117,6 +1130,8 @@ def render(
     tools = [s for s in all_steps if s.kind == "tool"]
     models = model_totals(turns)
     cost = sum(row["cost"] for row in models.values())
+    raw_cost = sum(row.get("raw_cost", 0.0) for row in models.values())
+    savings = max(0.0, raw_cost - cost)
     tokens = {
         k: sum(row[k] for row in models.values())
         for k in ("in", "cache_read", "cache_write", "out")
@@ -1133,7 +1148,7 @@ def render(
         f"- **Turns:** {len(turns)} · **model calls:** {sum(r['calls'] for r in models.values())} · "
         f"**tool calls:** {len(tools)} · **errors:** {len(errors)} · **spans:** {len(spans)}",
         f"- **Tokens:** {token_line(tokens)}",
-        f"- **Estimated cost:** {fmt_usd(cost)} (list prices; comparable spend, not an invoice)",
+        f"- **Estimated cost:** {fmt_usd(cost)} (raw list: {fmt_usd(raw_cost)}, cache saved: {fmt_usd(savings)}; list prices, comparable spend)",
     ]
     if agents:
         header.append(f"- **Subagents:** {', '.join(agents)}")
@@ -1161,13 +1176,14 @@ def render(
         "",
         "## Cost by model",
         "",
-        "| Model | Calls | In | Cache read | Cache write | Out | Cost |",
-        "| - | -: | -: | -: | -: | -: | -: |",
+        "| Model | Calls | In | Cache read | Cache write | Out | Cost | Raw list | Saved |",
+        "| - | -: | -: | -: | -: | -: | -: | -: | -: |",
     ]
     for model, row in sorted(models.items(), key=lambda kv: -kv[1]["cost"]):
         summary.append(
             f"| {escape_cell(model)} | {row['calls']} | {fmt_n(row['in'])} | {fmt_n(row['cache_read'])} | "
-            f"{fmt_n(row['cache_write'])} | {fmt_n(row['out'])} | {fmt_usd(row['cost'])} |"
+            f"{fmt_n(row['cache_write'])} | {fmt_n(row['out'])} | {fmt_usd(row['cost'])} | "
+            f"{fmt_usd(row.get('raw_cost', 0.0))} | {fmt_usd(row.get('savings', 0.0))} |"
         )
     slowest = sorted((s for s in all_steps if s.kind != "other"), key=lambda s: -s.duration_ms)[
         :SLOWEST_STEPS

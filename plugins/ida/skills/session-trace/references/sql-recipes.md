@@ -87,11 +87,52 @@ target does not exist.
 SELECT name,
        SUM(llm_token_count_prompt) AS prompt_tokens,
        SUM(llm_token_count_completion) AS completion_tokens,
-       SUM(CAST(JSON_EXTRACT(attributes, '$.\"llm.prompt_details.cache_read\"') AS INTEGER)) AS cache_read_tokens
+       SUM(COALESCE(
+         CAST(attributes ->> '$.llm.token_count.prompt_details.cache_read' AS INTEGER),
+         CAST(attributes ->> '$.llm.prompt_details.cache_read' AS INTEGER),
+         CAST(attributes ->> '$.cache_read_tokens' AS INTEGER),
+         CAST(attributes ->> '$.gen_ai.usage.cache_read.input_tokens' AS INTEGER),
+         0
+       )) AS cache_read_tokens,
+       SUM(COALESCE(
+         CAST(attributes ->> '$.llm.token_count.prompt_details.cache_write' AS INTEGER),
+         CAST(attributes ->> '$.llm.prompt_details.cache_write' AS INTEGER),
+         CAST(attributes ->> '$.cache_creation_tokens' AS INTEGER),
+         CAST(attributes ->> '$.gen_ai.usage.cache_creation.input_tokens' AS INTEGER),
+         0
+       )) AS cache_write_tokens
 FROM spans
-WHERE JSON_EXTRACT(attributes, '$.session.id') = '<SESSION_UUID>'
+WHERE attributes ->> '$.session.id' = '<SESSION_UUID>'
   AND span_kind = 'LLM'
 GROUP BY name
+```
+
+**E2 -- raw list rate vs cached execution cost via Phoenix tables.**
+
+```sql
+SELECT
+  s.name AS model_span,
+  SUM(sc.total_cost) AS cached_cost_usd,
+  SUM(CASE WHEN scd.token_type IN ('input', 'cache_read', 'cache_write') THEN scd.token_count ELSE 0 END) AS total_prompt_tokens,
+  SUM(CASE WHEN scd.token_type = 'output' THEN scd.token_count ELSE 0 END) AS output_tokens,
+  SUM(CASE WHEN scd.token_type = 'cache_read' THEN scd.token_count ELSE 0 END) AS cache_read_tokens,
+  ROUND(SUM(sc.total_cost), 4) AS actual_cost,
+  -- Raw un-cached cost applies fresh input rate to all prompt tokens:
+  ROUND(SUM(
+    CASE
+      WHEN scd.token_type IN ('input', 'cache_read', 'cache_write') THEN scd.token_count * tp_in.unit_price
+      WHEN scd.token_type = 'output' THEN scd.token_count * tp_out.unit_price
+      ELSE 0
+    END
+  ), 4) AS raw_list_cost
+FROM spans s
+JOIN span_costs sc ON sc.span_rowid = s.id
+JOIN span_cost_details scd ON scd.span_cost_id = sc.id
+LEFT JOIN generative_models gm ON gm.name = s.name
+LEFT JOIN token_prices tp_in ON tp_in.model_id = gm.id AND tp_in.token_type = 'input'
+LEFT JOIN token_prices tp_out ON tp_out.model_id = gm.id AND tp_out.token_type = 'output'
+WHERE s.attributes ->> '$.session.id' = '<SESSION_UUID>'
+GROUP BY s.name
 ```
 
 **F -- correlate a spawned subagent's own session.** When a child worker or subagent

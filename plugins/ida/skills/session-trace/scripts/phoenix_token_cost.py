@@ -15,7 +15,7 @@ the cache tokens, so::
 
 Spans are deduplicated on ``(session.id, start_time, output.value)`` before summing:
 roughly a sixth of Opus spans arrive twice (same start, same output) and would double
-the bill. Gemini spans (``gemini-*``) carry no token counts and are counted as calls only.
+the bill. Gemini spans (``gemini-*``) carry token counts with prompt cache read pricing.
 
 ``session.id`` is the aggregation key. Subagents inherit the parent's session id
 (``subagent.id == session.id``), so a row is a whole desk/face/subagent tree.
@@ -83,8 +83,15 @@ PRICES: dict[str, dict[str, float]] = {
     "claude-fable-5-1": {"in": 10.0, "out": 50.0, "cache_read": 0.25, "cache_write": 12.5},
     "claude-fable-5": {"in": 10.0, "out": 50.0, "cache_read": 1.0, "cache_write": 12.5},
     "claude-opus-5": {"in": 5.0, "out": 25.0, "cache_read": 0.5, "cache_write": 6.25},
+    "claude-opus-5-5": {"in": 5.0, "out": 25.0, "cache_read": 0.5, "cache_write": 6.25},
     "claude-sonnet-5": {"in": 2.0, "out": 10.0, "cache_read": 0.2, "cache_write": 2.5},
+    "claude-sonnet-5-5": {"in": 2.0, "out": 10.0, "cache_read": 0.2, "cache_write": 2.5},
     "claude-haiku-4-5": {"in": 1.0, "out": 5.0, "cache_read": 0.1, "cache_write": 1.25},
+    "claude-haiku-5-5": {"in": 1.0, "out": 5.0, "cache_read": 0.1, "cache_write": 1.25},
+    "gemini-4-argon": {"in": 2.00, "out": 10.00, "cache_read": 0.10, "cache_write": 0.0},
+    "gemini-3.8-flash": {"in": 0.75, "out": 3.75, "cache_read": 0.075, "cache_write": 0.0},
+    "gemini-2.5-flash": {"in": 0.30, "out": 2.50, "cache_read": 0.03, "cache_write": 0.0},
+    "gemini-2.5-flash-lite": {"in": 0.10, "out": 0.40, "cache_read": 0.01, "cache_write": 0.0},
 }
 
 # Substrings of model names that share a price row (dated ids, provider prefixes).
@@ -92,9 +99,21 @@ PRICES: dict[str, dict[str, float]] = {
 PRICE_ALIASES: list[tuple[str, str]] = [
     ("fable-5-1", "claude-fable-5-1"),
     ("fable", "claude-fable-5"),
+    ("opus-5-5", "claude-opus-5-5"),
     ("opus", "claude-opus-5"),
+    ("sonnet-5-5", "claude-sonnet-5-5"),
     ("sonnet", "claude-sonnet-5"),
+    ("haiku-5-5", "claude-haiku-5-5"),
     ("haiku", "claude-haiku-4-5"),
+    ("gemini-4", "gemini-4-argon"),
+    ("argon", "gemini-4-argon"),
+    ("gemini-3.8", "gemini-3.8-flash"),
+    ("gemini-2.5-flash-lite", "gemini-2.5-flash-lite"),
+    ("flash-lite", "gemini-2.5-flash-lite"),
+    ("gemini-2.5-flash", "gemini-2.5-flash"),
+    ("gemini-2.5", "gemini-2.5-flash"),
+    ("flash", "gemini-3.8-flash"),
+    ("claude", "claude-sonnet-5"),
 ]
 
 # TOOL span names that name a PKB task in their input. Claim/release are the strongest
@@ -359,11 +378,27 @@ def cost_usd(tokens: dict[str, int], row: dict[str, float] | None) -> float:
     ) / 1e6
 
 
+def raw_cost_usd(tokens: dict[str, int], row: dict[str, float] | None) -> float:
+    """Raw un-cached list rate cost (no cache discount: total prompt * input rate + output * output rate)."""
+    if not row:
+        return 0.0
+    prompt_total = tokens.get("in", 0) + tokens.get("cache_read", 0) + tokens.get("cache_write", 0)
+    return (prompt_total * row["in"] + tokens.get("out", 0) * row["out"]) / 1e6
+
+
 # --- span helpers ----------------------------------------------------------
 
 
 def attr(span: Span, key: str, default: Any = None) -> Any:
     return span.get("attributes", {}).get(key, default)
+
+
+def first_attr(span: Span, keys: tuple[str, ...], default: Any = None) -> Any:
+    for key in keys:
+        val = attr(span, key)
+        if val is not None:
+            return val
+    return default
 
 
 def as_int(value: Any) -> int:
@@ -378,15 +413,67 @@ def session_of(span: Span) -> str:
 
 
 def tokens_of(span: Span) -> dict[str, int] | None:
-    prompt = attr(span, "llm.token_count.prompt")
-    completion = attr(span, "llm.token_count.completion")
-    if prompt is None and completion is None:
+    has_native = attr(span, "input_tokens") is not None or attr(span, "output_tokens") is not None
+    has_openinference = (
+        attr(span, "llm.token_count.prompt") is not None
+        or attr(span, "llm.token_count.completion") is not None
+    )
+    has_genai = (
+        attr(span, "gen_ai.usage.input_tokens") is not None
+        or attr(span, "gen_ai.usage.output_tokens") is not None
+    )
+
+    if not (has_native or has_openinference or has_genai):
         return None
-    cache_read = as_int(attr(span, "llm.token_count.prompt_details.cache_read"))
-    cache_write = as_int(attr(span, "llm.token_count.prompt_details.cache_write"))
+
+    if has_native:
+        return {
+            "in": as_int(attr(span, "input_tokens")),
+            "out": as_int(attr(span, "output_tokens")),
+            "cache_read": as_int(attr(span, "cache_read_tokens")),
+            "cache_write": as_int(attr(span, "cache_creation_tokens")),
+        }
+
+    if has_openinference:
+        cache_read = as_int(
+            first_attr(
+                span,
+                ("llm.token_count.prompt_details.cache_read", "llm.prompt_details.cache_read"),
+            )
+        )
+        cache_write = as_int(
+            first_attr(
+                span,
+                ("llm.token_count.prompt_details.cache_write", "llm.prompt_details.cache_write"),
+            )
+        )
+        prompt = as_int(attr(span, "llm.token_count.prompt"))
+        return {
+            "in": max(0, prompt - cache_read - cache_write),
+            "out": as_int(attr(span, "llm.token_count.completion")),
+            "cache_read": cache_read,
+            "cache_write": cache_write,
+        }
+
+    cache_read = as_int(
+        first_attr(
+            span,
+            ("gen_ai.usage.cache_read.input_tokens", "gen_ai.usage.cache_read_input_tokens"),
+        )
+    )
+    cache_write = as_int(
+        first_attr(
+            span,
+            (
+                "gen_ai.usage.cache_creation.input_tokens",
+                "gen_ai.usage.cache_creation_input_tokens",
+            ),
+        )
+    )
+    prompt = as_int(attr(span, "gen_ai.usage.input_tokens"))
     return {
-        "in": max(as_int(prompt) - cache_read - cache_write, 0),
-        "out": as_int(completion),
+        "in": max(0, prompt - cache_read - cache_write),
+        "out": as_int(attr(span, "gen_ai.usage.output_tokens")),
         "cache_read": cache_read,
         "cache_write": cache_write,
     }
@@ -487,18 +574,28 @@ def new_bucket() -> dict[str, Any]:
         "models": defaultdict(int),
         "tokens": {"in": 0, "out": 0, "cache_read": 0, "cache_write": 0},
         "cost": 0.0,
+        "raw_cost": 0.0,
+        "savings": 0.0,
         "first": None,
         "last": None,
     }
 
 
-def add(bucket: dict[str, Any], span: Span, tokens: dict[str, int] | None, cost: float) -> None:
+def add(
+    bucket: dict[str, Any],
+    span: Span,
+    tokens: dict[str, int] | None,
+    cost: float,
+    raw_cost: float = 0.0,
+) -> None:
     bucket["calls"] += 1
     bucket["models"][str(attr(span, "llm.model_name", "?"))] += 1
     if tokens:
         for k, v in tokens.items():
             bucket["tokens"][k] += v
     bucket["cost"] += cost
+    bucket["raw_cost"] += raw_cost
+    bucket["savings"] = max(0.0, bucket["raw_cost"] - bucket["cost"])
     started = str(span.get("start_time"))
     bucket["first"] = min(filter(None, [bucket["first"], started]))
     bucket["last"] = max(filter(None, [bucket["last"], started]))
@@ -580,13 +677,14 @@ def aggregate(
         elif row is None:
             unpriced[model] += 1
         cost = cost_usd(tokens, row) if tokens else 0.0
+        raw_cost = raw_cost_usd(tokens, row) if tokens else 0.0
         task = (
             task_at(timeline.get(sid, []), str(span.get("start_time")))
             if by == "task"
             else task_summary(timeline.get(sid, []))
         )
-        add(buckets[(sid, task)], span, tokens, cost)
-        add(total, span, tokens, cost)
+        add(buckets[(sid, task)], span, tokens, cost, raw_cost)
+        add(total, span, tokens, cost, raw_cost)
 
     rows: list[dict[str, Any]] = []
     for (sid, task), bucket in buckets.items():
@@ -606,6 +704,8 @@ def aggregate(
                 "calls": bucket["calls"],
                 **bucket["tokens"],
                 "cost": round(bucket["cost"], 2),
+                "raw_cost": round(bucket["raw_cost"], 2),
+                "savings": round(bucket["savings"], 2),
                 "first": bucket["first"],
                 "last": bucket["last"],
             }
@@ -615,6 +715,8 @@ def aggregate(
         "calls": total["calls"],
         "tokens": total["tokens"],
         "cost": round(total["cost"], 2),
+        "raw_cost": round(total["raw_cost"], 2),
+        "savings": round(total["savings"], 2),
         "unpriced_models": dict(unpriced),
         "uncounted_models": dict(uncounted),
     }
@@ -640,10 +742,10 @@ def render(
     dropped: int,
     width: int,
 ) -> str:
-    head = f"{'session':<8} {'agent/role':<{width}} {'task':<24} {'model':<16} {'calls':>5} {'in':>7} {'out':>7} {'cache_rd':>8} {'cache_wr':>8} {'USD':>8}"
+    head = f"{'session':<8} {'agent/role':<{width}} {'task':<24} {'model':<16} {'calls':>5} {'in':>7} {'out':>7} {'cache_rd':>8} {'cache_wr':>8} {'USD':>8} {'raw_USD':>8}"
     lines = [
         f"Token cost by session -- Phoenix project {project!r}, {iso(window[0])} -> {iso(window[1])}",
-        f"{meta['calls']} LLM calls after dropping {dropped} duplicate spans; total est. US${meta['cost']:.2f}",
+        f"{meta['calls']} LLM calls after dropping {dropped} duplicate spans; total est. US${meta['cost']:.2f} (raw list: US${meta.get('raw_cost', 0.0):.2f}, saved: US${meta.get('savings', 0.0):.2f})",
         "",
         head,
         "-" * len(head),
@@ -653,19 +755,19 @@ def render(
         task = r["task"] if len(r["task"]) <= 24 else r["task"][:23] + "~"
         lines.append(
             f"{r['session'][:8]:<8} {role:<{width}} {task:<24} {r['model'][:16]:<16} {r['calls']:>5} "
-            f"{fmt_k(r['in']):>7} {fmt_k(r['out']):>7} {fmt_k(r['cache_read']):>8} {fmt_k(r['cache_write']):>8} {r['cost']:>8.2f}"
+            f"{fmt_k(r['in']):>7} {fmt_k(r['out']):>7} {fmt_k(r['cache_read']):>8} {fmt_k(r['cache_write']):>8} {r['cost']:>8.2f} {r.get('raw_cost', 0.0):>8.2f}"
         )
     t = meta["tokens"]
     lines.append("-" * len(head))
     lines.append(
-        f"{'total':<8} {'':<{width}} {'':<24} {'':<16} {meta['calls']:>5} {fmt_k(t['in']):>7} {fmt_k(t['out']):>7} {fmt_k(t['cache_read']):>8} {fmt_k(t['cache_write']):>8} {meta['cost']:>8.2f}"
+        f"{'total':<8} {'':<{width}} {'':<24} {'':<16} {meta['calls']:>5} {fmt_k(t['in']):>7} {fmt_k(t['out']):>7} {fmt_k(t['cache_read']):>8} {fmt_k(t['cache_write']):>8} {meta['cost']:>8.2f} {meta.get('raw_cost', 0.0):>8.2f}"
     )
     if meta["unpriced_models"]:
         lines.append(f"unpriced models (cost 0): {meta['unpriced_models']}")
     if meta["uncounted_models"]:
         lines.append(f"spans without token counts (calls only): {meta['uncounted_models']}")
     lines.append(
-        "in = prompt - cache_read - cache_write; prices USD/M in PRICES (override --prices)"
+        "USD = cached execution cost; raw_USD = un-cached list rate; in = prompt - cache_read - cache_write; prices USD/M in PRICES (override --prices)"
     )
     return "\n".join(lines)
 
@@ -679,19 +781,21 @@ def render_markdown(
 ) -> str:
     lines = [
         f"Phoenix project `{project}`, {iso(window[0])} -> {iso(window[1])}: {meta['calls']} LLM calls "
-        f"({dropped} duplicate spans dropped), total est. US${meta['cost']:.2f}",
+        f"({dropped} duplicate spans dropped), total est. US${meta['cost']:.2f} "
+        f"(raw list rate: US${meta.get('raw_cost', 0.0):.2f}, cache savings: US${meta.get('savings', 0.0):.2f})",
         "",
-        "| session | agent/role | task | model | calls | in | out | cache_rd | cache_wr | USD |",
-        "|---|---|---|---|---:|---:|---:|---:|---:|---:|",
+        "| session | agent/role | task | model | calls | in | out | cache_rd | cache_wr | USD | raw USD | saved |",
+        "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for r in rows:
         lines.append(
             f"| {r['session'][:8]} | {r['role']} | {r['task']} | {r['model']} | {r['calls']} | {fmt_k(r['in'])} | "
-            f"{fmt_k(r['out'])} | {fmt_k(r['cache_read'])} | {fmt_k(r['cache_write'])} | {r['cost']:.2f} |"
+            f"{fmt_k(r['out'])} | {fmt_k(r['cache_read'])} | {fmt_k(r['cache_write'])} | {r['cost']:.2f} | "
+            f"{r.get('raw_cost', 0.0):.2f} | {r.get('savings', 0.0):.2f} |"
         )
     t = meta["tokens"]
     lines.append(
-        f"| **total** | | | | {meta['calls']} | {fmt_k(t['in'])} | {fmt_k(t['out'])} | {fmt_k(t['cache_read'])} | {fmt_k(t['cache_write'])} | **{meta['cost']:.2f}** |"
+        f"| **total** | | | | {meta['calls']} | {fmt_k(t['in'])} | {fmt_k(t['out'])} | {fmt_k(t['cache_read'])} | {fmt_k(t['cache_write'])} | **{meta['cost']:.2f}** | **{meta.get('raw_cost', 0.0):.2f}** | **{meta.get('savings', 0.0):.2f}** |"
     )
     if meta["unpriced_models"]:
         lines.append(f"\nUnpriced models (cost 0): `{meta['unpriced_models']}`")
