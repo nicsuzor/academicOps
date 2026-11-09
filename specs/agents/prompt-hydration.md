@@ -37,12 +37,12 @@ As an operator, I want the search to reach an access-controlled PKB endpoint usi
 - **AC-3.2** Given `PKB_MCP_URL` is unset, when a prompt is submitted, then no search runs and the turn proceeds.
 - **AC-3.3** Given a credential set only in a client's own MCP configuration, when a prompt is submitted, then the search does not use it.
 
-### US-4 Failures are visible and name their cause
+### US-4 Failures are silent in agent context and logged for operators
 
-As an operator, I want a failed search reported to the agent with the reason the endpoint gave, so that I can tell a missing credential from a dead server without re-running the hook by hand.
+As an operator, I want a failed search suppressed from agent turn context so timeouts and errors do not derail agent execution, while logging the cause to diagnostics so missing credentials or unreachable servers remain observable.
 
-- **AC-4.1** Given the endpoint rejects the request for want of a valid credential (HTTP 401 or 403), when a prompt is submitted, then the turn proceeds and the injected message says the PKB endpoint refused authorisation and names the credential variables the hook reads.
-- **AC-4.2** Given the endpoint is unreachable or does not answer within 5 seconds, when a prompt is submitted, then the turn proceeds and the injected message says so.
+- **AC-4.1** Given the endpoint rejects the request for want of a valid credential (HTTP 401 or 403), when a prompt is submitted, then the turn proceeds, nothing is injected into agent context, and the diagnostic log records the authorisation refusal and credential variables.
+- **AC-4.2** Given the endpoint is unreachable or does not answer within 5 seconds, when a prompt is submitted, then the turn proceeds, nothing is injected into agent context, and the timeout or connection error is recorded in diagnostic logs.
 - **AC-4.3** Given any failed search, when the turn proceeds, then no other search route is tried.
 
 ## Design
@@ -61,4 +61,4 @@ The hook runs as its own process, launched by the client with the client's envir
 
 **Budget.** The connect-and-search is bounded at 5 seconds, because the hook runs synchronously ahead of every turn. Search queries are capped at 8 KB (8,192 characters). Injected output is capped at 8,000 characters (AC-1.4).
 
-**Output.** Results are injected as advisory context inside `<academicOps PKB search results>` tags. When the server returns no matches or empty content, nothing is injected (AC-1.5). A failure is injected as a single-line message beginning `aops hooks: handler 'search_the_pkb' failed with`, carrying the cause (US-4).
+**Output.** Results are injected as advisory context inside `<academicOps PKB search results>` tags carrying an explicit advisory comment marking them as background reference material that does not constitute prompt instructions, task assignments, or arming gates. When the server returns no matches, empty content, or when the search fails or times out, nothing is injected into agent context (AC-1.5, US-4). Search failure and timeout details are written to stderr / logger for operator observability.

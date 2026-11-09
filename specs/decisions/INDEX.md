@@ -7,6 +7,7 @@ This directory contains the immutable Architectural Decision Records (ADRs) for 
 | ID | Date | Title | Status | Summary Rationale |
 | :- | :- | :- | :- | :- |
 | [ADR-0001](0001-use-madr-for-architectural-decisions.md) | 2026-11-08 | Use MADR for Architectural Decisions | Accepted | Track git-local rationale separately from specs without external PKB dependencies. |
+| [ADR-0002](0002-make-pkb-prompt-hydration-strictly-advisory.md) | 2026-11-09 | Make PKB Prompt Hydration Strictly Advisory | Accepted | Suppress search failures from agent context to prevent turn derailments and frame results as passive reference. |
 
 ## Guidance for Agents
 

@@ -49,10 +49,10 @@ The hook and runtime expect canonical Cloudflare Access service-token credential
   keys without polecat dispatch access for isolated worker containers).
 
 **Check it is working.** A grounded turn carries
-`<academicOps PKB search results>` in its hook context. A failing one carries
-`aops hooks: handler 'search_the_pkb' failed with ...`. The MCP client reports
-an HTTP 401 as `MCPError(-32603, 'Server returned an error response')`; seen
-on every prompt, that means the hook has no valid credential.
+`<academicOps PKB search results>` in its hook context. A failing search is silent
+in agent context and logged to hook diagnostics (`aops hooks: search_the_pkb failed: ...`
+on stderr). The MCP client reports an HTTP 401 as `MCPError(-32603, 'Server returned an error response')`;
+seen on every prompt, that means the hook has no valid credential.
 
 **Find the cause.** From where the client runs, send the MCP `initialize`
 request with the headers the hook would send (add `-H` for each), and read the

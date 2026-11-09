@@ -280,6 +280,8 @@ def _run_handler(handler: Handler, ctx: HookContext) -> Result | None:
         name = getattr(handler, "__name__", str(handler))
         msg = f"aops hooks: handler {name!r} failed with {exc!r}"
         print(msg, file=sys.stderr)
+        if getattr(handler, "suppress_errors", False) or name == "search_the_pkb":
+            return None
         return warn(msg)
 
 
