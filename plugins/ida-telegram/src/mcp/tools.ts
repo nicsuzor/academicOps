@@ -100,20 +100,6 @@ export const MCP_TOOLS: ToolDefinition[] = [
     },
   },
   {
-    name: "anchor",
-    description: "Update the live cognitive anchor with Ida's current focus, task, and waiting-on state.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        focus: { type: "string", description: "Current focus summary" },
-        task_id: { type: "string", description: "Current PKB task ID" },
-        waiting_on: { type: "array", items: { type: "string" } },
-        delegations: { type: "array", items: { type: "string" } },
-      },
-      required: ["focus"],
-    },
-  },
-  {
     name: "edit_message",
     description: "Edit an existing Telegram message sent by the bot.",
     inputSchema: {
@@ -124,18 +110,6 @@ export const MCP_TOOLS: ToolDefinition[] = [
         text: { type: "string" },
       },
       required: ["message_id", "text"],
-    },
-  },
-  {
-    name: "download_attachment",
-    description: "Download a Telegram attachment or voice note to a local path.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        file_id: { type: "string" },
-        destination: { type: "string" },
-      },
-      required: ["file_id"],
     },
   },
 ];

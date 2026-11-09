@@ -31,7 +31,7 @@ async function main() {
   });
 
   // Stdio MCP server
-  const mcpServer = new StdioMcpServer(config, store, broker, null, permRelay);
+  const mcpServer = new StdioMcpServer(config, store, broker, null, permRelay, channelCore);
 
   if (!config.isPrimary) {
     console.error("[ida-telegram] Non-primary instance: registering 0 tools, no poller, no web server.");
@@ -97,49 +97,20 @@ async function main() {
     let raw = "";
     client.on("data", async (chunk) => {
       raw += chunk.toString();
-      if (raw.includes("\n")) {
-        const line = raw.trim();
-        try {
-          const req = JSON.parse(line);
-          if (req.type === "reply" || req.type === "react" || req.type === "edit_message") {
+      let newlineIdx = raw.indexOf("\n");
+      while (newlineIdx !== -1) {
+        const line = raw.substring(0, newlineIdx).trim();
+        raw = raw.substring(newlineIdx + 1);
+        if (line) {
+          try {
+            const req = JSON.parse(line);
             const resp = await channelCore.handleIpcMessage(req);
             client.write(JSON.stringify(resp) + "\n");
-          } else if (req.type === "ask_user") {
-            const postedIds: string[] = [];
-            for (const q of req.questions || []) {
-              const multiSelect = q.multi_select !== undefined ? q.multi_select : q.multiSelect;
-              const allowOther = q.allow_custom !== undefined ? q.allow_custom : q.allowOther;
-              const result = await broker.askUser({
-                question: q.question,
-                header: q.header,
-                options: q.options,
-                multiSelect,
-                allowOther,
-                chatId: config.allowFrom[0],
-                turnId: q.turnId || req.turn_id,
-              });
-              postedIds.push(result.questionId);
-
-              if (bot) {
-                const card = broker.renderQuestionCard(result.questionId);
-                if (card && config.allowFrom[0]) {
-                  await bot.sendQuestionCard(config.allowFrom[0], result.questionId, card);
-                }
-              }
-            }
-
-            client.write(
-              JSON.stringify({
-                status: "ok",
-                questionId: postedIds[0],
-                questionIds: postedIds,
-                question_ids: postedIds,
-              }) + "\n"
-            );
+          } catch (err: any) {
+            client.write(JSON.stringify({ error: err.message || "malformed request" }) + "\n");
           }
-        } catch {
-          client.write(JSON.stringify({ error: "malformed request" }) + "\n");
         }
+        newlineIdx = raw.indexOf("\n");
       }
     });
   });

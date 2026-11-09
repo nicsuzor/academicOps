@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import { resolveBotCommands, type TelegramBotCommand } from "./telegram/commands.js";
 
-export const DEFAULT_MINI_APP_URL = "https://ida.suzor.com";
+export const DEFAULT_MINI_APP_URL = "https://ida.example.org";
 
 export interface PluginConfig {
   botToken: string;

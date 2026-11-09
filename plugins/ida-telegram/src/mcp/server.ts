@@ -2,32 +2,52 @@ import { MCP_TOOLS } from "./tools.js";
 import { PluginConfig } from "../config.js";
 import { PluginStore } from "../store.js";
 import { QuestionBroker } from "../telegram/questions.js";
-import { processReplyOverflow } from "../telegram/overflow.js";
-import { formatMarkdownToEntities, normalizeReaction } from "../telegram/format.js";
 import { TelegramBotClient } from "../telegram/bot.js";
 import { sanitizeChannelMeta } from "../telegram/inbound.js";
-import { splitVoiceTier2Quotes } from "../telegram/voice.js";
 import { PermissionRelay } from "./permissions.js";
+import { SharedTelegramChannelCore } from "../core/channel-core.js";
 
 export class StdioMcpServer {
   private config: PluginConfig;
   private store: PluginStore;
   private broker: QuestionBroker;
-  private bot: TelegramBotClient | null;
+  private _bot: TelegramBotClient | null;
   private permRelay: PermissionRelay;
+  public channelCore: SharedTelegramChannelCore;
 
   constructor(
     config: PluginConfig,
     store: PluginStore,
     broker: QuestionBroker,
     bot: TelegramBotClient | null,
-    permRelay: PermissionRelay
+    permRelay: PermissionRelay,
+    channelCore?: SharedTelegramChannelCore
   ) {
     this.config = config;
     this.store = store;
     this.broker = broker;
-    this.bot = bot;
+    this._bot = bot;
     this.permRelay = permRelay;
+    this.channelCore =
+      channelCore ||
+      new SharedTelegramChannelCore({
+        config,
+        store,
+        broker,
+        bot,
+        permRelay,
+      });
+  }
+
+  public get bot(): TelegramBotClient | null {
+    return this._bot;
+  }
+
+  public set bot(b: TelegramBotClient | null) {
+    this._bot = b;
+    if (this.channelCore) {
+      this.channelCore.bot = b;
+    }
   }
 
   public emitChannelNotification(content: string, meta: Record<string, unknown>) {
@@ -185,202 +205,7 @@ export class StdioMcpServer {
   }
 
   private async executeTool(name: string, args: Record<string, unknown>): Promise<unknown> {
-    const defaultChatId = this.config.allowFrom[0] || 0;
-
-    if (name === "reply") {
-      const text = (args.text as string) || "";
-      const detail = args.detail as string | undefined;
-      const chatId = (args.chat_id as number) || defaultChatId;
-      const replyTo = args.reply_to as number | undefined;
-
-      // FR-7.1: Determine whether voice reply is requested explicitly or via voice_replies setting
-      let isVoice = false;
-      if (typeof args.voice === "boolean") {
-        isVoice = args.voice;
-      } else if (this.config.voiceReplies === "always") {
-        isVoice = true;
-      } else if (this.config.voiceReplies === "mirror" && this.bot?.isLastInboundVoice(chatId)) {
-        isVoice = true;
-      }
-
-      // FR-7.2 & FR-7.3: For voice replies, Tier 2 quotes go behind Details along with Tier 3
-      let effectiveText = text;
-      let effectiveDetail = detail;
-      if (isVoice) {
-        const { tier1Text, tier2Quotes } = splitVoiceTier2Quotes(text);
-        if (tier2Quotes) {
-          effectiveText = tier1Text;
-          effectiveDetail = detail ? `${tier2Quotes}\n\n---\n\n${detail}` : tier2Quotes;
-        }
-      }
-
-      // 1. Process overflow
-      const overflowRes = processReplyOverflow({
-        text: effectiveText,
-        detail: effectiveDetail,
-        maxChatChars: this.config.maxChatChars,
-      });
-
-      let detailsId: string | undefined;
-      if (overflowRes.combinedDetail) {
-        detailsId = this.store.storeDetails(overflowRes.combinedDetail);
-      }
-
-      const reviewArg = args.review as { repo: string; pr?: number; base?: string; head?: string } | undefined;
-      if (reviewArg?.repo) {
-        this.store.addReview(reviewArg);
-      }
-      this.store.recordTurn("out", overflowRes.chatText);
-
-      // 2. Format entities
-      const formatted = formatMarkdownToEntities(overflowRes.chatText);
-
-      // 3. Send via bot
-      if (this.bot) {
-        const sendRes = await this.bot.sendReply({
-          chatId,
-          formatted,
-          detailsId,
-          buttons: args.buttons as Array<{ label: string; callback_data?: string; url?: string; web_app?: string }> | undefined,
-          voice: isVoice,
-          replyTo,
-          review: reviewArg,
-        });
-
-        const out: Record<string, unknown> = {
-          success: true,
-          messageId: sendRes?.messageId,
-          message_id: sendRes?.messageId,
-        };
-        if (detailsId !== undefined) {
-          out.detailsId = detailsId;
-        }
-        if (sendRes?.voiceSent !== undefined) {
-          out.voiceSent = sendRes.voiceSent;
-        }
-        if (sendRes?.voiceMessageId !== undefined) {
-          out.voiceMessageId = sendRes.voiceMessageId;
-          out.voice_message_id = sendRes.voiceMessageId;
-        }
-        if (sendRes?.voiceError !== undefined) {
-          out.voiceError = sendRes.voiceError;
-        }
-        return out;
-      }
-
-      return { success: true, preview: formatted.plainText, detailsId, message_id: 0, messageId: 0 };
-    }
-
-    if (name === "react") {
-      const chatId = (args.chat_id as number) || defaultChatId;
-      const messageId = args.message_id as number;
-      const rawReaction = args.reaction as string;
-      const norm = normalizeReaction(rawReaction);
-
-      if (!norm) {
-        return { success: false, error: `Invalid reaction: ${rawReaction}` };
-      }
-
-      if (this.bot) {
-        await this.bot.setReaction(chatId, messageId, norm);
-      }
-      return { success: true, reaction: norm };
-    }
-
-    if (name === "ask_user") {
-      const topTurnId = (args.turn_id as string | undefined) || (args.turnId as string | undefined);
-      const questions = (args.questions as Array<{
-        question: string;
-        header?: string;
-        options: Array<{ label: string; description?: string }>;
-        multiSelect?: boolean;
-        allowOther?: boolean;
-        turn_id?: string;
-        turnId?: string;
-      }>) || [];
-
-      if (questions.length === 0) {
-        return { success: false, error: "No questions provided" };
-      }
-
-      const postedIds: string[] = [];
-      for (const q of questions) {
-        const multiSelect = (q as any).multi_select !== undefined ? (q as any).multi_select : q.multiSelect;
-        const allowOther = (q as any).allow_custom !== undefined ? (q as any).allow_custom : q.allowOther;
-        const result = await this.broker.askUser({
-          question: q.question,
-          header: q.header,
-          options: q.options,
-          multiSelect,
-          allowOther,
-          turnId: q.turn_id || q.turnId || topTurnId,
-          chatId: defaultChatId,
-        });
-        postedIds.push(result.questionId);
-        this.store.recordTurn("out", q.header ? `${q.header}: ${q.question}` : q.question);
-
-        if (this.bot) {
-          const card = this.broker.renderQuestionCard(result.questionId);
-          if (card) {
-            await this.bot.sendQuestionCard(defaultChatId, result.questionId, card);
-          }
-        }
-      }
-
-      const msg = postedIds.length === 1
-        ? `Question ${postedIds[0]} posted to the user. Do not assume an answer; continue other work or end your turn.`
-        : `Questions ${postedIds.join(", ")} posted to the user. Do not assume an answer; continue other work or end your turn.`;
-
-      return {
-        question_ids: postedIds,
-        status: "posted",
-        message: msg,
-      };
-    }
-
-    if (name === "anchor") {
-      const focus = args.focus as string;
-      const taskId = args.task_id as string | undefined;
-      const waitingOn = args.waiting_on as string[] | undefined;
-      const delegations = args.delegations as string[] | undefined;
-      const ctxRaw = args.context_tokens as
-        | { used_tokens?: number; total_tokens?: number; percentage?: number }
-        | undefined;
-      let contextTokens: { usedTokens: number; totalTokens: number; percentage: number } | undefined;
-      if (ctxRaw) {
-        const usedTokens = Number(ctxRaw.used_tokens || 0);
-        const totalTokens = Number(ctxRaw.total_tokens || 200000);
-        const percentage =
-          typeof ctxRaw.percentage === "number"
-            ? ctxRaw.percentage
-            : totalTokens > 0
-              ? Math.round((usedTokens / totalTokens) * 100)
-              : 0;
-        contextTokens = { usedTokens, totalTokens, percentage };
-      }
-
-      this.store.setAnchor({
-        focus,
-        taskId,
-        waitingOn,
-        delegations,
-        ...(contextTokens ? { contextTokens } : {}),
-      });
-
-      return { success: true, focus };
-    }
-
-    if (name === "edit_message") {
-      const chatId = (args.chat_id as number) || defaultChatId;
-      const messageId = args.message_id as number;
-      const text = args.text as string;
-      if (this.bot) {
-        await this.bot.editMessage(chatId, messageId, text);
-      }
-      return { success: true };
-    }
-
-    throw new Error(`Unknown tool: ${name}`);
+    return this.channelCore.handleIpcMessage({ type: name, ...args });
   }
 
   public startStdioLoop() {
