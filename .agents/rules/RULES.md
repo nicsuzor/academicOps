@@ -20,14 +20,14 @@ Any change that adds, modifies, escalates, or retires an enforcement mechanism
 updates [`specs/enforcement/enforcement.md`](../../specs/enforcement/enforcement.md)
 in the same PR, so the spec still describes reality after merge.
 
-An enforcement mechanism is any measure intended to shape how an agent behaves —
+An enforcement mechanism is any measure intended to shape how an agent behaves --
 hooks, review lenses, branch protection, and equally instructions, project rules,
 and agent-persona edits. The test is not "which file did I touch?" but "does this
 diff change what any agent is made to do?"
 
 New rule content carried by a mechanism the spec already describes owes no new
-section. Touch the spec only when the mechanism itself — its trigger, surface, or
-scope — changed.
+section. Touch the spec only when the mechanism itself -- its trigger, surface, or
+scope -- changed.
 
 When editing the enforcement map ([`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md)),
 every row must **only** reference a specific rule derived from our axioms
@@ -52,7 +52,7 @@ Do not hardcode architectural policies, messaging invariants, or enforcement lev
 - Policies (e.g., required text snippets, specific hook mappings, or message exemptions) must be defined in `tests/policy.toml`.
 - Tests must assert against the configuration in `policy.toml`, never against hardcoded Python literals.
 - This separates the _mechanism_ of the test from the _policy_ of the platform, allowing non-engineers to review and modify policies without rewriting code.
-- This never licenses asserting that `policy.toml` — or any agent, skill, settings, or instruction file — still declares the same names or values it declares today. `policy.toml` supplies an input an assertion is _derived from_ (an exemption list to check real messages against, a threshold to check a real count against); the assertion itself checks something the code does with that input, never the config's own content restated as its own check.
+- This never licenses asserting that `policy.toml` -- or any agent, skill, settings, or instruction file -- still declares the same names or values it declares today. `policy.toml` supplies an input an assertion is _derived from_ (an exemption list to check real messages against, a threshold to check a real count against); the assertion itself checks something the code does with that input, never the config's own content restated as its own check.
 
 ## No Shitty NLP and Agentic-First Design
 
@@ -62,7 +62,7 @@ Per [Human Readability First](../../plugins/rbg/skills/axioms/human-readability-
 2. **Prohibit checking natural language mechanically:** Legacy NLP (keyword matching, regex heuristics, fuzzy string matching) is forbidden for semantic decisions or checking prose. Evaluate semantically using agentic comprehension, not pattern matching.
 3. **Prohibit using structured outputs for human-visible text:** Do not emit structured payloads (such as JSON or YAML documents) where readable Markdown prose is expected for human review.
 
-Any work requiring judgment, evaluation, classification, or semantic reasoning should be designed as a skill, workflow, or agent task that a capable agent executes directly — not as a deterministic script or a programmatic wrapper around LLM APIs.
+Any work requiring judgment, evaluation, classification, or semantic reasoning should be designed as a skill, workflow, or agent task that a capable agent executes directly -- not as a deterministic script or a programmatic wrapper around LLM APIs.
 
 - **Don't guess semantic intent with regex or fuzzy matching:** Do not parse unstructured natural language or route workflows based on keyword tables, regex heuristics, or substring searches. Provide the agent with the index of choices and let the agent decide.
 - **Don't filter documentation based on keyword matches:** Let agents select relevant reference material using semantic context or index discovery.
@@ -86,6 +86,15 @@ Agents must never create un-actionable "decision" tasks or file conversational q
 - **Separate forks into option nodes only where decomposed further:** Forks are separated into competing option nodes wired with `alternative` links to their decision node only where those branches are decomposed further. A task that has options to choose between but no commitment to doing anything immediately beyond choosing must not be created with subtasks or separate option nodes; create it with the choices in the task and instructions on how to make the decision. Dependencies are strictly one-sided (`depends_on` on the waiting task), and choosing an option resolves the decision, adopting the selected branch and cancelling competing option nodes.
 - **Model unknowns as empirical probes:** Missing information is gathered via focused probe tasks (`classification: probe`).
 - **Ask in-turn questions directly:** Interactive clarifications in an active session use `AskUserQuestion` directly rather than polluting the graph with un-actionable decision tasks.
+
+## Architectural Decision Records
+
+Significant architectural decisions are recorded using the minimal Markdown Architectural Decision Records (MADR) format from the `/madr` skill with repository-local metadata and synchronization:
+
+- **Location**: Store records in `specs/decisions/` formatted with the minimal MADR template from `/madr` plus YAML frontmatter (`status`, `date`, `decision-makers`).
+- **Naming**: Filenames follow `NNNN-<slug>.md` (e.g. `0001-use-madr-for-architectural-decisions.md`) with a 4-digit sequential prefix and an active-imperative kebab-case slug. Personal names and persona prefixes are strictly prohibited.
+- **Index Synchronization**: `specs/decisions/INDEX.md` must be updated in the same commit whenever an ADR is created, modified, deprecated, or superseded.
+- **Specification Alignment**: Subsystem specifications (`specs/`) define target behavior and state only, carrying zero historical deliberations. When a new ADR supersedes an existing decision, any affected subsystem specifications in `specs/` must be updated in the same PR.
 
 ## Keep indexes synchronized with their sources
 

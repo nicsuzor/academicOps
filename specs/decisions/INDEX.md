@@ -12,4 +12,4 @@ This directory contains the immutable Architectural Decision Records (ADRs) for 
 
 - **Pre-Design Check**: Before authoring new specifications (`wf-spec`) or proposing architectural components, scan the table above to identify existing constraints, settled trade-offs, and previously rejected alternatives.
 - **On-Demand Reading**: Read only the specific ADR files relevant to the active subsystem. Do not load all ADR files into routine operational contexts.
-- **Authoring**: Use [`adr-template.md`](adr-template.md) to draft new decisions. Ensure titles are active imperative and filenames follow `NNNN-<slug>.md`.
+- **Authoring**: Use the minimal template from the `/madr` skill ([`template.md`](../../plugins/tools/skills/madr/template.md)) to draft new decisions. Ensure titles are active imperative and filenames follow `NNNN-<slug>.md`.
