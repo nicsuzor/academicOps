@@ -646,3 +646,76 @@ def test_render_agy_formats_system_message_and_ephemeral_message():
     assert render("agy", "SessionStart", start_res) == {
         "injectSteps": [{"systemMessage": {"systemMessage": "Startup welcome"}}]
     }
+
+
+def test_session_start_followed_by_user_prompt_submit_emits_pointer_once(
+    pointer_state: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    """AC1: PREMISE_CHECK_POINTER is emitted at SessionStart and not repeated on UserPromptSubmit."""
+    from dispatch import normalize
+
+    monkeypatch.delenv("CLAUDE_ENV_FILE", raising=False)
+    monkeypatch.setenv("PKB_MCP_URL", "http://localhost:8000")
+
+    conv_id = "agy-once-test-conv"
+    start_payload = {
+        "conversationId": conv_id,
+        "workspacePaths": ["/workspace"],
+    }
+    start_ctx = normalize("agy", "SessionStart", start_payload, IDA_HOOKS)
+    start_res = handlers.session_start(start_ctx)
+    assert start_res is not None
+    assert handlers.PREMISE_CHECK_POINTER in start_res.inject_text
+
+    transcript = tmp_path / "transcript.jsonl"
+    transcript.write_text(json.dumps({"type": "SYSTEM_MESSAGE", "content": "started"}) + "\n")
+
+    prompt_payload = {
+        "conversationId": conv_id,
+        "transcriptPath": str(transcript),
+        "prompt": "hello",
+    }
+    prompt_ctx = normalize("agy", "UserPromptSubmit", prompt_payload, IDA_HOOKS)
+    prompt_res = handlers.user_prompt_submit(prompt_ctx)
+    if prompt_res is not None:
+        assert handlers.PREMISE_CHECK_POINTER not in prompt_res.inject_text
+
+
+def test_session_start_injects_only_workspace_core_md(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    """AC3: SessionStart injects project-local .agents/CORE.md when present in target workspace."""
+    from dispatch import HookContext
+
+    monkeypatch.delenv("CLAUDE_ENV_FILE", raising=False)
+    monkeypatch.setenv("PKB_MCP_URL", "http://localhost:8000")
+
+    ws_dir = tmp_path / "target_workspace"
+    agents_dir = ws_dir / ".agents"
+    agents_dir.mkdir(parents=True)
+    ws_core = agents_dir / "CORE.md"
+    ws_core.write_text("# Project Local Rules\n\n- Custom workspace rule.", encoding="utf-8")
+
+    ctx_with_core = HookContext(
+        client="claude",
+        event="SessionStart",
+        session_id="sess-ws-1",
+        cwd=str(ws_dir),
+    )
+    res_with_core = handlers.session_start(ctx_with_core)
+    assert res_with_core is not None
+    assert "# Project Local Rules" in res_with_core.inject_text
+    assert "- Custom workspace rule." in res_with_core.inject_text
+
+    # Without .agents/CORE.md
+    empty_ws = tmp_path / "empty_workspace"
+    empty_ws.mkdir()
+    ctx_empty = HookContext(
+        client="claude",
+        event="SessionStart",
+        session_id="sess-ws-2",
+        cwd=str(empty_ws),
+    )
+    res_empty = handlers.session_start(ctx_empty)
+    assert res_empty is not None
+    assert "# Project Local Rules" not in res_empty.inject_text
