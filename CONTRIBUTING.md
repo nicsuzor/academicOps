@@ -21,10 +21,12 @@ working in this repository.
 ## Checks
 
 ```bash
-make test     # uv run pytest tests/
-make lint     # ruff check
-make format   # ruff format + dprint fmt
-make build    # must assemble every plugin for both clients without error
+make test             # uv run pytest tests/ (unit tests only; fast)
+make test-integration # uv run pytest -m integration tests/ (runs integration tests)
+make test-all         # uv run pytest -m "" tests/ (runs all tests)
+make lint             # ruff check
+make format           # ruff format + dprint fmt
+make build            # must assemble every plugin for both clients without error
 ```
 
 Run `make format` before committing. Pre-commit runs `dprint fmt` over markdown,

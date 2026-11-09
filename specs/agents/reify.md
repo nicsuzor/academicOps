@@ -58,7 +58,7 @@ All tasks requiring review, verification, or subsequent follow-up must be struct
 
 For pull request deliverables requiring an independent review pass, `/reify` mints an independent downstream `QA: <task>` child task under the dedicated epic (with child-to-child `needs` dependency) that verifies the delivered artifact and evaluates PR risk.
 
-For research tasks investigating open design questions or architectural choices, `/reify` automatically composes a dependent decision task assigned to the user (`assignee: user`) that depends on the research findings to choose the implementation route, strictly blocking downstream implementation.
+For research tasks investigating open design questions or architectural choices, the agent does the groundwork and makes the decision itself (selecting the recommended route); it never composes a decision task assigned to the user (`assignee: user`) unless the user explicitly directed to decide it themselves (tg 1013).
 
 For non-PR tasks (such as empirical analyses, documentation updates, research tasks, and operational maintenance), `/reify` mints a separate `QA: <task>` child task only where the composed workflow warrants an independent verification check (e.g. empirical analysis with replication requirements, high-impact specification or policy changes, or multi-step qualitative audits). Workflows that do not warrant a separate verification pass mint no QA child.
 

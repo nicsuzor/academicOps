@@ -28,9 +28,11 @@ fire-and-forgotten.
 
 ## Routing: Surface and Cadence
 
-Questions and lookups are answered directly by the session that receives them;
-the task dispatch pipeline is used only for real code changes. For code changes,
-routing is a cadence-and-placement choice over one unified worker contract
+Knowledge tasks (questions, finding things, web research, GitHub lookups, read-only
+code inspections, and configuration lookups) route to the custodian (`pauli`);
+polecats take work that runs, measures, tests, or builds. The task dispatch
+pipeline is used only for real code changes. For code changes, routing is a
+cadence-and-placement choice over one unified worker contract
 ([[specs/enforcement/task-contract.md]]); the orchestrator picks the surface
 (in-session subagent | polecat | agent team) and the cadence (wait vs
 fire-and-forget) for latency and isolation convenience.

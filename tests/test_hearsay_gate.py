@@ -106,3 +106,34 @@ def test_dispatch_instrument_send_message_case_insensitive():
         )
         dispatch._instrument_otel_events(ctx2)
         mock_otel.record_send_message.assert_called_with(ctx2, config={"endpoint": "mock"})
+
+
+def test_evaluator_otel_trace_attributes_resolves_root_session_id(tmp_path, monkeypatch):
+    """evaluator_otel_trace._attributes sets OpenInference session.id to root session and agent.id for subagents."""
+    import json
+
+    rbg_hooks = _REPO_ROOT / "plugins" / "rbg" / "hooks"
+    if str(rbg_hooks) not in sys.path:
+        sys.path.insert(0, str(rbg_hooks))
+    import evaluator_otel_trace as eot
+
+    monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
+    monkeypatch.delenv("AOPS_SESSION_ID", raising=False)
+
+    root_uuid = "11111111-2222-3333-4444-555555555555"
+    sub_uuid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    state_dir = tmp_path / ".claude" / "tracer"
+    state_dir.mkdir(parents=True)
+    (state_dir / f"{sub_uuid}.json").write_text(
+        json.dumps({"session_id": sub_uuid, "phoenix_session_id": root_uuid}),
+        encoding="utf-8",
+    )
+
+    attrs = eot._attributes({"session_id": sub_uuid, "client": "agy", "event": "PostToolUse"})
+    assert attrs["session.id"] == root_uuid
+    assert attrs["agent.id"] == sub_uuid
+
+    # Slash-suffixed session_id also strips suffix into agent.id
+    attrs_slash = eot._attributes({"session_id": f"{root_uuid}/task-42", "client": "claude"})
+    assert attrs_slash["session.id"] == root_uuid
+    assert attrs_slash["agent.id"] == "task-42"

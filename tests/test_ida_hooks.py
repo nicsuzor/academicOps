@@ -333,6 +333,7 @@ def test_honest_output_fires_on_subagent_start_for_all_agents(agent: str):
     assert res.user_text == expected_user
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize("agent", ["ida:ida", "aops:james", "worker"])
 def test_dispatch_honesty_reaches_all_agents_on_subagent_start(staged_hooks: Path, agent: str):
     """End-to-end dispatch confirms honesty.md is returned on SubagentStart."""
@@ -356,6 +357,7 @@ def test_dispatch_honesty_reaches_all_agents_on_subagent_start(staged_hooks: Pat
     assert expected_honesty in data["hookSpecificOutput"]["additionalContext"]
 
 
+@pytest.mark.integration
 def test_peer_message_prompt_yields_single_user_prompt_submit_output(
     staged_hooks: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
@@ -562,6 +564,55 @@ def test_agy_session_start_renders_metadata_system_message(monkeypatch: pytest.M
         eph_step = steps[1]
         assert "ephemeralMessage" in eph_step
         assert handlers.PREMISE_CHECK_POINTER in eph_step["ephemeralMessage"]
+
+
+@pytest.mark.parametrize(
+    ("client", "manifest_relpath"),
+    [
+        ("claude", Path(".claude-plugin") / "plugin.json"),
+        ("agy", Path("plugin.json")),
+    ],
+)
+def test_session_start_startup_line_carries_plugin_version_from_manifest(
+    client: str, manifest_relpath: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """AC1: Startup line carries plugin version resolved from manifest under Claude and agy layouts."""
+    from dispatch import normalize, render
+
+    monkeypatch.delenv("AOPS_IMAGE_PLUGINS_VERSION", raising=False)
+    monkeypatch.delenv("CLAUDE_ENV_FILE", raising=False)
+    monkeypatch.setenv("PKB_MCP_URL", "http://localhost:8000")
+
+    plugin_dir = tmp_path / f"plugin-{client}"
+    hooks_dir = plugin_dir / "hooks"
+    hooks_dir.mkdir(parents=True)
+
+    manifest_file = plugin_dir / manifest_relpath
+    manifest_file.parent.mkdir(parents=True, exist_ok=True)
+    manifest_file.write_text(json.dumps({"version": "1.2.0"}), encoding="utf-8")
+
+    raw = {
+        "session_id": f"sess-{client}-1",
+        "conversationId": f"sess-{client}-1",
+        "cwd": "/workspace",
+    }
+    ctx = normalize(client, "SessionStart", raw, hooks_dir)
+    res = handlers.session_start(ctx)
+
+    assert res is not None
+    startup_line = res.inject_text.splitlines()[0]
+    assert "plugins: 1.2.0" in startup_line
+    if res.user_text:
+        user_startup_line = res.user_text.splitlines()[0]
+        assert "plugins: 1.2.0" in user_startup_line
+
+    rendered = render(client, "SessionStart", res)
+    if client == "claude":
+        assert "plugins: 1.2.0" in rendered["hookSpecificOutput"]["additionalContext"]
+        assert "plugins: 1.2.0" in rendered["systemMessage"]
+    elif client == "agy":
+        sys_text = rendered["injectSteps"][0]["systemMessage"]["systemMessage"]
+        assert "plugins: 1.2.0" in sys_text
 
 
 def test_render_agy_formats_system_message_and_ephemeral_message():

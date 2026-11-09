@@ -4,9 +4,9 @@ title: Documentation in aops -- where things go
 
 # Documentation in aops -- where things go
 
-Five kinds of document, partitioned by who reads them.
+Six kinds of document, partitioned by who reads them.
 
-**How to choose**: ask "who reads this?" -- an agent at runtime (instructions), a dev or auditor changing the system (specs), both agents and devs looking up the current truth (state), a script consuming machine output (audit-artifact), or a human using the framework (docs).
+**How to choose**: ask "who reads this?" -- an agent at runtime (instructions), a dev or auditor changing the system (specs), both agents and devs looking up the current truth (state), a script consuming machine output (audit-artifact), a human using the framework (docs), or an engineer tracing historical design rationale (ADRs).
 
 ## Instructions -- for agents executing
 
@@ -61,6 +61,10 @@ Top-level entry points: README.md, INSTALL.md, CHANGELOG.md. Per plugin: `plugin
 **Plugin README.** One audience: the person using the plugin. Its job is to show exactly how the plugin works, in this order: **what it is for** (one sentence), **how it works** (a mermaid flowchart of the real path from a trigger -- a user prompt, a hook event, an agent invocation -- through its agents, skills, and hooks to an outcome, showing the flow that exists rather than an idealised one), **what it provides** (agents, skills, commands, hooks -- a table, one line each), **how it is configured** (every environment variable and `userConfig` field it reads, what each is for, and that there are no defaults), and **what it depends on**. Source-level citation and file-path naming are not required of it -- the reader it serves is using the plugin, not extending it. The flowchart is derived from the source and verified against it; it simply does not cite it.
 
 **The split with `specs/`.** Design rationale, why a choice was made, and the seams and gaps go to `specs/`, which serves the developer extending the plugin. A README that argues for the plugin's design is a spec in the wrong place; so is a history, a roadmap, or a changelog.
+
+## Architectural Decision Records (ADRs) -- for preserving design choices
+
+Live in `specs/decisions/NNNN-<slug>.md`, indexed by `INDEX.md`. An ADR records a significant architectural decision, the evaluated alternatives, and downstream consequences using the minimal Markdown Architectural Decision Records (MADR) format from [`plugins/tools/skills/madr/SKILL.md`](../../plugins/tools/skills/madr/SKILL.md). Specs state target behavior without provenance; ADRs record the point-in-time rationale and rejected alternatives. See [`architectural-decision-records.md`](architectural-decision-records.md).
 
 For task and file naming standards, see [`specs/meta/naming-and-decisions.md`](naming-and-decisions.md).
 

@@ -26,8 +26,9 @@ Drafts, evaluates, and writes link proposals for unvalued or uncalibrated graph 
 2. **Granularity before value**: Wire at the highest node where the answer is identical for all descendants. A batch row covering fungible siblings is one row for their container, not one row each.
 3. **Measure from source of record**: Ground proposed quantum and probability in primary artifacts (code, specs, publications), not hearsay.
 4. **Order by reach**: Compute reach as `|worth of priced targets edge leads to| × proposed strength` from the engine `stake` map. Sort descending by reach, then proposal age.
-5. **Draft and write edge proposals**:
-   - For each edge in the batch (up to 50 rows), evaluate label (`serves`, `needs`, `supports`, `alternative`, `settles`), quantum, probability, effect, and one-sentence justification.
+5. **Draft and write edge proposals (ADR-0002)**:
+   - For each edge in the batch (up to 50 rows), evaluate label (`serves`, `needs`, `supports`), quantum, probability, effect, and one-sentence justification under the Three-Purpose Taxonomy.
+   - Densify handles only real weight flow edges (`serves`, and valid `supports` that directly alter an upstream node's execution difficulty or likelihood); never convert markdown body citations into frontmatter edges. Tracking tasks link only to user understanding targets.
    - Write edges directly with `set_by: agent-proposed`.
    - Read back each updated edge via `pkb.get_task` and verify readback without parse warnings.
 6. **Agent corrections**: Correct mechanical errors unasked on in-node evidence (word outside scale, edge to wrong class, mismatched justification); write as `agent-proposed`.

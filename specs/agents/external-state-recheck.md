@@ -30,7 +30,7 @@ As a user interacting with the system during a live session, I want in-turn exte
 As a user routing planning, status, or knowledge base questions to the custodian, I want the custodian to be able to inspect specific live GitHub items via read-only queries while keeping code edits, filesystem searches, and general shell execution out of its scope, so that questions touching live GitHub state are answered accurately without bouncing back undone or blurring the boundary between curation and implementation.
 
 - **AC-3.1** Given a status check, planning task, or curation inquiry that requires current state for a specific GitHub pull request, issue, or release, when the custodian verifies that artifact, then the custodian executes targeted read-only GitHub CLI inspection commands (such as `gh pr view`, `gh release view`, or `gh issue view`) directly rather than returning the request undone.
-- **AC-3.2** Given any request requiring local filesystem searches, repository source code inspection, file modifications, or general shell command execution, when the custodian operates, then those actions remain outside the custodian's scope and are routed to a repository-capable worker or handed back.
+- **AC-3.2** Given any request requiring repository file modifications, arbitrary shell command execution, running tests, or building software, when the custodian operates, then those actions remain outside the custodian's scope and are routed to a polecat worker or handed back; read-only repository source code inspection and configuration lookups across dotfiles and repositories are within the custodian's knowledge task scope.
 
 ## Design
 
@@ -54,7 +54,7 @@ State reconciliation is partitioned between scheduled background sweeps and targ
 To fulfill user requests that depend on live GitHub state while preserving the custodian's separation from repository implementation work:
 
 1. **Read-Only GitHub Query Access**: The custodian is given `Bash(gh *)` runtime permission and instruction authority to run targeted read-only `gh` inspection commands when external state may have moved.
-2. **Maintained Graph-Only Boundary for Local Artifacts**: The custodian remains restricted from searching local filesystems, inspecting or editing repository source code, running build pipelines, or executing general shell commands. Any request requiring local repository or filesystem work continues to be handed back or routed to a worker agent.
+2. **Execution Boundary for Code and Tool Execution**: The custodian takes every knowledge task (questions, finding things, web research, GitHub inspections via `gh`, configuration lookups across dotfiles and repositories, and read-only repository source code inspection), while remaining restricted from executing arbitrary shell commands, modifying repository source code, running build pipelines, or executing test suites. Any request requiring code execution, testing, measurement, or building continues to be handed back or routed to an isolated polecat worker.
 
 ## Proportional Intervention Options Pass
 
@@ -90,4 +90,4 @@ The Stage 2 build implementation must satisfy the following verifiable criteria:
 
 - [ ] **BC-1 (Targeted External State Verification)**: The custodian uses qualitative judgment to double-check external state (pull requests, releases, issues) with a reasonable likelihood of having changed since last updated, before reporting on or relying on that state for user requests, while leaving records unchanged when nothing appears off (`plugins/ida/agents/pauli.md`).
 - [ ] **BC-2 (Ownership Boundary with Scheduled Sweeps)**: Routine systematic sweeping of repositories and task sets remains the primary responsibility of scheduled reconciliation workflows (such as daily note sweeps); the custodian instructions explicitly prohibit duplicating routine sweeps (`plugins/ida/agents/pauli.md`).
-- [ ] **BC-3 (Tool Permission Harmonization)**: The agent definition permits targeted, read-only `gh` CLI commands to inspect GitHub state, resolving previous "PKB graph only / never the shell" phrasing while maintaining strict prohibitions on general shell execution, source code edits, and local filesystem searching (`plugins/ida/agents/pauli.md` and `specs/ENFORCEMENT-MAP.md`).
+- [ ] **BC-3 (Tool Permission Harmonization)**: The agent definition permits targeted, read-only `gh` CLI commands to inspect GitHub state, configuration lookups, and read-only repository source inspection for knowledge tasks, while maintaining strict prohibitions on general shell execution, source code modifications, and running test or build commands (`plugins/ida/agents/pauli.md` and `specs/ENFORCEMENT-MAP.md`).

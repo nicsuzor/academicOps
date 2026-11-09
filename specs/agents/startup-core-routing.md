@@ -31,7 +31,7 @@ As an agent operating outside a repository checkout or within client workspaces,
 
 - **AC-3.1** Given any framework plugin loaded in a session, when `SessionStart` fires, then the plugin injects its plugin-scoped `CORE.md` (at most 20 lines) into ambient session context.
 - **AC-3.2** Given a plugin-scoped `CORE.md`, when evaluated for admission, then every line passes the four tests: (1) valuable to all agents in every deployment, (2) every value presented works and is filled in, (3) nothing is duplicated, and (4) nothing is extraneous.
-- **AC-3.3** Given the `ida` plugin's `CORE.md`, when inspected, then it instructs formatting Argdown assertions (`ida:argdown-toulmin`), evaluating incoming briefs per `ida:premise-check`, including valid Argdown blocks on all outgoing assertions, and routing PKB maintenance and planning exclusively to Pauli, with zero agent-specific rules.
+- **AC-3.3** Given the `ida` plugin's `CORE.md`, when inspected, then it instructs formatting Argdown assertions (`ida:argdown-toulmin`), evaluating incoming briefs per `ida:premise-check`, including valid Argdown blocks on all outgoing assertions, and routing PKB custody, planning, and all knowledge tasks exclusively to Pauli, with zero agent-specific rules.
 
 ## Design
 
@@ -97,7 +97,7 @@ Every plugin's draft `CORE.md` is evaluated against the four tests for startup i
 
 | Plugin | Draft Lines | Test 1: Valuable to All | Test 2: Working & Filled | Test 3: No Duplication | Test 4: Nothing Extraneous |
 | :- | :- | :- | :- | :- | :- |
-| `plugins/ida` | 8 | Directs all agents to Argdown formatting, premise-check brief reviews, PKB custody exclusively under Pauli, and dynamic workflow discovery. | Pointers to `ida:argdown-toulmin`, `ida:premise-check`, `ida:workflow-library`, and Pauli are active and functional. | Replaces 57-line legacy file; removes inlined agent persona blocks and git branch rules. | Contains only actionable directives; no persona voice, sub-agent spawning rules, or background essays. |
+| `plugins/ida` | 8 | Directs all agents to Argdown formatting, premise-check brief reviews, PKB custody and all knowledge tasks exclusively under Pauli, and dynamic workflow discovery. | Pointers to `ida:argdown-toulmin`, `ida:premise-check`, `ida:workflow-library`, and Pauli are active and functional. | Replaces 57-line legacy file; removes inlined agent persona blocks and git branch rules. | Contains only actionable directives; no persona voice, sub-agent spawning rules, or background essays. |
 | `plugins/rbg` | 7 | Establishes the 3-tier rule hierarchy (Axioms → Project Rules → PKB User Rules), authority boundaries, and fail-fast invariant for all agents. | References to `rbg:axioms`, `.agents/rules/`, and `type: rule` match active runtime loaders. | Does not duplicate axiom bodies or test configurations. | Concise constraints and routing to `rbg` compliance review. |
 | `plugins/tools` | 7 | Routes research pipeline tasks (analysis, transformations, plotting, publishing, diagramming) to specialized domain skills. | Pointers to `tools:analyst`, `tools:dbt`, `tools:streamlit`, `tools:python-viz`, `tools:pdf`, and `tools:diagram` exist and run. | Does not duplicate skill bodies or library options. | High-density routing pointers without implementation instructions. |
 | `plugins/aops-debug` | 5 | Informs executing agents that diagnostic telemetry and payload logging are active with zero behavioral side-effects. | Telemetry endpoints and temp file logging match `handlers.py`. | Does not repeat OTel configuration or tracer internals. | 3 brief lines defining role and zero-side-effect invariant. |
@@ -125,7 +125,7 @@ Downstream implementation of this design must satisfy the following verifiable o
 - **OBC-3.1**: Every plugin provides a `CORE.md` in its root directory containing at most 20 lines of markdown instructions.
 - **OBC-3.2**: Each plugin's `SessionStart` hook injects its plugin-scoped `CORE.md` into ambient session context at initialization.
 - **OBC-3.3**: Every line in every plugin `CORE.md` passes the four tests: valuable to all agents in every deployment, values filled in, no duplication, and nothing extraneous.
-- **OBC-3.4**: `plugins/ida/CORE.md` instructs using `ida:argdown-toulmin` and `ida:premise-check`, enforcing valid Argdown blocks on outgoing assertions, placing all durable context in the PKB, routing PKB curation and planning exclusively to Pauli, and carries zero agent-specific rules.
+- **OBC-3.4**: `plugins/ida/CORE.md` instructs using `ida:argdown-toulmin` and `ida:premise-check`, enforcing valid Argdown blocks on outgoing assertions, placing all durable context in the PKB, routing PKB curation, planning, and all knowledge tasks exclusively to Pauli, and carries zero agent-specific rules.
 
 ## Enforcement Map Extract
 

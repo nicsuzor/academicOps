@@ -35,6 +35,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.integration
+
 from build.build import build_all
 from build.marketplace import load_marketplace_toml
 from build.tree import EXCLUDE_NAMES, has_shebang
