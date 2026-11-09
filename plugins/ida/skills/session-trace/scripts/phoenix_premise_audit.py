@@ -110,20 +110,16 @@ def start_time_of(span: Span) -> str:
 
 
 def classify_harness(span: Span) -> str:
-    """Classify execution harness deterministically into 'claude-code' or 'agy'."""
+    """Classify execution harness deterministically from serialized aops.surface attribute.
+
+    Returns 'claude-code', 'agy', or 'unknown'. Does not guess using host or cwd heuristics.
+    """
     surface = attr(span, "aops.surface")
     if surface in ("claude-code", "agy"):
         return str(surface)
     if surface == "claude":
         return "claude-code"
-
-    # Deterministic heuristics for legacy spans prior to explicit aops.surface tagging
-    host = str(attr(span, "host.name") or "").lower()
-    cwd = str(attr(span, "cwd") or "").lower()
-    agent = str(attr(span, "agent.name") or "").lower()
-    if "antigravity" in cwd or "gemini" in cwd or "agy" in host or "agy" in agent:
-        return "agy"
-    return "claude-code"
+    return "unknown"
 
 
 def parse_premise_check_attr(span: Span) -> dict[str, Any]:
@@ -184,11 +180,12 @@ def aggregate_census(
     spans: list[Span],
     exclude_sessions: set[str] | None = None,
 ) -> dict[str, CensusStats]:
-    """Aggregate premise-check telemetry into claude-code, agy, and combined stats."""
+    """Aggregate premise-check telemetry into claude-code, agy, unknown, and combined stats."""
     exclude = exclude_sessions or set()
     stats: dict[str, CensusStats] = {
         "claude-code": CensusStats(),
         "agy": CensusStats(),
+        "unknown": CensusStats(),
         "combined": CensusStats(),
     }
 
@@ -198,8 +195,8 @@ def aggregate_census(
             continue
 
         harness = classify_harness(span)
-        if harness not in ("claude-code", "agy"):
-            continue
+        if harness not in ("claude-code", "agy", "unknown"):
+            harness = "unknown"
 
         targets = (stats[harness], stats["combined"])
         name = span.get("name")
@@ -276,6 +273,7 @@ def render_census_markdown(stats: dict[str, CensusStats]) -> str:
     """Render census statistics as a GitHub-flavored Markdown comparative table."""
     c = stats["claude-code"]
     a = stats["agy"]
+    u = stats.get("unknown", CensusStats())
     comb = stats["combined"]
 
     def pct(num: int, den: int) -> str:
@@ -289,52 +287,97 @@ def render_census_markdown(stats: dict[str, CensusStats]) -> str:
         r = v_a / v_c
         return f"{r:.2f}x"
 
+    has_unknown = bool(
+        u.total_verdicts > 0 or u.armed_hearsay_spans > 0 or u.overrides > 0 or u.refusals > 0
+    )
+
     c_sess_len = len(c.sessions) or 1
     a_sess_len = len(a.sessions) or 1
+    u_sess_len = len(u.sessions) or 1
     comb_sess_len = len(comb.sessions) or 1
 
     c_mean_v = c.total_verdicts / c_sess_len
     a_mean_v = a.total_verdicts / a_sess_len
+    u_mean_v = u.total_verdicts / u_sess_len
     comb_mean_v = comb.total_verdicts / comb_sess_len
 
     c_tagged = c.revise_defect_tagged + c.fail_defect_tagged
     a_tagged = a.revise_defect_tagged + a.fail_defect_tagged
+    u_tagged = u.revise_defect_tagged + u.fail_defect_tagged
     comb_tagged = comb.revise_defect_tagged + comb.fail_defect_tagged
 
-    lines: list[str] = [
-        "| Metric | `claude-code` | `agy` | Combined / Comparative |",
-        "| :--- | :--- | :--- | :--- |",
-        f"| **Total Recorded Verdict Spans** | **{c.total_verdicts}** | **{a.total_verdicts}** | **{comb.total_verdicts}** total (`{ratio_str(a.total_verdicts, c.total_verdicts)}` in `agy`) |",
-        f"| **Distinct Sessions with Verdicts** | **{len(c.sessions)}** | **{len(a.sessions)}** | **{len(comb.sessions)}** (`{ratio_str(len(a.sessions), len(c.sessions))}` in `agy`) |",
-        f"| **Mean Verdicts per Session** | **{c_mean_v:.2f}** | **{a_mean_v:.2f}** | **{comb_mean_v:.2f}** |",
-        f"| **Armed `hearsay_check` Spans** | **{c.armed_hearsay_spans}** ({len(c.armed_sessions)} sess) | **{a.armed_hearsay_spans}** ({len(a.armed_sessions)} sess) | **{comb.armed_hearsay_spans}** spans |",
-        f"| **Administrative Overrides (`premise_check_override`)** | **{c.overrides}** | **{a.overrides}** | **{comb.overrides}** overrides |",
-        f"| **Traced Pre-Verdict Recorder Refusals** | **{c.refusals}** ({len(c.refusal_sessions)} sess) | **{a.refusals}** ({len(a.refusal_sessions)} sess) | **{comb.refusals}** refusals |",
-        f"| **`PASS` Verdicts** | **{c.pass_count} ({pct(c.pass_count, c.total_verdicts)})** | **{a.pass_count} ({pct(a.pass_count, a.total_verdicts)})** | **{comb.pass_count} ({pct(comb.pass_count, comb.total_verdicts)})** |",
-        f"| **Waived Format Items on `PASS`** | **{c.waived_format_items}** | **{a.waived_format_items}** | **{comb.waived_format_items}** waived format slips |",
-        f"| **`REVISE` Verdicts** | **{c.revise_count} ({pct(c.revise_count, c.total_verdicts)})** | **{a.revise_count} ({pct(a.revise_count, a.total_verdicts)})** | **{comb.revise_count} ({pct(comb.revise_count, comb.total_verdicts)})** |",
-        f"| — *Format-Only `REVISE`* | **{c.revise_format_only}** ({pct(c.revise_format_only, c.revise_count)}) | **{a.revise_format_only}** ({pct(a.revise_format_only, a.revise_count)}) | **{comb.revise_format_only}** ({pct(comb.revise_format_only, comb.revise_count)}) |",
-        f"| — *Defect-Tagged `REVISE`* | **{c.revise_defect_tagged}** ({pct(c.revise_defect_tagged, c.revise_count)}) | **{a.revise_defect_tagged}** ({pct(a.revise_defect_tagged, a.revise_count)}) | **{comb.revise_defect_tagged}** ({pct(comb.revise_defect_tagged, comb.revise_count)}) |",
-        f"| — *`no_claim` `REVISE`* | **{c.revise_no_claim}** ({pct(c.revise_no_claim, c.revise_count)}) | **{a.revise_no_claim}** ({pct(a.revise_no_claim, a.revise_count)}) | **{comb.revise_no_claim}** ({pct(comb.revise_no_claim, comb.revise_count)}) |",
-        f"| **`FAIL` Verdicts** | **{c.fail_count} ({pct(c.fail_count, c.total_verdicts)})** | **{a.fail_count} ({pct(a.fail_count, a.total_verdicts)})** | **{comb.fail_count} ({pct(comb.fail_count, comb.total_verdicts)})** |",
-        f"| **Total Defect-Tagged Spans (`REVISE` + `FAIL`)** | **{c_tagged} ({pct(c_tagged, c.total_verdicts)})** | **{a_tagged} ({pct(a_tagged, a.total_verdicts)})** | **{comb_tagged} ({pct(comb_tagged, comb.total_verdicts)})** gross |",
-    ]
+    if has_unknown:
+        lines: list[str] = [
+            "| Metric | `claude-code` | `agy` | `unknown` | Combined / Comparative |",
+            "| :--- | :--- | :--- | :--- | :--- |",
+            f"| **Total Recorded Verdict Spans** | **{c.total_verdicts}** | **{a.total_verdicts}** | **{u.total_verdicts}** | **{comb.total_verdicts}** total (`{ratio_str(a.total_verdicts, c.total_verdicts)}` in `agy`) |",
+            f"| **Distinct Sessions with Verdicts** | **{len(c.sessions)}** | **{len(a.sessions)}** | **{len(u.sessions)}** | **{len(comb.sessions)}** (`{ratio_str(len(a.sessions), len(c.sessions))}` in `agy`) |",
+            f"| **Mean Verdicts per Session** | **{c_mean_v:.2f}** | **{a_mean_v:.2f}** | **{u_mean_v:.2f}** | **{comb_mean_v:.2f}** |",
+            f"| **Armed `hearsay_check` Spans** | **{c.armed_hearsay_spans}** ({len(c.armed_sessions)} sess) | **{a.armed_hearsay_spans}** ({len(a.armed_sessions)} sess) | **{u.armed_hearsay_spans}** ({len(u.armed_sessions)} sess) | **{comb.armed_hearsay_spans}** spans |",
+            f"| **Administrative Overrides (`premise_check_override`)** | **{c.overrides}** | **{a.overrides}** | **{u.overrides}** | **{comb.overrides}** overrides |",
+            f"| **Traced Pre-Verdict Recorder Refusals** | **{c.refusals}** ({len(c.refusal_sessions)} sess) | **{a.refusals}** ({len(a.refusal_sessions)} sess) | **{u.refusals}** ({len(u.refusal_sessions)} sess) | **{comb.refusals}** refusals |",
+            f"| **`PASS` Verdicts** | **{c.pass_count} ({pct(c.pass_count, c.total_verdicts)})** | **{a.pass_count} ({pct(a.pass_count, a.total_verdicts)})** | **{u.pass_count} ({pct(u.pass_count, u.total_verdicts)})** | **{comb.pass_count} ({pct(comb.pass_count, comb.total_verdicts)})** |",
+            f"| **Waived Format Items on `PASS`** | **{c.waived_format_items}** | **{a.waived_format_items}** | **{u.waived_format_items}** | **{comb.waived_format_items}** waived format slips |",
+            f"| **`REVISE` Verdicts** | **{c.revise_count} ({pct(c.revise_count, c.total_verdicts)})** | **{a.revise_count} ({pct(a.revise_count, a.total_verdicts)})** | **{u.revise_count} ({pct(u.revise_count, u.total_verdicts)})** | **{comb.revise_count} ({pct(comb.revise_count, comb.total_verdicts)})** |",
+            f"| — *Format-Only `REVISE`* | **{c.revise_format_only}** ({pct(c.revise_format_only, c.revise_count)}) | **{a.revise_format_only}** ({pct(a.revise_format_only, a.revise_count)}) | **{u.revise_format_only}** ({pct(u.revise_format_only, u.revise_count)}) | **{comb.revise_format_only}** ({pct(comb.revise_format_only, comb.revise_count)}) |",
+            f"| — *Defect-Tagged `REVISE`* | **{c.revise_defect_tagged}** ({pct(c.revise_defect_tagged, c.revise_count)}) | **{a.revise_defect_tagged}** ({pct(a.revise_defect_tagged, a.revise_count)}) | **{u.revise_defect_tagged}** ({pct(u.revise_defect_tagged, u.revise_count)}) | **{comb.revise_defect_tagged}** ({pct(comb.revise_defect_tagged, comb.revise_count)}) |",
+            f"| — *`no_claim` `REVISE`* | **{c.revise_no_claim}** ({pct(c.revise_no_claim, c.revise_count)}) | **{a.revise_no_claim}** ({pct(a.revise_no_claim, a.revise_count)}) | **{u.revise_no_claim}** ({pct(u.revise_no_claim, u.revise_count)}) | **{comb.revise_no_claim}** ({pct(comb.revise_no_claim, comb.revise_count)}) |",
+            f"| **`FAIL` Verdicts** | **{c.fail_count} ({pct(c.fail_count, c.total_verdicts)})** | **{a.fail_count} ({pct(a.fail_count, a.total_verdicts)})** | **{u.fail_count} ({pct(u.fail_count, u.total_verdicts)})** | **{comb.fail_count} ({pct(comb.fail_count, comb.total_verdicts)})** |",
+            f"| **Total Defect-Tagged Spans (`REVISE` + `FAIL`)** | **{c_tagged} ({pct(c_tagged, c.total_verdicts)})** | **{a_tagged} ({pct(a_tagged, a.total_verdicts)})** | **{u_tagged} ({pct(u_tagged, u.total_verdicts)})** | **{comb_tagged} ({pct(comb_tagged, comb.total_verdicts)})** gross |",
+        ]
 
-    all_tags = sorted(set(c.defect_tags.keys()) | set(a.defect_tags.keys()))
-    if all_tags:
-        lines.extend(
-            [
-                "",
-                "### Defect Tags Distribution",
-                "",
-                "| Defect Tag | `claude-code` | `agy` | Combined |",
-                "| :--- | :--- | :--- | :--- |",
-            ]
+        all_tags = sorted(
+            set(c.defect_tags.keys()) | set(a.defect_tags.keys()) | set(u.defect_tags.keys())
         )
-        for tag in all_tags:
-            lines.append(
-                f"| `{tag}` | {c.defect_tags[tag]} | {a.defect_tags[tag]} | {comb.defect_tags[tag]} |"
+        if all_tags:
+            lines.extend(
+                [
+                    "",
+                    "### Defect Tags Distribution",
+                    "",
+                    "| Defect Tag | `claude-code` | `agy` | `unknown` | Combined |",
+                    "| :--- | :--- | :--- | :--- | :--- |",
+                ]
             )
+            for tag in all_tags:
+                lines.append(
+                    f"| `{tag}` | {c.defect_tags[tag]} | {a.defect_tags[tag]} | {u.defect_tags[tag]} | {comb.defect_tags[tag]} |"
+                )
+    else:
+        lines = [
+            "| Metric | `claude-code` | `agy` | Combined / Comparative |",
+            "| :--- | :--- | :--- | :--- |",
+            f"| **Total Recorded Verdict Spans** | **{c.total_verdicts}** | **{a.total_verdicts}** | **{comb.total_verdicts}** total (`{ratio_str(a.total_verdicts, c.total_verdicts)}` in `agy`) |",
+            f"| **Distinct Sessions with Verdicts** | **{len(c.sessions)}** | **{len(a.sessions)}** | **{len(comb.sessions)}** (`{ratio_str(len(a.sessions), len(c.sessions))}` in `agy`) |",
+            f"| **Mean Verdicts per Session** | **{c_mean_v:.2f}** | **{a_mean_v:.2f}** | **{comb_mean_v:.2f}** |",
+            f"| **Armed `hearsay_check` Spans** | **{c.armed_hearsay_spans}** ({len(c.armed_sessions)} sess) | **{a.armed_hearsay_spans}** ({len(a.armed_sessions)} sess) | **{comb.armed_hearsay_spans}** spans |",
+            f"| **Administrative Overrides (`premise_check_override`)** | **{c.overrides}** | **{a.overrides}** | **{comb.overrides}** overrides |",
+            f"| **Traced Pre-Verdict Recorder Refusals** | **{c.refusals}** ({len(c.refusal_sessions)} sess) | **{a.refusals}** ({len(a.refusal_sessions)} sess) | **{comb.refusals}** refusals |",
+            f"| **`PASS` Verdicts** | **{c.pass_count} ({pct(c.pass_count, c.total_verdicts)})** | **{a.pass_count} ({pct(a.pass_count, a.total_verdicts)})** | **{comb.pass_count} ({pct(comb.pass_count, comb.total_verdicts)})** |",
+            f"| **Waived Format Items on `PASS`** | **{c.waived_format_items}** | **{a.waived_format_items}** | **{comb.waived_format_items}** waived format slips |",
+            f"| **`REVISE` Verdicts** | **{c.revise_count} ({pct(c.revise_count, c.total_verdicts)})** | **{a.revise_count} ({pct(a.revise_count, a.total_verdicts)})** | **{comb.revise_count} ({pct(comb.revise_count, comb.total_verdicts)})** |",
+            f"| — *Format-Only `REVISE`* | **{c.revise_format_only}** ({pct(c.revise_format_only, c.revise_count)}) | **{a.revise_format_only}** ({pct(a.revise_format_only, a.revise_count)}) | **{comb.revise_format_only}** ({pct(comb.revise_format_only, comb.revise_count)}) |",
+            f"| — *Defect-Tagged `REVISE`* | **{c.revise_defect_tagged}** ({pct(c.revise_defect_tagged, c.revise_count)}) | **{a.revise_defect_tagged}** ({pct(a.revise_defect_tagged, a.revise_count)}) | **{comb.revise_defect_tagged}** ({pct(comb.revise_defect_tagged, comb.revise_count)}) |",
+            f"| — *`no_claim` `REVISE`* | **{c.revise_no_claim}** ({pct(c.revise_no_claim, c.revise_count)}) | **{a.revise_no_claim}** ({pct(a.revise_no_claim, a.revise_count)}) | **{comb.revise_no_claim}** ({pct(comb.revise_no_claim, comb.revise_count)}) |",
+            f"| **`FAIL` Verdicts** | **{c.fail_count} ({pct(c.fail_count, c.total_verdicts)})** | **{a.fail_count} ({pct(a.fail_count, a.total_verdicts)})** | **{comb.fail_count} ({pct(comb.fail_count, comb.total_verdicts)})** |",
+            f"| **Total Defect-Tagged Spans (`REVISE` + `FAIL`)** | **{c_tagged} ({pct(c_tagged, c.total_verdicts)})** | **{a_tagged} ({pct(a_tagged, a.total_verdicts)})** | **{comb_tagged} ({pct(comb_tagged, comb.total_verdicts)})** gross |",
+        ]
+
+        all_tags = sorted(set(c.defect_tags.keys()) | set(a.defect_tags.keys()))
+        if all_tags:
+            lines.extend(
+                [
+                    "",
+                    "### Defect Tags Distribution",
+                    "",
+                    "| Defect Tag | `claude-code` | `agy` | Combined |",
+                    "| :--- | :--- | :--- | :--- |",
+                ]
+            )
+            for tag in all_tags:
+                lines.append(
+                    f"| `{tag}` | {c.defect_tags[tag]} | {a.defect_tags[tag]} | {comb.defect_tags[tag]} |"
+                )
 
     return "\n".join(lines)
 
@@ -499,7 +542,7 @@ def render_session_log(
     session_id: str,
     spans: list[Span],
 ) -> str:
-    """Render premise-check log for a single session (wf-premise-check-log format)."""
+    """Render structured premise-check log table and recorder refusals for a single session."""
     target_spans = [s for s in spans if session_of(s).startswith(session_id)]
     v_spans: list[Span] = [s for s in target_spans if s.get("name") == "premise_check_verdict"]
     v_spans.sort(key=lambda s: str(s.get("start_time") or ""))
@@ -659,27 +702,42 @@ class TallyMetrics:
 
 
 def tally_annotations(annotations_payload: dict[str, Any]) -> dict[str, TallyMetrics]:
-    """Compute confusion matrices and accuracy metrics from agent-evaluated annotations."""
+    """Compute confusion matrices and accuracy metrics from agent-evaluated annotations.
+
+    Fails fast (raising ConfigError) if an evaluation entry is missing required fields or carries
+    unrecognized verdicts or classifications, preventing silent fallback misclassification.
+    """
     evals = annotations_payload.get("evaluations", [])
     metrics: dict[str, TallyMetrics] = {
         "claude-code": TallyMetrics(),
         "agy": TallyMetrics(),
+        "unknown": TallyMetrics(),
         "combined": TallyMetrics(),
     }
 
     for item in evals:
+        entry_id = str(item.get("claim_id") or item.get("span_id") or "unknown-entry")
         harness = item.get("harness")
-        if harness not in ("claude-code", "agy"):
-            continue
+        if harness not in ("claude-code", "agy", "unknown"):
+            harness = "unknown"
 
-        targets = (metrics[harness], metrics["combined"])
-        verdict = str(item.get("verdict") or "").upper()
-        is_synth = bool(item.get("is_synthetic_test"))
+        ev = item.get("evaluation")
+        if not isinstance(ev, dict):
+            raise ConfigError(
+                f"Entry '{entry_id}' is missing required 'evaluation' object in annotations"
+            )
 
-        ev = item.get("evaluation") or {}
-        cat = str(ev.get("defect_classification") or "").lower()
+        raw_verdict = item.get("verdict")
+        verdict = str(raw_verdict or "").upper()
+        if verdict not in ("PASS", "REVISE", "FAIL"):
+            raise ConfigError(f"Entry '{entry_id}' has unrecognized verdict: {raw_verdict!r}")
+
+        is_synth = bool(item.get("is_synthetic_test") or ev.get("is_synthetic_test"))
+        cat = str(ev.get("defect_classification") or "").strip().lower()
         is_sub = ev.get("is_substantive")
         is_rubber = ev.get("is_rubber_stamp")
+
+        targets = (metrics[harness], metrics["combined"])
 
         for t in targets:
             t.total_evaluations += 1
@@ -691,7 +749,7 @@ def tally_annotations(annotations_payload: dict[str, Any]) -> dict[str, TallyMet
             if verdict in ("REVISE", "FAIL"):
                 t.total_rejections += 1
 
-                # Classify into 3 buckets
+                # Classify into 3 buckets without silent fallbacks
                 if cat == "substantive" or (is_sub is True and not cat):
                     t.bucket_1_substantive += 1
                     t.substantive_rejections += 1
@@ -705,8 +763,10 @@ def tally_annotations(annotations_payload: dict[str, Any]) -> dict[str, TallyMet
                     t.bucket_1_substantive += 1
                     t.substantive_rejections += 1
                 else:
-                    # Unclassified falls into format/plumbing churn by default
-                    t.bucket_3_format_plumbing += 1
+                    raise ConfigError(
+                        f"Entry '{entry_id}' has missing or unrecognized defect classification for {verdict}: "
+                        f"defect_classification={ev.get('defect_classification')!r}, is_substantive={is_sub!r}"
+                    )
 
             elif verdict == "PASS":
                 t.total_passes += 1
@@ -715,8 +775,10 @@ def tally_annotations(annotations_payload: dict[str, Any]) -> dict[str, TallyMet
                 elif is_rubber is False:
                     t.rigorous_passes += 1
                 else:
-                    # Default: unless marked rubber stamp, valid pass is rigorous
-                    t.rigorous_passes += 1
+                    raise ConfigError(
+                        f"Entry '{entry_id}' has missing or non-boolean is_rubber_stamp for PASS: "
+                        f"is_rubber_stamp={is_rubber!r}"
+                    )
 
     return metrics
 
@@ -725,6 +787,7 @@ def render_tally_markdown(metrics: dict[str, TallyMetrics]) -> str:
     """Render tally results as Markdown tables matching audit standards."""
     c = metrics["claude-code"]
     a = metrics["agy"]
+    u = metrics.get("unknown", TallyMetrics())
     comb = metrics["combined"]
 
     def pct(num: int, den: int) -> str:
@@ -732,25 +795,48 @@ def render_tally_markdown(metrics: dict[str, TallyMetrics]) -> str:
             return "0.00%"
         return f"{(num / den) * 100:.2f}%"
 
-    out: list[str] = [
-        "## Defect-Tagged Rejections Classification Audit",
-        "",
-        "| Defect-Tag Classification Bucket | `claude-code` | `agy` | Combined / Comparative |",
-        "| :--- | :--- | :--- | :--- |",
-        f"| **Gross Evaluations** | **{c.total_evaluations}** | **{a.total_evaluations}** | **{comb.total_evaluations}** |",
-        f"| **Synthetic Test / CLI Harnesses** | **{c.synthetic_test_evaluations}** ({pct(c.synthetic_test_evaluations, c.total_evaluations)}) | **{a.synthetic_test_evaluations}** ({pct(a.synthetic_test_evaluations, a.total_evaluations)}) | **{comb.synthetic_test_evaluations}** excluded |",
-        f"| **Bucket 1: Substantive Logical, Epistemic, & Rule Catches** | **{c.bucket_1_substantive} / {c.total_rejections} ({pct(c.bucket_1_substantive, c.total_rejections)})** | **{a.bucket_1_substantive} / {a.total_rejections} ({pct(a.bucket_1_substantive, a.total_rejections)})** | **{comb.bucket_1_substantive} / {comb.total_rejections} ({pct(comb.bucket_1_substantive, comb.total_rejections)})** |",
-        f"| **Bucket 2: Structural Missing-Warrant Bar / Orphan Conclusions** | **{c.bucket_2_structural_bar} / {c.total_rejections} ({pct(c.bucket_2_structural_bar, c.total_rejections)})** | **{a.bucket_2_structural_bar} / {a.total_rejections} ({pct(a.bucket_2_structural_bar, a.total_rejections)})** | **{comb.bucket_2_structural_bar} / {comb.total_rejections} ({pct(comb.bucket_2_structural_bar, comb.total_rejections)})** |",
-        f"| **Bucket 3: Disguised Mechanical, Parser, & Plumbing Rejections** | **{c.bucket_3_format_plumbing} / {c.total_rejections} ({pct(c.bucket_3_format_plumbing, c.total_rejections)})** | **{a.bucket_3_format_plumbing} / {a.total_rejections} ({pct(a.bucket_3_format_plumbing, a.total_rejections)})** | **{comb.bucket_3_format_plumbing} / {comb.total_rejections} ({pct(comb.bucket_3_format_plumbing, comb.total_rejections)})** |",
-        "",
-        "## Substantive PASS Rigor vs Rubber-Stamp False Negatives",
-        "",
-        "| Metric | `claude-code` | `agy` | Combined / Comparative |",
-        "| :--- | :--- | :--- | :--- |",
-        f"| **Total PASS Verdicts Evaluated** | **{c.total_passes}** | **{a.total_passes}** | **{comb.total_passes}** |",
-        f"| **Rigorous Primary Verification (True Negative)** | **{c.rigorous_passes} ({pct(c.rigorous_passes, c.total_passes)})** | **{a.rigorous_passes} ({pct(a.rigorous_passes, a.total_passes)})** | **{comb.rigorous_passes} ({pct(comb.rigorous_passes, comb.total_passes)})** |",
-        f"| **False-Negative Rubber Stamps** | **{c.rubber_stamp_passes} ({pct(c.rubber_stamp_passes, c.total_passes)})** | **{a.rubber_stamp_passes} ({pct(a.rubber_stamp_passes, a.total_passes)})** | **{comb.rubber_stamp_passes} ({pct(comb.rubber_stamp_passes, comb.total_passes)})** |",
-    ]
+    has_unknown = u.total_evaluations > 0
+
+    if has_unknown:
+        out: list[str] = [
+            "## Defect-Tagged Rejections Classification Audit",
+            "",
+            "| Defect-Tag Classification Bucket | `claude-code` | `agy` | `unknown` | Combined / Comparative |",
+            "| :--- | :--- | :--- | :--- | :--- |",
+            f"| **Gross Evaluations** | **{c.total_evaluations}** | **{a.total_evaluations}** | **{u.total_evaluations}** | **{comb.total_evaluations}** |",
+            f"| **Synthetic Test / CLI Harnesses** | **{c.synthetic_test_evaluations}** ({pct(c.synthetic_test_evaluations, c.total_evaluations)}) | **{a.synthetic_test_evaluations}** ({pct(a.synthetic_test_evaluations, a.total_evaluations)}) | **{u.synthetic_test_evaluations}** ({pct(u.synthetic_test_evaluations, u.total_evaluations)}) | **{comb.synthetic_test_evaluations}** excluded |",
+            f"| **Bucket 1: Substantive Logical, Epistemic, & Rule Catches** | **{c.bucket_1_substantive} / {c.total_rejections} ({pct(c.bucket_1_substantive, c.total_rejections)})** | **{a.bucket_1_substantive} / {a.total_rejections} ({pct(a.bucket_1_substantive, a.total_rejections)})** | **{u.bucket_1_substantive} / {u.total_rejections} ({pct(u.bucket_1_substantive, u.total_rejections)})** | **{comb.bucket_1_substantive} / {comb.total_rejections} ({pct(comb.bucket_1_substantive, comb.total_rejections)})** |",
+            f"| **Bucket 2: Structural Missing-Warrant Bar / Orphan Conclusions** | **{c.bucket_2_structural_bar} / {c.total_rejections} ({pct(c.bucket_2_structural_bar, c.total_rejections)})** | **{a.bucket_2_structural_bar} / {a.total_rejections} ({pct(a.bucket_2_structural_bar, a.total_rejections)})** | **{u.bucket_2_structural_bar} / {u.total_rejections} ({pct(u.bucket_2_structural_bar, u.total_rejections)})** | **{comb.bucket_2_structural_bar} / {comb.total_rejections} ({pct(comb.bucket_2_structural_bar, comb.total_rejections)})** |",
+            f"| **Bucket 3: Disguised Mechanical, Parser, & Plumbing Rejections** | **{c.bucket_3_format_plumbing} / {c.total_rejections} ({pct(c.bucket_3_format_plumbing, c.total_rejections)})** | **{a.bucket_3_format_plumbing} / {a.total_rejections} ({pct(a.bucket_3_format_plumbing, a.total_rejections)})** | **{u.bucket_3_format_plumbing} / {u.total_rejections} ({pct(u.bucket_3_format_plumbing, u.total_rejections)})** | **{comb.bucket_3_format_plumbing} / {comb.total_rejections} ({pct(comb.bucket_3_format_plumbing, comb.total_rejections)})** |",
+            "",
+            "## Substantive PASS Rigor vs Rubber-Stamp False Negatives",
+            "",
+            "| Metric | `claude-code` | `agy` | `unknown` | Combined / Comparative |",
+            "| :--- | :--- | :--- | :--- | :--- |",
+            f"| **Total PASS Verdicts Evaluated** | **{c.total_passes}** | **{a.total_passes}** | **{u.total_passes}** | **{comb.total_passes}** |",
+            f"| **Rigorous Primary Verification (True Negative)** | **{c.rigorous_passes} ({pct(c.rigorous_passes, c.total_passes)})** | **{a.rigorous_passes} ({pct(a.rigorous_passes, a.total_passes)})** | **{u.rigorous_passes} ({pct(u.rigorous_passes, u.total_passes)})** | **{comb.rigorous_passes} ({pct(comb.rigorous_passes, comb.total_passes)})** |",
+            f"| **False-Negative Rubber Stamps** | **{c.rubber_stamp_passes} ({pct(c.rubber_stamp_passes, c.total_passes)})** | **{a.rubber_stamp_passes} ({pct(a.rubber_stamp_passes, a.total_passes)})** | **{u.rubber_stamp_passes} ({pct(u.rubber_stamp_passes, u.total_passes)})** | **{comb.rubber_stamp_passes} ({pct(comb.rubber_stamp_passes, comb.total_passes)})** |",
+        ]
+    else:
+        out = [
+            "## Defect-Tagged Rejections Classification Audit",
+            "",
+            "| Defect-Tag Classification Bucket | `claude-code` | `agy` | Combined / Comparative |",
+            "| :--- | :--- | :--- | :--- |",
+            f"| **Gross Evaluations** | **{c.total_evaluations}** | **{a.total_evaluations}** | **{comb.total_evaluations}** |",
+            f"| **Synthetic Test / CLI Harnesses** | **{c.synthetic_test_evaluations}** ({pct(c.synthetic_test_evaluations, c.total_evaluations)}) | **{a.synthetic_test_evaluations}** ({pct(a.synthetic_test_evaluations, a.total_evaluations)}) | **{comb.synthetic_test_evaluations}** excluded |",
+            f"| **Bucket 1: Substantive Logical, Epistemic, & Rule Catches** | **{c.bucket_1_substantive} / {c.total_rejections} ({pct(c.bucket_1_substantive, c.total_rejections)})** | **{a.bucket_1_substantive} / {a.total_rejections} ({pct(a.bucket_1_substantive, a.total_rejections)})** | **{comb.bucket_1_substantive} / {comb.total_rejections} ({pct(comb.bucket_1_substantive, comb.total_rejections)})** |",
+            f"| **Bucket 2: Structural Missing-Warrant Bar / Orphan Conclusions** | **{c.bucket_2_structural_bar} / {c.total_rejections} ({pct(c.bucket_2_structural_bar, c.total_rejections)})** | **{a.bucket_2_structural_bar} / {a.total_rejections} ({pct(a.bucket_2_structural_bar, a.total_rejections)})** | **{comb.bucket_2_structural_bar} / {comb.total_rejections} ({pct(comb.bucket_2_structural_bar, comb.total_rejections)})** |",
+            f"| **Bucket 3: Disguised Mechanical, Parser, & Plumbing Rejections** | **{c.bucket_3_format_plumbing} / {c.total_rejections} ({pct(c.bucket_3_format_plumbing, c.total_rejections)})** | **{a.bucket_3_format_plumbing} / {a.total_rejections} ({pct(a.bucket_3_format_plumbing, a.total_rejections)})** | **{comb.bucket_3_format_plumbing} / {comb.total_rejections} ({pct(comb.bucket_3_format_plumbing, comb.total_rejections)})** |",
+            "",
+            "## Substantive PASS Rigor vs Rubber-Stamp False Negatives",
+            "",
+            "| Metric | `claude-code` | `agy` | Combined / Comparative |",
+            "| :--- | :--- | :--- | :--- |",
+            f"| **Total PASS Verdicts Evaluated** | **{c.total_passes}** | **{a.total_passes}** | **{comb.total_passes}** |",
+            f"| **Rigorous Primary Verification (True Negative)** | **{c.rigorous_passes} ({pct(c.rigorous_passes, c.total_passes)})** | **{a.rigorous_passes} ({pct(a.rigorous_passes, a.total_passes)})** | **{comb.rigorous_passes} ({pct(comb.rigorous_passes, comb.total_passes)})** |",
+            f"| **False-Negative Rubber Stamps** | **{c.rubber_stamp_passes} ({pct(c.rubber_stamp_passes, c.total_passes)})** | **{a.rubber_stamp_passes} ({pct(a.rubber_stamp_passes, a.total_passes)})** | **{comb.rubber_stamp_passes} ({pct(comb.rubber_stamp_passes, comb.total_passes)})** |",
+        ]
 
     return "\n".join(out)
 

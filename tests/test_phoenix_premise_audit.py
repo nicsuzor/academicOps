@@ -106,12 +106,33 @@ def test_harness_classification():
     s3 = make_span("tool", "3", "s3", surface="claude")
     assert ppa.classify_harness(s3) == "claude-code"
 
-    # Fallback to cwd/host heuristics when surface is missing
+    # Missing or unrecognized surface returns 'unknown' without heuristics
     s4 = make_span("tool", "4", "s4", cwd="/home/user/.gemini/antigravity-cli/worktrees/wt1")
-    assert ppa.classify_harness(s4) == "agy"
+    assert ppa.classify_harness(s4) == "unknown"
 
     s5 = make_span("tool", "5", "s5", cwd="/home/user/project")
-    assert ppa.classify_harness(s5) == "claude-code"
+    assert ppa.classify_harness(s5) == "unknown"
+
+    s6 = make_span("tool", "6", "s6", surface="unrecognized-surface")
+    assert ppa.classify_harness(s6) == "unknown"
+
+
+def test_unknown_surface_handling():
+    spans = [
+        make_verdict_span("v1", "s1", "PASS", surface="claude-code"),
+        make_verdict_span("v2", "s2", "REVISE", surface=None),  # unknown surface
+        make_span("hearsay_check", "h1", "s2", surface="other"),  # unknown surface
+    ]
+    stats = ppa.aggregate_census(spans)
+    assert stats["claude-code"].total_verdicts == 1
+    assert stats["unknown"].total_verdicts == 1
+    assert stats["unknown"].armed_hearsay_spans == 1
+    assert stats["combined"].total_verdicts == 2
+    assert stats["combined"].armed_hearsay_spans == 1
+
+    md = ppa.render_census_markdown(stats)
+    assert "| Metric | `claude-code` | `agy` | `unknown` | Combined / Comparative |" in md
+    assert "**Total Recorded Verdict Spans** | **1** | **0** | **1** | **2** total" in md
 
 
 def test_census_aggregation_across_harnesses():
@@ -414,8 +435,10 @@ def test_cli_census_and_dossier_from_file(tmp_path: Path, capsys: pytest.Capture
     assert ann_data["total_records"] == 3
 
     # Test tally CLI on annotated template
-    # Fill in an evaluation
+    # Fully annotate evaluations to comply with fail-fast validation
+    ann_data["evaluations"][0]["evaluation"]["is_rubber_stamp"] = False
     ann_data["evaluations"][1]["evaluation"]["defect_classification"] = "substantive"
+    ann_data["evaluations"][2]["evaluation"]["is_rubber_stamp"] = False
     ann_file.write_text(json.dumps(ann_data))
 
     capsys.readouterr()  # Clear previous output
@@ -424,6 +447,77 @@ def test_cli_census_and_dossier_from_file(tmp_path: Path, capsys: pytest.Capture
     out, _ = capsys.readouterr()
     tally_data = json.loads(out)
     assert tally_data["claude-code"]["bucket_1_substantive"] == 1
+
+
+def test_tally_annotations_fail_fast_on_incomplete():
+    # 1. Missing evaluation object
+    p1 = {
+        "evaluations": [
+            {"span_id": "s1", "claim_id": "c1", "harness": "claude-code", "verdict": "REVISE"}
+        ]
+    }
+    with pytest.raises(ppa.ConfigError, match="missing required 'evaluation' object"):
+        ppa.tally_annotations(p1)
+
+    # 2. Unrecognized verdict
+    p2 = {
+        "evaluations": [
+            {
+                "span_id": "s2",
+                "claim_id": "c2",
+                "harness": "claude-code",
+                "verdict": "INVALID",
+                "evaluation": {},
+            }
+        ]
+    }
+    with pytest.raises(ppa.ConfigError, match="unrecognized verdict"):
+        ppa.tally_annotations(p2)
+
+    # 3. REVISE with missing / null defect_classification and is_substantive
+    p3 = {
+        "evaluations": [
+            {
+                "span_id": "s3",
+                "claim_id": "c3",
+                "harness": "claude-code",
+                "verdict": "REVISE",
+                "evaluation": {"defect_classification": None, "is_substantive": None},
+            }
+        ]
+    }
+    with pytest.raises(ppa.ConfigError, match="missing or unrecognized defect classification"):
+        ppa.tally_annotations(p3)
+
+    # 4. PASS with missing / null is_rubber_stamp
+    p4 = {
+        "evaluations": [
+            {
+                "span_id": "s4",
+                "claim_id": "c4",
+                "harness": "claude-code",
+                "verdict": "PASS",
+                "evaluation": {"is_rubber_stamp": None},
+            }
+        ]
+    }
+    with pytest.raises(ppa.ConfigError, match="missing or non-boolean is_rubber_stamp"):
+        ppa.tally_annotations(p4)
+
+    # 5. PASS with non-boolean is_rubber_stamp string
+    p5 = {
+        "evaluations": [
+            {
+                "span_id": "s5",
+                "claim_id": "c5",
+                "harness": "claude-code",
+                "verdict": "PASS",
+                "evaluation": {"is_rubber_stamp": "not-a-bool"},
+            }
+        ]
+    }
+    with pytest.raises(ppa.ConfigError, match="missing or non-boolean is_rubber_stamp"):
+        ppa.tally_annotations(p5)
 
 
 def test_keyset_sql_pagination_multipage_and_truncation_detection(

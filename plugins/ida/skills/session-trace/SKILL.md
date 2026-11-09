@@ -65,7 +65,7 @@ time, find the session with Recipe A or F in [references/sql-recipes.md](referen
   `--by task`. Prices are list prices per million tokens; the dollar column is
   comparable spend, not an invoice. Gemini spans may carry no token counts.
 - `uv run python "${CLAUDE_SKILL_DIR:-plugins/ida/skills/session-trace}/scripts/phoenix_premise_audit.py" <census|dossier|log|tally>` -- macro census,
-  candidate review dossiers (`--format <markdown|json|annotations>`), single-session premise-check logs, and mechanical confusion-matrix tallying across harnesses (`claude-code` vs `agy`). Used by `wf-premise-audit`.
+  candidate review dossiers (`--format <markdown|json|annotations>`), single-session premise-check logs, and mechanical confusion-matrix tallying across harnesses (`claude-code` vs `agy`).
 
 ## Cross-session search
 
