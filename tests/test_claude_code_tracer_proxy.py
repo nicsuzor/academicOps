@@ -93,6 +93,7 @@ def _export_one_span(endpoint: str) -> SpanExportResult:
     return results[0]
 
 
+@pytest.mark.integration
 def test_export_goes_through_env_proxy(monkeypatch, recording_server):
     proxy_url, seen = recording_server
     monkeypatch.setenv("HTTP_PROXY", proxy_url)
@@ -103,6 +104,7 @@ def test_export_goes_through_env_proxy(monkeypatch, recording_server):
     assert seen == [endpoint]
 
 
+@pytest.mark.integration
 def test_export_is_direct_without_proxy(recording_server):
     server_url, seen = recording_server
 

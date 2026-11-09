@@ -45,7 +45,7 @@ Historical forensic evidence from the PKB establishes that titles shaped like `<
 
 ### Resolution at the Source
 
-1. **Abolition of Standalone Decision Tasks:** Standalone "decision" tasks are strictly prohibited across all prompts, skills, and documentation.
+1. **Abolition of Un-actionable Decision Tickets & Groundwork-First Decisions:** Standalone "decision" tasks filed as holding bins for open conversational questions are strictly prohibited across all prompts, skills, and documentation. When an agent is given a task, it must do the groundwork and make the decision itself; it never files the task back to the user as their decision (`assignee: user`) unless the user explicitly requested to make that decision themselves (tg 1013). Research workflows evaluate options, select the recommended route, and unblock downstream work.
 2. **Proper Field Separation:** Identity and assignment are strictly confined to `assigned_to:` / `assignee:`.
 3. **Direct Interactive Resolution:** Interactive, in-session questions are asked immediately via `AskUserQuestion` rather than converted into backlog items.
 
@@ -55,19 +55,18 @@ Decisions and open questions are structural properties of the graph, not static 
 
 ```mermaid
 flowchart TD
-    Upstream["Upstream Task"] --> OptionA["Option A: Architecture A (mutually blocking)"]
-    Upstream --> OptionB["Option B: Architecture B (mutually blocking)"]
-    OptionA -.->|depends_on / conflicts| OptionB
-    OptionB -.->|depends_on / conflicts| OptionA
-    OptionA --> Downstream["Downstream Implementation"]
-    OptionB --> Downstream
+    Upstream["Upstream Task"] --> Decision["Decision Node D"]
+    OptionA["Option A: Decomposed Branch A"] -.->|alternative| Decision
+    OptionB["Option B: Decomposed Branch B"] -.->|alternative| Decision
+    Decision --> Downstream["Downstream Implementation"]
 ```
 
 ### Representation Principles
 
-1. **Mutually Exclusive Option Nodes:**
-   - When a design fork or architectural choice arises, represent the alternatives as concrete option branches/nodes (e.g. `Option A: Use SQLite` and `Option B: Use DuckDB`) wired with `alternative` edges to the decision node `D` (FQ8).
-   - Choosing an option resolves the decision, adopting the selected branch and cancelling the competing alternative.
+1. **Option Nodes Only Where Decomposed Further:**
+   - Forks are separated into concrete option nodes (e.g. `Option A: Use SQLite` and `Option B: Use DuckDB`) wired with `alternative` edges to the decision node `D` (FQ8) **only where the competing branches are decomposed further** into distinct downstream work.
+   - A task that has options to choose between but no commitment to doing anything immediately beyond choosing must **not** be created with subtasks or separate option nodes; instead, it is created as a single task with the choices in the task body and instructions about how to make the decision.
+   - Where option nodes are created for decomposed branches, dependencies are strictly one-sided (`depends_on` on the waiting task) and option nodes must never use mutual blocking edges. Choosing an option resolves the decision, adopting the selected branch and cancelling the competing alternative. Downstream tasks depend on the decision node or the adopted branch.
 2. **Dynamic Emergence of Questions:**
    - Open architectural decisions are surfaced dynamically by agents inspecting graph topology (detecting unresolved option forks on the critical path) rather than by querying a bucket of stale "decision" tickets.
 3. **Empirical Unknowns as Probes:**
@@ -148,3 +147,4 @@ Graph density means meaningful semantic and causal connectivity, not redundant c
 1. **Parent/Child is Already an Edge:** Setting `parent_id` on a node automatically places and connects it within the parent's hierarchy.
 2. **No Redundant Descendant Wiring:** Do **not** wire edges between siblings or descendants under the same parent unless there is a specific, verifiable interaction (such as an explicit causal dependency `depends_on`, `supersedes`, or cross-branch data flow).
 3. **Density Means Causal and Strategic Edges:** Densify the graph by wiring edges carrying the FR edge contract (`label`: `serves`, `needs`, `supports`, `alternative`, `settles`; `quantum`; `probability`; `effect`: `helps` | `harms`; `justification`; `set_by: agent-proposed`).
+4. **Review and Follow-Up Placement Invariant:** Every task requiring review or follow-up must be structured either as a single task with internal subtasks (if executable by the same agent in one session) or as a dedicated epic with separate child tasks (if multi-session or independent context is required); never as loose siblings under an external parent.

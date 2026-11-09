@@ -1,0 +1,14 @@
+version: 2
+
+models:
+  - name: stg_evaluations
+    description: "Cleaned staging view of evaluated safety models"
+    columns:
+      - name: model_id
+        description: "Primary key identifier"
+        tests:
+          - unique
+          - not_null
+      - name: model_type
+        tests:
+          - not_null

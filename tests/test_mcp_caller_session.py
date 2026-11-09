@@ -5,13 +5,19 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
+
+import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 IDA_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
 HOOK_SCRIPT = IDA_HOOKS / "mcp_caller_session.py"
 if str(IDA_HOOKS) not in sys.path:
     sys.path.insert(0, str(IDA_HOOKS))
+
+_POLICY = tomllib.loads((REPO_ROOT / "tests" / "policy.toml").read_text(encoding="utf-8"))
+SESSION_SERVERS = frozenset(_POLICY["hooks"]["mcp_caller_session"]["session_servers"])
 
 
 def test_hook_carries_session_ids_and_keeps_original_arguments():
@@ -20,17 +26,16 @@ def test_hook_carries_session_ids_and_keeps_original_arguments():
 
     payload = {
         "hook_event_name": "PreToolUse",
-        "tool_name": "mcp__telegram__reply",
+        "tool_name": "mcp__pkb__get_task",
         "session_id": "sess-uuid-main",
         "prompt_id": "prompt-uuid-main",
         "tool_use_id": "toolu-01",
         "tool_input": {
-            "chat_id": 12345,
-            "text": "Task completed successfully",
+            "id": "task-fixture-01",
         },
     }
 
-    result = inject_caller_session(payload)
+    result = inject_caller_session(payload, session_servers=SESSION_SERVERS)
     assert "hookSpecificOutput" in result
     specific = result["hookSpecificOutput"]
     assert specific.get("hookEventName") == "PreToolUse"
@@ -39,8 +44,7 @@ def test_hook_carries_session_ids_and_keeps_original_arguments():
     updated = specific.get("updatedInput")
     assert isinstance(updated, dict)
     # Original arguments kept
-    assert updated.get("chat_id") == 12345
-    assert updated.get("text") == "Task completed successfully"
+    assert updated.get("id") == "task-fixture-01"
 
     # _session injected
     assert "_session" in updated
@@ -62,16 +66,16 @@ def test_hook_includes_agent_id_in_subagent():
         "prompt_id": "prompt-uuid-turn",
         "tool_use_id": "toolu-02",
         "tool_input": {
-            "code": "return await codemode.pkb_get_task({ id: 'task_0c62b710' });",
+            "code": "return await codemode.pkb_get_task({ id: 'task-fixture-01' });",
         },
     }
 
-    result = inject_caller_session(payload)
+    result = inject_caller_session(payload, session_servers=SESSION_SERVERS)
     specific = result["hookSpecificOutput"]
     updated = specific["updatedInput"]
 
     # Original arguments kept
-    assert updated["code"] == "return await codemode.pkb_get_task({ id: 'task_0c62b710' });"
+    assert updated["code"] == "return await codemode.pkb_get_task({ id: 'task-fixture-01' });"
 
     # _session includes agent_id
     session = updated["_session"]
@@ -80,6 +84,7 @@ def test_hook_includes_agent_id_in_subagent():
     assert session["prompt_id"] == "prompt-uuid-turn"
 
 
+@pytest.mark.integration
 def test_hook_subprocess_execution():
     """End-to-end execution of the script as a subprocess reading stdin and emitting JSON stdout."""
     payload = {
@@ -109,6 +114,7 @@ def test_hook_subprocess_execution():
     }
 
 
+@pytest.mark.integration
 def test_hook_subprocess_fails_on_malformed_stdin():
     """Verify that malformed JSON on stdin fails fast with a non-zero exit code."""
     proc = subprocess.run(
@@ -118,3 +124,182 @@ def test_hook_subprocess_fails_on_malformed_stdin():
         capture_output=True,
     )
     assert proc.returncode != 0
+
+
+def test_hook_carries_conversation_id_from_agy():
+    """agy call: payload provides conversationId, hook injects session_id = conversationId."""
+    from mcp_caller_session import inject_caller_session
+
+    payload = {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "mcp__pkb__get_task",
+        "conversationId": "conv-uuid-agy",
+        "prompt_id": "prompt-uuid-agy",
+        "tool_use_id": "toolu-04",
+        "tool_input": {"id": "task-fixture-01"},
+    }
+
+    result = inject_caller_session(payload, session_servers=SESSION_SERVERS)
+    session = result["hookSpecificOutput"]["updatedInput"]["_session"]
+    assert session.get("session_id") == "conv-uuid-agy"
+    assert session.get("prompt_id") == "prompt-uuid-agy"
+
+
+def test_hook_omits_session_for_non_session_servers():
+    """AC1: Calls to servers that do not use _session (e.g. telegram, konnect) reach them without _session."""
+    from mcp_caller_session import inject_caller_session
+
+    for tool_name in (
+        "mcp__telegram__reply",
+        "mcp__aops:telegram__reply",
+        "mcp__konnect__get_board",
+        "mcp__playwright__browser_click",
+    ):
+        payload = {
+            "hook_event_name": "PreToolUse",
+            "tool_name": tool_name,
+            "session_id": "sess-uuid-main",
+            "prompt_id": "prompt-uuid-main",
+            "tool_use_id": "toolu-01",
+            "tool_input": {
+                "arg1": "val1",
+            },
+        }
+
+        result = inject_caller_session(payload, session_servers=SESSION_SERVERS)
+        updated = result.get("hookSpecificOutput", {}).get("updatedInput")
+        assert updated is None or "_session" not in updated, (
+            f"Expected no _session for {tool_name}, got {updated}"
+        )
+
+
+def test_hook_subprocess_omits_session_for_non_session_server():
+    """AC1: Subprocess execution omits _session for non-session servers (stdout empty or no _session)."""
+    payload = {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "mcp__konnect__list_components",
+        "session_id": "sess-e2e",
+        "prompt_id": "prompt-e2e",
+        "tool_use_id": "toolu-konnect",
+        "tool_input": {"board_id": "pcb-123"},
+    }
+
+    proc = subprocess.run(
+        [sys.executable, str(HOOK_SCRIPT)],
+        input=json.dumps(payload),
+        text=True,
+        capture_output=True,
+    )
+    assert proc.returncode == 0, f"Hook failed with stderr: {proc.stderr}"
+    if proc.stdout.strip():
+        data = json.loads(proc.stdout)
+        updated = data.get("hookSpecificOutput", {}).get("updatedInput", {})
+        assert "_session" not in updated
+
+
+def test_hook_injects_session_for_pkb_and_services():
+    """AC2: Calls to the PKB (direct) and through services portal carry _session across tool name formats."""
+    from mcp_caller_session import inject_caller_session
+
+    target_tools = [
+        "mcp__pkb__search",
+        "mcp__pkb__get_task",
+        "mcp__services__portal_codemode_execute",
+        "mcp__services__portal_list_servers",
+        "mcp__plugin_aops_pkb__get_task",
+        "mcp__plugin_aops_services__portal_codemode_execute",
+        "mcp__aops:pkb__get_task",
+        "mcp__aops:services__portal_codemode_execute",
+    ]
+
+    for tool_name in target_tools:
+        payload = {
+            "hook_event_name": "PreToolUse",
+            "tool_name": tool_name,
+            "session_id": "sess-ac2",
+            "prompt_id": "prompt-ac2",
+            "tool_use_id": "toolu-ac2",
+            "tool_input": {"key": "val"},
+        }
+        result = inject_caller_session(payload, session_servers=SESSION_SERVERS)
+        assert "hookSpecificOutput" in result, f"Expected hookSpecificOutput for {tool_name}"
+        updated = result["hookSpecificOutput"].get("updatedInput", {})
+        assert updated.get("key") == "val"
+        assert "_session" in updated, f"Expected _session for {tool_name}"
+        assert updated["_session"] == {
+            "session_id": "sess-ac2",
+            "prompt_id": "prompt-ac2",
+        }
+
+
+def test_hook_omits_session_for_multi_segment_non_session_servers():
+    """Verify that multi-segment server names ending in _services or _pkb (e.g. external_services) do not match session_servers."""
+    from mcp_caller_session import inject_caller_session
+
+    for tool_name in (
+        "mcp__plugin_aops_external_services__fetch",
+        "mcp__aops:external_services__fetch",
+        "mcp__external_services__fetch",
+    ):
+        payload = {
+            "hook_event_name": "PreToolUse",
+            "tool_name": tool_name,
+            "session_id": "sess-uuid-main",
+            "prompt_id": "prompt-uuid-main",
+            "tool_use_id": "toolu-01",
+            "tool_input": {"param": "val"},
+        }
+        result = inject_caller_session(payload, session_servers=SESSION_SERVERS)
+        updated = result.get("hookSpecificOutput", {}).get("updatedInput")
+        assert updated is None or "_session" not in updated, (
+            f"Expected no _session for {tool_name}, got {updated}"
+        )
+
+
+def test_hook_resolves_root_session_id_and_subagent_id_from_tracer_state(tmp_path, monkeypatch):
+    """Out-of-process subagent MCP tool call resolves root phoenix_session_id as _session.session_id
+    and preserves the subagent's own session id as _session.agent_id."""
+    from mcp_caller_session import inject_caller_session
+
+    monkeypatch.setenv("HOME", str(tmp_path))
+    tracer_dir = tmp_path / ".claude" / "tracer"
+    tracer_dir.mkdir(parents=True, exist_ok=True)
+    (tracer_dir / "subagent-sess-99.json").write_text(
+        json.dumps(
+            {
+                "session_id": "subagent-sess-99",
+                "phoenix_session_id": "root-sess-00",
+                "parent_session_id": "root-sess-00",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    payload = {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "mcp__pkb__get_task",
+        "session_id": "subagent-sess-99",
+        "prompt_id": "prompt-sub-1",
+        "tool_use_id": "toolu-sub-1",
+        "tool_input": {"id": "task-fixture-01"},
+    }
+
+    result = inject_caller_session(payload, session_servers=SESSION_SERVERS)
+    session = result["hookSpecificOutput"]["updatedInput"]["_session"]
+    assert session["session_id"] == "root-sess-00"
+    assert session["agent_id"] == "subagent-sess-99"
+    assert session["prompt_id"] == "prompt-sub-1"
+
+    # Also verify slash-suffixed session_id is stripped to root UUID and suffix goes to agent_id
+    payload_suffixed = {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "mcp__pkb__get_task",
+        "session_id": "root-sess-00/task-1",
+        "prompt_id": "prompt-bg-1",
+        "tool_use_id": "toolu-bg-1",
+        "tool_input": {"id": "task-fixture-01"},
+    }
+    res_suffixed = inject_caller_session(payload_suffixed, session_servers=SESSION_SERVERS)
+    sess_suffixed = res_suffixed["hookSpecificOutput"]["updatedInput"]["_session"]
+    assert sess_suffixed["session_id"] == "root-sess-00"
+    assert sess_suffixed["agent_id"] == "task-1"

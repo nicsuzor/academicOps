@@ -5,7 +5,7 @@
 ROOT := $(shell pwd)
 DIST := $(ROOT)/dist
 LOCAL_MARKETPLACE := aops
-DIST_REPO := nicsuzor/academicOps@dist
+DIST_REPO := nicsuzor/academicOps@main
 
 # Plugin marketplace names declared in build/marketplace.toml — the single
 # source of truth for what ships (specs/ARCHITECTURE.md's plugin table).
@@ -17,9 +17,11 @@ help:
 	@echo "make build-test     - build, then validate every dist/ plugin dir with"
 	@echo "                      'claude plugin validate' and 'agy plugin validate'"
 	@echo "make install-dev    - build, then install dist/ as the local '$(LOCAL_MARKETPLACE)' marketplace"
-	@echo "make uninstall-dev  - remove the local marketplace, restore the released one"
-	@echo "make install        - install the released plugins from the dist branch"
-	@echo "make test           - run the pytest suite"
+	@echo "make uninstall-dev  - alias for make install"
+	@echo "make install        - clean and switch to the claude.ai catalog release channel"
+	@echo "make test           - run unit tests (excludes slow and integration)"
+	@echo "make test-integration - run integration tests"
+	@echo "make test-all       - run the entire test suite"
 	@echo "make lint           - ruff check + documented-reference check + basedpyright"
 	@echo "make format         - ruff format + dprint fmt"
 	@echo "make clean          - remove dist/"
@@ -68,12 +70,12 @@ build-test: build
 				&& echo "✓ cowork $$p validated" \
 				|| { echo "x cowork $$p validate failed" >&2; exit 1; }; \
 		fi; \
-		if command -v agy >/dev/null 2>&1; then \
+		if command -v agy >/dev/null 2>&1 && [ -d "$(DIST)/$$p-agy" ]; then \
 			agy plugin validate "$(DIST)/$$p-agy" \
 				&& echo "✓ agy $$p validated" \
 				|| { echo "x agy $$p validate failed" >&2; exit 1; }; \
 		fi; \
-		if command -v claude >/dev/null 2>&1; then \
+		if command -v claude >/dev/null 2>&1 && [ -d "$(DIST)/$$p-openclaw" ]; then \
 			claude plugin validate "$(DIST)/$$p-openclaw" \
 				&& echo "✓ openclaw $$p validated" \
 				|| { echo "x openclaw $$p validate failed" >&2; exit 1; }; \
@@ -88,7 +90,7 @@ define claude_install
 		|| { echo "x $(1)@$(2) install failed" >&2; exit 1; }
 endef
 
-install-dev: build
+install-dev: build clean-plugins
 	@command claude plugin marketplace remove $(LOCAL_MARKETPLACE) >/dev/null 2>&1 || true
 	@command claude plugin marketplace add $(DIST)
 	@for p in $(STALE_PLUGIN_NAMES); do \
@@ -115,35 +117,16 @@ install-dev: build
 	done || true
 	@uv run python -m build.install install --dist-root $(DIST)
 	@uv run pre-commit install >/dev/null 2>&1 || true
-	@echo "Local marketplace '$(LOCAL_MARKETPLACE)' -> $(DIST). Run 'make uninstall-dev' to restore the release channel."
+	@uv run python -c "import json, pathlib; m = pathlib.Path('$(DIST)/.claude-plugin/marketplace.json'); print(json.loads(m.read_text())['plugins'][0]['version'])"
 
-uninstall-dev:
-	@for p in $(STALE_PLUGIN_NAMES) $(PLUGIN_NAMES); do \
-		command claude plugin uninstall $$p@$(LOCAL_MARKETPLACE) >/dev/null 2>&1 || true; \
-		command claude plugin uninstall aops-$$p@$(LOCAL_MARKETPLACE) >/dev/null 2>&1 || true; \
-		command -v agy >/dev/null 2>&1 && (agy plugin uninstall $$p >/dev/null 2>&1 || true; agy plugin uninstall aops-$$p >/dev/null 2>&1 || true); \
-		rm -rf ~/.gemini/config/plugins/$$p ~/.gemini/config/plugins/aops-$$p; \
-	done
+uninstall-dev: install
+
+install: clean-plugins
 	@command claude plugin marketplace remove $(LOCAL_MARKETPLACE) >/dev/null 2>&1 || true
-	@uv run python -m build.install uninstall
-	@command claude plugin marketplace add $(DIST_REPO)
-	@command claude plugin marketplace update academicOps
-	@echo "✓ release marketplace restored"
-
-install: build-agy
 	@command claude plugin marketplace remove academicOps >/dev/null 2>&1 || true
-	@command claude plugin marketplace add $(DIST_REPO)
-	@command claude plugin marketplace update academicOps
-	@for p in $(PLUGIN_NAMES); do $(call claude_install,$$p,academicOps); done
-	@mkdir -p ~/.gemini/config/plugins
-	@for p in $(PLUGIN_NAMES); do \
-		if [ -d "$(DIST)/$$p-agy" ]; then \
-			command -v agy >/dev/null 2>&1 && (agy plugin uninstall "$$p" >/dev/null 2>&1 || true); \
-			rm -rf ~/.gemini/config/plugins/$$p ~/.gemini/config/plugins/aops-$$p; \
-			cp -R "$(DIST)/$$p-agy" ~/.gemini/config/plugins/$$p && echo "✓ ~/.gemini/config/plugins/$$p installed"; \
-			command -v agy >/dev/null 2>&1 && (agy plugin install "$(DIST)/$$p-agy" >/dev/null 2>&1 && agy plugin enable "$$p" >/dev/null 2>&1 && echo "✓ agy $$p installed and enabled" || true); \
-		fi; \
-	done || true
+	@uv run python scripts/clean_plugins.py --remove-marketplaces $(LOCAL_MARKETPLACE) academicOps
+	@uv run python -m build.install uninstall
+	@echo "Install the aops plugins from the claude.ai org catalog in the app."
 
 # --- Maintenance ---
 
@@ -156,6 +139,12 @@ clean:
 
 test:
 	@uv run pytest tests/
+
+test-integration:
+	@uv run pytest -m integration tests/
+
+test-all:
+	@uv run pytest -m "" tests/
 
 # Mirrors the Lint and Type Check workflows. basedpyright is invoked exactly as
 # .github/workflows/typecheck.yml invokes it, and is the only local entry point

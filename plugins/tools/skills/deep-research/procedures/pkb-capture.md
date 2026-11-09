@@ -9,7 +9,7 @@ parent_skill: deep-research
 
 ### 1. Pre-flight & Download
 
-- Verify sourcing task exists in PKB (`pkb.search`) and `rclone lsd gdrive:` succeeds.
+- Verify sourcing task exists in PKB (via PKB search) and `rclone lsd gdrive:` succeeds.
 - Download artifacts to temporary workspace:
   ```bash
   scripts/fetch.sh <gdoc-url-or-id> /tmp/deep-research-<date>/<slug>
@@ -29,7 +29,7 @@ Google Docs rasterizes equations and math. Recover using local agent vision:
 - Stage non-formula images under `knowledge/<topic>/figures/<note-id>/`.
 - Rewrite markdown references:
   ```bash
-  scripts/rewrite.py <source.md> <note-id> <map.json> <output.md>
+  uv run python scripts/rewrite.py <source.md> <note-id> <map.json> <output.md>
   ```
 - Verify zero untranscribed image tags remain (`grep -c '!\[\]\[image' <output.md>` equals 0).
 
@@ -56,7 +56,7 @@ Body layout: one-paragraph context block with `[[wikilinks]]` to tasks/epics, se
 
 ### 5. Update Task & Cleanup
 
-- Update sourcing task via `pkb_update_task` (the `services` MCP server's code-mode interface: `portal_codemode_execute` running `async () => await codemode.pkb_update_task({ id: "<task-id>", updates: { research_output: "<note-id>", status: "done" } })`; in agy via `call_mcp_tool` with `ServerName: "services"`, in Claude Code via `mcp__services__portal_codemode_execute`): set `research_output` to note ID, status to `done`, and record completion evidence.
+- Update sourcing task: set `research_output` to note ID, status to `done`, and record completion evidence.
 - Remove working files from `/tmp/`.
 
 ## Failure Handling

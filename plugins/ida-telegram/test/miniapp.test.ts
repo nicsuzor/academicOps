@@ -343,7 +343,7 @@ class MiniDocument {
 
 function generateValidInitData(botToken: string, userId: number): string {
   const nowSeconds = Math.floor(Date.now() / 1000);
-  const userJson = JSON.stringify({ id: userId, first_name: "Nic", username: "nicsuzor" });
+  const userJson = JSON.stringify({ id: userId, first_name: "Alex", username: "testuser" });
   const params = new URLSearchParams();
   params.set("auth_date", nowSeconds.toString());
   params.set("query_id", "AAG_MINIAPP_TEST");
@@ -359,9 +359,9 @@ function generateValidInitData(botToken: string, userId: number): string {
   return params.toString();
 }
 
-describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
+describe("Mini App Tabs (specification FR-4.3 to FR-4.7)", () => {
   const botToken = "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11";
-  const allowedUserId = 8860530746;
+  const allowedUserId = 1111111111;
   const appDir = join(import.meta.dir, "..", "app");
   let testStateDir = "";
   let httpServer: ReturnType<typeof startWebServer> | null = null;
@@ -378,6 +378,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
 
   async function bootMiniApp(options: {
     search?: string;
+    noAuth?: boolean;
     setup?: (ctx: {
       store: PluginStore;
       broker: QuestionBroker;
@@ -435,10 +436,8 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
     httpServer = startWebServer(webContext, appDir);
     const baseUrl = `http://127.0.0.1:${httpServer.port}`;
 
-    const indexHtmlRes = await fetch(`${baseUrl}/app/index.html`);
-    const indexHtml = await indexHtmlRes.text();
-    const appJsRes = await fetch(`${baseUrl}/app/app.js`);
-    const appJs = await appJsRes.text();
+    const indexHtml = readFileSync(join(appDir, "index.html"), "utf-8");
+    const appJs = readFileSync(join(appDir, "app.js"), "utf-8");
 
     const document = new MiniDocument(indexHtml);
     let sessionCookie = "";
@@ -448,7 +447,8 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
         const overridden = await options.fetchOverride(input, init);
         if (overridden) return overridden;
       }
-      const targetUrl = input.startsWith("http") ? input : `${baseUrl}${input}`;
+      // Resolve like a browser would: relative to the page the app is served from.
+      const targetUrl = new URL(input, `${baseUrl}/app/index.html`).toString();
       const headers = new Headers(init?.headers || {});
       if (sessionCookie) {
         headers.set("Cookie", sessionCookie);
@@ -464,7 +464,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
     const windowObj: any = {
       Telegram: {
         WebApp: {
-          initData: generateValidInitData(botToken, allowedUserId),
+          initData: options.noAuth ? "" : generateValidInitData(botToken, allowedUserId),
           expand() {},
         },
       },
@@ -493,6 +493,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
       if (typeof loadAnchor !== "undefined") window.loadAnchor = loadAnchor;
       if (typeof answerQuestion !== "undefined") window.answerQuestion = answerQuestion;
       if (typeof submitQuestion !== "undefined") window.submitQuestion = submitQuestion;
+      if (typeof closeQuestion !== "undefined") window.closeQuestion = closeQuestion;
       if (typeof resolvePermission !== "undefined") window.resolvePermission = resolvePermission;
       if (typeof submitPrReview !== "undefined") window.submitPrReview = submitPrReview;
     `;
@@ -606,7 +607,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
             }
           );
           if (typeof (permRelay as any).setMessageInfo === "function") {
-            (permRelay as any).setMessageInfo("perm_edit_1", 8860530746, 501, "Permission request: *Edit*");
+            (permRelay as any).setMessageInfo("perm_edit_1", 1111111111, 501, "Permission request: *Edit*");
           }
           if (typeof (store as any).addReview === "function") {
             (store as any).addReview({ repo: "nicsuzor/academicOps", pr: 2920 });
@@ -638,7 +639,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
       await new Promise((r) => setTimeout(r, 30));
       expect(resolvedDecision).toBe("allow");
       expect(editedCards.length).toBe(1);
-      expect(editedCards[0].chatId).toBe(8860530746);
+      expect(editedCards[0].chatId).toBe(1111111111);
       expect(editedCards[0].messageId).toBe(501);
       expect(editedCards[0].text).toContain("Allowed via Mini App ✅");
 
@@ -659,6 +660,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
   test("3. Questions tab renders multi-select questions as checkboxes with a submit button, shows header and option descriptions, and accepts free text (FR-4.6)", async () => {
     let multiQid = "";
     let singleQid = "";
+    let closeQid = "";
     const { document, editedCards, emittedEvents } = await bootMiniApp({
       search: "?tab=questions",
       setup: async ({ broker }) => {
@@ -672,7 +674,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
           ],
           multiSelect: true,
           allowOther: true,
-          chatId: 8860530746,
+          chatId: 1111111111,
           turnId: "turn_m1",
         });
         multiQid = q1.questionId;
@@ -687,11 +689,23 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
           ],
           multiSelect: false,
           allowOther: true,
-          chatId: 8860530746,
+          chatId: 1111111111,
           turnId: "turn_s2",
         });
         singleQid = q2.questionId;
         broker.setMessageId(singleQid, 702);
+
+        const q3 = await broker.askUser({
+          header: "Stale Decision",
+          question: "Adopt obsolete format?",
+          options: [{ label: "Yes" }, { label: "No" }],
+          multiSelect: false,
+          chatId: 1111111111,
+          turnId: "turn_s3",
+          sessionId: "session_m3",
+        });
+        closeQid = q3.questionId;
+        broker.setMessageId(closeQid, 703);
       },
     });
 
@@ -734,6 +748,20 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
     expect(emittedEvents.length).toBe(2);
     expect(emittedEvents[1].meta.question_id).toBe(singleQid);
     expect(emittedEvents[1].meta.choice).toBe("Hold until after the 14:00 deploy freeze");
+
+    // Close third question with a stated reason (removes from Mini App, edits card, emits event)
+    await document.windowObj.closeQuestion(closeQid, "answered elsewhere");
+    await new Promise((r) => setTimeout(r, 40));
+
+    expect(emittedEvents.length).toBe(3);
+    expect(emittedEvents[2].event).toBe("question_closed");
+    expect(emittedEvents[2].meta.question_id).toBe(closeQid);
+    expect(emittedEvents[2].meta.reason).toBe("answered elsewhere");
+    expect(editedCards.some((c) => c.messageId === 703 && c.text.includes("Closed: answered elsewhere"))).toBe(true);
+
+    // Removed from the Mini App DOM
+    const allCards = document.querySelectorAll(`[data-qid="${closeQid}"]`);
+    expect(allCards.length).toBe(0);
   });
 
   test("4. Anchor tab shows every field required by FR-4.7: focus, taskId, waitingOn, delegations, pendingQuestions, recentTurns, uptime, and context gauge", async () => {
@@ -742,7 +770,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
       setup: async ({ store, broker }) => {
         store.setAnchor({
           focus: "Fixing Mini App tabs",
-          taskId: "aops_263eba56",
+          taskId: "demo_00000001",
           waitingOn: ["PR #2920 review", "Tailscale funnel check"],
           delegations: ["marsha: runtime QA", "rbg: axiom review"],
           contextTokens: {
@@ -753,12 +781,12 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
         });
         if (typeof (store as any).recordTurn === "function") {
           (store as any).recordTurn("in", "Can you fix the Mini App tabs?");
-          (store as any).recordTurn("out", "Claimed aops_263eba56 and updating all four tabs.");
+          (store as any).recordTurn("out", "Claimed demo_00000001 and updating all four tabs.");
         }
         await broker.askUser({
           question: "Approve Mini App tab layout?",
           options: [{ label: "Yes (Recommended)" }, { label: "No" }],
-          chatId: 8860530746,
+          chatId: 1111111111,
         });
       },
     });
@@ -772,7 +800,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
 
     // Focus and task ID
     expect(document.getElementById("anchor-focus")?.textContent).toBe("Fixing Mini App tabs");
-    expect(document.getElementById("anchor-task")?.textContent).toBe("aops_263eba56");
+    expect(document.getElementById("anchor-task")?.textContent).toBe("demo_00000001");
 
     // Waiting-on items
     expect(text).toContain("PR #2920 review");
@@ -787,7 +815,7 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
 
     // Recent turns (in and out)
     expect(text).toContain("Can you fix the Mini App tabs?");
-    expect(text).toContain("Claimed aops_263eba56 and updating all four tabs.");
+    expect(text).toContain("Claimed demo_00000001 and updating all four tabs.");
 
     // Uptime
     const uptimeEl = document.getElementById("anchor-uptime");
@@ -797,4 +825,215 @@ describe("Mini App Tabs (spec_7a9caca5 FR-4.3 to FR-4.7)", () => {
     // Context gauge
     expect(document.getElementById("anchor-pct")?.textContent).toContain("42%");
   });
+
+  test("5. Decision rendered in the Mini App shows its recommendation and context (FR-4.6)", async () => {
+    const { document } = await bootMiniApp({
+      search: "?tab=questions",
+      setup: async ({ broker }) => {
+        // 1. Explicit context and recommendation fields with recommended: true
+        await broker.askUser({
+          header: "RBG Request Brief",
+          question: "Should rbg's brief hand it the original request explicitly? Now it only gets a task id inside the branch name.",
+          context: "Run 3 had current instructions but departed on step 1: read PR diff before fetching request.",
+          recommendation: "Yes, give the request explicitly so proportion can be judged against original intent.",
+          options: [
+            { label: "Yes, give the request explicitly", description: "Provides direct request text upfront", recommended: true },
+            { label: "No, leave as is", description: "Keep deriving from branch task ID" },
+          ],
+          chatId: 1111111111,
+          turnId: "turn_rbg_1",
+        });
+
+        // 2. Question with markdown context, recommendation, and (Recommended) in label
+        await broker.askUser({
+          header: "Value model weight",
+          question: "Raise `urgency` weight on cliff tasks?",
+          context: ">! Facts: `demo_00000002` showed 3 cliff tasks ranked below routine cleanup.",
+          recommendation: "Raise to 2.5x to clear cliff tasks before routine work.",
+          options: [
+            { label: "Raise to 2.5x (Recommended)", description: "Prioritizes due-within-48h tasks immediately" },
+            { label: "Keep at 1.5x", description: "Preserve current focus balance" },
+          ],
+          chatId: 1111111111,
+          turnId: "turn_cliff_2",
+        });
+
+        // 3. Question without any recommendation
+        await broker.askUser({
+          header: "Survey",
+          question: "Which timezone are you in?",
+          options: [
+            { label: "UTC+10 (AEST)" },
+            { label: "UTC+1 (BST)" },
+          ],
+          chatId: 1111111111,
+          turnId: "turn_neutral_3",
+        });
+      },
+    });
+
+    await document.windowObj.switchTab("questions");
+    await new Promise((r) => setTimeout(r, 40));
+
+    const qList = document.getElementById("questions-list");
+    expect(qList).not.toBeNull();
+    const text = qList!.textContent;
+
+    // Decision 1: Context and recommendation are rendered
+    expect(text).toContain("Run 3 had current instructions but departed on step 1: read PR diff before fetching request.");
+    expect(text).toContain("Yes, give the request explicitly so proportion can be judged against original intent.");
+    expect(qList!.querySelector(".q-recommendation")).not.toBeNull();
+    expect(qList!.querySelector(".q-context")).not.toBeNull();
+
+    // Decision 2: Markdown context and recommendation are rendered
+    expect(text).toContain("Facts: demo_00000002 showed 3 cliff tasks ranked below routine cleanup.");
+    expect(text).toContain("Raise to 2.5x to clear cliff tasks before routine work.");
+
+    // Decision 3: Neutral question does NOT falsely mark option 0 as Recommended
+    const surveyCard = Array.from(qList!.querySelectorAll(".question-card")).find((card) =>
+      card.textContent.includes("Which timezone are you in?")
+    );
+    expect(surveyCard).toBeDefined();
+    expect(surveyCard!.querySelector(".rec-badge")).toBeNull();
+  });
+
+  test("6. app.js reaches the API by page-relative paths, so the Mini App works behind a path prefix (e.g. /actual/app/)", async () => {
+    const appJs = await Bun.file(new URL("../app/app.js", import.meta.url)).text();
+    expect(appJs).not.toMatch(/["'`]\/api\//);
+    expect(appJs).toMatch(/["'`]\.\.\/api\/app\//);
+  });
+
+  test("7. Details page is publicly accessible without session auth, renders Markdown in unauthenticated Mini App, displays error when missing, and leaves other tabs protected", async () => {
+    let detailsId = "";
+    const { document, baseUrl } = await bootMiniApp({
+      noAuth: true,
+      search: "",
+      setup: ({ store }) => {
+        detailsId = store.storeDetails(
+          [
+            "# Architectural Decision",
+            "",
+            "Publicly accessible **Tier 3** capability record.",
+            "",
+            "| Key | Status |",
+            "| --- | --- |",
+            "| Auth | Public |",
+            "| Type | Capability Slug |",
+            "",
+            "```json",
+            '{"public": true, "auth": "none"}',
+            "```",
+          ].join("\n")
+        );
+      },
+    });
+
+    // 1. Direct unauthenticated HTTP fetch to GET /api/app/details/:id succeeds
+    const directRes = await fetch(`${baseUrl}/api/app/details/${detailsId}`);
+    expect(directRes.status).toBe(200);
+    const directData: any = await directRes.json();
+    expect(directData.id).toBe(detailsId);
+    expect(directData.markdown).toContain("Architectural Decision");
+
+    // 2. Direct fetch to non-existent details returns 404 Not Found
+    const missingRes = await fetch(`${baseUrl}/api/app/details/d_missing_404`);
+    expect(missingRes.status).toBe(404);
+    const missingData: any = await missingRes.json();
+    expect(missingData.error).toBe("Details page not found");
+
+    // 3. Other protected endpoints remain strictly gated by 401 Unauthorized
+    const qRes = await fetch(`${baseUrl}/api/app/questions`);
+    expect(qRes.status).toBe(401);
+    const revRes = await fetch(`${baseUrl}/api/app/review`);
+    expect(revRes.status).toBe(401);
+    const anchorRes = await fetch(`${baseUrl}/api/app/anchor`);
+    expect(anchorRes.status).toBe(401);
+
+    // 4. Mini App with no auth loads and renders the details page via ?d=
+    await document.windowObj.loadDetails(detailsId);
+    await new Promise((r) => setTimeout(r, 40));
+
+    const detailsContent = document.getElementById("details-content");
+    expect(detailsContent).not.toBeNull();
+    const mdBody = detailsContent!.querySelector(".markdown-body");
+    expect(mdBody).not.toBeNull();
+    expect(mdBody!.querySelectorAll("h1").length).toBe(1);
+    expect(mdBody!.querySelectorAll("table").length).toBe(1);
+    const ths = mdBody!.querySelectorAll("th").map((el) => el.textContent.trim());
+    expect(ths).toEqual(["Key", "Status"]);
+
+    // 5. Loading a non-existent details page in the Mini App renders visible error state instead of remaining blank
+    await document.windowObj.loadDetails("d_missing_404");
+    await new Promise((r) => setTimeout(r, 40));
+
+    expect(detailsContent!.textContent).toContain("d_missing_404");
+    expect(detailsContent!.textContent).toContain("Details page not found");
+  });
+
+  test("8. Question with details shows a details button that opens its fuller background (AC2)", async () => {
+    let migQid = "";
+    let simpleQid = "";
+    const { document } = await bootMiniApp({
+      search: "?tab=questions",
+      setup: async ({ broker }) => {
+        const q1 = await broker.askUser({
+          header: "Database Migration",
+          question: "Apply non-reversible schema migration to users table?",
+          detail: "### Migration Plan\n- Drops deprecated column `legacy_role`\n- Adds non-nullable `role_id` foreign key\n- Estimated lock time: 420ms",
+          recommendation: "Apply during low-traffic maintenance window.",
+          options: [
+            { label: "Apply now (Recommended)", description: "Low traffic confirmed" },
+            { label: "Hold until weekend", description: "Wait for maintenance window" },
+          ],
+          chatId: 1111111111,
+          turnId: "turn_mig_1",
+        });
+        migQid = q1.questionId;
+
+        const q2 = await broker.askUser({
+          header: "Simple Confirmation",
+          question: "Proceed with routine log flush?",
+          options: [{ label: "Yes (Recommended)" }, { label: "No" }],
+          chatId: 1111111111,
+          turnId: "turn_flush_2",
+        });
+        simpleQid = q2.questionId;
+      },
+    });
+
+    await document.windowObj.switchTab("questions");
+    await new Promise((r) => setTimeout(r, 40));
+
+    const qList = document.getElementById("questions-list");
+    expect(qList).not.toBeNull();
+
+    const migCard = qList!.querySelector(`[data-qid="${migQid}"]`);
+    expect(migCard).not.toBeNull();
+
+    const simpleCard = qList!.querySelector(`[data-qid="${simpleQid}"]`);
+    expect(simpleCard).not.toBeNull();
+
+    // The question without details has NO details button
+    const simpleDetailsBtn = simpleCard!.querySelector(".btn-details") || simpleCard!.querySelector(".btn-q-details");
+    expect(simpleDetailsBtn).toBeNull();
+
+    // The question with details HAS a details button
+    const detailsBtn = migCard!.querySelector(".btn-details") || migCard!.querySelector(".btn-q-details");
+    expect(detailsBtn).not.toBeNull();
+    expect(detailsBtn!.textContent).toContain("Details");
+
+    // Before clicking: details container is hidden
+    const detailsBox = migCard!.querySelector(".q-details");
+    expect(detailsBox).not.toBeNull();
+    expect(detailsBox!.style.display).toBe("none");
+
+    // Click details button to open fuller background
+    await detailsBtn!.click();
+
+    // After clicking: details container is open and displays the rendered markdown
+    expect(detailsBox!.style.display).not.toBe("none");
+    expect(detailsBox!.textContent).toContain("Drops deprecated column legacy_role");
+    expect(detailsBox!.textContent).toContain("Estimated lock time: 420ms");
+  });
 });
+

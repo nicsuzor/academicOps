@@ -5,12 +5,22 @@
     "__base__": {},
     "claude": {
       "hooks": {
+        "SessionStart": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude SessionStart"
+              }
+            ]
+          }
+        ],
         "PreToolUse": [
           {
             "hooks": [
               {
                 "type": "command",
-                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude PreToolUse"
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude PreToolUse"
               }
             ]
           }
@@ -20,7 +30,7 @@
             "hooks": [
               {
                 "type": "command",
-                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude Stop"
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude Stop"
               }
             ]
           }
@@ -30,7 +40,7 @@
             "hooks": [
               {
                 "type": "command",
-                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude SubagentStop"
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude SubagentStop"
               }
             ]
           }
@@ -39,13 +49,23 @@
     },
     "agy": {
       "hooks": {
+        "SessionStart": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy SessionStart"
+              }
+            ]
+          }
+        ],
         "PreInvocation": [
           {
             "matcher": "*",
             "hooks": [
               {
                 "type": "command",
-                "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python3 \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy PreInvocation"
+                "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy PreInvocation"
               }
             ]
           }

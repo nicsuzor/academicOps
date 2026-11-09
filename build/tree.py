@@ -62,11 +62,8 @@ def copytree_filtered(src: Path, dst: Path, *, exclude_top: frozenset[str] | Non
 
 
 def has_shebang(path: Path) -> bool:
-    try:
-        with path.open("rb") as f:
-            return f.read(2) == b"#!"
-    except OSError:
-        return False
+    with path.open("rb") as f:
+        return f.read(2) == b"#!"
 
 
 def mark_shebangs_executable(root: Path) -> list[Path]:

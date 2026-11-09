@@ -498,3 +498,180 @@ def test_agy_tracer_omits_user_id_without_username(tmp_path):
 
     assert exported_usernames
     assert all(not u for u in exported_usernames)
+
+
+def test_build_tool_span_record_extracts_tool_summary():
+    # 1. toolSummary key in dict
+    record = claude_code_tracer._build_tool_span_record(
+        tool_name="portal_codemode_execute",
+        tool_input={"toolSummary": "Search PKB for ambiguous terms", "code": "async () => {}"},
+        tool_response={"hits": []},
+        start_ns=1000,
+        end_ns=2000,
+        trace_id="a" * 32,
+        root_span_id="b" * 16,
+    )
+    assert record["attributes"]["tool.summary"] == "Search PKB for ambiguous terms"
+
+    # 2. toolAction fallback
+    record = claude_code_tracer._build_tool_span_record(
+        tool_name="portal_codemode_execute",
+        tool_input={"toolAction": "Update task body", "code": "async () => {}"},
+        tool_response={},
+        start_ns=1000,
+        end_ns=2000,
+        trace_id="a" * 32,
+        root_span_id="b" * 16,
+    )
+    assert record["attributes"]["tool.summary"] == "Update task body"
+
+    # 3. description fallback
+    record = claude_code_tracer._build_tool_span_record(
+        tool_name="Bash",
+        tool_input={"description": "Run tests", "command": "pytest"},
+        tool_response="",
+        start_ns=1000,
+        end_ns=2000,
+        trace_id="a" * 32,
+        root_span_id="b" * 16,
+    )
+    assert record["attributes"]["tool.summary"] == "Run tests"
+
+    # 4. JSON-encoded tool_input string
+    record = claude_code_tracer._build_tool_span_record(
+        tool_name="portal_codemode_execute",
+        tool_input=json.dumps({"toolSummary": "Claim task aops_fa4c6994"}),
+        tool_response={},
+        start_ns=1000,
+        end_ns=2000,
+        trace_id="a" * 32,
+        root_span_id="b" * 16,
+    )
+    assert record["attributes"]["tool.summary"] == "Claim task aops_fa4c6994"
+
+    # 5. Nested Arguments dict (agy call_mcp_tool convention)
+    record = claude_code_tracer._build_tool_span_record(
+        tool_name="call_mcp_tool",
+        tool_input={
+            "ServerName": "services",
+            "ToolName": "portal_codemode_execute",
+            "Arguments": {"toolSummary": "Release task aops_fa4c6994 as done", "code": "..."},
+        },
+        tool_response={},
+        start_ns=1000,
+        end_ns=2000,
+        trace_id="a" * 32,
+        root_span_id="b" * 16,
+    )
+    assert record["attributes"]["tool.summary"] == "Release task aops_fa4c6994 as done"
+
+
+def test_tool_span_with_tool_summary_parsed_by_phoenix_transcript():
+    record = claude_code_tracer._build_tool_span_record(
+        tool_name="portal_codemode_execute",
+        tool_input={
+            "toolSummary": "Claim task aops_fa4c6994",
+            "code": "codemode.pkb_claim_task(...)",
+        },
+        tool_response={"status": "in_progress"},
+        start_ns=1_000_000_000,
+        end_ns=2_000_000_000,
+        trace_id="c" * 32,
+        root_span_id="d" * 16,
+    )
+    assert record["attributes"]["tool.summary"] == "Claim task aops_fa4c6994"
+
+    span_obj = {
+        "name": record["name"],
+        "span_kind": record["attributes"]["openinference.span.kind"],
+        "context": {"trace_id": record["trace_id_hex"], "span_id": record["span_id_hex"]},
+        "parent_id": record["parent_span_id_hex"],
+        "start_time": "2026-10-01T00:00:01.000+00:00",
+        "end_time": "2026-10-01T00:00:02.000+00:00",
+        "status_code": "UNSET",
+        "attributes": record["attributes"],
+    }
+    chain_span = {
+        "name": "turn",
+        "span_kind": "CHAIN",
+        "context": {"trace_id": record["trace_id_hex"], "span_id": record["parent_span_id_hex"]},
+        "parent_id": None,
+        "start_time": "2026-10-01T00:00:00.000+00:00",
+        "end_time": "2026-10-01T00:00:03.000+00:00",
+        "status_code": "UNSET",
+        "attributes": {
+            "session.id": "session-1",
+            "input.value": "Claim task",
+            "output.value": "Done",
+        },
+    }
+
+    SCRIPTS = REPO_ROOT / "plugins/ida/skills/session-trace/scripts"
+    if str(SCRIPTS) not in sys.path:
+        sys.path.insert(0, str(SCRIPTS))
+    import phoenix_transcript as pt
+
+    turns = pt.assemble([chain_span, span_obj], "session-1", pt.PRICES)
+    assert len(turns) == 1
+    assert len(turns[0].tool_steps) == 1
+    tool_step = turns[0].tool_steps[0]
+    assert tool_step.title == "portal_codemode_execute"
+    assert tool_step.action == "Claim task aops_fa4c6994"
+
+
+def test_resolve_session_id_handles_both_session_id_and_conversation_id():
+    """Verify resolve_session_id seamlessly resolves session_id, conversationId, and conversation_id."""
+    # 1. Payload has conversationId when looking for session_id
+    assert (
+        claude_code_tracer.resolve_session_id({"conversationId": "conv-123"}, "session_id")
+        == "conv-123"
+    )
+    # 2. Payload has session_id when looking for conversationId
+    assert (
+        claude_code_tracer.resolve_session_id({"session_id": "sess-456"}, "conversationId")
+        == "sess-456"
+    )
+    # 3. Payload has conversation_id snake_case
+    assert (
+        claude_code_tracer.resolve_session_id({"conversation_id": "conv-789"}, "session_id")
+        == "conv-789"
+    )
+    # 4. Neither present returns None when AOPS_SESSION_ID is unset
+    with patch.dict("os.environ", {}, clear=True):
+        assert claude_code_tracer.resolve_session_id({}, "session_id") is None
+    # 5. prefer_env=True resolves AOPS_SESSION_ID when set
+    with patch.dict("os.environ", {"AOPS_SESSION_ID": "env-session-root"}):
+        assert (
+            claude_code_tracer.resolve_session_id(
+                {"conversationId": "subagent-child"}, "conversationId", prefer_env=True
+            )
+            == "env-session-root"
+        )
+
+
+def test_resolve_session_id_and_agent_ids_strip_slash_suffix_and_preserve_task_id():
+    """Slash-suffixed session IDs (e.g. <uuid>/task-1) resolve to the parent UUID for
+    session.id while preserving the suffix as agent_id / task_id."""
+    parent_uuid = "11111111-2222-3333-4444-555555555555"
+    suffixed = f"{parent_uuid}/task-1"
+
+    with patch.dict("os.environ", {}, clear=True):
+        # Root phoenix_session_id resolution (prefer_env=True) strips /task-1
+        assert (
+            claude_code_tracer.resolve_session_id(
+                {"conversationId": suffixed}, "conversationId", prefer_env=True
+            )
+            == parent_uuid
+        )
+        state = {
+            "session_id": suffixed,
+            "phoenix_session_id": claude_code_tracer.resolve_session_id(
+                {"conversationId": suffixed}, "conversationId", prefer_env=True
+            ),
+        }
+        phoenix_sid, agent_id, parent_sid = claude_code_tracer._resolve_agent_and_parent_ids(
+            state, {"conversationId": suffixed}, "conversationId"
+        )
+        assert phoenix_sid == parent_uuid
+        assert agent_id == "task-1"
+        assert parent_sid == parent_uuid

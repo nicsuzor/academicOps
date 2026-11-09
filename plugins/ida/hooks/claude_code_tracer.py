@@ -17,7 +17,7 @@ Hook events:
   stop               — complete the current trace and clean up session state
 
 Config priority (highest first):
-  1. Env vars: GENAI_ENGINE_API_KEY, GENAI_ENGINE_TASK_ID, GENAI_ENGINE_TRACE_ENDPOINT
+  1. Env vars: GENAI_ENGINE_API_KEY (or DISPATCHER_MCP_TOKEN_ID + DISPATCHER_MCP_TOKEN_SECRET), GENAI_ENGINE_TASK_ID, GENAI_ENGINE_TRACE_ENDPOINT
   2. Silent no-op if nothing configured
 """
 
@@ -33,7 +33,7 @@ import time
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 # ---------------------------------------------------------------------------
 # Logging — stderr only so stdout stays clean for Claude hooks
@@ -61,11 +61,8 @@ def _load_config_file(path: Path) -> dict:
 
 
 def _load_polecat_config() -> dict:
-    cfg_path = os.environ.get("AOPS_POLECAT_CONFIG")
-    if not cfg_path:
-        sessions = os.environ.get("AOPS_SESSIONS")
-        if sessions:
-            cfg_path = os.path.join(sessions, "polecat.yaml")
+    sessions = os.environ.get("AOPS_SESSIONS")
+    cfg_path = os.path.join(sessions, "polecat.yaml") if sessions else None
     if cfg_path and os.path.exists(cfg_path):
         try:
             import yaml
@@ -360,14 +357,109 @@ def resolve_agent_name(
     return os.environ.get("AOPS_AGENT_NAME", "").strip()
 
 
+def get_telemetry_failure_mode() -> str:
+    """Return the active telemetry failure mode: 'block' or 'warn'.
+
+    Default is 'block' in autonomous container dispatch workers (e.g. polecats)
+    where complete trace capture is non-negotiable, and 'warn' in interactive
+    local sessions and CI runners.
+    """
+    mode = os.environ.get("AOPS_TELEMETRY_FAILURE_MODE", "").strip().lower()
+    if mode in ("block", "warn"):
+        return mode
+    if (
+        os.environ.get("POLECAT_TASK")
+        or os.environ.get("POLECAT_TARGET_TASK")
+        or os.environ.get("AOPS_CONTAINER")
+    ):
+        return "block"
+    return "warn"
+
+
+def is_telemetry_configured() -> bool:
+    """Return True if an OpenTelemetry trace endpoint is configured."""
+    endpoint = (
+        os.environ.get("GENAI_ENGINE_TRACE_ENDPOINT")
+        or os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
+        or os.environ.get("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "")
+    ).strip()
+    return bool(endpoint)
+
+
+RESPONSE_HEADER_ALLOWLIST = frozenset(
+    {
+        "content-type",
+        "content-length",
+        "server",
+        "date",
+        "www-authenticate",
+        "retry-after",
+    }
+)
+
+
+def sanitize_endpoint(endpoint: str) -> str:
+    """Scrub userinfo, credentials, query parameters, and fragments from an endpoint URL."""
+    if not endpoint:
+        return ""
+    try:
+        from urllib.parse import urlparse, urlunparse
+
+        parsed = urlparse(endpoint)
+        netloc = parsed.hostname or ""
+        if parsed.port:
+            netloc = f"{netloc}:{parsed.port}"
+        sanitized = urlunparse((parsed.scheme, netloc, parsed.path, "", "", ""))
+        return _redact_secrets(sanitized)
+    except Exception:
+        pass
+    return _redact_secrets(endpoint)
+
+
+def sanitize_headers(headers: Any) -> dict[str, str]:
+    """Sanitize HTTP response headers using an allowlist; never dump request secrets."""
+    sanitized: dict[str, str] = {}
+    if not headers:
+        return sanitized
+    from collections.abc import Mapping
+
+    if isinstance(headers, Mapping) or hasattr(headers, "items"):
+        for k, v in headers.items():
+            k_str = str(k)
+            if k_str.lower() in RESPONSE_HEADER_ALLOWLIST:
+                sanitized[k_str] = _redact_secrets(str(v))
+    return sanitized
+
+
+_UNCONFIGURED_WARNING_EMITTED: set[str] = set()
+
+
+def report_unconfigured_tracer_if_needed(session_id: str | None = None, caller: str = "") -> None:
+    """Surface unconfigured telemetry endpoint to stderr once per session or run."""
+    key = session_id or "global"
+    if key in _UNCONFIGURED_WARNING_EMITTED:
+        return
+    _UNCONFIGURED_WARNING_EMITTED.add(key)
+    caller_info = f" during {caller}" if caller else ""
+    print(
+        f"WARNING: OpenTelemetry tracing unconfigured{caller_info}: no trace endpoint set in environment",
+        file=sys.stderr,
+    )
+
+
 def discover_config(data: dict | None = None) -> dict | None:
     """Returns config dict with keys: api_key, task_id, endpoint, protocol (optional), project_name, cwd, agent_name.
-    Returns None if not configured (silent no-op)."""
+    Returns None if not configured."""
     api_key = (
         os.environ.get("GENAI_ENGINE_API_KEY")
         or os.environ.get("OTEL_EXPORTER_OTLP_HEADERS")
         or os.environ.get("OTEL_EXPORTER_OTLP_TRACES_HEADERS", "")
     )
+    if not api_key:
+        cf_id = (os.environ.get("DISPATCHER_MCP_TOKEN_ID") or "").strip()
+        cf_secret = (os.environ.get("DISPATCHER_MCP_TOKEN_SECRET") or "").strip()
+        if cf_id and cf_secret:
+            api_key = f"CF-Access-Client-Id={cf_id},CF-Access-Client-Secret={cf_secret}"
     endpoint = (
         os.environ.get("GENAI_ENGINE_TRACE_ENDPOINT")
         or os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
@@ -477,18 +569,23 @@ def resolve_session_id(
     span emission and log a warning naming the missing field rather than
     proceeding with a magic string.
     """
-    payload_value = data.get(payload_key)
+    payload_value = (
+        data.get(payload_key)
+        or data.get("session_id")
+        or data.get("conversationId")
+        or data.get("conversation_id")
+    )
     env_value = os.environ.get("AOPS_SESSION_ID")
     if prefer_env:
         if env_value:
-            return env_value
+            return str(env_value).split("/", 1)[0]
         if payload_value:
-            return str(payload_value)
+            return str(payload_value).split("/", 1)[0]
         return None
     if payload_value:
         return str(payload_value)
     if env_value:
-        return env_value
+        return str(env_value)
     return None
 
 
@@ -499,7 +596,8 @@ def _phoenix_session_id(state: dict) -> str:
     before ``phoenix_session_id`` existed, so old in-flight sessions still
     export rather than crashing mid-turn.
     """
-    return state.get("phoenix_session_id") or state["session_id"]
+    raw = state.get("phoenix_session_id") or state["session_id"]
+    return str(raw).split("/", 1)[0]
 
 
 def _resolve_agent_and_parent_ids(
@@ -521,8 +619,20 @@ def _resolve_agent_and_parent_ids(
     if not local_agent_id:
         local_agent_id = state.get("session_id") or phoenix_session_id
 
-    parent_session_id = None
-    if local_agent_id and phoenix_session_id and local_agent_id != phoenix_session_id:
+    if (
+        isinstance(local_agent_id, str)
+        and phoenix_session_id
+        and local_agent_id.startswith(f"{phoenix_session_id}/")
+    ):
+        local_agent_id = local_agent_id.split("/", 1)[1]
+
+    parent_session_id = state.get("parent_session_id")
+    if (
+        not parent_session_id
+        and local_agent_id
+        and phoenix_session_id
+        and local_agent_id != phoenix_session_id
+    ):
         parent_session_id = phoenix_session_id
 
     return phoenix_session_id, local_agent_id, parent_session_id
@@ -549,14 +659,27 @@ def _subagent_name(agent_type: Any) -> str:
 # State file helpers
 # ---------------------------------------------------------------------------
 
-STATE_DIR = Path.home() / ".claude" / "tracer"
+
+def _tracer_state_dir() -> Path:
+    env_dir = (
+        os.environ.get("AOPS_TRACER_STATE_DIR")
+        or os.environ.get("TRACER_STATE_DIR")
+        or os.environ.get("AOPS_TRACER_DIR")
+    )
+    if env_dir:
+        return Path(env_dir)
+    return Path.home() / ".claude" / "tracer"
+
+
+STATE_DIR = _tracer_state_dir()
 STATE_MAX_AGE_S = 48 * 3600
 
 
 def _state_path(session_id: str) -> Path:
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
-    path = (STATE_DIR / f"{session_id}.json").resolve()
-    if not path.is_relative_to(STATE_DIR.resolve()):
+    state_dir = _tracer_state_dir()
+    state_dir.mkdir(parents=True, exist_ok=True)
+    path = (state_dir / f"{session_id}.json").resolve()
+    if not path.is_relative_to(state_dir.resolve()):
         raise ValueError(f"Invalid session_id: {session_id!r}")
     return path
 
@@ -617,9 +740,10 @@ def _session_lock(session_id: str):
     This is necessary because Claude Code can run multiple tools in parallel,
     which causes multiple PostToolUse hook processes to fire concurrently.
     """
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
-    lock_path = (STATE_DIR / f"{session_id}.lock").resolve()
-    if not lock_path.is_relative_to(STATE_DIR.resolve()):
+    state_dir = _tracer_state_dir()
+    state_dir.mkdir(parents=True, exist_ok=True)
+    lock_path = (state_dir / f"{session_id}.lock").resolve()
+    if not lock_path.is_relative_to(state_dir.resolve()):
         raise ValueError(f"Invalid session_id: {session_id!r}")
 
     with open(lock_path, "w") as fh:
@@ -782,23 +906,35 @@ _LOCAL_COMMAND_PREFIXES = (
 def _is_human_message(entry: dict) -> bool:
     """True for a transcript entry that is a prompt opening a turn.
 
-    Counts ``type=user`` entries whose content is a string: typed prompts and
-    skill or custom slash-command prompts (``<command-message>...``). Does not
-    count tool results (list content), ``isMeta`` entries (e.g. the
-    ``<local-command-caveat>``), ``isCompactSummary`` entries, the
-    ``<command-name>`` / ``<local-command-stdout>`` entries of local slash
-    commands, or the ``<bash-input>`` / ``<bash-stdout>`` entries of bash mode,
-    since none of those fire UserPromptSubmit.
+    Counts ``type=user`` entries whose content is either a prompt string or a list
+    of user content blocks (e.g. multi-modal text/image blocks). Does not count
+    tool results (messages where any content block has ``type=tool_result``),
+    ``isMeta`` entries (e.g. the ``<local-command-caveat>``), ``isCompactSummary``
+    entries, the ``<command-name>`` / ``<local-command-stdout>`` entries of local
+    slash commands, or the ``<bash-input>`` / ``<bash-stdout>`` entries of bash
+    mode, since none of those fire UserPromptSubmit.
     """
     if entry.get("type") != "user":
         return False
     if entry.get("isMeta") or entry.get("isCompactSummary"):
         return False
     content = entry.get("message", {}).get("content", "")
-    # Tool result messages have content as a list; human messages have a string
-    if not isinstance(content, str):
-        return False
-    return not content.lstrip().startswith(_LOCAL_COMMAND_PREFIXES)
+    if isinstance(content, str):
+        return not content.lstrip().startswith(_LOCAL_COMMAND_PREFIXES)
+    if isinstance(content, list):
+        if not content:
+            return False
+        if any(isinstance(b, dict) and b.get("type") == "tool_result" for b in content):
+            return False
+        text_parts: list[str] = []
+        for b in content:
+            if isinstance(b, dict) and b.get("type") == "text":
+                text_parts.append(str(b.get("text") or ""))
+            elif isinstance(b, str):
+                text_parts.append(b)
+        combined_text = "".join(text_parts).lstrip()
+        return not combined_text.startswith(_LOCAL_COMMAND_PREFIXES)
+    return False
 
 
 def _count_human_messages(transcript_path: str) -> int:
@@ -816,6 +952,81 @@ def _count_human_messages(transcript_path: str) -> int:
         return count
     except Exception:
         return 0
+
+
+def _extract_human_message_text(entry: dict) -> str:
+    """Extract plain text from a human user message entry."""
+    msg = entry.get("message", {})
+    content = msg.get("content", "")
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = [
+            b.get("text", "") for b in content if isinstance(b, dict) and b.get("type") == "text"
+        ]
+        return "\n".join(p for p in parts if p)
+    return ""
+
+
+def _resolve_verified_human_count_at_start(
+    transcript_path: str,
+    prompt: str,
+    prompt_preview: str = "",
+    turn_number: int = 1,
+) -> int | None:
+    """Find the verified human_count_at_start for the current turn in the transcript.
+
+    When transcript discovery is delayed, the transcript was unavailable at
+    UserPromptSubmit. This function locates the current turn's user prompt entry
+    in the now-available transcript and returns the count of human messages
+    preceding it.
+
+    If the current turn's prompt cannot be identified in the transcript (e.g.
+    the transcript hasn't been written to disk yet, or only contains earlier
+    turns), returns None so usage joins are deferred.
+    """
+    if not transcript_path or not os.path.exists(transcript_path):
+        return None
+
+    try:
+        lines = Path(transcript_path).read_text(encoding="utf-8").splitlines()
+        human_entries: list[dict[str, Any]] = []
+        for line in lines:
+            if not line.strip():
+                continue
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if _is_human_message(entry):
+                human_entries.append(entry)
+
+        if not human_entries:
+            return None
+
+        target_prompt = (prompt or prompt_preview).strip()
+
+        # If we have a prompt to match, search backwards (the active turn's prompt
+        # is the most recent matching user message in the transcript)
+        if target_prompt:
+            for idx in range(len(human_entries) - 1, -1, -1):
+                text = _extract_human_message_text(human_entries[idx]).strip()
+                if text == target_prompt:
+                    return idx
+                if prompt_preview.endswith("...[truncated]"):
+                    prefix = prompt_preview[:-14].strip()
+                    if prefix and text.startswith(prefix):
+                        return idx
+
+        # If this is the very first turn of the session and only 1 human message exists in the transcript,
+        # there are no prior turns
+        if turn_number <= 1 and len(human_entries) == 1:
+            return 0
+
+        return None
+    except Exception as e:
+        log.debug("Failed resolving verified boundary from %s: %s", transcript_path, e)
+        return None
 
 
 def _next_turn_number(state: dict, prior_human_count: int) -> int:
@@ -935,32 +1146,10 @@ def _create_exporter(
     headers: dict | None = None,
     protocol: str = "",
 ) -> Any:
-    """Create an OTel span exporter. Fails safe if modules are missing or initialization fails."""
+    """Create an OTel span exporter. Raises on initialization failure."""
     prefer_http = protocol in ("http/protobuf", "http/json", "http")
 
-    if not prefer_http:
-        try:
-            from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
-                OTLPSpanExporter as GRPCSpanExporter,
-            )
-
-            insecure = not endpoint.startswith("https://")
-            log.debug(
-                "Initializing OTLP gRPC span exporter for endpoint %s (insecure=%s)",
-                endpoint,
-                insecure,
-            )
-            return GRPCSpanExporter(
-                endpoint=endpoint,
-                headers=headers if headers else None,
-                insecure=insecure,
-                timeout=_EXPORT_TIMEOUT_S,
-            )
-        except Exception as e:
-            log.debug("gRPC exporter unavailable (%s), trying HTTP fallback", e)
-
-    # HTTP Exporter
-    try:
+    if prefer_http:
         from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
             OTLPSpanExporter as HTTPSpanExporter,
         )
@@ -972,16 +1161,23 @@ def _create_exporter(
             timeout=_EXPORT_TIMEOUT_S,
             **_proxy_http_kwargs(endpoint),
         )
-    except Exception as e:
-        log.debug("HTTP exporter unavailable (%s), trying Console fallback", e)
 
-    try:
-        from opentelemetry.sdk.trace.export import ConsoleSpanExporter
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+        OTLPSpanExporter as GRPCSpanExporter,
+    )
 
-        return ConsoleSpanExporter()
-    except Exception as e:
-        log.debug("Console exporter unavailable (%s)", e)
-        return None
+    insecure = not endpoint.startswith("https://")
+    log.debug(
+        "Initializing OTLP gRPC span exporter for endpoint %s (insecure=%s)",
+        endpoint,
+        insecure,
+    )
+    return GRPCSpanExporter(
+        endpoint=endpoint,
+        headers=headers if headers else None,
+        insecure=insecure,
+        timeout=_EXPORT_TIMEOUT_S,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1157,27 +1353,28 @@ RETRIEVER_TOOLS = {"WebSearch", "WebFetch"}
 _MAX_ATTR_BYTES = int(os.environ.get("OTEL_SPAN_ATTRIBUTE_VALUE_LENGTH_LIMIT", "524288"))
 
 
-def _truncate(value: Any) -> str:
+def _redact_secrets(value: Any) -> str:
     s = json.dumps(value) if not isinstance(value, str) else value
 
-    # Redact common secrets before truncation
     secrets = [
         os.environ.get("GH_TOKEN"),
         os.environ.get("GITHUB_TOKEN"),
         os.environ.get("AOPS_BOT_GH_TOKEN"),
-        os.environ.get("DISPATCHER_MCP_TOKEN"),
-        os.environ.get("WORKER_MCP_TOKEN"),
+        os.environ.get("DISPATCHER_MCP_TOKEN_ID"),
+        os.environ.get("DISPATCHER_MCP_TOKEN_SECRET"),
     ]
-    # Add any env vars ending in API_KEY or starting with CF_ACCESS_
     for k, v in os.environ.items():
-        if (k.endswith("_API_KEY") or k.startswith("CF_ACCESS_")) and v:
+        if (k.endswith("_API_KEY") or k.endswith("_TOKEN_SECRET")) and v:
             secrets.append(v)
 
-    # Redact secrets
     for secret in secrets:
-        if secret and len(secret) > 4:  # Don't redact empty or very short strings by accident
+        if secret and len(secret) > 4:
             s = s.replace(secret, "<REDACTED_SECRET>")
+    return s
 
+
+def _truncate(value: Any) -> str:
+    s = _redact_secrets(value)
     encoded = s.encode("utf-8")
     if len(encoded) > _MAX_ATTR_BYTES:
         s = encoded[:_MAX_ATTR_BYTES].decode("utf-8", errors="ignore") + "...[truncated]"
@@ -1307,6 +1504,212 @@ def _known_span_parents(current_trace: dict) -> dict[str, str | None]:
     return known
 
 
+if TYPE_CHECKING:
+    from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
+else:
+    try:
+        from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
+    except ImportError:
+
+        class SpanExporter:  # type: ignore[no-redef]
+            pass
+
+        class SpanExportResult:  # type: ignore[no-redef]
+            SUCCESS = 0
+            FAILURE = 1
+
+
+class ErrorReportingExporter(SpanExporter):
+    """Wrapper around OTel SpanExporter that intercepts HTTP/gRPC errors and logs them to stderr."""
+
+    def __init__(
+        self,
+        target: Any = None,
+        session_id: str = "",
+        endpoint: str = "",
+        config: dict | None = None,
+        results_collector: list[bool] | None = None,
+    ) -> None:
+        if target is None and config is not None:
+            endpoint = config.get("endpoint", "")
+            target = _create_exporter(
+                endpoint=endpoint,
+                headers=config.get("headers"),
+                protocol=config.get("protocol", "http/protobuf"),
+            )
+        self._target = target
+        self._session_id = session_id
+        self._endpoint = endpoint or (config.get("endpoint", "") if config else "")
+        self._config_headers = config.get("headers") if config else None
+        self._results_collector = results_collector
+        self._last_status: int | None = None
+        self._last_headers: Any = None
+        self._last_body: str | None = None
+        self._last_error: Exception | None = None
+        self._last_duration: float = 0.0
+
+        # Wrap HTTP session if present
+        target_session = getattr(target, "_session", None) if target is not None else None
+        if target_session is not None and hasattr(target_session, "post"):
+            orig_post = target_session.post
+            reporter_self = self
+
+            def instrumented_post(url: str, *args: Any, **kwargs: Any) -> Any:
+                t0 = time.time()
+                try:
+                    resp = orig_post(url, *args, **kwargs)
+                    reporter_self._last_duration = time.time() - t0
+                    reporter_self._last_status = getattr(resp, "status_code", None)
+                    reporter_self._last_headers = getattr(resp, "headers", None)
+                    try:
+                        reporter_self._last_body = resp.text
+                    except Exception:
+                        reporter_self._last_body = None
+                    return resp
+                except Exception as exc:
+                    reporter_self._last_duration = time.time() - t0
+                    reporter_self._last_error = exc
+                    raise
+
+            target_session.post = instrumented_post
+
+        # Wrap gRPC client if present
+        target_client = getattr(target, "_client", None) if target is not None else None
+        if target_client is not None and hasattr(target_client, "Export"):
+            orig_export = target_client.Export
+            reporter_self = self
+
+            def instrumented_grpc_export(*args: Any, **kwargs: Any) -> Any:
+                t0 = time.time()
+                try:
+                    resp = orig_export(*args, **kwargs)
+                    reporter_self._last_duration = time.time() - t0
+                    return resp
+                except Exception as exc:
+                    reporter_self._last_duration = time.time() - t0
+                    reporter_self._last_error = exc
+                    raise
+
+            target_client.Export = instrumented_grpc_export
+
+    def export(self, spans: Any) -> Any:
+        if self._target is not None and hasattr(self._target, "export"):
+            try:
+                result = self._target.export(spans)
+            except Exception as exc:
+                self._last_error = exc
+                result = SpanExportResult.FAILURE
+        else:
+            result = (
+                SpanExportResult.FAILURE
+                if self._last_error or (self._last_status and self._last_status >= 400)
+                else SpanExportResult.SUCCESS
+            )
+
+        san_endpoint = sanitize_endpoint(self._endpoint)
+        if (
+            result == SpanExportResult.SUCCESS
+            and not self._last_error
+            and (self._last_status is None or self._last_status < 400)
+        ):
+            if self._results_collector is not None:
+                self._results_collector.append(True)
+            return result
+
+        if self._results_collector is not None:
+            self._results_collector.append(False)
+
+        status = self._last_status
+        headers = self._last_headers if self._last_headers else {}
+        err_exc = self._last_error
+        duration = self._last_duration
+
+        state = _load_state(self._session_id)
+
+        # 1. Auth refusal (401 or 403)
+        if status in (401, 403):
+            san_headers = sanitize_headers(headers)
+            status_code = status
+            print(
+                f"ERROR: OpenTelemetry export refused by collector (HTTP {status_code}) at {san_endpoint}. "
+                f"Authentication invalid or expired (headers: {san_headers}).",
+                file=sys.stderr,
+            )
+            log.error("OpenTelemetry export refused (HTTP %s) from %s", status_code, san_endpoint)
+            state["auth_failure"] = {
+                "status_code": status_code,
+                "endpoint": san_endpoint,
+                "timestamp": time.time(),
+                "count": 1,
+            }
+            state["telemetry_error"] = {
+                "type": "auth_refusal",
+                "status_code": status_code,
+                "endpoint": san_endpoint,
+            }
+            _save_state(self._session_id, state)
+            return SpanExportResult.FAILURE
+
+        # 2. Server error (5xx or gRPC INTERNAL/UNAVAILABLE/UNKNOWN)
+        if status is not None and status >= 500:
+            payload = _truncate(self._last_body or "")
+            print(
+                f"ERROR: OpenTelemetry export failed (collector server error HTTP {status}): "
+                f"endpoint {san_endpoint}, response: {payload}",
+                file=sys.stderr,
+            )
+            log.error("OpenTelemetry export failed (HTTP %s): %s", status, payload)
+            state["telemetry_error"] = {
+                "type": "server_error",
+                "status_code": status,
+                "endpoint": san_endpoint,
+                "payload": payload,
+            }
+            _save_state(self._session_id, state)
+            return SpanExportResult.FAILURE
+
+        # 3. Network timeout, connection refused, DNS failure
+        if err_exc is not None:
+            err_type = err_exc.__class__.__name__
+            dur_str = f"{duration:.2f}s"
+            print(
+                f"ERROR: OpenTelemetry export failed (network error): "
+                f"{err_type} connecting to {san_endpoint} (elapsed: {dur_str})",
+                file=sys.stderr,
+            )
+            log.error("OpenTelemetry export failed: %s to %s", err_type, san_endpoint)
+            state["telemetry_error"] = {
+                "type": "network_error",
+                "error_type": err_type,
+                "endpoint": san_endpoint,
+                "duration": duration,
+            }
+            _save_state(self._session_id, state)
+            return SpanExportResult.FAILURE
+
+        # 4. General failure
+        print(
+            f"ERROR: OpenTelemetry span export failed for endpoint {san_endpoint}",
+            file=sys.stderr,
+        )
+        state["telemetry_error"] = {
+            "type": "export_failure",
+            "endpoint": san_endpoint,
+            "message": "export failed",
+        }
+        _save_state(self._session_id, state)
+        return SpanExportResult.FAILURE
+
+    def shutdown(self) -> None:
+        if self._target is not None and hasattr(self._target, "shutdown"):
+            self._target.shutdown()
+
+    def force_flush(self, timeout_millis: int = 30000) -> bool:
+        if self._target is not None and hasattr(self._target, "force_flush"):
+            return bool(self._target.force_flush(timeout_millis))
+        return True
+
+
 # ---------------------------------------------------------------------------
 # OTLP export helper
 # ---------------------------------------------------------------------------
@@ -1338,10 +1741,20 @@ def _build_and_export_spans(
     ``known_parents`` and the records earlier in this batch leads back to it,
     is exported without a parent (see ``_closes_parent_cycle``).
     """
-    from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
-
     export_results: list[bool] = []
     all_records_exported = True
+
+    # AC-2.3: Check if persistent authorization failure has been observed for this session
+    session_state = _load_state(session_id)
+    auth_fail = session_state.get("auth_failure")
+    if auth_fail and isinstance(auth_fail, dict):
+        status_code = auth_fail.get("status_code", 403)
+        af_endpoint = auth_fail.get("endpoint") or sanitize_endpoint(config.get("endpoint", ""))
+        print(
+            f"WARNING: OpenTelemetry export throttled due to persistent authorization rejection (HTTP {status_code}) for endpoint {af_endpoint}",
+            file=sys.stderr,
+        )
+        return False
 
     (
         trace,
@@ -1355,49 +1768,6 @@ def _build_and_export_spans(
         NonRecordingSpan,
         StatusCode,
     ) = _otel_imports()
-
-    class ErrorReportingExporter(SpanExporter):
-        def __init__(self, target: Any) -> None:
-            self._target = target
-
-        def export(self, spans: Any) -> SpanExportResult:
-            # OTel exporters log exceptions and HTTP errors to their module logger.
-            # We capture those logs during export to report them verbatim.
-            target_logger_name = self._target.__module__
-            target_logger = logging.getLogger(target_logger_name)
-
-            class CaptureHandler(logging.Handler):
-                def __init__(self) -> None:
-                    super().__init__()
-                    self.messages: list[str] = []
-
-                def emit(self, record: logging.LogRecord) -> None:
-                    self.messages.append(record.getMessage())
-
-            handler = CaptureHandler()
-            target_logger.addHandler(handler)
-            try:
-                try:
-                    res = self._target.export(spans)
-                except Exception:
-                    export_results.append(False)
-                    raise
-                export_results.append(res == SpanExportResult.SUCCESS)
-                if res != SpanExportResult.SUCCESS and handler.messages:
-                    error_text = "\n".join(handler.messages)
-                    print(f"ERROR: OTel span export failed: {error_text}")
-                    log.error("OTel span export failed: %s", error_text)
-                return res
-            finally:
-                target_logger.removeHandler(handler)
-
-        def shutdown(self) -> None:
-            self._target.shutdown()
-
-        def force_flush(self, timeout_millis: int = 30000) -> bool:
-            if hasattr(self._target, "force_flush"):
-                return bool(self._target.force_flush(timeout_millis))
-            return True
 
     if service_name is None:
         service_name = config.get("service_name")
@@ -1459,6 +1829,8 @@ def _build_and_export_spans(
     if agent_id:
         resource_attrs["agent.id"] = agent_id
         resource_attrs["subagent.id"] = agent_id
+        if str(agent_id).startswith("task-"):
+            resource_attrs["agent.task_id"] = str(agent_id)
     if parent_session_id:
         resource_attrs["parent.session_id"] = parent_session_id
     if task_id:
@@ -1510,6 +1882,12 @@ def _build_and_export_spans(
                 else:
                     headers["authorization"] = f"Bearer {api_key_str}"
 
+            cf_id = (os.environ.get("DISPATCHER_MCP_TOKEN_ID") or "").strip()
+            cf_secret = (os.environ.get("DISPATCHER_MCP_TOKEN_SECRET") or "").strip()
+            if cf_id and cf_secret and not any(k.lower() == "cf-access-client-id" for k in headers):
+                headers["CF-Access-Client-Id"] = cf_id
+                headers["CF-Access-Client-Secret"] = cf_secret
+
             if project_name and "openinference-project-name" not in headers:
                 headers["openinference-project-name"] = project_name
 
@@ -1536,7 +1914,16 @@ def _build_and_export_spans(
 
             provider = TracerProvider(**kwargs)
 
-            provider.add_span_processor(SimpleSpanProcessor(ErrorReportingExporter(exporter)))
+            provider.add_span_processor(
+                SimpleSpanProcessor(
+                    ErrorReportingExporter(
+                        exporter,
+                        session_id=session_id,
+                        endpoint=config.get("endpoint", ""),
+                        results_collector=export_results,
+                    )
+                )
+            )
             tracer = provider.get_tracer("claude-code-tracer")
 
             ctx = None
@@ -1582,6 +1969,8 @@ def _build_and_export_spans(
             if agent_id:
                 span.set_attribute("agent.id", agent_id)
                 span.set_attribute("subagent.id", agent_id)
+                if str(agent_id).startswith("task-"):
+                    span.set_attribute("agent.task_id", str(agent_id))
             if parent_session_id:
                 span.set_attribute("parent.session_id", parent_session_id)
             if username:
@@ -1639,7 +2028,16 @@ def _subagent_record(
     if record is None:
         current_trace = state.get("current_trace")
         if not current_trace:
-            return None
+            last_trace = state.get("last_trace")
+            if not last_trace:
+                return None
+            record = {
+                "agent_type": str(agent_type or ""),
+                "trace_id": last_trace["trace_id"],
+                "agent_span_id": last_trace["root_span_id"],
+            }
+            subagents[agent_id] = record
+            return record
         record = {
             "agent_type": str(agent_type or ""),
             "trace_id": current_trace["trace_id"],
@@ -1650,6 +2048,269 @@ def _subagent_record(
     if agent_type and not record.get("agent_type"):
         record["agent_type"] = str(agent_type)
     return record
+
+
+def _llm_span_id(message_id: str) -> str:
+    """Span id for the LLM span of one API response, derived from its message.id."""
+    import hashlib
+
+    return hashlib.sha256(f"llm:{message_id}".encode()).hexdigest()[:16]
+
+
+def _extract_model_usages_from_transcript(
+    transcript_path: str | None,
+    human_count_at_start: int = 0,
+    stop_at_next_prompt: bool = True,
+) -> list[dict[str, Any]]:
+    """Extract model call token usages and model name from the transcript for the turn.
+
+    In accordance with the Client Hook Emission Contract, this function reads
+    ONLY token counts (input_tokens, output_tokens, cache_read_input_tokens,
+    cache_creation_input_tokens) and model from each assistant entry. It does
+    NOT read message content, role, timestamps, or tool data from the transcript.
+
+    Entries sharing the same message.id are grouped into one model call (taking the
+    fullest usage snapshot).
+    """
+    if not transcript_path or not os.path.exists(transcript_path):
+        return []
+
+    usages: list[dict[str, Any]] = []
+    try:
+        lines = Path(transcript_path).read_text(encoding="utf-8").splitlines()
+        human_count = 0
+        in_turn = human_count_at_start == 0
+
+        current_group_id: str | None = None
+        group_model: str = "claude"
+        group_usage: dict[str, Any] = {}
+
+        def _flush_group() -> None:
+            nonlocal current_group_id, group_model, group_usage
+            if current_group_id is None:
+                return
+            usages.append(
+                {
+                    "message_id": current_group_id,
+                    "model": group_model,
+                    "input_tokens": int(group_usage.get("input_tokens", 0) or 0),
+                    "output_tokens": int(group_usage.get("output_tokens", 0) or 0),
+                    "cache_read_input_tokens": int(
+                        group_usage.get("cache_read_input_tokens", 0) or 0
+                    ),
+                    "cache_creation_input_tokens": int(
+                        group_usage.get("cache_creation_input_tokens", 0) or 0
+                    ),
+                }
+            )
+            current_group_id = None
+            group_model = "claude"
+            group_usage = {}
+
+        for line in lines:
+            if not line.strip():
+                continue
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+
+            if _is_human_message(entry):
+                human_count += 1
+                if human_count > human_count_at_start:
+                    if in_turn and stop_at_next_prompt and usages:
+                        break
+                    in_turn = True
+            elif in_turn and entry.get("type") == "assistant":
+                msg = entry.get("message")
+                if not isinstance(msg, dict):
+                    continue
+                msg_id = str(msg.get("id") or "")
+                model = str(msg.get("model") or "claude")
+                usage = msg.get("usage")
+                usage_dict = usage if isinstance(usage, dict) else {}
+
+                if msg_id and msg_id == current_group_id:
+                    cur_tot = sum(
+                        int(group_usage.get(k, 0) or 0)
+                        for k in (
+                            "input_tokens",
+                            "output_tokens",
+                            "cache_read_input_tokens",
+                            "cache_creation_input_tokens",
+                        )
+                    )
+                    new_tot = sum(
+                        int(usage_dict.get(k, 0) or 0)
+                        for k in (
+                            "input_tokens",
+                            "output_tokens",
+                            "cache_read_input_tokens",
+                            "cache_creation_input_tokens",
+                        )
+                    )
+                    if new_tot >= cur_tot:
+                        group_usage = usage_dict
+                    if model:
+                        group_model = model
+                else:
+                    _flush_group()
+                    current_group_id = msg_id if msg_id else f"entry_{len(usages)}"
+                    group_model = model
+                    group_usage = usage_dict
+
+        _flush_group()
+    except Exception as e:
+        log.debug("Failed reading transcript usages from %s: %s", transcript_path, e)
+    return usages
+
+
+def _emit_pending_llm_spans(
+    state: dict,
+    transcript_path: str | None,
+    config: dict,
+    *,
+    subagent_id: str | None = None,
+    retry_delay_s: float = 0.0,
+    force_remaining: bool = False,
+) -> None:
+    """Emit pending hook-derived LLM spans joined with token counts from transcript."""
+    current_trace = state.get("current_trace")
+    if not current_trace:
+        return
+
+    model_calls = current_trace.setdefault("model_calls", [])
+    emitted = current_trace.get("emitted_llm_span_count", 0)
+    if emitted >= len(model_calls):
+        return
+
+    human_count_at_start = current_trace.get("human_count_at_start")
+    if human_count_at_start is None:
+        if transcript_path and os.path.exists(transcript_path):
+            verified = _resolve_verified_human_count_at_start(
+                transcript_path,
+                current_trace.get("prompt", ""),
+                current_trace.get("prompt_preview", ""),
+                turn_number=current_trace.get("turn_number", 1),
+            )
+            if verified is not None:
+                human_count_at_start = verified
+                current_trace["human_count_at_start"] = verified
+                state["human_messages_consumed"] = max(
+                    state.get("human_messages_consumed", 0),
+                    verified + 1,
+                )
+
+    if human_count_at_start is None:
+        if not force_remaining:
+            # Defer usage joins until a verified boundary is available
+            return
+        usages = []
+    else:
+        usages = _extract_model_usages_from_transcript(transcript_path, human_count_at_start)
+        if retry_delay_s > 0 and len(usages) < len(model_calls):
+            time.sleep(retry_delay_s)
+            usages = _extract_model_usages_from_transcript(transcript_path, human_count_at_start)
+
+    unemitted = model_calls[emitted:]
+    if not unemitted:
+        return
+
+    (_, _, _, _, _, _, SpanKind, _, _, _) = _otel_imports()
+    spans_to_export: list[dict[str, Any]] = []
+    by_tool_call = current_trace.setdefault("llm_span_by_tool_call", {})
+
+    for idx, call in enumerate(unemitted, start=emitted):
+        usage_info = usages[idx] if idx < len(usages) else None
+        if usage_info is None and not force_remaining:
+            # Hold open until later hook or flush
+            break
+
+        model = usage_info["model"] if usage_info else "claude"
+        msg_id = usage_info.get("message_id", "") if usage_info else ""
+        input_tokens = usage_info.get("input_tokens", 0) if usage_info else 0
+        output_tokens = usage_info.get("output_tokens", 0) if usage_info else 0
+        cache_read = usage_info.get("cache_read_input_tokens", 0) if usage_info else 0
+        cache_write = usage_info.get("cache_creation_input_tokens", 0) if usage_info else 0
+
+        span_id_hex = (
+            _llm_span_id(msg_id) if msg_id and not msg_id.startswith("entry_") else _new_span_id()
+        )
+        for tc_id in call.get("tool_call_ids", []):
+            if tc_id:
+                by_tool_call[str(tc_id)] = span_id_hex
+
+        prompt_tokens = input_tokens + cache_read + cache_write
+        total_tokens = prompt_tokens + output_tokens
+
+        attrs: dict[str, Any] = {
+            "openinference.span.kind": "LLM",
+            "llm.system": "anthropic",
+            "llm.provider": "anthropic",
+            "llm.model_name": model,
+            "llm.token_count.prompt": prompt_tokens,
+            "llm.token_count.completion": output_tokens,
+            "llm.token_count.total": total_tokens,
+            "llm.token_count.prompt_details.cache_read": cache_read,
+            "llm.token_count.prompt_details.cache_write": cache_write,
+            "input.value": call.get("input_value", ""),
+            "input.mime_type": call.get("input_mime", "text/plain"),
+            "output.value": call.get("output_value", ""),
+            "output.mime_type": call.get("output_mime", "text/plain"),
+        }
+        if usage_info is None:
+            attrs["llm.token_count.type"] = "estimated"
+        if msg_id and not msg_id.startswith("entry_"):
+            attrs["llm.message.id"] = msg_id
+
+        parent_span_id = current_trace["root_span_id"]
+        trace_id = current_trace["trace_id"]
+        if subagent_id:
+            subagent = state.get("subagents", {}).get(subagent_id)
+            if subagent:
+                trace_id = subagent.get("trace_id", trace_id)
+                parent_span_id = subagent.get("agent_span_id", parent_span_id)
+
+        start_ns = call.get("start_ns", current_trace["turn_start_ns"])
+        end_ns = call.get("end_ns", time.time_ns())
+        if end_ns < start_ns:
+            end_ns = start_ns
+
+        spans_to_export.append(
+            {
+                "trace_id_hex": trace_id,
+                "span_id_hex": span_id_hex,
+                "parent_span_id_hex": parent_span_id,
+                "name": f"claude/{model}",
+                "kind": SpanKind.CLIENT,
+                "start_ns": start_ns,
+                "end_ns": end_ns,
+                "attributes": attrs,
+                "force_span_id": True,
+            }
+        )
+
+    if not spans_to_export:
+        return
+
+    phoenix_session_id, agent_id, parent_session_id = _resolve_agent_and_parent_ids(state)
+    known_parents = _known_span_parents(current_trace)
+    for sp in spans_to_export:
+        current_trace.setdefault("span_parents", {})[sp["span_id_hex"]] = sp["parent_span_id_hex"]
+
+    _build_and_export_spans(
+        config=config,
+        session_id=phoenix_session_id,
+        username=state.get("username"),
+        span_records=spans_to_export,
+        agent_id=agent_id,
+        parent_session_id=parent_session_id,
+        agent_name=state.get("agent_name"),
+        cwd=state.get("cwd"),
+        known_parents=known_parents,
+    )
+
+    current_trace["emitted_llm_span_count"] = emitted + len(spans_to_export)
 
 
 def _complete_turn(
@@ -1697,6 +2358,13 @@ def _complete_turn(
     if agent_id:
         root_attrs["agent.id"] = agent_id
         root_attrs["subagent.id"] = agent_id
+    if current_trace.get("handback_subagent_id"):
+        hb_id = current_trace["handback_subagent_id"]
+        root_attrs["subagent.id"] = hb_id
+        root_attrs["handback.subagent_id"] = hb_id
+        sub_rec = (state.get("subagents") or {}).get(hb_id)
+        if sub_rec and sub_rec.get("agent_type"):
+            root_attrs["subagent.name"] = _subagent_name(sub_rec["agent_type"])
     if parent_session_id:
         root_attrs["parent.session_id"] = parent_session_id
     if agent_name:
@@ -1707,6 +2375,10 @@ def _complete_turn(
     if prompt_preview:
         root_attrs["input.value"] = prompt_preview
         root_attrs["input.mime_type"] = "text/plain"
+    if current_trace.get("turn_source"):
+        root_attrs["turn.source"] = current_trace["turn_source"]
+        if "turn.trigger" not in root_attrs and prompt_preview:
+            root_attrs["turn.trigger"] = prompt_preview
     if final_output:
         root_attrs["output.value"] = final_output
         root_attrs["output.mime_type"] = "text/plain"
@@ -1753,7 +2425,7 @@ def _build_tool_span_record(
     start_ns: int,
     end_ns: int,
     trace_id: str,
-    root_span_id: str,
+    root_span_id: str | None = None,
     is_failure: bool = False,
     error_msg: str = "",
     span_id: str | None = None,
@@ -1790,9 +2462,31 @@ def _build_tool_span_record(
         "output.mime_type": "application/json",
     }
 
-    if not tool_call_id and isinstance(tool_input, dict):
+    parsed_input = tool_input
+    if isinstance(parsed_input, str):
+        try:
+            parsed_input = json.loads(parsed_input)
+        except Exception:
+            parsed_input = None
+
+    if isinstance(parsed_input, dict):
+        action_candidates = [parsed_input]
+        if isinstance(parsed_input.get("Arguments"), dict):
+            action_candidates.append(parsed_input["Arguments"])
+        for candidate in action_candidates:
+            for key in ("toolSummary", "toolAction", "description", "Description"):
+                val = candidate.get(key)
+                if isinstance(val, str) and val.strip():
+                    attrs["tool.summary"] = val.strip()
+                    break
+            if "tool.summary" in attrs:
+                break
+
+    if not tool_call_id and isinstance(parsed_input, dict):
         tool_call_id = (
-            tool_input.get("tool_use_id") or tool_input.get("id") or tool_input.get("tool_call_id")
+            parsed_input.get("tool_use_id")
+            or parsed_input.get("id")
+            or parsed_input.get("tool_call_id")
         )
     if tool_call_id:
         attrs["tool.call_id"] = str(tool_call_id)
@@ -1867,6 +2561,75 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
         _start_turn(data, config, session_id)
 
 
+def _resolve_claude_subagent_parent(
+    session_id: str,
+    transcript_path: str = "",
+    candidate_parent_id: str | None = None,
+) -> tuple[str | None, str | None, str | None, str | None]:
+    """Resolve (phoenix_session_id, parent_session_id, parent_trace_id, parent_span_id) for a Claude Code subagent."""
+    import hashlib
+
+    sidecar: Path | None = None
+    immediate_parent: str | None = None
+
+    if transcript_path:
+        tp = Path(transcript_path)
+        if tp.parent.name == "subagents":
+            cand = tp.parent / f"agent-{session_id}.meta.json"
+            if cand.exists():
+                sidecar = cand
+                immediate_parent = tp.parent.parent.name
+
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
+    if sidecar is None and project_dir:
+        sanitized = project_dir.replace("/", "-")
+        base = Path.home() / ".claude" / "projects" / sanitized
+        if candidate_parent_id and candidate_parent_id != session_id:
+            cand = base / candidate_parent_id / "subagents" / f"agent-{session_id}.meta.json"
+            if cand.exists():
+                sidecar = cand
+                immediate_parent = candidate_parent_id
+        if sidecar is None and base.exists():
+            matches = list(base.glob(f"*/subagents/agent-{session_id}.meta.json"))
+            if matches:
+                sidecar = matches[0]
+                immediate_parent = sidecar.parent.parent.name
+
+    parent_span_id: str | None = None
+    if sidecar is not None:
+        try:
+            sdata = json.loads(sidecar.read_text(encoding="utf-8"))
+            tuid = sdata.get("toolUseId")
+            if tuid:
+                parent_span_id = hashlib.sha256(str(tuid).encode()).hexdigest()[:16]
+        except Exception as e:
+            log.debug("Failed reading subagent sidecar %s: %s", sidecar, e)
+
+    if not immediate_parent and candidate_parent_id and candidate_parent_id != session_id:
+        immediate_parent = candidate_parent_id
+
+    if not immediate_parent or immediate_parent == session_id:
+        return candidate_parent_id, None, None, parent_span_id
+
+    parent_trace_id: str | None = None
+    root_phoenix = immediate_parent
+    try:
+        pstate = _load_state(immediate_parent)
+        if pstate:
+            if isinstance(pstate.get("current_trace"), dict):
+                parent_trace_id = pstate["current_trace"].get("trace_id")
+            root_phoenix = pstate.get("phoenix_session_id") or immediate_parent
+        elif candidate_parent_id and candidate_parent_id != session_id:
+            root_phoenix = candidate_parent_id
+            rstate = _load_state(candidate_parent_id)
+            if rstate and isinstance(rstate.get("current_trace"), dict):
+                parent_trace_id = rstate["current_trace"].get("trace_id")
+    except Exception as e:
+        log.debug("Failed loading parent state for %s: %s", immediate_parent, e)
+
+    return str(root_phoenix).split("/", 1)[0], immediate_parent, parent_trace_id, parent_span_id
+
+
 def _start_turn(data: dict, config: dict, session_id: str) -> None:
     """Complete the previous turn and open a new one. Caller holds the session lock."""
     prompt = data.get("prompt", "")
@@ -1900,51 +2663,67 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
 
     # Complete the previous turn's trace if one is in progress (unclosed turn fallback).
     if state.get("current_trace"):
+        prev_tp = _get_cached_transcript_path(data, state, session_id)
+        _emit_pending_llm_spans(state, prev_tp, config, force_remaining=True)
         _complete_turn(state, config, now_ns)
         state.pop("pending_tools", None)
 
     transcript_path = _get_cached_transcript_path(data, state, session_id)
-    current_human_count = _count_human_messages(transcript_path) if transcript_path else 0
+    if transcript_path and os.path.exists(transcript_path):
+        current_human_count = _count_human_messages(transcript_path)
+        human_count_at_start: int | None = current_human_count
+        state["human_messages_consumed"] = max(
+            state.get("human_messages_consumed", 0) + 1,
+            current_human_count,
+        )
+    else:
+        current_human_count = state.get("human_messages_consumed", 0)
+        human_count_at_start = None
+
     turn_number = _next_turn_number(state, current_human_count)
 
-    parent_trace_id = None
-    parent_span_id = None
-    phoenix_session_id = state.get("phoenix_session_id")
-    if phoenix_session_id and phoenix_session_id != session_id:
-        try:
-            pstate = _load_state(phoenix_session_id)
-            if pstate and pstate.get("current_trace"):
-                parent_trace_id = pstate["current_trace"]["trace_id"]
+    resolved_phoenix_id, resolved_parent_id, parent_trace_id, parent_span_id = (
+        _resolve_claude_subagent_parent(
+            session_id,
+            transcript_path or "",
+            state.get("phoenix_session_id"),
+        )
+    )
+    if resolved_phoenix_id:
+        state["phoenix_session_id"] = resolved_phoenix_id
+    if resolved_parent_id:
+        state["parent_session_id"] = resolved_parent_id
 
-            import hashlib
+    handback_subagent_id = None
+    if prompt:
+        import re
 
-            project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
-            if project_dir:
-                sanitized = project_dir.replace("/", "-")
-                sidecar = (
-                    Path.home()
-                    / ".claude"
-                    / "projects"
-                    / sanitized
-                    / phoenix_session_id
-                    / "subagents"
-                    / f"agent-{session_id}.meta.json"
-                )
-                if sidecar.exists():
-                    sdata = __import__("json").loads(sidecar.read_text())
-                    tuid = sdata.get("toolUseId")
-                    if tuid:
-                        parent_span_id = hashlib.sha256(tuid.encode()).hexdigest()[:16]
-        except Exception as e:
-            log.debug("Failed to parent subagent: %s", e)
+        m = re.search(
+            r'<(?:agent-message|subagent-handback)[^>]*\b(?:from|agent|id)=["\']([^"\']+)["\']',
+            prompt,
+        )
+        if m:
+            handback_subagent_id = m.group(1)
 
+    pending_turn = state.pop("pending_turn_trace", None) or {}
     state["current_trace"] = {
-        "trace_id": parent_trace_id if parent_trace_id else _new_trace_id(),
-        "root_span_id": _new_span_id(),
+        "trace_id": parent_trace_id or pending_turn.get("trace_id") or _new_trace_id(),
+        "root_span_id": pending_turn.get("root_span_id") or _new_span_id(),
         "parent_span_id": parent_span_id,
         "turn_start_ns": now_ns,
         "turn_number": turn_number,
+        "prompt": prompt,
         "prompt_preview": _truncate(prompt) if prompt else "",
+        "handback_subagent_id": handback_subagent_id,
+        "human_count_at_start": human_count_at_start,
+        "model_calls": [],
+        "emitted_llm_span_count": 0,
+        "pending_model_call": {
+            "input_value": _truncate(prompt) if prompt else "",
+            "input_mime": "text/plain",
+            "start_ns": now_ns,
+            "tool_calls": [],
+        },
     }
 
     _save_state(session_id, state)
@@ -1963,6 +2742,13 @@ def _get_latest_human_message(transcript_path: str) -> str:
                     content = entry.get("message", {}).get("content", "")
                     if isinstance(content, str):
                         last = content
+                    elif isinstance(content, list):
+                        parts = [
+                            b.get("text", "")
+                            for b in content
+                            if isinstance(b, dict) and b.get("type") == "text"
+                        ]
+                        last = "\n".join(p for p in parts if p)
             except json.JSONDecodeError:
                 pass
         return last
@@ -2092,21 +2878,94 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
     if client_agent and not state.get("agent_name"):
         state["agent_name"] = client_agent
 
-    # Fallback: create a trace if UserPromptSubmit has not set one yet.
-    if not state.get("current_trace"):
+    subagent_id = _subagent_id(data)
+    if subagent_id:
+        _subagent_record(state, subagent_id, data.get("agent_type"))
+
+    # Fallback: create a trace if UserPromptSubmit has not set one yet,
+    # but ONLY for main-thread tool calls. In-process subagents run tools
+    # in their own subagent trace (parented under the dispatching Agent tool),
+    # so they must not create phantom turn roots for the main session.
+    if not state.get("current_trace") and not subagent_id:
         transcript_path = _get_cached_transcript_path(data, state, session_id)
+        resolved_phoenix_id, resolved_parent_id, parent_trace_id, parent_span_id = (
+            _resolve_claude_subagent_parent(
+                session_id,
+                transcript_path or "",
+                state.get("phoenix_session_id"),
+            )
+        )
+        if resolved_phoenix_id:
+            state["phoenix_session_id"] = resolved_phoenix_id
+        if resolved_parent_id:
+            state["parent_session_id"] = resolved_parent_id
+
         current_human_count = _count_human_messages(transcript_path) if transcript_path else 0
-        prompt_preview = _get_latest_human_message(transcript_path) if transcript_path else ""
+        consumed = state.get("human_messages_consumed", 0)
+
+        turn_source = None
+        if current_human_count > consumed:
+            prompt_preview = _get_latest_human_message(transcript_path) if transcript_path else ""
+            state["human_messages_consumed"] = current_human_count
+        else:
+            desc = _extract_debug_hook_description(data, data, "claude", "PreToolUse")
+            if desc and desc not in ("claude PreToolUse hook", tool_name):
+                prompt_preview = f"Tool: {tool_name} ({desc})"
+            elif tool_name:
+                prompt_preview = f"Tool: {tool_name}"
+            else:
+                prompt_preview = "Continuation"
+            turn_source = "tool"
 
         turn_number = _next_turn_number(state, max(0, current_human_count - 1))
 
         state["current_trace"] = {
-            "trace_id": _new_trace_id(),
+            "trace_id": parent_trace_id or _new_trace_id(),
             "root_span_id": _new_span_id(),
+            "parent_span_id": parent_span_id,
             "turn_start_ns": now_ns,
             "turn_number": turn_number,
             "prompt_preview": _truncate(prompt_preview) if prompt_preview else "",
+            "turn_source": turn_source,
+            "human_count_at_start": max(0, current_human_count - 1),
+            "model_calls": [],
+            "emitted_llm_span_count": 0,
+            "pending_model_call": {
+                "input_value": _truncate(prompt_preview) if prompt_preview else "",
+                "input_mime": "text/plain",
+                "start_ns": now_ns,
+                "tool_calls": [],
+            },
         }
+
+    current_trace = state.get("current_trace")
+    if current_trace and not subagent_id:
+        pmc = current_trace.setdefault(
+            "pending_model_call",
+            {
+                "input_value": current_trace.get("prompt_preview", ""),
+                "input_mime": "text/plain",
+                "start_ns": current_trace.get("turn_start_ns", now_ns),
+                "tool_calls": [],
+            },
+        )
+        tuid = str(data.get("tool_use_id") or data.get("toolUseId") or data.get("id") or "")
+        pmc.setdefault("tool_calls", []).append(
+            {
+                "name": tool_name,
+                "input": tool_input,
+                "id": tuid,
+            }
+        )
+        pmc["end_ns"] = now_ns
+        inp_str = (
+            json.dumps(tool_input)
+            if isinstance(tool_input, (dict, list))
+            else str(tool_input or "")
+        )
+        pmc["output_value"] = _truncate(inp_str)
+        pmc["output_mime"] = "application/json"
+        pmc["tool_call_ids"] = [tc["id"] for tc in pmc["tool_calls"] if tc.get("id")]
 
     pending_entry: dict[str, Any] = {
         "tool_name": tool_name,
@@ -2114,7 +2973,6 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
         "start_ns": now_ns,
     }
 
-    current_trace = state.get("current_trace")
     if tool_name in ("Agent", "Task") and current_trace:
         agent_span_id = _new_span_id()
         tuid = str(data.get("tool_use_id") or data.get("toolUseId") or "")
@@ -2179,13 +3037,16 @@ def _finish_tool_call(
             return
 
         current_trace = state.get("current_trace")
-        if not current_trace:
+        subagent_id = _subagent_id(data)
+        subagent = (
+            _subagent_record(state, subagent_id, data.get("agent_type")) if subagent_id else None
+        )
+        if not current_trace and not (subagent_id and subagent is not None):
             log.debug("No current trace for session %s in %s", session_id, event)
             return
 
         tool_name = data.get("tool_name", "unknown")
         data_tool_input = data.get("tool_input")
-        subagent_id = _subagent_id(data)
         current_tool, pending_key = _find_pending_tool_entry(
             state,
             tool_name,
@@ -2201,18 +3062,55 @@ def _finish_tool_call(
         pre_allocated_span_id = None if is_failure else current_tool.get("pre_allocated_span_id")
 
         tool_call_id = data.get("tool_use_id") or data.get("tool_call_id") or data.get("id")
-        subagent = (
-            _subagent_record(state, subagent_id, data.get("agent_type")) if subagent_id else None
-        )
-        trace_id = current_trace["trace_id"]
+
+        # Move completed pending_model_call to model_calls (main-thread only)
+        if current_trace and not subagent_id:
+            if (
+                current_trace.get("pending_model_call")
+                and "end_ns" in current_trace["pending_model_call"]
+            ):
+                pmc = current_trace.pop("pending_model_call")
+                current_trace.setdefault("model_calls", []).append(pmc)
+
+            # Stage the next model call receiving this tool's response
+            tool_resp_str = (
+                json.dumps(tool_response)
+                if isinstance(tool_response, (dict, list))
+                else str(tool_response or "")
+            )
+            if "pending_model_call" not in current_trace:
+                current_trace["pending_model_call"] = {
+                    "input_value": _truncate(tool_resp_str),
+                    "input_mime": "application/json"
+                    if isinstance(tool_response, (dict, list))
+                    else "text/plain",
+                    "start_ns": end_ns,
+                    "tool_calls": [],
+                }
+            else:
+                prev_in = current_trace["pending_model_call"].get("input_value", "")
+                current_trace["pending_model_call"]["input_value"] = _truncate(
+                    f"{prev_in}\n{tool_resp_str}"
+                )
+
+        # Emit any pending LLM spans whose token counts have landed in the transcript
+        if current_trace:
+            transcript_path = _get_cached_transcript_path(data, state, session_id)
+            _emit_pending_llm_spans(state, transcript_path, config, subagent_id=subagent_id)
+
         if subagent_id and subagent is not None:
             trace_id = subagent["trace_id"]
             parent_span_id = subagent["agent_span_id"]
-        else:
+        elif current_trace:
+            trace_id = current_trace["trace_id"]
             parent_span_id = (
                 _find_active_agent_span_id(state, pending_key, tool_name)
+                or current_trace.get("llm_span_by_tool_call", {}).get(str(tool_call_id or ""))
                 or current_trace["root_span_id"]
             )
+        else:
+            trace_id = _new_trace_id()
+            parent_span_id = None
         span_record = _build_tool_span_record(
             tool_name=tool_name,
             tool_input=tool_input,
@@ -2235,14 +3133,27 @@ def _finish_tool_call(
         if dispatched_id:
             span_record["attributes"]["agent.id"] = dispatched_id
             span_record["attributes"]["subagent.id"] = dispatched_id
-            _subagent_record(
+            rec = _subagent_record(
                 state,
                 dispatched_id,
                 tool_response.get("agentType") or (tool_input or {}).get("subagent_type"),
             )
+            is_async = (
+                isinstance(tool_response, dict)
+                and (
+                    bool(tool_response.get("isAsync"))
+                    or tool_response.get("status") == "async_launched"
+                )
+            ) or (isinstance(tool_input, dict) and bool(tool_input.get("run_in_background")))
+            if is_async and rec:
+                rec["is_async"] = True
+                rec["launch_ns"] = start_ns
+                rec["agent_span_id"] = span_record["span_id_hex"]
+                rec["trace_id"] = trace_id
+                rec["tool_input"] = tool_input
 
-        known_parents = _known_span_parents(current_trace)
-        if span_record["force_span_id"]:
+        known_parents = _known_span_parents(current_trace) if current_trace else {}
+        if span_record["force_span_id"] and current_trace:
             # Record the link before export so a later span this turn (e.g. the
             # turn root) can be checked against it.
             current_trace.setdefault("span_parents", {})[span_record["span_id_hex"]] = span_record[
@@ -2320,6 +3231,19 @@ def handle_stop(data: dict, config: dict) -> None:
         if last_message:
             current_trace["last_llm_output"] = _truncate(_format_assistant_message(last_message))
 
+        if current_trace.get("pending_model_call"):
+            pmc = current_trace.pop("pending_model_call")
+            pmc["output_value"] = _truncate(_format_assistant_message(last_message))
+            pmc["output_mime"] = "text/plain"
+            pmc["end_ns"] = end_ns
+            pmc["is_stop"] = True
+            current_trace.setdefault("model_calls", []).append(pmc)
+
+        transcript_path = _get_cached_transcript_path(data, state, session_id)
+        _emit_pending_llm_spans(
+            state, transcript_path, config, retry_delay_s=0.03, force_remaining=True
+        )
+
         _complete_turn(state, config, end_ns)
 
         _end_turn(session_id, state)
@@ -2328,7 +3252,7 @@ def handle_stop(data: dict, config: dict) -> None:
 
 
 def handle_subagent_stop(data: dict, config: dict) -> None:
-    """Handle SubagentStop."""
+    """Handle SubagentStop: emit one span from launch to SubagentStop under the parent's Agent span."""
     session_id = resolve_session_id(data, "session_id")
     agent_id = _subagent_id(data)
     if session_id is None or agent_id is None:
@@ -2336,7 +3260,68 @@ def handle_subagent_stop(data: dict, config: dict) -> None:
             "handle_subagent_stop: payload lacks 'session_id' or 'agent_id' — skipping",
         )
         return
-    log.debug("handle_subagent_stop: session %s agent %s finished", session_id, agent_id)
+    end_ns = time.time_ns()
+    with _session_lock(session_id):
+        state = _load_state(session_id)
+        subagent = (state.get("subagents") or {}).get(agent_id)
+        if not subagent:
+            log.debug(
+                "handle_subagent_stop: session %s agent %s finished (no subagent record)",
+                session_id,
+                agent_id,
+            )
+            return
+
+        start_ns = subagent.get("launch_ns", end_ns - 1_000_000)
+        parent_span_id = subagent.get("agent_span_id")
+        trace_id = subagent.get("trace_id")
+        agent_type = subagent.get("agent_type") or data.get("agent_type")
+
+        phoenix_session_id, _, parent_session_id = _resolve_agent_and_parent_ids(state, data)
+        sub_name = _subagent_name(agent_type)
+        attrs: dict[str, Any] = {
+            "openinference.span.kind": "AGENT",
+            "session.id": phoenix_session_id,
+            "agent.id": agent_id,
+            "subagent.id": agent_id,
+        }
+        if parent_session_id:
+            attrs["parent.session_id"] = parent_session_id
+        if sub_name:
+            attrs["agent.name"] = sub_name
+        tool_in = subagent.get("tool_input") or {}
+        prompt_val = tool_in.get("prompt") or tool_in.get("description") or ""
+        if prompt_val:
+            attrs["input.value"] = _truncate(prompt_val)
+            attrs["input.mime_type"] = "text/plain"
+        msg = data.get("last_assistant_message") or data.get("message") or ""
+        if msg:
+            attrs["output.value"] = _truncate(msg)
+            attrs["output.mime_type"] = "text/plain"
+
+        (_, _, _, _, _, _, SpanKind, _, _, _) = _otel_imports()
+        span_record = {
+            "trace_id_hex": trace_id,
+            "span_id_hex": _new_span_id(),
+            "parent_span_id_hex": parent_span_id,
+            "name": f"subagent: {sub_name}" if sub_name else "subagent",
+            "kind": SpanKind.INTERNAL,
+            "start_ns": start_ns,
+            "end_ns": end_ns,
+            "attributes": attrs,
+            "force_span_id": True,
+        }
+        _build_and_export_spans(
+            config=config,
+            session_id=phoenix_session_id,
+            username=state.get("username"),
+            span_records=[span_record],
+            agent_id=agent_id,
+            parent_session_id=parent_session_id,
+            agent_name=sub_name,
+            cwd=state.get("cwd"),
+        )
+        _save_state(session_id, state)
 
 
 def _end_turn(session_id: str, state: dict) -> None:
@@ -2346,7 +3331,12 @@ def _end_turn(session_id: str, state: dict) -> None:
     the turn for the next UserPromptSubmit to number its turn one higher.
     SessionEnd deletes the file.
     """
-    state.pop("current_trace", None)
+    ct = state.pop("current_trace", None)
+    if isinstance(ct, dict) and ct.get("trace_id") and ct.get("root_span_id"):
+        state["last_trace"] = {
+            "trace_id": ct["trace_id"],
+            "root_span_id": ct["root_span_id"],
+        }
     state.pop("pending_tools", None)
     state.pop("transcript_path", None)
     _save_state(session_id, state)
@@ -2385,6 +3375,20 @@ def handle_stop_failure(data: dict, config: dict) -> None:
             current_trace["last_llm_output"] = _truncate(_format_assistant_message(last_message))
         elif not current_trace.get("last_llm_output"):
             current_trace["last_llm_output"] = f"(Stop failed: {error_type})"
+
+        if current_trace.get("pending_model_call"):
+            pmc = current_trace.pop("pending_model_call")
+            pmc["output_value"] = current_trace["last_llm_output"]
+            pmc["output_mime"] = "text/plain"
+            pmc["end_ns"] = end_ns
+            pmc["is_stop"] = True
+            current_trace.setdefault("model_calls", []).append(pmc)
+
+        transcript_path = _get_cached_transcript_path(data, state, session_id)
+        _emit_pending_llm_spans(
+            state, transcript_path, config, retry_delay_s=0.03, force_remaining=True
+        )
+
         _complete_turn(
             state,
             config,
@@ -2563,8 +3567,236 @@ def handle_session_end(data: dict, config: dict) -> None:
     with _session_lock(session_id):
         state = _load_state(session_id)
         if state.get("current_trace"):
+            transcript_path = _get_cached_transcript_path(data, state, session_id)
+            _emit_pending_llm_spans(state, transcript_path, config, force_remaining=True)
             _complete_turn(state, config, end_ns)
         _delete_state(session_id)
+
+
+def _extract_debug_hook_description(data: dict, raw_payload: Any, client: str, event: str) -> str:
+    """Extract a concise description or summary for a debug hook span without substantive payload text."""
+    tool_input = None
+    if isinstance(raw_payload, dict):
+        tool_input = raw_payload.get("tool_input") or raw_payload.get("toolInput")
+        if not tool_input and isinstance(raw_payload.get("toolCall"), dict):
+            tool_input = raw_payload["toolCall"].get("args")
+    if not tool_input and isinstance(data, dict):
+        tool_input = data.get("tool_input") or data.get("toolInput")
+
+    if isinstance(tool_input, str):
+        try:
+            tool_input = json.loads(tool_input)
+        except Exception:
+            tool_input = None
+
+    if isinstance(tool_input, dict):
+        candidates = [tool_input]
+        if isinstance(tool_input.get("Arguments"), dict):
+            candidates.append(tool_input["Arguments"])
+        for cand in candidates:
+            for key in ("toolSummary", "toolAction", "description", "Description"):
+                val = cand.get(key)
+                if isinstance(val, str) and val.strip():
+                    return val.strip()
+
+    for src in (raw_payload, data):
+        if isinstance(src, dict):
+            for key in ("toolSummary", "toolAction", "description", "Description"):
+                val = src.get(key)
+                if isinstance(val, str) and val.strip():
+                    return val.strip()
+
+    return f"{client} {event} hook"
+
+
+def emit_debug_hook_span(
+    data: dict,
+    config: dict,
+    *,
+    client: str,
+    event: str,
+    raw_payload: Any,
+) -> bool:
+    """Emit a debug span for any hook event, threaded into the session's turn trace with full payload in input.value."""
+    payload_key = "conversationId" if client == "agy" else "session_id"
+    session_id = resolve_session_id(data, payload_key, prefer_env=False)
+    if session_id is None:
+        log.warning(
+            "emit_debug_hook_span (%s/%s): no session id in payload (%r missing) "
+            "and $AOPS_SESSION_ID unset — skipping span emission",
+            client,
+            event,
+            payload_key,
+        )
+        return False
+
+    now_ns = time.time_ns()
+    with _session_lock(session_id):
+        state = _load_state(session_id)
+        if not state.get("session_id"):
+            state["session_id"] = session_id
+            state["phoenix_session_id"] = resolve_session_id(
+                data,
+                payload_key,
+                prefer_env=True,
+            )
+            state["session_start_ns"] = now_ns
+            state["username"] = os.environ.get("USER") or os.environ.get("USERNAME") or None
+            state["turn_number"] = 0
+
+        resolved_cwd = resolve_cwd(data, state)
+        if resolved_cwd:
+            state["cwd"] = resolved_cwd
+        client_agent = resolve_client_agent_name(data)
+        if client_agent:
+            state["agent_name"] = client_agent
+
+        if client != "agy" and not state.get("parent_session_id"):
+            tp = str(data.get("transcript_path") or state.get("transcript_path") or "")
+            res_phx, res_parent, _, _ = _resolve_claude_subagent_parent(
+                session_id,
+                tp,
+                state.get("phoenix_session_id"),
+            )
+            if res_phx:
+                state["phoenix_session_id"] = res_phx
+            if res_parent:
+                state["parent_session_id"] = res_parent
+
+        current_trace = state.get("current_trace")
+        last_trace = state.get("last_trace")
+        known_parents: dict[str, str | None] | None = None
+
+        if isinstance(current_trace, dict) and current_trace.get("trace_id"):
+            trace_id = current_trace["trace_id"]
+            parent_span_id = current_trace.get("root_span_id")
+            sub_id = _subagent_id(data)
+            if sub_id:
+                sub_rec = (state.get("subagents") or {}).get(sub_id)
+                if isinstance(sub_rec, dict) and sub_rec.get("agent_span_id"):
+                    parent_span_id = sub_rec["agent_span_id"]
+            known_parents = _known_span_parents(current_trace)
+        elif (
+            isinstance(last_trace, dict)
+            and last_trace.get("trace_id")
+            and event not in ("SessionStart", "Setup", "UserPromptSubmit", "PreInvocation")
+        ):
+            trace_id = last_trace["trace_id"]
+            parent_span_id = last_trace.get("root_span_id")
+        else:
+            pending = state.get("pending_turn_trace")
+            if (
+                not isinstance(pending, dict)
+                or not pending.get("trace_id")
+                or not pending.get("root_span_id")
+            ):
+                parent_trace_id = None
+                psid = state.get("phoenix_session_id")
+                if psid and psid != session_id:
+                    try:
+                        pstate = _load_state(psid)
+                        if pstate and isinstance(pstate.get("current_trace"), dict):
+                            parent_trace_id = pstate["current_trace"].get("trace_id")
+                    except Exception:
+                        pass
+                pending = {
+                    "trace_id": parent_trace_id or _new_trace_id(),
+                    "root_span_id": _new_span_id(),
+                }
+                state["pending_turn_trace"] = pending
+            trace_id = pending["trace_id"]
+            parent_span_id = pending["root_span_id"]
+
+        full_payload_json = _redact_secrets(
+            json.dumps(raw_payload, ensure_ascii=False, default=str)
+            if not isinstance(raw_payload, str)
+            else raw_payload
+        )
+        dedup_key = f"{event}:{data.get('tool_use_id') or data.get('toolCallId') or ''}:{data.get('stepIdx') or data.get('step_index') or ''}:{hash(full_payload_json)}"
+        seen = state.setdefault("emitted_debug_events", [])
+        if dedup_key in seen:
+            return True
+        seen.append(dedup_key)
+        if len(seen) > 100:
+            state["emitted_debug_events"] = seen[-50:]
+
+        if event != "SessionEnd":
+            _save_state(session_id, state)
+
+    phoenix_session_id, agent_id, parent_session_id = _resolve_agent_and_parent_ids(
+        state,
+        data,
+        payload_key=payload_key,
+    )
+    hook_event_name = str(data.get("hook_event_name") or data.get("hookEventName") or event)
+    attrs: dict[str, Any] = {
+        "openinference.span.kind": "CHAIN",
+        "hook.plugin": "aops-debug",
+        "hook.client": client,
+        "hook.event": event,
+        "hook.event_name": hook_event_name,
+        "input.value": full_payload_json,
+        "input.mime_type": "application/json",
+    }
+
+    tool_name = str(
+        data.get("tool_name")
+        or data.get("toolName")
+        or (
+            raw_payload.get("toolCall", {}).get("name")
+            if isinstance(raw_payload, dict) and isinstance(raw_payload.get("toolCall"), dict)
+            else ""
+        )
+        or ""
+    )
+    if tool_name:
+        attrs["tool.name"] = tool_name
+        attrs["tool.type"] = tool_name
+
+    tool_call_id = (
+        data.get("tool_use_id")
+        or data.get("toolCallId")
+        or (raw_payload.get("tool_use_id") if isinstance(raw_payload, dict) else None)
+    )
+    if tool_call_id:
+        attrs["tool.call_id"] = str(tool_call_id)
+
+    desc = _extract_debug_hook_description(data, raw_payload, client, event)
+    attrs["description"] = desc
+    if tool_name:
+        attrs["tool.summary"] = desc
+
+    (_, _, _, _, _, _, SpanKind, _, _, _) = _otel_imports()
+    surface = "agy" if client == "agy" else "claude-code"
+    service_name = "aops-agy-hooks" if client == "agy" else "aops-claude-hooks"
+    return _build_and_export_spans(
+        config=config,
+        session_id=phoenix_session_id,
+        username=state.get("username"),
+        span_records=[
+            {
+                "trace_id_hex": trace_id,
+                "span_id_hex": _new_span_id(),
+                "parent_span_id_hex": parent_span_id,
+                "name": f"aops-debug.{event}",
+                "kind": SpanKind.INTERNAL,
+                "start_ns": now_ns,
+                "end_ns": now_ns,
+                "attributes": attrs,
+            },
+        ],
+        agent_id=agent_id,
+        parent_session_id=parent_session_id,
+        agent_name=(
+            _subagent_name(data.get("agent_type"))
+            if _subagent_id(data)
+            else state.get("agent_name")
+        ),
+        cwd=state.get("cwd"),
+        known_parents=known_parents,
+        service_name=service_name,
+        surface=surface,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -2572,26 +3804,31 @@ def handle_session_end(data: dict, config: dict) -> None:
 # ---------------------------------------------------------------------------
 
 
-def main() -> None:
-    if len(sys.argv) < 2:
+def main(argv: list[str] | None = None) -> None:
+    args = argv if argv is not None else sys.argv
+    if len(args) < 2:
         print(
             "Usage: claude_code_tracer.py <pre_tool|post_tool|post_tool_failure|user_prompt_submit|stop|subagent_stop>",
             file=sys.stderr,
         )
         sys.exit(0)
 
-    event = sys.argv[1]
+    event = args[1]
 
+    data: dict[str, Any] = {}
     try:
         raw = sys.stdin.read()
-        data = json.loads(raw) if raw.strip() else {}
-    except json.JSONDecodeError as e:
-        log.warning("Failed to parse stdin JSON: %s", e)
+        if raw and raw.strip():
+            data = json.loads(raw)
+    except Exception:
         data = {}
 
     config = discover_config()
     if config is None:
-        log.debug("OTel tracer not configured, skipping tracing.")
+        report_unconfigured_tracer_if_needed(caller=f"event {event}")
+        mode = get_telemetry_failure_mode()
+        if mode == "block":
+            sys.exit(1)
         sys.exit(0)
 
     try:

@@ -21,6 +21,7 @@ import importlib.util
 import json
 import shlex
 import sys
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +32,8 @@ _PLUGIN_ROOT = _REPO_ROOT / "plugins" / "ida"
 _HOOKS_DIR = _PLUGIN_ROOT / "hooks"
 if str(_HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(_HOOKS_DIR))
+
+_POLICY = tomllib.loads((_REPO_ROOT / "tests" / "policy.toml").read_text(encoding="utf-8"))
 
 import dispatch
 import premise_check_gate as pcg
@@ -53,6 +56,21 @@ def _pass_reason(claim_id: str) -> str:
             "Relay: none",
         ]
     )
+
+
+_SAMPLE_VALID_BLOCK = (
+    "\n```argdown\n"
+    "===\n"
+    "asks:\n"
+    "  tg-1: is it done?\n"
+    "answers:\n"
+    "  tg-1: 2\n"
+    "===\n\n"
+    "(1) p -- rule\n"
+    "-- warrant --\n"
+    "(2) c\n"
+    "```\n"
+)
 
 
 def _load_plugin_module(name: str, path: Path):
@@ -497,12 +515,13 @@ def test_handler_ignores_non_gated_tool():
     assert pcg.premise_check_handler(ctx) is None
 
 
-def test_handler_ignores_non_gated_agent_type():
+def test_handler_holds_regardless_of_agent_type():
     session_id = "sess-gate-4"
     pcg.arm(session_id, claim_id="claim-7")
 
     ctx = _agent_dispatch_ctx(session_id, agent_type="aops:james")
-    assert pcg.premise_check_handler(ctx) is None
+    res = pcg.premise_check_handler(ctx)
+    assert res is not None and res.kind == dispatch.Kind.REFUSE
 
 
 def test_handler_mode_off(monkeypatch):
@@ -569,18 +588,22 @@ def test_handler_refuses_channel_reply_tools_while_armed(tool):
 # 6. The agent's own outgoing tool calls never arm the check
 # ---------------------------------------------------------------------------
 
-_OUTGOING_CALLS = [
-    ("Agent", {"description": "verify the claim"}),
-    ("Agent", {"description": "verify the claim", "run_in_background": False}),
+_OUTGOING_NON_DISPATCH_CALLS = [
     ("Agent", {"description": "background worker", "run_in_background": True}),
-    ("Task", {"description": "research X"}),
-    ("invoke_subagent", {"prompt": "research X"}),
+    ("Agent", {"description": "background worker", "run_in_background": "true"}),
     ("SendMessage", {"to": "twin-a", "message": "status?"}),
     ("Bash", {"command": "ls"}),
 ]
 
+_FOREGROUND_DISPATCH_CALLS = [
+    ("Agent", {"description": "verify the claim"}),
+    ("Agent", {"description": "verify the claim", "run_in_background": False}),
+    ("Task", {"description": "research X"}),
+    ("invoke_subagent", {"prompt": "research X"}),
+]
 
-@pytest.mark.parametrize("tool,tool_input", _OUTGOING_CALLS)
+
+@pytest.mark.parametrize("tool,tool_input", _OUTGOING_NON_DISPATCH_CALLS)
 def test_outgoing_post_tool_use_leaves_check_disarmed(tool, tool_input):
     session_id = f"sess-out-{tool}-{sorted(tool_input.items())}"
     ctx = dispatch.HookContext(
@@ -599,7 +622,33 @@ def test_outgoing_post_tool_use_leaves_check_disarmed(tool, tool_input):
     assert pcg.premise_check_handler(_agent_dispatch_ctx(session_id)) is None
 
 
-@pytest.mark.parametrize("tool,tool_input", _OUTGOING_CALLS)
+@pytest.mark.parametrize("tool,tool_input", _FOREGROUND_DISPATCH_CALLS)
+def test_foreground_post_tool_use_arms_check(tool, tool_input):
+    session_id = f"sess-fg-{tool}-{sorted(tool_input.items())}"
+    ctx = dispatch.HookContext(
+        client="claude",
+        event="PostToolUse",
+        tool=tool,
+        session_id=session_id,
+        agent_type="ida:ida",
+        raw={
+            "tool_input": tool_input,
+            "tool_response": {"status": "completed", "content": [{"type": "text", "text": "X"}]},
+        },
+    )
+    handlers = _load_plugin_module("ida_handlers_gate", _HOOKS_DIR / "handlers.py")
+    res = handlers.post_tool(ctx)
+    assert res is not None
+    assert pcg.is_armed(session_id) is True
+    res_arm = pcg.premise_check_arm(ctx)
+    assert res_arm is not None
+    assert res_arm.kind == dispatch.Kind.ADVISE
+    assert _POLICY["premise_check"]["armed_indicator"] in res_arm.inject_text
+    refuse_res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
+    assert refuse_res is not None and refuse_res.kind == dispatch.Kind.REFUSE
+
+
+@pytest.mark.parametrize("tool,tool_input", _OUTGOING_NON_DISPATCH_CALLS)
 def test_outgoing_post_tool_batch_leaves_check_disarmed(tool, tool_input):
     session_id = f"sess-batch-{tool}-{sorted(tool_input.items())}"
     ctx = dispatch.HookContext(
@@ -615,9 +664,14 @@ def test_outgoing_post_tool_batch_leaves_check_disarmed(tool, tool_input):
 
 
 # ---------------------------------------------------------------------------
-# Guard: a spawn acknowledgement or a wake with no report never arms the gate
+# 7. The gate arms only when a report or direction arrives
+#
+# Payload shapes follow Claude Code's documented `Agent` tool_response:
+# `completed` for a foreground subagent that returned, `async_launched` for a
+# background launch (the default when `run_in_background` is omitted), and
+# `teammate_spawned` for a named teammate. Notifications follow the harness's
+# `<task-notification>` and `<agent-message>` envelopes.
 # ---------------------------------------------------------------------------
-
 
 _SPAWN_ACKS = {
     "teammate_spawned": (
@@ -695,9 +749,93 @@ def test_spawn_ack_leaves_gate_unarmed_and_actions_proceed(ack):
     assert handlers.stop(stop_ctx) is None
 
 
+_BACKGROUND_COMMAND_DONE = (
+    "<task-notification>\n<task-id>b0000001</task-id>\n"
+    "<tool-use-id>toolu_bg_command</tool-use-id>\n"
+    "<output-file>/tmp/tasks/b0000001.output</output-file>\n<status>completed</status>\n"
+    '<summary>Background command "Run the tests" completed (exit code 0)'
+    "</summary>\n</task-notification>"
+)
+_HANDBACK_POINTER = (
+    "<task-notification>\n<task-id>a1b2c3d4e5f600112</task-id>\n"
+    "<status>completed</status>\n"
+    '<summary>Agent "Check the claim" finished</summary>\n'
+    "<result>This agent's report was delivered to you as a message from "
+    '"a1b2c3d4e5f600112" (its SubagentHandback call). Read it there; it is not '
+    "repeated here.\n</result>\n</task-notification>"
+)
+
+
+@pytest.mark.parametrize(
+    "prompt",
+    [_BACKGROUND_COMMAND_DONE, _HANDBACK_POINTER],
+    ids=["background_command", "handback_pointer"],
+)
+def test_notification_without_a_report_leaves_gate_unarmed(prompt):
+    session_id = f"sess-noreport-{abs(hash(prompt))}"
+    assert pcg.premise_check_arm(_prompt_ctx(session_id, prompt)) is None
+    assert pcg.is_armed(session_id) is False
+    assert pcg.premise_check_handler(_agent_dispatch_ctx(session_id)) is None
+
+
+_ARRIVING_REPORTS = {
+    "foreground_result": (
+        "Verify the mini app",
+        {"description": "Verify the mini app", "prompt": "check it"},
+        {
+            "status": "completed",
+            "agentId": "a0000000000000002",
+            "content": [{"type": "text", "text": "The mini app loads; PR #12 fixed it."}],
+            "totalDurationMs": 48211,
+        },
+    ),
+    "background_agent_result": (
+        None,
+        None,
+        "<task-notification>\n<task-id>a7c7c7c7c7c7c7c70</task-id>\n"
+        "<status>completed</status>\n"
+        '<summary>Agent "Diagnose the mini app" finished</summary>\n'
+        "<result>The mini app loads; PR #12 fixed it.</result>\n</task-notification>",
+    ),
+    "subagent_handback": (
+        None,
+        None,
+        '<agent-message from="a1b2c3d4e5f600112">\n[Subagent hand-back] The text below '
+        "is the final report of a subagent this session delegated to.\n"
+        "The mini app loads; PR #12 fixed it.\n</agent-message>",
+    ),
+    "teammate_direction": (
+        None,
+        None,
+        '<teammate-message teammate_id="team-lead">Fix the mini app; '
+        "the mini app loads after PR #12.</teammate-message>",
+    ),
+}
+
+
+@pytest.mark.parametrize("kind", sorted(_ARRIVING_REPORTS))
+def test_arriving_report_or_direction_arms_gate(kind):
+    session_id = f"sess-arrive-{kind}"
+    claim, tool_input, payload = _ARRIVING_REPORTS[kind]
+    if tool_input is not None:
+        handlers = _load_plugin_module("ida_handlers_gate", _HOOKS_DIR / "handlers.py")
+        handlers.post_tool(_post_tool_ctx(session_id, tool_input, payload))
+    else:
+        assert pcg.premise_check_arm(_prompt_ctx(session_id, payload)) is not None
+    assert pcg.is_armed(session_id) is True
+    claim_id = claim or pcg.get_state(session_id)["claim_id"]
+    judged_text, _ = pcg.get_judged(session_id, claim_id)
+    assert "the mini app loads" in judged_text.lower()
+    res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
+    assert res is not None and res.kind == dispatch.Kind.REFUSE
+
+
 def test_spawn_while_claim_pending_keeps_that_claim_and_its_verdict_records():
     session_id = "sess-pending-spawn"
-    report = '<teammate-message teammate_id="sara" id="why-mini-app">report</teammate-message>'
+    report = (
+        f'<teammate-message teammate_id="sara" id="why-mini-app">report'
+        f"{_SAMPLE_VALID_BLOCK}</teammate-message>"
+    )
     pcg.premise_check_arm(_prompt_ctx(session_id, report))
     assert pcg.get_state(session_id)["claim_ids"] == ["why-mini-app"]
 
@@ -718,6 +856,75 @@ def test_spawn_while_claim_pending_keeps_that_claim_and_its_verdict_records():
     )
     assert result["ok"] is True
     assert pcg.is_armed(session_id) is False
+
+
+# ---------------------------------------------------------------------------
+# End-to-end: full claim -> refusal -> verdict -> allowed cycle
+# ---------------------------------------------------------------------------
+
+
+def test_end_to_end_claim_blocks_next_dispatch_until_verdicted():
+    session_id = "sess-e2e"
+
+    # A worker's report arrives at Ida.
+    report_ctx = _prompt_ctx(
+        session_id,
+        f'<task-notification id="researched-X"><result>worker finished{_SAMPLE_VALID_BLOCK}</result></task-notification>',
+    )
+    arm_res = pcg.premise_check_arm(report_ctx)
+    assert arm_res is not None
+    assert pcg.is_armed(session_id) is True
+
+    # Dispatching another subagent before the verdict is refused.
+    res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
+    assert res is not None and res.kind == dispatch.Kind.REFUSE
+
+    # The verdict script runs and disarms the check.
+    pcv.record_verdict(
+        session_id=session_id,
+        claim_id="researched-X",
+        verdict="PASS",
+        reason=_pass_reason("researched-X"),
+        tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
+    )
+
+    # Now the dispatch is permitted.
+    assert pcg.is_armed(session_id) is False
+    assert pcg.premise_check_handler(_agent_dispatch_ctx(session_id)) is None
+
+
+# ---------------------------------------------------------------------------
+# Incoming messages: peer reports arm the check; the user's messages do not
+# ---------------------------------------------------------------------------
+
+
+def _prompt_ctx(session_id: str, prompt: str, agent_type: str = "ida:ida") -> dispatch.HookContext:
+    return dispatch.HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        session_id=session_id,
+        agent_type=agent_type,
+        raw={"prompt": prompt},
+    )
+
+
+@pytest.mark.parametrize(
+    "prompt",
+    [
+        f'<cross-session-message from="twin-a">PR #12 is merged.{_SAMPLE_VALID_BLOCK}</cross-session-message>',
+        f'<teammate-message teammate_id="worker">done{_SAMPLE_VALID_BLOCK}</teammate-message>',
+        f"\n  <task-notification>\n<result>worker finished{_SAMPLE_VALID_BLOCK}</result>\n</task-notification>",
+        f'<subagent-handback from="worker">subagent finished{_SAMPLE_VALID_BLOCK}</subagent-handback>',
+    ],
+)
+def test_arm_handler_arms_on_peer_report(prompt):
+    session_id = f"sess-peer-{abs(hash(prompt))}"
+    res = pcg.premise_check_arm(_prompt_ctx(session_id, prompt))
+    assert res is not None
+    assert pcg.is_armed(session_id) is True
+    assert _POLICY["premise_check"]["direction_checklist_indicator"] in res.inject_text
+    refuse_res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
+    assert refuse_res is not None and refuse_res.kind == dispatch.Kind.REFUSE
 
 
 _AGY_CONV = "00000000-0000-4000-8000-00000000c0de"
@@ -766,10 +973,24 @@ _AGY_WAKES_WITHOUT_REPORT = {
         "stop hook blocked termination due to reason: The user has automatically "
         "approved the artifact through their review policy. Proceed to execution."
     ),
+    "subagent_idle_with_response": _agy_message(
+        "system",
+        f"Subagent {_AGY_PEER} has gone idle. This was the subagent's most recent "
+        "response: I have completed the fix; the mini app loads [observed].",
+    ),
+}
+
+# Turn-starts that deliver another agent's report or direction.
+_AGY_ARRIVALS = {
+    "peer_report": _agy_message(
+        _AGY_PEER, "### Fix Report\n\nI fixed the build; the mini app loads [observed]."
+    ),
+    "peer_direction": _agy_message(
+        _AGY_PEER, "Use the hydrate skill against this ask, then report: the mini app loads?"
+    ),
 }
 
 
-# Turn-starts that deliver another agent's report or direction.
 def _agy_turn_ctx(tmp_path: Path, session_id: str, turn_start: str) -> dispatch.HookContext:
     transcript = tmp_path / "transcript.jsonl"
     transcript.write_text(
@@ -797,83 +1018,335 @@ def test_agy_wake_without_report_leaves_gate_unarmed(tmp_path: Path, wake):
     assert pcg.is_armed(session_id) is False
 
 
-# ---------------------------------------------------------------------------
-# End-to-end: full claim -> refusal -> verdict -> allowed cycle
-# ---------------------------------------------------------------------------
-
-
-def test_end_to_end_claim_blocks_next_dispatch_until_verdicted():
-    session_id = "sess-e2e"
-
-    # A worker's report arrives at Ida.
-    report_ctx = _prompt_ctx(
-        session_id, '<task-notification id="researched-X">worker finished</task-notification>'
-    )
-    arm_res = pcg.premise_check_arm(report_ctx)
-    assert arm_res is not None
+@pytest.mark.parametrize("arrival", sorted(_AGY_ARRIVALS))
+def test_agy_report_or_direction_arms_check(tmp_path: Path, arrival):
+    session_id = f"sess-agy-arrival-{arrival}"
+    ctx = _agy_turn_ctx(tmp_path, session_id, _AGY_ARRIVALS[arrival])
+    assert pcg.premise_check_arm(ctx) is not None
     assert pcg.is_armed(session_id) is True
+    claim_id = pcg.get_state(session_id)["claim_id"]
+    judged_text, _ = pcg.get_judged(session_id, claim_id)
+    assert "the mini app loads" in judged_text
 
-    # Dispatching another subagent before the verdict is refused.
-    res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
-    assert res is not None and res.kind == dispatch.Kind.REFUSE
 
-    # The verdict script runs and disarms the check.
-    pcv.record_verdict(
-        session_id=session_id,
-        claim_id="researched-X",
-        verdict="PASS",
-        reason=_pass_reason("researched-X"),
-        tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
+def test_agy_preinvocation_captures_send_message_without_transcript_lag(tmp_path: Path):
+    """AC1: In agy, PreInvocation gating ingests incoming subagent send_message reports on the turn
+
+    they arrive even when <SYSTEM_MESSAGE> entries have not flushed to transcript_full.jsonl (#3500),
+    and ignores subsequent sender=system 'Subagent <uuid> has gone idle' notices (#3544).
+    """
+    session_id = "sess-agy-lag-repro"
+    transcript_compact = tmp_path / "transcript.jsonl"
+    transcript_full = tmp_path / "transcript_full.jsonl"
+
+    report_argdown = (
+        "## Report\n"
+        "```argdown\n"
+        "===\n"
+        "asks:\n"
+        "  tg-1: 1\n"
+        "answers:\n"
+        "  tg-1: 1\n"
+        "===\n\n"
+        "(1) Fix delivered\n"
+        "-- rule --\n"
+        "(2) Verified\n"
+        "```"
     )
+    subagent_msg = _agy_message(_AGY_PEER, report_argdown)
 
-    # Now the dispatch is permitted.
-    assert pcg.is_armed(session_id) is False
-    assert pcg.premise_check_handler(_agent_dispatch_ctx(session_id)) is None
+    # Initial state: step 0 (initial prompt) in both transcripts
+    initial_step = {"step_index": 0, "type": "USER_INPUT", "content": "initial prompt"}
+    transcript_compact.write_text(json.dumps(initial_step) + "\n", encoding="utf-8")
+    transcript_full.write_text(json.dumps(initial_step) + "\n", encoding="utf-8")
 
+    # Turn 1: subagent send_message is appended to compact transcript,
+    # BUT has NOT flushed to transcript_full.jsonl yet!
+    handback_step = {"step_index": 1, "type": "SYSTEM_MESSAGE", "content": subagent_msg}
+    with transcript_compact.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(handback_step) + "\n")
 
-# ---------------------------------------------------------------------------
-# Incoming messages: peer reports arm the check; the user's messages do not
-# ---------------------------------------------------------------------------
-
-
-def _prompt_ctx(session_id: str, prompt: str, agent_type: str = "ida:ida") -> dispatch.HookContext:
-    return dispatch.HookContext(
-        client="claude",
+    # PreInvocation fires on Turn 1 (even if transcriptPath points to transcript_full.jsonl or transcript.jsonl)
+    ctx1 = dispatch.HookContext(
+        client="agy",
         event="UserPromptSubmit",
         session_id=session_id,
-        agent_type=agent_type,
-        raw={"prompt": prompt},
+        agent_type="ida:sara",
+        transcript_path=str(transcript_full),
+        raw={
+            "invocationNum": 0,
+            "transcriptPath": str(transcript_full),
+            "conversationId": session_id,
+        },
     )
 
-
-@pytest.mark.parametrize(
-    "prompt",
-    [
-        '<cross-session-message from="twin-a">PR #12 is merged.</cross-session-message>',
-        '<teammate-message teammate_id="worker">done</teammate-message>',
-        "\n  <task-notification>\nworker finished\n</task-notification>",
-    ],
-)
-def test_arm_handler_arms_on_peer_report(prompt):
-    session_id = "sess-peer"
-    pcg.premise_check_arm(_prompt_ctx(session_id, prompt))
+    # Must capture Report 1 on the exact turn it arrives
+    res1 = pcg.premise_check_arm(ctx1)
+    assert res1 is not None
     assert pcg.is_armed(session_id) is True
-    res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
-    assert res is not None and res.kind == dispatch.Kind.REFUSE
+    claim_id_1 = pcg.get_state(session_id)["claim_id"]
+    judged_text_1, _ = pcg.get_judged(session_id, claim_id_1)
+    assert "Fix delivered" in judged_text_1
+    assert "Verified" in judged_text_1
+
+    # Turn 2: Subagent calls finish and agy delivers sender=system idle notice
+    idle_msg = _agy_message(
+        "system",
+        f"Subagent {_AGY_PEER} has gone idle. This was the subagent's most recent response: Brief finish prose.",
+    )
+    idle_step = {"step_index": 2, "type": "SYSTEM_MESSAGE", "content": idle_msg}
+    with transcript_compact.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(idle_step) + "\n")
+    # Also flushes to transcript_full
+    with transcript_full.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(handback_step) + "\n")
+        f.write(json.dumps(idle_step) + "\n")
+
+    ctx2 = dispatch.HookContext(
+        client="agy",
+        event="UserPromptSubmit",
+        session_id=session_id,
+        agent_type="ida:sara",
+        transcript_path=str(transcript_full),
+        raw={
+            "invocationNum": 0,
+            "transcriptPath": str(transcript_full),
+            "conversationId": session_id,
+        },
+    )
+
+    # Idle notice must be ignored as a non-claim lifecycle event, not arming a false blockless gate
+    assert pcg.premise_check_arm(ctx2) is None
+    # Report 1 remains the armed claim
+    state2 = pcg.get_state(session_id)
+    assert state2.get("claim_id") == claim_id_1  # Report 1 remains the armed claim
+
+
+def test_absent_block_refuses_to_clear_gate_and_leaves_armed(monkeypatch):
+    monkeypatch.setattr(
+        pcv, "_import_claude_code_tracer", lambda: _StubTracer(config={"endpoint": "http://x"})
+    )
+    session_id = "sess-absent-block"
+    prompt = '<cross-session-message from="twin-a">PR #12 is merged with no block.</cross-session-message>'
+    ctx = _prompt_ctx(session_id, prompt)
+    claim_id = pcg._derive_claim_id(ctx)
+    res = pcg.premise_check_arm(ctx)
+    assert res is not None
+    assert "no argument block supplied" in res.inject_text
+    assert "send" in res.inject_text.lower() and "back" in res.inject_text.lower()
+    assert "--verdict REVISE" in res.inject_text
+    assert pcg.is_armed(session_id) is True
+
+    # The gate refuses dispatch while armed awaiting return/verdict
+    dispatch_res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
+    assert dispatch_res is not None and dispatch_res.kind == dispatch.Kind.REFUSE
+
+    # Attempting to record PASS on an absent block is refused: gate stays shut
+    with pytest.raises(ValueError, match="absent block cannot pass"):
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id=claim_id,
+            verdict="PASS",
+            reason=_pass_reason(claim_id),
+        )
+    assert pcg.is_armed(session_id) is True
+
+    # Agent records REVISE to send back for resending, which clears the gate
+    pcv.record_verdict(
+        session_id=session_id,
+        claim_id=claim_id,
+        verdict="REVISE",
+        reason="no argument supplied",
+    )
+    assert pcg.is_armed(session_id) is False
+
+
+def test_null_form_clears_gate_with_no_agent_action():
+    session_id = "sess-null-form"
+    prompt = (
+        '<cross-session-message from="twin-a">\n'
+        "Status notice.\n"
+        "```argdown\n"
+        "===\n"
+        "asks: none\n"
+        "===\n\n"
+        "[no claim]\n"
+        "```\n"
+        "</cross-session-message>"
+    )
+    ctx = _prompt_ctx(session_id, prompt)
+    res = pcg.premise_check_arm(ctx)
+    assert res is None
+    assert pcg.is_armed(session_id) is False
+    state = pcg.get_state(session_id)
+    last_v = state.get("last_verdict")
+    assert isinstance(last_v, dict)
+    assert last_v.get("verdict") == "no-claim"
+    assert last_v.get("reason") == "null form"
+    assert last_v.get("no_claim") is True
+
+
+def test_full_argument_with_asks_none_does_not_pass_as_null_form():
+    session_id = "sess-full-arg-asks-none"
+    prompt = (
+        '<cross-session-message from="twin-a">\n'
+        "Report.\n"
+        "```argdown\n"
+        "===\n"
+        "asks: none\n"
+        "===\n\n"
+        "(1) p -- fact\n"
+        "-- w --\n"
+        "(2) c\n"
+        "```\n"
+        "</cross-session-message>"
+    )
+    ctx = _prompt_ctx(session_id, prompt)
+    res = pcg.premise_check_arm(ctx)
+    assert res is not None
+    assert pcg.is_armed(session_id) is True
+
+
+def test_claim_none_does_not_pass_as_null_form():
+    session_id = "sess-claim-none"
+    prompt = (
+        '<cross-session-message from="twin-a">\n'
+        "```argdown\n"
+        "claim: none of the findings held\n"
+        "```\n"
+        "</cross-session-message>"
+    )
+    ctx = _prompt_ctx(session_id, prompt)
+    res = pcg.premise_check_arm(ctx)
+    assert res is not None
+    assert pcg.is_armed(session_id) is True
 
 
 @pytest.mark.parametrize(
     "prompt",
     [
-        '<channel source="plugin:telegram:telegram" chat_id="1" user="nic">\n<cross-session-message from="twin-a">PR #12 is merged.</cross-session-message>\n</channel>',
-        '<channel source="plugin:telegram:telegram" chat_id="1" user="nic">Context</channel>\n<cross-session-message from="twin-a">PR #12 is merged.</cross-session-message>',
-        '<channel source="plugin:telegram:telegram" chat_id="1" user="worker">\n<task-notification>\nworker finished\n</task-notification>\n</channel>',
+        '<channel source="plugin:telegram:telegram" chat_id="1" user="nic">\n<cross-session-message from="twin-a">PR #12 is merged.\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</cross-session-message>\n</channel>',
+        '<channel source="plugin:telegram:telegram" chat_id="1" user="nic">Context</channel>\n<cross-session-message from="twin-a">PR #12 is merged.\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</cross-session-message>',
+        '<channel source="plugin:telegram:telegram" chat_id="1" user="worker">\n<task-notification>\n<result>worker finished\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</result>\n</task-notification>\n</channel>',
     ],
 )
 def test_arm_handler_arms_on_wrapped_peer_report(prompt):
     session_id = f"sess-mid-peer-{abs(hash(prompt))}"
     pcg.premise_check_arm(_prompt_ctx(session_id, prompt))
     assert pcg.is_armed(session_id) is True
+
+
+def test_teammate_message_idle_notification_arms_gate_and_records_verdict():
+    session_id = "sess-teammate-idle"
+    report_text = """## Report
+```argdown
+===
+asks:
+  tg-398: 2
+answers:
+  tg-398: 2
+===
+(1) Five ideas for resilience -- rule
+-- rule --
+(2) Resilience ideas hold
+```"""
+    payload = json.dumps(
+        {
+            "type": "idle_notification",
+            "from": "resilience-ideas",
+            "timestamp": "2026-10-23T12:23:44.965Z",
+            "idleReason": "available",
+            "result": report_text,
+        }
+    )
+    prompt = (
+        "Another Claude session sent a message:\n"
+        f'<teammate-message teammate_id="resilience-ideas" color="green">\n{payload}\n</teammate-message>\n\n'
+        "This came from another Claude session — not typed by your user, but very likely working on their behalf."
+    )
+    arm_res = pcg.premise_check_arm(_prompt_ctx(session_id, prompt))
+    assert arm_res is not None
+    assert pcg.is_armed(session_id) is True
+
+    claim_id = pcg.get_state(session_id)["claim_id"]
+    assert claim_id.startswith("claim-")
+
+    # PreToolUse refuses dispatch while armed
+    res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
+    assert res is not None and res.kind == dispatch.Kind.REFUSE
+
+    # Verdict records with verification id and disarms the gate
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    reason = (
+        f"Judged: {claim_id}; asks tg-398\n"
+        "Valid: (2) holds -- rule\n"
+        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
+        "Answered: tg-398 <- (2)\n"
+        "Sufficient: (2) material\n"
+        "Waived: none\n"
+        "Relay: none"
+    )
+    verdict_res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=claim_id,
+        verdict="PASS",
+        reason=reason,
+        tracer_mod=tracer,
+    )
+    assert verdict_res["ok"] is True
+    assert verdict_res["verification_id"].startswith("verdict-")
+    assert pcg.is_armed(session_id) is False
+
+
+def test_teammate_message_send_message_arms_gate_and_records_verdict():
+    session_id = "sess-teammate-sendmsg"
+    report_text = """## Report
+```argdown
+===
+asks:
+  tg-1: 2
+answers:
+  tg-1: 2
+===
+(1) Migration complete -- rule
+-- rule --
+(2) Migration holds
+```"""
+    prompt = (
+        "Another Claude session sent a message:\n"
+        f'<teammate-message id="worker-report-1" teammate_id="worker" color="blue" summary="Task finished">\n{report_text}\n</teammate-message>\n\n'
+        "This came from another Claude session — not typed by your user, but very likely working on their behalf."
+    )
+    arm_res = pcg.premise_check_arm(_prompt_ctx(session_id, prompt))
+    assert arm_res is not None
+    assert pcg.is_armed(session_id) is True
+    assert pcg.get_state(session_id)["claim_id"] == "worker-report-1"
+
+    # PreToolUse refuses dispatch while armed
+    res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
+    assert res is not None and res.kind == dispatch.Kind.REFUSE
+
+    # Verdict records with verification id and disarms the gate
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    reason = (
+        "Judged: worker-report-1; asks tg-1\n"
+        "Valid: (2) holds -- rule\n"
+        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
+        "Answered: tg-1 <- (2)\n"
+        "Sufficient: (2) material\n"
+        "Waived: none\n"
+        "Relay: none"
+    )
+    verdict_res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="worker-report-1",
+        verdict="PASS",
+        reason=reason,
+        tracer_mod=tracer,
+    )
+    assert verdict_res["ok"] is True
+    assert verdict_res["verification_id"].startswith("verdict-")
+    assert pcg.is_armed(session_id) is False
 
 
 @pytest.mark.parametrize(
@@ -907,7 +1380,11 @@ def test_users_message_does_not_disarm_a_pending_check():
 def test_sara_is_gated_like_ida(agent_type):
     session_id = f"sess-{agent_type}"
     pcg.premise_check_arm(
-        _prompt_ctx(session_id, "<cross-session-message>report</cross-session-message>", agent_type)
+        _prompt_ctx(
+            session_id,
+            "<cross-session-message>report\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</cross-session-message>",
+            agent_type,
+        )
     )
     assert pcg.is_armed(session_id) is True
     res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id, agent_type=agent_type))
@@ -938,7 +1415,9 @@ def test_derive_claim_id_generates_short_id_without_message_text():
     assert claim2.startswith("claim-")
     assert pcg.is_valid_id(claim2)
 
-    ctx3 = _prompt_ctx("s3", "\n  <task-notification>\nworker finished\n</task-notification>")
+    ctx3 = _prompt_ctx(
+        "s3", "\n  <task-notification>\n<result>worker finished</result>\n</task-notification>"
+    )
     claim3 = pcg._derive_claim_id(ctx3)
     assert "worker finished" not in claim3
     assert claim3.startswith("claim-")
@@ -965,7 +1444,11 @@ def test_derive_claim_id_generates_short_id_without_message_text():
 
 def test_arm_handler_returns_two_line_prompt_note_and_no_message_text():
     session_id = "sess-note-1"
-    prompt = '<cross-session-message from="twin-a">PR #12 is merged.</cross-session-message>'
+    prompt = (
+        '<cross-session-message from="twin-a">PR #12 is merged.\n'
+        "```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n"
+        "</cross-session-message>"
+    )
     ctx = _prompt_ctx(session_id, prompt)
     claim_id = pcg._derive_claim_id(ctx)
     res = pcg.premise_check_arm(ctx)
@@ -1105,7 +1588,7 @@ def test_verified_outgoing_message_id_accepted_as_incoming_claim_id_upstream():
     # 2. Downstream emits a verified outgoing message carrying that verification ID
     outgoing_msg = (
         f'<cross-session-message from="worker" id="{verification_id}">'
-        "Finished implementation and tests pass."
+        f"Finished implementation and tests pass.{_SAMPLE_VALID_BLOCK}"
         "</cross-session-message>"
     )
 
@@ -1190,6 +1673,7 @@ def _make_stub_tracer_dir(target_dir: Path) -> Path:
     return stub_dir
 
 
+@pytest.mark.integration
 def test_printed_command_runs_from_different_cwd_under_claude_code_and_agy(tmp_path):
     import os
     import subprocess
@@ -1282,6 +1766,7 @@ def test_printed_command_runs_from_different_cwd_under_claude_code_and_agy(tmp_p
         assert pcg.is_armed(session_id) is False
 
 
+@pytest.mark.integration
 def test_printed_command_runs_with_relative_hooks_dir_from_plugin_cwd(tmp_path, monkeypatch):
     import os
     import subprocess
@@ -1375,3 +1860,383 @@ def test_agy_dispatch_receipt_and_wait_do_not_arm(agy_ida, payload):
     assert ctx.agent_type == "ida"
     assert pcg.premise_check_arm(ctx) is None
     assert pcg.is_armed(ctx.session_id) is False
+
+
+# ---------------------------------------------------------------------------
+# Teammate messages and identity-independent arming
+# ---------------------------------------------------------------------------
+
+
+def _valid_report_argdown(ask_id: str = "tg-100") -> tuple[str, str]:
+    report_text = f"""## Report
+```argdown
+===
+asks:
+  {ask_id}: 2
+answers:
+  {ask_id}: 2
+===
+(1) Work completed per spec -- rule
+-- rule --
+(2) Outcome verified
+```"""
+    reason = (
+        f"Judged: {{claim_id}}; asks {ask_id}\n"
+        "Valid: (2) holds -- rule\n"
+        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
+        f"Answered: {ask_id} <- (2)\n"
+        "Sufficient: (2) material\n"
+        "Waived: none\n"
+        "Relay: none"
+    )
+    return report_text, reason
+
+
+def test_teammate_message_to_teammate_arms_gate_and_records_verdict():
+    session_id = "sess-teammate-recv"
+    report_text, reason_tmpl = _valid_report_argdown("tg-404")
+    prompt = (
+        '<teammate-message id="claim-teammate-404" teammate_id="worker">\n'
+        f"{report_text}\n"
+        "</teammate-message>"
+    )
+    # The receiving agent is a teammate, not ida or sara
+    ctx = _prompt_ctx(session_id, prompt, agent_type="researcher-worker")
+    arm_res = pcg.premise_check_arm(ctx)
+    assert arm_res is not None
+    assert pcg.is_armed(session_id) is True
+
+    # PreToolUse refuses dispatch while armed
+    res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id, agent_type="researcher-worker"))
+    assert res is not None and res.kind == dispatch.Kind.REFUSE
+
+    # Verdict records with verification id and disarms the gate
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    verdict_res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="claim-teammate-404",
+        verdict="PASS",
+        reason=reason_tmpl.format(claim_id="claim-teammate-404"),
+        tracer_mod=tracer,
+    )
+    assert verdict_res["ok"] is True
+    assert verdict_res["verification_id"].startswith("verdict-")
+    assert pcg.is_armed(session_id) is False
+
+
+def test_report_to_in_session_subagent_arms_gate_and_records_verdict():
+    session_id = "sess-subagent-recv"
+    report_text, reason_tmpl = _valid_report_argdown("tg-406")
+    prompt = (
+        '<cross-session-message id="claim-subagent-406" from="peer-a">\n'
+        f"{report_text}\n"
+        "</cross-session-message>"
+    )
+    # The receiving agent is an in-session subagent
+    ctx = _prompt_ctx(session_id, prompt, agent_type="general-purpose")
+    arm_res = pcg.premise_check_arm(ctx)
+    assert arm_res is not None
+    assert pcg.is_armed(session_id) is True
+
+    # PreToolUse refuses dispatch while armed
+    res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id, agent_type="general-purpose"))
+    assert res is not None and res.kind == dispatch.Kind.REFUSE
+
+    # Verdict records with verification id and disarms the gate
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    verdict_res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="claim-subagent-406",
+        verdict="PASS",
+        reason=reason_tmpl.format(claim_id="claim-subagent-406"),
+        tracer_mod=tracer,
+    )
+    assert verdict_res["ok"] is True
+    assert verdict_res["verification_id"].startswith("verdict-")
+    assert pcg.is_armed(session_id) is False
+
+
+def test_foreground_subagent_return_to_teammate_arms_gate_and_records_verdict():
+    session_id = "sess-fg-subagent-return"
+    report_text, reason_tmpl = _valid_report_argdown("tg-500")
+    ctx = dispatch.HookContext(
+        client="claude",
+        event="PostToolUse",
+        tool="Agent",
+        session_id=session_id,
+        agent_type="worker-teammate",
+        raw={
+            "tool_input": {"description": "audit findings"},
+            "tool_response": {
+                "status": "completed",
+                "content": [{"type": "text", "text": report_text}],
+            },
+            "tool_use_id": "toolu_fg_return",
+        },
+    )
+    arm_res = pcg.premise_check_arm(ctx)
+    assert arm_res is not None
+    assert pcg.is_armed(session_id) is True
+    claim_id = pcg.get_state(session_id)["claim_id"]
+
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    verdict_res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=claim_id,
+        verdict="PASS",
+        reason=reason_tmpl.format(claim_id=claim_id),
+        tracer_mod=tracer,
+    )
+    assert verdict_res["ok"] is True
+    assert verdict_res["verification_id"].startswith("verdict-")
+    assert pcg.is_armed(session_id) is False
+
+
+def test_task_notification_return_arms_gate_and_no_result_leaves_unarmed():
+    report_text, reason_tmpl = _valid_report_argdown("tg-task-1")
+
+    # 1. Task notification with a <result> arms the gate
+    session_armed = "sess-tn-result"
+    prompt_armed = (
+        '<task-notification id="claim-task-1">\n'
+        f"<result>\n{report_text}\n</result>\n"
+        "</task-notification>"
+    )
+    ctx_armed = _prompt_ctx(session_armed, prompt_armed, agent_type="worker")
+    arm_res = pcg.premise_check_arm(ctx_armed)
+    assert arm_res is not None
+    assert pcg.is_armed(session_armed) is True
+
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    verdict_res = pcv.record_verdict(
+        session_id=session_armed,
+        claim_id="claim-task-1",
+        verdict="PASS",
+        reason=reason_tmpl.format(claim_id="claim-task-1"),
+        tracer_mod=tracer,
+    )
+    assert verdict_res["ok"] is True
+    assert verdict_res["verification_id"].startswith("verdict-")
+    assert pcg.is_armed(session_armed) is False
+
+    # 2. Task notification without a <result> (e.g. background command finished) leaves gate unarmed
+    session_unarmed = "sess-tn-no-result"
+    prompt_unarmed = (
+        '<task-notification id="claim-task-2">\n'
+        "background bash command exited with code 0\n"
+        "</task-notification>"
+    )
+    ctx_unarmed = _prompt_ctx(session_unarmed, prompt_unarmed, agent_type="worker")
+    assert pcg.premise_check_arm(ctx_unarmed) is None
+    assert pcg.is_armed(session_unarmed) is False
+
+
+def test_teammate_message_idle_notification_arms_gate_and_records_verdict_for_non_default_agent():
+    session_id = "sess-teammate-idle"
+    report_text, reason_tmpl = _valid_report_argdown("tg-398")
+    payload = json.dumps(
+        {
+            "type": "idle_notification",
+            "from": "resilience-ideas",
+            "timestamp": "2026-10-23T12:23:44.965Z",
+            "idleReason": "available",
+            "result": report_text,
+        }
+    )
+    prompt = (
+        "Another Claude session sent a message:\n"
+        f'<teammate-message teammate_id="resilience-ideas" color="green">\n{payload}\n</teammate-message>\n\n'
+        "This came from another Claude session — not typed by your user, but very likely working on their behalf."
+    )
+    arm_res = pcg.premise_check_arm(_prompt_ctx(session_id, prompt, agent_type="teammate-checker"))
+    assert arm_res is not None
+    assert pcg.is_armed(session_id) is True
+
+    claim_id = pcg.get_state(session_id)["claim_id"]
+    assert claim_id.startswith("claim-")
+
+    # PreToolUse refuses dispatch while armed
+    res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id, agent_type="teammate-checker"))
+    assert res is not None and res.kind == dispatch.Kind.REFUSE
+
+    # Verdict records with verification id and disarms the gate
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    verdict_res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=claim_id,
+        verdict="PASS",
+        reason=reason_tmpl.format(claim_id=claim_id),
+        tracer_mod=tracer,
+    )
+    assert verdict_res["ok"] is True
+    assert verdict_res["verification_id"].startswith("verdict-")
+    assert pcg.is_armed(session_id) is False
+
+
+def test_teammate_message_send_message_arms_gate_and_records_verdict_for_non_default_agent():
+    session_id = "sess-teammate-sendmsg"
+    report_text, reason_tmpl = _valid_report_argdown("tg-1")
+    prompt = (
+        "Another Claude session sent a message:\n"
+        f'<teammate-message id="worker-report-1" teammate_id="worker" color="blue" summary="Task finished">\n{report_text}\n</teammate-message>\n\n'
+        "This came from another Claude session — not typed by your user, but very likely working on their behalf."
+    )
+    arm_res = pcg.premise_check_arm(_prompt_ctx(session_id, prompt, agent_type="subagent-lead"))
+    assert arm_res is not None
+    assert pcg.is_armed(session_id) is True
+    assert pcg.get_state(session_id)["claim_id"] == "worker-report-1"
+
+    # PreToolUse refuses dispatch while armed
+    res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id, agent_type="subagent-lead"))
+    assert res is not None and res.kind == dispatch.Kind.REFUSE
+
+    # Verdict records with verification id and disarms the gate
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    verdict_res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="worker-report-1",
+        verdict="PASS",
+        reason=reason_tmpl.format(claim_id="worker-report-1"),
+        tracer_mod=tracer,
+    )
+    assert verdict_res["ok"] is True
+    assert verdict_res["verification_id"].startswith("verdict-")
+    assert pcg.is_armed(session_id) is False
+
+
+_GLUED_RESULT_EXAMPLE = (
+    "<task-notification>\n"
+    "<task-id>a0000000000000001</task-id>\n"
+    "<output-file>/tmp/example/tasks/a0000000000000001.output</output-file>\n"
+    "<status>completed</status>\n"
+    '<summary>Agent "Dispatch example fix" finished</summary>\n'
+    "<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>\n"
+    "<result>I dispatched the fix to a worker. It is still running, so there is no PR yet.\n\n"
+    '- **Task:** `task_0001`, "Example task title". It is at `queued`.\n'
+    "- **Worker:** container `worker-task_0001-20260101`. The launch call returned no error.\n\n"
+    "I compared the task's Goal and Acceptance with the user's message `msg-001`. Nothing is missing, and nothing was added.\n\n"
+    "```argdown\n"
+    "===\n"
+    "asks:\n"
+    "  ida/1: What was dispatched, with task id and worker or PR link.\n"
+    "answers:\n"
+    "  ida/1: 4\n"
+    "notes:\n"
+    "  a: get_task task_0001\n"
+    "  b: run_container result\n"
+    "===\n\n"
+    "(1) The task task_0001, status queued, says what the user asked in msg-001: the requested change, PR into the release branch. -- I read the record ^a\n"
+    "-- A queued task whose Goal and Acceptance say what the ask says is a faithful, ready task. Unless: the body leaves out or adds meaning; ruled out by reading it against msg-001. --\n"
+    "(2) So the task is ready to dispatch.\n"
+    '(3) The run_container call for container polecat-agy-task_0001-20261027 returned no error, with state "created". -- I made the call ^b\n'
+    '-- A run call that returns no error launches the worker. Unless: the container never left "created"; not ruled out, since I did not read its status. --\n'
+    "(4) So task_0001 was dispatched to that container; the PR link follows when it completes.\n"
+    "```</result>\n"
+    "<usage><subagent_tokens>50000</subagent_tokens><tool_uses>9</tool_uses><duration_ms>100000</duration_ms></usage>\n"
+    "</task-notification>\n"
+)
+
+
+def test_gate_argument_block_reading_finds_block_when_closing_fence_glued_to_result():
+    """AC1/AC2: Feeds the task notification example with glued ```</result> closing fence.
+
+    The gate's argument-block reading must find the argdown block rather than
+    wrongly concluding that no argument block was supplied.
+    """
+    # 1. Direct argument-block reader:
+    block = ra.extract_block(_GLUED_RESULT_EXAMPLE)
+
+    # 2. Gate arm handler reading:
+    ctx = _prompt_ctx("sess-glued-result", _GLUED_RESULT_EXAMPLE)
+    res = pcg.premise_check_arm(ctx)
+
+    assert block is not None, (
+        f"exposes wrong 'no argument block' result from gate: {res.inject_text if res else ''}"
+    )
+    assert res is not None
+    assert "no argument block supplied" not in res.inject_text
+
+
+def test_issue_3181_verdict_pass_on_glued_task_notification_succeeds():
+    """Issue #3181: Coordinator records PASS on a <task-notification> with glued ```</result>."""
+    session_id = "sess-issue-3181"
+    report_text, reason_tmpl = _valid_report_argdown("ida/1")
+    glued_prompt = (
+        "<task-notification>\n"
+        "<task-id>task-3181</task-id>\n"
+        f"<result>{report_text}</result>\n"
+        "</task-notification>"
+    )
+    ctx = _prompt_ctx(session_id, glued_prompt)
+    res = pcg.premise_check_arm(ctx)
+    assert res is not None
+    assert pcg.is_armed(session_id) is True
+    claim_id = pcg.get_state(session_id)["claim_id"]
+
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    verdict_res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=claim_id,
+        verdict="PASS",
+        reason=reason_tmpl.format(claim_id=claim_id),
+        tracer_mod=tracer,
+    )
+    assert verdict_res["ok"] is True
+    assert pcg.is_armed(session_id) is False
+
+
+def test_issue_3182_task_notification_unwraps_result_in_judged_text():
+    """Issue #3182: Gate unwraps <result> body from <task-notification> as judged text."""
+    session_id = "sess-issue-3182"
+    ctx = _prompt_ctx(session_id, _GLUED_RESULT_EXAMPLE)
+    res = pcg.premise_check_arm(ctx)
+    assert res is not None
+    claim_id = pcg.get_state(session_id)["claim_id"]
+    judged_text, _ = pcg.get_judged(session_id, claim_id)
+    assert judged_text is not None
+    assert not judged_text.startswith("<task-notification")
+    assert "<usage>" not in judged_text
+    assert "<task-id>" not in judged_text
+    assert judged_text.startswith("I dispatched the fix to a worker.")
+
+
+def test_format_verdict_command_resolves_symlinked_skill_path_and_includes_session(
+    tmp_path, monkeypatch
+):
+    """AC1 (#3543): hook-formatted verdict commands resolve symlinked skill paths to the real
+    plugin project directory (with pyproject.toml) and include --session <session_id>."""
+    # Real plugin directory where pyproject.toml and opentelemetry live
+    real_plugin_dir = tmp_path / "real_plugin_ida"
+    real_skills = real_plugin_dir / "skills" / "premise-check" / "scripts"
+    real_skills.mkdir(parents=True)
+    real_script = real_skills / "verdict.py"
+    real_script.write_text("#!/usr/bin/env python3\n")
+    (real_plugin_dir / "pyproject.toml").write_text('[project]\nname = "ida"\nversion = "1.0.0"\n')
+
+    # Workspace directory with symlinked .agents/skills/premise-check
+    workspace = tmp_path / "workspace"
+    workspace_agents = workspace / ".agents"
+    workspace_skills = workspace_agents / "skills"
+    workspace_skills.mkdir(parents=True)
+    symlinked_skill = workspace_skills / "premise-check"
+    symlinked_skill.symlink_to(real_plugin_dir / "skills" / "premise-check")
+
+    symlinked_script = symlinked_skill / "scripts" / "verdict.py"
+    assert symlinked_script.is_file()
+
+    # Even if AOPS_SESSION_ID is set in the hook environment,
+    # the formatted command must resolve --project to real_plugin_dir and include --session <session_id>
+    monkeypatch.setenv("AOPS_SESSION_ID", "env-session-id")
+    cmd = pcg.format_verdict_command(
+        claim_id="claim-symlink-test",
+        hooks_dir=symlinked_skill,
+        session_id="target-session-xyz",
+    )
+    tokens = shlex.split(cmd)
+    assert "--project" in tokens
+    proj_idx = tokens.index("--project") + 1
+    assert Path(tokens[proj_idx]).resolve() == real_plugin_dir.resolve()
+    assert tokens[proj_idx] != str(workspace_agents)
+    assert "--session" in tokens
+    sess_idx = tokens.index("--session") + 1
+    assert tokens[sess_idx] == "target-session-xyz"

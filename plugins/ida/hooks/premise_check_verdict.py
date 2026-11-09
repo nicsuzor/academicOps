@@ -4,7 +4,8 @@
 A verdict is one token (PASS, REVISE, FAIL) and the checker's reason. A PASS
 reason must carry every keyed line of the skill's checker reason and pass
 the mechanical cross-checks against the judged text the gate stored at arm
-time; REVISE and FAIL take any reason. The reason may come from a file or stdin
+time; REVISE and FAIL need a failing step, an unanswered ask, or (REVISE only)
+a ``Format:`` slip when their Valid lines all hold. The reason may come from a file or stdin
 so that free text stays off the command line, where harness guards scan it.
 
 A verdict is recorded only once its span is exported: an unconfigured tracer or
@@ -17,6 +18,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -26,6 +28,33 @@ import report_argument as ra
 from premise_check_gate import disarm, get_judged, get_state, is_armed, mint_verification_id
 
 VERDICTS: tuple[str, ...] = ("PASS", "REVISE", "FAIL")
+
+_TASK_ID_RE = re.compile(
+    r"^(?:task|epic|aops|wf)[_-][a-zA-Z0-9_-]+$"
+    r"|^(?:[a-z][a-z0-9-]*[_-])?[0-9a-f]{8}$"
+    r"|^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    r"|^(?:engine-)?task-\d+$",
+    re.IGNORECASE,
+)
+_NON_TASK_PREFIXES = ("claim-", "verdict-", "report-", "toolu_")
+_KNOWN_NON_TASK_IDS = {"ns", "default", "academicops", "aops"}
+
+
+def is_task_id(identifier: str) -> bool:
+    """Return True if identifier resembles a task or epic ID."""
+    if not identifier:
+        return False
+    tid = identifier.strip()
+    low = tid.lower()
+    if low in _KNOWN_NON_TASK_IDS:
+        return False
+    if any(low.startswith(p) for p in _NON_TASK_PREFIXES):
+        return False
+    if _TASK_ID_RE.match(tid):
+        return True
+    if re.match(r"^[a-z][a-z0-9_.-]*[_-][0-9a-f]{6,}$", tid, re.IGNORECASE):
+        return True
+    return False
 
 
 def _import_claude_code_tracer() -> Any:
@@ -57,14 +86,39 @@ def _export_tool_span(
     if config is None:
         config = tracer_mod.discover_config()
     if config is None:
+        err_msg = (
+            "ERROR: Premise-check verdict cannot be recorded: OpenTelemetry tracing unconfigured (no endpoint). "
+            "Gate remains armed."
+        )
+        print(err_msg, file=sys.stderr)
         raise RuntimeError("premise_check_verdict: tracing is not configured (no OTel endpoint)")
 
     now_ns = time.time_ns()
     trace_id = tracer_mod._new_trace_id()
     parent_span_id = tracer_mod._new_span_id()
 
-    phoenix_session_id = os.environ.get("AOPS_SESSION_ID") or session_id
-    state = tracer_mod._load_state(phoenix_session_id)
+    env_session_id = os.environ.get("AOPS_SESSION_ID")
+    state = tracer_mod._load_state(session_id) if session_id else {}
+    if not state and env_session_id and env_session_id != session_id:
+        state = tracer_mod._load_state(env_session_id)
+
+    agent_id = None
+    parent_session_id = None
+    if state and hasattr(tracer_mod, "_resolve_agent_and_parent_ids"):
+        phoenix_session_id, agent_id, parent_session_id = tracer_mod._resolve_agent_and_parent_ids(
+            state
+        )
+    else:
+        raw_phx = (
+            (state.get("phoenix_session_id") if state else None) or env_session_id or session_id
+        )
+        phoenix_session_id = str(raw_phx).split("/", 1)[0]
+        if session_id and session_id != phoenix_session_id:
+            agent_id = session_id.split("/", 1)[1] if "/" in session_id else session_id
+            parent_session_id = (
+                state.get("parent_session_id") if state else None
+            ) or phoenix_session_id
+
     current_trace = state.get("current_trace") if state else None
     if current_trace:
         trace_id = current_trace["trace_id"]
@@ -85,18 +139,33 @@ def _export_tool_span(
     record["attributes"]["aops.surface"] = surface
 
     username = os.environ.get("USER") or os.environ.get("USERNAME") or None
+    export_kwargs: dict[str, Any] = {
+        "config": config,
+        "session_id": phoenix_session_id,
+        "username": username,
+        "span_records": [record],
+        "service_name": "aops-verdict-hooks",
+        "surface": surface,
+    }
+    if agent_id:
+        export_kwargs["agent_id"] = agent_id
+    if parent_session_id:
+        export_kwargs["parent_session_id"] = parent_session_id
     try:
-        exported = tracer_mod._build_and_export_spans(
-            config=config,
-            session_id=phoenix_session_id,
-            username=username,
-            span_records=[record],
-            service_name="aops-verdict-hooks",
-            surface=surface,
-        )
+        exported = tracer_mod._build_and_export_spans(**export_kwargs)
     except Exception as exc:
+        err_msg = (
+            f"ERROR: Premise-check verdict cannot be recorded: OpenTelemetry export failed ({exc!r}). "
+            "Gate remains armed."
+        )
+        print(err_msg, file=sys.stderr)
         raise RuntimeError(f"premise_check_verdict: OTel span export failed: {exc!r}") from exc
     if exported is not True:
+        err_msg = (
+            "ERROR: Premise-check verdict cannot be recorded: OpenTelemetry span export was not acknowledged. "
+            "Gate remains armed."
+        )
+        print(err_msg, file=sys.stderr)
         raise RuntimeError("premise_check_verdict: OTel span export failed")
 
 
@@ -248,6 +317,40 @@ def emit_claim_span(
     return True
 
 
+def emit_hearsay_span(
+    tracer_mod: Any,
+    session_id: str,
+    claim_id: str,
+    event: str,
+    judged_ref: str | None = None,
+    attributes: dict[str, Any] | None = None,
+    config: dict[str, Any] | None = None,
+) -> bool:
+    """Ship one TOOL span for this hearsay check via claude_code_tracer's pipeline."""
+    attrs: dict[str, Any] = {
+        "hearsay.claim_id": claim_id,
+        "hearsay.event": event,
+        "hearsay.status": "armed",
+        "premise_check.claim_id": claim_id,
+    }
+    if judged_ref:
+        attrs["hearsay.judged_ref"] = judged_ref
+        attrs["premise_check.judged_ref"] = judged_ref
+    if attributes:
+        attrs.update(attributes)
+
+    _export_tool_span(
+        tracer_mod,
+        session_id,
+        "hearsay_check",
+        {"claim_id": claim_id, "event": event},
+        {"status": "armed"},
+        attrs,
+        config,
+    )
+    return True
+
+
 def judge_reason(token: str, reason: str, judged_text: str | None) -> dict[str, Any]:
     """Parse the reason against the judged block; for PASS, refuse on any failed check.
 
@@ -256,16 +359,103 @@ def judge_reason(token: str, reason: str, judged_text: str | None) -> dict[str, 
     """
     vocab = ra.load_vocabulary()
     parsed = ra.parse_reason(reason, vocab)
-    block_text = ra.extract_block(judged_text)
-    block = ra.parse_block(block_text, vocab) if block_text is not None else None
+    block_text = _block_as_waived(ra.extract_block(judged_text), parsed, vocab)
+    block_err: str | None = None
+    if token == "PASS" and block_text is not None and not ra.is_null_form(block_text):
+        if "block" not in parsed.waived_items(vocab):
+            valid, parser_output, _ = ra.check_argdown_block(block_text)
+            if not valid:
+                block_err = parser_output
+
+    block = (
+        ra.parse_block(block_text, vocab)
+        if (block_text is not None and block_err is None)
+        else None
+    )
     if token == "PASS":
-        failures = ra.pass_failures(parsed, block, vocab)
+        failures = ra.pass_failures(
+            parsed,
+            block,
+            vocab,
+            is_null=ra.is_null_form(block_text),
+            block_text=block_text,
+            block_error=block_err,
+        )
         if failures:
+            formatted = []
+            for f in failures:
+                remedy = ra.remediation_for_failure(f)
+                if remedy:
+                    formatted.append(f"{f}\n{remedy}")
+                else:
+                    formatted.append(f)
             raise ValueError(
                 "PASS refused -- the reason fails the recorder's checks "
-                "(see the premise-check skill's checker reason):\n- " + "\n- ".join(failures)
+                "(see the premise-check skill's checker reason):\n- " + "\n- ".join(formatted)
             )
-    return ra.span_attributes(parsed, block, vocab)
+    elif token in ("REVISE", "FAIL"):
+        valid_lines = parsed.get("Valid")
+        if valid_lines:
+            valid_entries = parsed.valid_entries()
+            all_hold = all(m is not None and m.group("word") == "holds" for m in valid_entries)
+            if all_hold:
+                has_unanswered = False
+                for ans in parsed.answered():
+                    if ans is not None and ans[1] is None:
+                        has_unanswered = True
+                        break
+                if not has_unanswered:
+                    for entry in parsed.get("Answered"):
+                        if "unanswered" in entry.lower():
+                            has_unanswered = True
+                            break
+                if not has_unanswered:
+                    for line in reason.splitlines():
+                        if re.search(r"^\s*asks?\s*:.*?\bunanswered\b", line, re.IGNORECASE):
+                            has_unanswered = True
+                            break
+                has_format = token == "REVISE" and bool(_format_items(reason, vocab))
+                if not has_unanswered and not has_format:
+                    raise ValueError(
+                        f"{token} refused -- reason has Valid entries that all hold and no "
+                        f"Ask: ... -> unanswered; {token} requires at least one failing "
+                        f"inference step ('Valid: (n) fails -- <defect>') or unanswered ask"
+                        + (", or a format defect to fix" if token == "REVISE" else "")
+                        + ".\n"
+                        f"Required remediation format: Reason must follow the schema in `ida:premise-check`. "
+                        f"For {token}, record at least one of:\n"
+                        f"  Valid: (n) fails #<defect-tag> -- <explanation of failure>\n"
+                        f"  Answered: <ask_id> unanswered"
+                        + (
+                            f"\n  Format: <format item> -- <what to fix>   "
+                            f"(format items: {', '.join(vocab.format_items)})"
+                            if token == "REVISE"
+                            else ""
+                        )
+                        + "\nLoad the premise-check skill (`ida:premise-check`) to inspect the required format before resubmitting."
+                    )
+    attrs = ra.span_attributes(parsed, block, vocab)
+    if token == "REVISE" and (items := _format_items(reason, vocab)):
+        attrs["premise_check.format_items"] = items
+    return attrs
+
+
+_FORMAT_LINE = re.compile(r"^\s*Format\s*:\s*(?P<value>.+)$")
+
+
+def _format_items(reason: str, vocab: Any) -> list[str]:
+    """Format items named by the reason's ``Format:`` lines (a REVISE for a format slip)."""
+    entries = [
+        m.group("value").strip() for ln in reason.splitlines() if (m := _FORMAT_LINE.match(ln))
+    ]
+    return ra._parse_waived_entries(entries, vocab)[0] if entries else []
+
+
+def _block_as_waived(block_text: str | None, parsed: Any, vocab: Any) -> str | None:
+    """The judged block with a waived ``numbering`` slip in ``answers`` normalised."""
+    if block_text is not None and "numbering" in parsed.waived_items(vocab):
+        return ra.unparenthesise_answers(block_text)
+    return block_text
 
 
 def record_verdict(
@@ -275,6 +465,9 @@ def record_verdict(
     reason: str = "",
     title: str | None = None,
     tracer_mod: Any | None = None,
+    machine: bool = False,
+    judged_file: str | Path | None = None,
+    judged_text: str | None = None,
 ) -> dict[str, Any]:
     """Validate, emit the span, and disarm the premise check."""
     cid = (claim_id or "").strip()
@@ -288,19 +481,79 @@ def record_verdict(
     if not reason:
         raise ValueError("a verdict needs a reason; got none")
 
-    if not is_armed(session_id):
-        raise ValueError(f"no premise check is currently armed for session {session_id!r}")
+    armed = is_armed(session_id)
+    is_task_claim = is_task_id(cid)
 
-    state = get_state(session_id)
-    expected_id = state.get("claim_id")
-    valid_ids = state.get("claim_ids") or ([expected_id] if expected_id else [])
-    if cid != expected_id and cid not in valid_ids:
-        raise ValueError(
-            f"unknown or mismatched report id {cid!r}; gate is armed for {expected_id!r}"
-        )
+    if not armed:
+        if not is_task_claim and judged_file is None:
+            raise ValueError(f"no premise check is currently armed for session {session_id!r}")
+        state = get_state(session_id)
+    else:
+        state = get_state(session_id)
+        expected_id = state.get("claim_id")
+        valid_ids = state.get("claim_ids") or ([expected_id] if expected_id else [])
+        if cid != expected_id and cid not in valid_ids:
+            if not is_task_claim and judged_file is None:
+                raise ValueError(
+                    f"unknown or mismatched report id {cid!r}; gate is armed for {expected_id!r}"
+                )
 
-    judged_text, judged_ref = get_judged(session_id, cid)
+    if judged_file is not None:
+        jf_path = Path(judged_file)
+        if not jf_path.is_file():
+            raise FileNotFoundError(f"judged file not found: {judged_file!r}")
+        judged_text = jf_path.read_text(encoding="utf-8")
+        judged_ref = str(judged_file)
+    elif judged_text is None:
+        judged_text, judged_ref = get_judged(session_id, cid)
+        if is_task_claim and not judged_ref:
+            judged_ref = cid
+
+    block_text = ra.extract_block(judged_text)
+
+    entry = (state.get("judged") or {}).get(cid, {})
+    block_expected = bool(entry.get("block_expected") or state.get("block_expected"))
+    is_peer = block_expected or any(
+        str(judged_ref or "").startswith(prefix)
+        for prefix in ("<cross-session-message", "<teammate-message", "<task-notification")
+    )
+
+    if token == "PASS":
+        if (is_peer or is_task_claim) and judged_text is None:
+            raise ValueError(
+                f"PASS refused -- missing gate storage for claim {cid!r}: no judged text was stored "
+                f"for this claim at arm time. Supply the report text using --judged-file <path>."
+            )
+        if is_peer and block_text is None:
+            raise ValueError(
+                "PASS refused -- no argument block in judged text: an absent block cannot pass; "
+                "send the message back for revision\n"
+                "Defect: The judged text does not contain a fenced ```argdown block.\n"
+                "Required remediation: Return the message for revision and instruct the sender:\n"
+                "  Load the premise-check skill (`ida:premise-check`) before writing your report; "
+                "its Argdown dialect is a restricted subset of Argdown, so do not write the block from memory.\n"
+                "  Command: verdict.py --claim <id> --verdict REVISE --reason-file <path>"
+            )
+
+    # Machine check on Argdown block for PASS verdicts unless block is waived
+    if token == "PASS" and block_text is not None and not ra.is_null_form(block_text):
+        vocab = ra.load_vocabulary()
+        parsed_reason = ra.parse_reason(reason, vocab)
+        if "block" not in parsed_reason.waived_items(vocab):
+            valid, parser_output, _ = ra.check_argdown_block(
+                _block_as_waived(block_text, parsed_reason, vocab) or block_text
+            )
+            if not valid:
+                raise ValueError(
+                    f"PASS verdict refused for {cid}: could not parse argdown block:\n{parser_output}\n"
+                    f"Required remediation: The argdown block failed syntax validation. Return the message "
+                    f"for revision and instruct the sender to load `ida:premise-check` before resending, "
+                    f"or waive under `Waived: block -- <reason>` if format-only."
+                )
+
     attributes = judge_reason(token, reason, judged_text)
+    if machine:
+        attributes["premise_check.machine"] = True
     attributes["premise_check.judged_ref"] = judged_ref or ""
     attributes["premise_check.judged_text_sha256"] = (
         hashlib.sha256(judged_text.encode("utf-8")).hexdigest() if judged_text is not None else ""
@@ -330,6 +583,7 @@ def record_verdict(
         reason,
         verification_id=verification_id,
         title=clean_title,
+        machine=bool(attributes.get("premise_check.machine")),
     )
 
     result: dict[str, Any] = {
@@ -337,10 +591,11 @@ def record_verdict(
         "verification_id": verification_id,
         "claim_id": cid,
         "verdict": token,
+        "reason": reason,
         "span_emitted": True,
-        "span_error": None,
         "disarmed": True,
         "no_claim": bool(attributes.get("premise_check.no_claim")),
+        "machine": bool(attributes.get("premise_check.machine")),
     }
     if clean_title:
         result["title"] = clean_title
@@ -403,6 +658,61 @@ def _read_reason(path: str) -> str:
     return Path(path).read_text(encoding="utf-8")
 
 
+def resolve_session_id(session_arg: str = "", claim_id: str = "") -> str:
+    """Resolve active session ID from CLI arg, environment, or on-disk session state."""
+    if session_arg and session_arg.strip():
+        return session_arg.strip()
+
+    for var in (
+        "AOPS_SESSION_ID",
+        "CLAUDE_SESSION_ID",
+        "SESSION_ID",
+        "ANTIGRAVITY_SESSION_ID",
+        "GEMINI_SESSION_ID",
+    ):
+        val = os.environ.get(var, "").strip()
+        if val:
+            return val
+
+    claude_env = os.environ.get("CLAUDE_ENV_FILE")
+    if claude_env and Path(claude_env).is_file():
+        try:
+            content = Path(claude_env).read_text(encoding="utf-8")
+            for line in content.splitlines():
+                if "AOPS_SESSION_ID=" in line:
+                    match = re.search(r'AOPS_SESSION_ID=["\']?([^"\'\s]+)', line)
+                    if match:
+                        return match.group(1).strip()
+        except OSError:
+            pass
+
+    from premise_check_gate import _state_dir
+
+    state_dir = _state_dir()
+    if state_dir.is_dir():
+        state_files = list(state_dir.glob("*.json"))
+        # 1. Match claim_id in state
+        if claim_id:
+            for sfile in state_files:
+                try:
+                    data = json.loads(sfile.read_text(encoding="utf-8"))
+                    cid = data.get("claim_id")
+                    cids = data.get("claim_ids") or []
+                    judged = data.get("judged") or {}
+                    last_verdict = data.get("last_verdict") or {}
+                    if (
+                        claim_id == cid
+                        or claim_id in cids
+                        or claim_id in judged
+                        or claim_id == last_verdict.get("claim_id")
+                    ):
+                        return sfile.stem
+                except (json.JSONDecodeError, OSError):
+                    continue
+
+    return ""
+
+
 def main(argv: list[str] | None = None) -> int:
     # Support claim subcommand
     if argv and argv[0] in ("claim", "claims", "file-claims"):
@@ -434,10 +744,17 @@ def main(argv: list[str] | None = None) -> int:
             help="Session id. Defaults to $AOPS_SESSION_ID.",
         )
         cargs = claim_parser.parse_args(argv[1:])
+        session_id = resolve_session_id(cargs.session, cargs.claim)
+        if not session_id:
+            print(
+                "premise_check_claim: no session id ($AOPS_SESSION_ID unset, --session not given, and no session state available)",
+                file=sys.stderr,
+            )
+            return 1
         text = cargs.argdown if cargs.argdown is not None else _read_reason(cargs.argdown_file)
         try:
             result = record_claims(
-                session_id=cargs.session,
+                session_id=session_id,
                 claim_id=cargs.claim,
                 argdown_text=text,
                 title=cargs.title,
@@ -465,7 +782,6 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--verdict",
-        required=True,
         type=str.upper,
         choices=VERDICTS,
         help="PASS, REVISE or FAIL.",
@@ -475,7 +791,13 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Optional short title for the verification.",
     )
-    reason = parser.add_mutually_exclusive_group(required=True)
+    parser.add_argument(
+        "--judged-file",
+        dest="judged_file",
+        default=None,
+        help="Read the judged report or text from this file.",
+    )
+    reason = parser.add_mutually_exclusive_group()
     reason.add_argument("--reason", help="The checker's reason, inline.")
     reason.add_argument(
         "--reason-file",
@@ -489,21 +811,37 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
 
-    if not args.session:
+    session_id = resolve_session_id(args.session, args.claim)
+    if not session_id:
         print(
-            "premise_check_verdict: no session id ($AOPS_SESSION_ID unset and --session not given)",
+            "premise_check_verdict: no session id ($AOPS_SESSION_ID unset, --session not given, and no session state available)",
             file=sys.stderr,
         )
         return 1
 
+    if not args.verdict:
+        print(
+            "premise_check_verdict: error: the following arguments are required: --verdict",
+            file=sys.stderr,
+        )
+        return 2
+
+    if not args.reason and not args.reason_file:
+        print(
+            "premise_check_verdict: error: one of --reason or --reason-file is required",
+            file=sys.stderr,
+        )
+        return 2
+
     try:
         text = args.reason if args.reason is not None else _read_reason(args.reason_file)
         result = record_verdict(
-            session_id=args.session,
+            session_id=session_id,
             claim_id=args.claim,
             verdict=args.verdict,
             reason=text,
             title=args.title,
+            judged_file=args.judged_file,
         )
     except (OSError, ValueError, RuntimeError, ImportError) as exc:
         print(f"premise_check_verdict: {exc}", file=sys.stderr)

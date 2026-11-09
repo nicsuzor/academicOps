@@ -233,6 +233,22 @@ def test_tool_detail_names_what_a_call_acted_on():
     ) == ('python3 -c " print(1) "')
 
 
+def test_tool_action_extracts_tool_summary():
+    code = "async () => { const a = await codemode.pkb_claim_task({ id: 'aops_fa4c6994' }); }"
+    agy = {
+        "ServerName": "services",
+        "ToolName": "portal_codemode_execute",
+        "Arguments": {"code": code, "toolSummary": "Claim task aops_fa4c6994"},
+    }
+    assert pt.tool_action(json.dumps(agy)) == "Claim task aops_fa4c6994"
+
+    direct = {
+        "code": code,
+        "toolSummary": "Search documents for ambiguous terms",
+    }
+    assert pt.tool_action(json.dumps(direct)) == "Search documents for ambiguous terms"
+
+
 def test_resolve_endpoint_from_environment_variables(monkeypatch):
     """AC1: With only PHOENIX_MCP_URL and PHOENIX_MCP_PROJECT set, resolve from env vars."""
     monkeypatch.setenv("PHOENIX_MCP_URL", "http://phoenix.internal:6006/")
@@ -270,3 +286,257 @@ def test_resolve_endpoint_supplies_no_default_when_unset(monkeypatch):
     with pytest.raises(pt.ConfigError) as exc_proj:
         pt.resolve_project(None)
     assert "no Phoenix project" in str(exc_proj.value)
+
+
+def test_phoenix_trace_and_token_cost_canonical_env_vars_only(monkeypatch):
+    """phoenix_trace and phoenix_token_cost resolve only PHOENIX_MCP_URL / PHOENIX_MCP_PROJECT and reject legacy vars."""
+    import phoenix_token_cost as ptc
+    import phoenix_trace as ptr
+
+    monkeypatch.delenv("PHOENIX_MCP_URL", raising=False)
+    monkeypatch.delenv("PHOENIX_MCP_PROJECT", raising=False)
+    monkeypatch.setenv("PHOENIX_BASE_URL", "http://legacy-base:6006")
+    monkeypatch.setenv("PHOENIX_COLLECTOR_ENDPOINT", "http://legacy-collector:6006")
+    monkeypatch.setenv("PHOENIX_PROJECT_NAME", "legacy-project")
+
+    with pytest.raises(ptc.ConfigError, match="PHOENIX_MCP_URL"):
+        ptc.resolve_base_url(None)
+    with pytest.raises(ptr.ConfigError, match="PHOENIX_MCP_URL"):
+        ptr.resolve_base_url(None)
+    with pytest.raises(ptr.ConfigError, match="PHOENIX_MCP_PROJECT"):
+        ptr.resolve_project_name(None, None)
+
+    monkeypatch.setenv("PHOENIX_MCP_URL", "https://mcp.example.test/mcp/")
+    monkeypatch.setenv("PHOENIX_MCP_PROJECT", "academicOps")
+    assert ptc.resolve_base_url(None) == "https://mcp.example.test/mcp"
+    assert ptr.resolve_base_url(None) == "https://mcp.example.test/mcp"
+    assert ptr.resolve_project_name(None, None) == "academicOps"
+
+
+def test_get_json_routes_through_services_mcp_proxy(monkeypatch):
+    """get_json translates Phoenix /v1/projects REST URLs into phoenix_execute MCP JSON-RPC calls with CF Access headers."""
+    import phoenix_token_cost as ptc
+
+    monkeypatch.setenv("DISPATCHER_MCP_TOKEN_ID", "test-cf-id")
+    monkeypatch.setenv("DISPATCHER_MCP_TOKEN_SECRET", "test-cf-secret")
+    ptc._MCP_SESSIONS.clear()
+
+    recorded_requests = []
+
+    class FakeResponse:
+        def __init__(self, body: str, headers: dict[str, str] | None = None):
+            self._body = body.encode("utf-8")
+            self.headers = headers or {}
+
+        def read(self) -> bytes:
+            return self._body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    def fake_urlopen(req, timeout=None):
+        payload = json.loads(req.data.decode("utf-8"))
+        headers = {k.lower(): v for k, v in req.header_items()}
+        recorded_requests.append((req.full_url, headers, payload))
+        if payload.get("method") == "initialize":
+            return FakeResponse(
+                json.dumps({"jsonrpc": "2.0", "id": 1, "result": {}}),
+                headers={"mcp-session-id": "mcp-sess-123"},
+            )
+        inner = json.dumps({"data": [{"id": "proj-1", "name": "academicOps"}], "next_cursor": None})
+        sse = (
+            "event: message\n"
+            + "data: "
+            + json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "result": {"content": [{"type": "text", "text": inner}], "isError": False},
+                }
+            )
+            + "\n\n"
+        )
+        return FakeResponse(sse)
+
+    monkeypatch.setattr(ptc.urllib.request, "urlopen", fake_urlopen)
+
+    url = (
+        "https://mcp.example.test/mcp/v1/projects/academicOps/spans"
+        "?attribute=session.id%3Asess-42&limit=500"
+    )
+    res = pt.get_json(url)
+    assert res == {"data": [{"id": "proj-1", "name": "academicOps"}], "next_cursor": None}
+    assert len(recorded_requests) == 2
+
+    init_url, init_headers, init_payload = recorded_requests[0]
+    assert init_url == "https://mcp.example.test/mcp"
+    assert init_headers["cf-access-client-id"] == "test-cf-id"
+    assert init_headers["cf-access-client-secret"] == "test-cf-secret"
+    assert init_payload["method"] == "initialize"
+
+    call_url, call_headers, call_payload = recorded_requests[1]
+    assert call_url == "https://mcp.example.test/mcp"
+    assert call_headers["mcp-session-id"] == "mcp-sess-123"
+    assert call_payload["params"]["name"] == "phoenix_execute"
+    assert (
+        call_payload["params"]["arguments"]["code"]
+        == 'return await call_tool("getSpans", {"project_identifier": "academicOps", "limit": 500, "attribute": ["session.id:sess-42"]})'
+    )
+
+
+def test_sanitize_paths(monkeypatch):
+    monkeypatch.setenv("HOME", "/home/testuser")
+    raw = (
+        '{"path": "/home/testuser/project/file.py", '
+        '"other": "/Users/developer/code/script.sh", '
+        '"win": "C:\\\\Users\\\\alice\\\\data.txt", '
+        '"tmp": "/tmp/claude-1000-xyz123/scratchpad"}'
+    )
+    sanitized = pt.sanitize_paths(raw)
+    assert "/home/testuser" not in sanitized
+    assert "/Users/developer" not in sanitized
+    assert "C:\\\\Users\\\\alice" not in sanitized
+    assert "/tmp/claude-1000-xyz123" not in sanitized
+    assert "~/project/file.py" in sanitized
+    assert "~/code/script.sh" in sanitized
+    assert "~\\\\data.txt" in sanitized
+    assert "/tmp/claude-session/scratchpad" in sanitized
+
+
+def test_transcript_and_outline_with_sanitize_paths(tmp_path):
+    spans_data = [
+        span(
+            "t1",
+            "Bash",
+            "TOOL",
+            1,
+            2,
+            **{
+                "tool.call_id": "toolu_1",
+                "tool.name": "Bash",
+                "input.value": json.dumps({"command": "ls /home/nic/academicOps"}),
+                "output.value": "/home/nic/academicOps/README.md",
+            },
+        ),
+        span("i1", "interaction", "AGENT", 0.5, 2.5, user_prompt="Check /home/nic/academicOps"),
+    ]
+    spans_file = tmp_path / "spans.json"
+    spans_file.write_text(json.dumps({"data": spans_data}))
+    out = tmp_path / "sanitized.transcript.md"
+    assert (
+        pt.main(
+            [
+                SESSION[:8],
+                "--from-file",
+                str(spans_file),
+                "--out",
+                str(out),
+                "--sanitize-paths",
+            ]
+        )
+        == 0
+    )
+    transcript = out.read_text()
+    outline = (tmp_path / "sanitized.outline.md").read_text()
+    assert "/home/nic" not in transcript
+    assert "~/academicOps" in transcript
+    assert "/home/nic" not in outline
+    assert "~/academicOps" in outline
+
+
+def test_turn_links_to_own_spans_in_transcript_and_outline():
+    """AC1: Every turn in each markdown output links to its own span(s) in Phoenix."""
+    spans = two_emitter_turn()
+    turns = pt.assemble(spans, SESSION, pt.PRICES)
+    full, outline, _ = pt.render(
+        turns,
+        SESSION,
+        "academicOps",
+        spans,
+        pt.PRICES,
+        ui_base_url="https://phoenix.example.test",
+    )
+    # Both c1 and i1 are turn roots
+    assert "https://phoenix.example.test/redirects/spans/c1" in full
+    assert "https://phoenix.example.test/redirects/spans/i1" in full
+    assert "https://phoenix.example.test/redirects/spans/c1" in outline
+    assert "https://phoenix.example.test/redirects/spans/i1" in outline
+
+
+def test_turn_links_to_session_in_transcript_and_outline():
+    """AC2: Every turn links to its session in Phoenix."""
+    spans = two_emitter_turn()
+    turns = pt.assemble(spans, SESSION, pt.PRICES)
+    full, outline, _ = pt.render(
+        turns,
+        SESSION,
+        "academicOps",
+        spans,
+        pt.PRICES,
+        ui_base_url="https://phoenix.example.test",
+    )
+    expected_session_link = f"[session](https://phoenix.example.test/redirects/sessions/{SESSION})"
+    assert expected_session_link in full
+    assert expected_session_link in outline
+
+
+def test_resolve_ui_base_url(monkeypatch):
+    """Test resolution and derivation of Phoenix UI URL."""
+    monkeypatch.delenv("PHOENIX_UI_URL", raising=False)
+    # Derived from standard Phoenix base URL
+    assert (
+        pt.resolve_ui_base_url(None, "http://phoenix.internal:6006")
+        == "http://phoenix.internal:6006"
+    )
+    assert pt.resolve_ui_base_url(None, "http://localhost:6006/") == "http://localhost:6006"
+
+    # Derived from MCP proxy gateway URL (mcp. -> phoenix., strip /mcp)
+    assert pt.resolve_ui_base_url(None, "https://mcp.suzor.com/mcp") == "https://phoenix.suzor.com"
+    assert (
+        pt.resolve_ui_base_url(None, "https://mcp.example.com/mcp") == "https://phoenix.example.com"
+    )
+
+    # Explicit flag overrides everything
+    assert (
+        pt.resolve_ui_base_url("https://custom.ui", "https://mcp.suzor.com/mcp")
+        == "https://custom.ui"
+    )
+
+    # Environment variable PHOENIX_UI_URL overrides base_url derivation
+    monkeypatch.setenv("PHOENIX_UI_URL", "https://env.ui")
+    assert pt.resolve_ui_base_url(None, "https://mcp.suzor.com/mcp") == "https://env.ui"
+
+    # None when no base_url and no env var
+    monkeypatch.delenv("PHOENIX_UI_URL", raising=False)
+    assert pt.resolve_ui_base_url(None, None) is None
+
+
+def test_transcript_and_outline_contain_phoenix_links_via_cli(tmp_path):
+    spans_data = two_emitter_turn()
+    spans_file = tmp_path / "spans.json"
+    spans_file.write_text(json.dumps({"data": spans_data}))
+    out = tmp_path / "linked.transcript.md"
+    assert (
+        pt.main(
+            [
+                SESSION[:8],
+                "--from-file",
+                str(spans_file),
+                "--out",
+                str(out),
+                "--base-url",
+                "https://mcp.example.com/mcp",
+            ]
+        )
+        == 0
+    )
+    transcript = out.read_text()
+    outline = (tmp_path / "linked.outline.md").read_text()
+    session_link = f"[session](https://phoenix.example.com/redirects/sessions/{SESSION})"
+    assert session_link in transcript
+    assert session_link in outline
+    assert "https://phoenix.example.com/redirects/spans/c1" in transcript
+    assert "https://phoenix.example.com/redirects/spans/c1" in outline

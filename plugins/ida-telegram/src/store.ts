@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
+import { ReplayCache } from "./web/auth.js";
 
 export interface StoredDetailsPage {
   id: string;
@@ -30,6 +31,13 @@ export interface ContextTokensUsage {
   percentage: number;
 }
 
+export interface ChatState {
+  activeThreadId?: number;
+  lastInboundMessageId?: number;
+  lastInboundThreadId?: number;
+  topicsEnabled?: boolean;
+}
+
 export interface AnchorState {
   focus: string;
   taskId?: string;
@@ -46,10 +54,13 @@ export class PluginStore {
   private turnsFile: string;
   private reviewsFile: string;
   private contextFile: string;
+  private chatStateFile: string;
+  private chatStates: Map<number, ChatState> = new Map();
   private startedAt: number;
   private seq: number = 1;
   private lastCard: { chatId: number; messageId: number; text: string } | null = null;
   private changeListeners: Array<(seq: number, type: string, data: any) => void> = [];
+  private replayCache: ReplayCache = new ReplayCache();
 
   constructor(stateDir: string) {
     this.stateDir = stateDir;
@@ -58,12 +69,69 @@ export class PluginStore {
     this.turnsFile = join(stateDir, "turns.json");
     this.reviewsFile = join(stateDir, "reviews.json");
     this.contextFile = join(stateDir, "context.json");
+    this.chatStateFile = join(stateDir, "chat_state.json");
     this.startedAt = Date.now();
     this.initDirs();
+    this.loadChatStates();
+  }
+
+  private loadChatStates() {
+    if (!existsSync(this.chatStateFile)) return;
+    try {
+      const raw = JSON.parse(readFileSync(this.chatStateFile, "utf-8"));
+      if (raw && typeof raw === "object") {
+        for (const [k, v] of Object.entries(raw)) {
+          const chatId = Number(k);
+          if (!isNaN(chatId) && v && typeof v === "object") {
+            this.chatStates.set(chatId, v as ChatState);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("[ida-telegram] Failed to read chat state file:", err);
+    }
+  }
+
+  private saveChatStates() {
+    try {
+      this.initDirs();
+      const obj: Record<string, ChatState> = {};
+      for (const [k, v] of this.chatStates.entries()) {
+        obj[String(k)] = v;
+      }
+      writeFileSync(this.chatStateFile, JSON.stringify(obj, null, 2), "utf-8");
+    } catch (err) {
+      console.warn("[ida-telegram] Failed to save chat state file:", err);
+    }
+  }
+
+  public getChatState(chatId: number): ChatState | undefined {
+    return this.chatStates.get(chatId);
+  }
+
+  public getAllChatStates(): Map<number, ChatState> {
+    return new Map(this.chatStates);
+  }
+
+  public updateChatState(chatId: number, update: Partial<ChatState>) {
+    const current = this.chatStates.get(chatId) || {};
+    const next: ChatState = { ...current, ...update };
+    if (update.activeThreadId === undefined && "activeThreadId" in update) {
+      delete next.activeThreadId;
+    }
+    if (update.lastInboundThreadId === undefined && "lastInboundThreadId" in update) {
+      delete next.lastInboundThreadId;
+    }
+    this.chatStates.set(chatId, next);
+    this.saveChatStates();
   }
 
   public getSeq(): number {
     return this.seq;
+  }
+
+  public getReplayCache(): ReplayCache {
+    return this.replayCache;
   }
 
   public nextSeq(type?: string, data?: any): number {

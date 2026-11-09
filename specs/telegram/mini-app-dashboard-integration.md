@@ -1,166 +1,98 @@
 ---
-title: Telegram Mini App Dashboard Integration
+title: Telegram Mini App Operator Experience and Agent Bridge
 status: ready
 ---
 
-# Telegram Mini App Dashboard Integration
+# Telegram Mini App Operator Experience and Agent Bridge
 
-This specification defines the architecture, protocol contract, and operational behaviour for hosting the conversational agent's mobile Mini App within the central operational dashboard domain. It serves operators seeking unified cognitive orientation, real-time session tracking, and bi-directional interaction across mobile and desktop environments.
+The Telegram Mini App provides an embedded mobile and desktop interface for supervising and directing conversational agents. It serves operators seeking continuous cognitive orientation, real-time context tracking, interactive decision resolution, tool execution governance, and bidirectional steering across mobile and desktop environments.
 
-## User stories
+## User experience flow
 
-### US-1 Unified Dashboard Serving and Perimeter Access
+```mermaid
+flowchart LR
+    Operator(["Operator"]) -->|Opens Mini App| ViewState["View Live State & Turns"]
+    Operator -->|Inspects Options| AnswerQ["Answer Question Card"]
+    Operator -->|Inspects Preview| AuthTool["Authorize / Deny Tool"]
+    Operator -->|Submits Directive / Halt| SteerSession["Steer or Halt Session"]
 
-As an operator, I want to access the agent's cognitive anchor, interactive cards, and session controls directly through the operational dashboard domain, so that I can supervise and guide active work without maintaining separate tunnel configurations.
+    subgraph AgentBridge ["Agent Bridge (/api/app/*)"]
+        direction TB
+        SSE["Event Stream (/events)<br/>Anchor, Turns, Status"]
+        Broker["Question Broker<br/>(/questions/answer)"]
+        Gate["Permission Gate<br/>(/review/permission)"]
+        Control["Session Dispatch<br/>(/message, /stop)"]
+    end
 
-- **AC-1.1** Given an authenticated dashboard session, when the operator navigates to the agent control interface, then the application renders the cognitive anchor, context usage, and recent turns without prompting for secondary credentials.
-- **AC-1.2** Given an operator opening the Mini App within a native Telegram client, when the application initialises, then the backend validates the signed Telegram authentication payload and grants access to the dedicated responsive interface.
-- **AC-1.3** Given an unauthenticated HTTP request lacking both valid dashboard perimeter credentials and valid Telegram authentication data, when accessing any protected endpoint, then the server rejects the request with HTTP 401 Unauthorized.
+    ViewState -.->|Hydrates & Subscribes| SSE
+    AnswerQ -->|POST Answer| Broker
+    AuthTool -->|POST Decision| Gate
+    SteerSession -->|POST Directive/Halt| Control
+```
 
-### US-2 Dynamic Real-Time State Population
+## Capabilities and user stories
 
-As an operator observing session execution, I want the interface state to update reactively as the agent works, so that cognitive focus, token consumption, and pending decisions reflect live runtime state.
+### US-1 Live Cognitive Anchor and Turn Synchronization
 
-- **AC-2.1** Given an active agent session, when the agent updates its cognitive focus, task bindings, or context token counts, then connected dashboard clients receive and render the updated state within 500 milliseconds without page reloading.
-- **AC-2.2** Given a newly posted question or tool permission request, when the agent emits the request, then the interface dynamically displays the corresponding interactive card with selection options.
-- **AC-2.3** Given an unexpected connection interruption, when the client reconnects to the event stream, then the client automatically requests a full state snapshot to reconcile missed updates.
-- **AC-2.4** Given a pending artifact or pull request review assigned to the operator, when the operator inspects reviews in the interface, then the application displays the change diff with approve and request-changes actions.
+As an operator observing session execution, I want to view the agent's current focus, active tasks, token consumption, and recent turns in real time, so that I maintain continuous cognitive orientation without interrupting active work.
 
-### US-3 Bi-directional Agent Channel
+- **AC-1.1** Given an active agent session, when the agent updates its cognitive focus, task bindings, token metrics, or interaction turns, then connected clients receive and render the updated anchor via SSE within 500 milliseconds without requiring a page reload.
+- **AC-1.2** Given a client reconnecting after transient network disconnection, when it supplies its last received sequence identifier, then the bridge streams missed buffered events or provides a fresh snapshot to reconcile state.
 
-As an operator directing the agent, I want a direct communication channel through the dashboard, so that I can send prompts, answer structured questions, and approve tool permissions.
+### US-2 Interactive Structured Question Resolution
 
-- **AC-3.1** Given a pending tool permission request displayed in the dashboard, when the operator submits an allow or deny decision, then the agent receives the decision immediately and unblocks execution.
-- **AC-3.2** Given a pending question card in the interface, when the operator selects options or inputs custom text and submits, then the agent receives the structured answer and the question card transitions to resolved.
-- **AC-3.3** Given an active session, when the operator dispatches a prompt or directive through the dashboard interface, then the agent receives the turn as an inbound notification and acknowledges receipt.
-- **AC-3.4** Given a question or permission resolved via the dashboard interface, when the resolution completes, then the corresponding Telegram chat card updates to show the resolved outcome.
-- **AC-3.5** Given an active session, when the operator dispatches a halt directive, then the agent immediately suspends execution and returns a status summary.
+As an operator directing an agent, I want to answer structured multiple-choice questions with recommendations and contextual background, so that I can resolve design choices and clarifications asynchronously across any active channel.
 
-## Design
+- **AC-2.1** Given a pending structured question emitted by the agent, when the card renders in the interface, then options display with the primary recommendation highlighted first and expandable background detail accessible.
+- **AC-2.2** Given a pending question, when answered via the Mini App, an in-session tool, or a Telegram chat card, then the waiting agent receives the resolution within 100 milliseconds, the card transitions to resolved, and the item leaves all pending lists across all interfaces.
 
-### 1. Unified Serving and Perimeter Authentication (US-1)
+### US-3 Tool Permission Authorization and Expiration
 
-#### 1.1 Context and Problem
+As an operator supervising tool executions, I want to authorize or deny sensitive tool invocations with automatic expiration safeguards, so that autonomous operations execute only with verified human oversight.
 
-The agent interface must serve two client topologies: (a) standalone mobile access embedded as a Telegram WebApp inside a mobile messenger, and (b) integrated desktop access embedded within the operator's central dashboard application. The hosting layer must securely identify the operator across both surfaces while preserving single-tap mobile launching.
+- **AC-3.1** Given a tool invocation requiring authorization, when emitted by the agent, then the interface displays a permission card with tool name and parameter preview, unblocking or denying runtime execution within 100 milliseconds of operator submission.
+- **AC-3.2** Given a pending permission request exceeding 300 seconds without operator response, when timeout occurs, then the request automatically transitions to expired, denying tool execution and disabling card actions.
 
-#### 1.2 Architectural Options
+### US-4 Operator Directives and Priority Session Halt
 
-- **Option 1.1 (Telegram-Only Authentication):** Require Telegram WebApp signature validation on every request. Direct desktop browser access to the dashboard requires launching via Telegram desktop or passing synthetic Telegram parameters.
-- **Option 1.2 (Perimeter-Only Authentication):** Place the entire application behind dashboard perimeter identity (such as Cloudflare Access with Google OAuth). All requests must satisfy perimeter identity headers.
-- **Option 1.3 (Dual-Mode Perimeter Authentication -- Recommended):** Employ perimeter identity as the primary gate for direct web visits, combined with an authenticated bypass and validation bridge for signed Telegram WebApp launches.
-  - _Recommendation Rationale:_ Mobile WebViews in chat clients struggle with third-party OAuth redirect loops and external identity providers, whereas desktop operators already hold active dashboard sessions. Dual-mode authentication guarantees friction-free access on both devices while strictly enforcing cryptographic identity checks on every request.
+As an operator guiding an active session, I want to dispatch freeform steering directives or trigger an emergency halt, so that I can provide ad-hoc guidance or pause execution when necessary.
 
-#### 1.3 Recommended Serving and Authentication Contract
+- **AC-4.1** Given an active session, when the operator submits a freeform message, then the text is delivered into the session context as an inbound turn within 500 milliseconds and recorded in turn history.
+- **AC-4.2** Given an active session, when the operator issues a stop directive, then a high-priority halt interrupt signal is delivered into the session context and the status card updates to halted within 500 milliseconds.
 
-1. **Perimeter Ingress and Bridge Transport:**
-   - The primary dashboard ingress terminates at the central web application.
-   - Standalone client routes are published under `/app/*` (static bundle and responsive standalone shell) and API endpoints under `/api/app/*`.
-   - Desktop operators access the embedded view under the primary dashboard layout at `/agent`.
-   - **Bridge Transport:** The agent container hosts the HTTP/1.1 and SSE channel bridge on loopback interface `http://127.0.0.1:8093` (configurable via `PORT` or `BRIDGE_PORT`), proxied by the dashboard service layer or accessed directly over private network mesh.
-2. **Authentication Flow:**
-   - **Mode A (Telegram Launch):** The client transmits the cryptographic initialization payload via `POST /api/app/auth`. The server verifies the cryptographic hash against the bot secret token using HMAC-SHA256, validates timestamp freshness (maximum age: 3600 seconds), and checks user identity against the authorized operator list. On success, the server issues an HTTP-only, secure, strict SameSite session cookie (`ida_session`) with a 1-hour expiry.
-   - **Mode B (Dashboard Perimeter and Service Bridge):** For requests arriving from the dashboard domain or internal services:
-     - The bridge accepts bearer credentials in the `Authorization: Bearer <token>` or `X-Bridge-Token: <token>` header, verified against the shared bridge secret (`IDA_BRIDGE_TOKEN`) or valid session secret.
-     - Alternatively, the server inspects the perimeter identity assertion header (`Cf-Access-Jwt-Assertion` or verified local session). When the identity assertion matches the authorized operator email, the request is authenticated directly without requiring Telegram initialization payloads.
-   - **Rejection:** Any request to protected endpoints (`/api/app/*`) lacking both a valid session cookie, valid bridge token, and a valid perimeter assertion receives HTTP 401 Unauthorized (`{"error": "Unauthorized"}`).
+## Shared interface contract
 
-### 2. Dynamic State Population (US-2)
+### 1. Snapshot Hydration Endpoints
 
-#### 2.1 Context and Problem
+- `GET /api/app/anchor`: Returns the current cognitive anchor snapshot (focus summary, active task, waiting-on items), token metrics (used tokens, total tokens, percentage), recent turns, and current sequence counter (`seq`).
+- `GET /api/app/questions`: Returns all currently pending questions with option arrays, recommendations, and current `seq`.
+- `GET /api/app/review`: Returns pending tool permission requests and artifact review diffs.
 
-The agent's state encompasses multiple components:
+### 2. Reactive Event Stream (`GET /api/app/events`)
 
-- _Cognitive Anchor:_ Current focus summary, active task identifier, waiting-on items, subagent delegations, and token gauge metrics (used tokens, total tokens, percentage).
-- _Pending Decisions:_ Interactive multi-choice questions awaiting operator selection.
-- _Tool Permissions:_ Pending tool invocations requiring human authorization.
-- _Turn History:_ Recent inbound and outbound interaction turns.
-- _Artifact Reviews:_ Pending pull request diffs and reviews.
+Streams `text/event-stream` frames with monotonic sequence numbering:
 
-The dashboard host runs on a dedicated service host, while the active agent session executes in an execution runtime. State must synchronize dynamically without manual browser polling.
+```http
+id: <seq>
+event: <eventType>
+data: {"seq": <seq>, ...payload}
+```
 
-#### 2.2 Architectural Options
+- Supported event types: `anchor`, `question_posted`, `question_resolved`, `permission_requested`, `permission_resolved`, and `turn_recorded`.
+- Emits `: keepalive\n\n` comments every 15 seconds during idle periods.
+- When a client reconnects with `Last-Event-ID: <seq>` or `?since=<seq>`, the bridge replays buffered events with sequence numbers greater than the requested sequence, or supplies a fresh snapshot if the sequence gap exceeds buffer capacity.
 
-- **Option 2.1 (Periodic Client Polling):** The client polls `GET /api/app/anchor` and `GET /api/app/questions` at fixed intervals (e.g. every 2 seconds).
-  - _Trade-off:_ High query churn, unnecessary network overhead, and unacceptable latency (up to 2 seconds) for interactive permission prompts.
-- **Option 2.2 (Shared Database Polling):** Centralise state in a shared database accessed by both the agent runtime and the dashboard.
-  - _Trade-off:_ Introduces schema coupling and database maintenance overhead for transient interactive promises (such as in-flight permission requests).
-- **Option 2.3 (Server-Sent Events with REST Snapshot Hydration -- Recommended):** Use REST endpoints for initial state hydration and on-demand lookups, supplemented by a real-time Server-Sent Events (SSE) stream (`GET /api/app/events`) for instant push updates.
-  - _Recommendation Rationale:_ SSE provides unidirectional, lightweight HTTP streaming compatible with standard reverse proxies, corporate tunnels, and mobile WebViews without WebSocket upgrade complexity. State updates propagate in sub-second time.
+### 3. Action Endpoints
 
-#### 2.3 Recommended Dynamic Data Contract
+- `POST /api/app/questions/answer`: Payload `{"question_id": "string", "option_index": 0, "option_indices": [0], "custom_text": "string"}`. Resolves question in the local broker, unblocks the waiting agent turn, broadcasts `question_resolved`, and removes inline keyboard buttons on linked chat cards.
+- `POST /api/app/review/permission`: Payload `{"permission_id": "string", "decision": "allow" | "deny"}`. Resolves runtime execution gate, broadcasts `permission_resolved`, and updates card display with outcome.
+- `POST /api/app/message`: Payload `{"text": "string", "priority": "normal" | "high"}`. Injects directive directly into agent session context as an inbound turn and emits `turn_recorded`.
+- `POST /api/app/stop`: Payload `{"reason": "string"}`. Delivers a high-priority interrupt notification into the session context, updates card display to halted, and returns `{"success": true, "status": "stop_dispatched"}`.
 
-1. **Monotonic Sequence Numbering:**
-   - The channel bridge maintains a strictly increasing monotonic sequence counter (`seq: number`, starting at 1).
-   - Every state mutation increments `seq` (anchor update, question posted or resolved, permission requested, resolved, or expired, and turn recorded).
-2. **Initial Hydration Snapshots:**
-   - `GET /api/app/anchor`: Returns the current anchor snapshot, token gauge, pending questions summary, recent turns, and current `seq`.
-   - `GET /api/app/questions`: Returns the active list of unresolved questions and current `seq`.
-   - `GET /api/app/review`: Returns pending permission requests, PR diff reviews, and current `seq`. Each permission item carries `status: "pending" | "expired"`.
-3. **Reactive Event Stream (`GET /api/app/events`):**
-   - The server maintains a persistent `text/event-stream` connection to authenticated clients.
-   - Each event frame includes standard SSE id and event fields, with `seq` in the payload:
-     ```
-     id: <seq>
-     event: <eventType>
-     data: {"seq": <seq>, ...payload}
-     ```
-   - Event types emitted:
-     - `anchor`: Payload contains updated cognitive anchor, token metrics, and `seq`.
-     - `question_posted`: Payload contains newly issued question card and `seq`.
-     - `question_resolved`: Payload contains question identifier, chosen answer, and `seq`.
-     - `permission_requested`: Payload contains permission request identifier, tool name, input preview, and `seq`.
-     - `permission_resolved`: Payload contains permission identifier, outcome (`allow` | `deny` | `expired`), decision, and `seq`.
-     - `turn_recorded`: Payload contains direction (`in` | `out`), text summary, timestamp, and `seq`.
-4. **Resilience and Invariants:**
-   - The SSE stream includes keep-alive heartbeat comments (`: keepalive\n\n`) every 15 seconds.
-   - When a client disconnects and reconnects, it supplies `Last-Event-ID: <seq>` or query parameter `?since=<seq>`. The bridge replays buffered events with `seq > sinceSeq` or the client fetches a fresh state snapshot via `GET /api/app/anchor` to guarantee convergence.
-   - **Expired Permissions:** If a tool permission request exceeds its timeout (default: 300 seconds / 5 minutes) or is cut by an agent session restart, the bridge transitions its status to `"expired"`, unblocks the tool call with denial, broadcasts `event: "permission_resolved"` with `outcome: "expired"`, and edits any associated Telegram card to show `*Expired ⏱️*` with buttons disabled.
+## Invariants and security boundaries
 
-### 3. Bi-directional Operator Communication Channel (US-3)
-
-#### 3.1 Context and Problem
-
-The operator must be able to interact with the active agent directly from the dashboard: providing feedback, answering multiple-choice questions, deciding on tool executions, sending freeform steering instructions, or triggering an emergency stop.
-
-#### 3.2 Architectural Options
-
-- **Option 3.1 (Telegram Webhook Proxying):** The dashboard forwards operator inputs to the Telegram Bot API as simulated chat messages.
-  - _Trade-off:_ Dependent on external third-party API availability, adds latency, and forces web-specific interactions through Telegram message constraints.
-- **Option 3.2 (Direct Agent Channel Bridge -- Recommended):** The dashboard server forwards operator inputs directly to the agent's channel bridge via authenticated HTTP endpoints, dispatching channel notifications into the agent session.
-  - _Recommendation Rationale:_ Decouples dashboard communication from external chat networks, provides sub-100ms response delivery, and maintains local custody of operator commands.
-
-#### 3.3 Recommended Communication Protocol
-
-1. **Freeform Direct Messaging (`POST /api/app/message`):**
-   - Request: `{ "text": string, "priority"?: "normal" | "high", "chat_id"?: number, "message_id"?: number }`
-   - The channel bridge delivers the text as an inbound channel notification directly into the agent session context, records the turn in history, and increments `seq`.
-   - If `chat_id` and `message_id` are provided (or if an active chat card exists in store), the bridge edits the Telegram card in place to reflect the directive.
-   - Response: `{ "success": true, "message_id": string, "seq": number }`
-2. **Structured Question Resolution (`POST /api/app/questions/answer`):**
-   - Request: `{ "question_id": string, "option_index"?: number, "option_indices"?: number[], "custom_text"?: string }` (aliases: `questionId`, `optionIndex`, `optionIndices`, `customText`)
-   - The server marks the question resolved in runtime, emits a channel event (`question_answered`) to the agent, broadcasts `question_resolved` over SSE, and triggers an in-place edit on the Telegram card to display the selected choice with buttons removed (`inline_keyboard: []`).
-   - Response: `{ "success": true, "resolved_at": string, "seq": number }`
-3. **Tool Permission Resolution (`POST /api/app/review/permission`):**
-   - Request: `{ "permission_id": string, "decision": "allow" | "deny" }` (alias: `permId`)
-   - The server resolves the pending permission promise, unblocking tool execution in the agent runtime, and broadcasts `permission_resolved` over SSE.
-   - Associated Telegram chat cards update immediately with status "Allowed via Dashboard ✅" or "Denied via Dashboard ❌" (or "Allowed via Mini App ✅" / "Denied via Mini App ❌") and clear buttons (`inline_keyboard: []`).
-   - Response: `{ "success": true, "decision": "allow" | "deny", "seq": number }`
-4. **Session Intervention (`POST /api/app/stop`):**
-   - Request: `{ "reason"?: string, "chat_id"?: number, "message_id"?: number }`
-   - The server emits a high-priority interrupt notification (`stop_requested`) into the agent session instructing the agent to halt current work and provide a summary report.
-   - Associated Telegram cards update in place to show `*Halted via Dashboard 🛑*` and disable buttons (`inline_keyboard: []`).
-   - Response: `{ "success": true, "status": "stop_dispatched", "seq": number }`
-
-### 4. Cross-Channel State Synchronization Invariants
-
-1. **Single Source of Truth:**
-   - The running agent session runtime and local persistent stores (`questions.json`, `permissions.json`, `anchor.json`) maintain the authoritative state of active tasks, anchors, questions, and permission requests.
-   - Late button taps or callbacks from Telegram for an item already resolved or expired in runtime are rejected gracefully via `answerCallbackQuery` and do not alter runtime state.
-2. **Mutual Invalidation:**
-   - An action completed on one surface immediately updates all connected surfaces.
-   - Answering a question in Telegram chat broadcasts `question_resolved` to all dashboard SSE subscribers and removes the pending prompt.
-   - Conversely, resolving a question or tool permission in the dashboard immediately edits the Telegram chat card to disable inline buttons (`inline_keyboard: []`) and display the chosen resolution.
-3. **Zero Orphaned Permissions:**
-   - Tool permissions have a default lifespan of 300 seconds (5 minutes). If a request times out, it transitions automatically to `status: "expired"`, denies execution to prevent dangling tools, and emits `permission_resolved` with `outcome: "expired"`.
-   - If the agent service restarts while permissions remain unfulfilled, the bridge startup pass sweeps lingering pending records, transitions them to `"expired"`, and edits their Telegram cards in place to show `*Expired ⏱️*` with buttons disabled.
+- **Monotonic Total Ordering**: Every state snapshot and event frame carries a strictly increasing integer sequence counter (`seq`) to guarantee total ordering, duplicate detection, and gap recovery.
+- **At-Least-Once Delivery**: Reconnection contracts provide at-least-once delivery for state changes across network disruptions; resolution operations are idempotent on unique entity IDs (`question_id`, `permission_id`).
+- **Positive Security Perimeter**: All `/api/app/*` routes require verification via signed Telegram `initData` or bearer bridge secret; each inbound request is attributed to a single authorized operator identity.
+- **Fail-Closed Authorization Safeguard**: Tool permissions expire after 300 seconds; unhandled requests automatically fail closed by transitioning to `status: "expired"`, denying execution to prevent unauthorized operations after session abandonment.
+- **Honest Interrupt Dispatch**: Emergency halt guarantees high-priority delivery of an interrupt prompt into the session context; it does not claim immediate physical preemption of running external sub-processes.

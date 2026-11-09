@@ -1,0 +1,19 @@
+.venv/
+__pycache__/
+*.pyc
+
+# dbt build artifacts
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+
+# Local databases and secrets
+data/local_cache.duckdb*
+.env
+.env.local
+*.keyfile.json
+
+# Quarto build artifacts
+manuscript/_output/
+manuscript/_freeze/
+manuscript/.quarto/

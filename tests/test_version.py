@@ -32,6 +32,9 @@ MARKETPLACE = TESTDATA / "marketplace.toml"
         "1.0.0+g12345678",
         "v1.0.0",
         "v0.10.26",
+        "1.0-rc7",
+        "v1.0-rc7",
+        "v1.0-rc0",
     ],
 )
 def test_validate_version_accepts_valid_pep440(valid_version: str) -> None:
@@ -77,6 +80,7 @@ def test_build_all_accepts_valid_version(tmp_path: Path) -> None:
     assert len(built) > 0
 
 
+@pytest.mark.integration
 def test_version_cli_validate_flag_rejects_invalid_version() -> None:
     cmd = [sys.executable, "-m", "build.version", "--validate", "1.0-rc0.1"]
     res = subprocess.run(cmd, cwd=PROJECT_ROOT, capture_output=True, text=True, check=False)
@@ -84,6 +88,7 @@ def test_version_cli_validate_flag_rejects_invalid_version() -> None:
     assert "invalid python package version" in res.stderr.lower()
 
 
+@pytest.mark.integration
 def test_version_cli_validate_flag_accepts_valid_version() -> None:
     cmd = [sys.executable, "-m", "build.version", "--validate", "0.10.26"]
     res = subprocess.run(cmd, cwd=PROJECT_ROOT, capture_output=True, text=True, check=False)

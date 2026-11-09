@@ -35,6 +35,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.integration
+
 from build.build import build_all
 from build.marketplace import load_marketplace_toml
 from build.tree import EXCLUDE_NAMES, has_shebang
@@ -317,7 +319,7 @@ def _command_for(client: str, build_dir: Path, wire_event: str) -> str:
 # directly. A handler needs a `command`; `type` defaults to "command".
 
 _AGY_GROUPED_EVENTS = {"PreToolUse", "PostToolUse"}
-_AGY_FLAT_EVENTS = {"PreInvocation", "PostInvocation", "Stop"}
+_AGY_FLAT_EVENTS = {"PreInvocation", "PostInvocation", "SessionStart", "Stop"}
 
 
 def test_shipped_agy_hooks_json_matches_agys_schema(dist_root):
@@ -606,9 +608,9 @@ class _StubReflexesEvaluator(BaseHTTPRequestHandler):
 def stub_evaluator_env(tmp_path):
     """Environment overrides pointing cope's hook at the loopback evaluator.
 
-    `ACA_DATA` is cleared and the OS temp directory redirected because the hook
+    `COPE_USER_RULES_DIR` is cleared and the OS temp directory redirected because the hook
     reports its own degradation on the same response (lib/hooks/degraded.py),
-    once per session, behind a marker file: an ambient `ACA_DATA` naming no
+    once per session, behind a marker file: an ambient `COPE_USER_RULES_DIR` naming no
     rules directory is a real fault, and a marker left in the real temp
     directory would decide whether the next run saw it.
     """
@@ -623,7 +625,7 @@ def stub_evaluator_env(tmp_path):
         "COPE_EVALUATOR_API_KEY": None,
         "COPE_EVALUATOR_TIMEOUT": "20",
         "COPE_EVALUATOR_TRACE_PATH": None,  # unset here; tests that want it set it themselves
-        "ACA_DATA": None,
+        "COPE_USER_RULES_DIR": None,
         "TMPDIR": str(marker_root),
     }
     server.shutdown()
@@ -881,7 +883,7 @@ def test_every_axiom_is_live_in_the_built_clients(pristine_dist, tmp_path, monke
     assert {json.loads(line)["slug"] for line in jsonl.splitlines()} == slugs
     assert {p.stem for p in (pristine_dist / "rbg-agy" / "rules").glob("*.md")} == slugs
 
-    monkeypatch.delenv("ACA_DATA", raising=False)
+    monkeypatch.delenv("COPE_USER_RULES_DIR", raising=False)
     spec = importlib.util.spec_from_file_location(
         "rbg_rules", _REPO_ROOT / "plugins" / "rbg" / "hooks" / "rules.py"
     )
@@ -1021,8 +1023,14 @@ def test_registered_handler_events_are_exactly_the_wired_events(dist_root):
                 allowed_missing.update(_wires_for("PostToolBatch"))
             if not p.get("honest_output_enabled", True):
                 allowed_missing.update(_wires_for("SubagentStart"))
-        elif name == "rbg" and not _policy.get("rbg", {}).get("evaluate", {}).get("enabled", True):
-            allowed_missing.update(_wires_for("PreToolUse"))
+        elif name == "rbg":
+            if not _policy.get("rbg", {}).get("evaluate", {}).get("enabled", True):
+                allowed_missing.update(_wires_for("PreToolUse"))
+            if not _policy.get("rbg", {}).get("stop_gate", {}).get("stop_events"):
+                allowed_missing.update(_wires_for("Stop"))
+                allowed_missing.update(_wires_for("SubagentStop"))
+            if not _policy.get("rbg", {}).get("inject_ruleset", {}).get("enabled", False):
+                allowed_missing.update(_wires_for("UserPromptSubmit"))
         elif name == "ida" and not _policy.get("ida", {}).get("strip_the_reply_enabled", True):
             allowed_missing.update(_wires_for("PostToolBatch"))
             allowed_missing.update(_wires_for("Stop"))
@@ -1084,4 +1092,44 @@ def test_hook_bearing_plugins_all_present(dist_root):
     assert hook_plugins == _declared_hook_plugins()
 
 
-# --- 5. ts: no hooks on agy ----------------------------------------------------
+def test_every_shipped_python_hook_command_uses_uv_run_python(dist_root):
+    """Python hook commands must launch via `uv run ... python`, never `python3` or bare `python`."""
+    failures = []
+    for name, client, build_dir in _build_dirs(dist_root):
+        for wire_event, command in _hook_commands(client, build_dir):
+            if ".py" in command:
+                if not command.strip().startswith("uv run"):
+                    failures.append(
+                        f"{name}-{client} {wire_event}: command does not start with 'uv run': {command}"
+                    )
+                tokens = command.split()
+                if "python3" in tokens:
+                    failures.append(
+                        f"{name}-{client} {wire_event}: command uses 'python3' instead of 'python': {command}"
+                    )
+                elif "python" not in tokens:
+                    failures.append(
+                        f"{name}-{client} {wire_event}: command does not invoke 'python': {command}"
+                    )
+    assert not failures, "Python hook command invocations failed contract:\n" + "\n".join(failures)
+
+
+def test_every_shipped_plugin_contains_portable_pyproject_toml(pristine_dist):
+    """Every shipped plugin package must contain pyproject.toml with strictly relative paths."""
+    failures = []
+    for name, client, build_dir in _build_dirs(pristine_dist):
+        pyproject = build_dir / "pyproject.toml"
+        if not pyproject.is_file():
+            failures.append(f"{name}-{client}: missing pyproject.toml")
+            continue
+        content = pyproject.read_text(encoding="utf-8")
+        for line in content.splitlines():
+            line_stripped = line.strip()
+            # Check for absolute Unix or Windows paths in dependencies or configuration
+            if any(p in line_stripped for p in ("file:///", 'path = "/', "path = '/")):
+                failures.append(f"{name}-{client} pyproject.toml contains absolute path: {line}")
+            if re.search(r"[A-Za-z]:[\\/]", line_stripped):
+                failures.append(
+                    f"{name}-{client} pyproject.toml contains Windows drive path: {line}"
+                )
+    assert not failures, "Shipped plugin pyproject.toml validation failed:\n" + "\n".join(failures)

@@ -1,0 +1,22 @@
+version: 2
+
+seeds:
+  - name: safety_model_registry
+    description: "Versioned registry of evaluated safety and classification models"
+    columns:
+      - name: model_id
+        description: "Primary key identifier for the evaluated model"
+        tests:
+          - unique
+          - not_null
+      - name: model_name
+        description: "Human-readable model name"
+        tests:
+          - not_null
+      - name: model_type
+        description: "Deployment type of model (api or open_weight)"
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['api', 'open_weight']

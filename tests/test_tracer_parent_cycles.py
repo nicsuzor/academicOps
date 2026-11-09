@@ -575,3 +575,126 @@ def test_find_tool_use_id_matches_tool_input_across_concurrent_and_nested_calls(
 
     # Empty/None tool_input falls back to the latest tool_use for that tool
     assert cct._find_tool_use_id(str(transcript), "Agent", {}) == "toolu_B"
+
+
+def test_out_of_process_and_multihop_subagents_resolve_root_session_via_sidecars_without_env(
+    tracer_env, monkeypatch
+):
+    """Out-of-process subagents (depth 1 and depth 2) resolve the root session.id, immediate
+    parent.session_id, and parent_span_id from sidecar metadata even when AOPS_SESSION_ID is unset."""
+    monkeypatch.delenv("AOPS_SESSION_ID", raising=False)
+    project_dir = str(tracer_env / "proj")
+    monkeypatch.setenv("CLAUDE_PROJECT_DIR", project_dir)
+
+    root_transcript = tracer_env / "root.jsonl"
+    sub1_transcript = tracer_env / "sub1.jsonl"
+    sub2_transcript = tracer_env / "sub2.jsonl"
+    sub1_session = "sess-sub-1"
+    sub2_session = "sess-sub-2"
+
+    root_entries = _start_session(SESSION, root_transcript)
+    a1 = _agent_input("sub1")
+    root_entries.append(
+        _assistant(
+            "msg_r1", "2026-10-08T00:00:03.000Z", _tool_use("toolu_sub1", "Agent", a1), "tool_use"
+        )
+    )
+    _write(root_transcript, root_entries)
+    pre_a1, post_a1 = _tool_hooks(SESSION, root_transcript, "Agent", a1, "toolu_sub1")
+
+    sanitized = project_dir.replace("/", "-")
+    sidecar1 = (
+        tracer_env
+        / ".claude"
+        / "projects"
+        / sanitized
+        / SESSION
+        / "subagents"
+        / f"agent-{sub1_session}.meta.json"
+    )
+    sidecar1.parent.mkdir(parents=True, exist_ok=True)
+    sidecar1.write_text('{"toolUseId": "toolu_sub1"}', encoding="utf-8")
+
+    sidecar2 = (
+        tracer_env
+        / ".claude"
+        / "projects"
+        / sanitized
+        / sub1_session
+        / "subagents"
+        / f"agent-{sub2_session}.meta.json"
+    )
+    sidecar2.parent.mkdir(parents=True, exist_ok=True)
+    sidecar2.write_text('{"toolUseId": "toolu_sub2"}', encoding="utf-8")
+
+    exporter = _CollectingExporter()
+    with patch.object(cct, "_create_exporter", return_value=exporter):
+        pre_a1()
+
+        # Sub1 starts WITHOUT AOPS_SESSION_ID in env
+        sub1_entries = _start_session(sub1_session, sub1_transcript)
+        sub1_state = cct._load_state(sub1_session)
+        assert sub1_state.get("phoenix_session_id") == SESSION
+        assert sub1_state.get("parent_session_id") == SESSION
+        assert sub1_state["current_trace"]["parent_span_id"] == cct._agent_span_id("toolu_sub1")
+
+        # Sub1 dispatches Sub2
+        a2 = _agent_input("sub2")
+        sub1_entries.append(
+            _assistant(
+                "msg_s1",
+                "2026-10-08T00:00:03.500Z",
+                _tool_use("toolu_sub2", "Agent", a2),
+                "tool_use",
+            )
+        )
+        _write(sub1_transcript, sub1_entries)
+        pre_a2, post_a2 = _tool_hooks(sub1_session, sub1_transcript, "Agent", a2, "toolu_sub2")
+        pre_a2()
+
+        # Sub2 starts (depth 2)
+        sub2_entries = _start_session(sub2_session, sub2_transcript)
+        sub2_state = cct._load_state(sub2_session)
+        assert sub2_state.get("phoenix_session_id") == SESSION
+        assert sub2_state.get("parent_session_id") == sub1_session
+        assert sub2_state["current_trace"]["parent_span_id"] == cct._agent_span_id("toolu_sub2")
+
+        sub2_entries.append(
+            _assistant(
+                "msg_s2",
+                "2026-10-08T00:00:04.000Z",
+                {"type": "text", "text": "sub2 done"},
+                "end_turn",
+            )
+        )
+        _write(sub2_transcript, sub2_entries)
+        _hook(cct.handle_stop, sub2_session, sub2_transcript)
+
+        post_a2()
+        sub1_entries += [
+            _tool_result("toolu_sub2", "2026-10-08T00:00:04.200Z"),
+            _assistant(
+                "msg_s1_end",
+                "2026-10-08T00:00:04.500Z",
+                {"type": "text", "text": "sub1 done"},
+                "end_turn",
+            ),
+        ]
+        _write(sub1_transcript, sub1_entries)
+        _hook(cct.handle_stop, sub1_session, sub1_transcript)
+
+        post_a1()
+        root_entries += [
+            _tool_result("toolu_sub1", "2026-10-08T00:00:05.000Z"),
+            _assistant(
+                "msg_r2",
+                "2026-10-08T00:00:06.000Z",
+                {"type": "text", "text": "root done"},
+                "end_turn",
+            ),
+        ]
+        _write(root_transcript, root_entries)
+        _hook(cct.handle_stop, SESSION, root_transcript)
+
+    for sp in exporter.spans:
+        assert sp.attributes.get("session.id") == SESSION

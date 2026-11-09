@@ -1,0 +1,18 @@
+version: 2
+
+models:
+  - name: int_model_evaluations
+    description: "Intermediate model with entity flags and evaluation classifications"
+    columns:
+      - name: model_id
+        description: "Primary key"
+        tests:
+          - unique
+          - not_null
+      - name: is_open_weight
+        description: "Binary flag indicating open-weight model"
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [0, 1]

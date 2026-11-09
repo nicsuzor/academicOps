@@ -13,7 +13,7 @@ make install-dev   # build, install the local marketplace, activate pre-commit
 
 ## Before you change anything
 
-Read [`specs/ARCHITECTURE.md`](specs/ARCHITECTURE.md) — it is authoritative for
+Read [`specs/ARCHITECTURE.md`](specs/ARCHITECTURE.md) -- it is authoritative for
 the layout, the plugin boundaries, and the constraints on both. Then
 [`.agents/CORE.md`](.agents/CORE.md) for the rules that bind agents and people
 working in this repository.
@@ -21,10 +21,12 @@ working in this repository.
 ## Checks
 
 ```bash
-make test     # uv run pytest tests/
-make lint     # ruff check
-make format   # ruff format + dprint fmt
-make build    # must assemble every plugin for both clients without error
+make test             # uv run pytest tests/ (unit tests only; fast)
+make test-integration # uv run pytest -m integration tests/ (runs integration tests)
+make test-all         # uv run pytest -m "" tests/ (runs all tests)
+make lint             # ruff check
+make format           # ruff format + dprint fmt
+make build            # must assemble every plugin for both clients without error
 ```
 
 Run `make format` before committing. Pre-commit runs `dprint fmt` over markdown,
@@ -32,7 +34,7 @@ JSON, and TOML files; and `uv run ruff format` / `uv run ruff check --fix` for P
 
 ## Pull requests
 
-Open against `dev`. Structure the body as a reviewer-decision aid — the sections
+Open against `dev`. Structure the body as a reviewer-decision aid -- the sections
 are pre-filled from
 [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md).
 

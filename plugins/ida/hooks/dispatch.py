@@ -105,6 +105,11 @@ def load_message_pair(hooks_dir: Path, name: str) -> tuple[str, str | None]:
 
 Handler = Callable[[HookContext], Result | None]
 
+# Gated tools matching hearsay_gate._GATED_TOOLS (case-insensitive)
+_GATED_TOOLS = frozenset(
+    ["Agent", "Task", "invoke_subagent", "SendMessage", "Dump", "send_message", "dump"]
+)
+
 CANONICAL_EVENTS = (
     "SessionStart",
     "SessionEnd",
@@ -159,9 +164,51 @@ def is_continuation(event: str, raw: dict[str, Any]) -> bool:
     return event in CONTINUATION_EVENTS and bool(raw.get("stop_hook_active"))
 
 
+# The one place a Claude Cowork session is recognised. Both hook entry points
+# (this dispatcher and ``mcp_caller_session.py``) ask it before doing anything,
+# and in Cowork they do nothing: Cowork refuses any MCP call whose input a
+# plugin hook changed ("A plugin hook changed this tool call's input. That is
+# allowed only for calls that run in the same environment as the hook"), and
+# its sessions carry none of the environment SessionStart needs.
+#
+# The signal is Claude Code's own, read from the 2.1.314 binary (build
+# 2026-10-29, 5c99a5b6). ``CLAUDE_CODE_IS_COWORK`` is in the set of variables
+# the host app sets for the session and is read as a boolean
+# (``if(i.CLAUDE_CODE_IS_COWORK)return!0``). The surface-name table labels the
+# ``CLAUDE_CODE_ENTRYPOINT`` values ``local-agent`` and ``remote_cowork``
+# "Cowork"; ``remote_cowork_trigger`` is the Cowork scheduled-run entrypoint
+# and ``local_agent`` is the spelling the client normalises to ``local-agent``
+# at startup. The client's own Cowork test is the disjunction of the two
+# variables. ``claude-desktop`` and ``remote_desktop`` are the desktop app's
+# Code tab, and ``CLAUDE_CODE_REMOTE`` is also ``true`` in cloud sessions,
+# which keep their hooks; neither is part of the signal. A hook process
+# inherits the parent environment (hooks reference, "Inherited environment"),
+# so the hook sees what the client set.
+COWORK_FLAG_VAR = "CLAUDE_CODE_IS_COWORK"
+ENTRYPOINT_VAR = "CLAUDE_CODE_ENTRYPOINT"
+COWORK_ENTRYPOINTS = frozenset(
+    {"local-agent", "local_agent", "remote_cowork", "remote_cowork_trigger"}
+)
+# The two spellings Claude Code documents for its own boolean variables
+# (``CLAUDE_CODE_REMOTE`` is ``"true"``, ``CLAUDE_CODE_SUBPROCESS_ENV_SCRUB`` is ``1``).
+_TRUE_VALUES = frozenset({"1", "true"})
+
+
+def is_cowork(environ: dict[str, str] | None = None) -> bool:
+    """Is this hook running inside a Claude Cowork session?
+
+    ``environ`` defaults to the process environment; tests pass a dict.
+    """
+    env = os.environ if environ is None else environ
+    if (env.get(COWORK_FLAG_VAR) or "").strip().lower() in _TRUE_VALUES:
+        return True
+    return (env.get(ENTRYPOINT_VAR) or "").strip() in COWORK_ENTRYPOINTS
+
+
 TO_CANONICAL = {
     "claude": {name: name for name in CANONICAL_EVENTS},
     "agy": {
+        "SessionStart": "SessionStart",
         "PreInvocation": "UserPromptSubmit",
         # Deliberately unmapped, not merely omitted: live instrumentation
         # (headless agy 1.1.13, AOPS_HOOK_LOG_PATH plus a wire-level probe on
@@ -214,14 +261,9 @@ def _load_handlers(event: str, hooks_dir: Path) -> list[Handler]:
         return []
     spec = importlib.util.spec_from_file_location("handlers", handlers_path)
     if spec is None or spec.loader is None:
-        print(f"aops hooks: failed to load {handlers_path} (no spec)", file=sys.stderr)
-        return []
+        raise RuntimeError(f"aops hooks: failed to load {handlers_path} (no spec)")
     module = importlib.util.module_from_spec(spec)
-    try:
-        spec.loader.exec_module(module)
-    except Exception as exc:
-        print(f"aops hooks: failed to load {handlers_path}: {exc!r}", file=sys.stderr)
-        return []
+    spec.loader.exec_module(module)
 
     registry = getattr(module, "HANDLERS", {})
     handlers = list(registry.get(event, []))
@@ -310,7 +352,7 @@ def _render_claude(result: Result, event: str) -> dict:
     return output
 
 
-def _render_agy(result: Result) -> dict:
+def _render_agy(result: Result, event: str = "") -> dict:
     """agy has no blockable event, so a block reaches it as advice or not at all.
 
     Its ``PostInvocation`` response contract is a bare object with no disposition
@@ -319,9 +361,21 @@ def _render_agy(result: Result) -> dict:
     """
     if result.kind is Kind.REFUSE:
         return {"decision": "deny", "reason": result.inject_text}
-    # agy has no blocking shape at all, on any event — a block() downgrades
-    # to the same advisory shape a warn() would render as.
-    return {"injectSteps": [{"ephemeralMessage": result.inject_text}]}
+
+    steps: list[dict[str, Any]] = []
+    if event == "SessionStart":
+        text = result.user_text or result.inject_text
+        if text:
+            steps.append({"systemMessage": {"systemMessage": text}})
+        if result.user_text and result.inject_text and result.inject_text != result.user_text:
+            steps.append({"ephemeralMessage": result.inject_text})
+    else:
+        if result.user_text:
+            steps.append({"systemMessage": {"systemMessage": result.user_text}})
+        if result.inject_text:
+            steps.append({"ephemeralMessage": result.inject_text})
+
+    return {"injectSteps": steps}
 
 
 def render(client: str, event: str, result: Result | None) -> dict:
@@ -330,7 +384,7 @@ def render(client: str, event: str, result: Result | None) -> dict:
     if client == "claude":
         return _render_claude(result, event)
     if client == "agy":
-        return _render_agy(result)
+        return _render_agy(result, event)
     return {}
 
 
@@ -434,7 +488,7 @@ def _get_evaluator_otel_trace():
 
 
 def _instrument_otel_events(ctx: HookContext) -> None:
-    otel_mod = _get_evaluator_otel_trace()
+    otel_mod: Any = _get_evaluator_otel_trace()
     if otel_mod is None:
         return
 
@@ -451,9 +505,12 @@ def _instrument_otel_events(ctx: HookContext) -> None:
         )
 
     # 2. SendMessage tool call linkage
-    is_send_msg = ctx.tool == "SendMessage" or any(
+    is_send_msg = (ctx.tool or "").lower() in ("sendmessage", "send_message") or any(
         isinstance(call, dict)
-        and (call.get("tool_name") == "SendMessage" or call.get("tool") == "SendMessage")
+        and (
+            str(call.get("tool_name") or "").lower() in ("sendmessage", "send_message")
+            or str(call.get("tool") or "").lower() in ("sendmessage", "send_message")
+        )
         for call in ctx.tool_calls
     )
     if is_send_msg:
@@ -481,6 +538,12 @@ def main(argv: list[str]) -> int:
             raw = json.load(sys.stdin)
         except json.JSONDecodeError:
             raw = {}
+
+    # In a Claude Cowork session the hooks do nothing: no fire is logged, no
+    # handler runs, nothing is printed. The payload is read first so the
+    # client's write never meets a closed pipe.
+    if is_cowork():
+        return 0
 
     event = to_canonical(client, wire_event)
     if event is None:

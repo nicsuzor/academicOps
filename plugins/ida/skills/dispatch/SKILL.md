@@ -5,7 +5,7 @@ description: Start polecat workers on queued tasks already on the graph, given t
 
 # /dispatch: start polecat workers on queued tasks
 
-The task record is the whole message to the worker. Start it as written.
+The task record is the whole message to the worker. Start it as written. The task dispatch pipeline is used for any durable deliverable -- including agent workflows, instruction updates, specifications, and code changes. Questions and lookups that can be answered in-turn are answered directly without queueing tasks. Never dispatch questions or lookups to workers.
 
 A polecat is a short-running container: it gets in, does its task, and gets out cleanly. Follow-up lives on the task graph, where the workflow puts it, never in a worker waiting for it.
 
@@ -13,11 +13,12 @@ A polecat is a short-running container: it gets in, does its task, and gets out 
 
 Read each task you were given; for a parent, read its children and take the ready ones.
 
-A task is ready when its status is `queued`, it has no open `needs` edges or incomplete children, and it fills the `/reify` task template (Goal, Acceptance, Instructions, Output), and its Instructions end with the finish template's finish step.
+A task is ready when its status is `queued`, it has no open `needs` edges or incomplete children, it fills the `/reify` task template (Goal, Acceptance, Instructions, Output), and its Instructions conclude with the composed workflow's release step.
 
-- A QA follow-up stays queued until its hard dependency completes; it is not ready yet.
-- A task that folds follow-ups into itself is not ready: send it to `/reify` to be cut.
+- A QA follow-up stays queued until its primary task releases `done`; once the primary task releases `done`, the QA follow-up's `needs` dependency is satisfied and it becomes ready for immediate dispatch.
+- A task that folds follow-ups into internal subtasks is ready when executable by the same agent in one session; only send to `/reify` when work requires independent sessions, personas, or approval gates that must be cut into an epic with child tasks.
 - Send a task that is unready or underspecified to `/reify` with its id, because writing and rewriting tasks is that skill's job. Dispatch the rest.
+- **Intake Contract:** On receiving a direction or work brief, the receiving agent must record its own summary stating deliverables as a frozen `## Acceptance` checklist on a PKB task before work starts.
 
 ## 2. Start the workers
 
@@ -25,8 +26,16 @@ Start one polecat worker per ready task, in parallel, through the project's disp
 
 Confirm each worker started. A worker that failed to start is a halt: report the task id and the failure verbatim.
 
-## 3. Report
+## 3. Report and stop (fire-and-forget)
 
-Dispatch is fire-and-forget: the worker records its result on the task, so do not poll or wait for it.
+Dispatch is fire-and-forget: the worker records its result on the task graph. Once the workers start, output the dispatch report and end your turn immediately:
 
-Output one line per task: title, id, and the worker started (container name), or the `/reify` hand-back and why.
+- Output one line per task: title, id, and the worker started (container name), or the `/reify` hand-back and why.
+- Never wait for a worker to finish in the dispatch turn, and never call or block on event-stream tools (such as `polecat_polecat_events`), status checks, sleep loops, or timers.
+
+## 4. Act on a completed worker (separate invocation or turn)
+
+Worker outputs (`status`, `completion_evidence`, `pr_url`) return on the PKB task graph after the container exits. When a session is invoked in a separate turn or invocation to check or `/reconcile` a completed worker (or woken by an external completion notification):
+
+- **Done (`status=done`, `exit_code=0`)**: Read the worker's report on the task record and check it per `premise-check`. Read downstream tasks on the graph whose `needs` dependencies are now satisfied, and dispatch any that are ready. Trigger `/verify` on the deliverable or `/reconcile` as needed.
+- **Partial or Failed (`status=partial` or `status=failed`, or `exit_code!=0`)**: Inspect the failure reason recorded on the task and container logs. If unfinished work remains, route the follow-up through `/reify` or escalate per fail-fast.

@@ -24,6 +24,6 @@ Read the application against these eleven core probes during PREP. Substitute di
 
 ## Operational Use in PREP
 
-- Consider every probe; record firing probes as line-cited entries in reading notes ([[reading-notes-format]]).
+- Consider every probe; record firing probes as line-cited entries in reading notes (`reading-notes-format.md`).
 - Identify the primary analytical vulnerability (typically Probes 1, 3, 4, or 6) to anchor overall evaluation.
 - Differentiate feasibility/resourcing (Probes 7, 11) from access risk (Probe 9). Direct resourcing critiques to institutions, not early-career researchers.

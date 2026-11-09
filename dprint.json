@@ -12,7 +12,12 @@
     "node_modules",
     ".git",
     "**/*.excalidraw",
-    "tests/transcripts/fixtures/*.snapshot.*"
+    "tests/transcripts/fixtures/*.snapshot.*",
+    "*-claude/**",
+    "*-agy/**",
+    "*-openclaw/**",
+    "cowork/**",
+    "openclaw/**"
   ],
   "plugins": [
     "https://plugins.dprint.dev/markdown-0.26.0.wasm",
