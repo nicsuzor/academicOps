@@ -17,7 +17,7 @@
 - [agents/reify.md](agents/reify.md) -- hydrating a task node with intent, workflow, execution steps, and guardrails.
 - [agents/prompt-hydration.md](agents/prompt-hydration.md) -- prompt hydration.
 - [agents/sleep-cycle.md](agents/sleep-cycle.md) -- the periodic consolidation agent.
-- [agents/ida-supervision-migration.md](agents/ida-supervision-migration.md) -- which supervision capabilities move to ida, the checkpoints that gate each increment of autonomy, and what never moves.
+- [agents/ida-interaction-rules.md](agents/ida-interaction-rules.md) -- presentation standards, conversational pacing, subagent delegation boundaries, and channel hygiene for Ida.
 - [agents/face-ida-triage-and-tracked-requests.md](agents/face-ida-triage-and-tracked-requests.md) -- face-Ida triage decision, subagent twin verification, tracked-request closed-loop delivery, and retirement of legacy /mine tracking.
 - [agents/compliance-consequences-removal.md](agents/compliance-consequences-removal.md) -- removal of volunteered compliance and conflict-of-interest consequences in decision conversations.
 - [agents/authoritative-user-task-reports.md](agents/authoritative-user-task-reports.md) -- authoritative user task reports deciding task state and ministerial lifecycle execution in Pauli.
@@ -28,7 +28,6 @@
 
 - [ENFORCEMENT-MAP.md](ENFORCEMENT-MAP.md) -- concise cross-reference table mapping rules to their live enforcement mechanisms.
 - [enforcement/enforcement-map.md](enforcement/enforcement-map.md) -- specification governing the enforcement map schema, inclusion boundaries, and concision invariants.
-- [enforcement/framework-only-enforcement-design.md](enforcement/framework-only-enforcement-design.md) -- design defining enforcement strictly as framework-level process rules, establishing rule classification test, and inventorying specs and mechanisms for removal.
 - [enforcement/enforcement.md](enforcement/enforcement.md) -- governing principle, regulatory tools, mechanism categories, and proportional intervention.
 - [enforcement/task-contract.md](enforcement/task-contract.md) -- the work-unit contract (claim → release).
 - [enforcement/workflow.md](enforcement/workflow.md) -- the four-step workflow shape and review-depth call.
