@@ -79,12 +79,24 @@ Task titles and filenames must be brief, descriptive, and unambiguous:
 - **Task bodies are strictly concise:** Follow the canonical template in [`specs/meta/naming-and-decisions.md`](../../specs/meta/naming-and-decisions.md) (Goal, Deliverable, Scope, Acceptance criteria, Pointers). Never add narrative sections (`Background`, `References`, `Implementation Plan`) or prose task-to-task links.
 - **Parent/child is already an edge:** Setting `parent_id` links the hierarchy; do not redundantly wire edges between siblings/descendants of the parent without specific interactions. Tasks requiring review or follow-up must be structured either as a single task with internal subtasks (if single session) or as a dedicated epic with child tasks (if multi-session), never as loose siblings under an external parent.
 
+## Three-Purpose Edge Taxonomy and Invariants
+
+Task graph edges follow the Three-Purpose Edge Taxonomy per [`specs/decisions/0002-distinguish-pkb-graph-edge-purposes-and-enforce-parsimony.md`](../../specs/decisions/0002-distinguish-pkb-graph-edge-purposes-and-enforce-parsimony.md):
+
+- **Single injection invariant**: Top-level deliverable tasks wire `serves` to priced targets; subtasks never carry redundant `serves` edges. Auxiliary tasks that directly reduce effort or raise success probability wire `supports` (forbidden for tracking tasks).
+- **Prerequisites use `needs`**: Upward execution gating is declared exclusively via `needs: [<task_id>]`.
+- **Contextual references use `## Pointers`**: Soft references, cited documentation, and related artifacts live exclusively as markdown `[[wikilinks]]` in `## Pointers`. Duplicate frontmatter edges for body citations are prohibited.
+
+## Worker State-Only Invariant
+
+A worker executing a task may only mutate that task's own state (checking off acceptance criteria, recording verifiable evidence, transitioning status). Workers never inspect or modify edges across other tasks, compute reverse graph dependencies, or mint follow-up verification tasks; unblocking, sequencing, and parent rollup belong exclusively to the graph engine, dispatcher, and background truth maintenance (`wf-reconcile`).
+
 ## Decisions Emerge from Graph Relationships, Not Standalone Tasks
 
 Agents must never create un-actionable "decision" tasks or file conversational questions as backlog tickets. An agent given a task does the groundwork and makes the decision itself; it never files the task back to the user as their decision (`assignee: user`) unless the user explicitly requested to make that decision themselves (tg 1013). Where research investigates an open design question or architectural alternatives, the agent evaluates the options and chooses the recommended route directly to unblock downstream implementation tasks.
 
-- **Separate forks into option nodes only where decomposed further:** Forks are separated into competing option nodes wired with `alternative` links to their decision node only where those branches are decomposed further. A task that has options to choose between but no commitment to doing anything immediately beyond choosing must not be created with subtasks or separate option nodes; create it with the choices in the task and instructions on how to make the decision. Dependencies are strictly one-sided (`depends_on` on the waiting task), and choosing an option resolves the decision, adopting the selected branch and cancelling competing option nodes.
-- **Model unknowns as empirical probes:** Missing information is gathered via focused probe tasks (`classification: probe`).
+- **Candidate Options Remain in Task Bodies:** Competing candidate options stay inside the body of the scoping task or ADR until chosen. A task that has options to choose between is created as a single task with the candidate choices and evaluation criteria inside the task body. When a choice is made, only the selected option is reified into an actionable task under `parent: <scoping_task_id>`.
+- **Model unknowns as empirical probes valued via `needs`:** Where a decision depends on missing runtime benchmarks, data, or empirical findings, mint an empirical probe task (`classification: probe`) wired directly into the waiting task via standard execution prerequisite `needs: [<probe_task_id>]`. Probes receive worth directly through prerequisite backward induction via `needs`.
 - **Ask in-turn questions directly:** Interactive clarifications in an active session use `AskUserQuestion` directly rather than polluting the graph with un-actionable decision tasks.
 
 ## Keep indexes synchronized with their sources

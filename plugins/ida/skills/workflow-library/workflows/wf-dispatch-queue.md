@@ -18,7 +18,7 @@ Three roles, in order: the PKB custodian finds and ranks; the front agent shows 
 ## Obligations
 
 1. **Find the candidates (custodian)**: The front agent asks the custodian for every task that could be dispatched now. The custodian answers from the graph alone, in the graph's own flow order (hard-deadline lane first, then by gain and loss averted), with one line per task: id, title, project, status, and what it unblocks.
-   - _Dispatchable now_: `status: queued`, no open `needs` or `depends_on`, no incomplete children, and a body in reified shape (Goal, Acceptance, Instructions ending in the finish step, Output).
+   - _Dispatchable now_: `status: queued`, no open `needs`, no incomplete children, and a body in reified shape (Goal, Acceptance, Instructions ending in the finish step, Output).
    - _Awaiting promotion_: `status: ready` that otherwise passes the same checks. Listed separately; the user's approval is the promotion.
    - _Not ready_: a `queued` or `ready` task that fails a check. The custodian sends it through `/reify` under their own authority and reports it as sent, with the failing check; it is not offered for dispatch.
    - Tasks assigned to the user, held in `review` by the user, or `in_progress` under a live claim are never candidates.
