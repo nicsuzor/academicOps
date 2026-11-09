@@ -149,33 +149,12 @@ def parse_premise_check_attr(span: Span) -> dict[str, Any]:
     return {}
 
 
-def is_synthetic_test(span: Span) -> bool:
-    """Detect spans originating from test suites rather than live operational sessions."""
-    cwd = str(attr(span, "cwd") or "")
-    sid = session_of(span)
-    pc = parse_premise_check_attr(span)
-    claim_id = str(pc.get("claim_id") or "")
-    verification_id = str(pc.get("verification_id") or "")
-
-    if "/tests" in cwd or "tests/" in cwd or "/tmp/pytest-" in cwd or "test-worktree" in cwd:
-        return True
-    if sid.startswith("11111111") or sid.startswith("test-"):
-        return True
-    if claim_id.startswith("test-") or "test_claim" in claim_id or claim_id == "test":
-        return True
-    if verification_id.startswith("test-") or "test" in verification_id.lower():
-        return True
-    return False
-
-
 # --- Census Aggregation ------------------------------------------------------
 
 
 @dataclass
 class CensusStats:
     total_verdicts: int = 0
-    operational_verdicts: int = 0
-    synthetic_test_verdicts: int = 0
     sessions: set[str] = field(default_factory=set)
     armed_hearsay_spans: int = 0
     armed_sessions: set[str] = field(default_factory=set)
@@ -251,7 +230,6 @@ def aggregate_census(
 
         # 4. Recorded verdict spans
         elif name == "premise_check_verdict":
-            synthetic = is_synthetic_test(span)
             pc = parse_premise_check_attr(span)
             verdict = str(pc.get("verdict") or "").upper()
             tags = [t if t.startswith("#") else f"#{t}" for t in pc.get("defect_tags") or [] if t]
@@ -262,10 +240,6 @@ def aggregate_census(
                 target.total_verdicts += 1
                 if sid:
                     target.sessions.add(sid)
-                if synthetic:
-                    target.synthetic_test_verdicts += 1
-                else:
-                    target.operational_verdicts += 1
 
                 if verdict == "PASS":
                     target.pass_count += 1
@@ -327,8 +301,6 @@ def render_census_markdown(stats: dict[str, CensusStats]) -> str:
         "| Metric | `claude-code` | `agy` | Combined / Comparative |",
         "| :--- | :--- | :--- | :--- |",
         f"| **Total Recorded Verdict Spans** | **{c.total_verdicts}** | **{a.total_verdicts}** | **{comb.total_verdicts}** total (`{ratio_str(a.total_verdicts, c.total_verdicts)}` in `agy`) |",
-        f"| **Operational Verdicts (Non-Test)** | **{c.operational_verdicts}** | **{a.operational_verdicts}** | **{comb.operational_verdicts}** operational |",
-        f"| **Synthetic Test / CLI Verifications** | **{c.synthetic_test_verdicts}** | **{a.synthetic_test_verdicts}** | **{comb.synthetic_test_verdicts}** excluded |",
         f"| **Distinct Sessions with Verdicts** | **{len(c.sessions)}** | **{len(a.sessions)}** | **{len(comb.sessions)}** (`{ratio_str(len(a.sessions), len(c.sessions))}` in `agy`) |",
         f"| **Mean Verdicts per Session** | **{c_mean_v:.2f}** | **{a_mean_v:.2f}** | **{comb_mean_v:.2f}** |",
         f"| **Armed `hearsay_check` Spans** | **{c.armed_hearsay_spans}** ({len(c.armed_sessions)} sess) | **{a.armed_hearsay_spans}** ({len(a.armed_sessions)} sess) | **{comb.armed_hearsay_spans}** spans |",
@@ -385,7 +357,6 @@ class DossierRecord:
     no_claim: bool
     judged_text_sha256: str
     reason_text: str
-    is_synthetic_test: bool
 
 
 def extract_dossier_records(
@@ -440,7 +411,6 @@ def extract_dossier_records(
                 no_claim=bool(pc.get("no_claim")),
                 judged_text_sha256=str(pc.get("judged_text_sha256") or ""),
                 reason_text=str(pc.get("reason_text") or ""),
-                is_synthetic_test=is_synthetic_test(span),
             )
         )
 
@@ -463,10 +433,7 @@ def render_dossier_markdown(records: list[DossierRecord]) -> str:
     ]
 
     for i, r in enumerate(records, 1):
-        synth_badge = " · [SYNTHETIC TEST]" if r.is_synthetic_test else ""
-        out.append(
-            f"### {i}. {r.verdict} · `{r.claim_id or 'no-claim-id'}` ({r.harness}){synth_badge}"
-        )
+        out.append(f"### {i}. {r.verdict} · `{r.claim_id or 'no-claim-id'}` ({r.harness})")
         out.append(f"- **Span ID:** `{r.span_id}`")
         out.append(f"- **Session ID:** `{r.session_id}`")
         out.append(f"- **Timestamp:** {r.start_time}")
@@ -498,17 +465,16 @@ def render_dossier_annotations_template(records: list[DossierRecord]) -> dict[st
                 "verdict": r.verdict,
                 "recorded_defect_tags": r.defect_tags,
                 "claim_id": r.claim_id,
-                "is_synthetic_test": r.is_synthetic_test,
                 "evaluation": {
-                    # Valid categories:
+                    # Valid categories to be evaluated agentically:
                     # "substantive": genuine catch of logical, epistemic, or rule defect
                     # "structural_bar": missing inference bar (-- ... --) or orphan conclusion
                     # "format_plumbing": disguised formatting, frontmatter parse slip, or un-nulled brief
-                    "defect_classification": ("synthetic_test" if r.is_synthetic_test else None),
+                    # "synthetic_test": test suite / verification execution rather than operational session
+                    "defect_classification": None,
                     "is_substantive": None,  # true/false
-                    # For PASS verdicts:
-                    # true if reviewer accepted secondary/peer claims without inspecting source of record
-                    "is_rubber_stamp": None,
+                    "is_rubber_stamp": None,  # for PASS: true if accepted secondary report without primary check
+                    "is_synthetic_test": None,  # true if qualitative evaluator identifies test fixture
                     "notes": "",
                 },
             }

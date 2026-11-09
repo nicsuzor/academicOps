@@ -114,24 +114,6 @@ def test_harness_classification():
     assert ppa.classify_harness(s5) == "claude-code"
 
 
-def test_synthetic_test_detection():
-    # Spans executed inside test directories or with test identifiers
-    s_test1 = make_verdict_span("t1", "s1", "PASS", cwd="/repo/tests")
-    assert ppa.is_synthetic_test(s_test1) is True
-
-    s_test2 = make_verdict_span("t2", "11111111-2222-3333-4444-555555555555", "PASS")
-    assert ppa.is_synthetic_test(s_test2) is True
-
-    s_test3 = make_verdict_span("t3", "s3", "PASS", claim_id="test-claim-1")
-    assert ppa.is_synthetic_test(s_test3) is True
-
-    # Real operational span
-    s_op = make_verdict_span(
-        "o1", "29c14536-1111-2222-3333-444455556666", "PASS", claim_id="claim-final"
-    )
-    assert ppa.is_synthetic_test(s_op) is False
-
-
 def test_census_aggregation_across_harnesses():
     spans = [
         # claude-code: 2 sessions
@@ -237,6 +219,7 @@ def test_extract_dossier_records_and_annotations():
     assert eval0["span_id"] == "s1"
     assert eval0["evaluation"]["defect_classification"] is None
     assert eval0["evaluation"]["is_substantive"] is None
+    assert eval0["evaluation"]["is_synthetic_test"] is None
 
 
 def test_render_session_log():

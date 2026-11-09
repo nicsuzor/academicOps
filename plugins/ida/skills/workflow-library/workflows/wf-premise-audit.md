@@ -27,7 +27,7 @@ Comparative premise-check and hearsay gate audit across execution surfaces (such
 ## Stage Procedure
 
 1. **Deterministic Telemetry Census & Dossier Assembly**:
-   - Run `phoenix_premise_audit.py census` across the evaluation window to establish macro population counts (total recorded verdicts, mean verdicts per session, armed hearsay gates, overrides, recorder refusals, and gross vs operational distributions).
+   - Run `phoenix_premise_audit.py census` across the evaluation window to establish macro population counts (total recorded verdicts, mean verdicts per session, armed hearsay gates, overrides, recorder refusals, and verdict/defect-tag distributions).
    - Run `phoenix_premise_audit.py dossier` to extract candidate evaluation records in JSON and Markdown, alongside an empty `annotations.json` template schema.
 2. **Stratified Agentic Qualitative Evaluation**:
    - Dispatch capable multimodal agents to inspect extracted candidate dossiers.
