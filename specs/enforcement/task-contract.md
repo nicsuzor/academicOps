@@ -17,13 +17,16 @@ contract.
 **The unified worker contract -- this is its canonical home; other docs link
 here.** Any fully-spec'd task -- including one with children; an "epic" is just
 a task with children, no special machinery -- can be claimed by any worker on
-any surface (polecat container, in-session subagent, agent team). Workers use
-every harness feature they have, and with that comes the obligation to
-demonstrate compliance and QA internally -- how is the worker's business. The
-return contract: **evidence + an output URL, written to the shared task record.**
-One deliverable per claimed task, never a spray of per-child PRs the principal
-reviews individually. Task scope is one project/repo. Sync-wait versus
-fire-and-forget is a dispatch-time cadence choice, not a contract difference.
+an appropriate execution surface (polecat container, in-session subagent, agent team).
+Tasks requiring repository code modifications, sweeping code greps, or expensive
+test suite execution belong strictly in isolated polecat containers, never in
+interactive coordinator sessions. Workers use every harness feature they have,
+and with that comes the obligation to demonstrate compliance and QA internally --
+how is the worker's business. The return contract: **evidence + an output URL,
+written to the shared task record.** One deliverable per claimed task, never a spray
+of per-child PRs the principal reviews individually. Task scope is one project/repo.
+Sync-wait versus fire-and-forget is a dispatch-time cadence choice, not a contract
+difference.
 
 **The task graph is the sole source of truth for completion.** `release_task` /
 `complete_task` is the authoritative completion claim; a prose "done" that
