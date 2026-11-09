@@ -29,6 +29,8 @@ import argparse
 import json
 import re
 import sys
+import urllib.error
+import urllib.request
 from collections import Counter
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -41,8 +43,10 @@ from phoenix_token_cost import (  # noqa: E402
     BASE_URL_ENV_VAR,
     PROJECT_ENV_VAR,
     ConfigError,
+    _extract_jsonrpc_payload,
+    _mcp_headers,
+    _mcp_init_session,
     iso,
-    page_spans,
     parse_tz,
     parse_when,
     resolve_base_url,
@@ -766,6 +770,12 @@ def build_parser() -> argparse.ArgumentParser:
     conn.add_argument("--project", help=f"Phoenix project or ${PROJECT_ENV_VAR}")
     conn.add_argument("--from-file", type=Path, help="Load spans from saved JSON file")
     conn.add_argument("--save-spans", type=Path, help="Save fetched spans to JSON file")
+    conn.add_argument(
+        "--days",
+        type=int,
+        default=7,
+        help="Window size in days (default: 7, overridden by --since)",
+    )
     conn.add_argument("--since", help="Start time (ISO or YYYY-MM-DD [HH:MM])")
     conn.add_argument("--until", help="End time (default: now)")
     conn.add_argument("--tz", default="+00:00", help="Timezone offset (default: +00:00)")
@@ -830,8 +840,129 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def query_phoenix_sql(mcp_url: str, session_id: str, sql: str) -> dict[str, Any]:
+    """Execute read-only SQL via Phoenix MCP executeSql tool."""
+    code = f'return await call_tool("executeSql", {{"sql": {json.dumps(sql)}}})'
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "tools/call",
+        "params": {"name": "phoenix_execute", "arguments": {"code": code}},
+    }
+    req = urllib.request.Request(
+        mcp_url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers=_mcp_headers(session_id),
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            raw = resp.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", "replace")[:400]
+        raise ConfigError(f"HTTP {exc.code} from {mcp_url}: {body}") from exc
+    except urllib.error.URLError as exc:
+        raise ConfigError(f"cannot reach {mcp_url}: {exc.reason}") from exc
+
+    rpc = _extract_jsonrpc_payload(raw, mcp_url)
+    if "error" in rpc:
+        raise ConfigError(f"Phoenix MCP error: {rpc['error']}")
+    result = rpc.get("result") or {}
+    content = result.get("content") or []
+    text = "".join(item.get("text", "") for item in content if isinstance(item, dict)).strip()
+    if result.get("isError"):
+        raise ConfigError(f"Phoenix executeSql failed: {text}")
+    try:
+        data = json.loads(text) if text else {}
+    except json.JSONDecodeError as exc:
+        raise ConfigError(f"Phoenix executeSql returned non-JSON: {text[:400]}") from exc
+
+    if "error" in data:
+        err = data["error"]
+        raise ConfigError(f"Phoenix SQL execution error: {err}")
+    return data
+
+
+def page_spans_sql(
+    base_url: str,
+    project_name: str,
+    since_iso: str,
+    until_iso: str,
+    session_id_filter: str | None = None,
+) -> list[Span]:
+    """Exhaustively page premise-check and hearsay telemetry via executeSql keyset pagination.
+
+    Pages to complete exhaustion using `s.id > last_id ORDER BY s.id ASC`. Halts loudly
+    if `row_count_is_partial` remains True on an empty page or if a query fails.
+    """
+    mcp_session_id = _mcp_init_session(base_url)
+    last_id = 0
+    all_spans: list[Span] = []
+
+    session_clause = ""
+    if session_id_filter:
+        safe_sid = session_id_filter.replace("'", "''")
+        session_clause = (
+            f"AND ((s.attributes ->> '$.session.id') LIKE '{safe_sid}%' "
+            f"OR (s.attributes ->> '$.session_id') LIKE '{safe_sid}%') "
+        )
+
+    while True:
+        sql = f"""
+        SELECT s.id, s.span_id, t.trace_id, s.name, s.start_time, s.span_kind, s.attributes
+        FROM spans s
+        JOIN traces t ON t.id = s.trace_rowid
+        JOIN projects p ON p.id = t.project_rowid
+        WHERE p.name = '{project_name.replace("'", "''")}'
+          AND s.start_time >= '{since_iso}'
+          AND s.start_time <= '{until_iso}'
+          {session_clause}
+          AND (
+            s.name IN ('premise_check_verdict', 'hearsay_check', 'premise_check_override')
+            OR (
+              s.span_kind = 'TOOL' AND s.name != 'premise_check_verdict' AND (
+                (s.attributes ->> '$.output.value') LIKE '%premise_check_verdict:%'
+                OR (s.attributes ->> '$.output.value') LIKE '%span_emitted%false%'
+              )
+            )
+          )
+          AND s.id > {last_id}
+        ORDER BY s.id ASC
+        """
+        data = query_phoenix_sql(base_url, mcp_session_id, sql)
+        rows = data.get("rows", [])
+        is_partial = bool(data.get("row_count_is_partial"))
+
+        if not rows:
+            if is_partial:
+                raise ConfigError(
+                    f"Phoenix query truncated unexpectedly: row_count_is_partial is True but 0 rows returned at id > {last_id}"
+                )
+            break
+
+        for r in rows:
+            attrs = json.loads(r[6]) if isinstance(r[6], str) else (r[6] or {})
+            span: Span = {
+                "name": r[3],
+                "span_kind": r[5],
+                "start_time": r[4],
+                "context": {
+                    "span_id": r[1],
+                    "trace_id": r[2],
+                },
+                "attributes": attrs,
+            }
+            all_spans.append(span)
+
+        last_id = rows[-1][0]
+        if not is_partial:
+            break
+
+    return all_spans
+
+
 def load_spans(args: argparse.Namespace) -> list[Span]:
-    """Load spans from file or Phoenix REST API."""
+    """Load spans from file or Phoenix executeSql keyset pagination."""
     if getattr(args, "from_file", None):
         path: Path = args.from_file
         raw = json.loads(path.read_text(encoding="utf-8"))
@@ -844,15 +975,23 @@ def load_spans(args: argparse.Namespace) -> list[Span]:
         return spans
 
     base_url = resolve_base_url(args.base_url)
-    project_id, project_name = resolve_project(base_url, args.project)
+    _project_id, project_name = resolve_project(base_url, args.project)
 
     tz = parse_tz(args.tz)
-    since_dt = parse_when(args.since, tz) if args.since else (datetime.now(UTC) - timedelta(days=7))
+    days = getattr(args, "days", 7) or 7
+    since_dt = (
+        parse_when(args.since, tz) if args.since else (datetime.now(UTC) - timedelta(days=days))
+    )
     until_dt = parse_when(args.until, tz) if args.until else datetime.now(UTC)
 
-    window = [("start_time", iso(since_dt)), ("end_time", iso(until_dt))]
-    # Fetch tool spans which include premise_check_verdict, hearsay_check, and tool refusals
-    tool_spans = page_spans(base_url, project_id, [("span_kind", "TOOL"), *window])
+    # Exhaustive keyset pagination via executeSql
+    all_spans = page_spans_sql(
+        base_url,
+        project_name,
+        iso(since_dt),
+        iso(until_dt),
+        session_id_filter=args.session,
+    )
 
     if getattr(args, "save_spans", None):
         args.save_spans.write_text(
@@ -860,14 +999,14 @@ def load_spans(args: argparse.Namespace) -> list[Span]:
                 {
                     "project": project_name,
                     "window": [iso(since_dt), iso(until_dt)],
-                    "tools": tool_spans,
+                    "tools": all_spans,
                 },
                 indent=2,
             ),
             encoding="utf-8",
         )
 
-    return tool_spans
+    return all_spans
 
 
 def main(argv: list[str] | None = None) -> int:
