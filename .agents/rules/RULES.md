@@ -87,15 +87,6 @@ Agents must never create un-actionable "decision" tasks or file conversational q
 - **Model unknowns as empirical probes:** Missing information is gathered via focused probe tasks (`classification: probe`).
 - **Ask in-turn questions directly:** Interactive clarifications in an active session use `AskUserQuestion` directly rather than polluting the graph with un-actionable decision tasks.
 
-## Architectural Decision Records
-
-Significant architectural decisions are recorded using the minimal Markdown Architectural Decision Records (MADR) format from the `/madr` skill with repository-local metadata and synchronization:
-
-- **Location**: Store records in `specs/decisions/` formatted with the minimal MADR template from `/madr` plus YAML frontmatter (`status`, `date`, `decision-makers`).
-- **Naming**: Filenames follow `NNNN-<slug>.md` (e.g. `0001-use-madr-for-architectural-decisions.md`) with a 4-digit sequential prefix and an active-imperative kebab-case slug. Personal names and persona prefixes are strictly prohibited.
-- **Index Synchronization**: `specs/decisions/INDEX.md` must be updated in the same commit whenever an ADR is created, modified, deprecated, or superseded.
-- **Specification Alignment**: Subsystem specifications (`specs/`) define target behavior and state only, carrying zero historical deliberations. When a new ADR supersedes an existing decision, any affected subsystem specifications in `specs/` must be updated in the same PR.
-
 ## Keep indexes synchronized with their sources
 
 Whenever creating, modifying, renaming, or deleting a file, rule, skill, workflow, or definition that is indexed in a README, catalog, or table of contents, update the index in the same change:
