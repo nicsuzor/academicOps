@@ -424,3 +424,106 @@ def test_cli_census_and_dossier_from_file(tmp_path: Path, capsys: pytest.Capture
     out, _ = capsys.readouterr()
     tally_data = json.loads(out)
     assert tally_data["claude-code"]["bucket_1_substantive"] == 1
+
+
+def test_keyset_sql_pagination_multipage_and_truncation_detection(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Regression test: executeSql keyset pagination exhaustively fetches >500 rows across pages.
+
+    Proves multi-page (>500 row / row_count_is_partial) pagination returns 100% of spans
+    without loss, and halts loudly (raising ConfigError) if truncation occurs.
+    """
+    import re
+
+    queries_run: list[str] = []
+
+    def fake_query_phoenix_sql(mcp_url: str, session_id: str, sql: str) -> dict[str, Any]:
+        queries_run.append(sql)
+        match = re.search(r"AND s\.id > (\d+)", sql)
+        after_id = int(match.group(1)) if match else 0
+
+        if after_id == 0:
+            # Page 1: 500 rows with id 1..500
+            rows = [
+                [
+                    i,
+                    f"span-{i}",
+                    "trace-1",
+                    "premise_check_verdict",
+                    "2026-11-05T12:00:00Z",
+                    "TOOL",
+                    json.dumps(
+                        {
+                            "aops": {"surface": "claude-code"},
+                            "premise_check": {"verdict": "PASS"},
+                        }
+                    ),
+                ]
+                for i in range(1, 501)
+            ]
+            return {"rows": rows, "row_count": 500, "row_count_is_partial": True}
+        elif after_id == 500:
+            # Page 2: 500 rows with id 501..1000
+            rows = [
+                [
+                    i,
+                    f"span-{i}",
+                    "trace-1",
+                    "premise_check_verdict",
+                    "2026-11-05T13:00:00Z",
+                    "TOOL",
+                    json.dumps(
+                        {"aops": {"surface": "agy"}, "premise_check": {"verdict": "REVISE"}}
+                    ),
+                ]
+                for i in range(501, 1001)
+            ]
+            return {"rows": rows, "row_count": 500, "row_count_is_partial": True}
+        elif after_id == 1000:
+            # Page 3: 46 rows with id 1001..1046, row_count_is_partial: False
+            rows = [
+                [
+                    i,
+                    f"span-{i}",
+                    "trace-1",
+                    "hearsay_check",
+                    "2026-11-05T14:00:00Z",
+                    "TOOL",
+                    json.dumps({"aops": {"surface": "agy"}}),
+                ]
+                for i in range(1001, 1047)
+            ]
+            return {"rows": rows, "row_count": 46, "row_count_is_partial": False}
+        return {"rows": [], "row_count": 0, "row_count_is_partial": False}
+
+    monkeypatch.setattr(ppa, "_mcp_init_session", lambda url: "dummy-session")
+    monkeypatch.setattr(ppa, "query_phoenix_sql", fake_query_phoenix_sql)
+
+    spans = ppa.page_spans_sql(
+        base_url="http://mock-phoenix",
+        project_name="academicOps",
+        since_iso="2026-11-02T00:00:00Z",
+        until_iso="2026-11-09T00:00:00Z",
+    )
+
+    assert len(spans) == 1046
+    assert len(queries_run) == 3
+    assert spans[0]["context"]["span_id"] == "span-1"
+    assert spans[499]["context"]["span_id"] == "span-500"
+    assert spans[500]["context"]["span_id"] == "span-501"
+    assert spans[1045]["context"]["span_id"] == "span-1046"
+
+    # Simulate truncation failure: row_count_is_partial remains True but 0 rows returned
+    def fake_truncation_query(mcp_url: str, session_id: str, sql: str) -> dict[str, Any]:
+        return {"rows": [], "row_count": 0, "row_count_is_partial": True}
+
+    monkeypatch.setattr(ppa, "query_phoenix_sql", fake_truncation_query)
+
+    with pytest.raises(ppa.ConfigError, match="truncated unexpectedly"):
+        ppa.page_spans_sql(
+            base_url="http://mock-phoenix",
+            project_name="academicOps",
+            since_iso="2026-11-02T00:00:00Z",
+            until_iso="2026-11-09T00:00:00Z",
+        )
