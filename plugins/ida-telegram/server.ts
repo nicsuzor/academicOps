@@ -6,6 +6,7 @@ import { PermissionRelay } from "./src/mcp/permissions.js";
 import { TelegramBotClient } from "./src/telegram/bot.js";
 import { StdioMcpServer } from "./src/mcp/server.js";
 import { startWebServer } from "./src/web/server.js";
+import { SharedTelegramChannelCore } from "./src/core/channel-core.js";
 import { createServer } from "node:net";
 import { existsSync, unlinkSync, chmodSync } from "node:fs";
 import { join } from "node:path";
@@ -20,6 +21,14 @@ async function main() {
   const permRelay = new PermissionRelay(config.stateDir);
 
   let bot: TelegramBotClient | null = null;
+
+  const channelCore = new SharedTelegramChannelCore({
+    config,
+    store,
+    broker,
+    bot: null,
+    permRelay,
+  });
 
   // Stdio MCP server
   const mcpServer = new StdioMcpServer(config, store, broker, null, permRelay);
@@ -138,6 +147,10 @@ async function main() {
     bot.startPolling().catch((e) => console.error("[ida-telegram] Polling stopped:", e));
   }
 
+  channelCore.bot = bot;
+
+  // Connect bot instance to McpServer
+  (mcpServer as any).bot = bot;
   // Cleanup on shutdown
   const cleanup = () => {
     if (bot) bot.stopPolling();

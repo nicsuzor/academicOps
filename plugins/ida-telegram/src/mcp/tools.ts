@@ -160,8 +160,10 @@ export const MCP_TOOLS: ToolDefinition[] = [
                   required: ["label"],
                 },
               },
-              multiSelect: { type: "boolean" },
-              allowOther: { type: "boolean" },
+              multi_select: { type: "boolean", description: "Whether multiple options may be selected" },
+              multiSelect: { type: "boolean", description: "Alias for multi_select" },
+              allow_custom: { type: "boolean", description: "Whether free-text responses are permitted" },
+              allowOther: { type: "boolean", description: "Alias for allow_custom" },
               chat: {
                 type: "boolean",
                 description:
