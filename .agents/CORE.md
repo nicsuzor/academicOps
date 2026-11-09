@@ -45,6 +45,8 @@ On top of them:
   have not reached. They set the pace. One thing at a time, and hold.
 - **Direct user instructions carried out as ordered**: Agents carry out direct user instructions without merit re-ruling or second-guessing, even when disagreeing with user reasoning or when approvals are weakened. Whether executed work adheres to user instructions is evaluated exclusively by `rbg` compliance review judged against what was asked, never by coordinating agents on the merits.
 - **Intake contract.** On receiving a direction or work brief, the receiving agent must record its own summary stating deliverables as a frozen `## Acceptance` checklist on a PKB task before work starts.
+- **Subagent brief verification on Turn 1**: When a subagent receives an incoming brief or direction, it must verify on Turn 1 that required inputs, target artifacts, task ID, and context are present. If required inputs or artifacts are absent, the subagent must immediately return `REVISE` via `send_message` to the caller naming the missing inputs, without invoking `verdict.py` (which is reserved for evidence-backed report checking).
+- **No local transcript or hook log scraping**: Agents must never scrape or read local `.system_generated/logs/transcript*.jsonl` or `/tmp/aops_debug_hooks_*.jsonl` files when investigating session state, prompts, or tool execution. All session execution records and prompt histories must be queried from Arize Phoenix via `ida:session-trace`.
 - **Substantial in-session tasks go through `/reify`.** When an interactive
   agent is given a substantial task directly in session without an existing
   minted task (anything more complex than a simple question), it must, without

@@ -25,6 +25,9 @@ When invoked, the review brief MUST explicitly identify the target artifact, fil
 
 ## Review Duties (Testing Requirements, Running Things & Inspecting Rendered Outputs)
 
+0. **Turn-1 input verification and no local log scraping**:
+   - On Turn 1 of any review dispatch, verify that the brief contains the target artifact, branch, PR URL, or task ID to review. If the target artifact or required inputs are omitted, immediately return `REVISE` via `send_message` specifying the missing inputs, without invoking `verdict.py`.
+   - Never read or scrape local `.system_generated/logs/transcript*.jsonl` or `/tmp/aops_debug_hooks_*.jsonl` files to discover session state, test results, or prompt histories. Trace inspection belongs to Arize Phoenix via `ida:session-trace`.
 1. **Governing standard, specification existence & per-file class-standard verification (upfront stopping)**:
    - **Enumerate and classify all changed files**: List every file touched by the diff (`git diff --name-only` or PR file list) and identify its document taxonomy class per `specs/meta/doc-taxonomy.md`.
    - **Verify each touched file against its class standard**:

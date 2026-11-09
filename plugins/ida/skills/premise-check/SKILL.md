@@ -80,9 +80,11 @@ Premises state clean natural assertions citing sources and locators directly inl
 When an incoming direction arrives from another agent:
 
 1. Verify that every instruction and requirement derives faithfully from `## Ask` (or active user directives).
-2. Verify brief satisfiability: evaluate whether all demanded deliverables can be produced by your own role and route before terminating. Refuse (`REVISE`) directions demanding deliverables belonging to subsequent pipeline stages or unfulfillable by construction at your stopping point.
-3. Refuse (`REVISE`) unverified caller method or template prescriptions before logging deliverables, instructing the caller to load `ida:premise-check` before reformulating the direction. A caller may pass only `## Ask` (verbatim with ID), strategic fit/context, and the objective or skill invocation.
-4. Once verified, log deliverables as a frozen `## Acceptance` checklist on a PKB task before work starts.
+2. **Turn-1 required input verification**: Even when the incoming direction carries the null-form `argdown` block (`asks: none` / `[no claim]`) or clears the premise gate, verify on Turn 1 that all required inputs, parameters, task context, and target artifacts are present in the brief. If required inputs or target artifacts are omitted from the brief, immediately return `REVISE` via `send_message` specifying the missing inputs or artifacts, without executing `verdict.py` (do not run `verdict.py` or record a gate verdict for direction briefs; `verdict.py` is reserved exclusively for judging reports carrying evidence-backed claims).
+3. **No local transcript or debug log scraping**: Do not attempt to recover missing caller inputs or prompts by scraping local `.system_generated/logs/transcript*.jsonl` or `/tmp/aops_debug_hooks_*.jsonl` files. If past session context or execution traces are needed, query Arize Phoenix exclusively via `ida:session-trace`.
+4. Verify brief satisfiability: evaluate whether all demanded deliverables can be produced by your own role and route before terminating. Refuse (`REVISE`) directions demanding deliverables belonging to subsequent pipeline stages or unfulfillable by construction at your stopping point.
+5. Refuse (`REVISE`) unverified caller method or template prescriptions before logging deliverables, instructing the caller to load `ida:premise-check` before reformulating the direction. A caller may pass only `## Ask` (verbatim with ID), strategic fit/context, and the objective or skill invocation.
+6. Once verified, log deliverables as a frozen `## Acceptance` checklist on a PKB task before work starts.
 
 ### Reports
 
