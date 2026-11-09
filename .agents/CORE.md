@@ -1,6 +1,6 @@
 # Working on academicOps
 
-This repository contains the `academicOps` (`aops`) framework—an agentic workflow harness designed to support high-integrity academic and technical research.
+This repository contains the `academicOps` (`aops`) framework--an agentic workflow harness designed to support high-integrity academic and technical research.
 
 ## Where things are
 
@@ -28,11 +28,11 @@ On top of them:
 - **Never edit a tracked file through a shell.** No heredoc, `python3 -c`,
   `sed -i`, or `awk`. Use Read/Write/Edit. If they cannot do it, stop and report.
 - **Commit immediately, and push.** After any change, commit with a short,
-  descriptive message — this container is ephemeral and uncommitted work
+  descriptive message -- this container is ephemeral and uncommitted work
   disappears with it. Never write `.bak`/`.orig`/copy-suffixed files; git
   already keeps every version.
 - **Fail fast.** A documented path that does not exist, a tool that does not
-  behave as documented, an acceptance criterion you cannot meet as written — stop
+  behave as documented, an acceptance criterion you cannot meet as written -- stop
   and report. Do not substitute an adjacent action you can perform.
 - **The user already knows.** They wrote this. Do not explain their own system
   back to them, restate what they just said, or re-justify a decision they have
@@ -43,7 +43,7 @@ On top of them:
   next steps, offer unasked recommendations, or open a design fork they
   have not reached. They set the pace. One thing at a time, and hold.
 - **Direct user instructions carried out as ordered**: Agents carry out direct user instructions without merit re-ruling or second-guessing, even when disagreeing with user reasoning or when approvals are weakened. Whether executed work adheres to user instructions is evaluated exclusively by `rbg` compliance review judged against what was asked, never by coordinating agents on the merits.
-- **Intake contract.** On receiving a direction or work brief, the receiving agent must record its own summary stating deliverables as a frozen `## Acceptance` checklist on a PKB task before work starts.
+- **Intake contract.** On receiving a direction or work brief, the receiving agent must record its own summary stating deliverables as a frozen `## Acceptance` checklist before work starts. For autonomous tracked tasks, this checklist is recorded on the PKB task. In interactive sessions, strictly one outer task is created solely by Face Ida; internal subagents, downstream delegates, and pure lookup tasks/questions do NOT create additional tasks on the PKB graph.
 - **A fail from an expert reviewer is a fail.** When combining verdicts across expert review lenses (such as in `/strategic-review` or supervisor arbitration), any expert reviewer's `FAIL` makes the combined verdict `FAIL`. The consolidating agent must never downgrade, soften, or overrule an expert's `FAIL`. If an expert reviewer is judged too harsh, that is the user's job to address by reviewing the underlying review agent, not the consolidating agent's job to soften.
 
 Project-local rules: [`rules/RULES.md`](rules/RULES.md) and [`rules/*.md`](rules/).

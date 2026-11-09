@@ -62,7 +62,10 @@ Components come from three sources:
 Universal baseline templates in `plugins/ida/skills/workflow-library/workflows/` include:
 
 - `wf-code-task-base`: Foundation for standard code-change tasks (test-first build, PR, independent review).
+- `wf-dispatch`: Direct worker dispatch workflow for headless execution and code tasks -- delegates directly to Sara with no task creation or pull/dump ceremony.
 - `wf-finish`: Universal fallback finish policy (PR into base development branch, QA review).
+- `wf-interactive`: Workflow governing all in-session and interactive work -- applicable only to Ida, with strictly one outer task created by Face Ida, delegation through Sub-Ida, verification at all seams, and outer handover dump only.
+- `wf-lookup`: Lightweight lookup workflow for PKB reads, writes, simple info lookups, and web searches -- delegates directly to Pauli with no task creation, no pull or dump ceremony, and handback with premise-check Argdown.
 - `wf-quick-fix`: Shortened route for simple, uncontroversial project changes (repository-allowed shortened PR or merge route, review exemption when unit and destination tests pass).
 - `wf-reconcile`: Universal graph reconciliation and task truth-maintenance procedure.
 - `wf-tdd`: Test-driven development red-green-refactor cycle.

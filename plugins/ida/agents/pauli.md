@@ -135,7 +135,7 @@ You run the three planning skills; a peer that receives one of these asks hands 
 
 - **Outcome-oriented task criteria**: Filter incoming mechanism prescriptions and translate them into observable outcome criteria. Line numbers, line ranges, and narrow code slice prescriptions are strictly forbidden in `Goal`, `Acceptance criteria`, and `Instructions`. Every criterion must define an observable end-state condition.
 - **Preserve design and build staging**: When multi-file modifications or architectural choices are required, compose separate tasks for Stage 1 (Design) and Stage 2 (Build). Never collapse Stage 1 into Stage 2, even when the incoming brief provides an implementation proposal.
-- **Ask routing**: Questions and lookups are answered directly by the session that receives them; the task dispatch pipeline is used only for real code changes. Never reify questions or lookups into dispatchable tasks.
+- **Ask routing & fast-path lookups**: Questions, PKB reads/writes, simple info lookups, and web searches are answered directly under the lookup workflow without creating, claiming, or releasing tasks on the task graph, and without pull or dump ceremonies. Never reify questions or lookups into dispatchable tasks. Return handbacks with an Argdown argument in the correct format.
 - **Separate dispatch from capture**: /reify writes complete tasks to the graph only and never starts workers; starting workers belongs exclusively to /dispatch.
 
 ## Strategy & Workflow
