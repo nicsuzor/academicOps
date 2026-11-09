@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from transcripts.adapters.classifier import classify_user_prompt
+from transcripts.adapters.claude import get_model_rates
 from transcripts.model import (
     NormalizedEvent,
     NormalizedRawEntry,
@@ -72,14 +73,13 @@ def _clean_val(v: Any) -> Any:
     return v
 
 
-def load_agy_transcript(jsonl_path: Path) -> NormalizedSession:
+def load_agy_transcript(
+    jsonl_path: Path, default_model: str = "gemini-3.8-flash"
+) -> NormalizedSession:
     """Tolerantly parse an agy JSONL transcript into a NormalizedSession.
 
-    Audit note: agy JSONL log streams are event
-    logs emitted by the agy TUI and do not carry LLM API usage blocks (input_tokens,
-    cache_creation, etc.). Therefore, load_agy_transcript initializes NormalizedSession
-    with tokens_used=0 and cost_usd=0.0. Token and cost accounting applies only to
-    Claude Code transcripts.
+    Extracts token usage (input_tokens, cache_read_tokens, output_tokens) from
+    PLANNER_RESPONSE entries and calculates tokens_used and cost_usd.
     """
     session_id = "unknown"
     for i, part in enumerate(jsonl_path.parts):
@@ -91,6 +91,8 @@ def load_agy_transcript(jsonl_path: Path) -> NormalizedSession:
 
     events: list[NormalizedEvent] = []
     raw_events: list[NormalizedRawEntry] = []
+    total_tokens_used = 0
+    total_cost_usd = 0.0
 
     try:
         text = jsonl_path.read_text(encoding="utf-8", errors="replace")
@@ -161,6 +163,23 @@ def load_agy_transcript(jsonl_path: Path) -> NormalizedSession:
                 norm_type = "message"
             elif entry_type == "PLANNER_RESPONSE":
                 norm_type = "message"
+                inp = int(obj.get("input_tokens") or 0)
+                cr = int(obj.get("cache_read_tokens") or 0)
+                outp = int(obj.get("output_tokens") or 0)
+                cw = int(obj.get("cache_write_tokens") or 0)
+                step_tokens = inp + cr + outp + cw
+                if step_tokens > 0:
+                    total_tokens_used += step_tokens
+                    model_name = obj.get("model") or default_model
+                    rates = get_model_rates(model_name)
+                    if rates:
+                        cost = (
+                            inp * rates.input_usd_per_m
+                            + cr * rates.cache_read_usd_per_m
+                            + cw * rates.cache_creation_usd_per_m
+                            + outp * rates.output_usd_per_m
+                        ) / 1_000_000
+                        total_cost_usd += cost
             elif entry_type == "CHECKPOINT":
                 norm_type = "checkpoint"
             elif entry_type == "CONVERSATION_HISTORY":
@@ -243,4 +262,6 @@ def load_agy_transcript(jsonl_path: Path) -> NormalizedSession:
         source_file=jsonl_path,
         events=events,
         raw_events=raw_events,
+        tokens_used=total_tokens_used,
+        cost_usd=total_cost_usd,
     )

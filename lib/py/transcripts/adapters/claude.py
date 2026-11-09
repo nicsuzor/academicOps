@@ -241,9 +241,23 @@ class ModelRates:
     output_usd_per_m: float
 
 
-# Anthropic API rate card as of August 2026 (USD per 1,000,000 tokens).
+# Anthropic and Gemini API rate card (USD per 1,000,000 tokens).
 # Rates are kept in one place as static data per .agents/CORE.md (no defaults, no fetches).
 MODEL_RATE_CARD: dict[str, ModelRates] = {
+    # Claude 5 models
+    "claude-fable-5-1": ModelRates(10.00, 12.50, 0.25, 50.00),
+    "claude-fable-5": ModelRates(10.00, 12.50, 1.00, 50.00),
+    "claude-opus-5": ModelRates(5.00, 6.25, 0.50, 25.00),
+    "claude-opus-5-5": ModelRates(5.00, 6.25, 0.50, 25.00),
+    "claude-sonnet-5": ModelRates(2.00, 2.50, 0.20, 10.00),
+    "claude-sonnet-5-5": ModelRates(2.00, 2.50, 0.20, 10.00),
+    "claude-haiku-4-5": ModelRates(1.00, 1.25, 0.10, 5.00),
+    "claude-haiku-5-5": ModelRates(1.00, 1.25, 0.10, 5.00),
+    # Gemini models
+    "gemini-4-argon": ModelRates(2.00, 0.0, 0.10, 10.00),
+    "gemini-3.8-flash": ModelRates(0.75, 0.0, 0.075, 3.75),
+    "gemini-2.5-flash": ModelRates(0.30, 0.0, 0.03, 2.50),
+    "gemini-2.5-flash-lite": ModelRates(0.10, 0.0, 0.01, 0.40),
     # Claude 3.5 Sonnet / 3.7 Sonnet
     "claude-3-5-sonnet-20241022": ModelRates(3.00, 3.75, 0.30, 15.00),
     "claude-3-5-sonnet-20240620": ModelRates(3.00, 3.75, 0.30, 15.00),
@@ -272,14 +286,32 @@ def get_model_rates(model_name: str | None) -> ModelRates | None:
     if model_lower in MODEL_RATE_CARD:
         return MODEL_RATE_CARD[model_lower]
 
+    if "fable-5-1" in model_lower:
+        return MODEL_RATE_CARD["claude-fable-5-1"]
+    if "fable" in model_lower:
+        return MODEL_RATE_CARD["claude-fable-5"]
+    if "opus-5-5" in model_lower or "opus-5" in model_lower:
+        return MODEL_RATE_CARD["claude-opus-5"]
+    if "opus" in model_lower:
+        return MODEL_RATE_CARD["claude-3-opus-20240229"]
+    if "sonnet-5-5" in model_lower or "sonnet-5" in model_lower:
+        return MODEL_RATE_CARD["claude-sonnet-5"]
     if "3-5-sonnet" in model_lower or "3-7-sonnet" in model_lower or "sonnet" in model_lower:
         return MODEL_RATE_CARD["claude-3-5-sonnet-20241022"]
-    if "3-opus" in model_lower or "opus" in model_lower:
-        return MODEL_RATE_CARD["claude-3-opus-20240229"]
+    if "haiku-5" in model_lower or "haiku-4" in model_lower:
+        return MODEL_RATE_CARD["claude-haiku-4-5"]
     if "3-5-haiku" in model_lower:
         return MODEL_RATE_CARD["claude-3-5-haiku-20241022"]
     if "3-haiku" in model_lower or "haiku" in model_lower:
         return MODEL_RATE_CARD["claude-3-haiku-20240307"]
+    if "gemini-4" in model_lower or "argon" in model_lower:
+        return MODEL_RATE_CARD["gemini-4-argon"]
+    if "flash-lite" in model_lower or "gemini-2.5-flash-lite" in model_lower:
+        return MODEL_RATE_CARD["gemini-2.5-flash-lite"]
+    if "gemini-2.5" in model_lower:
+        return MODEL_RATE_CARD["gemini-2.5-flash"]
+    if "gemini-3.8" in model_lower or "flash" in model_lower:
+        return MODEL_RATE_CARD["gemini-3.8-flash"]
 
     return None
 
