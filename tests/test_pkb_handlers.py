@@ -102,6 +102,7 @@ def test_run_pkb_search_caps_oversized_output():
         assert out.endswith(handlers._TRUNCATION_MARKER)
 
 
+@pytest.mark.integration
 def test_dispatch_claude_userpromptsubmit_end_to_end(staged_hooks: Path):
     """End-to-end dispatch for Claude Code UserPromptSubmit: no fallback on user prompt without PKB, honesty on peer report."""
     proc_user = subprocess.run(
@@ -148,6 +149,7 @@ def test_dispatch_claude_userpromptsubmit_end_to_end(staged_hooks: Path):
     assert expected_inject in content
 
 
+@pytest.mark.integration
 def test_dispatch_agy_preinvocation_end_to_end(staged_hooks: Path):
     """End-to-end dispatch for AGY PreInvocation: no fallback on user prompt without PKB, hearsay on peer report."""
     proc_user = subprocess.run(
@@ -315,6 +317,7 @@ def test_http_failure_surfaces_as_hook_failure_naming_the_error():
             handlers.search_the_pkb(ctx)
 
 
+@pytest.mark.integration
 def test_dispatch_http_failure_surfaces_error_in_hook_output(staged_hooks: Path):
     """End-to-end dispatch confirms an HTTP failure surfaces naming the error, not returning honesty."""
     env = dict(os.environ)
@@ -502,6 +505,7 @@ def test_agy_user_input_without_wrapper_is_used_whole(tmp_path: Path):
     mock_search.assert_called_once_with(AGY_TYPED, cwd="/workspace", session_id="c1")
 
 
+@pytest.mark.integration
 def test_dispatch_agy_preinvocation_reads_prompt_from_transcript(
     staged_hooks: Path, tmp_path: Path
 ):
@@ -607,6 +611,7 @@ def http_mcp_server():
         server.shutdown()
 
 
+@pytest.mark.integration
 def test_search_the_pkb_sends_one_post_with_headers(http_mcp_server, monkeypatch, tmp_path):
     """AC: default tool name is 'pkb_search' when PKB_MCP_TOOL_PREFIX is unset; one POST per search carrying x-session-id, active turn traceparent, #3009 tokens, and real user-agent."""
     tracer_dir = tmp_path / ".claude" / "tracer"
@@ -658,6 +663,7 @@ def test_search_the_pkb_sends_one_post_with_headers(http_mcp_server, monkeypatch
     assert args["_session"]["surface"] == "claude-code"
 
 
+@pytest.mark.integration
 def test_search_the_pkb_passes_limit_and_detail_defaults(http_mcp_server, monkeypatch, tmp_path):
     """AC-1.9: arguments carries limit: 5 and detail: 'snippet' by default to prevent truncation."""
     monkeypatch.setenv("HOME", str(tmp_path))
@@ -680,6 +686,7 @@ def test_search_the_pkb_passes_limit_and_detail_defaults(http_mcp_server, monkey
     assert args["query"] == "check pkb search default limit and detail"
 
 
+@pytest.mark.integration
 def test_search_the_pkb_tool_prefix_env_override(http_mcp_server, monkeypatch, tmp_path):
     """AC: PKB_MCP_TOOL_PREFIX overrides the default 'pkb_' prefix."""
     monkeypatch.setenv("HOME", str(tmp_path))
@@ -701,6 +708,7 @@ def test_search_the_pkb_tool_prefix_env_override(http_mcp_server, monkeypatch, t
     assert req["json"]["params"]["name"] == "custom_search"
 
 
+@pytest.mark.integration
 def test_search_the_pkb_unauthenticated_when_credentials_unset(
     http_mcp_server, monkeypatch, tmp_path
 ):
@@ -734,6 +742,7 @@ def test_search_the_pkb_unauthenticated_when_credentials_unset(
     assert not req["headers"]["user-agent"].startswith("Python-urllib")
 
 
+@pytest.mark.integration
 def test_search_the_pkb_injected_message_on_401(staged_hooks: Path, http_mcp_server):
     """AC: HTTP 401 injects a message naming refusal, 401, and canonical token variables, with red trace recorded."""
     legacy_var = "".join(["PKB_", "MCP_", "HEADERS"])
@@ -769,6 +778,7 @@ def test_search_the_pkb_injected_message_on_401(staged_hooks: Path, http_mcp_ser
     assert "traceparent" in http_mcp_server.requests[0]["headers"]
 
 
+@pytest.mark.integration
 def test_search_the_pkb_injected_message_on_403(staged_hooks: Path, http_mcp_server):
     """AC: HTTP 403 injects a message naming refusal, 403, and canonical token variables, with red trace recorded."""
     legacy_var = "".join(["PKB_", "MCP_", "HEADERS"])
@@ -804,6 +814,7 @@ def test_search_the_pkb_injected_message_on_403(staged_hooks: Path, http_mcp_ser
     assert "traceparent" in http_mcp_server.requests[0]["headers"]
 
 
+@pytest.mark.integration
 def test_search_the_pkb_injected_message_on_unreachable(staged_hooks: Path):
     """AC: unreachable endpoint injects message naming unreachable."""
     env = dict(os.environ)
@@ -829,6 +840,7 @@ def test_search_the_pkb_injected_message_on_unreachable(staged_hooks: Path):
     assert "unreachable" in injected
 
 
+@pytest.mark.integration
 def test_search_the_pkb_ignores_legacy_headers_and_authenticates_with_canonical_pair(
     http_mcp_server, monkeypatch, tmp_path
 ):
@@ -875,6 +887,7 @@ def test_search_the_pkb_ignores_legacy_headers_and_authenticates_with_canonical_
     assert http_mcp_server.requests[1]["headers"]["cf-access-client-secret"] == "dsec456"
 
 
+@pytest.mark.integration
 def test_search_the_pkb_session_fallback_and_caching(monkeypatch, tmp_path):
     """AC: falls back to initialize once if session needed, caching for 24h in tracer state dir."""
     import http.server
@@ -967,6 +980,7 @@ def test_parse_mcp_response_raises_on_sse_error():
         handlers._parse_mcp_response(raw_sse)
 
 
+@pytest.mark.integration
 def test_post_mcp_search_does_not_initialize_on_404_or_generic_400():
     """AC: HTTP 404/400 errors without explicit session errors do not attempt initialize."""
     import http.server
@@ -1426,3 +1440,50 @@ def test_post_mcp_search_reinitializes_on_session_error(tmp_path: Path):
         # Verify cache was updated with the fresh session
         cached = json.loads(cache_file.read_text(encoding="utf-8"))
         assert cached.get("session_id") == "new-fresh-session"
+
+
+def test_search_the_pkb_uses_root_phoenix_session_id_for_subagent_turn(
+    http_mcp_server, monkeypatch, tmp_path
+):
+    """When search_the_pkb runs inside a subagent session whose tracer state has phoenix_session_id
+    pointing to the root session, both x-session-id and _session.session_id use the root session ID
+    and _session.agent_id carries the subagent session ID."""
+    tracer_dir = tmp_path / ".claude" / "tracer"
+    tracer_dir.mkdir(parents=True, exist_ok=True)
+    trace_id = "11112222333344441111222233334444"
+    span_id = "1111222233334444"
+    state_file = tracer_dir / "subagent-sess-42.json"
+    state_file.write_text(
+        json.dumps(
+            {
+                "session_id": "subagent-sess-42",
+                "phoenix_session_id": "root-sess-01",
+                "parent_session_id": "root-sess-01",
+                "current_trace": {
+                    "trace_id": trace_id,
+                    "root_span_id": span_id,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("PKB_MCP_URL", http_mcp_server.url)
+
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        session_id="subagent-sess-42",
+        raw={"prompt": "search from subagent"},
+        hooks_dir=PKB_HOOKS,
+        agent_type="ida:pauli",
+    )
+    res = handlers.search_the_pkb(ctx)
+    assert res is not None
+    assert len(http_mcp_server.requests) == 1
+
+    req = http_mcp_server.requests[0]
+    assert req["headers"].get("x-session-id") == "root-sess-01"
+    sess = req["json"]["params"]["arguments"]["_session"]
+    assert sess["session_id"] == "root-sess-01"
+    assert sess["agent_id"] == "subagent-sess-42"

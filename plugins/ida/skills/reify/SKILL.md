@@ -66,7 +66,7 @@ Fill the canonical task structure:
 
 ## Appendix: Sources
 
-[ List of workflow templates and skills this task was composed from. ]
+- Composed from: [ One-line list of workflow templates and skills this task was composed from. ]
 ```
 
 ### Requirements for writing tasks
@@ -82,11 +82,14 @@ Fill the canonical task structure:
 - Leave out methods, command scripts, tool names, runtime hints, notes on the worker's limits, summaries of linked notes (point to them instead), provenance, changelogs, session narratives, counts, SHAs and history.
 - Change an existing task only for a defect you can point to in its text; otherwise leave it as written. Never rewrite its `## Ask` or renumber its criteria: a new criterion takes the next number, and no number is reused.
 - A skill may be a step, even the only step: write `invoke /<skill-name>` and leave its implementation to the skill. A workflow template is never a step; its steps are.
-- Close every task with an appendix section listing the workflow templates and skills it was composed from.
-- Do not create standalone decision tasks or file questions as tasks. Competing candidate options stay inside the body of the scoping task or ADR until chosen (retiring separate unchosen option nodes and `alternative` edges); when chosen, only the selected option is reified into an actionable task under `parent: <scoping_task_id>`. Diagnostic probes (`classification: probe`) are active tasks wired into scoping or downstream tasks via standard execution prerequisite `needs: [<probe_task_id>]`. Pointers point to durable knowledge via `[[wikilinks]]` in `## Pointers`, replacing `supports` / `soft_depends_on`.
+- Close every task with a one-line appendix section listing the workflow templates and skills it was composed from: `## Appendix: Sources` followed by `- Composed from: <workflows and skills>.`
+- Do not create standalone decision tasks or file questions as tasks. An agent given a task does the groundwork and makes the decision itself; it never files the task back to the user as their decision (`assignee: user`) unless the user explicitly directed to decide it themselves (tg 1013). Research tasks on open design questions evaluate alternatives and select the recommended implementation route directly. Competing candidate options stay inside the body of the scoping task or ADR until chosen (retiring separate unchosen option nodes and `alternative` edges); when chosen, only the selected option is reified into an actionable task under `parent: <scoping_task_id>`. Diagnostic probes (`classification: probe`) are active tasks wired into scoping or downstream tasks via standard execution prerequisite `needs: [<probe_task_id>]`. Pointers point to durable knowledge via `[[wikilinks]]` in `## Pointers`, replacing `supports` / `soft_depends_on`.
 - Worker state-only invariant: workers executing a task may only mutate that task's own state (checking off criteria, recording verifiable evidence, transitioning status); workers never inspect or modify edges across other tasks or mint follow-up verification tasks.
 - Reify plans, roadmaps, and designs as tasks on the PKB task graph.
 
 ## 4. Report
 
-Stop once tasks are written to the graph; `/dispatch` starts their workers. Output one line per task written or confirmed ready: title, ID, status, and open `needs` dependencies.
+Stop once tasks are written to the graph; `/dispatch` starts their workers. For each task written or confirmed ready, output:
+
+- Title, ID, status, and open `needs` dependencies.
+- Composed sources in the identical one-line format appended to the task body under `## Appendix: Sources` (e.g. `- Composed from: wf-feature, /craft`).

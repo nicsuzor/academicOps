@@ -36,7 +36,7 @@ The three are timed differently, for opposite reasons:
 - **Decompose early.** No objective is independent; its sub-objectives are what other objectives' tasks intersect with. A task minted elsewhere (a meeting, a submission, a collaboration) can account for a decomposed part only once that part exists on the graph, so an objective is expanded as soon as it is captured, to what can reliably be inferred at that point, and stops at the first unknown.
 - **Reify late.** A reified task fixes the executor and the workflow, and both change with circumstances. A dispatchable task that sits on the graph goes stale, so a node is reified when it is next to run and not before; a node blocked on something outside the graph's control stays unreified until that clears.
 
-The boundary that separates meso from micro is executor binding: a decomposed node says what must become true and names no executor or workflow; a reified task says who runs it and how. Lookups and questions pass through neither: the session that receives them answers them.
+The boundary that separates meso from micro is executor binding: a decomposed node says what must become true and names no executor or workflow; a reified task says who runs it and how. Knowledge tasks (questions, finding things, web research, GitHub queries, read-only code inspections, and config lookups) route directly to the custodian (`pauli`), while only work that runs, measures, tests, or builds something passes through to polecats.
 
 ## Workflow components
 

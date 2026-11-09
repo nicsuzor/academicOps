@@ -7,7 +7,7 @@ description: Write or check the argument at the end of an evidence-backed report
 
 A report that rests on evidence ends in an argument whose final conclusion answers the asker's questions. The writer lays it out so each step can be judged from the report alone; the checker judges every step and records why.
 
-**Standing rule: a format breach on an argument with at least one inference line is waivable on PASS and rewritten by the receiver; 0 inference lines, substantive defects, or rule violations in delivered work require REVISE or FAIL and cannot pass or relay upward. Rule violations in deliverables are strictly non-waivable.**
+**Standing rule: a format breach on an argument with at least one inference line is waivable on PASS and rewritten by the receiver; 0 inference lines, substantive defects, or rule violations in delivered work require REVISE or FAIL and cannot pass or relay upward. Rule violations in deliverables are strictly non-waivable. When the sender has exited, the reader rewrites the argument from the recorded evidence for a `#format` defect; a `#missing` or `#scope-drift` verdict still routes to a new worker.**
 
 ## Writing the Report Argument
 
@@ -127,7 +127,7 @@ When checking an inference line or deliverable where the ask specifies a method,
 ## Recording the Verdict
 
 - **PASS**: Every inference holds, every ask is answered, evidence sufficiency bears the stakes, and at least one inference line is tested (>= 1). Format-only defects on a substantively sound argument with >= 1 inference line are waived under `Waived:` and rewritten into standard form by the receiver before relaying upward. Rule violations in deliverables can never be waived.
-- **REVISE**: Name the line, defect tag (`#missing`, `#scope-drift`, `#conflict`, `#unanswered`, `#undercut`, `#construct-drift`, `#method-gap`, `#insufficient-for-stakes`), and remedy, and instruct the sender: "Load the `premise-check` skill (`ida:premise-check`) before writing your revised report." (For absent blocks returned as `REVISE "no argument supplied"`, state: "No argument block supplied. Load the `premise-check` skill (`ida:premise-check`) before writing your report; its Argdown dialect is a restricted subset of Argdown, so do not write the block from memory.") Mandatory for substantive defects, rule violations in delivered work (return with `#conflict`), or 0 inference lines (bare assertions); cannot be relayed upward as fact. Return to sender. To send back a sound argument for a format slip you will not waive, keep every `Valid:` line `holds` and add `Format: <format item> -- <what to fix>`; never record a format slip as a reasoning defect.
+- **REVISE**: Name the line, defect tag (`#missing`, `#scope-drift`, `#conflict`, `#unanswered`, `#undercut`, `#construct-drift`, `#method-gap`, `#insufficient-for-stakes`), and remedy, and instruct the sender: "Load the `premise-check` skill (`ida:premise-check`) before writing your revised report." (For absent blocks returned as `REVISE "no argument supplied"`, state: "No argument block supplied. Load the `premise-check` skill (`ida:premise-check`) before writing your report; its Argdown dialect is a restricted subset of Argdown, so do not write the block from memory.") Mandatory for substantive defects, rule violations in delivered work (return with `#conflict`), or 0 inference lines (bare assertions); cannot be relayed upward as fact. Return to sender. When the sender has exited, the reader rewrites the argument from the recorded evidence for a `#format` defect; a `#missing` or `#scope-drift` verdict still routes to a new worker. To send back a sound argument for a format slip you will not waive, keep every `Valid:` line `holds` and add `Format: <format item> -- <what to fix>`; never record a format slip as a reasoning defect.
 - **FAIL**: Conclusion does not answer the ask or contradicts evidence. Mandatory for substantive defects; cannot be relayed upward as fact.
 
 Write the reason as the seven keyed lines:
@@ -149,7 +149,9 @@ Format items: `block`, `numbering`, `basis wording`, `ask wording`, `layout` (en
 Record the verdict:
 
 ```bash
-uv run --project <plugin-dir> python <plugin-dir>/skills/premise-check/scripts/verdict.py --claim <claim_id> --verdict <PASS|REVISE|FAIL> --reason-file <path>
+uv run --project <plugin-dir> python <plugin-dir>/skills/premise-check/scripts/verdict.py --session <session_id> --claim <claim_id> --verdict <PASS|REVISE|FAIL> --reason-file <path> [--judged-file <path>]
 ```
 
-The recorder refuses a PASS whose reason misses a test line or ask ID, contradicts the block, or fails machine checks (syntax error, orphan statement, misaimed undercut); on refusal, actionable errors are emitted to stderr while keeping the gate armed.
+Resolve `<plugin-dir>` to the real installed plugin directory (`Path.resolve()` on symlinks) so `uv run` uses the plugin environment with `opentelemetry.sdk`, and include `--session <session_id>` (from the turn message, daily note, or active session) when `$AOPS_SESSION_ID` is unset in subshells. Pass `--judged-file <path>` when judging a report arriving out-of-band (e.g. read from a PKB task body or messages outside gate capture) so the recorder can verify the reason against the report's `argdown` block.
+
+The recorder refuses a PASS whose reason misses a test line or ask ID, contradicts the block, or fails machine checks (syntax error, orphan statement, misaimed undercut); on refusal, actionable errors are emitted to stderr while keeping the gate armed. When gate storage has no judged text and `--judged-file` is not provided, PASS is refused with a distinct missing gate storage diagnostic directing the caller to pass `--judged-file <path>`.

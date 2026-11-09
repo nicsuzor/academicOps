@@ -647,3 +647,31 @@ def test_resolve_session_id_handles_both_session_id_and_conversation_id():
             )
             == "env-session-root"
         )
+
+
+def test_resolve_session_id_and_agent_ids_strip_slash_suffix_and_preserve_task_id():
+    """Slash-suffixed session IDs (e.g. <uuid>/task-1) resolve to the parent UUID for
+    session.id while preserving the suffix as agent_id / task_id."""
+    parent_uuid = "11111111-2222-3333-4444-555555555555"
+    suffixed = f"{parent_uuid}/task-1"
+
+    with patch.dict("os.environ", {}, clear=True):
+        # Root phoenix_session_id resolution (prefer_env=True) strips /task-1
+        assert (
+            claude_code_tracer.resolve_session_id(
+                {"conversationId": suffixed}, "conversationId", prefer_env=True
+            )
+            == parent_uuid
+        )
+        state = {
+            "session_id": suffixed,
+            "phoenix_session_id": claude_code_tracer.resolve_session_id(
+                {"conversationId": suffixed}, "conversationId", prefer_env=True
+            ),
+        }
+        phoenix_sid, agent_id, parent_sid = claude_code_tracer._resolve_agent_and_parent_ids(
+            state, {"conversationId": suffixed}, "conversationId"
+        )
+        assert phoenix_sid == parent_uuid
+        assert agent_id == "task-1"
+        assert parent_sid == parent_uuid
