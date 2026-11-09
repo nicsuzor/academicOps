@@ -64,7 +64,7 @@ Top-level entry points: README.md, INSTALL.md, CHANGELOG.md. Per plugin: `plugin
 
 ## Architectural Decision Records (ADRs) -- for preserving design choices
 
-Live in `specs/decisions/NNNN-<slug>.md` (or `docs/decisions/` in third-party projects, indexed by `INDEX.md`). An ADR records a significant architectural decision, the evaluated alternatives, and downstream consequences using Markdown Architectural Decision Records (MADR). Specs state target behavior without provenance; ADRs record the point-in-time rationale and rejected alternatives. See [`architectural-decision-records.md`](architectural-decision-records.md).
+Live in `specs/decisions/NNNN-<slug>.md`, indexed by `INDEX.md`. An ADR records a significant architectural decision, the evaluated alternatives, and downstream consequences using Markdown Architectural Decision Records (MADR). Specs state target behavior without provenance; ADRs record the point-in-time rationale and rejected alternatives. See [`architectural-decision-records.md`](architectural-decision-records.md).
 
 For task and file naming standards, see [`specs/meta/naming-and-decisions.md`](naming-and-decisions.md).
 
