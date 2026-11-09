@@ -180,7 +180,7 @@ Worker self-release to `done` applies across all tasks (PR and non-PR): when a w
 
 ### Worker State-Only Invariant & Parent Rollup Lifecycle
 
-Per ADR [[spec_e6d668b0]], a worker executing a task may only mutate that task's own state (checking off acceptance criteria, recording verifiable evidence, transitioning status). Workers never inspect or modify edges across other tasks, compute reverse graph dependencies, or mint follow-up verification tasks; unblocking and sequencing belong exclusively to the graph engine and dispatcher.
+Per ADR-0002 ([`specs/decisions/0002-distinguish-pkb-graph-edge-purposes-and-enforce-parsimony.md`](../decisions/0002-distinguish-pkb-graph-edge-purposes-and-enforce-parsimony.md)), a worker executing a task may only mutate that task's own state (checking off acceptance criteria, recording verifiable evidence, transitioning status). Workers never inspect or modify edges across other tasks, compute reverse graph dependencies, or mint follow-up verification tasks; unblocking and sequencing belong exclusively to the graph engine and dispatcher.
 
 When all open children under a composite task (`parent`) reach `done`, the composite task does not automatically close if it contains substantive acceptance criteria. Instead, it becomes `ready` for an explicit synthesis and sign-off pass. Background truth maintenance (`wf-reconcile`) is the authoritative process that detects completed child sets, verifies composite criteria, and transitions parent tasks.
 

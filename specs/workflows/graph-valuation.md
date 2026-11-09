@@ -359,7 +359,7 @@ ranking. Agents do not ask "is this still ripe?" on a timer (S6; age is not stal
 
 ### 7.3 Decisions
 
-Covers U12, I10, ADR [[spec_e6d668b0]].
+Covers U12, I10, ADR-0002.
 
 Standalone decision backlog nodes with stored `alternative` and `settles` edges are prohibited. When a task requires selecting among competing design or architectural options with no commitment beyond choosing, the candidate options and evaluation criteria remain inside the body of the scoping task or ADR. When chosen, only the selected option is reified into an actionable task under `parent: <task_id>`. Empirical probes or spikes are active tasks (`classification: probe`) wired to the scoping task via standard `needs: [<probe_task_id>]`. No agent authors stored `alternative` or `settles` edges.
 
@@ -407,7 +407,7 @@ keeps pauli's rule "never raise the same non-blocking concern twice"
 | `plugins/ida/skills/remember/references/consolidation.md` | Adds a weekly densify stage that runs `wf-densify` (R3). |
 | `plugins/ida/skills/workflow-library/workflows/wf-reconcile.md` | Adds deadline upkeep (R5) and source-stated retirement (R6). :49 reserved fields add `deadline_class: hard` and target worth. |
 | `plugins/ida/skills/decide/SKILL.md` | Draws open items from the daily note (which carries ask queue items from reconcile per R7). |
-| `plugins/ida/skills/decompose/SKILL.md` | ADR [[spec_e6d668b0]]: wires only `parent`, `needs`, `serves`. Competing options stay inside task bodies; probes wire `needs`. `depends_on` normalized to `needs`; `supports`, `settles`, `alternative` retired. |
+| `plugins/ida/skills/decompose/SKILL.md` | ADR-0002: Three-Purpose Taxonomy. Competing options stay inside task bodies; probes wire `needs`; contextual citations in `## Pointers`. |
 | `plugins/ida/skills/reify/SKILL.md`, `plugins/ida/skills/dispatch/SKILL.md` | `depends_on` becomes `needs` in :20, :43, :79-80 and dispatch :14. Readiness keeps its meaning (FR:517). |
 | `plugins/ida/skills/pull/SKILL.md`, `plugins/ida/skills/dump/SKILL.md` | "wire directed `blocks` edges" becomes "wire a `needs` edge from the blocked task" (FR:334). |
 | `plugins/ida/skills/workflow-library/SKILL.md` and templates `wf-escalated-approval`, `wf-research-and-implement`, `wf-code-task-base`, `wf-finish` | `depends_on` becomes `needs` in the skill and the first three templates. The parent in `wf-finish` follows FQ1. |
@@ -418,7 +418,7 @@ keeps pauli's rule "never raise the same non-blocking concern twice"
 | PKB note _Email Triage Workflow Patterns & Guardrails_ | Adds the `opportunity` class, the date rule (R2.4) and the no-weight-from-sender rule (R2.5). |
 | PKB spec _Standing-Weight Elicitation Instrument_ | Superseded by R4 and FR §5.6. Agents estimate and write target worth directly with evidence; stored worth has no decay. |
 | `.agents/skills/triage/SKILL.md` | :219-220 "raise the `stated_weight`" becomes "add a row to the next densify batch". |
-| `specs/meta/naming-and-decisions.md` | ADR [[spec_e6d668b0]]: three-relation model (`parent`, `needs`, `serves`); candidate options stay inside task body; `alternative`, `settles`, `supports` retired. |
+| `specs/meta/naming-and-decisions.md` | ADR-0002: Three-Purpose Taxonomy; candidate options stay inside task body; contextual citations in `## Pointers`. |
 | `specs/workflows/capture-intake.md`, `specs/workflows/research-decomposition.md`, `specs/enforcement/task-contract.md` | References to "valued at intake" now point to R1. The stale `brief` skill references (`specs/enforcement/task-contract.md:43`, `specs/workflows/research-decomposition.md:30`) are corrected to `/q`. |
 
 **Unchanged** (read in full; nothing to change): agy, axioms, craft, hydrate, learn,

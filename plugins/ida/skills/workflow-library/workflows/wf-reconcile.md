@@ -27,7 +27,7 @@ Maintains truth over the task graph: establishes facts about in-flight work and 
      - If incomplete agent work remains: transition to `queued` (or `partial` if partly delivered).
      - If principal input is required: transition to `partial` (recording the question in `reason`) and escalate to today's daily note `## With you`.
        No agent task is left in `review`.
-4. **Parent Rollup Lifecycle (ADR [[spec_e6d668b0]])**: When all open children under a composite task (`parent`) reach `done`, the composite task does not automatically close if it contains substantive acceptance criteria. Instead, transition it to `ready` for an explicit synthesis and sign-off pass. Verify composite criteria against the combined deliverables of its completed child set before marking the composite task `done`.
+4. **Parent Rollup Lifecycle**: When all open children under a composite task (`parent`) reach `done`, the composite task does not automatically close if it contains substantive acceptance criteria. Instead, transition it to `ready` for an explicit synthesis and sign-off pass. Verify composite criteria against the combined deliverables of its completed child set before marking the composite task `done`.
 5. **Decide next action for failed tasks from the parent epic**: Workers never create or name follow-up tasks, and release `failed` when a check (e.g. QA or review) or implementation fails. For every task marked `failed` within the sweep window:
    - Inspect the failure record: failure evidence, unmet criteria, and documented root cause in `## Report` and `reason`.
    - Load the task's parent epic and its wider graph context (siblings, dependencies, and epic goals).
