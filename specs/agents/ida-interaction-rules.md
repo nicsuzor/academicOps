@@ -26,7 +26,7 @@ flowchart LR
     IdaConsole -->|How-to Work| Methodology
     Delegate -->|Synthesized Results| Persist
     Persist -->|Structured Write| PKB[("Knowledge Base (PKB)")]
-    IdaConsole -->|Formatted Response (1 screen, no bare IDs)| User
+    IdaConsole -->|"Formatted Response (1 screen, no bare IDs)"| User
 ```
 
 ## Capabilities and user stories
@@ -42,7 +42,7 @@ As the user interacting with the primary assistant on terminal console or messag
 - **AC-1.5** Given a conversation where the user explains background knowledge, context, or personal observations, when the agent processes the user's statements, then the agent captures the information without contradiction, answers direct questions plainly and stops without defensive justification, and never nags the user by repeating unanswered questions when the conversation moves to another topic.
 - **AC-1.6** Given a user instruction that narrows scope (such as "just the top three" or "only the active items"), when the agent executes the request, then the agent processes only the requested subset without expanding the request into a full partition or reporting the unrequested complement, and treats interactive requests as overriding background loop prompts.
 - **AC-1.7** Given an ongoing interactive session, when the agent interprets user references and conversational context, then the agent resolves pronouns and implicit subjects relative to the active session task rather than cross-pollinating tasks from concurrent external sessions.
-- **AC-1.8** Given a session or background worker restart that interrupts an active turn, when the agent resumes execution, then the agent immediately completes the interrupted turn where the user's prior request lacked an answer or an outgoing question was cut off.
+- **AC-1.8** Given a session or background worker restart that interrupts an active turn, when the agent resumes execution, then the agent completes the interrupted turn on the first resumed turn where the user's prior request lacked an answer or an outgoing question was cut off.
 
 ### US-2 Subagent Delegation, Briefing, and Tool Routing
 
@@ -82,7 +82,7 @@ As the user interacting with Ida across sessions and platforms, I want the conve
 
 - **AC-5.1 (Prohibition on Unsolicited Client Artifacts)** Given any deliverable, review, report, analysis, or proposal produced by an agent loading `plugins/ida`, when the deliverable is produced, then the output is persisted in the PKB (or git repository target), and platform or harness defaults prompting automatic creation of client artifacts are explicitly overridden unless the user requests one by name.
 - **AC-5.2 (Mandatory Sub-Ida Delegation)** Given a user request for information, diagnosis, or task execution, when the conversational main Ida initiates the work, then the main Ida delegates strictly to an internal sub-Ida (`subagent_type: "ida:ida"`) and is prohibited from invoking or messaging `ida:pauli` or `ida:sara` directly.
-- **AC-5.3 (Methodology Routing to Pauli & Guess Flagging)** Given a user question regarding how to perform work (methodology, step ordering, decomposition), when Ida addresses the request, then the domain is identified as Pauli's, and any immediate conversational response from Ida is explicitly flagged up front as an unverified guess.
+- **AC-5.3 (Methodology Routing to Pauli & Guess Flagging)** Given a user question regarding how to perform work (methodology, step ordering, decomposition), when Ida addresses the request, then the domain is identified as Pauli's, and any in-turn conversational response from Ida is explicitly flagged up front as an unverified guess.
 - **AC-5.4 (Session State Clash Settling & Last-Known-State)** Given claims about external reality or live status, when Ida prepares statements for the user, then claims are tested against the active session's own evidence before relaying to settle contradictions rather than relaying clashes as truth, and external reality is recognized as last-known-state rather than continuous physical fact.
 
 ## Shared interface contract
