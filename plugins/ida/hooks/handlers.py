@@ -30,10 +30,12 @@ from dispatch import (
     warn,
 )
 from hearsay_gate import (
+    _is_subagent_conversation,
     hearsay_arm,
     hearsay_handler,
     prompt_text,
     should_arm_hearsay,
+    subagent_pre_handback_check,
 )
 from hearsay_gate import (
     is_peer_report as is_peer_report,
@@ -855,6 +857,8 @@ PREMISE_CHECK_POINTER = (
     "Reports follow `premise-check`: written in its shape and checked on receipt."
     " Load the skill (`ida:premise-check`) before writing or checking one;"
     " its form is a restricted subset of Argdown."
+    " Every `send_message` / `SendMessage` report to a calling/peer agent"
+    " (and every foreground subagent return) must end with a fenced `argdown` block or `[no claim]`."
 )
 
 
@@ -975,6 +979,18 @@ def agy_session_pointer(ctx: HookContext) -> Result | None:
                     )
     except Exception:
         pass
+
+    if _is_subagent_conversation(ctx):
+        hooks_dir = (
+            ctx.hooks_dir
+            if ctx.hooks_dir and str(ctx.hooks_dir) != "."
+            else Path(__file__).resolve().parent
+        )
+        honesty_agent, honesty_user = load_message_pair(hooks_dir, "honesty")
+        if honesty_agent:
+            pointer_text = f"{honesty_agent}\n\n{pointer_text}"
+        return warn(pointer_text, honesty_user or pointer_text)
+
     return warn(pointer_text)
 
 
@@ -1193,6 +1209,9 @@ def pre_tool(ctx: HookContext) -> Result | None:
     _run_claude_tracer(ctx, "handle_pre_tool")
     agy_pre_tool(ctx)
     emit_debug_span(ctx)
+    res = subagent_pre_handback_check(ctx)
+    if res is not None:
+        return res
     return _run_handler(hearsay_handler, ctx)
 
 

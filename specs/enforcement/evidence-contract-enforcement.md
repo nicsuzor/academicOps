@@ -122,8 +122,7 @@ Each mechanism is added only when verdict telemetry shows the active checks rubb
 
 - **Verdict recorder** (built, above): gates the checker's reason (`premise_check_verdict.py`).
 - **Argdown parser check on PASS** (built, above): runs deterministic native parser checks on the report's `argdown` block (`report_argument.py`, using a native parser without external binary dependencies or regex pre-mutation), refusing PASS with an actionable error when the block fails syntax, connectedness, or undercut-target checks, or has zero inference lines.
-- **Subagent stop reminder** (not built; staged Level 4 intervention):
-  - In Claude Code: a one-time `SubagentStop` block that sends the skill's pointer back to the subagent before its report is delivered, or blocks a final message with no `argdown` block.
-  - In agy: the wire equivalent is a one-time `PreToolUse` check on subagent `send_message` calls directed to the caller conversation. If the handback report omits a fenced `argdown` block, the hook refuses the tool call once per handback (`refuse(...)`), instructing the subagent to load `ida:premise-check` and include the required block.
-  - **Staging and telemetry gate:** This Level 4 pre-handback check is held in reserve. Under the proportionality doctrine (§ [enforcement.md](enforcement.md)), it is deployed only after Stage 1 (JIT reminder on subagent `PreInvocation`) and Stage 2 (receiver-side gate repairs) are active and Phoenix telemetry demonstrates that subagents continue to omit fenced `argdown` blocks at a rate justifying mechanical tool-call friction.
+- **Subagent pre-handback check & stop reminder**:
+  - In Claude Code (not built; staged Level 4 intervention): a one-time `SubagentStop` block that sends the skill's pointer back to the subagent before its report is delivered, or blocks a final message with no `argdown` block.
+  - In agy (built, above): a one-time `PreToolUse` check on subagent `send_message` calls (`plugins/ida/hooks/hearsay_gate.py:subagent_pre_handback_check`). If the handback report omits a fenced `argdown` block, the hook refuses the tool call once per handback (`refuse(...)`), instructing the subagent to load `ida:premise-check` and include the required block, with retries passing through to prevent deadlock.
 - **Dedicated arrival checker** (not built): a separate checker agent invoked on report arrival.
