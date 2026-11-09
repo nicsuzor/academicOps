@@ -969,6 +969,7 @@ def test_mcpservers_dropped_for_agy_kept_for_claude(tmp_path):
     assert "includeSections" not in res_agy
 
 
+@pytest.mark.integration
 def test_openclaw_dist_built_and_packaged(tmp_path):
     dist_root = tmp_path / "dist"
     build_all(
@@ -1026,6 +1027,7 @@ def test_openclaw_does_not_bake_urls(tmp_path):
     assert claude_mcp == openclaw_mcp
 
 
+@pytest.mark.integration
 def test_agy_plugins_dir_prevents_bulk_install_overwrite(tmp_path):
     """`agy plugin install <dir>` checks `<dir>/plugins/` before bulk-scanning
     `<dir>` itself. Without `dist/plugins/<name>`, bulk-scanning the bare root

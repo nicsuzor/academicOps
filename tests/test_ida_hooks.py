@@ -333,6 +333,7 @@ def test_honest_output_fires_on_subagent_start_for_all_agents(agent: str):
     assert res.user_text == expected_user
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize("agent", ["ida:ida", "aops:james", "worker"])
 def test_dispatch_honesty_reaches_all_agents_on_subagent_start(staged_hooks: Path, agent: str):
     """End-to-end dispatch confirms honesty.md is returned on SubagentStart."""
@@ -356,6 +357,7 @@ def test_dispatch_honesty_reaches_all_agents_on_subagent_start(staged_hooks: Pat
     assert expected_honesty in data["hookSpecificOutput"]["additionalContext"]
 
 
+@pytest.mark.integration
 def test_peer_message_prompt_yields_single_user_prompt_submit_output(
     staged_hooks: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):

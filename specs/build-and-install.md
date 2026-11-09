@@ -27,7 +27,9 @@ under `plugins/`, mirroring the table in `ARCHITECTURE.md`.
 | `make install-dev` | `build`, then registers `dist/` as the local `aops` marketplace and installs every plugin from it (`aops@aops`). |
 | `make uninstall-dev` | Removes the local marketplace and its installs, then restores the released `academicOps` marketplace. |
 | `make install` | Registers `nicsuzor/academicOps@main` as the `academicOps` marketplace and installs every plugin from it. |
-| `make test` | `uv run pytest tests/`. |
+| `make test` | `uv run pytest tests/` (runs unit tests, excluding `slow` and `integration`). |
+| `make test-integration` | `uv run pytest -m integration tests/` (runs tests marked `integration`). |
+| `make test-all` | `uv run pytest -m "" tests/` (runs all tests). |
 | `make lint` | `ruff check .`. |
 | `make format` | `ruff format .` + `dprint fmt`. |
 | `make clean` | Removes `dist/`. |

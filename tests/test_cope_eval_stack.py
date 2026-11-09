@@ -347,6 +347,7 @@ def live_stack(tmp_path):
     _sweep(f"--port {upstream_port}")
 
 
+@pytest.mark.integration
 def test_start_brings_both_processes_up_and_stop_takes_them_down(live_stack):
     assert stack.main(live_stack["start"]) == 0
     assert stack.main(live_stack["status"]) == 0
@@ -365,6 +366,7 @@ def test_start_brings_both_processes_up_and_stop_takes_them_down(live_stack):
     assert stack.main(live_stack["status"]) == 1
 
 
+@pytest.mark.integration
 def test_starting_twice_leaves_the_first_pair_running(live_stack, capsys):
     """Idempotence is the whole point of health-gating the launch: running the
     command again must not put a second server on the GPU."""
@@ -379,6 +381,7 @@ def test_starting_twice_leaves_the_first_pair_running(live_stack, capsys):
     assert second == first
 
 
+@pytest.mark.integration
 def test_start_warms_the_rules_through_the_real_shim(live_stack, rules_dir, capsys):
     """End to end: the launcher's warmup POSTs to the shim it started, which
     translates and calls the stub upstream. Proves the two halves meet."""
@@ -386,6 +389,7 @@ def test_start_warms_the_rules_through_the_real_shim(live_stack, rules_dir, caps
     assert "warmup: 1/1 rules classified" in capsys.readouterr().out
 
 
+@pytest.mark.integration
 def test_a_warmup_that_finds_no_rules_still_starts(live_stack, tmp_path, capsys):
     empty = tmp_path / "empty-rules"
     empty.mkdir()
@@ -411,6 +415,7 @@ class _HealthStub(BaseHTTPRequestHandler):
         pass
 
 
+@pytest.mark.integration
 def test_stop_leaves_a_server_it_did_not_start_alone(tmp_path, capsys):
     """`stop` is not "kill whatever is on that port". Something answering there
     with no record behind it is somebody else's process, and it is reported
@@ -437,6 +442,7 @@ def test_stop_leaves_a_server_it_did_not_start_alone(tmp_path, capsys):
             server.server_close()
 
 
+@pytest.mark.integration
 def test_stop_clears_a_record_whose_process_is_gone(tmp_path, capsys):
     log_dir = tmp_path / "logs"
     log_dir.mkdir()

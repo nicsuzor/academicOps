@@ -20,14 +20,14 @@ Any change that adds, modifies, escalates, or retires an enforcement mechanism
 updates [`specs/enforcement/enforcement.md`](../../specs/enforcement/enforcement.md)
 in the same PR, so the spec still describes reality after merge.
 
-An enforcement mechanism is any measure intended to shape how an agent behaves —
+An enforcement mechanism is any measure intended to shape how an agent behaves --
 hooks, review lenses, branch protection, and equally instructions, project rules,
 and agent-persona edits. The test is not "which file did I touch?" but "does this
 diff change what any agent is made to do?"
 
 New rule content carried by a mechanism the spec already describes owes no new
-section. Touch the spec only when the mechanism itself — its trigger, surface, or
-scope — changed.
+section. Touch the spec only when the mechanism itself -- its trigger, surface, or
+scope -- changed.
 
 When editing the enforcement map ([`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md)),
 every row must **only** reference a specific rule derived from our axioms
@@ -52,7 +52,7 @@ Do not hardcode architectural policies, messaging invariants, or enforcement lev
 - Policies (e.g., required text snippets, specific hook mappings, or message exemptions) must be defined in `tests/policy.toml`.
 - Tests must assert against the configuration in `policy.toml`, never against hardcoded Python literals.
 - This separates the _mechanism_ of the test from the _policy_ of the platform, allowing non-engineers to review and modify policies without rewriting code.
-- This never licenses asserting that `policy.toml` — or any agent, skill, settings, or instruction file — still declares the same names or values it declares today. `policy.toml` supplies an input an assertion is _derived from_ (an exemption list to check real messages against, a threshold to check a real count against); the assertion itself checks something the code does with that input, never the config's own content restated as its own check.
+- This never licenses asserting that `policy.toml` -- or any agent, skill, settings, or instruction file -- still declares the same names or values it declares today. `policy.toml` supplies an input an assertion is _derived from_ (an exemption list to check real messages against, a threshold to check a real count against); the assertion itself checks something the code does with that input, never the config's own content restated as its own check.
 
 ## No Shitty NLP and Agentic-First Design
 
@@ -62,7 +62,7 @@ Per [Human Readability First](../../plugins/rbg/skills/axioms/human-readability-
 2. **Prohibit checking natural language mechanically:** Legacy NLP (keyword matching, regex heuristics, fuzzy string matching) is forbidden for semantic decisions or checking prose. Evaluate semantically using agentic comprehension, not pattern matching.
 3. **Prohibit using structured outputs for human-visible text:** Do not emit structured payloads (such as JSON or YAML documents) where readable Markdown prose is expected for human review.
 
-Any work requiring judgment, evaluation, classification, or semantic reasoning should be designed as a skill, workflow, or agent task that a capable agent executes directly — not as a deterministic script or a programmatic wrapper around LLM APIs.
+Any work requiring judgment, evaluation, classification, or semantic reasoning should be designed as a skill, workflow, or agent task that a capable agent executes directly -- not as a deterministic script or a programmatic wrapper around LLM APIs.
 
 - **Don't guess semantic intent with regex or fuzzy matching:** Do not parse unstructured natural language or route workflows based on keyword tables, regex heuristics, or substring searches. Provide the agent with the index of choices and let the agent decide.
 - **Don't filter documentation based on keyword matches:** Let agents select relevant reference material using semantic context or index discovery.

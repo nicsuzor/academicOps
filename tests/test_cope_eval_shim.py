@@ -25,6 +25,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.integration
+
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 # The CoPE client now ships in the rbg plugin — `plugins/cope/` was renamed to
 # `plugins/rbg/` in e3a8bd39/8edff6fa. The evaluator module, its `Config`, and

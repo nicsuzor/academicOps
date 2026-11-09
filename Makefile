@@ -19,7 +19,9 @@ help:
 	@echo "make install-dev    - build, then install dist/ as the local '$(LOCAL_MARKETPLACE)' marketplace"
 	@echo "make uninstall-dev  - alias for make install"
 	@echo "make install        - clean and switch to the claude.ai catalog release channel"
-	@echo "make test           - run the pytest suite"
+	@echo "make test           - run unit tests (excludes slow and integration)"
+	@echo "make test-integration - run integration tests"
+	@echo "make test-all       - run the entire test suite"
 	@echo "make lint           - ruff check + documented-reference check + basedpyright"
 	@echo "make format         - ruff format + dprint fmt"
 	@echo "make clean          - remove dist/"
@@ -137,6 +139,12 @@ clean:
 
 test:
 	@uv run pytest tests/
+
+test-integration:
+	@uv run pytest -m integration tests/
+
+test-all:
+	@uv run pytest -m "" tests/
 
 # Mirrors the Lint and Type Check workflows. basedpyright is invoked exactly as
 # .github/workflows/typecheck.yml invokes it, and is the only local entry point
