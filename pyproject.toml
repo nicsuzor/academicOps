@@ -140,7 +140,7 @@ include = [
   "CONTRIBUTING.md",
   "README.md",
   "INSTALL.md",
-  "CLAUDE.md",
+  "AGENTS.md",
   ".github/copilot-instructions.md",
 ]
 
