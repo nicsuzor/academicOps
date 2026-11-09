@@ -51,28 +51,26 @@ Historical forensic evidence from the PKB establishes that titles shaped like `<
 
 ## 4. Graph-Relationship Decision Representation
 
-Decisions and open questions are structural properties of the graph, not static todo-list items. In accordance with the information-theoretic graph taxonomy:
+Decisions and open questions are structural properties of the graph, not static todo-list items. In accordance with the information-theoretic graph taxonomy and ADR-0002:
 
 ```mermaid
 flowchart TD
-    Upstream["Upstream Task"] --> Decision["Decision Node D"]
-    OptionA["Option A: Decomposed Branch A"] -.->|alternative| Decision
-    OptionB["Option B: Decomposed Branch B"] -.->|alternative| Decision
-    Decision --> Downstream["Downstream Implementation"]
+    Upstream["Upstream Task"] --> Scoping["Scoping Task (Options in Body / ADR)"]
+    Probe["Empirical Probe Task"] -->|needs| Scoping
+    Scoping --> Chosen["Chosen Route: Reified Implementation"]
 ```
 
 ### Representation Principles
 
-1. **Option Nodes Only Where Decomposed Further:**
-   - Forks are separated into concrete option nodes (e.g. `Option A: Use SQLite` and `Option B: Use DuckDB`) wired with `alternative` edges to the decision node `D` (FQ8) **only where the competing branches are decomposed further** into distinct downstream work.
-   - A task that has options to choose between but no commitment to doing anything immediately beyond choosing must **not** be created with subtasks or separate option nodes; instead, it is created as a single task with the choices in the task body and instructions about how to make the decision.
-   - Where option nodes are created for decomposed branches, dependencies are strictly one-sided (`depends_on` on the waiting task) and option nodes must never use mutual blocking edges. Choosing an option resolves the decision, adopting the selected branch and cancelling the competing alternative. Downstream tasks depend on the decision node or the adopted branch.
+1. **Candidate Options Remain in Task Body or ADR:**
+   - A task requiring a choice between design or architectural options with no commitment beyond choosing is created as a single scoping task with the choices and evaluation criteria in its body or an ADR. Candidate options remain inside the body rather than being split into separate option nodes.
+   - When chosen, only the selected option is reified into an actionable implementation task under `parent: <task_id>`. Stored `alternative` and `settles` edges are prohibited.
 2. **Dynamic Emergence of Questions:**
-   - Open architectural decisions are surfaced dynamically by agents inspecting graph topology (detecting unresolved option forks on the critical path) rather than by querying a bucket of stale "decision" tickets.
+   - Open architectural decisions are resolved directly by investigating agents doing the groundwork and selecting the recommended path to unblock downstream implementation, rather than filing conversational questions as backlog tickets.
 3. **Empirical Unknowns as Probes:**
-   - Where a decision depends on missing runtime data or benchmarks, mint an empirical probe task (`classification: probe`, e.g. `Benchmark SQLite vs DuckDB query latency`). Wire the probe via a `settles` edge to the decision node `D` ($q \in (0, 1]$), allocating EVPI to it; blocked work wires `needs` to the probe.
-4. **Resolution by Pruning:**
-   - Deciding an option consists of selecting the winning node, completing/adopting it, and cancelling/pruning the competing node (`status: cancelled`). This immediately unblocks downstream dependency edges without manual decision-task administrative overhead.
+   - Where a decision depends on missing runtime data, benchmarks, or empirical validation, mint an empirical probe task (`classification: probe`, e.g. `Benchmark SQLite vs DuckDB query latency`). The scoping or waiting task wires standard `needs: [<probe_task_id>]` to the probe.
+4. **Resolution by Reification:**
+   - Resolving a decision consists of choosing the recommended option in the scoping task/ADR and reifying the chosen path into an actionable downstream task. No artificial decision-node administration or stored alternative edges are created.
 
 ## 5. Task Body Brevity, Structure, and Canonical Template
 
@@ -82,7 +80,7 @@ Task bodies are executable instructions for cold executors, not project diaries,
 
 1. **Strictly Concise:** Task bodies are 50–150 words for atomic tasks (up to ~300 words for complex multi-outcome briefed units).
 2. **No Extraneous Sections:** Never add sections such as `Background`, `Narrative`, `References`, `Contextual Analysis`, `Task History`, or `Implementation Plan`.
-3. **No Prose Task Links:** Never link other tasks from within the body (e.g. no "blocks #123" or "relates to task X"). Task relationships live exclusively as graph edges (`depends_on`, `contributes_to`, `supersedes`).
+3. **No Prose Task Links:** Never link other tasks from within the body (e.g. no "blocks #123" or "relates to task X"). Task relationships live exclusively as graph edges (`needs`, `serves`, `supports`, `parent`, `supersedes`).
 4. **Pointers Point to Knowledge, Not Tasks:** `[[wikilinks]]` in a task body point solely to durable knowledge (specs, notes, references) that the executor must consult, with a ≤1-clause statement of purpose.
 
 ### Canonical Task Template

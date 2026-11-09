@@ -59,7 +59,7 @@ before entering the graph. Flow maths is kept unpolluted by subjective risk gati
 
 **Stricter semantics for `supports`.** Task $B$ `supports` task/target $A$ if and only if executing $B$ directly reduces the effort, cost, or difficulty of $A$, or increases $A$'s probability of success. A tracking or coordination task does NOT support the tasks it tracks (tracking makes zero difference to the tracked task's difficulty). A tracking task serves the strategic target of user understanding / observability and is confined to that target edge.
 
-**Decisions and empirical probes (ADR spec_e6d668b0).** Competing architectural or design options stay inside the body of the scoping task or ADR until chosen. When chosen, only the selected option is reified into an actionable task under `parent: <task_id>`. Empirical probes are active investigative tasks (`classification: probe`) wired to the scoping task via standard `needs: [<probe_task_id>]`. Stored `alternative` and `settles` edges are retired.
+**Decisions and empirical probes.** Competing architectural or design options stay inside the body of the scoping task or ADR until chosen. When chosen, only the selected option is reified into an actionable task under `parent: <task_id>`. Empirical probes are active investigative tasks (`classification: probe`) wired to the scoping task via standard `needs: [<probe_task_id>]`.
 
 **Opening futures and capital stocks (S27).** Foundational investments (reputation, funding reserves,
 infrastructure, relationships) that expand future optionality are wired to capital stock hubs. Rather than
@@ -98,8 +98,8 @@ Redundant child-to-ancestor weight edges. Stored `alternative` and `settles` edg
   (`plugins/ida/agents/pauli.md:104`).
 - Over-dense linking: ambiguous prohibitions on body interconnections led agents to duplicate every
   markdown body wikilink as a formal frontmatter edge with weights.
-- Tracking tasks (e.g. `aops_9fd8f119`) authored frontmatter `supports` links to every task they tracked
-  (e.g. `task_52c31235`), misclassifying tracking as supporting the tracked tasks.
+- Tracking tasks authored frontmatter `supports` links to every task they tracked,
+  misclassifying tracking as supporting the tracked tasks.
 - Redundant child-to-ancestor weight links: subtasks duplicated `serves` links to targets already served
   by their parents, distorting flow induction.
 - The weight-repair template validates a seven-word scale that mixes amount with likelihood (S2).
@@ -206,12 +206,12 @@ Covers U8, U9, U10, U11, S7, S24, S27, I7, I9.
     a date from urgency.
 11. **Effort.** Record `effort` when the input states it or the work is a known kind. The cliff lane
     reads it (FR:425).
-12. **Decisions & Empirical Probes (ADR spec_e6d668b0).** When an input is a choice between options with no
+12. **Decisions & Empirical Probes.** When an input is a choice between options with no
     commitment to doing anything immediately beyond choosing, keep the choices and instructions on how to make
     the decision inside the single task body without subtasks or option nodes. Competing options remain in the
     task body or ADR until chosen. When chosen, only the selected option is reified into an actionable task under
     `parent: <task_id>`. Empirical probes are active investigative tasks (`classification: probe`) wired to the
-    scoping task via standard `needs: [<probe_task_id>]`. Stored `alternative` and `settles` edges are retired.
+    scoping task via standard `needs: [<probe_task_id>]`. Stored `alternative` and `settles` edges are prohibited.
 13. **Do not write:**
     - `intent` (FQ10), `severity` (FQ24), `stakeholder` as a weight (FQ25), target worth, `soft_depends_on`, or `supersedes` (FR:448).
     - Stored `alternative` or `settles` edges.
@@ -357,16 +357,11 @@ ranking. Agents do not ask "is this still ripe?" on a timer (S6; age is not stal
 
 **Revival.** `inbox` restores the node with its edges intact.
 
-### 7.3 Decisions (ADR spec_e6d668b0)
+### 7.3 Decisions
 
 Covers U12, I10, FR §6.
 
-Per ADR `spec_e6d668b0`, standalone decision backlog nodes with stored `alternative` and `settles` edges
-are retired. When a task requires selecting among competing design or architectural options with no commitment
-beyond choosing, the candidate options and evaluation criteria remain inside the body of the scoping task
-or ADR. When chosen, only the selected option is reified into an actionable task under `parent: <task_id>`.
-Empirical probes or spikes are active tasks (`classification: probe`) wired to the scoping task via standard
-`needs: [<probe_task_id>]`. No agent authors stored `alternative` or `settles` edges.
+Standalone decision backlog nodes with stored `alternative` and `settles` edges are prohibited. When a task requires selecting among competing design or architectural options with no commitment beyond choosing, the candidate options and evaluation criteria remain inside the body of the scoping task or ADR. When chosen, only the selected option is reified into an actionable task under `parent: <task_id>`. Empirical probes or spikes are active tasks (`classification: probe`) wired to the scoping task via standard `needs: [<probe_task_id>]`. No agent authors stored `alternative` or `settles` edges.
 
 ### 7.4 Explaining a weight
 
@@ -510,9 +505,9 @@ Each test can be checked by an observer reading the graph or a transcript.
 | A18 | Harms are wired, not netted | `/q` on work that advances one target and endangers another. It produces two edges, one `helps` and one `harms`, and the flow output shows both figures non-zero. | S12, S16, I15 |
 | A19 | Every changed file changed as §9 says | Diff of the implementation PR against §9: every row is present, and no unlisted skill changed. | this spec |
 | A20 | Three edge purposes distinguished | Verify edge taxonomy distinguishes (1) weight flow to targets, (2) sequencing via `needs`, and (3) clustering via body wikilinks without frontmatter duplication. | ADR-0002, AC2 |
-| A21 | Zero duplicate frontmatter edges for body citations | Inspect tasks with markdown body citations (e.g. `task_52c31235`). Verify no duplicate frontmatter edges are authored for nodes cited in body prose. | ADR-0002, AC2 |
+| A21 | Zero duplicate frontmatter edges for body citations | Inspect tasks with markdown body citations (e.g. a task citing references in its body). Verify no duplicate frontmatter edges are authored for nodes cited in body prose. | ADR-0002, AC2 |
 | A22 | Project hierarchy single injection | Inspect subtasks under an epic or composite task. Verify subtasks carry no redundant child-to-ancestor `serves` links to targets already served by their parent. | ADR-0002, AC3 |
-| A23 | Strict supports semantics | Inspect tracking and coordination tasks (e.g. `aops_9fd8f119`). Verify they do not link `supports` to tracked tasks, and link only to user understanding targets. | ADR-0002, AC4 |
+| A23 | Strict supports semantics | Inspect tracking and coordination tasks (e.g. an operational tracking task). Verify they do not link `supports` to tracked tasks, and link only to user understanding targets. | ADR-0002, AC4 |
 | A24 | Weight contracts enforced | Verify `needs` edges carry neither quantum nor probability; verify target weight edges (`serves`) and `supports` carry explicit quantum and probability. | ADR-0002, AC5 |
 
 ## 12. Settled decisions
@@ -560,7 +555,7 @@ All questions K1–K11 are settled under the product-grade workflow redesign:
 - Wiring `supports` from tracking or coordination tasks to the tasks they track.
 - Authoring redundant child-to-ancestor `serves` weight edges on decomposed subtasks.
 - Stating `quantum` or `probability` on `needs` prerequisite edges.
-- Authoring stored `alternative` and `settles` edges (superseded by ADR `spec_e6d668b0`).
+- Authoring stored `alternative` and `settles` edges.
 
 ## 14. Traceability
 

@@ -8,7 +8,7 @@ decision-makers: ["framework-architect", "review-supervisor"]
 
 ## Context and Problem Statement
 
-Following the initial deployment of the PKB flow model and three-relation graph architecture, agent task authoring suffered from an over-correction where link density became excessively dense (exemplified by tracking tasks such as `aops_9fd8f119` adding frontmatter `supports` links to every tracked item like `task_52c31235`). Ambiguous instructions previously prohibited interconnections in body prose, causing agents to duplicate all contextual markdown citations as formal frontmatter edges with weights. Furthermore, tasks frequently authored redundant child-to-ancestor weight edges, and tracking tasks misclassified tracking as "supporting" the tasks they tracked. How should the framework distinguish edge purposes, eliminate redundant frontmatter wiring, formalize project hierarchy rules, and enforce strict semantics for `supports`?
+Following the initial deployment of the PKB flow model and three-relation graph architecture, agent task authoring suffered from an over-correction where link density became excessively dense (exemplified by tracking tasks adding frontmatter `supports` links to every item they track). Ambiguous instructions previously prohibited interconnections in body prose, causing agents to duplicate all contextual markdown citations as formal frontmatter edges with weights. Furthermore, tasks frequently authored redundant child-to-ancestor weight edges, and tracking tasks misclassified tracking as "supporting" the tasks they tracked. How should the framework distinguish edge purposes, eliminate redundant frontmatter wiring, formalize project hierarchy rules, and enforce strict semantics for `supports`?
 
 ## Considered Options
 
