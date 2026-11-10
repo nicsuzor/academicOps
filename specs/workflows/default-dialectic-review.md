@@ -14,7 +14,7 @@ Establishes dialectical multi-agent evaluation as the workflow library's default
 
 ### US-1 Default Dialectical Review for Independent Review Stages
 
-As an agent composing tasks from composite workflows, I want an independent review stage to resolve to the dialectical review workflow by default, so that deliverables receive thorough multi-perspective independent evaluation without hardcoding implementation templates.
+As a developer composing tasks from composite workflows, I want an independent review stage to resolve to the dialectical review workflow by default, so that deliverables receive thorough multi-perspective independent evaluation without hardcoding implementation templates.
 
 - **AC-1.1** Given a composite workflow defining an independent review stage with no explicit review template designated, when the stage is resolved, then it resolves to the workflow template tagged `review` marked `default: true`.
 - **AC-1.2** Given a review stage executing under the default review workflow, when execution begins, then it coordinates multiple distinct evaluative perspectives (addressing strategic direction, compliance, and quality/acceptance criteria) via internal subagents under an evaluative supervisor and yields a unified verdict (`PASS`, `REVISE`, or `FAIL`).
@@ -28,6 +28,15 @@ As a user or project author, I want to substitute an alternative review workflow
 - **AC-2.2** Given a project workspace defining a project-tier review workflow marked `default: true`, when an unspecialized review stage is composed within that project, then the project-tier default template shadows and substitutes for the universal default template.
 - **AC-2.3** Given a low-stakes or routine task executing under the default dialectical review, when the supervisor calibrates review proportionality upfront, then it may execute a single-pass sanity check without spawning concurrent subagents.
 
+### US-3 Reviewer Self-Fixes for Uncontroversial Defects
+
+As a software engineer delivering changes, I want independent reviewers to immediately repair uncontroversial defects they observe (language updates, data scrubbing, simple fixes) rather than halting delivery with revision requests, so that review cycles are reserved for substantive evaluation.
+
+- **AC-3.1** Given a candidate change under review, when a reviewer identifies an issue with a single, unambiguous deterministic solution (such as typo correction, private data scrubbing under `data-boundaries`, dead link repair, or markdown formatting), then the reviewer applies the fix directly to the working tree.
+- **AC-3.2** Given an uncontroversial fix applied by a reviewer, when recording the change, then the reviewer commits the fix with an explanatory commit message (`fix(review): ...`) and itemizes the change under `### Reviewer Self-Fixes Applied` in the handback report.
+- **AC-3.3** Given an artifact where all identified issues were uncontroversial and self-fixed, when the reviewer determines its verdict, then the reviewer does not issue `REVISE` solely for the self-fixed items and proceeds to evaluate substantive criteria.
+- **AC-3.4** Given an issue with no reasonably deterministic solution (competing designs, architectural trade-offs, scope expansion, or broken core logic), when evaluated by a reviewer, then the reviewer does not guess a fix, documents the issue as an itemized finding, and returns `REVISE` or `FAIL`.
+
 ## Design
 
 The default review architecture provides multi-perspective evaluation while preserving runtime workflow composition and caller substitution:
@@ -39,8 +48,8 @@ The default review architecture provides multi-perspective evaluation while pres
    - **Universal-Tier Default**: In the absence of an explicit designation or project override, the composing agent selects the universal template tagged `review` marked `default: true`.
    - **Collision Handling**: If multiple templates within the same tier declare `default: true` under the `review` tag, resolution halts loudly with a collision failure.
 
-2. **Internal Perspective Coordination & Proportionality**:
-   The default review workflow coordinates multiple specialist review perspectives concurrently as internal subagents under an evaluative supervisor, returning a single consolidated findings synthesis and reconciled verdict (`PASS`, `REVISE`, or `FAIL`). Spawning subagents internally allows deep dialectical evaluation within a single assigned review worker task without requiring outer orchestrators to manage multiple review tasks.
+2. **Internal Perspective Coordination, Self-Fixes & Proportionality**:
+   The default review workflow coordinates multiple specialist review perspectives concurrently as internal subagents under an evaluative supervisor, returning a single consolidated findings synthesis and reconciled verdict (`PASS`, `REVISE`, or `FAIL`). Reviewers immediately apply and commit uncontroversial mechanical fixes (`fix(review): ...`), itemizing them under `### Reviewer Self-Fixes Applied` without issuing `REVISE` solely for repaired items; non-deterministic issues remain as itemized findings. Spawning subagents internally allows deep dialectical evaluation within a single assigned review worker task without requiring outer orchestrators to manage multiple review tasks.
    The supervisor evaluates task complexity and stakes upfront: high-stakes and architectural tasks receive full multi-agent dialectical deliberation; routine or low-stakes tasks execute via single-pass review.
 
 3. **Headless Release Contract**:

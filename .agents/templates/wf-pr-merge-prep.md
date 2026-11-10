@@ -32,7 +32,8 @@ actually stands, not as it was last checked.
    `gh pr checks`) -- a claim that it's green from an earlier
    pass, another node, or the PR author is not this. Where it isn't, that is
    itself a finding, not something to wait out. A draft PR whose code step is
-   complete is marked ready for review. Mergeability is not required before
+   complete and whose proportionate review by independent agents is posted to the
+   PR thread is marked ready for review. Mergeability is not required before
    approval: do not rebase or resolve conflicts here; bringing the PR up to date
    with its base and resolving conflicts happens after the principal approves,
    just before merge.
@@ -44,9 +45,10 @@ actually stands, not as it was last checked.
 
 ## Exit: hand it to the sign-off gate
 
-This template ends where [[wf-signoff-loop]] begins. Merging is a ship-type
-act -- compose that gate to carry the review's findings and a recommendation
-to the principal. A review is required and a proportionate review is selected. This template never merges the PR itself; producing
+Merging is a ship-type act -- carry the independent agent review findings and a
+reasoned recommendation to the principal. A review by independent agents is
+required and a proportionate review is selected, with verdicts posted to the PR.
+This template never merges the PR itself; producing
 material for someone else's decision is the deliverable, not the decision.
 
 ## Not for

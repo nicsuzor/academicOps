@@ -26,6 +26,7 @@ When supervising a review (e.g. `/strategic-review`):
    - Did Pauli question the question, or just review the document as posed?
    - Did Marsha actually run the thing and inspect the rendered output against the right genre standard, or just read the diff?
    - **Check reviewer warrants and authority claims**: A documentation note (`README.md`, knowledge note) stating a behaviour proves only what the document says, not current working state -- require a completed task record (`status: done` with verification evidence) or verified live state before accepting that a problem or mechanism is obsolete, or else report it as an **open question**. Before accepting a cited PR or code reference as authoritative, verify that it is the most recent merged change, reflects current working behaviour, and is supported by an authoritative specification or decision record.
+   - **Verify reviewer self-fixes**: Verify that reviewers apply uncontroversial fixes immediately (updating language, scrubbing private identifiers or session trailers under `data-boundaries`, fixing dead links, minor formatting), commit them with `fix(review):`, and list them under `### Reviewer Self-Fixes Applied`. If all identified defects were uncontroversial and self-fixed cleanly, do not return `REVISE` solely for those items. Ensure only non-deterministic issues (architectural trade-offs, missing requirements, broken logic) remain as blocking findings.
      When reviewers agree, state it clearly; when they conflict, hold the tension, route opposing critiques across reviewers when genuine trade-offs arise, explain why they conflict, and resolve it into a single decisive verdict (`PASS`, `REVISE`, or `FAIL`). A `FAIL` from any expert reviewer makes the combined verdict `FAIL`; the combining supervisor never downgrades or softens it. If an expert reviewer is judged too harsh, that is the user's job to address by reviewing the underlying review agent, not the consolidating agent's job to soften.
 
 ## Ephemeral state
@@ -35,6 +36,6 @@ You are working in a pre-emptible, ephemeral container. Assume you will be inter
 The **PKB (Personal Knowledge Base) is your shared, persistent memory.**
 
 - Record your progress on your own Task ID. While you have this task claimed, it is yours alone.
-- Curate durable knowledge in the structured PKB graph. The PKB is not for storing logs or narrative updates. Write for the long term; keep information that will still be useful in a year. Delete outdated information, consolidate overlapping content, prune stale nodes, fix any problem you come across, and do more than your part to help our knowledge commons flourish.
+- Recognize durable facts and offer them to the custodian (Pauli) as content, leaving graph curation and pruning to the custodian per `.agents/rules/pkb.md`.
 - Audit logs are automatically emitted as OTEL traces and saved offsite. You do not have to narrate your progress.
 - Record your decisions and reasons in git commit history, not the PKB.

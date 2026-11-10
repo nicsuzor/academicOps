@@ -20,35 +20,36 @@ Maintains truth over the task graph: establishes facts about in-flight work and 
    - **Closed without merge**: Surface for routing; never auto-complete or auto-requeue.
    - **Open PRs**: Read review and check state with `gh pr view <n> --repo <owner/repo> --json state,isDraft,mergedAt,reviewDecision,statusCheckRollup`. `reviewDecision: CHANGES_REQUESTED` or a failing check in `statusCheckRollup` routes the task to `queued` or a follow-up task, never `done` or `review`.
 3. **Reconciling Tasks in Review**: Agents never release tasks into `review`. Tasks explicitly held in `review` by the user (`assignee: user`) represent manual inspection holds and are left untouched. For all other tasks in `status: review`:
-   - **Covered by a review or QA task**: If an active review or QA task points to the task via graph dependency edges (`needs` or `depends_on` contains the task ID), mutate the task status immediately to `done`. This unblocks dependent tasks on the graph.
+   - **Covered by a review or QA task**: If an active review or QA task points to the task via graph prerequisite edges (`needs` contains the task ID), mutate the task status immediately to `done`. This unblocks dependent tasks on the graph.
    - **Uncovered with an open PR**: If no review or QA task covers the task, but an open pull request is recorded on the task, mutate the task status to `done` and, if the PR risk tier warrants verification, mint/queue a `QA: <title>` follow-up task with `needs: [<task_id>]`.
    - **Uncovered without a PR**: If the task has no PR and no covering review task, verify recorded evidence against acceptance criteria:
      - If criteria are fully satisfied with verifiable evidence: mutate status to `done`.
      - If incomplete agent work remains: transition to `queued` (or `partial` if partly delivered).
      - If principal input is required: transition to `partial` (recording the question in `reason`) and escalate to today's daily note `## With you`.
        No agent task is left in `review`.
-4. **Decide next action for failed tasks from the parent epic**: Workers never create or name follow-up tasks, and release `failed` when a check (e.g. QA or review) or implementation fails. For every task marked `failed` within the sweep window:
+4. **Parent Rollup Lifecycle**: When all open children under a composite task (`parent`) reach `done`, the composite task does not automatically close if it contains substantive acceptance criteria. Instead, transition it to `ready` for an explicit synthesis and sign-off pass. Verify composite criteria against the combined deliverables of its completed child set before marking the composite task `done`.
+5. **Decide next action for failed tasks from the parent epic**: Workers never create or name follow-up tasks, and release `failed` when a check (e.g. QA or review) or implementation fails. For every task marked `failed` within the sweep window:
    - Inspect the failure record: failure evidence, unmet criteria, and documented root cause in `## Report` and `reason`.
    - Load the task's parent epic and its wider graph context (siblings, dependencies, and epic goals).
    - Decide the next action from the epic context:
-     - _Rework / retry_: If the failure is remediable (e.g. a bug or unmet criterion), mint a rework task under the parent epic with updated requirements and appropriate dependencies.
+     - _Rework / retry_: If the failure is remediable (e.g. a bug or unmet criterion), mint a rework task under the parent epic with updated requirements and appropriate dependencies (`needs`).
      - _Epic reprioritization / cancellation_: If the failure is architectural, fatal, or invalidates the approach, mark affected downstream tasks under the epic as blocked or cancelled with explanatory annotations.
      - _Escalation_: If the failure requires principal input or changes epic scope, escalate to the daily note `## With you` naming the epic and the decision required.
    - Annotate the failed task record with the reconcile determination so it is settled on the graph and not re-processed on subsequent sweeps.
-5. **Escalation on the record**: If an unrecorded fact, external commitment, or reserved field forces escalation, reduce to a single one-line question in `reason`, queue a review task for the next escalation level, wire `depends_on`, dispatch or queue it, and transition source task to `partial` (outcome 2).
-6. **Check returned work on the papers**: Verify the account of returned work on the record before deciding what reaches the user:
+6. **Escalation on the record**: If an unrecorded fact, external commitment, or reserved field forces escalation, reduce to a single one-line question in `reason`, queue a review task for the next escalation level, wire `needs`, dispatch or queue it, and transition source task to `partial` (outcome 2).
+7. **Check returned work on the papers**: Verify the account of returned work on the record before deciding what reaches the user:
    - _Chain of evidence_: verify `pr_url`, `completion_evidence`, or named artifact exists.
    - _Soundness_: verify cited evidence actually answers acceptance criteria. If insufficient, return to `ready`/`queued` or `partial` with an agent review task (outcome 1 or 2); never escalate unproven claims to the user.
    - _Liveness_: verify question is still live; discard moot items settled by events.
-7. **Reset stale claims**: Stale `in_progress` tasks with no live claim (>24h unmodified without active session or worker) reset to `queued`. Never move a claimed task backwards while an active worker holds it.
-8. **Demote affected tasks**: Set unblocked dependents, siblings of landed work, rot (>14d in `ready`/`queued`), and invalidated assumption nodes to `status: inbox` with explanatory annotations.
-9. **Cancel on world-facts**: Cancel only on affirmative evidence recorded in the node body:
-   - _Referent destroyed_: target artifact was deleted, verified across checkouts and refs.
-   - _Superseded by merge_: merged PR mooted or settled the task's question.
-   - _Premise falsified_: named assumption or precondition no longer holds.
-   - _Source-stated retirement_: opportunity's source confirms it is no longer open, or explicit principal instruction ("drop X"). Set `status: cancelled` with reason starting `not ripe:` quoting statement and source.
-10. **Two-step mutation contract**: Write annotation/evidence to markdown body first, then mutate frontmatter `status` via `pkb.update_task` (never `batch_update`), then read back to confirm status.
-11. **Escalate**: Settle items reaching the user under the one-level escalation rule (e.g. review tasks reaching the front agent `ida` at the top of the chain requiring user decision, or open questions/asks needing user choice). When running standalone, write them to today's daily note (PKB note `YYYYMMDD-daily`) in `## With you`. When invoked as part of an enclosing run (such as the daily note pipeline), return the escalated items to the caller to fold into `## With you` during its single atomic write, accompanied by current verification timestamps. Reconcile interfaces with the daily note _exclusively_ via `## With you` for escalated decisions; it must never write or append raw mutation summaries, commit SHAs, PR merge logs, branch names, container IDs, or execution heartbeats to the daily note, nor create or append to sections outside `## With you`.
+8. **Reset stale claims**: Stale `in_progress` tasks with no live claim (>24h unmodified without active session or worker) reset to `queued`. Never move a claimed task backwards while an active worker holds it.
+9. **Demote affected tasks**: Set unblocked dependents, siblings of landed work, rot (>14d in `ready`/`queued`), and invalidated assumption nodes to `status: inbox` with explanatory annotations.
+10. **Cancel on world-facts**: Cancel only on affirmative evidence recorded in the node body:
+    - _Referent destroyed_: target artifact was deleted, verified across checkouts and refs.
+    - _Superseded by merge_: merged PR mooted or settled the task's question.
+    - _Premise falsified_: named assumption or precondition no longer holds.
+    - _Source-stated retirement_: opportunity's source confirms it is no longer open, or explicit principal instruction ("drop X"). Set `status: cancelled` with reason starting `not ripe:` quoting statement and source.
+11. **Two-step mutation contract**: Write annotation/evidence to markdown body first, then mutate frontmatter `status` via `pkb.update_task` (never `batch_update`), then read back to confirm status.
+12. **Escalate**: Settle items reaching the user under the one-level escalation rule (e.g. review tasks reaching the front agent `ida` at the top of the chain requiring user decision, or open questions/asks needing user choice). When running standalone, write them to today's daily note (PKB note `YYYYMMDD-daily`) in `## With you`. When invoked as part of an enclosing run (such as the daily note pipeline), return the escalated items to the caller to fold into `## With you` during its single atomic write, accompanied by current verification timestamps. Reconcile interfaces with the daily note _exclusively_ via `## With you` for escalated decisions; it must never write or append raw mutation summaries, commit SHAs, PR merge logs, branch names, container IDs, or execution heartbeats to the daily note, nor create or append to sections outside `## With you`.
 
 ## Must not
 

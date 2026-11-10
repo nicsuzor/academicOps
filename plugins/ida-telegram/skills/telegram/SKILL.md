@@ -20,7 +20,7 @@ The user reads on a phone between other commitments. Cognitive load is the bindi
 
 ## Questions
 
-- **Inbound ask routing:** Questions and lookups received from the user are answered in the receiving session through an internal subagent it spawns, never in its main context; the task dispatch pipeline is used only for real code changes. Never send inbound questions or lookups into the dispatch pipeline.
+- **Inbound ask routing:** Inbound questions and lookups received from the user route to the custodian (`pauli`) as knowledge tasks, never in the user-facing main context; the task dispatch pipeline is used only for real code changes. Never send inbound questions or lookups into the dispatch pipeline.
 - **Option buttons on questions:** Provide selectable option buttons whenever asking questions so the user can reply with a single tap. Use multi-row layouts (`button_layout`, `buttons_per_row`, or 2D button arrays) when offering multiple options (such as skill or checklist proposals) to keep choices compact on mobile screens.
 - **Predefined row consolidation:** In default reply keyboards, Details (`🔍`) sits on the same row as predefined action buttons; pass `predefined_row: true` on `reply` to consolidate all active system actions (`🔍`, `[🧐 Check]`, `[💡 Explain]`, `[🧾]`, `[✅]`, `[❌]`) onto a single default header row above custom option buttons.
 - **Mini App-only questions:** To keep chat clear of decisions best reviewed in the dashboard, set `mini_app_only: true` (or `chat: false`) on `ask_user` or individual questions. The question appears interactively in the Mini App without posting a card to chat.
@@ -78,11 +78,26 @@ Every reply sent over Telegram automatically carries inline action buttons with 
 - **Diff reviews:** Attach review metadata when presenting a pull request or branch for review, allowing the user to inspect changes and submit approval or critique directly.
 - **Cognitive anchor:** Update the live cognitive anchor whenever primary focus changes or work is delegated, keeping the status view current.
 
-## Threaded Conversations
+## Threaded Conversations & Topic Lifecycle
 
-- **Thread confinement by default:** In Telegram supergroups with forum topics enabled, messages arriving in a thread are tagged with `meta.message_thread_id` and `meta.thread_id`. All outbound paths (replies, voice notes, question cards, edits, and reactions) automatically stay in that thread without configuration.
+- **Thread confinement by default:** In Telegram supergroups or topics-enabled chats, messages arriving in a thread are tagged with `meta.message_thread_id` and `meta.thread_id`. All outbound paths (replies, voice notes, question cards, edits, and reactions) automatically stay in that thread without configuration.
+- **Routing when no thread is defined:** When replying to a message sent outside any thread, the reply attaches directly to that inbound message via reply parameters so it lands in the chat context where the user wrote, rather than falling into an unopenable General `#` topic. Active thread memory is preserved across server restarts. Outbound thread verification catches unexpected thread destinations rather than reporting silent success.
 - **Explicit target overriding:** If work requires posting into a specific topic, pass `message_thread_id` (or `thread_id`) explicitly to `reply` or `ask_user`.
+- **Opening new threads:** When starting a dedicated discussion, branching off a topic, or when the user asks to open the conversation in a new window or thread, create a new forum topic using `create_thread({ name: "..." })`. Once created, the new thread automatically becomes active and subsequent replies (`reply`, `ask_user`, etc.) land inside it without needing an explicit thread ID.
 - **Renaming threads:** When a conversation shifts focus or a thread requires a descriptive title, rename the forum topic using `rename_thread({ name: "..." })`. If `message_thread_id` is omitted, the active thread is renamed automatically.
+- **Closing threads:** Close a resolved forum topic using `close_thread({ message_thread_id?: ... })` (alias `close_topic`). When `message_thread_id` is omitted, the active topic in session context is closed. General topic `#1` cannot be closed.
+- **Reopening threads:** Reopen a previously closed forum topic using `reopen_thread({ message_thread_id?: ... })` (alias `reopen_topic`). When omitted, defaults to the active topic. General topic `#1` cannot be reopened.
+- **Deleting threads:** Permanently delete a forum topic and its message history using `delete_thread({ message_thread_id?: ... })` (alias `delete_topic`). Deleting clears active thread tracking for that chat so subsequent replies do not route into the deleted topic. General topic `#1` cannot be deleted.
+
+## Message Management (Pinning, Batch Transfer, Deletion & Button Editing)
+
+- **Pinning messages:** Pin important reference messages or decisions to the header using `pin_message({ message_id: ... })` (alias `pin_chat_message`). Pins silently by default (`disable_notification: true`).
+- **Unpinning messages:** Unpin a specific message using `unpin_message({ message_id: ... })` (alias `unpin_chat_message`), or omit `message_id` to unpin the most recently pinned message.
+- **Unpinning all messages:** Clear all pinned messages in a topic or chat using `unpin_all_messages({ message_thread_id?: ... })` (alias `unpin_all_chat_messages`). When `message_thread_id` is provided, unpins topic messages; when omitted, unpins all chat messages.
+- **Batch forwarding:** Forward batches of 1 to 100 messages into a destination thread or chat using `forward_messages({ message_ids: [...], message_thread_id?: ... })`.
+- **Batch copying:** Copy batches of 1 to 100 messages into a destination thread or chat without forward headers using `copy_messages({ message_ids: [...], message_thread_id?: ..., remove_caption?: boolean })`.
+- **Batch deletion:** Delete batches of 1 to 100 messages sent within the 48-hour Telegram deletion window using `delete_messages({ message_ids: [...] })` (e.g. to clean up originals after migrating to a thread). Telegram rejections (e.g. messages older than 48 hours) surface verbatim.
+- **Editing message buttons:** Update or remove inline keyboards on previously sent messages in-place without reposting text using `edit_message_reply_markup({ message_id: ..., buttons: [...] })` (alias `edit_message_buttons`). Pass an empty array `buttons: []` to clear all buttons. Telegram's `message is not modified` response is treated as idempotent success.
 
 ## Voice
 

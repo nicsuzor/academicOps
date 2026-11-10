@@ -27,7 +27,9 @@ under `plugins/`, mirroring the table in `ARCHITECTURE.md`.
 | `make install-dev` | `build`, then registers `dist/` as the local `aops` marketplace and installs every plugin from it (`aops@aops`). |
 | `make uninstall-dev` | Removes the local marketplace and its installs, then restores the released `academicOps` marketplace. |
 | `make install` | Registers `nicsuzor/academicOps@main` as the `academicOps` marketplace and installs every plugin from it. |
-| `make test` | `uv run pytest tests/`. |
+| `make test` | `uv run pytest tests/` (runs unit tests, excluding `slow` and `integration`). |
+| `make test-integration` | `uv run pytest -m integration tests/` (runs tests marked `integration`). |
+| `make test-all` | `uv run pytest -m "" tests/` (runs all tests). |
 | `make lint` | `ruff check .`. |
 | `make format` | `ruff format .` + `dprint fmt`. |
 | `make clean` | Removes `dist/`. |
@@ -78,7 +80,7 @@ plugin cache whenever plugin definitions, instructions, or dependencies change.
 In a `polecat` container, plugin content is baked into the image at build time
 (`Dockerfile`, `AOPS_DIST_SOURCE`), and rebuilding the image is the refresh path.
 
-## 2. Release path (`release/*` → `main` → publish)
+## 2. Release path (`dev` → `main` → publish)
 
 academicOps `main` holds the current release's source plus the built plugin objects
 of the newest release, release candidates included. Every published tag, and every merge
@@ -104,10 +106,10 @@ automation (GitHub Actions integration id 2921286) allowed to bypass.
 
 ### How each release candidate is now published
 
-1. **Active development and validation.** Work proceeds on release lines (e.g. `release/v1.0-rc0`).
-   Pull requests into release lines run the full `pr-pipeline.yml` suite (Lint, Type Check, Pytest).
+1. **Active development and validation.** Work proceeds on `dev`.
+   Pull requests into `dev` run the full `pr-pipeline.yml` suite (Lint, Type Check, Pytest).
 2. **Publishing release candidates.** Release candidates are published via GitHub pre-releases:
-   - **Trigger conditions**: Pushing an RC tag matching `v*-rc*` (or pre-release tags `v*-*`, `v*rc*`, `v*beta*`, `v*alpha*`, `v*dev*`) on a release line (e.g. `v1.0-rc7` on `release/v1.0-rc0`), or manually triggering `.github/workflows/publish-release.yml` via `workflow_dispatch` with an RC `tag` input.
+   - **Trigger conditions**: Pushing an RC tag matching `v*-rc*` (or pre-release tags `v*-*`, `v*rc*`, `v*beta*`, `v*alpha*`, `v*dev*`) on `dev` or a release line, or manually triggering `.github/workflows/publish-release.yml` via `workflow_dispatch` with an RC `tag` input.
    - **Flags and options**: The workflow runs Pytest, validates PEP 440 version formatting (`build.version --validate`), builds distribution archives with `uv run python -m build.build --set-version <version>`, and attaches the tarballs (`dist/*.tar.gz`) to a GitHub Release marked explicitly with `--prerelease` (`gh release create ... --prerelease` or `gh release edit ... --prerelease`). Stable manifest coherence checks (G2) are skipped for RC builds as pre-releases are not tracked by `.release-please-manifest.json`.
    - **Publish to `main`**: after the GitHub Release, the same build is committed to `main` by `scripts/publish-dist-to-main.sh`, so the Claude Code marketplace on `main` always serves the newest release, candidates included. A manual run checks out the tag it names, not the branch it was started from.
    - **Publish constraints**: RC builds never publish to container registries (GHCR).

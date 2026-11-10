@@ -488,7 +488,7 @@ def _get_evaluator_otel_trace():
 
 
 def _instrument_otel_events(ctx: HookContext) -> None:
-    otel_mod = _get_evaluator_otel_trace()
+    otel_mod: Any = _get_evaluator_otel_trace()
     if otel_mod is None:
         return
 

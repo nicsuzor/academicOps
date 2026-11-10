@@ -2,37 +2,40 @@
 title: Enforcement Map Generation
 type: template
 category: process
-description: Create or audit a flat, actionable 4-column enforcement map mapping rules and affordances to concrete implementation mechanisms and escalation severity.
+description: Create or audit a flat, actionable 4-column enforcement map mapping specific axiom-derived rules applicable across any third-party project to concrete enforcement mechanisms and severity levels.
 tags: [enforcement, governance, architecture, audit, template]
 ---
 
 # Process: Enforcement Map Generation
 
-A process for creating and maintaining a flat, diagnostically useful enforcement map that maps rules and nudges directly to their concrete implementation mechanisms and severity levels.
+A process for creating and maintaining a flat, diagnostically useful enforcement map (`specs/ENFORCEMENT-MAP.md`) that maps specific rules derived from our universal axioms and applicable to agents working in any third-party project to their concrete enforcement mechanisms and severity levels.
 
 ## When to use
 
-- Mapping or auditing how a codebase, framework, or multi-agent system enforces its rules, constraints, and steering nudges.
-- Evaluating whether rules are appropriately bound (e.g. distinguishing hard structural gates or tool denials from advisory persona prompts).
-- Identifying unenforced rules (gaps), disabled mechanisms, and spec drift.
+- Mapping or auditing how the framework enforces specific rules derived from our universal axioms (`plugins/rbg/skills/axioms/`) that apply to agents working in any third-party project.
+- Evaluating whether axiom-derived rules are appropriately bound across mechanism categories (`instructions`, `JIT injection`, `structural`, `process`, `post-hoc`).
+- Identifying unenforced axiom-derived rules, disabled mechanisms, and spec drift.
 
 ## When NOT to use
 
-- Documenting standard software features or writing functional specifications (a skill performing its stated purpose is a feature spec, not enforcement).
+- Creating or modifying workflows (`wf-*.md`, `SKILL.md`, or process templates): **workflows are not rules and do not enforce rules**. Creating or modifying workflows must not produce token enforcement map rows, as the only applicable rule is "agents must follow workflows given to them" and nothing more than that.
+- Documenting repository-local project rules (specific only to `academicOps`), standard software features, or functional specifications.
 - General architectural overviews that do not require concrete `path:line` verification.
 
 ## The Fitness Test
 
-> **A row earns its place only if it supports, on its own, a decision to strengthen an instruction, weaken it, remove a hook, or alter a gate.**
+> **When editing the enforcement map, every row must ONLY reference a specific rule derived from our axioms and applicable to agents working in any third-party project. A row earns its place only if it supports, on its own, a decision to strengthen an instruction, weaken it, remove a hook, or alter a gate.**
 
 ## 1. Rule Formulation & Logical Binding Principles
 
-1. **Explain Operative Intent (What the Rule is Trying to Accomplish):**
-   - Rules must clearly state what the system or component is trying to do or prevent, rather than repeating cryptic shorthand slogans (e.g. do not write _"ida parks a thread; only the principal ends a conversation"_; write _"Ida must not unilaterally mark an open conversation or request as finished, buffering in-flight work until explicit confirmation of completion"_).
-2. **Logical Accuracy & Binding Scope:**
-   - Express general prohibitions accurately across the system (e.g. _"Agents other than ida must not communicate directly across the client channel"_).
-   - Pair general prohibitions with the specific behavioural obligations on the designated agent (e.g. _"Ida communicates across the client channel in a concise and accommodating manner"_).
-   - **Persona instructions only bind the agent whose file contains them.** Logically, instructions in `ida.md` cannot bind other agents; the mechanism for _"Agents other than ida must not speak on the client channel"_ must reflect what actually restrains those other agents (or be marked `not enforced`).
+1. **Axiom-Derived Universal Scope Only:**
+   - Every row must reference a specific rule derived from our axioms (`plugins/rbg/skills/axioms/`) and applicable to agents working in any third-party project.
+   - Never add rows for repository-local project rules, persona-specific conversational habits, subsystem feature specs, or workflows.
+   - Workflows are not rules and do not enforce rules; creating or modifying workflows must not produce token enforcement map rows, as the only applicable rule is "agents must follow workflows given to them" and nothing more than that.
+2. **Explain Operative Intent (What the Rule is Trying to Accomplish):**
+   - State the linked canonical axiom-derived rule followed by one concise sentence (≤ 25 words) stating the operative obligation governing agent conduct across any third-party project.
+3. **Logical Accuracy & Binding Scope:**
+   - **Instructions only bind the agents that load them.** Ensure the mechanism column and pinpoint references reflect what actually carries or enforces the rule across client sessions (or mark disabled mechanisms with `[DISABLED]`).
 
 ## 2. Table Schema & Vocabulary
 
@@ -40,47 +43,36 @@ The deliverable is a **single flat markdown table** with exactly 4 columns:
 
 | Column | Definition | Rules & Constraints |
 | :- | :- | :- |
-| **Rule / nudge** | The operative obligation, constraint, or steering affordance. | One row per `(rule or nudge) × (mechanism that carries it)`. Logically accurate, explaining intent. |
-| **Mechanism** | The category/carrier kind. | Drawn strictly from the 10-term controlled vocabulary below. |
-| **Severity** | The escalation index within the mechanism. | Drawn strictly from the severity index below. |
-| **Detail** | Pinpoint reference and operative evidence. | Verifiable file pointer (`path:line` + operative quote, hook event + handler, or CI workflow + job). |
+| **Rule** | Linked name of the specific axiom-derived rule applicable to agents in any third-party project, followed by one concise sentence stating the operative obligation. | Exactly one axiom-derived rule; ≤ 25 words. Never a workflow, subsystem spec, or repo-local rule. |
+| **Mechanism** | Comma-separated carrier categories from the controlled vocabulary. | Drawn strictly from the controlled vocabulary below. |
+| **Severity** | Comma-separated escalation force gradations matching each carrier category. | Drawn strictly from the severity index below. |
+| **Detail** | Pinpoint reference (`path:line`), carrier component or handler names, and operational state flags (`[DISABLED]`, `[MAP DRIFT]`). | Maximum 2 lines; strictly verification coordinates and status flags, with zero narrative observations. |
 
-### Mechanism Controlled Vocabulary (10 Terms)
+### Mechanism Controlled Vocabulary
 
-1. `agent persona instructions` — Guiding text in an agent's persona definition file.
-2. `skill instructions` — Operational text in a skill's instruction file (`SKILL.md`).
-3. `hook` — Registered handler on a runtime lifecycle event (`PreToolUse`, `PostToolBatch`, `Stop`, etc.).
-4. `tool grant` — Frontmatter or config explicitly granting, scoping, or denying tools/models.
-5. `structural check` — Hard code-level guarantee (mount permissions, fail-closed configs, native loaders).
-6. `workflow gate` — Checkpoint governing work progression across stages (branch protection, task contracts).
-7. `CI job` — Named CI pipeline/workflow posting status checks.
-8. `observability` — Tracing, logging, or metrics pipeline that records without gating.
-9. `doctrine` — Declared principle or policy with no direct automated or code-level enforcement.
-10. `not enforced` — A declared rule or desired constraint with no active code, hook, tool-grant, or prompt mechanism enforcing it.
+1. `doctrine only` — Declared principle or policy with no explicit path to agents.
+2. `instructions` — Guiding text provided to an agent (`suggestion`, `advisory`, `imperative`, `absolute`).
+3. `JIT injection` — Advisory information provided at a targeted point of a workflow.
+4. `structural` — Scope and force guarantees (`scoped`, `permissions`, `warning`, `friction`, `block`, `protection`, `isolation`).
+5. `process` — Review or gate requirements (`advisory check`, `routing`, `required gate`).
+6. `post-hoc` — Auditability and detection (`reversability`, `observability`, `proactive detection`).
 
 ### Severity Index (Escalation within Mechanisms)
 
 - _Instructions:_ `suggestion` · `advisory` · `imperative` · `absolute`
-- _Hooks:_ `warning` (advisory notification) · `block` (hard stop/withholding)
-- _Tool Grants:_ `scoped` (restricted toolset) · `denial` (explicit block)
-- _Structural Checks:_ `hard guarantee` (physical/container boundary) · `fail-closed` (unrecoverable fast-fail)
-- _Workflow Gates:_ `checkpoint` (review step) · `blocking gate` (hard barrier)
-- _CI Jobs:_ `advisory check` · `required gate`
-- _Observability:_ `trace` · `log`
-- _Doctrine:_ `declared principle` · `unbacked policy`
-- _Not Enforced:_ `none`
+- _Structural:_ `scoped` · `permissions` · `warning` · `friction` · `block` · `protection` · `isolation`
+- _Process:_ `advisory check` · `routing` · `required gate`
+- _Post-hoc:_ `reversability` · `observability` · `proactive detection`
 
 ## 3. Curation, Slimming & State Rules
 
-1. **Collapse Unenforced Rows / Blanks:**
-   - Do NOT create multiple combinatorial empty rows for unenforced rules. Collapse into a single line: `(rule, not enforced, none)` with a clean, concise summary in `Detail`.
-   - Avoid verbose negative proofs (e.g. do not write _"not located anywhere in ida.md — full file read"_; write _"Not enforced in persona prompts, hooks, or tool grants"_).
-2. **Collapse Redundant Instructions:**
-   - Where multiple lines in a persona or across skills enforce the same underlying rule, collapse into a single row listing all citations in `Detail`.
-3. **Exclude Functional Specs:**
-   - Drop descriptions of a skill or tool simply performing its intended function.
-4. **Preserve All Hard Levers (~32 rows):**
-   - Retain every `hook`, `tool grant`, `structural check`, `workflow gate`, `CI job`, and `doctrine` row.
-5. **Format State & Drift in `Detail` (No extra columns):**
-   - **Disabled mechanisms:** Prefix `Detail` with `[DISABLED]` and state the rationale.
-   - **Spec/code drift:** Prefix `Detail` with `[MAP DRIFT]` where code reality contradicts documentation.
+1. **Strict Axiom-Derived Third-Party Rule Filter:**
+   - Include only specific rules derived from our axioms that apply to agents working in any third-party project and meet the inclusion filter in `specs/enforcement/enforcement-map.md`.
+   - Exclude all workflow steps, skill procedures, subsystem feature specs, and `academicOps`-only project rules.
+2. **Collapse Redundant Carriers:**
+   - Where multiple mechanisms or files enforce the same underlying axiom-derived rule, list all carrier categories and pinpoint coordinates on that rule's row rather than minting duplicate rows.
+3. **Exclude Workflows and Functional Specs:**
+   - Workflows are not rules and do not enforce rules; creating or modifying a workflow never produces a token enforcement map row (the only applicable rule is "agents must follow workflows given to them" and nothing more than that).
+4. **Format State & Drift in `Detail` (No extra columns):**
+   - **Disabled mechanisms:** Tag with `[DISABLED]` in `Detail`.
+   - **Spec/code drift:** Tag with `[MAP DRIFT]` in `Detail` where code reality contradicts documentation.

@@ -121,6 +121,7 @@ def _clean_env(tmp_path: Path) -> dict[str, str]:
     return env
 
 
+@pytest.mark.integration
 def test_verdict_script_records_without_session_flag(tmp_path):
     """End to end, as Claude Code runs it: SessionStart through dispatch.py,
     then the documented verdict command in a Bash that sources CLAUDE_ENV_FILE,

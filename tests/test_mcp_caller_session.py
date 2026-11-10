@@ -8,6 +8,8 @@ import sys
 import tomllib
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 IDA_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
 HOOK_SCRIPT = IDA_HOOKS / "mcp_caller_session.py"
@@ -82,6 +84,7 @@ def test_hook_includes_agent_id_in_subagent():
     assert session["prompt_id"] == "prompt-uuid-turn"
 
 
+@pytest.mark.integration
 def test_hook_subprocess_execution():
     """End-to-end execution of the script as a subprocess reading stdin and emitting JSON stdout."""
     payload = {
@@ -111,6 +114,7 @@ def test_hook_subprocess_execution():
     }
 
 
+@pytest.mark.integration
 def test_hook_subprocess_fails_on_malformed_stdin():
     """Verify that malformed JSON on stdin fails fast with a non-zero exit code."""
     proc = subprocess.run(
@@ -250,3 +254,52 @@ def test_hook_omits_session_for_multi_segment_non_session_servers():
         assert updated is None or "_session" not in updated, (
             f"Expected no _session for {tool_name}, got {updated}"
         )
+
+
+def test_hook_resolves_root_session_id_and_subagent_id_from_tracer_state(tmp_path, monkeypatch):
+    """Out-of-process subagent MCP tool call resolves root phoenix_session_id as _session.session_id
+    and preserves the subagent's own session id as _session.agent_id."""
+    from mcp_caller_session import inject_caller_session
+
+    monkeypatch.setenv("HOME", str(tmp_path))
+    tracer_dir = tmp_path / ".claude" / "tracer"
+    tracer_dir.mkdir(parents=True, exist_ok=True)
+    (tracer_dir / "subagent-sess-99.json").write_text(
+        json.dumps(
+            {
+                "session_id": "subagent-sess-99",
+                "phoenix_session_id": "root-sess-00",
+                "parent_session_id": "root-sess-00",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    payload = {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "mcp__pkb__get_task",
+        "session_id": "subagent-sess-99",
+        "prompt_id": "prompt-sub-1",
+        "tool_use_id": "toolu-sub-1",
+        "tool_input": {"id": "task-fixture-01"},
+    }
+
+    result = inject_caller_session(payload, session_servers=SESSION_SERVERS)
+    session = result["hookSpecificOutput"]["updatedInput"]["_session"]
+    assert session["session_id"] == "root-sess-00"
+    assert session["agent_id"] == "subagent-sess-99"
+    assert session["prompt_id"] == "prompt-sub-1"
+
+    # Also verify slash-suffixed session_id is stripped to root UUID and suffix goes to agent_id
+    payload_suffixed = {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "mcp__pkb__get_task",
+        "session_id": "root-sess-00/task-1",
+        "prompt_id": "prompt-bg-1",
+        "tool_use_id": "toolu-bg-1",
+        "tool_input": {"id": "task-fixture-01"},
+    }
+    res_suffixed = inject_caller_session(payload_suffixed, session_servers=SESSION_SERVERS)
+    sess_suffixed = res_suffixed["hookSpecificOutput"]["updatedInput"]["_session"]
+    assert sess_suffixed["session_id"] == "root-sess-00"
+    assert sess_suffixed["agent_id"] == "task-1"

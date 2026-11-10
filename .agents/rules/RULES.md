@@ -14,18 +14,30 @@ axiom alone.
 
 Before proposing, adding, or modifying an enforcement mechanism, run through the enforcement pyramid options against [`specs/enforcement/enforcement.md`](../../specs/enforcement/enforcement.md) first, testing least-invasive options across its controlled vocabulary and strength gradations before escalating. Default to instructions: instructions work in the large majority of cases; the burden of proof is on adding a mechanism.
 
+No new hooks without a full spec. No new mechanical enforcement of any kind without a full spec and a decision history filed to show enforcement map escalation step by step.
+
 Any change that adds, modifies, escalates, or retires an enforcement mechanism
 updates [`specs/enforcement/enforcement.md`](../../specs/enforcement/enforcement.md)
 in the same PR, so the spec still describes reality after merge.
 
-An enforcement mechanism is any measure intended to shape how an agent behaves —
+An enforcement mechanism is any measure intended to shape how an agent behaves --
 hooks, review lenses, branch protection, and equally instructions, project rules,
 and agent-persona edits. The test is not "which file did I touch?" but "does this
 diff change what any agent is made to do?"
 
 New rule content carried by a mechanism the spec already describes owes no new
-section. Touch the spec only when the mechanism itself — its trigger, surface, or
-scope — changed.
+section. Touch the spec only when the mechanism itself -- its trigger, surface, or
+scope -- changed.
+
+When editing the enforcement map ([`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md)),
+every row must **only** reference a specific rule derived from our axioms
+([`plugins/rbg/skills/axioms/`](../../plugins/rbg/skills/axioms/)) and applicable
+to agents working in any third-party project -- never repository-local project
+rules, subsystem feature specifications, or workflows. Workflows are not rules
+and do not enforce rules; creating or modifying workflows (`wf-*.md`, `SKILL.md`,
+or process templates) must not produce token enforcement map rows, as the only
+applicable rule is "agents must follow workflows given to them" and nothing more
+than that.
 
 ## Documentation goes where the taxonomy says
 
@@ -40,7 +52,7 @@ Do not hardcode architectural policies, messaging invariants, or enforcement lev
 - Policies (e.g., required text snippets, specific hook mappings, or message exemptions) must be defined in `tests/policy.toml`.
 - Tests must assert against the configuration in `policy.toml`, never against hardcoded Python literals.
 - This separates the _mechanism_ of the test from the _policy_ of the platform, allowing non-engineers to review and modify policies without rewriting code.
-- This never licenses asserting that `policy.toml` — or any agent, skill, settings, or instruction file — still declares the same names or values it declares today. `policy.toml` supplies an input an assertion is _derived from_ (an exemption list to check real messages against, a threshold to check a real count against); the assertion itself checks something the code does with that input, never the config's own content restated as its own check.
+- This never licenses asserting that `policy.toml` -- or any agent, skill, settings, or instruction file -- still declares the same names or values it declares today. `policy.toml` supplies an input an assertion is _derived from_ (an exemption list to check real messages against, a threshold to check a real count against); the assertion itself checks something the code does with that input, never the config's own content restated as its own check.
 
 ## No Shitty NLP and Agentic-First Design
 
@@ -50,7 +62,7 @@ Per [Human Readability First](../../plugins/rbg/skills/axioms/human-readability-
 2. **Prohibit checking natural language mechanically:** Legacy NLP (keyword matching, regex heuristics, fuzzy string matching) is forbidden for semantic decisions or checking prose. Evaluate semantically using agentic comprehension, not pattern matching.
 3. **Prohibit using structured outputs for human-visible text:** Do not emit structured payloads (such as JSON or YAML documents) where readable Markdown prose is expected for human review.
 
-Any work requiring judgment, evaluation, classification, or semantic reasoning should be designed as a skill, workflow, or agent task that a capable agent executes directly — not as a deterministic script or a programmatic wrapper around LLM APIs.
+Any work requiring judgment, evaluation, classification, or semantic reasoning should be designed as a skill, workflow, or agent task that a capable agent executes directly -- not as a deterministic script or a programmatic wrapper around LLM APIs.
 
 - **Don't guess semantic intent with regex or fuzzy matching:** Do not parse unstructured natural language or route workflows based on keyword tables, regex heuristics, or substring searches. Provide the agent with the index of choices and let the agent decide.
 - **Don't filter documentation based on keyword matches:** Let agents select relevant reference material using semantic context or index discovery.
@@ -67,12 +79,24 @@ Task titles and filenames must be brief, descriptive, and unambiguous:
 - **Task bodies are strictly concise:** Follow the canonical template in [`specs/meta/naming-and-decisions.md`](../../specs/meta/naming-and-decisions.md) (Goal, Deliverable, Scope, Acceptance criteria, Pointers). Never add narrative sections (`Background`, `References`, `Implementation Plan`) or prose task-to-task links.
 - **Parent/child is already an edge:** Setting `parent_id` links the hierarchy; do not redundantly wire edges between siblings/descendants of the parent without specific interactions. Tasks requiring review or follow-up must be structured either as a single task with internal subtasks (if single session) or as a dedicated epic with child tasks (if multi-session), never as loose siblings under an external parent.
 
+## Three-Purpose Edge Taxonomy and Invariants
+
+Task graph edges follow the Three-Purpose Edge Taxonomy per [`specs/decisions/0002-distinguish-pkb-graph-edge-purposes-and-enforce-parsimony.md`](../../specs/decisions/0002-distinguish-pkb-graph-edge-purposes-and-enforce-parsimony.md):
+
+- **Single injection invariant**: Top-level deliverable tasks wire `serves` to priced targets; subtasks never carry redundant `serves` edges. Auxiliary tasks that directly reduce effort or raise success probability wire `supports` (forbidden for tracking tasks).
+- **Prerequisites use `needs`**: Upward execution gating is declared exclusively via `needs: [<task_id>]`.
+- **Contextual references use `## Pointers`**: Soft references, cited documentation, and related artifacts live exclusively as markdown `[[wikilinks]]` in `## Pointers`. Duplicate frontmatter edges for body citations are prohibited.
+
+## Worker State-Only Invariant
+
+A worker executing a task may only mutate that task's own state (checking off acceptance criteria, recording verifiable evidence, transitioning status). Workers never inspect or modify edges across other tasks, compute reverse graph dependencies, or mint follow-up verification tasks; unblocking, sequencing, and parent rollup belong exclusively to the graph engine, dispatcher, and background truth maintenance (`wf-reconcile`).
+
 ## Decisions Emerge from Graph Relationships, Not Standalone Tasks
 
-Agents must never create un-actionable "decision" tasks or file conversational questions as backlog tickets. Where research investigates an open design question or architectural alternatives, it must by default include a decision task assigned to the user (`assignee: user`) that depends on the research findings to decide an implementation route before downstream implementation tasks can proceed.
+Agents must never create un-actionable "decision" tasks or file conversational questions as backlog tickets. An agent given a task does the groundwork and makes the decision itself; it never files the task back to the user as their decision (`assignee: user`) unless the user explicitly requested to make that decision themselves (tg 1013). Where research investigates an open design question or architectural alternatives, the agent evaluates the options and chooses the recommended route directly to unblock downstream implementation tasks.
 
-- **Represent forks as mutually exclusive option nodes:** Architectural choices and trade-offs are modelled on the graph as competing option nodes with mutual blocking edges. Choosing an option resolves the conflict and cancels the competing node, unblocking downstream dependencies.
-- **Model unknowns as empirical probes:** Missing information is gathered via focused probe tasks (`classification: probe`).
+- **Candidate Options Remain in Task Bodies:** Competing candidate options stay inside the body of the scoping task or ADR until chosen. A task that has options to choose between is created as a single task with the candidate choices and evaluation criteria inside the task body. When a choice is made, only the selected option is reified into an actionable task under `parent: <scoping_task_id>`.
+- **Model unknowns as empirical probes valued via `needs`:** Where a decision depends on missing runtime benchmarks, data, or empirical findings, mint an empirical probe task (`classification: probe`) wired directly into the waiting task via standard execution prerequisite `needs: [<probe_task_id>]`. Probes receive worth directly through prerequisite backward induction via `needs`.
 - **Ask in-turn questions directly:** Interactive clarifications in an active session use `AskUserQuestion` directly rather than polluting the graph with un-actionable decision tasks.
 
 ## Keep indexes synchronized with their sources
@@ -81,15 +105,12 @@ Whenever creating, modifying, renaming, or deleting a file, rule, skill, workflo
 
 - **Derive directly from canonical source:** Each row or entry (slug, title, description, trigger, or signature) must accurately reflect the canonical metadata or frontmatter in the source file. Do not author divergent summaries or paraphrases.
 - **Maintain across all indexes:** This obligation applies generally across the repository (e.g. axiom indexes, rule catalogs, skill tables, workflow registries), not just specific file types.
+- **Enforcement map is not a workflow or project-rule catalog:** When editing `specs/ENFORCEMENT-MAP.md`, every row must only reference a specific rule derived from our axioms (`plugins/rbg/skills/axioms/`) and applicable to agents working in any third-party project. Workflows are not rules and do not enforce rules; creating or modifying workflows must not produce token enforcement map rows, as the only applicable rule is "agents must follow workflows given to them" and nothing more than that.
 - **Agentic maintenance over mechanical mirror checks:** Agents maintain documentation accuracy semantically as part of their work. Do not write bespoke generation scripts, linters, or change-detector tests for individual index files.
 
 ## Rule Waivers and Reservations
 
 A rule is waived only by another rule or a direct instruction from the user. A direct user instruction carries an immediate execution obligation and waives general policy within its scope; agents must carry it out as ordered without merit re-ruling or second-guessing. Instruction compliance is evaluated exclusively by `rbg` during compliance review against what the user asked (`cite-sources`). Agents must never waive a rule on their own guess, infer reservations from batch or third-party text mentioning the user, or leave known rule breaches in place as "the user's call". When an agent encounters content or behavior violating governing specifications or rules within its active custodial or task scope, it must fix the violation immediately. Out-of-scope defects are escalated under Mandatory Upward Reporting of Rule Violations.
-
-## PKB Linking: One-Way and Project Hierarchy
-
-Links in the PKB are strictly one-way to prevent link rot. Tasks link upward to their parent project or epic; tasks never link to Maps of Content or indexes. Indexes (type: index) organize reference documentation, not actionable tasks.
 
 ## Mandatory Upward Reporting of Rule Violations
 
