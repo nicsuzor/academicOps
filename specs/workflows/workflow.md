@@ -36,7 +36,7 @@ The three are timed differently, for opposite reasons:
 - **Decompose early.** No objective is independent; its sub-objectives are what other objectives' tasks intersect with. A task minted elsewhere (a meeting, a submission, a collaboration) can account for a decomposed part only once that part exists on the graph, so an objective is expanded as soon as it is captured, to what can reliably be inferred at that point, and stops at the first unknown.
 - **Reify late.** A reified task fixes the executor and the workflow, and both change with circumstances. A dispatchable task that sits on the graph goes stale, so a node is reified when it is next to run and not before; a node blocked on something outside the graph's control stays unreified until that clears.
 
-The boundary that separates meso from micro is executor binding: a decomposed node says what must become true and names no executor or workflow; a reified task says who runs it and how. Knowledge tasks (questions, finding things, web research, GitHub queries, read-only code inspections, and config lookups) route directly to the custodian (`pauli`), while only work that runs, measures, tests, or builds something passes through to polecats.
+The boundary that separates meso from micro is executor binding: a decomposed node says what must become true and names no executor or workflow; a reified task says who runs it and how. Personal Knowledge Base queries, memory curation, and graph operations route directly to the custodian, while general web searches, filesystem lookups, and repo investigations route to internal subagents, and work that runs, measures, tests, or builds something passes through to polecats.
 
 ## Workflow components
 
@@ -62,10 +62,10 @@ Components come from three sources:
 Universal baseline templates in `plugins/ida/skills/workflow-library/workflows/` include:
 
 - `wf-code-task-base`: Foundation for standard code-change tasks (test-first build, PR, independent review).
-- `wf-dispatch`: Direct worker dispatch workflow for headless execution and worker dispatch -- delegates directly to Sara with no child task creation, no pull or dump ceremony, and handback with premise-check Argdown.
+- `wf-dispatch`: Direct worker dispatch workflow for headless execution and worker dispatch -- delegates directly to the dispatcher with no child task creation, no pull or dump ceremony, and handback with premise-check Argdown.
 - `wf-finish`: Universal fallback finish policy (PR into base development branch, QA review).
-- `wf-interactive`: Workflow governing all in-session and interactive work -- applicable only to Ida, with strictly one outer task created by Face Ida, delegation through Sub-Ida, verification at all seams, and outer handover dump only.
-- `wf-lookup`: Lightweight lookup workflow for PKB reads, PKB writes, memory curation, and graph operations -- delegates directly to Pauli with no task creation, no pull or dump ceremony, and handback with premise-check Argdown.
+- `wf-interactive`: Workflow governing all in-session and interactive work -- with strictly one outer task created by the user-facing coordinator, delegation through the internal delegate, verification at all seams, and outer handover dump only.
+- `wf-lookup`: Lightweight lookup workflow for PKB reads, PKB writes, memory curation, and graph operations -- delegates directly to the custodian with no task creation, no pull or dump ceremony, and handback with premise-check Argdown.
 - `wf-quick-fix`: Shortened route for simple, uncontroversial project changes (repository-allowed shortened PR or merge route, review exemption when unit and destination tests pass).
 - `wf-reconcile`: Universal graph reconciliation and task truth-maintenance procedure.
 - `wf-tdd`: Test-driven development red-green-refactor cycle.

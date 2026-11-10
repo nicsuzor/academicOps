@@ -11,7 +11,7 @@ This specification defines the consolidated workflow and triage contract for the
 
 ### US-1 Upfront Triage and Delegation Contract
 
-As the user-facing agent, I want to evaluate every inbound user request at intake to classify it as either ad-hoc in-session or requiring a tracked task, so that the non-execution boundary is preserved and work is routed to the appropriate execution surface with explicit, auditable reasons.
+As a researcher, I want incoming session requests evaluated at intake to classify whether they are ad-hoc in-session queries or asynchronously tracked tasks, so that the non-execution boundary is preserved and work is routed to the appropriate execution surface with explicit, auditable reasons.
 
 - **AC-1.1** Given an incoming user request, when the user-facing agent receives it, then the agent executes no substantive work (no repository searches, file edits, diagnostics, code runs, or multi-step lookups) directly in its main context.
 - **AC-1.2** Given an incoming request, when the user-facing agent prepares to delegate, then it makes an explicit triage classification:
@@ -25,12 +25,16 @@ As the user-facing agent, I want to evaluate every inbound user request at intak
 
 ### US-2 Subagent Twin Verification and Execution Routing
 
-As the subagent twin, I want to independently check the user-facing agent's triage justification against the user's actual prompt before executing, so that misclassified requests are caught and routed correctly.
+As a researcher, I want delegated triage classifications verified against the originating prompt before execution starts, so that misclassified requests are caught and routed correctly without manual intervention.
 
 - **AC-2.1** Given a delegation message from the user-facing agent, when Sub-Ida receives it, then Sub-Ida verifies the triage justification against the verbatim user prompt before starting work:
   - If the request was classified as `ad-hoc in-session` but requires background execution, code changes, or multi-step analysis, Sub-Ida flags the misclassification and escalates it to the tracked task pipeline.
   - If the request was classified as `tracked task` but is a simple query answerable immediately in-session without side effects, Sub-Ida resolves it directly in-session and notes the over-tracking defect.
-- **AC-2.2** Given a validated `ad-hoc in-session` request, when Sub-Ida executes, then Sub-Ida conducts the lookup or analysis in-session and returns a verified report with a standard premise-check argument to the user-facing agent. For pure lookups and questions, execution proceeds directly without task creation on the graph and without pull/dump ceremonies; PKB inquiries and graph operations route to the custodian (`pauli`), while general web searches and non-PKB lookups are handled directly by Sub-Ida. When in-session execution requires task tracking, strictly one outer task is created solely by Face Ida; Sub-Ida and downstream delegates (Pauli, James, Sara) never create additional tasks on the graph, and only Face Ida runs the handover dump sequence.
+- **AC-2.2** Given a validated `ad-hoc in-session` request, when executed in session:
+  - Sub-Ida conducts the lookup or analysis in-session and returns a verified report with a standard premise-check argument to the user-facing agent;
+  - Pure lookups and questions proceed directly without task creation on the graph and without pull/dump ceremonies;
+  - PKB inquiries and graph operations route to the custodian (`pauli`), while general web searches and non-PKB lookups are resolved directly by Sub-Ida;
+  - When in-session execution requires task tracking, strictly one outer task is created solely by Face Ida, downstream delegates never create additional child tasks, and only Face Ida runs the handover dump sequence.
 - **AC-2.3** Given a validated `tracked task` request, when Sub-Ida executes, then Sub-Ida routes the request through the intake (`/q`), reification (`/reify`), and dispatch (`/dispatch`) pipeline. To maintain single-assignee boundaries and ensure headless workers never hold user delivery obligations:
   - When the request decomposes into multiple child tasks, the reification pipeline creates a coordinating parent task with worker subtasks, plus a dedicated terminal delivery task assigned to the user-facing agent (`assignee: ida`, dependent on worker subtasks) to deliver the result to the user.
   - When the request is an atomic task executed by a headless worker, the reification pipeline creates a paired follow-up delivery task assigned to the user-facing agent (`assignee: ida`, dependent on the worker task) to deliver the completed artifact to the user.
