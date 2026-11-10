@@ -15,6 +15,7 @@ Nothing is written to the graph until steps 1-2 pass: a task created early survi
 
 Call `/hydrate` on the objective, or on the task if given an ID.
 
+- **Intake placement precondition**: When an incoming request or objective has not yet been placed on the task graph, run `/q` first to place and value it under the right parent container before reifying, as `/q` is the intake precondition for `/reify`.
 - **Idempotency**: Search before creating tasks. Update existing tasks with new criteria rather than minting duplicates. A task already completely specified needs no rewrite; report it as ready.
 - If `/hydrate` flags an unfinished task with the same objective, continue that task instead of creating a new one.
 - If it flags an unfinished prerequisite, wire a `needs` dependency.
