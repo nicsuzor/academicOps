@@ -185,7 +185,7 @@ export function createBridgeServer(
               postedIds.push(result.questionId);
 
               if (bot && !isMiniAppOnly) {
-                const card = broker.renderQuestionCard(result.questionId);
+                const card = broker.renderQuestionCard(result.questionId, config.miniAppUrl);
                 if (card && config.allowFrom[0]) {
                   await bot.sendQuestionCard(config.allowFrom[0], result.questionId, card);
                 }

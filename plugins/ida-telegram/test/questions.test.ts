@@ -890,6 +890,11 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       },
     });
 
+    // Verify transparent return message indicating queued in Mini App without chat cards (Fix #3528, #3529)
+    const returnText = (res?.result as any)?.content?.[0]?.text || "";
+    expect(returnText).toContain("queued in Mini App");
+    expect(returnText).toContain("no chat cards sent");
+
     // 1. Posts NOTHING to chat (no sendMessage calls)
     const chatCards = apiCalls.filter((c) => c.method === "sendMessage");
     expect(chatCards.length).toBe(0);

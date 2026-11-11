@@ -367,6 +367,13 @@ export class StdioMcpServer {
         }
       }
 
+      if (topMiniAppOnly) {
+        if (postedIds.length === 1) {
+          return `Question ${postedIds[0]} queued in Mini App (mini_app_only: true; no chat cards sent). The user will see it upon opening the Mini App.`;
+        }
+        return `Questions ${postedIds.join(", ")} queued in Mini App (mini_app_only: true; no chat cards sent). The user will see them upon opening the Mini App.`;
+      }
+
       if (postedIds.length === 1) {
         return `Question ${postedIds[0]} posted to the user. Do not assume an answer; continue other work or end your turn.`;
       }

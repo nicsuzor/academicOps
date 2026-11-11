@@ -69,7 +69,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
   {
     name: "ask_user",
     description:
-      "Post an asynchronous question to the user over Telegram or the Mini App with vertical choice buttons. Set mini_app_only: true (or chat: false) to route questions to the Mini App only without posting to chat. Pass detail on questions to attach fuller background opened via a Details button in the Mini App.",
+      "Post an asynchronous question to the user over Telegram or the Mini App with vertical choice buttons. Set mini_app_only: true (or chat: false) to queue questions in the Mini App without posting cards to chat. Pass detail on questions to attach fuller background opened via a Details button in the Mini App.",
     inputSchema: {
       type: "object",
       properties: {
@@ -82,7 +82,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
         },
         mini_app_only: {
           type: "boolean",
-          description: "If true, posts questions to the Mini App only without sending cards to Telegram chat.",
+          description: "If true, queues questions in the Mini App only without sending cards to Telegram chat.",
         },
         questions: {
           type: "array",
@@ -119,7 +119,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
               },
               mini_app_only: {
                 type: "boolean",
-                description: "If true, posts this question to the Mini App only without sending a card to chat.",
+                description: "If true, queues this question in the Mini App only without sending a card to chat.",
               },
               turn_id: { type: "string" },
               session_id: { type: "string" },
