@@ -91,6 +91,22 @@ Task graph edges follow the Three-Purpose Edge Taxonomy per [`specs/decisions/00
 
 A worker executing a task may only mutate that task's own state (checking off acceptance criteria, recording verifiable evidence, transitioning status). Workers never inspect or modify edges across other tasks, compute reverse graph dependencies, or mint follow-up verification tasks; unblocking, sequencing, and parent rollup belong exclusively to the graph engine, dispatcher, and background truth maintenance (`wf-reconcile`).
 
+## Recurring Jobs: Change-Only and Single-Flight
+
+Every recurring job handles only what changed since its last completed run (`since: <cursor>`), stops immediately when nothing changed, and never starts while another run of the same job is going. See [`recurring-jobs.md`](recurring-jobs.md).
+
+- **Change-only execution**: Inspect cursor at Step 0; if no delta occurred since the last completed run cursor, exit immediately with zero writes and zero subagent dispatches.
+- **Single-flight concurrency**: Maintain an active in-progress lock marker. Halt immediately if another run is active with a fresh heartbeat (< 15 minutes).
+- **Durable cursors**: Store execution cursors in authoritative state records or document frontmatter; update cursors and clear locks upon handover.
+
+## Bounded Helpers
+
+Subagent helpers are strictly bounded: a hard cap of 30 model calls per helper (operational range 25–35), related operations batched into single turns, and no helper left idle on background work past the prompt cache lifetime. See [`bounded-helpers.md`](bounded-helpers.md).
+
+- **Call cap**: Budget worker tasks to complete within ≤ 30 tool calls; workers exceeding this budget hand back on the record as `partial`.
+- **Batched operations**: Batch multi-item reads and mutations into single turns rather than serial round-trips.
+- **Active cache management**: Helpers must yield or complete before the 5-minute cache TTL expires; idling across cache invalidation boundaries is prohibited.
+
 ## Decisions Emerge from Graph Relationships, Not Standalone Tasks
 
 Agents must never create un-actionable "decision" tasks or file conversational questions as backlog tickets. An agent given a task does the groundwork and makes the decision itself; it never files the task back to the user as their decision (`assignee: user`) unless the user explicitly requested to make that decision themselves (tg 1013). Where research investigates an open design question or architectural alternatives, the agent evaluates the options and chooses the recommended route directly to unblock downstream implementation tasks.
