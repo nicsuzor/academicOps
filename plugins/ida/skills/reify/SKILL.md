@@ -34,6 +34,8 @@ Halt when composition comes up short: create nothing and report precisely what f
 
 Structure work as a single task by default. Cut into dedicated epics with child tasks or internal subtasks only when the composed workflow or execution boundaries require independent sessions, distinct review personas, or approval gates. Wire `needs` dependencies where one unit requires another's output. Top-level deliverable tasks wire `serves` to priced targets; subtasks never carry redundant `serves` edges (single injection invariant). Contextual references are plain markdown `[[wikilinks]]` under `## Pointers`. Write tasks with status `queued`.
 
+- **Closed-loop delivery for tracked user requests**: When reifying a tracked user request (`specs/agents/face-ida-triage-and-tracked-requests.md`), ensure delivery to the user: headless workers cannot hold user delivery obligations. For composite work with child tasks, create a dedicated terminal delivery task assigned to the user-facing agent (`assignee: ida`, dependent on worker subtasks) to deliver the result to the user. For an atomic task executed by a headless worker, create a paired delivery task assigned to the user-facing agent (`assignee: ida`, dependent on the worker task).
+
 Fill the canonical task structure:
 
 ```markdown
