@@ -2487,7 +2487,7 @@ def test_premise_opening_with_so_but_no_connective_may_still_answer(opening):
 
 
 def test_answered_semicolon_separated_clauses_passes_validation():
-    """AC-B4.1: Semicolon-separated clauses on a single Answered line parse and pass validation."""
+    """Semicolon-separated clauses on a single Answered line parse and pass validation."""
     session_id = "s-answered-semi"
     report_text = (
         "Report with multiple asks answered.\n"
@@ -2531,7 +2531,7 @@ def test_answered_semicolon_separated_clauses_passes_validation():
 
 
 def test_answered_semicolon_separated_clauses_supports_unanswered():
-    """AC-B4.1: Semicolon-separated clauses support answering some asks while leaving others unanswered."""
+    """Semicolon-separated clauses support answering some asks while leaving others unanswered."""
     reason = (
         "Judged: CID; asks ida/1, ida/2\n"
         "Valid: (3) holds -- rule yields conclusion\n"
@@ -2546,7 +2546,7 @@ def test_answered_semicolon_separated_clauses_supports_unanswered():
 
 
 def test_answered_semicolon_separated_clauses_rejects_malformed_clause():
-    """AC-B4.1: A malformed clause in a semicolon-separated Answered line is caught and rejected."""
+    """A malformed clause in a semicolon-separated Answered line is caught and rejected."""
     reason = (
         "Judged: CID; asks ida/1, ida/2\n"
         "Valid: (3) holds -- rule yields conclusion\n"

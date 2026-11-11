@@ -2244,7 +2244,7 @@ def test_format_verdict_command_resolves_symlinked_skill_path_and_includes_sessi
 
 
 def test_code_fence_safe_result_extraction_preserves_trailing_argdown():
-    """AC-1.6 / Stage 2(iii): extraction of <result> content ignores nested XML tags within markdown code fences."""
+    """Extraction of <result> content ignores nested XML tags within markdown code fences."""
     raw_payload = (
         "<task-notification>\n"
         "<task-id>task-code-fence</task-id>\n"
@@ -2278,7 +2278,7 @@ def test_code_fence_safe_result_extraction_preserves_trailing_argdown():
 
 
 def test_agy_subagent_preinvocation_delivers_honesty_reminder(tmp_path, monkeypatch):
-    """Stage 1 / AC-1.5: In agy, first PreInvocation delivers honesty.md when invoked as a subagent."""
+    """In agy, first PreInvocation delivers honesty.md when invoked as a subagent."""
     from handlers import agy_session_pointer
 
     pointer_dir = tmp_path / "pointer_dir"
@@ -2317,7 +2317,7 @@ def test_agy_subagent_preinvocation_delivers_honesty_reminder(tmp_path, monkeypa
 
 
 def test_agy_subagent_pretool_pre_handback_check(tmp_path, monkeypatch):
-    """Stage 3: Subagent send_message in agy is refused once if missing argdown block, but retries pass."""
+    """Subagent send_message in agy is refused once if missing argdown block, but retries pass."""
     pointer_dir = tmp_path / "pointer_dir"
     tracer_dir = tmp_path / "tracer_dir"
     monkeypatch.setenv("AOPS_SESSION_POINTER_DIR", str(pointer_dir))
