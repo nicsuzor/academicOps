@@ -44,7 +44,7 @@ All three review roles (`rbg`, `marsha`, `pauli`), whether dispatched as subagen
 3. **Review Role & Instructions**:
    The review criteria and obligations specific to the assigned role, drawn from its workflow template:
    - **Rule Compliance (`rbg`)**: Evaluates against governing axioms and project rules per `wf-rbg`. From the quoted request alone, state the smallest proportionate mechanism before reading the diff.
-   - **Quality Assurance (`marsha`)**: Verifies runtime execution, tests, probes, and empirical claims against primary sources per `wf-qa`.
+   - **Quality Review (`marsha`)**: Evaluates qualitative excellence and audience resonance across live rendered outputs against purpose and genre standards per `verify`. Never checks truth, fidelity, or technical correctness (verified upstream by authors and independent QA).
    - **Strategic Fit (`pauli`)**: Evaluates objective alignment, parsimony, necessity, and lifecycle coherence across the task graph per `wf-strategic-fit`.
 
 ## Input contract

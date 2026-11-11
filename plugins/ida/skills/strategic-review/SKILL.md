@@ -28,7 +28,7 @@ Dispatch all three reviewers concurrently via `invoke_subagent` in a single mess
 
 - **Rule compliance** (TypeName `rbg`): Axiom and rule compliance per `wf-rbg`. Confined strictly to artifact text/diff and rule/spec sources.
 - **Strategic fit** (TypeName `pauli`): Strategic Fit Check per `wf-strategic-fit`, provided with an inline graph-only brief.
-- **Quality** (TypeName `marsha`): Runtime quality, user ask satisfaction, and excellence per `wf-qa`.
+- **Quality** (TypeName `marsha`): Qualitative excellence and audience resonance across live rendered outputs against purpose and genre standards per `verify`. Marsha never checks truth, fidelity, or technical correctness (which is verified upstream by authors and independent QA).
 
 Reviewers select 3-4 relevant lenses (e.g. Scope discipline, Self-consistency, Assumption hygiene, Attribution, Feasibility). Every reviewer also judges proportion: whether the artifact is larger than the request needs, and whether each fix it asks for is worth its cost given the failure's likelihood and consequence.
 

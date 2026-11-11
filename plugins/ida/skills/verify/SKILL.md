@@ -1,76 +1,38 @@
 ---
 name: verify
-description: Judgement-based QA pass verifying artifacts against acceptance criteria and fitness rubrics. Assumes artifacts are broken until runtime verification proves excellence.
+description: "Universal qualitative verification procedure evaluating artifacts against genre standards, audience empathy, and purpose satisfaction across live rendered multimodal outputs."
 ---
 
 # Verify
 
-Rigorous quality review evaluating correctness, completion, and fitness for purpose. Default posture: assume the artifact is broken until proven working.
+Universal qualitative verification procedure for evaluating whether an artifact meets the framework's bar of excellence across live rendered multimodal outputs.
 
-## 1. Classify the Bar
+## 1. Upfront Genre & Audience Alignment
 
-- **Mechanical**: Verify strictly against acceptance criteria.
-- **Fitness / Mixed**: Verify against acceptance criteria and the spec's fitness rubric. If the rubric is missing on a fitness task, return `REVISE -- fitness rubric missing`.
+Before inspecting details:
 
-## 2. Mandatory Forcing Checks
+1. **Identify Artifact Genre:** Determine the governing standard for the artifact's genre per `specs/meta/doc-taxonomy.md` (e.g. `craft` for instructions, `writing-specs.md` for specs, visual design standards for UI/plots, publication standards for manuscripts).
+2. **Identify Audience & Purpose:** Define who reads or uses this artifact, what cognitive state they bring, and what outcome the artifact must achieve for them.
+3. **Set Proportionality Bar:**
+   - _Routine / Low-Risk:_ Fast single-pass sanity check; low bar.
+   - _High-Stakes / Public:_ Comprehensive aesthetic and cognitive audit.
 
-All five checks must be answered explicitly in the report before rendering a `PASS`:
-0. **Gate 0 early stopping (Premise & Proportion)**: Is the underlying premise sound, and is the change proportionate to the ask? If the premise is bad or the change is fundamentally disproportionate, halt immediately and render `FAIL` before line-by-line repo auditing, forcing checks 1-3, or full test suites. Preserve full acceptance-criteria coverage when Gate 0 passes.
+## 2. Live Rendered Multimodal Inspection
 
-1. **Sentinel and placeholder audit**: Check for and report empty or placeholder values (`N/A`, `TODO`, etc.).
-2. **Principal's-eye top-line read**: Quote the primary user-facing output verbatim and verify correctness for the actual end user.
-3. **Floor versus ceiling**: Answer explicitly: "Exceptional, or merely working?" Merely working fails fitness tasks.
-4. **Durable primary deliverables and logical entailment**: Inspect durable primary deliverables (repository commits, branches, PRs, or PKB records) directly rather than ephemeral container paths (`<appDataDir>/brain/`, `/tmp/`, unpushed container worktrees). Tool-call spans in Phoenix prove execution rather than logical entailment or sufficiency; evaluate whether observed evidence logically entails every acceptance criterion.
+Review the artifact in its actual rendered form as experienced by the user:
 
-## 3. Immediate Fail Triggers
+1. **Rendered View:** Inspect the compiled document, rendered markdown layout, generated PDF, or UI screenshot (1920x1080).
+2. **Legibility & Hierarchy:** Ensure typographic scale matches semantic importance; check contrast, whitespace, and line lengths.
+3. **Audience Empathy:** Does the artifact respect the reader's attention? For an ADHD reader, is it scannable in under 2 minutes? For a technical user, is it direct and unambiguous?
+4. **Floor vs. Ceiling:** Answer explicitly: _Is this amazingly good for its purpose, or merely mediocre?_
 
-Render an immediate `FAIL` on:
+## 3. Review Findings & Self-Fixes
 
-- Bad premise, invalidated requirements, or disproportionate excess machinery (Gate 0 early stopping).
-- Falsified empirical claim or missing cited path under per-claim fail-fast (record `UNMET` immediately without searching repo for fixes).
-- Asserting Phoenix tool spans or command execution as proof of logical entailment without evaluating whether primary deliverables satisfy acceptance criteria.
-- Pointers citing ephemeral container paths (`<appDataDir>/brain/`, `/tmp/`, unpushed container worktrees) instead of durable primary deliverables (repo commits, PRs, PKB tasks/notes).
-- Sentinel values or placeholder text in production outputs.
-- Silent exception swallowing without error logging.
-- Tests that assert existence or tautologies rather than functional behavior, change-detector tests that restate what a file, config or directory holds today, or tests that would still pass with the change's plausible bug introduced.
-- Data that diverges from primary source records.
-- Edits made directly to runtime install directories instead of source repos.
-- Container or Dockerfile changes passed without building the image and showing changed content present in it, or stating plainly that the worker could not build.
+- **Uncontroversial Self-Fixes:** When authorized by the supervising workflow (e.g. in `strategic-review` with `--fix`), directly apply and commit obvious typographic, minor formatting, or visual layout corrections (`fix(review): ...`), documenting them under `### Reviewer Self-Fixes Applied`. In the standard parallel pre-handback review (`wf-finish.md`), report suggested repairs under `### Suggested Fixes` for the writer to incorporate during the single fix pass, preventing concurrent git write conflicts.
+- **Substantive Findings:** Document qualitative shortcomings with clear, constructive guidance on tone, layout, structure, or audience alignment.
 
-## 4. Visual Verification
+## 4. Verdict Schema
 
-Evaluate live rendered screenshots (1920x1080) across three dimensions:
-
-- **Legibility**: Overlapping text, poor contrast, or unreadable sizing.
-- **Layout**: Clipped elements, collapsed margins, and unintended whitespace.
-- **Hierarchy**: Geometry and visual weight matched to semantic importance.
-
-## 5. Container and Dockerfile Verification
-
-Any change touching a container image or Dockerfile requires:
-
-1. **Built image**: Build the container image.
-2. **Content inspection**: Show the changed content present in the built image (files, permissions, or commands).
-3. **Inability to build**: If the environment prevents building (daemon unavailable or insufficient permissions), state plainly that the worker could not build and why. Never pass on source inspection or host tests alone.
-
-## 6. Output Format
-
-Emit the report using `/dump`'s handback envelope and record it on the task record. VERDICT is your judgement of the artifact, in the verdict vocabulary `premise-check` uses; STATUS is the release status of your own task.
-
-When the verification check fails (VERDICT is `FAIL` or `REVISE`), release the task with STATUS `failed` documenting failure evidence and root cause. Never file fix tasks or follow-up tasks; the reconcile pass notes failed tasks and decides next actions from the parent epic. When VERDICT is `PASS`, release as `done`.
-
-```markdown
-## Handover: <agent> <session-id>
-
-1. **Task**: Task id, title, verified target and bar (`mechanical | fitness | mixed`).
-2. **Summary**: Findings, forcing checks (0–3), and remediations for `FAIL`/`REVISE`.
-3. **Verdict & Safeguards**:
-   - VERDICT: <PASS | REVISE | FAIL>
-   - STATUS: <release status: done | partial | review | failed | cancelled | in_progress>
-   - GATE: <acceptance criterion id tested and observed result>
-   - CONFIDENCE: <high | med | low> + <what single check would falsify this>
-   - CONFOUND CHECK: <clean-room/differential control result, or "NOT RUN">
-4. **Output**: <branch + commit SHA> | <PR or artifact link>
-5. **Argument**: The `argdown` block recorded under the task's `## Report`, asked by the task's ask ids.
-6. **Limitations**: Unresolved items, out-of-scope elements, and verbatim error outputs.
-```
+- `PASS`: The artifact is amazingly good for its intended audience and purpose.
+- `REVISE`: The artifact is functional but requires concrete structural, tonal, or layout polish to achieve excellence.
+- `FAIL`: The artifact fundamentally fails its intended purpose, exhibits severe cognitive clutter or visual unreadability, or lacks any governing standard or purpose.

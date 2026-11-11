@@ -63,19 +63,18 @@ Each of the three review roles operates in a distinct domain with strictly non-o
   2. **Judge Proportion First**: From the quoted originating request, sizes the smallest mechanism meeting the request across its class before reading artifact internals, rejecting unneeded machinery under `proportionate`.
   3. **Apply Each Axiom to the Artifact**: Evaluates mechanisms by their runtime consequences, assesses whether the substantive decision requires qualitative judgment, and verifies that mechanisms do not violate axioms (such as delegating qualitative decisions to deterministic path/author/AST heuristics under `judgment-non-delegable`, or introducing silent fallback branches under `no-fallbacks`).
   4. **Mechanisms Analysis**: Produces a structured `### Mechanisms` section explicitly evaluating each added mechanism's decision, necessity of judgment, and broken axioms before issuing a verdict.
-  - **Boundary**: Operates strictly by static semantic evaluation. Does not execute runtime tests, run test suites, or write scratch probe scripts (belongs to `marsha`), and does not evaluate high-level PKB objective alignment or competing backlog options (belongs to `pauli`).
+  - **Boundary**: Operates strictly by static semantic evaluation. Does not execute runtime tests, run test suites, or write scratch probe scripts (correctness testing belongs to authors and independent QA), does not evaluate qualitative taste or UX (belongs to `marsha`), and does not evaluate high-level PKB objective alignment or competing backlog options (belongs to `pauli`).
 - **`pauli` (Strategic Fit; template `wf-strategic-fit`)**: Evaluates objective alignment, necessity, parsimony, precedent, and lifecycle coherence:
   - Situates the artifact against parent objectives in the PKB graph, testing whether it is needed or whether an existing tool, native mechanism, or competing proposal already solves it.
   - Checks for lifecycle deadlocks and dependency conflicts across tasks on the graph.
   - Returns an explicit `FIT` or `MISFIT` verdict.
-  - **Boundary**: Does not inspect source code for axiom violations (belongs to `rbg`) and does not run tests or probes (belongs to `marsha`).
-- **`marsha` (Excellence & Runtime Fitness; template `wf-qa`)**: Evaluates runtime execution and empirical verification ("running things"):
-  - Runs test suites directly on the branch, checking that all tests pass cleanly.
-  - Verifies red-to-green regression traces, ensuring tests failed on base and pass on branch.
-  - Runs live probes with real inputs to observe actual execution behavior, exit codes, and output formatting.
-  - Audits empirical claims in task reports and PR descriptions against primary sources (git history, CI logs, file contents).
+  - **Boundary**: Does not inspect source code for axiom violations (belongs to `rbg`), does not judge visual/prose aesthetics (belongs to `marsha`), and does not run tests or probes (belongs to author/QA).
+- **`marsha` (Qualitative Excellence & Audience Resonance; template `verify`)**: Evaluates the live output artifact as its audience meets it against purpose and excellence standards:
+  - Inspects live rendered outputs (rendered markdown, typeset PDFs, screenshots, UI).
+  - Assesses aesthetic grace, cognitive load, legibility, and audience empathy.
+  - Evaluates whether the deliverable is amazingly good for its intended audience or merely mediocre.
   - Returns `PASS`, `REVISE`, or `FAIL`.
-  - **Boundary**: Does not evaluate code against axioms or author mechanisms analysis (belongs to `rbg`) and does not evaluate graph-level strategy (belongs to `pauli`).
+  - **Boundary**: Never checks truth, fidelity, or factual claims (belongs to hearsay checker and `premise-check`), does not run test suites or correctness checks (belongs to author and independent QA), does not evaluate axioms or rules (belongs to `rbg`), and does not evaluate graph-level strategy (belongs to `pauli`).
 
 ### 3. Lens Selection
 

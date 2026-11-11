@@ -31,14 +31,30 @@ Defines the universal baseline contract for how tasks finish when a repository l
   - **Low-risk internal changes (chiefly bugfixes)**: Get no separate verification run. Where a blocked dependent exists waiting on the fix (`blocks` or inbound `needs` / `depends_on`), the parent epic handles sequencing the dependent task's next run; workers never mint verification follow-up tasks.
   - **Documentation, notes, or trivial chore changes**: No QA follow-up required unless explicitly requested in the task objective.
 
+## Standard Pre-Handback Review
+
+To prevent recursive loops, token exhaustion, and multi-round churn, deliverables undergo a single, standardized pre-handback review before final handover:
+
+1. **Parallel Dispatch**: The consolidating main agent (sub-ida in interactive sessions, outer agent / coordinator elsewhere) dispatches **Marsha** and **RBG** concurrently in a single turn.
+2. **Self-Contained Briefing**: Both reviewers receive a self-contained brief containing:
+   - The originating user ask and task objective.
+   - The candidate output artifact (or live rendered reference).
+   - Governing genre standards (for Marsha) and applicable rules / itemised criteria (for RBG).
+   - Intended audience and purpose.
+   - Reviewers do not receive tools to re-query external sources or re-find facts.
+3. **Single Synthesis**: The main agent receives both independent reports, reconciles findings into a single plan, and authorizes necessary fixes.
+4. **One Fix Pass, No Re-Check Loop**: The writer executes a single fix pass addressing substantive findings. There is no second review round, no re-checking loop, and no fresh cold checker spawned. Good enough is the bar; the handback proceeds immediately following the single fix pass.
+5. **Opt-In Boundaries**: Independent runtime test verification (`wf-qa`) and granular citation checking (`wf-fact-check`) remain explicit opt-ins triggered only when calibrated by risk or requested by workflow composition.
+
 ## Worker Completion Checklist
 
 The implementation worker satisfies these obligations, then exits:
 
 1. Verify automated tests and linter pass locally.
 2. Push feature branch to remote and open a pull request (not a draft) targeting the project's base branch.
-3. Update the task record: an item is ticked only with evidence of that item itself; any other item stays unticked with its limit stated. Record verifiable evidence with pinpoint citations (`file:line`, test command output, PR URL).
-4. Release the task as `review` via `pkb.release_task`, with the PR URL in `pr_url` and `reason` stating the PR awaits merge. Do not wait for CI, review or merge. `partial` is only for the worker's own unfinished acceptance items. Workers never create or name follow-up tasks.
+3. Conduct the single standard pre-handback review (Marsha + RBG in parallel, one fix pass, no loop) per the procedure above.
+4. Update the task record: an item is ticked only with evidence of that item itself; any other item stays unticked with its limit stated. Record verifiable evidence with pinpoint citations (`file:line`, test command output, PR URL).
+5. Mark the task `done` and release claim via `/dump`. A worker whose deliverable is a PR marks any draft PR ready for review as soon as its code step completes without waiting for approval, releases `done` once the PR is open, with `pr_url` and branch recorded on the record, and exits without waiting for CI, review or merge. `partial` is only for the worker's own unfinished acceptance items. Workers never create or name follow-up tasks.
 
 ## Follow-up QA Task Specification
 

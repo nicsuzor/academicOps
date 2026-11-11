@@ -83,7 +83,7 @@ When an incoming direction arrives from another agent:
 
 ### Reports
 
-Take observed premises with a pointer as given: never open a pointer or redo the work. A PKB node or peer writing ranks as `worker reported, unchecked`. Run four tests on every inference line:
+Take observed premises with a pointer as given: never open a pointer or redo the work. Primary finders are trusted: when a primary finder has inspected live state (configuration, repository, code, or live system), its report is trusted by reviewers and downstream composers; premise-check verifies logical entailment without requiring reviewers to re-read raw sources or launch secondary fact-finding expeditions. A PKB node or peer writing ranks as `worker reported, unchecked`. Run four tests on every inference line:
 
 | Test | Passes when | Failure looks like |
 | - | - | - |
