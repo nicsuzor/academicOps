@@ -56,7 +56,7 @@ The workflow is implemented operationally via `plugins/ida/skills/strategic-revi
 
 Before dispatching reviewers, the Supervisor (`james`) sets the target altitude (Strategic, Design, or Implementation), identifies the format and quality standard governing the artifact's genre (`specs/meta/doc-taxonomy.md` -- e.g., `specs/meta/writing-specs.md` for specifications, `craft` for agent instructions, disciplinary standards for manuscripts/articles, or task acceptance criteria for task handbacks; never applying task-handback sections like `## Ask` to non-task artifacts), and explicitly calibrates review proportionality to the artifact's importance and risk:
 
-- **High-stakes / high-risk / foundational artifacts** (architecture, core rules, workflow specifications, high-risk code): Multi-round dialectical refinement using higher-capability models (`pro`), cycling revisions until reviewer critiques converge, and instructing `marsha` to audit primary materials.
+- **High-stakes / high-risk / foundational artifacts** (architecture, core rules, workflow specifications, high-risk code): Multi-round dialectical refinement using higher-capability models (`pro`), cycling revisions until reviewer critiques converge.
 - **Routine / low-stakes changes**: Single-round sanity pass using lighter, faster models (`flash` or `flash_lite`) without primary-material expeditions to verify the artifact is sound without wasting time or compute.
 
 ### 2. Specialized Reviewer Roles & Shared Briefing
@@ -67,12 +67,12 @@ Reviewers immediately apply and commit uncontroversial mechanical fixes (`fix(re
 
 Each of the three review roles operates in a distinct domain with strictly non-overlapping duties:
 
-- **`pauli` (Strategic Direction & Congruence)**: Evaluates the core premise, strategic direction, and congruence with the "seamless web" of existing material in the PKB graph:
+- **`pauli` (Strategic Fit & Congruence; template `wf-strategic-fit`)**: Evaluates the core premise, strategic direction, objective alignment, and congruence with the "seamless web" of existing material in the PKB graph:
   - Questions the core premise, names the class of problem, and probes for flawed reasoning, untested load-bearing assumptions, negative space, and missing edge cases.
   - Situates the artifact against parent objectives, active sibling tasks, and existing PKB notes/tasks, testing whether it is needed or whether an existing tool, native mechanism, or competing proposal already covers it.
-  - Checks for congruence, duplication, and dependency conflicts across the graph, verifying that documentation notes are not mistaken for proofs of current working state (requiring a completed task record with verification evidence or flagging an open question) and that cited PRs/code are authoritative (merged/most recent, reflecting current working behaviour, and backed by a spec or decision record).
+  - Checks for parsimony, precedent, duplication, and cross-task lifecycle coherence across the graph, verifying that documentation notes are not mistaken for proofs of current working state (requiring a completed task record with verification evidence or flagging an open question) and that cited PRs/code are authoritative (merged/most recent, reflecting current working behaviour, and backed by a spec or decision record).
   - Returns `PASS`, `REVISE`, or `FAIL`.
-  - **Boundary**: Operates strictly on the PKB graph from an inline briefing. Does not inspect repository source code for axiom violations (belongs to `rbg`) and does not run tests or probes (belongs to `marsha`).
+  - **Boundary**: Operates strictly on the PKB graph from an inline briefing. Does not inspect repository source code for axiom violations (belongs to `rbg`), does not judge visual/prose aesthetics (belongs to `marsha`), and does not run tests or probes (belongs to author/QA).
 - **`rbg` (Compliance)**: Evaluates compliance with universal axioms, project-local rules, scope of delegated authority (_ultra vires_), permission/data boundaries, and the enforcement pyramid (`specs/enforcement/enforcement.md`):
   1. **Judge for Yourself**: Reaches verdicts from the request, artifact, and rules alone without reading prior reviews, PR comments, or prior task reports.
   2. **Judge Proportion First**: From the quoted originating request, sizes the smallest mechanism meeting the request across its class before reading artifact internals, rejecting unneeded machinery under `proportionate`.
