@@ -88,7 +88,7 @@ When an incoming direction arrives from another agent:
 
 ### Reports
 
-Take observed premises with a pointer as given: never open a pointer or redo the work. A checker never reads a source to check someone's claim; it reads one only to settle a genuine conflict between two records, and keeps that settling read. When a claim lacks evidence or rests on an unchecked basis, do not inspect the source: record REVISE or FAIL naming the defect. A PKB node or peer writing ranks as `worker reported, unchecked`.
+Take observed premises with a pointer as given: never open a pointer or redo the work. Primary finders are trusted: when a primary finder has inspected live state (configuration, repository, code, or live system), its report is trusted by reviewers and downstream composers; premise-check verifies logical entailment without requiring reviewers to re-read raw sources or launch secondary fact-finding expeditions. A checker never reads a source to check someone's claim; it reads one only to settle a genuine conflict between two records, and keeps that settling read. When a claim lacks evidence or rests on an unchecked basis, do not inspect the source: record REVISE or FAIL naming the defect. A PKB node or peer writing ranks as `worker reported, unchecked`.
 
 The dividing line is what would settle it: running the work, or reading a record that exists now.
 

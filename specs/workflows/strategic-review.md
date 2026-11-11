@@ -75,19 +75,21 @@ Each of the three review roles operates in a distinct domain with strictly non-o
   - **Boundary**: Operates strictly on the PKB graph from an inline briefing. Does not inspect repository source code for axiom violations (belongs to `rbg`) and does not run tests or probes (belongs to `marsha`).
 - **`rbg` (Compliance)**: Evaluates compliance with universal axioms, project-local rules, scope of delegated authority (_ultra vires_), permission/data boundaries, and the enforcement pyramid (`specs/enforcement/enforcement.md`):
   1. **Judge for Yourself**: Reaches verdicts from the request, artifact, and rules alone without reading prior reviews, PR comments, or prior task reports.
-  2. **Judge Proportion and Scope of Authority First**: From the quoted originating request, sizes the smallest mechanism meeting the request across its class before reading artifact internals, rejecting _ultra vires_ overreach and unneeded machinery under `proportionate` and `do-one-thing`, and checking that any new control starts at the bottom of the enforcement pyramid (`specs/enforcement/enforcement.md`).
-  3. **Apply Each Axiom to the Artifact**: Evaluates mechanisms by their runtime consequences, assesses whether the substantive decision requires qualitative judgment, and verifies that mechanisms do not violate axioms (such as delegating qualitative decisions to deterministic path/author/AST heuristics under `judgment-non-delegable`, or introducing silent fallback branches under `halt-on-failure`).
-  4. **Mechanisms Analysis**: Produces a structured `### Mechanisms` section explicitly evaluating each added mechanism's decision, necessity of judgment, and broken axioms before issuing a verdict (`PASS`, `REVISE`, or `FAIL`).
-  - **Boundary**: Operates strictly by static semantic evaluation. Does not execute runtime tests, run test suites, or write scratch probe scripts (belongs to `marsha`), and does not evaluate the core premise or PKB graph congruence (belongs to `pauli`).
-- **`marsha` (Quality & Requirement Satisfaction)**: Evaluates whether the work actually delivers on its requirements and governing genre standard to an ambitious quality standard ("amazingly good", not merely working) across actual rendered multimodal outputs, runtime execution, and (on high-risk requests) primary sources:
-  - **Upfront Standard & Specification Check**: Matches the evaluation standard to the artifact's genre (`specs/meta/doc-taxonomy.md` -- e.g., `specs/meta/writing-specs.md` for specifications), treats the absence of any governing standard, specifications, requirements, or acceptance criteria as an immediate critical failure signal (`FAIL`), and stops before running tests or code audits.
-  - **Rendered Multimodal Output Inspection**: Evaluates artifacts in their actual rendered, multimodal form (live runtime output, rendered PDFs, visual plots, UI screenshots, built containers); output renders may never be simulated or mocked.
-  - Runs test suites directly on the branch, checking that all tests pass cleanly.
-  - Verifies red-to-green regression traces, ensuring tests failed on base and pass on branch.
-  - Runs live probes with real inputs to observe actual execution behavior, exit codes, and output formatting.
-  - On **high-risk requests** (as calibrated by `james`), audits empirical claims against primary materials (git history, CI logs, underlying file contents).
+  2. **Judge Proportion First**: From the quoted originating request, sizes the smallest mechanism meeting the request across its class before reading artifact internals, rejecting unneeded machinery under `proportionate`.
+  3. **Apply Each Axiom to the Artifact**: Evaluates mechanisms by their runtime consequences, assesses whether the substantive decision requires qualitative judgment, and verifies that mechanisms do not violate axioms (such as delegating qualitative decisions to deterministic path/author/AST heuristics under `judgment-non-delegable`, or introducing silent fallback branches under `no-fallbacks`).
+  4. **Mechanisms Analysis**: Produces a structured `### Mechanisms` section explicitly evaluating each added mechanism's decision, necessity of judgment, and broken axioms before issuing a verdict.
+  - **Boundary**: Operates strictly by static semantic evaluation. Does not execute runtime tests, run test suites, or write scratch probe scripts (correctness testing belongs to authors and independent QA), does not evaluate qualitative taste or UX (belongs to `marsha`), and does not evaluate high-level PKB objective alignment or competing backlog options (belongs to `pauli`).
+- **`pauli` (Strategic Fit; template `wf-strategic-fit`)**: Evaluates objective alignment, necessity, parsimony, precedent, and lifecycle coherence:
+  - Situates the artifact against parent objectives in the PKB graph, testing whether it is needed or whether an existing tool, native mechanism, or competing proposal already solves it.
+  - Checks for lifecycle deadlocks and dependency conflicts across tasks on the graph.
+  - Returns an explicit `FIT` or `MISFIT` verdict.
+  - **Boundary**: Does not inspect source code for axiom violations (belongs to `rbg`), does not judge visual/prose aesthetics (belongs to `marsha`), and does not run tests or probes (belongs to author/QA).
+- **`marsha` (Qualitative Excellence & Audience Resonance; template `verify`)**: Evaluates the live output artifact as its audience meets it against purpose and excellence standards:
+  - Inspects live rendered outputs (rendered markdown, typeset PDFs, screenshots, UI).
+  - Assesses aesthetic grace, cognitive load, legibility, and audience empathy.
+  - Evaluates whether the deliverable is amazingly good for its intended audience or merely mediocre.
   - Returns `PASS`, `REVISE`, or `FAIL`.
-  - **Boundary**: Does not evaluate the strategic core premise or PKB graph strategy (belongs to `pauli`) and does not evaluate code against axioms or author mechanisms analysis (belongs to `rbg`).
+  - **Boundary**: Never checks truth, fidelity, or factual claims (belongs to hearsay checker and `premise-check`), does not run test suites or correctness checks (belongs to author and independent QA), does not evaluate axioms or rules (belongs to `rbg`), and does not evaluate graph-level strategy (belongs to `pauli`).
 
 ### 3. Lens Selection
 
