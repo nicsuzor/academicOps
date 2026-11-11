@@ -14,6 +14,7 @@ Claim and execute a queued PKB task to deliver against stated acceptance criteri
 - Claim your assigned task ID via PKB task claiming tools (`pkb_claim_task`, setting `assignee` to your agent or role). If missing, locate it via PKB search.
 - Authority extends strictly to the claimed task and its descendants. If blocked by external dependencies, complete what is possible and release remaining work.
 - **Intake Contract:** When claiming a tracked task, the receiving agent records its summary stating deliverables as a frozen `## Acceptance` checklist on the claimed PKB task before work starts. Internal in-session subagents, lookups, and fast-path dispatch workflows never create additional tasks on the graph.
+- Coordinator sessions use `/pull` strictly for lightweight documentation, synthesis, or coordination tasks running no test suites or large codebase greps; substantive implementation, codebase sweeps, and test execution tasks must be dispatched to polecats via `/dispatch`.
 
 ### 2. Execute and Supervise
 
