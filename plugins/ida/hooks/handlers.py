@@ -920,8 +920,8 @@ def session_start(ctx: HookContext) -> Result | None:
         try:
             with marker.open("w", encoding="utf-8") as f:
                 f.write(datetime.now().astimezone().isoformat())
-        except OSError:
-            pass
+        except OSError as exc:
+            log.warning("Could not write session pointer marker %s: %s", marker, exc)
 
     if ws_core := _get_workspace_core_md(ctx):
         parts.append(ws_core)
