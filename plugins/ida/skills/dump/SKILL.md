@@ -39,12 +39,10 @@ If an ad-hoc or interactive session modified repository project files without an
 
 For each claimed task (releasing child tasks first), update the task body so its `## Report` section records the outcome and the `premise-check` report argument (asked by the task's frozen ask ids), then release the task via `pkb_release_task`, passing the active `session_id`:
 
-- `done`: All acceptance criteria are fully met with verified evidence recorded in the task's Report section: quoted output, `file:line` citations, counts, specimen runs, and the report argument answering each `<task id>/AC<n>`. When the deliverable is a PR, push the branch, open the PR, record `pr_url` and branch, and release `done`. An empty, template, or bare-assertion report is released as `partial`.
-- `partial`: The worker's own acceptance items remain unfinished -- a scope seam, an external dependency, a context reset, or a missing tool. Never release as `partial` because a dependent check (QA, merge, deploy) remains to run. Document what was completed and what remains unfinished in `reason` and `## Report`.
-- `failed`: Terminal failure, unrecoverable blocker, or check failure (e.g. QA or review). Document failure evidence and root cause.
-- `cancelled`: Task is obsolete or invalidated. Document reason.
-- `in_progress`: Use only if an active successor session is immediately continuing work.
-- `review`: Never set or release `review`. Reserved exclusively for manual human holds applied directly by the user.
+- `done`: Release with verified evidence in `## Report` answering each `<task id>/AC<n>`. For PR deliverables, push the branch, open the PR, record `pr_url` and branch, and release `done`. If any acceptance item lacks evidence, release as `partial`.
+- `partial`: Release when the worker's own acceptance items remain unfinished (scope seam, external dependency, context reset, or missing tool). Document what was completed and what remains unfinished in `reason` and `## Report`.
+- `failed`: Release on terminal failure, unrecoverable blocker, or check failure (e.g. QA or review). Document failure evidence and root cause in `reason`.
+- `cancelled`: Release when task is obsolete or invalidated. Document reason in `reason`.
 
 Task report format (for `release_task` body update in `## Report` and session task summary):
 
