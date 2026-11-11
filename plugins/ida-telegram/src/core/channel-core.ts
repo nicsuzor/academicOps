@@ -14,7 +14,19 @@ export interface OutboundReplyParams {
   reply_to?: number;
   voice?: boolean;
   detail?: string;
-  buttons?: Array<{ label: string; callback_data?: string; url?: string; web_app?: string }>;
+  buttons?: any;
+  button_layout?: number[] | number;
+  buttonLayout?: number[] | number;
+  buttons_per_row?: number;
+  buttonsPerRow?: number;
+  predefined_row?: boolean;
+  predefinedRow?: boolean;
+  feedback?: boolean;
+  actions?: boolean;
+  message_thread_id?: number;
+  messageThreadId?: number;
+  thread_id?: number;
+  threadId?: number;
   review?: { repo: string; pr?: number; base?: string; head?: string };
 }
 
@@ -45,13 +57,21 @@ export interface OutboundReactResult {
 export interface QuestionSpec {
   question: string;
   header?: string;
-  options: Array<{ label: string; description?: string }>;
+  options: Array<{ label: string; description?: string; recommended?: boolean }>;
   multi_select?: boolean;
   multiSelect?: boolean;
   allow_custom?: boolean;
   allowOther?: boolean;
   turn_id?: string;
   turnId?: string;
+  mini_app_only?: boolean;
+  miniapp_only?: boolean;
+  miniAppOnly?: boolean;
+  chat?: boolean;
+  context?: string;
+  detail?: string;
+  details?: string;
+  recommendation?: string;
 }
 
 export interface OutboundAskUserParams {
@@ -59,6 +79,10 @@ export interface OutboundAskUserParams {
   turnId?: string;
   questions: QuestionSpec[];
   chat_id?: number;
+  mini_app_only?: boolean;
+  miniapp_only?: boolean;
+  miniAppOnly?: boolean;
+  chat?: boolean;
 }
 
 export interface OutboundAskUserResult {
@@ -165,8 +189,14 @@ export class SharedTelegramChannelCore {
         formatted,
         detailsId,
         buttons: params.buttons,
+        buttonLayout: params.buttonLayout ?? params.button_layout,
+        buttonsPerRow: params.buttonsPerRow ?? params.buttons_per_row,
+        predefinedRow: params.predefinedRow ?? params.predefined_row,
         voice: isVoice,
         replyTo,
+        feedback: params.feedback,
+        actions: params.actions,
+        messageThreadId: params.message_thread_id ?? params.messageThreadId ?? params.thread_id ?? params.threadId,
         review: params.review,
       });
 
@@ -214,7 +244,10 @@ export class SharedTelegramChannelCore {
     }
 
     if (this.bot) {
-      await this.bot.setReaction(chatId, messageId, norm);
+      const res = await this.bot.setReaction(chatId, messageId, norm);
+      if (!res.ok) {
+        return { success: false, error: res.error || "Reaction failed" };
+      }
     }
     return { success: true, reaction: norm };
   }
@@ -228,6 +261,9 @@ export class SharedTelegramChannelCore {
     const defaultChatId = params.chat_id || this.getDefaultChatId();
     const topTurnId = params.turn_id || params.turnId;
     const questions = params.questions || [];
+    const topMiniAppOnly = Boolean(
+      params.mini_app_only || params.miniapp_only || params.miniAppOnly || params.chat === false
+    );
 
     if (questions.length === 0) {
       throw new Error("No questions provided");
@@ -237,6 +273,9 @@ export class SharedTelegramChannelCore {
     for (const q of questions) {
       const multiSelect = q.multi_select !== undefined ? q.multi_select : q.multiSelect;
       const allowOther = q.allow_custom !== undefined ? q.allow_custom : q.allowOther;
+      const isMiniAppOnly = Boolean(
+        topMiniAppOnly || q.mini_app_only || q.miniapp_only || q.miniAppOnly || q.chat === false
+      );
 
       const result = await this.broker.askUser({
         question: q.question,
@@ -246,23 +285,35 @@ export class SharedTelegramChannelCore {
         allowOther,
         turnId: q.turn_id || q.turnId || topTurnId,
         chatId: defaultChatId,
+        mini_app_only: isMiniAppOnly,
+        context: q.context,
+        detail: q.detail || q.details,
+        recommendation: q.recommendation,
       });
 
       postedIds.push(result.questionId);
       this.store.recordTurn("out", q.header ? `${q.header}: ${q.question}` : q.question);
 
-      if (this.bot) {
-        const card = this.broker.renderQuestionCard(result.questionId);
+      if (this.bot && !isMiniAppOnly) {
+        const card = this.broker.renderQuestionCard(result.questionId, this.config.miniAppUrl);
         if (card) {
           await this.bot.sendQuestionCard(defaultChatId, result.questionId, card);
         }
       }
     }
 
-    const message =
-      postedIds.length === 1
-        ? `Question ${postedIds[0]} posted to the user. Do not assume an answer; continue other work or end your turn.`
-        : `Questions ${postedIds.join(", ")} posted to the user. Do not assume an answer; continue other work or end your turn.`;
+    let message: string;
+    if (topMiniAppOnly) {
+      message =
+        postedIds.length === 1
+          ? `Question ${postedIds[0]} queued in Mini App (mini_app_only: true; no chat cards sent). The user will see it upon opening the Mini App.`
+          : `Questions ${postedIds.join(", ")} queued in Mini App (mini_app_only: true; no chat cards sent). The user will see them upon opening the Mini App.`;
+    } else {
+      message =
+        postedIds.length === 1
+          ? `Question ${postedIds[0]} posted to the user. Do not assume an answer; continue other work or end your turn.`
+          : `Questions ${postedIds.join(", ")} posted to the user. Do not assume an answer; continue other work or end your turn.`;
+    }
 
     return {
       question_ids: postedIds,

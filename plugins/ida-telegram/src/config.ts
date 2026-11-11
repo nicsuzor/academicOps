@@ -20,6 +20,7 @@ export interface PluginConfig {
   socketPath: string;
   githubToken?: string;
   miniAppUrl: string;
+  instance?: string;
   botCommands: TelegramBotCommand[];
   bridgeToken?: string;
   autoInterrupt: boolean;
@@ -86,6 +87,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
     socketPath,
     githubToken: mergedEnv.GITHUB_TOKEN,
     miniAppUrl,
+    instance: (mergedEnv.IDA_NAME || mergedEnv.INSTANCE_NAME || mergedEnv.INSTANCE_ID || "").trim() || undefined,
     botCommands: resolveBotCommands(mergedEnv.TELEGRAM_BOT_COMMANDS),
     bridgeToken: mergedEnv.IDA_BRIDGE_TOKEN || mergedEnv.BRIDGE_TOKEN,
     autoInterrupt: mergedEnv.TELEGRAM_AUTO_INTERRUPT !== "false",

@@ -63,11 +63,20 @@ export const MCP_TOOLS: ToolDefinition[] = [
   },
   {
     name: "ask_user",
-    description: "Post an asynchronous question to the user over Telegram with vertical choice buttons.",
+    description:
+      "Post an asynchronous question to the user over Telegram or the Mini App with vertical choice buttons. Set mini_app_only: true (or chat: false) to queue questions in the Mini App without posting cards to chat. Pass detail on questions to attach fuller background opened via a Details button in the Mini App.",
     inputSchema: {
       type: "object",
       properties: {
         turn_id: { type: "string", description: "Turn ID for correlating the async answer event" },
+        mini_app_only: {
+          type: "boolean",
+          description: "If true, queues questions in the Mini App only without sending cards to Telegram chat.",
+        },
+        chat: {
+          type: "boolean",
+          description: "If false, queues questions in the Mini App only without sending cards to Telegram chat.",
+        },
         questions: {
           type: "array",
           items: {
@@ -90,6 +99,17 @@ export const MCP_TOOLS: ToolDefinition[] = [
               multiSelect: { type: "boolean", description: "Alias for multi_select" },
               allow_custom: { type: "boolean", description: "Whether free-text responses are permitted" },
               allowOther: { type: "boolean", description: "Alias for allow_custom" },
+              mini_app_only: {
+                type: "boolean",
+                description: "If true, queues this question in the Mini App only without sending a card to chat.",
+              },
+              chat: {
+                type: "boolean",
+                description: "If false, queues this question in the Mini App only without sending a card to chat.",
+              },
+              detail: { type: "string", description: "Fuller background for Details page in Mini App" },
+              context: { type: "string", description: "Context shown above question options" },
+              recommendation: { type: "string", description: "Recommended option or guidance" },
               turn_id: { type: "string" },
             },
             required: ["question", "options"],

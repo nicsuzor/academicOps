@@ -299,118 +299,142 @@ async function loadDetails(id) {
 }
 
 async function loadQuestions() {
+  const container = document.getElementById("questions-list");
   try {
     const res = await fetch("../api/app/questions");
     if (res.ok) {
       const data = await res.json();
       const list = data.questions || [];
       document.getElementById("q-badge").textContent = list.length;
-      const container = document.getElementById("questions-list");
 
       if (list.length === 0) {
-        container.innerHTML = '<div class="card"><p class="muted">No pending questions.</p></div>';
+        if (container) container.innerHTML = '<div class="card"><p class="muted">No pending questions.</p></div>';
         return;
       }
 
-      container.innerHTML = list
-        .map((q) => {
-          const isMulti = Boolean(q.multiSelect);
-          const inputType = isMulti ? "checkbox" : "radio";
-          const headerHtml = q.header ? `<div class="q-header">${escapeHtml(q.header)}</div>` : "";
+      if (container) {
+        container.innerHTML = list
+          .map((q) => {
+            const isMulti = Boolean(q.multiSelect);
+            const inputType = isMulti ? "checkbox" : "radio";
+            const headerHtml = q.header ? `<div class="q-header">${escapeHtml(q.header)}</div>` : "";
 
-          // Context block (explicit field)
-          const contextHtml = q.context
-            ? `<div class="q-context">${renderMarkdown(q.context)}</div>`
-            : "";
+            // Context block (explicit field)
+            const contextHtml = q.context
+              ? `<div class="q-context">${renderMarkdown(q.context)}</div>`
+              : "";
 
-          // Recommendation block
-          const recHtml = q.recommendation
-            ? `<div class="q-recommendation"><strong>Recommendation:</strong> ${formatInlineMarkdown(q.recommendation)}</div>`
-            : "";
+            // Recommendation block
+            const recHtml = q.recommendation
+              ? `<div class="q-recommendation"><strong>Recommendation:</strong> ${formatInlineMarkdown(q.recommendation)}</div>`
+              : "";
 
-          const optionsHtml = (q.options || [])
-            .map((opt, idx) => {
-              const isRec = Boolean(
-                opt.recommended || /\(recommended\)/i.test(opt.label)
-              );
-              const recBadge = isRec ? '<span class="rec-badge">Recommended</span>' : "";
-              const descHtml = opt.description
-                ? `<div class="opt-desc muted">${escapeHtml(opt.description)}</div>`
-                : "";
-              return `
-                <label class="q-option">
-                  <input type="${inputType}" name="q-opt-${escapeHtml(q.id)}" value="${idx}">
-                  <div class="opt-body">
-                    <div class="opt-title">
-                      <span>${idx + 1}. ${escapeHtml(opt.label)}</span>
-                      ${recBadge}
+            const optionsHtml = (q.options || [])
+              .map((opt, idx) => {
+                const isRec = Boolean(
+                  opt.recommended || /\(recommended\)/i.test(opt.label)
+                );
+                const recBadge = isRec ? '<span class="rec-badge">Recommended</span>' : "";
+                const descHtml = opt.description
+                  ? `<div class="opt-desc muted">${escapeHtml(opt.description)}</div>`
+                  : "";
+                return `
+                  <label class="q-option">
+                    <input type="${inputType}" name="q-opt-${escapeHtml(q.id)}" value="${idx}">
+                    <div class="opt-body">
+                      <div class="opt-title">
+                        <span>${idx + 1}. ${escapeHtml(opt.label)}</span>
+                        ${recBadge}
+                      </div>
+                      ${descHtml}
                     </div>
-                    ${descHtml}
-                  </div>
-                </label>
-              `;
-            })
-            .join("");
+                  </label>
+                `;
+              })
+              .join("");
 
-          const otherHtml =
-            q.allowOther !== false
+            const otherHtml =
+              q.allowOther !== false
+                ? `
+                  <div class="q-other-box">
+                    <label class="muted" for="q-text-${escapeHtml(q.id)}">Or answer in your own words:</label>
+                    <textarea id="q-text-${escapeHtml(q.id)}" class="q-freetext" rows="2" placeholder="Type a custom answer..."></textarea>
+                  </div>
+                `
+                : "";
+
+            const metaParts = [];
+            if (q.createdAt || q.created_at) metaParts.push(`Asked ${escapeHtml(q.createdAt || q.created_at)}`);
+            if (q.turnId || q.turn_id) metaParts.push(`Turn ${escapeHtml(q.turnId || q.turn_id)}`);
+            if (q.sessionId || q.session_id) metaParts.push(`Session ${escapeHtml(q.sessionId || q.session_id)}`);
+            const metaHtml = metaParts.length > 0 ? `<div class="q-meta muted" style="font-size:0.75rem;margin-bottom:0.4rem;">${metaParts.join(" · ")}</div>` : "";
+
+            const detailText = q.detail || q.details;
+            const hasDetails = Boolean(detailText || q.detailsId || q.details_id);
+
+            const detailsHtml = hasDetails
               ? `
-                <div class="q-other-box">
-                  <label class="muted" for="q-text-${escapeHtml(q.id)}">Or answer in your own words:</label>
-                  <textarea id="q-text-${escapeHtml(q.id)}" class="q-freetext" rows="2" placeholder="Type a custom answer..."></textarea>
+                <div id="q-details-${escapeHtml(q.id)}" class="q-details card-details" style="display:none;">
+                  ${detailText ? renderMarkdown(detailText) : ""}
                 </div>
               `
               : "";
 
-          const metaParts = [];
-          if (q.createdAt || q.created_at) metaParts.push(`Asked ${escapeHtml(q.createdAt || q.created_at)}`);
-          if (q.turnId || q.turn_id) metaParts.push(`Turn ${escapeHtml(q.turnId || q.turn_id)}`);
-          if (q.sessionId || q.session_id) metaParts.push(`Session ${escapeHtml(q.sessionId || q.session_id)}`);
-          const metaHtml = metaParts.length > 0 ? `<div class="q-meta muted" style="font-size:0.75rem;margin-bottom:0.4rem;">${metaParts.join(" · ")}</div>` : "";
+            const detailsBtnHtml = hasDetails
+              ? `<button class="btn btn-secondary btn-details btn-q-details" type="button" onclick="toggleQuestionDetails('${escapeHtml(q.id)}')">🔍 Details</button>`
+              : "";
 
-          const detailText = q.detail || q.details;
-          const hasDetails = Boolean(detailText || q.detailsId || q.details_id);
-
-          const detailsHtml = hasDetails
-            ? `
-              <div id="q-details-${escapeHtml(q.id)}" class="q-details card-details" style="display:none;">
-                ${detailText ? renderMarkdown(detailText) : ""}
+            return `
+              <div class="card question-card" data-qid="${escapeHtml(q.id)}" data-details-id="${escapeHtml(q.detailsId || q.details_id || "")}">
+                ${headerHtml}
+                ${metaHtml}
+                <h3>${formatInlineMarkdown(q.question || "")}</h3>
+                ${contextHtml}
+                ${recHtml}
+                ${detailsHtml}
+                <div class="q-options-list">
+                  ${optionsHtml}
+                </div>
+                ${otherHtml}
+                <div class="actions-row">
+                  <button class="btn btn-primary" onclick="submitQuestion('${escapeHtml(q.id)}', ${isMulti})">
+                    ${isMulti ? "Submit Selection" : "Submit Answer"}
+                  </button>
+                  ${detailsBtnHtml}
+                  <button class="btn btn-secondary btn-close-q" onclick="closeQuestion('${escapeHtml(q.id)}')">
+                    Dismiss
+                  </button>
+                </div>
               </div>
-            `
-            : "";
-
-          const detailsBtnHtml = hasDetails
-            ? `<button class="btn btn-secondary btn-details btn-q-details" type="button" onclick="toggleQuestionDetails('${escapeHtml(q.id)}')">🔍 Details</button>`
-            : "";
-
-          return `
-            <div class="card question-card" data-qid="${escapeHtml(q.id)}" data-details-id="${escapeHtml(q.detailsId || q.details_id || "")}">
-              ${headerHtml}
-              ${metaHtml}
-              <h3>${formatInlineMarkdown(q.question || "")}</h3>
-              ${contextHtml}
-              ${recHtml}
-              ${detailsHtml}
-              <div class="q-options-list">
-                ${optionsHtml}
-              </div>
-              ${otherHtml}
-              <div class="actions-row">
-                <button class="btn btn-primary" onclick="submitQuestion('${escapeHtml(q.id)}', ${isMulti})">
-                  ${isMulti ? "Submit Selection" : "Submit Answer"}
-                </button>
-                ${detailsBtnHtml}
-                <button class="btn btn-secondary btn-close-q" onclick="closeQuestion('${escapeHtml(q.id)}')">
-                  Dismiss
-                </button>
-              </div>
-            </div>
-          `;
-        })
-        .join("");
+            `;
+          })
+          .join("");
+      }
+    } else {
+      let errMsg = `Failed to load questions (${res.status} ${res.statusText})`;
+      try {
+        const errData = await res.json();
+        if (errData?.error) errMsg = errData.error;
+      } catch {}
+      if (container) {
+        container.innerHTML = `
+          <div class="card" style="border-left: 3px solid #e53935; padding: 12px;">
+            <p style="color: #e53935; font-weight: bold; margin-bottom: 4px;">Failed to load questions</p>
+            <p class="muted">${escapeHtml(errMsg)}</p>
+          </div>
+        `;
+      }
     }
   } catch (e) {
     console.error("Failed to load questions", e);
+    if (container) {
+      container.innerHTML = `
+        <div class="card" style="border-left: 3px solid #e53935; padding: 12px;">
+          <p style="color: #e53935; font-weight: bold; margin-bottom: 4px;">Network Error</p>
+          <p class="muted">Failed to fetch questions: ${escapeHtml(String(e))}</p>
+        </div>
+      `;
+    }
   }
 }
 
@@ -558,6 +582,7 @@ function formatDiffHtml(diffText) {
 }
 
 async function loadReview() {
+  const container = document.getElementById("review-content");
   try {
     const params = new URLSearchParams(window.location.search);
     const qs = new URLSearchParams();
@@ -568,15 +593,31 @@ async function loadReview() {
     const querySuffix = qs.toString() ? `?${qs.toString()}` : "";
 
     const res = await fetch(`../api/app/review${querySuffix}`);
-    if (!res.ok) return;
+    if (!res.ok) {
+      let errMsg = `Failed to load review (${res.status} ${res.statusText})`;
+      try {
+        const errData = await res.json();
+        if (errData?.error) errMsg = errData.error;
+      } catch {}
+      if (container) {
+        container.innerHTML = `
+          <div class="card" style="border-left: 3px solid #e53935; padding: 12px;">
+            <p style="color: #e53935; font-weight: bold; margin-bottom: 4px;">Failed to load reviews</p>
+            <p class="muted">${escapeHtml(errMsg)}</p>
+          </div>
+        `;
+      }
+      return;
+    }
     const data = await res.json();
     const permissions = data.permissions || [];
     const reviews = data.reviews || [];
-    const container = document.getElementById("review-content");
 
     if (permissions.length === 0 && reviews.length === 0) {
-      container.innerHTML =
-        '<div class="card"><p class="muted">No pending permissions or PR diffs waiting for review.</p></div>';
+      if (container) {
+        container.innerHTML =
+          '<div class="card"><p class="muted">No pending permissions or PR diffs waiting for review.</p></div>';
+      }
       return;
     }
 
@@ -663,9 +704,17 @@ async function loadReview() {
       })
       .join("");
 
-    container.innerHTML = permCards + prCards;
+    if (container) container.innerHTML = permCards + prCards;
   } catch (e) {
     console.error("Failed to load review tab", e);
+    if (container) {
+      container.innerHTML = `
+        <div class="card" style="border-left: 3px solid #e53935; padding: 12px;">
+          <p style="color: #e53935; font-weight: bold; margin-bottom: 4px;">Network Error</p>
+          <p class="muted">Failed to load review: ${escapeHtml(String(e))}</p>
+        </div>
+      `;
+    }
   }
 }
 
@@ -788,9 +837,17 @@ async function loadAnchor() {
       document.getElementById("anchor-pct").textContent =
         used !== undefined && total !== undefined ? `${pct}% (${used} / ${total})` : `${pct}%`;
       document.getElementById("anchor-gauge").style.width = `${pct}%`;
+    } else {
+      let errMsg = `Failed to load anchor (${res.status} ${res.statusText})`;
+      try {
+        const errData = await res.json();
+        if (errData?.error) errMsg = errData.error;
+      } catch {}
+      document.getElementById("anchor-focus").textContent = `Error: ${errMsg}`;
     }
   } catch (e) {
     console.error("Failed to load anchor", e);
+    document.getElementById("anchor-focus").textContent = `Network Error: ${String(e)}`;
   }
 }
 
