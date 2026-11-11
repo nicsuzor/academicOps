@@ -101,9 +101,9 @@ Every recurring job handles only what changed since its last completed run (`sin
 
 ## Bounded Helpers
 
-Subagent helpers are strictly bounded: a hard cap of 30 model calls per helper (operational range 25–35), related operations batched into single turns, and no helper left idle on background work past the prompt cache lifetime. See [`bounded-helpers.md`](bounded-helpers.md).
+Subagent helpers are kept bounded through timely lifecycle management, batched operations, and active prompt cache awareness. See [`bounded-helpers.md`](bounded-helpers.md).
 
-- **Call cap**: Budget worker tasks to complete within ≤ 30 tool calls; workers exceeding this budget hand back on the record as `partial`.
+- **Lifecycle and culling encouragement**: On agent-idle hooks and task boundaries, agents are encouraged (not required) to assess whether a subagent has run too long, decide whether to cull it, and dispatch fresh subagents for unrelated tasks rather than reusing long-running helpers.
 - **Batched operations**: Batch multi-item reads and mutations into single turns rather than serial round-trips.
 - **Active cache management**: Helpers must yield or complete before the 5-minute cache TTL expires; idling across cache invalidation boundaries is prohibited.
 
