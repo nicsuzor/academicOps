@@ -18,6 +18,7 @@ A task is ready when its status is `queued`, it has no open `needs` edges or inc
 - A QA follow-up stays queued until its primary task releases `done`; once the primary task releases `done`, the QA follow-up's `needs` dependency is satisfied and it becomes ready for immediate dispatch.
 - A task that folds follow-ups into internal subtasks is ready when executable by the same agent in one session; only send to `/reify` when work requires independent sessions, personas, or approval gates that must be cut into an epic with child tasks.
 - Send a task that is unready or underspecified to `/reify` with its id, because writing and rewriting tasks is that skill's job. Dispatch the rest.
+- **Graph deduplication and premise check**: Verify that no conflicting or overlapping open task exists (query `pkb_list_tasks` for active sibling tasks under the parent container) and that a premise-check PASS was recorded on reification before dispatching. If an unlinked sibling covers identical subsystem artifacts, halt and resolve the overlap.
 - **Intake Contract:** On receiving a direction or work brief, the receiving agent must record its own summary stating deliverables as a frozen `## Acceptance` checklist on a PKB task before work starts.
 
 ## 2. Start the workers

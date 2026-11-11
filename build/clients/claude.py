@@ -9,6 +9,7 @@
 
 import json
 import re
+import shutil
 from pathlib import Path
 
 import yaml
@@ -52,6 +53,12 @@ def adapt(build_dir: Path, ctx: BuildContext) -> None:
         with jsonl_path.open("w", encoding="utf-8") as f:
             for axiom in always_on:
                 f.write(json.dumps(axiom) + "\n")
+        rules_dir = build_dir / "rules"
+        rules_dir.mkdir(parents=True, exist_ok=True)
+        for axiom in always_on:
+            shutil.copy2(
+                build_dir / AXIOMS_SUBDIR / axiom["source_file"], rules_dir / axiom["source_file"]
+            )
 
 
 def _adapt_agents(build_dir: Path) -> None:

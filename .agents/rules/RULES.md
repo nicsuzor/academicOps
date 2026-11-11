@@ -107,6 +107,10 @@ Subagent helpers are kept bounded through timely lifecycle management, batched o
 - **Batched operations**: Batch multi-item reads and mutations into single turns rather than serial round-trips.
 - **Active cache management**: Helpers must yield or complete before the 5-minute cache TTL expires; idling across cache invalidation boundaries is prohibited.
 
+## Bundled Pull Requests under Epics
+
+When tasks execute under a parent task marked `bundle_pr: true` or under an active epic (`type: epic`), workers must commit directly to the designated epic branch (`polecat/<epic-id>` or `topic/<slug>`) and must not open detached pull requests against `dev`. All changes, test receipts, and review records bundle into the epic's single consolidated pull request for cohesive user review. If a standalone tracking pull request exists, it is marked superseded and closed upon consolidation.
+
 ## Decisions Emerge from Graph Relationships, Not Standalone Tasks
 
 Agents must never create un-actionable "decision" tasks or file conversational questions as backlog tickets. An agent given a task does the groundwork and makes the decision itself; it never files the task back to the user as their decision (`assignee: user`) unless the user explicitly requested to make that decision themselves (tg 1013). Where research investigates an open design question or architectural alternatives, the agent evaluates the options and chooses the recommended route directly to unblock downstream implementation tasks.

@@ -845,3 +845,55 @@ def test_subagent_verdict_span_uses_root_phoenix_session_id_and_subagent_active_
     span = call["spans"][0]
     assert span["trace_id_hex"] == sub_trace_id
     assert span["parent_span_id_hex"] == sub_root_span_id
+
+
+@pytest.mark.parametrize(
+    "prohibited",
+    ["reversible", "cheap to reverse", "engine output"],
+)
+def test_pass_refused_when_sufficient_contains_prohibited_term_for_answering_step(
+    tmp_path: Path, prohibited: str
+):
+    """Class 4: PASS is refused when Sufficient line for an answering step contains prohibited terms."""
+    tracer = _StubTracer()
+    session_id = f"sess-sufficient-{prohibited.replace(' ', '-')}"
+    claim_id = "report-sufficient-test"
+
+    report_content = """# Specimen Report
+```argdown
+===
+asks:
+  tg-1: 1
+answers:
+  tg-1: 2
+===
+
+(1) Data observed.
+-- rule --
+(2) Conclusion reached.
+```
+"""
+    judged_file = tmp_path / "report.md"
+    judged_file.write_text(report_content, encoding="utf-8")
+
+    reason = (
+        f"Judged: {claim_id}; asks tg-1\n"
+        "Valid: (2) holds -- rule\n"
+        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
+        "Answered: tg-1 ← (2)\n"
+        f"Sufficient: (2) material; {prohibited}\n"
+        "Waived: none\n"
+        'Relay: "Conclusion reached." ← (2)'
+    )
+
+    with pytest.raises(
+        ValueError, match=rf"Sufficient line contains prohibited term\(s\) \({prohibited}\)"
+    ):
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id=claim_id,
+            verdict="PASS",
+            reason=reason,
+            tracer_mod=tracer,
+            judged_file=str(judged_file),
+        )

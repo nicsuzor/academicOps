@@ -1299,6 +1299,12 @@ def remediation_for_failure(failure: str) -> str:
         return (
             'Required remediation format:\nRelay: "<sentence to relay>" ← (n)\n# or:\nRelay: none'
         )
+    if "Sufficient line contains prohibited term(s)" in failure:
+        return (
+            "Required remediation: conclusions answering an ask bear stakes and cannot be "
+            "settled by reversibility or engine output. Authority is strictly user words or "
+            "governing specs. Revise Sufficient to cite user words/spec or decompose."
+        )
     return ""
 
 
@@ -1388,6 +1394,22 @@ def pass_failures(
     unanswered = [a for a in ask_ids if a not in answered_ids]
     if unanswered:
         failures.append(f"no Answered line for ask ids: {', '.join(unanswered)}")
+
+    answering_lines = {a[1] for a in answered if a and a[1] is not None}
+    if block is not None and not block_waived:
+        answering_lines |= {v for v in block.answers.values() if isinstance(v, int)}
+
+    prohibited_sufficient = ("reversible", "cheap to reverse", "engine output")
+    for entry in reason.get("Sufficient"):
+        entry_lower = entry.lower()
+        found_terms = [t for t in prohibited_sufficient if t in entry_lower]
+        if not found_terms:
+            continue
+        entry_lines = {int(n) for n in re.findall(r"\((\d+)\)", entry)}
+        if not entry_lines or (answering_lines and bool(entry_lines & answering_lines)):
+            failures.append(
+                f"Sufficient line contains prohibited term(s) ({', '.join(found_terms)}) for step answering an ask: {entry.strip()!r}"
+            )
 
     valid = reason.valid_entries()
     malformed = [e for e, m in zip(reason.get("Valid"), valid, strict=True) if m is None]

@@ -28,6 +28,7 @@ A test that earns its place is:
 - built on real collaborators where they are cheap, with test doubles only at process boundaries (network, model calls, clock) and never on the unit under test;
 - checked against an expected value derived independently of the code (a worked example, a known-good fixture);
 - covering boundary and error cases, not only the happy path;
-- fast, with a failure message that says what broke.
+- fast, with a failure message that says what broke;
+- for hooks, executing the registered command string through the harness spawn mechanism across target deployment environments, asserting fail-closed behavior on failures (such as command resolution failure or exit 127), rather than solely testing stdin parsing or helper functions in isolation.
 
 A bug fix carries a regression test that reproduces the reported failure, red before the fix. An existing test that fails only on legitimate edits is deleted or rewritten to test behaviour.
