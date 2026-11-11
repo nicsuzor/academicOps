@@ -24,14 +24,14 @@ A task is ready when its status is `queued`, it has no open `needs` edges or inc
 
 Start one polecat worker per ready task, in parallel, through the project's dispatch pathway. The worker's whole prompt is `/ida:pull <task-id>`, because the task carries everything else.
 
-Confirm each worker started. A worker that failed to start is a halt: report the task id and the failure verbatim.
+Workers queue asynchronously; callers are not notified when they start, and neither track nor report starts. Assume work proceeds unless an error comes back. A worker dispatch failure is a halt: report the task id and the failure verbatim.
 
 ## 3. Report and stop (fire-and-forget)
 
-Dispatch is fire-and-forget: the worker records its result on the task graph. Once the workers start, output the dispatch report and end your turn immediately:
+Dispatch is fire-and-forget: the worker records its result on the task graph. Once tasks are dispatched, output the dispatch report and end your turn immediately:
 
-- Output one line per task: title, id, and the worker started (container name), or the `/reify` hand-back and why.
-- Never wait for a worker to finish in the dispatch turn, and never call or block on event-stream tools (such as `polecat_polecat_events`), status checks, sleep loops, or timers.
+- Output one line per task: title, id, and that the task is queued for a worker, or the `/reify` hand-back and why.
+- Never wait for a worker to finish in the dispatch turn, never wait for or report worker starts, and never call or block on event-stream tools (such as `polecat_polecat_events`), status checks, sleep loops, or timers.
 
 ## 4. Act on a completed worker (separate invocation or turn)
 
