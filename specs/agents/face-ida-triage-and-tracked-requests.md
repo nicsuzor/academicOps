@@ -42,12 +42,12 @@ As a researcher, I want delegated triage classifications verified against the or
 
 ### US-3 Retirement of Legacy `/mine` Ask Tracking
 
-As a framework maintainer and operator, I want all tracked user requests to flow through the unified intake and reification pipeline instead of the legacy `/mine` ask-tracking command, so that all persistent tasks share uniform graph placement, valuation, and delivery semantics.
+As a user, I want all tracked requests to flow through the unified intake and reification pipeline instead of the legacy `/mine` ask-tracking command, so that all persistent tasks share uniform graph placement, valuation, and delivery semantics.
 
 - **AC-3.1** Given any user request requiring asynchronous tracking, when captured, then it is routed through the standard intake (`/q`) and reification (`/reify`) workflow rather than being filed as an ad-hoc tracked task via `/mine <ask>`.
-- **AC-3.2** Given the `/mine` command, when evaluated across skills, agent definitions, and command registries:
-  - The parameterised form (`/mine <ask>`) is deprecated and retired from user-facing workflows;
-  - The bare sweep form (`/mine` without arguments) is superseded by standard truth maintenance (`/reconcile`) and scheduled daily review (`/decide` / `/daily`), which surface delivery tasks assigned to the user-facing agent.
+- **AC-3.2** Given task tracking and sweeping:
+  - The `/mine` skill is deleted outright from the repository;
+  - Task sweeping is handled by standard truth maintenance (`/reconcile`) and scheduled daily review (`/decide` / `/daily`), which surface delivery tasks assigned to the user-facing agent.
 
 ## Design
 
@@ -91,9 +91,9 @@ flowchart TD
 The triage choice is strictly bounded:
 
 1. **`ad-hoc in-session`**:
-   - **Definition**: Any request that can be completely resolved within the immediate turn and session context without launching background workers, modifying code repositories, or running multi-stage analytical sweeps.
+   - **Definition**: Any request that can be completely resolved within the immediate turn and session context without launching background workers, modifying code repositories, or running multi-stage analytical sweeps. Pure lookups and questions require no task or dump ceremony (`wf-lookup`); worker dispatch through Sara requires no task or dump ceremony (`wf-dispatch`).
    - **Examples**: Direct conversational questions; clarification of requirements; lookups in accessible documentation; summarizing a single note or file; drafting an immediate response.
-   - **Execution Surface**: Executed entirely by Sub-Ida in-session.
+   - **Execution Surface**: Executed entirely by Sub-Ida in-session. When in-session execution requires task tracking, strictly one outer task is created solely by Face Ida (`wf-interactive`); Sub-Ida and downstream delegates never create additional tasks on the graph.
 
 2. **`tracked task`**:
    - **Definition**: Any request that cannot be answered immediately in-session, requires persistent tracking across turns or sessions, modifies repository code or configurations, executes long-running background tasks, or spans multiple sub-tasks.
@@ -127,14 +127,14 @@ answers:
 Upon receiving the delegation message, Sub-Ida (`ida:ida`):
 
 1. Reads the referent prompt and evaluates whether Face Ida's classification holds under the triage criteria.
-2. If verified, executes the designated pathway (ad-hoc execution or `/q` -> `/reify` -> `/dispatch`).
+2. If verified, executes the designated pathway (ad-hoc in-session execution without child task creation, or `/q` -> `/reify` -> `/dispatch` for tracked tasks). Pure lookups and questions proceed without task creation or pull/dump ceremonies (`wf-lookup`).
 3. If defective (e.g. Face Ida attempted to run a complex PR sweep ad-hoc in-session, or created a tracked task for a trivial conversational question):
    - Corrects the routing to the appropriate pathway;
    - Records the defect in the return report's reason block under `premise-check`.
 
 ### 3. Tracked Request Lifecycle and Closed-Loop Delivery
 
-Tracked requests flow through the standard framework pipeline:
+Tracked requests flow through the standard framework pipeline. In interactive sessions, workflow composition via `workflow-library` and outer task creation is performed exclusively by the user-facing agent (Face Ida); internal subagents (Sub-Ida) and downstream delegates (Pauli, James, Sara) execute delegations without composing sub-workflows or creating additional tasks (`wf-interactive`).
 
 1. **Intake (`/q`)**:
    Sub-Ida captures the request onto the strategic task graph under the relevant parent epic or domain container, wiring `serves` and dependency edges.
@@ -148,14 +148,31 @@ Tracked requests flow through the standard framework pipeline:
 4. **Delivery to User**:
    When the working task completes, the terminal return task assigned to `ida` becomes unblocked. The user-facing agent (or scheduled daily triage) processes the result, checks the premise, and communicates the deliverable to the user on the originating channel.
 
-### 4. Fate of the Legacy `/mine` Command
+### 4. Retirement and Deletion of `/mine`
 
-1. **Retirement of `/mine <ask>` Tracking**:
-   The practice of Face Ida tracking user requests via `/mine <ask>` is retired. User requests requiring persistent tracking are processed exclusively through the unified `/q` -> `/reify` -> `/dispatch` pipeline.
-2. **Supersession of Bare `/mine`**:
-   The bare form (`/mine` without arguments), which previously scanned for `ida-tracked` tags and unparented tasks, is superseded by standard truth maintenance (`/reconcile`) and scheduled daily note triage (`/decide` and `/daily`). Because all tracked asks now carry explicit return-to-user tasks assigned to `ida`, they are naturally surfaced during regular reconciliation passes without requiring a dedicated tracking tag or separate CLI command.
-3. **Deprecation Path**:
-   In Stage 2, the `/mine` skill is updated to mark `/mine <ask>` as deprecated, routing users and agents to `/q`, and aligning bare `/mine` with standard reconciliation.
+1. **Unified Intake Over Dedicated Tracking**:
+   User requests requiring persistent tracking are processed exclusively through the unified `/q` -> `/reify` -> `/dispatch` pipeline with explicit return-to-user tasks assigned to `ida`.
+2. **Supersession of Bare Sweeps**:
+   The bare sweep form (`/mine` without arguments), which previously scanned for `ida-tracked` tags and unparented tasks, is superseded by standard truth maintenance (`/reconcile`) and scheduled daily note triage (`/decide` and `/daily`). Because all tracked asks now carry explicit return-to-user tasks assigned to `ida`, they are naturally surfaced during regular reconciliation passes without requiring a dedicated tracking tag or separate CLI command.
+3. **Outright Deletion**:
+   Per the current-state-only rule, the `/mine` skill is deleted outright rather than retained in a deprecated state.
+
+## Regulatory Experiment Record
+
+- **Hypothesis:** Requiring the user-facing agent to perform explicit upfront triage (`ad-hoc in-session` vs `tracked task` supported by a Toulmin Argdown reasons block), delegate all substantive work to Sub-Ida, verify the triage justification before execution, and route tracked requests through `/q` -> `/reify` -> `/dispatch` with dedicated return-to-user delivery tasks assigned to `ida` (retiring `/mine <ask>`) will eliminate dropped user requests, maintain the non-execution boundary, and provide uniform graph valuation without parallel ad-hoc tracking tags.
+- **What moved:**
+  - Deleted legacy `/mine` skill outright; task sweeping handled via `/reconcile` and daily review (`/decide`, `/daily`).
+  - Replaced ambiguous ask routing in `plugins/ida/agents/ida.md` with the consolidated Face-Ida triage contract (ad-hoc vs tracked classification, Toulmin Argdown reasons block, Sub-Ida twin verification).
+  - Explicitly specified closed-loop delivery tasks (`assignee: ida`) for tracked user requests in `plugins/ida/skills/reify/SKILL.md` and `specs/agents/face-ida-triage-and-tracked-requests.md`.
+  - Updated affected row coordinates in `specs/ENFORCEMENT-MAP.md`.
+- **On what evidence:** User directive on 2026-10-29 (Telegram msg 719): "you know where we have instructions that ida can't do substantive work and must delegate to a sub-ida? i want a revision that clarifies and consolidates workflows for the ida facing the user: yes, everything goes to sub-ida; but before that, ida face makes a decision about whether the task is simple enough to run ad-hoc in-session or needs a tracked task. This replaces the /mine practice of requiring face idas to track user requests; instead, user requests that need tracking (anything that can't be answered immediately from within the session) go through the /q, /reify, /dispatch process, with either a top-level task (if there are child tasks) or a child task assigned to ida to return the result to the user. Ida twin (subagent ida) will have to check the face ida's justification for her choice against my actual prompt in the delegation message, which must carry a reasons block like every other delegation and response message between agents."
+- **Observation / What will show it worked:**
+  - User-facing Ida never executes substantive work (lookups, file edits, diagnostics, PR sweeps) directly in main context.
+  - Every inbound user request is triaged with an explicit classification and Toulmin Argdown reasons block in the delegation payload to Sub-Ida.
+  - Sub-Ida verifies the triage justification against the verbatim prompt, catching and correcting misclassifications before executing.
+  - Tracked tasks flow through `/q` -> `/reify` -> `/dispatch` and include explicit delivery tasks assigned to `ida` so results are returned to the user upon completion.
+  - Zero instructions direct Face-Ida to track user requests via `/mine <ask>`.
+- **Kill / Escalation Criteria:** If user-facing agents continue to execute substantive work in the main session or omit reasons blocks in delegations, escalate to Level 3 JIT injection reminders on `UserPromptSubmit` or Level 4 structural tool restrictions. If delivery tasks fail to be created during reification, add a graph invariant check in `/reify`.
 
 ## Open questions
 
