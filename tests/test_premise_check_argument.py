@@ -2484,3 +2484,80 @@ def test_premise_opening_with_so_but_no_connective_may_still_answer(opening):
         tracer_mod=_configured(),
     )
     assert result["verdict"] == "PASS"
+
+
+def test_answered_semicolon_separated_clauses_passes_validation():
+    """Semicolon-separated clauses on a single Answered line parse and pass validation."""
+    session_id = "s-answered-semi"
+    report_text = (
+        "Report with multiple asks answered.\n"
+        "```argdown\n"
+        "===\n"
+        "asks:\n"
+        "  - ida/1\n"
+        "  - ida/2\n"
+        "answers:\n"
+        "  ida/1: 3\n"
+        "  ida/2: 3\n"
+        "===\n"
+        "(1) First empirical observation with deciding value [source: file.py:10].\n"
+        "(2) Second observation verified [source: test.py:20].\n"
+        "-- inference rule --\n"
+        "(3) Both conditions hold and answer the asks.\n"
+        "```"
+    )
+    _arm_with_report(session_id, "CID", text=report_text)
+    reason = (
+        "Judged: CID; asks ida/1, ida/2\n"
+        "Valid: (3) holds -- rule yields conclusion directly\n"
+        "Supported: (1) primary observation with deciding value inline bears stakes\n"
+        "Answered: ida/1 ← (3); ida/2 ← (3)\n"
+        "Sufficient: (3) material; high stakes; authority-backed; objection unnecessary\n"
+        "Waived: none\n"
+        "Relay: none\n"
+    )
+    parsed = ra.parse_reason(reason, _VOCAB)
+    answered = parsed.answered()
+    assert answered == [("ida/1", 3), ("ida/2", 3)]
+
+    result = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="CID",
+        verdict="PASS",
+        reason=reason,
+        tracer_mod=_configured(),
+    )
+    assert result["verdict"] == "PASS"
+
+
+def test_answered_semicolon_separated_clauses_supports_unanswered():
+    """Semicolon-separated clauses support answering some asks while leaving others unanswered."""
+    reason = (
+        "Judged: CID; asks ida/1, ida/2\n"
+        "Valid: (3) holds -- rule yields conclusion\n"
+        "Supported: (1) primary observation bears stakes\n"
+        "Answered: ida/1 ← (3); ida/2 unanswered\n"
+        "Sufficient: (3) material; stakes; authority-backed; necessary\n"
+        "Waived: none\n"
+        "Relay: none\n"
+    )
+    parsed = ra.parse_reason(reason, _VOCAB)
+    assert parsed.answered() == [("ida/1", 3), ("ida/2", None)]
+
+
+def test_answered_semicolon_separated_clauses_rejects_malformed_clause():
+    """A malformed clause in a semicolon-separated Answered line is caught and rejected."""
+    reason = (
+        "Judged: CID; asks ida/1, ida/2\n"
+        "Valid: (3) holds -- rule yields conclusion\n"
+        "Supported: (1) primary observation bears stakes\n"
+        "Answered: ida/1 ← (3); ida/2 malformed_clause\n"
+        "Sufficient: (3) material; stakes; authority-backed; necessary\n"
+        "Waived: block -- waived for test\n"
+        "Relay: none\n"
+    )
+    parsed = ra.parse_reason(reason, _VOCAB)
+    failures = ra.pass_failures(parsed, None, _VOCAB)
+    assert any(
+        "Answered entries not in the form" in f and "malformed_clause" in f for f in failures
+    )

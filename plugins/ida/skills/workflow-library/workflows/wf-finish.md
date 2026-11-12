@@ -37,14 +37,30 @@ Defines the universal baseline contract for how tasks finish when a repository l
   - **Low-risk internal changes (chiefly bugfixes)**: Get no separate verification run. Where a blocked dependent exists waiting on the fix (prerequisite `needs` on the dependent task), the parent epic handles sequencing the dependent task's next run; workers never mint verification follow-up tasks.
   - **Documentation, notes, or trivial chore changes**: No QA follow-up required unless explicitly requested in the task objective.
 
+## Standard Pre-Handback Review
+
+To prevent recursive loops, token exhaustion, and multi-round churn, deliverables undergo a single, standardized pre-handback review before final handover:
+
+1. **Parallel Dispatch**: The consolidating main agent (sub-ida in interactive sessions, outer agent / coordinator elsewhere) dispatches **Marsha** and **RBG** concurrently in a single turn.
+2. **Self-Contained Briefing**: Both reviewers receive a self-contained brief containing:
+   - The originating user ask and task objective.
+   - The candidate output artifact (or live rendered reference).
+   - Governing genre standards (for Marsha) and applicable rules / itemised criteria (for RBG).
+   - Intended audience and purpose.
+   - Reviewers do not receive tools to re-query external sources or re-find facts.
+3. **Single Synthesis**: The main agent receives both independent reports, reconciles findings into a single plan, and authorizes necessary fixes.
+4. **One Fix Pass, No Re-Check Loop**: The writer executes a single fix pass addressing substantive findings. There is no second review round, no re-checking loop, and no fresh cold checker spawned. Good enough is the bar; the handback proceeds immediately following the single fix pass.
+5. **Opt-In Boundaries**: Independent runtime test verification (`wf-qa`) and granular citation checking (`wf-fact-check`) remain explicit opt-ins triggered only when calibrated by risk or requested by workflow composition.
+
 ## Worker Completion Checklist
 
 The implementation worker satisfies these obligations, then exits:
 
 1. Verify automated tests and linter pass locally.
 2. Push feature branch to remote and open or update the pull request: for a Stage 1 design or spec task preceding a build, record the design, drafted spec change, and independent agent review verdicts in a PKB note the Stage 2 task points to, committing no plan or design file and opening no PR; for a Stage 2 build, open the PR into the base branch as a draft (`gh pr create --draft`) carrying the build and any spec change, and mark the PR ready for review (`gh pr ready`) once proportionate review by independent agents is posted to the PR thread, without waiting for approval; for standalone changes, open a standard pull request targeting the project's base branch. PR descriptions explain what was done and the approach taken, following project PR conventions or templates.
-3. Update the task record: an item is ticked only with evidence of that item itself; any other item stays unticked with its limit stated. Record verifiable evidence with pinpoint citations (`file:line`, test command output, PR URL).
-4. Release the task as `done` via `pkb_release_task`, with the PR URL in `pr_url` and branch recorded on the task record (for Stage 1 tasks, record the PKB note pointer). For a Stage 1 spec or design task whose independent agent review passed, releasing `done` allows Stage 2 to begin. Do not release as `review`. Releasing `done` unblocks the downstream QA or review follow-up task on the graph. Do not wait for CI, review or merge. `partial` is reserved strictly for the worker's own unfinished acceptance items. Workers never create or name follow-up tasks. Dispatched workers operate strictly under the worker state-only invariant: mutate only this task's own record and state, never inspect or modify edges across other tasks or mint follow-up verification tasks.
+3. Conduct the single standard pre-handback review (Marsha + RBG in parallel, one fix pass, no loop) per the procedure above.
+4. Update the task record: an item is ticked only with evidence of that item itself; any other item stays unticked with its limit stated. Record verifiable evidence with pinpoint citations (`file:line`, test command output, PR URL).
+5. Release the task as `done` via `pkb_release_task`, with the PR URL in `pr_url` and branch recorded on the task record (for Stage 1 tasks, record the PKB note pointer). For a Stage 1 spec or design task whose independent agent review passed, releasing `done` allows Stage 2 to begin. Do not release as `review`. Releasing `done` unblocks the downstream QA or review follow-up task on the graph. Do not wait for CI, review or merge. `partial` is reserved strictly for the worker's own unfinished acceptance items. Workers never create or name follow-up tasks. Dispatched workers operate strictly under the worker state-only invariant: mutate only this task's own record and state, never inspect or modify edges across other tasks or mint follow-up verification tasks.
 
 ## Follow-up QA Task Specification
 

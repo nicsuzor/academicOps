@@ -714,6 +714,8 @@ def test_verdict_resolves_session_from_gate_state_when_unspecified(tmp_path, mon
     )
     assert hg.is_armed(session_id) is True
 
+    monkeypatch.delenv("AOPS_SESSION_ID", raising=False)
+    monkeypatch.delenv("CLAUDE_ENV_FILE", raising=False)
     # When --session is not passed, resolve_session_id should find session_id from state
     resolved = pcv.resolve_session_id("", claim_id)
     assert resolved == session_id
@@ -746,6 +748,7 @@ def test_verdict_reports_clear_diagnostic_when_no_session_or_state(tmp_path, mon
     monkeypatch.delenv("AOPS_SESSION_ID", raising=False)
     monkeypatch.delenv("CLAUDE_SESSION_ID", raising=False)
     monkeypatch.delenv("SESSION_ID", raising=False)
+    monkeypatch.delenv("CLAUDE_ENV_FILE", raising=False)
 
     code = pcv.main(
         [
