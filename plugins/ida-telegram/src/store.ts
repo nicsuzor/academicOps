@@ -56,6 +56,7 @@ export class PluginStore {
   private contextFile: string;
   private chatStateFile: string;
   private chatStates: Map<number, ChatState> = new Map();
+  private sessionsFile: string;
   private startedAt: number;
   private seq: number = 1;
   private lastCard: { chatId: number; messageId: number; text: string } | null = null;
@@ -70,6 +71,7 @@ export class PluginStore {
     this.reviewsFile = join(stateDir, "reviews.json");
     this.contextFile = join(stateDir, "context.json");
     this.chatStateFile = join(stateDir, "chat_state.json");
+    this.sessionsFile = join(stateDir, "sessions.json");
     this.startedAt = Date.now();
     this.initDirs();
     this.loadChatStates();
@@ -172,6 +174,37 @@ export class PluginStore {
 
   public getUptimeSeconds(): number {
     return Math.max(1, Math.floor((Date.now() - this.startedAt) / 1000));
+  }
+
+  public getSession(chatId: number): string | undefined {
+    const sessions = this.getSessions();
+    return sessions[String(chatId)];
+  }
+
+  public setSession(chatId: number, sessionId: string): void {
+    this.initDirs();
+    const sessions = this.getSessions();
+    sessions[String(chatId)] = sessionId;
+    writeFileSync(this.sessionsFile, JSON.stringify(sessions, null, 2), "utf-8");
+    this.nextSeq("session_mapped", { chatId, sessionId });
+  }
+
+  public removeSession(chatId: number): void {
+    this.initDirs();
+    const sessions = this.getSessions();
+    delete sessions[String(chatId)];
+    writeFileSync(this.sessionsFile, JSON.stringify(sessions, null, 2), "utf-8");
+    this.nextSeq("session_removed", { chatId });
+  }
+
+  public getSessions(): Record<string, string> {
+    if (!existsSync(this.sessionsFile)) return {};
+    try {
+      const data = JSON.parse(readFileSync(this.sessionsFile, "utf-8"));
+      return typeof data === "object" && data !== null ? data : {};
+    } catch {
+      return {};
+    }
   }
 
   public storeDetails(markdown: string): string {
