@@ -1068,16 +1068,22 @@ class Reason:
     def answered(self) -> list[tuple[str, int | None] | None]:
         """Each Answered entry as (ask id, line) or (ask id, None) for unanswered.
 
-        None marks an entry in neither form.
+        None marks an entry in neither form. Supports semicolon-separated clauses
+        on a single Answered line.
         """
         out: list[tuple[str, int | None] | None] = []
         for entry in self.get("Answered"):
-            if m := _ANSWERED_LINE.match(entry.strip()):
-                out.append((m.group("id"), int(m.group("n"))))
-            elif m := _ANSWERED_NONE.match(entry.strip()):
-                out.append((m.group("id"), None))
-            else:
+            clauses = [c.strip() for c in entry.split(";") if c.strip()]
+            if not clauses:
                 out.append(None)
+                continue
+            for c in clauses:
+                if m := _ANSWERED_LINE.match(c):
+                    out.append((m.group("id"), int(m.group("n"))))
+                elif m := _ANSWERED_NONE.match(c):
+                    out.append((m.group("id"), None))
+                else:
+                    out.append(None)
         return out
 
     def valid_entries(self) -> list[ValidMatch | None]:
@@ -1293,6 +1299,12 @@ def remediation_for_failure(failure: str) -> str:
         return (
             'Required remediation format:\nRelay: "<sentence to relay>" ← (n)\n# or:\nRelay: none'
         )
+    if "Sufficient line contains prohibited term(s)" in failure:
+        return (
+            "Required remediation: conclusions answering an ask bear stakes and cannot be "
+            "settled by reversibility or engine output. Authority is strictly user words or "
+            "governing specs. Revise Sufficient to cite user words/spec or decompose."
+        )
     return ""
 
 
@@ -1341,9 +1353,15 @@ def pass_failures(
             else "no ask ids: Judged names none"
         )
     answered = reason.answered()
-    malformed_answers = [
-        e for e, a in zip(reason.get("Answered"), answered, strict=True) if a is None
-    ]
+    malformed_answers: list[str] = []
+    for entry in reason.get("Answered"):
+        clauses = [c.strip() for c in entry.split(";") if c.strip()]
+        if not clauses:
+            malformed_answers.append(entry)
+            continue
+        for c in clauses:
+            if not (_ANSWERED_LINE.match(c) or _ANSWERED_NONE.match(c)):
+                malformed_answers.append(c)
     if malformed_answers:
         failures.append(
             "Answered entries not in the form '<ask id> ← (n)' or '<ask id> unanswered': "
@@ -1376,6 +1394,22 @@ def pass_failures(
     unanswered = [a for a in ask_ids if a not in answered_ids]
     if unanswered:
         failures.append(f"no Answered line for ask ids: {', '.join(unanswered)}")
+
+    answering_lines = {a[1] for a in answered if a and a[1] is not None}
+    if block is not None and not block_waived:
+        answering_lines |= {v for v in block.answers.values() if isinstance(v, int)}
+
+    prohibited_sufficient = ("reversible", "cheap to reverse", "engine output")
+    for entry in reason.get("Sufficient"):
+        entry_lower = entry.lower()
+        found_terms = [t for t in prohibited_sufficient if t in entry_lower]
+        if not found_terms:
+            continue
+        entry_lines = {int(n) for n in re.findall(r"\((\d+)\)", entry)}
+        if not entry_lines or (answering_lines and bool(entry_lines & answering_lines)):
+            failures.append(
+                f"Sufficient line contains prohibited term(s) ({', '.join(found_terms)}) for step answering an ask: {entry.strip()!r}"
+            )
 
     valid = reason.valid_entries()
     malformed = [e for e, m in zip(reason.get("Valid"), valid, strict=True) if m is None]

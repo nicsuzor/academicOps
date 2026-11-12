@@ -22,7 +22,7 @@ If repo exists, halt and prompt user: rename, adopt existing, or abort. For loca
 Generate the following core files using minimal project templates:
 
 - **`.agents/CORE.md`**: Title, one-line purpose, key directory list, development commands (`uv sync`, `uv run pytest`, `pre-commit run --all-files`), and rules: check repo first, search PKB before tasks, research data is immutable, edit files with native file tools only.
-- **`CLAUDE.md`**: Include `@.agents/CORE.md`, immutable data notice, and data freshness section (authoritative source, local cache path, refresh script, staleness definition).
+- **`AGENTS.md`**: Universal operational instructions, immutable data notice, and data freshness section (authoritative source, local cache path, refresh script, staleness definition).
 - **`.claude/settings.json`**:
   ```json
   {

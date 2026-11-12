@@ -22,7 +22,7 @@ type: template
 
 ## What this step does
 
-Universal default review workflow: coordinated by **`james` as Supervisor**, who explicitly evaluates **proportionality** and **altitude** at intake before dispatching three non-overlapping review components -- **Strategic Direction & Congruence (`pauli`)**, **Compliance (`rbg`)**, and **Quality & Requirements Satisfaction (`marsha`)** -- and defines the one shared review briefing drawn on by all review dispatches. Spawns internal subagents to provide distinct specialist perspectives concurrently under the supervisor.
+Universal default review workflow: coordinated by **`james` as Supervisor**, who explicitly evaluates **proportionality** and **altitude** at intake before dispatching three non-overlapping review components -- **Strategic Direction & Congruence (`pauli`)**, **Compliance (`rbg`)**, and **Quality & Requirements Satisfaction (`marsha`)** -- and defines the one shared review briefing drawn on by all review dispatches. Coordinates distinct specialist perspectives concurrently under the supervisor.
 
 ## Shared Review Briefing
 
@@ -85,10 +85,10 @@ The invoking workflow provides:
 
 1. **Supervisor proportionality, altitude, and standard calibration (`james`)**: Upfront assessment of task importance, risk, blast radius, and reversibility to determine review depth, number of deliberation rounds, subagent model selection (`pro` vs `flash`/`flash_lite`), whether `marsha` audits primary materials (high-risk requests only), target discussion altitude, and the governing genre standard.
 2. **Independent Perspective Evaluation**:
-   - The default review workflow coordinates multiple specialist review perspectives concurrently as internal subagents (`pauli`, `rbg`, `marsha`) under supervisor `james`.
+   - The default review workflow coordinates multiple specialist review perspectives concurrently (`pauli`, `rbg`, `marsha`) under supervisor `james`.
    - Supervisor dispatches `pauli` (inline graph-only brief), `rbg` (artifact text/diff and rule/spec sources), and `marsha` (artifact, rendered outputs, test surface, governing genre standard/criteria, and -- on high-risk requests only -- primary materials) in parallel at the calibrated model selection.
-   - For low-stakes or routine tasks where the supervisor calibrates review proportionality upfront to a single-pass sanity check, review may execute without spawning concurrent subagents.
-   - In an environment where subagent spawning is required but unavailable, execution halts immediately with an explicit error without silent single-agent fallback (`fail-fast`, `no-fallbacks`).
+   - For low-stakes or routine tasks where the supervisor calibrates review proportionality upfront to a single-pass sanity check, review may execute in a single pass.
+   - Where concurrent review perspectives are required but unavailable, execution halts immediately with an explicit error without silent single-agent fallback (`fail-fast`, `no-fallbacks`).
    - Each reviewer evaluates strictly within its component jurisdiction against the artifact's governing standard and returns a verdict (`PASS`, `REVISE`, or `FAIL`) and findings. If no governing standard, specifications, requirements, or criteria are available, `marsha` immediately returns `FAIL`.
 3. **Dialectical Deliberation, Epistemic Audit & Cross-Examination** _(scaled by proportionality)_:
    - For low-stakes sanity checks without critical tensions, proceed directly to synthesis.

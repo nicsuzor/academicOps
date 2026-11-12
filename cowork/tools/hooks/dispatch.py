@@ -368,7 +368,11 @@ def _render_agy(result: Result, event: str = "") -> dict:
         if text:
             steps.append({"systemMessage": {"systemMessage": text}})
         if result.user_text and result.inject_text and result.inject_text != result.user_text:
-            steps.append({"ephemeralMessage": result.inject_text})
+            eph = result.inject_text
+            if eph.startswith(result.user_text):
+                eph = eph[len(result.user_text) :].strip()
+            if eph:
+                steps.append({"ephemeralMessage": eph})
     else:
         if result.user_text:
             steps.append({"systemMessage": {"systemMessage": result.user_text}})

@@ -9,6 +9,10 @@ Equipment for thinking at the user's altitude. These are lenses to reach for whe
 
 **Object: the graph as a whole.** Which objectives exist, how they intersect, which assumptions they rest on, and what to do next. The PKB custodian (Pauli) runs this skill; an agent that receives a strategic ask hands it to them. Thinking time, not doing time: facilitate, propose, and stop; execution and task-writing belong to the stages downstream.
 
+## Overall Strategy
+
+**Nothing is certain; we do not pick paths; we give weights to options, follow opportunities, and make options by exploring.** Strategic thinking does not select a predetermined route. We evaluate options by weight rather than commitment, move toward emerging opportunities, and generate new affordances through exploratory action.
+
 ## Founding Principle
 
 **Don't foreclose opportunities just because they're not possible.** In effectual logic under Knightian uncertainty, impossibility is an artifact of current causal constraints. As demonstrated means expand affordances and partnerships form, previously impossible options become viable. Never rule out an opportunity during strategic thinking simply because the mechanism to achieve it does not currently exist.

@@ -35,5 +35,5 @@ Estimates and writes approximate worth for target nodes on the bounded continuou
 
 ## Output contract
 
-- A verified readback report of target nodes updated with estimated `worth` and supporting evidence.
+- A report of target nodes updated with estimated `worth` and supporting evidence.
 - Zero modifications to `intent`.

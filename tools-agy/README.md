@@ -17,3 +17,4 @@ Domain research skills for academicOps: data analysis, document conversion, diag
 | `deep-research` | Deep research prompt generation and PKB integration. |
 | `style` | Writing style guide generation from sample texts. |
 | `new-project` | End-to-end research project repository scaffolding. |
+| `madr` | Markdown Architectural Decision Record (MADR) authoring for technical choices. |

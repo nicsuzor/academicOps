@@ -82,6 +82,7 @@ the recipe from [references/sql-recipes.md](references/sql-recipes.md).
 
 ## Constraints
 
+- **Never scrape local transcript or debug files**: Agents must never read or scrape local `.system_generated/logs/transcript*.jsonl` or `/tmp/aops_debug_hooks_*.jsonl` files. All session/prompt inspection, trace queries, and cross-session search must query Arize Phoenix via `ida:session-trace`.
 - Filter on `session.id`, never `trace_id`: one trace can hold several sessions across agent interactions.
 - Subagent session identity varies by harness:
   - In `claude` (Claude Code), in-process subagents / teammates may share the dispatching session's

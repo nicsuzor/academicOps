@@ -19,7 +19,6 @@ $ARGUMENTS
 
 1. **Extract ambiguous terms**: Identify 2-3 terms carrying ambiguity (project names, technical terms, shorthand references).
 2. **Search with varied phrasing**: Run 2-3 phrasing variants per term using PKB semantic search.
-   - Semantic search indexes subtasks as their own documents, so no separate task-listing call is needed to avoid missing open work.
    - Budget approximately six calls; stop when two consecutive queries return no new results.
 3. **Filter to a shortlist**: Retain only hits that directly affect caller planning. Discard generic vocabulary matches.
 4. **Emit flat shortlist**: Group by kind (tasks, knowledge, terms), omitting empty kinds:

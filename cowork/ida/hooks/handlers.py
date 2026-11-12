@@ -30,10 +30,12 @@ from dispatch import (
     warn,
 )
 from hearsay_gate import (
+    _is_subagent_conversation,
     hearsay_arm,
     hearsay_handler,
     prompt_text,
     should_arm_hearsay,
+    subagent_pre_handback_check,
 )
 from hearsay_gate import (
     is_peer_report as is_peer_report,
@@ -742,30 +744,18 @@ def _format_session_metadata(ctx: HookContext) -> str:
     return " | ".join(parts)
 
 
-def _get_injected_files(ctx: HookContext) -> list[str]:
-    injected_str = os.environ.get("AOPS_INJECT_FILES", "").strip()
-    if not injected_str:
-        return []
-
-    lines = []
-    base_dir = ctx.cwd
-    for p_str in injected_str.split(","):
-        p_str = p_str.strip()
-        if not p_str:
-            continue
-        p = Path(p_str)
-        if not p.is_absolute():
-            p = base_dir / p
-
-        if p.exists() and p.is_file():
-            try:
-                content = p.read_text(encoding="utf-8")
-                lines.append(f"--- START: {p_str} ---\n{content}\n--- END: {p_str} ---")
-            except Exception as e:
-                lines.append(f"--- ERROR reading {p_str}: {e} ---")
-        else:
-            lines.append(f"--- MISSING: {p_str} ---")
-    return lines
+def _get_workspace_core_md(ctx: HookContext) -> str | None:
+    """Read the project-local .agents/CORE.md if present in target workspace."""
+    if not ctx.cwd:
+        return None
+    workspace_core = Path(ctx.cwd) / ".agents" / "CORE.md"
+    if workspace_core.is_file():
+        try:
+            content = workspace_core.read_text(encoding="utf-8").strip()
+            return content or None
+        except Exception as exc:
+            log.warning("Could not read workspace .agents/CORE.md: %s", exc)
+    return None
 
 
 def _read_env_file(path: Path) -> dict[str, str]:
@@ -855,6 +845,8 @@ PREMISE_CHECK_POINTER = (
     "Reports follow `premise-check`: written in its shape and checked on receipt."
     " Load the skill (`ida:premise-check`) before writing or checking one;"
     " its form is a restricted subset of Argdown."
+    " Every `send_message` / `SendMessage` report to a calling/peer agent"
+    " (and every foreground subagent return) must end with a fenced `argdown` block or `[no claim]`."
 )
 
 
@@ -926,11 +918,17 @@ def session_start(ctx: HookContext) -> Result | None:
         user_parts.insert(0, "Credentials isolated.")
     _export_session_id(ctx)
 
-    injected = _get_injected_files(ctx)
-    if injected:
-        files_str = "Injected context files:\n" + "\n".join(injected)
-        parts.append(files_str)
-        user_parts.append(files_str)
+    if ctx.session_id:
+        safe_session = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", ctx.session_id)
+        marker = _session_pointer_dir() / f"{safe_session}.delivered"
+        try:
+            with marker.open("w", encoding="utf-8") as f:
+                f.write(datetime.now().astimezone().isoformat())
+        except OSError as exc:
+            log.warning("Could not write session pointer marker %s: %s", marker, exc)
+
+    if ws_core := _get_workspace_core_md(ctx):
+        parts.append(ws_core)
 
     return warn("\n\n".join(parts), "\n\n".join(user_parts))
 
@@ -955,10 +953,12 @@ def agy_session_pointer(ctx: HookContext) -> Result | None:
         return None
     safe_session = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", ctx.session_id)
     marker = _session_pointer_dir() / f"{safe_session}.delivered"
+    if marker.exists():
+        return None
     try:
         with marker.open("x", encoding="utf-8") as f:
             f.write(datetime.now().astimezone().isoformat())
-    except FileExistsError:
+    except (FileExistsError, OSError):
         return None
     pointer_text = PREMISE_CHECK_POINTER
     try:
@@ -975,6 +975,18 @@ def agy_session_pointer(ctx: HookContext) -> Result | None:
                     )
     except Exception:
         pass
+
+    if _is_subagent_conversation(ctx):
+        hooks_dir = (
+            ctx.hooks_dir
+            if ctx.hooks_dir and str(ctx.hooks_dir) != "."
+            else Path(__file__).resolve().parent
+        )
+        honesty_agent, honesty_user = load_message_pair(hooks_dir, "honesty")
+        if honesty_agent:
+            pointer_text = f"{honesty_agent}\n\n{pointer_text}"
+        return warn(pointer_text, honesty_user or pointer_text)
+
     return warn(pointer_text)
 
 
@@ -1193,6 +1205,9 @@ def pre_tool(ctx: HookContext) -> Result | None:
     _run_claude_tracer(ctx, "handle_pre_tool")
     agy_pre_tool(ctx)
     emit_debug_span(ctx)
+    res = subagent_pre_handback_check(ctx)
+    if res is not None:
+        return res
     return _run_handler(hearsay_handler, ctx)
 
 
@@ -1235,7 +1250,7 @@ def stop(ctx: HookContext) -> Result | None:
 def subagent_stop(ctx: HookContext) -> Result | None:
     emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_subagent_stop")
-    return None
+    return _run_handler(hearsay_arm, ctx)
 
 
 def stop_failure(ctx: HookContext) -> Result | None:

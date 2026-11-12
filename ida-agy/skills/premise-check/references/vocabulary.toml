@@ -32,6 +32,7 @@ defect_tags = [
   "#construct-drift",
   "#method-gap",
   "#insufficient-for-stakes",
+  "#unruled-defeater",
 ]
 
 # Basis phrases for source attribution guidance. Numeric `rank` is deprecated
