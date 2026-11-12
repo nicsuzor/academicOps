@@ -1,11 +1,11 @@
 ---
 name: learn
-description: Diagnose systemic root causes from session execution records, recommend minimally effective workflow remedies first, and persist session transcripts. Use for "diagnose this error", "why did the session fail", "learn from this run", or session post-mortems. Exclude for non-traceable sessions or immediate task retries.
+description: Diagnose systemic root causes of framework faults from session execution records, recommend minimally effective workflow remedies first, and persist session transcripts. Use for "diagnose this error", "why did the session fail", "learn from this run", or session post-mortems. Exclude for non-traceable sessions, non-framework faults, or immediate task retries.
 ---
 
 # Learn
 
-Perform root-cause analysis on systemic failure classes using session execution records. Diagnose observable failure mechanisms from OpenTelemetry spans (or session logs where the surface does not emit traces), generate and durably persist session transcripts, and recommend minimally effective workflow remedies before escalating to the framework enforcement-map process; do not inspect source code directly.
+Perform root-cause analysis on systemic failure classes in the framework using session execution records. Diagnose observable failure mechanisms from OpenTelemetry spans (or session logs where the surface does not emit traces), generate and durably persist session transcripts, and recommend minimally effective workflow remedies before escalating to the framework enforcement-map process; do not inspect source code directly. /learn diagnoses faults in our own framework only; non-framework faults (such as external tool, CLI, model, or third-party service issues) are not handled by /learn.
 
 ## Worker
 
@@ -45,18 +45,19 @@ Dispatch `/learn` to **`pauli`** (`TypeName: "pauli"`), never `james`. Pauli ope
      1. **User-level PKB workflow** (`type: template`, `project: null`): If the failure relates to individual interaction conventions, personal guidance, or prompt habits, propose or update a user-scoped template in the PKB.
      2. **Project-level PKB workflow** (`type: template`, `project: <project_id>`): If the failure relates to project-specific conventions (e.g. repository pipelines or guidelines), propose or update a project-scoped template in the PKB.
      3. **Universal workflow** (`plugins/ida/skills/workflow-library/workflows/`): If the failure is a recurring operational failure across multiple projects representing a reusable stage template, propose a minimally effective patch to universal templates (`wf-*.md`).
-     4. **Framework enforcement issue** (Fallback of last resort): Only when the failure cannot be remedied via workflow instructions (e.g. hard security bounds, credential leakage, container isolation failures, or universal behavioral rules derived from axioms), escalate to the formal enforcement loop by searching existing issues and filing a GitHub issue or evidence-bump comment under `.github/ISSUE_TEMPLATE/learn.md`.
+     4. **Framework enforcement issue** (Fallback of last resort): Only when a framework failure cannot be remedied via workflow instructions (e.g. hard security bounds, credential leakage, container isolation failures, or universal behavioral rules derived from axioms), draft a proposed framework issue or evidence-bump comment formatted under `.github/ISSUE_TEMPLATE/learn.md` in the report and on the PKB for user approval before filing.
    - **Workflow remedies bypass the formal framework change process:** Workflows are not rules and do not enforce rules; creating or modifying workflows requires no Stage 1/Stage 2 framework change decomposition gate, no enforcement map extract, and owes 0 rows on `specs/ENFORCEMENT-MAP.md`. User and project workflow remedies are updated or created directly in the PKB; universal workflow remedies are opened as standard PRs into `dev`.
    - **Minimally effective standard:** Prefer patching an existing workflow template over creating a new one. Address the exact missing step, handback requirement, or acceptance criterion that failed without introducing redundant narrative or checklist bloat.
-5. **File issues or post evidence-bump comments** (Fallback for Tier 4 only):
+5. **Draft framework issues or evidence-bump comments** (Fallback for Tier 4 only):
+   - /learn diagnoses faults in the framework only; non-framework faults are not handled by /learn.
+   - All findings remain in the report and on the PKB. Never file, comment, or post to GitHub or any external-audience surface without the user's explicit prior approval of that specific item under `data-boundaries`.
    - File no issue and post no comment for login or authentication failures, or for issues resolved at Tiers 1–3.
-   - For each finding escalating to Tier 4, search existing issues within the owning repository for the error class before creating a new issue to avoid duplicate reports. Target the remote repository directly by name (`owner/repo`) for both search and issue/comment creation rather than relying on a local checkout.
-   - When the evidence belongs to an issue that already exists, summarise that evidence into an evidence-bump comment on that existing issue; do not file a separate issue for the evidence.
-   - When no existing issue covers the finding, file in the owning repository:
-     - When the primary failure is already well known and has a handler, file one issue for the handler's failure only.
-     - When the primary failure is not already handled, file both issues (the general bug and the verification miss).
-   - Format every filed issue using the repository's issue template at `.github/ISSUE_TEMPLATE/learn.md`, completing each section with concrete trace data and omitting speculation.
-   - Ground the issue description or evidence-bump comment in the execution record (tool calls, error payloads, latencies). Strip personal names, credentials, file paths containing sensitive usernames, raw environment details, session IDs, private telemetry domains, and PKB IDs (`aops_...`, `task_...`, `mem_...`).
+   - For each framework finding escalating to Tier 4, search existing issues within the framework repository for the error class to avoid duplicate reports, and prepare the draft:
+     - When the evidence belongs to an existing issue, draft an evidence-bump comment in the report and on the PKB.
+     - When no existing issue covers the finding, draft the issue in the report and on the PKB (one issue for the handler failure if known, or both the general bug and verification miss if not handled).
+   - Format every draft issue using the framework issue template at `.github/ISSUE_TEMPLATE/learn.md`, completing each section with concrete trace data and omitting speculation.
+   - Ground the draft description or evidence-bump comment in the execution record (tool calls, error payloads, latencies). Strip personal names, credentials, file paths containing sensitive usernames, raw environment details, session IDs, private telemetry domains, and internal knowledge base or task IDs.
+   - Present the draft to the user for explicit approval before any external filing.
 
 ## Output
 
@@ -66,7 +67,7 @@ Return a markdown report containing:
 - **Evidence**: Session ID / Conversation ID, relevant OTel span IDs (or session log excerpts if the surface does not emit traces), and execution excerpts (tool calls, error payloads, latencies).
 - **Root cause**: The framework or workflow defect the execution record shows let the failure happen: the missing, unreached, ambiguous, or contradicted instruction, workflow step, contract, or tool that led the agent to act as it did. State strictly in active voice, name the actor who acted, quote the governing instruction text that led them to act, and explain the framework defect. Never cite an agent, an agent's capability limitation, or an agent's choice as the root cause, and never use passive voice.
 - **Verification miss**: The check that should have caught the instance, and why it did not.
-- **Remedy**: The proposed minimally effective remedy according to the Proportional Workflow Remedy Ladder (naming tier: User, Project, Universal, or Framework escalation) with draft template changes or PR link, or the specific justification for escalating to Tier 4.
-- **Artifacts**: Links to created or updated PKB template notes, PR for universal workflows, or filed GitHub issue(s) / evidence-bump comment(s).
+- **Remedy**: The proposed minimally effective remedy according to the Proportional Workflow Remedy Ladder (naming tier: User, Project, Universal, or Framework escalation) with draft template changes, draft PR link, or the specific draft framework issue / evidence-bump comment prepared for user approval.
+- **Artifacts**: Links to created or updated PKB template notes, draft PR for universal workflows, or PKB note containing the draft issue or comment awaiting user approval.
 
 For login or authentication failures, return to the caller that the failure is a configuration failure (file no issue and post no comment).
