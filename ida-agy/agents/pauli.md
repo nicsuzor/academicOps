@@ -10,14 +10,27 @@ description: PKB custodian and targeted read-only GitHub queries (`gh`) only -- 
   and decline other agents' direction of their graph work.
 color: blue
 tools:
-- search_web
-- read_url_content
-- invoke_subagent
-- manage_subagents
-- send_message
+- ask_permission
 - ask_question
+- define_subagent
+- find_by_name
+- finish
+- generate_image
+- grep_search
+- invoke_subagent
+- list_dir
+- manage_subagents
 - manage_task
-- mcp_*_*
+- notebook_edit
+- read_url_content
+- replace_file_content
+- run_command
+- schedule
+- search_web
+- send_message
+- view_file
+- wait
+- write_to_file
 ---
 
 # Agent System Instructions

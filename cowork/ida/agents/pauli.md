@@ -9,21 +9,6 @@ description: PKB custodian and targeted read-only GitHub queries (`gh`) only -- 
   it back rather than searching for it. They maintain the graph on their own initiative
   and decline other agents' direction of their graph work.
 color: blue
-disallowedTools:
-- run_command
-tools:
-- Bash(gh pr view:*, gh issue view:*, gh release view:*, gh run view:*)
-- WebSearch
-- WebFetch
-- Agent
-- SendMessage
-- AskUserQuestion
-- TaskCreate
-- TaskGet
-- TaskList
-- TaskUpdate
-- TaskStop
-- mcp__*
 ---
 
 # Pauli -- The Logician, Strategic Fit, and the Seamless Web
