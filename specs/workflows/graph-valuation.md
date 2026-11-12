@@ -278,7 +278,7 @@ siblings is one row for their container, not one row each.
 
 **Proposal and direct write.** Agents write proposals directly with `set_by: agent-proposed`.
 
-- pauli evaluates each row in the batch, writes the edge with `set_by: agent-proposed`, re-reads each edge, and reports the readback without parse warnings.
+- pauli evaluates each row in the batch, writes the edge with `set_by: agent-proposed`, and reports proposals without readback.
 - Direct corrections are made on the graph as needed.
 - `drop` sets the quantum to `none`. It does not delete the edge.
 
@@ -411,7 +411,7 @@ keeps pauli's rule "never raise the same non-blocking concern twice"
 | `plugins/ida/skills/reify/SKILL.md`, `plugins/ida/skills/dispatch/SKILL.md` | `depends_on` becomes `needs` in :20, :43, :79-80 and dispatch :14. Readiness keeps its meaning (FR:517). |
 | `plugins/ida/skills/pull/SKILL.md`, `plugins/ida/skills/dump/SKILL.md` | "wire directed `blocks` edges" becomes "wire a `needs` edge from the blocked task" (FR:334). |
 | `plugins/ida/skills/workflow-library/SKILL.md` and templates `wf-escalated-approval`, `wf-research-and-implement`, `wf-code-task-base`, `wf-finish` | `depends_on` becomes `needs` in the skill and the first three templates. The parent in `wf-finish` follows FQ1. |
-| New universal template `wf-densify` (in `plugins/ida/skills/workflow-library/workflows/`) | R3 as an outline: pool, ordering, granularity, table, reply grammar, readback, exit criteria. |
+| New universal template `wf-densify` (in `plugins/ida/skills/workflow-library/workflows/`) | R3 as an outline: pool, ordering, granularity, table, reply grammar, exit criteria. |
 | New universal template `wf-price-targets` (same directory) | R4 as an outline. |
 | PKB-tier template `wf-weight-repair` | Retired in favour of `wf-densify`. Its granularity rule, correction tests and "measure from the source of record" rule move across. |
 | PKB-tier template `wf-email-sweep` | Module C gains R2 steps 1-6. |
@@ -442,7 +442,7 @@ agents james, marsha, rbg, sara; and all tools-plugin skills.
 | **2. Work Sequencing** | `needs` | `task` | `to` | Boolean execution prerequisite. Unblocks when prerequisite is `done`. Engine treats as $q=1.0, p=1.0$. Quantum and probability are NOT written. |
 | **3. Structural Clustering** | `[[node_id]]` | Any (task, note, spec) | None in frontmatter; written as markdown wikilinks in body | Natural clustering for graph physics and search. Zero frontmatter duplication. |
 
-Direct writes use `set_by: agent-proposed`. Each write is followed by a `pkb.get_task` readback with no `parse_warnings`.
+Direct writes use `set_by: agent-proposed`. Writes returning without error need no readback.
 
 **Batch message.** The §5 table, numbered 1..n with n ≤ 50, preceded by one line giving the pool
 size and how many rows remain.
@@ -491,7 +491,7 @@ Each test can be checked by an observer reading the graph or a transcript.
 | A4 | The circular stays quiet | Replay calibration case 1 (the "Dear Friends" Copyright Plus forward) through R2. It is classed `reference`, or captured with `deadline_class: fake` and no edge above the default quantum. It is not in the top 50 under any display key. | U1, U15 |
 | A5 | No worth from a sender | Two fixture emails, identical except the sender (a strategic contact versus an unknown). They produce identical edge proposals. | FR:498, U1 |
 | A6 | Densify batch shape | One `wf-densify` run produces one message with ≤ 50 rows, sorted by reach in descending order, each row carrying every column. | S7, U20 |
-| A7 | Densify writes proposals directly | One `wf-densify` run writes edge proposals as `agent-proposed` without pausing for sign-off. The readback is in the transcript. | U20, R3 |
+| A7 | Densify writes proposals directly | One `wf-densify` run writes edge proposals as `agent-proposed` without pausing for sign-off. | U20, R3 |
 | A8 | Silence approves nothing | Leave a batch unanswered for 14 days. No edge in it changed `set_by`, and the batch is withdrawn. | U20 |
 | A9 | Unapproved means default | Before approval, the flow output for a row's source equals its output with that edge's quantum set to the default. | FR:474, S7 |
 | A10 | Target pricing by agent estimation | Agents work out approximate target worth and write it directly to the target node with evidence, leaving `intent` untouched. | S14, R4 |

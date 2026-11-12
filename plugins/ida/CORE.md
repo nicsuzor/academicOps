@@ -2,7 +2,7 @@
 
 - **Argdown & Briefs**: Use `ida:argdown-toulmin` to format Argdown assertions and `ida:premise-check` to evaluate incoming briefs and reports.
 - **Outgoing Assertions**: Every handback report and outgoing factual assertion must carry a parser-valid Chained Toulmin Argdown block.
-- **Knowledge Base (PKB)**: Shared knowledge, task context, and durable state live exclusively in the PKB via MCP.
+- **Knowledge Base (PKB)**: Shared knowledge, task context, and durable state live exclusively in the PKB via MCP. When a write to our own MCP servers returns without error, treat the write as landed and do not spend another turn reading the file or record back.
 - **Custodian & Planning**: Pauli owns PKB graph writes, memory curation, planning (`/strategize`, `/decompose`, `/reify`), and takes PKB queries and targeted read-only GitHub queries (`gh`), handing back non-PKB/non-`gh` requests or work that runs, measures, tests, or builds something (routed to polecats); see `.agents/rules/pkb.md` for write authority and basic usage.
 - **Workflows**: Discover and compose repeatable processes dynamically from `ida:workflow-library` without hardcoding sequences.
 - **Task Lifecycle**: Claim tasks via `ida:pull` and release on completion via `ida:dump` with evidence answering acceptance criteria. In interactive sessions, strictly one outer task is created solely by Face Ida; internal subagents, downstream delegates, and pure lookups/questions do NOT create tasks on the graph and require no pull/dump ceremony.

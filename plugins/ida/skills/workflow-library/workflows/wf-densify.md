@@ -29,12 +29,11 @@ Drafts, evaluates, and writes link proposals for unvalued or uncalibrated graph 
 5. **Draft and write edge proposals (ADR-0002)**:
    - For each edge in the batch (up to 50 rows), evaluate label (`serves`, `needs`, `supports`), quantum, probability, effect, and one-sentence justification under the Three-Purpose Taxonomy.
    - Densify handles only real weight flow edges (`serves`, and valid `supports` that directly alter an upstream node's execution difficulty or likelihood); never convert markdown body citations into frontmatter edges. Tracking tasks link only to user understanding targets.
-   - Write edges directly with `set_by: agent-proposed`.
-   - Read back each updated edge via `pkb.get_task` and verify readback without parse warnings.
+   - Write edges directly with `set_by: agent-proposed`. Writes returning without error need no readback.
 6. **Agent corrections**: Correct mechanical errors unasked on in-node evidence (word outside scale, edge to wrong class, mismatched justification); write as `agent-proposed`.
 7. **Rely on graph corrections**: Do not pause, poll, or block for human sign-off; record the link proposals on the graph where corrections are made directly as needed.
 
 ## Output contract
 
 - An evaluated edge report of ≤ 50 rows ordered by reach.
-- A verified readback report of edges updated with `set_by: agent-proposed` and clean parse status.
+- A report of edges updated with `set_by: agent-proposed`.

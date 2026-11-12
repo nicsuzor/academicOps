@@ -62,6 +62,7 @@ Query at the level of detail appropriate to the step:
 
 - Request lightweight metadata or concise summaries when searching, listing, or triaging across multiple nodes so broad scans stay compact.
 - Reserve full, untruncated body reads for the specific target nodes actively being reviewed, composed, or edited.
+- **No read-back of error-free writes**: When an MCP write (`pkb`, `services`) returns without error, the write is done. Never spend another turn reading the written file or record back to check or confirm it.
 
 ## Graph Node Constraints & Task Structure
 
