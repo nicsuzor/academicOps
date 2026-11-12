@@ -25,6 +25,7 @@ from dispatch import (
     Result,
     _merge,
     _run_handler,
+    is_cowork,
     load_message_pair,
     refuse,
     warn,
@@ -77,6 +78,7 @@ _BASIC_VARS = (
 # on a stalled backend from 15s to 5s -- this hook is synchronous ahead of
 # every prompt, so a hang here is a hang for the whole turn.
 _SEARCH_TIMEOUT_SECONDS = 5
+_WARMUP_TIMEOUT_SECONDS = 3.0
 
 # Same measurement run: payload size for 5 results was 3.5-6.4KB (p95). This
 # hook fires on every single UserPromptSubmit -- the highest-frequency
@@ -334,7 +336,11 @@ def _parse_mcp_response(raw_body: str) -> str | None:
     return _cap_output(out) if out else None
 
 
-def _initialize_mcp_session(mcp_url: str, base_headers: dict[str, str]) -> str | None:
+def _initialize_mcp_session(
+    mcp_url: str,
+    base_headers: dict[str, str],
+    timeout: float = _SEARCH_TIMEOUT_SECONDS,
+) -> str | None:
     init_headers = dict(base_headers)
     init_headers.pop("mcp-session-id", None)
     init_payload = {
@@ -350,7 +356,7 @@ def _initialize_mcp_session(mcp_url: str, base_headers: dict[str, str]) -> str |
     data_bytes = json.dumps(init_payload).encode("utf-8")
     req = urllib.request.Request(mcp_url, data=data_bytes, headers=init_headers, method="POST")
     try:
-        with urllib.request.urlopen(req, timeout=_SEARCH_TIMEOUT_SECONDS) as resp:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
             sess_id = resp.headers.get("mcp-session-id")
             if sess_id:
                 _save_cached_mcp_session(sess_id)
@@ -364,19 +370,75 @@ def _initialize_mcp_session(mcp_url: str, base_headers: dict[str, str]) -> str |
             f"the PKB endpoint failed with HTTP {exc.code} during initialize: {exc.reason}"
         ) from exc
     except TimeoutError as exc:
-        raise TimeoutError(
-            f"the PKB endpoint did not answer within {_SEARCH_TIMEOUT_SECONDS} seconds"
-        ) from exc
+        raise TimeoutError(f"the PKB endpoint did not answer within {timeout} seconds") from exc
     except urllib.error.URLError as exc:
         if (
             isinstance(exc.reason, (TimeoutError, socket.timeout))
             or "timed out" in str(exc.reason).lower()
         ):
-            raise TimeoutError(
-                f"the PKB endpoint did not answer within {_SEARCH_TIMEOUT_SECONDS} seconds"
-            ) from exc
+            raise TimeoutError(f"the PKB endpoint did not answer within {timeout} seconds") from exc
         raise RuntimeError(f"the PKB endpoint is unreachable ({mcp_url}): {exc.reason}") from exc
     return None
+
+
+def _warm_pkb_session(ctx: HookContext | None = None) -> None:
+    """Anticipatory warm-up of the PKB portal MCP session at SessionStart.
+
+    Initializes an MCP session if cold and caches mcp-session-id, eliminating
+    the first-turn cold-start penalty. Exits immediately if unconfigured,
+    disabled, running in Cowork, or if valid cache already exists.
+    """
+    mcp_url = os.environ.get("PKB_MCP_URL")
+    if not mcp_url:
+        return
+    if os.environ.get("PKB_HYDRATE") == "0":
+        return
+    if is_cowork():
+        return
+    if _get_cached_mcp_session() is not None:
+        return
+
+    headers = _resolve_mcp_headers()
+    sess_id = (
+        (ctx.session_id if ctx else None)
+        or (
+            ctx.raw.get("session_id")
+            if ctx and hasattr(ctx, "raw") and isinstance(ctx.raw, dict)
+            else None
+        )
+        or (
+            ctx.raw.get("conversationId")
+            if ctx and hasattr(ctx, "raw") and isinstance(ctx.raw, dict)
+            else None
+        )
+        or os.environ.get("AOPS_SESSION_ID")
+        or ""
+    )
+
+    try:
+        new_sess = _initialize_mcp_session(mcp_url, headers, timeout=_WARMUP_TIMEOUT_SECONDS)
+        if new_sess and sess_id:
+            tracer_file = _tracer_state_dir() / f"{sess_id}.json"
+            if tracer_file.is_file():
+                try:
+                    tdata = json.loads(tracer_file.read_text(encoding="utf-8"))
+                    tdata["pkb_warmup"] = "ok"
+                    tracer_file.write_text(json.dumps(tdata), encoding="utf-8")
+                except Exception as exc:
+                    log.debug("Could not record pkb_warmup in tracer file: %s", exc)
+    except Exception as exc:
+        warn_msg = f"WARNING: PKB connection warm-up failed: {exc}"
+        print(warn_msg, file=sys.stderr)
+        log.warning("PKB connection warm-up failed: %s", exc)
+        if sess_id:
+            tracer_file = _tracer_state_dir() / f"{sess_id}.json"
+            if tracer_file.is_file():
+                try:
+                    tdata = json.loads(tracer_file.read_text(encoding="utf-8"))
+                    tdata["pkb_warmup_error"] = str(exc)
+                    tracer_file.write_text(json.dumps(tdata), encoding="utf-8")
+                except Exception as e:
+                    log.debug("Could not record pkb_warmup_error in tracer file: %s", e)
 
 
 def _resolve_surface(ctx: HookContext | None = None) -> str:
@@ -461,8 +523,24 @@ def _post_mcp_search(
             req_headers[k] = v
 
     cached_session = _get_cached_mcp_session()
+    is_warm = bool(cached_session)
     if cached_session:
         req_headers["mcp-session-id"] = cached_session
+
+    if sess_id:
+        tracer_file = _tracer_state_dir() / f"{sess_id}.json"
+        if tracer_file.is_file():
+            try:
+                tdata = json.loads(tracer_file.read_text(encoding="utf-8"))
+                cur = tdata.get("current_trace")
+                if isinstance(cur, dict):
+                    cur["session_warm"] = is_warm
+                tdata["session_warm"] = is_warm
+                tracer_file.write_text(json.dumps(tdata), encoding="utf-8")
+            except Exception as exc:
+                log.debug(
+                    "Could not update session_warm in tracer file for session %s: %s", sess_id, exc
+                )
 
     prefix = os.environ.get("PKB_MCP_TOOL_PREFIX", "pkb_")
     tool_name = f"{prefix}search"
@@ -560,6 +638,18 @@ def _post_mcp_search(
                 cache_path.unlink()
         except OSError:
             pass
+        if sess_id:
+            tracer_file = _tracer_state_dir() / f"{sess_id}.json"
+            if tracer_file.is_file():
+                try:
+                    tdata = json.loads(tracer_file.read_text(encoding="utf-8"))
+                    cur = tdata.get("current_trace")
+                    if isinstance(cur, dict):
+                        cur["session_warm"] = False
+                    tdata["session_warm"] = False
+                    tracer_file.write_text(json.dumps(tdata), encoding="utf-8")
+                except Exception:
+                    pass
         req_headers.pop("mcp-session-id", None)
         new_session = _initialize_mcp_session(mcp_url, req_headers)
         if new_session:
@@ -913,6 +1003,7 @@ def session_start(ctx: HookContext) -> Result | None:
         parts.append("Credentials have been isolated in CLAUDE_ENV_FILE.")
         user_parts.insert(0, "Credentials isolated.")
     _export_session_id(ctx)
+    _warm_pkb_session(ctx)
 
     if ctx.session_id:
         safe_session = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", ctx.session_id)

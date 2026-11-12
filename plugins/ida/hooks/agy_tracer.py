@@ -1008,6 +1008,8 @@ def handle_stop(data: dict, config: dict) -> None:
             chain_attrs["agent.task_id"] = ct["background_task_id"]
         if parent_session_id:
             chain_attrs["parent.session_id"] = parent_session_id
+        if "session_warm" in ct:
+            chain_attrs["session_warm"] = ct["session_warm"]
         if agent_name:
             chain_attrs["agent.name"] = agent_name
 

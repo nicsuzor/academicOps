@@ -7,6 +7,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -1487,3 +1488,185 @@ def test_search_the_pkb_uses_root_phoenix_session_id_for_subagent_turn(
     sess = req["json"]["params"]["arguments"]["_session"]
     assert sess["session_id"] == "root-sess-01"
     assert sess["agent_id"] == "subagent-sess-42"
+
+
+# --- US-5 / SessionStart PKB connection warm-up tests ----------------------
+
+
+def test_session_start_warms_pkb_when_cache_empty(tmp_path, monkeypatch):
+    """AC-5.1: SessionStart checks session cache and initializes PKB session if cold."""
+    tracer_dir = tmp_path / ".claude" / "tracer"
+    tracer_dir.mkdir(parents=True, exist_ok=True)
+    state_file = tracer_dir / "sess-warm-1.json"
+    state_file.write_text(json.dumps({"session_id": "sess-warm-1"}), encoding="utf-8")
+
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("PKB_MCP_URL", "https://mcp.suzor.com/mcp")
+    monkeypatch.setenv("DISPATCHER_MCP_TOKEN_ID", "token-id")
+    monkeypatch.setenv("DISPATCHER_MCP_TOKEN_SECRET", "token-secret")
+
+    ctx = HookContext(
+        client="claude",
+        event="SessionStart",
+        session_id="sess-warm-1",
+        raw={"session_id": "sess-warm-1"},
+        hooks_dir=PKB_HOOKS,
+        cwd="/workspace",
+    )
+
+    with patch.object(
+        handlers, "_initialize_mcp_session", return_value="sess-portal-999"
+    ) as mock_init:
+        res = handlers.session_start(ctx)
+        assert res is not None
+        mock_init.assert_called_once_with(
+            "https://mcp.suzor.com/mcp",
+            {"CF-Access-Client-Id": "token-id", "CF-Access-Client-Secret": "token-secret"},
+            timeout=3.0,
+        )
+
+    # Check tracer state recorded pkb_warmup
+    state = json.loads(state_file.read_text(encoding="utf-8"))
+    assert state.get("pkb_warmup") == "ok"
+
+
+def test_session_start_warmup_skips_when_cache_warm(tmp_path, monkeypatch):
+    """AC-5.3: SessionStart skips warm-up network call when unexpired cache exists."""
+    tracer_dir = tmp_path / ".claude" / "tracer"
+    tracer_dir.mkdir(parents=True, exist_ok=True)
+    cache_file = tracer_dir / "pkb_session_cache.json"
+    cache_file.write_text(
+        json.dumps({"session_id": "cached-valid-sess", "timestamp": time.time()}),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("PKB_MCP_URL", "https://mcp.suzor.com/mcp")
+
+    ctx = HookContext(
+        client="claude",
+        event="SessionStart",
+        session_id="sess-warm-2",
+        raw={"session_id": "sess-warm-2"},
+        hooks_dir=PKB_HOOKS,
+        cwd="/workspace",
+    )
+
+    with patch.object(handlers, "_initialize_mcp_session") as mock_init:
+        res = handlers.session_start(ctx)
+        assert res is not None
+        mock_init.assert_not_called()
+
+
+def test_session_start_warmup_timeout_does_not_abort(tmp_path, monkeypatch, capsys):
+    """AC-5.2: Failed or slow warm-up does not abort session start, logs warning, and records error in tracer."""
+    tracer_dir = tmp_path / ".claude" / "tracer"
+    tracer_dir.mkdir(parents=True, exist_ok=True)
+    state_file = tracer_dir / "sess-warm-3.json"
+    state_file.write_text(json.dumps({"session_id": "sess-warm-3"}), encoding="utf-8")
+
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("PKB_MCP_URL", "https://mcp.suzor.com/mcp")
+
+    ctx = HookContext(
+        client="claude",
+        event="SessionStart",
+        session_id="sess-warm-3",
+        raw={"session_id": "sess-warm-3"},
+        hooks_dir=PKB_HOOKS,
+        cwd="/workspace",
+    )
+
+    with patch.object(
+        handlers,
+        "_initialize_mcp_session",
+        side_effect=TimeoutError("the PKB endpoint did not answer within 3.0 seconds"),
+    ):
+        res = handlers.session_start(ctx)
+        assert res is not None
+        assert "session: sess-warm-3" in res.inject_text
+
+    # Diagnostic warning printed to stderr
+    captured = capsys.readouterr()
+    assert "WARNING: PKB connection warm-up failed" in captured.err
+
+    # Error recorded in tracer state
+    state = json.loads(state_file.read_text(encoding="utf-8"))
+    assert "the PKB endpoint did not answer within 3.0 seconds" in state.get("pkb_warmup_error", "")
+
+
+def test_session_start_warmup_skips_when_unset_cowork_or_disabled(tmp_path, monkeypatch):
+    """AC-5.4: Warm-up is skipped when PKB_MCP_URL is unset, PKB_HYDRATE=0, or running in Cowork."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    # 1. When PKB_MCP_URL is unset, _warm_pkb_session does nothing
+    monkeypatch.delenv("PKB_MCP_URL", raising=False)
+    with patch.object(handlers, "_initialize_mcp_session") as mock_init:
+        handlers._warm_pkb_session()
+        mock_init.assert_not_called()
+
+    # 2. When PKB_HYDRATE=0, warm-up is skipped
+    monkeypatch.setenv("PKB_MCP_URL", "https://mcp.suzor.com/mcp")
+    monkeypatch.setenv("PKB_HYDRATE", "0")
+    with patch.object(handlers, "_initialize_mcp_session") as mock_init:
+        handlers._warm_pkb_session()
+        mock_init.assert_not_called()
+
+    # 3. When in Cowork, warm-up is skipped
+    monkeypatch.delenv("PKB_HYDRATE", raising=False)
+    monkeypatch.setenv("CLAUDE_CODE_IS_COWORK", "true")
+    with patch.object(handlers, "_initialize_mcp_session") as mock_init:
+        handlers._warm_pkb_session()
+        mock_init.assert_not_called()
+
+
+def test_prompt_hydration_records_session_warm_telemetry(http_mcp_server, monkeypatch, tmp_path):
+    """AC-5.3: Prompt hydration records session_warm: true on warm route and session_warm: false on cold route."""
+    tracer_dir = tmp_path / ".claude" / "tracer"
+    tracer_dir.mkdir(parents=True, exist_ok=True)
+    state_file = tracer_dir / "sess-telemetry.json"
+    state_file.write_text(
+        json.dumps(
+            {
+                "session_id": "sess-telemetry",
+                "current_trace": {
+                    "trace_id": "11112222333344445555666677778888",
+                    "root_span_id": "1111222233334444",
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    cache_file = tracer_dir / "pkb_session_cache.json"
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("PKB_MCP_URL", http_mcp_server.url)
+
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        session_id="sess-telemetry",
+        raw={"prompt": "check warm telemetry"},
+        hooks_dir=PKB_HOOKS,
+        agent_type="ida:ida",
+    )
+
+    # 1. Warm call: cache is present
+    cache_file.write_text(
+        json.dumps({"session_id": "cached-session-ok", "timestamp": time.time()}),
+        encoding="utf-8",
+    )
+    res = handlers.search_the_pkb(ctx)
+    assert res is not None
+    state = json.loads(state_file.read_text(encoding="utf-8"))
+    assert state.get("session_warm") is True
+    assert state.get("current_trace", {}).get("session_warm") is True
+
+    # 2. Cold call: cache is absent
+    if cache_file.exists():
+        cache_file.unlink()
+    res2 = handlers.search_the_pkb(ctx)
+    assert res2 is not None
+    state2 = json.loads(state_file.read_text(encoding="utf-8"))
+    assert state2.get("session_warm") is False
+    assert state2.get("current_trace", {}).get("session_warm") is False

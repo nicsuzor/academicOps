@@ -2382,6 +2382,8 @@ def _complete_turn(
     if final_output:
         root_attrs["output.value"] = final_output
         root_attrs["output.mime_type"] = "text/plain"
+    if "session_warm" in current_trace:
+        root_attrs["session_warm"] = current_trace["session_warm"]
 
     root_record: dict[str, Any] = {
         "trace_id_hex": trace_id,
@@ -3738,6 +3740,8 @@ def emit_debug_hook_span(
         "input.value": full_payload_json,
         "input.mime_type": "application/json",
     }
+    if isinstance(current_trace, dict) and "session_warm" in current_trace:
+        attrs["session_warm"] = current_trace["session_warm"]
 
     tool_name = str(
         data.get("tool_name")
