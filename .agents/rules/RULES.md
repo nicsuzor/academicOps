@@ -91,6 +91,22 @@ Task graph edges follow the Three-Purpose Edge Taxonomy per [`specs/decisions/00
 
 A worker executing a task may only mutate that task's own state (checking off acceptance criteria, recording verifiable evidence, transitioning status). Workers never inspect or modify edges across other tasks, compute reverse graph dependencies, or mint follow-up verification tasks; unblocking, sequencing, and parent rollup belong exclusively to the graph engine, dispatcher, and background truth maintenance (`wf-reconcile`).
 
+## Recurring Jobs: Change-Only and Single-Flight
+
+Every recurring job handles only what changed since its last completed run (`since: <cursor>`), stops immediately when nothing changed, and never starts while another run of the same job is going. See [`recurring-jobs.md`](recurring-jobs.md).
+
+- **Change-only execution**: Inspect cursor at Step 0; if no delta occurred since the last completed run cursor, exit immediately with zero writes and zero subagent dispatches.
+- **Single-flight concurrency**: Maintain an active in-progress lock marker. Halt immediately if another run is active with a fresh heartbeat (< 15 minutes).
+- **Durable cursors**: Store execution cursors in authoritative state records or document frontmatter; update cursors and clear locks upon handover.
+
+## Bounded Helpers
+
+Subagent helpers are kept bounded through timely lifecycle management, batched operations, and active prompt cache awareness. See [`bounded-helpers.md`](bounded-helpers.md).
+
+- **Lifecycle and culling encouragement**: On agent-idle hooks and task boundaries, agents are encouraged (not required) to assess whether a subagent has run too long, decide whether to cull it, and dispatch fresh subagents for unrelated tasks rather than reusing long-running helpers.
+- **Batched operations**: Batch multi-item reads and mutations into single turns rather than serial round-trips.
+- **Active cache management**: Helpers must yield or complete before the 5-minute cache TTL expires; idling across cache invalidation boundaries is prohibited.
+
 ## Decisions Emerge from Graph Relationships, Not Standalone Tasks
 
 Agents must never create un-actionable "decision" tasks or file conversational questions as backlog tickets. An agent given a task does the groundwork and makes the decision itself; it never files the task back to the user as their decision (`assignee: user`) unless the user explicitly requested to make that decision themselves (tg 1013). Where research investigates an open design question or architectural alternatives, the agent evaluates the options and chooses the recommended route directly to unblock downstream implementation tasks.
@@ -115,3 +131,7 @@ A rule is waived only by another rule or a direct instruction from the user. A d
 ## Mandatory Upward Reporting of Rule Violations
 
 Every agent must always report all rule violations -- whether committed during execution or discovered in examined material -- up the chain to the coordinator and user. Handback reports and handover summaries must explicitly disclose rule violations with rule citations and reasons. An agent must never omit, downplay, or hide a rule violation.
+
+## Session traces through Phoenix, never local JSONL logs
+
+Direct all session, prompt, and execution trace lookups exclusively to Arize Phoenix via `ida:session-trace`. Agents are strictly prohibited from reading or scraping raw local `.system_generated/logs/transcript*.jsonl` or `/tmp/aops_debug_hooks_*.jsonl` files. When a subagent receives a brief with missing inputs or target artifacts, it must verify on Turn 1 and immediately return `REVISE` via `send_message` to the caller rather than scraping local transcripts or debug files, without executing `verdict.py`.

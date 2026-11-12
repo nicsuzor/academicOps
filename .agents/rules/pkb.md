@@ -11,4 +11,4 @@ description: Ruling on PKB write authority and basic PKB usage conventions.
   - Pass `_session: {session_id: "..."}` on every PKB and services MCP tool call.
   - Search before creating; use `metadata` or `summary` for broad scans, reserving `full` for target bodies.
   - Links are strictly one-way: tasks link upward to parent project or epic; tasks never link to indexes or MoCs.
-  - Current state only (`synthesize-not-accrete`): rewrite notes in place; task bodies hold only goal, scope, checklist, and pointers; bugs go to GitHub only.
+  - Current state only (`synthesize-not-accrete`): The PKB is CURRENT STATE ONLY. Rewrite notes in place; delete superseded facts and obsolete material immediately. Never accumulate historical accretion lists (such as legacy `sources:` frontmatter arrays), session references, or changelogs; cite non-trivial claims inline or via the `source` property per `cite-sources`. Task bodies hold only goal, scope, checklist, and pointers; bugs go to GitHub only.

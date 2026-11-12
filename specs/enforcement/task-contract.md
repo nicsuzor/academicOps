@@ -17,13 +17,16 @@ contract.
 **The unified worker contract -- this is its canonical home; other docs link
 here.** Any fully-spec'd task -- including one with children; an "epic" is just
 a task with children, no special machinery -- can be claimed by any worker on
-any surface (polecat container, in-session subagent, agent team). Workers use
-every harness feature they have, and with that comes the obligation to
-demonstrate compliance and QA internally -- how is the worker's business. The
-return contract: **evidence + an output URL, written to the shared task record.**
-One deliverable per claimed task, never a spray of per-child PRs the principal
-reviews individually. Task scope is one project/repo. Sync-wait versus
-fire-and-forget is a dispatch-time cadence choice, not a contract difference.
+an appropriate execution surface (polecat container, in-session subagent, agent team).
+Tasks requiring repository code modifications, sweeping code greps, or expensive
+test suite execution belong strictly in isolated polecat containers, never in
+interactive coordinator sessions. Workers use every harness feature they have,
+and with that comes the obligation to demonstrate compliance and QA internally --
+how is the worker's business. The return contract: **evidence + an output URL,
+written to the shared task record.** One deliverable per claimed task, never a spray
+of per-child PRs the principal reviews individually. Task scope is one project/repo.
+Sync-wait versus fire-and-forget is a dispatch-time cadence choice, not a contract
+difference.
 
 **The task graph is the sole source of truth for completion.** `release_task` /
 `complete_task` is the authoritative completion claim; a prose "done" that
@@ -72,6 +75,8 @@ this contract does not restate.
 - **Outcome-oriented task contract invariant** -- task acceptance criteria and instructions define observable end-state conditions and verification criteria rather than implementation mechanisms. `Goal`, `Acceptance`, and `Instructions` must contain zero line numbers, line ranges, or narrow slice prescriptions. Reification of multi-file or architectural changes under `wf-code-task-base` preserves a distinct Stage 1 (Design) task preceding Stage 2 (Build).
 - **Brief and stage satisfiability invariant** -- task acceptance criteria, report requirements, and delegation briefs must be bounded strictly to artifacts and state produced by the assigned worker before release. Downstream pipeline outcomes (such as pull request URLs from subsequent workers, merged code branches, or decisions delegated to future stages) must never be demanded of early-stage workers, dispatchers, or planning agents.
 - **Full-context file inspection invariant** -- workers must read target repository files in full before executing edits. Keyhole line-slice reads (`read_file` with narrow line windows around advisory line hints) in isolation without prior whole-file context are strictly prohibited; advisory line hints are starting pointers only. Files exceeding single-page tool limits are inspected via sequential discovery before editing.
+- **Change-only, single-flight recurring runs invariant** -- every recurring job handles only what changed since its last completed run (`since: <cursor>`), stops immediately when nothing changed, and never starts while another run of the same job is going. Cursors are stored in authoritative state records or document frontmatter; active in-progress markers enforce single-flight concurrency.
+- **Bounded helper invariant** -- subagent helpers are kept bounded: related operations batched into single turns, and no helper left idle on background work past the 5-minute prompt cache lifetime. On agent-idle hooks and task boundaries, agents are encouraged to evaluate whether a helper has run too long and cull it, dispatching fresh subagents for unrelated tasks.
 - **Evidence contract** -- at `release_task` / `complete_task`; the completion
   claim must carry independent-verification evidence bound to artifact state,
   or a stated failure reason. **This is the primary enforcement point.**

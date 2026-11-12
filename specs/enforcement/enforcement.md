@@ -116,6 +116,19 @@ Any change that shapes agent behaviour (hooks, review lenses, branch protection,
 - **Changes to Ida are made, then tested by use:** a change at the `instructions` level to Ida (her persona, her instruction files, the skills she checks and relays with) is made on the user's direction without an empirical test first; if it does not work, the next experiment follows. We learn by doing and talking and cannot afford to wait (user ruling, 2026-10-29). Keep the concise record of each experiment required by the escalation threshold above; measurement gates mechanisms, not instructions. The framework-change workflow template carries the same ruling.
 - **Escalation threshold:** A pattern of failures provides evidence to increment force or mechanism; increments must be exhausted before escalating. Concise records must be kept of assessment of suitability of each regulatory experiment.
 
+### Bounded Helpers and Subagent Lifecycle
+
+To prevent unsustainable context growth and token burn across background operations, subagent helpers are kept bounded:
+
+- **Level 1 (Instructions / Advisory & Imperative)**: On an agent-idle hook and at task boundaries, agents are encouraged (not required) to consider whether a subagent helper has run too long and decide whether to cull it, and to dispatch fresh subagents for unrelated tasks rather than reusing long-running helpers. Batched operations and the 5-minute prompt cache TTL are imperative instructions.
+
+### Recurring Jobs: Change-Only and Single-Flight
+
+Recurring background jobs and sweeps enforce:
+
+- **Level 1 (Instructions / Imperative)**: Inspect execution cursor at Step 0 and exit immediately with zero writes and zero subagent dispatches when no delta is detected (`since: <cursor>`).
+- **Level 4 (Structural / Block)**: Concurrency lock (in-progress marker with heartbeat < 15 min) prevents overlapping or concurrent runs of the same recurring job.
+
 ## Personalities are not skills
 
 An **agent personality** defines conduct, judgment register, and disposition: who the agent is and what standard it holds. An **agent skill** defines a procedure: how a job gets done.

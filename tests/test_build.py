@@ -918,6 +918,31 @@ def test_disallowed_tools_subtraction(tmp_path):
     res3_claude = yaml.safe_load((agents_dir3 / "agent3.md").read_text().split("---")[1])
     assert res3_claude["disallowedTools"] == "Write, Edit"
 
+    # Case 4: explicit scoped tool + native agy disallowedTools (e.g. Bash(...) + disallowedTools: run_command)
+    plugin_dir4 = tmp_path / "disallowed-native-agy"
+    agents_dir4 = plugin_dir4 / "agents"
+    agents_dir4.mkdir(parents=True)
+    (agents_dir4 / "agent4.md").write_text(
+        "---\nname: agent4\ndescription: Scoped bash with disallowed run_command\ntools:\n  - Bash(gh pr view:*)\n  - WebSearch\ndisallowedTools: run_command\n---\n\nBody",
+        encoding="utf-8",
+    )
+    ctx4 = BuildContext(
+        plugin=Plugin(
+            directory="disallowed-native-agy",
+            marketplace_name="disallowed-native-agy",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir4,
+        ),
+        client="agy",
+        version=VERSION,
+        manifests={"plugin": {"name": "disallowed-native-agy"}},
+    )
+    adapt_agy(plugin_dir4, ctx4)
+    res4 = yaml.safe_load((agents_dir4 / "agent4.md").read_text().split("---")[1])
+    assert res4["tools"] == ["search_web"]
+    assert "run_command" not in res4["tools"]
+
 
 def test_mcpservers_dropped_for_agy_kept_for_claude(tmp_path):
     import yaml
