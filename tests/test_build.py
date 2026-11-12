@@ -433,6 +433,23 @@ def test_agy_agent_carries_source_color_through_unmodified(built_orchestrate):
     assert agy_marsha_fm["color"] == source_fm["color"]
 
 
+def test_agy_agent_body_carries_source_body_unchanged(built):
+    """_adapt_agents prepends the '# Agent System Instructions' heading when absent
+    and otherwise carries the source agent body through unmodified, even when
+    translated tools include send_message."""
+    source_raw = (TESTDATA / "plugins" / "alpha" / "agents" / "alpha-agent.md").read_text(
+        encoding="utf-8"
+    )
+    source_body = source_raw.split("---", 2)[2].strip()
+
+    agy_raw = (built / "fixture-alpha-agy" / "agents" / "alpha-agent.md").read_text(
+        encoding="utf-8"
+    )
+    agy_body = agy_raw.split("---", 2)[2].strip()
+
+    assert agy_body == f"# Agent System Instructions\n\n{source_body}"
+
+
 def test_agent_empty_tools_list_raises_build_error(tmp_path):
     from build.clients.agy import adapt as adapt_agy
     from build.clients.claude import adapt as adapt_claude
