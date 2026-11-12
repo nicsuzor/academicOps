@@ -1501,7 +1501,7 @@ def test_session_start_warms_pkb_when_cache_empty(tmp_path, monkeypatch):
     state_file.write_text(json.dumps({"session_id": "sess-warm-1"}), encoding="utf-8")
 
     monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setenv("PKB_MCP_URL", "https://mcp.suzor.com/mcp")
+    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.com/mcp")
     monkeypatch.setenv("DISPATCHER_MCP_TOKEN_ID", "token-id")
     monkeypatch.setenv("DISPATCHER_MCP_TOKEN_SECRET", "token-secret")
 
@@ -1520,7 +1520,7 @@ def test_session_start_warms_pkb_when_cache_empty(tmp_path, monkeypatch):
         res = handlers.session_start(ctx)
         assert res is not None
         mock_init.assert_called_once_with(
-            "https://mcp.suzor.com/mcp",
+            "https://pkb.example.com/mcp",
             {"CF-Access-Client-Id": "token-id", "CF-Access-Client-Secret": "token-secret"},
             timeout=3.0,
         )
@@ -1541,7 +1541,7 @@ def test_session_start_warmup_skips_when_cache_warm(tmp_path, monkeypatch):
     )
 
     monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setenv("PKB_MCP_URL", "https://mcp.suzor.com/mcp")
+    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.com/mcp")
 
     ctx = HookContext(
         client="claude",
@@ -1566,7 +1566,7 @@ def test_session_start_warmup_timeout_does_not_abort(tmp_path, monkeypatch, caps
     state_file.write_text(json.dumps({"session_id": "sess-warm-3"}), encoding="utf-8")
 
     monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setenv("PKB_MCP_URL", "https://mcp.suzor.com/mcp")
+    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.com/mcp")
 
     ctx = HookContext(
         client="claude",
@@ -1606,7 +1606,7 @@ def test_session_start_warmup_skips_when_unset_cowork_or_disabled(tmp_path, monk
         mock_init.assert_not_called()
 
     # 2. When PKB_HYDRATE=0, warm-up is skipped
-    monkeypatch.setenv("PKB_MCP_URL", "https://mcp.suzor.com/mcp")
+    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.com/mcp")
     monkeypatch.setenv("PKB_HYDRATE", "0")
     with patch.object(handlers, "_initialize_mcp_session") as mock_init:
         handlers._warm_pkb_session()
