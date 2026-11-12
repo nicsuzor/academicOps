@@ -18,20 +18,21 @@ A task is ready when its status is `queued`, it has no open `needs` edges or inc
 - A QA follow-up stays queued until its primary task releases `done`; once the primary task releases `done`, the QA follow-up's `needs` dependency is satisfied and it becomes ready for immediate dispatch.
 - A task that folds follow-ups into internal subtasks is ready when executable by the same agent in one session; only send to `/reify` when work requires independent sessions, personas, or approval gates that must be cut into an epic with child tasks.
 - Send a task that is unready or underspecified to `/reify` with its id, because writing and rewriting tasks is that skill's job. Dispatch the rest.
+- **Graph deduplication and premise check**: Verify that no conflicting or overlapping open task exists (query `pkb_list_tasks` for active sibling tasks under the parent container) and that a premise-check PASS was recorded on reification before dispatching. If an unlinked sibling covers identical subsystem artifacts, halt and resolve the overlap.
 - **Intake Contract:** On receiving a direction or work brief, the receiving agent must record its own summary stating deliverables as a frozen `## Acceptance` checklist on a PKB task before work starts.
 
 ## 2. Start the workers
 
 Start one polecat worker per ready task, in parallel, through the project's dispatch pathway. The worker's whole prompt is `/ida:pull <task-id>`, because the task carries everything else.
 
-Confirm each worker started. A worker that failed to start is a halt: report the task id and the failure verbatim.
+Workers queue asynchronously; callers are not notified when they start, and neither track nor report starts. Assume work proceeds unless an error comes back. A worker dispatch failure is a halt: report the task id and the failure verbatim.
 
 ## 3. Report and stop (fire-and-forget)
 
-Dispatch is fire-and-forget: the worker records its result on the task graph. Once the workers start, output the dispatch report and end your turn immediately:
+Dispatch is fire-and-forget: the worker records its result on the task graph. Once tasks are dispatched, output the dispatch report and end your turn immediately:
 
-- Output one line per task: title, id, and the worker started (container name), or the `/reify` hand-back and why.
-- Never wait for a worker to finish in the dispatch turn, and never call or block on event-stream tools (such as `polecat_polecat_events`), status checks, sleep loops, or timers.
+- Output one line per task: title, id, and that the task is queued for a worker, or the `/reify` hand-back and why.
+- Never wait for a worker to finish in the dispatch turn, never wait for or report worker starts, and never call or block on event-stream tools (such as `polecat_polecat_events`), status checks, sleep loops, or timers.
 
 ## 4. Act on a completed worker (separate invocation or turn)
 

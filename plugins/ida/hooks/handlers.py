@@ -1250,7 +1250,7 @@ def stop(ctx: HookContext) -> Result | None:
 def subagent_stop(ctx: HookContext) -> Result | None:
     emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_subagent_stop")
-    return None
+    return _run_handler(hearsay_arm, ctx)
 
 
 def stop_failure(ctx: HookContext) -> Result | None:

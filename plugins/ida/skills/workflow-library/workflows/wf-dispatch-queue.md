@@ -23,7 +23,7 @@ Three roles, in order: the PKB custodian finds and ranks; the front agent shows 
    - _Not ready_: a `queued` or `ready` task that fails a check. The custodian sends it through `/reify` under their own authority and reports it as sent, with the failing check; it is not offered for dispatch.
    - Tasks assigned to the user, held in `review` by the user, or `in_progress` under a live claim are never candidates.
 2. **Recommend and show (front agent)**: For each candidate the front agent writes one recommendation, `dispatch`, `hold`, or `ask`, with its reason in one clause: a standing ruling by the user that settles it, a dependency the graph does not carry, a cost out of proportion to the task's worth, or a conflict with work in flight (same file, same branch, same reviewer). The list goes to the user in the graph's order, unchanged, with the recommendation first on each line; the whole list is one question, answered by multi-select, with `dispatch all recommended` as its first option. On a channel that cannot carry a multi-select, one decision per message, in order. If the user does not answer in the session, the list is written to today's daily note under `## With you`, and the step ends.
-3. **Dispatch through the dispatcher (dispatcher)**: On the user's answer the front agent sends the dispatcher the approved ids and, for each, the user's words and the reason it is being dispatched, nothing on method. Approving a `ready` task promotes it to `queued` on the record before it is sent. The dispatcher runs `/dispatch` on the set and answers with, per task, the worker started (container name) or the failure verbatim. Tasks the user held stay where they are, with the user's reason recorded on the task.
+3. **Dispatch through the dispatcher (dispatcher)**: On the user's answer the front agent sends the dispatcher the approved ids and, for each, the user's words and the reason it is being dispatched, nothing on method. Approving a `ready` task promotes it to `queued` on the record before it is sent. The dispatcher runs `/dispatch` on the set and answers with, per task, that the task was queued for a worker or the failure verbatim. Tasks the user held stay where they are, with the user's reason recorded on the task.
 4. **Record**: Each dispatched task carries the dispatch on its record (worker, time, the user's approval). Each held task carries the hold reason. The daily note receives nothing but the unanswered list under `## With you`.
 
 ## Must not
@@ -42,7 +42,7 @@ Emit one synthesized result:
 
 1. The list as shown to the user: for each candidate its id, title, status, recommendation and reason, in the order shown.
 2. The user's answer verbatim, or that none came and the list went to the daily note.
-3. Per approved task: the worker started (container name) or the failure verbatim from the dispatcher.
+3. Per approved task: that the task was queued for a worker or the failure verbatim from the dispatcher.
 4. Per held task: the hold reason recorded.
 5. Tasks the custodian sent to `/reify`, with the failing check.
 6. Name ids for every touched task (no bare counts).
