@@ -19,9 +19,8 @@ Pick the cheapest surface that answers the question, and name it in your report
   `agy --agent james --print "<prompt>"`
 - **A polecat container** when the work needs isolation. Driving one
   interactively is the rest of this file.
-- **The `pc` launcher with a task id** for complex work you will not supervise.
-  It is fire-and-forget: results do not come back to you and you get no
-  completion notification either way.
+- **Headless polecat dispatch (`polecat_run_container` via `services` MCP or `scripts/polecat -t <id>`)**
+  for isolated task execution.
 
 Spawn independent agents from `Bash` in the background. Do not poll and do not
 sleep — go idle and read the result when the completion notification arrives.
@@ -187,14 +186,12 @@ Container artifacts land at
 
 ```bash
 SESS_DIR="$AOPS_SESSIONS/logs/$(date +%Y%m%d)/$TMUX_NAME/workspace"
-jq '{schema_version, status, exit_code, delivery_guard, transcript, degraded}' "$SESS_DIR/run.json"
+jq '{schema_version, exit_code, agent_exit_code, final_task_status, task_guard_outcome}' "$SESS_DIR/run.json"
 jq -c '.' "$SESS_DIR/polecat-session-hooks.jsonl" | head -n 10
-uv run pytest tests/transcripts/test_polecat_discovery.py -v
 ```
 
-Pass assertions: `run.json` has `.schema_version == 1`, `.status == "success"`,
-`.delivery_guard.ok == true`, and `.transcript.found == true` with
-`event_count > 0`. Every `polecat-session-hooks.jsonl` line conforms to the
+Pass assertions: `run.json` has `.schema_version == 1` and `.exit_code == 0`.
+Every `polecat-session-hooks.jsonl` line conforms to the
 five-field schema `ts` (ISO 8601, microsecond UTC), `client` (`claude`|`agy`),
 `event`, `session_id`, `tool`.
 
