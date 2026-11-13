@@ -36,7 +36,6 @@ export class StdioMcpServer {
         broker,
         bot,
         permRelay,
-        emitChannelNotification: (content, meta) => this.emitChannelNotification(content, meta),
       });
   }
 

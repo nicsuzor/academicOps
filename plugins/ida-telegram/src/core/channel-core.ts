@@ -111,7 +111,6 @@ export interface ChannelCoreOptions {
   bot: TelegramBotClient | null;
   permRelay: PermissionRelay;
   turnManager?: TurnManager;
-  emitChannelNotification?: (content: string, meta: Record<string, unknown>) => void;
 }
 
 export class SharedTelegramChannelCore {
@@ -121,7 +120,6 @@ export class SharedTelegramChannelCore {
   public bot: TelegramBotClient | null;
   public permRelay: PermissionRelay;
   public turnManager?: TurnManager;
-  public emitChannelNotification?: (content: string, meta: Record<string, unknown>) => void;
 
   constructor(options: ChannelCoreOptions) {
     this.config = options.config;
@@ -130,17 +128,10 @@ export class SharedTelegramChannelCore {
     this.bot = options.bot;
     this.permRelay = options.permRelay;
     this.turnManager = options.turnManager;
-    this.emitChannelNotification = options.emitChannelNotification;
   }
 
   public getDefaultChatId(): number {
     return this.config.allowFrom[0] || 0;
-  }
-
-  private notify(content: string, meta: Record<string, unknown>): void {
-    if (this.emitChannelNotification) {
-      this.emitChannelNotification(content, meta);
-    }
   }
 
   /**
@@ -327,13 +318,6 @@ export class SharedTelegramChannelCore {
           if (!sendRes?.ok || !sendRes?.result?.message_id) {
             const errorMsg = sendRes?.error || sendRes?.description || "Failed to deliver question card";
             this.broker.markDeliveryFailed(result.questionId, errorMsg);
-            this.notify(`Question delivery failed: ${errorMsg}`, {
-              event: "question_delivery_failed",
-              question_id: result.questionId,
-              error: errorMsg,
-              turn_id: q.turn_id || q.turnId || topTurnId,
-              session_id: this.store.getSession(defaultChatId),
-            });
             return {
               success: false,
               error: errorMsg,
@@ -419,7 +403,12 @@ export class SharedTelegramChannelCore {
     }
     const options: { iconColor?: number; iconCustomEmojiId?: string } = {};
     if (args.icon_color !== undefined || args.iconColor !== undefined) {
-      options.iconColor = Number(args.icon_color ?? args.iconColor);
+      const rawColor = args.icon_color ?? args.iconColor;
+      const parsedColor = typeof rawColor === "number" ? rawColor : Number(rawColor);
+      if (!Number.isInteger(parsedColor)) {
+        return { success: false, error: "Invalid icon_color: must be an integer RGB value" };
+      }
+      options.iconColor = parsedColor;
     }
     if (args.icon_custom_emoji_id !== undefined || args.iconCustomEmojiId !== undefined) {
       options.iconCustomEmojiId = String(args.icon_custom_emoji_id ?? args.iconCustomEmojiId);

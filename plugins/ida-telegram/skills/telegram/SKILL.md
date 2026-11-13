@@ -34,7 +34,7 @@ The user reads on a phone between other commitments. Cognitive load is the bindi
 - **Route non-urgent decisions to the Mini App (`mini_app_only: true`):** When asking questions that do not block immediate progress or when queuing options for the user's later review, set `mini_app_only: true` (or `chat: false`) on `ask_user` or individual questions. The question is stored in the broker and appears when the user opens the Mini App, without posting a card to chat. Note that Mini App-only questions rely on the user opening the Mini App, so time-sensitive questions requiring prompt intervention should remain in chat.
 - **Enough information and proportionate evidence:** Every question or decision request to the user must provide enough self-contained information to make the decision and evidence proportionate to the decision. Provide deep context, evidence, logs, or detailed tradeoffs in the `detail` parameter of a question. The Mini App displays a `🔍 Details` button on the question card that opens this fuller background on demand, keeping the card compact.
 - **Asynchronous by default with reasoned recommendation:** Post questions with structured options, placing the recommended choice first (`"(Recommended)"`) supported by functional reasoning. When no recommendation is available, offer to have one assessed.
-- **Remove answered questions from outstanding list:** Once a question you asked has been answered in your session or resolved outside channel events, remove that question from the Mini App's outstanding list immediately using `close_question({ question_id, reason })` or `answer_question({ question_id, choice })`. (Questions answered via Telegram cards or the Mini App are dismissed automatically by the broker.) Never leave settled questions pending in the user's outstanding list.
+- **Question resolution lifecycle:** Questions answered via Telegram cards or the Mini App are dismissed automatically by the broker. Never leave settled questions unresolved in chat follow-ups.
 - **Never wait or block:** Questions never block or time out. Proceed with other ready work or conclude the turn; answers arrive asynchronously as channel events.
 
 ## Message Action Buttons (Logic Check, Explain, Reasons & Recommendation)
@@ -94,9 +94,9 @@ Every reply sent over Telegram automatically carries inline action buttons with 
 - **Explicit target overriding:** If work requires posting into a specific topic, pass `message_thread_id` (or `thread_id`) explicitly to `reply` or `ask_user`.
 - **Opening new threads (`create_thread`):** When starting a dedicated discussion, branching off a topic, or when the user asks to open the conversation in a new window or thread, create a new forum topic using `create_thread({ name: "..." })` (backed by `createForumTopic`). Once created, the new thread automatically becomes active and subsequent replies (`reply`, `ask_user`, etc.) land inside it without needing an explicit thread ID.
 - **Renaming threads (`rename_thread`):** When a conversation shifts focus or a thread requires a descriptive title, rename the forum topic using `rename_thread({ name: "..." })` (backed by `editForumTopic`). If `message_thread_id` is omitted, the active thread is renamed automatically.
-- **Closing threads (`close_thread`):** Close a resolved forum topic using `close_thread({ message_thread_id?: ... })` (aliases `close_topic`, `close_forum_topic`, backed by `closeForumTopic`). When `message_thread_id` is omitted, the active topic in session context is closed. General topic `#1` cannot be closed.
-- **Reopening threads (`reopen_thread`):** Reopen a previously closed forum topic using `reopen_thread({ message_thread_id?: ... })` (aliases `reopen_topic`, `reopen_forum_topic`, backed by `reopenForumTopic`). When omitted, defaults to the active topic. General topic `#1` cannot be reopened.
-- **Deleting threads (`delete_thread`):** Permanently delete a forum topic and its message history using `delete_thread({ message_thread_id?: ... })` (aliases `delete_topic`, `delete_forum_topic`, backed by `deleteForumTopic`). Deleting clears active thread tracking for that chat so subsequent replies do not route into the deleted topic. General topic `#1` cannot be deleted.
+- **Closing threads (`close_thread`):** Close a resolved forum topic using `close_thread({ message_thread_id?: ... })` (backed by `closeForumTopic`). When `message_thread_id` is omitted, the active topic in session context is closed. General topic `#1` cannot be closed.
+- **Reopening threads (`reopen_thread`):** Reopen a previously closed forum topic using `reopen_thread({ message_thread_id?: ... })` (backed by `reopenForumTopic`). When omitted, defaults to the active topic. General topic `#1` cannot be reopened.
+- **Deleting threads (`delete_thread`):** Permanently delete a forum topic and its message history using `delete_thread({ message_thread_id?: ... })` (backed by `deleteForumTopic`). Deleting clears active thread tracking for that chat so subsequent replies do not route into the deleted topic. General topic `#1` cannot be deleted.
 - **Complete list of 13 exposed thread/topic MCP tools:**
   1. `create_thread` (`createForumTopic`)
   2. `rename_thread` (`editForumTopic`)
@@ -111,16 +111,6 @@ Every reply sent over Telegram automatically carries inline action buttons with 
   11. `hide_general_thread` (`hideGeneralForumTopic`)
   12. `unhide_general_thread` (`unhideGeneralForumTopic`)
   13. `unpin_all_general_thread_messages` (`unpinAllGeneralForumTopicMessages`)
-
-## Message Management (Pinning, Batch Transfer, Deletion & Button Editing)
-
-- **Pinning messages:** Pin important reference messages or decisions to the header using `pin_message({ message_id: ... })` (alias `pin_chat_message`). Pins silently by default (`disable_notification: true`).
-- **Unpinning messages:** Unpin a specific message using `unpin_message({ message_id: ... })` (alias `unpin_chat_message`), or omit `message_id` to unpin the most recently pinned message.
-- **Unpinning all messages:** Clear all pinned messages in a topic or chat using `unpin_all_messages({ message_thread_id?: ... })` (alias `unpin_all_chat_messages`). When `message_thread_id` is provided, unpins topic messages; when omitted, unpins all chat messages.
-- **Batch forwarding:** Forward batches of 1 to 100 messages into a destination thread or chat using `forward_messages({ message_ids: [...], message_thread_id?: ... })`.
-- **Batch copying:** Copy batches of 1 to 100 messages into a destination thread or chat without forward headers using `copy_messages({ message_ids: [...], message_thread_id?: ..., remove_caption?: boolean })`.
-- **Batch deletion:** Delete batches of 1 to 100 messages sent within the 48-hour Telegram deletion window using `delete_messages({ message_ids: [...] })` (e.g. to clean up originals after migrating to a thread). Telegram rejections (e.g. messages older than 48 hours) surface verbatim.
-- **Editing message buttons:** Update or remove inline keyboards on previously sent messages in-place without reposting text using `edit_message_reply_markup({ message_id: ..., buttons: [...] })` (alias `edit_message_buttons`). Pass an empty array `buttons: []` to clear all buttons. Telegram's `message is not modified` response is treated as idempotent success.
 
 ## Voice
 

@@ -1622,7 +1622,7 @@ describe("Threaded Conversations Support", () => {
         expect(replyTool?.inputSchema?.properties?.thread_id).toBeDefined();
 
         const reactTool = tools.find((t) => t.name === "react");
-        expect(reactTool?.inputSchema?.properties?.message_thread_id).toBeDefined();
+        expect(reactTool?.inputSchema?.properties?.message_thread_id).toBeUndefined();
 
         const askTool = tools.find((t) => t.name === "ask_user");
         expect(askTool?.inputSchema?.properties?.message_thread_id).toBeDefined();
@@ -1769,6 +1769,18 @@ describe("Threaded Conversations Support", () => {
         });
         expect(invalidRes?.isError).toBe(true);
         expect(JSON.parse((invalidRes?.result as any).content[0].text).success).toBe(false);
+
+        // Validate non-integer icon_color rejection on create_thread
+        const invalidColorRes = await mcp.handleMessage({
+          jsonrpc: "2.0",
+          id: 221,
+          method: "tools/call",
+          params: { name: "create_thread", arguments: { name: "Bad Color", icon_color: "not-an-int" } },
+        });
+        expect(invalidColorRes?.isError).toBe(true);
+        const invalidColorParsed = JSON.parse((invalidColorRes?.result as any).content[0].text);
+        expect(invalidColorParsed.success).toBe(false);
+        expect(invalidColorParsed.error).toContain("icon_color");
       } finally {
         globalThis.fetch = origFetch;
         rmSync(stateDir, { recursive: true, force: true });

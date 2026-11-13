@@ -27,7 +27,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
         buttons: {
           type: "array",
           description:
-            "Inline option buttons. Attach one per answer whenever the reply asks the user a question, recommendation first; a tap arrives as a button_tap channel event.",
+            "Inline option buttons, one per row. Attach one per answer whenever the reply asks the user a question, recommendation first; a tap arrives as a button_tap channel event.",
           items: {
             type: "object",
             properties: {
@@ -39,17 +39,6 @@ export const MCP_TOOLS: ToolDefinition[] = [
             required: ["label"],
           },
         },
-        button_layout: {
-          description: "Button row layout specification (integer buttons per row or array of counts per row)",
-          oneOf: [
-            { type: "integer" },
-            { type: "array", items: { type: "integer" } },
-          ],
-        },
-        buttons_per_row: { type: "integer", description: "Number of inline buttons per row" },
-        predefined_row: { type: "boolean", description: "Include predefined quick-reply action row" },
-        feedback: { type: "boolean", description: "Attach thumbs up/down feedback buttons" },
-        actions: { type: "boolean", description: "Attach quick action buttons" },
         voice: { type: "boolean", description: "Send tier 1 as a spoken voice note" },
         reply_to: { type: "integer", description: "Telegram message ID to reply to" },
         review: {
@@ -73,8 +62,6 @@ export const MCP_TOOLS: ToolDefinition[] = [
         chat_id: { type: "integer", description: "Telegram chat ID" },
         message_id: { type: "integer", description: "Message ID to react to" },
         reaction: { type: "string", description: "Emoji reaction string from allowed set" },
-        message_thread_id: { type: "integer", description: "Optional forum topic / thread ID" },
-        thread_id: { type: "integer", description: "Alias for message_thread_id" },
       },
       required: ["message_id", "reaction"],
     },
@@ -181,7 +168,8 @@ export const MCP_TOOLS: ToolDefinition[] = [
   },
   {
     name: "rename_thread",
-    description: "Rename a Telegram forum topic and/or update its custom icon (editForumTopic).",
+    description:
+      "Rename a Telegram forum topic and/or update its custom icon (editForumTopic). Cannot rename General topic #1; use edit_general_thread instead.",
     inputSchema: {
       type: "object",
       properties: {

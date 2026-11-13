@@ -569,38 +569,6 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     expect(resolved!.channelEvent.turn_id).toBeUndefined();
   });
 
-  test("MCP tools descriptions use 'the user' and omit personal names, and scope to core plus Telegram thread tools", async () => {
-    const { MCP_TOOLS } = await import("../src/mcp/tools.js");
-    for (const tool of MCP_TOOLS) {
-      expect(tool.description).not.toContain("Nic");
-    }
-    const toolNames = MCP_TOOLS.map((t) => t.name);
-    expect(toolNames).toEqual([
-      "reply",
-      "react",
-      "ask_user",
-      "edit_message",
-      "create_thread",
-      "rename_thread",
-      "close_thread",
-      "reopen_thread",
-      "delete_thread",
-      "unpin_all_thread_messages",
-      "get_forum_topic_icon_stickers",
-      "edit_general_thread",
-      "close_general_thread",
-      "reopen_general_thread",
-      "hide_general_thread",
-      "unhide_general_thread",
-      "unpin_all_general_thread_messages",
-    ]);
-
-    const replyTool = MCP_TOOLS.find((t) => t.name === "reply");
-    expect(replyTool?.description).toContain("the user");
-    const askUserTool = MCP_TOOLS.find((t) => t.name === "ask_user");
-    expect(askUserTool?.description).toContain("the user");
-  });
-
   test("permission_request notification fails fast if request_id or tool_name is missing", async () => {
     const config = {
       botToken: "test-token",

@@ -40,7 +40,7 @@ As an operator using direct messages (private chats) or regular unthreaded group
 
 ### US-4 Thread Renaming via Tool Call
 
-As an operator interacting with an agent in a forum topic or thread, I want Ida to be able to rename the thread to reflect the active conversation topic, task, or state, so that threads in chat carry meaningful names.
+As an operator interacting with an agent in a forum topic or thread, I want the agent to be able to rename the thread to reflect the active conversation topic, task, or state, so that threads in chat carry meaningful names.
 
 - **AC-4.1 Active Thread Renaming:** When the agent invokes `rename_thread({ name: "..." })` without specifying a thread or chat, the tool renames the active thread in the current chat using the Telegram Bot API (`editForumTopic`).
 - **AC-4.2 Explicit Thread Target:** When the agent invokes `rename_thread({ message_thread_id: 1234, name: "New Name" })` (or alias `thread_id`), the tool renames that specific thread in the specified or default chat, optionally forwarding `icon_custom_emoji_id`.
@@ -59,7 +59,7 @@ As an operator interacting with an agent in a chat where no thread is defined (a
 
 ### US-6 Thread Creation via Tool Call
 
-As an operator conversing with Ida in the main chat or an existing thread, I want Ida to be able to open a new titled thread (forum topic) and continue our conversation directly inside that newly created thread, so that distinct discussions or tasks are organized into dedicated topics without manual topic setup.
+As an operator conversing with an agent in the main chat or an existing thread, I want the agent to be able to open a new titled thread (forum topic) and continue our conversation directly inside that newly created thread, so that distinct discussions or tasks are organized into dedicated topics without manual topic setup.
 
 - **AC-6.1 Thread Creation:** When the agent invokes `create_thread({ name: "..." })` (aliases `title`, `create_topic`, `create_forum_topic`), the tool opens a new topic in the current or specified chat via the Telegram Bot API (`createForumTopic`), updates the active thread for that chat to the newly created `message_thread_id`, and returns `{ success: true, chat_id, message_thread_id, thread_id, name }`.
 - **AC-6.2 Outbound Thread Confinement After Creation:** Immediately following a successful `create_thread` invocation, subsequent outbound messages (`reply`, `ask_user`, `react`) sent to that chat automatically target the newly created thread without requiring explicit thread parameters from the agent.
@@ -103,17 +103,17 @@ As an operator conversing with Ida in the main chat or an existing thread, I wan
    `rename_thread` tool definition in `MCP_TOOLS` exposes `chat_id` (optional, defaults to primary chat), `message_thread_id` (optional, alias `thread_id`, defaults to active thread in chat via `bot.getLastThreadId`), `name` (required string, 1-128 characters), and `icon_custom_emoji_id` (optional custom emoji ID for topic icon).
 2. **Bot API Dispatch (`bot.ts`):**
    `TelegramBotClient.editForumTopic(chatId, messageThreadId, name, iconCustomEmojiId)` dispatches `POST /bot<token>/editForumTopic` with `{ chat_id, message_thread_id, name, ... }`.
-3. **Validation and Error Handling (`server.ts`):**
-   Input validation rejects empty/whitespace names, names > 128 characters, or missing thread IDs immediately with `{ success: false, error: "<reason>" }`. When the Telegram Bot API returns `ok: false`, the tool returns `{ success: false, error: res.description || "Failed to rename thread" }` so callers receive explicit failure feedback.
+3. **Validation and Error Handling (`channel-core.ts`):**
+   Input validation rejects empty/whitespace names, names > 128 characters, General topic `#1`, or missing thread IDs immediately with `{ success: false, error: "<reason>" }`. When the Telegram Bot API returns `ok: false`, the tool returns `{ success: false, error: res.description || "Failed to rename forum topic" }` so callers receive explicit failure feedback.
 
 ### 4. Thread Creation
 
 1. **Tool Definition & Schema (`tools.ts`):**
-   `create_thread` tool definition in `MCP_TOOLS` exposes `chat_id` (optional, defaults to primary user), `name` (required string, 1-128 characters), `title` (optional alias for `name`), `icon_color` (optional integer RGB color), and `icon_custom_emoji_id` (optional custom emoji ID for topic icon).
+   `create_thread` tool definition in `MCP_TOOLS` exposes `chat_id` (optional, defaults to primary user), `name` (required string, 1-128 characters), `icon_color` (optional integer RGB color), and `icon_custom_emoji_id` (optional custom emoji ID for topic icon).
 2. **Bot API Dispatch & Active Thread Tracking (`bot.ts`):**
    `TelegramBotClient.createForumTopic(chatId, name, options)` dispatches `POST /bot<token>/createForumTopic` with `{ chat_id, name, ... }`. Upon receiving a successful response with `result.message_thread_id`, it records the thread ID in `lastThreadIdByChat` for that `chatId`, ensuring all subsequent outbound replies automatically land in the newly created thread.
-3. **Validation and Error Handling (`server.ts`):**
-   Input validation rejects empty/whitespace names, names > 128 characters, or missing chat IDs with `{ success: false, error: "<reason>" }`. When the Telegram Bot API returns `ok: false` or does not return `result.message_thread_id`, the tool returns `{ success: false, error: res.description || "Failed to create thread" }`.
+3. **Validation and Error Handling (`channel-core.ts`):**
+   Input validation rejects empty/whitespace names, names > 128 characters, non-integer `icon_color`, or missing chat IDs with `{ success: false, error: "<reason>" }`. When the Telegram Bot API returns `ok: false` or does not return `result.message_thread_id`, the tool returns `{ success: false, error: res.description || "Failed to create forum topic" }`.
 
 ### 5. Summary of All 13 Exposed Forum-Topic / Thread MCP Tools
 
@@ -137,7 +137,7 @@ The `ida-telegram` plugin exposes 13 thread-related MCP tools to agents:
 
 | Criterion | Target Requirement | Verification Check & Observable Proof |
 | :- | :- | :- |
-| **AC-1** | Called from the main chat or existing thread, `create_thread` opens a titled thread and Ida's next reply is sent inside it automatically without explicit thread parameters. | Integration test in `plugins/ida-telegram/test/threads.test.ts` showing `create_thread` tool call creates the topic via `createForumTopic`, sets active thread, and follow-up `reply` call sends `sendMessage` carrying `message_thread_id`. |
+| **AC-1** | Called from the main chat or existing thread, `create_thread` opens a titled thread and the agent's next reply is sent inside it automatically without explicit thread parameters. | Integration test in `plugins/ida-telegram/test/threads.test.ts` showing `create_thread` tool call creates the topic via `createForumTopic`, sets active thread, and follow-up `reply` call sends `sendMessage` carrying `message_thread_id`. |
 | **AC-2** | A failed create (empty title, name > 128 characters, chat where topics are unavailable, or Telegram API rejection) returns a clear error to the caller. | Unit tests in `plugins/ida-telegram/test/threads.test.ts` testing empty/whitespace name, name length limit, and Telegram API rejection (e.g. `FORUM_CLOSED`, `NOT_ENOUGH_RIGHTS`), verifying `{ success: false, error: "..." }` responses. |
 | **AC-3** | The governing spec states the tool's contract and the `telegram` skill documents the tool for agents. | Inspection of diffs in `specs/telegram/threaded-conversations.md` and `plugins/ida-telegram/skills/telegram/SKILL.md`. |
 | **AC-4** | Test suite and linter green; PR open into `release/v1.0-rc0` with each criterion mapped to its evidence. | Passing execution of `bun test` and `make lint`, plus git branch and draft PR open targeting `release/v1.0-rc0`. |
