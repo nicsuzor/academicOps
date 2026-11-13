@@ -1,6 +1,6 @@
 [project]
 name = "academicops"
-version = "1.4.0"
+version = "1.5.1"
 description = "A principled, integrated approach to operationalising what academic integrity requires in a distributed, AI-assisted workflow"
 requires-python = ">=3.11"
 dependencies = [
@@ -140,7 +140,7 @@ include = [
   "CONTRIBUTING.md",
   "README.md",
   "INSTALL.md",
-  "CLAUDE.md",
+  "AGENTS.md",
   ".github/copilot-instructions.md",
 ]
 

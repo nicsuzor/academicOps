@@ -801,6 +801,53 @@ def _envelope_id(prompt: str) -> str | None:
     return None
 
 
+def _find_code_fence_intervals(text: str) -> list[tuple[int, int]]:
+    """Return [start, end) character offsets of code fences in text."""
+    intervals = []
+    fence_pattern = re.compile(r"^( {0,3})(`{3,}|~{3,})(.*)$", re.MULTILINE)
+    in_fence = False
+    fence_char = ""
+    fence_len = 0
+    fence_start = 0
+    for match in fence_pattern.finditer(text):
+        char = match.group(2)[0]
+        length = len(match.group(2))
+        if not in_fence:
+            in_fence = True
+            fence_char = char
+            fence_len = length
+            fence_start = match.start()
+        else:
+            if char == fence_char and length >= fence_len:
+                in_fence = False
+                fence_end = match.start() + len(match.group(1)) + length
+                intervals.append((fence_start, fence_end))
+    if in_fence:
+        intervals.append((fence_start, len(text)))
+    return intervals
+
+
+def extract_notification_result(text: str) -> str | None:
+    """Extract content from <result>...</result> ignoring tags inside code fences."""
+    intervals = _find_code_fence_intervals(text)
+
+    def is_inside(pos: int) -> bool:
+        return any(start <= pos < end for start, end in intervals)
+
+    open_match = None
+    for m in re.finditer(r"<result\b[^>]*>", text):
+        if not is_inside(m.start()):
+            open_match = m
+            break
+    if not open_match:
+        return None
+
+    for m in re.finditer(r"</result>", text):
+        if m.start() >= open_match.end() and not is_inside(m.start()):
+            return text[open_match.end() : m.start()]
+    return None
+
+
 _NOTIFICATION_RESULT = re.compile(r"<result>(.*?)</result>", re.DOTALL)
 _HANDBACK_POINTER = re.compile(
     r"report was delivered to you as a message from .{0,120}\(its SubagentHandback call\)",
@@ -819,8 +866,8 @@ def carries_report(text: str) -> bool:
     if not body:
         return False
     if body.startswith("<task-notification"):
-        result = _NOTIFICATION_RESULT.search(body)
-        if not result or not result.group(1).strip():
+        result = extract_notification_result(body)
+        if not result or not result.strip():
             return False
     return not _HANDBACK_POINTER.search(body)
 
@@ -856,9 +903,9 @@ def _extract_judged_text(prompt: str) -> str:
                     pass
         elif tag == "task-notification":
             inner = match.group(3)
-            result_match = _NOTIFICATION_RESULT.search(inner)
-            if result_match:
-                return result_match.group(1).strip()
+            result_match = extract_notification_result(inner)
+            if result_match is not None:
+                return result_match.strip()
     return prompt
 
 
@@ -1097,6 +1144,107 @@ def hearsay_handler(ctx: HookContext) -> Result | None:
         return block(reason, user_msg)
 
     return refuse(reason, user_msg)
+
+
+def _session_pointer_dir() -> Path:
+    override = os.environ.get("AOPS_SESSION_POINTER_DIR")
+    path = Path(override) if override else Path(tempfile.gettempdir()) / "aops_session_pointer"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _tracer_state_dir() -> Path:
+    env_dir = (
+        os.environ.get("AOPS_TRACER_STATE_DIR")
+        or os.environ.get("TRACER_STATE_DIR")
+        or os.environ.get("AOPS_TRACER_DIR")
+    )
+    if env_dir:
+        return Path(env_dir)
+    if claude_code_tracer is not None and hasattr(claude_code_tracer, "_tracer_state_dir"):
+        return claude_code_tracer._tracer_state_dir()
+    if claude_code_tracer is not None and hasattr(claude_code_tracer, "STATE_DIR"):
+        return Path(claude_code_tracer.STATE_DIR)
+    return Path.home() / ".claude" / "tracer"
+
+
+def _is_subagent_conversation(ctx: HookContext) -> bool:
+    """True if ctx is an agy subagent conversation invoked by a caller agent."""
+    raw = ctx.raw or {}
+    if (
+        raw.get("caller_id")
+        or raw.get("parent_conversation_id")
+        or raw.get("is_subagent")
+        or raw.get("caller_session")
+    ):
+        return True
+    if ctx.session_id:
+        try:
+            tracer_file = _tracer_state_dir() / f"{ctx.session_id}.json"
+            if tracer_file.is_file():
+                tdata = json.loads(tracer_file.read_text(encoding="utf-8"))
+                phx_sid = tdata.get("phoenix_session_id")
+                if phx_sid:
+                    phx_root = str(phx_sid).split("/", 1)[0]
+                    if phx_root and phx_root != ctx.session_id:
+                        return True
+                if tdata.get("parent_session_id") or tdata.get("caller_session_id"):
+                    return True
+        except Exception:
+            pass
+    prompt = prompt_text(ctx) or ""
+    if "<subagent_reminder>" in prompt or "invoked by a caller agent" in prompt:
+        return True
+    return False
+
+
+def subagent_pre_handback_check(ctx: HookContext) -> Result | None:
+    """Refuse subagent send_message in agy once per handback if argdown block is missing."""
+    if ctx.client != "agy" or ctx.event != "PreToolUse":
+        return None
+    tool = (ctx.tool or "").strip().lower()
+    if tool not in ("send_message", "sendmessage"):
+        return None
+    if not _is_subagent_conversation(ctx):
+        return None
+
+    safe_session = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", ctx.session_id or "unknown")
+    marker = _session_pointer_dir() / f"{safe_session}.prehandback_warned"
+
+    tool_input = (
+        ctx.tool_input
+        or (ctx.raw or {}).get("toolInput")
+        or (ctx.raw or {}).get("toolCall", {}).get("args")
+        or {}
+    )
+    msg = str(
+        tool_input.get("Message") or tool_input.get("message") or tool_input.get("content") or ""
+    )
+
+    has_block = ra.extract_block(msg) is not None or ra.is_null_form(msg) or "[no claim]" in msg
+    if has_block:
+        try:
+            marker.unlink(missing_ok=True)
+        except OSError:
+            pass
+        return None
+
+    if marker.is_file():
+        return None
+
+    try:
+        marker.write_text(datetime.now().astimezone().isoformat(), encoding="utf-8")
+    except OSError:
+        pass
+
+    recipient = str(tool_input.get("Recipient") or tool_input.get("recipient") or "caller")
+    refusal_msg = (
+        f"Your report to {recipient} omits a fenced `argdown` block. "
+        "Load the `premise-check` skill (`ida:premise-check`) now and append "
+        "a valid argdown block (or `[no claim]`) to your handback report before sending."
+    )
+    user_msg = f"Refused: subagent report to {recipient} missing fenced argdown block."
+    return refuse(refusal_msg, user_msg)
 
 
 # Backward compatibility aliases

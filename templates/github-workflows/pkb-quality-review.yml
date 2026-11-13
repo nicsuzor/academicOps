@@ -5,8 +5,8 @@
 # Install: copy this file to $ACA_DATA/.github/workflows/pkb-quality-review.yml
 #
 # CUSTOMIZE: Set these repository variables in your brain repo's Settings → Variables:
-#   AOPS_REPO         — your academicOps fork/install (e.g., "yourname/academicOps")
-#   OTEL_* (optional) — the OpenTelemetry contract in specs/ARCHITECTURE.md,
+#   AOPS_REPO         -- your academicOps fork/install (e.g., "yourname/academicOps")
+#   OTEL_* (optional) -- the OpenTelemetry contract in specs/ARCHITECTURE.md,
 #                        Observability. Unset vars are omitted, not defaulted.
 
 name: PKB Quality Review
@@ -94,7 +94,7 @@ jobs:
           settings: ${{ runner.temp }}/otel-settings.json
           prompt: |
             You are the PKB Quality Review agent. Your job is to assess the quality
-            of knowledge notes in this personal knowledge base QUALITATIVELY — by
+            of knowledge notes in this personal knowledge base QUALITATIVELY -- by
             actually reading and evaluating content, not just counting metrics.
 
             ## Instructions
@@ -112,7 +112,7 @@ jobs:
 
             2. **For each note, evaluate**:
                - Accuracy: Does content appear current and correct?
-               - Provenance: Are claims attributed to sources?
+               - Current state only: Does the note reflect current truth without historical provenance lists (such as frontmatter `sources:` arrays)?
                - Abstraction: Right level of generalization?
                - Links: Wikilinks present and meaningful?
                - Freshness: Is the content still true? (There is no `last_reviewed`
@@ -121,7 +121,7 @@ jobs:
 
             3. **Aggregate findings**:
                - Count and categorize issues found
-               - Identify patterns (e.g., "most knowledge/tech/ notes lack provenance")
+               - Identify patterns (e.g., "older notes retaining obsolete sources: frontmatter")
                - Note positive patterns worth preserving
                - Suggest specific improvements (but don't make them)
 
@@ -135,13 +135,13 @@ jobs:
             ## Quality Dimensions (evaluate qualitatively, not mechanically)
 
             - **Accuracy**: Read the content. Does it make sense? Any obvious errors?
-            - **Provenance**: For synthesized claims, can you trace them to sources?
+            - **Current state only**: Does the note state current truth directly? Flag and report obsolete source references or historical provenance arrays.
             - **Usefulness**: Would this note help a future agent or the user?
             - **Connection**: Does it link to related concepts? Isolated notes lose value.
             - **Appropriate detail**: Not too specific (implementation minutiae), not too vague (platitudes)
 
             ## CI-Specific Rules
-            - **No PKB MCP server** — you are working directly with markdown files.
+            - **No PKB MCP server** -- you are working directly with markdown files.
               Use Grep/Glob to search, Read to inspect files. Do NOT reference
               mcp__services__pkb__* tools.
             - Time budget: 25 minutes. Exit cleanly when time is up.
@@ -164,7 +164,7 @@ jobs:
             - Be honest about quality. Don't inflate the assessment.
             - Focus on actionable findings, not comprehensive cataloguing.
             - Note what's GOOD as well as what needs work.
-            - DO NOT modify any files — this is assessment only.
+            - DO NOT modify any files -- this is assessment only.
 
             ## Environment
             - Brain repo: ${{ github.workspace }}

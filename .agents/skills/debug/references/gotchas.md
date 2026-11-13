@@ -11,4 +11,3 @@
 | Premature `agy` boot-failure report | Pane captured during the 2–3 s `⚠ Verifying your account...` race | Wait for the header plan name before inspecting |
 | `⚠ Agent execution terminated due to error` + an error ID, nothing else | agy agent frontmatter names a tool absent from its registry | `grep "not found in registry" <session>/agy-cli.log`; drop the offending names from `build/tool_map.toml`'s `accepted_tools` |
 | Headless `agy` returns `"error":"context canceled"` with work half-done | Job outran `--print-timeout` (default `5m0s`) | Compare `duration_seconds` against the timeout; re-run with an explicit `--print-timeout` |
-| `delivery_guard_failed` after a probe that wrote files | The probe's own artefacts are uncommitted in the workspace | Expected for a write probe; confirm the named files are the probe's before treating it as a defect |

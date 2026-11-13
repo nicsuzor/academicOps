@@ -64,7 +64,7 @@ Universal baseline templates in `plugins/ida/skills/workflow-library/workflows/`
 - `wf-code-task-base`: Foundation for standard code-change tasks (test-first build, PR, independent review).
 - `wf-dispatch`: Direct worker dispatch workflow for headless execution and worker dispatch -- delegates directly to the dispatcher with no child task creation, no pull or dump ceremony, and handback with premise-check Argdown.
 - `wf-finish`: Universal fallback finish policy (PR into base development branch, QA review).
-- `wf-interactive`: Workflow governing all in-session and interactive work -- with strictly one outer task created by the user-facing coordinator, delegation through the internal delegate, verification at all seams, and outer handover dump only.
+- `wf-interactive`: Workflow governing all in-session and interactive work -- with strictly one outer task placed and claimed via `/q` by the internal sub-coordinator on behalf of the interactive session, delegation through the internal delegate, verification at all seams, and outer handover dump only.
 - `wf-lookup`: Lightweight lookup workflow for PKB reads, PKB writes, memory curation, and graph operations -- delegates directly to the custodian with no task creation, no pull or dump ceremony, and handback with premise-check Argdown.
 - `wf-quick-fix`: Shortened route for simple, uncontroversial project changes (repository-allowed shortened PR or merge route, review exemption when unit and destination tests pass).
 - `wf-reconcile`: Universal graph reconciliation and task truth-maintenance procedure.

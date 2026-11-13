@@ -36,6 +36,7 @@ if str(_HOOKS_DIR) not in sys.path:
 _POLICY = tomllib.loads((_REPO_ROOT / "tests" / "policy.toml").read_text(encoding="utf-8"))
 
 import dispatch
+import hearsay_gate as hg
 import premise_check_gate as pcg
 import premise_check_verdict as pcv
 import report_argument as ra
@@ -2240,3 +2241,138 @@ def test_format_verdict_command_resolves_symlinked_skill_path_and_includes_sessi
     assert "--session" in tokens
     sess_idx = tokens.index("--session") + 1
     assert tokens[sess_idx] == "target-session-xyz"
+
+
+def test_code_fence_safe_result_extraction_preserves_trailing_argdown():
+    """Extraction of <result> content ignores nested XML tags within markdown code fences."""
+    raw_payload = (
+        "<task-notification>\n"
+        "<task-id>task-code-fence</task-id>\n"
+        "<result>\n"
+        "Here is the code change:\n"
+        "```xml\n"
+        "<result>fake nested result</result>\n"
+        "</result>\n"
+        "```\n"
+        "And here is the conclusion:\n"
+        "```argdown\n"
+        "===\n"
+        "asks: none\n"
+        "===\n"
+        "[no claim]\n"
+        "```\n"
+        "</result>\n"
+        "</task-notification>"
+    )
+    extracted = hg.extract_notification_result(raw_payload)
+    assert extracted is not None
+    assert "[no claim]" in extracted
+    assert "fake nested result" in extracted
+
+    # And carries_report identifies it as carrying a report
+    assert hg.carries_report(raw_payload) is True
+
+    # And hearsay_gate._extract_judged_text unwraps the complete body including the argdown block
+    unwrapped = hg._extract_judged_text(raw_payload)
+    assert "[no claim]" in unwrapped
+
+
+def test_agy_subagent_preinvocation_delivers_honesty_reminder(tmp_path, monkeypatch):
+    """In agy, first PreInvocation delivers honesty.md when invoked as a subagent."""
+    from handlers import agy_session_pointer
+
+    pointer_dir = tmp_path / "pointer_dir"
+    tracer_dir = tmp_path / "tracer_dir"
+    monkeypatch.setenv("AOPS_SESSION_POINTER_DIR", str(pointer_dir))
+    monkeypatch.setenv("AOPS_TRACER_STATE_DIR", str(tracer_dir))
+
+    subagent_sess = "subagent-session-123"
+    parent_sess = "parent-session-999"
+
+    # Setup tracer state indicating parent session
+    tracer_dir.mkdir(parents=True)
+    (tracer_dir / f"{subagent_sess}.json").write_text(
+        json.dumps(
+            {
+                "phoenix_session_id": f"{parent_sess}/{subagent_sess}",
+                "parent_session_id": parent_sess,
+            }
+        )
+    )
+
+    ctx = dispatch.HookContext(
+        client="agy",
+        event="PreInvocation",
+        session_id=subagent_sess,
+        agent_type="james",
+        hooks_dir=Path("plugins/ida/hooks"),
+    )
+
+    res = agy_session_pointer(ctx)
+    assert res is not None
+    # Must contain honesty reminder and premise-check pointer
+    assert "Your reply to this message is a report" in res.inject_text
+    assert "ida:premise-check" in res.inject_text
+    assert f"caller_session: {parent_sess}" in res.inject_text
+
+
+def test_agy_subagent_pretool_pre_handback_check(tmp_path, monkeypatch):
+    """Subagent send_message in agy is refused once if missing argdown block, but retries pass."""
+    pointer_dir = tmp_path / "pointer_dir"
+    tracer_dir = tmp_path / "tracer_dir"
+    monkeypatch.setenv("AOPS_SESSION_POINTER_DIR", str(pointer_dir))
+    monkeypatch.setenv("AOPS_TRACER_STATE_DIR", str(tracer_dir))
+
+    subagent_sess = "subagent-session-456"
+    parent_sess = "parent-session-888"
+
+    tracer_dir.mkdir(parents=True, exist_ok=True)
+    (tracer_dir / f"{subagent_sess}.json").write_text(
+        json.dumps({"phoenix_session_id": f"{parent_sess}/{subagent_sess}"})
+    )
+
+    # 1. Message missing argdown block is refused on first attempt
+    ctx_missing = dispatch.HookContext(
+        client="agy",
+        event="PreToolUse",
+        tool="send_message",
+        session_id=subagent_sess,
+        tool_input={"Recipient": parent_sess, "Message": "Here is my report without any block."},
+    )
+    res1 = hg.subagent_pre_handback_check(ctx_missing)
+    assert res1 is not None
+    assert res1.kind == dispatch.Kind.REFUSE
+    assert "omits a fenced `argdown` block" in res1.inject_text
+
+    # 2. Second attempt (retry) passes through to avoid deadlock
+    res2 = hg.subagent_pre_handback_check(ctx_missing)
+    assert res2 is None
+
+    # 3. Message WITH argdown block passes through and clears marker
+    ctx_with_block = dispatch.HookContext(
+        client="agy",
+        event="PreToolUse",
+        tool="send_message",
+        session_id=subagent_sess,
+        tool_input={
+            "Recipient": parent_sess,
+            "Message": "Here is my report.\n```argdown\n===\nasks: none\n===\n[no claim]\n```",
+        },
+    )
+    res3 = hg.subagent_pre_handback_check(ctx_with_block)
+    assert res3 is None
+    # Marker should be unlinked
+    marker = pointer_dir / f"{subagent_sess}.prehandback_warned"
+    assert not marker.exists()
+
+    # 4. Non-subagent (top-level caller) calling send_message is not refused
+    root_sess = "root-session-000"
+    (tracer_dir / f"{root_sess}.json").write_text(json.dumps({"phoenix_session_id": root_sess}))
+    ctx_root = dispatch.HookContext(
+        client="agy",
+        event="PreToolUse",
+        tool="send_message",
+        session_id=root_sess,
+        tool_input={"Recipient": subagent_sess, "Message": "Direction brief ## Ask"},
+    )
+    assert hg.subagent_pre_handback_check(ctx_root) is None

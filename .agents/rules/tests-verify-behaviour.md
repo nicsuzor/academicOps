@@ -19,7 +19,7 @@ These are defects, not tests:
 - **Implementation-coupled tests** -- assert private helpers, internal state, call order or a mock's call log instead of the output or observable effect.
 - **Acceptance checks committed as tests** -- a one-off check that the change worked (a listing diff, a command's output, a fresh agent's run) is evidence for the PR and task report. It joins the suite only if it also guards code that executes against a plausible regression.
 
-A change to agent-facing instruction text -- an agent definition, skill, workflow template, rule, axiom, AGENTS.md or CLAUDE.md, or slash command (markdown, unlike an executable CLI or script) -- owes no test. Prove it by a fresh agent's run that follows it, judged against the acceptance criteria; where test-first is asked for, the failing baseline is a run without the change. A change that modifies no code that executes adds no test. A spec is checked by review.
+A change to agent-facing instruction text -- an agent definition, skill, workflow template, rule, axiom, AGENTS.md, or slash command (markdown, unlike an executable CLI or script) -- owes no test. Prove it by a fresh agent's run that follows it, judged against the acceptance criteria; where test-first is asked for, the failing baseline is a run without the change. A change that modifies no code that executes adds no test. A spec is checked by review.
 
 A test that earns its place is:
 
@@ -28,6 +28,7 @@ A test that earns its place is:
 - built on real collaborators where they are cheap, with test doubles only at process boundaries (network, model calls, clock) and never on the unit under test;
 - checked against an expected value derived independently of the code (a worked example, a known-good fixture);
 - covering boundary and error cases, not only the happy path;
-- fast, with a failure message that says what broke.
+- fast, with a failure message that says what broke;
+- for hooks, executing the registered command string through the harness spawn mechanism across target deployment environments, asserting fail-closed behavior on failures (such as command resolution failure or exit 127), rather than solely testing stdin parsing or helper functions in isolation.
 
 A bug fix carries a regression test that reproduces the reported failure, red before the fix. An existing test that fails only on legitimate edits is deleted or rewritten to test behaviour.
