@@ -14,11 +14,11 @@
 ## Agents
 
 - [agents/sara.md](agents/sara.md) -- the supervisor: delegate-and-verify orchestration process.
-- [agents/reify.md](agents/reify.md) -- hydrating a task node with intent, workflow, execution steps, and guardrails.
+- [agents/reify.md](agents/reify.md) -- binding a node to an executor and composed three-tier workflow inside container supervision or planning.
 - [agents/prompt-hydration.md](agents/prompt-hydration.md) -- prompt hydration.
 - [agents/sleep-cycle.md](agents/sleep-cycle.md) -- the periodic consolidation agent.
 - [agents/ida-interaction-rules.md](agents/ida-interaction-rules.md) -- presentation standards, conversational pacing, subagent delegation boundaries, and channel hygiene for Ida.
-- [agents/face-ida-triage-and-tracked-requests.md](agents/face-ida-triage-and-tracked-requests.md) -- face-Ida triage decision, subagent twin verification, and tracked-request closed-loop delivery.
+- [agents/face-ida-triage-and-tracked-requests.md](agents/face-ida-triage-and-tracked-requests.md) -- face-Ida triage decision, subagent twin verification, /q placement, container dispatch, and tracked-request closed-loop delivery.
 - [agents/compliance-consequences-removal.md](agents/compliance-consequences-removal.md) -- removal of volunteered compliance and conflict-of-interest consequences in decision conversations.
 - [agents/authoritative-user-task-reports.md](agents/authoritative-user-task-reports.md) -- authoritative user task reports deciding task state and ministerial lifecycle execution in Pauli.
 - [agents/decision-queue-boundaries.md](agents/decision-queue-boundaries.md) -- decision-queue boundaries, informational query list-routing, conversational pacing, and preservation of collaborative design exploration.
@@ -42,7 +42,7 @@
 
 ## Polecat
 
-- [polecat/polecat-system.md](polecat/polecat-system.md) -- one isolated container + isolated clone per `polecat run` invocation.
+- [polecat/polecat-system.md](polecat/polecat-system.md) -- one isolated container + isolated clone per invocation, running /supervise for epic tasks or /pull for leaf tasks.
 - [polecat/tmux-interactive-driving.md](polecat/tmux-interactive-driving.md) -- driving a polecat container interactively via tmux.
 - [polecat/spec-partial-work-tight-loop-delivery.md](polecat/spec-partial-work-tight-loop-delivery.md) -- the `partial` terminal state and partial-work doctrine.
 - [polecat/spec-base-ref-resolution.md](polecat/spec-base-ref-resolution.md) -- how `resolve_isolated_workspace()` picks the commit a worker's isolated clone diverges from.
@@ -67,7 +67,7 @@
 
 ## Workflows
 
-- [workflows/workflow.md](workflows/workflow.md) -- the four-stage pipeline and where workflow components come from.
+- [workflows/workflow.md](workflows/workflow.md) -- the four-stage planning and execution pipeline (capture, expand, reify, dispatch) and three-tier template resolution.
 - [workflows/default-planning.md](workflows/default-planning.md) -- repository specs for academicOps design changes and PKB task plans for general work.
 - [workflows/plan-view.md](workflows/plan-view.md) -- formal plan view generation and redrawing on decomposed objectives.
 - [workflows/conceptual-review-workflow.md](workflows/conceptual-review-workflow.md) -- composable-lens multi-agent review of intellectual artifacts.

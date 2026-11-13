@@ -51,11 +51,11 @@ before entering the graph. Flow maths is kept unpolluted by subjective risk gati
 
 **Three purposes of graph edges and edge parsimony (ADR-0002).** Edges serve three distinct, non-overlapping purposes:
 
-1. **Weight flow (Strategic valuation):** Injects worth from priced targets down through the graph (`serves` pointing to targets, and `supports` where auxiliary work modifies difficulty or success probability). Both require explicit `quantum` and `probability`.
+1. **Weight flow (Strategic valuation):** Injects worth from priced targets down through the graph (`serves` pointing directly to priced targets or to existing epics that `serves` priced targets, and `supports` where auxiliary work modifies difficulty or success probability). Both require explicit `quantum` and `probability`.
 2. **Sequencing of work (`needs` / execution prerequisite):** Defines strict temporal blocking (dependent $\to$ prerequisite). Purely Boolean execution gate; carries neither quantum nor probability.
 3. **Structural clustering, human understanding & strategic alignment:** Connects concepts, references, citations, and related artifacts. Represented exclusively as markdown `[[wikilinks]]` in the task body (`## Context`, `## Pointers`). Direct body references already act as clustering/interconnection edges in graph physics; duplicating them as formal frontmatter edges is strictly prohibited.
 
-**Project hierarchies and push-to-top rule.** Redundant child-to-ancestor links are prohibited. Weight links (`serves`) are pushed as far up the parent hierarchy chain as accurate (single injection at the deliverable level); subtasks inherit worth via closed-form induction. Weight links go exclusively to targets; weight propagates to other nodes via real blocking (`needs`) and supporting (`supports`) tasks.
+**Project hierarchies and push-to-top rule.** Redundant child-to-ancestor links are prohibited. Weight links (`serves`) are pushed as far up the parent hierarchy chain as accurate (single injection at the deliverable level): a top-level deliverable task wires `serves` either directly to a priced `target` node or to an existing epic that `serves` a priced `target` (allowing valuation down the chain without duplicate links to the same target); subtasks inherit worth via closed-form induction. Weight links go exclusively to targets or target-serving epics; weight propagates to other nodes via real blocking (`needs`) and supporting (`supports`) tasks.
 
 **Stricter semantics for `supports`.** Task $B$ `supports` task/target $A$ if and only if executing $B$ directly reduces the effort, cost, or difficulty of $A$, or increases $A$'s probability of success. A tracking or coordination task does NOT support the tasks it tracks (tracking makes zero difference to the tracked task's difficulty). A tracking task serves the strategic target of user understanding / observability and is confined to that target edge.
 
@@ -115,8 +115,9 @@ Redundant child-to-ancestor weight edges. Stored `alternative` and `settles` edg
   scale ($W_t \in [-1.0, 1.0]$), leaving `intent` untouched, with corrections made directly
   on the graph. Agents propose link values (`agent-proposed`), which are read at the default until
   calibrated (FR:474).
-- Weight links are pushed as far up the parent hierarchy as accurate (single injection invariant); subtasks
-  inherit worth via closed-form induction without redundant child-to-ancestor weight links.
+- Weight links are pushed as far up the parent hierarchy as accurate (single injection invariant); top-level
+  tasks link to targets or target-serving epics; subtasks inherit worth via closed-form induction without
+  redundant child-to-ancestor weight links.
 - Stricter semantics for `supports`: tracking tasks link to user understanding targets, never to tracked tasks.
 - Weight requirements contract: target weight edges require probability and quantum; `needs` edges require neither;
   `supports` requires weights when propagating value.
@@ -160,18 +161,23 @@ pauli estimates target worth and edge weights, leaving `intent` untouched. Corre
 
 Covers U8, U9, U10, U11, S7, S24, S27, I7, I9.
 
-1. **Search before creating.** Search the graph for the targets and open work the input could
-   serve. Reuse an existing node where one matches. This is the current step 1, unchanged.
-2. **Place.** Give the node its container. Under FQ1 this is a `part_of` edge if the parent edge
-   goes, or the parent field if it stays.
+1. **Search before creating & mandatory consolidation.** Search the graph across both open
+   and closed tasks (`include_done: true`) before creating. Aggregating similar work is
+   preferred: when an incoming ask can be handled inside an existing open epic-sized repo
+   task as the same chunk of work, consolidate or merge into it rather than creating
+   duplicate tasks.
+2. **Place (One-Task-per-Repo Rule).** Give the node its container. When a minted ask spans
+   two or more repositories, create related repo-specific tasks with strictly one task per
+   repository (never a monolithic multi-repo task). Under FQ1 this is a `part_of` edge if
+   the parent edge goes, or the parent field if it stays.
 3. **Affordable Loss Check (S24).** Agents (Pauli, Ida) evaluate affordable loss (Sarasvathy 2001)
    before admitting commitments. If prospective downside or commitment cost violates affordable loss,
    the agent flags it as a priority ask rather than admitting it to the flow. Flow maths
    remains unpolluted by subjective risk gating.
 4. **Wire what it serves under the Three-Purpose Taxonomy (ADR-0002).**
    Edges serve three distinct purposes. Agents must select the least mechanism required:
-   - **Purpose 1: Weight flow to targets (`serves`, `supports`).**
-     - `serves`: Connects a top-level deliverable task directly to a priced `target` node ($W_t \in [-1.0, 1.0]$). Injects worth into the work graph.
+   - **Purpose 1: Weight flow (`serves`, `supports`).**
+     - `serves`: Connects a top-level deliverable task directly to a priced `target` node ($W_t \in [-1.0, 1.0]$) OR to an existing epic that `serves` a priced `target` (allowing valuation down the chain without duplicate links to the same target). Injects worth into the work graph.
      - `supports`: Connects an auxiliary task to an upstream task or target when and only when executing the supporting task directly reduces the effort, risk, or difficulty of the supported node, or increases its probability of success.
      - **Weight contract for flow edges:** Requires explicit `quantum` (word or float $0.0..=1.0$) and `probability` (word or float $0.0..=1.0$, default 1.00). Ask the quantum question: "If this were never done and everything else were, how much of the target/task would be lost?".
      - `effect: harms` when work endangers a target (S12, U13).
@@ -185,10 +191,10 @@ Covers U8, U9, U10, U11, S7, S24, S27, I7, I9.
      - Authored exclusively as markdown `[[wikilinks]]` in the task body (`## Context`, `## Pointers`, `## Report`).
      - **Zero frontmatter duplication:** Direct references in task bodies already act as clustering/interconnection edges in graph physics and semantic search. Anything cited in the body must **not** have duplicate formal frontmatter edges with weights.
 5. **Project hierarchies and push-to-top rule.**
-   - Weight links (`serves`) must be pushed as far up the parent hierarchy chain as they can go and still be accurate. Wire `serves` exclusively on the highest task defining the deliverable.
+   - Weight links (`serves`) must be pushed as far up the parent hierarchy chain as they can go and still be accurate. Wire `serves` exclusively on the highest task defining the deliverable, pointing either directly to a priced `target` or to an existing epic that `serves` a priced `target`.
    - Subtasks inherit worth from their composite parent via closed-form induction ($V(C_i) = V(E) \times (p_{\text{task}})^{k-1}$). Subtasks must **never** carry redundant `serves` links to targets already served by ancestors.
    - Child-to-ancestor weight edges are strictly prohibited.
-   - Weight links go exclusively to targets; weight propagates to other nodes via real blocking (`needs`) and supporting (`supports`) tasks.
+   - Weight links go exclusively to targets or target-serving epics; weight propagates to other nodes via real blocking (`needs`) and supporting (`supports`) tasks.
 6. **Stricter semantics for `supports`.**
    - Functional test: Task $B$ `supports` task/target $A$ if and only if executing $B$ causally changes $A$'s execution parameters (reduced effort, mitigated risk, higher success odds).
    - **Tracking tasks do NOT support tracked tasks:** Creating a tracking task, observing progress, logging status, or assembling reports makes zero difference to the tracked task's difficulty or probability of completion.
@@ -437,7 +443,7 @@ agents james, marsha, rbg, sara; and all tools-plugin skills.
 
 | Edge Purpose | Label / Representation | Target Node Type | Required Frontmatter Fields | Mathematical / Engine Behaviour |
 | :- | :- | :- | :- | :- |
-| **1. Weight Flow** | `serves` | `target` (priced) | `to`, `quantum`, `probability`, `effect`, `justification`, `set_by` | Injects worth: $V(E) = W_t \times q \times p$. Pushed to top-level deliverable. |
+| **1. Weight Flow** | `serves` | `target` (priced) or target-serving epic | `to`, `quantum`, `probability`, `effect`, `justification`, `set_by` | Injects worth: $V(E) = W_t \times q \times p$. Pushed to top-level deliverable or target-serving epic. |
 | **1. Weight Flow** | `supports` | `target` or `task` | `to`, `quantum`, `probability`, `effect`, `justification`, `set_by` | Value modifier for auxiliary work causally reducing effort or raising success odds. Forbidden for tracking. |
 | **2. Work Sequencing** | `needs` | `task` | `to` | Boolean execution prerequisite. Unblocks when prerequisite is `done`. Engine treats as $q=1.0, p=1.0$. Quantum and probability are NOT written. |
 | **3. Structural Clustering** | `[[node_id]]` | Any (task, note, spec) | None in frontmatter; written as markdown wikilinks in body | Natural clustering for graph physics and search. Zero frontmatter duplication. |
