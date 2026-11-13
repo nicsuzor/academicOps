@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.6.0](https://github.com/nicsuzor/academicOps/compare/v1.5.1...v1.6.0) (2026-11-13)
+
+### Features
+
+- **ida-telegram:** expose message pinning, batch ops, and reply markup tools to MCP ([89343f1](https://github.com/nicsuzor/academicOps/commit/89343f19b96062d178e4a4850f6357c957a9d389))
+- **ida:** add container boundary halt-on-refusal rule to wf-task-base ([3de8293](https://github.com/nicsuzor/academicOps/commit/3de82936ff832baf853c935fde458af586fc0d79))
+- **ida:** add container boundary halt-on-refusal rule to wf-task-base ([25e82dd](https://github.com/nicsuzor/academicOps/commit/25e82dde5b0f32c3c852df89635aeb778a133402))
+- **instructions:** consolidate persona tool boundaries as SSoT and remove skill duplicates ([0a2d798](https://github.com/nicsuzor/academicOps/commit/0a2d79877b67cca6bda03266fcbc38e0d6283a18))
+- **instructions:** consolidate persona tool boundaries as SSoT and remove skill duplicates ([bd23356](https://github.com/nicsuzor/academicOps/commit/bd2335643a6bb5429a0381ee3296780bb153699a))
+- **instructions:** guide agents to choose subagent model tiers by task ([e843266](https://github.com/nicsuzor/academicOps/commit/e843266462cf9c01a5050d46e63e5e9f84dac375))
+
+### Bug Fixes
+
+- **cloud:** disable synced plugin copies in setup scripts to prevent duplicate skills ([0b16270](https://github.com/nicsuzor/academicOps/commit/0b1627040c47fe725e8f369e7ebb5eeed6d70c75))
+- **ida-telegram:** address strategic review findings on specs, skill, and mirror test ([efcdca1](https://github.com/nicsuzor/academicOps/commit/efcdca1f1f7b1f5f5cd353c9e7bc3b5f870035db))
+- **ida-telegram:** expose all Telegram forum-topic thread tools and routing parameters ([23c24a3](https://github.com/nicsuzor/academicOps/commit/23c24a32c012c923da1116ffcd7e5ba3a42fa6cf))
+- **ida-telegram:** expose all Telegram thread and message-management tools in MCP ([dfa6636](https://github.com/nicsuzor/academicOps/commit/dfa6636a51bc6cec0024fa6cf057e8454eb230c6))
+- **ida-telegram:** tighten thread-tool scope and align skill and specs after review ([9d7e973](https://github.com/nicsuzor/academicOps/commit/9d7e9733d3eb01d98b59a00536eff66221c2a81c))
+
+### Documentation
+
+- **polecat:** remove residual legacy polecat CLI and delivery guard references ([bb2f4ce](https://github.com/nicsuzor/academicOps/commit/bb2f4ce46a32d8369db53791fb53cde5fb364c75))
+- **polecat:** remove residual legacy polecat CLI and delivery guard references ([edf0078](https://github.com/nicsuzor/academicOps/commit/edf0078e169021a93bcb88a7c266abb1087b7688))
+
 ## [1.5.1](https://github.com/nicsuzor/academicOps/compare/v1.5.0...v1.5.1) (2026-11-12)
 
 ### Bug Fixes
