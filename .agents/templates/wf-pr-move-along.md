@@ -26,13 +26,13 @@ Specifies how open pull requests in `nicsuzor/academicOps` are moved along to re
   - Standard features and structural changes: Require explicit approval from the repository owner before merging.
   - Changes requested: A PR with an active "changes requested" review must not merge under any circumstances.
   - Release pull requests (`release-please`): Excluded from autonomous merging; merge only on explicit manual release approval.
-- **Pre-approval readiness**: Before owner approval, a PR must be green and reviewed by independent agents, with review feedback addressed; mergeability is not required before approval. Do not rebase or resolve merge conflicts before approval. Bringing a PR up to date with its base branch and resolving conflicts happens after approval, just before merge. A draft PR whose code step is complete is marked ready for review (`gh pr ready`) without waiting for approval.
+- **Pre-approval readiness**: Before owner approval, a PR must be green and reviewed by independent agents, with review feedback addressed; mergeability is not required before approval. Do not rebase or resolve merge conflicts before approval. Bringing a PR up to date with its base branch and resolving conflicts happens after approval, just before merge. A worker PR opens as a draft (`gh pr create --draft`) and is marked ready for review (`gh pr ready`) only after the independent check passes and proportionate review by independent agents is posted to the PR thread, without waiting for approval.
 - **Commit hygiene**: Commits to public repositories must never carry private task, note, or session identifiers, or commit trailers.
 
 ## Obligations
 
 1. **Verify Triage and Eligibility**:
-   - Confirm the PR is not a draft. Draft PRs remain with their author or owning task until marked ready for review. A draft PR whose code step is complete is marked ready for review (`gh pr ready`).
+   - Confirm whether the PR is a draft. Draft PRs remain in draft until the independent check passes and proportionate review by independent agents is posted to the PR thread, at which point the PR is marked ready for review (`gh pr ready`).
    - Confirm the PR is not an excluded release PR.
    - Verify the base branch matches the designated integration base branch declared in `.agents/CORE.md`. If targeting another branch, retarget the base branch.
 
@@ -42,7 +42,7 @@ Specifies how open pull requests in `nicsuzor/academicOps` are moved along to re
 
 3. **Resolve Review Feedback and Requested Changes**:
    - Inspect existing review threads and reviews.
-   - Review comments and requested changes must be met by concrete diff edits on the PR branch or rejected with reasoned arguments recorded on the PR thread. Once the code step addressing feedback completes, ensure any draft PR is marked ready for review (`gh pr ready`).
+   - Review comments and requested changes must be met by concrete diff edits on the PR branch or rejected with reasoned arguments recorded on the PR thread. Once the independent check passes and review verdicts are posted to the PR thread, ensure any draft PR is marked ready for review (`gh pr ready`).
    - If changes requested remain unaddressed or require higher-level architectural decisions, leave the PR open and document the exact blocking feedback as the disposition reason.
 
 4. **Verify Approvals and Pre-Approval Readiness**:
