@@ -9,13 +9,19 @@ description: Bind one node that is next to run to its executor and workflow -- h
 
 The task is the whole message to the worker. Write it once, keep it short, and leave it on the graph for `/dispatch`. Questions and lookups answered in-turn need no task.
 
-Nothing is written to the graph until steps 1-2 pass: a task created early survives checks that later fail.
+Nothing is written to the graph until steps 0-2 pass: a task created early survives checks that later fail.
+
+## 0. Verify Placement (/q Precondition)
+
+Reifying binds an already situated node to execution. A node must be situated on the strategic graph under an active parent container (epic or project) and wired per the Three-Purpose Edge Taxonomy (ADR-0002) before it can be reified.
+
+- **Unplaced Asks / Objectives**: If called with a raw natural-language ask or an unplaced objective lacking a parent container, do not write a task to the project root. Invoke `/q` first to search existing work, place the node under the active governing epic, and wire what it serves.
+- **Unparented Existing Tasks**: If given an unparented task ID, search for its governing epic and update its parentage via `/q` placement before proceeding with workflow composition.
 
 ## 1. Hydrate
 
-Call `/hydrate` on the objective, or on the task if given an ID.
+Call `/hydrate` on the objective, or on the task if given an ID. Proof of `/hydrate` execution (or citation of hydration findings) is required before proceeding to task composition.
 
-- **Intake placement precondition**: When an incoming request or objective has not yet been placed on the task graph, run `/q` first to place and value it under the right parent container before reifying, as `/q` is the intake precondition for `/reify`.
 - **Idempotency**: Search before creating tasks. Update existing tasks with new criteria rather than minting duplicates. A task already completely specified needs no rewrite; report it as ready.
 - If `/hydrate` flags an unfinished task with the same objective, continue that task instead of creating a new one.
 - If it flags an unfinished prerequisite, wire a `needs` dependency.

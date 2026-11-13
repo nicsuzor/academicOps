@@ -27,13 +27,19 @@ chmod +x /usr/local/bin/gh-token-askpass
 git config --global url."https://github.com/nicsuzor/academicOps".insteadOf "https://github.com/nicsuzor/academicOps"
 git config --global core.askPass /usr/local/bin/gh-token-askpass
 
-# 3) Now the marketplaces in .claude/settings.json (extraKnownMarketplaces, ref: dist) can fetch.
+# 3) Now the marketplaces in .claude/settings.json (extraKnownMarketplaces) can fetch.
 #    Optional explicit kick if auto-registration still doesn't trigger on boot:
-claude plugin marketplace add nicsuzor/aops
+claude plugin marketplace add nicsuzor/academicOps || true
+claude plugin marketplace update academicOps || true
 claude plugin install ida@academicOps
 claude plugin install aops-debug@academicOps
 claude plugin install tools@academicOps
 claude plugin install rbg@academicOps
+
+# Disable claude.ai-synced copies so plugins are not loaded twice
+for p in ida rbg tools aops-debug; do
+  claude plugin disable "${p}@synced" 2>/dev/null || true
+done
 
 # 4) Auto-mode trust rules as a managed-settings drop-in (the classifier ignores
 #    autoMode in repo settings). Set CLAUDE_AUTO_MODE_SETTINGS_REPO (a git URL)

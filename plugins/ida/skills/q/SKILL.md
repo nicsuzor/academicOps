@@ -11,7 +11,11 @@ Capture natural-language asks and situate them on the strategic graph: parented,
 
 ## Placement and Valuation
 
-1. **Search before creating**: Search the PKB for related targets and open work the input could serve. Reuse an existing node where one matches.
+1. **Search before creating (mandatory across all invocations)**: Search both open and closed tasks in the PKB (`include_done: true`), as well as related targets, before minting a task. This search is a required step across all invocations to prevent duplicate or fragmented work. Explicitly evaluate and decide between three outcomes:
+   - _Resume an open task_: If an existing open or in-progress task covers the topic or work, extend and update that task instead of creating a new one.
+   - _Reopen a closed task_: If a completed or closed task directly addresses the topic and requires follow-up, iteration, or expansion, decide whether reopening the closed task (setting status to `ready` or `queued`) preserves continuity better than creating a fresh task.
+   - _Mint a new task_: Only if no matching open or closed task can be resumed or reopened, create a new task situated under the right parent container and wire what it serves.
+   - **Partial-Overlap Invariant**: If an incoming ask touches artifacts, models, or scopes of an existing open task, the agent must either claim and reshape the existing open task (if scope aligns), or wire an explicit prerequisite (`needs`) or co-parent under the same epic, never minting a detached sibling.
 2. **Consolidate and place**: Consolidate where possible (merge duplicates, reparent related tasks). Place the node under an active parent container (or `part_of` edge).
 3. **Affordable loss check**: Evaluate affordable loss before admitting commitments. If prospective downside or commitment cost violates affordable loss, flag as a priority ask for the user rather than admitting to the flow. Flow maths remains unpolluted by subjective risk gating.
 4. **Wire what it serves under the Three-Purpose Taxonomy (ADR-0002)**: Add edges strictly per purpose, pushing weight links as far up the parent hierarchy as accurate:
