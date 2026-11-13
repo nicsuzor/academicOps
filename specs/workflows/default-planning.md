@@ -7,6 +7,20 @@ status: ready
 
 Defines the planning workflow across projects: in academicOps, design changes require an in-repository technical specification reviewed by independent agents and delivered alongside implementation code on a single pull request into `dev`; across all other projects, plans are captured directly on the knowledge base task graph, with detailed plans reified as dedicated reviewable plan tasks rather than repository markdown documents.
 
+## User experience flow
+
+```mermaid
+flowchart TD
+    Architect(["Framework Architect / Developer"]) -->|Proposes Design| Intake["Task Intake & Reification"]
+    Intake -->|academicOps repo| SpecFirst["Spec-then-Build (In-repo Spec in Stage 1)"]
+    Intake -->|Other projects| TaskGraph["Task-Graph Planning (PKB Plan Task)"]
+    SpecFirst -->|Independent Review Passes| Build["Build & Deliver on Single Draft PR into dev"]
+    TaskGraph -->|Independent Review Passes| Principal["Principal Approval on Graph"]
+    Principal -->|Approved| Implement["Worker Implementation Draft PR"]
+    Build -->|Independent Check Passes| Ready["Mark Ready (gh pr ready)"]
+    Implement -->|Independent Check Passes| Ready
+```
+
 ## User stories
 
 ### US-1 Specification-first design for academicOps changes
