@@ -12,20 +12,22 @@ This specification defines the invocation modes, lifecycle contracts, and report
 ## User experience flow
 
 ```mermaid
-flowchart LR
+flowchart TB
     subgraph UserRun["User-Run /dump (Emergency Handover)"]
+        direction LR
         U(["User"]) -->|"/dump (plus any text)"| A1["Stop at current step<br/>Start no new work/reviews/dispatches"]
-        A1 --> S1["Tell running subagents to finish<br/>immediate turn & kill bg tasks"]
+        A1 --> S1["Tell active subagents to finish<br/>immediate turn & kill bg tasks"]
         S1 --> P1["Save state to PKB & git<br/>Release task as partial"]
         P1 --> H1["Emit Handover Report"]
-        H1 --> U
+        H1 --> U2(["User / Next Session"])
     end
 
     subgraph AgentRun["Agent-Run /dump (Routine Wrap-Up)"]
+        direction LR
         E(["Session End<br/>(Task done / Context reset / Move env)"]) --> A2["Save & push work<br/>Mint retroactive tasks if needed"]
         A2 --> P2["Offer 6-month facts & PKB repairs<br/>Release claimed tasks with proof"]
         P2 --> D2["Update daily note project pointers<br/>Emit Handover Report"]
-        D2 --> O(["Operator / Next Session"])
+        D2 --> O(["User / Next Session"])
     end
 ```
 
@@ -37,7 +39,7 @@ As the user directing or supervising an agent session, I want a `/dump` command 
 
 - **AC-1.1 (User-run emergency handover)**: Given an active session, when the user invokes `/dump` (or `/ida:dump`) as a command in their prompt turn (regardless of any accompanying wording, context, or trailing instructions), then the agent stops where it is currently, starts zero new reviews, dispatches, re-dispatches, or task steps, messages all running subagents (e.g. `send_message`) to finish their immediate turn and return current state while terminating active background command tasks (e.g. `manage_task: kill`), saves current state to the PKB and git working tree, releases incomplete claimed tasks as `partial`, and emits the handover report.
 - **AC-1.2 (Agent-run routine wrap-up)**: Given a session ending on the agent's own initiative (upon task completion, context window reset, or environment transition), when the agent invokes `dump`, then the procedure completes file persistence, task status updates, and handover reporting methodically without emitting panic, abort, or emergency failure language.
-- **AC-1.3 (Trigger source discrimination)**: Given any invocation of `dump`, when the agent determines which mode applies, then it distinguishes user-run emergency handover from agent-run routine wrap-up by whether `/dump` was invoked as a command in the user's prompt turn ( as opposed to an informational question about `/dump` or an autonomous session-end wrap-up initiated by the agent).
+- **AC-1.3 (Trigger source discrimination)**: Given any invocation of `dump`, when the agent determines which mode applies, then it distinguishes user-run emergency handover from agent-run routine wrap-up by whether `/dump` was invoked as a command in the user's prompt turn (as opposed to an informational question about `/dump` or an autonomous session-end wrap-up initiated by the agent).
 
 ### US-2 Consolidated daily note project pointers
 

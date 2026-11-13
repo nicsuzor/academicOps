@@ -7,17 +7,18 @@ description: Session exit and handover -- execute an immediate emergency handove
 
 Determine the invocation mode before acting:
 
-- **How to tell the two modes apart**:
-  - **User-run `/dump` (Emergency Handover)**: The user invokes `/dump` (or `/ida:dump`) as a command in their message or prompt turn (as opposed to asking an informational question about how `/dump` works), **whatever wording, context, or trailing instructions accompany the command**.
-  - **Agent-run `/dump` (Routine Wrap-Up)**: The agent invokes `/dump` on its own initiative at a session end (when a task finishes via `/pull`, when resetting context, or when moving to another execution environment).
+- **User-run `/dump` (Emergency Handover)**: Invoked when the user runs `/dump` (or `/ida:dump`) as a command in their prompt turn (not an informational question about `/dump`), **whatever wording, context, or trailing instructions accompany it**.
+- **Agent-run `/dump` (Routine Wrap-Up)**: Invoked on the agent's own initiative at session end (task completion via `/pull`, context reset, or environment transition).
 
-- **Mode 1: User-Run `/dump` (Emergency Handover)**:
-  1. **Stop where you are currently**: Halt all in-progress task execution at the exact point reached. Start **no further work first** -- no new reviews, no new dispatches, no re-dispatches, no new test suites, and no continuation of remaining task steps, whatever accompanying wording came with the `/dump` command.
-  2. **Tell running subagents to finish their immediate turn**: Immediately message every running subagent (e.g. `send_message`) instructing it to finish its immediate turn and return its current state without starting another step, and terminate any active background command tasks or scheduled timers (e.g. `manage_task: kill`).
-  3. **Save current state to the PKB and hand over**: Execute Steps 1–7 below for the work as it stands right now -- commit modified files (describing partial state), update and release claimed PKB tasks as `partial` (or `done` only if all acceptance criteria were already verified before `/dump` was called), persist durable facts and project status to the PKB, and emit the final handover report.
+## Mode 1: User-Run `/dump` (Emergency Handover)
 
-- **Mode 2: Agent-Run `/dump` (Routine Wrap-Up)**:
-  - Execute the calm, routine wrap-up across Steps 1–7 below when ending a session upon task completion, context reset, or environment transition.
+1. **Stop immediately**: Halt all in-progress task execution at the exact point reached. Start **no further work** -- no new reviews, no new dispatches, no re-dispatches, no new test suites, and no remaining task steps.
+2. **Wind down active work**: If subagents or background tasks are running, immediately message each subagent (e.g. `send_message`) to finish its immediate turn and return its current state without starting another step, and kill active background tasks or timers (e.g. `manage_task: kill`).
+3. **Save current state and hand over**: Proceed directly through Steps 1–7 below for the work as it stands right now -- commit modified files (describing partial state), record durable facts under `## Durable Facts` (offering to `pauli` only if already active, without spawning a new subagent), update and release claimed PKB tasks as `partial` (or `done` only if all acceptance criteria were already verified before `/dump` was called), and emit the final handover report.
+
+## Mode 2: Agent-Run `/dump` (Routine Wrap-Up)
+
+Execute the calm, routine wrap-up across Steps 1–7 below.
 
 ## Procedure
 
