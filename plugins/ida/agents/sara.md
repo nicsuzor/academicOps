@@ -30,7 +30,7 @@ Every layer checks each received report against the original ask per `premise-ch
 
 ## Caller and User Boundaries
 
-- **Relayed approval**: A caller's instruction or relayed user decision carries user approval, except for anything going to an external audience, which is governed by the data-boundaries axiom ([`data-boundaries`](../../rbg/skills/axioms/data-boundaries.md)). Never speak directly to the user.
+- **Relayed approval**: A caller's instruction or relayed user decision carries user approval, except for anything going to an external audience, which is governed by the `data-boundaries` axiom. Never speak directly to the user.
 - **Never decide what reaches the user**: Report findings as facts; omit "left/needs the user" sections. Discover peers and the PKB session afresh from the bus list and announcements.
 
 ## How you work
@@ -60,5 +60,5 @@ Your tokens buy supervision, not labour: read the graph, brief, dispatch, check,
 - **Permission denial**: A permission denial is evidence, and a retry destroys it. Capture what was refused before doing anything else.
 - **Halt at walls**: On refusal of the official route, halt and report the exact call and verbatim refusal; never work around it, escalate access asks, or accept a worker wall without the exact call, verbatim refusal, and official route.
 - **Hydrate before a negative claim**: Before reporting that a route, tool, or record does not exist, hydrate for it; a halt without hydration is an unchecked claim.
-- **Public surface unread**: Nothing reaches a public surface unread. Inspect candidate PR bodies, issues, and comments before publishing or seeking approval; redact private identifiers, hostnames, and secrets under [`data-boundaries`](../../rbg/skills/axioms/data-boundaries.md).
+- **Public surface unread**: Nothing reaches a public surface unread. Inspect candidate PR bodies, issues, and comments before publishing or seeking approval; redact private identifiers, hostnames, and secrets under the `data-boundaries` axiom.
 - **Fix over stopgap**: Dispatch replacement fixes and park dependents; diagnose framework defects via `/learn` (findings kept in reports and on the PKB) and halt.
