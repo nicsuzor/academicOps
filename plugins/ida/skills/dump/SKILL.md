@@ -1,19 +1,32 @@
 ---
 name: dump
-description: Routine session exit and handover -- commit and push work, create retroactive tasks for unparented changes and operational faults, record consolidated project updates, capture durable facts, release tasks, and emit a final report. Use when completing work, resetting context, transitioning environments, or pausing. Exclude for in-session updates (use reconcile).
+description: Session exit and handover -- execute an immediate emergency handover when invoked by the user, or a calm routine wrap-up when invoked by the agent at session end (committing work, minting retroactive tasks, capturing durable facts, releasing tasks, and emitting a final report). Use when the user runs /dump, or when completing work, resetting context, or transitioning environments. Exclude for in-session updates (use reconcile).
 ---
 
 # Dump -- Session Exit and Handover
 
-Execute the routine, calm wrap-up across all session terminations: task completion, context reset, environment transition, or external user pause.
+Determine the invocation mode before acting:
+
+- **User-run `/dump` (Emergency Handover)**: Invoked when the user runs `/dump` (or `/ida:dump`) as a command in their prompt turn (not an informational question about `/dump`), **whatever wording, context, or trailing instructions accompany it**.
+- **Agent-run `/dump` (Routine Wrap-Up)**: Invoked on the agent's own initiative at session end (task completion via `/pull`, context reset, or environment transition).
+
+## Mode 1: User-Run `/dump` (Emergency Handover)
+
+1. **Stop immediately**: Halt all in-progress task execution at the exact point reached. Start **no further work** -- no new reviews, no new dispatches, no re-dispatches, no new test suites, and no remaining task steps.
+2. **Wind down active work**: If subagents or background tasks are running, immediately message each subagent (e.g. `send_message`) to finish its immediate turn and return its current state without starting another step, and kill active background tasks or timers (e.g. `manage_task: kill`).
+3. **Save current state and hand over**: Proceed directly through Steps 1–7 below for the work as it stands right now -- commit modified files (describing partial state), record durable facts under `## Durable Facts` (offering to `pauli` only if already active, without spawning a new subagent), update and release claimed PKB tasks as `partial` (or `done` only if all acceptance criteria were already verified before `/dump` was called), and emit the final handover report.
+
+## Mode 2: Agent-Run `/dump` (Routine Wrap-Up)
+
+Execute the calm, routine wrap-up across Steps 1–7 below.
 
 ## Procedure
 
 ### 1. Save and Push Work
 
 1. Stage specific modified files (never blanket `add -A`) and commit. If work is incomplete, describe what is partial in the commit message.
-2. Deliver commits only where the task's Output names. If Output says nothing is pushed or names only a PKB task or note, do not push. If Output names a branch or pull request, push commits to that remote branch (`git push`). If the PR is a draft and its code step is complete, mark it ready for review (`gh pr ready`) without waiting for approval. Ephemeral container and session scratch paths (`<appDataDir>/brain/`, `/tmp/`, unpushed working trees) vanish on exit; persist non-git evaluation datasets, specimen tables, and reports in the PKB with durable pointers.
-3. For pull requests (`gh pr create`), target the diverged base branch (e.g. `--base "${BASE_BRANCH:-${POLECAT_BASE_BRANCH}}"`).
+2. Deliver commits only where the task's Output names. If Output says nothing is pushed or names only a PKB task or note, do not push. If Output names a branch or pull request, push commits to that remote branch (`git push`). Worker pull requests open as a draft (`gh pr create --draft`) and are marked ready for review (`gh pr ready`) only after the independent check passes and its review verdict is posted to the PR thread, without waiting for approval. Ephemeral container and session scratch paths (`<appDataDir>/brain/`, `/tmp/`, unpushed working trees) vanish on exit; persist non-git evaluation datasets, specimen tables, and reports in the PKB with durable pointers.
+3. For pull requests (`gh pr create --draft`), target the diverged base branch (e.g. `--base "${BASE_BRANCH:-${POLECAT_BASE_BRANCH}}"`).
 4. Record the branch name and commit SHA in the final report.
 
 ### 2. Retroactive Tasks for Unparented Project Edits and Operational Faults

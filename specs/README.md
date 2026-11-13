@@ -23,6 +23,8 @@
 - [agents/authoritative-user-task-reports.md](agents/authoritative-user-task-reports.md) -- authoritative user task reports deciding task state and ministerial lifecycle execution in Pauli.
 - [agents/decision-queue-boundaries.md](agents/decision-queue-boundaries.md) -- decision-queue boundaries, informational query list-routing, conversational pacing, and preservation of collaborative design exploration.
 - [agents/external-state-recheck.md](agents/external-state-recheck.md) -- targeted external-state verification and read-only GitHub query authority for the knowledge base custodian.
+- [agents/dump-session-wrapup.md](agents/dump-session-wrapup.md) -- dump skill invocation modes: user-run emergency handover vs. agent-run routine wrap-up, consolidated daily note project pointers, retroactive tasks, durable facts, and handover traceability.
+- [agents/dump-faults-and-finds.md](agents/dump-faults-and-finds.md) -- dump skill triggers for significant operational fault recoveries and major diagnostic findings without code changes.
 
 ## Enforcement
 
