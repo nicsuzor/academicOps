@@ -160,6 +160,7 @@ export class StdioMcpServer {
           id,
           ...(isFailure ? { isError: true } : {}),
           result: {
+            ...(isFailure ? { isError: true } : {}),
             content: [{ type: "text", text: typeof result === "string" ? result : JSON.stringify(result) }],
           },
         };
@@ -169,6 +170,7 @@ export class StdioMcpServer {
           id,
           isError: true,
           result: {
+            isError: true,
             content: [{ type: "text", text: `Error executing ${toolName}: ${String(err)}` }],
           },
         };
@@ -212,7 +214,7 @@ export class StdioMcpServer {
   }
 
   private async executeTool(name: string, args: Record<string, unknown>): Promise<unknown> {
-    return this.channelCore.handleIpcMessage({ type: name, ...args });
+    return this.channelCore.handleIpcMessage({ type: name, ...args, _toolName: name });
   }
 
   public startStdioLoop() {
