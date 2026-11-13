@@ -993,7 +993,7 @@ def test_post_mcp_search_does_not_initialize_on_404_or_generic_400():
         server.shutdown()
 
 
-# --- AC2 & AC3: Envelope/slash gating, 8KB query, _session, empty silence, single-line error ---
+# --- AC2 & AC3: Envelope/slash gating, 8KB query, session_id, empty silence, single-line error ---
 
 
 @pytest.mark.parametrize(
