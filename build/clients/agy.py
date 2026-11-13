@@ -327,15 +327,6 @@ def _adapt_agents(build_dir: Path, ctx: BuildContext | None = None) -> None:
         if not body.startswith("# Agent System Instructions"):
             body = f"# Agent System Instructions\n\n{body}"
 
-        if "send_message" in processed_tools:
-            body = (
-                f"{body.strip()}\n\n"
-                "## Premise Check Report Contract\n\n"
-                "Every `send_message` / `SendMessage` report to a calling/peer agent "
-                "(and every foreground subagent return) must end with a fenced `argdown` block "
-                "(`ida:premise-check`) or `[no claim]`."
-            )
-
         target = agents_dir / f"{name}.md"
         _write_agent_md(target, agy_frontmatter, body.strip())
         if md_file != target:

@@ -21,11 +21,12 @@ Applies to all in-session and interactive work. Governs task creation boundaries
 1. **Single outer task**:
    - Requiring strictly one outer task on the task graph for the interactive topic.
    - The outer task is placed and claimed via `/q` by the internal sub-coordinator (`sub-Ida`) on behalf of the interactive session before substantial work begins. The user-facing coordinator strictly delegates and verifies, creating no tasks directly.
+   - When an interactive request transitions to asynchronous container execution, Sub-Ida places repo-scoped task(s) via `/q` and dispatches directly via `/dispatch` to containers running `/supervise` without pre-dispatch `/reify` in the interactive session (container `/supervise` runs `/reify` in-session).
    - Downstream workers and subagents below the sub-coordinator must never create additional tasks on the task graph for this work.
 
 2. **Delegation pipeline**:
    - Middle steps are unspecified except that the user-facing coordinator delegates to an internal delegate first.
-   - The internal delegate delegates through to the custodian, review supervisor, or dispatcher as appropriate for the work.
+   - The internal delegate delegates through to the custodian, review supervisor, or dispatcher as appropriate for the work. Dispatched containers run `/supervise` for repo-scoped epic tasks or `/pull` for plain leaf tasks.
    - No subagent or internal delegate may create child or auxiliary tasks on the task graph.
 
 3. **Seam verification**:
@@ -42,6 +43,6 @@ Applies to all in-session and interactive work. Governs task creation boundaries
 - The coordinator asserts an effort claim stating the proportionate depth of work in natural language (e.g. "targeted one-file edit", "comprehensive multi-agent design", "lightweight inspection").
 - When proportionate to task stakes, risk, and blast radius, the brief specifies closing steps: logic check (`premise-check`) first, then compliance (`rbg`) and quality/requirements satisfaction (`marsha`) reviews.
 - The sub-coordinator evaluates the brief for effort calibration and ask fidelity; if ill-calibrated or containing unasked exclusions, the sub-coordinator returns the brief for rework.
-- On acceptance, the sub-coordinator runs `/q` first before substantial work (searching open and closed tasks to resume, reopen, or create the topic task), or routes to `wf-lookup` with zero task creation if the query is read-only.
+- On acceptance, the sub-coordinator runs `/q` first before substantial work (searching open and closed tasks to resume, reopen, or create the topic task), or routes to `wf-lookup` with zero task creation if the query is read-only. When work transitions to asynchronous container execution, the sub-coordinator places repo-scoped task(s) via `/q` and delegates directly to the dispatcher via `/dispatch` to launch containers running `/supervise` without pre-dispatch `/reify` in the interactive session.
 - If closing steps were specified, the sub-coordinator executes the reviews, resolves findings, and hands back the completed report with checked Argdown premises and `Relay:` lines.
 - The user-facing coordinator performs a final look over the handback before responding to the user.

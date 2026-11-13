@@ -40,6 +40,14 @@ As a user delegating background work or diagnosing a failed turn, I want complet
 - **AC-4.2** Given another consumer is already polling the bot token or the channel encounters a conflict response, when the channel attempts to fetch updates, then the channel halts immediately and surfaces the collision error without retrying.
 - **AC-4.3** Given an agent turn exits with a non-zero status, times out, references an invalid session identifier, or encounters a channel communication error, when the failure occurs, then the channel halts the turn immediately and surfaces the verbatim error output and exit status.
 
+### US-5 Rich media, location, interactivity, draft streaming, and polls
+
+As a user on Telegram, I want the agent to send photos, documents, videos, animations, multi-item albums, audio, circular video notes, locations, venues, contacts, animated dice, chat activity indicators, streaming message drafts, and interactive or quiz polls in the active chat and thread, and to close open polls when voting concludes, so that rich artifacts, structured choices, and progress updates arrive in the right conversation context without leaving Telegram.
+
+- **AC-5.1** Given the agent invokes any outbound media, location, contact, dice, chat-action, message-draft, or poll send tool (`send_photo`, `send_document`, `send_video`, `send_animation`, `send_media_group`, `send_audio`, `send_video_note`, `send_location`, `send_venue`, `send_contact`, `send_dice`, `send_chat_action`, `send_message_draft`, `send_poll`), when `chat_id` or `message_thread_id` (`thread_id`) is omitted, then the channel routes the call to the default chat and active thread (or thread inferred from `reply_to`) using the same routing contract as `reply`, and attaches `reply_parameters` to the latest inbound message when sending a message in an unthreaded chat.
+- **AC-5.2** Given a media tool receives a local file path that exists on disk, when the channel dispatches the request, then it uploads the file as multipart form data; when given a Telegram `file_id` or HTTP(S) URL, it passes the reference directly in the request payload, formatting any Markdown caption or poll explanation into Telegram message entities with plain-text fallback on entity rejection.
+- **AC-5.3** Given the agent invokes `send_media_group`, `send_message_draft`, `send_poll`, or `stop_poll`, when the channel validates and dispatches the call, then it enforces protocol bounds before calling Telegram (2–10 items for `send_media_group`, non-zero integer `draft_id` for `send_message_draft`, 1–300 character question and 2–12 options of 1–100 characters for `send_poll`, and required `message_id` for `stop_poll`) and surfaces any local or Telegram error verbatim with `{ success: false, error }`.
+
 ## Design
 
 ### Channel architecture and interaction lifecycle
@@ -125,6 +133,28 @@ Modifies the text of a message previously sent by the agent.
   - `text` (string, required): Replacement Markdown text.
   - `chat_id` (integer, optional): Telegram chat identifier.
 - **Returns:** Object with `success` (boolean).
+
+#### Rich media, location, interactivity, draft streaming, and poll tools
+
+All fourteen outbound send tools (`send_photo`, `send_document`, `send_video`, `send_animation`, `send_media_group`, `send_audio`, `send_video_note`, `send_location`, `send_venue`, `send_contact`, `send_dice`, `send_chat_action`, `send_message_draft`, `send_poll`) accept optional `chat_id` (defaults to the session's default chat) and `message_thread_id` / `thread_id` (defaults to the thread of `reply_to` or the chat's active thread). Message-producing tools also accept optional `reply_to` (integer) and, except for `send_media_group`, optional inline keyboard parameters (`buttons`, `button_layout`, `buttons_per_row`). Media parameters accept a local file path (uploaded as multipart form data when present on disk), a Telegram `file_id`, or an HTTP(S) URL. Any validation or Telegram API error returns `{ success: false, error: string }` with MCP `isError: true`.
+
+| Tool | Required parameters | Key optional parameters | Returns |
+| - | - | - | - |
+| `send_photo` | `photo` (string) | `caption` (Markdown), `has_spoiler` (boolean), `disable_notification` (boolean) | `{ success: true, message_id, message_thread_id? }` |
+| `send_document` | `document` (string) | `caption` (Markdown), `disable_content_type_detection` (boolean), `disable_notification` (boolean) | `{ success: true, message_id, message_thread_id? }` |
+| `send_video` | `video` (string) | `caption` (Markdown), `duration`, `width`, `height` (integers), `has_spoiler`, `supports_streaming`, `disable_notification` (booleans) | `{ success: true, message_id, message_thread_id? }` |
+| `send_animation` | `animation` (string) | `caption` (Markdown), `duration`, `width`, `height` (integers), `has_spoiler`, `disable_notification` (booleans) | `{ success: true, message_id, message_thread_id? }` |
+| `send_media_group` | `media` (array of 2–10 items: `{ type: "photo" \| "video" \| "document" \| "animation" \| "audio", media: string, caption?: string, has_spoiler?: boolean }`) | `disable_notification` (boolean) | `{ success: true, message_ids: integer[], message_thread_id? }` |
+| `send_audio` | `audio` (string) | `caption` (Markdown), `duration` (integer), `performer`, `title` (strings), `disable_notification` (boolean) | `{ success: true, message_id, message_thread_id? }` |
+| `send_video_note` | `video_note` (string) | `duration`, `length` (integers), `disable_notification` (boolean) | `{ success: true, message_id, message_thread_id? }` |
+| `send_location` | `latitude` (number, -90..90), `longitude` (number, -180..180) | `horizontal_accuracy` (number), `live_period`, `heading`, `proximity_alert_radius` (integers), `disable_notification` (boolean) | `{ success: true, message_id, message_thread_id? }` |
+| `send_venue` | `latitude` (-90..90), `longitude` (-180..180), `title` (string), `address` (string) | `foursquare_id`, `foursquare_type`, `google_place_id`, `google_place_type` (strings), `disable_notification` (boolean) | `{ success: true, message_id, message_thread_id? }` |
+| `send_contact` | `phone_number` (string), `first_name` (string) | `last_name`, `vcard` (strings), `disable_notification` (boolean) | `{ success: true, message_id, message_thread_id? }` |
+| `send_dice` | _(none)_ | `emoji` (`"🎲" \| "🎯" \| "🏀" \| "⚽" \| "🎳" \| "🎰"`), `disable_notification` (boolean) | `{ success: true, message_id, value?: integer, emoji?: string, message_thread_id? }` |
+| `send_chat_action` | `action` (`"typing" \| "upload_photo" \| "record_video" \| "upload_video" \| "record_voice" \| "upload_voice" \| "upload_document" \| "choose_sticker" \| "find_location" \| "record_video_note" \| "upload_video_note"`) | _(chat and thread routing)_ | `{ success: true, message_thread_id? }` |
+| `send_message_draft` | `draft_id` (non-zero integer), `text` (Markdown string) | _(chat and thread routing)_ | `{ success: true, draft_id, message_thread_id? }` |
+| `send_poll` | `question` (string, 1–300 chars), `options` (array of 2–12 strings or `{ text: string }` items, 1–100 chars each) | `is_anonymous`, `allows_multiple_answers`, `is_closed`, `disable_notification` (booleans), `type` (`"regular" \| "quiz"`), `correct_option_id` (0-based integer), `explanation` (Markdown, 0–200 chars), `open_period` (5–600s), `close_date` (integer) | `{ success: true, message_id, poll_id?: string, message_thread_id? }` |
+| `stop_poll` | `message_id` (integer) | `chat_id` (integer), `buttons`, `button_layout`, `buttons_per_row` | `{ success: true, message_id, poll?: object, message_thread_id? }` |
 
 ### State and invariants
 

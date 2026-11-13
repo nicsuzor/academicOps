@@ -31,12 +31,12 @@ actually stands, not as it was last checked.
 3. **Confirm green, against the world.** Query CI status directly (e.g.
    `gh pr checks`) -- a claim that it's green from an earlier
    pass, another node, or the PR author is not this. Where it isn't, that is
-   itself a finding, not something to wait out. A draft PR whose code step is
-   complete and whose proportionate review by independent agents is posted to the
-   PR thread is marked ready for review. Mergeability is not required before
-   approval: do not rebase or resolve conflicts here; bringing the PR up to date
-   with its base and resolving conflicts happens after the principal approves,
-   just before merge.
+   itself a finding, not something to wait out. A draft PR is marked ready for
+   review (`gh pr ready`) only after the independent check passes and its
+   proportionate review by independent agents is posted to the PR thread.
+   Mergeability is not required before approval: do not rebase or resolve
+   conflicts here; bringing the PR up to date with its base and resolving
+   conflicts happens after the principal approves, just before merge.
 
 4. **Write an honest summary into the PR's own body.** Use the repo's PR
    template if it has one (fetch it, don't recall it); fill every section with
