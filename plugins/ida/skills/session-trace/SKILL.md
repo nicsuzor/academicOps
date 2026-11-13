@@ -11,7 +11,7 @@ counts and millisecond latencies. Read it rather than a session's own account of
 ## Transcript: how did this decision get made
 
 ```bash
-uv run python "${CLAUDE_SKILL_DIR}/scripts/phoenix_transcript.py" <session-id / conversation-id | slug | trace-id> --out <dir>/<slug>.transcript.md [--sanitize-paths]
+uv run python "${CLAUDE_SKILL_DIR:-plugins/ida/skills/session-trace}/scripts/phoenix_transcript.py" <session-id / conversation-id | slug | trace-id> --out <dir>/<slug>.transcript.md [--sanitize-paths]
 ```
 
 - Configuration is flags or environment: `--base-url` or `$PHOENIX_MCP_URL` (the Phoenix
@@ -57,7 +57,7 @@ time, find the session with Recipe A or F in [references/sql-recipes.md](referen
 
 ## Other exports
 
-- `uv run python scripts/phoenix_trace.py <session-id / conversation-id>` -- the span forest as JSON (`full`, with
+- `uv run python "${CLAUDE_SKILL_DIR:-plugins/ida/skills/session-trace}/scripts/phoenix_trace.py" <session-id / conversation-id>` -- the span forest as JSON (`full`, with
   `roots` and `orphans`) and a controller view. Check `meta.session_error_count`,
   `orphans`, `meta.trace_contamination` (traces shared with other sessions), and rank
   `subagents[]` by `collapsed_span_count` for the expensive branches.
@@ -82,7 +82,7 @@ the recipe from [references/sql-recipes.md](references/sql-recipes.md).
 
 ## Constraints
 
-- **Never scrape local transcript or debug files**: Agents must never read or scrape local `.system_generated/logs/transcript*.jsonl` or `/tmp/aops_debug_hooks_*.jsonl` files. All session/prompt inspection, trace queries, and cross-session search must query Arize Phoenix via `ida:session-trace`.
+- **Query Phoenix, never local log files**: Read session/prompt history, trace queries, and cross-session searches exclusively from Arize Phoenix rather than local `.system_generated/logs/transcript*.jsonl` or `/tmp/aops_debug_hooks_*.jsonl` files.
 - Filter on `session.id`, never `trace_id`: one trace can hold several sessions across agent interactions.
 - Subagent session identity varies by harness:
   - In `claude` (Claude Code), in-process subagents / teammates may share the dispatching session's

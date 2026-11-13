@@ -52,6 +52,7 @@ On top of them:
 - **A fail from an expert reviewer is a fail.** When combining verdicts across expert review lenses (such as in `/strategic-review` or supervisor arbitration), any expert reviewer's `FAIL` makes the combined verdict `FAIL`. The consolidating agent must never downgrade, soften, or overrule an expert's `FAIL`. If an expert reviewer is judged too harsh, that is the user's job to address by reviewing the underlying review agent, not the consolidating agent's job to soften.
 - **Change-only recurring runs**: Recurring jobs handle only what changed since their last completed run (`since: <cursor>`), stop immediately when nothing did, and never run concurrently ([`rules/recurring-jobs.md`](rules/recurring-jobs.md)).
 - **Bounded helpers**: Subagent helpers batch related operations, never idle across the 5-minute prompt cache TTL, and agents are encouraged on idle hooks and task boundaries to cull long-running helpers and dispatch fresh subagents for unrelated tasks ([`rules/bounded-helpers.md`](rules/bounded-helpers.md)).
+- **Subagent models**: Spawn general subagents on mid-tier models by default to save tokens and improve speed, reserving stronger models for named subagents. Exercise discretion based on task complexity, risk, and importance; do not couple instructions or invocations to specific model variants.
 
 Project-local rules: [`rules/RULES.md`](rules/RULES.md) and [`rules/*.md`](rules/).
 
