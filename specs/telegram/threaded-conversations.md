@@ -5,139 +5,79 @@ status: ready
 
 # Telegram Threaded Conversations by Default
 
-This specification defines the default message routing contract for Telegram forum topics and message threads in the `ida-telegram` plugin. It ensures that conversational agents operating in supergroups with forum topics enabled receive incoming messages with their thread context, and all outbound paths (replies, voice notes, question cards, message edits, and reactions) stay within that same thread without requiring opt-in settings.
+This specification defines default message routing, thread confinement, and topic creation and renaming (`create_thread`, `rename_thread`) for Telegram forum topics and message threads. Conversational agents operating in supergroups or private chats with topics enabled receive incoming messages tagged with their thread context, keep all outbound paths (replies, voice notes, question cards, edits, and reactions) confined to the active thread without opt-in flags, and can open or rename topics to organize multi-topic conversations. Broader topic lifecycle management (closing, reopening, deleting, General topic administration) and batch message management are specified in `specs/telegram/topic-and-message-management.md`.
 
-## User stories
+## User experience flow
+
+```mermaid
+flowchart LR
+    User(["Operator on Telegram"]) -->|"Message / Voice / Reaction in Topic"| Ingest["Tag Event with Thread ID & Update Active Topic"]
+    Ingest -->|"Deliver Inbound Event"| Agent["Conversational Agent"]
+    Agent -->|"create_thread / rename_thread"| TopicAPI["Open or Rename Forum Topic & Set Active Thread"]
+    TopicAPI -->|"Topic Ready"| User
+    Agent -->|"reply / ask_user / react / edit_message"| Route["Resolve Active Thread & Verify Destination"]
+    Route -->|"Deliver Confined to Topic (or Reply Target)"| User
+```
+
+## Capabilities and user stories
 
 ### US-1 Inbound Thread Identity Delivery
 
 As an operator communicating with an agent inside a specific Telegram forum topic or thread, I want messages, bot commands, attachments, voice notes, callback queries, and reactions delivered to the agent with their thread identity, so that conversation history and context remain isolated to that specific topic.
 
-- **AC-1.1** Given a text message arriving in a Telegram thread (`message_thread_id: 4242`), when the update is parsed, then the emitted channel event carries `meta.message_thread_id = "4242"` and `meta.thread_id = "4242"`.
-- **AC-1.2** Given a bot command arriving in a Telegram thread (`message_thread_id: 4242`), when the update is parsed, then the emitted channel event carries `meta.message_thread_id = "4242"` and `meta.thread_id = "4242"`.
-- **AC-1.3** Given an attachment arriving in a Telegram thread (`message_thread_id: 4242`), when the update is parsed, then the emitted channel event carries `meta.message_thread_id = "4242"` and `meta.thread_id = "4242"`.
-- **AC-1.4** Given a button tap callback query on a message in a Telegram thread (`message_thread_id: 4242`), when the update is parsed, then the emitted channel event carries `meta.message_thread_id = "4242"` and `meta.thread_id = "4242"`.
-- **AC-1.5** Given a voice note arriving in a Telegram thread (`message_thread_id: 4242`), when transcribed and emitted, then the voice channel event carries `meta.message_thread_id = "4242"` and `meta.thread_id = "4242"`.
-- **AC-1.6** Given a user emoji reaction arriving on a message in a Telegram thread (`message_thread_id: 4242`), when the reaction event is emitted, then the reaction channel event carries `meta.message_thread_id = "4242"` and `meta.thread_id = "4242"`.
+- **AC-1.1** Given a text message, bot command, attachment, voice note, button callback query, or emoji reaction arriving in a Telegram thread (`message_thread_id: 4242`), when the update is processed, then the emitted channel event carries `meta.message_thread_id = "4242"` and `meta.thread_id = "4242"`.
 
 ### US-2 Outbound Thread Confinement Without Configuration
 
-As an operator interacting with an agent inside a forum topic, I want every outbound response (reply text, spoken voice note, question card, "Other" answer prompt, edit, and emoji reaction) to remain confined to that topic automatically without requiring configuration flags, so that messages never leak into the General topic or clutter other channels.
+As an operator interacting with an agent inside a forum topic, I want every outbound response (reply text, spoken voice note, question card, custom-answer prompt, message edit, and emoji reaction) to remain confined to that topic automatically without requiring configuration flags, so that messages never leak into the General topic or clutter other channels.
 
-- **AC-2.1** Given an active conversation in a Telegram thread, when the agent invokes `reply({ text: "..." })` without specifying a thread or reply parameter, then the bot sends `sendMessage` with `message_thread_id` matching that active thread.
-- **AC-2.2** Given an active conversation in a Telegram thread, when the agent invokes `reply({ text: "...", voice: true })`, then the bot sends `sendVoice` (and any overflow `sendMessage`) with `message_thread_id` matching that active thread.
-- **AC-2.3** Given an active conversation in a Telegram thread, when the agent invokes `ask_user({ questions: [...] })` without specifying a thread, then the question card is sent via `sendMessage` with `message_thread_id` matching that active thread.
-- **AC-2.4** Given an active question card in a Telegram thread, when the operator taps `✏️ Other`, then the resulting `force_reply` prompt is sent via `sendMessage` with `message_thread_id` matching that active thread.
-- **AC-2.5** Given an incoming message in a Telegram thread, when the bot receives it or when the agent calls `react({ message_id, reaction })`, then the emoji reaction is set on that message directly in the thread.
-- **AC-2.6** Given an existing card or message in a Telegram thread, when `edit_message({ message_id, text })` or card state update is invoked, then the message is updated in-place within that thread.
+- **AC-2.1** Given an active conversation in a Telegram thread, when the agent invokes `reply` (text or `voice: true`), `ask_user`, or when the operator taps `✏️ Other` on a question card without an explicit thread override, then the outbound message, voice note, or prompt is sent with `message_thread_id` matching the active thread.
+- **AC-2.2** Given an incoming or existing message in a Telegram thread, when `react` or `edit_message` is invoked, then the reaction or in-place text update applies directly to that message within the thread.
 
 ### US-3 Unthreaded Chats Backward Compatibility
 
-As an operator using direct messages (private chats) or regular unthreaded group chats, I want standard unthreaded behaviour preserved exactly as before without synthetic thread IDs or invalid API parameters.
+As an operator using direct messages (private chats) or regular unthreaded group chats, I want standard unthreaded behaviour preserved without synthetic thread IDs or invalid API parameters.
 
-- **AC-3.1** Given a message arriving in an unthreaded chat (no `message_thread_id`), when the update is parsed, then `meta.message_thread_id` and `meta.thread_id` are absent.
-- **AC-3.2** Given an unthreaded conversation, when the agent calls `reply` or `ask_user`, then outbound API requests omit `message_thread_id`.
+- **AC-3.1** Given a message arriving in an unthreaded chat (no `message_thread_id`), when the update is processed and the agent calls `reply` or `ask_user`, then `meta.message_thread_id` and `meta.thread_id` are absent on the inbound event and outbound API requests omit `message_thread_id`.
 
 ### US-4 Thread Renaming via Tool Call
 
-As an operator interacting with an agent in a forum topic or thread, I want the agent to be able to rename the thread to reflect the active conversation topic, task, or state, so that threads in chat carry meaningful names.
+As an operator interacting with an agent in a forum topic or thread, I want the agent to rename the thread to reflect the active conversation topic, task, or state, so that threads in chat carry meaningful names.
 
-- **AC-4.1 Active Thread Renaming:** When the agent invokes `rename_thread({ name: "..." })` without specifying a thread or chat, the tool renames the active thread in the current chat using the Telegram Bot API (`editForumTopic`).
-- **AC-4.2 Explicit Thread Target:** When the agent invokes `rename_thread({ message_thread_id: 1234, name: "New Name" })` (or alias `thread_id`), the tool renames that specific thread in the specified or default chat, optionally forwarding `icon_custom_emoji_id`.
-- **AC-4.3 Input Validation & Clear Error Reporting:** When the agent invokes `rename_thread` with an invalid/missing thread ID, empty or missing name, name exceeding 128 characters, or when Telegram API rejects the rename, the tool returns a clear error (`{ success: false, error: "..." }`) rather than silently succeeding.
-- **AC-4.4 Unthreaded Context Rejection:** When the agent invokes `rename_thread` in an unthreaded conversation without providing an explicit `message_thread_id`, the tool returns a clear error indicating that a thread ID is required.
+- **AC-4.1** Given an active or explicitly specified non-General thread (`message_thread_id` / `thread_id`), when the agent invokes `rename_thread({ name: "..." })` (with optional `icon_custom_emoji_id`), then the topic is renamed via `editForumTopic` and the tool returns `{ success: true, chat_id, message_thread_id, thread_id, name }`.
+- **AC-4.2** Given an empty or >128-character `name`, missing thread context in an unthreaded chat, General topic `#1`, or a Telegram API rejection, when `rename_thread` is invoked, then the tool returns `{ success: false, error: "..." }` with `isError: true`.
 
 ### US-5 Routing When No Thread is Defined & Outbound Verification
 
-As an operator interacting with an agent in a chat where no thread is defined (after a restart, or when writing messages outside any topic in a topics-enabled chat), I want outbound replies to reach a chat context I can open (attaching as replies to my inbound message) rather than landing in an unopenable General `#` topic, active thread memory preserved across restarts, and sends that land in an unexpected thread caught rather than reported as success.
+As an operator interacting with an agent in a chat where no thread is defined (after a restart, or when writing messages outside any topic in a topics-enabled chat), I want outbound replies to attach to my inbound message rather than landing in an unopenable General `#` topic, active thread memory preserved across restarts, and sends that land in an unexpected thread caught as errors.
 
-- **AC-5.1 Unthreaded Reply Routing:** Given a message arriving outside a thread in a chat (no `message_thread_id`), when the agent calls `reply` without specifying a thread or reply parameter, then the bot sets `reply_parameters.message_id` to that inbound message ID and omits `message_thread_id`, delivering the response in the chat context where the user wrote.
-- **AC-5.2 Persistent Thread Memory Across Restarts:** When the plugin restarts or reconnects, active thread, last inbound message, and topics-enabled state per chat are restored from durable storage (`chat_state.json` in `stateDir`), so sends after a restart stay in the active thread without configuration.
-- **AC-5.3 Outbound Thread Verification:** When sending replies without an explicit thread parameter, the plugin compares the outbound thread against the inbound message's thread context (or its absence). If the message lands in an unexpected or unreadable thread (such as `#` / thread 1 when unthreaded was expected), the call returns `{ success: false, error: "..." }` rather than silently succeeding.
-- **AC-5.4 Undefined Active Thread Check:** After a reconnect or restart, if a chat has topics enabled but no active thread or inbound message is defined, invoking `reply` without an explicit `message_thread_id` or `reply_to` returns a clear error (`{ success: false, error: "..." }`) rather than sending an unthreaded message to the forum root.
-- **AC-5.5 Thread Observability in Tool Output:** When `reply` succeeds, the result payload includes `message_thread_id` reflecting the thread used, allowing callers and verification checks to confirm where the message landed.
+- **AC-5.1** Given a message arriving outside any thread in a chat (no `message_thread_id`), when the agent calls `reply` without specifying a thread or reply parameter, then the outbound request sets `reply_parameters.message_id` to that inbound message ID and omits `message_thread_id`, and the tool result reports `message_thread_id` whenever a thread was used.
+- **AC-5.2** Given a process restart or reconnect, when the channel initializes, then active thread, last inbound message, and topics-enabled state per chat are restored from durable state; if a topics-enabled chat has neither an active thread nor an inbound reply target, or if Telegram delivers an unthreaded send into an unexpected thread (`message_thread_id: 1`), `reply` returns `{ success: false, error: "..." }`.
 
 ### US-6 Thread Creation via Tool Call
 
-As an operator conversing with an agent in the main chat or an existing thread, I want the agent to be able to open a new titled thread (forum topic) and continue our conversation directly inside that newly created thread, so that distinct discussions or tasks are organized into dedicated topics without manual topic setup.
+As an operator conversing with an agent in the main chat or an existing thread, I want the agent to open a new titled thread (forum topic) and continue our conversation directly inside that newly created thread, so that distinct discussions or tasks are organized into dedicated topics without manual topic setup.
 
-- **AC-6.1 Thread Creation:** When the agent invokes `create_thread({ name: "..." })` (aliases `title`, `create_topic`, `create_forum_topic`), the tool opens a new topic in the current or specified chat via the Telegram Bot API (`createForumTopic`), updates the active thread for that chat to the newly created `message_thread_id`, and returns `{ success: true, chat_id, message_thread_id, thread_id, name }`.
-- **AC-6.2 Outbound Thread Confinement After Creation:** Immediately following a successful `create_thread` invocation, subsequent outbound messages (`reply`, `ask_user`, `react`) sent to that chat automatically target the newly created thread without requiring explicit thread parameters from the agent.
-- **AC-6.3 Optional Parameters:** The tool forwards optional `icon_color` (RGB integer) and `icon_custom_emoji_id` (string) to `createForumTopic` when provided.
-- **AC-6.4 Input Validation & Clear Error Reporting:** When the agent invokes `create_thread` with an empty/whitespace name, a name exceeding 128 characters, missing chat context, or when the Telegram Bot API rejects topic creation (e.g. forum topics disabled, insufficient bot permissions, invalid chat), the tool returns a clear error (`{ success: false, error: "..." }`) rather than failing silently.
+- **AC-6.1** Given a valid topic `name` (1–128 characters, with optional integer RGB `icon_color` and `icon_custom_emoji_id`), when the agent invokes `create_thread({ name: "..." })`, then a new forum topic is created via `createForumTopic`, the active thread for that chat is updated to the new `message_thread_id` so subsequent outbound calls route into it by default, and the tool returns `{ success: true, chat_id, message_thread_id, thread_id, name }`.
+- **AC-6.2** Given an empty or >128-character `name`, a non-integer `icon_color`, or a Telegram API rejection, when `create_thread` is invoked, then the tool returns `{ success: false, error: "..." }` with `isError: true`.
 
-## Design
+## Shared interface contract
 
-### 1. Inbound Routing and Context Tracking
+### 1. Inbound Event Metadata & Thread Resolution
 
-1. **Update Parsing (`inbound.ts`):**
-   `TelegramMessage` captures `message_thread_id?: number` and `is_topic_message?: boolean`. When present on incoming messages, bot commands, attachments, voice notes, or callback query messages, `parseInboundUpdate` and `buildVoiceInEvent` attach both `meta.message_thread_id` and `meta.thread_id` as formatted strings.
-2. **Per-Chat Active Thread & Inbound Message Memory (`bot.ts` & `store.ts`):**
-   `TelegramBotClient` maintains `lastThreadIdByChat = new Map<number, number>()`, `lastInboundMessageIdByChat = new Map<number, number>()`, `lastInboundThreadIdByChat = new Map<number, number>()`, `topicsEnabledChats = new Set<number>()`, and `messageThreads = new Map<number, number>()`. When a message or callback arrives from an authorized user:
-   - If `message_thread_id` is present, the active thread for that chat is updated, the chat is marked topics-enabled, and the message is indexed.
-   - If an unthreaded message arrives, the active thread is cleared, but the inbound message ID is recorded as the fallback reply target.
-   - Active thread, inbound message tracking, and topics-enabled chat flags are persisted durably to `chat_state.json` via `PluginStore`, restoring state across process restarts.
+- Inbound events originating inside a forum topic include `meta.message_thread_id` and `meta.thread_id` as stringified integers. Events outside a thread omit both fields.
+- Per-chat routing state tracks the active `message_thread_id`, the most recent inbound `message_id` and its thread context, and whether the chat has forum topics enabled. State is persisted across restarts.
+- Outbound `reply` and `ask_user` calls resolve their target thread in priority order: (1) explicit `message_thread_id` / `thread_id` tool argument, (2) thread indexed for an explicit `reply_to` message, (3) active thread for the chat, or (4) when unthreaded, attaching `reply_parameters.message_id` to the last inbound message ID without `message_thread_id`.
 
-### 2. Outbound Dispatch & Verification
+### 2. Thread Creation and Renaming Tool Contracts
 
-1. **Effective Thread & Reply Resolution:**
-   Outbound paths (`sendReply`, `sendQuestionCard`, `sendPermissionCard`) resolve the target thread and reply parameter using prioritized resolution:
-   - Explicit `messageThreadId` passed by caller in options / tool arguments;
-   - Inferred thread from `replyTo` via indexed `messageThreads`;
-   - Active thread from `lastThreadIdByChat` for that chat;
-   - When no thread is defined (`effectiveThreadId` is undefined): default `replyTo` to `lastInboundMessageIdByChat` for that chat so the outbound message attaches directly to the user's message via `reply_parameters`.
-2. **API Dispatch:**
-   When an effective thread ID is present, it is added to `sendMessage` payload and `sendVoice` multipart form data as `message_thread_id`. When absent (unthreaded chats or unthreaded replies), `message_thread_id` is omitted and `reply_parameters` attaches to the inbound message.
-3. **Outbound Verification Check:**
-   `sendReply` verifies that outbound messages land in the expected thread context:
-   - If the inbound message was in a thread, the outbound message must land in that thread.
-   - If the inbound message was unthreaded, the outbound message must not land in a thread (`result.message_thread_id` must be absent).
-   - If a chat has topics enabled and no active thread or reply target is defined, `sendReply` fails fast with `{ success: false, error: "..." }` rather than sending a blind message to the unopenable General `#` topic.
-   - Upon successful delivery, `reply` tool output includes `message_thread_id` for caller observability.
-4. **Question Cards and Decision Flows:**
-   Both `StdioMcpServer.executeTool("ask_user")` and the Unix domain socket bridge (`createBridgeServer`) pass the effective thread ID (or inbound reply target when unthreaded) to `broker.askUser` and `bot.sendQuestionCard`. Tapping `✏️ Other` preserves `message_thread_id` on the `force_reply` prompt. Resolving or closing questions emits channel events carrying the thread identity.
+| MCP Tool | Parameters | Return Payload | Validation & Error Contract |
+| :- | :- | :- | :- |
+| `create_thread` | `name` (string, required, 1–128 chars), `chat_id` (integer, optional), `icon_color` (integer RGB, optional), `icon_custom_emoji_id` (string, optional) | `{ success: true, chat_id, message_thread_id, thread_id, name }` | Rejects empty/whitespace `name`, `name` > 128 chars, or non-integer `icon_color` locally; activates the created `message_thread_id` for subsequent sends; surfaces `createForumTopic` API errors verbatim as `{ success: false, error }` (`isError: true`). |
+| `rename_thread` | `name` (string, required, 1–128 chars), `chat_id` (integer, optional), `message_thread_id` / `thread_id` (integer, optional; defaults to active thread), `icon_custom_emoji_id` (string, optional) | `{ success: true, chat_id, message_thread_id, thread_id, name }` | Rejects empty/whitespace `name`, `name` > 128 chars, missing thread context, or General topic `#1` locally; surfaces `editForumTopic` API errors verbatim as `{ success: false, error }` (`isError: true`). |
 
-### 3. Thread Renaming
+## Invariants and security boundaries
 
-1. **Tool Definition & Schema (`tools.ts`):**
-   `rename_thread` tool definition in `MCP_TOOLS` exposes `chat_id` (optional, defaults to primary chat), `message_thread_id` (optional, alias `thread_id`, defaults to active thread in chat via `bot.getLastThreadId`), `name` (required string, 1-128 characters), and `icon_custom_emoji_id` (optional custom emoji ID for topic icon).
-2. **Bot API Dispatch (`bot.ts`):**
-   `TelegramBotClient.editForumTopic(chatId, messageThreadId, name, iconCustomEmojiId)` dispatches `POST /bot<token>/editForumTopic` with `{ chat_id, message_thread_id, name, ... }`.
-3. **Validation and Error Handling (`channel-core.ts`):**
-   Input validation rejects empty/whitespace names, names > 128 characters, General topic `#1`, or missing thread IDs immediately with `{ success: false, error: "<reason>" }`. When the Telegram Bot API returns `ok: false`, the tool returns `{ success: false, error: res.description || "Failed to rename forum topic" }` so callers receive explicit failure feedback.
-
-### 4. Thread Creation
-
-1. **Tool Definition & Schema (`tools.ts`):**
-   `create_thread` tool definition in `MCP_TOOLS` exposes `chat_id` (optional, defaults to primary user), `name` (required string, 1-128 characters), `icon_color` (optional integer RGB color), and `icon_custom_emoji_id` (optional custom emoji ID for topic icon).
-2. **Bot API Dispatch & Active Thread Tracking (`bot.ts`):**
-   `TelegramBotClient.createForumTopic(chatId, name, options)` dispatches `POST /bot<token>/createForumTopic` with `{ chat_id, name, ... }`. Upon receiving a successful response with `result.message_thread_id`, it records the thread ID in `lastThreadIdByChat` for that `chatId`, ensuring all subsequent outbound replies automatically land in the newly created thread.
-3. **Validation and Error Handling (`channel-core.ts`):**
-   Input validation rejects empty/whitespace names, names > 128 characters, non-integer `icon_color`, or missing chat IDs with `{ success: false, error: "<reason>" }`. When the Telegram Bot API returns `ok: false` or does not return `result.message_thread_id`, the tool returns `{ success: false, error: res.description || "Failed to create forum topic" }`.
-
-### 5. Summary of All 13 Exposed Forum-Topic / Thread MCP Tools
-
-The `ida-telegram` plugin exposes 13 thread-related MCP tools to agents:
-
-1. `create_thread` (`createForumTopic`)
-2. `rename_thread` (`editForumTopic`)
-3. `close_thread` (`closeForumTopic`)
-4. `reopen_thread` (`reopenForumTopic`)
-5. `delete_thread` (`deleteForumTopic`)
-6. `unpin_all_thread_messages` (`unpinAllForumTopicMessages`)
-7. `get_forum_topic_icon_stickers` (`getForumTopicIconStickers`)
-8. `edit_general_thread` (`editGeneralForumTopic`)
-9. `close_general_thread` (`closeGeneralForumTopic`)
-10. `reopen_general_thread` (`reopenGeneralForumTopic`)
-11. `hide_general_thread` (`hideGeneralForumTopic`)
-12. `unhide_general_thread` (`unhideGeneralForumTopic`)
-13. `unpin_all_general_thread_messages` (`unpinAllGeneralForumTopicMessages`)
-
-## Outcome-Level Build Criteria Mapped to Checks
-
-| Criterion | Target Requirement | Verification Check & Observable Proof |
-| :- | :- | :- |
-| **AC-1** | Called from the main chat or existing thread, `create_thread` opens a titled thread and the agent's next reply is sent inside it automatically without explicit thread parameters. | Integration test in `plugins/ida-telegram/test/threads.test.ts` showing `create_thread` tool call creates the topic via `createForumTopic`, sets active thread, and follow-up `reply` call sends `sendMessage` carrying `message_thread_id`. |
-| **AC-2** | A failed create (empty title, name > 128 characters, chat where topics are unavailable, or Telegram API rejection) returns a clear error to the caller. | Unit tests in `plugins/ida-telegram/test/threads.test.ts` testing empty/whitespace name, name length limit, and Telegram API rejection (e.g. `FORUM_CLOSED`, `NOT_ENOUGH_RIGHTS`), verifying `{ success: false, error: "..." }` responses. |
-| **AC-3** | The governing spec states the tool's contract and the `telegram` skill documents the tool for agents. | Inspection of diffs in `specs/telegram/threaded-conversations.md` and `plugins/ida-telegram/skills/telegram/SKILL.md`. |
-| **AC-4** | Test suite and linter green; PR open into `release/v1.0-rc0` with each criterion mapped to its evidence. | Passing execution of `bun test` and `make lint`, plus git branch and draft PR open targeting `release/v1.0-rc0`. |
+- **Authorized sender boundary:** Only updates from authorized user IDs (`allowFrom`) mutate active thread state or trigger outbound replies.
+- **Outbound thread verification:** When an unthreaded reply is sent without an explicit thread override and Telegram places the message into an unexpected topic (such as General topic `#1`), or when a topics-enabled chat has no active thread and no inbound reply target after restart, delivery fails fast with `{ success: false, error }` (`isError: true`).
+- **General topic `#1` protection:** `rename_thread` refuses `message_thread_id: 1` locally; General topic `#1` is renamed exclusively via `edit_general_thread` (specified in `specs/telegram/topic-and-message-management.md`).

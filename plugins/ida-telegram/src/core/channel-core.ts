@@ -951,7 +951,6 @@ export class SharedTelegramChannelCore {
         return await this.editGeneralThread(msg);
 
       case "close_general_thread":
-      case "close_topic_general":
       case "close_general_topic":
       case "close_general_forum_topic":
         return await this.closeGeneralThread(msg);

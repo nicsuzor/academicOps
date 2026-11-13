@@ -50,9 +50,9 @@ Every reply sent over Telegram automatically carries inline action buttons with 
   - Returns the arguments behind the message verbatim (Chained Toulmin Argdown blocks), one per link of the chain, each labelled with who argued it and to whom (e.g. `Prime to user`, `Sara to Prime`, `worker to Sara`), nested by delegation depth, in the reply's details (`detail` parameter).
   - A link whose argument cannot be found is named as missing (e.g. `[Missing argument: no premise-check record found for ...]`), never paraphrased.
   - Chat text provides a concise summary (~100 words) with the primary takeaway and the chain structure, referencing the Details page for the full verbatim Argdown blocks.
-- **Accept recommendation (`✅`):** Marks the card and notifies Ida that the user accepted the recommendation (`event: "accept_recommendation"`).
+- **Accept recommendation (`✅`):** Marks the card and notifies the agent that the user accepted the recommendation (`event: "accept_recommendation"`).
   - Act on the accepted recommendation or confirm execution.
-- **Decline recommendation (`❌`):** Marks the card and notifies Ida that the user declined the recommendation (`event: "decline_recommendation"`).
+- **Decline recommendation (`❌`):** Marks the card and notifies the agent that the user declined the recommendation (`event: "decline_recommendation"`).
   - Acknowledge declination, avoid proceeding with the declined course, and offer alternatives or seek clarification if needed.
 
 ## Reactions & Feedback
@@ -92,37 +92,16 @@ Every reply sent over Telegram automatically carries inline action buttons with 
 - **Thread confinement by default:** In Telegram supergroups or topics-enabled chats, messages arriving in a thread are tagged with `meta.message_thread_id` and `meta.thread_id`. All outbound paths (replies, voice notes, question cards, edits, and reactions) automatically stay in that thread without configuration.
 - **Routing when no thread is defined:** When replying to a message sent outside any thread, the reply attaches directly to that inbound message via reply parameters so it lands in the chat context where the user wrote, rather than falling into an unopenable General `#` topic. Active thread memory is preserved across server restarts. Outbound thread verification catches unexpected thread destinations rather than reporting silent success.
 - **Explicit target overriding:** If work requires posting into a specific topic, pass `message_thread_id` (or `thread_id`) explicitly to `reply` or `ask_user`.
-- **Opening new threads (`create_thread`):** When starting a dedicated discussion, branching off a topic, or when the user asks to open the conversation in a new window or thread, create a new forum topic using `create_thread({ name: "..." })` (backed by `createForumTopic`). Once created, the new thread automatically becomes active and subsequent replies (`reply`, `ask_user`, etc.) land inside it without needing an explicit thread ID.
-- **Renaming threads (`rename_thread`):** When a conversation shifts focus or a thread requires a descriptive title, rename the forum topic using `rename_thread({ name: "..." })` (backed by `editForumTopic`). If `message_thread_id` is omitted, the active thread is renamed automatically.
-- **Closing threads (`close_thread`):** Close a resolved forum topic using `close_thread({ message_thread_id?: ... })` (backed by `closeForumTopic`). When `message_thread_id` is omitted, the active topic in session context is closed. General topic `#1` cannot be closed.
-- **Reopening threads (`reopen_thread`):** Reopen a previously closed forum topic using `reopen_thread({ message_thread_id?: ... })` (backed by `reopenForumTopic`). When omitted, defaults to the active topic. General topic `#1` cannot be reopened.
-- **Deleting threads (`delete_thread`):** Permanently delete a forum topic and its message history using `delete_thread({ message_thread_id?: ... })` (backed by `deleteForumTopic`). Deleting clears active thread tracking for that chat so subsequent replies do not route into the deleted topic. General topic `#1` cannot be deleted.
-- **Complete list of 13 exposed thread/topic MCP tools:**
-  1. `create_thread` (`createForumTopic`)
-  2. `rename_thread` (`editForumTopic`)
-  3. `close_thread` (`closeForumTopic`)
-  4. `reopen_thread` (`reopenForumTopic`)
-  5. `delete_thread` (`deleteForumTopic`)
-  6. `unpin_all_thread_messages` (`unpinAllForumTopicMessages`)
-  7. `get_forum_topic_icon_stickers` (`getForumTopicIconStickers`)
-  8. `edit_general_thread` (`editGeneralForumTopic`)
-  9. `close_general_thread` (`closeGeneralForumTopic`)
-  10. `reopen_general_thread` (`reopenGeneralForumTopic`)
-  11. `hide_general_thread` (`hideGeneralForumTopic`)
-  12. `unhide_general_thread` (`unhideGeneralForumTopic`)
-  13. `unpin_all_general_thread_messages` (`unpinAllGeneralForumTopicMessages`)
+- **Opening new threads (`create_thread`):** When starting a dedicated discussion, branching off a topic, or when the user asks to open the conversation in a new window or thread, create a new forum topic using `create_thread({ name: "..." })` (choosing custom icons from `get_forum_topic_icon_stickers` when needed). Once created, the new thread automatically becomes active and subsequent replies (`reply`, `ask_user`, etc.) land inside it without needing an explicit thread ID.
+- **Renaming threads (`rename_thread`):** When a conversation shifts focus or a thread requires a descriptive title, rename the forum topic using `rename_thread({ name: "..." })`. If `message_thread_id` is omitted, the active thread is renamed automatically.
+- **Closing, reopening, unpinning, and deleting threads:** Close a resolved topic with `close_thread`, reopen a closed topic with `reopen_thread`, clear all topic pins with `unpin_all_thread_messages`, or permanently delete an obsolete topic and its history with `delete_thread` (which also clears active thread tracking for that chat). When `message_thread_id` is omitted, the active topic in session context is targeted.
+- **General topic `#1` management:** Standard topic tools reject `message_thread_id: 1`. Manage the General topic explicitly via `edit_general_thread`, `close_general_thread`, `reopen_general_thread`, `hide_general_thread`, `unhide_general_thread`, and `unpin_all_general_thread_messages`.
 
 ## Message Management (Pinning, Batch Transfer, Deletion & Button Editing)
 
-Additional Telegram Bot API message-management tools exposed in `MCP_TOOLS`:
-
-- `pin_message` (`pinChatMessage`): Pin a `message_id` in a chat (`disable_notification` defaults to `true`).
-- `unpin_message` (`unpinChatMessage`): Unpin a specific `message_id` or the most recently pinned message.
-- `unpin_all_messages` (`unpinAllChatMessages` / `unpinAllForumTopicMessages`): Unpin all pinned messages chat-wide, or scoped to a forum topic when `message_thread_id` / active thread context is present.
-- `forward_messages` (`forwardMessages`): Batch-forward 1-100 `message_ids` with attribution preserved (`from_chat_id` defaults to `chat_id`).
-- `copy_messages` (`copyMessages`): Batch-copy 1-100 `message_ids` without attribution (`remove_caption` supported).
-- `delete_messages` (`deleteMessages`): Batch-delete 1-100 `message_ids` simultaneously.
-- `edit_message_reply_markup` (`editMessageReplyMarkup`): Add, replace, or clear (`buttons: []` / omitted) inline keyboard buttons on an existing `message_id` without modifying message text.
+- **Pinning and unpinning:** Pin key reference messages or decisions silently (`disable_notification: true` by default) with `pin_message`, unpin a specific or most recent pin with `unpin_message`, or clear all pins in the active topic or chat with `unpin_all_messages`.
+- **Batch migration and cleanup:** Reorganize conversations into dedicated topics by transferring 1-100 messages per call with `forward_messages` (preserving attribution) or `copy_messages` (without forward headers), and remove superseded messages within Telegram's 48-hour deletion window using `delete_messages`.
+- **In-place button updates:** Attach, replace, or clear (`buttons: []` / omitted) inline keyboard buttons on existing messages without reposting text using `edit_message_reply_markup`.
 
 ## Voice
 

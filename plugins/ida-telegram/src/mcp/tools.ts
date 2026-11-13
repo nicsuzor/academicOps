@@ -16,7 +16,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
-        chat_id: { type: "integer", description: "Telegram chat ID (defaults to primary user)" },
+        chat_id: { type: "integer", description: "Telegram chat ID (defaults to primary chat)" },
         message_thread_id: {
           type: "integer",
           description: "Telegram forum topic / thread ID (defaults to active thread when in a topics chat)",
@@ -73,7 +73,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
-        chat_id: { type: "integer", description: "Telegram chat ID (defaults to primary user)" },
+        chat_id: { type: "integer", description: "Telegram chat ID (defaults to primary chat)" },
         message_thread_id: {
           type: "integer",
           description: "Telegram forum topic / thread ID (defaults to active thread when in a topics chat)",

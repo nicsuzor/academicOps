@@ -5,116 +5,86 @@ status: ready
 
 # Telegram Topic and Message Management Tools
 
-This specification defines forum-topic lifecycle and message-management tools exposed via MCP in `ida-telegram` (`close_thread`, `reopen_thread`, `delete_thread`, `unpin_all_thread_messages`, `get_forum_topic_icon_stickers`, `edit_general_thread`, `close_general_thread`, `reopen_general_thread`, `hide_general_thread`, `unhide_general_thread`, `unpin_all_general_thread_messages`, `pin_message`, `unpin_message`, `unpin_all_messages`, `forward_messages`, `copy_messages`, `delete_messages`, and `edit_message_reply_markup`, alongside `create_thread` and `rename_thread`).
+This specification defines the MCP tools for forum-topic lifecycle administration (`close_thread`, `reopen_thread`, `delete_thread`, `unpin_all_thread_messages`), custom topic icon discovery (`get_forum_topic_icon_stickers`), General topic `#1` administration (`edit_general_thread`, `close_general_thread`, `reopen_general_thread`, `hide_general_thread`, `unhide_general_thread`, `unpin_all_general_thread_messages`), and message management (`pin_message`, `unpin_message`, `unpin_all_messages`, `forward_messages`, `copy_messages`, `delete_messages`, `edit_message_reply_markup`). Default thread routing and topic creation/renaming (`create_thread`, `rename_thread`) are specified in `specs/telegram/threaded-conversations.md`, and core outbound messaging (`reply`, `react`, `ask_user`, `edit_message`) is specified in `specs/telegram/shared-telegram-channel.md`.
 
-## Overview of Tool Classification
+## User experience flow
 
-In the `ida-telegram` plugin, Telegram Bot API operations are partitioned into:
+```mermaid
+flowchart LR
+    User(["Operator on Telegram"]) -->|"Request Topic Cleanup / Migration / Pin"| Agent["Conversational Agent"]
+    Agent -->|"close / reopen / delete / *_general_thread*"| TopicOps["Topic & General #1 Lifecycle"]
+    Agent -->|"pin / unpin / forward / copy / delete / edit_markup"| MsgOps["Pinning, Batch Transfer & Markup"]
+    TopicOps -->|"Update Topic State & Clear Deleted Thread"| User
+    MsgOps -->|"Validate 1-100 Batch Bounds & Update Chat"| User
+```
 
-1. **Exposed MCP Tools (`MCP_TOOLS` -- 24 tools total):** Tools accessible to agents via `tools/list` and `tools/call`:
-   - 4 core outbound tools: `reply`, `react`, `ask_user`, `edit_message`.
-   - 13 forum-topic / thread tools: `create_thread`, `rename_thread`, `close_thread`, `reopen_thread`, `delete_thread`, `unpin_all_thread_messages`, `get_forum_topic_icon_stickers`, `edit_general_thread`, `close_general_thread`, `reopen_general_thread`, `hide_general_thread`, `unhide_general_thread`, `unpin_all_general_thread_messages`.
-   - 7 message-management tools: `pin_message`, `unpin_message`, `unpin_all_messages`, `forward_messages`, `copy_messages`, `delete_messages`, `edit_message_reply_markup`.
-2. **Internal `TelegramBotClient` Runtime Helpers (Not Exposed in `MCP_TOOLS`):** Polling, command registration, attachment fetch, callback acknowledgement, and permission UI helpers (`registerCommands`, `getRegisteredCommands`, `getUpdates`, `answerCallbackQuery`, `getFile`, `sendPermissionCard`) and Mini App HTTP endpoints that are **not** registered in `MCP_TOOLS` or dispatched through `SharedTelegramChannelCore.handleIpcMessage`.
-
-## User stories
+## Capabilities and user stories
 
 ### US-1 Topic Lifecycle Management (Close, Reopen, Delete, Unpin Topic)
 
 As an operator interacting with an agent in a forum supergroup or private chat with topics enabled, I want the agent to close resolved topics, reopen previously closed topics, unpin all topic messages, and delete obsolete topics on demand, so that forum topics reflect active work without manual management.
 
-- **AC-1.1 (Topic Closure)** Given an active or specified forum topic in a topics-enabled chat, when the agent invokes `close_thread({ message_thread_id: 1234 })`, then the tool dispatches `closeForumTopic` via the Telegram Bot API and returns `{ success: true, chat_id: 12345, message_thread_id: 1234, thread_id: 1234, closed: true }`.
-- **AC-1.2 (Active Topic Closure Default)** Given an active conversation in a forum topic, when the agent invokes `close_thread()` without an explicit thread parameter, then the tool resolves the active thread from session context and closes that topic.
-- **AC-1.3 (Topic Reopening)** Given a closed forum topic, when the agent invokes `reopen_thread({ message_thread_id: 1234 })`, then the tool dispatches `reopenForumTopic` via the Telegram Bot API and returns `{ success: true, chat_id: 12345, message_thread_id: 1234, thread_id: 1234, reopened: true }`.
-- **AC-1.4 (Topic Deletion and Active Thread Cleanup)** Given an active or specified forum topic, when the agent invokes `delete_thread({ message_thread_id: 1234 })`, then the tool dispatches `deleteForumTopic` via the Telegram Bot API, clears the active thread from session context if the deleted topic was active, and returns `{ success: true, chat_id: 12345, message_thread_id: 1234, thread_id: 1234, deleted: true }`.
-- **AC-1.5 (Topic Message Unpin & General Topic Guard)** Given a topic, `unpin_all_thread_messages({ message_thread_id })` dispatches `unpinAllForumTopicMessages`. Invocations of `rename_thread`, `close_thread`, `reopen_thread`, or `delete_thread` targeting General topic `#1`, empty chat context, missing thread ID, or Telegram API rejection (`TOPIC_NOT_MODIFIED`, `NOT_ENOUGH_RIGHTS`) return `{ success: false, error: "..." }` with `isError: true`.
+- **AC-1.1 (Topic Close, Reopen, and Unpin)** Given an active or explicitly specified non-General forum topic (`message_thread_id` / `thread_id`), when the agent invokes `close_thread`, `reopen_thread`, or `unpin_all_thread_messages`, then the tool dispatches `closeForumTopic`, `reopenForumTopic`, or `unpinAllForumTopicMessages` and returns `{ success: true, chat_id, message_thread_id, thread_id, closed | reopened | unpinned_all: true }`.
+- **AC-1.2 (Topic Deletion, Active Thread Cleanup, and General Guard)** Given an active or specified forum topic, when `delete_thread` succeeds via `deleteForumTopic`, then active thread tracking for that chat is cleared if the deleted topic was active and the tool returns `{ success: true, chat_id, message_thread_id, thread_id, deleted: true }`; any call to `close_thread`, `reopen_thread`, or `delete_thread` targeting General topic `#1`, missing a thread ID, or rejected by Telegram returns `{ success: false, error: "..." }` with `isError: true`.
 
-### US-2 Message Pinning and Unpinning (Individual & Unpinned Batch)
+### US-2 Message Pinning and Unpinning
 
 As an operator managing important announcements or task decisions in Telegram, I want the agent to pin critical messages, unpin specific obsolete pins, and clear all pins in a chat or active topic, so that pinned headers remain uncluttered and current.
 
-- **AC-2.1 (Pinning Specific Messages)** Given an existing `message_id`, `pin_message({ message_id, disable_notification })` dispatches `pinChatMessage` (defaulting `disable_notification` to `true`) and returns `{ success: true, chat_id, message_id, pinned: true }`.
-- **AC-2.2 (Unpinning Specific Message)** Given an existing `message_id`, `unpin_message({ message_id })` dispatches `unpinChatMessage` with `message_id` and returns `{ success: true, chat_id, message_id, unpinned: true }`.
-- **AC-2.3 (Unpinning Most Recent Message)** When `message_id` is omitted, `unpin_message()` dispatches `unpinChatMessage` without `message_id` to unpin the most recently pinned message.
-- **AC-2.4 (Unpinning All Chat or Topic Messages)** In an unthreaded chat with no active thread, `unpin_all_messages()` dispatches `unpinAllChatMessages(chatId)`. When `message_thread_id` (or active topic context) is present, `unpin_all_messages()` dispatches `unpinAllForumTopicMessages(chatId, messageThreadId)` and returns `{ success: true, chat_id, message_thread_id, unpinned_all: true }`.
+- **AC-2.1 (Pin and Unpin Single Message)** Given a `message_id`, `pin_message({ message_id, disable_notification })` dispatches `pinChatMessage` (`disable_notification: true` by default) returning `{ success: true, chat_id, message_id, pinned: true }`, and `unpin_message({ message_id? })` dispatches `unpinChatMessage` for the specified or most recent pin returning `{ success: true, chat_id, unpinned: true }`.
+- **AC-2.2 (Context-Aware Unpin All)** When `unpin_all_messages` is invoked, it dispatches `unpinAllForumTopicMessages` when `message_thread_id` or an active session thread is present, or `unpinAllChatMessages` when unthreaded, returning `{ success: true, chat_id, unpinned_all: true }`.
 
 ### US-3 Batch Message Transfer (`forward_messages` & `copy_messages`)
 
-As an operator moving context or consolidating discussions across chats or forum topics, I want the agent to batch-forward messages with attribution or batch-copy messages without attribution up to 100 messages at once, so that bulk message migration avoids noisy single-message loops and rate limits.
+As an operator moving context or consolidating discussions across chats or forum topics, I want the agent to batch-forward messages with attribution or batch-copy messages without attribution for 1 to 100 messages per call, so that bulk message migration avoids single-message loops.
 
-- **AC-3.1 (Batch Forward with Attribution)** Given 1-100 `message_ids`, `forward_messages` validates `1 <= message_ids.length <= 100`, defaults `from_chat_id` to `chat_id`, dispatches `forwardMessages`, and returns `{ success: true, chat_id, forwarded_count, message_ids }`.
-- **AC-3.2 (Batch Copy Without Attribution)** Given 1-100 `message_ids`, `copy_messages` validates `1 <= message_ids.length <= 100`, forwards `remove_caption` / `disable_notification` / `protect_content` / `message_thread_id`, dispatches `copyMessages`, and returns `{ success: true, chat_id, copied_count, message_ids }`.
-- **AC-3.3 (Batch Size Guard)** Passing `0` or `> 100` `message_ids` returns `{ success: false, error: "Batch size must be between 1 and 100 messages" }` locally without calling Telegram.
+- **AC-3.1 (Batch Forward and Copy)** Given an array of 1 to 100 integer `message_ids`, `forward_messages` and `copy_messages` dispatch `forwardMessages` or `copyMessages` to the target `chat_id` and optional `message_thread_id` (`from_chat_id` defaulting to `chat_id`) and return `{ success: true, chat_id, forwarded_count | copied_count, message_ids }`.
+- **AC-3.2 (Batch Size Validation)** Given an empty array or more than 100 `message_ids`, `forward_messages` and `copy_messages` reject the request locally with `{ success: false, error: "Batch size must be between 1 and 100 messages" }` (`isError: true`) without calling Telegram.
 
 ### US-4 Batch Message Deletion (`delete_messages`)
 
-As an operator wanting clean channels after transient tool outputs, scaffolding, or accidental noise, I want the agent to delete multiple messages at once, so that cleanup is atomic, rate-limit compliant, and immediate.
+As an operator wanting clean channels after migrating messages into a topic or pruning transient outputs, I want the agent to delete batches of 1 to 100 messages within Telegram's 48-hour deletion window, with explicit error reporting if deletion is rejected.
 
-- **AC-4.1 (Batch Delete)** Given 1-100 `message_ids`, `delete_messages` dispatches `deleteMessages(chatId, messageIds)` and returns `{ success: true, chat_id, deleted_count, message_ids }`.
-- **AC-4.2 (Batch Bounds & API Rejection)** Out-of-bounds batches fail locally with `"Batch size must be between 1 and 100 messages"`; Telegram API rejections (such as messages older than 48h or missing permissions) propagate verbatim as `{ success: false, error }`.
+- **AC-4.1 (Batch Delete and Error Propagation)** Given 1 to 100 integer `message_ids`, `delete_messages` dispatches `deleteMessages` and returns `{ success: true, chat_id, deleted_count, message_ids }`; batch counts outside 1–100 fail locally with `"Batch size must be between 1 and 100 messages"`, and Telegram API rejections (such as messages older than 48 hours) return `{ success: false, error }` (`isError: true`).
 
-### US-5 Editing Message Inline Markup (`edit_message_reply_markup`)
+### US-5 Sent Message Inline Keyboard Editing (`edit_message_reply_markup`)
 
-As an operator interacting with interactive Telegram workflows, checklists, or confirmations, I want the agent to attach, update, or remove inline keyboard buttons on existing messages without editing or re-sending message text, so that interactive controls reflect current state cleanly.
+As an operator interacting with dynamic message cards in chat, I want the agent to attach, update, or clear inline keyboard buttons on previously sent messages in-place without reposting message text.
 
-- **AC-5.1 (Button Replacement)** Given `message_id` and `buttons` (plus optional `button_layout` / `buttons_per_row`), `edit_message_reply_markup` builds the inline keyboard rows via `buildInlineKeyboardRows` and dispatches `editMessageReplyMarkup`, returning `{ success: true, chat_id, message_id, updated: true }`.
-- **AC-5.2 (Clearing Buttons)** Passing `buttons: []` or omitting `buttons` dispatches `editMessageReplyMarkup` with an empty `inline_keyboard: []`.
-- **AC-5.3 (No-op Modification Handling)** If Telegram responds with `"message is not modified"`, `edit_message_reply_markup` returns `{ success: true, chat_id, message_id, not_modified: true }`.
+- **AC-5.1 (Button Update, Clear, and Idempotent No-Op)** Given `message_id` and optional `buttons` (`button_layout`, `buttons_per_row`), `edit_message_reply_markup` dispatches `editMessageReplyMarkup` (passing an empty keyboard when `buttons` is empty or omitted) and returns `{ success: true, chat_id, message_id, updated: true }`, or `{ success: true, chat_id, message_id, not_modified: true }` when Telegram reports `"message is not modified"`.
 
 ### US-6 General Forum Topic & Topic Icon Stickers
 
-As an operator using forum supergroups, I want the agent to inspect available custom forum-topic icon stickers and manage the General topic `#1` directly, so that every Telegram Bot API forum-topic capability is available through the MCP server.
+As an operator using forum supergroups, I want the agent to inspect available custom forum-topic icon stickers and manage the General topic `#1` directly.
 
 - **AC-6.1 (Icon Stickers Discovery)** When the agent invokes `get_forum_topic_icon_stickers()`, the tool dispatches `getForumTopicIconStickers` and returns `{ success: true, stickers: [...] }`.
-- **AC-6.2 (General Topic Lifecycle)** `edit_general_thread({ name })`, `close_general_thread()`, `reopen_general_thread()`, `hide_general_thread()`, `unhide_general_thread()`, and `unpin_all_general_thread_messages()` dispatch the corresponding `*GeneralForumTopic*` Bot API methods and return `{ success: true, chat_id, ... }` or `{ success: false, error }`.
+- **AC-6.2 (General Topic Lifecycle)** `edit_general_thread({ name })` (validating 1–128 trimmed characters), `close_general_thread()`, `reopen_general_thread()`, `hide_general_thread()`, `unhide_general_thread()`, and `unpin_all_general_thread_messages()` dispatch the corresponding `*GeneralForumTopic*` Bot API methods and return `{ success: true, chat_id, ... }` or `{ success: false, error }` (`isError: true`).
 
-## Design
+## Shared interface contract
 
-### 1. Exposed Topic & Message Management MCP Tool Schemas (`plugins/ida-telegram/src/mcp/tools.ts`)
+| MCP Tool | Backing Telegram Bot API Method | Parameters & Validation Contract | Return Payload |
+| :- | :- | :- | :- |
+| `close_thread` | `closeForumTopic` | `chat_id?`, `message_thread_id?` / `thread_id?` (defaults to active thread; rejects `#1`). | `{ success: true, chat_id, message_thread_id, thread_id, closed: true }` |
+| `reopen_thread` | `reopenForumTopic` | `chat_id?`, `message_thread_id?` / `thread_id?` (defaults to active thread; rejects `#1`). | `{ success: true, chat_id, message_thread_id, thread_id, reopened: true }` |
+| `delete_thread` | `deleteForumTopic` | `chat_id?`, `message_thread_id?` / `thread_id?` (defaults to active thread; rejects `#1`; clears active thread on success). | `{ success: true, chat_id, message_thread_id, thread_id, deleted: true }` |
+| `unpin_all_thread_messages` | `unpinAllForumTopicMessages` | `chat_id?`, `message_thread_id?` / `thread_id?` (defaults to active thread). | `{ success: true, chat_id, message_thread_id, thread_id, unpinned_all: true }` |
+| `get_forum_topic_icon_stickers` | `getForumTopicIconStickers` | No required parameters. | `{ success: true, stickers }` |
+| `edit_general_thread` | `editGeneralForumTopic` | `name` (required, 1–128 trimmed chars), `chat_id?`. | `{ success: true, chat_id, name }` |
+| `close_general_thread` | `closeGeneralForumTopic` | `chat_id?`. | `{ success: true, chat_id, closed: true }` |
+| `reopen_general_thread` | `reopenGeneralForumTopic` | `chat_id?`. | `{ success: true, chat_id, reopened: true }` |
+| `hide_general_thread` | `hideGeneralForumTopic` | `chat_id?`. | `{ success: true, chat_id, hidden: true }` |
+| `unhide_general_thread` | `unhideGeneralForumTopic` | `chat_id?`. | `{ success: true, chat_id, unhidden: true }` |
+| `unpin_all_general_thread_messages` | `unpinAllGeneralForumTopicMessages` | `chat_id?`. | `{ success: true, chat_id, unpinned_all: true }` |
+| `pin_message` | `pinChatMessage` | `message_id` (required integer), `chat_id?`, `disable_notification?` (default `true`). | `{ success: true, chat_id, message_id, pinned: true }` |
+| `unpin_message` | `unpinChatMessage` | `message_id?` (optional integer; defaults to most recent pin), `chat_id?`. | `{ success: true, chat_id, message_id?, unpinned: true }` |
+| `unpin_all_messages` | `unpinAllForumTopicMessages` / `unpinAllChatMessages` | `chat_id?`, `message_thread_id?` / `thread_id?` (scopes to topic when present/active, else chat-wide). | `{ success: true, chat_id, message_thread_id?, unpinned_all: true }` |
+| `forward_messages` | `forwardMessages` | `message_ids` (required array of 1–100 integers), `chat_id?`, `from_chat_id?`, `message_thread_id?` / `thread_id?`, `disable_notification?`, `protect_content?`. | `{ success: true, chat_id, message_thread_id?, forwarded_count, message_ids }` |
+| `copy_messages` | `copyMessages` | `message_ids` (required array of 1–100 integers), `chat_id?`, `from_chat_id?`, `message_thread_id?` / `thread_id?`, `disable_notification?`, `protect_content?`, `remove_caption?`. | `{ success: true, chat_id, message_thread_id?, copied_count, message_ids }` |
+| `delete_messages` | `deleteMessages` | `message_ids` (required array of 1–100 integers), `chat_id?`. | `{ success: true, chat_id, deleted_count, message_ids }` |
+| `edit_message_reply_markup` | `editMessageReplyMarkup` | `message_id` (required integer), `chat_id?`, `buttons?`, `button_layout?`, `buttons_per_row?`. | `{ success: true, chat_id, message_id, updated?: true, not_modified?: true }` |
 
-`MCP_TOOLS` registers `24` tools in total:
+## Invariants and security boundaries
 
-- **Core (4):** `reply`, `react`, `ask_user`, `edit_message`
-- **Topic & Thread Lifecycle (13):** `create_thread`, `rename_thread`, `close_thread`, `reopen_thread`, `delete_thread`, `unpin_all_thread_messages`, `get_forum_topic_icon_stickers`, `edit_general_thread`, `close_general_thread`, `reopen_general_thread`, `hide_general_thread`, `unhide_general_thread`, `unpin_all_general_thread_messages`
-- **Message Management (7):** `pin_message`, `unpin_message`, `unpin_all_messages`, `forward_messages`, `copy_messages`, `delete_messages`, `edit_message_reply_markup`
-
-### 2. Active Thread Context and State Tracking
-
-1. **Active Thread Resolution:**
-   Topic tools (`rename_thread`, `close_thread`, `reopen_thread`, `delete_thread`, `unpin_all_thread_messages`) as well as `unpin_all_messages`, `forward_messages`, and `copy_messages` accept optional `message_thread_id` (or alias `thread_id`) and resolve active thread context via `resolveThreadContext(args)` when omitted.
-2. **State Cleanup upon Topic Deletion:**
-   When `delete_thread` successfully deletes a topic matching the active thread in session context for that chat, active thread tracking is cleared immediately so subsequent messages do not route into the deleted topic.
-3. **General Topic `#1` Guard:**
-   Invocations of `rename_thread`, `close_thread`, `reopen_thread`, or `delete_thread` targeting General topic (`message_thread_id: 1`) are rejected locally with `{ success: false, error: "Cannot modify or delete the General forum topic" }` before API dispatch. Callers manage General topic `#1` explicitly via `*_general_thread*` tools.
-
-### 3. Telegram API Constraints & Limits
-
-| Exposed MCP Tool | Telegram Bot API Method | Constraints & Error Handling |
-| :- | :- | :- |
-| `create_thread` | `createForumTopic` | Validates trimmed `name` (1-128 chars) and integer `icon_color`; forwards optional `icon_custom_emoji_id`. Surfaces API errors verbatim. |
-| `rename_thread` | `editForumTopic` | Requires active/explicit non-General thread; validates `name` (1-128 chars). Rejects `#1` locally. |
-| `close_thread` | `closeForumTopic` | Requires `can_manage_topics`; rejects General topic `#1` locally. Propagates `TOPIC_NOT_MODIFIED` / `NOT_ENOUGH_RIGHTS`. |
-| `reopen_thread` | `reopenForumTopic` | Requires `can_manage_topics`; rejects General topic `#1` locally. |
-| `delete_thread` | `deleteForumTopic` | Requires `can_delete_messages` and `can_manage_topics`; rejects `#1`; clears active thread state on success. |
-| `unpin_all_thread_messages` | `unpinAllForumTopicMessages` | Requires `can_pin_messages`; unpins all messages in specified/active topic. |
-| `get_forum_topic_icon_stickers` | `getForumTopicIconStickers` | Returns sticker array for custom topic icons. |
-| `edit_general_thread` | `editGeneralForumTopic` | Validates `name` (1-128 chars); renames General topic `#1`. |
-| `close_general_thread` | `closeGeneralForumTopic` | Closes General topic `#1`. |
-| `reopen_general_thread` | `reopenGeneralForumTopic` | Reopens General topic `#1`. |
-| `hide_general_thread` | `hideGeneralForumTopic` | Hides General topic `#1`. |
-| `unhide_general_thread` | `unhideGeneralForumTopic` | Unhides General topic `#1`. |
-| `unpin_all_general_thread_messages` | `unpinAllGeneralForumTopicMessages` | Unpins all pinned messages in General topic `#1`. |
-| `pin_message` | `pinChatMessage` | Requires integer `message_id`; `disable_notification` defaults to `true`. |
-| `unpin_message` | `unpinChatMessage` | Optional `message_id`; unpins target or most recent pinned message. |
-| `unpin_all_messages` | `unpinAllChatMessages` / `unpinAllForumTopicMessages` | Routes to topic-scoped unpin if `message_thread_id` / active thread resolves, otherwise chat-wide unpin. |
-| `forward_messages` | `forwardMessages` | Enforces 1-100 `message_ids` batch limit locally (`"Batch size must be between 1 and 100 messages"`); `from_chat_id` defaults to target `chat_id`. |
-| `copy_messages` | `copyMessages` | Enforces 1-100 `message_ids` batch limit locally; forwards `remove_caption`. |
-| `delete_messages` | `deleteMessages` | Enforces 1-100 `message_ids` batch limit locally; propagates API errors (e.g., 48h window) verbatim. |
-| `edit_message_reply_markup` | `editMessageReplyMarkup` | Builds inline keyboard rows via `buildInlineKeyboardRows`; treats `"message is not modified"` as `{ success: true, not_modified: true }`. |
-
-## Outcome-Level Build Criteria Mapped to Checks
-
-| Criterion | Target Requirement | Verification Check & Observable Proof |
-| :- | :- | :- |
-| **AC-1** | `close_thread`, `reopen_thread`, and `delete_thread` manage topic lifecycles; `delete_thread` clears active thread; General topic `#1` is guarded; `pin_message`, `unpin_message`, `unpin_all_messages`, `forward_messages`, `copy_messages`, `delete_messages`, and `edit_message_reply_markup` enforce bounds and dispatch to Telegram Bot API. | Integration tests in `plugins/ida-telegram/test/topic-and-message-management.test.ts` (`US-1`..`US-5`) verify all 10 topic-lifecycle + message-management tools and error/bounds handling. |
-| **AC-2** | All 13 forum-topic / thread tools and all 7 message-management tools are exposed in `MCP_TOOLS` (`24` total with the 4 core tools) while removed question/anchor tools remain excluded. | Unit/integration tests in `plugins/ida-telegram/test/threads.test.ts` (`AC6`) and `plugins/ida-telegram/test/shared-channel.test.ts` verify `tools/list` (`24` tools), dispatch behaviour, and exclusion of dropped non-API tools. |
+- **General topic `#1` separation:** Standard topic tools (`close_thread`, `reopen_thread`, `delete_thread`, `rename_thread`) reject `message_thread_id: 1` locally with `{ success: false, error: "Cannot modify or delete the General forum topic" }` (`isError: true`). General topic `#1` is administered exclusively through the `*_general_thread*` tools.
+- **Active thread cleanup on deletion:** Deleting the currently active topic via `delete_thread` clears active thread state for that chat so subsequent outbound messages never target a deleted topic.
+- **Local batch bounds and explicit failure surfacing:** Batch message operations (`forward_messages`, `copy_messages`, `delete_messages`) enforce `1 <= message_ids.length <= 100` before network dispatch. Any local validation error or Telegram Bot API error (`ok: false`) returns `{ success: false, error }` with MCP `isError: true`.
