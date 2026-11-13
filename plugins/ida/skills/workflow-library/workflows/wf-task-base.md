@@ -7,6 +7,7 @@ tags: [base, task]
 
 - **GOAL:** <one sentence stating the observable outcome>
 - **STRUCTURAL PLACEMENT:** Tasks requiring review or follow-up must be structured either as a single task with internal subtasks (if executable by the same agent in one session) or as a dedicated epic with child tasks (if multi-session or independent context is required); never as loose siblings under an external parent. An agent given a task does the groundwork and makes the decision itself; never file the task back to the user as their decision (`assignee: user`) unless the user explicitly directed to decide it themselves (tg 1013).
+- **BOUNDARY:** A refusal at or beyond the container boundary is a halt, never a method. In-container sandbox refusals are not walls.
 - **ACCEPTANCE CRITERIA:** <one line each, stating observable end-state conditions rather than mechanism prescriptions or file:line edits; workers read target files in full before editing>
   - <criterion>
   - <criterion>
