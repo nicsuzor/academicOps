@@ -2,49 +2,45 @@
 
 ## [1.7.0](https://github.com/nicsuzor/academicOps/compare/v1.6.0...v1.7.0) (2026-11-13)
 
-
 ### Features
 
-* **axioms:** gate external-audience items on user approval across all surfaces ([d3ebbdc](https://github.com/nicsuzor/academicOps/commit/d3ebbdc3c2d0eeb269cd29a133f2161570bf184b))
-* **ida,rules:** align agent personas and project rules with supervised epic dispatch ([33996ec](https://github.com/nicsuzor/academicOps/commit/33996ec478f4cdfe9dff3d60e7fbfb117544f608))
-* **ida:** move workflow reification into supervised polecat containers and streamline epic dispatch ([a054492](https://github.com/nicsuzor/academicOps/commit/a0544920967b6c3265df998dcbbe52d3a8a5f288))
-* **telegram:** add rich media, location, interactivity, draft, and poll send tools ([bb98054](https://github.com/nicsuzor/academicOps/commit/bb9805488167a82d14a65284619746301e27f584))
-* **telegram:** add rich media, location, interactivity, draft, and poll send tools ([52427f8](https://github.com/nicsuzor/academicOps/commit/52427f87fc247988a231109976f6c9ab9103494c))
-
+- **axioms:** gate external-audience items on user approval across all surfaces ([d3ebbdc](https://github.com/nicsuzor/academicOps/commit/d3ebbdc3c2d0eeb269cd29a133f2161570bf184b))
+- **ida,rules:** align agent personas and project rules with supervised epic dispatch ([33996ec](https://github.com/nicsuzor/academicOps/commit/33996ec478f4cdfe9dff3d60e7fbfb117544f608))
+- **ida:** move workflow reification into supervised polecat containers and streamline epic dispatch ([a054492](https://github.com/nicsuzor/academicOps/commit/a0544920967b6c3265df998dcbbe52d3a8a5f288))
+- **telegram:** add rich media, location, interactivity, draft, and poll send tools ([bb98054](https://github.com/nicsuzor/academicOps/commit/bb9805488167a82d14a65284619746301e27f584))
+- **telegram:** add rich media, location, interactivity, draft, and poll send tools ([52427f8](https://github.com/nicsuzor/academicOps/commit/52427f87fc247988a231109976f6c9ab9103494c))
 
 ### Bug Fixes
 
-* **build:** remove duplicate premise-check report contract from agy adapter ([5c5a998](https://github.com/nicsuzor/academicOps/commit/5c5a9980a6667daa4569cfd31dcddcd7662c8915))
-* **ida-telegram:** restore Details tier storage and instance-aware Mini App routing ([2163c2d](https://github.com/nicsuzor/academicOps/commit/2163c2ddadd34f869fa2b6a05ac235a651c0b741))
-* **ida-telegram:** restore Details tier storage and instance-aware Mini App routing ([63d2cb0](https://github.com/nicsuzor/academicOps/commit/63d2cb003b17d08725efdb75424b3a092fdfc548))
-* **ida:** make user-run /dump an immediate emergency handover ([b31e123](https://github.com/nicsuzor/academicOps/commit/b31e1232a8911d4850394561ece76add670e326f))
-* **review:** align enforcement map pinpoints with actual target lines ([9a471e6](https://github.com/nicsuzor/academicOps/commit/9a471e6c1ffb2806e78fd64f081cbcd1ad44a1b5))
-* **review:** align Marsha role wording and require verdict.py in marsha and rbg ([9b9b8f7](https://github.com/nicsuzor/academicOps/commit/9b9b8f7a80e70eb0785ca07dcded533a3ad15973))
-* **review:** align q and dispatch trigger descriptions and add reify spec frontmatter ([5e1a5a7](https://github.com/nicsuzor/academicOps/commit/5e1a5a70b89de7ca32b58731165c28b97ec873be))
-* **review:** frame harness tool names as examples for cross-harness generality ([10283a1](https://github.com/nicsuzor/academicOps/commit/10283a189c679ee23ab2b76979e0cd5e09f9fcd8))
-* **review:** polish Mermaid layout, Mode 1 stop wording, and map pinpoints ([c07675d](https://github.com/nicsuzor/academicOps/commit/c07675dcf5a7d2a6904b2714b6ea8c64b2eeb622))
-* **review:** remove coordinator-delegation rule and move Ida delegation boundary into ida.md ([49ab98f](https://github.com/nicsuzor/academicOps/commit/49ab98fae0deb6adebd32a0fab1c358c7e6c1f2b))
-* **review:** require verdict.py invocation for all verification judgments in marsha and rbg ([d18e58b](https://github.com/nicsuzor/academicOps/commit/d18e58b7c3d82e8f511fece8fd0674f4a1b06254))
-* **review:** resolve sweep deadlock, spec compliance, and role attribution ([056b291](https://github.com/nicsuzor/academicOps/commit/056b291e4767517d54c11901f5a8f6b5e782e661))
-* **review:** scrub personal repo names, drop relative links, and clarify 3P scope ([6ed7f63](https://github.com/nicsuzor/academicOps/commit/6ed7f63ee82feb122f6abdc6fdb7e669358ce40b))
-* **review:** use harness-neutral return wording in marsha and rbg ([f09adc9](https://github.com/nicsuzor/academicOps/commit/f09adc926dcb4cde9fee393cd528546bbd384176))
-* **rules:** reference individual rule files in enforcement map instead of RULES.md ([279ca5f](https://github.com/nicsuzor/academicOps/commit/279ca5f6b2f971391c0c1102059bfcfdea9ecc09))
-
+- **build:** remove duplicate premise-check report contract from agy adapter ([5c5a998](https://github.com/nicsuzor/academicOps/commit/5c5a9980a6667daa4569cfd31dcddcd7662c8915))
+- **ida-telegram:** restore Details tier storage and instance-aware Mini App routing ([2163c2d](https://github.com/nicsuzor/academicOps/commit/2163c2ddadd34f869fa2b6a05ac235a651c0b741))
+- **ida-telegram:** restore Details tier storage and instance-aware Mini App routing ([63d2cb0](https://github.com/nicsuzor/academicOps/commit/63d2cb003b17d08725efdb75424b3a092fdfc548))
+- **ida:** make user-run /dump an immediate emergency handover ([b31e123](https://github.com/nicsuzor/academicOps/commit/b31e1232a8911d4850394561ece76add670e326f))
+- **review:** align enforcement map pinpoints with actual target lines ([9a471e6](https://github.com/nicsuzor/academicOps/commit/9a471e6c1ffb2806e78fd64f081cbcd1ad44a1b5))
+- **review:** align Marsha role wording and require verdict.py in marsha and rbg ([9b9b8f7](https://github.com/nicsuzor/academicOps/commit/9b9b8f7a80e70eb0785ca07dcded533a3ad15973))
+- **review:** align q and dispatch trigger descriptions and add reify spec frontmatter ([5e1a5a7](https://github.com/nicsuzor/academicOps/commit/5e1a5a70b89de7ca32b58731165c28b97ec873be))
+- **review:** frame harness tool names as examples for cross-harness generality ([10283a1](https://github.com/nicsuzor/academicOps/commit/10283a189c679ee23ab2b76979e0cd5e09f9fcd8))
+- **review:** polish Mermaid layout, Mode 1 stop wording, and map pinpoints ([c07675d](https://github.com/nicsuzor/academicOps/commit/c07675dcf5a7d2a6904b2714b6ea8c64b2eeb622))
+- **review:** remove coordinator-delegation rule and move Ida delegation boundary into ida.md ([49ab98f](https://github.com/nicsuzor/academicOps/commit/49ab98fae0deb6adebd32a0fab1c358c7e6c1f2b))
+- **review:** require verdict.py invocation for all verification judgments in marsha and rbg ([d18e58b](https://github.com/nicsuzor/academicOps/commit/d18e58b7c3d82e8f511fece8fd0674f4a1b06254))
+- **review:** resolve sweep deadlock, spec compliance, and role attribution ([056b291](https://github.com/nicsuzor/academicOps/commit/056b291e4767517d54c11901f5a8f6b5e782e661))
+- **review:** scrub personal repo names, drop relative links, and clarify 3P scope ([6ed7f63](https://github.com/nicsuzor/academicOps/commit/6ed7f63ee82feb122f6abdc6fdb7e669358ce40b))
+- **review:** use harness-neutral return wording in marsha and rbg ([f09adc9](https://github.com/nicsuzor/academicOps/commit/f09adc926dcb4cde9fee393cd528546bbd384176))
+- **rules:** reference individual rule files in enforcement map instead of RULES.md ([279ca5f](https://github.com/nicsuzor/academicOps/commit/279ca5f6b2f971391c0c1102059bfcfdea9ecc09))
 
 ### Documentation
 
-* **workflows,specs:** synchronize workflow templates, specs, and indexes with supervised epic dispatch ([3c0476f](https://github.com/nicsuzor/academicOps/commit/3c0476f3ac4b5fb2ad467993d7ef63c3316eae7b))
-* **workflows:** open worker PRs as draft until independent check passes ([3d31d93](https://github.com/nicsuzor/academicOps/commit/3d31d934c2fe801455cb52cee6a4cc6e656dac3f))
-
+- **workflows,specs:** synchronize workflow templates, specs, and indexes with supervised epic dispatch ([3c0476f](https://github.com/nicsuzor/academicOps/commit/3c0476f3ac4b5fb2ad467993d7ef63c3316eae7b))
+- **workflows:** open worker PRs as draft until independent check passes ([3d31d93](https://github.com/nicsuzor/academicOps/commit/3d31d934c2fe801455cb52cee6a4cc6e656dac3f))
 
 ### Miscellaneous
 
-* merge origin/dev (v1.6.0, tool-boundary SSoT) and resolve conflicts ([30175fe](https://github.com/nicsuzor/academicOps/commit/30175fec0776568263f879eae4093e804f9bd0b3))
-* merge origin/dev into fix/dump-user-emergency-handover ([424b9b8](https://github.com/nicsuzor/academicOps/commit/424b9b826db77f4aa466454ee536ffa04e7020fd))
-* **merge:** integrate origin/dev into feat/supervise-epic-dispatch ([9982031](https://github.com/nicsuzor/academicOps/commit/9982031b9d8913a65ad018c590fece65192d54a8))
-* **merge:** merge origin/dev and resolve conflicts in ida, enforcement spec, and enforcement map ([270ee03](https://github.com/nicsuzor/academicOps/commit/270ee0361decc0d6b71fa9537b34bf2b5136441f))
-* **merge:** merge origin/dev into feat/supervise-epic-dispatch ([2bb3099](https://github.com/nicsuzor/academicOps/commit/2bb30999f44eac993602e1464317ab05f6b2e908))
-* **merge:** resolve conflict in channel-core.ts with origin/dev ([d530ab9](https://github.com/nicsuzor/academicOps/commit/d530ab9aaa91f6838d0aa15712ff1257ba888052))
+- merge origin/dev (v1.6.0, tool-boundary SSoT) and resolve conflicts ([30175fe](https://github.com/nicsuzor/academicOps/commit/30175fec0776568263f879eae4093e804f9bd0b3))
+- merge origin/dev into fix/dump-user-emergency-handover ([424b9b8](https://github.com/nicsuzor/academicOps/commit/424b9b826db77f4aa466454ee536ffa04e7020fd))
+- **merge:** integrate origin/dev into feat/supervise-epic-dispatch ([9982031](https://github.com/nicsuzor/academicOps/commit/9982031b9d8913a65ad018c590fece65192d54a8))
+- **merge:** merge origin/dev and resolve conflicts in ida, enforcement spec, and enforcement map ([270ee03](https://github.com/nicsuzor/academicOps/commit/270ee0361decc0d6b71fa9537b34bf2b5136441f))
+- **merge:** merge origin/dev into feat/supervise-epic-dispatch ([2bb3099](https://github.com/nicsuzor/academicOps/commit/2bb30999f44eac993602e1464317ab05f6b2e908))
+- **merge:** resolve conflict in channel-core.ts with origin/dev ([d530ab9](https://github.com/nicsuzor/academicOps/commit/d530ab9aaa91f6838d0aa15712ff1257ba888052))
 
 ## [1.6.0](https://github.com/nicsuzor/academicOps/compare/v1.5.1...v1.6.0) (2026-11-13)
 
