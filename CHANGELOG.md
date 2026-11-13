@@ -2,11 +2,10 @@
 
 ## [1.5.1](https://github.com/nicsuzor/academicOps/compare/v1.5.0...v1.5.1) (2026-11-12)
 
-
 ### Bug Fixes
 
-* **ida:** remove tools allowlist from pauli frontmatter to restore MCP tools ([53ffc6a](https://github.com/nicsuzor/academicOps/commit/53ffc6aaaebf9880f8ae7ab2675c3bd73ace0e92))
-* **ida:** remove tools allowlist from pauli frontmatter to restore MCP tools ([827efa4](https://github.com/nicsuzor/academicOps/commit/827efa430ccedb699aff1c75e03864974439277d))
+- **ida:** remove tools allowlist from pauli frontmatter to restore MCP tools ([53ffc6a](https://github.com/nicsuzor/academicOps/commit/53ffc6aaaebf9880f8ae7ab2675c3bd73ace0e92))
+- **ida:** remove tools allowlist from pauli frontmatter to restore MCP tools ([827efa4](https://github.com/nicsuzor/academicOps/commit/827efa430ccedb699aff1c75e03864974439277d))
 
 ## [1.5.0](https://github.com/nicsuzor/academicOps/compare/v1.4.0...v1.5.0) (2026-11-12)
 
