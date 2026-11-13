@@ -13,19 +13,19 @@ Every custom Model Context Protocol (MCP) server and gateway portal exports Open
 
 As a platform operator, I want custom MCP servers and gateway proxies to receive and propagate caller session identity across direct and multiplexed connections, so that downstream tool executions attach to the originating agent session without synthetic transport sessions.
 
-- **AC-1.1** Given a direct tool call carrying a caller session identifier via the reserved `_session` argument object (`{ session_id, agent_id?, prompt_id? }`), `_meta.session_id` request metadata, or `x-session-id` transport header, when the server receives the call, then the server resolves the caller session identifier from the highest-priority source present in precedence order: explicit tool argument (`_session`), request metadata (`_meta.session_id`), transport header (`x-session-id`).
-- **AC-1.2** Given a client invoking a tool through a gateway proxy, when the gateway forwards the call to an upstream server, then the gateway extracts the caller session identifier from the incoming call, strips `_session` from the tool arguments, and forwards it upstream in the `x-session-id` transport header along with W3C `traceparent` context.
-- **AC-1.3** Given an upstream server receiving a request, when the server processes the call, then it resolves the caller session from the forwarded `x-session-id` header or request metadata for that call without binding the connection to any single session.
+- **AC-1.1** Given a direct tool call carrying a caller session identifier via top-level `session_id` tool argument, `_meta.session_id` request metadata, or `x-session-id` transport header, when the server receives the call, then the server resolves the caller session identifier from the highest-priority source present in precedence order: explicit tool argument (`session_id`), request metadata (`_meta.session_id`), transport header (`x-session-id`).
+- **AC-1.2** Given a client invoking a tool through a gateway proxy (such as `call_mcp_tool` with `ServerName == "pkb"` or `portal_codemode_execute`), when the gateway forwards the call to an upstream server, then the gateway preserves or injects the caller's `session_id` and forwards it upstream in `Arguments.session_id` / `x-session-id` along with W3C `traceparent` context and stateless MCP `2026-07-28` headers.
+- **AC-1.3** Given an upstream server receiving a request, when the server processes the call, then it resolves the caller session from top-level `session_id`, request metadata, or the forwarded `x-session-id` header for that call without binding the connection to any single session.
 - **AC-1.4** Given a request that arrives without an explicit session identifier, when the server processes the call, then the call remains unattributed with `aops.session.source = "none"` and `session.id` unset.
-- **AC-1.5** Given a client surface that does not support client-side argument rewriting, when invoking tools directly or through a gateway, then tool calls dispatch without input argument mutation and session identity resolves from request transport headers, metadata, or explicit execution arguments.
+- **AC-1.5** Given a client surface or tool wrapper that does not support client-side argument rewriting (such as `portal_codemode_execute` whose schema rejects unknown top-level parameters), when invoking PKB tools directly or through a gateway, then tool calls carry caller `session_id` explicitly inside the invoked tool arguments by instruction or resolve from transport headers and metadata.
 
 ### US-2 Declare caller session acceptance and preserve tool schemas
 
-As a client or gateway dispatcher, I want MCP servers to declare whether their tools accept caller session arguments and strip internal session objects before tool execution, so that domain schemas remain strict while session attribution succeeds without schema validation errors.
+As a client or gateway dispatcher, I want MCP servers to accept explicit `session_id` on their tool schemas while leaving non-session and portal wrapper tools without injected unknown top-level arguments, so that domain schemas remain strict and attribution succeeds without schema validation errors.
 
-- **AC-2.1** Given an MCP server that supports caller session arguments, when the server responds to client initialization or advertises its tool listings, then the server indicates caller session support via capability declarations, by defining the optional `_session` parameter in tool input schemas, or by permitting additional properties.
-- **AC-2.2** Given an MCP server that supports caller session arguments, when a tool call containing `_session` arrives, then the server extracts and removes `_session` prior to executing domain parameter validation, allowing strict domain schema validation to pass.
-- **AC-2.3** Given an upstream MCP server that enforces strict argument validation without declaring caller session support, when a gateway proxy receives a tool call carrying `_session` destined for that server, then the gateway strips `_session` from the tool arguments and translates the caller session identity into the `x-session-id` transport header or request metadata before dispatching to the upstream server.
+- **AC-2.1** Given a PKB MCP server tool supporting caller attribution, when the server advertises its tool schemas, then it accepts top-level `session_id` as a parameter and clients inject `session_id` only onto PKB tools (or `call_mcp_tool` `Arguments` targeting `pkb`).
+- **AC-2.2** Given an MCP server that handles caller `session_id` inside tool arguments, when a tool call containing `session_id` arrives, then the server extracts `session_id` cleanly alongside domain validation without rejecting it.
+- **AC-2.3** Given an upstream MCP server that enforces strict argument validation without declaring `session_id` in its schema, when a gateway proxy receives a tool call carrying caller session metadata destined for that server, then the gateway translates the caller session identity into the `x-session-id` transport header or request metadata without injecting unknown top-level parameters onto strict portal wrappers (`portal_*`).
 
 ### US-3 Emit standardized OpenTelemetry tool spans with attribution attributes
 
@@ -52,54 +52,50 @@ As a platform operator deploying MCP servers in various runtime environments, I 
 
 MCP servers resolve the caller session through three delivery channels evaluated in strict priority order:
 
-1. **Reserved Tool Argument (`_session`)**: Injected dictionary parameter carrying `{ "session_id": "<uuid>", "agent_id": "<optional>", "prompt_id": "<optional>" }`. Explicit per-call arguments take highest precedence to ensure caller subagent or prompt turn context is never masked by ambient connection transport headers.
-2. **Request Metadata (`_meta.session_id`)**: JSON-RPC request metadata passed alongside standard MCP request structures.
+1. **Top-Level Tool Argument (`session_id`)**: String parameter carrying the caller's active `session_id` (resolved from `CLAUDE_CODE_SESSION_ID` / `CLAUDE_SESSION_ID` or `ANTIGRAVITY_CONVERSATION_ID`, falling back to hook stdin). Explicit per-call arguments take highest precedence to ensure caller subagent or prompt turn context is never masked by ambient connection transport headers.
+2. **Request Metadata (`_meta.session_id`)**: JSON-RPC request metadata passed alongside stateless MCP `2026-07-28` request structures.
 3. **Transport Header (`x-session-id`)**: Transport-level header passed on HTTP, Server-Sent Events (SSE), or WebSocket requests.
 
-Every tool invocation is evaluated strictly per-request. The server sets `session.id` exclusively to an explicit caller session identifier resolved from sources 1–3 in priority order (`_session` > `_meta.session_id` > `x-session-id`). When no explicit session identifier is present, `session.id` remains unset and `aops.session.source` is set to `"none"`. Transport connection identifiers remain confined to `mcp.session_id` and are never bound to caller sessions, eliminating session bleed across persistent connections, dev servers, or multiplexed clients.
+Every tool invocation is evaluated strictly per-request. The server sets `session.id` exclusively to an explicit caller session identifier resolved from sources 1–3 in priority order (`session_id` > `_meta.session_id` > `x-session-id`). When no explicit session identifier is present, `session.id` remains unset and `aops.session.source` is set to `"none"`. Transport connection identifiers remain confined to `mcp.session_id` and are never bound to caller sessions, eliminating session bleed across persistent connections, dev servers, or multiplexed clients.
 
 ```
 Client Invocation (Direct)
-  ├── Arguments: { "_session": { "session_id": "..." } }
+  ├── Arguments: { "session_id": "..." }
   ├── Metadata: _meta.session_id
   └── Header: x-session-id
           │
           ▼
      MCP Server ──► Resolves session.id (Priority: Arg > Meta > Header)
           │
-          ├── Strip _session from arguments
+          ├── Extract session_id
           ├── Execute tool handler
           └── Export TOOL span to shared collector (session.id = caller session)
 ```
 
 ```
 Client Invocation (Gateway / Portal)
-  └── Tool Arguments: { "_session": { "session_id": "..." } }
+  └── Tool Arguments: { "ServerName": "pkb", "Arguments": { "session_id": "..." } }
           │
           ▼
     Gateway Portal
           │
           ├── Extract session_id and traceparent
-          ├── Strip _session from tool arguments
           └── Forward upstream with HTTP Header: x-session-id & traceparent
                   │
                   ▼
             Upstream Server
                   ├── Evaluates request per-call without connection binding
-                  ├── Resolves session.id from x-session-id header
+                  ├── Resolves session.id from Arguments.session_id or x-session-id header
                   └── Emits child TOOL span linked to caller trace
 ```
 
 ### Server Declaration and Schema Handling
 
-To prevent client argument injection from breaking third-party servers that enforce strict JSON Schema validation (`additionalProperties: false`):
+To prevent client argument injection from breaking third-party servers or strict portal wrappers (`portal_*`) that enforce JSON Schema validation (`additionalProperties: false`):
 
-1. **Acceptance Declaration**: Servers declare support for caller session injection by:
-   - Defining `_session` in tool parameter schemas under `properties._session` with schema `{ "type": "object", "description": "Caller session context" }`; or
-   - Setting `additionalProperties: true` in tool parameter schemas; or
-   - Advertising caller session support in server capabilities during protocol initialization (`capabilities.experimental.callerSession = true`).
-2. **Pre-Validation Stripping**: Servers that accept `_session` must extract and remove the `_session` key from input arguments before handing arguments to domain parameter validators or business logic handlers.
-3. **Gateway Stripping & Header Translation**: Gateway proxies handle schema-stripping and header translation when proxying to strict third-party upstreams. When a gateway receives a tool call carrying `_session` destined for an upstream that enforces strict schemas without declaring session support, the gateway extracts and strips `_session` from the argument dictionary, and forwards the session identifier upstream via the `x-session-id` transport header or request metadata.
+1. **Acceptance Declaration**: PKB tools declare `session_id` in their tool input schemas (`properties.session_id` with schema `{ "type": "string" }`), and `PreToolUse` hooks inject `session_id` only on direct PKB tools and `call_mcp_tool` calls targeting `ServerName == "pkb"`.
+2. **Portal Isolation**: Hooks do not inject top-level `session_id` onto `portal_codemode_execute` or other `portal_*` tools whose schemas reject unknown top-level parameters; inside codemode blocks, agents pass `session_id` directly to `pkb.*` calls.
+3. **Gateway Header Translation**: Gateway proxies forward caller identity upstream via `x-session-id` and `traceparent` headers when proxying across connections.
 
 ### Span Attributes Specification
 

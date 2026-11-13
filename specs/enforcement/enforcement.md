@@ -86,7 +86,7 @@ Prompt hydration (`search_the_pkb`, detailed in [`specs/agents/prompt-hydration.
 - **Whole-prompt hydration**: Sends the full human prompt text, incoming channel message, or agent report up to 8 KB (`8192` characters) without arbitrary 200-character truncation, unwrapping `<channel>` and message envelopes when present.
 - **Peer reports, subagent handbacks, and task notifications included**: Incoming peer reports, subagent handbacks, and task notifications are searched against the PKB to provide relevant grounding context.
 - **Slash command gating**: Suppresses PKB calls on argument-less slash commands (`/cmd`); slash commands with arguments (`/cmd <arg>`) send `<arg>` whole up to 8 KB.
-- **Session attribution metadata**: Every hydration query passes a `_session` payload containing `session_id`, `prompt_id`, `agent_id`, `caller: "hook"`, and `surface` (`"agy"`, `"github-actions"`, or `"claude-code"`), matching `prompt_id` across the MCP request and hook span.
+- **Stateless MCP attribution metadata**: Every hydration query sends a stateless MCP `2026-07-28` request carrying top-level `session_id` in `arguments` and `x-session-id` header, plus `prompt_id` synced to the turn hook span.
 - **Quiet failure & empty handling**: Injects nothing on empty or whitespace search results; on server/network failure, injects a single concise line naming the failure cause without dumping stack traces or polluting agent context.
 
 ### Plugin startup delivery channel (JIT injection)

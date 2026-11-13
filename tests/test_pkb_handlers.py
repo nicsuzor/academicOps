@@ -651,16 +651,20 @@ def test_search_the_pkb_sends_one_post_with_headers(http_mcp_server, monkeypatch
     assert "academicOps" in req["headers"]["user-agent"]
     assert req["headers"]["content-type"] == "application/json"
     assert "text/event-stream" in req["headers"]["accept"]
+    assert req["headers"]["mcp-protocol-version"] == "2026-07-28"
+    assert req["headers"]["mcp-method"] == "tools/call"
+    assert req["headers"]["mcp-name"] == "pkb_search"
     assert req["json"]["params"]["name"] == "pkb_search"
+    meta = req["json"]["params"]["_meta"]
+    assert meta["io.modelcontextprotocol/protocolVersion"] == "2026-07-28"
+    assert meta["io.modelcontextprotocol/clientCapabilities"] == {}
+    assert meta["io.modelcontextprotocol/clientInfo"]["name"] == "academicOps"
     args = req["json"]["params"]["arguments"]
     assert args["query"] == "what are the axioms?"
     assert args["limit"] == 5
     assert args["detail"] == "snippet"
-    assert "_session" in args
-    assert args["session_id"] == "s123" if "session_id" in args else True
-    assert args["_session"]["session_id"] == "s123"
-    assert args["_session"]["caller"] == "hook"
-    assert args["_session"]["surface"] == "claude-code"
+    assert args["session_id"] == "s123"
+    assert "_session" not in args
 
 
 @pytest.mark.integration
@@ -888,54 +892,41 @@ def test_search_the_pkb_ignores_legacy_headers_and_authenticates_with_canonical_
 
 
 @pytest.mark.integration
-def test_search_the_pkb_session_fallback_and_caching(monkeypatch, tmp_path):
-    """AC: falls back to initialize once if session needed, caching for 24h in tracer state dir."""
+def test_search_the_pkb_uses_stateless_mcp_without_initialize(monkeypatch, tmp_path):
+    """Stateless MCP 2026-07-28: sends a single tools/call POST with no initialize or session cache."""
     import http.server
     import threading
 
     calls = []
 
-    class SessionServer(http.server.BaseHTTPRequestHandler):
+    class StatelessServer(http.server.BaseHTTPRequestHandler):
         def do_POST(self):
             content_length = int(self.headers.get("Content-Length", 0))
             body = json.loads(self.rfile.read(content_length).decode("utf-8"))
-            method = body.get("method")
-            session_hdr = self.headers.get("mcp-session-id")
-            calls.append((method, session_hdr))
-
-            if method == "tools/call" and not session_hdr:
-                self.send_response(400)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(b'{"error": "Session required"}')
-            elif method == "initialize":
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.send_header("mcp-session-id", "sess-uuid-789")
-                self.end_headers()
-                self.wfile.write(
-                    json.dumps({"jsonrpc": "2.0", "id": body["id"], "result": {}}).encode("utf-8")
+            calls.append(
+                (
+                    body.get("method"),
+                    self.headers.get("MCP-Protocol-Version"),
+                    self.headers.get("mcp-session-id"),
                 )
-            elif method == "tools/call" and session_hdr == "sess-uuid-789":
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(
-                    json.dumps(
-                        {
-                            "jsonrpc": "2.0",
-                            "id": body["id"],
-                            "result": {
-                                "content": [{"type": "text", "text": "1. Found with session"}]
-                            },
-                        }
-                    ).encode("utf-8")
-                )
+            )
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(
+                json.dumps(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": body["id"],
+                        "result": {"content": [{"type": "text", "text": "1. Found stateless"}]},
+                    }
+                ).encode("utf-8")
+            )
 
         def log_message(self, *args):
             pass
 
-    server = http.server.HTTPServer(("127.0.0.1", 0), SessionServer)
+    server = http.server.HTTPServer(("127.0.0.1", 0), StatelessServer)
     port = server.server_address[1]
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -952,23 +943,9 @@ def test_search_the_pkb_session_fallback_and_caching(monkeypatch, tmp_path):
         )
         res = handlers.search_the_pkb(ctx)
         assert res is not None
-        assert "Found with session" in res.inject_text
-        assert calls == [
-            ("tools/call", None),
-            ("initialize", None),
-            ("tools/call", "sess-uuid-789"),
-        ]
-
-        cache_file = tmp_path / ".claude" / "tracer" / "pkb_session_cache.json"
-        assert cache_file.exists()
-        cache_data = json.loads(cache_file.read_text(encoding="utf-8"))
-        assert cache_data["session_id"] == "sess-uuid-789"
-
-        calls.clear()
-        res2 = handlers.search_the_pkb(ctx)
-        assert res2 is not None
-        assert "Found with session" in res2.inject_text
-        assert calls == [("tools/call", "sess-uuid-789")]
+        assert "Found stateless" in res.inject_text
+        assert calls == [("tools/call", "2026-07-28", None)]
+        assert not (tmp_path / ".claude" / "tracer" / "pkb_session_cache.json").exists()
     finally:
         server.shutdown()
 
@@ -1166,7 +1143,7 @@ def test_pkb_hydrate_zero_env_var_is_ignored():
 def test_search_the_pkb_sends_session_with_matching_prompt_id(
     http_mcp_server, monkeypatch, tmp_path
 ):
-    """AC3: The hook sends _session with matching prompt_id on both the MCP call and the hook span."""
+    """AC3: The hook sends top-level session_id and preserves matching prompt_id in tracer state."""
     tracer_dir = tmp_path / ".claude" / "tracer"
     tracer_dir.mkdir(parents=True, exist_ok=True)
     trace_id = "11112222333344445555666677778888"
@@ -1203,22 +1180,18 @@ def test_search_the_pkb_sends_session_with_matching_prompt_id(
     req = http_mcp_server.requests[0]
     args = req["json"]["params"]["arguments"]
     assert args["query"] == "what is the session contract?"
-    assert "_session" in args
-    sess = args["_session"]
-    assert sess["session_id"] == "s-session-ac3"
-    assert sess["prompt_id"] == "prompt-trace-match-1"
-    assert sess["caller"] == "hook"
-    assert sess["surface"] == "claude-code"
+    assert args["session_id"] == "s-session-ac3"
+    assert "_session" not in args
 
-    # State file's current_trace must have the matching prompt_id
+    # State file's current_trace must keep prompt_id
     updated_state = json.loads(state_file.read_text(encoding="utf-8"))
-    assert updated_state["current_trace"]["prompt_id"] == sess["prompt_id"]
+    assert updated_state["current_trace"]["prompt_id"] == "prompt-trace-match-1"
 
 
 def test_search_the_pkb_generates_matching_prompt_id_when_absent(
     http_mcp_server, monkeypatch, tmp_path
 ):
-    """AC3: When prompt_id is absent from payload, generated prompt_id matches on both MCP call and tracer state."""
+    """AC3: When prompt_id is absent from payload, prompt_id is generated in tracer state and session_id is sent."""
     tracer_dir = tmp_path / ".claude" / "tracer"
     tracer_dir.mkdir(parents=True, exist_ok=True)
     trace_id = "aaaabbbbccccddddaaaabbbbccccdddd"
@@ -1251,12 +1224,12 @@ def test_search_the_pkb_generates_matching_prompt_id_when_absent(
     assert len(http_mcp_server.requests) == 1
 
     req = http_mcp_server.requests[0]
-    sess = req["json"]["params"]["arguments"]["_session"]
-    generated_pid = sess["prompt_id"]
-    assert generated_pid, "prompt_id must not be empty"
+    args = req["json"]["params"]["arguments"]
+    assert args["session_id"] == "s-no-prompt-id"
+    assert "_session" not in args
 
     updated_state = json.loads(state_file.read_text(encoding="utf-8"))
-    assert updated_state["current_trace"]["prompt_id"] == generated_pid
+    assert updated_state["current_trace"]["prompt_id"]
 
 
 def test_search_the_pkb_injects_nothing_when_server_returns_empty_content(
@@ -1364,29 +1337,26 @@ def test_agy_turn_started_by_peer_system_message_is_searched(tmp_path: Path):
     assert res is not None and "<academicOps PKB search results>" in res.inject_text
 
 
-def test_post_mcp_search_reinitializes_on_session_error(tmp_path: Path):
-    """When a session error occurs on tools/call, cached session is cleared and initialize is invoked."""
-    cache_file = tmp_path / "pkb_session_cache.json"
-    cache_file.write_text(
-        json.dumps({"session_id": "old-stale-session", "timestamp": 12345}), encoding="utf-8"
-    )
-
+def test_post_mcp_search_raises_on_jsonrpc_error_without_initialize():
+    """JSON-RPC errors raise RuntimeError immediately with no initialize retry."""
     calls = []
 
     def mock_urlopen(req, timeout=5):
         body = req.data.decode("utf-8") if req.data else ""
         parsed = json.loads(body)
-        method = parsed.get("method")
-        calls.append(method)
+        calls.append(parsed.get("method"))
 
         class MockResp:
-            def __init__(self, data, status=200, headers=None):
-                self.data = data
-                self.status = status
-                self.headers = headers or {}
+            status = 200
+            headers = {}
 
             def read(self):
-                return self.data.encode("utf-8")
+                return json.dumps(
+                    {
+                        "jsonrpc": "2.0",
+                        "error": {"code": -32000, "message": "Missing required session_id"},
+                    }
+                ).encode("utf-8")
 
             def getcode(self):
                 return self.status
@@ -1397,57 +1367,19 @@ def test_post_mcp_search_reinitializes_on_session_error(tmp_path: Path):
             def __exit__(self, *args):
                 pass
 
-        if method == "tools/call" and len(calls) == 1:
-            # First call fails with session expired
-            return MockResp(
-                json.dumps(
-                    {
-                        "jsonrpc": "2.0",
-                        "error": {"code": -32000, "message": "Session expired or does not exist"},
-                    }
-                ),
-                status=200,
-            )
-        if method == "initialize":
-            return MockResp(
-                json.dumps(
-                    {"jsonrpc": "2.0", "id": 1, "result": {"protocolVersion": "2024-11-05"}}
-                ),
-                status=200,
-                headers={"mcp-session-id": "new-fresh-session"},
-            )
-        if method == "tools/call" and len(calls) == 3:
-            # Retried call succeeds
-            return MockResp(
-                json.dumps(
-                    {
-                        "jsonrpc": "2.0",
-                        "id": 1,
-                        "result": {"content": [{"type": "text", "text": "result item"}]},
-                    }
-                ),
-                status=200,
-            )
-        return MockResp("{}", status=200)
+        return MockResp()
 
-    with (
-        patch("urllib.request.urlopen", side_effect=mock_urlopen),
-        patch.object(handlers, "_session_cache_path", return_value=cache_file),
-    ):
-        result = handlers._post_mcp_search("https://pkb.invalid/mcp", "test query")
-        assert result == "result item"
-        assert calls == ["tools/call", "initialize", "tools/call"]
-        # Verify cache was updated with the fresh session
-        cached = json.loads(cache_file.read_text(encoding="utf-8"))
-        assert cached.get("session_id") == "new-fresh-session"
+    with patch("urllib.request.urlopen", side_effect=mock_urlopen):
+        with pytest.raises(RuntimeError, match="PKB MCP error"):
+            handlers._post_mcp_search("https://pkb.invalid/mcp", "test query", session_id="s1")
+        assert calls == ["tools/call"]
 
 
 def test_search_the_pkb_uses_root_phoenix_session_id_for_subagent_turn(
     http_mcp_server, monkeypatch, tmp_path
 ):
     """When search_the_pkb runs inside a subagent session whose tracer state has phoenix_session_id
-    pointing to the root session, both x-session-id and _session.session_id use the root session ID
-    and _session.agent_id carries the subagent session ID."""
+    pointing to the root session, both x-session-id and arguments.session_id use the root session ID."""
     tracer_dir = tmp_path / ".claude" / "tracer"
     tracer_dir.mkdir(parents=True, exist_ok=True)
     trace_id = "11112222333344441111222233334444"
@@ -1484,6 +1416,6 @@ def test_search_the_pkb_uses_root_phoenix_session_id_for_subagent_turn(
 
     req = http_mcp_server.requests[0]
     assert req["headers"].get("x-session-id") == "root-sess-01"
-    sess = req["json"]["params"]["arguments"]["_session"]
-    assert sess["session_id"] == "root-sess-01"
-    assert sess["agent_id"] == "subagent-sess-42"
+    args = req["json"]["params"]["arguments"]
+    assert args["session_id"] == "root-sess-01"
+    assert "_session" not in args
