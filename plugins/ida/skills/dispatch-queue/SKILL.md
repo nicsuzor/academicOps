@@ -1,10 +1,10 @@
 ---
 name: dispatch-queue
-description: Show the user the tasks ready to dispatch, ranked with a recommendation on each, and start workers on the ones the user approves -- redirects to universal workflow template wf-dispatch-queue. Use for "what's ready", "what should we dispatch", or "dispatch the queue". Exclude for starting workers on named tasks without the user's choice (use dispatch) or graph truth maintenance (use reconcile).
+description: Rank and present queued repo-scoped epic tasks ready for dispatch with recommendations, and launch polecat containers on tasks the user approves per wf-dispatch-queue. Use for "what's ready", "what should we dispatch", or "dispatch the queue". Exclude for non-interactive dispatch of named tasks (use /dispatch) or graph truth maintenance (use /reconcile).
 ---
 
-# Dispatch queue
+# Dispatch Queue
 
-The canonical procedure is defined in universal workflow template `wf-dispatch-queue`.
+Present queued repo-scoped epic tasks ready for dispatch, ranked with a recommendation on each, and launch polecat containers on tasks the user approves per universal workflow template `wf-dispatch-queue`.
 
-Run the pass by resolving and executing `wf-dispatch-queue` via `/pull wf-dispatch-queue` or through the workflow library (`plugins/ida/skills/workflow-library/workflows/wf-dispatch-queue.md`).
+Execute the pass by following universal workflow template `wf-dispatch-queue` (`../workflow-library/workflows/wf-dispatch-queue.md`).

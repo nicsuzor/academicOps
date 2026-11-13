@@ -43,8 +43,11 @@ For each claimed task (releasing child tasks first):
 2. **Update Task Body and Report**: Update the task body so its `## Report` section records the outcome and the `premise-check` report argument (asked by the task's frozen ask ids).
 3. **Release via `pkb_release_task`**, passing the active `session_id`:
 
-- `done`: All acceptance criteria are fully met with verified evidence recorded in the task's Report section: quoted output, `file:line` citations, counts, specimen runs, and the report argument answering each `<task id>/AC<n>`. All child tasks and subtasks created by the session must be completed; if any subtask remains open, the parent task cannot be released as `done`. When the deliverable is a PR, push the branch, open the PR, record `pr_url` and branch, and release `done`. An empty, template, or bare-assertion report is released as `partial`.
-- `partial`: The worker's own acceptance items remain unfinished (a scope seam, an external dependency, a context reset, or a missing tool) OR child tasks/subtasks created by the session remain uncompleted. If the session created subtasks that have not finished, the claimed task must be released as `partial` (never `done`), documenting what was completed, open subtasks, and what remains unfinished in `reason` and `## Report`. Never release as `partial` merely because an external dependent check (QA, merge, deploy) remains to run.
+- `done`: All in-scope acceptance criteria are fully met with verified evidence recorded in the task's Report section: quoted output, `file:line` citations, counts, specimen runs, and the report argument answering each `<task id>/AC<n>`.
+  - For a container coordinator (`/supervise`): When all in-session deliverables and pull requests are completed, and any remaining work was intentionally queued as explicit out-of-session follow-up tasks on the graph (e.g. work in a different repository, scheduled for a later time, or assigned to a separate external agent such as `ida` channel delivery), release the claimed repo task as `done`, recording those queued follow-up task IDs under `Next step`.
+  - For plain leaf workers (`/pull`): All acceptance criteria must be satisfied directly without delegating to child or follow-up tasks.
+  - When the deliverable is a PR, push the branch, open the PR, record `pr_url` and branch, and release `done`. An empty, template, or bare-assertion report is released as `partial`.
+- `partial`: The worker's own acceptance items remain unfinished (a scope seam, an external dependency, a context reset, or a missing tool) OR internal in-session subtasks created by the session remain uncompleted. If a `/supervise` session left in-session subtasks incomplete or interrupted, the claimed task must be released as `partial` (never `done`), documenting what was completed, open subtasks, and what remains unfinished in `reason` and `## Report`. Plain leaf workers release `partial` whenever any acceptance item lacks verified evidence, and never mint follow-up tasks. Never release as `partial` merely because an external dependent check (QA, merge, deploy) remains to run.
 - `failed`: Terminal failure, unrecoverable blocker, or check failure (e.g. QA or review). Document failure evidence and root cause.
 - `cancelled`: Task is obsolete or invalidated. Document reason.
 - `in_progress`: Use only if an active successor session is immediately continuing work.
@@ -85,8 +88,9 @@ Determine all projects touched during the session (modified files, updated tasks
 Workers never sequence work or invent speculative follow-ups ("park on a downward slope"):
 
 1. _Pre-Existing Dependent Work_: If an authorized follow-up task, child QA task, or review task already exists on the graph, provide an explicit pointer (`[[task-id]]` or URL).
-2. _Interrupted Work_: If a task is released as `partial` or `in_progress` (context boundary, environment migration, user halt), provide a self-contained 2-4 sentence resumption prompt detailing current state, touched files, and exact starting instructions for a fresh agent.
-3. _Fully Completed Work_: If the task is `done` and no pre-existing dependent task exists on the graph, state `None`.
+2. _Container Coordinator Follow-Ups (`/supervise`)_: When a container coordinator completes all in-session deliverables and has queued explicit out-of-session follow-up tasks on the graph (such as a different repository task, an `ida` channel delivery task, or a deferred sequential step), record those queued task IDs under `Next step`. Plain `/pull` leaf workers operate strictly state-only and never create or name follow-up tasks.
+3. _Interrupted Work_: If a task is released as `partial` or `in_progress` (context boundary, environment migration, user halt), provide a self-contained 2-4 sentence resumption prompt detailing current state, touched files, and exact starting instructions for a fresh agent.
+4. _Fully Completed Work_: If the task is `done` and no follow-up task exists on the graph, state `None`.
 
 ### 7. Emit Final Handover Report
 

@@ -1,7 +1,7 @@
 ---
 name: q
 type: command
-description: Stage 1 Intake & Capture--place an ask or idea on the graph under the right parent, wire what it serves, propose values, and record strategic placement at intake. Exclude for starting workers on ready tasks (use /dispatch) or decomposing objectives (use /decompose).
+description: Capture natural-language asks and situate them on the graph as repo-scoped epic tasks, wire value-chain links, and consolidate similar work. Exclude for starting containers on queued tasks (use /dispatch) or decomposing abstract objectives (use /decompose).
 allowed-tools: [Skill, AskUserQuestion, mcp__services__*]
 ---
 
@@ -11,18 +11,20 @@ Capture natural-language asks and situate them on the strategic graph: parented,
 
 ## Placement and Valuation
 
-1. **Search before creating (mandatory across all invocations)**: Search both open and closed tasks in the PKB (`include_done: true`), as well as related targets, before minting a task. This search is a required step across all invocations to prevent duplicate or fragmented work. Explicitly evaluate and decide between three outcomes:
-   - _Resume an open task_: If an existing open or in-progress task covers the topic or work, extend and update that task instead of creating a new one.
-   - _Reopen a closed task_: If a completed or closed task directly addresses the topic and requires follow-up, iteration, or expansion, decide whether reopening the closed task (setting status to `ready` or `queued`) preserves continuity better than creating a fresh task.
-   - _Mint a new task_: Only if no matching open or closed task can be resumed or reopened, create a new task situated under the right parent container and wire what it serves.
-   - **Partial-Overlap Invariant**: If an incoming ask touches artifacts, models, or scopes of an existing open task, the agent must either claim and reshape the existing open task (if scope aligns), or wire an explicit prerequisite (`needs`) or co-parent under the same epic, never minting a detached sibling.
-2. **Consolidate and place**: Consolidate where possible (merge duplicates, reparent related tasks). Place the node under an active parent container (or `part_of` edge).
+1. **Search and consolidate (mandatory across all invocations)**: Search both open and closed tasks in the PKB (`include_done: true`), as well as related targets, before minting any task. Aggregating similar tasks is explicitly preferred: if an incoming ask (or its per-repo parts) can be distributed across one or more existing open epic-sized tasks and handled as the same chunk of work, fold and update those existing tasks rather than creating new tasks. Evaluate three outcomes:
+   - _Consolidate or resume an open task_: If an existing open or in-progress task covers the topic or repo scope, extend and update that task instead of creating a new one.
+   - _Reopen a closed task_: If a completed or closed task directly addresses the topic and requires follow-up, iteration, or expansion, reopen the closed task (setting `status: "queued"` or `"ready"`) to preserve continuity.
+   - _Mint a new task_: Only if no matching open or closed task can absorb the ask, create a new task situated under the right parent container and wire what it serves. Set `status: "queued"` when ready for immediate container dispatch, or `"ready"`/`"inbox"` when held or blocked.
+   - **Closed-loop delivery**: When a conversational ask requires reporting results back to the user on channel, create a closed-loop delivery task (`assignee: ida`, `needs: [<repo-task-id>]`) so conversational reporting triggers automatically after container execution completes.
+2. **Multi-repository scoping**: When an incoming ask spans two or more repositories, create related repo-specific tasks (`type: "task"`, `project` set per repo; never pass `type: "epic"`):
+   - Link tasks via `needs` when execution is sequential, or place under a shared cross-repo parent objective when parallel.
+   - Create strictly one epic-sized task per repository, never splitting further at intake. In-container supervision decomposes in-repo execution workflows.
 3. **Affordable loss check**: Evaluate affordable loss before admitting commitments. If prospective downside or commitment cost violates affordable loss, flag as a priority ask for the user rather than admitting to the flow. Flow maths remains unpolluted by subjective risk gating.
-4. **Wire what it serves under the Three-Purpose Taxonomy (ADR-0002)**: Add edges strictly per purpose, pushing weight links as far up the parent hierarchy as accurate:
+4. **Wire value-chain links under the Three-Purpose Taxonomy (ADR-0002)**: Add edges strictly per purpose, pushing weight links as far up the parent hierarchy as accurate:
    - **Weight Flow (`serves`, `supports`)**:
-     - `serves`: Wire from top-level deliverable tasks to priced `target` nodes. Subtasks inherit value via parent induction and must not duplicate `serves` edges.
+     - `serves`: Every minted non-bare task must wire a `serves` weight-flow link (`quantum`, `probability`, `effect`, `justification`, `set_by: "agent-proposed"`) pointing **either directly to a priced `target` node OR, more commonly, to an existing epic that adds weight (`serves`) to a priced `target`**, allowing the task to be valued down the chain. Avoid duplicate links to the same target already reached via that epic.
      - `supports`: Wire only when executing the task directly reduces effort/risk or increases the completion probability of an upstream task/target. Tracking/coordination tasks do NOT support tracked tasks; tracking tasks serve user understanding targets.
-     - **Weight fields**: `quantum` (words `all`..`none` or float $0.0..=1.0$), `probability` (words `certain`..`impossible` or float $0.0..=1.0$, default 1.00), `effect: helps` | `harms`, `justification`, `set_by: agent-proposed`.
+     - **Weight fields**: `quantum` (words `all`..`none` or float 0.0..=1.0), `probability` (words `certain`..`impossible` or float 0.0..=1.0, default 1.00), `effect: helps` | `harms`, `justification`, `set_by: agent-proposed`.
    - **Work Sequencing (`needs`)**:
      - Wire from dependent to prerequisite task ($B \to A$).
      - Boolean execution gate; carries **neither** quantum nor probability.
