@@ -12,7 +12,7 @@ import { hostname } from "node:os";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { tmpdir } from "node:os";
 
 const execFileAsync = promisify(execFile);
@@ -1175,6 +1175,374 @@ export class TelegramBotClient {
       message_id: messageId,
       reply_markup: { inline_keyboard: inlineKeyboard },
     });
+  }
+
+  private isLocalFilePath(ref: string): boolean {
+    return Boolean(ref && !/^https?:\/\//i.test(ref) && existsSync(ref));
+  }
+
+  private async callMultipartOrJsonApi(
+    method: string,
+    payload: Record<string, unknown>,
+    files: Array<{ fieldName: string; filePath: string }>
+  ): Promise<any> {
+    if (files.length === 0) {
+      return await this.callApi(method, payload);
+    }
+    const baseUrl = this.config.apiBaseUrl || "https://api.telegram.org";
+    const url = `${baseUrl}/bot${this.config.botToken}/${method}`;
+    const formData = new FormData();
+    for (const [key, value] of Object.entries(payload)) {
+      if (value === undefined) continue;
+      if (typeof value === "object" && value !== null) {
+        formData.append(key, JSON.stringify(value));
+      } else {
+        formData.append(key, String(value));
+      }
+    }
+    for (const file of files) {
+      const buf = readFileSync(file.filePath);
+      formData.append(file.fieldName, new Blob([buf]), basename(file.filePath));
+    }
+    const res = await fetch(url, {
+      method: "POST",
+      body: formData,
+    });
+    return await res.json();
+  }
+
+  private resolveOutboundThreadAndReply(
+    chatId: number,
+    explicitThreadId?: number,
+    replyTo?: number,
+    attachDefaultReplyTo = true
+  ): {
+    effectiveThreadId?: number;
+    effectiveReplyTo?: number;
+    error?: string;
+  } {
+    const effectiveThreadId =
+      explicitThreadId ?? (replyTo !== undefined ? this.getMessageThread(replyTo) : undefined) ?? this.getLastThreadId(chatId);
+    const effectiveReplyTo =
+      replyTo ?? (attachDefaultReplyTo && effectiveThreadId === undefined ? this.getLastInboundMessageId(chatId) : undefined);
+
+    if (
+      attachDefaultReplyTo &&
+      this.isTopicsEnabled(chatId) &&
+      explicitThreadId === undefined &&
+      effectiveThreadId === undefined &&
+      effectiveReplyTo === undefined
+    ) {
+      return {
+        error:
+          "Telegram topics-enabled chat requires message_thread_id (or thread_id), a known active thread, or reply_to to route the message.",
+      };
+    }
+    return { effectiveThreadId, effectiveReplyTo };
+  }
+
+  private finalizeSentMessageResult(
+    chatId: number,
+    res: any,
+    effectiveThreadId: number | undefined,
+    excerptText?: string
+  ): { ok: boolean; result?: any; effectiveThreadId?: number; description?: string; error_code?: number } {
+    if (!res?.ok || !res?.result) {
+      return {
+        ok: false,
+        description: res?.description || "Telegram API request failed",
+        error_code: res?.error_code,
+      };
+    }
+
+    const messages = Array.isArray(res.result) ? res.result : [res.result];
+    for (const msg of messages) {
+      if (effectiveThreadId !== undefined && effectiveThreadId !== 1) {
+        if (msg?.message_thread_id !== effectiveThreadId) {
+          return {
+            ok: false,
+            description: `Thread delivery verification failed: expected message_thread_id=${effectiveThreadId}, got ${String(
+              msg?.message_thread_id
+            )}`,
+          };
+        }
+      }
+      if (typeof msg?.message_id === "number") {
+        this.recordMessageThread(msg.message_id, effectiveThreadId);
+        this.recordMessageExcerpt(msg.message_id, excerptText);
+      }
+    }
+
+    if (effectiveThreadId !== undefined) {
+      this.lastThreadIdByChat.set(chatId, effectiveThreadId);
+      this.store?.updateChatState(chatId, { activeThreadId: effectiveThreadId });
+    }
+
+    return {
+      ok: true,
+      result: res.result,
+      effectiveThreadId,
+    };
+  }
+
+  public async sendSingleMedia(options: {
+    method: "sendPhoto" | "sendDocument" | "sendVideo" | "sendAnimation" | "sendAudio" | "sendVideoNote";
+    mediaField: "photo" | "document" | "video" | "animation" | "audio" | "video_note";
+    media: string;
+    chatId: number;
+    caption?: string;
+    messageThreadId?: number;
+    replyTo?: number;
+    disableNotification?: boolean;
+    extraFields?: Record<string, unknown>;
+    inlineKeyboard?: Array<Array<Record<string, unknown>>>;
+  }): Promise<{ ok: boolean; result?: any; effectiveThreadId?: number; description?: string; error_code?: number }> {
+    const routing = this.resolveOutboundThreadAndReply(options.chatId, options.messageThreadId, options.replyTo, true);
+    if (routing.error) {
+      return { ok: false, description: routing.error };
+    }
+
+    const payload: Record<string, unknown> = {
+      chat_id: options.chatId,
+      ...(options.extraFields || {}),
+    };
+    if (routing.effectiveThreadId !== undefined) {
+      payload.message_thread_id = routing.effectiveThreadId;
+    }
+    if (routing.effectiveReplyTo !== undefined) {
+      payload.reply_parameters = { message_id: routing.effectiveReplyTo };
+    }
+    if (options.disableNotification !== undefined) {
+      payload.disable_notification = options.disableNotification;
+    }
+    if (options.inlineKeyboard && options.inlineKeyboard.length > 0) {
+      payload.reply_markup = { inline_keyboard: options.inlineKeyboard };
+    }
+
+    let formattedCaption: FormattedMessage | undefined;
+    if (options.caption !== undefined && options.mediaField !== "video_note") {
+      formattedCaption = formatMarkdownToEntities(options.caption);
+      payload.caption = formattedCaption.plainText;
+      if (formattedCaption.entities.length > 0) {
+        payload.caption_entities = formattedCaption.entities;
+      }
+    }
+
+    const files: Array<{ fieldName: string; filePath: string }> = [];
+    if (this.isLocalFilePath(options.media)) {
+      files.push({ fieldName: options.mediaField, filePath: options.media });
+    } else {
+      payload[options.mediaField] = options.media;
+    }
+
+    let res = await this.callMultipartOrJsonApi(options.method, payload, files);
+    if (
+      !res?.ok &&
+      formattedCaption &&
+      formattedCaption.entities.length > 0 &&
+      /entit|parse/i.test(String(res?.description || ""))
+    ) {
+      const retryPayload = { ...payload };
+      delete retryPayload.caption_entities;
+      res = await this.callMultipartOrJsonApi(options.method, retryPayload, files);
+    }
+
+    return this.finalizeSentMessageResult(
+      options.chatId,
+      res,
+      routing.effectiveThreadId,
+      formattedCaption?.plainText || `[${options.mediaField}]`
+    );
+  }
+
+  public async sendMediaGroup(options: {
+    chatId: number;
+    media: Array<{
+      type: "photo" | "video" | "document" | "animation" | "audio";
+      media: string;
+      caption?: string;
+      has_spoiler?: boolean;
+    }>;
+    messageThreadId?: number;
+    replyTo?: number;
+    disableNotification?: boolean;
+  }): Promise<{ ok: boolean; result?: any[]; effectiveThreadId?: number; description?: string; error_code?: number }> {
+    const routing = this.resolveOutboundThreadAndReply(options.chatId, options.messageThreadId, options.replyTo, true);
+    if (routing.error) {
+      return { ok: false, description: routing.error };
+    }
+
+    const files: Array<{ fieldName: string; filePath: string }> = [];
+    const normalizedMedia = options.media.map((item, idx) => {
+      const entry: Record<string, unknown> = {
+        type: item.type,
+      };
+      if (this.isLocalFilePath(item.media)) {
+        const fieldName = `file_${idx}`;
+        files.push({ fieldName, filePath: item.media });
+        entry.media = `attach://${fieldName}`;
+      } else {
+        entry.media = item.media;
+      }
+      if (item.caption !== undefined) {
+        const formatted = formatMarkdownToEntities(item.caption);
+        entry.caption = formatted.plainText;
+        if (formatted.entities.length > 0) {
+          entry.caption_entities = formatted.entities;
+        }
+      }
+      if (item.has_spoiler !== undefined) {
+        entry.has_spoiler = item.has_spoiler;
+      }
+      return entry;
+    });
+
+    const payload: Record<string, unknown> = {
+      chat_id: options.chatId,
+      media: normalizedMedia,
+    };
+    if (routing.effectiveThreadId !== undefined) {
+      payload.message_thread_id = routing.effectiveThreadId;
+    }
+    if (routing.effectiveReplyTo !== undefined) {
+      payload.reply_parameters = { message_id: routing.effectiveReplyTo };
+    }
+    if (options.disableNotification !== undefined) {
+      payload.disable_notification = options.disableNotification;
+    }
+
+    const res = await this.callMultipartOrJsonApi("sendMediaGroup", payload, files);
+    return this.finalizeSentMessageResult(options.chatId, res, routing.effectiveThreadId, "[media_group]");
+  }
+
+  public async sendMessagePayload(options: {
+    method: "sendLocation" | "sendVenue" | "sendContact" | "sendDice" | "sendPoll";
+    chatId: number;
+    fields: Record<string, unknown>;
+    messageThreadId?: number;
+    replyTo?: number;
+    disableNotification?: boolean;
+    inlineKeyboard?: Array<Array<Record<string, unknown>>>;
+    excerptText?: string;
+  }): Promise<{ ok: boolean; result?: any; effectiveThreadId?: number; description?: string; error_code?: number }> {
+    const routing = this.resolveOutboundThreadAndReply(options.chatId, options.messageThreadId, options.replyTo, true);
+    if (routing.error) {
+      return { ok: false, description: routing.error };
+    }
+
+    const payload: Record<string, unknown> = {
+      chat_id: options.chatId,
+      ...options.fields,
+    };
+    if (routing.effectiveThreadId !== undefined) {
+      payload.message_thread_id = routing.effectiveThreadId;
+    }
+    if (routing.effectiveReplyTo !== undefined) {
+      payload.reply_parameters = { message_id: routing.effectiveReplyTo };
+    }
+    if (options.disableNotification !== undefined) {
+      payload.disable_notification = options.disableNotification;
+    }
+    if (options.inlineKeyboard && options.inlineKeyboard.length > 0) {
+      payload.reply_markup = { inline_keyboard: options.inlineKeyboard };
+    }
+
+    const res = await this.callApi(options.method, payload);
+    return this.finalizeSentMessageResult(
+      options.chatId,
+      res,
+      routing.effectiveThreadId,
+      options.excerptText || `[${options.method}]`
+    );
+  }
+
+  public async sendChatAction(options: {
+    chatId: number;
+    action: string;
+    messageThreadId?: number;
+  }): Promise<{ ok: boolean; effectiveThreadId?: number; description?: string; error_code?: number }> {
+    const routing = this.resolveOutboundThreadAndReply(options.chatId, options.messageThreadId, undefined, false);
+    const payload: Record<string, unknown> = {
+      chat_id: options.chatId,
+      action: options.action,
+    };
+    if (routing.effectiveThreadId !== undefined) {
+      payload.message_thread_id = routing.effectiveThreadId;
+    }
+    const res = await this.callApi("sendChatAction", payload);
+    if (!res?.ok) {
+      return {
+        ok: false,
+        description: res?.description || "Telegram sendChatAction failed",
+        error_code: res?.error_code,
+      };
+    }
+    return { ok: true, effectiveThreadId: routing.effectiveThreadId };
+  }
+
+  public async sendMessageDraft(options: {
+    chatId: number;
+    draftId: number;
+    text: string;
+    messageThreadId?: number;
+  }): Promise<{ ok: boolean; effectiveThreadId?: number; description?: string; error_code?: number }> {
+    const routing = this.resolveOutboundThreadAndReply(options.chatId, options.messageThreadId, undefined, false);
+    const formatted = formatMarkdownToEntities(options.text);
+    const payload: Record<string, unknown> = {
+      chat_id: options.chatId,
+      draft_id: options.draftId,
+      text: formatted.plainText,
+    };
+    if (formatted.entities.length > 0) {
+      payload.entities = formatted.entities;
+    }
+    if (routing.effectiveThreadId !== undefined) {
+      payload.message_thread_id = routing.effectiveThreadId;
+    }
+
+    let res = await this.callApi("sendMessageDraft", payload);
+    if (!res?.ok && formatted.entities.length > 0 && /entit|parse/i.test(String(res?.description || ""))) {
+      const retryPayload = { ...payload };
+      delete retryPayload.entities;
+      res = await this.callApi("sendMessageDraft", retryPayload);
+    }
+
+    if (!res?.ok) {
+      return {
+        ok: false,
+        description: res?.description || "Telegram sendMessageDraft failed",
+        error_code: res?.error_code,
+      };
+    }
+    return { ok: true, effectiveThreadId: routing.effectiveThreadId };
+  }
+
+  public async stopPoll(options: {
+    chatId: number;
+    messageId: number;
+    inlineKeyboard?: Array<Array<Record<string, unknown>>>;
+  }): Promise<{ ok: boolean; result?: any; effectiveThreadId?: number; description?: string; error_code?: number }> {
+    const payload: Record<string, unknown> = {
+      chat_id: options.chatId,
+      message_id: options.messageId,
+    };
+    if (options.inlineKeyboard && options.inlineKeyboard.length > 0) {
+      payload.reply_markup = { inline_keyboard: options.inlineKeyboard };
+    }
+    const res = await this.callApi("stopPoll", payload);
+    if (!res?.ok || !res?.result) {
+      return {
+        ok: false,
+        description: res?.description || "Telegram stopPoll failed",
+        error_code: res?.error_code,
+      };
+    }
+    const effectiveThreadId = this.getMessageThread(options.messageId) ?? this.getLastThreadId(options.chatId);
+    return {
+      ok: true,
+      result: res.result,
+      effectiveThreadId,
+    };
   }
 
   public async registerCommands(): Promise<boolean> {
