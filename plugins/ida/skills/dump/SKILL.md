@@ -13,7 +13,7 @@ Determine the invocation mode before acting:
 
 - **Mode 1: User-Run `/dump` (Emergency Handover)**:
   1. **Stop where you are currently**: Halt all in-progress task execution at the exact point reached. Start **no further work first** -- no new reviews, no new dispatches, no re-dispatches, no new test suites, and no continuation of remaining task steps, whatever accompanying wording came with the `/dump` command.
-  2. **Tell running subagents to finish their immediate turn**: Immediately message every running subagent (`send_message`) instructing it to finish its immediate turn and return its current state without starting another step, and terminate any active background command tasks or scheduled timers (`manage_task: kill`).
+  2. **Tell running subagents to finish their immediate turn**: Immediately message every running subagent (e.g. `send_message`) instructing it to finish its immediate turn and return its current state without starting another step, and terminate any active background command tasks or scheduled timers (e.g. `manage_task: kill`).
   3. **Save current state to the PKB and hand over**: Execute Steps 1–7 below for the work as it stands right now -- commit modified files (describing partial state), update and release claimed PKB tasks as `partial` (or `done` only if all acceptance criteria were already verified before `/dump` was called), persist durable facts and project status to the PKB, and emit the final handover report.
 
 - **Mode 2: Agent-Run `/dump` (Routine Wrap-Up)**:
