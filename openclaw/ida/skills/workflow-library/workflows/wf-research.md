@@ -31,6 +31,8 @@ A grounded research artifact providing:
 - Clear statement of constraints (e.g. backward compatibility, resource bounds).
 - Recommended approach and its justification.
 
+Keep the artifact and the report on it concise: the answer and recommendation first, then only the evidence a reader needs to check them. Write for any reader, not for the device or channel the user happens to be on; summarising the work for the user's current view is the user-facing coordinator's job when it relays the work.
+
 ## Composition
 
 When `/reify` composes a research task investigating an open design question or architectural alternatives, candidate options stay in the task body and the agent does the groundwork and decides the route itself, selecting the recommended implementation route and unblocking downstream implementation; it never creates a decision task assigned to the user (`assignee: user`) unless the user explicitly directed to decide it themselves (tg 1013). Tasks requiring review or follow-up are structured as a single task with internal subtasks or as an epic with child tasks, never as loose siblings.

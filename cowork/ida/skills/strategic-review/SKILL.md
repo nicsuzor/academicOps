@@ -27,9 +27,9 @@ Before dispatching reviewers, the Supervisor (`james`) loads the artifact, its o
 
 Dispatch all three specialist reviewers concurrently in a single turn using the calibrated `Model` selection. Every reviewer's brief is drawn from the shared review briefing (quoting the originating request, governing genre standard, and available specifications/requirements/criteria before the artifact or diff) and returns a verdict in the unified `PASS` / `REVISE` / `FAIL` vocabulary:
 
-- **Rule compliance** (TypeName `rbg`): Axiom and rule compliance per `wf-rbg`. Confined strictly to artifact text/diff and rule/spec sources.
-- **Strategic fit** (TypeName `pauli`): Strategic Fit Check per `wf-strategic-fit`, provided with an inline graph-only brief.
-- **Quality** (TypeName `marsha`): Qualitative excellence and audience resonance across live rendered outputs against purpose and genre standards per `verify`. Marsha never checks truth, fidelity, or technical correctness (which is verified upstream by authors and independent QA).
+- **Rule compliance** (TypeName `rbg`): Axiom, rule, authority, and enforcement-pyramid compliance per `wf-rbg`.
+- **Strategic fit** (TypeName `pauli`): Core premise, strategic direction, and PKB congruence per `wf-strategic-fit` (supplied with an inline brief).
+- **Quality** (TypeName `marsha`): Qualitative excellence and audience resonance across live rendered outputs against purpose and genre standards per `verify`.
 
 Every reviewer also judges proportion within its lens: whether the artifact builds more machinery than the request needs, and whether each requested change is worth its cost given the failure's likelihood and consequence. Reviewers immediately self-fix defects that can be resolved without controversy (language updates, data scrubbing under `data-boundaries`, simple deterministic repairs), commit them with `fix(review):`, and document them under `### Reviewer Self-Fixes Applied`. Uncontroversial self-fixes do not trigger `REVISE`; issues lacking a reasonably deterministic solution stay itemized findings.
 

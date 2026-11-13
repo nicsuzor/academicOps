@@ -25,7 +25,7 @@ A daily note run executes change-only steps defined canonically in PKB template 
 - **Graceful Degradation**: When external services (GitHub, Email, Calendar) are unreachable, attempt all available tool channels before recording quiet single-line status in-place.
 - **Trace Receipts Only**: Record step completion receipts in internal execution traces and telemetry. Never append run execution logs, hourly heartbeats, cron timestamps, or raw reconcile mutation dumps to the daily note body.
 - **No Local Transcript or Hook Log Scraping**: Sweeps and subagents must never read or scrape local `.system_generated/logs/transcript*.jsonl` or `/tmp/aops_debug_hooks_*.jsonl` files. Prompt and trace recoveries query Arize Phoenix via `ida:session-trace`.
-- **Subagent Routing Boundaries**: Sweeps dispatch to `ida:james` (execution sweeps) and Step 4 dispatches to `ida:pauli` (PKB graph and targeted `gh` queries only). Pauli operates strictly via PKB tools and targeted GitHub CLI queries, never reading local repository source files or shell output files on disk.
+- **Subagent Routing**: Execution sweeps dispatch to `ida:james`; PKB graph curation and Step 4 synthesis dispatch to `ida:pauli`.
 
 ## 3. Conversational Handover
 

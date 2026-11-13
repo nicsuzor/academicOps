@@ -1060,6 +1060,47 @@ export class TelegramBotClient {
     });
   }
 
+  public async getForumTopicIconStickers(): Promise<{ ok: boolean; result?: unknown[]; description?: string; error_code?: number }> {
+    return await this.callApi("getForumTopicIconStickers", {});
+  }
+
+  public async editGeneralForumTopic(
+    chatId: number,
+    name: string
+  ): Promise<{ ok: boolean; result?: boolean; description?: string; error_code?: number }> {
+    return await this.callApi("editGeneralForumTopic", { chat_id: chatId, name });
+  }
+
+  public async closeGeneralForumTopic(
+    chatId: number
+  ): Promise<{ ok: boolean; result?: boolean; description?: string; error_code?: number }> {
+    return await this.callApi("closeGeneralForumTopic", { chat_id: chatId });
+  }
+
+  public async reopenGeneralForumTopic(
+    chatId: number
+  ): Promise<{ ok: boolean; result?: boolean; description?: string; error_code?: number }> {
+    return await this.callApi("reopenGeneralForumTopic", { chat_id: chatId });
+  }
+
+  public async hideGeneralForumTopic(
+    chatId: number
+  ): Promise<{ ok: boolean; result?: boolean; description?: string; error_code?: number }> {
+    return await this.callApi("hideGeneralForumTopic", { chat_id: chatId });
+  }
+
+  public async unhideGeneralForumTopic(
+    chatId: number
+  ): Promise<{ ok: boolean; result?: boolean; description?: string; error_code?: number }> {
+    return await this.callApi("unhideGeneralForumTopic", { chat_id: chatId });
+  }
+
+  public async unpinAllGeneralForumTopicMessages(
+    chatId: number
+  ): Promise<{ ok: boolean; result?: boolean; description?: string; error_code?: number }> {
+    return await this.callApi("unpinAllGeneralForumTopicMessages", { chat_id: chatId });
+  }
+
   public async forwardMessages(options: {
     chatId: number;
     fromChatId: number;
