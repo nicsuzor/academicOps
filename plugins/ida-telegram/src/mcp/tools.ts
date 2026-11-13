@@ -319,4 +319,129 @@ export const MCP_TOOLS: ToolDefinition[] = [
       },
     },
   },
+  {
+    name: "pin_message",
+    description: "Pin a specific message in a Telegram chat (pinChatMessage).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        chat_id: { type: "integer", description: "Telegram chat ID (defaults to primary chat)" },
+        message_id: { type: "integer", description: "Message ID to pin" },
+        disable_notification: {
+          type: "boolean",
+          description: "Pin silently without notifying chat members (defaults to true)",
+        },
+      },
+      required: ["message_id"],
+    },
+  },
+  {
+    name: "unpin_message",
+    description: "Unpin a specific message or the most recently pinned message in a Telegram chat (unpinChatMessage).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        chat_id: { type: "integer", description: "Telegram chat ID (defaults to primary chat)" },
+        message_id: { type: "integer", description: "Optional message ID to unpin (defaults to most recent pinned message)" },
+      },
+    },
+  },
+  {
+    name: "unpin_all_messages",
+    description:
+      "Unpin all pinned messages in a Telegram chat (unpinAllChatMessages) or in the specified/active forum topic (unpinAllForumTopicMessages).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        chat_id: { type: "integer", description: "Telegram chat ID (defaults to primary chat)" },
+        message_thread_id: {
+          type: "integer",
+          description: "Optional forum topic thread ID to scope unpinning to a topic",
+        },
+        thread_id: { type: "integer", description: "Alias for message_thread_id" },
+      },
+    },
+  },
+  {
+    name: "forward_messages",
+    description: "Forward 1-100 messages at once with attribution preserved (forwardMessages).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        chat_id: { type: "integer", description: "Target Telegram chat ID (defaults to primary chat)" },
+        from_chat_id: { type: "integer", description: "Source Telegram chat ID (defaults to target chat_id)" },
+        message_ids: {
+          type: "array",
+          items: { type: "integer" },
+          description: "1 to 100 message IDs to forward",
+        },
+        message_thread_id: { type: "integer", description: "Optional destination forum topic thread ID" },
+        thread_id: { type: "integer", description: "Alias for message_thread_id" },
+        disable_notification: { type: "boolean", description: "Send messages silently" },
+        protect_content: { type: "boolean", description: "Protect forwarded content from forwarding/saving" },
+      },
+      required: ["message_ids"],
+    },
+  },
+  {
+    name: "copy_messages",
+    description: "Copy 1-100 messages at once without forward attribution (copyMessages).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        chat_id: { type: "integer", description: "Target Telegram chat ID (defaults to primary chat)" },
+        from_chat_id: { type: "integer", description: "Source Telegram chat ID (defaults to target chat_id)" },
+        message_ids: {
+          type: "array",
+          items: { type: "integer" },
+          description: "1 to 100 message IDs to copy",
+        },
+        message_thread_id: { type: "integer", description: "Optional destination forum topic thread ID" },
+        thread_id: { type: "integer", description: "Alias for message_thread_id" },
+        disable_notification: { type: "boolean", description: "Send messages silently" },
+        protect_content: { type: "boolean", description: "Protect copied content from forwarding/saving" },
+        remove_caption: { type: "boolean", description: "Copy media messages without their captions" },
+      },
+      required: ["message_ids"],
+    },
+  },
+  {
+    name: "delete_messages",
+    description: "Delete 1-100 messages simultaneously in a Telegram chat (deleteMessages).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        chat_id: { type: "integer", description: "Telegram chat ID (defaults to primary chat)" },
+        message_ids: {
+          type: "array",
+          items: { type: "integer" },
+          description: "1 to 100 message IDs to delete",
+        },
+      },
+      required: ["message_ids"],
+    },
+  },
+  {
+    name: "edit_message_reply_markup",
+    description: "Add, update, or remove inline keyboard buttons on an existing Telegram message without changing its text (editMessageReplyMarkup).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        chat_id: { type: "integer", description: "Telegram chat ID (defaults to primary chat)" },
+        message_id: { type: "integer", description: "Message ID whose inline keyboard markup to edit" },
+        buttons: {
+          type: "array",
+          description: "Inline buttons array (flat or 2D row layout), or empty/omitted to clear buttons",
+        },
+        button_layout: {
+          description: "Explicit row sizes array or buttons-per-row integer for flat button arrays",
+        },
+        buttons_per_row: {
+          type: "integer",
+          description: "Buttons per row when auto-wrapping flat button arrays",
+        },
+      },
+      required: ["message_id"],
+    },
+  },
 ];

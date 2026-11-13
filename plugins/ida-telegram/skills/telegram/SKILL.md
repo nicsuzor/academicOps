@@ -112,6 +112,18 @@ Every reply sent over Telegram automatically carries inline action buttons with 
   12. `unhide_general_thread` (`unhideGeneralForumTopic`)
   13. `unpin_all_general_thread_messages` (`unpinAllGeneralForumTopicMessages`)
 
+## Message Management (Pinning, Batch Transfer, Deletion & Button Editing)
+
+Additional Telegram Bot API message-management tools exposed in `MCP_TOOLS`:
+
+- `pin_message` (`pinChatMessage`): Pin a `message_id` in a chat (`disable_notification` defaults to `true`).
+- `unpin_message` (`unpinChatMessage`): Unpin a specific `message_id` or the most recently pinned message.
+- `unpin_all_messages` (`unpinAllChatMessages` / `unpinAllForumTopicMessages`): Unpin all pinned messages chat-wide, or scoped to a forum topic when `message_thread_id` / active thread context is present.
+- `forward_messages` (`forwardMessages`): Batch-forward 1-100 `message_ids` with attribution preserved (`from_chat_id` defaults to `chat_id`).
+- `copy_messages` (`copyMessages`): Batch-copy 1-100 `message_ids` without attribution (`remove_caption` supported).
+- `delete_messages` (`deleteMessages`): Batch-delete 1-100 `message_ids` simultaneously.
+- `edit_message_reply_markup` (`editMessageReplyMarkup`): Add, replace, or clear (`buttons: []` / omitted) inline keyboard buttons on an existing `message_id` without modifying message text.
+
 ## Voice
 
 - **Phonetic dictation resolution:** When processing voice notes or dictated messages, resolve odd words as possible homophones in context, relaying the fitting interpretation while noting the original transcription where ambiguity remains.

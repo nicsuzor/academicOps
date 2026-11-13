@@ -1,7 +1,7 @@
 import { PluginConfig } from "../config.js";
 import { PluginStore } from "../store.js";
 import { QuestionBroker } from "../telegram/questions.js";
-import { TelegramBotClient } from "../telegram/bot.js";
+import { TelegramBotClient, buildInlineKeyboardRows, type ReplyButtonsInput } from "../telegram/bot.js";
 import { PermissionRelay } from "../mcp/permissions.js";
 import { processReplyOverflow } from "../telegram/overflow.js";
 import { formatMarkdownToEntities, normalizeReaction } from "../telegram/format.js";
@@ -667,6 +667,198 @@ export class SharedTelegramChannelCore {
     };
   }
 
+  private validateMessageIdBatch(rawIds: unknown): { messageIds?: number[]; error?: string } {
+    if (
+      !Array.isArray(rawIds) ||
+      rawIds.length < 1 ||
+      rawIds.length > 100 ||
+      !rawIds.every((id) => typeof id === "number" && Number.isInteger(id))
+    ) {
+      return { error: "Batch size must be between 1 and 100 messages" };
+    }
+    return { messageIds: rawIds };
+  }
+
+  private async transferBatchMessages(
+    kind: "forward" | "copy",
+    args: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const batch = this.validateMessageIdBatch(args.message_ids);
+    if (batch.error || !batch.messageIds) {
+      return { success: false, error: batch.error || "Batch size must be between 1 and 100 messages" };
+    }
+    const { chatId, messageThreadId } = this.resolveThreadContext(args);
+    const fromChatId = typeof args.from_chat_id === "number" ? args.from_chat_id : chatId;
+    const disableNotification = args.disable_notification !== undefined ? Boolean(args.disable_notification) : undefined;
+    const protectContent = args.protect_content !== undefined ? Boolean(args.protect_content) : undefined;
+
+    const res =
+      kind === "forward"
+        ? await this.bot.forwardMessages({
+            chatId,
+            fromChatId,
+            messageIds: batch.messageIds,
+            messageThreadId,
+            disableNotification,
+            protectContent,
+          })
+        : await this.bot.copyMessages({
+            chatId,
+            fromChatId,
+            messageIds: batch.messageIds,
+            messageThreadId,
+            disableNotification,
+            protectContent,
+            removeCaption: args.remove_caption !== undefined ? Boolean(args.remove_caption) : undefined,
+          });
+
+    if (!res?.ok) {
+      return { success: false, error: res?.description || `Failed to ${kind} messages` };
+    }
+    const returnedIds = Array.isArray(res.result) ? res.result.map((r) => r.message_id) : [];
+    return {
+      success: true,
+      chat_id: chatId,
+      ...(messageThreadId !== undefined ? { message_thread_id: messageThreadId } : {}),
+      [kind === "forward" ? "forwarded_count" : "copied_count"]: returnedIds.length,
+      message_ids: returnedIds,
+    };
+  }
+
+  public async pinMessage(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const chatId = (args.chat_id as number) || this.getDefaultChatId();
+    const messageId = args.message_id as number;
+    if (!messageId || typeof messageId !== "number") {
+      return { success: false, error: "Missing required message_id" };
+    }
+    const disableNotification = args.disable_notification !== undefined ? Boolean(args.disable_notification) : true;
+    const res = await this.bot.pinChatMessage(chatId, messageId, disableNotification);
+    if (!res?.ok) {
+      return { success: false, error: res?.description || "Failed to pin message" };
+    }
+    return {
+      success: true,
+      chat_id: chatId,
+      message_id: messageId,
+      pinned: true,
+    };
+  }
+
+  public async unpinMessage(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const chatId = (args.chat_id as number) || this.getDefaultChatId();
+    const messageId = typeof args.message_id === "number" ? args.message_id : undefined;
+    const res = await this.bot.unpinChatMessage(chatId, messageId);
+    if (!res?.ok) {
+      return { success: false, error: res?.description || "Failed to unpin message" };
+    }
+    return {
+      success: true,
+      chat_id: chatId,
+      ...(messageId !== undefined ? { message_id: messageId } : {}),
+      unpinned: true,
+    };
+  }
+
+  public async unpinAllMessages(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const { chatId, messageThreadId } = this.resolveThreadContext(args);
+    if (messageThreadId !== undefined) {
+      const res = await this.bot.unpinAllForumTopicMessages(chatId, messageThreadId);
+      if (!res?.ok) {
+        return { success: false, error: res?.description || "Failed to unpin all forum topic messages" };
+      }
+      return {
+        success: true,
+        chat_id: chatId,
+        message_thread_id: messageThreadId,
+        unpinned_all: true,
+      };
+    }
+    const res = await this.bot.unpinAllChatMessages(chatId);
+    if (!res?.ok) {
+      return { success: false, error: res?.description || "Failed to unpin all chat messages" };
+    }
+    return {
+      success: true,
+      chat_id: chatId,
+      unpinned_all: true,
+    };
+  }
+
+  public async forwardMessages(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.transferBatchMessages("forward", args);
+  }
+
+  public async copyMessages(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.transferBatchMessages("copy", args);
+  }
+
+  public async deleteMessages(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const batch = this.validateMessageIdBatch(args.message_ids);
+    if (batch.error || !batch.messageIds) {
+      return { success: false, error: batch.error || "Batch size must be between 1 and 100 messages" };
+    }
+    const chatId = (args.chat_id as number) || this.getDefaultChatId();
+    const res = await this.bot.deleteMessages(chatId, batch.messageIds);
+    if (!res?.ok) {
+      return { success: false, error: res?.description || "Failed to delete messages" };
+    }
+    return {
+      success: true,
+      chat_id: chatId,
+      deleted_count: batch.messageIds.length,
+      message_ids: batch.messageIds,
+    };
+  }
+
+  public async editMessageReplyMarkup(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const chatId = (args.chat_id as number) || this.getDefaultChatId();
+    const messageId = args.message_id as number;
+    if (!messageId || typeof messageId !== "number") {
+      return { success: false, error: "Missing required message_id" };
+    }
+    const inlineKeyboard = buildInlineKeyboardRows(
+      args.buttons as ReplyButtonsInput | undefined,
+      (args.button_layout ?? args.buttonLayout) as number[] | number | undefined,
+      (args.buttons_per_row ?? args.buttonsPerRow) as number | undefined,
+    );
+    const res = await this.bot.editMessageReplyMarkup(chatId, messageId, inlineKeyboard);
+    if (!res?.ok) {
+      if (typeof res?.description === "string" && res.description.toLowerCase().includes("message is not modified")) {
+        return {
+          success: true,
+          chat_id: chatId,
+          message_id: messageId,
+          not_modified: true,
+        };
+      }
+      return { success: false, error: res?.description || "Failed to edit message reply markup" };
+    }
+    return {
+      success: true,
+      chat_id: chatId,
+      message_id: messageId,
+      updated: true,
+    };
+  }
+
   /**
    * Dispatches IPC requests across local Unix domain socket bridge.
    */
@@ -692,6 +884,31 @@ export class SharedTelegramChannelCore {
 
       case "edit_message":
         return (await this.editMessage(msg as unknown as OutboundEditMessageParams)) as unknown as Record<string, unknown>;
+
+      case "pin_message":
+      case "pin_chat_message":
+        return await this.pinMessage(msg);
+
+      case "unpin_message":
+      case "unpin_chat_message":
+        return await this.unpinMessage(msg);
+
+      case "unpin_all_messages":
+      case "unpin_all_chat_messages":
+        return await this.unpinAllMessages(msg);
+
+      case "forward_messages":
+        return await this.forwardMessages(msg);
+
+      case "copy_messages":
+        return await this.copyMessages(msg);
+
+      case "delete_messages":
+        return await this.deleteMessages(msg);
+
+      case "edit_message_reply_markup":
+      case "edit_message_buttons":
+        return await this.editMessageReplyMarkup(msg);
 
       case "create_thread":
       case "create_topic":

@@ -1628,7 +1628,7 @@ describe("Threaded Conversations Support", () => {
         expect(askTool?.inputSchema?.properties?.message_thread_id).toBeDefined();
         expect(askTool?.inputSchema?.properties?.thread_id).toBeDefined();
 
-        const excludedTools = [
+        const exposedMessageTools = [
           "pin_message",
           "unpin_message",
           "unpin_all_messages",
@@ -1636,6 +1636,11 @@ describe("Threaded Conversations Support", () => {
           "copy_messages",
           "delete_messages",
           "edit_message_reply_markup",
+        ];
+        for (const name of exposedMessageTools) {
+          expect(toolNames).toContain(name);
+        }
+        const excludedTools = [
           "answer_question",
           "close_question",
           "list_questions",
