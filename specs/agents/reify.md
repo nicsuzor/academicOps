@@ -1,3 +1,10 @@
+---
+title: Reify
+status: ready
+---
+
+# Reify
+
 Turn a terse user prompt into a durable, enriched task node carrying intent,
 workflow, execution steps and guardrails -- so any worker can pull it and execute
 without gathering context again.

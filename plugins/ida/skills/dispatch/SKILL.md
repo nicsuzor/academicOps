@@ -1,6 +1,6 @@
 ---
 name: dispatch
-description: Start polecat containers on queued repo-scoped epic tasks or ready leaf tasks on the graph. Writes no tasks. Exclude for intake and task placement (use /q) or interactive queue selection (use /dispatch-queue).
+description: Start polecat containers on queued repo-scoped epic tasks or ready leaf tasks on the graph. Writes no tasks. Use for headless worker container execution and dispatching ready tasks. Exclude for intake and task placement (use /q) or interactive queue selection (use /dispatch-queue).
 ---
 
 # /dispatch: Start Polecat Containers on Queued Tasks

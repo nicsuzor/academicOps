@@ -1,7 +1,7 @@
 ---
 name: q
 type: command
-description: Capture natural-language asks and situate them on the graph as repo-scoped epic tasks, wire value-chain links, and consolidate similar work. Exclude for starting containers on queued tasks (use /dispatch) or decomposing abstract objectives (use /decompose).
+description: Capture natural-language asks and situate them on the graph as repo-scoped epic tasks, wire value-chain links, and consolidate similar work. Use for strategic intake, task capture, and situating new asks under governing epics. Exclude for starting containers on queued tasks (use /dispatch) or decomposing abstract objectives (use /decompose).
 allowed-tools: [Skill, AskUserQuestion, mcp__services__*]
 ---
 
