@@ -29,16 +29,15 @@ This file is the umbrella. The individual designs are
 
 ## Giving Effect
 
-The container launcher (`polecat`) and worker image are maintained outside this repository and supplied by the installer, together with any Docker MCP server registered behind the `services` portal. The legacy in-tree `Dockerfile` and `lib/polecat/` CLI scripts in academicOps have been removed.
+The container launcher (`scripts/polecat`) and worker image are maintained outside this repository and supplied by the installer, together with the Docker MCP server (`polecat_run_container`) registered behind the `services` portal.
 
 - [[plugins/ida/skills/supervise/SKILL.md]] -- container coordinator-side: claims the repo-scoped epic task, reifies workflows onto a combined task body, coordinates subagents with incremental git checkpoints, delivers in-session outputs and pull requests, and queues out-of-session follow-ups -- what a seeded `/ida:supervise <task-id>` prompt does inside the container
 - [[plugins/ida/skills/pull/SKILL.md]] -- worker-side: claim, execute, record, hand
   over -- what a seeded `/ida:pull <task-id>` prompt actually does once inside the
   container as the fast-path for already-decomposed leaf tasks
-- [[plugins/aops/skills/polecat/SKILL.md]] -- coordinator-side: the launcher skill that builds
-  the `polecat run` command and runs it synchronously (or wrapped under tmux), locally
-  or over ssh. It is one route in, not a gate: `run`'s own guarantees hold on any
-  invocation, and nothing stops a caller reaching the CLI directly
+- [[plugins/ida/skills/dispatch/SKILL.md]] -- coordinator-side: the dispatch skill that starts
+  polecat workers on queued tasks via the Docker MCP server (`polecat_run_container`) or the
+  host launcher (`scripts/polecat`)
 - [[.agents/skills/debug/SKILL.md]] -- the operational skill for driving a
   `polecat run` container interactively via tmux
 
