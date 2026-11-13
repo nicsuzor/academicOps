@@ -14,6 +14,7 @@ export interface OutboundReplyParams {
   reply_to?: number;
   voice?: boolean;
   detail?: string;
+  details?: string;
   buttons?: any;
   button_layout?: number[] | number;
   buttonLayout?: number[] | number;
@@ -32,6 +33,7 @@ export interface OutboundReplyParams {
 
 export interface OutboundReplyResult {
   success: boolean;
+  error?: string;
   message_id?: number;
   messageId?: number;
   voice_message_id?: number;
@@ -39,6 +41,7 @@ export interface OutboundReplyResult {
   voiceSent?: boolean;
   voiceError?: string;
   detailsId?: string;
+  details_id?: string;
   preview?: string;
 }
 
@@ -64,6 +67,10 @@ export interface QuestionSpec {
   allowOther?: boolean;
   turn_id?: string;
   turnId?: string;
+  message_thread_id?: number;
+  messageThreadId?: number;
+  thread_id?: number;
+  threadId?: number;
   mini_app_only?: boolean;
   miniapp_only?: boolean;
   miniAppOnly?: boolean;
@@ -71,6 +78,8 @@ export interface QuestionSpec {
   context?: string;
   detail?: string;
   details?: string;
+  detailsId?: string;
+  details_id?: string;
   recommendation?: string;
 }
 
@@ -79,6 +88,12 @@ export interface OutboundAskUserParams {
   turnId?: string;
   questions: QuestionSpec[];
   chat_id?: number;
+  message_thread_id?: number;
+  messageThreadId?: number;
+  thread_id?: number;
+  threadId?: number;
+  detail?: string;
+  details?: string;
   mini_app_only?: boolean;
   miniapp_only?: boolean;
   miniAppOnly?: boolean;
@@ -111,6 +126,7 @@ export interface ChannelCoreOptions {
   bot: TelegramBotClient | null;
   permRelay: PermissionRelay;
   turnManager?: TurnManager;
+  emitChannelNotification?: (content: string, meta: Record<string, unknown>) => void;
 }
 
 export class SharedTelegramChannelCore {
@@ -120,6 +136,7 @@ export class SharedTelegramChannelCore {
   public bot: TelegramBotClient | null;
   public permRelay: PermissionRelay;
   public turnManager?: TurnManager;
+  public emitChannelNotification?: (content: string, meta: Record<string, unknown>) => void;
 
   constructor(options: ChannelCoreOptions) {
     this.config = options.config;
@@ -128,6 +145,7 @@ export class SharedTelegramChannelCore {
     this.bot = options.bot;
     this.permRelay = options.permRelay;
     this.turnManager = options.turnManager;
+    this.emitChannelNotification = options.emitChannelNotification;
   }
 
   public getDefaultChatId(): number {
@@ -142,7 +160,7 @@ export class SharedTelegramChannelCore {
    */
   public async reply(params: OutboundReplyParams): Promise<OutboundReplyResult> {
     const text = params.text || "";
-    const detail = params.detail;
+    const detail = params.detail ?? params.details;
     const chatId = params.chat_id || this.getDefaultChatId();
     const replyTo = params.reply_to;
 
@@ -221,6 +239,7 @@ export class SharedTelegramChannelCore {
       };
       if (detailsId !== undefined) {
         out.detailsId = detailsId;
+        out.details_id = detailsId;
       }
       if (sendRes?.voiceSent !== undefined) {
         out.voiceSent = sendRes.voiceSent;
@@ -239,6 +258,7 @@ export class SharedTelegramChannelCore {
       success: true,
       preview: formatted.plainText,
       detailsId,
+      ...(detailsId !== undefined ? { details_id: detailsId } : {}),
       message_id: 0,
       messageId: 0,
     };
@@ -279,6 +299,7 @@ export class SharedTelegramChannelCore {
       params.mini_app_only || params.miniapp_only || params.miniAppOnly || params.chat === false
     );
     const topThreadId = (params.message_thread_id ?? params.messageThreadId ?? params.thread_id ?? params.threadId) as number | undefined;
+    const topDetail = params.detail ?? params.details;
 
     if (questions.length === 0) {
       throw new Error("No questions provided");
@@ -292,6 +313,11 @@ export class SharedTelegramChannelCore {
         topMiniAppOnly || q.mini_app_only || q.miniapp_only || q.miniAppOnly || q.chat === false
       );
       const effectiveThreadId = (q.message_thread_id ?? q.messageThreadId ?? q.thread_id ?? q.threadId ?? topThreadId) ?? this.bot?.getLastThreadId(defaultChatId);
+      const detailText = q.detail ?? q.details ?? topDetail;
+      let detailsId = q.detailsId ?? q.details_id;
+      if (!detailsId && detailText) {
+        detailsId = this.store.storeDetails(detailText);
+      }
 
       const result = await this.broker.askUser({
         question: q.question,
@@ -303,7 +329,8 @@ export class SharedTelegramChannelCore {
         chatId: defaultChatId,
         mini_app_only: isMiniAppOnly,
         context: q.context,
-        detail: q.detail || q.details,
+        detail: detailText,
+        detailsId,
         recommendation: q.recommendation,
         messageThreadId: effectiveThreadId,
       });
@@ -312,12 +339,20 @@ export class SharedTelegramChannelCore {
       this.store.recordTurn("out", q.header ? `${q.header}: ${q.question}` : q.question);
 
       if (this.bot && !isMiniAppOnly) {
-        const card = this.broker.renderQuestionCard(result.questionId, this.config.miniAppUrl);
+        const card = this.broker.renderQuestionCard(result.questionId, this.config.miniAppUrl, this.config.instance);
         if (card && defaultChatId) {
           const sendRes = await this.bot.sendQuestionCard(defaultChatId, result.questionId, card, effectiveThreadId);
           if (!sendRes?.ok || !sendRes?.result?.message_id) {
             const errorMsg = sendRes?.error || sendRes?.description || "Failed to deliver question card";
             this.broker.markDeliveryFailed(result.questionId, errorMsg);
+            if (this.emitChannelNotification) {
+              this.emitChannelNotification(`Question delivery failed: ${errorMsg}`, {
+                event: "question_delivery_failed",
+                question_id: result.questionId,
+                error: errorMsg,
+                turn_id: q.turn_id || q.turnId || topTurnId,
+              });
+            }
             return {
               success: false,
               error: errorMsg,
@@ -1493,6 +1528,73 @@ export class SharedTelegramChannelCore {
       case "unpin_all_general_topic_messages":
       case "unpin_all_general_forum_topic_messages":
         return await this.unpinAllGeneralThreadMessages(msg);
+
+      case "answer_question": {
+        const questionId = (msg.question_id as string) || (msg.questionId as string) || (msg.id as string);
+        const choice = typeof msg.choice === "string" ? msg.choice.trim() : undefined;
+        const optionIndex = typeof msg.option_index === "number" ? msg.option_index : undefined;
+        if (!questionId) {
+          return { success: false, error: "Missing question_id" };
+        }
+        if (!choice && optionIndex === undefined) {
+          return { success: false, error: "Missing answer: provide choice or option_index" };
+        }
+        const result = await this.broker.resolveAnswer(
+          questionId,
+          optionIndex !== undefined ? optionIndex : "other",
+          choice
+        );
+        if (!result) {
+          return { success: false, error: "Question not found or not pending" };
+        }
+        if (this.bot && result.question.chatId && result.question.messageId) {
+          await this.bot.editMessage(result.question.chatId, result.question.messageId, result.cardText, {
+            inline_keyboard: [],
+          });
+        }
+        if (this.emitChannelNotification) {
+          this.emitChannelNotification(`Question answered: ${result.channelEvent.choice}`, {
+            event: result.channelEvent.event,
+            ...result.channelEvent,
+          });
+        }
+        return { success: true, question_id: questionId, choice: result.channelEvent.choice };
+      }
+
+      case "close_question": {
+        const questionId = (msg.question_id as string) || (msg.questionId as string) || (msg.id as string);
+        const reason = typeof msg.reason === "string" ? msg.reason.trim() : "";
+        if (!questionId) {
+          return { success: false, error: "Missing question_id" };
+        }
+        if (!reason) {
+          return {
+            success: false,
+            error: "Missing reason: closing a question requires an explicit stated reason",
+          };
+        }
+        const result = await this.broker.closeQuestion(questionId, reason);
+        if (!result) {
+          return { success: false, error: "Question not found or not pending" };
+        }
+        if (this.bot && result.question.chatId && result.question.messageId) {
+          await this.bot.editMessage(result.question.chatId, result.question.messageId, result.cardText, {
+            inline_keyboard: [],
+          });
+        }
+        if (this.emitChannelNotification) {
+          this.emitChannelNotification(`Question closed: ${result.channelEvent.reason}`, {
+            event: result.channelEvent.event,
+            ...result.channelEvent,
+          });
+        }
+        return { success: true, question_id: questionId, reason: result.channelEvent.reason };
+      }
+
+      case "list_questions": {
+        const pending = this.broker.getPendingQuestions();
+        return { success: true, count: pending.length, questions: pending };
+      }
 
       case "send_photo":
       case "sendPhoto":
