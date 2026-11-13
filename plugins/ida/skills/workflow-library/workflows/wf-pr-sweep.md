@@ -28,7 +28,7 @@ Sweep execution runs via parallel fan-out: evaluate each PR independently and ag
 1. **Enumerate and Classify Open PRs**:
    - Query open pull requests across target repositories.
    - For each PR, determine its category:
-     - _Draft_: Staged work owned by the author; where a draft PR's code step is complete, mark it ready for review (`gh pr ready`) so it enters the review pipeline, while unfinished draft PRs remain excluded until marked ready.
+     - _Draft_: Staged or unchecked worker PRs; a draft PR is marked ready for review (`gh pr ready`) only after the coordinator's independent check passes and its review verdict is posted to the PR thread, while unfinished or unchecked draft PRs remain excluded until the check passes and marks them ready.
      - _Automated Release_: Package or version release PRs managed by release automation; excluded from automated sweeping and reserved for explicit release approvals.
      - _Standard / Feature_: Active changes subject to review, checks, and project merge rules.
 
