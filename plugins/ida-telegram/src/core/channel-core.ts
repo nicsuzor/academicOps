@@ -86,8 +86,10 @@ export interface OutboundAskUserParams {
 }
 
 export interface OutboundAskUserResult {
+  success?: boolean;
+  error?: string;
   question_ids: string[];
-  status: "posted";
+  status: "posted" | "failed";
   message: string;
 }
 
@@ -102,6 +104,16 @@ export interface OutboundEditMessageResult {
   error?: string;
 }
 
+export interface ChannelCoreOptions {
+  config: PluginConfig;
+  store: PluginStore;
+  broker: QuestionBroker;
+  bot: TelegramBotClient | null;
+  permRelay: PermissionRelay;
+  turnManager?: TurnManager;
+  emitChannelNotification?: (content: string, meta: Record<string, unknown>) => void;
+}
+
 export class SharedTelegramChannelCore {
   public config: PluginConfig;
   public store: PluginStore;
@@ -109,25 +121,26 @@ export class SharedTelegramChannelCore {
   public bot: TelegramBotClient | null;
   public permRelay: PermissionRelay;
   public turnManager?: TurnManager;
+  public emitChannelNotification?: (content: string, meta: Record<string, unknown>) => void;
 
-  constructor(options: {
-    config: PluginConfig;
-    store: PluginStore;
-    broker: QuestionBroker;
-    bot: TelegramBotClient | null;
-    permRelay: PermissionRelay;
-    turnManager?: TurnManager;
-  }) {
+  constructor(options: ChannelCoreOptions) {
     this.config = options.config;
     this.store = options.store;
     this.broker = options.broker;
     this.bot = options.bot;
     this.permRelay = options.permRelay;
     this.turnManager = options.turnManager;
+    this.emitChannelNotification = options.emitChannelNotification;
   }
 
   public getDefaultChatId(): number {
     return this.config.allowFrom[0] || 0;
+  }
+
+  private notify(content: string, meta: Record<string, unknown>): void {
+    if (this.emitChannelNotification) {
+      this.emitChannelNotification(content, meta);
+    }
   }
 
   /**
@@ -200,10 +213,20 @@ export class SharedTelegramChannelCore {
         review: params.review,
       });
 
-      const out: OutboundReplyResult = {
+      if (!sendRes || sendRes.ok === false || sendRes.success === false) {
+        return {
+          success: false,
+          error: sendRes?.error || "Failed to deliver reply",
+          message_id: sendRes?.messageId,
+          messageId: sendRes?.messageId,
+        };
+      }
+
+      const out: OutboundReplyResult & { message_thread_id?: number } = {
         success: true,
-        messageId: sendRes?.messageId,
-        message_id: sendRes?.messageId,
+        messageId: sendRes.messageId,
+        message_id: sendRes.messageId,
+        message_thread_id: sendRes.messageThreadId,
       };
       if (detailsId !== undefined) {
         out.detailsId = detailsId;
@@ -264,6 +287,7 @@ export class SharedTelegramChannelCore {
     const topMiniAppOnly = Boolean(
       params.mini_app_only || params.miniapp_only || params.miniAppOnly || params.chat === false
     );
+    const topThreadId = (params.message_thread_id ?? params.messageThreadId ?? params.thread_id ?? params.threadId) as number | undefined;
 
     if (questions.length === 0) {
       throw new Error("No questions provided");
@@ -276,6 +300,7 @@ export class SharedTelegramChannelCore {
       const isMiniAppOnly = Boolean(
         topMiniAppOnly || q.mini_app_only || q.miniapp_only || q.miniAppOnly || q.chat === false
       );
+      const effectiveThreadId = (q.message_thread_id ?? q.messageThreadId ?? q.thread_id ?? q.threadId ?? topThreadId) ?? this.bot?.getLastThreadId(defaultChatId);
 
       const result = await this.broker.askUser({
         question: q.question,
@@ -289,6 +314,7 @@ export class SharedTelegramChannelCore {
         context: q.context,
         detail: q.detail || q.details,
         recommendation: q.recommendation,
+        messageThreadId: effectiveThreadId,
       });
 
       postedIds.push(result.questionId);
@@ -296,8 +322,26 @@ export class SharedTelegramChannelCore {
 
       if (this.bot && !isMiniAppOnly) {
         const card = this.broker.renderQuestionCard(result.questionId, this.config.miniAppUrl);
-        if (card) {
-          await this.bot.sendQuestionCard(defaultChatId, result.questionId, card);
+        if (card && defaultChatId) {
+          const sendRes = await this.bot.sendQuestionCard(defaultChatId, result.questionId, card, effectiveThreadId);
+          if (!sendRes?.ok || !sendRes?.result?.message_id) {
+            const errorMsg = sendRes?.error || sendRes?.description || "Failed to deliver question card";
+            this.broker.markDeliveryFailed(result.questionId, errorMsg);
+            this.notify(`Question delivery failed: ${errorMsg}`, {
+              event: "question_delivery_failed",
+              question_id: result.questionId,
+              error: errorMsg,
+              turn_id: q.turn_id || q.turnId || topTurnId,
+              session_id: this.store.getSession(defaultChatId),
+            });
+            return {
+              success: false,
+              error: errorMsg,
+              question_ids: postedIds,
+              status: "failed",
+              message: `Question delivery failed: ${errorMsg}`,
+            };
+          }
         }
       }
     }
@@ -337,6 +381,303 @@ export class SharedTelegramChannelCore {
     return { success: true };
   }
 
+  private resolveThreadContext(args: Record<string, unknown>): { chatId: number; messageThreadId?: number; error?: string } {
+    const chatId = (args.chat_id as number) || this.getDefaultChatId();
+    const messageThreadId = ((args.message_thread_id ?? args.messageThreadId ?? args.thread_id ?? args.threadId) as number | undefined) ?? this.bot?.getLastThreadId(chatId);
+    return { chatId, messageThreadId };
+  }
+
+  private validateThreadName(name: unknown): { name?: string; error?: string } {
+    if (typeof name !== "string") {
+      return { error: "Missing name: thread name must be a non-empty string" };
+    }
+    const trimmed = name.trim();
+    if (!trimmed) {
+      return { error: "Missing name: thread name must be a non-empty string" };
+    }
+    if (trimmed.length > 128) {
+      return { error: "Thread name cannot exceed 128 characters" };
+    }
+    return { name: trimmed };
+  }
+
+  private checkGeneralTopic(messageThreadId?: number): { error?: string } | undefined {
+    if (messageThreadId === 1) {
+      return { error: "Cannot modify or delete the General forum topic" };
+    }
+    return undefined;
+  }
+
+  public async createThread(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const { chatId } = this.resolveThreadContext(args);
+    const nameVal = this.validateThreadName(args.name || args.title);
+    if (nameVal.error) {
+      return { success: false, error: nameVal.error };
+    }
+    const options: { iconColor?: number; iconCustomEmojiId?: string } = {};
+    if (args.icon_color !== undefined || args.iconColor !== undefined) {
+      options.iconColor = Number(args.icon_color ?? args.iconColor);
+    }
+    if (args.icon_custom_emoji_id !== undefined || args.iconCustomEmojiId !== undefined) {
+      options.iconCustomEmojiId = String(args.icon_custom_emoji_id ?? args.iconCustomEmojiId);
+    }
+    const res = await this.bot.createForumTopic(chatId, nameVal.name!, options);
+    if (!res?.ok || !res?.result) {
+      return { success: false, error: res?.description || "Failed to create forum topic" };
+    }
+    const tid = res.result.message_thread_id;
+    return {
+      success: true,
+      chat_id: chatId,
+      message_thread_id: tid,
+      thread_id: tid,
+      name: res.result.name || nameVal.name!,
+    };
+  }
+
+  public async renameThread(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const { chatId, messageThreadId } = this.resolveThreadContext(args);
+    if (messageThreadId === undefined) {
+      return { success: false, error: "Missing thread ID" };
+    }
+    const genCheck = this.checkGeneralTopic(messageThreadId);
+    if (genCheck) {
+      return { success: false, error: genCheck.error };
+    }
+    const nameVal = this.validateThreadName(args.name || args.title);
+    if (nameVal.error) {
+      return { success: false, error: nameVal.error };
+    }
+    const emojiId = (args.icon_custom_emoji_id ?? args.iconCustomEmojiId) as string | undefined;
+    const res = await this.bot.editForumTopic(chatId, messageThreadId, nameVal.name!, emojiId);
+    if (!res?.ok) {
+      return { success: false, error: res?.description || "Failed to rename forum topic" };
+    }
+    return {
+      success: true,
+      chat_id: chatId,
+      message_thread_id: messageThreadId,
+      thread_id: messageThreadId,
+      name: nameVal.name!,
+    };
+  }
+
+  public async closeThread(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const { chatId, messageThreadId } = this.resolveThreadContext(args);
+    if (messageThreadId === undefined) {
+      return { success: false, error: "Missing message_thread_id for thread operation" };
+    }
+    const genCheck = this.checkGeneralTopic(messageThreadId);
+    if (genCheck) {
+      return { success: false, error: genCheck.error };
+    }
+    const res = await this.bot.closeForumTopic(chatId, messageThreadId);
+    if (!res?.ok) {
+      return { success: false, error: res?.description || "Failed to close forum topic" };
+    }
+    return {
+      success: true,
+      chat_id: chatId,
+      message_thread_id: messageThreadId,
+      thread_id: messageThreadId,
+      closed: true,
+    };
+  }
+
+  public async reopenThread(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const { chatId, messageThreadId } = this.resolveThreadContext(args);
+    if (messageThreadId === undefined) {
+      return { success: false, error: "Missing message_thread_id for thread operation" };
+    }
+    const genCheck = this.checkGeneralTopic(messageThreadId);
+    if (genCheck) {
+      return { success: false, error: genCheck.error };
+    }
+    const res = await this.bot.reopenForumTopic(chatId, messageThreadId);
+    if (!res?.ok) {
+      return { success: false, error: res?.description || "Failed to reopen forum topic" };
+    }
+    return {
+      success: true,
+      chat_id: chatId,
+      message_thread_id: messageThreadId,
+      thread_id: messageThreadId,
+      reopened: true,
+    };
+  }
+
+  public async deleteThread(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const { chatId, messageThreadId } = this.resolveThreadContext(args);
+    if (messageThreadId === undefined) {
+      return { success: false, error: "Missing message_thread_id for thread operation" };
+    }
+    const genCheck = this.checkGeneralTopic(messageThreadId);
+    if (genCheck) {
+      return { success: false, error: genCheck.error };
+    }
+    const res = await this.bot.deleteForumTopic(chatId, messageThreadId);
+    if (!res?.ok) {
+      return { success: false, error: res?.description || "Failed to delete forum topic" };
+    }
+    return {
+      success: true,
+      chat_id: chatId,
+      message_thread_id: messageThreadId,
+      thread_id: messageThreadId,
+      deleted: true,
+    };
+  }
+
+  public async unpinAllThreadMessages(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const { chatId, messageThreadId } = this.resolveThreadContext(args);
+    if (messageThreadId === undefined) {
+      return { success: false, error: "Missing message_thread_id for thread operation" };
+    }
+    const res = await this.bot.unpinAllForumTopicMessages(chatId, messageThreadId);
+    if (!res?.ok) {
+      return { success: false, error: res?.description || "Failed to unpin all forum topic messages" };
+    }
+    return {
+      success: true,
+      chat_id: chatId,
+      message_thread_id: messageThreadId,
+      thread_id: messageThreadId,
+      unpinned_all: true,
+    };
+  }
+
+  public async getForumTopicIconStickers(): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const res = await this.bot.getForumTopicIconStickers();
+    if (!res?.ok) {
+      return { success: false, error: res?.description || "Failed to get forum topic icon stickers" };
+    }
+    return {
+      success: true,
+      stickers: res.result || [],
+    };
+  }
+
+  public async editGeneralThread(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const chatId = (args.chat_id as number) || this.getDefaultChatId();
+    const nameVal = this.validateThreadName(args.name || args.title);
+    if (nameVal.error) {
+      return { success: false, error: nameVal.error };
+    }
+    const res = await this.bot.editGeneralForumTopic(chatId, nameVal.name!);
+    if (!res?.ok) {
+      return { success: false, error: res?.description || "Failed to edit general forum topic" };
+    }
+    return {
+      success: true,
+      chat_id: chatId,
+      name: nameVal.name!,
+    };
+  }
+
+  public async closeGeneralThread(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const chatId = (args.chat_id as number) || this.getDefaultChatId();
+    const res = await this.bot.closeGeneralForumTopic(chatId);
+    if (!res?.ok) {
+      return { success: false, error: res?.description || "Failed to close general forum topic" };
+    }
+    return {
+      success: true,
+      chat_id: chatId,
+      closed: true,
+    };
+  }
+
+  public async reopenGeneralThread(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const chatId = (args.chat_id as number) || this.getDefaultChatId();
+    const res = await this.bot.reopenGeneralForumTopic(chatId);
+    if (!res?.ok) {
+      return { success: false, error: res?.description || "Failed to reopen general forum topic" };
+    }
+    return {
+      success: true,
+      chat_id: chatId,
+      reopened: true,
+    };
+  }
+
+  public async hideGeneralThread(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const chatId = (args.chat_id as number) || this.getDefaultChatId();
+    const res = await this.bot.hideGeneralForumTopic(chatId);
+    if (!res?.ok) {
+      return { success: false, error: res?.description || "Failed to hide general forum topic" };
+    }
+    return {
+      success: true,
+      chat_id: chatId,
+      hidden: true,
+    };
+  }
+
+  public async unhideGeneralThread(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const chatId = (args.chat_id as number) || this.getDefaultChatId();
+    const res = await this.bot.unhideGeneralForumTopic(chatId);
+    if (!res?.ok) {
+      return { success: false, error: res?.description || "Failed to unhide general forum topic" };
+    }
+    return {
+      success: true,
+      chat_id: chatId,
+      unhidden: true,
+    };
+  }
+
+  public async unpinAllGeneralThreadMessages(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const chatId = (args.chat_id as number) || this.getDefaultChatId();
+    const res = await this.bot.unpinAllGeneralForumTopicMessages(chatId);
+    if (!res?.ok) {
+      return { success: false, error: res?.description || "Failed to unpin all general forum topic messages" };
+    }
+    return {
+      success: true,
+      chat_id: chatId,
+      unpinned_all: true,
+    };
+  }
+
   /**
    * Dispatches IPC requests across local Unix domain socket bridge.
    */
@@ -362,6 +703,72 @@ export class SharedTelegramChannelCore {
 
       case "edit_message":
         return (await this.editMessage(msg as unknown as OutboundEditMessageParams)) as unknown as Record<string, unknown>;
+
+      case "create_thread":
+      case "create_topic":
+      case "create_forum_topic":
+        return await this.createThread(msg);
+
+      case "rename_thread":
+      case "rename_topic":
+      case "edit_thread":
+      case "edit_forum_topic":
+        return await this.renameThread(msg);
+
+      case "close_thread":
+      case "close_topic":
+      case "close_forum_topic":
+        return await this.closeThread(msg);
+
+      case "reopen_thread":
+      case "reopen_topic":
+      case "reopen_forum_topic":
+        return await this.reopenThread(msg);
+
+      case "delete_thread":
+      case "delete_topic":
+      case "delete_forum_topic":
+        return await this.deleteThread(msg);
+
+      case "unpin_all_thread_messages":
+      case "unpin_all_topic_messages":
+      case "unpin_all_forum_topic_messages":
+        return await this.unpinAllThreadMessages(msg);
+
+      case "get_forum_topic_icon_stickers":
+      case "get_thread_icon_stickers":
+        return await this.getForumTopicIconStickers();
+
+      case "edit_general_thread":
+      case "rename_general_thread":
+      case "edit_general_forum_topic":
+        return await this.editGeneralThread(msg);
+
+      case "close_general_thread":
+      case "close_topic_general":
+      case "close_general_topic":
+      case "close_general_forum_topic":
+        return await this.closeGeneralThread(msg);
+
+      case "reopen_general_thread":
+      case "reopen_general_topic":
+      case "reopen_general_forum_topic":
+        return await this.reopenGeneralThread(msg);
+
+      case "hide_general_thread":
+      case "hide_general_topic":
+      case "hide_general_forum_topic":
+        return await this.hideGeneralThread(msg);
+
+      case "unhide_general_thread":
+      case "unhide_general_topic":
+      case "unhide_general_forum_topic":
+        return await this.unhideGeneralThread(msg);
+
+      case "unpin_all_general_thread_messages":
+      case "unpin_all_general_topic_messages":
+      case "unpin_all_general_forum_topic_messages":
+        return await this.unpinAllGeneralThreadMessages(msg);
 
       default:
         throw new Error(`Unsupported IPC tool: ${String(type)}`);

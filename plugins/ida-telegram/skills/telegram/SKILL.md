@@ -92,11 +92,25 @@ Every reply sent over Telegram automatically carries inline action buttons with 
 - **Thread confinement by default:** In Telegram supergroups or topics-enabled chats, messages arriving in a thread are tagged with `meta.message_thread_id` and `meta.thread_id`. All outbound paths (replies, voice notes, question cards, edits, and reactions) automatically stay in that thread without configuration.
 - **Routing when no thread is defined:** When replying to a message sent outside any thread, the reply attaches directly to that inbound message via reply parameters so it lands in the chat context where the user wrote, rather than falling into an unopenable General `#` topic. Active thread memory is preserved across server restarts. Outbound thread verification catches unexpected thread destinations rather than reporting silent success.
 - **Explicit target overriding:** If work requires posting into a specific topic, pass `message_thread_id` (or `thread_id`) explicitly to `reply` or `ask_user`.
-- **Opening new threads:** When starting a dedicated discussion, branching off a topic, or when the user asks to open the conversation in a new window or thread, create a new forum topic using `create_thread({ name: "..." })`. Once created, the new thread automatically becomes active and subsequent replies (`reply`, `ask_user`, etc.) land inside it without needing an explicit thread ID.
-- **Renaming threads:** When a conversation shifts focus or a thread requires a descriptive title, rename the forum topic using `rename_thread({ name: "..." })`. If `message_thread_id` is omitted, the active thread is renamed automatically.
-- **Closing threads:** Close a resolved forum topic using `close_thread({ message_thread_id?: ... })` (alias `close_topic`). When `message_thread_id` is omitted, the active topic in session context is closed. General topic `#1` cannot be closed.
-- **Reopening threads:** Reopen a previously closed forum topic using `reopen_thread({ message_thread_id?: ... })` (alias `reopen_topic`). When omitted, defaults to the active topic. General topic `#1` cannot be reopened.
-- **Deleting threads:** Permanently delete a forum topic and its message history using `delete_thread({ message_thread_id?: ... })` (alias `delete_topic`). Deleting clears active thread tracking for that chat so subsequent replies do not route into the deleted topic. General topic `#1` cannot be deleted.
+- **Opening new threads (`create_thread`):** When starting a dedicated discussion, branching off a topic, or when the user asks to open the conversation in a new window or thread, create a new forum topic using `create_thread({ name: "..." })` (backed by `createForumTopic`). Once created, the new thread automatically becomes active and subsequent replies (`reply`, `ask_user`, etc.) land inside it without needing an explicit thread ID.
+- **Renaming threads (`rename_thread`):** When a conversation shifts focus or a thread requires a descriptive title, rename the forum topic using `rename_thread({ name: "..." })` (backed by `editForumTopic`). If `message_thread_id` is omitted, the active thread is renamed automatically.
+- **Closing threads (`close_thread`):** Close a resolved forum topic using `close_thread({ message_thread_id?: ... })` (aliases `close_topic`, `close_forum_topic`, backed by `closeForumTopic`). When `message_thread_id` is omitted, the active topic in session context is closed. General topic `#1` cannot be closed.
+- **Reopening threads (`reopen_thread`):** Reopen a previously closed forum topic using `reopen_thread({ message_thread_id?: ... })` (aliases `reopen_topic`, `reopen_forum_topic`, backed by `reopenForumTopic`). When omitted, defaults to the active topic. General topic `#1` cannot be reopened.
+- **Deleting threads (`delete_thread`):** Permanently delete a forum topic and its message history using `delete_thread({ message_thread_id?: ... })` (aliases `delete_topic`, `delete_forum_topic`, backed by `deleteForumTopic`). Deleting clears active thread tracking for that chat so subsequent replies do not route into the deleted topic. General topic `#1` cannot be deleted.
+- **Complete list of 13 exposed thread/topic MCP tools:**
+  1. `create_thread` (`createForumTopic`)
+  2. `rename_thread` (`editForumTopic`)
+  3. `close_thread` (`closeForumTopic`)
+  4. `reopen_thread` (`reopenForumTopic`)
+  5. `delete_thread` (`deleteForumTopic`)
+  6. `unpin_all_thread_messages` (`unpinAllForumTopicMessages`)
+  7. `get_forum_topic_icon_stickers` (`getForumTopicIconStickers`)
+  8. `edit_general_thread` (`editGeneralForumTopic`)
+  9. `close_general_thread` (`closeGeneralForumTopic`)
+  10. `reopen_general_thread` (`reopenGeneralForumTopic`)
+  11. `hide_general_thread` (`hideGeneralForumTopic`)
+  12. `unhide_general_thread` (`unhideGeneralForumTopic`)
+  13. `unpin_all_general_thread_messages` (`unpinAllGeneralForumTopicMessages`)
 
 ## Message Management (Pinning, Batch Transfer, Deletion & Button Editing)
 

@@ -36,6 +36,7 @@ export class StdioMcpServer {
         broker,
         bot,
         permRelay,
+        emitChannelNotification: (content, meta) => this.emitChannelNotification(content, meta),
       });
   }
 
@@ -149,9 +150,16 @@ export class StdioMcpServer {
 
       try {
         const result = await this.executeTool(toolName, args);
+        const isFailure = Boolean(
+          result &&
+            typeof result === "object" &&
+            "success" in result &&
+            (result as { success?: unknown }).success === false
+        );
         return {
           jsonrpc: "2.0",
           id,
+          ...(isFailure ? { isError: true } : {}),
           result: {
             content: [{ type: "text", text: typeof result === "string" ? result : JSON.stringify(result) }],
           },

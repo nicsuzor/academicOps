@@ -74,19 +74,22 @@ Separating the protocol engine from transport adaptation ensures that parsing, f
 
 ### Outbound tool contracts
 
-Every supported runtime invokes the same four core tools:
+Every supported runtime invokes the core tools:
 
 #### `reply`
 
-Sends an agent response to the Telegram chat with rich typography, expandable blockquotes, paragraph overflow splitting, and optional voice notes.
+Sends an agent response to the Telegram chat with rich typography, expandable blockquotes, paragraph overflow splitting, thread routing parameters (`message_thread_id`, `thread_id`), and optional voice notes and button layouts.
 
 - **Parameters:**
   - `text` (string, required): Response body formatted in Markdown.
   - `chat_id` (integer, optional): Telegram chat identifier; defaults to the chat that initiated the session.
+  - `message_thread_id` (integer, optional): Telegram message thread ID (for forum supergroups or topics-enabled chats; defaults to active thread).
+  - `thread_id` (integer, optional): Alias for `message_thread_id`.
   - `reply_to` (integer, optional): Message identifier to quote or reply to.
   - `voice` (boolean, optional): When true, generates and sends spoken audio for top-level summary text.
   - `detail` (string, optional): Supplementary Markdown content linked when overflow occurs.
-- **Returns:** Object with `message_id` (integer) and optional `voice_message_id` (integer).
+  - `buttons`, `button_layout`, `buttons_per_row`, `predefined_row`, `feedback`, `review`, `actions`: Button layout and interactive card options.
+- **Returns:** Object with `message_id` (integer), `message_thread_id` (integer), and optional `voice_message_id` (integer).
 
 #### `react`
 
@@ -96,20 +99,19 @@ Sets an emoji reaction on a specific message.
   - `message_id` (integer, required): Message identifier to react to.
   - `reaction` (string, required): Target emoji from the supported reaction set.
   - `chat_id` (integer, optional): Telegram chat identifier.
+  - `message_thread_id`, `thread_id`: Optional thread identifiers.
 - **Returns:** Object with `success` (boolean) and `reaction` (string).
 
 #### `ask_user`
 
-Posts a non-blocking interactive question card to Telegram. The tool records the question and returns immediately; the agent turn does not wait for user input.
+Posts a non-blocking interactive question card to Telegram or the Mini App. The tool records the question and returns immediately; the agent turn does not wait for user input.
 
 - **Parameters:**
+  - `chat_id` (integer, optional): Destination chat ID.
+  - `message_thread_id`, `thread_id` (integer, optional): Destination forum topic ID.
   - `turn_id` (string, optional): Correlation identifier for the question.
-  - `questions` (array of objects, required): One or more question specifications, each containing:
-    - `question` (string, required): The prompt text.
-    - `header` (string, optional): Short context label.
-    - `options` (array of objects, required): Selectable options, each with `label` (string) and optional `description` (string).
-    - `multi_select` (boolean, optional): Whether multiple options may be selected.
-    - `allow_custom` (boolean, optional): Whether free-text responses are permitted.
+  - `questions` (array of objects, required): One or more question specifications, each containing `question`, `header`, `options`, `multi_select`, `allow_custom`, etc.
+  - `mini_app_only` / `chat`: Routing flags for Mini App.
 - **Returns:** Object with `question_ids` (array of strings) and `status` (`"posted"`).
 
 #### `edit_message`

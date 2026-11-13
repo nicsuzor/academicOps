@@ -1568,4 +1568,211 @@ describe("Threaded Conversations Support", () => {
       }
     });
   });
+
+  describe("AC6: Complete Forum-Topic & Thread MCP Tool Surface", () => {
+    test("tools/list exposes all 13 Telegram thread tools and core thread parameters while keeping dropped non-thread tools excluded", async () => {
+      const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-th-list-"));
+      try {
+        const config = loadConfig({
+          MINI_APP_URL: "https://ida.example.test",
+          TELEGRAM_BOT_TOKEN: "test-token",
+          IDA_TELEGRAM_ROLE: "primary",
+          ALLOWED_USER_IDS: "12345678",
+          STATE_DIR: stateDir,
+        });
+        const store = new PluginStore(config.stateDir);
+        const broker = new QuestionBroker(config.stateDir);
+        const permRelay = new PermissionRelay();
+        const mcp = new StdioMcpServer(config, store, broker, null, permRelay);
+
+        const listRes = await mcp.handleMessage({
+          jsonrpc: "2.0",
+          id: 100,
+          method: "tools/list",
+        });
+
+        const tools = ((listRes?.result as any)?.tools || []) as Array<{
+          name: string;
+          inputSchema?: { properties?: Record<string, unknown> };
+        }>;
+        const toolNames = tools.map((t) => t.name);
+
+        const expectedThreadTools = [
+          "create_thread",
+          "rename_thread",
+          "close_thread",
+          "reopen_thread",
+          "delete_thread",
+          "unpin_all_thread_messages",
+          "get_forum_topic_icon_stickers",
+          "edit_general_thread",
+          "close_general_thread",
+          "reopen_general_thread",
+          "hide_general_thread",
+          "unhide_general_thread",
+          "unpin_all_general_thread_messages",
+        ];
+
+        for (const name of expectedThreadTools) {
+          expect(toolNames).toContain(name);
+        }
+
+        const replyTool = tools.find((t) => t.name === "reply");
+        expect(replyTool?.inputSchema?.properties?.message_thread_id).toBeDefined();
+        expect(replyTool?.inputSchema?.properties?.thread_id).toBeDefined();
+
+        const reactTool = tools.find((t) => t.name === "react");
+        expect(reactTool?.inputSchema?.properties?.message_thread_id).toBeDefined();
+
+        const askTool = tools.find((t) => t.name === "ask_user");
+        expect(askTool?.inputSchema?.properties?.message_thread_id).toBeDefined();
+        expect(askTool?.inputSchema?.properties?.thread_id).toBeDefined();
+
+        const excludedTools = [
+          "pin_message",
+          "unpin_message",
+          "unpin_all_messages",
+          "forward_messages",
+          "copy_messages",
+          "delete_messages",
+          "edit_message_reply_markup",
+          "answer_question",
+          "close_question",
+          "list_questions",
+          "anchor",
+        ];
+        for (const name of excludedTools) {
+          expect(toolNames).not.toContain(name);
+        }
+      } finally {
+        rmSync(stateDir, { recursive: true, force: true });
+      }
+    });
+
+    test("tools/call dispatches unpin_all_thread_messages, get_forum_topic_icon_stickers, and all general thread tools to Telegram Bot API", async () => {
+      const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-th-general-"));
+      const config = loadConfig({
+        MINI_APP_URL: "https://ida.example.test",
+        TELEGRAM_BOT_TOKEN: "test-token",
+        IDA_TELEGRAM_ROLE: "primary",
+        ALLOWED_USER_IDS: "12345678",
+        STATE_DIR: stateDir,
+      });
+
+      const store = new PluginStore(config.stateDir);
+      const broker = new QuestionBroker(config.stateDir);
+      const permRelay = new PermissionRelay();
+      const apiCalls: Array<{ method: string; body: Record<string, unknown> }> = [];
+
+      const origFetch = globalThis.fetch;
+      globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+        const method = String(url).split("/").pop() || "";
+        const body = init?.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : {};
+        apiCalls.push({ method, body });
+        if (method === "getForumTopicIconStickers") {
+          return new Response(
+            JSON.stringify({ ok: true, result: [{ custom_emoji_id: "5373141891321699086", emoji: "🔥" }] }),
+            { status: 200 }
+          );
+        }
+        return new Response(JSON.stringify({ ok: true, result: true }), { status: 200 });
+      }) as typeof fetch;
+
+      try {
+        const bot = new TelegramBotClient(config, broker, permRelay, () => {}, store);
+        await (bot as any).handleUpdate({
+          update_id: 300,
+          message: {
+            message_id: 301,
+            message_thread_id: 777,
+            date: Date.now(),
+            chat: { id: 12345678, type: "supergroup" },
+            from: { id: 12345678, is_bot: false, first_name: "Alex" },
+            text: "Message in thread 777",
+          },
+        });
+        apiCalls.length = 0;
+        const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
+
+        const unpinTopicRes = await mcp.handleMessage({
+          jsonrpc: "2.0",
+          id: 201,
+          method: "tools/call",
+          params: { name: "unpin_all_thread_messages", arguments: {} },
+        });
+        expect(JSON.parse((unpinTopicRes?.result as any).content[0].text)).toMatchObject({
+          success: true,
+          message_thread_id: 777,
+          unpinned_all: true,
+        });
+
+        const stickersRes = await mcp.handleMessage({
+          jsonrpc: "2.0",
+          id: 202,
+          method: "tools/call",
+          params: { name: "get_forum_topic_icon_stickers", arguments: {} },
+        });
+        const stickersParsed = JSON.parse((stickersRes?.result as any).content[0].text);
+        expect(stickersParsed.success).toBe(true);
+        expect(stickersParsed.stickers).toHaveLength(1);
+
+        const editGeneralRes = await mcp.handleMessage({
+          jsonrpc: "2.0",
+          id: 203,
+          method: "tools/call",
+          params: { name: "edit_general_thread", arguments: { name: "Main Hub" } },
+        });
+        expect(JSON.parse((editGeneralRes?.result as any).content[0].text)).toMatchObject({
+          success: true,
+          name: "Main Hub",
+        });
+
+        for (const [idx, op] of [
+          ["close_general_thread", { closed: true }],
+          ["reopen_general_thread", { reopened: true }],
+          ["hide_general_thread", { hidden: true }],
+          ["unhide_general_thread", { unhidden: true }],
+          ["unpin_all_general_thread_messages", { unpinned_all: true }],
+        ].entries()) {
+          const [toolName, expected] = op as [string, Record<string, unknown>];
+          const res = await mcp.handleMessage({
+            jsonrpc: "2.0",
+            id: 204 + idx,
+            method: "tools/call",
+            params: { name: toolName, arguments: {} },
+          });
+          expect(JSON.parse((res?.result as any).content[0].text)).toMatchObject({
+            success: true,
+            ...expected,
+          });
+        }
+
+        expect(apiCalls.map((c) => c.method)).toEqual([
+          "unpinAllForumTopicMessages",
+          "getForumTopicIconStickers",
+          "editGeneralForumTopic",
+          "closeGeneralForumTopic",
+          "reopenGeneralForumTopic",
+          "hideGeneralForumTopic",
+          "unhideGeneralForumTopic",
+          "unpinAllGeneralForumTopicMessages",
+        ]);
+        expect(apiCalls[0].body).toEqual({ chat_id: 12345678, message_thread_id: 777 });
+        expect(apiCalls[2].body).toEqual({ chat_id: 12345678, name: "Main Hub" });
+
+        // Validate empty General thread name rejection
+        const invalidRes = await mcp.handleMessage({
+          jsonrpc: "2.0",
+          id: 220,
+          method: "tools/call",
+          params: { name: "edit_general_thread", arguments: { name: "   " } },
+        });
+        expect(invalidRes?.isError).toBe(true);
+        expect(JSON.parse((invalidRes?.result as any).content[0].text).success).toBe(false);
+      } finally {
+        globalThis.fetch = origFetch;
+        rmSync(stateDir, { recursive: true, force: true });
+      }
+    });
+  });
 });

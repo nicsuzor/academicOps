@@ -7,6 +7,13 @@ status: ready
 
 This specification defines topic lifecycle management (closing, reopening, and deleting forum topics, complementing topic creation in `create_thread`), message pinning, batch message transfer (forwarding, copying, deleting), and sent message inline keyboard button editing tools for the `ida-telegram` plugin. It enables conversational agents to manage forum topic lifecycles, pin key reference messages, reorganise conversations by transferring message batches into dedicated topics with original cleanup, and dynamically update inline keyboards on previously sent messages in private chats and forum supergroups.
 
+## Overview of Tool Classification
+
+In the `ida-telegram` plugin, conversational agent capabilities are strictly partitioned into:
+
+1. **Exposed MCP Tools:** Tools accessible to agents via `MCP_TOOLS` (including the 4 core outbound tools `reply`, `react`, `ask_user`, `edit_message` and the 13 thread/topic lifecycle tools `create_thread`, `rename_thread`, `close_thread`, `reopen_thread`, `delete_thread`, `unpin_all_thread_messages`, `get_forum_topic_icon_stickers`, `edit_general_thread`, `close_general_thread`, `reopen_general_thread`, `hide_general_thread`, `unhide_general_thread`, `unpin_all_general_thread_messages`).
+2. **Internal Bot Client Methods / Unexposed API Helpers:** Helper methods implemented in `TelegramBotClient` or Mini App HTTP APIs that remain NOT exposed as MCP tools to agents (such as `pinChatMessage`, `unpinChatMessage`, chat-wide `unpinAllChatMessages`, `forwardMessages`, `copyMessages`, `deleteMessages`, `editMessageReplyMarkup`, along with dropped plugin-local question/anchor tools like `answer_question`, `close_question`, `list_questions`, `anchor`).
+
 ## User stories
 
 ### US-1 Topic Lifecycle Management (Close, Reopen, Delete)

@@ -115,6 +115,24 @@ As an operator conversing with Ida in the main chat or an existing thread, I wan
 3. **Validation and Error Handling (`server.ts`):**
    Input validation rejects empty/whitespace names, names > 128 characters, or missing chat IDs with `{ success: false, error: "<reason>" }`. When the Telegram Bot API returns `ok: false` or does not return `result.message_thread_id`, the tool returns `{ success: false, error: res.description || "Failed to create thread" }`.
 
+### 5. Summary of All 13 Exposed Forum-Topic / Thread MCP Tools
+
+The `ida-telegram` plugin exposes 13 thread-related MCP tools to agents:
+
+1. `create_thread` (`createForumTopic`)
+2. `rename_thread` (`editForumTopic`)
+3. `close_thread` (`closeForumTopic`)
+4. `reopen_thread` (`reopenForumTopic`)
+5. `delete_thread` (`deleteForumTopic`)
+6. `unpin_all_thread_messages` (`unpinAllForumTopicMessages`)
+7. `get_forum_topic_icon_stickers` (`getForumTopicIconStickers`)
+8. `edit_general_thread` (`editGeneralForumTopic`)
+9. `close_general_thread` (`closeGeneralForumTopic`)
+10. `reopen_general_thread` (`reopenGeneralForumTopic`)
+11. `hide_general_thread` (`hideGeneralForumTopic`)
+12. `unhide_general_thread` (`unhideGeneralForumTopic`)
+13. `unpin_all_general_thread_messages` (`unpinAllGeneralForumTopicMessages`)
+
 ## Outcome-Level Build Criteria Mapped to Checks
 
 | Criterion | Target Requirement | Verification Check & Observable Proof |
