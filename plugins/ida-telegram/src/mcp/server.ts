@@ -36,7 +36,11 @@ export class StdioMcpServer {
         broker,
         bot,
         permRelay,
+        emitChannelNotification: (content, meta) => this.emitChannelNotification(content, meta),
       });
+    if (!this.channelCore.emitChannelNotification) {
+      this.channelCore.emitChannelNotification = (content, meta) => this.emitChannelNotification(content, meta);
+    }
   }
 
   public get bot(): TelegramBotClient | null {

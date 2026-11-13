@@ -24,6 +24,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
         thread_id: { type: "integer", description: "Alias for message_thread_id" },
         text: { type: "string", description: "Markdown text for chat (tier 1 and 2)" },
         detail: { type: "string", description: "Optional deep markdown for Details page (tier 3)" },
+        details: { type: "string", description: "Alias for detail" },
         buttons: {
           type: "array",
           description:
@@ -119,6 +120,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
                 description: "If false, queues this question in the Mini App only without sending a card to chat.",
               },
               detail: { type: "string", description: "Fuller background for Details page in Mini App" },
+              details: { type: "string", description: "Alias for detail" },
               context: { type: "string", description: "Context shown above question options" },
               recommendation: { type: "string", description: "Recommended option or guidance" },
               message_thread_id: { type: "integer", description: "Per-question forum topic / thread ID override" },

@@ -90,7 +90,9 @@ async function authenticateRequest(req: Request, ctx: WebContext): Promise<boole
 
 export async function handleApiRequest(req: Request, ctx: WebContext): Promise<Response> {
   const url = new URL(req.url);
-  const path = url.pathname;
+  const rawPath = url.pathname;
+  const instanceMatch = rawPath.match(/^\/api\/app\/instances\/[^/]+\/(.+)$/);
+  const path = instanceMatch ? `/api/app/${instanceMatch[1]}` : rawPath;
 
   // 1. Auth endpoint: POST /api/app/auth
   if (path === "/api/app/auth" && req.method === "POST") {
@@ -128,7 +130,7 @@ export async function handleApiRequest(req: Request, ctx: WebContext): Promise<R
   // Details pages are immutable Tier 3 message overflow pages with high-entropy unguessable capability IDs (d_<hex>).
   // They are read-only and publicly accessible to recipients opening the 🔍 Details button.
   if (path.startsWith("/api/app/details/") && req.method === "GET") {
-    const id = path.substring("/api/app/details/".length);
+    const id = decodeURIComponent(path.substring("/api/app/details/".length).replace(/\/+$/, ""));
     const details = ctx.store.getDetails(id);
     if (!details) {
       return new Response(JSON.stringify({ error: "Details page not found" }), {
