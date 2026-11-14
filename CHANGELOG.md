@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/nicsuzor/academicOps/compare/v1.7.0...v1.8.0) (2026-11-14)
+
+
+### Features
+
+* **ida:** stateless MCP 2026-07-28 and top-level caller session_id ([e58d6cc](https://github.com/nicsuzor/academicOps/commit/e58d6cce385323b34ceb3c45c8c9b82941404636))
+
 ## [1.7.0](https://github.com/nicsuzor/academicOps/compare/v1.6.0...v1.7.0) (2026-11-13)
 
 ### Features
