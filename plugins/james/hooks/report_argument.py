@@ -148,7 +148,7 @@ def vocabulary_path(plugin_dir: Path | None = None) -> Path:
     """Path of the skill's vocabulary file inside the plugin.
 
     The hooks directory and the skills directory are siblings in the source
-    tree (``plugins/ida/``) and in every built plugin (``dist/ida-<client>/``).
+    tree (``plugins/james/``) and in every built plugin (``dist/james-<client>/``).
     """
     base = plugin_dir or Path(__file__).resolve().parent.parent
     return base / "skills" / "premise-check" / "references" / "vocabulary.toml"

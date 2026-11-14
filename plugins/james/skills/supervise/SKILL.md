@@ -1,6 +1,6 @@
 ---
 name: supervise
-description: Coordinate a task or repository-scoped epic end-to-end in-session across any repository with PKB MCP access -- resolve workflows via james:workflow-library, delegate to specialist subagents with incremental git checkpoints, verify reports via james:premise-check, and close via /dialectical-review and /dump. Use for in-session execution, multi-stage coordination, and multi-agent fan-out. Exclude for single pre-scoped atomic leaf tasks (use james:pull).
+description: Coordinate a task or repository-scoped epic end-to-end in-session across any repository with PKB MCP access -- resolve workflows via james:workflow-library, delegate to specialist subagents with incremental git checkpoints, verify reports via james:premise-check, and close via /james:dialectical-review and /james:dump. Use for in-session execution, multi-stage coordination, and multi-agent fan-out. Exclude for single pre-scoped atomic leaf tasks (use james:pull).
 ---
 
 # /supervise: In-Session Task Execution and Supervision
@@ -22,7 +22,7 @@ Inspect the claimed task body before composing:
 ## 2. Plan & Parallel Dialectical Review
 
 1. **Draft Execution Plan**: Record the execution plan on the PKB task. When modifying agent-shaping behavior and `specs/enforcement/enforcement.md` exists in the target workspace, evaluate least-invasive enforcement options against it before adopting heavier constraints.
-2. **Parallel Dialectical Review**: Run a proportionate review via `/dialectical-review` across strategic fit (`pauli`), compliance (`rbg` against universal PKB rules and optional repo-local `.agents/rules/`), and qualitative quality (`marsha`). Append the null `argdown` block (`asks: none` / `[no claim]`) to claim-free subagent briefs.
+2. **Parallel Dialectical Review**: Run a proportionate review via `/james:dialectical-review` across strategic fit (`pauli`), compliance (`rbg` against universal PKB rules and optional repo-local `.agents/rules/`), and qualitative quality (`marsha`). Append the null `argdown` block (`asks: none` / `[no claim]`) to claim-free subagent briefs.
 3. **Verify and Resolve**: Because `james` runs no automatic prompt hearsay gate, inspect every incoming peer or subagent report qualitatively and record verdicts on claim reports via `james:premise-check` (`verdict.py --judged-file <path>`) before acting on or relaying findings. Cull completed helpers, resolve blocking findings, and apply uncontroversial fixes before implementation fan-out.
 
 ## 3. Model-Calibrated Fan-Out & Incremental Push Checkpoints
@@ -40,10 +40,10 @@ Inspect the claimed task body before composing:
 
 ## 4. Closing Delivery & Follow-Ups
 
-1. **In-Session Verification**: Complete all executable deliverables in-session -- test suites, linters, builds, and a closing `/dialectical-review` on the final diff.
+1. **In-Session Verification**: Complete all executable deliverables in-session -- test suites, linters, builds, and a closing `/james:dialectical-review` on the final diff.
 2. **Pull Request**: When delivering to a pull request, open or update a single cohesive PR against the base branch with scrubbed review receipts.
 3. **Out-of-Session Follow-Ups**: Deliver everything executable in-session. Create and wire follow-up tasks directly via `pkb` MCP tools (or delegate graph wiring to `pauli`) only when remaining work explicitly requires a different repository (one task per repository), a deferred time or external wait condition, or a separate external session.
 
-## 5. Handover (`/dump`)
+## 5. Handover (`/james:dump`)
 
 Invoke `/james:dump` to commit and push final changes, capture durable facts, record the `## Report` `argdown` proof (`pr_url` and `branch` where applicable), and release the task (`done` when all in-session deliverables complete, or `partial` with blocking reasons if unfinished).

@@ -19,8 +19,8 @@ Coordinate modular multi-agent dialectical review supervised by **`james`** acro
 Before dispatching reviewers, load the artifact, its originating request, and available specifications, requirements, or acceptance criteria. Identify the governing genre standard (consult `specs/meta/doc-taxonomy.md` or `specs/meta/writing-specs.md` when present in the target workspace; otherwise apply the standard matching the artifact's genre -- never imposing task-handback sections like `## Ask` on non-task artifacts). Determine destination visibility (public or private) and calibrate:
 
 - **Proportionality (depth, rounds, model selection, and primary-material scope)**:
-  - **High-stakes / high-risk / architectural / public**: Allocate deeper audit, multi-round cross-examination, primary-material checks, and high-capability models (`Model: "pro"`).
-  - **Low-stakes / routine / reversible**: Keep review to a single-pass sanity check with lighter models (`Model: "flash"` or `"flash_lite"`).
+  - **High-stakes / high-risk / architectural / public**: Allocate deeper audit, multi-round cross-examination, primary-material checks, and higher-capability models.
+  - **Low-stakes / routine / reversible**: Keep review to a single-pass sanity check with lightweight, faster models.
 - **Altitude alignment**: Set the target abstraction level for reviewers and police drift during deliberation.
 
 ### 2. Deploy the Three Review Components in Parallel
