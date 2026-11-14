@@ -451,6 +451,32 @@ def _agy_ancestor_agent_name() -> str:
     return ""
 
 
+def resolve_caller_session_id(
+    raw: dict[str, Any],
+    client: str = "",
+    environ: dict[str, str] | None = None,
+) -> str:
+    """Resolve caller session_id from official client env vars first, then hook stdin."""
+    env = os.environ if environ is None else environ
+    effective_client = client
+    if not effective_client:
+        effective_client = "agy" if ("toolCall" in raw or "conversationId" in raw) else "claude"
+
+    if effective_client == "claude":
+        env_sid = (env.get("CLAUDE_CODE_SESSION_ID") or env.get("CLAUDE_SESSION_ID") or "").strip()
+        if env_sid:
+            return env_sid
+    elif effective_client == "agy":
+        env_sid = (env.get("ANTIGRAVITY_CONVERSATION_ID") or "").strip()
+        if env_sid:
+            return env_sid
+
+    stdin_sid = (
+        raw.get("session_id") or raw.get("conversationId") or raw.get("conversation_id") or ""
+    )
+    return str(stdin_sid).strip() if stdin_sid else ""
+
+
 def normalize(client: str, event: str, raw: dict[str, Any], hooks_dir: Path) -> HookContext:
     # agy nests the tool call: ``{"toolCall": {"name": ..., "args": {...}}}``
     # on PreToolUse and PostToolUse. Its PostToolUse carries no tool result.
@@ -514,10 +540,8 @@ def normalize(client: str, event: str, raw: dict[str, Any], hooks_dir: Path) -> 
         tool_input=tool_input,
         command=command,
         cwd=cwd or kwargs.get("cwd", ""),
-        session_id=raw.get("session_id")
-        or raw.get("conversationId")
-        or raw.get("conversation_id")
-        or kwargs.get("session_id", ""),
+        session_id=resolve_caller_session_id(raw, client=client)
+        or str(kwargs.get("session_id", "")),
         transcript_path=raw.get("transcript_path")
         or raw.get("transcriptPath")
         or kwargs.get("transcript_path", ""),

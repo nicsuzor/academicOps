@@ -75,7 +75,8 @@ other work, from Claude Code's own signal in the hook's inherited environment:
 `CLAUDE_CODE_IS_COWORK` set to `1` or `true`, or `CLAUDE_CODE_ENTRYPOINT` set
 to a Cowork entrypoint (`local-agent`, `local_agent`, `remote_cowork`,
 `remote_cowork_trigger`). Every other surface -- the CLI, the desktop app's
-Code tab, cloud sessions, agy -- is unchanged, `_session` injection included.
+Code tab, cloud sessions, agy -- runs normally, including `session_id`
+injection on PKB MCP tool calls.
 
 | Plugin | Events registered | What it's for |
 | - | - | - |

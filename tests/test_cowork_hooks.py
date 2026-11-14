@@ -192,10 +192,11 @@ def test_caller_session_changes_no_input_in_cowork(tmp_path, extra):
 
 @pytest.mark.parametrize("extra", NOT_COWORK_ENVS)
 def test_caller_session_still_injects_elsewhere(tmp_path, extra):
-    """The control: without the signal the PKB call carries ``_session`` as before."""
+    """The control: without the signal the PKB call carries top-level ``session_id``."""
     env = _hook_env(tmp_path, extra)
     proc = _run(CALLER_SESSION, [], _CALLER_SESSION_PAYLOAD, env)
     assert proc.returncode == 0, proc.stderr
     updated = json.loads(proc.stdout)["hookSpecificOutput"]["updatedInput"]
     assert updated["query"] == "observability"
-    assert updated["_session"] == {"session_id": "sess-cowork", "prompt_id": "prompt-cowork"}
+    assert updated["session_id"] == "sess-cowork"
+    assert "_session" not in updated

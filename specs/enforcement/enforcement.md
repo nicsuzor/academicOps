@@ -86,7 +86,7 @@ Prompt hydration (`search_the_pkb`, detailed in [`specs/agents/prompt-hydration.
 - **Top-level `ida` and real user prompt scoping**: Runs exclusively on top-level `ida` sessions for real interactive console prompts and `<channel>` envelopes; non-`ida` agents, unnamed sessions, subagents, automated wakeups (`loop_wakeup`, `schedule_wakeup`, `poll_event`), non-`<channel>` `author == "system"` turns, peer/agent/task/command/reminder wrappers (even nested inside `<channel>`), and `agy` `SYSTEM_MESSAGE` turns make zero PKB calls.
 - **Whole-prompt hydration**: Sends the full human prompt text or incoming `<channel>` message up to 8 KB (`8192` characters) without arbitrary 200-character truncation, unwrapping the outer `<channel>` envelope when present.
 - **Slash command gating**: Suppresses PKB calls on argument-less slash commands (`/cmd`) and `/pull` / `/ida:pull` (bare or with arguments); other slash commands with arguments (`/cmd <arg>`) send `<arg>` whole up to 8 KB.
-- **Session attribution metadata**: Every hydration query passes a `_session` payload containing `session_id`, `prompt_id`, `agent_id`, `caller: "hook"`, and `surface` (`"agy"`, `"github-actions"`, or `"claude-code"`), matching `prompt_id` across the MCP request and hook span.
+- **Stateless MCP attribution metadata**: Every hydration query sends a stateless MCP `2026-07-28` request carrying top-level `session_id` in `arguments` and `x-session-id` header, plus `prompt_id` synced to the turn hook span.
 - **Quiet failure & empty handling**: Injects nothing on empty or whitespace search results; on server/network failure, injects a single concise line naming the failure cause without dumping stack traces or polluting agent context.
 
 ### Plugin startup delivery channel (JIT injection)

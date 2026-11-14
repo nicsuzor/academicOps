@@ -54,14 +54,15 @@ The hook and runtime expect canonical Cloudflare Access service-token credential
 an HTTP 401 as `MCPError(-32603, 'Server returned an error response')`; seen
 on every prompt, that means the hook has no valid credential.
 
-**Find the cause.** From where the client runs, send the MCP `initialize`
+**Find the cause.** From where the client runs, send a stateless MCP `server/discover`
 request with the headers the hook would send (add `-H` for each), and read the
 status:
 
 ```bash
 curl -sS -D - -o /dev/null -X POST "$PKB_MCP_URL" \
   -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
-  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"probe","version":"0"}}}'
+  -H 'MCP-Protocol-Version: 2026-07-28' -H 'Mcp-Method: server/discover' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"server/discover","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{},"io.modelcontextprotocol/clientInfo":{"name":"probe","version":"0"}}}}'
 ```
 
 | Status | Meaning | Fix |
