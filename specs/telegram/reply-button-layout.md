@@ -16,7 +16,7 @@ As an operator interacting with multi-option prompts (such as skill or workflow 
 - **AC-1.1** Given a reply request carrying 8 option buttons arranged in a multi-row grid (via a 2D button array or layout specifications), when the message is sent, then the Telegram inline keyboard contains the buttons arranged in the caller's chosen multi-row grid rather than one button per row.
 - **AC-1.2** Given a flat array of buttons with a `button_layout` array (e.g. `[3, 3, 2]`), when the message is sent, then the Telegram inline keyboard groups buttons into rows according to the specified count per row.
 - **AC-1.3** Given a flat array of buttons with `buttons_per_row` (or numeric `button_layout`), when the message is sent, then the Telegram inline keyboard partitions buttons into rows of that size.
-- **AC-1.4** Given a flat array of buttons without layout options, when the message is sent, then the plugin preserves backward compatibility by placing one button per row.
+- **AC-1.4** Given a flat array of buttons without layout options, when the message is sent, then the plugin places one button per row by default.
 
 ### US-2 Predefined Buttons Consolidated on the Default First Row
 
@@ -24,20 +24,20 @@ As an operator reading agent replies with system actions (such as Details, Check
 
 - **AC-2.1** Given `detailsId` present and message actions disabled (`actions: false`), when the reply is sent, then `🔍` is placed on its row alone without label text beside the icon.
   - _Check_: `plugins/ida-telegram/test/reply-buttons.test.ts` (Details icon alone on row 0).
-- **AC-2.2** Given `detailsId` present and message actions enabled (`actions: true`), when the default reply is sent, then Details (`🔍`), Check logic (`🧐 Check`), Explain (`💡 Explain`), Reasons (`🧾`), Accept (`✅`), and Decline (`❌`) all sit together on the same row.
+- **AC-2.2** Given `detailsId` present and message actions enabled (`actions: true`), when the default reply is sent, then Details (`🔍`), Check logic (`🧐 Check`), Explain (`💡 Explain`), and Reasons (`🧾`) sit together on the same row (joined by Accept `✅` and Decline `❌` when `binary_decision: true` is set).
   - _Check_: `plugins/ida-telegram/test/reply-buttons.test.ts` (default reply keyboard with Details and action buttons on the same row).
 - **AC-2.3** Given `predefined_row: true` with both predefined buttons and caller buttons present, when the reply is sent, then the consolidated predefined row sits at the top (row 0) above the caller's custom button rows.
   - _Check_: `plugins/ida-telegram/test/reply-buttons.test.ts` (predefined row at row 0 above caller grid).
 - **AC-2.4** Given `predefined_row: false` or omitted with caller buttons present, when the reply is sent, then the consolidated predefined row sits below caller buttons, with Details on the same row as the other predefined action buttons.
   - _Check_: `plugins/ida-telegram/test/reply-buttons.test.ts` (predefined row below caller buttons with Details on same row).
 
-### US-3 Recommendation Action Buttons on Replies
+### US-3 Decision-Fit Recommendation Action Buttons on Replies
 
-As an operator receiving agent recommendations in chat, I want direct accept and decline recommendation buttons attached alongside Check logic and Explain on replies, with clear and compact icons alone (`✅`, `❌`), so that I can accept or decline recommendations with a single tap and immediately notify the agent of my choice without horizontal label truncation.
+As an operator receiving agent replies in chat, I want direct accept and decline recommendation buttons (`✅`, `❌`) attached only when a message carries a binary yes/no decision, labelled option buttons with the recommended option highlighted when a message offers multiple choices, and no recommendation buttons on messages without a decision, so that every reply carries buttons that fit its decision structure without cluttering informational answers.
 
-- **AC-3.1** Every reply that carries default message actions attaches `[✅]` and `[❌]` alongside `[🧐 Check]`, `[💡 Explain]`, and `[🧾]`. Passing `actions: false` suppresses all default action buttons including both recommendation buttons; Details sits on the same row.
-  - _Check_: `plugins/ida-telegram/test/recommendation-actions.test.ts` (AC1 default attachment and suppression) and `plugins/ida-telegram/test/reply-buttons.test.ts` (AC2).
-- **AC-3.2** Tapping `[✅]` or `[❌]` acknowledges the callback, edits the Telegram message card to show the user's choice (`Selected: <label> ✅`), removes the recommendation buttons from the inline keyboard while preserving other buttons (Details, Review diff, Check logic, Explain, Reasons), and delivers an event to Ida (`accept_recommendation` or `decline_recommendation`) naming the target message ID, text excerpt, and whether the user accepted or declined the recommendation.
+- **AC-3.1** A reply with no decision (`binary_decision` omitted or `false`, no `buttons`) attaches `[🧐 Check]`, `[💡 Explain]`, and `[🧾]` (unless `actions: false` is passed) and carries no `[✅]` or `[❌]` buttons. A binary decision reply (`binary_decision: true`) attaches `[✅]` and `[❌]` alongside `[🧐 Check]`, `[💡 Explain]`, and `[🧾]`. A multi-option reply (`buttons` supplied with the recommended option highlighted, `binary_decision` omitted or `false`) attaches the labelled option rows and carries no `[✅]` or `[❌]` buttons. Passing `actions: false` suppresses all predefined action and recommendation buttons; Details (`🔍`) sits on the same row as active predefined action buttons.
+  - _Check_: `plugins/ida-telegram/test/recommendation-actions.test.ts` (AC1 no decision, AC2 binary decision, AC3 multi-option decision, and `actions: false` suppression) and `plugins/ida-telegram/test/reply-buttons.test.ts` (AC2).
+- **AC-3.2** Tapping `[✅]` or `[❌]` acknowledges the callback, edits the Telegram message card to show the user's choice (`Selected: <label> ✅`), removes the recommendation buttons from the inline keyboard while preserving other buttons (Details, Review diff, Check logic, Explain, Reasons), and delivers an event to the agent (`accept_recommendation` or `decline_recommendation`) naming the target message ID, text excerpt, and whether the user accepted or declined the recommendation.
   - _Check_: `plugins/ida-telegram/test/recommendation-actions.test.ts` (AC2 tapping, card marking, button filtering, and event delivery).
 
 ### US-4 Caller-Supplied Reply Button Tap Acknowledgement
@@ -64,7 +64,7 @@ As an operator tapping a custom option button on an agent reply card (such as a 
      - `button_layout: number[]` specifies the explicit button count for each successive row (e.g. `[3, 3, 2]`). Any remaining buttons are placed in subsequent rows following the last specified count or 1.
      - `buttons_per_row: number` (or numeric `button_layout: number`) partitions the flat array into uniform rows of that maximum width.
      - `row: number` property on individual button objects allows sparse or explicit row grouping.
-   - **Default Behavior:** A flat button array without layout parameters defaults to 1 button per row for backward compatibility.
+   - **Default Behavior:** A flat button array without layout parameters defaults to 1 button per row.
 
 2. **Verification Check:**
    - Checked by `plugins/ida-telegram/test/reply-buttons.test.ts` (AC1 tests: 2D array grid, `button_layout: [3, 3, 2]`, `buttons_per_row: 4`, and default single-column fallback).
@@ -82,7 +82,7 @@ As an operator tapping a custom option button on an agent reply card (such as a 
    - Reasons, Accept, Decline, and Details carry their icon alone without text beside the icon. Check logic (`🧐 Check`) and Explain (`💡 Explain`) keep short labels so their distinct actions are recognisable at a glance without truncating at phone width.
 
 2. **Default Single-Row Layout and Predefined Row:**
-   - **Default Layout:** In the default reply keyboard (`predefined_row: false` or omitted), Details sits on the same row as the predefined action buttons (`[🔍, 🧐 Check, 💡 Explain, 🧾, ✅, ❌]`), below caller buttons if present, or at row 0 if no caller buttons are present. This prevents Details from consuming an extra vertical row.
+   - **Default Layout:** In the default reply keyboard (`predefined_row: false` or omitted), Details sits on the same row as the active predefined action buttons (`[🔍, 🧐 Check, 💡 Explain, 🧾]`, plus `[✅, ❌]` when `binary_decision: true`), below caller buttons if present, or at row 0 if no caller buttons are present. This prevents Details from consuming an extra vertical row.
    - **Top-Row Predefined Option (`predefined_row: true`):** Consolidates all active predefined buttons onto row index 0 at the top, positioned above any caller option buttons.
    - **Zero Predefined Buttons:** When no predefined buttons are active (e.g. `actions: false` without details or feedback), no empty row is prepended.
 
@@ -94,8 +94,10 @@ As an operator tapping a custom option button on an agent reply card (such as a 
 
 ### 3. Recommendation Action Buttons (US-3)
 
-1. **Default Attachment and Suppression:**
-   Every reply attaches `[✅]` (callback `accept_recommendation`) and `[❌]` (callback `decline_recommendation`) alongside `[🧐 Check]`, `[💡 Explain]`, and `[🧾]` unless `actions: false` is passed. Details (`🔍`) sits on the same row.
+1. **Decision-Fit Attachment and Suppression:**
+   - Binary decision replies (`binary_decision: true` on `reply`) attach `[✅]` (callback `accept_recommendation`) and `[❌]` (callback `decline_recommendation`) alongside `[🧐 Check]`, `[💡 Explain]`, and `[🧾]` unless `actions: false` is passed. Details (`🔍`) sits on the same row.
+   - Replies with no decision (`binary_decision` omitted or `false`, no `buttons`) attach zero recommendation buttons.
+   - Multi-option decision replies (`buttons` supplied with the recommended option highlighted, `binary_decision` omitted or `false`) attach the labelled option rows and zero `[✅]`/`[❌]` buttons.
 
 2. **In-Place Card Update & Filtering:**
    When an operator taps either button:
@@ -104,7 +106,7 @@ As an operator tapping a custom option button on an agent reply card (such as a 
    - The inline keyboard filters out both recommendation buttons (`accept_recommendation` and `decline_recommendation`) while preserving other buttons (such as `🔍`, `[🧐 Check]`, `[💡 Explain]`, `[🧾]`, and custom caller rows).
 
 3. **Event Delivery:**
-   The bot delivers an inbound event to Ida (`event: "accept_recommendation"` or `event: "decline_recommendation"`), including:
+   The bot delivers an inbound event to the agent (`event: "accept_recommendation"` or `event: "decline_recommendation"`), including:
    - `content`: `"The user accepted the recommendation for message <id>: \"<excerpt>\"."` or `"The user declined the recommendation for message <id>: \"<excerpt>\"."`
    - `meta`: `target_message_id`, `target_excerpt`, `action`, `event`, `recommendation` (`"accepted"` / `"declined"`), `choice` (`"accept"` / `"decline"`), `label`, `chat_id`, `user_id`.
 

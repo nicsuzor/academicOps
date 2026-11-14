@@ -50,7 +50,7 @@ describe("Message Actions: Recommendation Buttons (AC1, AC2)", () => {
     return { bot, mcp, emittedEvents, apiCalls, cleanup };
   }
 
-  test("AC1: defect check: reply attaches accept-recommendation and decline-recommendation buttons by default", async () => {
+  test("AC1: reply with no decision carries no Accept/Decline buttons", async () => {
     const { mcp, apiCalls, cleanup } = setupTest();
     try {
       const resp = await mcp.handleMessage({
@@ -61,7 +61,41 @@ describe("Message Actions: Recommendation Buttons (AC1, AC2)", () => {
           name: "reply",
           arguments: {
             chat_id: allowFrom,
-            text: "**Recommendation:** Deploy migration 0042 to production.",
+            text: "**Finding:** The database migration completed with zero errors.",
+          },
+        },
+      });
+
+      const parsed = JSON.parse((resp?.result as any)?.content?.[0]?.text || "{}");
+      expect(parsed.success).toBe(true);
+
+      expect(apiCalls.length).toBe(1);
+      expect(apiCalls[0].method).toBe("sendMessage");
+
+      const kb = apiCalls[0].body.reply_markup?.inline_keyboard || [];
+      const flatButtons = kb.flat();
+
+      expect(flatButtons.find((b: any) => b.callback_data === "accept_recommendation")).toBeUndefined();
+      expect(flatButtons.find((b: any) => b.callback_data === "decline_recommendation")).toBeUndefined();
+      expect(flatButtons.map((b: any) => b.text)).toEqual(["🧐 Check", "💡 Explain", "🧾"]);
+    } finally {
+      cleanup();
+    }
+  });
+
+  test("AC2: binary decision reply (binary_decision: true) carries Accept/Decline buttons", async () => {
+    const { mcp, apiCalls, cleanup } = setupTest();
+    try {
+      const resp = await mcp.handleMessage({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: {
+          name: "reply",
+          arguments: {
+            chat_id: allowFrom,
+            text: "**Next step:** Deploy migration 0042 to staging now?",
+            binary_decision: true,
           },
         },
       });
@@ -89,6 +123,49 @@ describe("Message Actions: Recommendation Buttons (AC1, AC2)", () => {
       expect(declineBtn).toBeDefined();
       expect(declineBtn.callback_data).toBe("decline_recommendation");
       expect(declineBtn.text).toBe("❌");
+      expect(flatButtons.map((b: any) => b.text)).toEqual(["🧐 Check", "💡 Explain", "🧾", "✅", "❌"]);
+    } finally {
+      cleanup();
+    }
+  });
+
+  test("AC3: multi-option reply carries labelled option buttons with recommendation highlighted and no Accept/Decline buttons", async () => {
+    const { mcp, apiCalls, cleanup } = setupTest();
+    try {
+      const resp = await mcp.handleMessage({
+        jsonrpc: "2.0",
+        id: 11,
+        method: "tools/call",
+        params: {
+          name: "reply",
+          arguments: {
+            chat_id: allowFrom,
+            text: "**Choose rollout strategy:** Canary rollout isolates risk before full cutover.",
+            buttons: [
+              { label: "⭐ Canary rollout (Recommended)", callback_data: "rollout_canary" },
+              { label: "Full cutover", callback_data: "rollout_full" },
+              { label: "Hold until Monday", callback_data: "rollout_hold" },
+            ],
+          },
+        },
+      });
+
+      const parsed = JSON.parse((resp?.result as any)?.content?.[0]?.text || "{}");
+      expect(parsed.success).toBe(true);
+
+      expect(apiCalls.length).toBe(1);
+      expect(apiCalls[0].method).toBe("sendMessage");
+
+      const kb = apiCalls[0].body.reply_markup?.inline_keyboard || [];
+      expect(kb.length).toBe(4);
+      expect(kb[0]).toEqual([{ text: "⭐ Canary rollout (Recommended)", callback_data: "rollout_canary" }]);
+      expect(kb[1]).toEqual([{ text: "Full cutover", callback_data: "rollout_full" }]);
+      expect(kb[2]).toEqual([{ text: "Hold until Monday", callback_data: "rollout_hold" }]);
+      expect(kb[3].map((b: any) => b.text)).toEqual(["🧐 Check", "💡 Explain", "🧾"]);
+
+      const flatButtons = kb.flat();
+      expect(flatButtons.find((b: any) => b.callback_data === "accept_recommendation")).toBeUndefined();
+      expect(flatButtons.find((b: any) => b.callback_data === "decline_recommendation")).toBeUndefined();
     } finally {
       cleanup();
     }
@@ -106,6 +183,7 @@ describe("Message Actions: Recommendation Buttons (AC1, AC2)", () => {
           arguments: {
             chat_id: allowFrom,
             text: "Informational message without action buttons.",
+            binary_decision: true,
             actions: false,
           },
         },
@@ -123,7 +201,7 @@ describe("Message Actions: Recommendation Buttons (AC1, AC2)", () => {
     }
   });
 
-  test("AC1: defect check: predefined_row: true consolidates recommendation buttons onto row 0 with Details and action buttons", async () => {
+  test("AC2: defect check: predefined_row: true with binary_decision: true consolidates recommendation buttons onto row 0 with Details and action buttons", async () => {
     const { mcp, apiCalls, cleanup } = setupTest();
     try {
       await mcp.handleMessage({
@@ -136,6 +214,7 @@ describe("Message Actions: Recommendation Buttons (AC1, AC2)", () => {
             chat_id: allowFrom,
             text: "**Recommendation:** Apply configuration update.",
             detail: "Extended detail payload.",
+            binary_decision: true,
             predefined_row: true,
             buttons: [{ label: "Custom 1", callback_data: "c1" }],
           },
