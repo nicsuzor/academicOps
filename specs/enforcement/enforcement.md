@@ -93,6 +93,13 @@ Prompt hydration (`search_the_pkb`, detailed in [`specs/agents/prompt-hydration.
 
 Every plugin runs a `SessionStart` hook that injects a plugin-scoped `CORE.md` (at most 20 lines) into ambient session context, providing concise guidance for that plugin's features without extraneous or agent-specific text ([`specs/agents/startup-core-routing.md`](../agents/startup-core-routing.md)).
 
+### Standalone supervision plugin hook surface (`plugins/james`)
+
+`plugins/james` provides standalone in-session supervision across any repository without prompt-hydration or automatic hearsay-gating hooks:
+
+- **Retained startup and observability hooks**: Fires `SessionStart` (injecting `CORE.md`, the `james:premise-check` pointer, telemetry status checks, `CLAUDE_ENV_FILE` credential isolation, and `AOPS_SESSION_ID` export), one-time `agy_session_pointer` on `agy` `PreInvocation`, `mcp_caller_session` `_session` injection on `mcp__.*` calls, and OpenTelemetry span emission across all canonical events (`claude_code_tracer`, `agy_tracer`, `emit_debug_span`, `telemetry_diagnostic_handler`).
+- **Omitted enforcement and hydration hooks**: Ships neither `search_the_pkb` (`UserPromptSubmit` / `PreInvocation` PKB hydration) nor `hearsay_gate` / `honest_output` / `rule_against_hearsay` runtime blockers. Coordinators and reviewers verify incoming reports explicitly and record verdicts via `premise_check_verdict.py --judged-file <path>`, which validates the report's fenced `argdown` block and emits `premise_check_verdict` OTel spans without an armed gate.
+
 ## Proportionality and force of intervention
 
 Enforcement is chosen by **proportionality, frequency, scope, and force of intervention**, assessed in context rather than as a mechanical ladder.

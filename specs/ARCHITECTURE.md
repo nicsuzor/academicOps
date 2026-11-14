@@ -26,6 +26,12 @@ plugins/                Plugin sources. Only what a client needs.
                         (the custodian for PKB graph, planning, and all knowledge
                         tasks); PKB, workflow, review and premise-check skills;
                         session, PKB-search, tracing and premise-check hooks.
+  james/                Standalone in-session coordinator and subagent supervision
+                        across any repository with PKB access: supervise, pull,
+                        dump, dialectical-review, premise-check and
+                        workflow-library skills; james, marsha, pauli and rbg
+                        subagents; SessionStart, mcp_caller_session, and OTel
+                        tracing hooks (without prompt-hydration or hearsay gates).
   rbg/                  Rule enforcement: the rbg agent, the axioms skill,
                         an advisory turn-by-turn evaluator plus a stop-side
                         rule-check gate.
@@ -49,6 +55,7 @@ source of truth for the built plugin set.
 | Directory | Owns |
 | - | - |
 | `plugins/ida` | ida (`plugins/ida/agents/ida.md`) -- the interactive face and the only agent that talks to the user; james, marsha, sara, and pauli (`plugins/ida/agents/pauli.md`) -- the knowledge base custodian for memory, planning, decomposition, graph writes, and every knowledge task (questions, finding things, web, GitHub, read-only code inspections, and config lookups); capture, memory, decomposition, dispatch, workflow-library, review, and premise-check skills; session, PKB-search, tracing, and premise-check hooks. |
+| `plugins/james` | Standalone in-session `/supervise` coordinator and subagent supervision across any repository with PKB MCP access: `james`, `marsha`, `pauli`, and `rbg` subagents (`plugins/james/agents/`); `supervise`, `pull`, `dump`, `dialectical-review`, `premise-check`, and `workflow-library` skills; `SessionStart`, `mcp_caller_session`, and full OTel tracing hooks (no hearsay gates or prompt-hydration hooks). |
 | `plugins/rbg` | Rule enforcement: the rbg agent (`plugins/rbg/agents/rbg.md`), the `axioms` skill whose files are the axioms (`plugins/rbg/skills/axioms/`), an advisory turn-by-turn evaluator plus a stop-side rule-check gate. |
 | `plugins/tools` | Domain research skills (data analysis, document conversion, diagramming, peer review, project scaffolding). |
 | `plugins/aops-debug` | Debug plugin that dumps raw hook payloads. |
@@ -69,7 +76,7 @@ One surface is excepted. In a Claude Cowork session (the Claude desktop app's
 Cowork surface) the ida hooks do nothing: no handler runs, no fire is logged,
 no input is changed. Cowork refuses any MCP call whose input a plugin hook
 changed and its sessions carry none of the environment `SessionStart` needs.
-The decision is `is_cowork` in `plugins/ida/hooks/dispatch.py`, made once in
+The decision is `is_cowork` in `plugins/ida/hooks/dispatch.py` (and its standalone copy in `plugins/james/hooks/dispatch.py`), made once in
 each hook entry point (`dispatch.py` and `mcp_caller_session.py`) before any
 other work, from Claude Code's own signal in the hook's inherited environment:
 `CLAUDE_CODE_IS_COWORK` set to `1` or `true`, or `CLAUDE_CODE_ENTRYPOINT` set
@@ -80,6 +87,7 @@ Code tab, cloud sessions, agy -- is unchanged, `_session` injection included.
 | Plugin | Events registered | What it's for |
 | - | - | - |
 | `ida` | Claude Code: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PostToolBatch`, `SubagentStart`, `Stop`, `SubagentStop`, `StopFailure`, `PermissionRequest`, `PermissionDenied`, `Notification`, `PreCompact`, `PostCompact`, `SessionEnd`. agy: `PreInvocation` (canonical `UserPromptSubmit`), `PreToolUse`, `PostToolUse`, `Stop` | Session credential/path setup, session-id export, and the one-line `premise-check` pointer on `SessionStart`; OTel tracing spans; on `SubagentStart`, reminds spawned subagents to write reports per `premise-check` (`honesty.md`); on `UserPromptSubmit`, grounds the user's prompt in a PKB search (`search_the_pkb`, see [prompt hydration](agents/prompt-hydration.md)) and reminds the receiving agent to check incoming peer reports and directions (`hearsay.md`); on `PostToolBatch`, reminds the calling agent once per resolved tool batch when a dispatch call (`Agent`, `invoke_subagent`, `Task`) returned a foreground subagent's `completed` result (`hearsay.md`); the `hearsay_gate` (`premise_check_gate`), armed on `UserPromptSubmit` (for an incoming agent message carrying a report or direction; on agy, a `SYSTEM_MESSAGE` from another agent) and on `PostToolUse` (for each foreground subagent return, never spawn acknowledgements) and enforced on `PreToolUse` and `Stop` (see [evidence contract enforcement](enforcement/evidence-contract-enforcement.md)). |
+| `james` | Claude Code: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PostToolBatch`, `SubagentStart`, `Stop`, `SubagentStop`, `StopFailure`, `PermissionRequest`, `PermissionDenied`, `Notification`, `PreCompact`, `PostCompact`, `SessionEnd`. agy: `SessionStart`, `PreInvocation` (canonical `UserPromptSubmit`), `PreToolUse`, `PostToolUse`, `Stop` | Session credential isolation (`CLAUDE_ENV_FILE`), `AOPS_SESSION_ID` export, `CORE.md` and `james:premise-check` pointer injection on `SessionStart` (plus one-time `agy_session_pointer` on `agy`), `_session` injection via `mcp_caller_session` on `mcp__.*` calls, and full OpenTelemetry session/tool tracing (`claude_code_tracer`, `agy_tracer`, `emit_debug_span`, `telemetry_diagnostic_handler`); no hearsay gates or prompt-hydration hooks. |
 | `rbg` | `PreToolUse`, `Stop`, `SubagentStop` (declared, unwired) | Rule-compliance evaluation and the stop-side rule-check gate, as designed. `HANDLERS` in `plugins/rbg/hooks/handlers.py` currently has every entry commented out, so this pillar ships no live hook today. |
 
 `plugins/tools` and `plugins/aops-debug` ship no hooks or a debug-only

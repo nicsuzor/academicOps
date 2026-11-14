@@ -40,3 +40,9 @@ description = "Ida's custom Telegram channel and Mini App plugin for Claude Code
 category = "productivity"
 # A Claude Code channel. agy has no channels, so there is nothing to build for it.
 clients = ["claude", "openclaw"]
+
+[[plugins]]
+directory = "james"
+name = "james"
+description = "In-session coordinator and subagent supervision across any repository."
+category = "productivity"

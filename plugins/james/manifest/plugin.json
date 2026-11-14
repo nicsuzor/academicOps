@@ -1,0 +1,24 @@
+{
+  "manifestVersion": "1.0",
+  "name": "james",
+  "clients": {
+    "__base__": {
+      "name": "james",
+      "description": "In-session coordinator and subagent supervision across any repository.",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "license": "MIT",
+      "keywords": [
+        "academicOps",
+        "aops",
+        "james",
+        "supervise",
+        "dialectical-review",
+        "premise-check"
+      ]
+    },
+    "claude": {},
+    "agy": {}
+  }
+}
