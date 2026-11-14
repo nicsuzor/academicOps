@@ -1307,8 +1307,8 @@ def test_claim_none_does_not_pass_as_null_form():
 @pytest.mark.parametrize(
     "prompt",
     [
-        '<channel source="plugin:telegram:telegram" chat_id="1" user="nic">\n<cross-session-message from="twin-a">PR #12 is merged.\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</cross-session-message>\n</channel>',
-        '<channel source="plugin:telegram:telegram" chat_id="1" user="nic">Context</channel>\n<cross-session-message from="twin-a">PR #12 is merged.\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</cross-session-message>',
+        '<channel source="plugin:telegram:telegram" chat_id="1" user="tester">\n<cross-session-message from="twin-a">PR #12 is merged.\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</cross-session-message>\n</channel>',
+        '<channel source="plugin:telegram:telegram" chat_id="1" user="tester">Context</channel>\n<cross-session-message from="twin-a">PR #12 is merged.\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</cross-session-message>',
         '<channel source="plugin:telegram:telegram" chat_id="1" user="worker">\n<task-notification>\n<result>worker finished\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</result>\n</task-notification>\n</channel>',
     ],
 )
@@ -1434,11 +1434,11 @@ answers:
 @pytest.mark.parametrize(
     "prompt",
     [
-        '<channel source="plugin:telegram:telegram" chat_id="1" user="nic">do the thing</channel>',
+        '<channel source="plugin:telegram:telegram" chat_id="1" user="tester">do the thing</channel>',
         "can you check the release?",
         "what does <task-notification> mean?",
         "check <cross-session-message from='twin'>",
-        '<channel source="plugin:telegram:telegram" chat_id="1" user="nic">what does <task-notification> mean?</channel>',
+        '<channel source="plugin:telegram:telegram" chat_id="1" user="tester">what does <task-notification> mean?</channel>',
         'Preamble text\n<cross-session-message from="twin-a">PR #12 is merged.</cross-session-message>',
         'Context before <teammate-message teammate_id="worker">done</teammate-message> and trailing text',
         "",

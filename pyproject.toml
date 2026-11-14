@@ -220,7 +220,14 @@ exclude = [
 ]
 ignore = ["**/site-packages"]
 # Python path for internal imports
-extraPaths = ["plugins/rbg/hooks", "plugins/ida/hooks", "plugins/aops-debug/hooks", "plugins/tools/hooks", "lib/py"]
+extraPaths = [
+  "lib/hooks",
+  "plugins/rbg/hooks",
+  "plugins/ida/hooks",
+  "plugins/aops-debug/hooks",
+  "plugins/tools/hooks",
+  "lib/py",
+]
 # By default BasedPyright is very strict, so you almost certainly want to disable
 # some of the rules.
 # First, these turn off warnings about (yes) how you ignore warnings:
@@ -268,7 +275,7 @@ reportUnusedImport = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 norecursedirs = ["archived", "tests/archived"]
-pythonpath = [".", "lib/py"]
+pythonpath = [".", "lib/py", "lib/hooks"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]

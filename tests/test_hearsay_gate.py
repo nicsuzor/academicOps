@@ -48,22 +48,13 @@ def test_is_blocked_tool_matches_case_insensitively():
 
 
 def test_gated_tools_definitions_include_send_message_and_dump():
-    """AC6: _GATED_TOOLS in hearsay_gate and dispatch match case-insensitively and cover send_message and dump."""
-    # Check hearsay_gate._GATED_TOOLS
-    gated_hg = {t.lower() for t in hg._GATED_TOOLS}
-    assert "send_message" in gated_hg
-    assert "sendmessage" in gated_hg or "send_message" in gated_hg
-    assert "dump" in gated_hg
-
-    # Check dispatch._GATED_TOOLS
-    assert hasattr(dispatch, "_GATED_TOOLS")
-    gated_dispatch = {t.lower() for t in dispatch._GATED_TOOLS}
-    assert "send_message" in gated_dispatch
-    assert "dump" in gated_dispatch
+    """AC6: hearsay_gate treats SendMessage and Dump (any casing) as gated tools."""
+    for tool_name in ("SendMessage", "send_message", "Dump", "dump"):
+        assert hg._is_blocked_tool(tool_name) is True, f"Expected {tool_name} to be gated"
 
 
 def test_agy_turn_start_missing_transcript_guarded_against_file_not_found(tmp_path):
-    """AC6: _agy_turn_start checks Path(path).is_file() so turn 0 does not raise FileNotFoundError."""
+    """AC6: missing agy transcript fails gracefully at turn 0 without FileNotFoundError."""
     missing_path = str(tmp_path / "does_not_exist.jsonl")
     ctx = HookContext(
         client="agy",
@@ -72,9 +63,9 @@ def test_agy_turn_start_missing_transcript_guarded_against_file_not_found(tmp_pa
         raw={"invocationNum": 0, "transcriptPath": missing_path},
     )
 
-    # Must return None without raising FileNotFoundError
-    res = hg._agy_turn_start(ctx)
-    assert res is None
+    # Must return safely without raising FileNotFoundError
+    assert hg.prompt_text(ctx) == ""
+    assert hg.hearsay_arm(ctx) is None
 
 
 def test_dispatch_instrument_send_message_case_insensitive():
@@ -221,7 +212,6 @@ def test_agy_system_message_invocation_gt_0_exits_before_reading_transcripts(tmp
                 "conversationId": session_id,
             },
         )
-        assert hg._agy_turn_start(ctx_n) is None
         assert hg.prompt_text(ctx_n) == ""
         assert hg.is_peer_report(ctx_n) is False
         assert hg.extract_judged_content(ctx_n) is None
@@ -258,7 +248,6 @@ def test_agy_user_input_and_plan_review_invocation_gt_0_do_not_read_transcripts(
         transcript_path=str(user_transcript),
         raw={"invocationNum": 1, "transcriptPath": str(user_transcript)},
     )
-    assert hg._agy_turn_start(ctx_user_1) is None
     assert hg.should_arm_hearsay(ctx_user_1) is False
     assert handlers.rule_against_hearsay(ctx_user_1) is None
     assert hg.hearsay_arm(ctx_user_1) is None
@@ -283,7 +272,6 @@ def test_agy_user_input_and_plan_review_invocation_gt_0_do_not_read_transcripts(
         transcript_path=str(wake_transcript),
         raw={"invocationNum": 1, "transcriptPath": str(wake_transcript)},
     )
-    assert hg._agy_turn_start(ctx_wake_1) is None
     assert hg.hearsay_arm(ctx_wake_1) is None
     assert handlers.rule_against_hearsay(ctx_wake_1) is None
 
@@ -325,6 +313,12 @@ def test_dispatch_agy_preinvocation_system_message_arms_once_then_ignores_later_
         }
     )
 
+    import shutil
+
+    staged_hooks = tmp_path / "staged_hooks"
+    shutil.copytree(_HOOKS_DIR, staged_hooks, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copy2(_REPO_ROOT / "lib" / "hooks" / "dispatch.py", staged_hooks / "dispatch.py")
+
     session_id = "sess-dispatch-agy-sys"
     monkeypatch.setenv("AOPS_PREMISE_GATE_DIR", str(gate_dir))
 
@@ -336,7 +330,7 @@ def test_dispatch_agy_preinvocation_system_message_arms_once_then_ignores_later_
             "workspacePaths": [str(tmp_path)],
         }
         return subprocess.run(
-            [sys.executable, str(_HOOKS_DIR / "dispatch.py"), "agy", "PreInvocation"],
+            [sys.executable, str(staged_hooks / "dispatch.py"), "agy", "PreInvocation"],
             input=json.dumps(payload),
             text=True,
             capture_output=True,

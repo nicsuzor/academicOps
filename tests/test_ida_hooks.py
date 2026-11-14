@@ -33,6 +33,7 @@ def staged_hooks(tmp_path: Path) -> Path:
     """A plugin hooks/ directory assembled with dispatch.py and handlers.py."""
     hooks = tmp_path / "hooks"
     shutil.copytree(IDA_HOOKS, hooks, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copy2(REPO_ROOT / "lib" / "hooks" / "dispatch.py", hooks / "dispatch.py")
     return hooks
 
 
@@ -42,7 +43,7 @@ def staged_hooks(tmp_path: Path) -> Path:
 
 
 _PEER_REPORT = '<cross-session-message from="twin-a">PR #12 merged</cross-session-message>'
-_USER_MESSAGE = '<channel source="plugin:telegram:telegram" user="nic">ship it</channel>'
+_USER_MESSAGE = '<channel source="plugin:telegram:telegram" user="tester">ship it</channel>'
 
 
 @pytest.mark.parametrize("agent", ["ida:ida", "ida:sara"])
@@ -252,14 +253,54 @@ def test_normalize_resolves_agy_agent_from_proc_ancestors(
     _write_fake_proc_node(proc_root, 52, 1, "agy", ["agy", "--gemini_dir", "/tmp/.gemini"])
     assert dispatch.normalize("agy", "UserPromptSubmit", {}, hooks_dir).agent_type == ""
 
-    # Env override wins over /proc ancestor walk
+    # Explicit --agent CLI flag on ancestor agy overrides ambient env vars
     _write_fake_proc_node(proc_root, 52, 1, "agy", ["agy", "--agent", "pauli"])
     monkeypatch.setenv("AOPS_AGENT_NAME", "ida")
-    assert dispatch.normalize("agy", "UserPromptSubmit", {}, hooks_dir).agent_type == "ida"
+    assert dispatch.normalize("agy", "UserPromptSubmit", {}, hooks_dir).agent_type == "pauli"
     monkeypatch.delenv("AOPS_AGENT_NAME")
 
-    # Non-Linux / missing /proc/self/stat returns empty cleanly
+
+def test_normalize_agy_ancestor_flag_overrides_ambient_aops_agent_name(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    """When AOPS_AGENT_NAME=ida is inherited from an outer env, agy --agent pauli still resolves pauli and skips PKB hydration."""
+    import dispatch
+
+    hooks_dir = tmp_path / "hooks"
+    hooks_dir.mkdir()
+    for var in ("CLAUDE_AGENT_NAME", "AGY_AGENT_NAME"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("AOPS_AGENT_NAME", "ida")
+
+    proc_root = tmp_path / "proc"
+    (proc_root / "self").mkdir(parents=True)
+    (proc_root / "self" / "stat").write_text("400 (python3) S 300 1 1\n", encoding="utf-8")
+    _write_fake_proc_node(proc_root, 52, 1, "agy", ["agy", "--agent", "pauli", "--print", "hi"])
+    _write_fake_proc_node(proc_root, 300, 52, "sh", ["sh", "-c", "python3"])
+    _write_fake_proc_node(proc_root, 400, 300, "python3", ["python3", "dispatch.py"])
+
+    monkeypatch.setattr(dispatch, "_PROC_ROOT", proc_root)
+    monkeypatch.setattr(os, "getpid", lambda: 400)
+
+    ctx = dispatch.normalize(
+        "agy",
+        "UserPromptSubmit",
+        {"conversationId": "conv-pauli-1", "invocationNum": 0},
+        hooks_dir,
+    )
+    assert ctx.agent_type == "pauli"
+    with patch.object(handlers, "_run_pkb_search") as mock_search:
+        assert handlers.search_the_pkb(ctx) is None
+        mock_search.assert_not_called()
+
+    # Unnamed agy (no --agent flag) still falls back to AOPS_AGENT_NAME
+    _write_fake_proc_node(proc_root, 52, 1, "agy", ["agy", "--print", "hi"])
+    assert dispatch.normalize("agy", "UserPromptSubmit", {}, hooks_dir).agent_type == "ida"
+
+    # Non-Linux / missing /proc/self/stat falls back to env var, or returns empty when unset
     (proc_root / "self" / "stat").unlink()
+    assert dispatch.normalize("agy", "UserPromptSubmit", {}, hooks_dir).agent_type == "ida"
+    monkeypatch.delenv("AOPS_AGENT_NAME")
     assert dispatch.normalize("agy", "UserPromptSubmit", {}, hooks_dir).agent_type == ""
 
 
@@ -291,7 +332,7 @@ def test_merge_combines_multiple_advisories():
     ("prompt", "expected_query"),
     [
         ("what are the axioms of academicOps?", "what are the axioms of academicOps?"),
-        ('<channel source="plugin:telegram:telegram" user="nic">ship it</channel>', "ship it"),
+        ('<channel source="plugin:telegram:telegram" user="tester">ship it</channel>', "ship it"),
     ],
 )
 def test_user_messages_get_pkb_hydration_and_no_hearsay_or_gate(prompt, expected_query):

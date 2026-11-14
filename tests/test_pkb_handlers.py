@@ -62,6 +62,7 @@ def staged_hooks(tmp_path: Path) -> Path:
     """A plugin hooks/ directory assembled with dispatch.py and handlers.py."""
     hooks = tmp_path / "hooks"
     shutil.copytree(PKB_HOOKS, hooks, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copy2(REPO_ROOT / "lib" / "hooks" / "dispatch.py", hooks / "dispatch.py")
     return hooks
 
 
@@ -237,7 +238,7 @@ def test_search_the_pkb_skips_peer_reports(peer_prompt):
 
 
 def test_extract_prompt_query_unwraps_channels_and_strips_ansi():
-    raw = '<channel source="telegram" user="nic">\x1b[32mhello world\x1b[0m</channel>'
+    raw = '<channel source="telegram" user="tester">\x1b[32mhello world\x1b[0m</channel>'
     assert handlers.extract_prompt_query(raw) == "hello world"
     assert handlers.extract_prompt_query("plain prompt") == "plain prompt"
     assert handlers.extract_prompt_query("") == ""

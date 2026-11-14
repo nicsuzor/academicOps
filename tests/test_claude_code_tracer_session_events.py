@@ -1054,8 +1054,22 @@ def test_aops_debug_agy_events_carry_full_payload_without_raw_payload_duplicatio
         assert span.attributes.get("tool.type") == expected_tool
 
 
-def _load_aops_debug_dispatch(monkeypatch):
-    debug_dispatch_path = REPO_ROOT / "plugins" / "aops-debug" / "hooks" / "dispatch.py"
+def _stage_aops_debug_hooks(tmp_path: Path) -> Path:
+    """Assemble an executable aops-debug hooks/ tree with lib/hooks/dispatch.py."""
+    hooks_dir = tmp_path / "debug_hooks"
+    hooks_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(
+        REPO_ROOT / "plugins" / "aops-debug" / "hooks" / "handlers.py",
+        hooks_dir / "handlers.py",
+    )
+    shutil.copy2(REPO_ROOT / "lib" / "hooks" / "dispatch.py", hooks_dir / "dispatch.py")
+    shutil.copy2(IDA_HOOKS / "claude_code_tracer.py", hooks_dir / "claude_code_tracer.py")
+    return hooks_dir
+
+
+def _load_aops_debug_dispatch(monkeypatch, tmp_path: Path):
+    hooks_dir = _stage_aops_debug_hooks(tmp_path)
+    debug_dispatch_path = hooks_dir / "dispatch.py"
     spec = importlib.util.spec_from_file_location("aops_debug_dispatch", debug_dispatch_path)
     assert spec and spec.loader
     mod = importlib.util.module_from_spec(spec)
@@ -1076,7 +1090,7 @@ def test_aops_debug_dispatch_agy_post_invocation_writes_jsonl_and_emits_span(
     monkeypatch.delenv("CLAUDE_CODE_IS_COWORK", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_ENTRYPOINT", raising=False)
 
-    debug_dispatch = _load_aops_debug_dispatch(monkeypatch)
+    debug_dispatch = _load_aops_debug_dispatch(monkeypatch, tmp_path)
 
     payload = {
         "conversationId": SESSION,
@@ -1105,8 +1119,8 @@ def test_aops_debug_dispatch_agy_post_invocation_writes_jsonl_and_emits_span(
 
 
 def test_aops_debug_dispatch_subprocess_agy_post_invocation_writes_jsonl(tmp_path):
-    """Spawning plugins/aops-debug/hooks/dispatch.py as a subprocess handles agy PostInvocation."""
-    dispatch_script = REPO_ROOT / "plugins" / "aops-debug" / "hooks" / "dispatch.py"
+    """Spawning staged lib/hooks/dispatch.py with aops-debug handlers handles agy PostInvocation."""
+    dispatch_script = _stage_aops_debug_hooks(tmp_path) / "dispatch.py"
     payload = {
         "conversationId": f"{SESSION}-subproc",
         "response": "SUBSTANTIVE_SUBPROCESS_POST_INVOCATION",
@@ -1154,7 +1168,7 @@ def test_aops_debug_dispatch_cowork_skips_agy_post_invocation(
     monkeypatch.setenv("TMPDIR", str(tmp_path))
     monkeypatch.setattr(tempfile, "tempdir", None)
 
-    debug_dispatch = _load_aops_debug_dispatch(monkeypatch)
+    debug_dispatch = _load_aops_debug_dispatch(monkeypatch, tmp_path)
     payload = {"conversationId": f"{SESSION}-cowork", "response": "IGNORED"}
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
 
@@ -1169,7 +1183,7 @@ def test_aops_debug_dispatch_skips_unmapped_event_without_wildcard_handler(tmp_p
     hooks_dir = tmp_path / "hooks"
     hooks_dir.mkdir()
     shutil.copy2(
-        REPO_ROOT / "plugins" / "aops-debug" / "hooks" / "dispatch.py",
+        REPO_ROOT / "lib" / "hooks" / "dispatch.py",
         hooks_dir / "dispatch.py",
     )
     marker = tmp_path / "handler_ran.txt"
