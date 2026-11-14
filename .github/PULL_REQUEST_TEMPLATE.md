@@ -4,9 +4,8 @@
      than restating them in prose. Issues may go in GitHub comments, but specs may not.
      Drop or omit only sections explicitly marked optional when not applicable.
 
-     Note: polecat workers use this structure when opening or updating a PR
-     (see .agents/templates/wf-finish.md). Applies to automated agent PRs and
-     human-authored PRs alike. -->
+     Note: polecat workers use this structure when opening or updating a PR.
+     Applies to automated agent PRs and human-authored PRs alike. -->
 
 ## Summary
 
