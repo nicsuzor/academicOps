@@ -112,7 +112,13 @@ def test_dispatch_claude_userpromptsubmit_end_to_end(staged_hooks: Path):
             "claude",
             "UserPromptSubmit",
         ],
-        input=json.dumps({"hook_event_name": "UserPromptSubmit", "prompt": "survey release"}),
+        input=json.dumps(
+            {
+                "hook_event_name": "UserPromptSubmit",
+                "agent_type": "ida:ida",
+                "prompt": "survey release",
+            }
+        ),
         text=True,
         capture_output=True,
         timeout=15,
@@ -131,6 +137,7 @@ def test_dispatch_claude_userpromptsubmit_end_to_end(staged_hooks: Path):
         input=json.dumps(
             {
                 "hook_event_name": "UserPromptSubmit",
+                "agent_type": "ida:ida",
                 "prompt": '<cross-session-message from="twin-a">survey release</cross-session-message>',
             }
         ),
@@ -159,7 +166,13 @@ def test_dispatch_agy_preinvocation_end_to_end(staged_hooks: Path):
             "agy",
             "PreInvocation",
         ],
-        input=json.dumps({"hook_event_name": "PreInvocation", "prompt": "survey release"}),
+        input=json.dumps(
+            {
+                "hook_event_name": "PreInvocation",
+                "agent_type": "ida",
+                "prompt": "survey release",
+            }
+        ),
         text=True,
         capture_output=True,
         timeout=15,
@@ -178,6 +191,7 @@ def test_dispatch_agy_preinvocation_end_to_end(staged_hooks: Path):
         input=json.dumps(
             {
                 "hook_event_name": "PreInvocation",
+                "agent_type": "ida",
                 "prompt": '<cross-session-message from="twin-a">survey release</cross-session-message>',
             }
         ),
@@ -196,22 +210,18 @@ def test_dispatch_agy_preinvocation_end_to_end(staged_hooks: Path):
 
 
 @pytest.mark.parametrize(
-    ("peer_prompt", "expected_query"),
+    "peer_prompt",
     [
-        (
-            '<cross-session-message from="twin-a">PR #12 merged</cross-session-message>',
-            "PR #12 merged",
-        ),
-        ('<teammate-message teammate_id="worker">done</teammate-message>', "done"),
-        ("<task-notification>worker finished</task-notification>", "worker finished"),
-        (
-            '<subagent-handback from="worker">subagent finished</subagent-handback>',
-            "subagent finished",
-        ),
+        '<cross-session-message from="twin-a">PR #12 merged</cross-session-message>',
+        '<teammate-message teammate_id="worker">done</teammate-message>',
+        "<task-notification>worker finished</task-notification>",
+        '<subagent-handback from="worker">subagent finished</subagent-handback>',
+        '<agent-message to="ida">status update</agent-message>',
+        '<handback from="worker">done</handback>',
     ],
 )
-def test_search_the_pkb_includes_peer_reports(peer_prompt, expected_query):
-    """search_the_pkb includes peer reports, subagent handbacks, and task notifications."""
+def test_search_the_pkb_skips_peer_reports(peer_prompt):
+    """search_the_pkb skips peer reports, subagent handbacks, and task notifications."""
     ctx = HookContext(
         client="claude",
         event="UserPromptSubmit",
@@ -222,9 +232,8 @@ def test_search_the_pkb_includes_peer_reports(peer_prompt, expected_query):
     )
     with patch.object(handlers, "_run_pkb_search", return_value="1. note") as mock_search:
         res = handlers.search_the_pkb(ctx)
-        mock_search.assert_called_once_with(expected_query, cwd="/workspace")
-        assert res is not None
-        assert "<academicOps PKB search results>" in res.inject_text
+        mock_search.assert_not_called()
+        assert res is None
 
 
 def test_extract_prompt_query_unwraps_channels_and_strips_ansi():
@@ -339,7 +348,13 @@ def test_dispatch_http_failure_surfaces_error_in_hook_output(staged_hooks: Path)
             "claude",
             "UserPromptSubmit",
         ],
-        input=json.dumps({"hook_event_name": "UserPromptSubmit", "prompt": "check status"}),
+        input=json.dumps(
+            {
+                "hook_event_name": "UserPromptSubmit",
+                "agent_type": "ida:ida",
+                "prompt": "check status",
+            }
+        ),
         text=True,
         capture_output=True,
         timeout=60,
@@ -397,12 +412,23 @@ def _agy_transcript(tmp_path: Path, *entries: dict) -> Path:
     return path
 
 
-def _agy_ctx(transcript: Path, invocation_num: int | None = 0) -> HookContext:
+def _agy_ctx(
+    transcript: Path,
+    invocation_num: int | None = 0,
+    agent_type: str = "ida:ida",
+    agent_id: str = "",
+) -> HookContext:
     raw: dict = {"conversationId": "c1", "transcriptPath": str(transcript), "initialNumSteps": 1}
     if invocation_num is not None:
         raw["invocationNum"] = invocation_num
     return HookContext(
-        client="agy", event="UserPromptSubmit", raw=raw, hooks_dir=PKB_HOOKS, cwd="/workspace"
+        client="agy",
+        event="UserPromptSubmit",
+        raw=raw,
+        hooks_dir=PKB_HOOKS,
+        cwd="/workspace",
+        agent_type=agent_type,
+        agent_id=agent_id,
     )
 
 
@@ -460,14 +486,13 @@ def test_agy_turn_started_by_system_message_is_not_searched(tmp_path: Path):
     mock_search.assert_not_called()
 
 
-def test_agy_peer_report_in_transcript_is_searched(tmp_path: Path):
+def test_agy_peer_report_in_transcript_is_not_searched(tmp_path: Path):
     peer = '<USER_REQUEST>\n<cross-session-message from="x">report</cross-session-message>\n</USER_REQUEST>'
     transcript = _agy_transcript(tmp_path, {"step_index": 0, "type": "USER_INPUT", "content": peer})
     with patch.object(handlers, "_run_pkb_search", return_value="1. hit") as mock_search:
         res = handlers.search_the_pkb(_agy_ctx(transcript))
-        assert res is not None
-        assert "<academicOps PKB search results>" in res.inject_text
-    mock_search.assert_called_once_with("report", cwd="/workspace", session_id="c1")
+        assert res is None
+    mock_search.assert_not_called()
 
 
 def test_agy_missing_transcript_returns_none(tmp_path: Path):
@@ -530,6 +555,7 @@ def test_dispatch_agy_preinvocation_reads_prompt_from_transcript(
     env["PKB_MCP_URL"] = (
         "http://127.0.0.1:9"  # unreachable: the failure message proves a search was attempted
     )
+    env["AOPS_AGENT_NAME"] = "ida"
     proc = subprocess.run(
         [sys.executable, str(staged_hooks / "dispatch.py"), "agy", "PreInvocation"],
         input=json.dumps(payload),
@@ -756,7 +782,13 @@ def test_search_the_pkb_injected_message_on_401(staged_hooks: Path, http_mcp_ser
             "claude",
             "UserPromptSubmit",
         ],
-        input=json.dumps({"hook_event_name": "UserPromptSubmit", "prompt": "check status"}),
+        input=json.dumps(
+            {
+                "hook_event_name": "UserPromptSubmit",
+                "agent_type": "ida:ida",
+                "prompt": "check status",
+            }
+        ),
         text=True,
         capture_output=True,
         timeout=10,
@@ -792,7 +824,13 @@ def test_search_the_pkb_injected_message_on_403(staged_hooks: Path, http_mcp_ser
             "claude",
             "UserPromptSubmit",
         ],
-        input=json.dumps({"hook_event_name": "UserPromptSubmit", "prompt": "check status"}),
+        input=json.dumps(
+            {
+                "hook_event_name": "UserPromptSubmit",
+                "agent_type": "ida:ida",
+                "prompt": "check status",
+            }
+        ),
         text=True,
         capture_output=True,
         timeout=10,
@@ -826,7 +864,13 @@ def test_search_the_pkb_injected_message_on_unreachable(staged_hooks: Path):
             "claude",
             "UserPromptSubmit",
         ],
-        input=json.dumps({"hook_event_name": "UserPromptSubmit", "prompt": "check status"}),
+        input=json.dumps(
+            {
+                "hook_event_name": "UserPromptSubmit",
+                "agent_type": "ida:ida",
+                "prompt": "check status",
+            }
+        ),
         text=True,
         capture_output=True,
         timeout=10,
@@ -949,6 +993,7 @@ def test_search_the_pkb_session_fallback_and_caching(monkeypatch, tmp_path):
             session_id="s1",
             raw={"prompt": "find notes"},
             hooks_dir=PKB_HOOKS,
+            agent_type="ida:ida",
         )
         res = handlers.search_the_pkb(ctx)
         assert res is not None
@@ -1046,22 +1091,26 @@ def test_argumentless_slash_commands_make_no_pkb_call(cmd_prompt):
 
 
 @pytest.mark.parametrize(
-    ("prompt", "expected_query"),
+    "prompt",
     [
-        ('<handback from="worker">done</handback>', "done"),
-        ('<subagent-handback from="worker">done</subagent-handback>', "done"),
-        ('<agent-message to="ida">status update</agent-message>', "status update"),
-        ('<cross-session-message from="peer">done</cross-session-message>', "done"),
-        ('<teammate-message teammate_id="worker">finished</teammate-message>', "finished"),
-        ("<task-notification>task completed</task-notification>", "task completed"),
-        (
-            'Another Claude session sent a message:\n<teammate-message teammate_id="worker">finished</teammate-message>',
-            "finished",
-        ),
+        '<handback from="worker">done</handback>',
+        '<subagent-handback from="worker">done</subagent-handback>',
+        '<agent-message to="ida">status update</agent-message>',
+        '<cross-session-message from="peer">done</cross-session-message>',
+        '<teammate-message teammate_id="worker">finished</teammate-message>',
+        "<task-notification>task completed</task-notification>",
+        'Another Claude session sent a message:\n<teammate-message teammate_id="worker">finished</teammate-message>',
+        "Another Claude session sent a message: plain peer text",
+        "<local-command-stdout>command output</local-command-stdout>",
+        "<local-command-caveat>caveat</local-command-caveat>",
+        "<command-message>daily</command-message>",
+        "<system-reminder>hook context</system-reminder>",
+        "<subagent_reminder>subagent instructions</subagent_reminder>",
+        "<scheduled-task>nightly</scheduled-task>",
     ],
 )
-def test_peer_and_handback_envelopes_are_hydrated(prompt, expected_query):
-    """Peer reports, subagent handbacks, and task notifications are included in PKB search hydration."""
+def test_peer_and_system_envelopes_are_not_hydrated(prompt):
+    """Peer reports, subagent handbacks, task notifications, and system/command wrappers do not trigger PKB hydration."""
     ctx = HookContext(
         client="claude",
         event="UserPromptSubmit",
@@ -1071,16 +1120,14 @@ def test_peer_and_handback_envelopes_are_hydrated(prompt, expected_query):
     )
     with patch.object(handlers, "_run_pkb_search", return_value="hit") as mock_search:
         res = handlers.search_the_pkb(ctx)
-        assert res is not None
-        mock_search.assert_called_once()
-        args, _ = mock_search.call_args
-        assert args[0] == expected_query
+        assert res is None
+        mock_search.assert_not_called()
 
 
 def test_channel_wrapped_human_prompts_send_full_text_up_to_8kb():
     """AC2: <channel>-wrapped human prompts send full text up to 8 KB without 200-char truncation."""
     body_500 = "x" * 500
-    prompt = f'<channel source="telegram" user="nic">{body_500}</channel>'
+    prompt = f'<channel source="telegram" user="tester">{body_500}</channel>'
     ctx = HookContext(
         client="claude",
         event="UserPromptSubmit",
@@ -1097,7 +1144,7 @@ def test_channel_wrapped_human_prompts_send_full_text_up_to_8kb():
 
 
 def test_slash_command_with_arg_sends_arg_whole_up_to_8kb():
-    """AC2: /cmd <arg> prompts send <arg> whole up to 8 KB without 200-char truncation."""
+    """AC2: /cmd <arg> prompts send <arg> whole up to 8 KB, while /pull and /ida:pull skip hydration."""
     arg_500 = "y" * 500
     prompt = f"/cmd {arg_500}"
     ctx = HookContext(
@@ -1113,19 +1160,18 @@ def test_slash_command_with_arg_sends_arg_whole_up_to_8kb():
         args, _ = mock_search.call_args
         assert args[0] == arg_500
 
-    pull_prompt = "/pull task_c89c7dae"
-    ctx_pull = HookContext(
-        client="claude",
-        event="UserPromptSubmit",
-        raw={"prompt": pull_prompt},
-        hooks_dir=PKB_HOOKS,
-        agent_type="ida:ida",
-    )
-    with patch.object(handlers, "_run_pkb_search", return_value="hit") as mock_search:
-        res = handlers.search_the_pkb(ctx_pull)
-        assert res is not None
-        args, _ = mock_search.call_args
-        assert args[0] == "task_c89c7dae"
+    for pull_prompt in ("/pull", "/pull work-item-1", "/ida:pull", "/ida:pull work-item-1"):
+        ctx_pull = HookContext(
+            client="claude",
+            event="UserPromptSubmit",
+            raw={"prompt": pull_prompt},
+            hooks_dir=PKB_HOOKS,
+            agent_type="ida:ida",
+        )
+        with patch.object(handlers, "_run_pkb_search", return_value="hit") as mock_search:
+            res = handlers.search_the_pkb(ctx_pull)
+            assert res is None
+            mock_search.assert_not_called()
 
 
 def test_prompt_exceeding_8kb_is_capped_at_8192():
@@ -1301,7 +1347,13 @@ def test_dispatch_error_injects_single_failure_line(staged_hooks: Path):
             "claude",
             "UserPromptSubmit",
         ],
-        input=json.dumps({"hook_event_name": "UserPromptSubmit", "prompt": "check status"}),
+        input=json.dumps(
+            {
+                "hook_event_name": "UserPromptSubmit",
+                "agent_type": "ida:ida",
+                "prompt": "check status",
+            }
+        ),
         text=True,
         capture_output=True,
         timeout=10,
@@ -1347,8 +1399,8 @@ def test_agy_prompt_with_session_start_hook_message_is_searched(tmp_path: Path):
     assert res is not None and "<academicOps PKB search results>" in res.inject_text
 
 
-def test_agy_turn_started_by_peer_system_message_is_searched(tmp_path: Path):
-    """When an agy turn is woken by a peer message in a SYSTEM_MESSAGE, hydration grounds it."""
+def test_agy_turn_started_by_peer_system_message_is_not_searched(tmp_path: Path):
+    """When an agy turn is woken by a peer message in a SYSTEM_MESSAGE, hydration makes zero PKB calls."""
     peer_msg = "[Message] sender=twin-a priority=MESSAGE_PRIORITY_HIGH content=evidence of hydration failure"
     transcript = _agy_transcript(
         tmp_path,
@@ -1358,10 +1410,8 @@ def test_agy_turn_started_by_peer_system_message_is_searched(tmp_path: Path):
     )
     with patch.object(handlers, "_run_pkb_search", return_value="1. hit") as mock_search:
         res = handlers.search_the_pkb(_agy_ctx(transcript))
-    mock_search.assert_called_once_with(
-        "evidence of hydration failure", cwd="/workspace", session_id="c1"
-    )
-    assert res is not None and "<academicOps PKB search results>" in res.inject_text
+    mock_search.assert_not_called()
+    assert res is None
 
 
 def test_post_mcp_search_reinitializes_on_session_error(tmp_path: Path):
@@ -1442,12 +1492,10 @@ def test_post_mcp_search_reinitializes_on_session_error(tmp_path: Path):
         assert cached.get("session_id") == "new-fresh-session"
 
 
-def test_search_the_pkb_uses_root_phoenix_session_id_for_subagent_turn(
+def test_post_mcp_search_uses_root_phoenix_session_id_and_subagents_skip_hydration(
     http_mcp_server, monkeypatch, tmp_path
 ):
-    """When search_the_pkb runs inside a subagent session whose tracer state has phoenix_session_id
-    pointing to the root session, both x-session-id and _session.session_id use the root session ID
-    and _session.agent_id carries the subagent session ID."""
+    """Subagent turns make zero PKB calls in search_the_pkb, while _post_mcp_search maps root_session_id."""
     tracer_dir = tmp_path / ".claude" / "tracer"
     tracer_dir.mkdir(parents=True, exist_ok=True)
     trace_id = "11112222333344441111222233334444"
@@ -1470,16 +1518,26 @@ def test_search_the_pkb_uses_root_phoenix_session_id_for_subagent_turn(
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("PKB_MCP_URL", http_mcp_server.url)
 
-    ctx = HookContext(
-        client="claude",
-        event="UserPromptSubmit",
+    for agent_type, agent_id in (("ida:pauli", ""), ("ida:ida", "sub-1"), ("ida:ida", "")):
+        ctx = HookContext(
+            client="claude",
+            event="UserPromptSubmit",
+            session_id="subagent-sess-42",
+            raw={"prompt": "search from subagent"},
+            hooks_dir=PKB_HOOKS,
+            agent_type=agent_type,
+            agent_id=agent_id,
+        )
+        assert handlers.search_the_pkb(ctx) is None
+    assert len(http_mcp_server.requests) == 0
+
+    # Verify _post_mcp_search attribution mapping directly when invoked
+    out = handlers._post_mcp_search(
+        http_mcp_server.url,
+        "direct attribution query",
         session_id="subagent-sess-42",
-        raw={"prompt": "search from subagent"},
-        hooks_dir=PKB_HOOKS,
-        agent_type="ida:pauli",
     )
-    res = handlers.search_the_pkb(ctx)
-    assert res is not None
+    assert out == "1. Match in PKB"
     assert len(http_mcp_server.requests) == 1
 
     req = http_mcp_server.requests[0]
@@ -1487,3 +1545,244 @@ def test_search_the_pkb_uses_root_phoenix_session_id_for_subagent_turn(
     sess = req["json"]["params"]["arguments"]["_session"]
     assert sess["session_id"] == "root-sess-01"
     assert sess["agent_id"] == "subagent-sess-42"
+
+
+@pytest.mark.parametrize(
+    "agent_type",
+    ["", "pauli", "ida:pauli", "sara", "ida:sara", "james", "aops:james", "rbg", "marsha"],
+)
+def test_search_the_pkb_skips_non_ida_and_unnamed_sessions(agent_type: str, tmp_path: Path):
+    """Non-ida and unnamed sessions make zero PKB calls on both claude and agy."""
+    claude_ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        session_id="s-non-ida",
+        raw={"prompt": "real user prompt"},
+        hooks_dir=PKB_HOOKS,
+        agent_type=agent_type,
+    )
+    transcript = _agy_transcript(
+        tmp_path, {"step_index": 0, "type": "USER_INPUT", "content": AGY_USER_INPUT}
+    )
+    agy_ctx = _agy_ctx(transcript, agent_type=agent_type)
+
+    with patch.object(handlers, "_run_pkb_search", return_value="1. hit") as mock_search:
+        assert handlers.search_the_pkb(claude_ctx) is None
+        assert handlers.search_the_pkb(agy_ctx) is None
+    mock_search.assert_not_called()
+
+
+def test_search_the_pkb_skips_subagents_across_claude_and_agy(tmp_path: Path):
+    """Subagents make zero PKB calls even when agent_type resolves to ida."""
+    claude_sub_ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        session_id="s-sub-1",
+        raw={"prompt": "real user prompt", "agent_id": "subagent-abc"},
+        hooks_dir=PKB_HOOKS,
+        agent_type="ida:ida",
+        agent_id="subagent-abc",
+    )
+    transcript = _agy_transcript(
+        tmp_path,
+        {
+            "step_index": 0,
+            "type": "USER_INPUT",
+            "content": "<USER_REQUEST>\n<subagent_reminder>brief</subagent_reminder>\n</USER_REQUEST>",
+        },
+    )
+    agy_sub_ctx = _agy_ctx(transcript, agent_type="ida:ida")
+    raw_dir = tmp_path / "plain"
+    raw_dir.mkdir()
+    agy_sub_raw_ctx = HookContext(
+        client="agy",
+        event="UserPromptSubmit",
+        raw={
+            "conversationId": "c-sub",
+            "transcriptPath": str(
+                _agy_transcript(
+                    raw_dir,
+                    {"step_index": 0, "type": "USER_INPUT", "content": AGY_USER_INPUT},
+                )
+            ),
+            "invocationNum": 0,
+            "is_subagent": True,
+        },
+        hooks_dir=PKB_HOOKS,
+        agent_type="ida",
+    )
+
+    with patch.object(handlers, "_run_pkb_search", return_value="1. hit") as mock_search:
+        assert handlers.search_the_pkb(claude_sub_ctx) is None
+        assert handlers.search_the_pkb(agy_sub_ctx) is None
+        assert handlers.search_the_pkb(agy_sub_raw_ctx) is None
+    mock_search.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("raw_payload", "expected_query"),
+    [
+        (
+            {
+                "prompt": '<channel source="plugin:ida-telegram:telegram" chat_id="1">check inbox</channel>',
+                "author": "system",
+            },
+            "check inbox",
+        ),
+        (
+            {
+                "prompt": '<channel source="plugin:discord:discord">deploy status</channel>',
+                "author": "system",
+            },
+            "deploy status",
+        ),
+        (
+            {
+                "prompt": '<channel source="plugin:discord:discord">plain channel msg</channel>',
+            },
+            "plain channel msg",
+        ),
+        (
+            {
+                "prompt": '<channel source="telegram">why does <channel source="x">hi</channel> break?</channel>',
+            },
+            'why does <channel source="x">hi</channel> break?',
+        ),
+        (
+            {
+                "prompt": "/daily focus on hydration",
+            },
+            "focus on hydration",
+        ),
+    ],
+)
+def test_search_the_pkb_hydrates_console_and_channel_prompts_for_ida(
+    raw_payload: dict, expected_query: str
+):
+    """Top-level ida hydrates real user console prompts and `<channel>` envelopes (even with author=system)."""
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        session_id="s-ida-ch",
+        raw=raw_payload,
+        hooks_dir=PKB_HOOKS,
+        cwd="/workspace",
+        agent_type="ida:ida",
+    )
+    with patch.object(handlers, "_run_pkb_search", return_value="1. note") as mock_search:
+        res = handlers.search_the_pkb(ctx)
+    mock_search.assert_called_once_with(expected_query, cwd="/workspace", session_id="s-ida-ch")
+    assert res is not None and "<academicOps PKB search results>" in res.inject_text
+
+
+@pytest.mark.parametrize(
+    "raw_payload",
+    [
+        {"prompt": "loop tick", "author": "loop_wakeup"},
+        {"prompt": "scheduled check", "author": "schedule_wakeup"},
+        {"prompt": "poll complete", "author": "poll_event"},
+        {"prompt": "background system notice", "author": "system"},
+        {"prompt": "<task-notification>done</task-notification>", "author": "system"},
+        {
+            "prompt": '<channel source="plugin:ida-telegram:telegram"><agent-message to="ida">hi</agent-message></channel>',
+            "author": "system",
+        },
+        {
+            "prompt": '<channel source="plugin:discord:discord"><task-notification><result>done</result></task-notification></channel>',
+            "author": "system",
+        },
+        {
+            "prompt": '<channel source="telegram">Another Claude session sent a message:\nhi</channel>',
+        },
+        {
+            "prompt": '<channel source="telegram">Context</channel>\n<cross-session-message from="a">hi</cross-session-message>',
+        },
+        {"prompt": '<channel source="telegram">   </channel>'},
+        {"prompt": '<channel source="telegram">/pull work-1</channel>'},
+    ],
+)
+def test_search_the_pkb_skips_automated_wakeups_and_nested_wrappers(raw_payload: dict):
+    """Automated wakeups, non-channel system prompts, and wrappers nested inside `<channel>` make zero PKB calls."""
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        session_id="s-skip-1",
+        raw=raw_payload,
+        hooks_dir=PKB_HOOKS,
+        agent_type="ida:ida",
+    )
+    with patch.object(handlers, "_run_pkb_search", return_value="1. note") as mock_search:
+        res = handlers.search_the_pkb(ctx)
+    assert res is None
+    mock_search.assert_not_called()
+
+
+def test_agy_strips_context_summary_from_user_input(tmp_path: Path):
+    """On agy USER_INPUT, <USER_REQUEST> or post-<CONTEXT_SUMMARY> text is extracted cleanly."""
+    with_tags_dir = tmp_path / "with_tags"
+    with_tags_dir.mkdir()
+    with_tags = _agy_transcript(
+        with_tags_dir,
+        {
+            "step_index": 0,
+            "type": "USER_INPUT",
+            "content": "<CONTEXT_SUMMARY>\nold summary\n</CONTEXT_SUMMARY>\n<USER_REQUEST>\nnew question\n</USER_REQUEST>",
+        },
+    )
+    with patch.object(handlers, "_run_pkb_search", return_value="1. hit") as mock_search:
+        res = handlers.search_the_pkb(_agy_ctx(with_tags))
+    mock_search.assert_called_once_with("new question", cwd="/workspace", session_id="c1")
+    assert res is not None
+
+    no_tags_dir = tmp_path / "no_tags"
+    no_tags_dir.mkdir()
+    without_tags = _agy_transcript(
+        no_tags_dir,
+        {
+            "step_index": 0,
+            "type": "USER_INPUT",
+            "content": "<CONTEXT_SUMMARY>\nold summary\n</CONTEXT_SUMMARY>\nplain resumed prompt",
+        },
+    )
+    with patch.object(handlers, "_run_pkb_search", return_value="1. hit") as mock_search2:
+        res2 = handlers.search_the_pkb(_agy_ctx(without_tags))
+    mock_search2.assert_called_once_with("plain resumed prompt", cwd="/workspace", session_id="c1")
+    assert res2 is not None
+
+
+@pytest.mark.integration
+def test_dispatch_agy_preinvocation_skips_unnamed_session(staged_hooks: Path, tmp_path: Path):
+    """End-to-end dispatch on agy skips hydration when agent identity is unnamed."""
+    transcript = _agy_transcript(
+        tmp_path, {"step_index": 0, "type": "USER_INPUT", "content": AGY_USER_INPUT}
+    )
+    payload = {
+        "artifactDirectoryPath": str(tmp_path),
+        "conversationId": "c-unnamed",
+        "initialNumSteps": 1,
+        "invocationNum": 0,
+        "modelName": "m",
+        "transcriptPath": str(transcript),
+        "workspacePaths": ["/workspace"],
+    }
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if not k.startswith(
+            ("PKB_MCP", "WORKER_MCP", "DISPATCHER_MCP", "CLAUDE_AGENT", "AGY_AGENT", "AOPS_AGENT")
+        )
+    }
+    env["PKB_MCP_URL"] = "http://127.0.0.1:9"
+    proc = subprocess.run(
+        [sys.executable, str(staged_hooks / "dispatch.py"), "agy", "PreInvocation"],
+        input=json.dumps(payload),
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+    )
+    assert proc.returncode == 0
+    if proc.stdout.strip():
+        out = json.loads(proc.stdout)
+        for step in out.get("injectSteps", []):
+            assert "search_the_pkb" not in step.get("ephemeralMessage", "")
