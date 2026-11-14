@@ -568,6 +568,14 @@ def _get_evaluator_otel_trace():
         return None
 
 
+def _handlers_for_client(handlers: list[Handler], client: str) -> list[Handler]:
+    return [
+        h
+        for h in handlers
+        if (scope := getattr(h, "only_on_clients", None)) is None or client in scope
+    ]
+
+
 def _instrument_otel_events(ctx: HookContext) -> None:
     otel_mod: Any = _get_evaluator_otel_trace()
     if otel_mod is None:
@@ -626,29 +634,27 @@ def main(argv: list[str]) -> int:
     if is_cowork():
         return 0
 
+    hooks_dir = Path(__file__).resolve().parent
+    if str(hooks_dir) not in sys.path:
+        sys.path.insert(0, str(hooks_dir))
+
     event = to_canonical(client, wire_event)
     if event is None:
-        return 0
+        # Plugins with a wildcard ("*") handler (e.g. aops-debug) observe client
+        # wire events even when no canonical hook name exists for them.
+        if not _handlers_for_client(_load_handlers("*", hooks_dir), client):
+            return 0
+        event = wire_event
 
     # Do not fire if we have already prevented a stop event this turn
     if is_continuation(event, raw):
         return 0
 
-    hooks_dir = Path(__file__).resolve().parent
-    if str(hooks_dir) not in sys.path:
-        sys.path.insert(0, str(hooks_dir))
-
     ctx = normalize(client, event, raw, hooks_dir)
     _log_fire(ctx)
     _instrument_otel_events(ctx)
 
-    handlers = _load_handlers(event, hooks_dir)
-
-    kept_handlers = []
-    for h in handlers:
-        scope = getattr(h, "only_on_clients", None)
-        if scope is None or client in scope:
-            kept_handlers.append(h)
+    kept_handlers = _handlers_for_client(_load_handlers(event, hooks_dir), client)
 
     results = [_run_handler(h, ctx) for h in kept_handlers]
     result = _merge(results)
