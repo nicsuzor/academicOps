@@ -40,7 +40,7 @@ Maintains truth over the task graph: advances open high-value-prompt tracking ta
 7. **Check returned work on the papers**: Verify the account of returned work on the record before deciding what reaches the user:
    - _Chain of evidence_: verify `pr_url`, `completion_evidence`, or named artifact exists.
    - _Soundness_: verify cited evidence actually answers acceptance criteria. If insufficient, return to `ready`/`queued` or `partial` with an agent review task (outcome 1 or 2); never escalate unproven claims to the user.
-   - _Liveness_: verify question is still live; discard moot items settled by events.
+   - _Liveness_: verify question is still live; discard moot items settled by events, and transition to `done` any task held open solely to prove an act of the user's (such as pulling, installing, or deploying a release) once the release has shipped and the user is informed.
 8. **Reset stale claims**: Stale `in_progress` tasks with no live claim (>24h unmodified without active session or worker) reset to `queued`. Never move a claimed task backwards while an active worker holds it.
 9. **Demote affected tasks**: Set unblocked dependents, siblings of landed work, rot (>14d in `ready`/`queued`), and invalidated assumption nodes to `status: inbox` with explanatory annotations.
 10. **Cancel on world-facts**: Cancel only on affirmative evidence recorded in the node body:

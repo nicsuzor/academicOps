@@ -23,7 +23,7 @@ Work is NOT complete until `git push` succeeds, a PR is filed, and reflection is
 
 1. **Complete all file changes.**
 2. **Run quality gates** -- run verification and QA checks by independent agents proportionate to stakes.
-3. **Update task status** (workers release `done` when complete, `partial` when own acceptance items remain, `failed` on check failure; never release as `review`) and release the claim. Workers never create or name follow-up tasks.
+3. **Update task status** (workers release `done` when complete, `partial` when own acceptance items remain, `failed` on check failure; never release as `review`, and never hold a task in `partial` awaiting user installation or deployment once shipped and reported) and release the claim. Workers never create or name follow-up tasks.
 4. **Codify learnings** -- file an issue or memory entry if something durable was learned (`/remember`). Knowledge notes are CURRENT STATE ONLY: record current truths, never historical provenance lists (`sources:` arrays) or chronological retrospectives.
 5. **Commit, push, file PR** -- the mechanical crossing:
    - Stage specific files (never blanket `add -A`).

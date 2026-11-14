@@ -71,14 +71,17 @@ event: it must appear in `CANONICAL_EVENTS` in `lib/hooks/dispatch.py`, or the
 dispatcher drops it, and the per-client map in the same file decides whether it
 reaches agy at all.
 
-**5. Build and install locally.**
-`make build install-dev`.
+**5. Build the deliverable.**
+Run `make build` and confirm the change is present in the built distribution (`dist/`).
 
-**6. Restart the session and test together.**
-**State what you expect to observe before the restart**, so the test is capable of
-failing. Registration is not evidence; a hook is done when its effect has been
-seen live. Where the feature is an injection, confirm _which context it lands in_
-rather than that it fired at all.
+**6. Prove it live in an isolated test session.**
+**State what you expect to observe before launching**, so the test is capable of
+failing. Registration is not evidence; a hook or agent change is done when its
+effect has been seen live in a real container or test session (`debug` / `field-test`).
+Where the feature is an injection, confirm _which context it lands in_ rather
+than that it fired at all. Agent responsibility ends once the change is proved
+live, shipped, and reported to the user — never halt or hold the pass open
+waiting to prove the user installed the build or restarted their own host session.
 
 **7. Close the pass.**
 Update the map's provenance line to the commit you grounded against, update the
@@ -115,11 +118,11 @@ The map holds the design, and nothing else.
 
 ## Gates
 
-- **Steps 2, 3 and 6 are human decision points.** The pass halts at each. None of
-  them is satisfiable by the agent's own judgment.
+- **Steps 2 and 3 are human decision points.** The pass halts at each. Neither
+  is satisfiable by the agent's own judgment.
 - **Step 6 carries the acceptance evidence.** Criteria are locked at step 2 (what
   will this feature do, and how will we see it) and confirmed at step 6 against
-  what was observed — not against a reinterpretation of what got built.
+  what was observed live in the isolated test session — not against a reinterpretation of what got built, and without waiting for the user to install or restart their host session.
 
 ## Editing the Excalidraw file
 
