@@ -137,3 +137,228 @@ def test_evaluator_otel_trace_attributes_resolves_root_session_id(tmp_path, monk
     attrs_slash = eot._attributes({"session_id": f"{root_uuid}/task-42", "client": "claude"})
     assert attrs_slash["session.id"] == root_uuid
     assert attrs_slash["agent.id"] == "task-42"
+
+
+def _write_agy_transcripts(transcript_dir: Path, *entries: dict) -> Path:
+    transcript_dir.mkdir(parents=True, exist_ok=True)
+    compact = transcript_dir / "transcript.jsonl"
+    full = transcript_dir / "transcript_full.jsonl"
+    body = "".join(__import__("json").dumps(e) + "\n" for e in entries)
+    compact.write_text(body, encoding="utf-8")
+    full.write_text(body, encoding="utf-8")
+    return compact
+
+
+def _trap_transcript_reads(monkeypatch, transcript_dir: Path) -> None:
+    import builtins
+
+    real_open = builtins.open
+    real_path_open = Path.open
+    dir_prefix = str(transcript_dir)
+
+    def guarded_open(file, *args, **kwargs):
+        if hasattr(file, "__fspath__") or isinstance(file, str):
+            if str(Path(file)).startswith(dir_prefix):
+                raise AssertionError(f"Transcript file opened unexpectedly: {file}")
+        return real_open(file, *args, **kwargs)
+
+    def guarded_path_open(self, *args, **kwargs):
+        if str(self).startswith(dir_prefix):
+            raise AssertionError(f"Transcript file opened unexpectedly via Path.open: {self}")
+        return real_path_open(self, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "open", guarded_open)
+    monkeypatch.setattr(Path, "open", guarded_path_open)
+
+
+def test_agy_system_message_invocation_gt_0_exits_before_reading_transcripts(tmp_path, monkeypatch):
+    """invocationNum >= 1 on agy SYSTEM_MESSAGE returns None/False without reading transcripts."""
+    import handlers
+
+    monkeypatch.setenv("AOPS_PREMISE_GATE_DIR", str(tmp_path / "gate"))
+    transcript_dir = tmp_path / "agy_conv"
+    peer_sys_msg = (
+        "[Message] timestamp=2026-11-14T00:00:00Z sender=peer-conv-uuid "
+        "priority=MESSAGE_PRIORITY_HIGH content=### Check Report\n\nAll checks done."
+    )
+    transcript = _write_agy_transcripts(
+        transcript_dir,
+        {"step_index": 0, "type": "USER_INPUT", "content": "<USER_REQUEST>start</USER_REQUEST>"},
+        {"step_index": 1, "type": "SYSTEM_MESSAGE", "content": peer_sys_msg},
+    )
+
+    session_id = "sess-agy-sys-guard"
+    ctx_0 = HookContext(
+        client="agy",
+        event="UserPromptSubmit",
+        session_id=session_id,
+        hooks_dir=_HOOKS_DIR,
+        transcript_path=str(transcript),
+        raw={"invocationNum": 0, "transcriptPath": str(transcript), "conversationId": session_id},
+    )
+    assert hg.should_arm_hearsay(ctx_0) is True
+    assert handlers.rule_against_hearsay(ctx_0) is not None
+    assert hg.hearsay_arm(ctx_0) is not None
+    assert hg.is_armed(session_id) is True
+
+    # Disarm as verdict.py does, then verify subsequent model steps do not read transcripts or re-arm.
+    claim_id = hg.get_state(session_id)["claim_id"]
+    hg.disarm(session_id, claim_id=claim_id, verdict="PASS", reason="checked")
+    assert hg.is_armed(session_id) is False
+
+    _trap_transcript_reads(monkeypatch, transcript_dir)
+
+    for inv in (1, 2):
+        ctx_n = HookContext(
+            client="agy",
+            event="UserPromptSubmit",
+            session_id=session_id,
+            hooks_dir=_HOOKS_DIR,
+            transcript_path=str(transcript),
+            raw={
+                "invocationNum": inv,
+                "transcriptPath": str(transcript),
+                "conversationId": session_id,
+            },
+        )
+        assert hg._agy_turn_start(ctx_n) is None
+        assert hg.prompt_text(ctx_n) == ""
+        assert hg.is_peer_report(ctx_n) is False
+        assert hg.extract_judged_content(ctx_n) is None
+        assert hg.should_arm_hearsay(ctx_n) is False
+        assert handlers.rule_against_hearsay(ctx_n) is None
+        assert hg.hearsay_arm(ctx_n) is None
+        assert hg.is_armed(session_id) is False
+
+
+def test_agy_user_input_and_plan_review_invocation_gt_0_do_not_read_transcripts(
+    tmp_path, monkeypatch
+):
+    """invocationNum >= 1 skips transcript parsing on both USER_INPUT and non-peer SYSTEM_MESSAGE turns."""
+    import handlers
+
+    monkeypatch.setenv("AOPS_PREMISE_GATE_DIR", str(tmp_path / "gate"))
+
+    # 1. USER_INPUT carrying a peer envelope
+    user_dir = tmp_path / "user_conv"
+    user_transcript = _write_agy_transcripts(
+        user_dir,
+        {
+            "step_index": 0,
+            "type": "USER_INPUT",
+            "content": '<USER_REQUEST><cross-session-message from="peer">done</cross-session-message></USER_REQUEST>',
+        },
+    )
+    _trap_transcript_reads(monkeypatch, user_dir)
+    ctx_user_1 = HookContext(
+        client="agy",
+        event="UserPromptSubmit",
+        session_id="sess-agy-user-1",
+        hooks_dir=_HOOKS_DIR,
+        transcript_path=str(user_transcript),
+        raw={"invocationNum": 1, "transcriptPath": str(user_transcript)},
+    )
+    assert hg._agy_turn_start(ctx_user_1) is None
+    assert hg.should_arm_hearsay(ctx_user_1) is False
+    assert handlers.rule_against_hearsay(ctx_user_1) is None
+    assert hg.hearsay_arm(ctx_user_1) is None
+    assert hg.is_armed("sess-agy-user-1") is False
+
+    # 2. [plan review] / system wake SYSTEM_MESSAGE
+    wake_dir = tmp_path / "wake_conv"
+    wake_transcript = _write_agy_transcripts(
+        wake_dir,
+        {
+            "step_index": 0,
+            "type": "SYSTEM_MESSAGE",
+            "content": "[plan review] Review requested by harness.",
+        },
+    )
+    _trap_transcript_reads(monkeypatch, wake_dir)
+    ctx_wake_1 = HookContext(
+        client="agy",
+        event="UserPromptSubmit",
+        session_id="sess-agy-wake-1",
+        hooks_dir=_HOOKS_DIR,
+        transcript_path=str(wake_transcript),
+        raw={"invocationNum": 1, "transcriptPath": str(wake_transcript)},
+    )
+    assert hg._agy_turn_start(ctx_wake_1) is None
+    assert hg.hearsay_arm(ctx_wake_1) is None
+    assert handlers.rule_against_hearsay(ctx_wake_1) is None
+
+
+def test_dispatch_agy_preinvocation_system_message_arms_once_then_ignores_later_invocations(
+    tmp_path, monkeypatch
+):
+    """End-to-end dispatch.py agy PreInvocation arms on invocationNum=0 and stays disarmed at invocationNum=1."""
+    import json
+    import os
+    import subprocess
+
+    gate_dir = tmp_path / "gate"
+    ptr_dir = tmp_path / "ptr"
+    tracer_dir = tmp_path / "tracer"
+    transcript = _write_agy_transcripts(
+        tmp_path / "conv",
+        {
+            "step_index": 0,
+            "type": "SYSTEM_MESSAGE",
+            "content": (
+                "[Message] timestamp=2026-11-14T00:00:00Z sender=peer-uuid-1 "
+                "priority=MESSAGE_PRIORITY_HIGH content=### Subagent Report\n\nWork finished."
+            ),
+        },
+    )
+
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if not k.startswith(("OTEL_", "GENAI_", "BETA_TRACING_")) and k != "PKB_MCP_URL"
+    }
+    env.update(
+        {
+            "HOME": str(tmp_path),
+            "AOPS_PREMISE_GATE_DIR": str(gate_dir),
+            "AOPS_SESSION_POINTER_DIR": str(ptr_dir),
+            "AOPS_TRACER_STATE_DIR": str(tracer_dir),
+        }
+    )
+
+    session_id = "sess-dispatch-agy-sys"
+    monkeypatch.setenv("AOPS_PREMISE_GATE_DIR", str(gate_dir))
+
+    def run_preinvocation(inv_num: int) -> subprocess.CompletedProcess[str]:
+        payload = {
+            "conversationId": session_id,
+            "invocationNum": inv_num,
+            "transcriptPath": str(transcript),
+            "workspacePaths": [str(tmp_path)],
+        }
+        return subprocess.run(
+            [sys.executable, str(_HOOKS_DIR / "dispatch.py"), "agy", "PreInvocation"],
+            input=json.dumps(payload),
+            text=True,
+            capture_output=True,
+            timeout=15,
+            env=env,
+            cwd=str(tmp_path),
+        )
+
+    res0 = run_preinvocation(0)
+    assert res0.returncode == 0
+    out0 = json.loads(res0.stdout)
+    expected_hearsay, _ = dispatch.load_message_pair(_HOOKS_DIR, "hearsay")
+    assert any(
+        expected_hearsay in step.get("ephemeralMessage", "") for step in out0.get("injectSteps", [])
+    )
+    assert hg.is_armed(session_id) is True
+
+    claim_id = hg.get_state(session_id)["claim_id"]
+    hg.disarm(session_id, claim_id=claim_id, verdict="REVISE", reason="no block")
+    assert hg.is_armed(session_id) is False
+
+    res1 = run_preinvocation(1)
+    assert res1.returncode == 0
+    assert res1.stdout.strip() == ""
+    assert hg.is_armed(session_id) is False

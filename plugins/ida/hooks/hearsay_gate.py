@@ -388,14 +388,15 @@ def _read_all_agy_entries(ctx: HookContext) -> list[dict[str, Any]]:
 
 
 def _agy_turn_start(ctx: HookContext) -> dict[str, Any] | None:
+    inv = (ctx.raw or {}).get("invocationNum", 0)
+    if inv is not None and inv != 0:
+        return None
     entries = _read_all_agy_entries(ctx)
     if not entries:
         return None
     for entry in reversed(entries):
         entry_type = entry.get("type")
         if entry_type == "USER_INPUT":
-            if ctx.raw.get("invocationNum", 0) != 0:
-                return None
             return entry
         if entry_type == "SYSTEM_MESSAGE":
             content = str(entry.get("content") or "")
@@ -1168,6 +1169,24 @@ def _tracer_state_dir() -> Path:
     return Path.home() / ".claude" / "tracer"
 
 
+def _has_subagent_marker(text: str) -> bool:
+    return "<subagent_reminder>" in text or "invoked by a caller agent" in text
+
+
+def _initial_agy_turn_content(ctx: HookContext) -> str:
+    """Content of the first non-harness turn-start entry in an agy transcript."""
+    for entry in _read_all_agy_entries(ctx):
+        entry_type = entry.get("type")
+        if entry_type == "USER_INPUT":
+            return str(entry.get("content") or "")
+        if entry_type == "SYSTEM_MESSAGE":
+            content = str(entry.get("content") or "")
+            if _is_session_start_or_harness_injection(content):
+                continue
+            return content
+    return ""
+
+
 def _is_subagent_conversation(ctx: HookContext) -> bool:
     """True if ctx is an agy subagent conversation invoked by a caller agent."""
     raw = ctx.raw or {}
@@ -1192,8 +1211,17 @@ def _is_subagent_conversation(ctx: HookContext) -> bool:
                     return True
         except Exception:
             pass
+    if ctx.client == "agy" and ctx.event == "PreToolUse":
+        direct_prompt = raw.get("prompt")
+        if direct_prompt is None and hasattr(ctx, "prompt"):
+            direct_prompt = ctx.prompt
+        if isinstance(direct_prompt, dict):
+            direct_prompt = direct_prompt.get("text") or direct_prompt.get("content") or ""
+        if _has_subagent_marker(str(direct_prompt or "")):
+            return True
+        return _has_subagent_marker(_initial_agy_turn_content(ctx))
     prompt = prompt_text(ctx) or ""
-    if "<subagent_reminder>" in prompt or "invoked by a caller agent" in prompt:
+    if _has_subagent_marker(prompt):
         return True
     return False
 
