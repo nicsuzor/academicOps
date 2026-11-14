@@ -1,15 +1,14 @@
 ---
 name: reify
-description: Bind one node that is next to run to its executor and workflow -- hydrate, compose the workflow from templates, and write the task at `queued`. Use when a node is about to be dispatched and needs its task written or rewritten; the PKB custodian (Pauli) runs it. Exclude for expanding an objective into sub-objectives (use decompose) or starting workers on tasks already written (use dispatch).
+description: Bind a situated node or directive to its executor and composed workflow on a combined task body. Use inside container supervision (/supervise) or on explicit planning requests to resolve templates across project, PKB, and universal tiers. Exclude for expanding objectives into sub-objectives (use decompose) or starting workers on tasks already written (use dispatch).
 ---
 
-# /reify: compose the dispatchable task for a node that is next to run
+# /reify: Compose the Dispatchable Workflow for a Node or Directive
 
-**Object: one node, at dispatch time.** Reifying binds the node to an executor class and to the workflow templates current now; both change, so a task reified before it can run goes stale on the graph. Reify a node when `/dispatch` is about to take it or the user directs it to be written, and leave a node blocked on an external condition unreified until that clears. Given a parent, reify only the children ready to run. The PKB custodian (Pauli) runs this skill; callers send the node or objective and receive task IDs.
+**Object: one node or directive, at execution or planning time.** Reifying binds the unit of work to an executor class and to the workflow templates current now. Run this skill inside container supervision (`/supervise`) or on an explicit planning request (executed by `pauli` or lead executor). Given a parent container, reify only the children ready to run.
 
-The task is the whole message to the worker. Write it once, keep it short, and leave it on the graph for `/dispatch`. Questions and lookups answered in-turn need no task.
-
-Nothing is written to the graph until steps 0-2 pass: a task created early survives checks that later fail.
+The task is the whole message to the worker. Write it once, keep it short, and leave it on the graph. Questions and lookups answered in-turn need no task.
+Nothing is written to the graph until placement and composition pass.
 
 ## 0. Verify Placement (/q Precondition)
 
@@ -26,21 +25,27 @@ Call `/hydrate` on the objective, or on the task if given an ID. Proof of `/hydr
 - If `/hydrate` flags an unfinished task with the same objective, continue that task instead of creating a new one.
 - If it flags an unfinished prerequisite, wire a `needs` dependency.
 
-## 2. Compose workflows
+## 2. Compose Workflows
 
-Call `/workflow-library` to select the modular workflow templates (`type: template`, including `wf-*`) and skills that govern the requested work. Workflows come from workflow templates: templates define the obligations, stages, reviews, and criteria. Do not add restrictions, follow-up gates, or verification processes outside those defined by the composed workflow templates.
-
-- **Workflow templates**: Read each selected template and interpret its stages into concise, numbered imperative steps in `## Instructions`. Do not copy narrative rationale, explanatory prose, or background.
-- **Skills**: The worker invokes skills. Write `invoke /<skill-name>` as the step and leave its procedure where the skill is maintained.
-- **Agentic-first**: Where a task involves qualitative judgment, sampling, curation, classification, or recommendation, compose an agent workflow rather than specifying deterministic scripts or wrappers.
+- **Single-Skill Fast-Path**: When a task's sole required work is invoking a single skill (`invoke /<skill>`), that skill sets the workflow. Skip further template resolution and report the task ready as written.
+- **Three-Tier Template Resolution**: Enumerate composable workflow templates (`type: template`, including `wf-*`) dynamically in strict priority order:
+  1. _Project_: PKB templates with `project: "<project>"` (strip `<project>-` prefix to get the shadowing slug). Scoped to the task's project; foreign-project templates are ignored during composition.
+  2. _PKB_: Portable PKB templates with `project: null`.
+  3. _Universal_: Core templates in the sibling `workflow-library/workflows/*.md` directory (`../workflow-library/workflows/*.md` relative to this skill; enumerate and read via native file tools rather than shell commands).
+     Higher tiers shadow lower tiers completely; never merge text across tiers. Both PKB tiers resolve from the graph alone.
+- **Groundwork-First Route Decisions Invariant**: An agent given a task does the groundwork and makes the decision itself; it never files the task back to the user as their decision (`assignee: user`) unless the user explicitly requested to make that decision themselves. Research tasks investigating design or implementation trade-offs evaluate alternatives and choose the recommended route directly.
+- **Template Interpretation**: Read each selected template and translate its stages into concise, numbered imperative steps in `## Instructions`. Do not copy narrative rationale, explanatory prose, or background. Skills are invoked directly (`invoke /<skill-name>`). Where tasks involve qualitative judgment, curation, or evaluation, compose an agent workflow rather than specifying deterministic scripts or wrappers.
 
 Halt when composition comes up short: create nothing and report precisely what failed.
 
-## 3. Write each task
+## 3. Write Each Task
 
-Structure work as a single task by default. Cut into dedicated epics with child tasks or internal subtasks only when the composed workflow or execution boundaries require independent sessions, distinct review personas, or approval gates. Wire `needs` dependencies where one unit requires another's output. Top-level deliverable tasks wire `serves` to priced targets; subtasks never carry redundant `serves` edges (single injection invariant). Contextual references are plain markdown `[[wikilinks]]` under `## Pointers`. Write tasks with status `queued`.
-
-- **Closed-loop delivery for tracked user requests**: When reifying a tracked user request (`specs/agents/face-ida-triage-and-tracked-requests.md`), ensure delivery to the user: headless workers cannot hold user delivery obligations. For composite work with child tasks, create a dedicated terminal delivery task assigned to the user-facing agent (`assignee: ida`, dependent on worker subtasks) to deliver the result to the user. For an atomic task executed by a headless worker, create a paired delivery task assigned to the user-facing agent (`assignee: ida`, dependent on the worker task).
+- **No-Split Default (Combined Task Body)**: Structure work as a single repository-scoped task body by default (up to 300 words for composite workflows, `## Ask` aside). Keep execution planning, in-session specialist subagent reviews, implementation fan-out, and verification internal to the single supervised session.
+- **Strict Splitting Conditions**: Splitting into separate tasks is prohibited by default and permitted **only** when a workflow step explicitly insists on:
+  1. _Different repository_: Strictly one task per repository.
+  2. _Different time_: A distinct external wait or execution window.
+  3. _Different agent/session_: A workflow-mandated external agent or session, including closed-loop user-channel delivery dependent on container tasks via `needs`.
+- **Graph Topology & Edge Invariants**: Never pass `type: "epic"` to `pkb_create_task` (epics are organizational containers, not task types). Where splitting is explicitly required, wire execution gating via `needs: [<task_id>]`. Top-level deliverable tasks wire `serves` to priced targets or to existing epics that serve priced targets; subtasks never carry redundant `serves` edges (single injection invariant). Contextual references are plain markdown `[[wikilinks]]` under `## Pointers`. Write tasks with status `queued`.
 
 Fill the canonical task structure:
 
@@ -78,22 +83,20 @@ Fill the canonical task structure:
 - Composed from: [ One-line list of workflow templates and skills this task was composed from. ]
 ```
 
-### Requirements for writing tasks
+### Requirements for Writing Tasks
 
 - Filter incoming mechanism prescriptions and translate them into observable outcome criteria. Line numbers, line ranges, and narrow code slice prescriptions are strictly forbidden in `Goal`, `Acceptance`, and `Instructions`. Give the worker the end state and the bounds; leave the method to it.
-- Record the asker's own words once, in `## Ask`, with their ids, and never rewrite them: the task carries the ask as an immutable referent that the worker's argument answers and that checkers read to test the restatement for fidelity, completeness, and overreach. The no-verbatim rule below governs the rest of the body, not `## Ask`.
-- Restate the user's terse, fragmented words into clear, complete tasks and notes, judged by fidelity to their meaning and distinctions, not by wording. Keeping exact words in PKB outputs is not a goal. Fault a restatement only for lost, added, or distorted meaning. Link asks to prior context, recompose into a clear logical structure, and cite message ids.
-- State the Goal and each criterion over the whole class the request covers: "the user's messages", not a named person's or today's channels and formats. Instances the request names are cases to test, not the boundary of the work. When asked what broke a mechanism (such as authentication, a token, or a service), compose the debugging workflow and preserve the full failure question in Acceptance so the run examines why the mechanism or token stopped working across its lifecycle rather than narrowing to a single startup symptom.
-- Every heading is a prompt for you to fill, and there is no slot for restrictions or exclusions: say what has to be done, not what shouldn't.
-- Keep each task strictly concise: 50-150 words for atomic tasks, up to 300 words for multi-stage composite workflows, `## Ask` aside. Include only what the worker cannot find for itself.
+- Record the asker's own words once, in `## Ask`, with their ids, and never rewrite them: the task carries the ask as an immutable referent. Link asks to prior context, recompose into a clear logical structure, and cite message ids. Restate terse, fragmented words into clear, complete criteria, judged by fidelity to meaning and distinctions.
+- State the Goal and each criterion over the whole class the request covers. When asked what broke a mechanism, compose the debugging workflow and preserve the full failure question in Acceptance across its lifecycle rather than narrowing to a single symptom.
+- Every heading is a prompt to fill without restriction slots: say what has to be done, not what shouldn't.
+- Keep each task strictly concise: 50–150 words for atomic tasks, up to 300 words for multi-stage composite workflows, `## Ask` aside. Include only what the worker cannot find for itself.
 - Interpret workflow template stages into concise numbered imperative steps; never paste template narrative, rationale, or explanatory background.
-- Assume the worker could run anywhere; never reference local paths, tools, or conventions.
-- Leave out methods, command scripts, tool names, runtime hints, notes on the worker's limits, summaries of linked notes (point to them instead), provenance, changelogs, session narratives, counts, SHAs and history.
-- Change an existing task only for a defect you can point to in its text; otherwise leave it as written. Never rewrite its `## Ask` or renumber its criteria: a new criterion takes the next number, and no number is reused.
-- A skill may be a step, even the only step: write `invoke /<skill-name>` and leave its implementation to the skill. A workflow template is never a step; its steps are.
+- Assume the worker could run anywhere; never reference local paths, tools, or conventions. Leave out methods, command scripts, tool names, runtime hints, limits, summaries of linked notes, provenance, changelogs, session narratives, counts, SHAs, and history.
+- Change an existing task only for a defect in its text; never rewrite its `## Ask` or renumber its criteria.
+- A skill may be a step (`invoke /<skill-name>`). A workflow template is never a step; its steps are.
 - Close every task with a one-line appendix section listing the workflow templates and skills it was composed from: `## Appendix: Sources` followed by `- Composed from: <workflows and skills>.`
-- Do not create standalone decision tasks or file questions as tasks. An agent given a task does the groundwork and makes the decision itself; it never files the task back to the user as their decision (`assignee: user`) unless the user explicitly directed to decide it themselves (tg 1013). Research tasks on open design questions evaluate alternatives and select the recommended implementation route directly. Competing candidate options stay inside the body of the scoping task or ADR until chosen; when chosen, only the selected option is reified into an actionable task under `parent: <scoping_task_id>`. Diagnostic probes (`classification: probe`) are active tasks wired into scoping or downstream tasks via standard execution prerequisite `needs: [<probe_task_id>]`. Pointers point to durable knowledge via `[[wikilinks]]` in `## Pointers`.
-- Worker state-only invariant: workers executing a task may only mutate that task's own state (checking off criteria, recording verifiable evidence, transitioning status); workers never inspect or modify edges across other tasks or mint follow-up verification tasks.
+- Do not create standalone decision tasks or file questions as tasks. Groundwork-first route decisions invariant applies. Competing candidate options stay inside the body of the scoping task or ADR until chosen. Model unknowns as empirical probes (`classification: probe`) wired via `needs: [<probe_task_id>]`.
+- Worker state-only vs container supervision boundary: plain leaf workers (`/pull`) mutate only their claimed task's own state and never mint follow-up tasks; container coordinators (`/supervise`) enrich their claimed task via `/reify` and create follow-up tasks solely under the strict out-of-session splitting conditions above.
 - Reify plans, roadmaps, and designs as tasks on the PKB task graph.
 
 ## 4. Report

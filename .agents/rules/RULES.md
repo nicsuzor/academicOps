@@ -83,13 +83,16 @@ Task titles and filenames must be brief, descriptive, and unambiguous:
 
 Task graph edges follow the Three-Purpose Edge Taxonomy per [`specs/decisions/0002-distinguish-pkb-graph-edge-purposes-and-enforce-parsimony.md`](../../specs/decisions/0002-distinguish-pkb-graph-edge-purposes-and-enforce-parsimony.md):
 
-- **Single injection invariant**: Top-level deliverable tasks wire `serves` to priced targets; subtasks never carry redundant `serves` edges. Auxiliary tasks that directly reduce effort or raise success probability wire `supports` (forbidden for tracking tasks).
+- **Single injection invariant**: Top-level deliverable tasks wire `serves` weight-flow links either directly to priced targets or to existing epics that `serves` priced targets, avoiding duplicate links to the same target; subtasks never carry redundant `serves` edges. Auxiliary tasks that directly reduce effort or raise success probability wire `supports` (forbidden for tracking tasks).
 - **Prerequisites use `needs`**: Upward execution gating is declared exclusively via `needs: [<task_id>]`.
 - **Contextual references use `## Pointers`**: Soft references, cited documentation, and related artifacts live exclusively as markdown `[[wikilinks]]` in `## Pointers`. Duplicate frontmatter edges for body citations are prohibited.
 
 ## Worker State-Only Invariant
 
-A worker executing a task may only mutate that task's own state (checking off acceptance criteria, recording verifiable evidence, transitioning status). Workers never inspect or modify edges across other tasks, compute reverse graph dependencies, or mint follow-up verification tasks; unblocking, sequencing, and parent rollup belong exclusively to the graph engine, dispatcher, and background truth maintenance (`wf-reconcile`).
+Execution environments distinguish two worker modes:
+
+- **Plain leaf workers (`/pull`)**: A plain leaf worker executing a task operates strictly state-only: it may only mutate that task's own state (checking off acceptance criteria, recording verifiable evidence under `## Report`, transitioning status). Leaf workers never reify workflows, create child tasks, inspect or modify edges across other tasks, compute reverse graph dependencies, or mint follow-up verification tasks; unblocking, sequencing, and parent rollup belong exclusively to the graph engine, dispatcher, and background truth maintenance (`wf-reconcile`).
+- **Container coordinators (`/supervise`)**: A container coordinator claimed on a repository-scoped epic task enriches its claimed task by assembling workflows via `/reify` in-session, coordinates subagent fan-out and reviews with incremental `git push` checkpoints, and creates/wires repository-scoped follow-up tasks on the graph via `/q` solely when work explicitly cannot be completed in-session (different repository, different time, or workflow-mandated separate external agent/session).
 
 ## Recurring Jobs: Change-Only and Single-Flight
 
@@ -113,7 +116,7 @@ When tasks execute under a parent task marked `bundle_pr: true` or under an acti
 
 ## Decisions Emerge from Graph Relationships, Not Standalone Tasks
 
-Agents must never create un-actionable "decision" tasks or file conversational questions as backlog tickets. An agent given a task does the groundwork and makes the decision itself; it never files the task back to the user as their decision (`assignee: user`) unless the user explicitly requested to make that decision themselves (tg 1013). Where research investigates an open design question or architectural alternatives, the agent evaluates the options and chooses the recommended route directly to unblock downstream implementation tasks.
+Agents must never create un-actionable "decision" tasks or file conversational questions as backlog tickets. An agent given a task does the groundwork and makes the decision itself; it never files the task back to the user as their decision (`assignee: user`) unless the user explicitly requested to make that decision themselves. Where research investigates an open design question or architectural alternatives, the agent evaluates the options and chooses the recommended route directly to unblock downstream implementation tasks.
 
 - **Candidate Options Remain in Task Bodies:** Competing candidate options stay inside the body of the scoping task or ADR until chosen. A task that has options to choose between is created as a single task with the candidate choices and evaluation criteria inside the task body. When a choice is made, only the selected option is reified into an actionable task under `parent: <scoping_task_id>`.
 - **Model unknowns as empirical probes valued via `needs`:** Where a decision depends on missing runtime benchmarks, data, or empirical findings, mint an empirical probe task (`classification: probe`) wired directly into the waiting task via standard execution prerequisite `needs: [<probe_task_id>]`. Probes receive worth directly through prerequisite backward induction via `needs`.

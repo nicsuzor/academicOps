@@ -14,6 +14,7 @@ export interface OutboundReplyParams {
   reply_to?: number;
   voice?: boolean;
   detail?: string;
+  details?: string;
   buttons?: any;
   button_layout?: number[] | number;
   buttonLayout?: number[] | number;
@@ -32,6 +33,7 @@ export interface OutboundReplyParams {
 
 export interface OutboundReplyResult {
   success: boolean;
+  error?: string;
   message_id?: number;
   messageId?: number;
   voice_message_id?: number;
@@ -39,6 +41,7 @@ export interface OutboundReplyResult {
   voiceSent?: boolean;
   voiceError?: string;
   detailsId?: string;
+  details_id?: string;
   preview?: string;
 }
 
@@ -64,6 +67,10 @@ export interface QuestionSpec {
   allowOther?: boolean;
   turn_id?: string;
   turnId?: string;
+  message_thread_id?: number;
+  messageThreadId?: number;
+  thread_id?: number;
+  threadId?: number;
   mini_app_only?: boolean;
   miniapp_only?: boolean;
   miniAppOnly?: boolean;
@@ -71,6 +78,8 @@ export interface QuestionSpec {
   context?: string;
   detail?: string;
   details?: string;
+  detailsId?: string;
+  details_id?: string;
   recommendation?: string;
 }
 
@@ -79,6 +88,12 @@ export interface OutboundAskUserParams {
   turnId?: string;
   questions: QuestionSpec[];
   chat_id?: number;
+  message_thread_id?: number;
+  messageThreadId?: number;
+  thread_id?: number;
+  threadId?: number;
+  detail?: string;
+  details?: string;
   mini_app_only?: boolean;
   miniapp_only?: boolean;
   miniAppOnly?: boolean;
@@ -111,6 +126,7 @@ export interface ChannelCoreOptions {
   bot: TelegramBotClient | null;
   permRelay: PermissionRelay;
   turnManager?: TurnManager;
+  emitChannelNotification?: (content: string, meta: Record<string, unknown>) => void;
 }
 
 export class SharedTelegramChannelCore {
@@ -120,6 +136,7 @@ export class SharedTelegramChannelCore {
   public bot: TelegramBotClient | null;
   public permRelay: PermissionRelay;
   public turnManager?: TurnManager;
+  public emitChannelNotification?: (content: string, meta: Record<string, unknown>) => void;
 
   constructor(options: ChannelCoreOptions) {
     this.config = options.config;
@@ -128,6 +145,7 @@ export class SharedTelegramChannelCore {
     this.bot = options.bot;
     this.permRelay = options.permRelay;
     this.turnManager = options.turnManager;
+    this.emitChannelNotification = options.emitChannelNotification;
   }
 
   public getDefaultChatId(): number {
@@ -142,7 +160,7 @@ export class SharedTelegramChannelCore {
    */
   public async reply(params: OutboundReplyParams): Promise<OutboundReplyResult> {
     const text = params.text || "";
-    const detail = params.detail;
+    const detail = params.detail ?? params.details;
     const chatId = params.chat_id || this.getDefaultChatId();
     const replyTo = params.reply_to;
 
@@ -221,6 +239,7 @@ export class SharedTelegramChannelCore {
       };
       if (detailsId !== undefined) {
         out.detailsId = detailsId;
+        out.details_id = detailsId;
       }
       if (sendRes?.voiceSent !== undefined) {
         out.voiceSent = sendRes.voiceSent;
@@ -239,6 +258,7 @@ export class SharedTelegramChannelCore {
       success: true,
       preview: formatted.plainText,
       detailsId,
+      ...(detailsId !== undefined ? { details_id: detailsId } : {}),
       message_id: 0,
       messageId: 0,
     };
@@ -279,6 +299,7 @@ export class SharedTelegramChannelCore {
       params.mini_app_only || params.miniapp_only || params.miniAppOnly || params.chat === false
     );
     const topThreadId = (params.message_thread_id ?? params.messageThreadId ?? params.thread_id ?? params.threadId) as number | undefined;
+    const topDetail = params.detail ?? params.details;
 
     if (questions.length === 0) {
       throw new Error("No questions provided");
@@ -292,6 +313,11 @@ export class SharedTelegramChannelCore {
         topMiniAppOnly || q.mini_app_only || q.miniapp_only || q.miniAppOnly || q.chat === false
       );
       const effectiveThreadId = (q.message_thread_id ?? q.messageThreadId ?? q.thread_id ?? q.threadId ?? topThreadId) ?? this.bot?.getLastThreadId(defaultChatId);
+      const detailText = q.detail ?? q.details ?? topDetail;
+      let detailsId = q.detailsId ?? q.details_id;
+      if (!detailsId && detailText) {
+        detailsId = this.store.storeDetails(detailText);
+      }
 
       const result = await this.broker.askUser({
         question: q.question,
@@ -303,7 +329,8 @@ export class SharedTelegramChannelCore {
         chatId: defaultChatId,
         mini_app_only: isMiniAppOnly,
         context: q.context,
-        detail: q.detail || q.details,
+        detail: detailText,
+        detailsId,
         recommendation: q.recommendation,
         messageThreadId: effectiveThreadId,
       });
@@ -312,12 +339,20 @@ export class SharedTelegramChannelCore {
       this.store.recordTurn("out", q.header ? `${q.header}: ${q.question}` : q.question);
 
       if (this.bot && !isMiniAppOnly) {
-        const card = this.broker.renderQuestionCard(result.questionId, this.config.miniAppUrl);
+        const card = this.broker.renderQuestionCard(result.questionId, this.config.miniAppUrl, this.config.instance);
         if (card && defaultChatId) {
           const sendRes = await this.bot.sendQuestionCard(defaultChatId, result.questionId, card, effectiveThreadId);
           if (!sendRes?.ok || !sendRes?.result?.message_id) {
             const errorMsg = sendRes?.error || sendRes?.description || "Failed to deliver question card";
             this.broker.markDeliveryFailed(result.questionId, errorMsg);
+            if (this.emitChannelNotification) {
+              this.emitChannelNotification(`Question delivery failed: ${errorMsg}`, {
+                event: "question_delivery_failed",
+                question_id: result.questionId,
+                error: errorMsg,
+                turn_id: q.turn_id || q.turnId || topTurnId,
+              });
+            }
             return {
               success: false,
               error: errorMsg,
@@ -859,11 +894,530 @@ export class SharedTelegramChannelCore {
     };
   }
 
+  private extractExplicitThreadId(args: Record<string, unknown>): number | undefined {
+    const raw = args.message_thread_id ?? args.messageThreadId ?? args.thread_id ?? args.threadId;
+    return typeof raw === "number" ? raw : undefined;
+  }
+
+  private extractInlineKeyboard(args: Record<string, unknown>): Array<Array<Record<string, unknown>>> {
+    if (!args.buttons) return [];
+    return buildInlineKeyboardRows(
+      args.buttons as ReplyButtonsInput | undefined,
+      (args.button_layout ?? args.buttonLayout) as number[] | number | undefined,
+      (args.buttons_per_row ?? args.buttonsPerRow) as number | undefined
+    );
+  }
+
+  private async dispatchSingleMedia(
+    method: "sendPhoto" | "sendDocument" | "sendVideo" | "sendAnimation" | "sendAudio" | "sendVideoNote",
+    mediaField: "photo" | "document" | "video" | "animation" | "audio" | "video_note",
+    args: Record<string, unknown>,
+    extraKeys: string[] = []
+  ): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const mediaVal = args[mediaField];
+    if (typeof mediaVal !== "string" || !mediaVal.trim()) {
+      return { success: false, error: `Missing required ${mediaField} parameter` };
+    }
+    const chatId = (args.chat_id as number) || this.getDefaultChatId();
+    const extraFields: Record<string, unknown> = {};
+    for (const key of extraKeys) {
+      if (args[key] !== undefined) {
+        extraFields[key] = args[key];
+      }
+    }
+    const res = await this.bot.sendSingleMedia({
+      method,
+      mediaField,
+      media: mediaVal.trim(),
+      chatId,
+      caption: typeof args.caption === "string" ? args.caption : undefined,
+      messageThreadId: this.extractExplicitThreadId(args),
+      replyTo: typeof args.reply_to === "number" ? args.reply_to : undefined,
+      disableNotification: typeof args.disable_notification === "boolean" ? args.disable_notification : undefined,
+      extraFields,
+      inlineKeyboard: this.extractInlineKeyboard(args),
+    });
+    if (!res.ok) {
+      return { success: false, error: res.description || `Failed to execute ${method}` };
+    }
+    return {
+      success: true,
+      message_id: res.result?.message_id,
+      ...(res.effectiveThreadId !== undefined ? { message_thread_id: res.effectiveThreadId } : {}),
+    };
+  }
+
+  public async sendPhoto(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.dispatchSingleMedia("sendPhoto", "photo", args, ["has_spoiler"]);
+  }
+
+  public async sendDocument(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.dispatchSingleMedia("sendDocument", "document", args, ["disable_content_type_detection"]);
+  }
+
+  public async sendVideo(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.dispatchSingleMedia("sendVideo", "video", args, [
+      "duration",
+      "width",
+      "height",
+      "has_spoiler",
+      "supports_streaming",
+    ]);
+  }
+
+  public async sendAnimation(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.dispatchSingleMedia("sendAnimation", "animation", args, [
+      "duration",
+      "width",
+      "height",
+      "has_spoiler",
+    ]);
+  }
+
+  public async sendAudio(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.dispatchSingleMedia("sendAudio", "audio", args, ["duration", "performer", "title"]);
+  }
+
+  public async sendVideoNote(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.dispatchSingleMedia("sendVideoNote", "video_note", args, ["duration", "length"]);
+  }
+
+  public async sendMediaGroup(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    if (!Array.isArray(args.media) || args.media.length < 2 || args.media.length > 10) {
+      return { success: false, error: "send_media_group requires between 2 and 10 media items" };
+    }
+    const allowedTypes = new Set(["photo", "video", "document", "animation", "audio"]);
+    const normalizedItems: Array<{
+      type: "photo" | "video" | "document" | "animation" | "audio";
+      media: string;
+      caption?: string;
+      has_spoiler?: boolean;
+    }> = [];
+    for (const item of args.media) {
+      if (!item || typeof item !== "object") {
+        return { success: false, error: "Each media item must be an object with type and media" };
+      }
+      const rec = item as Record<string, unknown>;
+      const type = String(rec.type || "");
+      const media = typeof rec.media === "string" ? rec.media.trim() : "";
+      if (!allowedTypes.has(type) || !media) {
+        return {
+          success: false,
+          error: "Each media item requires a valid type (photo, video, document, animation, audio) and non-empty media",
+        };
+      }
+      normalizedItems.push({
+        type: type as "photo" | "video" | "document" | "animation" | "audio",
+        media,
+        ...(typeof rec.caption === "string" ? { caption: rec.caption } : {}),
+        ...(typeof rec.has_spoiler === "boolean" ? { has_spoiler: rec.has_spoiler } : {}),
+      });
+    }
+
+    const chatId = (args.chat_id as number) || this.getDefaultChatId();
+    const res = await this.bot.sendMediaGroup({
+      chatId,
+      media: normalizedItems,
+      messageThreadId: this.extractExplicitThreadId(args),
+      replyTo: typeof args.reply_to === "number" ? args.reply_to : undefined,
+      disableNotification: typeof args.disable_notification === "boolean" ? args.disable_notification : undefined,
+    });
+    if (!res.ok) {
+      return { success: false, error: res.description || "Failed to send media group" };
+    }
+    const messageIds = Array.isArray(res.result) ? res.result.map((m: any) => m?.message_id).filter(Boolean) : [];
+    return {
+      success: true,
+      message_ids: messageIds,
+      ...(res.effectiveThreadId !== undefined ? { message_thread_id: res.effectiveThreadId } : {}),
+    };
+  }
+
+  public async sendLocation(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const latitude = args.latitude as number;
+    const longitude = args.longitude as number;
+    if (
+      typeof latitude !== "number" ||
+      !Number.isFinite(latitude) ||
+      latitude < -90 ||
+      latitude > 90 ||
+      typeof longitude !== "number" ||
+      !Number.isFinite(longitude) ||
+      longitude < -180 ||
+      longitude > 180
+    ) {
+      return {
+        success: false,
+        error: "send_location requires valid numeric latitude (-90..90) and longitude (-180..180)",
+      };
+    }
+    const fields: Record<string, unknown> = { latitude, longitude };
+    for (const key of ["horizontal_accuracy", "live_period", "heading", "proximity_alert_radius"]) {
+      if (args[key] !== undefined) {
+        fields[key] = args[key];
+      }
+    }
+    const chatId = (args.chat_id as number) || this.getDefaultChatId();
+    const res = await this.bot.sendMessagePayload({
+      method: "sendLocation",
+      chatId,
+      fields,
+      messageThreadId: this.extractExplicitThreadId(args),
+      replyTo: typeof args.reply_to === "number" ? args.reply_to : undefined,
+      disableNotification: typeof args.disable_notification === "boolean" ? args.disable_notification : undefined,
+      inlineKeyboard: this.extractInlineKeyboard(args),
+      excerptText: `[location ${latitude},${longitude}]`,
+    });
+    if (!res.ok) {
+      return { success: false, error: res.description || "Failed to send location" };
+    }
+    return {
+      success: true,
+      message_id: res.result?.message_id,
+      ...(res.effectiveThreadId !== undefined ? { message_thread_id: res.effectiveThreadId } : {}),
+    };
+  }
+
+  public async sendVenue(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const latitude = args.latitude as number;
+    const longitude = args.longitude as number;
+    const title = typeof args.title === "string" ? args.title.trim() : "";
+    const address = typeof args.address === "string" ? args.address.trim() : "";
+    if (
+      typeof latitude !== "number" ||
+      !Number.isFinite(latitude) ||
+      latitude < -90 ||
+      latitude > 90 ||
+      typeof longitude !== "number" ||
+      !Number.isFinite(longitude) ||
+      longitude < -180 ||
+      longitude > 180 ||
+      !title ||
+      !address
+    ) {
+      return {
+        success: false,
+        error: "send_venue requires valid latitude (-90..90), longitude (-180..180), title, and address",
+      };
+    }
+    const fields: Record<string, unknown> = { latitude, longitude, title, address };
+    for (const key of ["foursquare_id", "foursquare_type", "google_place_id", "google_place_type"]) {
+      if (args[key] !== undefined) {
+        fields[key] = args[key];
+      }
+    }
+    const chatId = (args.chat_id as number) || this.getDefaultChatId();
+    const res = await this.bot.sendMessagePayload({
+      method: "sendVenue",
+      chatId,
+      fields,
+      messageThreadId: this.extractExplicitThreadId(args),
+      replyTo: typeof args.reply_to === "number" ? args.reply_to : undefined,
+      disableNotification: typeof args.disable_notification === "boolean" ? args.disable_notification : undefined,
+      inlineKeyboard: this.extractInlineKeyboard(args),
+      excerptText: `[venue ${title}]`,
+    });
+    if (!res.ok) {
+      return { success: false, error: res.description || "Failed to send venue" };
+    }
+    return {
+      success: true,
+      message_id: res.result?.message_id,
+      ...(res.effectiveThreadId !== undefined ? { message_thread_id: res.effectiveThreadId } : {}),
+    };
+  }
+
+  public async sendContact(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const phoneNumber = typeof args.phone_number === "string" ? args.phone_number.trim() : "";
+    const firstName = typeof args.first_name === "string" ? args.first_name.trim() : "";
+    if (!phoneNumber || !firstName) {
+      return { success: false, error: "send_contact requires phone_number and first_name" };
+    }
+    const fields: Record<string, unknown> = {
+      phone_number: phoneNumber,
+      first_name: firstName,
+    };
+    if (typeof args.last_name === "string" && args.last_name.trim()) {
+      fields.last_name = args.last_name.trim();
+    }
+    if (typeof args.vcard === "string" && args.vcard.trim()) {
+      fields.vcard = args.vcard;
+    }
+    const chatId = (args.chat_id as number) || this.getDefaultChatId();
+    const res = await this.bot.sendMessagePayload({
+      method: "sendContact",
+      chatId,
+      fields,
+      messageThreadId: this.extractExplicitThreadId(args),
+      replyTo: typeof args.reply_to === "number" ? args.reply_to : undefined,
+      disableNotification: typeof args.disable_notification === "boolean" ? args.disable_notification : undefined,
+      inlineKeyboard: this.extractInlineKeyboard(args),
+      excerptText: `[contact ${firstName}]`,
+    });
+    if (!res.ok) {
+      return { success: false, error: res.description || "Failed to send contact" };
+    }
+    return {
+      success: true,
+      message_id: res.result?.message_id,
+      ...(res.effectiveThreadId !== undefined ? { message_thread_id: res.effectiveThreadId } : {}),
+    };
+  }
+
+  public async sendDice(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const allowedEmoji = new Set(["🎲", "🎯", "🏀", "⚽", "🎳", "🎰"]);
+    const fields: Record<string, unknown> = {};
+    if (args.emoji !== undefined) {
+      if (typeof args.emoji !== "string" || !allowedEmoji.has(args.emoji)) {
+        return {
+          success: false,
+          error: "send_dice emoji must be one of 🎲, 🎯, 🏀, ⚽, 🎳, or 🎰",
+        };
+      }
+      fields.emoji = args.emoji;
+    }
+    const chatId = (args.chat_id as number) || this.getDefaultChatId();
+    const res = await this.bot.sendMessagePayload({
+      method: "sendDice",
+      chatId,
+      fields,
+      messageThreadId: this.extractExplicitThreadId(args),
+      replyTo: typeof args.reply_to === "number" ? args.reply_to : undefined,
+      disableNotification: typeof args.disable_notification === "boolean" ? args.disable_notification : undefined,
+      inlineKeyboard: this.extractInlineKeyboard(args),
+      excerptText: `[dice ${(fields.emoji as string) || "🎲"}]`,
+    });
+    if (!res.ok) {
+      return { success: false, error: res.description || "Failed to send dice" };
+    }
+    return {
+      success: true,
+      message_id: res.result?.message_id,
+      ...(res.result?.dice?.value !== undefined ? { value: res.result.dice.value } : {}),
+      ...(res.result?.dice?.emoji !== undefined ? { emoji: res.result.dice.emoji } : {}),
+      ...(res.effectiveThreadId !== undefined ? { message_thread_id: res.effectiveThreadId } : {}),
+    };
+  }
+
+  public async sendChatAction(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const allowedActions = new Set([
+      "typing",
+      "upload_photo",
+      "record_video",
+      "upload_video",
+      "record_voice",
+      "upload_voice",
+      "upload_document",
+      "choose_sticker",
+      "find_location",
+      "record_video_note",
+      "upload_video_note",
+    ]);
+    const action = typeof args.action === "string" ? args.action.trim() : "";
+    if (!allowedActions.has(action)) {
+      return {
+        success: false,
+        error: `Invalid chat action: ${String(args.action)}`,
+      };
+    }
+    const chatId = (args.chat_id as number) || this.getDefaultChatId();
+    const res = await this.bot.sendChatAction({
+      chatId,
+      action,
+      messageThreadId: this.extractExplicitThreadId(args),
+    });
+    if (!res.ok) {
+      return { success: false, error: res.description || "Failed to send chat action" };
+    }
+    return {
+      success: true,
+      ...(res.effectiveThreadId !== undefined ? { message_thread_id: res.effectiveThreadId } : {}),
+    };
+  }
+
+  public async sendMessageDraft(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const draftId = args.draft_id as number;
+    const text = typeof args.text === "string" ? args.text : "";
+    if (typeof draftId !== "number" || !Number.isInteger(draftId) || draftId === 0) {
+      return { success: false, error: "send_message_draft requires a non-zero integer draft_id" };
+    }
+    if (!text.trim()) {
+      return { success: false, error: "send_message_draft requires non-empty text" };
+    }
+    const chatId = (args.chat_id as number) || this.getDefaultChatId();
+    const res = await this.bot.sendMessageDraft({
+      chatId,
+      draftId,
+      text,
+      messageThreadId: this.extractExplicitThreadId(args),
+    });
+    if (!res.ok) {
+      return { success: false, error: res.description || "Failed to send message draft" };
+    }
+    return {
+      success: true,
+      draft_id: draftId,
+      ...(res.effectiveThreadId !== undefined ? { message_thread_id: res.effectiveThreadId } : {}),
+    };
+  }
+
+  public async sendPoll(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const question = typeof args.question === "string" ? args.question.trim() : "";
+    if (!question || question.length > 300) {
+      return { success: false, error: "send_poll requires a question between 1 and 300 characters" };
+    }
+    if (!Array.isArray(args.options) || args.options.length < 2 || args.options.length > 12) {
+      return { success: false, error: "send_poll requires between 2 and 12 poll options" };
+    }
+    const normalizedOptions: Array<{ text: string }> = [];
+    for (const opt of args.options) {
+      const optText =
+        typeof opt === "string"
+          ? opt.trim()
+          : opt && typeof opt === "object" && typeof (opt as Record<string, unknown>).text === "string"
+            ? String((opt as Record<string, unknown>).text).trim()
+            : "";
+      if (!optText || optText.length > 100) {
+        return { success: false, error: "Each poll option must be between 1 and 100 characters" };
+      }
+      normalizedOptions.push({ text: optText });
+    }
+
+    const fields: Record<string, unknown> = {
+      question,
+      options: normalizedOptions,
+    };
+    if (typeof args.is_anonymous === "boolean") {
+      fields.is_anonymous = args.is_anonymous;
+    }
+    if (typeof args.allows_multiple_answers === "boolean") {
+      fields.allows_multiple_answers = args.allows_multiple_answers;
+    }
+    if (args.type !== undefined) {
+      if (args.type !== "regular" && args.type !== "quiz") {
+        return { success: false, error: 'send_poll type must be "regular" or "quiz"' };
+      }
+      fields.type = args.type;
+    }
+    if (fields.type === "quiz" || args.correct_option_id !== undefined) {
+      const cid = args.correct_option_id as number;
+      if (typeof cid !== "number" || !Number.isInteger(cid) || cid < 0 || cid >= normalizedOptions.length) {
+        return {
+          success: false,
+          error: `Quiz poll requires a valid 0-based correct_option_id between 0 and ${normalizedOptions.length - 1}`,
+        };
+      }
+      fields.correct_option_id = cid;
+    }
+    if (typeof args.explanation === "string" && args.explanation.trim()) {
+      const formattedExp = formatMarkdownToEntities(args.explanation);
+      if (formattedExp.plainText.length > 200) {
+        return { success: false, error: "Poll explanation must be at most 200 characters" };
+      }
+      fields.explanation = formattedExp.plainText;
+      if (formattedExp.entities.length > 0) {
+        fields.explanation_entities = formattedExp.entities;
+      }
+    }
+    if (typeof args.open_period === "number") {
+      fields.open_period = args.open_period;
+    }
+    if (typeof args.close_date === "number") {
+      fields.close_date = args.close_date;
+    }
+    if (typeof args.is_closed === "boolean") {
+      fields.is_closed = args.is_closed;
+    }
+
+    const chatId = (args.chat_id as number) || this.getDefaultChatId();
+    const res = await this.bot.sendMessagePayload({
+      method: "sendPoll",
+      chatId,
+      fields,
+      messageThreadId: this.extractExplicitThreadId(args),
+      replyTo: typeof args.reply_to === "number" ? args.reply_to : undefined,
+      disableNotification: typeof args.disable_notification === "boolean" ? args.disable_notification : undefined,
+      inlineKeyboard: this.extractInlineKeyboard(args),
+      excerptText: `[poll] ${question}`,
+    });
+    if (!res.ok) {
+      return { success: false, error: res.description || "Failed to send poll" };
+    }
+    return {
+      success: true,
+      message_id: res.result?.message_id,
+      ...(res.result?.poll?.id ? { poll_id: res.result.poll.id } : {}),
+      ...(res.effectiveThreadId !== undefined ? { message_thread_id: res.effectiveThreadId } : {}),
+    };
+  }
+
+  public async stopPoll(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const messageId = args.message_id as number;
+    if (typeof messageId !== "number" || !Number.isInteger(messageId) || messageId <= 0) {
+      return { success: false, error: "stop_poll requires a positive integer message_id" };
+    }
+    const chatId = (args.chat_id as number) || this.getDefaultChatId();
+    const res = await this.bot.stopPoll({
+      chatId,
+      messageId,
+      inlineKeyboard: this.extractInlineKeyboard(args),
+    });
+    if (!res.ok) {
+      return { success: false, error: res.description || "Failed to stop poll" };
+    }
+    return {
+      success: true,
+      message_id: messageId,
+      ...(res.effectiveThreadId !== undefined ? { message_thread_id: res.effectiveThreadId } : {}),
+      ...(res.result
+        ? {
+            poll: {
+              id: res.result.id,
+              question: res.result.question,
+              options: res.result.options,
+              total_voter_count: res.result.total_voter_count,
+              is_closed: res.result.is_closed,
+            },
+          }
+        : {}),
+    };
+  }
+
   /**
    * Dispatches IPC requests across local Unix domain socket bridge.
    */
   public async handleIpcMessage(msg: Record<string, unknown>): Promise<Record<string, unknown>> {
-    const type = msg.type || msg.name;
+    const type = msg._toolName || msg.type || msg.name;
 
     switch (type) {
       case "reply":
@@ -974,6 +1528,133 @@ export class SharedTelegramChannelCore {
       case "unpin_all_general_topic_messages":
       case "unpin_all_general_forum_topic_messages":
         return await this.unpinAllGeneralThreadMessages(msg);
+
+      case "answer_question": {
+        const questionId = (msg.question_id as string) || (msg.questionId as string) || (msg.id as string);
+        const choice = typeof msg.choice === "string" ? msg.choice.trim() : undefined;
+        const optionIndex = typeof msg.option_index === "number" ? msg.option_index : undefined;
+        if (!questionId) {
+          return { success: false, error: "Missing question_id" };
+        }
+        if (!choice && optionIndex === undefined) {
+          return { success: false, error: "Missing answer: provide choice or option_index" };
+        }
+        const result = await this.broker.resolveAnswer(
+          questionId,
+          optionIndex !== undefined ? optionIndex : "other",
+          choice
+        );
+        if (!result) {
+          return { success: false, error: "Question not found or not pending" };
+        }
+        if (this.bot && result.question.chatId && result.question.messageId) {
+          await this.bot.editMessage(result.question.chatId, result.question.messageId, result.cardText, {
+            inline_keyboard: [],
+          });
+        }
+        if (this.emitChannelNotification) {
+          this.emitChannelNotification(`Question answered: ${result.channelEvent.choice}`, {
+            event: result.channelEvent.event,
+            ...result.channelEvent,
+          });
+        }
+        return { success: true, question_id: questionId, choice: result.channelEvent.choice };
+      }
+
+      case "close_question": {
+        const questionId = (msg.question_id as string) || (msg.questionId as string) || (msg.id as string);
+        const reason = typeof msg.reason === "string" ? msg.reason.trim() : "";
+        if (!questionId) {
+          return { success: false, error: "Missing question_id" };
+        }
+        if (!reason) {
+          return {
+            success: false,
+            error: "Missing reason: closing a question requires an explicit stated reason",
+          };
+        }
+        const result = await this.broker.closeQuestion(questionId, reason);
+        if (!result) {
+          return { success: false, error: "Question not found or not pending" };
+        }
+        if (this.bot && result.question.chatId && result.question.messageId) {
+          await this.bot.editMessage(result.question.chatId, result.question.messageId, result.cardText, {
+            inline_keyboard: [],
+          });
+        }
+        if (this.emitChannelNotification) {
+          this.emitChannelNotification(`Question closed: ${result.channelEvent.reason}`, {
+            event: result.channelEvent.event,
+            ...result.channelEvent,
+          });
+        }
+        return { success: true, question_id: questionId, reason: result.channelEvent.reason };
+      }
+
+      case "list_questions": {
+        const pending = this.broker.getPendingQuestions();
+        return { success: true, count: pending.length, questions: pending };
+      }
+
+      case "send_photo":
+      case "sendPhoto":
+        return await this.sendPhoto(msg);
+
+      case "send_document":
+      case "sendDocument":
+        return await this.sendDocument(msg);
+
+      case "send_video":
+      case "sendVideo":
+        return await this.sendVideo(msg);
+
+      case "send_animation":
+      case "sendAnimation":
+        return await this.sendAnimation(msg);
+
+      case "send_media_group":
+      case "sendMediaGroup":
+        return await this.sendMediaGroup(msg);
+
+      case "send_audio":
+      case "sendAudio":
+        return await this.sendAudio(msg);
+
+      case "send_video_note":
+      case "sendVideoNote":
+        return await this.sendVideoNote(msg);
+
+      case "send_location":
+      case "sendLocation":
+        return await this.sendLocation(msg);
+
+      case "send_venue":
+      case "sendVenue":
+        return await this.sendVenue(msg);
+
+      case "send_contact":
+      case "sendContact":
+        return await this.sendContact(msg);
+
+      case "send_dice":
+      case "sendDice":
+        return await this.sendDice(msg);
+
+      case "send_chat_action":
+      case "sendChatAction":
+        return await this.sendChatAction(msg);
+
+      case "send_message_draft":
+      case "sendMessageDraft":
+        return await this.sendMessageDraft(msg);
+
+      case "send_poll":
+      case "sendPoll":
+        return await this.sendPoll(msg);
+
+      case "stop_poll":
+      case "stopPoll":
+        return await this.stopPoll(msg);
 
       default:
         throw new Error(`Unsupported IPC tool: ${String(type)}`);

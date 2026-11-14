@@ -1,16 +1,24 @@
+---
+title: Reify
+status: ready
+---
+
+# Reify
+
 Turn a terse user prompt into a durable, enriched task node carrying intent,
 workflow, execution steps and guardrails -- so any worker can pull it and execute
 without gathering context again.
 
 Reification works on one node at the moment it is next to run (the micro
-altitude of the planning pipeline). It binds that node to an executor class and
-to the workflow templates current at that moment, and both change with
-circumstances, so a task reified ahead of its turn goes stale on the graph.
-A node whose prerequisites are outside the graph's control stays unreified
-until they clear. Expanding an objective into the nodes themselves is the
-preceding stage (decomposition), which binds nothing to an executor. The PKB
-custodian (Pauli) runs reification; callers send the node or objective and
-receive task ids.
+altitude of the planning pipeline). `/reify` runs inside container supervision
+(`/supervise`) or on explicit planning request. In supervised epic execution,
+the lead executor (`james`) runs `/reify` to bind the claimed task to an executor
+and composed workflow from the template library at execution time, avoiding premature
+reification and stale tasks on the graph. A node whose prerequisites are outside
+the graph's control stays unreified until they clear. Expanding an objective into
+the nodes themselves is the preceding stage (decomposition), which binds nothing
+to an executor. On explicit planning requests, the PKB custodian (`pauli`) can also
+run reification.
 
 This skill does _enrichment_: selecting a workflow, interpreting it
 into concrete steps, attaching guardrails, and **writing the result onto a task
@@ -29,11 +37,17 @@ making further routing decisions:
 | Execution steps | The workflow interpreted for _this_ request as concrete numbered steps, `CHECKPOINT:`-prefixed where the workflow mandates verification |
 | Guardrails | The constraints the selected workflow imposes |
 
-The workflow catalog is `plugins/ida/skills/workflow-library/workflows/` and its `wf-*.md`
-templates. Selection is interpretive, not mechanical: the hydrator reads the
-template and generates steps for the specific request. A plan that instructs the
-main agent to go read a workflow file has failed -- the whole cost saving is that
-the reading already happened.
+## Workflow Resolution: Three-Tier Template Library
+
+`/reify` absorbs 3-tier template resolution (`Project > PKB > Universal`) from `/workflow-library`:
+
+- **Fast-Path**: If the task already carries a composed workflow (`## Instructions` and `## Appendix: Sources`) or requires invoking a single skill (`invoke /<skill>`), skip redundant re-composition and proceed directly to planning.
+- **3-Tier Resolution**:
+  1. `Project`: PKB documents carrying `type: template` and the task's `project`, id `<project>-<slug>`.
+  2. `PKB`: PKB documents carrying `type: template` and no `project`.
+  3. `Universal`: Built-in templates in `plugins/ida/skills/workflow-library/workflows/wf-*.md`.
+
+Selection is interpretive, not mechanical: `/reify` reads the template and generates steps for the specific request. A plan that instructs the main agent to go read a workflow file has failed -- the whole cost saving is that the reading already happened.
 
 **`CHECKPOINT:` is behavioural guidance, not enforcement.** No code blocks
 progress when verification is skipped. This is deliberate: enforcement here would
@@ -42,7 +56,7 @@ the failure mode of a missed checkpoint is recoverable.
 
 ## Task body length and step inlining
 
-Task bodies are strictly concise: 50–150 words for atomic tasks, and up to 300 words for multi-stage composite workflows.
+Task bodies are strictly concise: 50-150 words for atomic tasks, and up to 300 words for multi-stage composite workflows.
 
 Step inlining is interpretive, not mechanical transcription:
 
@@ -50,19 +64,21 @@ Step inlining is interpretive, not mechanical transcription:
 - Inlining distills the required outcome or verification checkpoint for each stage; it omits narrative prose, rationale, background explanations, and implementation methods the worker can determine for itself.
 - Every composed template stage and finish obligation is represented as a concrete step so no required process or gate is lost, while staying strictly within the 300-word ceiling for composite workflows (or 150 words for atomic tasks).
 - Outcome-oriented criteria: Reified tasks define observable end-state conditions and verification criteria rather than implementation mechanisms. Line numbers, line ranges, and narrow code slice prescriptions are strictly forbidden in `Goal`, `Acceptance criteria`, and `Execution steps` / `Instructions`.
-- Preserving design and build staging: When multi-file modifications or architectural choices are required, separate tasks are reified for Stage 1 (Design) and Stage 2 (Build) under `wf-code-task-base`. Stage 1 is never collapsed into Stage 2, even when the brief includes an implementation proposal.
+- Combined single-session task body by default: `/reify` writes a single combined repo-scoped task body by default, keeping design, subagent dialectical review, build, incremental `git push` checkpoints, and PR verification inside the single supervised container session rather than mandating separate Stage 1 Design / Stage 2 Build / QA child tasks.
 
-## QA follow-up tasks and structural placement
+## Task Splitting and Out-of-Session Boundaries
 
-All tasks requiring review, verification, or subsequent follow-up must be structured per the follow-up placement invariant: either as a single task with internal subtasks (when executable by the same agent in one continuous session) or as a dedicated epic with child tasks (when multi-session, clean context, or independent reviewer personas are required); never as loose siblings under an external parent.
+`/reify` writes a single combined repo-scoped task body by default. Subagent dialectical review, testing, incremental `git push` checkpoints, and PR verification all execute in-session under `/supervise`.
 
-For pull request deliverables requiring an independent review pass, `/reify` mints an independent downstream `QA: <task>` child task under the dedicated epic (with child-to-child `needs` dependency) that verifies the delivered artifact and evaluates PR risk.
+Separate tasks are split ONLY when a workflow explicitly mandates:
+
+1. A different repository (strictly one task per repository);
+2. A different time or external wait condition;
+3. A separate external agent or session (such as closed-loop `assignee: ida` user-channel delivery).
 
 For research tasks investigating open design questions or architectural choices, the agent does the groundwork and makes the decision itself (selecting the recommended route); it never composes a decision task assigned to the user (`assignee: user`) unless the user explicitly directed to decide it themselves (tg 1013).
 
-For non-PR tasks (such as empirical analyses, documentation updates, research tasks, and operational maintenance), `/reify` mints a separate `QA: <task>` child task only where the composed workflow warrants an independent verification check (e.g. empirical analysis with replication requirements, high-impact specification or policy changes, or multi-step qualitative audits). Workflows that do not warrant a separate verification pass mint no QA child.
-
-Worker self-release to `done` is preserved across all non-PR tasks: workers self-release to `done` upon satisfying the frozen acceptance checklist with concrete evidence, without being held in `review`.
+Worker self-release to `done` is preserved across all tasks: workers self-release to `done` upon satisfying the frozen acceptance checklist with concrete evidence, without being held in `review`.
 
 ## Context gathering
 
@@ -73,7 +89,7 @@ Worker self-release to `done` is preserved across all non-PR tasks: workers self
 | 3 | GitHub / web search | Tertiary -- only when internal sources are insufficient |
 | 4 | Session transcripts | Last resort -- very recent context not yet written anywhere |
 
-Tiers 1–2 run inside the hydrator against a budget of roughly 450 tokens of
-retained context. Tiers 3–4 are never run by the hydrator; they are emitted as
+Tiers 1-2 run inside the hydrator against a budget of roughly 450 tokens of
+retained context. Tiers 3-4 are never run by the hydrator; they are emitted as
 execution steps for the main agent, because they are slow and usually
 unnecessary.

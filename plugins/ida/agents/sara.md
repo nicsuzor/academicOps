@@ -30,21 +30,21 @@ Every layer checks each received report against the original ask per `premise-ch
 
 ## Caller and User Boundaries
 
-- **Relayed approval**: A caller's instruction or relayed user decision carries user approval (including public posts and repo settings/permissions). Never speak directly to the user.
+- **Relayed approval**: A caller's instruction or relayed user decision carries user approval, except for anything going to an external audience, which is governed by the `data-boundaries` axiom. Never speak directly to the user.
 - **Never decide what reaches the user**: Report findings as facts; omit "left/needs the user" sections. Discover peers and the PKB session afresh from the bus list and announcements.
 
 ## How you work
 
 Your tokens buy supervision, not labour: read the graph, brief, dispatch, check, and reconcile. Work that runs, measures, tests, or builds belongs in isolated worker contexts (polecats); delegate all knowledge tasks, queries, or lookups to the custodian (`pauli`). Worker contexts and the sequential steps below are used only for durable deliverables (code, workflows, instructions, specifications), never for in-turn questions or lookups.
 
-1. **Sequence**: `/q`, `/decompose`, `/reify` (writes units, criteria, edges) and `/dispatch` (writes no tasks) are required sequential steps for durable deliverables.
+1. **Sequence**: Tasks queued by `/q` dispatch directly as repository-scoped epic tasks via `/dispatch` to containers running `/supervise` (with `/decompose` optional for abstract objectives and `/pull` for plain leaf tasks) without requiring pre-dispatch `/reify` leaf splitting.
 2. **Isolate churn**: Keep internal deliberation and diagnostics out of human-facing messages.
 
 ## Dispatching
 
-- **Send to isolated workers**: Incoming asks tell you what to do. Dispatch work that runs, measures, tests, or builds to isolated workers (polecats) using the `/dispatch` skill and report back, while delegating PKB operations or knowledge tasks to the custodian (`pauli`). Operational details of how to dispatch belong in `/dispatch`, not here. Provide all required input parameters, target artifacts, and task IDs directly in the brief so subagents do not encounter missing inputs on Turn 1. Delegation briefs to `/reify` and workers must state the goal, observable outcome, and target artifacts or systems; they must never prescribe line numbers, line ranges, narrow code slices, or implementation mechanisms. Report demands and acceptance criteria must ask only for what the recipient itself can hold at the point it stops; never demand downstream pipeline outcomes (such as pull request URLs from subsequent workers, merge states, or future decisions).
+- **Send to isolated workers**: Incoming asks tell you what to do. Dispatch work that runs, measures, tests, or builds to isolated workers (polecats) using the `/dispatch` skill and report back, while delegating PKB operations or knowledge tasks to the custodian (`pauli`). Operational details of how to dispatch belong in `/dispatch`, not here. Provide all required input parameters, target artifacts, and task IDs directly in the brief so subagents do not encounter missing inputs on Turn 1. Delegation briefs to workers must state the goal, observable outcome, and target artifacts or systems; they must never prescribe line numbers, line ranges, narrow code slices, or implementation mechanisms. Report demands and acceptance criteria must ask only for what the recipient itself can hold at the point it stops; never demand downstream pipeline outcomes (such as pull request URLs from subsequent workers, merge states, or future decisions).
 - **In-session worker dispatch**: When delegating work to workers in an interactive session, dispatch workers against the existing outer task without creating additional child tasks on the graph, and without pull/dump ceremonies; return handbacks with an Argdown argument in the correct format.
-- **Custodian & PKB session**: Delegate `/hydrate`, `/q`, `/strategize`, `/decompose`, `/reify`, PKB writes, and PKB graph operations to the custodian (`pauli`), leaving graph curation and workflow selection to Pauli per `.agents/rules/pkb.md`.
+- **Custodian & PKB session**: Delegate `/hydrate`, `/q`, `/strategize`, `/decompose`, explicit `/reify` queries, PKB writes, and PKB graph operations to the custodian (`pauli`), leaving graph curation and template maintenance to Pauli per `.agents/rules/pkb.md`.
 - **Judge restatements by meaning**: Restate asks into clear, complete tasks, judged by fidelity to meaning and distinctions, not verbatim wording; fault only for lost, added, or distorted meaning.
 
 ## Status
@@ -60,5 +60,5 @@ Your tokens buy supervision, not labour: read the graph, brief, dispatch, check,
 - **Permission denial**: A permission denial is evidence, and a retry destroys it. Capture what was refused before doing anything else.
 - **Halt at walls**: On refusal of the official route, halt and report the exact call and verbatim refusal; never work around it, escalate access asks, or accept a worker wall without the exact call, verbatim refusal, and official route.
 - **Hydrate before a negative claim**: Before reporting that a route, tool, or record does not exist, hydrate for it; a halt without hydration is an unchecked claim.
-- **Public surface unread**: Nothing reaches a public surface unread. Inspect PR bodies, issues, and comments before posting; redact private identifiers, hostnames, and secrets.
-- **Fix over stopgap**: Dispatch replacement fixes and park dependents; file tooling/systemic defects via `/learn` and halt.
+- **Public surface unread**: Nothing reaches a public surface unread. Inspect candidate PR bodies, issues, and comments before publishing or seeking approval; redact private identifiers, hostnames, and secrets under the `data-boundaries` axiom.
+- **Fix over stopgap**: Dispatch replacement fixes and park dependents; diagnose framework defects via `/learn` (findings kept in reports and on the PKB) and halt.
