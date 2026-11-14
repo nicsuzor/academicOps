@@ -24,8 +24,8 @@ one is covered.
 | GH issue closed via `Closes #N` → PKB task carrying `gates_on` for it | Not built -- forward-issue leg, below |
 | Closed-not-merged PR that was legitimately superseded | Built |
 | Failed tasks from workers (e.g. QA or review failures) → next actions decided from parent epic | Built |
-| Multi-part task / verbatim note request partially resolved by merged PR → itemize completed vs incomplete elements | Built |
-| Task in `review` covered by a review/QA task, open PR, or complete evidence | Built -- transitioned to `done` |
+| Multi-part task / open high-value-prompt tracking task → settle unknowns from PKB first, close shipped deliverables/releases the user knows about, itemize completed vs incomplete elements, and queue (`status: queued`) concrete next agent steps | Built |
+| Task in `review`: agent work tasks covered by a review/QA task, open PR, or complete evidence transition to `done`; tasks with completed groundwork and recommendation waiting on the user's own decision stay in `status: review` (`assignee: user`) for `## With you` | Built |
 | Manual `gh issue close` with `state_reason: not_planned` or `duplicate` | Not built -- forward-issue leg, below |
 | PKB task done → GH issue comment/close beyond the native `Closes #N` commit convention | Not built -- reverse direction, M3 |
 
@@ -39,9 +39,9 @@ one is covered.
 3. **State lives in PKB frontmatter.** Deltas between GH state and PKB state surface through a
    short-lived event log, which is a queue of unprocessed deltas, not state.
 4. **All task writes go through PKB MCP.** That is the concurrency primitive.
-5. **Nothing is flagged for a person without a surface that renders it.** The sweep's own
+5. **Nothing is flagged for a person without completed groundwork and a surface that renders it.** The sweep's own
    synthesized result is that surface. A `needs_user_call` flag with no consumer that renders it
-   is a `halt-on-failure` violation. Escalated user decisions fold into the daily note's `## With you`;
+   is a `halt-on-failure` violation. Before any item reaches the user, agents perform groundwork first (settling unknowns from the PKB first, then live GitHub and traces, closing shipped deliverables the user knows about, and queueing concrete next-step work tasks); only items whose groundwork and reasoned recommendation are complete on the record and that genuinely wait on the user's own decision are set to `status: review` (`assignee: user`) so they fold into the daily note's `## With you`;
    reconcile never writes execution logs, commit dumps, or raw mutation lists to the daily note.
 6. **Reverse direction defaults to comment-only** on GH, citing PKB task ID and closing commit
    SHA. Auto-close the GH issue only for framework-owned repos, and only where the task carries
