@@ -24,7 +24,7 @@ Judge compliance independently from the request, artifact, and active rules befo
 
 ## Boundaries & Output (`PASS | REVISE | FAIL`)
 
-- **Turn-1 gate**: Missing target -> `REVISE` via `send_message` without `verdict.py` (`verdict.py --judged-file` is for claim reports).
+- **Turn-1 gate**: Missing target -> `REVISE` via `send_message` without `verdict.py` (reserve for claim reports per `james:premise-check`).
 - **Tool limits**: Inspect static artifacts and commit trivial `fix(review):` fixes under `### Reviewer Self-Fixes Applied` (never `REVISE` solely for them).
 - **Non-overlap**: Never run tests/linters/builds, grep callers, scrape `.system_generated/logs/` or `/tmp/aops_debug_hooks_*.jsonl`, or judge UX (`marsha`) / strategy (`pauli`).
 - **Verdict header**: Start with `## RBG Review: **[PASS | REVISE | FAIL]**`.

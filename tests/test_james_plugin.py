@@ -383,7 +383,8 @@ def test_mcp_caller_session_injects_session_on_configured_servers(
 def test_mcp_caller_session_skips_unconfigured_servers(
     james_dist_root: Path, tmp_path: Path
 ) -> None:
-    assert "playwright" not in SESSION_SERVERS
+    unconfigured_server = "unconfigured_test_server"
+    assert unconfigured_server not in SESSION_SERVERS
     build_dir = james_dist_root / "james-claude"
     env = _base_hook_env(tmp_path)
     res = _run_dist_python(
@@ -393,7 +394,7 @@ def test_mcp_caller_session_skips_unconfigured_servers(
         stdin_payload={
             "session_id": "sess-mcp-123",
             "prompt_id": "prompt-456",
-            "tool_name": "mcp__playwright__browser_snapshot",
+            "tool_name": f"mcp__{unconfigured_server}__sample_action",
             "tool_input": {},
         },
         env=env,
@@ -586,3 +587,80 @@ def test_shipped_hook_commands_via_uv_run(james_dist_root: Path, tmp_path: Path)
         )
         assert res.returncode == 0, f"{client} uv run failed: {res.stderr}"
         assert "james:premise-check" in res.stdout
+
+
+def test_check_argdown_block_supports_forward_statement_relation(
+    james_dist_root: Path, tmp_path: Path
+) -> None:
+    """verdict.py accepts a valid block whose forward +> relation references a later [Title]."""
+    build_dir = james_dist_root / "james-claude"
+    forward_report = tmp_path / "forward_report.md"
+    forward_report.write_text(
+        """# Review
+
+```argdown
+===
+title: Forward statement relation
+asks:
+  review: Confirm forward support links parse.
+answers:
+  review: 4
+===
+
+(1) First piece holds (tests/check.py:1).
+-- Step One Warrant: Holds when (1) is verified. Unless: check missing; ruled out by (1). --
+(2) [SubConclusion]: So, step one holds.
+  +> [FinalVerdict]
+
+(3) Second piece holds (tests/check.py:2).
+-- Final Warrant: Holds when (2) and (3) are combined. Unless: conflict; ruled out by (2). --
+(4) [FinalVerdict]: So, final verdict holds.
+```
+""",
+        encoding="utf-8",
+    )
+    reason_file = tmp_path / "forward_reason.txt"
+    reason_file.write_text(
+        "Judged: task-fwd; asks review\n"
+        "Valid: (2) holds -- step one verified; (4) holds -- combined warrant holds\n"
+        "Supported: (1), (3) primary empirical observation -- direct file check\n"
+        "Answered: review ← (4)\n"
+        "Sufficient: (2), (4) material; review verification stakes; authority-backed; no open objection\n"
+        "Waived: none\n"
+        'Relay: "Forward support links hold." ← (4)\n',
+        encoding="utf-8",
+    )
+    server, recorded, thread = _start_recording_http_server()
+    try:
+        env = _base_hook_env(
+            tmp_path,
+            {
+                "OTEL_EXPORTER_OTLP_ENDPOINT": f"http://127.0.0.1:{server.server_port}",
+                "OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf",
+                "AOPS_SESSION_ID": "sess-fwd-test",
+            },
+        )
+        res = _run_dist_python(
+            build_dir,
+            "skills/premise-check/scripts/verdict.py",
+            [
+                "--claim",
+                "task-fwd",
+                "--verdict",
+                "PASS",
+                "--judged-file",
+                str(forward_report),
+                "--reason-file",
+                str(reason_file),
+            ],
+            env=env,
+        )
+        assert res.returncode == 0, res.stderr
+        out = json.loads(res.stdout)
+        assert out["ok"] is True
+        assert out["verdict"] == "PASS"
+        assert len(recorded) == 1
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)

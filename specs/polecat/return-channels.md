@@ -12,11 +12,11 @@ This document owns the caller-to-container return contract, session continuation
 ## User experience flow
 
 ```mermaid
-flowchart TB
+flowchart LR
     Operator(["Human User or Primary Session"])
 
     subgraph SyncChannel["Synchronous Channel (run_sync)"]
-        direction TB
+        direction LR
         SyncTool["Sync MCP Dispatch (run_sync)"]
         SyncWorker["Isolated Worker Container (Sync)"]
         SessionVol[("Retained Session Volume")]
@@ -28,7 +28,7 @@ flowchart TB
     end
 
     subgraph AsyncChannel["Asynchronous Channel (polecat_events)"]
-        direction TB
+        direction LR
         AsyncTool["Detached Task Dispatch"]
         AsyncWorker["Isolated Worker Container (Detached)"]
         PullFeed["Pull Feed (polecat_events)"]
@@ -42,7 +42,7 @@ flowchart TB
     end
 
     Operator -->|"Short prompt or follow-up"| SyncTool
-    SyncTool -->|"Result and session_id (< 500ms)"| Operator
+    SyncTool -->|"Result + session_id (<500ms post-frame)"| Operator
     Operator -->|"Detached task dispatch"| AsyncTool
     Daemon -.->|"Gated opt-in session bridge"| Operator
 ```
@@ -54,7 +54,7 @@ flowchart TB
 As a developer or researcher working in an interactive session, I want to send a focused question or instruction to an isolated container in one MCP tool call and receive the answer before post-turn cleanup finishes, so that I avoid manual status polling and teardown delays.
 
 - **AC-1.1** Given a valid `run_sync` invocation whose worker emits its terminal structured result frame before the configured sync deadline (at most `85` seconds), when that terminal frame arrives on standard output, then the container MCP server returns `status`, `response`, and `session_id` within `500` milliseconds -- prior to background log harvest or container removal -- while recording container exit OpenTelemetry spans and inserting `0` completion entries into `polecat_events`.
-- **AC-1.2** Given a `run_sync` invocation whose worker exceeds the configured sync deadline (at most `85` seconds), when the timeout expires, then the container MCP server returns a structured `"timeout"` error within `2` seconds of deadline expiry (preserving `session_id` only when `keep_session` is `true`) and releases the worker slot and container cleanly in the background.
+- **AC-1.2** Given a `run_sync` invocation whose worker exceeds the configured sync deadline (at most `85` seconds), when the timeout expires, then the container MCP server returns a structured `"timeout"` error within `2` seconds of deadline expiry (preserving `session_id` only when `keep_session` is `true` and the harness has already emitted its initialization frame, or on Turn 2+) and releases the worker slot and container cleanly in the background.
 
 ### US-2 Ephemeral multi-turn session continuation
 
@@ -80,8 +80,8 @@ As an operator supervising detached background runs, I want worker start and exi
 | `prompt` | Input | Required instruction or question string delivered to the agent harness. |
 | `branch` | Input | Optional target branch on Turn 1; explicit conflicting override on Turn 2+ is rejected before launch. |
 | `session_id` | Input / Output | Omit on Turn 1 (returned from harness initialization frame); required on Turn 2+ to re-attach and resume exact conversation state. |
-| `runner` | Input | Explicitly configured harness profile on Turn 1; must match Turn 1 harness on Turn 2+. |
-| `keep_session` | Input | Boolean (`false` reclaims container and volume post-turn; `true` retains stopped named workspace/state volume until idle TTL). |
+| `runner` | Input | Explicitly configured harness profile on Turn 1; optional on Turn 2+ when derived from retained session metadata (must match Turn 1 harness; explicit mismatch fails closed). |
+| `keep_session` | Input | Optional boolean defaulting to `false` (`false` reclaims container and volume post-turn; `true` retains stopped named workspace/state volume until idle TTL). |
 | `sync_timeout_s` | Input | Optional numeric deadline; callers may omit `sync_timeout_s` to adopt the configured server default, validated against explicit server configuration (hard ceiling `85` seconds; missing server configuration fails closed). |
 | `status` | Output | Enum: `"success"`, `"error"`, or `"timeout"`. |
 | `response` / `error` | Output | Final assistant response string or sanitized error detail. |

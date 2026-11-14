@@ -2561,3 +2561,35 @@ def test_answered_semicolon_separated_clauses_rejects_malformed_clause():
     assert any(
         "Answered entries not in the form" in f and "malformed_clause" in f for f in failures
     )
+
+
+def test_check_argdown_block_supports_forward_statement_relation():
+    """Forward relations targeting a later [Title] statement parse cleanly."""
+    block = """===
+title: Forward statement relation
+asks:
+  review: Confirm forward support links parse.
+answers:
+  review: 4
+===
+
+(1) First piece holds (tests/check.py:1).
+-- Step One Warrant: Holds when (1) is verified. Unless: check missing; ruled out by (1). --
+(2) [SubConclusion]: So, step one holds.
+  +> [FinalVerdict]
+
+(3) Second piece holds (tests/check.py:2).
+-- Final Warrant: Holds when (2) and (3) are combined. Unless: conflict; ruled out by (2). --
+(4) [FinalVerdict]: So, final verdict holds."""
+    valid, err, ast = ra.check_argdown_block(block)
+    assert valid is True, err
+    assert ast is not None
+    assert "FinalVerdict" in ast["statements"]
+    assert ast["statements"]["FinalVerdict"]["isUsedAsMainConclusion"] is True
+    assert any(
+        m["role"] == "conclusion" and "final verdict holds" in m["text"]
+        for m in ast["statements"]["FinalVerdict"]["members"]
+    )
+    parsed = ra.parse_block(block, _VOCAB)
+    assert parsed is not None
+    assert parsed.answers == {"review": 4}

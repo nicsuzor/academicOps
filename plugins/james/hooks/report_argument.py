@@ -707,6 +707,17 @@ def check_argdown_block(
     current_inference: dict[str, Any] | None = None
     last_stmt_or_arg: str | None = None
 
+    def _new_statement(title: str, text: str) -> dict[str, Any]:
+        return {
+            "title": title,
+            "text": text,
+            "isUsedAsPremise": False,
+            "isUsedAsMainConclusion": False,
+            "isUsedAsIntermediaryConclusion": False,
+            "relations": [],
+            "members": [],
+        }
+
     for line in body_lines:
         stripped = line.strip()
         if not stripped:
@@ -757,30 +768,17 @@ def check_argdown_block(
                 title = str(n)
                 stmt_text = rest
             numbered_map[n] = title
-            stmt = statements.setdefault(
-                title,
-                {
-                    "title": title,
-                    "text": stmt_text,
-                    "isUsedAsPremise": False,
-                    "isUsedAsMainConclusion": False,
-                    "isUsedAsIntermediaryConclusion": False,
-                    "relations": [],
-                    "members": [
-                        {
-                            "role": "premise" if current_inference is None else "conclusion",
-                            "text": stmt_text,
-                        }
-                    ],
-                },
-            )
+            stmt = statements.setdefault(title, _new_statement(title, stmt_text))
+            stmt["text"] = stmt_text
+            members = stmt.setdefault("members", [])
             if current_inference is not None:
                 current_inference["conclusion"] = n
                 stmt["isUsedAsMainConclusion"] = True
-                stmt["members"].append({"role": "conclusion", "text": stmt_text})
+                members.append({"role": "conclusion", "text": stmt_text})
                 current_inference = None
             else:
                 stmt["isUsedAsPremise"] = True
+                members.append({"role": "premise", "text": stmt_text})
             last_stmt_or_arg = title
             continue
 
@@ -788,18 +786,10 @@ def check_argdown_block(
         if m_stmt := re.match(r"^\[(?P<title>[^\]]+)\](?::\s*(?P<text>.*))?$", stripped):
             title = m_stmt.group("title")
             stmt_text = m_stmt.group("text") or title
-            statements.setdefault(
-                title,
-                {
-                    "title": title,
-                    "text": stmt_text,
-                    "isUsedAsPremise": False,
-                    "isUsedAsMainConclusion": False,
-                    "isUsedAsIntermediaryConclusion": False,
-                    "relations": [],
-                    "members": [],
-                },
-            )
+            stmt = statements.setdefault(title, _new_statement(title, stmt_text))
+            if m_stmt.group("text"):
+                stmt["text"] = stmt_text
+            stmt.setdefault("members", [])
             last_stmt_or_arg = title
             continue
 
@@ -838,9 +828,7 @@ def check_argdown_block(
             if m_t_stmt:
                 to_target = m_t_stmt.group("title")
                 to_type = "statement"
-                statements.setdefault(
-                    to_target, {"title": to_target, "text": to_target, "relations": []}
-                )
+                statements.setdefault(to_target, _new_statement(to_target, to_target))
             elif m_t_num:
                 n = int(m_t_num.group("n"))
                 to_target = numbered_map.get(n, str(n))

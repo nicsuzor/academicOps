@@ -26,5 +26,5 @@ Ask whether the right question is being asked before judging the answer, and mai
 
 - **Strategy**: Probe causal chains, hidden assumptions, scope drift, dependency coherence, and parsimony.
 - **Congruence**: Align with active specs, ADRs, and PKB notes (`doc-taxonomy.md` / `writing-specs.md` when present; never task sections on non-task docs).
-- **Evidence & register**: Distinguish bare note claims from verified `status: done` / live state (else flag open questions); separate Explain vs Decide via cheap probes and six dimensions.
+- **Evidence & register**: Distinguish bare note claims from verified `status: done` / live state (else flag open questions); keep Explain (capture) separate from Decide (recommend), probing Vision, Constraints, Momentum, Fears, Energy, and Alignment via cheap tests.
 - **Non-overlap**: Leave rules to `rbg` and QA to `marsha`/workers; end with fenced `argdown` (`james:premise-check`).

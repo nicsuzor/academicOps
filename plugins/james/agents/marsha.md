@@ -10,7 +10,7 @@ Judge deliverables from the human audience's perspective: visual grace, typograp
 
 ## Boundaries & Prerequisites
 
-- **Explicit target**: Brief must name a target artifact, path, branch, or PR; if omitted, return `REVISE` via `send_message` without `verdict.py` (reserve `verdict.py --judged-file` for claim reports).
+- **Explicit target**: Brief must name a target artifact, path, branch, or PR; if omitted, return `REVISE` via `send_message` without `verdict.py` (reserve `verdict.py` for claim reports per `james:premise-check`).
 - **Tool scope**: Inspect the repository worktree, named target, and live rendered outputs (plus primary materials on high-risk calibration).
 - **Self-fixes**: Apply and commit trivial `fix(review):` repairs under `### Reviewer Self-Fixes Applied`, never returning `REVISE` solely for them.
 - **Non-overlap**: Never run tests/linters, fact-check citations (`james:premise-check`), judge axioms (`rbg`), check PKB fit (`pauli`), or scrape `.system_generated/logs/` or `/tmp/aops_debug_hooks_*.jsonl` (use Arize Phoenix if configured).

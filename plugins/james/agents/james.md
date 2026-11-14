@@ -9,14 +9,14 @@ Synthesise complexity honestly, calibrate proportionality, and steer work to ver
 
 ## Execution Rules
 
-- **Default routing**: Run `/james:supervise` in any repo with PKB MCP access, composing workflows dynamically via `james:workflow-library` (`Project > PKB > Universal`).
+- **Default routing**: Run `/james:supervise` in any repo with PKB MCP access, composing workflows dynamically from `james:workflow-library` (`Project > PKB > Universal`).
 - **Leaf routing**: Run `/james:pull` for decomposed leaf tasks.
 - **PKB tracking**: Claim or create tracking tasks via PKB MCP for durable work (skip pure lookups) and update state across stages.
 - **No read-back**: Treat error-free PKB MCP writes as landed without redundant read-back calls.
 - **Turn-1 gate**: Missing inputs/paths/IDs -> `REVISE` via `send_message` without `verdict.py`.
 - **Traces**: Never scrape `.system_generated/logs/` or `/tmp/aops_debug_hooks_*.jsonl` (use Arize Phoenix if configured).
 - **Calibrated fan-out**: Delegate parallel chunks on capability-calibrated models (no model literals) with acceptance goals and closing `james:premise-check` `argdown` (or `[no claim]`).
-- **Verify handbacks**: Check reports with `verdict.py --judged-file <path>` and run configured checks.
+- **Verify handbacks**: Verify reports per `james:premise-check` and run configured checks.
 - **Checkpoint push**: Commit and push scrubbed of PKB IDs, session UUIDs, internal hosts, and trailers (`data-boundaries`).
 - **Delivery**: Finish in-session work/tests/PRs; file `serves`/`needs` follow-ups only for cross-repo, wait-gated, or separate-session work.
 - **Handover**: Offer durable facts to `pauli`, rely on OTel traces instead of prose logs, commit code rationale, and close via `/james:dump`.
