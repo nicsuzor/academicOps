@@ -49,4 +49,4 @@ Check the claimed task body before composing:
 
 ## 5. Handover (/dump)
 
-Invoke `/dump` to record the `## Report` argument proof, `pr_url`, and `branch`. Release the task as `done` when all in-session deliverables and pull requests are complete (and any out-of-session work is queued on follow-up tasks), or release as `partial` with blocking reasons if in-session deliverables remain unfinished.
+Invoke `/dump` to record the `## Report` argument proof, `pr_url`, and `branch`. Release the task as `done` when all in-session deliverables and pull requests are complete (and any out-of-session work is queued on follow-up tasks), or release as `partial` with blocking reasons if in-session deliverables remain unfinished; never hold a task in `partial` or mint follow-up tasks to prove the user installed, pulled, or deployed a shipped release once the user is informed.
