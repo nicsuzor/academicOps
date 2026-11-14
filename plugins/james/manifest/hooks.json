@@ -1,0 +1,239 @@
+{
+  "manifestVersion": "1.0",
+  "name": "james",
+  "clients": {
+    "__base__": {},
+    "claude": {
+      "hooks": {
+        "SessionStart": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude SessionStart"
+              }
+            ]
+          }
+        ],
+        "UserPromptSubmit": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude UserPromptSubmit"
+              }
+            ]
+          }
+        ],
+        "PreToolUse": [
+          {
+            "matcher": "mcp__.*",
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/mcp_caller_session.py\""
+              }
+            ]
+          },
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude PreToolUse"
+              }
+            ],
+            "matcher": "*"
+          }
+        ],
+        "PostToolUse": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude PostToolUse"
+              }
+            ],
+            "matcher": "*"
+          }
+        ],
+        "PostToolUseFailure": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude PostToolUseFailure"
+              }
+            ],
+            "matcher": "*"
+          }
+        ],
+        "PostToolBatch": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude PostToolBatch"
+              }
+            ]
+          }
+        ],
+        "SubagentStart": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude SubagentStart"
+              }
+            ]
+          }
+        ],
+        "Stop": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude Stop"
+              }
+            ]
+          }
+        ],
+        "SubagentStop": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude SubagentStop"
+              }
+            ]
+          }
+        ],
+        "StopFailure": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude StopFailure"
+              }
+            ]
+          }
+        ],
+        "PermissionRequest": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude PermissionRequest"
+              }
+            ],
+            "matcher": "*"
+          }
+        ],
+        "PermissionDenied": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude PermissionDenied"
+              }
+            ],
+            "matcher": "*"
+          }
+        ],
+        "Notification": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude Notification"
+              }
+            ]
+          }
+        ],
+        "PreCompact": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude PreCompact"
+              }
+            ]
+          }
+        ],
+        "PostCompact": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude PostCompact"
+              }
+            ]
+          }
+        ],
+        "SessionEnd": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude SessionEnd"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "agy": {
+      "hooks": {
+        "SessionStart": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy SessionStart"
+              }
+            ]
+          }
+        ],
+        "PreInvocation": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy PreInvocation"
+              }
+            ]
+          }
+        ],
+        "PreToolUse": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy PreToolUse"
+              }
+            ]
+          }
+        ],
+        "PostToolUse": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy PostToolUse"
+              }
+            ]
+          }
+        ],
+        "Stop": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy Stop"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}
