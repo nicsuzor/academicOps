@@ -24,7 +24,7 @@ State what needs doing, never how. Decompose reads; it runs nothing. What the re
 3. **Expand within reliable inference**:
    - **Objective altitude**: Nodes are objectives ("clarify X and address gaps if required", "create the workflow for Y"), never mechanisms, choices between mechanisms, or probes of tool flags. Those belong to the worker.
    - Model sub-objectives as far as reliable inference allows per the Three-Purpose Taxonomy ([ADR-0002](../../../../specs/decisions/0002-distinguish-pkb-graph-edge-purposes-and-enforce-parsimony.md)): competing candidate options stay inside the body of the scoping task or ADR until chosen. A task that has options to choose between is created as one task with the candidate choices and evaluation criteria inside its body; when chosen, only the selected option is reified into an actionable task under `parent: <scoping_task_id>`. Separate decision points from their validation nodes.
-   - **Stop rule**: When the next step depends on something not yet known, the node ends naming that unknown, and no branches beyond it are modelled.
+   - **Stop rule**: When the next step depends on something not yet known, the node ends naming that unknown, and no branches beyond it are modelled. Agent responsibility ends once a deliverable or release is shipped and the user is informed; never model post-release sub-objectives to verify the user's own installation, pull, or deployment.
 4. **Resolve unknowns**:
    - **Decide**: Choose the obvious path and record the rationale in one bullet.
    - **Defer**: Mint an empirical probe task (`classification: probe`); dependent nodes wire `needs: [<probe_id>]`.

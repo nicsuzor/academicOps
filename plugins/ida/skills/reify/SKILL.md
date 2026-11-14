@@ -64,7 +64,7 @@ Fill the canonical task structure:
 
 ## Acceptance
 
-[ Numbered criteria (AC1, AC2, ...). Criteria state observable outcomes and verifiable evidence proving substantive completion, not line numbers, line ranges, or narrow slice prescriptions. ]
+[ Numbered criteria (AC1, AC2, ...). Criteria state observable outcomes and verifiable evidence proving substantive completion, bounded to shipping the deliverable and informing the user rather than proving the user's post-release acts, line numbers, line ranges, or narrow slice prescriptions. ]
 
 ## Instructions
 
@@ -85,7 +85,7 @@ Fill the canonical task structure:
 
 ### Requirements for Writing Tasks
 
-- Filter incoming mechanism prescriptions and translate them into observable outcome criteria. Line numbers, line ranges, and narrow code slice prescriptions are strictly forbidden in `Goal`, `Acceptance`, and `Instructions`. Give the worker the end state and the bounds; leave the method to it.
+- Filter incoming mechanism prescriptions and translate them into observable outcome criteria bounded to what the executor delivers (ending once the release is shipped and the user is informed, never requiring proof that the user installed, pulled, or deployed a shipped release). Line numbers, line ranges, and narrow code slice prescriptions are strictly forbidden in `Goal`, `Acceptance`, and `Instructions`. Give the worker the end state and the bounds; leave the method to it.
 - **Executor satisfiability:** `Goal`, `Acceptance`, and `Output` name only outcomes the bound executor produces and checks directly before releasing `done`. Exclude external post-exit acts (independent review, CI completion, PR merge, host deployment, user approval) unless that stage itself is the task's authorized scope, regardless of repository merge policy; when downstream stages are required, compose separate dependent tasks (`needs: [<work_task_id>]`).
 - Record the asker's own words once, in `## Ask`, with their ids, and never rewrite them: the task carries the ask as an immutable referent. Link asks to prior context, recompose into a clear logical structure, and cite message ids. Restate terse, fragmented words into clear, complete criteria, judged by fidelity to meaning and distinctions.
 - State the Goal and each criterion over the whole class the request covers. When asked what broke a mechanism, compose the debugging workflow and preserve the full failure question in Acceptance across its lifecycle rather than narrowing to a single symptom.
