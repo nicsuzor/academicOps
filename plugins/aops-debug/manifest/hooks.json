@@ -229,6 +229,16 @@
             ]
           }
         ],
+        "DirectoryAdded": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude DirectoryAdded"
+              }
+            ]
+          }
+        ],
         "FileChanged": [
           {
             "hooks": [
@@ -298,6 +308,28 @@
                 "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude ElicitationResult"
               }
             ]
+          }
+        ],
+        "PreModelSwitch": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude PreModelSwitch"
+              }
+            ],
+            "matcher": "*"
+          }
+        ],
+        "PostModelSwitch": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude PostModelSwitch"
+              }
+            ],
+            "matcher": "*"
           }
         ],
         "SessionEnd": [

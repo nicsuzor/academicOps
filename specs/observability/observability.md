@@ -115,8 +115,6 @@ Client hook emitters preserve trace integrity and turn boundaries across the ses
    - **Claude Code Subagent Correlation**: Out-of-process and nested Claude Code subagents walk parent transcripts and tracer sidecars (`~/.claude/tracer/<parent_id>.json`) when environment variables are absent, inheriting the root `phoenix_session_id` as `session.id`, linking `parent.session_id` and `parent.span_id` to the spawning `Agent`/`Task` tool call, and stripping any `/<task_suffix>` from `session.id` into `agent.id` and `agent.task_id`.
    - **Background Subagent Run Span**: In Claude Code, background subagents (`status: "async_launched"`) track their execution across turns: when `SubagentStop` fires, an `AGENT` span spanning from launch to completion is emitted under the parent's `Agent` tool span.
    - **Hand-Back and Background Task Turn Attribution**: When a subagent finishes and delivers a hand-back message to the parent (`<agent-message>`, `<subagent-handback>`, or agy `SYSTEM_MESSAGE` with `sender=<subagent_id>`), the receiving turn's spans set `subagent.id` and `handback.subagent_id` while preserving the parent's `session.id`. When a background task delivers a completion notification (`sender=<session_id>/task-<N>`), the receiving turn preserves `session.id = <session_id>` and records `agent.task_id = task-<N>`.
-5. **Ubiquitous Debug Spans**:
-   - Debug hook spans (`aops-hook-debug`) are emitted by canonical `ida` handlers on every invocation across all surfaces (including cloud environments where optional debug plugins are not loaded), recording hook name, runtime status, duration, and error states.
 
 ### Model Call Coverage and Residual Boundaries (US-5, US-6)
 
@@ -168,7 +166,7 @@ Spans emitted by the `aops-debug` plugin for hook events on Claude Code and `agy
 
 | Criterion | Requirement | Verification Check |
 | :- | :- | :- |
-| **AC-1** Payload in `input.value` without duplication | Spans carry full secret-redacted payload in `input.value` and do not duplicate into `hook.raw_payload`. | `tests/test_claude_code_tracer_session_events.py` asserts presence of full payload text in `input.value`, secret redaction, and absence of `hook.raw_payload` across 30 Claude Code and 5 agy hook events. |
+| **AC-1** Payload in `input.value` without duplication | Spans carry full secret-redacted payload in `input.value` and do not duplicate into `hook.raw_payload`. | `tests/test_claude_code_tracer_session_events.py` asserts presence of full payload text in `input.value`, secret redaction, and absence of `hook.raw_payload` across 33 Claude Code and 6 agy hook events. |
 | **AC-2** Identifying Metadata Retention | Every hook call yields one span whose attributes identify event, description, tool type, and session. | Parametrized tests assert `hook.plugin`, `hook.client`, `hook.event`, `session.id`, `description`, `tool.name`, and `tool.type` across all events. |
 | **AC-3** Governing Spec | Spec states contract, field inventory, and justification. | Documented in `specs/observability/observability.md`. |
 | **AC-4** Delivery Verification | Clean PR into `dev` with passing suite and linters. | Full pytest suite and `make lint` green. |
