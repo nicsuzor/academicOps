@@ -9,6 +9,7 @@ import stat
 import subprocess
 import sys
 import threading
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -346,9 +347,16 @@ def test_handback_and_peer_reports_never_arm_hearsay_gate(
     assert not list(gate_dir.glob("*")), "Expected zero gate state files without hearsay hooks"
 
 
-@pytest.mark.parametrize("tool_name", ["mcp__pkb__create_task", "mcp__services__search"])
-def test_mcp_caller_session_injects_session_on_pkb_tools(
-    james_dist_root: Path, tmp_path: Path, tool_name: str
+SESSION_SERVERS: tuple[str, ...] = tuple(
+    tomllib.loads((REPO_ROOT / "tests" / "policy.toml").read_text(encoding="utf-8"))["hooks"][
+        "mcp_caller_session"
+    ]["session_servers"]
+)
+
+
+@pytest.mark.parametrize("server_name", SESSION_SERVERS)
+def test_mcp_caller_session_injects_session_on_configured_servers(
+    james_dist_root: Path, tmp_path: Path, server_name: str
 ) -> None:
     build_dir = james_dist_root / "james-claude"
     env = _base_hook_env(tmp_path)
@@ -359,7 +367,7 @@ def test_mcp_caller_session_injects_session_on_pkb_tools(
         stdin_payload={
             "session_id": "sess-mcp-123",
             "prompt_id": "prompt-456",
-            "tool_name": tool_name,
+            "tool_name": f"mcp__{server_name}__sample_action",
             "tool_input": {"title": "Test"},
         },
         env=env,
@@ -370,6 +378,28 @@ def test_mcp_caller_session_injects_session_on_pkb_tools(
     assert updated["title"] == "Test"
     assert updated["_session"]["session_id"] == "sess-mcp-123"
     assert updated["_session"]["prompt_id"] == "prompt-456"
+
+
+def test_mcp_caller_session_skips_unconfigured_servers(
+    james_dist_root: Path, tmp_path: Path
+) -> None:
+    assert "playwright" not in SESSION_SERVERS
+    build_dir = james_dist_root / "james-claude"
+    env = _base_hook_env(tmp_path)
+    res = _run_dist_python(
+        build_dir,
+        "hooks/mcp_caller_session.py",
+        [],
+        stdin_payload={
+            "session_id": "sess-mcp-123",
+            "prompt_id": "prompt-456",
+            "tool_name": "mcp__playwright__browser_snapshot",
+            "tool_input": {},
+        },
+        env=env,
+    )
+    assert res.returncode == 0, res.stderr
+    assert res.stdout.strip() == ""
 
 
 def test_verdict_script_validates_judged_file_and_exports_otel_span(
