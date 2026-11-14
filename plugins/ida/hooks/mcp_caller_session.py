@@ -29,7 +29,14 @@ import sys
 from pathlib import Path
 from typing import Any
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+_HERE = Path(__file__).resolve()
+sys.path.insert(0, str(_HERE.parent))
+for _parent in _HERE.parents:
+    _lib_hooks = _parent / "lib" / "hooks"
+    if (_lib_hooks / "dispatch.py").is_file():
+        if str(_lib_hooks) not in sys.path:
+            sys.path.insert(0, str(_lib_hooks))
+        break
 
 from dispatch import is_cowork, resolve_caller_session_id
 

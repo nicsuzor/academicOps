@@ -1123,6 +1123,87 @@ def test_agy_preinvocation_captures_send_message_without_transcript_lag(tmp_path
     assert state2.get("claim_id") == claim_id_1  # Report 1 remains the armed claim
 
 
+def test_agy_system_message_does_not_rearm_after_verdict_disarms_on_later_invocations(
+    tmp_path: Path, monkeypatch
+):
+    """After verdict.py disarms an agy SYSTEM_MESSAGE turn, invocationNum=1,2 stay disarmed."""
+    import handlers
+
+    monkeypatch.setattr(
+        pcv, "_import_claude_code_tracer", lambda: _StubTracer(config={"endpoint": "http://x"})
+    )
+    monkeypatch.setattr(
+        hg, "claude_code_tracer", _StubTracer(config={"endpoint": "http://x"}), raising=False
+    )
+
+    session_id = "sess-agy-verdict-no-rearm"
+    report_msg = _agy_message(_AGY_PEER, "### Report\n\nCheck complete without argdown.")
+    transcript = tmp_path / "transcript.jsonl"
+    transcript.write_text(
+        json.dumps({"step_index": 0, "type": "USER_INPUT", "content": "initial"})
+        + "\n"
+        + json.dumps({"step_index": 1, "type": "SYSTEM_MESSAGE", "content": report_msg})
+        + "\n",
+        encoding="utf-8",
+    )
+
+    ctx0 = dispatch.HookContext(
+        client="agy",
+        event="UserPromptSubmit",
+        session_id=session_id,
+        agent_type="ida:ida",
+        hooks_dir=_HOOKS_DIR,
+        transcript_path=str(transcript),
+        raw={"invocationNum": 0, "transcriptPath": str(transcript), "conversationId": _AGY_CONV},
+    )
+    assert handlers.rule_against_hearsay(ctx0) is not None
+    arm_res = hg.hearsay_arm(ctx0)
+    assert arm_res is not None
+    assert hg.is_armed(session_id) is True
+
+    claim_id = hg.get_state(session_id)["claim_id"]
+    pcv.record_verdict(
+        session_id=session_id,
+        claim_id=claim_id,
+        verdict="REVISE",
+        reason="Valid: (1) fails #missing -- no argument supplied",
+    )
+    assert hg.is_armed(session_id) is False
+
+    for inv in (1, 2):
+        ctx_next = dispatch.HookContext(
+            client="agy",
+            event="UserPromptSubmit",
+            session_id=session_id,
+            agent_type="ida:ida",
+            hooks_dir=_HOOKS_DIR,
+            transcript_path=str(transcript),
+            raw={
+                "invocationNum": inv,
+                "transcriptPath": str(transcript),
+                "conversationId": _AGY_CONV,
+            },
+        )
+        assert hg.should_arm_hearsay(ctx_next) is False
+        assert handlers.rule_against_hearsay(ctx_next) is None
+        assert hg.hearsay_arm(ctx_next) is None
+        assert hg.is_armed(session_id) is False
+
+
+def test_claude_peer_report_without_invocation_num_still_arms_after_agy_guard():
+    """Claude Code UserPromptSubmit peer reports without invocationNum still arm and trigger hearsay."""
+    import handlers
+
+    session_id = "sess-claude-no-inv"
+    prompt = '<cross-session-message from="twin-b">Verification done.</cross-session-message>'
+    ctx = _prompt_ctx(session_id, prompt)
+    assert "invocationNum" not in ctx.raw
+    assert hg.should_arm_hearsay(ctx) is True
+    assert handlers.rule_against_hearsay(ctx) is not None
+    assert hg.hearsay_arm(ctx) is not None
+    assert hg.is_armed(session_id) is True
+
+
 def test_absent_block_refuses_to_clear_gate_and_leaves_armed(monkeypatch):
     monkeypatch.setattr(
         pcv, "_import_claude_code_tracer", lambda: _StubTracer(config={"endpoint": "http://x"})
@@ -1226,8 +1307,8 @@ def test_claim_none_does_not_pass_as_null_form():
 @pytest.mark.parametrize(
     "prompt",
     [
-        '<channel source="plugin:telegram:telegram" chat_id="1" user="nic">\n<cross-session-message from="twin-a">PR #12 is merged.\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</cross-session-message>\n</channel>',
-        '<channel source="plugin:telegram:telegram" chat_id="1" user="nic">Context</channel>\n<cross-session-message from="twin-a">PR #12 is merged.\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</cross-session-message>',
+        '<channel source="plugin:telegram:telegram" chat_id="1" user="tester">\n<cross-session-message from="twin-a">PR #12 is merged.\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</cross-session-message>\n</channel>',
+        '<channel source="plugin:telegram:telegram" chat_id="1" user="tester">Context</channel>\n<cross-session-message from="twin-a">PR #12 is merged.\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</cross-session-message>',
         '<channel source="plugin:telegram:telegram" chat_id="1" user="worker">\n<task-notification>\n<result>worker finished\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</result>\n</task-notification>\n</channel>',
     ],
 )
@@ -1353,11 +1434,11 @@ answers:
 @pytest.mark.parametrize(
     "prompt",
     [
-        '<channel source="plugin:telegram:telegram" chat_id="1" user="nic">do the thing</channel>',
+        '<channel source="plugin:telegram:telegram" chat_id="1" user="tester">do the thing</channel>',
         "can you check the release?",
         "what does <task-notification> mean?",
         "check <cross-session-message from='twin'>",
-        '<channel source="plugin:telegram:telegram" chat_id="1" user="nic">what does <task-notification> mean?</channel>',
+        '<channel source="plugin:telegram:telegram" chat_id="1" user="tester">what does <task-notification> mean?</channel>',
         'Preamble text\n<cross-session-message from="twin-a">PR #12 is merged.</cross-session-message>',
         'Context before <teammate-message teammate_id="worker">done</teammate-message> and trailing text',
         "",
@@ -2376,3 +2457,105 @@ def test_agy_subagent_pretool_pre_handback_check(tmp_path, monkeypatch):
         tool_input={"Recipient": subagent_sess, "Message": "Direction brief ## Ask"},
     )
     assert hg.subagent_pre_handback_check(ctx_root) is None
+
+
+def test_agy_subagent_pretool_pre_handback_check_multiturn_without_tracer(tmp_path, monkeypatch):
+    """Multi-turn agy subagent without tracer state still refuses missing argdown once via Turn 1 transcript."""
+    pointer_dir = tmp_path / "pointer_dir"
+    tracer_dir = tmp_path / "tracer_dir"
+    tracer_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("AOPS_SESSION_POINTER_DIR", str(pointer_dir))
+    monkeypatch.setenv("AOPS_TRACER_STATE_DIR", str(tracer_dir))
+
+    sub_sess = "subagent-multiturn-no-tracer"
+    parent_sess = "parent-multiturn-000"
+    transcript = tmp_path / "transcript.jsonl"
+    transcript.write_text(
+        json.dumps(
+            {
+                "step_index": 0,
+                "type": "SYSTEM_MESSAGE",
+                "content": _agy_message(
+                    parent_sess,
+                    "<subagent_reminder>You are running as a subagent, invoked by a caller agent.</subagent_reminder>\nFix bug.",
+                ),
+            }
+        )
+        + "\n"
+        + json.dumps({"step_index": 1, "type": "PLANNER_RESPONSE", "content": "Initial check."})
+        + "\n"
+        + json.dumps(
+            {
+                "step_index": 2,
+                "type": "SYSTEM_MESSAGE",
+                "content": _agy_message(parent_sess, "Turn 2 follow-up without reminder tag."),
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    # PreToolUse in agy carries stepIdx and omits invocationNum; Turn 2 lacks <subagent_reminder>
+    ctx_turn2_missing = dispatch.HookContext(
+        client="agy",
+        event="PreToolUse",
+        tool="send_message",
+        session_id=sub_sess,
+        transcript_path=str(transcript),
+        tool_input={"Recipient": parent_sess, "Message": "Turn 2 report with no argdown block."},
+        raw={
+            "conversationId": sub_sess,
+            "stepIdx": 5,
+            "transcriptPath": str(transcript),
+            "toolCall": {
+                "name": "send_message",
+                "args": {
+                    "Recipient": parent_sess,
+                    "Message": "Turn 2 report with no argdown block.",
+                },
+            },
+        },
+    )
+    res1 = hg.subagent_pre_handback_check(ctx_turn2_missing)
+    assert res1 is not None and res1.kind == dispatch.Kind.REFUSE
+
+    # Second attempt passes once-per-handback guard
+    assert hg.subagent_pre_handback_check(ctx_turn2_missing) is None
+
+    # A root session whose Turn 2 receives a subagent report quoting <subagent_reminder> is NOT a subagent
+    root_transcript = tmp_path / "root_transcript.jsonl"
+    root_transcript.write_text(
+        json.dumps(
+            {
+                "step_index": 0,
+                "type": "USER_INPUT",
+                "content": "<USER_REQUEST>Review hooks</USER_REQUEST>",
+            }
+        )
+        + "\n"
+        + json.dumps(
+            {
+                "step_index": 1,
+                "type": "SYSTEM_MESSAGE",
+                "content": _agy_message(
+                    sub_sess, "Report discussing <subagent_reminder> marker handling."
+                ),
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    ctx_root_turn2 = dispatch.HookContext(
+        client="agy",
+        event="PreToolUse",
+        tool="send_message",
+        session_id="root-session-turn2",
+        transcript_path=str(root_transcript),
+        tool_input={"Recipient": sub_sess, "Message": "Next brief without block."},
+        raw={
+            "conversationId": "root-session-turn2",
+            "stepIdx": 5,
+            "transcriptPath": str(root_transcript),
+        },
+    )
+    assert hg.subagent_pre_handback_check(ctx_root_turn2) is None

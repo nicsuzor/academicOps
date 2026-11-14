@@ -44,6 +44,7 @@ export class ContainerGateway {
         const proc = spawn(cmd, args, {
           env: {
             ...process.env,
+            AOPS_AGENT_NAME: "ida",
             TELEGRAM_CHAT_ID: String(req.chatId),
             TELEGRAM_TURN_ID: req.turnId,
             SOCKET_PATH: this.config.socketPath,
