@@ -40,7 +40,7 @@ async function init() {
   }
 
   const params = new URLSearchParams(window.location.search);
-  const detailsId = params.get("d");
+  const detailsId = params.get("d") || params.get("details");
   const requestedTab = params.get("tab");
 
   if (detailsId) {
@@ -259,9 +259,26 @@ function renderMarkdown(markdown) {
   return blocks.join("\n");
 }
 
+async function fetchDetailsResource(id) {
+  const params = new URLSearchParams(window.location.search);
+  const instance = params.get("instance");
+  const encodedId = encodeURIComponent(id);
+  if (instance) {
+    const encodedInstance = encodeURIComponent(instance);
+    const instanceRes = await fetch(
+      `../api/app/instances/${encodedInstance}/details/${encodedId}?instance=${encodedInstance}`
+    );
+    if (instanceRes.ok) {
+      return instanceRes;
+    }
+    return await fetch(`../api/app/details/${encodedId}?instance=${encodedInstance}`);
+  }
+  return await fetch(`../api/app/details/${encodedId}`);
+}
+
 async function loadDetails(id) {
   try {
-    const res = await fetch(`../api/app/details/${id}`);
+    const res = await fetchDetailsResource(id);
     if (res.ok) {
       const data = await res.json();
       document.getElementById("details-content").innerHTML = `
@@ -449,7 +466,7 @@ async function toggleQuestionDetails(qid) {
     const detailsId = card?.getAttribute("data-details-id");
     if (detailsId && !detailsEl.textContent.trim()) {
       try {
-        const res = await fetch(`../api/app/details/${detailsId}`);
+        const res = await fetchDetailsResource(detailsId);
         if (res.ok) {
           const data = await res.json();
           detailsEl.innerHTML = renderMarkdown(data.markdown);

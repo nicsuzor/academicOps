@@ -36,7 +36,11 @@ export class StdioMcpServer {
         broker,
         bot,
         permRelay,
+        emitChannelNotification: (content, meta) => this.emitChannelNotification(content, meta),
       });
+    if (!this.channelCore.emitChannelNotification) {
+      this.channelCore.emitChannelNotification = (content, meta) => this.emitChannelNotification(content, meta);
+    }
   }
 
   public get bot(): TelegramBotClient | null {
@@ -160,6 +164,7 @@ export class StdioMcpServer {
           id,
           ...(isFailure ? { isError: true } : {}),
           result: {
+            ...(isFailure ? { isError: true } : {}),
             content: [{ type: "text", text: typeof result === "string" ? result : JSON.stringify(result) }],
           },
         };
@@ -169,6 +174,7 @@ export class StdioMcpServer {
           id,
           isError: true,
           result: {
+            isError: true,
             content: [{ type: "text", text: `Error executing ${toolName}: ${String(err)}` }],
           },
         };
@@ -212,7 +218,7 @@ export class StdioMcpServer {
   }
 
   private async executeTool(name: string, args: Record<string, unknown>): Promise<unknown> {
-    return this.channelCore.handleIpcMessage({ type: name, ...args });
+    return this.channelCore.handleIpcMessage({ type: name, ...args, _toolName: name });
   }
 
   public startStdioLoop() {

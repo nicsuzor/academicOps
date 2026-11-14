@@ -29,7 +29,7 @@ Drives an individual open pull request through its progression lifecycle: confir
      - Target base branch is defined by project rules.
      - Merge authority (such as autonomous merge on green, human sign-off gate, or release cut approval) is determined by project policy.
      - When no project override exists, fallback to standard risk-tier governance: low-risk changes merge on independent verification; operational or high-risk changes require reviewer sign-off.
-     - Pre-approval readiness: Before approval, a PR must be green and reviewed by independent agents; mergeability against the base branch is not required before approval. A draft PR whose code step is complete is marked ready for review (`gh pr ready`) without waiting for approval.
+     - Pre-approval readiness: Before approval, a PR must be green and reviewed by independent agents; mergeability against the base branch is not required before approval. A worker PR opens as a draft (`gh pr create --draft`) and is marked ready for review (`gh pr ready`) only after the independent check passes and proportionate review by independent agents is posted to the PR thread, without waiting for approval.
 
 2. **Audit CI Checks and Proportionate Review**:
    - Query CI pipeline status on the latest head commit. All required checks must pass cleanly.
@@ -38,7 +38,7 @@ Drives an individual open pull request through its progression lifecycle: confir
 
 3. **Address Review Feedback and Requested Changes**:
    - Inspect open review threads, comments, and review states.
-   - Review comments and requested changes must be met by diff modifications on the feature branch or answered with substantiated rebuttals on the record. Once the code step addressing feedback completes, ensure any draft PR is marked ready for review (`gh pr ready`).
+   - Review comments and requested changes must be met by diff modifications on the feature branch or answered with substantiated rebuttals on the record. Once the independent check passes and review verdicts are posted to the PR thread, ensure any draft PR is marked ready for review (`gh pr ready`).
    - A pull request with unresolved requested changes must not merge.
 
 4. **Verify Approval and Readiness**:

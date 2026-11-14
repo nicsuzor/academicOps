@@ -1,19 +1,32 @@
 ---
 name: dump
-description: Routine session exit and handover -- commit and push work, create retroactive tasks for unparented changes and operational faults, record consolidated project updates, capture durable facts, release tasks, and emit a final report. Use when completing work, resetting context, transitioning environments, or pausing. Exclude for in-session updates (use reconcile).
+description: Session exit and handover -- execute an immediate emergency handover when invoked by the user, or a calm routine wrap-up when invoked by the agent at session end (committing work, minting retroactive tasks, capturing durable facts, releasing tasks, and emitting a final report). Use when the user runs /dump, or when completing work, resetting context, or transitioning environments. Exclude for in-session updates (use reconcile).
 ---
 
 # Dump -- Session Exit and Handover
 
-Execute the routine, calm wrap-up across all session terminations: task completion, context reset, environment transition, or external user pause.
+Determine the invocation mode before acting:
+
+- **User-run `/dump` (Emergency Handover)**: Invoked when the user runs `/dump` (or `/ida:dump`) as a command in their prompt turn (not an informational question about `/dump`), **whatever wording, context, or trailing instructions accompany it**.
+- **Agent-run `/dump` (Routine Wrap-Up)**: Invoked on the agent's own initiative at session end (task completion via `/pull`, context reset, or environment transition).
+
+## Mode 1: User-Run `/dump` (Emergency Handover)
+
+1. **Stop immediately**: Halt all in-progress task execution at the exact point reached. Start **no further work** -- no new reviews, no new dispatches, no re-dispatches, no new test suites, and no remaining task steps.
+2. **Wind down active work**: If subagents or background tasks are running, immediately message each subagent (e.g. `send_message`) to finish its immediate turn and return its current state without starting another step, and kill active background tasks or timers (e.g. `manage_task: kill`).
+3. **Save current state and hand over**: Proceed directly through Steps 1–7 below for the work as it stands right now -- commit modified files (describing partial state), record durable facts under `## Durable Facts` (offering to `pauli` only if already active, without spawning a new subagent), update and release claimed PKB tasks as `partial` (or `done` only if all acceptance criteria were already verified before `/dump` was called), and emit the final handover report.
+
+## Mode 2: Agent-Run `/dump` (Routine Wrap-Up)
+
+Execute the calm, routine wrap-up across Steps 1–7 below.
 
 ## Procedure
 
 ### 1. Save and Push Work
 
 1. Stage specific modified files (never blanket `add -A`) and commit. If work is incomplete, describe what is partial in the commit message.
-2. Deliver commits only where the task's Output names. If Output says nothing is pushed or names only a PKB task or note, do not push. If Output names a branch or pull request, push commits to that remote branch (`git push`). If the PR is a draft and its code step is complete, mark it ready for review (`gh pr ready`) without waiting for approval. Ephemeral container and session scratch paths (`<appDataDir>/brain/`, `/tmp/`, unpushed working trees) vanish on exit; persist non-git evaluation datasets, specimen tables, and reports in the PKB with durable pointers.
-3. For pull requests (`gh pr create`), target the diverged base branch (e.g. `--base "${BASE_BRANCH:-${POLECAT_BASE_BRANCH}}"`).
+2. Deliver commits only where the task's Output names. If Output says nothing is pushed or names only a PKB task or note, do not push. If Output names a branch or pull request, push commits to that remote branch (`git push`). Worker pull requests open as a draft (`gh pr create --draft`) and are marked ready for review (`gh pr ready`) only after the independent check passes and its review verdict is posted to the PR thread, without waiting for approval. Ephemeral container and session scratch paths (`<appDataDir>/brain/`, `/tmp/`, unpushed working trees) vanish on exit; persist non-git evaluation datasets, specimen tables, and reports in the PKB with durable pointers.
+3. For pull requests (`gh pr create --draft`), target the diverged base branch (e.g. `--base "${BASE_BRANCH:-${POLECAT_BASE_BRANCH}}"`).
 4. Record the branch name and commit SHA in the final report.
 
 ### 2. Retroactive Tasks for Unparented Project Edits and Operational Faults
@@ -43,8 +56,11 @@ For each claimed task (releasing child tasks first):
 2. **Update Task Body and Report**: Update the task body so its `## Report` section records the outcome and the `premise-check` report argument (asked by the task's frozen ask ids).
 3. **Release via `pkb_release_task`**, passing the active `session_id`:
 
-- `done`: All acceptance criteria are fully met with verified evidence recorded in the task's Report section: quoted output, `file:line` citations, counts, specimen runs, and the report argument answering each `<task id>/AC<n>`. All child tasks and subtasks created by the session must be completed; if any subtask remains open, the parent task cannot be released as `done`. When the deliverable is a PR, push the branch, open the PR, record `pr_url` and branch, and release `done`. An empty, template, or bare-assertion report is released as `partial`.
-- `partial`: The worker's own acceptance items remain unfinished (a scope seam, an external dependency, a context reset, or a missing tool) OR child tasks/subtasks created by the session remain uncompleted. If the session created subtasks that have not finished, the claimed task must be released as `partial` (never `done`), documenting what was completed, open subtasks, and what remains unfinished in `reason` and `## Report`. Never release as `partial` merely because an external dependent check (QA, merge, deploy) remains to run.
+- `done`: All in-scope acceptance criteria are fully met with verified evidence recorded in the task's Report section: quoted output, `file:line` citations, counts, specimen runs, and the report argument answering each `<task id>/AC<n>`.
+  - For a container coordinator (`/supervise`): When all in-session deliverables and pull requests are completed, and any remaining work was intentionally queued as explicit out-of-session follow-up tasks on the graph (e.g. work in a different repository, scheduled for a later time, or assigned to a separate external agent such as `ida` channel delivery), release the claimed repo task as `done`, recording those queued follow-up task IDs under `Next step`.
+  - For plain leaf workers (`/pull`): All acceptance criteria must be satisfied directly without delegating to child or follow-up tasks.
+  - When the deliverable is a PR, push the branch, open the PR, record `pr_url` and branch, and release `done`. An empty, template, or bare-assertion report is released as `partial`.
+- `partial`: The worker's own acceptance items remain unfinished (a scope seam, an external dependency, a context reset, or a missing tool) OR internal in-session subtasks created by the session remain uncompleted. If a `/supervise` session left in-session subtasks incomplete or interrupted, the claimed task must be released as `partial` (never `done`), documenting what was completed, open subtasks, and what remains unfinished in `reason` and `## Report`. Plain leaf workers release `partial` whenever any acceptance item lacks verified evidence, and never mint follow-up tasks. Never release as `partial` merely because an external dependent check (QA, merge, deploy) remains to run.
 - `failed`: Terminal failure, unrecoverable blocker, or check failure (e.g. QA or review). Document failure evidence and root cause.
 - `cancelled`: Task is obsolete or invalidated. Document reason.
 - `in_progress`: Use only if an active successor session is immediately continuing work.
@@ -85,8 +101,9 @@ Determine all projects touched during the session (modified files, updated tasks
 Workers never sequence work or invent speculative follow-ups ("park on a downward slope"):
 
 1. _Pre-Existing Dependent Work_: If an authorized follow-up task, child QA task, or review task already exists on the graph, provide an explicit pointer (`[[task-id]]` or URL).
-2. _Interrupted Work_: If a task is released as `partial` or `in_progress` (context boundary, environment migration, user halt), provide a self-contained 2-4 sentence resumption prompt detailing current state, touched files, and exact starting instructions for a fresh agent.
-3. _Fully Completed Work_: If the task is `done` and no pre-existing dependent task exists on the graph, state `None`.
+2. _Container Coordinator Follow-Ups (`/supervise`)_: When a container coordinator completes all in-session deliverables and has queued explicit out-of-session follow-up tasks on the graph (such as a different repository task, an `ida` channel delivery task, or a deferred sequential step), record those queued task IDs under `Next step`. Plain `/pull` leaf workers operate strictly state-only and never create or name follow-up tasks.
+3. _Interrupted Work_: If a task is released as `partial` or `in_progress` (context boundary, environment migration, user halt), provide a self-contained 2-4 sentence resumption prompt detailing current state, touched files, and exact starting instructions for a fresh agent.
+4. _Fully Completed Work_: If the task is `done` and no follow-up task exists on the graph, state `None`.
 
 ### 7. Emit Final Handover Report
 

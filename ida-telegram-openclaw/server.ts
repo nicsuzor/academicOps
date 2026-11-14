@@ -140,6 +140,21 @@ async function main() {
       webContext.editTelegramCard(chatId, messageId, text, replyMarkup)
     );
 
+    // Sweep undelivered questions that were left pending with no messageId
+    const undelivered = broker.sweepUndeliveredQuestions();
+    for (const q of undelivered) {
+      mcpServer.emitChannelNotification(
+        `Undelivered question ${q.id} detected: ${q.deliveryError || "No messageId recorded"}`,
+        {
+          event: "question_delivery_failed",
+          question_id: q.id,
+          error: q.deliveryError || "No messageId recorded",
+          turn_id: q.turnId || q.turn_id,
+          session_id: q.sessionId || q.session_id,
+        }
+      );
+    }
+
     // Start background polling
     bot.startPolling().catch((e) => console.error("[ida-telegram] Polling stopped:", e));
   }
@@ -171,7 +186,203 @@ async function main() {
   mcpServer.startStdioLoop();
 }
 
-main().catch((err) => {
-  console.error("[ida-telegram] Fatal error:", err);
-  process.exit(1);
-});
+export function createBridgeServer(
+  config: ReturnType<typeof loadConfig>,
+  broker: QuestionBroker,
+  bot: TelegramBotClient | null | (() => TelegramBotClient | null),
+  emitChannelNotification?: (content: string, meta: Record<string, unknown>) => void,
+  store?: PluginStore,
+  broadcastSse?: typeof broadcastSseEvent
+) {
+  const getBot = () => (typeof bot === "function" ? (bot as () => TelegramBotClient | null)() : bot);
+  return createServer((client) => {
+    let raw = "";
+    client.on("data", async (chunk) => {
+      raw += chunk.toString();
+      if (raw.includes("\n")) {
+        const line = raw.trim();
+        try {
+          const req = JSON.parse(line);
+          const activeBot = getBot();
+          if (req.type === "ask_user") {
+            const postedIds: string[] = [];
+            const failedDeliveries: Array<{ questionId: string; error: string }> = [];
+            const topMiniAppOnly = req.mini_app_only === true || req.chat === false;
+            const topThreadId = (req.message_thread_id ?? req.thread_id) as number | undefined;
+            const defaultChatId = config.allowFrom[0];
+
+            if (!topMiniAppOnly && !activeBot) {
+              client.write(JSON.stringify({ status: "error", error: "Telegram bot client is not running" }) + "\n");
+              return;
+            }
+            if (!topMiniAppOnly && !defaultChatId) {
+              client.write(JSON.stringify({ status: "error", error: "No allowed chat ID configured for Telegram questions" }) + "\n");
+              return;
+            }
+
+            for (const q of req.questions || []) {
+              const isMiniAppOnly = topMiniAppOnly || q.mini_app_only === true || q.chat === false;
+              const effectiveThreadId =
+                (q.message_thread_id ?? q.thread_id ?? topThreadId) ??
+                (defaultChatId ? activeBot?.getLastThreadId(defaultChatId) : undefined);
+              const detailText = q.detail ?? q.details ?? req.detail ?? req.details;
+              let detailsId = q.detailsId ?? q.details_id;
+              if (!detailsId && detailText && store) {
+                detailsId = store.storeDetails(detailText);
+              }
+              const result = await broker.askUser({
+                question: q.question,
+                header: q.header,
+                context: q.context,
+                detail: detailText,
+                detailsId,
+                mini_app_only: isMiniAppOnly,
+                recommendation: q.recommendation,
+                options: q.options,
+                multiSelect: q.multiSelect,
+                allowOther: q.allowOther,
+                chatId: defaultChatId,
+                messageThreadId: effectiveThreadId,
+                turnId: q.turnId || q.turn_id || req.turn_id || req.turnId,
+                sessionId: q.sessionId || q.session_id || req.session_id || req.sessionId,
+              });
+
+              if (!isMiniAppOnly) {
+                if (!activeBot || !defaultChatId) {
+                  const errorMsg = "Telegram bot is unavailable or no authorized chat configured";
+                  broker.markDeliveryFailed(result.questionId, errorMsg);
+                  failedDeliveries.push({ questionId: result.questionId, error: errorMsg });
+                } else {
+                  const card = broker.renderQuestionCard(result.questionId, config.miniAppUrl, config.instance);
+                  if (card) {
+                    const sendRes = await activeBot.sendQuestionCard(defaultChatId, result.questionId, card, effectiveThreadId);
+                    if (!sendRes?.ok || !sendRes?.result?.message_id) {
+                      const errorMsg = sendRes?.description || sendRes?.error || "Telegram sendMessage failed";
+                      broker.markDeliveryFailed(result.questionId, errorMsg);
+                      failedDeliveries.push({ questionId: result.questionId, error: errorMsg });
+                    } else {
+                      postedIds.push(result.questionId);
+                    }
+                  } else {
+                    const errorMsg = `Failed to render question card for ${result.questionId}`;
+                    broker.markDeliveryFailed(result.questionId, errorMsg);
+                    failedDeliveries.push({ questionId: result.questionId, error: errorMsg });
+                  }
+                }
+              } else {
+                postedIds.push(result.questionId);
+              }
+            }
+
+            if (failedDeliveries.length > 0) {
+              const failed = failedDeliveries[0];
+              if (emitChannelNotification) {
+                emitChannelNotification(`Question delivery failed: ${failed.error}`, {
+                  event: "question_delivery_failed",
+                  question_id: failed.questionId,
+                  error: failed.error,
+                  turn_id: req.turn_id || req.turnId,
+                  session_id: req.session_id || req.sessionId,
+                });
+              }
+              client.write(
+                JSON.stringify({
+                  status: "error",
+                  error: failed.error,
+                  questionId: failed.questionId,
+                  questionIds: postedIds,
+                  failedDeliveries,
+                }) + "\n"
+              );
+            } else {
+              client.write(JSON.stringify({ status: "ok", questionId: postedIds[0], questionIds: postedIds }) + "\n");
+            }
+          } else if (req.type === "close_question") {
+            const questionId = req.question_id || req.questionId || req.id;
+            const reason = typeof req.reason === "string" ? req.reason.trim() : "";
+            if (!questionId) {
+              client.write(JSON.stringify({ status: "error", error: "Missing question_id" }) + "\n");
+              return;
+            }
+            if (!reason) {
+              client.write(JSON.stringify({ status: "error", error: "Missing reason: closing a question requires an explicit stated reason" }) + "\n");
+              return;
+            }
+            const result = await broker.closeQuestion(questionId, reason);
+            if (result && activeBot && result.question.chatId && result.question.messageId) {
+              await activeBot.editMessage(result.question.chatId, result.question.messageId, result.cardText, { inline_keyboard: [] });
+            }
+            if (result && emitChannelNotification) {
+              emitChannelNotification(`Question closed: ${result.channelEvent.reason}`, {
+                event: result.channelEvent.event,
+                ...result.channelEvent,
+              });
+            }
+            if (result && store && broadcastSse) {
+              const seq = store.nextSeq("question_closed", {
+                question_id: questionId,
+                reason: result.channelEvent.reason,
+                turn_id: result.channelEvent.turn_id,
+                session_id: result.channelEvent.session_id,
+              });
+              broadcastSse("question_closed", {
+                question_id: questionId,
+                reason: result.channelEvent.reason,
+                turn_id: result.channelEvent.turn_id,
+                session_id: result.channelEvent.session_id,
+              }, seq);
+            }
+            client.write(JSON.stringify({ status: result ? "ok" : "not_found", result }) + "\n");
+          } else if (req.type === "answer_question") {
+            const questionId = req.question_id || req.questionId || req.id;
+            const choice = typeof req.choice === "string" ? req.choice.trim() : undefined;
+            const optionIndex = typeof req.option_index === "number" ? req.option_index : undefined;
+            if (!questionId) {
+              client.write(JSON.stringify({ status: "error", error: "Missing question_id" }) + "\n");
+              return;
+            }
+            if (!choice && optionIndex === undefined) {
+              client.write(JSON.stringify({ status: "error", error: "Missing answer: provide choice or option_index" }) + "\n");
+              return;
+            }
+            const result = await broker.resolveAnswer(questionId, optionIndex !== undefined ? optionIndex : "other", choice);
+            if (result && activeBot && result.question.chatId && result.question.messageId) {
+              await activeBot.editMessage(result.question.chatId, result.question.messageId, result.cardText, { inline_keyboard: [] });
+            }
+            if (result && emitChannelNotification) {
+              emitChannelNotification(`Question answered: ${result.channelEvent.choice}`, {
+                event: result.channelEvent.event,
+                ...result.channelEvent,
+              });
+            }
+            if (result && store && broadcastSse) {
+              const seq = store.nextSeq("question_resolved", {
+                question_id: questionId,
+                choice: result.channelEvent.choice,
+                turn_id: result.channelEvent.turn_id,
+              });
+              broadcastSse("question_resolved", {
+                question_id: questionId,
+                choice: result.channelEvent.choice,
+                turn_id: result.channelEvent.turn_id,
+              }, seq);
+            }
+            client.write(JSON.stringify({ status: result ? "ok" : "not_found", result }) + "\n");
+          } else if (req.type === "list_questions") {
+            const pending = broker.getPendingQuestions();
+            client.write(JSON.stringify({ status: "ok", questions: pending }) + "\n");
+          }
+        } catch {
+          client.write(JSON.stringify({ error: "malformed request" }) + "\n");
+        }
+      }
+    });
+  });
+}
+
+if (import.meta.main) {
+  main().catch((err) => {
+    console.error("[ida-telegram] Fatal error:", err);
+    process.exit(1);
+  });
+}

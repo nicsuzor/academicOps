@@ -103,6 +103,16 @@ Every reply sent over Telegram automatically carries inline action buttons with 
 - **Batch migration and cleanup:** Reorganize conversations into dedicated topics by transferring 1-100 messages per call with `forward_messages` (preserving attribution) or `copy_messages` (without forward headers), and remove superseded messages within Telegram's 48-hour deletion window using `delete_messages`.
 - **In-place button updates:** Attach, replace, or clear (`buttons: []` / omitted) inline keyboard buttons on existing messages without reposting text using `edit_message_reply_markup`.
 
+## Rich Media, Location, Interactivity & Polls
+
+All outbound media, location, interactivity, draft, and poll send tools default to the active chat and thread (or the thread of `reply_to`) just like `reply`, and format Markdown captions and quiz explanations into native Telegram entities:
+
+- **Images, documents, video, and audio (`send_photo`, `send_document`, `send_video`, `send_animation`, `send_audio`, `send_video_note`):** Send visual artifacts, plots (`send_photo`), reports or archives (`send_document`), recordings (`send_video`), silent loops (`send_animation`), music or audio tracks (`send_audio`), or circular video notes (`send_video_note`) by passing a local file path, Telegram `file_id`, or HTTP(S) URL along with an optional Markdown `caption` (except `send_video_note`), `has_spoiler`, or inline `buttons`.
+- **Multi-item albums (`send_media_group`):** Group 2 to 10 related photos, videos, documents, animations, or audio tracks into a single album call (`media: [{ type, media, caption?, has_spoiler? }, ...]`) rather than sending separate messages.
+- **Locations, venues, contacts, and dice (`send_location`, `send_venue`, `send_contact`, `send_dice`):** Share map coordinates (`send_location`), named places with street addresses (`send_venue`), structured contact cards (`send_contact`), or animated random throws (`send_dice` with `🎲`, `🎯`, `🏀`, `⚽`, `🎳`, or `🎰`).
+- **Activity indicators and streaming drafts (`send_chat_action`, `send_message_draft`):** Broadcast transient activity status (`send_chat_action` with `typing`, `upload_photo`, `upload_document`, etc.) before long-running uploads, or stream incremental Markdown previews in private chats using `send_message_draft` with a consistent non-zero `draft_id`.
+- **Native polls (`send_poll`, `stop_poll`):** Create regular or quiz polls with 2 to 12 options (`send_poll` with `question`, `options`, optional `allows_multiple_answers`, `is_anonymous`, or `type: "quiz"` + `correct_option_id` + Markdown `explanation`) for quick group or user tallies, and close an open poll by `message_id` using `stop_poll`. Use `ask_user` when a structured decision card should resume the agent turn automatically upon selection.
+
 ## Voice
 
 - **Phonetic dictation resolution:** When processing voice notes or dictated messages, resolve odd words as possible homophones in context, relaying the fitting interpretation while noting the original transcription where ambiguity remains.

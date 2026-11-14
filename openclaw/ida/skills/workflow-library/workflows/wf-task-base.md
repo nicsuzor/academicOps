@@ -1,12 +1,12 @@
 ---
 title: Task base
 type: template
-description: Foundation for every task executed from a task file via /ida:pull -- compose all other workflows onto it.
+description: Foundation for every task executed from a task file via /ida:supervise (repo-scoped epic tasks) or /ida:pull (plain leaf tasks) -- compose all other workflows onto it with single-session combined-task default.
 tags: [base, task]
 ---
 
 - **GOAL:** <one sentence stating the observable outcome>
-- **STRUCTURAL PLACEMENT:** Tasks requiring review or follow-up must be structured either as a single task with internal subtasks (if executable by the same agent in one session) or as a dedicated epic with child tasks (if multi-session or independent context is required); never as loose siblings under an external parent. An agent given a task does the groundwork and makes the decision itself; never file the task back to the user as their decision (`assignee: user`) unless the user explicitly directed to decide it themselves (tg 1013).
+- **STRUCTURAL PLACEMENT:** Tasks requiring review or follow-up must be structured as a single combined repo-scoped task by default under `/ida:supervise` (handling design review, test-first build, PR creation, and independent verification in one container session), splitting into separate child/follow-up tasks ONLY when explicitly requiring a different repository, different time, or separate external agent/session; never as loose siblings under an external parent. Plain leaf workers under `/ida:pull` operate strictly state-only. An agent given a task does the groundwork and makes the decision itself; never file the task back to the user as their decision (`assignee: user`) unless the user explicitly directed to decide it themselves (tg 1013).
 - **BOUNDARY:** A refusal at or beyond the container boundary is a halt, never a method. In-container sandbox refusals are not walls.
 - **ACCEPTANCE CRITERIA:** <one line each, stating observable end-state conditions rather than mechanism prescriptions or file:line edits; workers read target files in full before editing>
   - <criterion>

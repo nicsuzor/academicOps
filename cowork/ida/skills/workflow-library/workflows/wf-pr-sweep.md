@@ -28,7 +28,7 @@ Sweep execution runs via parallel fan-out: evaluate each PR independently and ag
 1. **Enumerate and Classify Open PRs**:
    - Query open pull requests across target repositories.
    - For each PR, determine its category:
-     - _Draft_: Staged work owned by the author; where a draft PR's code step is complete, mark it ready for review (`gh pr ready`) so it enters the review pipeline, while unfinished draft PRs remain excluded until marked ready.
+     - _Draft_: Active WIP or author-staged draft PRs remain excluded while still in progress; completed worker draft PRs awaiting verification are triaged to queue their independent check and review task without marking ready inline, and transition to ready for review (`gh pr ready`) only after the independent check passes and its review verdict is posted to the PR thread.
      - _Automated Release_: Package or version release PRs managed by release automation; excluded from automated sweeping and reserved for explicit release approvals.
      - _Standard / Feature_: Active changes subject to review, checks, and project merge rules.
 
@@ -40,13 +40,13 @@ Sweep execution runs via parallel fan-out: evaluate each PR independently and ag
 
 3. **Triage and Queue Next-Step Tasks**:
    - Decouple triage from execution: the sweep does not execute inline resolutions or perform merges. It queues tasks for the next step, either queuing an existing task or creating a follow-up and queuing that.
-   - For each ready, non-draft PR requiring action:
+   - For each non-draft PR or completed worker draft PR awaiting verification requiring action:
      - Audit CI check status.
      - Inspect review status (proportionate review by independent agents posted to the PR, changes requested, or author feedback).
      - Check approval status per project policy.
      - Before approval, a PR requires green checks and review by independent agents posted to the PR; mergeability against the base branch is not required before approval, and PRs awaiting approval must not be queued for conflict resolution or rebase.
      - Identify the discrete next action needed:
-       - If unreviewed: queue task to conduct proportionate risk-tier review by independent agents and post verdicts to the PR.
+       - If unreviewed (including a completed worker draft PR awaiting its initial check): queue task to conduct proportionate risk-tier review by independent agents and post verdicts to the PR.
        - If review feedback or changes requested: queue task to address feedback.
        - If green, reviewed, but awaiting required approval: mark blocked on approval (do not queue conflict resolution or rebase).
        - If approved (or autonomous merge authorized) and merge conflicts exist: queue task to bring branch up to date with base and resolve merge conflicts.
@@ -60,7 +60,7 @@ Sweep execution runs via parallel fan-out: evaluate each PR independently and ag
      - `Queued for Conflicts`: Approved PR with merge conflicts against base branch; next-step conflict resolution task queued (PRs awaiting approval are never queued for conflicts).
      - `Queued for Landing`: Approved and clean (or autonomous merge authorized); next-step landing/merge task queued.
      - `Blocked on Approval`: Green and reviewed, awaiting designated principal sign-off per project policy (mergeable not required before approval).
-     - `Excluded`: Draft or automated release PR outside automated sweep scope.
+     - `Excluded`: Active WIP/author-staged draft or automated release PR outside automated sweep scope.
    - Conclude by filing a closed task for the sweep itself listing all outstanding tasks and their queued task identifiers, so the coordinator can pick it up and decide whether to dispatch.
 
 ## Output contract
