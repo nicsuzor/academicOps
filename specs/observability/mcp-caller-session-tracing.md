@@ -21,7 +21,7 @@ As a platform operator, I want custom MCP servers and gateway proxies to receive
 
 ### US-2 Declare caller session acceptance and preserve tool schemas
 
-As a client or gateway dispatcher, I want MCP servers to accept explicit `session_id` on their tool schemas while leaving non-session and portal wrapper tools without injected unknown top-level arguments, so that domain schemas remain strict and attribution succeeds without schema validation errors.
+As a platform operator, I want MCP servers to accept explicit `session_id` on their tool schemas while leaving non-session and portal wrapper tools free of unknown top-level arguments, so that domain schemas remain strict and caller attribution succeeds without schema validation errors.
 
 - **AC-2.1** Given an instrumented MCP server tool supporting caller attribution (such as PKB or container-dispatch tools), when the server advertises its tool schemas, then it declares optional top-level `session_id` as a parameter so agents pass `session_id` explicitly in tool arguments (directly or inside `portal_codemode_execute`) without client-side hook mutation.
 - **AC-2.2** Given an MCP server that handles caller `session_id` inside tool arguments, when a tool call containing `session_id` arrives, then the server extracts `session_id` cleanly alongside domain validation without rejecting it.
