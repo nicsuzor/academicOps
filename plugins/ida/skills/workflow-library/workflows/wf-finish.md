@@ -1,83 +1,47 @@
 ---
 alias:
   - wf-finish
-description: Universal finish template fallback -- defines how tasks finish when a project has no local finish template, targeting common development or version branch, single-session supervised execution by default, and specifying QA verification for functional changes.
+default: true
+description: Default task completion workflow -- defines how a work task completes and releases as done, and how an optional review process on a reviewed class of task is reified as two separate tasks (the work task and the review task).
 id: wf-finish
 tags:
   - wf-template
   - finish
   - lifecycle
-title: Universal Task Finish Template
+  - default
+title: Default Task Completion Template
 type: template
 ---
 
 ## What this template does
 
-Defines the universal baseline contract for how tasks finish when a repository lacks a project-local finish template. Governs delivery targets, worker completion obligations, and independent QA follow-up requirements.
+Defines the default workflow for completing a task (`done` release on the work task) and the optional review step for classes of tasks that require independent review.
 
-## One PR, opened by the build
+## Work Task Completion and Single Release Status
 
-- Under container supervision (`/supervise`), Stages 1--4 execute by default within a single combined repo-scoped task in one container session:
-  - Stage 1 records its design, drafted spec change, and independent subagent review verdicts in a PKB note; Stage 1 commits no plan or design file and opens no PR.
-  - Stage 2 opens the PR into the base branch as a draft (`gh pr create --draft`), carrying the build and any spec change. The spec stays editable on that branch as the build teaches more.
-  - Stage 2/3 marks the PR ready for review (`gh pr ready`) only after the independent check passes and proportionate review on the build is posted to the PR thread by independent subagents. That flip does not wait for approval: approval comes at the full review, and spec and feature merge together.
-- When explicitly split into separate tasks (permitted ONLY when requiring a different repository, different time, or separate external agent/session, or under `/pull` leaf execution):
-  - Stage 1 records its design in a PKB note that the Stage 2 task points to, committing no plan file and opening no PR.
-  - Stage 2 opens the PR into the base branch as a draft (`gh pr create --draft`) carrying build and spec change.
-  - Stage 4 runs as a separate verifying task that marks the PR ready for review (`gh pr ready`) once the independent check passes.
+Every work task has **one completion release status: `done`**. When the worker finishes its deliverable, it executes these steps and exits:
 
-## Finish Policy
+1. **Verify locally**: Run automated tests, linters, and build checks needed to prove the change works.
+2. **Package and deliver where `Output` names**:
+   - **Pull request deliverables**: Push the feature branch and open or update a draft pull request (`gh pr create --draft`) targeting the repository's configured development or version branch (or default branch if none exists). Never push directly to protected branches. If the parent task has `bundle_pr: true` or is an active epic (`type: epic`), commit and push to the shared epic branch (`polecat/<epic-id>` or `topic/<slug>`) without opening a detached PR. For a pre-build design or spec task, record the design, drafted spec change, and independent subagent review verdicts in a PKB note without committing a plan file or opening a PR; the subsequent build task opens the single draft PR carrying both build and spec change.
+   - **Non-PR deliverables**: Persist the deliverable in the PKB or designated target path (never in ephemeral container scratch paths).
+   - **Clean commit and PR metadata**: Never include private PKB IDs or `Task:`, `Epic:`, or `Claude-Session:` trailers in public repository commits or PR descriptions (`data-boundaries`). PR descriptions explain what was done and the approach taken without listing line-by-line diff details.
+3. **Tick acceptance criteria with primary evidence**: Update `## Acceptance` on the task record. Tick an item (`[x]`) only with direct primary evidence of that item itself (`file:line`, test output, PR URL, or artifact pointer); leave any unmet item unticked (`[ ]`) with its limit stated.
+4. **Release the work task as `done`**: Invoke `/dump` and release the work task via `pkb_release_task` with **`status: "done"`**, recording `pr_url` and `branch` (or the PKB artifact pointer) on the task record.
+   - **One release status (`done`)**: A completed work task always releases as **`done`** -- never `review`, and never `partial` to wait for CI, code review, or merge. Releasing `done` immediately unblocks any downstream review or dependent task on the graph.
+   - **Exception states**: Use `partial` strictly when the worker's own acceptance items remain unfinished or halt at a pre-work approval gate; use `failed` when a required check or execution fails. Plain leaf workers (`/pull`) operate state-only on their claimed task and never mint follow-up tasks.
 
-- **Target branch**: Common unprotected version or development branch where configured; repository default branch (`main` or `master`) if no intermediate branch exists.
-- **Delivery mechanism**: Open a draft pull request (`gh pr create --draft`) targeting the base branch. In a combined `/supervise` session, the container coordinator conducts design and review in-session, opens the PR into the base branch as a draft (`gh pr create --draft`) carrying the build and any spec change, and marks the PR ready for review (`gh pr ready`) only after the independent check passes and proportionate review by independent subagents is posted to the PR thread, without waiting for approval. When split across separate tasks (only for explicit different repo/time/agent boundaries or under `/pull` leaf execution), Stage 1 records its design in a PKB note without committing plan files or opening a PR; both Stage 2 builds (carrying the build and any spec change) and standalone single-stage implementation changes open their worker PR into the base branch as a draft (`gh pr create --draft`), and Stage 4 marks the PR ready (`gh pr ready`) once the independent check passes. Never push directly to protected default branches. PR descriptions explain what was done and the approach taken to do it, making the PR easy to read and understand without listing every single change in detail (the diff is available for that). Specific PR structure is modular and defers to project-level templates or style conventions where defined. Merge authority is governed by PR risk tier below.
-- **Bundled pull requests under epics**: If the parent task has `bundle_pr: true` or is an active epic (`type: epic`), the worker commits to the designated epic branch (`polecat/<epic-id>` or `topic/<slug>`) and does NOT open a detached PR against the base branch. The worker releases `done` recording the shared branch and the epic consolidation task ID. If a standalone tracking PR exists, it is marked superseded and closed when consolidated.
-- **Merge authority by PR risk tier**:
-  - The QA agent worker independently evaluates PR risk against the three-tier taxonomy (`specs/enforcement/enforcement.md#pr-risk-taxonomy-enforcement`):
-  - **Tier 1 (Autonomous QA-Merge)**: Low-risk changes (pure documentation, formatting, typing stubs). A spec or design stage records on the PKB and opens no PR; the following build opens the only PR carrying any spec change, and both merge together after full review. For standalone Tier 1 changes, a fresh QA agent worker independently verifies claims and test suite in a clean context. On a verified pass, the QA agent worker merges the PR autonomously via `gh pr merge --squash` and releases the QA task as `done`.
-  - **Tier 2 (Operational Gate)**: Code, workflows, tools, skills, rules, agent definitions, or tests. Reviewer sign-off required; a fresh QA agent worker independently verifies claims, runs tests, and posts receipts to the PR as a structured review comment. The QA worker does not merge, leaving the PR open for reviewer sign-off. The QA task is released as `done` with the PR URL recorded on the task record so `/reconcile` tracks merge without human wait states. No task rests or releases in `review` for a human merge gate.
-  - **Tier 3 (Critical Hazard & Public Gate)**: Host infrastructure, credentials, manuscripts, public releases, or high blast radius. Gated on principal review and merge; agents are forbidden from merging. QA agent workers independently verify and post receipts, leaving the PR open, and release the QA task as `done`.
-- **Merge**: For verified standalone Tier 1 PRs, QA agent worker merges upon verified pass. For Tier 2 and Tier 3 PRs (and combined spec-and-feature PRs), reviewer sign-off merges the PR; QA agent worker verifies, posts receipts, and leaves the PR open. The primary implementation task releases `done` upon PR filing to unblock QA; when the PR merges, the parent epic progresses.
-- **Commit messages and trailers**: Commits to public repositories must never carry PKB IDs or `Task:`, `Epic:`, or `Claude-Session:` trailers (`data-boundaries`). Task linkage is maintained in the private task record, not in public repository commits.
-- **QA review**:
-  - **Functional changes** (code, schema, or runtime changes): Require independent QA. Under container supervision (`/supervise`), independent subagent review (or standard pre-handback review) executes in-session within the single combined task. When executed across separate tasks (under `/pull` or when explicitly splitting for different repo/time/agent), `/reify` mints a follow-up verifying task dependent on the implementation task.
-  - **Low-risk internal changes (chiefly bugfixes)**: Get no separate verification run. Where a blocked dependent exists waiting on the fix (prerequisite `needs` on the dependent task), the parent epic handles sequencing the dependent task's next run; workers never mint verification follow-up tasks.
-  - **Documentation, notes, or trivial chore changes**: No QA follow-up required unless explicitly requested in the task objective.
+## Optional Review Process (Reified as Two Separate Tasks)
 
-## Standard Pre-Handback Review
+Review is an optional step determined by the class of task:
 
-To prevent recursive loops, token exhaustion, and multi-round churn, deliverables undergo a single, standardized pre-handback review before final handover:
-
-1. **Parallel Dispatch**: The consolidating main agent (sub-ida in interactive sessions, outer agent / coordinator elsewhere) dispatches **Marsha** and **RBG** concurrently in a single turn.
-2. **Self-Contained Briefing**: Both reviewers receive a self-contained brief containing:
-   - The originating user ask and task objective.
-   - The candidate output artifact (or live rendered reference).
-   - Governing genre standards (for Marsha) and applicable rules / itemised criteria (for RBG).
-   - Intended audience and purpose.
-   - Reviewers do not receive tools to re-query external sources or re-find facts.
-3. **Single Synthesis**: The main agent receives both independent reports, reconciles findings into a single plan, and authorizes necessary fixes.
-4. **One Fix Pass, No Re-Check Loop**: The writer executes a single fix pass addressing substantive findings. There is no second review round, no re-checking loop, and no fresh cold checker spawned. Good enough is the bar; the handback proceeds immediately following the single fix pass.
-5. **Opt-In Boundaries**: Independent runtime test verification (`wf-qa`) and granular citation checking (`wf-fact-check`) remain explicit opt-ins triggered only when calibrated by risk or requested by workflow composition.
-
-## Worker Completion Checklist
-
-The implementation worker satisfies these obligations, then exits:
-
-1. Verify automated tests and linter pass locally.
-2. Push feature branch to remote and open or update the pull request as a draft (`gh pr create --draft`): if the parent task has `bundle_pr: true` or is an active epic, commit to the shared epic branch without opening a detached PR against the base branch; for a Stage 1 design or spec task preceding a build, record the design, drafted spec change, and independent agent review verdicts in a PKB note the Stage 2 task points to, committing no plan or design file and opening no PR; for a Stage 2 build (carrying the build and any spec change) or a standalone single-stage change, open the worker PR into the base branch as a draft (`gh pr create --draft`). The PR goes ready for review (`gh pr ready`) only after the independent check passes and proportionate review by independent agents is posted to the PR thread, without waiting for approval. PR descriptions explain what was done and the approach taken, following project PR conventions or templates.
-3. Conduct the single standard pre-handback review (Marsha + RBG in parallel, one fix pass, no loop) per the procedure above.
-4. Update the task record: an item is ticked only with evidence of that item itself; any other item stays unticked with its limit stated. Record verifiable evidence with pinpoint citations (`file:line`, test command output, PR URL).
-5. Release the task as `done` via `pkb_release_task`, with the PR URL in `pr_url` and branch recorded on the task record (for Stage 1 tasks, record the PKB note pointer). For a Stage 1 spec or design task whose independent agent review passed, releasing `done` allows Stage 2 to begin. Do not release as `review`. Releasing `done` unblocks the downstream QA or review follow-up task on the graph (or concludes the combined supervised task). Do not wait for CI, review or merge. `partial` is reserved strictly for the worker's own unfinished acceptance items. Plain leaf workers never create or name follow-up tasks, operating strictly under the worker state-only invariant: mutate only this task's own record and state, never inspect or modify edges across other tasks or mint follow-up verification tasks. Container coordinators (`/supervise`) coordinate reviews in-session and mint follow-up tasks strictly for explicit out-of-session boundaries.
-
-## Follow-up QA Task Specification
-
-When QA review is split into a separate task (only when explicitly required for a separate agent/session or under `/pull` leaf execution, rather than the default combined `/supervise` session), `/reify` mints a follow-up task with:
-
-- **Title**: `QA: <primary task title>`
-- **Parent**: Same parent as primary task (or `part_of` edge per FQ1)
-- **Needs**: `[<primary-task-id>]` (hard blocking dependency)
-- **Workflow**: Composes independent verification workflow
-- **Goal**: Independently verify the deliverable and claims against literal acceptance criteria in a clean context. If verification fails, the QA task releases `failed` with failure evidence documented on the record; reviewers do not file fix tasks or follow-up tasks. On a verified pass, post verification receipts to the PR thread, mark the draft PR ready for review (`gh pr ready`), and evaluate tier membership against the taxonomy: for verified Tier 1 PRs with low-risk changes, merge to base branch autonomously via `gh pr merge --squash` and release as `done`; for Tier 2 and Tier 3 PRs, leave open for reviewer sign-off without releasing to review; release as `done` with receipts and PR URL on record. A reviewer that changes code delivers it through this finish template and hands off for independent review.
-
-### Low-risk internal bugfixes (next-run review)
-
-When the task is a low-risk internal change, chiefly a bugfix, mint no separate verification run on the fix task. Where a blocked dependent exists waiting on the fix (prerequisite `needs` on the dependent task), the parent epic handles sequencing the dependent task's next run; workers never mint verification follow-up tasks. Where no blocked dependent exists, the fix finishes on its PR without a separate verification run.
+- **Unreviewed task classes** (routine documentation, notes, trivial chores, and low-risk internal bugfixes): Complete on the work task alone and release as **`done`** with no review task. Where a blocked dependent task waits on a bugfix (`needs`), the parent epic sequences the dependent's next run.
+- **Reviewed task classes** (functional code, schema, workflow, rule, or specification changes, or any class of task with an independent review process): When reified onto the task graph, a reviewed class of task yields **two separate tasks** under the same parent container:
+  1. **The work task**: Completes the deliverable, opens the draft pull request (`gh pr create --draft`) or records the artifact, ticks acceptance criteria with evidence, and releases as **`done`**.
+  2. **The review task** (`needs: [<work-task-id>]`, under the same parent container): Unblocks when the work task reaches `done` and runs an independent proportionate review (defaulting to the default review workflow or a caller-chosen substitute) over the deliverable against the originating ask and governing rules:
+     - **Pass (Reviewed / Ready for Decision)**: Post review verdicts and verification receipts to the PR thread, mark the draft PR ready for review (`gh pr ready`) without waiting for human approval, and evaluate the PR risk tier (`specs/enforcement/enforcement.md#pr-risk-taxonomy-enforcement`):
+       - **Tier 1 (Autonomous QA-Merge)**: Low-risk changes (pure documentation, formatting, typing stubs). Merge autonomously via `gh pr merge --squash` and release the review task as **`done`**.
+       - **Tier 2 (Operational Gate)** and **Tier 3 (Critical Hazard & Public Gate)**: Code, workflows, skills, rules, specs, infrastructure, or public outputs. Post receipts and a reasoned merge recommendation, leave the PR open for reviewer or principal sign-off, and release the review task as **`done`** (never `review`). When the PR later merges, `/reconcile` updates the tracking epic.
+     - **Handoff after reviewer code edits**: If the reviewer pushes code fixes to the PR, post the changes, leave the PR open without marking merge-ready, and release the review task as **`partial`** for independent check.
+     - **Fail (Revisions needed / Rejected)**: Post the failure findings and unmet criteria to the PR (closing the PR if rejected) and release the review task as **`failed`** with root cause documented on the record. Reviewers never mint fix or follow-up tasks; `/reconcile` decides next actions from the parent epic.
+- **In-session supervision note**: Under single-session container supervision (`/supervise`), subagent review may execute inside the combined container session when no separate external review session is needed; the task still releases as **`done`** (never `review`).
