@@ -664,3 +664,44 @@ answers:
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
+
+
+@pytest.mark.parametrize("client", ["claude", "agy"])
+def test_james_plugin_stages_axioms_and_compiles_always_on_rules(
+    james_dist_root: Path, client: str
+) -> None:
+    """Built `james` distributions carry staged `skills/axioms/` and compiled `rules/*.md`."""
+    build_dir = james_dist_root / f"james-{client}"
+    assert (build_dir / "skills" / "axioms" / "SKILL.md").is_file()
+    assert (build_dir / "rules" / "data-boundaries.md").is_file()
+    if client == "claude":
+        jsonl_path = build_dir / "axioms.jsonl"
+        assert jsonl_path.is_file()
+        entries = [
+            json.loads(line)
+            for line in jsonl_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        assert any(e.get("slug") == "data-boundaries" for e in entries)
+
+
+def test_james_handlers_fails_loudly_when_tracer_missing(
+    james_dist_root: Path, tmp_path: Path
+) -> None:
+    """Without claude_code_tracer.py, dispatch.py fails loudly rather than reaching into ../ida/hooks."""
+    import shutil
+
+    isolated_plugin = tmp_path / "james-isolated"
+    shutil.copytree(james_dist_root / "james-claude", isolated_plugin)
+    (isolated_plugin / "hooks" / "claude_code_tracer.py").unlink()
+
+    env = _base_hook_env(tmp_path)
+    res = _run_dist_python(
+        isolated_plugin,
+        "hooks/dispatch.py",
+        ["claude", "SessionStart"],
+        stdin_payload={"hook_event_name": "SessionStart", "session_id": "missing-tracer"},
+        env=env,
+    )
+    assert res.returncode != 0
+    assert "claude_code_tracer" in res.stderr

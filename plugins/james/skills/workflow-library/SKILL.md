@@ -56,7 +56,7 @@ Resolve the template slug across tiers in precedence order. Output the winning c
    - Frontmatter: `title`, `type: template`, `description` (one line describing coverage for runtime selection), and `tags`.
    - **Contract over neighbour**: Define input and output contracts per stage; never name or chain to another template slug in frontmatter or body.
    - **Headless execution & approval boundaries**: Never pause or prompt mid-task; end approval boundaries cleanly as `partial` with dependent work blocked until approval is recorded.
-   - **Deliverables & naming**: List only artifacts and state the executing agent produces; prefix acceptance-blocking obligation templates with `wf-`; keep current-state only and target 30-60 lines (100-line ceiling).
+   - **Deliverables & naming**: List only artifacts and state the executing agent produces; prefix acceptance-blocking obligation templates with `wf-`; keep current-state only and target 30-60 lines (80-line ceiling).
 
 ### edit
 

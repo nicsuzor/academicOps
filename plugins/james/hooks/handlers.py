@@ -21,10 +21,9 @@ from typing import Any
 _HOOKS_DIR = Path(__file__).resolve().parent
 if str(_HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(_HOOKS_DIR))
-_IDA_HOOKS_DIR = _HOOKS_DIR.parent.parent / "ida" / "hooks"
-if _IDA_HOOKS_DIR.is_dir() and str(_IDA_HOOKS_DIR) not in sys.path:
-    sys.path.append(str(_IDA_HOOKS_DIR))
 
+import agy_tracer
+import claude_code_tracer
 from dispatch import (
     HookContext,
     Result,
@@ -36,21 +35,6 @@ from dispatch import (
 Handler = Callable[[HookContext], Result | None]
 
 log = logging.getLogger("aops.handlers")
-
-try:
-    import claude_code_tracer
-except ImportError as exc:
-    claude_code_tracer = None
-    log.warning(
-        "claude_code_tracer did not import (%s) -- OTel tracing is disabled for every hook",
-        exc,
-    )
-
-try:
-    import agy_tracer
-except ImportError as exc:
-    agy_tracer = None
-    log.warning("agy_tracer did not import (%s)", exc)
 
 _BASIC_VARS = (
     "AOPS_SESSIONS",
@@ -70,9 +54,9 @@ def _tracer_state_dir() -> Path:
     )
     if env_dir:
         return Path(env_dir)
-    if claude_code_tracer is not None and hasattr(claude_code_tracer, "_tracer_state_dir"):
+    if hasattr(claude_code_tracer, "_tracer_state_dir"):
         return claude_code_tracer._tracer_state_dir()
-    if claude_code_tracer is not None and hasattr(claude_code_tracer, "STATE_DIR"):
+    if hasattr(claude_code_tracer, "STATE_DIR"):
         return Path(claude_code_tracer.STATE_DIR)
     return Path.home() / ".claude" / "tracer"
 
@@ -270,21 +254,8 @@ def session_start(ctx: HookContext) -> Result | None:
             parts.append(core_text)
     user_parts = [metadata]
 
-    is_telemetry_ok = True
-    if claude_code_tracer is not None:
-        is_telemetry_ok = claude_code_tracer.is_telemetry_configured()
-    else:
-        is_telemetry_ok = bool(
-            os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
-            or os.environ.get("BETA_TRACING_ENDPOINT")
-            or os.environ.get("GENAI_ENGINE_TRACE_ENDPOINT")
-        )
-
-    mode = "warn"
-    if claude_code_tracer is not None:
-        mode = claude_code_tracer.get_telemetry_failure_mode()
-    elif os.environ.get("AOPS_TELEMETRY_FAILURE_MODE") == "block":
-        mode = "block"
+    is_telemetry_ok = claude_code_tracer.is_telemetry_configured()
+    mode = claude_code_tracer.get_telemetry_failure_mode()
 
     if not is_telemetry_ok:
         unconfigured_err = (
@@ -398,7 +369,7 @@ def _prepare_tracer_data(ctx: HookContext) -> dict[str, Any]:
 
 
 def _run_claude_tracer(ctx: HookContext, handler_name: str) -> None:
-    if claude_code_tracer is None or ctx.client != "claude":
+    if ctx.client != "claude":
         return
     try:
         data = _prepare_tracer_data(ctx)
@@ -410,7 +381,7 @@ def _run_claude_tracer(ctx: HookContext, handler_name: str) -> None:
 
 
 def agy_user_prompt_submit(ctx: HookContext) -> Result | None:
-    if agy_tracer is None or ctx.client != "agy":
+    if ctx.client != "agy":
         return None
     try:
         data = _prepare_tracer_data(ctx)
@@ -423,7 +394,7 @@ def agy_user_prompt_submit(ctx: HookContext) -> Result | None:
 
 
 def agy_pre_tool(ctx: HookContext) -> Result | None:
-    if agy_tracer is None or ctx.client != "agy":
+    if ctx.client != "agy":
         return None
     try:
         data = _prepare_tracer_data(ctx)
@@ -436,7 +407,7 @@ def agy_pre_tool(ctx: HookContext) -> Result | None:
 
 
 def agy_post_tool(ctx: HookContext) -> Result | None:
-    if agy_tracer is None or ctx.client != "agy":
+    if ctx.client != "agy":
         return None
     try:
         data = _prepare_tracer_data(ctx)
@@ -449,7 +420,7 @@ def agy_post_tool(ctx: HookContext) -> Result | None:
 
 
 def agy_stop(ctx: HookContext) -> Result | None:
-    if agy_tracer is None or ctx.client != "agy":
+    if ctx.client != "agy":
         return None
     try:
         data = _prepare_tracer_data(ctx)
@@ -514,11 +485,7 @@ def telemetry_diagnostic_handler(ctx: HookContext) -> Result | None:
     except Exception:
         pass
 
-    mode = "warn"
-    if claude_code_tracer is not None:
-        mode = claude_code_tracer.get_telemetry_failure_mode()
-    elif os.environ.get("AOPS_TELEMETRY_FAILURE_MODE") == "block":
-        mode = "block"
+    mode = claude_code_tracer.get_telemetry_failure_mode()
 
     if mode == "block":
         return refuse(diag, user_text=diag)
@@ -648,8 +615,6 @@ def session_end(ctx: HookContext) -> Result | None:
 
 def emit_debug_span(ctx: HookContext) -> Result | None:
     """Export an aops-debug span for any hook event on every surface the hook tracer runs on."""
-    if claude_code_tracer is None:
-        return None
     try:
         data = _prepare_tracer_data(ctx)
         config = claude_code_tracer.discover_config(data)

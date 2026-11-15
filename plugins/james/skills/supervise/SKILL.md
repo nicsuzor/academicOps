@@ -9,7 +9,7 @@ Coordinate end-to-end execution across any repository with PKB MCP access using 
 
 ## 0. Immediate Claim & Live PKB Persistence
 
-1. **Claim the Task**: Claim the assigned task via `pkb_claim_task`. If invoked on an untracked directive without a task ID, search the PKB via `pkb` MCP tools (or delegate placement to `pauli`) to reuse or create and claim a repository-scoped tracking task.
+1. **Claim the Task**: Claim the assigned task via the configured `PKB_MCP_PREFIX` (default `pkb`, e.g. `<prefix>_claim_task` / `pkb_claim_task`, `<prefix>_update_task`, `<prefix>_release_task`). If invoked on an untracked directive without a task ID, search the PKB via the configured PKB MCP tools (or delegate placement to `pauli`) to reuse or create and claim a repository-scoped tracking task.
 2. **Continuous Persistence**: Update the PKB task record after each completed stage or subagent chunk so progress and acceptance state survive session pre-emption.
 
 ## 1. Inline Workflow Assembly (`james:workflow-library`)

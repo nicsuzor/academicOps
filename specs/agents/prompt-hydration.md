@@ -5,7 +5,7 @@ status: ready
 
 # Prompt Hydration
 
-Prompt hydration searches the PKB with each user prompt, incoming channel message, peer report, subagent handback, and task notification and puts the results in front of the agent before it acts, so every turn starts grounded in what the user already knows and has decided. It serves the user, whose prompts arrive with their context attached, and the operator, who configures where the PKB lives and how the search authenticates.
+Prompt hydration searches the PKB with each user prompt, incoming channel message, peer report, subagent handback, and task notification and puts the results in front of the agent before it acts, so every turn starts grounded in what the user already knows and has decided. It serves the user, whose prompts arrive with their context attached, and the operator, who configures where the PKB lives and how the search authenticates. The opt-in standalone `james` supervision plugin ([`plugins/james/README.md`](../../plugins/james/README.md)) omits the `search_the_pkb` prompt-hydration hook and mechanical `hearsay_gate`, relying on explicit `verdict.py` / `file_claims.py` recording and agent-initiated PKB queries during its A/B evaluation.
 
 ## User stories
 

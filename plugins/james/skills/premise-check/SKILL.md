@@ -11,7 +11,7 @@ A report resting on evidence ends in a parser-valid Chained Toulmin Argdown bloc
 
 ## Writing the Report Argument
 
-End every evidence-backed report or peer message with one fenced `argdown` block in Chained Toulmin Argdown form. Before writing or validating a full argument block, read [references/report-form.md](references/report-form.md) for the complete grammar, `{basis, pointer, source, reason}` metadata vocabulary, diagnostic tags, granularity levels, and parser compliance rules.
+End every evidence-backed report or peer message with one fenced `argdown` block in Chained Toulmin Argdown form. Before writing or validating a full argument block, read [references/report-form.md](references/report-form.md) for the report form, line shapes, inline citation format, and method-fidelity rules.
 
 ````text
 ```argdown

@@ -11,7 +11,7 @@ Claim and execute an already-scoped queued PKB task or single-skill task to comp
 
 ### 1. Claim Task
 
-- Claim the assigned task ID via `pkb_claim_task` (setting `assignee` to your agent or role). If omitted, locate the target task via PKB search.
+- Claim the assigned task ID via the configured `PKB_MCP_PREFIX` (default `pkb`, e.g. `<prefix>_claim_task` / `pkb_claim_task`, `<prefix>_update_task`, `<prefix>_release_task`), setting `assignee` to your agent or role. If omitted, locate the target task via PKB search.
 - Operate strictly within the claimed task's boundaries: mutate only the claimed task's own fields and checklist, without creating speculative child or follow-up tasks on the graph.
 - **Intake Contract**: Verify deliverables as an explicit `## Acceptance` checklist on the claimed PKB task before starting work. Consult repo-local `.agents/rules/` if present in the target workspace (optional across external repositories).
 - Reserve `/james:pull` for focused leaf tasks; multi-stage work, broad coordination, workflow assembly via `james:workflow-library`, or multi-agent fan-out executes via `/james:supervise`.

@@ -24,7 +24,7 @@ Universal compliance review (`rbg`): evaluates an artifact, specification, desig
 Draws its brief from the shared review briefing. Additional role-specific inputs:
 
 - **Rule sources** -- assembled in priority order:
-  - Universal framework axioms and rules: read from active PKB documents with `type: axiom` and `type: rule` via PKB MCP (or `pauli`), forming the inviolable baseline.
+  - Universal framework axioms and rules: load staged `james:axioms` (`skills/axioms/` and compiled `rules/*.md` / `axioms.jsonl`) alongside active PKB documents with `type: axiom` and `type: rule` via PKB MCP (or `pauli`), forming the inviolable baseline. If `james:axioms` or required rule sources cannot be resolved, halt immediately and return `FAIL`.
   - Project-local rules: `$CWD/.agents/rules/` (when present in the target workspace).
   - Enforcement architecture: `specs/enforcement/enforcement.md` (when present in the target workspace and behavior-shaping mechanisms are touched).
 

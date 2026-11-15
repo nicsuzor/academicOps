@@ -95,10 +95,10 @@ Every plugin runs a `SessionStart` hook that injects a plugin-scoped `CORE.md` (
 
 ### Standalone supervision plugin hook surface (`plugins/james`)
 
-`plugins/james` provides standalone in-session supervision across any repository without prompt-hydration or automatic hearsay-gating hooks:
+`plugins/james` provides opt-in standalone in-session supervision across any repository without prompt-hydration or mechanical hearsay-gating hooks:
 
-- **Retained startup and observability hooks**: Fires `SessionStart` (injecting `CORE.md`, the `james:premise-check` pointer, telemetry status checks, `CLAUDE_ENV_FILE` credential isolation, and `AOPS_SESSION_ID` export), one-time `agy_session_pointer` on `agy` `PreInvocation`, `mcp_caller_session` `_session` injection on `mcp__.*` calls, and OpenTelemetry span emission across all canonical events (`claude_code_tracer`, `agy_tracer`, `emit_debug_span`, `telemetry_diagnostic_handler`).
-- **Omitted enforcement and hydration hooks**: Ships neither `search_the_pkb` (`UserPromptSubmit` / `PreInvocation` PKB hydration) nor `hearsay_gate` / `honest_output` / `rule_against_hearsay` runtime blockers. Coordinators and reviewers verify incoming reports explicitly and record verdicts via `premise_check_verdict.py --judged-file <path>`, which validates the report's fenced `argdown` block and emits `premise_check_verdict` OTel spans without an armed gate.
+- **Retained startup and observability hooks**: Retains `SessionStart` setup, `_session` MCP caller attribution, and OpenTelemetry span emission as detailed in [`specs/ARCHITECTURE.md`](../ARCHITECTURE.md) and [`plugins/james/README.md`](../../plugins/james/README.md).
+- **Omitted enforcement and hydration hooks**: Omits the `search_the_pkb` prompt-hydration hook (`UserPromptSubmit` / `PreInvocation`), the `hearsay_gate` (`premise_check_gate`) runtime blocker, and the `SubagentStart` `honest_output` reminder hook (carrying report-writing instructions inline in `james` agent definitions instead). Coordinators and reviewers verify incoming reports explicitly and record verdicts via `premise_check_verdict.py --judged-file <path>` (and `file_claims.py`), which validates the report's fenced `argdown` block and emits `premise_check_verdict` OTel spans without an armed gate.
 
 ## Proportionality and force of intervention
 

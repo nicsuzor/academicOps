@@ -20,7 +20,7 @@ Universal strategic-direction and congruence review (`pauli`): evaluates the cor
 
 ## Input contract
 
-Draws its brief from the shared review briefing (supplied inline so the reviewer operates strictly on the PKB graph). Additional role-specific inputs:
+Draws its brief from the shared review briefing (evaluating the PKB graph alongside read-only inspection of target diffs, pull requests, specifications, and candidate artifacts under review). Additional role-specific inputs:
 
 - **Graph context** -- parent objectives, active tasks, competing proposals or PRs, existing specifications, and relevant topic notes.
 

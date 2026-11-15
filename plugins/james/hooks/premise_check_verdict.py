@@ -27,9 +27,6 @@ from typing import Any
 _HOOKS_DIR = Path(__file__).resolve().parent
 if str(_HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(_HOOKS_DIR))
-_IDA_HOOKS_DIR = _HOOKS_DIR.parent.parent / "ida" / "hooks"
-if _IDA_HOOKS_DIR.is_dir() and str(_IDA_HOOKS_DIR) not in sys.path:
-    sys.path.append(str(_IDA_HOOKS_DIR))
 
 import report_argument as ra
 

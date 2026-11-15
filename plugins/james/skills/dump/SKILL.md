@@ -25,7 +25,7 @@ Execute the routine wrap-up across Steps 1-7 below.
 ### 1. Save and Push Work
 
 1. Stage specific modified files (never blanket `add -A`) and commit, scrubbing private identifiers, PKB IDs, session trailers, personal names, and private hostnames for public repositories (`data-boundaries`). Describe incomplete state explicitly if partial.
-2. Deliver commits only where the task's Output names (`git push` when targeting a remote branch or pull request; do not push if Output names only local state or a PKB node). Open worker PRs as draft (`gh pr create --draft`) targeting the diverged base branch (e.g. `--base "${BASE_BRANCH:-${POLECAT_BASE_BRANCH}}"`), and mark ready (`gh pr ready`) once required in-session checks and review verdicts are posted. Persist non-git reports and datasets in the PKB rather than ephemeral scratch paths.
+2. Deliver commits only where the task's Output names (`git push` when targeting a remote branch or pull request; do not push if Output names only local state or a PKB node). Open pull requests as draft (`gh pr create --draft`) targeting the repository's integration branch (or `$AOPS_BASE_BRANCH` / `$BASE_BRANCH` when set), and mark ready (`gh pr ready`) once required in-session checks and review verdicts are posted. Persist non-git reports and datasets in the PKB rather than ephemeral scratch paths.
 3. Record the branch name and commit SHA in the final report.
 
 ### 2. Retroactive Tasks for Unparented Project Edits and Operational Faults
@@ -76,14 +76,12 @@ Task report format:
 
 Verdicts (`PASS`, `REVISE`, `FAIL`) are recorded solely by the checker under `## Premise-Check Verdict` via `james:premise-check` (`verdict.py --judged-file <path>`); a worker never writes a verdict on its own report.
 
-### 5. Consolidated Daily Note Project Updates
+### 5. PKB Project and Task Status Updates
 
-For each project touched (modified repository files, updated tasks, or major operational finds/recoveries):
+For each project touched (modified repository files, updated tasks, or major operational recoveries):
 
-- **Interactive / Coordinator Sessions**: Write one consolidated bullet per touched project into today's daily note under `## Today's work` via `pkb` MCP tools:
-  `- **<project-name>**: <latest status or major find in 10-20 words> -- Next: <pointer or resumption prompt>`
-  Omit `-- Next: ...` when completed with no follow-up.
-- **Isolated Worker Sessions**: Emit the consolidated project line in the handover block on the record to avoid write contention.
+- **Interactive / Coordinator Sessions**: Update the relevant PKB task and project or topic records via the configured PKB MCP tools with a concise status summary (`<latest status or major find>` and `Next: <pointer or resumption prompt>` when follow-up work remains).
+- **Headless / Delegated Sessions**: Record the concise project status summary directly in the task's `## Report` and session handover output to avoid concurrent write contention.
 
 ### 6. Disciplined Next-Step Determination
 
@@ -95,20 +93,14 @@ Never invent speculative follow-ups:
 
 ### 7. Emit Final Handover Report
 
-```markdown
+````markdown
 ## Handover: <agent> <session-id / conversation-id>
 
-1. **Task**: <task-id and title, or "Ad-hoc / Retroactive: <id>">
-2. **Summary**: Concise synthesis of findings, modifications, and outcomes.
-3. **Status & Safeguards**:
-   - STATUS: <done | partial | failed | cancelled | in_progress>
-   - GATE: <the acceptance criterion id tested, and observed result against it>
-   - CONFIDENCE: <high | med | low> + <what single check would falsify this>
-   - CONFOUND CHECK: <did a clean-room/differential control run? result? -- or "NOT RUN">
-4. **Output**: <branch + commit SHA> | <PR or artifact link>
-5. **Next step**: [<task-id> | Resumption prompt | None]
-6. **Durable Facts**: [None | List of durable facts captured via PKB MCP or offered to Pauli]
-7. **Argument**: The `argdown` block recorded under the task's `## Report`.
-8. **Limitations**: Unresolved items, out-of-scope elements, and verbatim error outputs.
-9. **Rule Violations**: [None | Disclosed violations with rule citations and reasons]
+- **Summary**: <task-id / status, concise synthesis of modifications, outcomes, durable facts, and next step>
+- **Artifacts / PR**: <branch + commit SHA, PR URL, or artifact path>
+- **Rule Violations**: <None | Disclosed violations with rule citations and reasons>
+
+```argdown
+<the james:premise-check argdown block recorded under the task's ## Report>
 ```
+````
