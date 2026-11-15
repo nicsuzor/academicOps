@@ -3,10 +3,20 @@
 Read [`span-store.md`](span-store.md) first -- it holds the identifier-shape table and the `session.id`-vs-`trace_id`
 filtering rule every recipe below depends on.
 
-The backend is an allowlisted SQLite database; use JSON extraction (`->>` or
-`JSON_EXTRACT`). Dispatch queries through the `services` MCP proxy via
-`portal_codemode_execute` (`mcp__services__portal_codemode_execute` in Claude
-Code) by calling `codemode.phoenix_execute`.
+The backend is an allowlisted read-only SQLite database (2 KiB SQL cap per call; 500 rows default, 5,000 max; 256 KiB per row; 4 MiB per response; at most 50 `call_tool()` invocations per `phoenix_execute` block); use JSON extraction (`->>` or `JSON_EXTRACT`). Dispatch queries through the `services` MCP proxy via `portal_codemode_execute` (`mcp__services__portal_codemode_execute` in Claude Code) by calling `codemode.phoenix_execute`.
+
+## Allowed SQL dialect and functions
+
+Verified against Phoenix `executeSql` and `describeSqlSchema`:
+
+- **String & matching**: `SUBSTR`, `SUBSTRING`, `LENGTH`, `CHAR_LENGTH`, `CHARACTER_LENGTH`, `LOWER`, `UPPER`, `LIKE`, `GLOB`, and the `||` concatenation operator.
+- **Aggregates & statistics**: `COUNT`, `SUM`, `AVG`, `MIN`, `MAX`, `GROUP_CONCAT`, `STRING_AGG`, `MEDIAN`, `PERCENTILE(x, p)` (`p` in `0`–`100`; `percentile_cont` is PostgreSQL-only).
+- **JSON**: `JSON`, `JSON_EXTRACT` (and `->` / `->>`), `JSON_TYPE`, `JSON_VALID`, `JSON_ARRAY_LENGTH`, `JSON_OBJECT`, `JSON_ARRAY`, `JSON_GROUP_ARRAY`, `JSON_GROUP_OBJECT`, `JSON_EACH`.
+- **Math**: `ROUND`, `ABS`, `CEIL`, `CEILING`, `FLOOR`, `SIGN`, `MOD`.
+- **Conditional & type**: `COALESCE`, `IFNULL`, `NULLIF`, `TYPEOF`, `CAST` (use `CASE WHEN` for conditional branching).
+- **Date & time**: `DATE`, `DATETIME`, `UNIXEPOCH`, `JULIANDAY`, `STRFTIME`, `TIME_PARSE`, `TIME_TRUNC`, `TIME_SUB`, `TIME_FMT_DATETIME`.
+- **Window**: `ROW_NUMBER`, `RANK`, `DENSE_RANK`, `PERCENT_RANK`, `CUME_DIST`, `NTILE`, `LAG`, `LEAD`, `FIRST_VALUE`, `LAST_VALUE`, `NTH_VALUE`.
+- **Rejected (`function_not_allowed`)**: `INSTR`, `REPLACE`, `TRIM`, `LTRIM`, `RTRIM`, `CONCAT`, `CONCAT_WS`, `PRINTF`, `FORMAT`, `HEX`, `UNHEX`, `UNICODE`, `CHAR`, `QUOTE`, `REGEXP` / `REGEXP_LIKE`, `OCTET_LENGTH`, `IIF`, `TOTAL`, `STDDEV`, `SQRT`, `POW` / `POWER`, `LN`, `LOG` / `LOG10`, `EXP`, `RANDOM`, `CHANGES`, `SQLITE_VERSION`, and `TEXT_*` (`sqlean` text helpers).
 
 **A0 -- resolve a `trace_id` to its `session.id`.** Then pivot every subsequent
 query onto `session.id`. `trace_id` and the project name live on `traces` and
@@ -171,6 +181,21 @@ the final reply reaches the parent as the `result` of an `idle_notification`
 was reported. Cross-check the agent type's declared `Tools:` allowlist before
 attributing silence to a bug in its behaviour rather than its tool grant.
 
+**I -- find the user's own prompts across sessions.** The user's own prompts are the `input.value` of root `CHAIN` spans (`span_kind = 'CHAIN' AND (parent_id IS NULL OR parent_id = '')`), and Telegram prompts start with `source="plugin:ida-telegram`.
+
+```sql
+SELECT JSON_EXTRACT(attributes,'$.session.id') AS sid, span_id, start_time,
+       SUBSTR(attributes->>'input.value',1,400) AS snip
+FROM spans
+WHERE span_kind='CHAIN' AND (parent_id IS NULL OR parent_id='')
+  AND start_time >= '<DATE>+00:00'
+  AND attributes->>'input.value' LIKE '%source="plugin:ida-telegram%'
+  AND LOWER(attributes->>'input.value') LIKE '%<keyword>%'
+ORDER BY start_time LIMIT 50
+```
+
+In `start_time >= '<DATE>+00:00'`, include a time of day whenever an offset is attached (for example `'2026-11-15T00:00:00+00:00'` or `'2026-11-15 00:00:00+00:00'`), or pass a bare date with no offset (`'2026-11-15'`, read as UTC); a bare date followed directly by an offset (`'2026-11-15+00:00'`) fails with `unsupported_syntax`. Omit the `source="plugin:ida-telegram` predicate to search root `CHAIN` prompts across all surfaces.
+
 Dispatch queries through `codemode.phoenix_execute` using an async Python block:
 
 ```javascript
@@ -212,6 +237,7 @@ SQL is capped at 2 KiB per call. Keep one-off aggregations in code mode as above
 
 | Symptom | Cause | Fix |
 | - | - | - |
+| `function_not_allowed` on `INSTR`, `REPLACE`, `TRIM`, `CONCAT`, `REGEXP`, or `IIF` | Phoenix SQL allowlist rejects those SQLite functions | Match and slice with `LIKE`, `GLOB`, `SUBSTR`/`SUBSTRING`, `LOWER`/`UPPER`, and `CASE WHEN`, or filter projected rows in Python inside `codemode.phoenix_execute` |
 | `executeSql` result "exceeds maximum allowed tokens", dumped to a `.txt` file | Query returned too many rows, or unbounded `input.value`/`output.value` columns | Narrow with `SUBSTR(...)` and a tighter `WHERE`/`LIMIT`; if already dumped, read the saved file with `jq` rather than re-querying |
 | `{"data":[],"next_cursor":null}` searching for a session by id | Queried `session.id` with a 32-hex `trace_id` | Resolve via `WHERE t.trace_id = '<32_HEX>'` on the joined `traces` table (Recipe A0) first |
 | MCP tool calls missing from the agent's response | The agent grepped answers off disk instead of executing tools | `SELECT count(*) FROM spans WHERE span_kind='TOOL' AND attributes->>'session.id'='<UUID>'` |

@@ -67,7 +67,8 @@ time, find the session with Recipe A or F in [references/sql-recipes.md](referen
 
 ## Cross-session search
 
-With no session id in hand ("every prompt mentioning X"), follow "Cross-session search" in
+With no session id in hand ("every prompt mentioning X"), follow "Cross-session search" and
+Recipe I (finding the user's own prompts on root `CHAIN` spans) in
 [references/sql-recipes.md](references/sql-recipes.md): filter and project on the server, write
 rows to a file in session scratch, print counts and ids only, and read the file by anchor.
 Never let search results accumulate in your context.
@@ -76,9 +77,12 @@ Never let search results accumulate in your context.
 
 The span store is also reachable through the `services` MCP proxy:
 `portal_codemode_execute` calling `codemode.phoenix_execute` with an async Python block
-that runs `await call_tool("executeSql", {"sql": ...})` (several per block is fine). Read
+that runs `await call_tool("executeSql", {"sql": ...})` (several per block is fine).
+`executeSql` enforces an allowlisted SQLite dialect: use `LIKE`, `GLOB`, `SUBSTR`/`SUBSTRING`,
+`LOWER`, `UPPER`, `LENGTH`, and `||` for string matching and slicing (`INSTR`, `REPLACE`,
+`TRIM`, `CONCAT`, `PRINTF`, `REGEXP`, and `IIF` fail with `function_not_allowed`). Read
 [references/span-store.md](references/span-store.md) before writing a query, then take
-the recipe from [references/sql-recipes.md](references/sql-recipes.md).
+the allowlist and recipe from [references/sql-recipes.md](references/sql-recipes.md).
 
 ## Constraints
 
