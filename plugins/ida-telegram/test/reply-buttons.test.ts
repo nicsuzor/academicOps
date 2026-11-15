@@ -267,13 +267,11 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
 
         const kb = apiCalls[0].body.reply_markup?.inline_keyboard || [];
         expect(kb.length).toBe(1);
-        expect(kb[0].length).toBe(6);
+        expect(kb[0].length).toBe(4);
         expect(kb[0][0].text).toBe("🔍");
         expect(kb[0][1].text).toBe("🧐 Check");
         expect(kb[0][2].text).toBe("💡 Explain");
         expect(kb[0][3].text).toBe("🧾");
-        expect(kb[0][4].text).toBe("✅");
-        expect(kb[0][5].text).toBe("❌");
       } finally {
         cleanup();
       }
@@ -318,7 +316,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
         expect(parsedResult.success).toBe(true);
 
         const kb = apiCalls[0].body.reply_markup?.inline_keyboard || [];
-        // Row 0: Predefined row [Details, Check logic, Explain, Reasons, Accept recommendation, Decline recommendation]
+        // Row 0: Predefined row [Details, Check logic, Explain, Reasons]
         // Row 1: Caller row 1 [B1, B2, B3, B4]
         // Row 2: Caller row 2 [B5, B6, B7, B8]
         expect(kb.length).toBe(3);
@@ -327,8 +325,6 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           "🧐 Check",
           "💡 Explain",
           "🧾",
-          "✅",
-          "❌",
         ]);
         expect(kb[1].map((b: any) => b.text)).toEqual(["B1", "B2", "B3", "B4"]);
         expect(kb[2].map((b: any) => b.text)).toEqual(["B5", "B6", "B7", "B8"]);
@@ -362,7 +358,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
         const kb = apiCalls[0].body.reply_markup?.inline_keyboard || [];
         // Default behaviour:
         // Row 0: Caller buttons ([Caller Button])
-        // Row 1: Predefined row ([🔍, 🧐 Check, 💡 Explain, 🧾, ✅, ❌])
+        // Row 1: Predefined row ([🔍, 🧐 Check, 💡 Explain, 🧾])
         expect(kb.length).toBe(2);
         expect(kb[0].map((b: any) => b.text)).toEqual(["Caller Button"]);
         expect(kb[1].map((b: any) => b.text)).toEqual([
@@ -370,8 +366,6 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           "🧐 Check",
           "💡 Explain",
           "🧾",
-          "✅",
-          "❌",
         ]);
       } finally {
         cleanup();
@@ -427,8 +421,6 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           "🧐 Check",
           "💡 Explain",
           "🧾",
-          "✅",
-          "❌",
         ]);
       } finally {
         cleanup();
@@ -437,7 +429,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
   });
 
   describe("Compact action buttons and default single-row Details (AC1, AC2, AC3)", () => {
-    test("AC1: default reply keyboard has Reasons, Accept, Decline and Details carrying no label text beside icon", async () => {
+    test("AC1: binary_decision reply keyboard has Reasons, Accept, Decline and Details carrying no label text beside icon", async () => {
       const { mcp, apiCalls, cleanup } = setupTest();
       try {
         await mcp.handleMessage({
@@ -448,8 +440,9 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
             name: "reply",
             arguments: {
               chat_id: allowFrom,
-              text: "Default reply message",
+              text: "Binary decision reply message",
               detail: "Deep detail payload",
+              binary_decision: true,
             },
           },
         });
@@ -530,8 +523,6 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           "🧐 Check",
           "💡 Explain",
           "🧾",
-          "✅",
-          "❌",
         ]);
       } finally {
         cleanup();
