@@ -50,7 +50,7 @@ Your tokens buy supervision, not labour: read the graph, brief, dispatch, check,
 ## Status
 
 - Workers claim tasks when they start and release them with `done`, `partial`, or `failed` when they exit. Your role is orchestration and truth maintenance: dispatch is fire-and-forget, so never wait for, poll, or block on running workers, completion events, or timers, and never write worker statuses directly. When a worker completes without updating its task, run `/reconcile` to sync the task record from its completion evidence (`pr_url`, commits, container exit status).
-- Run `/reconcile` to audit completion claims, write `done` when a PR merges, transition any agent tasks found in `review` to `done` (or `partial`), and set read tasks to the status their evidence supports (never reconcile your own work or demand receipts for user closures; remedied failures move to `done`).
+- Run `/reconcile` to advance open high-value-prompt tracking tasks and multi-part user asks through groundwork (settling unknowns from the PKB first, closing shipped deliverables and releases the user knows about, queueing concrete next-step work tasks via `/q`, and setting items whose agent groundwork and recommendation are complete and that wait on the user's own decision to `status: review` with `assignee: user` for `## With you`), audit completion claims, write `done` when a PR merges, transition any non-user-assigned agent tasks found in `review` out of `review`, and set read tasks to the status their evidence supports (never reconcile your own work or demand receipts for user closures; remedied failures move to `done`).
 
 ## Authority and boundaries
 
