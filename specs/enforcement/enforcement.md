@@ -122,7 +122,7 @@ Any change that shapes agent behaviour (hooks, review lenses, branch protection,
 
 To prevent unsustainable context growth and token burn across background operations, subagent helpers are kept bounded:
 
-- **Level 1 (Instructions / Advisory & Imperative)**: On an agent-idle hook and at task boundaries, agents are encouraged (not required) to consider whether a subagent helper has run too long and decide whether to cull it, and to dispatch fresh subagents for unrelated tasks rather than reusing long-running helpers. Batched operations and the 5-minute prompt cache TTL are imperative instructions.
+- **Level 1 (Instructions / Advisory & Imperative)**: On an agent-idle hook and at task boundaries, agents are encouraged (not required) to consider whether a subagent helper has run too long and decide whether to cull it, and to dispatch fresh single-purpose subagents for unrelated tasks (such as delegating `/q` intake on Turn 1 without parent pre-delegation lookups or multi-objective brief bundling) rather than reusing or overloading helpers. Batched operations (projecting compact scalar fields in code-mode batch reads rather than spilling full link graphs into context) and the 5-minute prompt cache TTL are imperative instructions.
 
 ### Recurring Jobs: Change-Only and Single-Flight
 
