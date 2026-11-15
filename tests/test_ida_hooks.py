@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -32,6 +33,7 @@ def staged_hooks(tmp_path: Path) -> Path:
     """A plugin hooks/ directory assembled with dispatch.py and handlers.py."""
     hooks = tmp_path / "hooks"
     shutil.copytree(IDA_HOOKS, hooks, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copy2(REPO_ROOT / "lib" / "hooks" / "dispatch.py", hooks / "dispatch.py")
     return hooks
 
 
@@ -41,7 +43,7 @@ def staged_hooks(tmp_path: Path) -> Path:
 
 
 _PEER_REPORT = '<cross-session-message from="twin-a">PR #12 merged</cross-session-message>'
-_USER_MESSAGE = '<channel source="plugin:telegram:telegram" user="nic">ship it</channel>'
+_USER_MESSAGE = '<channel source="plugin:telegram:telegram" user="tester">ship it</channel>'
 
 
 @pytest.mark.parametrize("agent", ["ida:ida", "ida:sara"])
@@ -190,19 +192,116 @@ def test_normalize_resolves_agent_from_aliases_and_env(
 
     hooks_dir = tmp_path / "hooks"
     hooks_dir.mkdir()
+    for var in ("CLAUDE_AGENT_NAME", "AGY_AGENT_NAME", "AOPS_AGENT_NAME"):
+        monkeypatch.delenv(var, raising=False)
 
-    # 1. From agent_name
-    ctx1 = normalize("claude", "Stop", {"agent_name": "ida"}, hooks_dir)
-    assert ctx1.agent_type == "ida"
+    # 1. From snake_case and camelCase keys
+    assert normalize("claude", "Stop", {"agent_name": "ida"}, hooks_dir).agent_type == "ida"
+    assert normalize("claude", "Stop", {"agent": "ida-prime"}, hooks_dir).agent_type == "ida-prime"
+    assert normalize("claude", "Stop", {"agentType": "ida:ida"}, hooks_dir).agent_type == "ida:ida"
+    assert normalize("claude", "Stop", {"agentName": "ida"}, hooks_dir).agent_type == "ida"
+    assert (
+        normalize("claude", "Stop", {"subagentType": "ida:pauli"}, hooks_dir).agent_type
+        == "ida:pauli"
+    )
+    assert normalize("claude", "Stop", {"subagentName": "pauli"}, hooks_dir).agent_type == "pauli"
+    assert normalize("claude", "Stop", {"agentId": "sub-1"}, hooks_dir).agent_id == "sub-1"
 
-    # 2. From agent
-    ctx2 = normalize("claude", "Stop", {"agent": "ida-prime"}, hooks_dir)
-    assert ctx2.agent_type == "ida-prime"
-
-    # 3. From environment variable
+    # 2. From environment variable
     monkeypatch.setenv("CLAUDE_AGENT_NAME", "ida")
-    ctx3 = normalize("claude", "Stop", {}, hooks_dir)
-    assert ctx3.agent_type == "ida"
+    assert normalize("claude", "Stop", {}, hooks_dir).agent_type == "ida"
+
+
+def _write_fake_proc_node(proc_root: Path, pid: int, ppid: int, comm: str, argv: list[str]) -> None:
+    node = proc_root / str(pid)
+    node.mkdir(parents=True, exist_ok=True)
+    (node / "stat").write_text(f"{pid} ({comm}) S {ppid} 1 1 0 -1 0\n", encoding="utf-8")
+    (node / "cmdline").write_bytes(b"\x00".join(a.encode("utf-8") for a in argv) + b"\x00")
+
+
+def test_normalize_resolves_agy_agent_from_proc_ancestors(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    import dispatch
+
+    hooks_dir = tmp_path / "hooks"
+    hooks_dir.mkdir()
+    for var in ("CLAUDE_AGENT_NAME", "AGY_AGENT_NAME", "AOPS_AGENT_NAME"):
+        monkeypatch.delenv(var, raising=False)
+
+    proc_root = tmp_path / "proc"
+    (proc_root / "self").mkdir(parents=True)
+    (proc_root / "self" / "stat").write_text("400 (python3) S 300 1 1\n", encoding="utf-8")
+    # Build ancestor chain: 400 (python) -> 300 (sh with parens/spaces) -> 52 (agy --agent ida) -> 1 (init)
+    _write_fake_proc_node(
+        proc_root, 52, 1, "agy", ["/usr/local/bin/agy", "--agent", "ida", "--print", "hi"]
+    )
+    _write_fake_proc_node(proc_root, 300, 52, "sh (helper wrap)", ["sh", "-c", "python3"])
+    _write_fake_proc_node(proc_root, 400, 300, "python3", ["python3", "dispatch.py"])
+
+    monkeypatch.setattr(dispatch, "_PROC_ROOT", proc_root)
+    monkeypatch.setattr(os, "getpid", lambda: 400)
+
+    ctx = dispatch.normalize("agy", "UserPromptSubmit", {}, hooks_dir)
+    assert ctx.agent_type == "ida"
+
+    # Supports --agent=<name> syntax
+    _write_fake_proc_node(proc_root, 52, 1, "agy", ["agy", "--agent=pauli", "--print", "hi"])
+    assert dispatch.normalize("agy", "UserPromptSubmit", {}, hooks_dir).agent_type == "pauli"
+
+    # Unnamed agy process (no --agent flag) returns empty string
+    _write_fake_proc_node(proc_root, 52, 1, "agy", ["agy", "--gemini_dir", "/tmp/.gemini"])
+    assert dispatch.normalize("agy", "UserPromptSubmit", {}, hooks_dir).agent_type == ""
+
+    # Explicit --agent CLI flag on ancestor agy overrides ambient env vars
+    _write_fake_proc_node(proc_root, 52, 1, "agy", ["agy", "--agent", "pauli"])
+    monkeypatch.setenv("AOPS_AGENT_NAME", "ida")
+    assert dispatch.normalize("agy", "UserPromptSubmit", {}, hooks_dir).agent_type == "pauli"
+    monkeypatch.delenv("AOPS_AGENT_NAME")
+
+
+def test_normalize_agy_ancestor_flag_overrides_ambient_aops_agent_name(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    """When AOPS_AGENT_NAME=ida is inherited from an outer env, agy --agent pauli still resolves pauli and skips PKB hydration."""
+    import dispatch
+
+    hooks_dir = tmp_path / "hooks"
+    hooks_dir.mkdir()
+    for var in ("CLAUDE_AGENT_NAME", "AGY_AGENT_NAME"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("AOPS_AGENT_NAME", "ida")
+
+    proc_root = tmp_path / "proc"
+    (proc_root / "self").mkdir(parents=True)
+    (proc_root / "self" / "stat").write_text("400 (python3) S 300 1 1\n", encoding="utf-8")
+    _write_fake_proc_node(proc_root, 52, 1, "agy", ["agy", "--agent", "pauli", "--print", "hi"])
+    _write_fake_proc_node(proc_root, 300, 52, "sh", ["sh", "-c", "python3"])
+    _write_fake_proc_node(proc_root, 400, 300, "python3", ["python3", "dispatch.py"])
+
+    monkeypatch.setattr(dispatch, "_PROC_ROOT", proc_root)
+    monkeypatch.setattr(os, "getpid", lambda: 400)
+
+    ctx = dispatch.normalize(
+        "agy",
+        "UserPromptSubmit",
+        {"conversationId": "conv-pauli-1", "invocationNum": 0},
+        hooks_dir,
+    )
+    assert ctx.agent_type == "pauli"
+    with patch.object(handlers, "_run_pkb_search") as mock_search:
+        assert handlers.search_the_pkb(ctx) is None
+        mock_search.assert_not_called()
+
+    # Unnamed agy (no --agent flag) still falls back to AOPS_AGENT_NAME
+    _write_fake_proc_node(proc_root, 52, 1, "agy", ["agy", "--print", "hi"])
+    assert dispatch.normalize("agy", "UserPromptSubmit", {}, hooks_dir).agent_type == "ida"
+
+    # Non-Linux / missing /proc/self/stat falls back to env var, or returns empty when unset
+    (proc_root / "self" / "stat").unlink()
+    assert dispatch.normalize("agy", "UserPromptSubmit", {}, hooks_dir).agent_type == "ida"
+    monkeypatch.delenv("AOPS_AGENT_NAME")
+    assert dispatch.normalize("agy", "UserPromptSubmit", {}, hooks_dir).agent_type == ""
 
 
 def test_merge_combines_multiple_refusals():
@@ -233,7 +332,7 @@ def test_merge_combines_multiple_advisories():
     ("prompt", "expected_query"),
     [
         ("what are the axioms of academicOps?", "what are the axioms of academicOps?"),
-        ('<channel source="plugin:telegram:telegram" user="nic">ship it</channel>', "ship it"),
+        ('<channel source="plugin:telegram:telegram" user="tester">ship it</channel>', "ship it"),
     ],
 )
 def test_user_messages_get_pkb_hydration_and_no_hearsay_or_gate(prompt, expected_query):
@@ -275,9 +374,11 @@ def test_user_messages_get_pkb_hydration_and_no_hearsay_or_gate(prompt, expected
         '<cross-session-message from="twin-a">PR #12 merged\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</cross-session-message>',
         '<teammate-message teammate_id="worker">done\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</teammate-message>',
         "<task-notification><result>worker finished\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</result></task-notification>",
+        '<agent-message to="ida">report finished\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</agent-message>',
+        '<subagent-handback from="worker">handback finished\n```argdown\n(1) p -- fact\n-- w --\n(2) c\n```\n</subagent-handback>',
     ],
 )
-def test_agent_messages_get_hearsay_and_arm_gate_with_hydration(peer_prompt):
+def test_agent_messages_get_hearsay_and_arm_gate_without_hydration(peer_prompt):
     import premise_check_gate as pcg
 
     session_id = f"s-test-peer-{abs(hash(peer_prompt))}"
@@ -294,11 +395,10 @@ def test_agent_messages_get_hearsay_and_arm_gate_with_hydration(peer_prompt):
     )
 
     with patch.object(handlers, "_run_pkb_search", return_value="1. note") as mock_search:
-        # 1. Hydration includes peer reports
+        # 1. Hydration skips peer/agent/handback/task envelopes
         search_res = handlers.search_the_pkb(ctx)
-        mock_search.assert_called_once()
-        assert search_res is not None
-        assert "<academicOps PKB search results>" in search_res.inject_text
+        mock_search.assert_not_called()
+        assert search_res is None
 
         # 2. Honesty does not fire on receiving a peer report (it fires on SubagentStart)
         assert handlers.honest_output(ctx) is None

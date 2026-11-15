@@ -98,6 +98,11 @@ def _stage_plugin(plugin: Plugin, stage_dir: Path, version: str) -> None:
     if staged_hooks_dir.is_dir() and shared_tracer.is_file() and not staged_tracer.exists():
         shutil.copy2(shared_tracer, staged_tracer)
 
+    shared_dispatch = repo_root / "lib" / "hooks" / "dispatch.py"
+    staged_dispatch = staged_hooks_dir / "dispatch.py"
+    if staged_hooks_dir.is_dir() and shared_dispatch.is_file() and not staged_dispatch.exists():
+        shutil.copy2(shared_dispatch, staged_dispatch)
+
     if plugin_pyproject.exists():
         shutil.copy2(plugin_pyproject, stage_dir / "pyproject.toml")
         if plugin_uvlock.exists():

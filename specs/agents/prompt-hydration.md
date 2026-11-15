@@ -5,29 +5,30 @@ status: ready
 
 # Prompt Hydration
 
-Prompt hydration searches the PKB with each user prompt, incoming channel message, peer report, subagent handback, and task notification and puts the results in front of the agent before it acts, so every turn starts grounded in what the user already knows and has decided. It serves the user, whose prompts arrive with their context attached, and the operator, who configures where the PKB lives and how the search authenticates.
+Prompt hydration searches the PKB on top-level `ida` turns with each real user prompt from an interactive console or incoming channel message (`<channel ...>`) and puts the results in front of the agent before it acts, so every user turn starts grounded in what the user already knows and has decided. Non-`ida` agents, unnamed sessions, subagents, automated wakeups, peer reports, subagent handbacks, and task notifications do not trigger hydration. It serves the user, whose prompts arrive with their context attached, and the operator, who configures where the PKB lives and how the search authenticates.
 
 ## User stories
 
-### US-1 Grounded prompts and incoming messages
+### US-1 Grounded user prompts and incoming channel messages for top-level Ida
 
-As a user, I want each prompt I type, incoming channel message, peer report, subagent handback, and task notification searched against my PKB, so that the agent starts from prior knowledge and decisions without my asking.
+As a user, I want each prompt I type at an interactive console or send over a channel to a top-level `ida` agent searched against my PKB, so that `ida` starts from prior knowledge and decisions without my asking, while subagents, other agents, automated wakeups, and agent-to-agent messages stay unhydrated.
 
-- **AC-1.1** Given a reachable, authorised PKB endpoint, when a prompt or incoming message is submitted, then the agent's turn receives the matching PKB results as advisory context, marked as PKB search results.
-- **AC-1.2** Given a prompt wrapped in a channel envelope (such as Telegram) or an agent/peer envelope (such as `<cross-session-message>`, `<teammate-message>`, `<task-notification>`, `<subagent-handback>`, `<agent-message>`, `<handback>`), when it is submitted, then the search query is the text inside the envelope, not the envelope.
+- **AC-1.1** Given a reachable, authorised PKB endpoint and a top-level `ida` agent session (`agent_type` resolving to `ida` with no subagent `agent_id` or subagent conversation ancestry), when a real user prompt or incoming `<channel ...>` message is submitted, then the agent's turn receives the matching PKB results as advisory context, marked as PKB search results.
+- **AC-1.2** Given a prompt wrapped in a `<channel ...>` envelope (such as Telegram or Discord), when it is submitted and its unwrapped body is not a peer, agent, task, command, or reminder wrapper, then the search query is the text inside the `<channel>` envelope, not the envelope.
 - **AC-1.3** Given a prompt longer than 8 KB (8,192 characters), when it is submitted, then the search query is capped at 8 KB (8,192 characters); prompts up to 8 KB are sent whole without 200-character truncation.
 - **AC-1.4** Given a search whose results exceed 8,000 characters, when they are injected, then the injected text is cut to 8,000 characters and marked as truncated.
 - **AC-1.5** Given a search with no matches or empty content, when the prompt is submitted, then nothing is injected.
-- **AC-1.6** Given an agy invocation, whose hook payload carries no prompt, when the turn's first model invocation starts (`invocationNum` 0), then the search query is the text inside `<USER_REQUEST>` of the transcript's latest `USER_INPUT` step (the whole step content when the tags are absent).
+- **AC-1.6** Given a top-level `ida` `agy` invocation (`invocationNum` 0), whose hook payload carries no prompt, when the turn starts from a `USER_INPUT` step (not a `SYSTEM_MESSAGE` wake), then the search query is the text inside `<USER_REQUEST>` of the transcript's latest `USER_INPUT` step (stripping any leading `<CONTEXT_SUMMARY>` when `<USER_REQUEST>` tags are absent).
 - **AC-1.7** Given an agy turn, when a later model invocation in the same turn starts (`invocationNum` above 0), then no search runs.
-- **AC-1.8** Given a slash command prompt (`/cmd <arg>`), when it is submitted, then the search query is the `<arg>` text whole up to 8 KB.
+- **AC-1.8** Given a slash command prompt other than `/pull` or `/ida:pull` with an argument (`/cmd <arg>`), when it is submitted, then the search query is the `<arg>` text whole up to 8 KB.
 - **AC-1.9** Given a PKB search request over MCP, when the call is made, then it is sent as a single stateless MCP `2026-07-28` `tools/call` POST carrying headers `MCP-Protocol-Version: 2026-07-28`, `Mcp-Method: tools/call`, `Mcp-Name: <tool_name>`, `x-session-id`, and `traceparent`; `params._meta` (`io.modelcontextprotocol/protocolVersion`, `io.modelcontextprotocol/clientCapabilities`, `io.modelcontextprotocol/clientInfo`); and `arguments` carrying `detail: "snippet"`, `limit: 5`, and top-level `session_id`.
+- **AC-1.10** Given a non-`ida` agent, an unnamed session, a subagent (`agent_id` set or subagent conversation ancestry), an `agy` `SYSTEM_MESSAGE` turn, an automated wakeup (`author` in `loop_wakeup`, `schedule_wakeup`, `poll_event`), a non-`<channel>` `author: "system"` prompt, or a peer/agent/task/command/reminder wrapper (such as `<cross-session-message>`, `<teammate-message>`, `<task-notification>`, `<subagent-handback>`, `<agent-message>`, `<handback>`, `<local-command-*>`, `<command-message>`, `<system-reminder>`, `<subagent_reminder>`, `<scheduled-*>`, or `Another Claude session sent a message:`, even when nested inside `<channel>`), when it arrives, then no PKB search runs and nothing is injected.
 
-### US-2 Argument-less slash commands make no search calls
+### US-2 Argument-less slash commands and `/pull` make no search calls
 
-As a user, I want argument-less slash commands to make no PKB search calls, so that routine session lifecycle actions and commands do not trigger unnecessary network traffic.
+As a user, I want argument-less slash commands and `/pull` invocations to make no PKB search calls, so that routine session lifecycle actions and commands do not trigger unnecessary network traffic.
 
-- **AC-2.1** Given an argument-less slash command (`/cmd`), when it is submitted, then no search runs and nothing is injected.
+- **AC-2.1** Given an argument-less slash command (`/cmd`), or `/pull` / `/ida:pull` (bare or with arguments), when it is submitted, then no search runs and nothing is injected.
 
 ### US-3 Authenticated search from the environment
 
@@ -47,7 +48,11 @@ As an operator, I want a failed search reported to the agent with the reason the
 
 ## Design
 
-**Trigger.** Hydration runs on incoming channel messages and every user prompt submission (`UserPromptSubmit`, never on a `/pull` tool call), before the agent's turn. On agy the trigger is `PreInvocation`, whose payload names the transcript but carries no prompt, so the hook reads the user's text from the transcript's latest `USER_INPUT` step (AC-1.6), skipping harness injections (such as SessionStart system messages) that precede model invocation. When a turn is woken by an incoming peer report or subagent handback via `SYSTEM_MESSAGE`, that arrival is searched. Argument-less slash commands (`/cmd`) are gated out, making no PKB call; human prompts wrapped in `<channel>` envelopes, peer reports, subagent handbacks, task notifications, and `/cmd <arg>` prompts are unwrapped and searched whole up to 8 KB without 200-character truncation.
+**Trigger.** Hydration fires synchronously before the agent's turn on `UserPromptSubmit` (`PreInvocation` on `agy`) when all of the following hold (see `AC-1.1`–`AC-1.10`, `AC-2.1`):
+
+- **Session eligibility**: Top-level `ida` sessions only (`agent_type` resolved from client payload aliases, Linux `agy` `--agent` CLI ancestry, or `CLAUDE_AGENT_NAME`/`AGY_AGENT_NAME`/`AOPS_AGENT_NAME`), with empty `agent_id` and no subagent conversation ancestry.
+- **Eligible inputs**: Real user prompts from an interactive console, a single `<channel>` envelope (unwrapped), or `/cmd <arg>` (searching `<arg>` whole up to 8 KB); on `agy`, strictly `USER_INPUT` turns at `invocationNum == 0` (extracting `<USER_REQUEST>` or stripping leading `<CONTEXT_SUMMARY>`).
+- **Exclusions**: Non-`ida` agents, unnamed sessions, subagents, `agy` `SYSTEM_MESSAGE` or continuation turns (`invocationNum > 0`), automated wakeups, non-`<channel>` system turns, peer/agent/task/command/reminder wrappers (outer or nested), bare `/cmd`, and `/pull` / `/ida:pull` make zero PKB calls.
 
 **Endpoint.** The PKB is an MCP server at `PKB_MCP_URL`, reached via a single stateless MCP `2026-07-28` streamable-HTTP POST to `PKB_MCP_URL` with no `initialize` handshake or cached transport session. The hook calls its search tool (prefixed by `PKB_MCP_TOOL_PREFIX`, default `pkb_search`) with the query, requesting concise snippets (`detail: "snippet"`) and top 5 results (`limit: 5`) to preserve prompt token budget while providing title, score, priors, ID, tags, and body excerpt for relevant entries. Requests carry `MCP-Protocol-Version: 2026-07-28`, `Mcp-Method: tools/call`, `Mcp-Name: <tool_name>`, `x-session-id`, `traceparent` from the active turn, a non-urllib `User-Agent`, and any resolved credential headers (unauthenticated when unset so the cloud proxy injects them). JSON-RPC `params` carries `_meta` (`io.modelcontextprotocol/protocolVersion: "2026-07-28"`, `io.modelcontextprotocol/clientCapabilities: {}`, `io.modelcontextprotocol/clientInfo`), and `arguments` carries the query, `detail: "snippet"`, `limit: 5`, and top-level `session_id` resolved from `CLAUDE_CODE_SESSION_ID` / `CLAUDE_SESSION_ID` / `ANTIGRAVITY_CONVERSATION_ID` or hook context (AC-1.9). That is the only transport: a search that fails reports its failure and stops (AC-4.3), because a quiet second route hides the fault that needs fixing.
 

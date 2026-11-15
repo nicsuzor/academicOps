@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -27,8 +28,15 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 IDA_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
-DISPATCH = IDA_HOOKS / "dispatch.py"
 CALLER_SESSION = IDA_HOOKS / "mcp_caller_session.py"
+
+
+def _staged_dispatch(tmp_path: Path) -> Path:
+    hooks = tmp_path / "staged_hooks"
+    shutil.copytree(IDA_HOOKS, hooks, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copy2(REPO_ROOT / "lib" / "hooks" / "dispatch.py", hooks / "dispatch.py")
+    return hooks / "dispatch.py"
+
 
 if str(IDA_HOOKS) not in sys.path:
     sys.path.insert(0, str(IDA_HOOKS))
@@ -148,7 +156,7 @@ def test_is_cowork_is_false_on_every_other_surface(extra):
 @pytest.mark.parametrize("event", sorted(_PAYLOADS))
 def test_dispatch_emits_nothing_in_cowork(tmp_path, event, extra):
     env = _hook_env(tmp_path, extra)
-    proc = _run(DISPATCH, ["claude", event], _PAYLOADS[event], env)
+    proc = _run(_staged_dispatch(tmp_path), ["claude", event], _PAYLOADS[event], env)
     assert proc.returncode == 0, proc.stderr
     assert proc.stdout == "", f"{event} emitted in Cowork: {proc.stdout!r}"
     assert not (tmp_path / "fires.jsonl").exists(), "the dispatcher logged a fire in Cowork"
@@ -158,7 +166,9 @@ def test_dispatch_emits_nothing_in_cowork(tmp_path, event, extra):
 def test_dispatch_session_start_still_speaks_elsewhere(tmp_path, extra):
     """The control: without the signal SessionStart emits its metadata as before."""
     env = _hook_env(tmp_path, extra)
-    proc = _run(DISPATCH, ["claude", "SessionStart"], _PAYLOADS["SessionStart"], env)
+    proc = _run(
+        _staged_dispatch(tmp_path), ["claude", "SessionStart"], _PAYLOADS["SessionStart"], env
+    )
     assert proc.returncode == 0, proc.stderr
     out = json.loads(proc.stdout)
     context = out["hookSpecificOutput"]["additionalContext"]

@@ -29,6 +29,8 @@ from dispatch import (
     warn,
 )
 from hearsay_gate import (
+    _AGY_USER_REQUEST,
+    _agy_turn_start,
     _is_subagent_conversation,
     hearsay_arm,
     hearsay_handler,
@@ -90,14 +92,41 @@ _MAX_QUERY_CHARS = 8192
 _DEFAULT_SEARCH_LIMIT = 5
 _DEFAULT_SEARCH_DETAIL = "snippet"
 
+_ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]")
+
 _PEER_PREAMBLE = re.compile(
     r"^(?:Another Claude session sent a message:\s*)+",
     re.IGNORECASE,
 )
 
-_ENVELOPE_RE = re.compile(
-    r"^\s*<(?:channel|cross-session-message|teammate-message|task-notification|subagent-handback|agent-message|handback)\b[^>]*>(.*?)(?:</[^>]+>|\s*$)",
-    re.DOTALL,
+_NON_CHANNEL_WRAPPER_RE = re.compile(
+    r"^\s*<(?:"
+    r"(?:cross-session-message|teammate-message|task-notification|subagent-handback|"
+    r"agent-message|handback|command-message|system-reminder|subagent_reminder|subagent-reminder)(?=[\s>/]|$)"
+    r"|local-command-"
+    r"|scheduled-"
+    r")",
+    re.IGNORECASE,
+)
+
+_CHANNEL_FULL_RE = re.compile(
+    r"^\s*<channel\b[^>]*>(.*)</channel>\s*$",
+    re.DOTALL | re.IGNORECASE,
+)
+_CHANNEL_LEADING_RE = re.compile(
+    r"^\s*<channel\b[^>]*>(.*?)</channel>\s*(.+)$",
+    re.DOTALL | re.IGNORECASE,
+)
+_CHANNEL_OPEN_RE = re.compile(
+    r"^\s*<channel\b[^>]*>(.*)$",
+    re.DOTALL | re.IGNORECASE,
+)
+
+_AUTOMATED_AUTHORS = frozenset({"loop_wakeup", "schedule_wakeup", "poll_event"})
+_CHANNEL_PREFIX_RE = re.compile(r"^\s*<channel\b", re.IGNORECASE)
+_CONTEXT_SUMMARY_PREFIX_RE = re.compile(
+    r"^\s*<CONTEXT_SUMMARY\b[^>]*>.*?</CONTEXT_SUMMARY>\s*",
+    re.DOTALL | re.IGNORECASE,
 )
 
 
@@ -159,38 +188,50 @@ def _cap_output(out: str) -> str:
     return out[:cutoff].rstrip() + _TRUNCATION_MARKER
 
 
+def _has_non_channel_wrapper(text: str) -> bool:
+    return bool(_PEER_PREAMBLE.match(text) or _NON_CHANNEL_WRAPPER_RE.match(text))
+
+
 def extract_prompt_query(prompt: str) -> str:
-    """Extract searchable text from a prompt, unwrapping channel and message envelopes.
+    """Extract searchable text from a real user prompt or `<channel>` envelope.
 
-    Unwraps <channel ...> envelopes, peer envelopes (<cross-session-message>,
-    <teammate-message>, <subagent-handback>, <task-notification>, etc.), and
-    peer preambles. Prompts without envelopes are used as typed. ANSI escape
-    codes are removed and surrounding whitespace stripped.
+    Unwraps at most one outer `<channel ...>...</channel>` envelope (e.g.
+    Telegram, Discord, Slack). Rejects peer preambles and non-channel
+    system/peer/agent/command/reminder wrappers — both at top level and nested
+    inside `<channel>` — returning an empty string so zero peer or automated
+    envelopes are searched. ANSI escape codes are removed and surrounding
+    whitespace stripped.
 
-    Skips argument-less slash commands (/cmd) by returning an empty string so
-    no PKB search runs. Slash commands with arguments (/cmd <arg>) send <arg>
-    whole up to 8 KB.
+    Skips argument-less slash commands (`/cmd`) as well as `/pull` and
+    `/ida:pull` (bare or with arguments) by returning an empty string so no
+    PKB search runs. Other slash commands with arguments (`/cmd <arg>`) send
+    `<arg>` whole up to 8 KB.
     """
     if not prompt:
         return ""
-    text = prompt
-    while True:
-        pm = _PEER_PREAMBLE.match(text)
-        if pm:
-            text = text[pm.end() :].lstrip()
-        m = _ENVELOPE_RE.match(text)
-        if m:
-            text = m.group(1).strip()
-            continue
-        break
+    text = _ANSI_ESCAPE_RE.sub("", prompt).strip()
+    if not text or _has_non_channel_wrapper(text):
+        return ""
 
-    text = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", text).strip()
-    if not text:
+    if m := _CHANNEL_FULL_RE.match(text):
+        text = m.group(1)
+    elif m := _CHANNEL_LEADING_RE.match(text):
+        inner = _ANSI_ESCAPE_RE.sub("", m.group(1)).strip()
+        trailing = _ANSI_ESCAPE_RE.sub("", m.group(2)).strip()
+        if _has_non_channel_wrapper(inner) or _has_non_channel_wrapper(trailing):
+            return ""
+        text = f"{inner}\n{trailing}".strip() if inner else trailing
+    elif m := _CHANNEL_OPEN_RE.match(text):
+        text = m.group(1)
+
+    text = _ANSI_ESCAPE_RE.sub("", text).strip()
+    if not text or _has_non_channel_wrapper(text):
         return ""
 
     if text.startswith("/"):
         parts = text.split(None, 1)
-        if len(parts) == 1:
+        cmd_base = parts[0].lower().split("@", 1)[0]
+        if cmd_base in ("/pull", "/ida:pull") or len(parts) == 1:
             return ""
         arg = parts[1].strip()
         if not arg:
@@ -505,42 +546,72 @@ def _run_pkb_search(
 
 
 def search_the_pkb(ctx: HookContext) -> Result | None:
-    """Ground every prompt in the PKB before the agent acts on it.
+    """Ground real user prompts for top-level Ida sessions in the PKB before acting.
 
     Returns the output of `pkb search {prompt}` wrapped in
     `<academicOps PKB search results>` tags when matches are found;
     otherwise returns None. Empty results inject nothing.
-    Argument-less slash commands are skipped so they make no PKB call.
-    Peer reports, subagent handbacks, task notifications, and incoming channel
-    messages are searched to ground the turn in existing PKB context.
+
+    Fires only on top-level `ida` sessions and only on real user prompts from
+    an interactive console or an incoming `<channel ...>` envelope. Non-`ida`
+    agents, unnamed sessions, subagents, automated wakeups, non-`<channel>`
+    `author == "system"` turns, `agy` `SYSTEM_MESSAGE` turns, peer/agent/task/
+    command/reminder wrappers, argument-less slash commands, and `/pull` /
+    `/ida:pull` make zero PKB calls.
     """
-    prompt_str = prompt_text(ctx)
+    if not is_ida(ctx):
+        return None
+
+    raw = ctx.raw or {}
+    agent_id = getattr(ctx, "agent_id", None) or raw.get("agent_id") or raw.get("agentId") or None
+    if agent_id:
+        return None
+
+    if ctx.client == "agy":
+        inv_num = raw.get("invocationNum")
+        if inv_num is not None and inv_num != 0:
+            return None
+        turn_start = _agy_turn_start(ctx)
+        if turn_start is None or turn_start.get("type") != "USER_INPUT":
+            return None
+        if _is_subagent_conversation(ctx):
+            return None
+        content = str(turn_start.get("content") or "").strip()
+        m = _AGY_USER_REQUEST.search(content)
+        if m:
+            prompt_str = m.group(1).strip()
+        else:
+            prompt_str = _CONTEXT_SUMMARY_PREFIX_RE.sub("", content).strip()
+    else:
+        if _is_subagent_conversation(ctx):
+            return None
+        author = str(raw.get("author") or "").strip().lower()
+        if author in _AUTOMATED_AUTHORS:
+            return None
+        prompt_str = prompt_text(ctx)
+        if author == "system" and not _CHANNEL_PREFIX_RE.match(_ANSI_ESCAPE_RE.sub("", prompt_str)):
+            return None
+
     query = extract_prompt_query(prompt_str)
     if not query:
         return None
 
     session_id = (
         getattr(ctx, "session_id", None)
-        or ctx.raw.get("session_id")
-        or ctx.raw.get("conversationId")
+        or raw.get("session_id")
+        or raw.get("conversationId")
         or os.environ.get("AOPS_SESSION_ID")
         or None
     )
     prompt_id = (
-        getattr(ctx, "prompt_id", None)
-        or ctx.raw.get("prompt_id")
-        or ctx.raw.get("promptId")
-        or None
+        getattr(ctx, "prompt_id", None) or raw.get("prompt_id") or raw.get("promptId") or None
     )
-    agent_id = getattr(ctx, "agent_id", None) or ctx.raw.get("agent_id") or None
 
     search_kwargs: dict[str, Any] = {"cwd": ctx.cwd}
     if session_id:
         search_kwargs["session_id"] = session_id
     if prompt_id:
         search_kwargs["prompt_id"] = prompt_id
-    if agent_id:
-        search_kwargs["agent_id"] = agent_id
 
     output = _run_pkb_search(query, **search_kwargs)
     if output and output.strip():
@@ -735,7 +806,6 @@ PKB_SESSION_POINTER = (
 
 def session_start(ctx: HookContext) -> Result | None:
     """Handle SessionStart for Claude Code and SessionStart for agy."""
-    emit_debug_span(ctx)
     metadata = _format_session_metadata(ctx)
     parts = [
         metadata,
@@ -1073,7 +1143,6 @@ def user_prompt_submit(ctx: HookContext) -> Result | None:
 
     _run_claude_tracer(ctx, "handle_user_prompt_submit")
     agy_user_prompt_submit(ctx)
-    emit_debug_span(ctx)
     steps = (
         agy_session_pointer,
         search_the_pkb,
@@ -1087,7 +1156,6 @@ def pre_tool(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical PreToolUse."""
     _run_claude_tracer(ctx, "handle_pre_tool")
     agy_pre_tool(ctx)
-    emit_debug_span(ctx)
     res = subagent_pre_handback_check(ctx)
     if res is not None:
         return res
@@ -1096,7 +1164,6 @@ def pre_tool(ctx: HookContext) -> Result | None:
 
 def post_tool(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical PostToolUse."""
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_post_tool")
     agy_post_tool(ctx)
     steps = (hearsay_arm, telemetry_diagnostic_handler)
@@ -1105,25 +1172,21 @@ def post_tool(ctx: HookContext) -> Result | None:
 
 def post_tool_batch(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical PostToolBatch."""
-    emit_debug_span(ctx)
     return _run_handler(rule_against_hearsay, ctx)
 
 
 def post_tool_failure(ctx: HookContext) -> Result | None:
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_post_tool_failure")
     return _run_handler(telemetry_diagnostic_handler, ctx)
 
 
 def subagent_start(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical SubagentStart."""
-    emit_debug_span(ctx)
     return _run_handler(honest_output, ctx)
 
 
 def stop(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical Stop."""
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_stop")
     agy_stop(ctx)
     steps = (hearsay_handler, telemetry_diagnostic_handler)
@@ -1131,70 +1194,42 @@ def stop(ctx: HookContext) -> Result | None:
 
 
 def subagent_stop(ctx: HookContext) -> Result | None:
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_subagent_stop")
     return _run_handler(hearsay_arm, ctx)
 
 
 def stop_failure(ctx: HookContext) -> Result | None:
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_stop_failure")
     return None
 
 
 def permission_request(ctx: HookContext) -> Result | None:
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_permission_request")
     return None
 
 
 def permission_denied(ctx: HookContext) -> Result | None:
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_permission_denied")
     return None
 
 
 def notification(ctx: HookContext) -> Result | None:
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_notification")
     return None
 
 
 def pre_compact(ctx: HookContext) -> Result | None:
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_pre_compact")
     return None
 
 
 def post_compact(ctx: HookContext) -> Result | None:
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_post_compact")
     return None
 
 
 def session_end(ctx: HookContext) -> Result | None:
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_session_end")
-    return None
-
-
-def emit_debug_span(ctx: HookContext) -> Result | None:
-    """Export an aops-debug span for any hook event on every surface the hook tracer runs on."""
-    if claude_code_tracer is None:
-        return None
-    try:
-        data = _prepare_tracer_data(ctx)
-        config = claude_code_tracer.discover_config(data)
-        if config is not None:
-            claude_code_tracer.emit_debug_hook_span(
-                data,
-                config,
-                client=ctx.client,
-                event=ctx.event,
-                raw_payload=ctx.raw,
-            )
-    except Exception as exc:
-        log.debug("Debug hook span export failed (%s): %s", ctx.event, exc)
     return None
 
 
