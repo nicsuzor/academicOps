@@ -5,18 +5,21 @@ status: ready
 
 # Telegram Message Action Buttons
 
-This specification defines the default inline message action buttons (`🧐 Check`, `💡 Explain`, `🧾`, `✅`, and `❌`) attached to replies in the `ida-telegram` plugin, their callback tap events, and the structured response forms delivered back to the operator. It serves operators interacting with conversational agents over Telegram who need to interrogate specific message statements through formal premise checks, detailed explanations, or transparent multi-level argument and delegation chains.
+This specification defines the inline message action buttons (`🧐 Check`, `💡 Explain`, `🧾`, and for binary yes/no decisions `✅` and `❌`) attached to replies in the `ida-telegram` plugin, their callback tap events, and the structured response forms delivered back to the operator. It serves operators interacting with conversational agents over Telegram who need to interrogate specific message statements through formal premise checks, detailed explanations, or transparent multi-level argument and delegation chains, and respond to binary or multi-option decisions with buttons that fit the choice.
 
 ## User stories
 
-### US-1 Default Message Action Buttons Attached to Replies
+### US-1 Default and Decision-Fit Message Action Buttons Attached to Replies
 
-As an operator reading agent replies in Telegram chat, I want every message statement to carry inline actions for logic verification, explanation, and underlying reasons by default, formatted with compact labels that do not truncate on phone screens, so that I can inspect or challenge any claim with a single tap.
+As an operator reading agent replies in Telegram chat, I want every message statement to carry inline actions for logic verification, explanation, and underlying reasons by default, and to show accept/decline tick and cross icons only when the message carries a binary yes/no decision, so that I can inspect or challenge any claim with a single tap without irrelevant decision icons cluttering informational or multi-option replies.
 
-- **AC-1.1 (Default Action Buttons)** Given an outbound reply with action buttons enabled by default (`actions !== false`), when the reply is sent, then the message inline keyboard carries `[🧐 Check]`, `[💡 Explain]`, and `[🧾]` alongside `[✅]` and `[❌]`.
-  - _Check_: `plugins/ida-telegram/test/message-actions.test.ts` (`reply attaches [🧐 Check], [💡 Explain], and [🧾] buttons by default`) asserts all buttons are present with callback data `logic_check`, `explain`, `reasons`, `accept_recommendation`, and `decline_recommendation`.
-- **AC-1.2 (Action Buttons Suppression)** Given an outbound reply with message actions disabled (`actions: false`), when the reply is sent, then all action buttons are omitted from the inline keyboard.
-  - _Check_: `plugins/ida-telegram/test/message-actions.test.ts` (`reply with actions: false suppresses action buttons`) asserts no action buttons are present in the inline keyboard.
+- **AC-1.1 (Default Action Buttons & Decision-Fit Recommendation Buttons)**
+  - Given an outbound reply with action buttons enabled by default (`actions !== false`) and no binary decision (`binary_decision` omitted or `false`), when the reply is sent, then the message inline keyboard carries `[🧐 Check]`, `[💡 Explain]`, and `[🧾]` with no `[✅]` or `[❌]` buttons.
+  - Given an outbound reply with `binary_decision: true` (and `actions !== false`), when the reply is sent, then the message inline keyboard carries `[✅]` and `[❌]` alongside `[🧐 Check]`, `[💡 Explain]`, and `[🧾]`.
+  - Given a multi-option reply (`buttons` provided with labelled options and the recommended option highlighted, `binary_decision` omitted or `false`), when the reply is sent, then the message inline keyboard carries the labelled option buttons and `[🧐 Check]`, `[💡 Explain]`, and `[🧾]`, with no `[✅]` or `[❌]` buttons.
+  - _Check_: `plugins/ida-telegram/test/message-actions.test.ts` and `plugins/ida-telegram/test/recommendation-actions.test.ts` assert button presence and absence across no-decision, binary-decision, and multi-option replies with callback data `logic_check`, `explain`, `reasons`, `accept_recommendation`, and `decline_recommendation`.
+- **AC-1.2 (Action Buttons Suppression)** Given an outbound reply with message actions disabled (`actions: false`), when the reply is sent, then all action and recommendation buttons are omitted from the inline keyboard.
+  - _Check_: `plugins/ida-telegram/test/message-actions.test.ts` (`reply with actions: false suppresses action buttons`) and `plugins/ida-telegram/test/recommendation-actions.test.ts` assert no action buttons are present in the inline keyboard.
 - **AC-1.3 (Row Layout & Details Consolidation)** In the default reply keyboard (`predefined_row: false` or omitted), Details (`🔍`) sits on the same row as the predefined action buttons; when `predefined_row: true` is set, they sit consolidated on row 0 above caller buttons.
   - _Check_: `plugins/ida-telegram/test/reply-buttons.test.ts` verifies single-row consolidation and placement.
 
@@ -24,20 +27,20 @@ As an operator reading agent replies in Telegram chat, I want every message stat
 
 As an operator tapping an action button on a message card, I want the card marked with the selected action and an inbound event delivered to the agent naming the target message, so that the agent knows which statement is being queried and what form of inspection is requested.
 
-- **AC-2.1 (Logic Check Tap)** Given an operator taps `🧐 Check`, when the callback arrives, then the card is edited to append `Selected: 🧐 Check ✅`, action buttons are filtered out while preserving remaining buttons, and Ida receives an inbound event with `event: "logic_check"` naming the target message ID and excerpt.
+- **AC-2.1 (Logic Check Tap)** Given an operator taps `🧐 Check`, when the callback arrives, then the card is edited to append `Selected: 🧐 Check ✅`, action buttons are filtered out while preserving remaining buttons, and the agent receives an inbound event with `event: "logic_check"` naming the target message ID and excerpt.
   - _Check_: `plugins/ida-telegram/test/message-actions.test.ts` (`AC1: pressing logic-check button delivers request naming message and Ida replies with premise-check verdict`).
-- **AC-2.2 (Explain Tap)** Given an operator taps `💡 Explain`, when the callback arrives, then the card is edited to append `Selected: 💡 Explain ✅`, action buttons are filtered out, and Ida receives an inbound event with `event: "explain"` naming the target message ID and excerpt.
+- **AC-2.2 (Explain Tap)** Given an operator taps `💡 Explain`, when the callback arrives, then the card is edited to append `Selected: 💡 Explain ✅`, action buttons are filtered out, and the agent receives an inbound event with `event: "explain"` naming the target message ID and excerpt.
   - _Check_: `plugins/ida-telegram/test/message-actions.test.ts` (`AC2: pressing explain button delivers request naming message and Ida replies expanding that message`).
-- **AC-2.3 (Reasons Tap)** Given an operator taps `🧾`, when the callback arrives, then the card is edited to append `Selected: 🧾 Reasons ✅`, action buttons are filtered out, and Ida receives an inbound event with `event: "reasons"` naming the target message ID, excerpt, and asking "How do you know that? Show the reasons and argument chain behind message...".
+- **AC-2.3 (Reasons Tap)** Given an operator taps `🧾`, when the callback arrives, then the card is edited to append `Selected: 🧾 Reasons ✅`, action buttons are filtered out, and the agent receives an inbound event with `event: "reasons"` naming the target message ID, excerpt, and asking "How do you know that? Show the reasons and argument chain behind message...".
   - _Check_: `plugins/ida-telegram/test/message-actions.test.ts` (`AC2: pressing reasons button marks card and delivers request naming message to Ida`) and `plugins/ida-telegram/test/inbound.test.ts` (`delivers reasons button tap event naming target message and excerpt`).
 
 ### US-3 Multi-Level Argument Chain Answer Form
 
-As an operator requesting reasons behind a message, I want Ida's reply to provide a concise chat takeaway and a complete delegation tree in the reply's details holding verbatim Chained Toulmin Argdown arguments for every link in the delegation chain, so that I can audit exactly who argued what to whom without relying on post-hoc agent summaries.
+As an operator requesting reasons behind a message, I want the agent's reply to provide a concise chat takeaway and a complete delegation tree in the reply's details holding verbatim Chained Toulmin Argdown arguments for every link in the delegation chain, so that I can audit exactly who argued what to whom without relying on post-hoc agent summaries.
 
-- **AC-3.1 (Verbatim Arguments in Details)** Given a `reasons` event for a message, when Ida constructs the response, then the reply targets the queried message (`reply_to: message_id`), chat text stays within the ~100-word budget summarizing the takeaway and chain structure, and the `detail` parameter carries the complete delegation tree holding verbatim Chained Toulmin Argdown blocks for each available link of the chain.
+- **AC-3.1 (Verbatim Arguments in Details)** Given a `reasons` event for a message, when the agent constructs the response, then the reply targets the queried message (`reply_to: message_id`), chat text stays within the ~100-word budget summarizing the takeaway and chain structure, and the `detail` parameter carries the complete delegation tree holding verbatim Chained Toulmin Argdown blocks for each available link of the chain.
   - _Check_: `plugins/ida-telegram/test/message-actions.test.ts` (`AC3: Ida handles reasons event by returning multi-level verbatim argument chain in details`) asserts `storedDetail.markdown` contains the verbatim Argdown blocks.
-- **AC-3.2 (Sender, Recipient & Delegation Depth Nesting)** In the details argument chain, every link is explicitly labelled with who argued it and to whom (e.g. `Ida → User`, `Sara → Ida`, `Worker → Sara`) and formatted with hierarchical indentation or depth markers reflecting delegation nesting.
+- **AC-3.2 (Sender, Recipient & Delegation Depth Nesting)** In the details argument chain, every link is explicitly labelled with who argued it and to whom (e.g. `Prime → User`, `Coordinator → Prime`, `Worker → Coordinator`) and formatted with hierarchical indentation or depth markers reflecting delegation nesting.
   - _Check_: `plugins/ida-telegram/test/message-actions.test.ts` (`AC3: Ida handles reasons event by returning multi-level verbatim argument chain in details`) asserts sender/recipient labels and delegation depth nesting across levels 1, 2, and 3.
 - **AC-3.3 (Missing Arguments Explicitly Designated)** When an argument block for any delegation link cannot be found in the trace or task record, that link is explicitly named as missing (e.g. `[Missing argument: no premise-check record found for ...]`), never paraphrased or synthetically reconstructed.
   - _Check_: `plugins/ida-telegram/test/message-actions.test.ts` (`AC3: Ida handles reasons event by returning multi-level verbatim argument chain in details`) asserts missing link text appears unparaphrased in stored details.
@@ -47,17 +50,18 @@ As an operator requesting reasons behind a message, I want Ida's reply to provid
 ### 1. Inline Action Buttons Configuration (US-1)
 
 1. **Button Construction:**
-   - Every reply sent via `reply` attaches message action buttons unless explicitly disabled with `actions: false`.
-   - The action button set comprises:
+   - Every reply sent via `reply` attaches default message action buttons unless explicitly disabled with `actions: false`:
      1. `{ text: "🧐 Check", callback_data: "logic_check" }`
      2. `{ text: "💡 Explain", callback_data: "explain" }`
      3. `{ text: "🧾", callback_data: "reasons" }`
+   - When `binary_decision: true` is passed on `reply` (and `actions !== false`), binary recommendation buttons are appended to the action row:
      4. `{ text: "✅", callback_data: "accept_recommendation" }`
      5. `{ text: "❌", callback_data: "decline_recommendation" }`
+   - When `binary_decision` is `false` or omitted, `[✅]` and `[❌]` are not attached. Multi-option decisions pass labelled option buttons in `buttons` with the recommended option highlighted instead; messages with no decision pass neither.
 2. **Layout Placement:**
-   - **Default Layout (`predefined_row: false` or omitted):** Details (`🔍`) sits on the same row as the predefined action buttons (`[🔍, 🧐 Check, 💡 Explain, 🧾, ✅, ❌]`), below caller buttons if present, or on row 0 if no caller buttons are present.
-   - **Consolidated Layout (`predefined_row: true`):** Action buttons join `🔍`, `🔍 Review diff`, and feedback buttons on a single top row (row 0) above caller buttons.
-   - **Suppression:** Setting `actions: false` removes all action buttons.
+   - **Default Layout (`predefined_row: false` or omitted):** Details (`🔍`) sits on the same row as the active predefined action buttons (`[🔍, 🧐 Check, 💡 Explain, 🧾]` plus `[✅, ❌]` when `binary_decision: true`), below caller buttons if present, or on row 0 if no caller buttons are present.
+   - **Consolidated Layout (`predefined_row: true`):** Active action buttons join `🔍`, `🔍 Review diff`, and feedback buttons on a single top row (row 0) above caller buttons.
+   - **Suppression:** Setting `actions: false` removes all action and binary recommendation buttons.
 
 ### 2. Callback Ingestion & In-Place Selection (US-2)
 
@@ -92,6 +96,6 @@ As an operator requesting reasons behind a message, I want Ida's reply to provid
    - **Tier 1 (Chat):** Concise ~100-word summary stating the core conclusion, the delegation path, and pointing to Details for the audit record.
    - **Tier 3 (`detail` / Details Page):** Full verbatim argument chain:
      - Structure: Hierarchical delegation outline showing nesting depth (Level 1, Level 2, Level 3...).
-     - Link Identity: Each node states `Sender → Recipient` (e.g. `Ida → User`, `Sara → Ida`, `Worker (rbg) → Sara`).
+     - Link Identity: Each node states `Sender → Recipient` (e.g. `Prime → User`, `Coordinator → Prime`, `Worker → Coordinator`).
      - Verbatim Argdown: Attached Chained Toulmin Argdown blocks enclosed in `argdown ... ` verbatim as received from each agent or task report.
      - Missing Arguments: If an argument record was unrecorded or missing for any link in the chain, it is explicitly labelled `[Missing argument: no premise-check record found for ...]`, adhering to the honest epistemics axiom (`honest-epistemics.md`) and the explanations-not-reasons axiom (`explanations-not-reasons.md`).

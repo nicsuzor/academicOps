@@ -24,6 +24,7 @@ export interface OutboundReplyParams {
   predefinedRow?: boolean;
   feedback?: boolean;
   actions?: boolean;
+  binary_decision?: boolean;
   message_thread_id?: number;
   messageThreadId?: number;
   thread_id?: number;
@@ -218,6 +219,7 @@ export class SharedTelegramChannelCore {
         replyTo,
         feedback: params.feedback,
         actions: params.actions,
+        binary_decision: params.binary_decision,
         messageThreadId: params.message_thread_id ?? params.messageThreadId ?? params.thread_id ?? params.threadId,
         review: params.review,
       });
