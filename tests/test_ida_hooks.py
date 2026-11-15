@@ -819,3 +819,67 @@ def test_session_start_injects_only_workspace_core_md(
     res_empty = handlers.session_start(ctx_empty)
     assert res_empty is not None
     assert "# Project Local Rules" not in res_empty.inject_text
+
+
+def test_pre_tool_use_never_mutates_mcp_inputs_and_session_start_instructs_explicit_session_id(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    """PreToolUse hooks never rewrite MCP tool inputs; SessionStart instructs explicit session_id."""
+    from dispatch import HookContext, normalize, render
+
+    manifest = json.loads(
+        (REPO_ROOT / "plugins" / "ida" / "manifest" / "hooks.json").read_text(encoding="utf-8")
+    )
+    for client in ("claude", "agy"):
+        entries = manifest["clients"][client]["hooks"]["PreToolUse"]
+        commands = [h["command"] for entry in entries for h in entry["hooks"]]
+        assert commands, f"{client} PreToolUse must keep dispatch.py"
+        assert all("dispatch.py" in cmd for cmd in commands)
+        assert all("mcp_caller_session" not in cmd for cmd in commands)
+
+    monkeypatch.setenv("AOPS_PREMISE_GATE_DIR", str(tmp_path / "gate"))
+    monkeypatch.setenv("AOPS_TRACER_STATE_DIR", str(tmp_path / "tracer"))
+    for client, raw in (
+        (
+            "claude",
+            {
+                "session_id": "sess-no-rewrite",
+                "tool_name": "mcp__pkb__search",
+                "tool_input": {"query": "stateless"},
+            },
+        ),
+        (
+            "claude",
+            {
+                "session_id": "sess-no-rewrite",
+                "tool_name": "mcp__services__portal_codemode_execute",
+                "tool_input": {"code": "async () => ({})"},
+            },
+        ),
+        (
+            "agy",
+            {
+                "conversationId": "sess-no-rewrite",
+                "toolCall": {
+                    "name": "call_mcp_tool",
+                    "args": {"ServerName": "services", "ToolName": "portal_codemode_execute"},
+                },
+            },
+        ),
+    ):
+        ctx = normalize(client, "PreToolUse", raw, IDA_HOOKS)
+        for fn in handlers.HANDLERS.get("PreToolUse", []):
+            res = fn(ctx)
+            if res is not None:
+                rendered = json.dumps(render(client, "PreToolUse", res))
+                assert "updatedInput" not in rendered
+                assert "overwrite" not in rendered
+
+    monkeypatch.delenv("CLAUDE_ENV_FILE", raising=False)
+    monkeypatch.setenv("PKB_MCP_URL", "http://localhost:8000/mcp")
+    start_res = handlers.session_start(
+        HookContext(client="claude", event="SessionStart", session_id="sess-no-rewrite")
+    )
+    assert start_res is not None
+    assert "Hooks do not inject `session_id` into MCP calls" in start_res.inject_text
+    assert "portal_codemode_execute" in start_res.inject_text

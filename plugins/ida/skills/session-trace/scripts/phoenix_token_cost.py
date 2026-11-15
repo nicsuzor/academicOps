@@ -2,9 +2,9 @@
 """Token usage and estimated cost per session (and per PKB task) from Phoenix LLM spans.
 
 One screen, ranked by cost: session, agent/role, task, model, in/out/cache tokens,
-estimated USD. Reads the Phoenix REST API (``GET /v1/projects/{id}/spans`` with
-``span_kind`` and ``start_time``/``end_time`` filters) so it runs anywhere Phoenix is
-reachable over HTTP -- no Phoenix MCP, no SQLite access to the span store.
+estimated USD. Queries Phoenix spans (``/v1/projects/{id}/spans`` with ``span_kind`` and
+``start_time``/``end_time`` filters) via stateless MCP ``2026-07-28`` ``phoenix_execute``
+calls against ``$PHOENIX_MCP_URL``, with no stateful MCP handshake or SQLite access.
 
 Method
 ------
@@ -65,7 +65,6 @@ from typing import Any
 BASE_URL_ENV_VAR = "PHOENIX_MCP_URL"
 PROJECT_ENV_VAR = "PHOENIX_MCP_PROJECT"
 _ACCESS_TOKEN_PAIRS = (("DISPATCHER_MCP_TOKEN_ID", "DISPATCHER_MCP_TOKEN_SECRET"),)
-_MCP_SESSIONS: dict[str, str] = {}
 PAGE_LIMIT = 1000
 HTTP_TIMEOUT = 120
 
@@ -122,11 +121,14 @@ class ConfigError(Exception):
 # --- HTTP / MCP proxy ------------------------------------------------------
 
 
-def _mcp_headers(session_id: str | None = None) -> dict[str, str]:
+def _mcp_headers(mcp_tool_name: str = "phoenix_execute") -> dict[str, str]:
     headers: dict[str, str] = {
         "User-Agent": "academicOps/0.10 (session-trace)",
         "Content-Type": "application/json",
         "Accept": "application/json, text/event-stream",
+        "MCP-Protocol-Version": "2026-07-28",
+        "Mcp-Method": "tools/call",
+        "Mcp-Name": mcp_tool_name,
     }
     for id_var, secret_var in _ACCESS_TOKEN_PAIRS:
         cf_id = os.environ.get(id_var)
@@ -135,8 +137,15 @@ def _mcp_headers(session_id: str | None = None) -> dict[str, str]:
             headers["CF-Access-Client-Id"] = cf_id
             headers["CF-Access-Client-Secret"] = cf_secret
             break
-    if session_id:
-        headers["mcp-session-id"] = session_id
+    caller_sid = (
+        os.environ.get("AOPS_SESSION_ID")
+        or os.environ.get("CLAUDE_CODE_SESSION_ID")
+        or os.environ.get("CLAUDE_SESSION_ID")
+        or os.environ.get("ANTIGRAVITY_CONVERSATION_ID")
+        or ""
+    ).strip()
+    if caller_sid:
+        headers["x-session-id"] = caller_sid
     return headers
 
 
@@ -198,54 +207,30 @@ def _extract_jsonrpc_payload(raw_body: str, mcp_url: str) -> dict[str, Any]:
     raise ConfigError(f"unparseable MCP response from {mcp_url}: {raw_body[:400]}")
 
 
-def _mcp_init_session(mcp_url: str) -> str:
-    init_payload = {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "initialize",
-        "params": {
-            "protocolVersion": "2024-11-05",
-            "capabilities": {},
-            "clientInfo": {"name": "academicOps-session-trace", "version": "0.10"},
-        },
-    }
-    request = urllib.request.Request(
-        mcp_url,
-        data=json.dumps(init_payload).encode("utf-8"),
-        headers=_mcp_headers(),
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT) as response:
-            session_id = response.headers.get("mcp-session-id")
-            if not session_id:
-                raise ConfigError(f"MCP initialize at {mcp_url} returned no mcp-session-id header")
-            _MCP_SESSIONS[mcp_url] = session_id
-            return session_id
-    except urllib.error.HTTPError as exc:
-        body = exc.read().decode("utf-8", "replace")[:400]
-        raise ConfigError(f"HTTP {exc.code} from {mcp_url}: {body}") from exc
-    except urllib.error.URLError as exc:
-        raise ConfigError(f"cannot reach {mcp_url}: {exc.reason}") from exc
-
-
 def get_json(url: str) -> Any:
     mcp_url, tool_name, tool_args = _parse_v1_url(url)
-    session_id = _MCP_SESSIONS.get(mcp_url) or _mcp_init_session(mcp_url)
     code = f"return await call_tool({json.dumps(tool_name)}, {json.dumps(tool_args)})"
     call_payload = {
         "jsonrpc": "2.0",
-        "id": 2,
+        "id": 1,
         "method": "tools/call",
         "params": {
             "name": "phoenix_execute",
             "arguments": {"code": code},
+            "_meta": {
+                "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+                "io.modelcontextprotocol/clientCapabilities": {},
+                "io.modelcontextprotocol/clientInfo": {
+                    "name": "academicOps-session-trace",
+                    "version": "0.10",
+                },
+            },
         },
     }
     request = urllib.request.Request(
         mcp_url,
         data=json.dumps(call_payload).encode("utf-8"),
-        headers=_mcp_headers(session_id),
+        headers=_mcp_headers("phoenix_execute"),
         method="POST",
     )
     try:

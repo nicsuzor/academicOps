@@ -1,11 +1,9 @@
 """The ida hooks do nothing in a Claude Cowork session.
 
-Cowork, in the Claude desktop app, refuses any MCP call whose input a plugin
-hook changed, and the SessionStart hook fails there on the environment it
-lacks. So both hook entry points -- ``dispatch.py`` and
-``mcp_caller_session.py`` -- exit silently, emitting nothing and changing no
-input, when the environment carries the signal Claude Code's own process sets
-for a Cowork session, and behave exactly as before without it.
+Cowork, in the Claude desktop app, lacks the environment ``SessionStart``
+needs. So the hook entry point -- ``dispatch.py`` -- exits silently, emitting
+nothing, when the environment carries the signal Claude Code's own process sets
+for a Cowork session, and behaves normally without it.
 
 The signal is read from the Claude Code 2.1.314 binary: the host-set variable
 ``CLAUDE_CODE_IS_COWORK``, and the ``CLAUDE_CODE_ENTRYPOINT`` values the
@@ -28,7 +26,6 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 IDA_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
-CALLER_SESSION = IDA_HOOKS / "mcp_caller_session.py"
 
 
 def _staged_dispatch(tmp_path: Path) -> Path:
@@ -86,15 +83,6 @@ _PAYLOADS = {
         "tool_input": {"query": "observability"},
     },
     "Stop": {"hook_event_name": "Stop", "session_id": "test-session"},
-}
-
-_CALLER_SESSION_PAYLOAD = {
-    "hook_event_name": "PreToolUse",
-    "tool_name": "mcp__pkb__search",
-    "session_id": "sess-cowork",
-    "prompt_id": "prompt-cowork",
-    "tool_use_id": "toolu-cowork",
-    "tool_input": {"query": "observability"},
 }
 
 
@@ -175,28 +163,3 @@ def test_dispatch_session_start_still_speaks_elsewhere(tmp_path, extra):
     assert "session: test-session" in context
     assert "pkb: http://pkb.invalid/mcp" in context
     assert (tmp_path / "fires.jsonl").exists()
-
-
-# ---------------------------------------------------------------------------
-# mcp_caller_session.py: no input is changed in Cowork
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize("extra", COWORK_ENVS)
-def test_caller_session_changes_no_input_in_cowork(tmp_path, extra):
-    env = _hook_env(tmp_path, extra)
-    proc = _run(CALLER_SESSION, [], _CALLER_SESSION_PAYLOAD, env)
-    assert proc.returncode == 0, proc.stderr
-    assert proc.stdout == "", f"caller-session hook rewrote input in Cowork: {proc.stdout!r}"
-
-
-@pytest.mark.parametrize("extra", NOT_COWORK_ENVS)
-def test_caller_session_still_injects_elsewhere(tmp_path, extra):
-    """The control: without the signal the PKB call carries top-level ``session_id``."""
-    env = _hook_env(tmp_path, extra)
-    proc = _run(CALLER_SESSION, [], _CALLER_SESSION_PAYLOAD, env)
-    assert proc.returncode == 0, proc.stderr
-    updated = json.loads(proc.stdout)["hookSpecificOutput"]["updatedInput"]
-    assert updated["query"] == "observability"
-    assert updated["session_id"] == "sess-cowork"
-    assert "_session" not in updated
