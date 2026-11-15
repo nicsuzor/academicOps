@@ -494,20 +494,23 @@ def test_resolve_ui_base_url(monkeypatch):
     assert pt.resolve_ui_base_url(None, "http://localhost:6006/") == "http://localhost:6006"
 
     # Derived from MCP proxy gateway URL (mcp. -> phoenix., strip /mcp)
-    assert pt.resolve_ui_base_url(None, "https://mcp.suzor.com/mcp") == "https://phoenix.suzor.com"
+    assert (
+        pt.resolve_ui_base_url(None, "https://mcp.internal.test/mcp")
+        == "https://phoenix.internal.test"
+    )
     assert (
         pt.resolve_ui_base_url(None, "https://mcp.example.com/mcp") == "https://phoenix.example.com"
     )
 
     # Explicit flag overrides everything
     assert (
-        pt.resolve_ui_base_url("https://custom.ui", "https://mcp.suzor.com/mcp")
+        pt.resolve_ui_base_url("https://custom.ui", "https://mcp.internal.test/mcp")
         == "https://custom.ui"
     )
 
     # Environment variable PHOENIX_UI_URL overrides base_url derivation
     monkeypatch.setenv("PHOENIX_UI_URL", "https://env.ui")
-    assert pt.resolve_ui_base_url(None, "https://mcp.suzor.com/mcp") == "https://env.ui"
+    assert pt.resolve_ui_base_url(None, "https://mcp.internal.test/mcp") == "https://env.ui"
 
     # None when no base_url and no env var
     monkeypatch.delenv("PHOENIX_UI_URL", raising=False)
