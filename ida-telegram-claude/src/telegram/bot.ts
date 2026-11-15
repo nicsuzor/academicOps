@@ -156,6 +156,7 @@ export interface SendReplyOptions {
   feedback?: boolean;
   review?: { repo: string; pr?: number };
   actions?: boolean;
+  binary_decision?: boolean;
 }
 
 export interface SendReplyResult {
@@ -361,6 +362,7 @@ export class TelegramBotClient {
       feedback,
       review,
       actions,
+      binary_decision,
     } = opts;
 
     const effectiveThreadId =
@@ -452,8 +454,12 @@ export class TelegramBotClient {
       actionBtns.push({ text: "🧐 Check", callback_data: "logic_check" });
       actionBtns.push({ text: "💡 Explain", callback_data: "explain" });
       actionBtns.push({ text: "🧾", callback_data: "reasons" });
-      actionBtns.push({ text: "✅", callback_data: "accept_recommendation" });
-      actionBtns.push({ text: "❌", callback_data: "decline_recommendation" });
+
+      // Attach tick/cross buttons ONLY if binary_decision is explicitly true
+      if (binary_decision === true) {
+        actionBtns.push({ text: "✅", callback_data: "accept_recommendation" });
+        actionBtns.push({ text: "❌", callback_data: "decline_recommendation" });
+      }
     }
 
     if (predefinedRow === true) {

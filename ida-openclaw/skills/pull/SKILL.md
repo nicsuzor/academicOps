@@ -11,7 +11,7 @@ Claim and execute an already-decomposed queued PKB task or single-skill task to 
 
 ### 1. Claim Task
 
-- Claim the assigned task ID via PKB task claiming tools (`pkb_claim_task`, setting `assignee` to your agent or role). If missing, locate it via PKB search.
+- Claim the assigned task ID via PKB task claiming tools (`pkb_claim_task`, setting `assignee` to your agent or role). Locating an assigned task is strictly an exact lookup by known ID or title (`pkb_get_task`); pull workers never execute exploratory or broad semantic searches for related or open work. If the assigned task cannot be fetched directly, halt or query the custodian (`pauli`).
 - Authority extends strictly to the claimed task. Plain leaf workers operate strictly state-only: mutate only the claimed task's own fields and checklist. Never reify workflows, create child tasks, or mint follow-up tasks on the graph.
 - **Intake Contract**: When claiming a task, verify deliverables as a frozen `## Acceptance` checklist on the claimed PKB task before work starts. Internal lookups and fast-path execution workflows never create additional tasks on the graph.
 - Coordinator sessions use `/pull` strictly for lightweight documentation, synthesis, or coordination tasks running no test suites or large codebase greps; substantive implementation, codebase sweeps, and test execution tasks must be dispatched to polecats via `/dispatch`.

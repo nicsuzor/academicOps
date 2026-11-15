@@ -69,6 +69,11 @@ export const MCP_TOOLS: ToolDefinition[] = [
             required: ["label"],
           },
         },
+        binary_decision: {
+          type: "boolean",
+          description:
+            "Attach binary up/down recommendation buttons ([✅] and [❌]). Set true only when the message carries a binary yes/no decision (e.g. proposing an obvious next step). For multi-option decisions, leave false and provide labelled buttons in 'buttons' with the recommended option highlighted. Defaults to false.",
+        },
         voice: { type: "boolean", description: "Send tier 1 as a spoken voice note" },
         reply_to: { type: "integer", description: "Telegram message ID to reply to" },
         review: {

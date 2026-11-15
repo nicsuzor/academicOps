@@ -26,6 +26,7 @@ Applies to all in-session and interactive work. Governs task creation boundaries
 
 2. **Delegation pipeline**:
    - Middle steps are unspecified except that the user-facing coordinator delegates to an internal delegate first.
+   - Pre-creation checks for existing, related, or overlapping open work route directly to the custodian (`pauli`), who searches the PKB with short conceptual queries distilled from the ask (never the raw prompt), before an outer task is minted via `/q`.
    - The internal delegate delegates through to the custodian, review supervisor, or dispatcher as appropriate for the work. Dispatched containers run `/supervise` for repo-scoped epic tasks or `/pull` for plain leaf tasks.
    - No subagent or internal delegate may create child or auxiliary tasks on the task graph.
 

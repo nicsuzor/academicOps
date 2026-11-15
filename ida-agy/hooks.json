@@ -14,6 +14,15 @@
     ],
     "PreToolUse": [
       {
+        "matcher": "mcp_pkb_.*|mcp__pkb__.*|call_mcp_tool",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --project . python hooks/mcp_caller_session.py agy"
+          }
+        ]
+      },
+      {
         "matcher": "*",
         "hooks": [
           {

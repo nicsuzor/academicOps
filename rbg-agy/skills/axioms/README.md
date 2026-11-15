@@ -24,7 +24,7 @@ description: Index of academicOps axioms.
 | `honest-epistemics` | Tailor claims strictly to available evidence. | always_on |
 | `human-readability-first` | Future readability by human reviewers comes before mechanical parsing of text agents write. | always_on |
 | `judgment-non-delegable` | Never hand qualitative judgment to mechanical processes. | always_on |
-| `no-over-engineering` | Never build a mechanical engine, script, or programmatic wrapper where an agent workflow instructing agents to exercise qualitative judgment meets the request. | always_on |
+| `no-over-engineering` | Give hard tasks to capable agents with clear instructions and tools, never to a mechanical substitute (script, engine, or fixed procedure). | always_on |
 | `proportionate` | Build the least that meets the request; spend on a risk in proportion to its likelihood and consequence. | always_on |
 | `reasons` | Give written, parseable reasons for every claim you rely on or communicate, so it can be audited later. | always_on |
 | `single-source-of-truth` | Maintain exactly one authoritative copy of every fact, rule, or artifact. | always_on |

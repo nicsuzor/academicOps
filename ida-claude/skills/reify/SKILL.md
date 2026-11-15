@@ -14,14 +14,14 @@ Nothing is written to the graph until placement and composition pass.
 
 Reifying binds an already situated node to execution. A node must be situated on the strategic graph under an active parent container (epic or project) and wired per the Three-Purpose Edge Taxonomy (ADR-0002) before it can be reified.
 
-- **Unplaced Asks / Objectives**: If called with a raw natural-language ask or an unplaced objective lacking a parent container, do not write a task to the project root. Invoke `/q` first to search existing work, place the node under the active governing epic, and wire what it serves.
-- **Unparented Existing Tasks**: If given an unparented task ID, search for its governing epic and update its parentage via `/q` placement before proceeding with workflow composition.
+- **Unplaced Asks / Objectives**: If called with a raw natural-language ask or an unplaced objective lacking a parent container, do not write a task to the project root. Invoke `/q` first (routing related-work searches through the custodian with distilled conceptual queries) to search existing work, place the node under the active governing epic, and wire what it serves.
+- **Unparented Existing Tasks**: If given an unparented task ID, search for its governing epic using distilled conceptual queries and update its parentage via `/q` placement before proceeding with workflow composition.
 
 ## 1. Hydrate
 
-Call `/hydrate` on the objective, or on the task if given an ID. Proof of `/hydrate` execution (or citation of hydration findings) is required before proceeding to task composition.
+Call `/hydrate` on the objective, or on the task if given an ID (delegating to the custodian when invoked by another agent). Hydration and overlap checks must use short (5-15 word) conceptual queries distilled from the objective (one per facet for multi-topic objectives, stripping conversational framing and negated IDs), never the raw composite prompt. Proof of `/hydrate` execution (or citation of hydration findings) is required before proceeding to task composition.
 
-- **Idempotency**: Search before creating tasks. Update existing tasks with new criteria rather than minting duplicates. A task already completely specified needs no rewrite; report it as ready.
+- **Idempotency**: Search before creating tasks using distilled conceptual queries. Update existing tasks with new criteria rather than minting duplicates. A task already completely specified needs no rewrite; report it as ready.
 - If `/hydrate` flags an unfinished task with the same objective, continue that task instead of creating a new one.
 - If it flags an unfinished prerequisite, wire a `needs` dependency.
 
@@ -33,7 +33,7 @@ Call `/hydrate` on the objective, or on the task if given an ID. Proof of `/hydr
   2. _PKB_: Portable PKB templates with `project: null`.
   3. _Universal_: Core templates in the sibling `workflow-library/workflows/*.md` directory (`../workflow-library/workflows/*.md` relative to this skill; enumerate and read via native file tools rather than shell commands).
      Higher tiers shadow lower tiers completely; never merge text across tiers. Both PKB tiers resolve from the graph alone.
-- **Groundwork-First Route Decisions Invariant**: An agent given a task does the groundwork and makes the decision itself; it never files the task back to the user as their decision (`assignee: user`) unless the user explicitly requested to make that decision themselves. Research tasks investigating design or implementation trade-offs evaluate alternatives and choose the recommended route directly.
+- **Groundwork-First Route Decisions Invariant**: An agent given a task or high-value prompt does the groundwork first (settling unknowns from the PKB first, then live GitHub and traces) and makes architectural or route decisions itself; it never leaves actionable agent steps in `inbox` or files a task back to the user without groundwork. Research tasks investigating design or implementation trade-offs evaluate alternatives and choose the recommended route directly, placing the concrete next agent step at `status: queued` for dispatch and closing (`done`) tasks whose deliverable or release has shipped and the user knows about. Only when agent groundwork and option evaluation are complete (with a reasoned recommendation recorded in the body) and the item genuinely waits on the user's own decision or host action is the task set to `status: review` (`assignee: user`) so it reaches the daily note's `## With you`.
 - **Template Interpretation**: Read each selected template and translate its stages into concise, numbered imperative steps in `## Instructions`. Do not copy narrative rationale, explanatory prose, or background. Skills are invoked directly (`invoke /<skill-name>`). Where tasks involve qualitative judgment, curation, or evaluation, compose an agent workflow rather than specifying deterministic scripts or wrappers.
 
 Halt when composition comes up short: create nothing and report precisely what failed.
@@ -95,7 +95,7 @@ Fill the canonical task structure:
 - Change an existing task only for a defect in its text; never rewrite its `## Ask` or renumber its criteria.
 - A skill may be a step (`invoke /<skill-name>`). A workflow template is never a step; its steps are.
 - Close every task with a one-line appendix section listing the workflow templates and skills it was composed from: `## Appendix: Sources` followed by `- Composed from: <workflows and skills>.`
-- Do not create standalone decision tasks or file questions as tasks. Groundwork-first route decisions invariant applies. Competing candidate options stay inside the body of the scoping task or ADR until chosen. Model unknowns as empirical probes (`classification: probe`) wired via `needs: [<probe_task_id>]`.
+- Do not create standalone decision tasks or file unresearched questions as tasks. Groundwork-first route decisions invariant applies: settle unknowns from the PKB first, queue (`status: queued`) concrete next agent steps for dispatch, close shipped deliverables the user knows about, and set `status: review` (`assignee: user`) with a recorded recommendation only when a genuine user decision remains after groundwork. Competing candidate options stay inside the body of the scoping task or ADR until chosen. Model unknowns as empirical probes (`classification: probe`) wired via `needs: [<probe_task_id>]`.
 - Worker state-only vs container supervision boundary: plain leaf workers (`/pull`) mutate only their claimed task's own state and never mint follow-up tasks; container coordinators (`/supervise`) enrich their claimed task via `/reify` and create follow-up tasks solely under the strict out-of-session splitting conditions above.
 - Reify plans, roadmaps, and designs as tasks on the PKB task graph.
 

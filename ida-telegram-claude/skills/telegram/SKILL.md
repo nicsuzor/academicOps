@@ -28,9 +28,13 @@ The user reads on a phone between other commitments. Cognitive load is the bindi
 
 ## Questions
 
-- **Inbound ask routing:** Inbound questions and lookups received from the user route to the custodian (`pauli`) as knowledge tasks, never in the user-facing main context; the task dispatch pipeline is used only for real code changes. Never send inbound questions or lookups into the dispatch pipeline.
+- **Inbound ask routing:** Inbound questions and lookups received from the user route to the knowledge base custodian as knowledge tasks, never in the user-facing main context; the task dispatch pipeline is used only for real code changes. Never send inbound questions or lookups into the dispatch pipeline.
 - **Option buttons on questions:** Provide selectable option buttons whenever asking questions so the user can reply with a single tap. Use multi-row layouts (`button_layout`, `buttons_per_row`, or 2D button arrays) when offering multiple options (such as skill or checklist proposals) to keep choices compact on mobile screens.
-- **Predefined row consolidation:** In default reply keyboards, Details (`🔍`) sits on the same row as predefined action buttons; pass `predefined_row: true` on `reply` to consolidate all active system actions (`🔍`, `[🧐 Check]`, `[💡 Explain]`, `[🧾]`, `[✅]`, `[❌]`) onto a single default header row above custom option buttons.
+- **Decision-fit recommendation buttons (`binary_decision` vs `buttons`):** Match recommendation markup on `reply` to the decision in the message:
+  1. _Binary decision (`binary_decision: true`):_ When a message carries a binary yes/no decision (such as proposing a single obvious next step), pass `binary_decision: true` on `reply` to attach `[✅]` and `[❌]`.
+  2. _Multi-option decision (`buttons`):_ When presenting a choice among multiple alternatives, pass labelled option buttons in `buttons` with the recommended option highlighted (prefixed with `⭐` or marked `(Recommended)`), and do not set `binary_decision: true`.
+  3. _No decision:_ When replying with informational findings, status updates, exploration, or an answer without an immediate proposal, omit `binary_decision` and recommendation `buttons`. Never attach `[✅]` or `[❌]` to messages without a binary decision.
+- **Predefined row consolidation:** In default reply keyboards, Details (`🔍`) sits on the same row as predefined action buttons; pass `predefined_row: true` on `reply` to consolidate all active system actions (`🔍`, `[🧐 Check]`, `[💡 Explain]`, `[🧾]`, and when `binary_decision: true`, `[✅]`, `[❌]`) onto a single default header row above custom option buttons.
 - **Route non-urgent decisions to the Mini App (`mini_app_only: true`):** When asking questions that do not block immediate progress or when queuing options for the user's later review, set `mini_app_only: true` (or `chat: false`) on `ask_user` or individual questions. The question is stored in the broker and appears when the user opens the Mini App, without posting a card to chat. Note that Mini App-only questions rely on the user opening the Mini App, so time-sensitive questions requiring prompt intervention should remain in chat.
 - **Enough information and proportionate evidence:** Every question or decision request to the user must provide enough self-contained information to make the decision and evidence proportionate to the decision. Provide deep context, evidence, logs, or detailed tradeoffs in the `detail` parameter of a question. The Mini App displays a `🔍 Details` button on the question card that opens this fuller background on demand, keeping the card compact.
 - **Asynchronous by default with reasoned recommendation:** Post questions with structured options, placing the recommended choice first (`"(Recommended)"`) supported by functional reasoning. When no recommendation is available, offer to have one assessed.
@@ -39,7 +43,7 @@ The user reads on a phone between other commitments. Cognitive load is the bindi
 
 ## Message Action Buttons (Logic Check, Explain, Reasons & Recommendation)
 
-Every reply sent over Telegram automatically carries inline action buttons with compact, phone-friendly labels: `[🧐 Check]`, `[💡 Explain]`, `[🧾]`, `[✅]`, and `[❌]`:
+Every reply sent over Telegram automatically carries inline action buttons with compact, phone-friendly labels `[🧐 Check]`, `[💡 Explain]`, and `[🧾]` (unless `actions: false` is passed). Binary recommendation buttons `[✅]` and `[❌]` attach only when `binary_decision: true` is passed on `reply`:
 
 - **Logic check (`🧐 Check`):** Requests a formal logic check on that specific message statement (`event: "logic_check"`).
   - Apply the formal premise-check procedure: test whether the inference is valid, the premises supported, the ask answered, and warrants sufficient.
@@ -47,12 +51,12 @@ Every reply sent over Telegram automatically carries inline action buttons with 
 - **Explain (`💡 Explain`):** Requests more detail on that specific message statement (`event: "explain"`).
   - Reply expanding that message in greater detail with context, underlying rationale, and evidence.
 - **Reasons (`🧾`):** Requests the underlying argument and evidence chain behind that specific message statement (`event: "reasons"`), answering "how do you know that?".
-  - Returns the arguments behind the message verbatim (Chained Toulmin Argdown blocks), one per link of the chain, each labelled with who argued it and to whom (e.g. `Prime to user`, `Sara to Prime`, `worker to Sara`), nested by delegation depth, in the reply's details (`detail` parameter).
+  - Returns the arguments behind the message verbatim (Chained Toulmin Argdown blocks), one per link of the chain, each labelled with who argued it and to whom (e.g. `Prime to user`, `coordinator to Prime`, `worker to coordinator`), nested by delegation depth, in the reply's details (`detail` parameter).
   - A link whose argument cannot be found is named as missing (e.g. `[Missing argument: no premise-check record found for ...]`), never paraphrased.
   - Chat text provides a concise summary (~100 words) with the primary takeaway and the chain structure, referencing the Details page for the full verbatim Argdown blocks.
-- **Accept recommendation (`✅`):** Marks the card and notifies the agent that the user accepted the recommendation (`event: "accept_recommendation"`).
+- **Accept recommendation (`✅`, when `binary_decision: true`):** Marks the card and notifies the agent that the user accepted the binary recommendation (`event: "accept_recommendation"`).
   - Act on the accepted recommendation or confirm execution.
-- **Decline recommendation (`❌`):** Marks the card and notifies the agent that the user declined the recommendation (`event: "decline_recommendation"`).
+- **Decline recommendation (`❌`, when `binary_decision: true`):** Marks the card and notifies the agent that the user declined the binary recommendation (`event: "decline_recommendation"`).
   - Acknowledge declination, avoid proceeding with the declined course, and offer alternatives or seek clarification if needed.
 
 ## Reactions & Feedback

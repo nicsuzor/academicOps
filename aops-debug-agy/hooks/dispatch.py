@@ -159,6 +159,47 @@ def is_continuation(event: str, raw: dict[str, Any]) -> bool:
     return event in CONTINUATION_EVENTS and bool(raw.get("stop_hook_active"))
 
 
+# The one place a Claude Cowork session is recognised. Both hook entry points
+# (this dispatcher and ``mcp_caller_session.py``) ask it before doing anything,
+# and in Cowork they do nothing: Cowork refuses any MCP call whose input a
+# plugin hook changed ("A plugin hook changed this tool call's input. That is
+# allowed only for calls that run in the same environment as the hook"), and
+# its sessions carry none of the environment SessionStart needs.
+#
+# The signal is Claude Code's own, read from the 2.1.314 binary (build
+# 2026-10-29, 5c99a5b6). ``CLAUDE_CODE_IS_COWORK`` is in the set of variables
+# the host app sets for the session and is read as a boolean
+# (``if(i.CLAUDE_CODE_IS_COWORK)return!0``). The surface-name table labels the
+# ``CLAUDE_CODE_ENTRYPOINT`` values ``local-agent`` and ``remote_cowork``
+# "Cowork"; ``remote_cowork_trigger`` is the Cowork scheduled-run entrypoint
+# and ``local_agent`` is the spelling the client normalises to ``local-agent``
+# at startup. The client's own Cowork test is the disjunction of the two
+# variables. ``claude-desktop`` and ``remote_desktop`` are the desktop app's
+# Code tab, and ``CLAUDE_CODE_REMOTE`` is also ``true`` in cloud sessions,
+# which keep their hooks; neither is part of the signal. A hook process
+# inherits the parent environment (hooks reference, "Inherited environment"),
+# so the hook sees what the client set.
+COWORK_FLAG_VAR = "CLAUDE_CODE_IS_COWORK"
+ENTRYPOINT_VAR = "CLAUDE_CODE_ENTRYPOINT"
+COWORK_ENTRYPOINTS = frozenset(
+    {"local-agent", "local_agent", "remote_cowork", "remote_cowork_trigger"}
+)
+# The two spellings Claude Code documents for its own boolean variables
+# (``CLAUDE_CODE_REMOTE`` is ``"true"``, ``CLAUDE_CODE_SUBPROCESS_ENV_SCRUB`` is ``1``).
+_TRUE_VALUES = frozenset({"1", "true"})
+
+
+def is_cowork(environ: dict[str, str] | None = None) -> bool:
+    """Is this hook running inside a Claude Cowork session?
+
+    ``environ`` defaults to the process environment; tests pass a dict.
+    """
+    env = os.environ if environ is None else environ
+    if (env.get(COWORK_FLAG_VAR) or "").strip().lower() in _TRUE_VALUES:
+        return True
+    return (env.get(ENTRYPOINT_VAR) or "").strip() in COWORK_ENTRYPOINTS
+
+
 TO_CANONICAL = {
     "claude": {name: name for name in CANONICAL_EVENTS},
     "agy": {
@@ -346,6 +387,96 @@ def render(client: str, event: str, result: Result | None) -> dict:
     return {}
 
 
+_PROC_ROOT = Path("/proc")
+_MAX_PROC_ANCESTORS = 12
+
+
+def _parse_proc_ppid(stat_text: str) -> int:
+    """Parse parent PID from Linux /proc/<pid>/stat (handling spaces/parens in comm)."""
+    rparen = stat_text.rfind(")")
+    if rparen == -1:
+        return 0
+    fields_after = stat_text[rparen + 1 :].split()
+    if len(fields_after) < 2:
+        return 0
+    return int(fields_after[1])
+
+
+def _extract_agent_flag(args: list[str]) -> str:
+    """Extract `--agent <name>` or `--agent=<name>` from an argv list."""
+    for idx, arg in enumerate(args):
+        if arg.startswith("--agent="):
+            val = arg.split("=", 1)[1].strip()
+            if val:
+                return val
+        elif arg == "--agent" and idx + 1 < len(args):
+            val = args[idx + 1].strip()
+            if val and not val.startswith("-"):
+                return val
+    return ""
+
+
+def _agy_ancestor_agent_name() -> str:
+    """Resolve `--agent <name>` from the nearest ancestor `agy` process via Linux /proc."""
+    if not (_PROC_ROOT / "self" / "stat").is_file():
+        return ""
+    pid = os.getpid()
+    visited: set[int] = set()
+    for _ in range(_MAX_PROC_ANCESTORS):
+        if pid <= 1 or pid in visited:
+            break
+        visited.add(pid)
+        proc_dir = _PROC_ROOT / str(pid)
+        try:
+            raw_cmdline = (proc_dir / "cmdline").read_bytes()
+        except (FileNotFoundError, ProcessLookupError):
+            raw_cmdline = b""
+        if raw_cmdline:
+            args = [
+                part.decode("utf-8", errors="replace")
+                for part in raw_cmdline.rstrip(b"\x00").split(b"\x00")
+            ]
+            if args and args[0] and (args[0] == "agy" or args[0].endswith("/agy")):
+                return _extract_agent_flag(args)
+        try:
+            stat_text = (proc_dir / "stat").read_text(encoding="utf-8", errors="replace")
+        except (FileNotFoundError, ProcessLookupError):
+            break
+        if not stat_text:
+            break
+        ppid = _parse_proc_ppid(stat_text)
+        if ppid <= 1:
+            break
+        pid = ppid
+    return ""
+
+
+def resolve_caller_session_id(
+    raw: dict[str, Any],
+    client: str = "",
+    environ: dict[str, str] | None = None,
+) -> str:
+    """Resolve caller session_id from official client env vars first, then hook stdin."""
+    env = os.environ if environ is None else environ
+    effective_client = client
+    if not effective_client:
+        effective_client = "agy" if ("toolCall" in raw or "conversationId" in raw) else "claude"
+
+    if effective_client == "claude":
+        env_sid = (env.get("CLAUDE_CODE_SESSION_ID") or env.get("CLAUDE_SESSION_ID") or "").strip()
+        if env_sid:
+            return env_sid
+    elif effective_client == "agy":
+        env_sid = (env.get("ANTIGRAVITY_CONVERSATION_ID") or "").strip()
+        if env_sid:
+            return env_sid
+
+    stdin_sid = (
+        raw.get("session_id") or raw.get("conversationId") or raw.get("conversation_id") or ""
+    )
+    return str(stdin_sid).strip() if stdin_sid else ""
+
+
 def normalize(client: str, event: str, raw: dict[str, Any], hooks_dir: Path) -> HookContext:
     # agy nests the tool call: ``{"toolCall": {"name": ..., "args": {...}}}``
     # on PreToolUse and PostToolUse. Its PostToolUse carries no tool result.
@@ -362,16 +493,34 @@ def normalize(client: str, event: str, raw: dict[str, Any], hooks_dir: Path) -> 
     valid_keys = {f.name for f in fields(HookContext)}
     kwargs = {k: v for k, v in raw.items() if k in valid_keys and v is not None}
 
-    agent_type = (
-        raw.get("agent_type")
-        or raw.get("agent_name")
-        or raw.get("agent")
-        or raw.get("subagent_type")
-        or os.environ.get("CLAUDE_AGENT_NAME")
-        or os.environ.get("AGY_AGENT_NAME")
-        or os.environ.get("AOPS_AGENT_NAME")
-        or kwargs.get("agent_type", "")
+    raw_agent_candidates = (
+        raw.get("agent_type"),
+        raw.get("agentType"),
+        raw.get("agent_name"),
+        raw.get("agentName"),
+        raw.get("agent"),
+        raw.get("subagent_type"),
+        raw.get("subagentType"),
+        raw.get("subagent_name"),
+        raw.get("subagentName"),
     )
+    agent_type = ""
+    for cand in raw_agent_candidates:
+        if isinstance(cand, str) and cand.strip():
+            agent_type = cand.strip()
+            break
+    if not agent_type and client == "agy":
+        agent_type = _agy_ancestor_agent_name()
+    if not agent_type:
+        for cand in (
+            os.environ.get("CLAUDE_AGENT_NAME"),
+            os.environ.get("AGY_AGENT_NAME"),
+            os.environ.get("AOPS_AGENT_NAME"),
+            kwargs.get("agent_type"),
+        ):
+            if isinstance(cand, str) and cand.strip():
+                agent_type = cand.strip()
+                break
 
     cwd = raw.get("cwd") or ""
     if not cwd:
@@ -391,14 +540,13 @@ def normalize(client: str, event: str, raw: dict[str, Any], hooks_dir: Path) -> 
         tool_input=tool_input,
         command=command,
         cwd=cwd or kwargs.get("cwd", ""),
-        session_id=raw.get("session_id")
-        or raw.get("conversationId")
-        or raw.get("conversation_id")
-        or kwargs.get("session_id", ""),
+        session_id=resolve_caller_session_id(raw, client=client)
+        or str(kwargs.get("session_id", "")),
         transcript_path=raw.get("transcript_path")
         or raw.get("transcriptPath")
         or kwargs.get("transcript_path", ""),
         agent_type=agent_type,
+        agent_id=raw.get("agent_id") or raw.get("agentId") or kwargs.get("agent_id", ""),
         tool_calls=tool_calls,
         raw=raw,
         hooks_dir=hooks_dir,
@@ -445,8 +593,16 @@ def _get_evaluator_otel_trace():
         return None
 
 
+def _handlers_for_client(handlers: list[Handler], client: str) -> list[Handler]:
+    return [
+        h
+        for h in handlers
+        if (scope := getattr(h, "only_on_clients", None)) is None or client in scope
+    ]
+
+
 def _instrument_otel_events(ctx: HookContext) -> None:
-    otel_mod = _get_evaluator_otel_trace()
+    otel_mod: Any = _get_evaluator_otel_trace()
     if otel_mod is None:
         return
 
@@ -463,9 +619,12 @@ def _instrument_otel_events(ctx: HookContext) -> None:
         )
 
     # 2. SendMessage tool call linkage
-    is_send_msg = ctx.tool == "SendMessage" or any(
+    is_send_msg = (ctx.tool or "").lower() in ("sendmessage", "send_message") or any(
         isinstance(call, dict)
-        and (call.get("tool_name") == "SendMessage" or call.get("tool") == "SendMessage")
+        and (
+            str(call.get("tool_name") or "").lower() in ("sendmessage", "send_message")
+            or str(call.get("tool") or "").lower() in ("sendmessage", "send_message")
+        )
         for call in ctx.tool_calls
     )
     if is_send_msg:
@@ -494,29 +653,33 @@ def main(argv: list[str]) -> int:
         except json.JSONDecodeError:
             raw = {}
 
-    event = to_canonical(client, wire_event)
-    if event is None:
-        return 0
-
-    # Do not fire if we have already prevented a stop event this turn
-    if is_continuation(event, raw):
+    # In a Claude Cowork session the hooks do nothing: no fire is logged, no
+    # handler runs, nothing is printed. The payload is read first so the
+    # client's write never meets a closed pipe.
+    if is_cowork():
         return 0
 
     hooks_dir = Path(__file__).resolve().parent
     if str(hooks_dir) not in sys.path:
         sys.path.insert(0, str(hooks_dir))
 
+    event = to_canonical(client, wire_event)
+    if event is None:
+        # Plugins with a wildcard ("*") handler (e.g. aops-debug) observe client
+        # wire events even when no canonical hook name exists for them.
+        if not _handlers_for_client(_load_handlers("*", hooks_dir), client):
+            return 0
+        event = wire_event
+
+    # Do not fire if we have already prevented a stop event this turn
+    if is_continuation(event, raw):
+        return 0
+
     ctx = normalize(client, event, raw, hooks_dir)
     _log_fire(ctx)
     _instrument_otel_events(ctx)
 
-    handlers = _load_handlers(event, hooks_dir)
-
-    kept_handlers = []
-    for h in handlers:
-        scope = getattr(h, "only_on_clients", None)
-        if scope is None or client in scope:
-            kept_handlers.append(h)
+    kept_handlers = _handlers_for_client(_load_handlers(event, hooks_dir), client)
 
     results = [_run_handler(h, ctx) for h in kept_handlers]
     result = _merge(results)
