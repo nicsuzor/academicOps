@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.8.1](https://github.com/nicsuzor/academicOps/compare/v1.8.0...v1.8.1) (2026-11-15)
+
+
+### Bug Fixes
+
+* **session-trace:** route session.id span queries via indexed joins ([#3642](https://github.com/nicsuzor/academicOps/issues/3642)) ([59438a4](https://github.com/nicsuzor/academicOps/commit/59438a4210bab5b9d80465559edd3acbbac90ec8))
+
+
+### Documentation
+
+* **workflows:** define default completion workflow with two-task review and single done release ([b169dd3](https://github.com/nicsuzor/academicOps/commit/b169dd3e8780e1eba65f01dfc84e410507987022))
+* **workflows:** define default completion workflow with two-task review and single done release ([aa7d8d9](https://github.com/nicsuzor/academicOps/commit/aa7d8d9b5d10d0c48a4f44f23e85065503ce6edf))
+
 ## [1.8.0](https://github.com/nicsuzor/academicOps/compare/v1.7.0...v1.8.0) (2026-11-15)
 
 ### Features
