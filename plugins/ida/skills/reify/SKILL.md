@@ -64,7 +64,7 @@ Fill the canonical task structure:
 
 ## Acceptance
 
-[ Numbered criteria (AC1, AC2, ...). Criteria state observable outcomes and verifiable evidence proving substantive completion, bounded to shipping the deliverable and informing the user rather than proving the user's post-release acts, line numbers, line ranges, or narrow slice prescriptions. ]
+[ Numbered criteria (AC1, AC2, ...). Criteria state observable outcomes and verifiable evidence proving substantive completion (bounded to what the executor delivers, ending once shipped and reported), not line numbers, line ranges, or narrow slice prescriptions. ]
 
 ## Instructions
 
