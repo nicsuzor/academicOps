@@ -82,11 +82,13 @@ Phoenix UI base URL for deep-links is resolved from `--ui-base-url`, `PHOENIX_UI
 derived from the Phoenix endpoint (mapping MCP gateway URLs like `https://mcp.<domain>/mcp`
 to `https://phoenix.<domain>`).
 
-The script pages `GET /v1/projects/{project}/spans?attribute=session.id:<id>`
-to exhaustion, 1,000 spans a page: about one second per page on the reference
-deployment. A slug is resolved through the sessions listing; a trace id through
-one `trace_id=` fetch. Spans can also be read from a saved file, so a fetch made
-another way (for instance through an MCP proxy) can be rendered offline.
+The script fetches the session's spans through `GET /v1/projects/{project}/spans?attribute=session.id:<id>`,
+paged to exhaustion via indexed session-to-trace lookup so large span stores never degrade
+into unindexed full-store attribute scans or request timeouts, while preserving oversized
+span payloads whole without truncation. Any backend query or hydration failure halts loudly
+(`ConfigError`) rather than returning partial data. A slug is resolved through the sessions
+listing; a trace id through one `trace_id=` fetch. Spans can also be read from a saved file
+for offline rendering.
 
 ### Assemble
 
