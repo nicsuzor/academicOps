@@ -834,4 +834,56 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
       }
     });
   });
+
+  describe("Advanced Telegram Bot API formatting & interactive options (copy_text, quote, link_preview_options)", () => {
+    test("supports copy_text inline keyboard buttons, formatted quote replies, link_preview_options, and message_effect_id", async () => {
+      const { mcp, apiCalls, cleanup } = setupTest();
+      try {
+        const resp = await mcp.handleMessage({
+          jsonrpc: "2.0",
+          id: 901,
+          method: "tools/call",
+          params: {
+            name: "reply",
+            arguments: {
+              chat_id: allowFrom,
+              text: "**Updated status** with ||spoiler|| and [docs](https://example.com)",
+              reply_to_message_id: 42,
+              quote: "specific **quoted** part",
+              quote_position: 10,
+              disable_link_preview: true,
+              message_effect_id: "5104841245755180586",
+              actions: false,
+              buttons: [
+                { label: "📋 Copy cmd", copy_text: "bun test" },
+                { label: "📋 Copy token", copy_text: { text: "tok_abc" } },
+              ],
+            },
+          },
+        });
+
+        const parsedResult = JSON.parse((resp?.result as any)?.content?.[0]?.text || "{}");
+        expect(parsedResult.success).toBe(true);
+        expect(apiCalls.length).toBe(1);
+
+        const body = apiCalls[0].body;
+        expect(body.message_effect_id).toBe("5104841245755180586");
+        expect(body.link_preview_options).toEqual({ is_disabled: true });
+        expect(body.reply_parameters).toEqual({
+          message_id: 42,
+          allow_sending_without_reply: true,
+          quote: "specific quoted part",
+          quote_entities: [{ type: "bold", offset: 9, length: 6 }],
+          quote_position: 10,
+        });
+
+        const kb = body.reply_markup?.inline_keyboard || [];
+        expect(kb.length).toBe(2);
+        expect(kb[0][0]).toEqual({ text: "📋 Copy cmd", copy_text: { text: "bun test" } });
+        expect(kb[1][0]).toEqual({ text: "📋 Copy token", copy_text: { text: "tok_abc" } });
+      } finally {
+        cleanup();
+      }
+    });
+  });
 });

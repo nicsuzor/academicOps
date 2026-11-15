@@ -1,7 +1,12 @@
 import { PluginConfig } from "../config.js";
 import { PluginStore } from "../store.js";
 import { QuestionBroker } from "../telegram/questions.js";
-import { TelegramBotClient, buildInlineKeyboardRows, type ReplyButtonsInput } from "../telegram/bot.js";
+import {
+  TelegramBotClient,
+  buildInlineKeyboardRows,
+  type LinkPreviewOptions,
+  type ReplyButtonsInput,
+} from "../telegram/bot.js";
 import { PermissionRelay } from "../mcp/permissions.js";
 import { processReplyOverflow } from "../telegram/overflow.js";
 import { formatMarkdownToEntities, normalizeReaction } from "../telegram/format.js";
@@ -12,6 +17,17 @@ export interface OutboundReplyParams {
   text: string;
   chat_id?: number;
   reply_to?: number;
+  reply_to_message_id?: number;
+  replyToMessageId?: number;
+  quote?: string;
+  quote_position?: number;
+  quotePosition?: number;
+  link_preview_options?: LinkPreviewOptions;
+  linkPreviewOptions?: LinkPreviewOptions;
+  disable_link_preview?: boolean;
+  disableLinkPreview?: boolean;
+  message_effect_id?: string;
+  messageEffectId?: string;
   voice?: boolean;
   detail?: string;
   details?: string;
@@ -113,6 +129,10 @@ export interface OutboundEditMessageParams {
   message_id: number;
   text: string;
   chat_id?: number;
+  link_preview_options?: LinkPreviewOptions;
+  linkPreviewOptions?: LinkPreviewOptions;
+  disable_link_preview?: boolean;
+  disableLinkPreview?: boolean;
 }
 
 export interface OutboundEditMessageResult {
@@ -153,17 +173,40 @@ export class SharedTelegramChannelCore {
     return this.config.allowFrom[0] || 0;
   }
 
+  private resolveLinkPreviewOptions(
+    linkPreviewOptions?: LinkPreviewOptions,
+    disableLinkPreview?: boolean
+  ): LinkPreviewOptions | undefined {
+    if (linkPreviewOptions && typeof linkPreviewOptions === "object") {
+      return {
+        ...linkPreviewOptions,
+        ...(disableLinkPreview !== undefined ? { is_disabled: Boolean(disableLinkPreview) } : {}),
+      };
+    }
+    if (disableLinkPreview !== undefined) {
+      return { is_disabled: Boolean(disableLinkPreview) };
+    }
+    return undefined;
+  }
+
   /**
    * Outbound tool contract: reply
    * Formats with rich typography (expandable blockquotes),
-   * splits at whole-paragraph boundaries at 1,200 chars with continuation notices,
+   * splits at whole-paragraph boundaries at 4,000 chars with continuation notices,
    * synthesizes voice when requested or mirrored.
    */
   public async reply(params: OutboundReplyParams): Promise<OutboundReplyResult> {
     const text = params.text || "";
     const detail = params.detail ?? params.details;
     const chatId = params.chat_id || this.getDefaultChatId();
-    const replyTo = params.reply_to;
+    const replyTo = params.reply_to ?? params.reply_to_message_id ?? params.replyToMessageId;
+    const linkPreviewOptions = this.resolveLinkPreviewOptions(
+      params.link_preview_options ?? params.linkPreviewOptions,
+      params.disable_link_preview ?? params.disableLinkPreview
+    );
+    const messageEffectId = params.message_effect_id ?? params.messageEffectId;
+    const quote = typeof params.quote === "string" ? params.quote : undefined;
+    const quotePosition = params.quote_position ?? params.quotePosition;
 
     // Check voice reply
     let isVoice = false;
@@ -185,11 +228,11 @@ export class SharedTelegramChannelCore {
       }
     }
 
-    // 1. Process paragraph overflow at 1,200 chars
+    // 1. Process paragraph overflow at 4,000 chars
     const overflowRes = processReplyOverflow({
       text: effectiveText,
       detail: effectiveDetail,
-      maxChatChars: this.config.maxChatChars || 1200,
+      maxChatChars: this.config.maxChatChars || 4000,
     });
 
     let detailsId: string | undefined;
@@ -217,6 +260,10 @@ export class SharedTelegramChannelCore {
         predefinedRow: params.predefinedRow ?? params.predefined_row,
         voice: isVoice,
         replyTo,
+        quote,
+        quotePosition,
+        linkPreviewOptions,
+        messageEffectId,
         feedback: params.feedback,
         actions: params.actions,
         binary_decision: params.binary_decision,
@@ -395,9 +442,13 @@ export class SharedTelegramChannelCore {
     const chatId = params.chat_id || this.getDefaultChatId();
     const messageId = params.message_id;
     const text = params.text;
+    const linkPreviewOptions = this.resolveLinkPreviewOptions(
+      params.link_preview_options ?? params.linkPreviewOptions,
+      params.disable_link_preview ?? params.disableLinkPreview
+    );
 
     if (this.bot) {
-      await this.bot.editMessage(chatId, messageId, text);
+      await this.bot.editMessage(chatId, messageId, text, undefined, linkPreviewOptions);
     }
     return { success: true };
   }
@@ -953,7 +1004,7 @@ export class SharedTelegramChannelCore {
   }
 
   public async sendPhoto(args: Record<string, unknown>): Promise<Record<string, unknown>> {
-    return this.dispatchSingleMedia("sendPhoto", "photo", args, ["has_spoiler"]);
+    return this.dispatchSingleMedia("sendPhoto", "photo", args, ["has_spoiler", "show_caption_above_media"]);
   }
 
   public async sendDocument(args: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -966,6 +1017,7 @@ export class SharedTelegramChannelCore {
       "width",
       "height",
       "has_spoiler",
+      "show_caption_above_media",
       "supports_streaming",
     ]);
   }
@@ -976,6 +1028,7 @@ export class SharedTelegramChannelCore {
       "width",
       "height",
       "has_spoiler",
+      "show_caption_above_media",
     ]);
   }
 
@@ -1000,6 +1053,7 @@ export class SharedTelegramChannelCore {
       media: string;
       caption?: string;
       has_spoiler?: boolean;
+      show_caption_above_media?: boolean;
     }> = [];
     for (const item of args.media) {
       if (!item || typeof item !== "object") {
@@ -1019,6 +1073,9 @@ export class SharedTelegramChannelCore {
         media,
         ...(typeof rec.caption === "string" ? { caption: rec.caption } : {}),
         ...(typeof rec.has_spoiler === "boolean" ? { has_spoiler: rec.has_spoiler } : {}),
+        ...(typeof rec.show_caption_above_media === "boolean"
+          ? { show_caption_above_media: rec.show_caption_above_media }
+          : {}),
       });
     }
 
