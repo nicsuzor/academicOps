@@ -39,7 +39,7 @@ Run independent gap analysis on the source to surface omitted strengths or weakn
 
 Conclude with a summary verdict (e.g., "0 BLOCKER, 2 FIX, 1 NIT -- ready after fixes").
 
-## Applying Findings & Boundary Gate
+## Applying Findings & Verification Boundary
 
 - **Triage**: Address all verification findings; do not discard items silently.
 - **Minimal edits**: Apply surgical edits to preserve surrounding verified context.

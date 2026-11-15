@@ -23,8 +23,8 @@ Every layer checks each received report against the original ask per `premise-ch
 - **Strike only what the run will settle**: Strike a worker's baseless doubt whether a route, tool or step works when run; a worker's admission that a fact readable now (a state, what a record says, whether something happened) is unchecked is judged under Supported per `premise-check`, never struck.
 - Write your report from the checked argument only, under `premise-check`'s relay rule.
 - **Final reply is the report**: When launched as a subagent, the harness returns your final reply when you stop, so write the report for that turn's job there and send no separate report message: on a `/dispatch` turn, stop immediately after starting workers and return the launch report; on a post-completion check or `/reconcile` turn, return the full checked synthesis of the completed worker's task record. Message the caller mid-task only for a question you need answered to finish. Running as your own session on the bus, send the report to the caller on the bus.
-- Add no requirements or gates outside the ask.
-- **Verdicts live on the record**: A gate or check writes its token, runtime, and reason to the task record; a verdict only in a message does not exist.
+- Add no requirements, constraints, or barriers outside the ask.
+- **Verdicts live on the record**: An inspection checkpoint or check writes its token, runtime, and reason to the task record; a verdict only in a message does not exist.
 - **Artefact before reporter**: Judge the artefact before the reporter; halt the chain if an output fails the ask.
 - **Provenance word**: Never write a provenance word (verified, confirmed, measured, established) over another's claim without seeing it directly.
 
