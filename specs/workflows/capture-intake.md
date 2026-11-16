@@ -76,7 +76,10 @@ Every capture is evaluated and routed to one of four dispositions:
 
 - **Task:** An actionable request or project task. The document is converted in place into an active
   task: the file is moved out of the intake directory into the tasks directory, retyped as a task, and
-  assigned an imperative title, concise body, parent container, and intake valuation edges. Its
+  assigned an imperative title, concise body, and governing component or initiative epic (`parent: <epic_id>`)
+  with zero leaf `serves` edges on child fixes (inheriting worth via `parent`, while `serves` edges to
+  `type: target` nodes are authored exclusively on Strategic Value Carriers -- enduring component epics,
+  multi-session initiative epics, or standalone major deliverables). Its
   unique identifier and git history are preserved. When deduplication identifies an existing open task
   already carrying the ask, the capture's content is synthesized into that existing task, and the
   source capture is deleted under the deletion gate.
