@@ -26,19 +26,20 @@ Specifies how open pull requests in `nicsuzor/academicOps` are moved along to re
   - Standard features and structural changes: Require explicit approval from the repository owner before merging.
   - Changes requested: A PR with an active "changes requested" review must not merge under any circumstances.
   - Release pull requests (`release-please`): Excluded from autonomous merging; merge only on explicit manual release approval.
-- **Pre-approval readiness**: Before owner approval, a PR must be green and reviewed by independent agents, with review feedback addressed; mergeability is not required before approval. Do not rebase or resolve merge conflicts before approval. Bringing a PR up to date with its base branch and resolving conflicts happens after approval, just before merge. A worker PR opens as a draft (`gh pr create --draft`) and is marked ready for review (`gh pr ready`) only after the independent check passes and proportionate review by independent agents is posted to the PR thread, without waiting for approval.
+- **Pre-approval readiness & consolidated feature branches**: Related changes gather on a shared feature branch (`bundle/<slug>` or `feat/<slug>`) targeting `dev`. Self-contained changes on constituent `polecat/*` branches undergo the three-lens diff review (strategic fit, compliance, quality) and, on `PASS`, are merged directly into the shared feature branch by the agent without waiting for owner approval, immediately closing any superseded donor PR with a link to the consolidated PR. Pre-approval review on a consolidated feature-branch PR is a compliance description-only check (`## RBG Review: PASS`, "is this stupid?") without re-reviewing every line of constituent code and without rebasing onto `dev` before approval (standalone PRs with zero overlap carry the three-lens diff review pre-approval). Ready PRs are presented to the owner one at a time. After owner approval, bring the branch up to date with `dev`, resolve conflicts, run the full three-lens diff review across the combined diff against `dev`, and merge when green.
 - **Commit hygiene**: Commits to public repositories must never carry private task, note, or session identifiers, or commit trailers.
 
 ## Obligations
 
-1. **Verify Triage and Eligibility**:
-   - Confirm whether the PR is a draft. Draft PRs remain in draft until the independent check passes and proportionate review by independent agents is posted to the PR thread, at which point the PR is marked ready for review (`gh pr ready`).
+1. **Verify Triage, Retargeting, and Consolidation Scope**:
+   - Confirm whether the PR is a draft. Draft PRs remain in draft until the independent check passes and required review is posted to the PR thread, at which point the PR is marked ready for review (`gh pr ready`).
    - Confirm the PR is not an excluded release PR.
-   - Verify the base branch matches the designated integration base branch declared in `.agents/CORE.md`. If targeting another branch, retarget the base branch.
+   - Verify the base branch matches the designated integration base branch declared in `.agents/CORE.md` (`dev`). If targeting another branch, retarget the base branch.
 
-2. **Audit CI Checks and Proportionate Review**:
+2. **Audit CI Checks and Review (Constituent Diff vs Consolidated Description)**:
    - Query automated checks (`gh pr checks`). All required test, lint, and type check suites must pass cleanly.
-   - Verify that the PR has undergone a review by independent agents proportionate to its risk tier, with verdicts posted to the PR. If review is absent, dispatch an independent agent review before proceeding.
+   - For a constituent `polecat/*` branch or standalone PR, run the three-lens diff review (strategic fit, compliance, quality) by independent agents. When a constituent branch targeting a shared feature branch (`bundle/<slug>`) passes, merge it directly into `bundle/<slug>` without waiting for owner approval and immediately close any superseded donor PR with a pointer comment to the consolidated PR.
+   - For a consolidated feature-branch PR (`bundle/<slug>` -> `dev`) whose constituent branches already passed three-lens diff review, run the compliance description-only check ("is this stupid?") and post `## RBG Review: PASS` to the PR thread without re-reviewing the combined code diff pre-approval.
 
 3. **Resolve Review Feedback and Requested Changes**:
    - Inspect existing review threads and reviews.
@@ -47,14 +48,14 @@ Specifies how open pull requests in `nicsuzor/academicOps` are moved along to re
 
 4. **Verify Approvals and Pre-Approval Readiness**:
    - Verify whether required approvals are recorded per the merge authority policy.
-   - Before owner approval, verify checks are green and proportionate review by independent agents is recorded on the PR with feedback addressed. Do not rebase or resolve conflicts before approval; mergeability is not required before approval.
-   - If the PR is awaiting owner approval, leave the PR open with its disposition documented (e.g. awaiting owner approval: green and reviewed, mergeable not required).
+   - Before owner approval, verify checks are green, required pre-approval review (`## RBG Review: PASS` description check on a consolidated PR, or three-lens diff review on a standalone PR) is posted with feedback addressed, and any absorbed donor PRs are closed. Do not rebase or resolve conflicts before approval; mergeability with `dev` is not required before approval.
+   - If the PR is awaiting owner approval, leave the PR open ready for one-at-a-time presentation to the owner.
 
-5. **Settle Conflicts and Execute Landing**:
+5. **Post-Approval Rebase, Full Combined-Diff Review, and Landing**:
    - Once required approvals are recorded (or for verified hotfixes where authorized to merge autonomously):
-     - Check PR merge state (`gh pr view --json mergeable,mergeStateStatus`).
-     - If merge conflicts exist or the branch is behind the base branch, bring the PR up to date with the base branch and resolve conflicts, ensuring tests remain green.
-     - Once all checks are green, required approvals are filed, and mergeability is clean, merge the PR into the base branch via standard merge (`gh pr merge <number> --merge`).
+     - Bring the branch up to date with `dev` and resolve any merge conflicts, ensuring tests remain green.
+     - For a consolidated feature-branch PR (`bundle/<slug>`) or any PR whose rebase resolved conflicts, run the full three-lens review (strategic fit, compliance, quality) over the complete combined diff against `dev` and post `## Strategic Review: PASS` and `## RBG Review: PASS` on the PR thread.
+     - Once the combined-diff review returns `PASS`, all checks are green, required approvals are filed, and zero `CHANGES_REQUESTED` reviews remain, merge the PR into `dev` (`gh pr merge <number> --merge`).
    - If the PR cannot be merged (e.g. active requested changes or unresolved substantive conflicts), leave the PR open with its disposition and reason documented on the record.
 
 ## Output contract
