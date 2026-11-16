@@ -1111,3 +1111,485 @@ def test_transcript_and_outline_contain_phoenix_links_via_cli(tmp_path):
     assert session_link in outline
     assert "https://phoenix.example.com/redirects/spans/c1" in transcript
     assert "https://phoenix.example.com/redirects/spans/c1" in outline
+
+
+def _session_span(session_id, sid, name, kind, start_s, end_s, parent=None, **attributes):
+    return {
+        "name": name,
+        "span_kind": kind,
+        "context": {"trace_id": "b" * 32, "span_id": sid},
+        "parent_id": parent,
+        "start_time": f"2026-10-01T00:00:{start_s:06.3f}+00:00",
+        "end_time": f"2026-10-01T00:00:{end_s:06.3f}+00:00",
+        "status_code": "UNSET",
+        "attributes": {"session.id": session_id, **attributes},
+    }
+
+
+def test_since_requires_explicit_timezone_and_mutually_excludes_ident(tmp_path, capsys):
+    """--since fails fast on missing target, conflicting <ident>, malformed time, or naive time."""
+    spans_file = tmp_path / "spans.json"
+    spans_file.write_text(json.dumps({"data": []}))
+
+    # Neither <ident> nor --since
+    assert pt.main(["--from-file", str(spans_file)]) == pt.EXIT_CONFIG
+    assert "error:" in capsys.readouterr().err
+
+    # Both <ident> and --since
+    assert (
+        pt.main([SESSION[:8], "--since", "2026-10-01T00:00:00Z", "--from-file", str(spans_file)])
+        == pt.EXIT_CONFIG
+    )
+    assert "error:" in capsys.readouterr().err
+
+    # Naive timestamp without timezone offset must fail fast rather than guessing local/UTC
+    assert (
+        pt.main(["--since", "2026-10-01T00:00:00", "--from-file", str(spans_file)])
+        == pt.EXIT_CONFIG
+    )
+    assert "timezone" in capsys.readouterr().err.lower()
+
+    # Unparseable timestamp
+    assert pt.main(["--since", "not-a-timestamp", "--from-file", str(spans_file)]) == pt.EXIT_CONFIG
+
+
+def test_since_from_file_discovers_human_prompts_across_surfaces_and_writes_outlines(tmp_path):
+    """--since extracts human prompts across CLI, channel, and agy surfaces while dropping subagent and system traffic."""
+    s_cli = "aaaaaaaa-1111-4111-8111-111111111111"
+    s_tg = "bbbbbbbb-2222-4222-8222-222222222222"
+    s_agy = "cccccccc-3333-4333-8333-333333333333"
+    s_sub = "dddddddd-4444-4444-8444-444444444444"
+    s_worker = "eeeeeeee-5555-4555-8555-555555555555"
+
+    universe = [
+        # 1. Pre-cursor human prompt in s_cli (Turn 1 at 02.0s < cursor 05.0s) -> excluded from prompts.md
+        _session_span(
+            s_cli,
+            "cli_t1",
+            "claude-code-turn",
+            "CHAIN",
+            2.0,
+            3.0,
+            **{"input.value": "Earlier ask before cursor", "output.value": "Done earlier."},
+        ),
+        # 2. Post-cursor automated notification in s_cli (Turn 2 at 06.0s) -> excluded as wrapper
+        _session_span(
+            s_cli,
+            "cli_t2",
+            "claude-code-turn",
+            "CHAIN",
+            6.0,
+            6.5,
+            **{
+                "input.value": "<task-notification>\nBackground job done\n</task-notification>",
+                "output.value": "Noted.",
+            },
+        ),
+        # 3. Post-cursor human terminal prompt in s_cli (Turn 3 at 08.0s) -> matched (#t3)!
+        _session_span(
+            s_cli,
+            "cli_t3",
+            "claude-code-turn",
+            "CHAIN",
+            8.0,
+            9.5,
+            **{
+                "host.name": "workstation",
+                "input.value": "Check /home/alice/repo status and summarize",
+                "output.value": "Clean branch.",
+            },
+        ),
+        # 4. Telegram channel message + duplicate delivery + reaction in s_tg -> matched once (#t1)!
+        _session_span(
+            s_tg,
+            "tg_t1",
+            "claude-code-turn",
+            "CHAIN",
+            10.0,
+            11.0,
+            **{
+                "input.value": (
+                    '<channel source="plugin:ida-telegram:telegram" event="message" '
+                    'message_id="901" thread_id="55">\n'
+                    "Please queue the bibliography export fix\n</channel>"
+                ),
+                "output.value": "Queued.",
+            },
+        ),
+        _session_span(
+            s_tg,
+            "tg_dup",
+            "claude-code-turn",
+            "CHAIN",
+            11.5,
+            12.0,
+            **{
+                "input.value": (
+                    '<channel source="plugin:ida-telegram:telegram" event="message" '
+                    'message_id="901" thread_id="55">\n'
+                    "Please queue the bibliography export fix\n</channel>"
+                ),
+                "output.value": "Already queued.",
+            },
+        ),
+        _session_span(
+            s_tg,
+            "tg_react",
+            "claude-code-turn",
+            "CHAIN",
+            12.5,
+            13.0,
+            **{
+                "input.value": (
+                    '<channel source="plugin:ida-telegram:telegram" event="reaction" '
+                    'message_id="902">\n👍\n</channel>'
+                ),
+                "output.value": "",
+            },
+        ),
+        # 5. Top-level agy session: UserPromptSubmit x2 + <USER_REQUEST> root CHAIN + invoke_subagent + <SYSTEM_MESSAGE>
+        _session_span(
+            s_agy,
+            "agy_root1",
+            "<USER_REQUEST>\n/ida:q make the sweeper lean\n</USER_REQUEST>",
+            "CHAIN",
+            14.0,
+            20.0,
+            **{
+                "input.value": (
+                    "<USER_REQUEST>\n/ida:q make the sweeper lean\n</USER_REQUEST>\n"
+                    "<ADDITIONAL_METADATA>\n2026-10-01\n</ADDITIONAL_METADATA>"
+                ),
+                "output.value": "Delegated to custodian.",
+            },
+        ),
+        _session_span(
+            s_agy,
+            "agy_ups1",
+            "aops-debug.UserPromptSubmit",
+            "CHAIN",
+            14.1,
+            14.2,
+            parent="agy_root1",
+            **{
+                "hook.client": "agy",
+                "input.value": json.dumps(
+                    {
+                        "conversationId": s_agy,
+                        "lastUserInput": "/ida:q make the sweeper lean",
+                    }
+                ),
+            },
+        ),
+        _session_span(
+            s_agy,
+            "agy_ups_empty",
+            "aops-debug.UserPromptSubmit",
+            "CHAIN",
+            14.3,
+            14.4,
+            parent="agy_root1",
+            **{
+                "hook.client": "agy",
+                "input.value": json.dumps({"conversationId": s_agy, "lastUserInput": ""}),
+            },
+        ),
+        _session_span(
+            s_agy,
+            "agy_spawn",
+            "invoke_subagent",
+            "TOOL",
+            15.0,
+            15.5,
+            parent="agy_root1",
+            **{
+                "tool.name": "invoke_subagent",
+                "input.value": json.dumps({"TypeName": "pauli", "Prompt": "Subagent brief text"}),
+                "output.value": (
+                    'Created the following subagent:\n{\n  "conversationId": "' + s_sub + '"\n}'
+                ),
+            },
+        ),
+        _session_span(
+            s_agy,
+            "agy_sys",
+            "The following is a <SYSTEM_MESSAGE> not actually sent by the user.",
+            "CHAIN",
+            21.0,
+            22.0,
+            **{
+                "input.value": (
+                    "The following is a <SYSTEM_MESSAGE> not actually sent by the user.\n"
+                    "<SYSTEM_MESSAGE>[Message] sender=" + s_sub + " content=Done</SYSTEM_MESSAGE>"
+                ),
+                "output.value": "Verified.",
+            },
+        ),
+        # 6. Spawned agy subagent session s_sub -> must be excluded via invoke_subagent provenance!
+        _session_span(
+            s_sub,
+            "sub_ups",
+            "aops-debug.UserPromptSubmit",
+            "CHAIN",
+            15.6,
+            15.7,
+            **{
+                "hook.client": "agy",
+                "input.value": json.dumps(
+                    {"conversationId": s_sub, "lastUserInput": "Subagent brief text"}
+                ),
+            },
+        ),
+        # 7. Bare headless worker container launch prompt -> excluded!
+        _session_span(
+            s_worker,
+            "wk_t1",
+            "claude-code-turn",
+            "CHAIN",
+            25.0,
+            30.0,
+            **{"input.value": "/ida:supervise proj_deadbeef\n", "output.value": "Completed."},
+        ),
+    ]
+
+    spans_file = tmp_path / "universe.json"
+    spans_file.write_text(json.dumps({"data": universe}))
+    out_dir = tmp_path / "sweep_out"
+
+    rc = pt.main(
+        [
+            "--since",
+            "2026-10-01T00:00:05Z",
+            "--from-file",
+            str(spans_file),
+            "--out",
+            str(out_dir),
+            "--base-url",
+            "https://mcp.example.com/mcp",
+            "--sanitize-paths",
+        ]
+    )
+    assert rc == 0
+
+    prompts_md = (out_dir / "prompts.md").read_text()
+    # Exactly the 3 post-cursor human prompts appear
+    assert "Check ~/repo status and summarize" in prompts_md
+    assert "/home/alice" not in prompts_md
+    assert "Please queue the bibliography export fix" in prompts_md
+    assert "/ida:q make the sweeper lean" in prompts_md
+
+    # Excluded non-user / pre-cursor / subagent / headless traffic does NOT appear
+    assert "Earlier ask before cursor" not in prompts_md
+    assert "Background job done" not in prompts_md
+    assert "Subagent brief text" not in prompts_md
+    assert "/ida:supervise proj_deadbeef" not in prompts_md
+    assert "SYSTEM_MESSAGE" not in prompts_md
+
+    # Deep turn anchors and Phoenix UI links are present
+    assert f"({s_cli[:8]}.outline.md#t3)" in prompts_md
+    assert f"({s_tg[:8]}.outline.md#t1)" in prompts_md
+    assert f"({s_agy[:8]}.outline.md#t1)" in prompts_md
+    assert f"https://phoenix.example.com/redirects/sessions/{s_cli}" in prompts_md
+
+    # Outline files generated ONLY for the 3 matched human sessions
+    outline_names = sorted(p.name for p in out_dir.glob("*.outline.md"))
+    assert outline_names == sorted(
+        [f"{s_cli[:8]}.outline.md", f"{s_tg[:8]}.outline.md", f"{s_agy[:8]}.outline.md"]
+    )
+    assert "~/repo" in (out_dir / f"{s_cli[:8]}.outline.md").read_text()
+
+
+def test_since_live_mcp_uses_indexed_sql_and_hydrates_oversized_spans(tmp_path, monkeypatch):
+    """Live --since queries executeSql via phoenix_execute and hydrates oversized rows by span_id, never calling attribute=['session.id:...']."""
+    import phoenix_token_cost as ptc
+
+    ptc._MCP_SESSIONS.clear()
+    executed_codes: list[str] = []
+
+    matched_sid = "99999999-8888-4777-8666-555555555555"
+
+    class FakeResponse:
+        def __init__(self, body: str, headers: dict[str, str] | None = None):
+            self._body = body.encode("utf-8")
+            self.headers = headers or {}
+
+        def read(self) -> bytes:
+            return self._body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    def wrap_rpc(inner_obj) -> FakeResponse:
+        return FakeResponse(
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "result": {
+                        "content": [{"type": "text", "text": json.dumps(inner_obj)}],
+                        "isError": False,
+                    },
+                }
+            )
+        )
+
+    def fake_urlopen(req, timeout=None):
+        payload = json.loads(req.data.decode("utf-8"))
+        if payload.get("method") == "initialize":
+            return FakeResponse(
+                json.dumps({"jsonrpc": "2.0", "id": 1, "result": {}}),
+                headers={"mcp-session-id": "mcp-live-1"},
+            )
+        code = payload["params"]["arguments"]["code"]
+        executed_codes.append(code)
+        assert "session.id:" not in code, "must not use unindexed attribute=session.id getSpans"
+        for sql_comp in pt.re.findall(
+            r"(?:p\.name|ps\.session_id|ps\.end_time|t\.end_time|s\.start_time)\s*(?:=|>=)\s*([^\s)]+)",
+            code,
+        ):
+            assert sql_comp.startswith("'"), (
+                f"SQLite strict parser requires single-quoted SQL literals, got {sql_comp}"
+            )
+
+        # 1. Discovery call (--since)
+        if "aops-debug.UserPromptSubmit" in code:
+            return wrap_rpc(
+                {
+                    "subagent_ids": [],
+                    "chains": [
+                        {
+                            "id": 101,
+                            "span_id": "sp_root",
+                            "start_time": "2026-10-01T01:00:00Z",
+                            "name_prefix": "claude-code-turn",
+                            "session_id": matched_sid,
+                            "host_name": "box1",
+                            "agent_name": "ida",
+                            "input_value": "Audit the bibliography parser",
+                        }
+                    ],
+                    "ups": [],
+                }
+            )
+        # 2. Session-spans indexed SQL + oversized hydration
+        return wrap_rpc(
+            {
+                "data": [
+                    {
+                        "name": "claude-code-turn",
+                        "span_kind": "CHAIN",
+                        "context": {"trace_id": "c" * 32, "span_id": "sp_root"},
+                        "parent_id": None,
+                        "start_time": "2026-10-01T01:00:00Z",
+                        "end_time": "2026-10-01T01:00:05Z",
+                        "status_code": "OK",
+                        "status_message": "",
+                        "attributes": {
+                            "session.id": matched_sid,
+                            "input.value": "Audit the bibliography parser",
+                            "output.value": "Parser audited.",
+                        },
+                    },
+                    {
+                        "name": "llm_call",
+                        "span_kind": "LLM",
+                        "context": {"trace_id": "c" * 32, "span_id": "sp_big"},
+                        "parent_id": "sp_root",
+                        "start_time": "2026-10-01T01:00:01Z",
+                        "end_time": "2026-10-01T01:00:04Z",
+                        "status_code": "OK",
+                        "status_message": "",
+                        "attributes": {
+                            "session.id": matched_sid,
+                            "llm.model_name": "claude-sonnet-5",
+                            "llm.token_count.prompt": 500,
+                            "llm.token_count.completion": 50,
+                            "output.value": "Parser audited.",
+                        },
+                    },
+                ],
+                "next_cursor": None,
+            }
+        )
+
+    monkeypatch.setattr(ptc.urllib.request, "urlopen", fake_urlopen)
+    out_dir = tmp_path / "live_out"
+    rc = pt.main(
+        [
+            "--since",
+            "2026-10-01T00:30:00Z",
+            "--out",
+            str(out_dir),
+            "--base-url",
+            "https://mcp.example.com/mcp",
+            "--project",
+            "academicOps",
+        ]
+    )
+    assert rc == 0
+    assert (out_dir / f"{matched_sid[:8]}.outline.md").exists()
+    assert "Audit the bibliography parser" in (out_dir / "prompts.md").read_text()
+    assert len(executed_codes) == 2
+
+
+def test_since_drops_stale_pre_cursor_agy_hook_echo_and_handles_empty_window(tmp_path):
+    """A post-cursor UserPromptSubmit echoing an earlier pre-cursor turn prompt is dropped, and 0 matches exits 0."""
+    s_agy = "77777777-6666-4555-8444-333333333333"
+    spans_data = [
+        # Pre-cursor human turn at 01.0s (< cursor 05.0s)
+        _session_span(
+            s_agy,
+            "r_old",
+            "<USER_REQUEST>\nOld pre-cursor ask\n</USER_REQUEST>",
+            "CHAIN",
+            1.0,
+            3.0,
+            **{
+                "input.value": "<USER_REQUEST>\nOld pre-cursor ask\n</USER_REQUEST>",
+                "output.value": "Working.",
+            },
+        ),
+        # Post-cursor SYSTEM_MESSAGE wakeup at 07.0s whose hook echoes lastUserInput from Turn 1
+        _session_span(
+            s_agy,
+            "r_sys",
+            "The following is a <SYSTEM_MESSAGE> not actually sent by the user.",
+            "CHAIN",
+            7.0,
+            9.0,
+            **{
+                "input.value": "The following is a <SYSTEM_MESSAGE> not actually sent by the user.\n<SYSTEM_MESSAGE>done</SYSTEM_MESSAGE>",
+                "output.value": "Finished.",
+            },
+        ),
+        _session_span(
+            s_agy,
+            "ups_echo",
+            "aops-debug.UserPromptSubmit",
+            "CHAIN",
+            7.1,
+            7.2,
+            parent="r_sys",
+            **{
+                "hook.client": "agy",
+                "input.value": json.dumps(
+                    {"conversationId": s_agy, "lastUserInput": "Old pre-cursor ask"}
+                ),
+            },
+        ),
+    ]
+    spans_file = tmp_path / "echo.json"
+    spans_file.write_text(json.dumps({"data": spans_data}))
+    out_dir = tmp_path / "quiet_out"
+
+    rc = pt.main(
+        ["--since", "2026-10-01T00:00:05Z", "--from-file", str(spans_file), "--out", str(out_dir)]
+    )
+    assert rc == 0
+    prompts_md = (out_dir / "prompts.md").read_text()
+    assert "No human user prompts recorded since this cursor." in prompts_md
+    assert "Old pre-cursor ask" not in prompts_md
+    assert list(out_dir.glob("*.outline.md")) == []

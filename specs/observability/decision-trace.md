@@ -1,119 +1,64 @@
 ---
-title: How did this decision get made
-status: draft
+title: Session decision transcripts and prompt-window outlines
+status: ready
 ---
 
-# How did this decision get made
+# Session decision transcripts and prompt-window outlines
 
-Anyone working in a project where the framework's plugins are installed can ask,
-at any time, how an agent arrived at a decision, and get back a readable
-transcript of the run with a clear answer drawn from it. The transcript is
-assembled from the trace store, where tool inputs and outputs, model output,
-token counts and latencies are kept whole.
+Anyone working in a project where the framework's plugins are installed can inspect how an agent session reached a decision or review every human prompt submitted across sessions since a UTC cursor, receiving navigable markdown transcripts and condensed outlines assembled directly from the OpenTelemetry trace store. Tool inputs and outputs, model responses, token usage, estimated spend, and latencies are preserved without truncation in the full transcript while condensed outlines keep per-step summaries compact for rapid human and agent review.
 
-This is the agent-assisted complement to
-[cross-surface observability](observability.md), which covers what the user can
-open on the infrastructure directly with no agent processing.
+This capability complements [cross-surface observability](observability.md), which covers direct operator inspection of telemetry dashboards without markdown export or agent synthesis.
 
-## User stories
+## User experience flow
 
-### US-1 Ask how a decision got made and get a readable transcript and a clear answer
+```mermaid
+flowchart LR
+    Operator(["Researcher or Developer"]) -->|"Session ID or --since UTC cursor"| CLI["phoenix_transcript.py"]
+    CLI -->|"Authenticated MCP / REST query"| Store["Phoenix Trace Store"]
+    Store -->|"Session & prompt spans"| CLI
+    CLI -->|"Markdown files (<slug>.outline.md, <slug>.transcript.md, prompts.md)"| Operator
+```
 
-As anyone working in a project where our plugins are installed, I want to ask
-at any time "how did this decision get made?" and get a readable transcript of
-the session that made it and a clear answer from an agent, without it taking
-forever or costing a leg, so that I can understand and audit what an agent did
-and why.
+## Capabilities and user stories
 
-- **AC-1.1** Given a full session ID / conversation ID, a session slug, or a trace id, when the
-  question is asked, then the agent resolves it to the owning session and
-  fetches that session's spans from the trace store in one paged request
-  sequence filtered on `session.id`, with no per-span or per-turn queries.
-- **AC-1.2** Given a session's spans, when the transcript is assembled, then it
-  generates two files: the full markdown transcript (`<slug>.transcript.md`) with a table
-  of contents linking to one header per turn, and a condensed outline (`<slug>.outline.md`)
-  beside it. Within each turn, in order, the incoming prompt, each model call, each tool
-  call, and the final reply. Prompts, tool inputs and outputs, and model context are placed
-  in folded `<details>` sections, and no content is truncated. Both files are persisted
-  to durable storage.
-- **AC-1.3** Given the transcript, when it is read, then every turn, model call
-  and tool call shows its wall-clock duration; every model call shows its model,
-  fresh input, cache read, cache write and output tokens and its estimated cost;
-  and each turn and the whole session carry totals, with a summary table at the
-  top giving each turn's duration, tokens and cost.
-- **AC-1.4** Given the transcript, when the agent answers, then it reads the
-  summary and the turns that bear on the question rather than the raw spans,
-  and its answer names the turn and step anchors where the decision was made.
-- **AC-1.5** Given execution without explicit flags, when the script resolves
-  the Phoenix endpoint, then it resolves the base URL and project strictly from
-  environment variables `PHOENIX_MCP_URL` and `PHOENIX_MCP_PROJECT`.
-- **AC-1.6** Given explicit `--base-url` or `--project` flags, when passed to the
-  script, then explicit flags override any environment variables.
-- **AC-1.7** Given neither flags nor environment variables (`PHOENIX_MCP_URL`,
-  `PHOENIX_MCP_PROJECT`) are provided, when the script attempts to resolve the
-  endpoint, then it halts immediately with an error and supplies no default
-  values or fallbacks.
-- **AC-1.8** Given generated transcript and outline markdown files, when rendered,
-  then every turn in each markdown output links to its session (`/redirects/sessions/{session_id}`)
-  and to its own root span(s) (`/redirects/spans/{span_id}`) in Phoenix, with the Phoenix UI base
-  URL resolved from `--ui-base-url`, `PHOENIX_UI_URL`, or derived from the Phoenix endpoint.
+### US-1 Audit how a session arrived at a decision
 
-## Design
+As a researcher or developer auditing agent work, I want to request the transcript of any session by its session ID, prefix slug, or trace ID, so that I can read every turn's prompt, model reasoning, tool calls, wall-clock latencies, and token spend with direct deep-links into Phoenix.
 
-### Where it lives
+- **AC-1.1** Given a valid session UUID, unique session-ID prefix slug, or 32-character hex trace ID and configured Phoenix endpoint variables, when `phoenix_transcript.py <ident>` runs, then it resolves the owning session, fetches its spans via indexed session-to-trace lookup (preserving oversized span payloads whole without truncation and halting with `ConfigError` on any backend query or hydration failure), and writes both `<slug>.transcript.md` (full untruncated payloads in `<details>` folds) and `<slug>.outline.md` (condensed step bullets without folded payloads), completing within 15 seconds for a 1,000-span session.
+- **AC-1.2** Given generated transcript and outline files, when rendered as markdown, then every turn header (`#t<N>`) and step anchor (`#t<N>-<M>`) displays wall-clock duration, token totals (`in`, `cache read`, `cache write`, `out`), estimated USD list-price spend, and direct links to `/redirects/sessions/{session_id}` and `/redirects/spans/{span_id}`.
 
-- **Workflow template** -- `plugins/ida/skills/workflow-library/workflows/trace-decision.md`,
-  in the universal tier: the contract (a question and an identifier in; the
-  transcript and an answer anchored to it out).
-- **Method** -- the `session-trace` skill in the `ida` plugin, which carries the
-  trace store's query facts and recipes and the transcript script
-  `scripts/phoenix_transcript.py`.
-- **Project-local debugging** -- `.agents/skills/debug/` keeps interactive
-  driving of a run (surfaces, containers under tmux, probes, filesystem audit)
-  and points to `session-trace` for telemetry.
+### US-2 Recover human prompts across sessions since a UTC cursor
 
-### Configuration and Fetch
+As a researcher or operator reviewing open requests across interactive channels and terminals, I want to scan all human prompts submitted since a given UTC timestamp and generate condensed session outlines for matches, so that morning briefings and prompt sweeps verify logged work in seconds without scanning full session histories.
 
-The script resolves Phoenix endpoint configuration from explicit flags (`--base-url`,
-`--project`) or from standard polecat MCP server environment variables (`PHOENIX_MCP_URL`,
-`PHOENIX_MCP_PROJECT`). With neither provided, the script supplies no default value and
-fails fast (`ConfigError`). There are no fallback variables or silent default projects.
-Phoenix UI base URL for deep-links is resolved from `--ui-base-url`, `PHOENIX_UI_URL`, or
-derived from the Phoenix endpoint (mapping MCP gateway URLs like `https://mcp.<domain>/mcp`
-to `https://phoenix.<domain>`).
+- **AC-2.1** Given `--since <iso-timestamp>` with an explicit timezone offset (such as `Z` or `+00:00`), when `phoenix_transcript.py --since <iso-timestamp> --out <dir>` runs, then it discovers human-submitted prompts since that cursor across interactive CLI turns, messaging channel envelopes (deduplicated by channel `message_id`), and Antigravity user turns while excluding automated system notifications, subagent delegation briefs, and bare headless worker launch commands, completing within 30 seconds across a 48-hour project window.
+- **AC-2.2** Given one or more matched prompts in the `--since` window, when export finishes, then `<dir>/prompts.md` lists a summary index table and chronological blockquoted prompt entries linking each prompt to its Phoenix session/span URLs and to the exact turn anchor (`<slug>.outline.md#t<N>`) in the generated `<dir>/<slug>.outline.md` file; when zero human prompts match in the window, `prompts.md` records zero matches and the command exits `0`.
 
-The script fetches the session's spans through `GET /v1/projects/{project}/spans?attribute=session.id:<id>`,
-paged to exhaustion via indexed session-to-trace lookup so large span stores never degrade
-into unindexed full-store attribute scans or request timeouts, while preserving oversized
-span payloads whole without truncation. Any backend query or hydration failure halts loudly
-(`ConfigError`) rather than returning partial data. A slug is resolved through the sessions
-listing; a trace id through one `trace_id=` fetch. Spans can also be read from a saved file
-for offline rendering.
+### US-3 Fail fast on missing or ambiguous configuration
 
-### Assemble
+As an operator running trace exports in automated workflows, I want missing endpoints, missing project names, conflicting target flags, or timezone-naive cursors to fail with a non-zero configuration exit code, so that misconfigured runs never guess defaults or silently drop windows.
 
-- **Turns** are clusters of root spans whose time windows overlap. Two emitters
-  often each open a root for the same turn (a hook-based tracer's `CHAIN` turn
-  and a client's native interaction span); clustering joins them without
-  depending on either. Every turn header in both the full transcript and condensed outline
-  renders direct markdown links to the Phoenix session (`/redirects/sessions/{session_id}`)
-  and the turn's root span(s) (`/redirects/spans/{span_id}`).
-- **Tool calls** are deduplicated on their call id (`tool.call_id`,
-  `tool_use_id`, `tool.id`, `gen_ai.tool.call.id`). The rendered call takes its
-  input and output from the span that holds them whole and its duration from the
-  execution span.
-- **Model calls** are `LLM` spans, deduplicated on response id where present.
-  Assistant text comes from `output.value`, `llm.output_messages` or
-  `response.model_output`; the context the call received is folded.
-- **Subagents** sharing the session are labelled from `agent.name` / `agent.id`
-  where an emitter sets them; subagents running in distinct sessions (such as `agy`
-  subagents) are correlated via prompt matching and dispatch spans.
+- **AC-3.1** Given execution without `--from-file` when either `PHOENIX_MCP_URL` / `--base-url` or `PHOENIX_MCP_PROJECT` / `--project` is unset, when `phoenix_transcript.py` starts, then it exits with code `2` (`ConfigError`) without falling back to default URLs or project names.
+- **AC-3.2** Given neither `<ident>` nor `--since`, both `<ident>` and `--since`, or a `--since` timestamp lacking an explicit timezone offset, when `phoenix_transcript.py` parses arguments, then it writes an actionable diagnostic to `stderr` and exits with code `2`.
 
-### Metrics
+## Shared interface contract
 
-Token fields are normalised to fresh input, cache read, cache write and output
-across conventions (OpenInference `prompt` includes cache tokens; native
-`input_tokens` does not). Cost uses the price table shared with
-`phoenix_token_cost.py` (list prices per million tokens, overridable with
-`--prices`); unpriced models are costed at zero and named in the footer. The
-dollar figure is comparable spend, not an invoice.
+- **Single-session CLI**:
+  `phoenix_transcript.py <session-id | slug | trace-id> [--out <file.transcript.md>] [--base-url <url>] [--ui-base-url <url>] [--project <name>] [--from-file <spans.json>] [--prices <prices.json>] [--sanitize-paths]`
+  - Exit codes: `0` when spans are rendered; `1` (`EXIT_EMPTY`) when the target session holds zero spans; `2` (`EXIT_CONFIG`) on configuration, argument, or transport errors.
+- **Cross-session `--since` CLI**:
+  `phoenix_transcript.py --since <iso-8601-with-tz> [--out <dir>] [--base-url <url>] [--ui-base-url <url>] [--project <name>] [--from-file <spans.json>] [--prices <prices.json>] [--sanitize-paths]`
+  - Writes `<dir>/prompts.md` and one `<dir>/<slug>.outline.md` per session containing at least one matched human prompt since `--since`.
+  - Exit codes: `0` when the window scan succeeds (including zero matched prompts); `2` (`EXIT_CONFIG`) on missing timezone offset, conflicting flags, missing endpoint/project configuration, or upstream query failure.
+- **Turn and step anchor contract**:
+  - Turn headers emit `<a id="t<N>"></a>` (`1`-indexed per session in chronological order); step entries emit `<a id="t<N>-<M>"></a>`.
+  - Prompt entries in `prompts.md` emit `<a id="p<K>"></a>` and link directly to `<slug>.outline.md#t<N>`.
+- **UI URL derivation**:
+  - Resolved from `--ui-base-url`, `$PHOENIX_UI_URL`, or derived from the configured gateway endpoint (mapping `https://mcp.<domain>/mcp` to `https://phoenix.<domain>`).
+
+## Invariants and security boundaries
+
+- **Authenticated read-only access**: Authorized operators and worker containers authenticate to the Phoenix MCP proxy using per-environment access credentials (`CF-Access-Client-Id` and `CF-Access-Client-Secret` when configured in environment variables) over HTTPS; trace queries are strictly read-only.
+- **Host path sanitization for durable storage**: Passing `--sanitize-paths` replaces literal user home paths (`/home/<user>`, `/Users/<user>`, `C:\Users\<user>`) and ephemeral session temp directories with `~` or generic placeholders before writing markdown outputs destined for shared or knowledge-base storage.
+- **Idempotent deterministic rendering**: Re-running `phoenix_transcript.py` over an identical span set produces identical turn clustering, deduplicated tool/model steps, and anchor identifiers, deduplicating repeated channel webhook deliveries by `(source, message_id)` and repeated client hook emissions by `(session_id, prompt_text)`.
