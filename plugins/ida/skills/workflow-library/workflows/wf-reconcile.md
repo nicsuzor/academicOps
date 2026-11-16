@@ -27,7 +27,7 @@ Maintains truth over the task graph: advances open high-value-prompt tracking ta
      - If incomplete agent work remains: transition to `queued` (or `partial` if partly delivered).
      - If principal input is genuinely required after agent groundwork and option evaluation are recorded: set `status: review` with `assignee: user` (recording the recommendation and one-line decision in `reason`) and surface in today's daily note `## With you`.
        No agent work task is left in `review`.
-4. **Parent Rollup Lifecycle**: When all open children under a composite task (`parent`) reach `done`, the composite task does not automatically close if it contains substantive acceptance criteria. Instead, transition it to `ready` for an explicit synthesis and sign-off pass. Verify composite criteria against the combined deliverables of its completed child set before marking the composite task `done`.
+4. **Parent Rollup Lifecycle**: When all open children under a bounded multi-session initiative epic (`parent`) reach `done`, the composite task does not automatically close if it contains substantive acceptance criteria. Instead, transition it to `ready` for an explicit synthesis and sign-off pass. Verify composite criteria against the combined deliverables of its completed child set before marking the bounded initiative epic `done`. Enduring subsystem/component epics (permanent Strategic Value Carriers representing standing infrastructure capabilities) are exempt from $k=0$ `done` closure and remain permanently active in `status: ready` as stable component anchors for future maintenance and bugfixes.
 5. **Decide next action for failed tasks from the parent epic**: Workers never create or name follow-up tasks, and release `failed` when a check (e.g. QA or review) or implementation fails. For every task marked `failed` within the sweep window:
    - Inspect the failure record: failure evidence, unmet criteria, and documented root cause in `## Report` and `reason`.
    - Load the task's parent epic and its wider graph context (siblings, dependencies, and epic goals).
@@ -42,7 +42,7 @@ Maintains truth over the task graph: advances open high-value-prompt tracking ta
    - _Soundness_: verify cited evidence actually answers acceptance criteria. If insufficient, return to `ready`/`queued` or `partial` with an agent review task (outcome 1 or 2); never escalate unproven claims to the user.
    - _Liveness_: verify question is still live; discard moot items settled by events.
 8. **Reset stale claims**: Stale `in_progress` tasks with no live claim (>24h unmodified without active session or worker) reset to `queued`. Never move a claimed task backwards while an active worker holds it.
-9. **Demote affected tasks**: Set unblocked dependents, siblings of landed work, rot (>14d in `ready`/`queued`), and invalidated assumption nodes to `status: inbox` with explanatory annotations.
+9. **Demote affected tasks**: Set unblocked dependents, siblings of landed work, rot (>14d in `ready`/`queued`, explicitly exempting enduring subsystem/component epics in `status: ready` which serve as permanent Strategic Value Carriers), and invalidated assumption nodes to `status: inbox` with explanatory annotations.
 10. **Cancel on world-facts**: Cancel only on affirmative evidence recorded in the node body:
     - _Referent destroyed_: target artifact was deleted, verified across checkouts and refs.
     - _Superseded by merge_: merged PR mooted or settled the task's question.
