@@ -58,11 +58,13 @@ As a developer or operator running Arize Phoenix across local or hosted environm
 
 Every generated session outline contains, in order:
 
-1. **Session header**: session ID, project name, UTC start/end timestamps and wall duration, turn/model/tool/error counts, built-in token breakdown (`input`, `cache_read`, `cache_write`, `output`), built-in comparable USD cost, active subagent labels, and Phoenix session redirect link (`/redirects/sessions/{session_id}`) when a UI base URL is available.
-2. **Executive summary tables**:
-   - `## Turns`: turn number linked to `#t{n}`, concise turn title, start time, duration, model calls, tool calls, output tokens, and turn cost.
-   - `## Cost & Tool Profile`: per-model calls, token breakdown, and built-in cost; plus per-tool / upstream MCP service call count, total and max latency, and error count.
-   - `## Errors` (included when errors > 0): step anchor link `#t{n}-{m}`, failing span/tool name, and status message.
+1. **Top-level heading & session header**:
+   - `# Session Outline: {slug}` H1 heading.
+   - Session header block: session ID, project name, UTC start/end timestamps and wall duration, turn/model/tool/error counts, built-in token breakdown (`input`, `cache_read`, `cache_write`, `output`), built-in comparable USD cost, active subagent labels, and Phoenix session redirect link (`/redirects/sessions/{session_id}`) when a UI base URL is available.
+2. **`## Overview` executive summary tables**:
+   - `### Turns`: turn number linked to `#t{n}`, concise turn title (capped at ~5--8 words describing the prompt intent so the overview table never wraps excessively), start time, duration, model calls, tool calls, output tokens, and turn cost.
+   - `### Cost & Tool Profile`: per-model calls, token breakdown, and built-in cost; plus per-tool / upstream MCP service call count, total and max latency, and error count.
+   - `### Errors` (included when errors > 0): step anchor link `#t{n}-{m}`, failing span/tool name, and status message.
 3. **Chronological turn sections (`<a id="t{n}"></a>`, `## Turn {n} · {title}`)**:
    - Turn metadata line with UTC timestamp, duration, model/tool counts, turn cost, and Phoenix `[session]` and root `[span]` (`/redirects/spans/{span_id}`) links when a UI base URL is available.
    - Substantive prompt blockquote (with injected skill/system wrapper boilerplate stripped).

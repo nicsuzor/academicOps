@@ -428,7 +428,7 @@ keeps pauli's rule "never raise the same non-blocking concern twice"
 | `specs/workflows/capture-intake.md`, `specs/workflows/research-decomposition.md`, `specs/enforcement/task-contract.md` | References to "valued at intake" now point to R1. The stale `brief` skill references (`specs/enforcement/task-contract.md:43`, `specs/workflows/research-decomposition.md:30`) are corrected to `/q`. |
 
 **Unchanged** (read in full; nothing to change): agy, axioms, craft, hydrate, learn,
-premise-check, session-trace, strategic-review, strategize, verify; templates `wf-fact-check`, `wf-qa`,
+premise-check, phoenix, strategic-review, strategize, verify; templates `wf-fact-check`, `wf-qa`,
 `wf-qa-visual`, `wf-research`, `wf-signoff`, `wf-spec`, `wf-structural-map`, `wf-task-base`, `wf-tdd`;
 agents james, marsha, rbg, sara; and all tools-plugin skills.
 
