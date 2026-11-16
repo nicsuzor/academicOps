@@ -11,7 +11,7 @@ Framework agents receive shared core instructions, operational invariants, and r
 
 ### US-1 Single Instruction Entry Point for Sessions
 
-As an agent executing within a workspace, I want to receive shared core operational rules and project context automatically from the ambient startup file, so that I operate under consistent constraints across all sessions.
+As a framework user, I want execution sessions to receive shared core operational rules and project context automatically from the ambient startup file, so that agents operate under consistent constraints across all sessions.
 
 - **AC-1.1** Given an execution session initialized under Claude Code, when the harness starts, then it loads `CLAUDE.md` and expands the `@` import directive pointing to `CORE.md` into ambient session context.
 - **AC-1.2** Given an execution session initialized under Antigravity, when the session begins, then the harness loads `AGENTS.md` and its referenced `CORE.md` rules into ambient instruction context.
@@ -27,7 +27,7 @@ As a framework architect and maintainer, I want agent persona definitions to con
 
 ### US-3 Plugin-Scoped Startup Injection
 
-As an agent operating outside a repository checkout or within client workspaces, I want each installed hook-bearing plugin to inject its plugin-scoped `CORE.md` into ambient session context at startup, so that I receive essential instructions for using and learning that plugin's features without extraneous or agent-specific text.
+As a framework user, I want each installed hook-bearing plugin to inject its plugin-scoped `CORE.md` into ambient session context at startup, so that sessions operating outside a repository checkout receive essential instructions for using and learning that plugin's features without extraneous or agent-specific text.
 
 - **AC-3.1** Given any hook-bearing framework plugin loaded in a session, when `SessionStart` fires, then the plugin injects its plugin-scoped `CORE.md` (at most 20 lines) into ambient session context.
 - **AC-3.2** Given a plugin-scoped `CORE.md`, when evaluated for admission, then every line passes the four tests: (1) valuable to all agents in every deployment, (2) every value presented works and is filled in, (3) nothing is duplicated, and (4) nothing is extraneous.
