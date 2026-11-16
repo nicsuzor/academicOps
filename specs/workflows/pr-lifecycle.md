@@ -16,7 +16,7 @@ flowchart TD
     subgraph S1["Stage 1: Constituent Integration"]
         A["Constituent change on polecat/* or open PR"] --> B["3-lens diff review (strategic fit, compliance, quality)"]
         B -- "PASS" --> C["Agent merges branch into shared feature branch (bundle/*)"]
-        C --> D["Close superseded donor PR immediately with link to bundle PR"]
+        C --> D["Close superseded donor PR in same step with link to bundle PR"]
     end
 
     subgraph S2["Stage 2: Clumping & Pre-Approval Screen"]
@@ -38,7 +38,7 @@ flowchart TD
 
 ### US-1: Consolidated feature-branch pull requests and constituent branch integration
 
-**As a** repository maintainer reviewing incoming changes, **I want** related changes to be reviewed on their constituent branches and merged into a shared feature branch that closes any superseded donor pull requests immediately, **so that** I review one cohesive pull request per feature or theme rather than dozens of separate pull requests or duplicate open pull requests.
+**As a** repository maintainer reviewing incoming changes, **I want** related changes to be reviewed on their constituent branches and merged into a shared feature branch that closes any superseded donor pull requests in the same step, **so that** I review one cohesive pull request per feature or theme rather than dozens of separate pull requests or duplicate open pull requests.
 
 - **AC-1.1** **Given** a self-contained implementation task executing on a constituent `polecat/<slug>` branch that belongs to an epic, touches surfaces shared with other active work, or is part of a pull request consolidation batch, **When** local tests pass and the three-lens dialectical review (strategic fit, rule compliance, and quality) returns `PASS` on the full diff of `polecat/<slug>`, **Then** the agent merges `polecat/<slug>` directly into the shared feature branch (`bundle/<slug>` or `feat/<slug>`) within the same workflow pass without pausing for maintainer approval.
 - **AC-1.2** **Given** an existing open standalone pull request whose commits are merged or cherry-picked into a shared feature branch (`bundle/<slug>`), **When** the consolidated pull request from `bundle/<slug>` is opened or updated on the remote repository, **Then** the agent closes the superseded donor pull request in the same step and posts a comment on the closed donor pull request linking to the consolidated pull request, leaving zero duplicate open pull requests for the same change.
