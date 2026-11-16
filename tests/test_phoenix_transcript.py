@@ -605,43 +605,76 @@ class FakePhoenixMcpServer:
 
 
 def test_get_json_routes_through_services_mcp_proxy(monkeypatch):
-    """get_json authenticates with CF-Access headers, reuses mcp-session-id, and parses SSE responses."""
+    """get_json translates Phoenix /v1/projects REST URLs into stateless MCP 2026-07-28 phoenix_execute calls."""
     import phoenix_token_cost as ptc
 
     monkeypatch.setenv("DISPATCHER_MCP_TOKEN_ID", "test-cf-id")
     monkeypatch.setenv("DISPATCHER_MCP_TOKEN_SECRET", "test-cf-secret")
-    ptc._MCP_SESSIONS.clear()
+    monkeypatch.setenv("AOPS_SESSION_ID", "sess-caller-42")
 
-    server = FakePhoenixMcpServer()
-    trace_hex = "b" * 32
-    server.add_span(
-        project="test-project",
-        trace_id=trace_hex,
-        span_id="0000000000000001",
-        name="turn",
-        span_kind="CHAIN",
-        flat_attributes={"session.id": SESSION},
+    recorded_requests = []
+
+    class FakeResponse:
+        def __init__(self, body: str, headers: dict[str, str] | None = None):
+            self._body = body.encode("utf-8")
+            self.headers = headers or {}
+
+        def read(self) -> bytes:
+            return self._body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    def fake_urlopen(req, timeout=None):
+        payload = json.loads(req.data.decode("utf-8"))
+        headers = {k.lower(): v for k, v in req.header_items()}
+        recorded_requests.append((req.full_url, headers, payload))
+        inner = json.dumps({"data": [{"id": "proj-1", "name": "academicOps"}], "next_cursor": None})
+        sse = (
+            "event: message\n"
+            + "data: "
+            + json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "result": {"content": [{"type": "text", "text": inner}], "isError": False},
+                }
+            )
+            + "\n\n"
+        )
+        return FakeResponse(sse)
+
+    monkeypatch.setattr(ptc.urllib.request, "urlopen", fake_urlopen)
+
+    url = (
+        "https://mcp.example.test/mcp/v1/projects/academicOps/spans"
+        "?attribute=session.id%3Asess-42&limit=500"
     )
-    monkeypatch.setattr(ptc.urllib.request, "urlopen", server.urlopen)
+    res = pt.get_json(url)
+    assert res == {"data": [{"id": "proj-1", "name": "academicOps"}], "next_cursor": None}
+    assert len(recorded_requests) == 1
 
-    res = pt.get_json(
-        f"https://mcp.example.test/mcp/v1/projects/test-project/spans?trace_id={trace_hex}&limit=10"
-    )
-    assert len(res["data"]) == 1
-    assert res["data"][0]["context"]["span_id"] == "0000000000000001"
-    assert res["next_cursor"] is None
-    assert len(server.recorded_requests) == 2
-
-    init_url, init_headers, init_payload = server.recorded_requests[0]
-    assert init_url == "https://mcp.example.test/mcp"
-    assert init_headers["cf-access-client-id"] == "test-cf-id"
-    assert init_headers["cf-access-client-secret"] == "test-cf-secret"
-    assert init_payload["method"] == "initialize"
-
-    call_url, call_headers, call_payload = server.recorded_requests[1]
+    call_url, call_headers, call_payload = recorded_requests[0]
     assert call_url == "https://mcp.example.test/mcp"
-    assert call_headers["mcp-session-id"] == "mcp-sess-123"
+    assert call_headers["cf-access-client-id"] == "test-cf-id"
+    assert call_headers["cf-access-client-secret"] == "test-cf-secret"
+    assert call_headers["mcp-protocol-version"] == "2026-07-28"
+    assert call_headers["mcp-method"] == "tools/call"
+    assert call_headers["mcp-name"] == "phoenix_execute"
+    assert call_headers["x-session-id"] == "sess-caller-42"
+    assert "mcp-session-id" not in call_headers
+    assert call_payload["method"] == "tools/call"
     assert call_payload["params"]["name"] == "phoenix_execute"
+    assert (
+        call_payload["params"]["_meta"]["io.modelcontextprotocol/protocolVersion"] == "2026-07-28"
+    )
+    assert (
+        call_payload["params"]["arguments"]["code"]
+        == 'return await call_tool("getSpans", {"project_identifier": "academicOps", "limit": 500, "attribute": ["session.id:sess-42"]})'
+    )
 
 
 def test_fetch_session_spans_avoids_unindexed_attribute_timeout_and_normalises_rows(monkeypatch):
@@ -954,6 +987,30 @@ def test_session_span_query_honours_time_kind_and_extra_attribute_filters(monkey
         page_limit=50,
     )
     assert [s["name"] for s in matched] == ["in_window_bash"]
+
+
+def test_get_json_surfaces_stateless_mcp_rpc_error(monkeypatch):
+    """get_json raises ConfigError when stateless MCP tools/call returns a JSON-RPC error."""
+    import phoenix_token_cost as ptc
+
+    class FakeErrorResponse:
+        def read(self) -> bytes:
+            return json.dumps(
+                {"jsonrpc": "2.0", "id": 1, "error": {"code": -32602, "message": "Invalid params"}}
+            ).encode("utf-8")
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    monkeypatch.setattr(
+        ptc.urllib.request, "urlopen", lambda req, timeout=None: FakeErrorResponse()
+    )
+
+    with pytest.raises(ptc.ConfigError, match="MCP error from https://mcp.example.test/mcp"):
+        pt.get_json("https://mcp.example.test/mcp/v1/projects")
 
 
 def test_sanitize_paths(monkeypatch):
