@@ -18,10 +18,10 @@ Query Arize Phoenix telemetry, audit built-in token spend and tool usage on the 
 Follow imperative procedural gating: load only the template needed for the task from `resources/`:
 
 - For identifier resolution (`session.id` UUID, 6--8 char slug, 32-hex `trace_id`, or `task.id`), dual-emitter deduplication, and subagent correlation: read `resources/span-store.md`.
-- For listing/ranking sessions or reading project-level and session-level token and USD spend: read `resources/session-costs.graphql` (`costSummary`, `tokenUsage`, `costDetailSummaryEntries` -- zero span fetches).
+- For project-level spend (token totals, cost summaries, top models) or single-session cost: read `resources/session-costs.graphql` (`GetProjectCosts`, `GetSessionCosts` -- one operation per call, zero span fetches).
 - For per-model spend (deduplicating dual-emitted model spans when multiple emitters cover a session) or per-tool / upstream MCP service call counts, latencies, errors, and payload bytes: read `resources/session-audit.sql`.
 - For keyset-pageable, column-projected chronological steps: read `resources/session-outline.sql`.
-- For task-level spend rollups: read `resources/cost-by-task.sql`.
+- For task-level spend rollups or ranking top sessions by USD spend over a time window: read `resources/cost-by-task.sql`.
 - For cross-session text/tool/error searches, subagent session discovery, or single-span payload drill-down: read `resources/cross-session-search.sql`.
 
 ## 3. Generating & Persisting `<slug>.outline.md`

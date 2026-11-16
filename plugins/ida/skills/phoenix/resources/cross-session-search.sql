@@ -11,7 +11,7 @@ SELECT
   p.name AS project,
   s.span_id,
   s.span_kind,
-  s.name,
+  SUBSTR(s.name, 1, 160) AS name,
   s.status_code,
   s.start_time,
   ROUND(s.latency_ms, 1) AS latency_ms,
@@ -34,7 +34,7 @@ LIMIT 50;
 -- === QUERY 2: Subagent session discovery from parent session or time window ===
 SELECT
   s.span_id,
-  s.name,
+  SUBSTR(s.name, 1, 160) AS name,
   s.span_kind,
   s.status_code,
   s.start_time,

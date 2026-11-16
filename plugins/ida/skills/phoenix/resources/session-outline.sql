@@ -12,7 +12,7 @@ SELECT
   s.parent_id,
   t.trace_id,
   s.span_kind,
-  s.name,
+  SUBSTR(s.name, 1, 160) AS name,
   s.status_code,
   SUBSTR(s.status_message, 1, 240) AS status_msg,
   s.start_time,

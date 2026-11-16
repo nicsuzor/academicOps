@@ -46,10 +46,10 @@ As a developer or operator running Arize Phoenix across local or hosted environm
 
 - **Skill router and instructions**: `plugins/ida/skills/phoenix/SKILL.md` defines query efficiency rules, identifier resolution, outline generation, durable persistence, and single-span drill-down.
 - **Declarative query templates**: `plugins/ida/skills/phoenix/resources/` ships portable, configuration-neutral templates executed through the Phoenix MCP `phoenix_execute` tool (`executeGraphqlQuery` and `executeSql`):
-  - `session-costs.graphql` -- project and per-session built-in token and cost summaries (`tokenUsage`, `costSummary`, and per-token-type `costDetailSummaryEntries`).
+  - `session-costs.graphql` -- single-operation project and per-session built-in token and cost summaries (`GetProjectCosts` via `costSummary` and `GetSessionCosts` via `tokenUsage`, `costSummary`, and per-token-type `costDetailSummaryEntries`).
   - `session-outline.sql` -- keyset-pageable, column-projected chronological step query for one session, returning scalar timing, model, token, built-in cost, tool summary, and bounded prompt/reply/argument excerpts while excluding bulky attribute and event blobs.
   - `session-audit.sql` -- server-side aggregation of model spend (with dual-emitter deduplication) and tool / upstream MCP call counts, latencies, errors, and payload sizes.
-  - `cost-by-task.sql` -- server-side token and built-in cost rollup grouped by task identifier and model over a bounded UTC window.
+  - `cost-by-task.sql` -- server-side token and built-in cost rollups grouped by task identifier and model, plus fast session-spend ranking directly from `span_costs` over a bounded UTC window.
   - `cross-session-search.sql` -- time-bounded server-side prompt, tool, error, subagent-correlation, and single-span detail lookups.
   - `span-store.md` -- identifier shapes, session-vs-trace grouping rules, dual-emitter and subagent correlation semantics, and query size bounds.
 - **Decision-trace workflow**: `plugins/ida/skills/workflow-library/workflows/trace-decision.md` defines the input/output contract (`<slug>.outline.md` persisted durably plus an answer anchored to `#t<turn>-<step>`).
