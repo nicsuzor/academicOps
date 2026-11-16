@@ -173,7 +173,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
     role,
     isPrimary,
     allowFrom,
-    maxChatChars: parseInt(mergedEnv.MAX_CHAT_CHARS || "1200", 10),
+    maxChatChars: parseInt(mergedEnv.MAX_CHAT_CHARS || "4000", 10),
     voiceReplies: (mergedEnv.VOICE_REPLIES as "off" | "mirror" | "always") || "mirror",
     voiceTranscribeCmd,
     voiceSpeakCmd,

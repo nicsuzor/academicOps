@@ -5,11 +5,12 @@ Ida's custom Telegram channel and Mini App plugin for Claude Code.
 ## Architecture
 
 - **Channel Protocol:** Stdio MCP server with `experimental["claude/channel"]` support.
-- **Progressive Disclosure:**
-  - Tier 1: Bold headline and bullets in chat.
+- **Progressive Disclosure & Rich Formatting:**
+  - Tier 1: Bold headline, section headings (`#`), bold lead-in bullets, inline entities (`**bold**`, `*italic*`, `__underline__`, `~~strikethrough~~`, `||spoiler||`, `` `code` ``, ` ```lang `, `[links](https://example.com)`, `![emoji](tg://emoji?id=<id>)`, nested inline formatting), and Markdown tables (narrow `<= 36` cols as `pre`, wide `> 36` cols as bulleted cards) in chat.
   - Tier 2: Expandable blockquotes (`>!`) collapsed by default.
   - Tier 3: Immutable Details pages viewed via the Telegram Mini App (`🔍 Details` button).
-  - Overflow handling: Text exceeding `max_chat_chars` (default 1200) splits at whole paragraphs and relocates cleanly to the Details page without loss.
+  - Overflow handling: Text exceeding `max_chat_chars` (default `4000`) splits at whole paragraphs and relocates cleanly to the Details page without loss.
+  - Interactive Bot API features: `copy_text` inline keyboard buttons, `quote` (with `quote_entities` and `quote_position`) in `reply_parameters`, `link_preview_options` / `disable_link_preview`, `show_caption_above_media`, and `message_effect_id`.
 - **Asynchronous Questions:**
   - `ask_user` tool and `PreToolUse` hook for `AskUserQuestion`.
   - Vertical numbered keyboard options with recommendation first.
