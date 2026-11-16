@@ -72,7 +72,7 @@ Every test case is evaluated against the three readers defined in `brief/SKILL.m
 2. **Independent Evaluator**: A separate agent arriving later reaches a definitive verdict from the evidence the brief demanded, without redoing the investigation.
 3. **Structural & Epistemic Soundness**:
    - Body clearly identifies what the work is built from, which beliefs carry evidence vs hopes, which forks are open, what probe settles each, and what is waiting on confirmation.
-   - Graph structure: Single node, well connected, with a `contributes_to` edge to a real target.
+   - Graph structure: Situated under its governing component or initiative epic with zero leaf `serves` edges (or carrying a `serves` edge to a real target solely when the node itself is a Strategic Value Carrier).
    - Epistemic grounding: Every claim about the world was observed this pass with citations; standard judging the unit is named with gaps recorded.
    - Sizing rationale (brief/SKILL.md: "Cut only at forks and boundaries... Never cut on size or feel."): Explicitly states why the unit was or was not cut (no-cut default vs fork cut vs responsibility-boundary cut).
    - Composed process rationale (brief/SKILL.md: "Work out the process this task runs under"): Names every template composed and the proportionality call behind it.

@@ -83,7 +83,7 @@ Task titles and filenames must be brief, descriptive, and unambiguous:
 
 Task graph edges follow the Three-Purpose Edge Taxonomy per [`specs/decisions/0002-distinguish-pkb-graph-edge-purposes-and-enforce-parsimony.md`](../../specs/decisions/0002-distinguish-pkb-graph-edge-purposes-and-enforce-parsimony.md):
 
-- **Single injection invariant**: Top-level deliverable tasks wire `serves` weight-flow links either directly to priced targets or to existing composite parent tasks that serve priced targets, avoiding duplicate links to the same target; subtasks never carry redundant `serves` edges. Auxiliary tasks that directly reduce effort or raise success probability wire `supports` (forbidden for tracking tasks).
+- **Single injection invariant (Component-Weighting & Leaf-Inheritance Rule)**: Strategic Value Carriers -- enduring component/subsystem epics, multi-session initiative epics, and standalone major deliverables (freestanding commitments to external stakeholders belonging to no component or initiative epic) -- wire `serves` weight-flow links strictly to priced `target` nodes (never task-to-epic), priced at their full holistic weight (never as a remainder after child tasks). Child tasks, bugfixes, and subtasks carry zero `serves` edges and inherit worth via `parent` or `needs`. `supports` is retired.
 - **Prerequisites use `needs`**: Upward execution gating is declared exclusively via `needs: [<task_id>]`.
 - **Contextual references use `## Pointers`**: Soft references, cited documentation, and related artifacts live exclusively as markdown `[[wikilinks]]` in `## Pointers`. Duplicate frontmatter edges for body citations are prohibited.
 
@@ -92,7 +92,7 @@ Task graph edges follow the Three-Purpose Edge Taxonomy per [`specs/decisions/00
 Execution environments distinguish two worker modes:
 
 - **Plain leaf workers (`/pull`)**: A plain leaf worker executing a task operates strictly state-only: it may only mutate that task's own state (checking off acceptance criteria, recording verifiable evidence under `## Report`, transitioning status). Leaf workers never reify workflows, create child tasks, inspect or modify edges across other tasks, compute reverse graph dependencies, or mint follow-up verification tasks; unblocking, sequencing, and parent rollup belong exclusively to the graph engine, dispatcher, and background truth maintenance (`wf-reconcile`).
-- **Container coordinators (`/supervise`)**: A container coordinator claimed on a repository-scoped epic task enriches its claimed task by assembling workflows via `/reify` in-session, coordinates subagent fan-out and reviews with incremental `git push` checkpoints, and creates/wires repository-scoped follow-up tasks on the graph via `/q` solely when work explicitly cannot be completed in-session (different repository, different time, or workflow-mandated separate external agent/session).
+- **Container coordinators (`/supervise`)**: A container coordinator claimed on a repository-scoped epic task enriches its claimed task by assembling workflows via `/reify` in-session, coordinates subagent fan-out and reviews with incremental `git push` checkpoints, and creates/wires repository-scoped follow-up tasks on the graph via `/q` (parented under the governing component or initiative epic with `needs` prerequisites and zero leaf `serves` edges) solely when work explicitly cannot be completed in-session (different repository, different time, or workflow-mandated separate external agent/session).
 
 ## Recurring Jobs: Change-Only and Single-Flight
 

@@ -12,20 +12,20 @@ Following the initial deployment of the PKB flow model and three-relation graph 
 
 ## Considered Options
 
-- Three-purpose edge model: weight flow (`serves`/`supports`), sequencing (`needs`), and structural clustering (body wikilinks) with strict `supports` semantics
+- Three-purpose edge model: weight flow (`serves`), sequencing (`needs`), and structural clustering (body wikilinks) with single-injection component weighting
 - Universal frontmatter edges for all relationships (all citations converted to formal frontmatter links)
 - Unconstrained agentic link creation without edge contracts or hierarchy constraints
 - Mechanical graph linter scripts checking link density in target repositories
 
 ## Decision Outcome
 
-Chosen option: "Three-purpose edge model: weight flow (`serves`/`supports`), sequencing (`needs`), and structural clustering (body wikilinks) with strict `supports` semantics", because:
+Chosen option: "Three-purpose edge model: weight flow (`serves`), sequencing (`needs`), and structural clustering (body wikilinks) with single-injection component weighting", because:
 
-1. It cleanly separates the three fundamental purposes of graph edges: (1) weight flow to targets, (2) execution sequencing via `needs`, and (3) structural clustering and human understanding via markdown body wikilinks.
+1. It cleanly separates the three fundamental purposes of graph edges: (1) weight flow to targets (`serves`), (2) execution sequencing via `needs`, and (3) structural clustering and human understanding via markdown body wikilinks.
 2. It eliminates redundant frontmatter clutter: direct references in task bodies (`[[node_id]]`) already function as clustering and semantic interconnection edges in physics models and search; anything cited in the body does not need duplicate formal frontmatter edges.
-3. It enforces hierarchy parsimony: weight links (`serves`) are pushed as far up the parent hierarchy as accurate (single injection at the deliverable level), and subtasks inherit value via closed-form induction without redundant child-to-ancestor weight links. Weight links go exclusively to targets; weight propagates to other nodes via real blocking (`needs`) and supporting (`supports`) tasks.
-4. It tightens `supports` semantics: a tracking or coordination task does not support the tasks it tracks (tracking makes zero difference to the tracked task's difficulty or probability of success); tracking tasks serve the strategic target of user understanding and are confined to that target edge.
-5. It clarifies weight requirements: target weight edges require probability and quantum; `needs` edges are Boolean execution gates requiring neither; `supports` requires weights when propagating value between tasks or to targets.
+3. It enforces hierarchy parsimony (Component-Weighting & Leaf-Inheritance Rule): weight links (`serves`) point strictly to `type: target` nodes (never task-to-epic) and sit exclusively on Strategic Value Carriers -- enduring component/subsystem epics, multi-session initiative epics, and standalone major deliverables (freestanding commitments to external stakeholders belonging to no component or initiative epic) -- priced at their full holistic weight (never as a remainder after child tasks). Child tasks, bugfixes, and subtasks carry zero `serves` edges and inherit worth via closed-form backward induction over `parent` and `needs`.
+4. It retires `supports` / `soft_depends_on` and enforces tracking-task boundaries: soft contextual references use markdown `[[wikilinks]]` under `## Pointers`, and a tracking or coordination task never wires frontmatter edges to the tasks it tracks (tracking makes zero difference to the tracked task's difficulty or probability of success; standalone valued tracking initiatives serve user understanding targets directly).
+5. It clarifies weight requirements: target weight edges (`serves`) require probability and quantum; `needs` edges are Boolean execution gates requiring neither.
 
 ### Consequences
 
