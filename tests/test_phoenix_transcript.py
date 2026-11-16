@@ -878,6 +878,13 @@ def test_since_live_mcp_uses_indexed_sql_and_hydrates_oversized_spans(tmp_path, 
         code = payload["params"]["arguments"]["code"]
         executed_codes.append(code)
         assert "session.id:" not in code, "must not use unindexed attribute=session.id getSpans"
+        for sql_comp in pt.re.findall(
+            r"(?:p\.name|ps\.session_id|ps\.end_time|t\.end_time|s\.start_time)\s*(?:=|>=)\s*([^\s)]+)",
+            code,
+        ):
+            assert sql_comp.startswith("'"), (
+                f"SQLite strict parser requires single-quoted SQL literals, got {sql_comp}"
+            )
 
         # 1. Discovery call (--since)
         if "aops-debug.UserPromptSubmit" in code:

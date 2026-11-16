@@ -259,11 +259,12 @@ def phoenix_execute_code(base_url: str, code: str) -> Any:
 
 def fetch_session_spans(base_url: str, project: str, session_id: str) -> tuple[list[Span], int]:
     """Fetch one session's spans via indexed ``project_sessions`` SQL + ``span_id`` hydration."""
+    proj_sql = "'" + project.replace("'", "''") + "'"
+    sid_sql = "'" + session_id.replace("'", "''") + "'"
     code = f"""
 import json
 
 proj = {json.dumps(project)}
-sid = {json.dumps(session_id)}
 last_id = 0
 pages = 0
 spans = []
@@ -278,12 +279,12 @@ while True:
         "JOIN project_sessions ps ON ps.project_id = p.id "
         "JOIN traces t ON t.project_session_rowid = ps.id "
         "JOIN spans s ON s.trace_rowid = t.id "
-        f"WHERE (p.name = {{json.dumps(proj)}} OR CAST(p.id AS TEXT) = {{json.dumps(proj)}}) "
-        f"AND ps.session_id = {{json.dumps(sid)}} "
-        f"AND s.id > {{int(last_id)}} "
-        "ORDER BY s.id ASC LIMIT 500"
+        "WHERE p.name = {proj_sql} "
+        "AND ps.session_id = {sid_sql} "
+        f"AND +s.id > {{int(last_id)}} "
+        "ORDER BY +s.id ASC LIMIT 2000"
     )
-    res = await call_tool("executeSql", {{"sql": sql}})
+    res = await call_tool("executeSql", {{"sql": sql, "row_limit": 2000}})
     if isinstance(res, dict) and "error" in res:
         raise RuntimeError(f"executeSql failed: {{res['error']}}")
     pages += 1
@@ -308,7 +309,7 @@ while True:
             "status_message": sm,
             "attributes": attrs,
         }})
-    if len(rows) < 500:
+    if len(rows) < 2000:
         break
 
 for i in range(0, len(oversized_ids), 50):
@@ -1642,114 +1643,95 @@ def discover_prompts_from_spans(universe: list[Span], since_dt: datetime) -> lis
 
 
 def fetch_prompts_since(base_url: str, project: str, since_dt: datetime) -> list[MatchedPrompt]:
-    """Discover human prompts since ``since_dt`` via indexed ``project_sessions`` SQL."""
+    """Discover human prompts since ``since_dt`` via ``project_sessions -> traces`` joins."""
     since_iso = since_dt.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     subagent_floor_iso = (
-        (since_dt - timedelta(hours=24)).astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        (since_dt - timedelta(hours=12)).astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     )
+    proj_sql = "'" + project.replace("'", "''") + "'"
+    since_sql = "'" + since_iso.replace("'", "''") + "'"
+    sub_floor_sql = "'" + subagent_floor_iso.replace("'", "''") + "'"
     code = f"""
-import json, re
+import asyncio, re
 
-proj = {json.dumps(project)}
-since_iso = {json.dumps(since_iso)}
-sub_floor = {json.dumps(subagent_floor_iso)}
+q_inv = (
+    "SELECT s.id, SUBSTR(COALESCE(s.attributes ->> '$.output.value', ''), 1, 800) "
+    "FROM projects p "
+    "JOIN project_sessions ps ON ps.project_id = p.id "
+    "JOIN traces t ON t.project_session_rowid = ps.id "
+    "JOIN spans s ON s.trace_rowid = t.id "
+    "WHERE p.name = {proj_sql} "
+    "AND ps.end_time >= {sub_floor_sql} "
+    "AND t.start_time >= {sub_floor_sql} "
+    "AND s.span_kind = 'TOOL' AND s.name = 'invoke_subagent'"
+)
+
+q_ch = (
+    "SELECT s.id, s.span_id, s.start_time, SUBSTR(s.name, 1, 80), "
+    "s.attributes ->> '$.session.id', s.attributes ->> '$.host.name', "
+    "s.attributes ->> '$.agent.name', "
+    "SUBSTR(COALESCE(s.attributes ->> '$.input.value', ''), 1, 16384) "
+    "FROM projects p "
+    "JOIN project_sessions ps ON ps.project_id = p.id "
+    "JOIN traces t ON t.project_session_rowid = ps.id "
+    "JOIN spans s ON s.trace_rowid = t.id "
+    "WHERE p.name = {proj_sql} "
+    "AND ps.end_time >= {since_sql} "
+    "AND t.start_time >= {since_sql} "
+    "AND s.span_kind = 'CHAIN' "
+    "AND (s.parent_id IS NULL OR s.parent_id = '') "
+    "AND s.name NOT LIKE 'The following is a <SYSTEM_MESSAGE>%' "
+    "AND s.name NOT LIKE 'aops-debug.%'"
+)
+
+q_up = (
+    "SELECT s.id, s.span_id, s.start_time, "
+    "s.attributes ->> '$.session.id', s.attributes ->> '$.host.name', "
+    "SUBSTR(COALESCE(s.attributes ->> '$.input.value', ''), 1, 16384) "
+    "FROM projects p "
+    "JOIN project_sessions ps ON ps.project_id = p.id "
+    "JOIN traces t ON t.project_session_rowid = ps.id "
+    "JOIN spans s ON s.trace_rowid = t.id "
+    "WHERE p.name = {proj_sql} "
+    "AND ps.end_time >= {since_sql} "
+    "AND t.start_time >= {since_sql} "
+    "AND s.name = 'aops-debug.UserPromptSubmit' "
+    "AND (s.attributes ->> '$.hook.client') = 'agy' "
+    "AND NOT EXISTS ("
+    "  SELECT 1 FROM spans r WHERE r.trace_rowid = s.trace_rowid "
+    "  AND r.span_kind = 'CHAIN' AND (r.parent_id IS NULL OR r.parent_id = '') "
+    "  AND r.name NOT LIKE 'aops-debug.%'"
+    ")"
+)
+
+r_inv, r_ch, r_up = await asyncio.gather(
+    call_tool("executeSql", {{"sql": q_inv, "row_limit": 5000}}),
+    call_tool("executeSql", {{"sql": q_ch, "row_limit": 5000}}),
+    call_tool("executeSql", {{"sql": q_up, "row_limit": 5000}}),
+)
+for label, res in (("invoke_subagent", r_inv), ("chains", r_ch), ("UserPromptSubmit", r_up)):
+    if isinstance(res, dict) and "error" in res:
+        raise RuntimeError(f"executeSql {{label}} failed: {{res['error']}}")
 
 subagent_ids = set()
-last_id = 0
-while True:
-    q_inv = (
-        "SELECT s.id, SUBSTR(COALESCE(s.attributes ->> '$.output.value', ''), 1, 800) "
-        "FROM projects p "
-        "JOIN project_sessions ps ON ps.project_id = p.id "
-        "JOIN traces t ON t.project_session_rowid = ps.id "
-        "JOIN spans s ON s.trace_rowid = t.id "
-        f"WHERE (p.name = {{json.dumps(proj)}} OR CAST(p.id AS TEXT) = {{json.dumps(proj)}}) "
-        f"AND ps.end_time >= {{json.dumps(sub_floor)}} "
-        "AND s.span_kind = 'TOOL' AND s.name = 'invoke_subagent' "
-        f"AND s.id > {{int(last_id)}} ORDER BY s.id ASC LIMIT 500"
-    )
-    r_inv = await call_tool("executeSql", {{"sql": q_inv}})
-    if isinstance(r_inv, dict) and "error" in r_inv:
-        raise RuntimeError(f"executeSql invoke_subagent failed: {{r_inv['error']}}")
-    inv_rows = (r_inv or {{}}).get("rows") or []
-    if not inv_rows:
-        break
-    for row_id, out_val in inv_rows:
-        last_id = row_id
-        for m in re.findall(r'"conversationId"\\s*:\\s*"([0-9a-f-]{{36}})"', out_val or ""):
-            subagent_ids.add(m)
-    if len(inv_rows) < 500:
-        break
+for _, out_val in (r_inv or {{}}).get("rows") or []:
+    for m in re.findall(r'"conversationId"\\s*:\\s*"([0-9a-f-]{{36}})"', out_val or ""):
+        subagent_ids.add(m)
 
-chains = []
-last_id = 0
-while True:
-    q_ch = (
-        "SELECT s.id, s.span_id, s.start_time, SUBSTR(s.name, 1, 80), "
-        "s.attributes ->> '$.session.id', s.attributes ->> '$.host.name', "
-        "s.attributes ->> '$.agent.name', "
-        "SUBSTR(COALESCE(s.attributes ->> '$.input.value', ''), 1, 16384) "
-        "FROM projects p "
-        "JOIN project_sessions ps ON ps.project_id = p.id "
-        "JOIN traces t ON t.project_session_rowid = ps.id "
-        "JOIN spans s ON s.trace_rowid = t.id "
-        f"WHERE (p.name = {{json.dumps(proj)}} OR CAST(p.id AS TEXT) = {{json.dumps(proj)}}) "
-        f"AND ps.end_time >= {{json.dumps(since_iso)}} "
-        f"AND t.end_time >= {{json.dumps(since_iso)}} "
-        f"AND s.start_time >= {{json.dumps(since_iso)}} "
-        "AND s.span_kind = 'CHAIN' AND (s.parent_id IS NULL OR s.parent_id = '') "
-        "AND s.name NOT LIKE 'The following is a <SYSTEM_MESSAGE>%' "
-        "AND s.name NOT LIKE 'aops-debug.%' "
-        f"AND s.id > {{int(last_id)}} ORDER BY s.id ASC LIMIT 500"
-    )
-    r_ch = await call_tool("executeSql", {{"sql": q_ch}})
-    if isinstance(r_ch, dict) and "error" in r_ch:
-        raise RuntimeError(f"executeSql chains failed: {{r_ch['error']}}")
-    ch_rows = (r_ch or {{}}).get("rows") or []
-    if not ch_rows:
-        break
-    for r in ch_rows:
-        last_id = r[0]
-        chains.append({{
-            "id": r[0], "span_id": r[1], "start_time": r[2], "name_prefix": r[3],
-            "session_id": r[4], "host_name": r[5], "agent_name": r[6], "input_value": r[7],
-        }})
-    if len(ch_rows) < 500:
-        break
-
-ups = []
-last_id = 0
-while True:
-    q_up = (
-        "SELECT s.id, s.span_id, s.start_time, "
-        "s.attributes ->> '$.session.id', s.attributes ->> '$.host.name', "
-        "SUBSTR(COALESCE(s.attributes ->> '$.input.value', ''), 1, 16384) "
-        "FROM projects p "
-        "JOIN project_sessions ps ON ps.project_id = p.id "
-        "JOIN traces t ON t.project_session_rowid = ps.id "
-        "JOIN spans s ON s.trace_rowid = t.id "
-        f"WHERE (p.name = {{json.dumps(proj)}} OR CAST(p.id AS TEXT) = {{json.dumps(proj)}}) "
-        f"AND ps.end_time >= {{json.dumps(since_iso)}} "
-        f"AND t.end_time >= {{json.dumps(since_iso)}} "
-        f"AND s.start_time >= {{json.dumps(since_iso)}} "
-        "AND s.name = 'aops-debug.UserPromptSubmit' "
-        "AND (s.attributes ->> '$.hook.client') = 'agy' "
-        f"AND s.id > {{int(last_id)}} ORDER BY s.id ASC LIMIT 500"
-    )
-    r_up = await call_tool("executeSql", {{"sql": q_up}})
-    if isinstance(r_up, dict) and "error" in r_up:
-        raise RuntimeError(f"executeSql UserPromptSubmit failed: {{r_up['error']}}")
-    up_rows = (r_up or {{}}).get("rows") or []
-    if not up_rows:
-        break
-    for r in up_rows:
-        last_id = r[0]
-        ups.append({{
-            "id": r[0], "span_id": r[1], "start_time": r[2],
-            "session_id": r[3], "host_name": r[4], "input_value": r[5],
-        }})
-    if len(up_rows) < 500:
-        break
+chains = [
+    {{
+        "id": r[0], "span_id": r[1], "start_time": r[2], "name_prefix": r[3],
+        "session_id": r[4], "host_name": r[5], "agent_name": r[6], "input_value": r[7],
+    }}
+    for r in ((r_ch or {{}}).get("rows") or [])
+]
+ups = [
+    {{
+        "id": r[0], "span_id": r[1], "start_time": r[2],
+        "session_id": r[3], "host_name": r[4], "input_value": r[5],
+    }}
+    for r in ((r_up or {{}}).get("rows") or [])
+]
 
 return {{"subagent_ids": sorted(subagent_ids), "chains": chains, "ups": ups}}
 """
