@@ -43,7 +43,7 @@ Check the claimed task body before composing:
 
 1. **In-Session Verification**: Complete all in-session deliverables: full test suites, linters, builds, and an independent final diff review across strategic, compliance, and quality lenses.
 2. **Pull Request**: Open and ready a single cohesive pull request against the base branch, attaching scrubbed review receipts.
-3. **Out-of-Session Follow-Up Tasks**: Deliver everything executable in-session. Create and wire a repository-scoped follow-up task on the PKB graph (via `/q` placement with `serves` value-chain links and `needs` prerequisite edges) **only** when work explicitly requires:
+3. **Out-of-Session Follow-Up Tasks**: Deliver everything executable in-session. Create and wire a repository-scoped follow-up task on the PKB graph (via `/q` placement under the governing component or initiative epic with `needs` prerequisite edges and zero leaf `serves` edges, inheriting worth via `parent`) **only** when work explicitly requires:
    - A different repository (strictly one task per repository).
    - A different time or external wait condition.
    - A workflow-mandated separate external agent or session (such as closed-loop user-channel delivery).

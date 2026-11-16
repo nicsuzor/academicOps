@@ -91,13 +91,16 @@ agent probe, never as an accepted execution task.
   reachable sources with a summary on the record and conducts necessary groundwork rather than minting
   mechanical reading tasks. The document is converted in place into an active task: the file is moved out
   of the intake directory into the tasks directory, retyped as a task, and assigned an imperative title,
-  concise body, parent container, and intake valuation edges. Its unique identifier and git history are
-  preserved. When deduplication identifies an existing open task already carrying the ask, the capture's
-  content is synthesized into that existing task, and the source capture is deleted under the deletion
-  gate. External asks, invitations, or uncommitted opportunities the user has not explicitly agreed to
-  take on are excluded: they are routed as a user decision (`status: review`, `assignee: user` with source
-  summary, candidate options including decline or do nothing, and a recommendation) or an agent probe
-  under **Expand**, never as an active user execution task.
+  concise body, and governing component or initiative epic (`parent: <epic_id>`) with zero leaf `serves`
+  edges on child fixes (inheriting worth via `parent`, while `serves` edges to `type: target` nodes are
+  authored exclusively on Strategic Value Carriers -- enduring component epics, multi-session initiative
+  epics, or standalone major deliverables). Its unique identifier and git history are preserved. When
+  deduplication identifies an existing open task already carrying the ask, the capture's content is
+  synthesized into that existing task, and the source capture is deleted under the deletion gate. External
+  asks, invitations, or uncommitted opportunities the user has not explicitly agreed to take on are excluded:
+  they are routed as a user decision (`status: review`, `assignee: user` with source summary, candidate
+  options including decline or do nothing, and a recommendation) or an agent probe under **Expand**, never
+  as an active user execution task.
 - **Note:** A durable reference, observation, informational update, or non-actionable insight. Pure
   informational updates create zero user tasks. Content is synthesized into an existing canonical topic
   note or written as a new topic note. Once the destination write is verified, the source capture is
