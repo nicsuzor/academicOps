@@ -49,9 +49,11 @@ Ida's custom Telegram channel and Mini App plugin for Claude Code.
   - Unthreaded chats omit thread parameters from outbound requests.
 - **Native Bot Commands:**
   - Registers the native command menu via `setMyCommands` at `botCommandScopeChat` for each `allowFrom` chat on startup, surviving channel restarts and overriding `all_private_chats` defaults.
-  - The menu is the JSON list configured in `TELEGRAM_BOT_COMMANDS`; with none configured, no menu is registered. The plugin reads no other plugin's files to build it.
-  - Excludes reserved official-plugin commands (`/start`, `/help`, `/status`) and headless worker commands (`/pull`, `/dump`); hyphens in configured names become underscores.
-  - Commands reach the agent as typed (`meta.command`, `meta.args`); what a command does is set by the agent's instructions (`skills/telegram/SKILL.md`), not by plugin code.
+  - Unified menu is built at primary poller startup from all available skills across installed plugins, project-local skills (`.agents/skills`, `.claude/skills`), and user skills (`~/.claude/skills`), with `TELEGRAM_BOT_COMMANDS` retained as an explicit JSON override.
+  - Excludes reserved official-plugin commands (`/start`, `/help`, `/status`) and headless worker lifecycle commands (`/pull`, `/dump`).
+  - Normalises skill names to `[a-z0-9_]{1,32}` by converting hyphens to underscores, disambiguating colliding names across sources, and trimming descriptions to 1–256 characters.
+  - Reports an explicit error when total resolved skills or commands exceed Telegram's 100-command limit rather than silently truncating.
+  - Commands reach the agent as typed (`meta.command`, `meta.args`); what a command does when invoked is governed by agent-side command routing via `skills/telegram/SKILL.md`, not by plugin code.
 - **Concurrency & Host Locks:**
   - Gated to `IDA_TELEGRAM_ROLE=primary`.
   - Non-primary instances register zero tools, run no poller, and leave hooks inert.
