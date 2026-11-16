@@ -183,7 +183,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
     githubToken: mergedEnv.GITHUB_TOKEN,
     miniAppUrl,
     instance: (mergedEnv.IDA_NAME || mergedEnv.INSTANCE_NAME || mergedEnv.INSTANCE_ID || "").trim() || undefined,
-    botCommands: resolveBotCommands(mergedEnv.TELEGRAM_BOT_COMMANDS),
+    botCommands: resolveBotCommands(mergedEnv.TELEGRAM_BOT_COMMANDS, {
+      projectDir: mergedEnv.CLAUDE_PROJECT_DIR,
+      claudeConfigDir: mergedEnv.CLAUDE_CONFIG_DIR,
+      pluginRoot: mergedEnv.CLAUDE_PLUGIN_ROOT,
+      env: mergedEnv,
+    }),
     bridgeToken: mergedEnv.IDA_BRIDGE_TOKEN || mergedEnv.BRIDGE_TOKEN,
     autoInterrupt: mergedEnv.TELEGRAM_AUTO_INTERRUPT !== "false",
     cfAccessTeamDomain: (mergedEnv.CF_ACCESS_TEAM_DOMAIN || mergedEnv.CF_ACCESS_TEAM_NAME || "").trim() || undefined,
