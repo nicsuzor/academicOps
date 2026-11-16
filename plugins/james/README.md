@@ -31,8 +31,8 @@ flowchart TD
 | Agents | `marsha` | Qualitative excellence reviewer and audience taste discriminator |
 | Agents | `sara` | Headless dispatcher and epistemic gatekeeper for automated worker runs |
 | Skills | `axioms` | Inviolable universal behavioral rules governing all agents |
-| Skills | `argdown-toulmin` | Chained Toulmin Argdown grammar and presentation standard (staged from lib/skills) |
-| Skills | `dispatch` | Starts polecat container sessions on queued tasks (staged from lib/skills) |
+| Skills | `argdown-toulmin` | Chained Toulmin Argdown grammar and presentation standard |
+| Skills | `dispatch` | Starts polecat container sessions on queued tasks |
 | Skills | `supervise` | Supervise repo-scoped epic execution and multi-stage delivery in containers |
 | Skills | `pull` | Fast-path leaf task claiming and execution |
 | Skills | `dump` | Session exit, handover, and task completion reporting |
@@ -57,22 +57,22 @@ flowchart TD
 | Skills | `up` | Analyze framework failures at the general class level |
 | Skills | `workflow-library` | Library management for composable three-tier workflow templates |
 
-Hooks: None (this plugin carries zero hooks).
-
 ## How It Is Configured
 
-The plugin reads the following environment variables (there are no default values):
+Packaged diagnostic scripts (`session-trace`) read the following environment variables (endpoints and credentials have no default values):
 
 | Variable | Description |
 | - | - |
-| `PKB_MCP_URL` | HTTP endpoint URL for the Personal Knowledge Base MCP service |
 | `PHOENIX_MCP_URL` | HTTP endpoint URL for the Arize Phoenix OpenTelemetry span store |
 | `PHOENIX_MCP_PROJECT` | Project namespace name within Arize Phoenix |
-| `AOPS_SESSION_ID` | Active session or conversation identifier for trace correlation and PKB operations |
+| `DISPATCHER_MCP_TOKEN_ID` | Cloudflare Access service token ID for authenticated Phoenix queries |
+| `DISPATCHER_MCP_TOKEN_SECRET` | Cloudflare Access service token secret for authenticated Phoenix queries |
+| `AOPS_SESSIONS` | Directory path for local session metadata and trace correlation |
 
 ## What It Depends On
 
 - Python 3.11 or later
-- Personal Knowledge Base (`pkb`) MCP server
+- Personal Knowledge Base (`pkb` / `services`) MCP server configured in the client harness
 - Arize Phoenix OpenTelemetry tracing backend (for `session-trace` and `learn`)
-- Shared build-staged skills from `lib/skills/` (`argdown-toulmin`, `dispatch`)
+- GitHub CLI (`gh`) for repository pull request and issue workflows
+- Node.js and `@argdown/cli` (for standalone Argdown map validation in `argument-extraction`, `argument-audit`, and `argument-map`)
