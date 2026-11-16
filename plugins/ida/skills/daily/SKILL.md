@@ -25,8 +25,14 @@ A daily note run executes change-only steps defined canonically in PKB template 
 - **Graceful Degradation**: When external services (GitHub, Email, Calendar) are unreachable, attempt all available tool channels before recording quiet single-line status in-place.
 - **Trace Receipts Only**: Record step completion receipts in internal execution traces and telemetry. Never append run execution logs, hourly heartbeats, cron timestamps, or raw reconcile mutation dumps to the daily note body.
 - **No Local Transcript or Hook Log Scraping**: Sweeps and subagents must never read or scrape local `.system_generated/logs/transcript*.jsonl` or `/tmp/aops_debug_hooks_*.jsonl` files. Prompt and trace recoveries query Arize Phoenix via `ida:session-trace`.
-- **Groundwork-First Prompt and Task Progression**: Every daily run's prompt and reconciliation sweeps load open high-value-prompt tracking tasks alongside window prompts and move each item on regularly by doing its groundwork -- settling unknowns from the PKB first (then live GitHub and traces), closing (`done`) shipped deliverables and releases the user knows about without waiting to verify user-side installation, placing or promoting ready next agent steps onto the graph as `status: queued` via `/q` and dispatching them via `/dispatch`, and setting tasks whose agent groundwork and recommendation are complete and that genuinely wait on the user's own decision to `status: review` (`assignee: user`) so they surface in `## With you`.
-- **Subagent Routing**: Execution sweeps dispatch to `ida:james`; PKB graph curation and Step 4 synthesis dispatch to `ida:pauli`.
+- **Groundwork-First Prompt and Task Progression**: Every daily run's prompt and reconciliation sweeps load open high-value-prompt tracking tasks alongside window prompts and advance each item via groundwork:
+  - Settle unknowns from the PKB first, then live GitHub and traces.
+  - Close (`done`) shipped deliverables and releases the user knows about without waiting to verify user-side installation.
+  - Place or promote ready next agent steps onto the graph at `status: queued` via `/q` and dispatch them via `/dispatch`.
+  - Set tasks whose agent groundwork and recommendation are complete and that genuinely wait on the user's own decision to `status: review` (`assignee: user`) so they surface in `## With you`.
+- **Subagent Routing**: Dispatch execution sweeps to worker subagents and Step 4 graph synthesis to the knowledge base custodian using unprefixed subagent type names so dispatches resolve uniformly across client harnesses.
+- **Autonomous Execution Mode**: Run unattended and recurring daily-note jobs in autonomous non-plan execution modes; when invoked interactively under a harness with plan mode active, keep plan-exit summaries terse (`<= 10` lines) and batch tool calls to avoid cadence interrupts.
+- **Single-Pass Progress-Task Drafting**: Compose and checkpoint drafts directly onto the run's PKB progress task in a single semantic pass and pass the post-lock `modified` timestamp to the final diff write; never write local scratch draft files or run mechanical word-count or regex scripts.
 
 ## 3. Conversational Handover
 
