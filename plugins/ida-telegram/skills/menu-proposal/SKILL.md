@@ -28,7 +28,7 @@ Apply qualitative judgment to evaluate candidate commands for the shared menu:
 - **Shared Menu Allocation:** Prioritize high-frequency operational triage, quick capture, decision walk-throughs, task queueing, disambiguation, daily briefings, and worker dispatch (e.g. `/decide`, `/q`, `/reconcile`, `/hydrate`, `/up`, `/reify`, `/dispatch`, `/daily`).
 - **Composite commands:** Propose single-tap composite commands where recurring multi-step patterns or common briefings are identified (such as `/daily`).
 - **Command identifier normalization & platform constraints:**
-  - Convert kebab-case skill and workflow names to valid Telegram command identifiers (`snake_case`) by replacing hyphens with underscores (e.g. `strategic-review` $\rightarrow$ `/strategic_review`, `argument-map` $\rightarrow$ `/argument_map`, `menu-proposal` $\rightarrow$ `/menu_proposal`, `session-trace` $\rightarrow$ `/session_trace`).
+  - Convert kebab-case skill and workflow names to valid Telegram command identifiers (`snake_case`) by replacing hyphens with underscores (e.g. `strategic-review` $\rightarrow$ `/strategic_review`, `argument-map` $\rightarrow$ `/argument_map`, `menu-proposal` $\rightarrow$ `/menu_proposal`, `peer-review` $\rightarrow$ `/peer_review`).
   - Ensure all command identifiers strictly match `/^[a-z0-9_]{1,32}$/` (no hyphens, lowercase alphanumeric and underscores only, length 1–32).
   - Descriptions must be 1–256 characters, and total registered commands must not exceed 100.
 

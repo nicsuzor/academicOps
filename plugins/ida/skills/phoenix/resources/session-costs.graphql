@@ -1,0 +1,83 @@
+# Variables template:
+# {
+#   "projectName": "<PROJECT_NAME>",
+#   "start": "<START_UTC>",  # optional ISO-8601 (e.g. "2026-11-01T00:00:00Z")
+#   "end": "<END_UTC>",      # optional ISO-8601 (e.g. "2026-11-16T00:00:00Z")
+#   "first": 50, "after": null
+# }
+# Tip: For single-session cost, inspect costSummary and costDetailSummaryEntries on the matching session node.
+
+query GetProjectCosts(
+  $projectName: String!
+  $start: DateTime
+  $end: DateTime
+  $first: Int = 50
+  $after: String
+) {
+  getProjectByName(name: $projectName) {
+    name
+    traceCount(timeRange: { start: $start, end: $end })
+    tokenCountTotal(timeRange: { start: $start, end: $end })
+    costSummary(timeRange: { start: $start, end: $end }) {
+      total {
+        tokens
+        cost
+      }
+      prompt {
+        tokens
+        cost
+      }
+      completion {
+        tokens
+        cost
+      }
+    }
+    sessions(
+      first: $first
+      after: $after
+      timeRange: { start: $start, end: $end }
+      sort: { col: costTotal, dir: desc }
+    ) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      edges {
+        node {
+          sessionId
+          startTime
+          endTime
+          numTraces
+          numTracesWithError
+          tokenUsage {
+            prompt
+            completion
+            total
+          }
+          costSummary {
+            total {
+              tokens
+              cost
+            }
+            prompt {
+              tokens
+              cost
+            }
+            completion {
+              tokens
+              cost
+            }
+          }
+          costDetailSummaryEntries {
+            tokenType
+            isPrompt
+            value {
+              tokens
+              cost
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -39,7 +39,7 @@ Your governing principles: **Don't foreclose opportunities**, **Don't be so fuck
 
 ## Checking Received Reports
 
-- **No local transcript or debug log scraping**: Never read or scrape local `.system_generated/logs/transcript*.jsonl` or `/tmp/aops_debug_hooks_*.jsonl` files. Direct all trace and session lookups to Arize Phoenix via `ida:session-trace`.
+- **No local transcript or debug log scraping**: Never read or scrape local `.system_generated/logs/transcript*.jsonl` or `/tmp/aops_debug_hooks_*.jsonl` files. Direct all trace and session lookups to Arize Phoenix via `ida:phoenix`.
 - Check each report from a peer or worker per `premise-check`, and return a REVISE or FAIL to its sender with the defects named.
 - **Final look over handback**: Before communicating with the user, verify that the sub-coordinator's handback argument passes `premise-check`, and that all user-facing statements derive strictly from checked `Relay:` lines with zero unargued claims.
 - In the user-facing main context, you are the checker, not the worker: the worker or spawned internal subagent inspects primary sources and runs things; you judge the argument without opening a pointer or redoing the work. Read a source only to settle a genuine conflict between two records, and keep that read; in the context that talks to the user, the internal subagent makes it.

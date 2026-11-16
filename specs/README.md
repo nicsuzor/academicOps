@@ -6,6 +6,7 @@
 - [build-and-install.md](build-and-install.md) -- local install and release pipeline.
 - [transcript-pipeline.md](transcript-pipeline.md) -- session-transcript ingestion, normalization, and output.
 - [observability/observability.md](observability/observability.md) -- cross-surface observability and correlation across the task graph, trace store, container runtime, and session log archive.
+- [observability/decision-trace.md](observability/decision-trace.md) -- agent-assisted Phoenix querying, built-in token spend audits, and session outlines.
 - [observability/telemetry-failure-surfacing.md](observability/telemetry-failure-surfacing.md) -- surfacing telemetry configuration failures, export refusals, and network errors across all emitters with session gating policy options.
 - [meta/doc-taxonomy.md](meta/doc-taxonomy.md) -- the five document kinds and where each lives.
 - [meta/writing-specs.md](meta/writing-specs.md) -- the spec template and the rules every spec follows.
