@@ -9,18 +9,18 @@ import { SharedTelegramChannelCore } from "../core/channel-core.js";
 
 export class StdioMcpServer {
   private config: PluginConfig;
-  private store: PluginStore;
-  private broker: QuestionBroker;
+  private store?: PluginStore;
+  private broker?: QuestionBroker;
   private _bot: TelegramBotClient | null;
-  private permRelay: PermissionRelay;
-  public channelCore: SharedTelegramChannelCore;
+  private permRelay?: PermissionRelay;
+  public channelCore?: SharedTelegramChannelCore;
 
   constructor(
     config: PluginConfig,
-    store: PluginStore,
-    broker: QuestionBroker,
-    bot: TelegramBotClient | null,
-    permRelay: PermissionRelay,
+    store?: PluginStore,
+    broker?: QuestionBroker,
+    bot: TelegramBotClient | null = null,
+    permRelay?: PermissionRelay,
     channelCore?: SharedTelegramChannelCore
   ) {
     this.config = config;
@@ -28,9 +28,10 @@ export class StdioMcpServer {
     this.broker = broker;
     this._bot = bot;
     this.permRelay = permRelay;
-    this.channelCore =
-      channelCore ||
-      new SharedTelegramChannelCore({
+    if (channelCore) {
+      this.channelCore = channelCore;
+    } else if (store && broker && permRelay) {
+      this.channelCore = new SharedTelegramChannelCore({
         config,
         store,
         broker,
@@ -38,7 +39,11 @@ export class StdioMcpServer {
         permRelay,
         emitChannelNotification: (content, meta) => this.emitChannelNotification(content, meta),
       });
-    if (!this.channelCore.emitChannelNotification) {
+    }
+    if (config.isPrimary && !this.channelCore) {
+      throw new Error("[ida-telegram] Primary StdioMcpServer requires store, broker, and permRelay (or channelCore)");
+    }
+    if (this.channelCore && !this.channelCore.emitChannelNotification) {
       this.channelCore.emitChannelNotification = (content, meta) => this.emitChannelNotification(content, meta);
     }
   }
@@ -55,7 +60,7 @@ export class StdioMcpServer {
   }
 
   public emitChannelNotification(content: string, meta: Record<string, unknown>) {
-    this.store.recordTurn("in", String(content));
+    this.store?.recordTurn("in", String(content));
     const notification = {
       jsonrpc: "2.0",
       method: "notifications/claude/channel",
@@ -183,6 +188,9 @@ export class StdioMcpServer {
 
     // Claude Code channel permission request notification (notifications/claude/channel/permission_request)
     if (method === "notifications/claude/channel/permission_request") {
+      if (!this.config.isPrimary || !this.permRelay) {
+        return null;
+      }
       const p = (params || {}) as {
         request_id?: string;
         tool_name?: string;
@@ -218,6 +226,9 @@ export class StdioMcpServer {
   }
 
   private async executeTool(name: string, args: Record<string, unknown>): Promise<unknown> {
+    if (!this.channelCore) {
+      throw new Error("Channel core is not initialized on non-primary instance");
+    }
     return this.channelCore.handleIpcMessage({ type: name, ...args, _toolName: name });
   }
 

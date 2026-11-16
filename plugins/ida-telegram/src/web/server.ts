@@ -23,7 +23,7 @@ export function startWebServer(ctx: WebContext, _appDir?: string) {
 
       // 2. Static Mini App routes: /app/* are decommissioned and retired per §5 of
       // specs/telegram/mini-app-dashboard-integration.md (AC-5.1, AC-5.2).
-      // The Overwhelm Dashboard at dash.suzor.com serves all static assets.
+      // The external dashboard serves all static assets.
       // The agent process binds only internal API routes; all other paths return 404.
       return new Response("Not Found", { status: 404 });
     },

@@ -35,14 +35,14 @@ describe("Dashboard Cutover and Standalone Retirement (§5 of mini-app-dashboard
     }
   });
 
-  test("AC2: Details button on fresh reply from each Ida with a bot carries a dash.suzor.com URL with instance parameter", async () => {
+  test("AC2: Details button on fresh reply from each bot instance carries configured Mini App URL with instance parameter", async () => {
     const tmp = mkdtempSync(join(tmpdir(), "cutover-reply-"));
     try {
-      for (const instance of ["prime", "actual", "audre"]) {
+      for (const instance of ["alpha", "beta", "gamma"]) {
         const config = loadConfig({
           STATE_DIR: tmp,
           TELEGRAM_BOT_TOKEN: "mock-token",
-          MINI_APP_URL: "https://dash.suzor.com",
+          MINI_APP_URL: "https://dash.example.test",
           IDA_NAME: instance,
           ALLOWED_USER_IDS: "12345",
         });
@@ -78,8 +78,8 @@ describe("Dashboard Cutover and Standalone Retirement (§5 of mini-app-dashboard
         expect(detailsBtn.web_app).toBeDefined();
         const url = detailsBtn.web_app.url;
 
-        // Must point to dash.suzor.com and include instance and details id
-        expect(url).toStartWith("https://dash.suzor.com/app/index.html");
+        // Must point to configured MINI_APP_URL and include instance and details id
+        expect(url).toStartWith("https://dash.example.test/app/index.html");
         expect(url).toContain(`instance=${instance}`);
         expect(url).toMatch(/[?&]d=/);
       }
@@ -88,14 +88,14 @@ describe("Dashboard Cutover and Standalone Retirement (§5 of mini-app-dashboard
     }
   });
 
-  test("AC1 & AC-5.4: Review diff button carries dash.suzor.com URL with instance parameter", async () => {
+  test("AC1 & AC-5.4: Review diff button carries configured Mini App URL with instance parameter", async () => {
     const tmp = mkdtempSync(join(tmpdir(), "cutover-review-"));
     try {
       const config = loadConfig({
         STATE_DIR: tmp,
         TELEGRAM_BOT_TOKEN: "mock-token",
-        MINI_APP_URL: "https://dash.suzor.com",
-        IDA_NAME: "prime",
+        MINI_APP_URL: "https://dash.example.test",
+        IDA_NAME: "alpha",
         ALLOWED_USER_IDS: "12345",
       });
 
@@ -116,13 +116,13 @@ describe("Dashboard Cutover and Standalone Retirement (§5 of mini-app-dashboard
       await bot.sendReply({
         chatId: 12345,
         formatted: { plainText: "Check this PR", entities: [] },
-        review: { repo: "nicsuzor/academicOps", pr: 3348 },
+        review: { repo: "example-org/example-repo", pr: 3348 },
       });
 
       const inlineKeyboard = sentPayload.reply_markup.inline_keyboard;
       const reviewBtn = inlineKeyboard.flat().find((b: any) => b.text.includes("Review diff"));
       expect(reviewBtn).toBeDefined();
-      expect(reviewBtn.web_app.url).toBe("https://dash.suzor.com/app/index.html?instance=prime&tab=review");
+      expect(reviewBtn.web_app.url).toBe("https://dash.example.test/app/index.html?instance=alpha&tab=review");
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }

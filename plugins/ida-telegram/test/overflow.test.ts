@@ -165,7 +165,7 @@ describe("Progressive disclosure: Overflow handling", () => {
     }
   });
 
-  test("FR-1.3 & §6.6: loadConfig reads stateDir .env and IDA_WEB_URL for the 🔍 Details button link", async () => {
+  test("FR-1.3 & §6.6: loadConfig reads stateDir .env and MINI_APP_URL for the 🔍 Details button link", async () => {
     const { loadConfig } = await import("../src/config.js");
     const { StdioMcpServer } = await import("../src/mcp/server.js");
     const { TelegramBotClient } = await import("../src/telegram/bot.js");
@@ -177,7 +177,7 @@ describe("Progressive disclosure: Overflow handling", () => {
     const { tmpdir } = await import("node:os");
 
     const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-details-env-"));
-    writeFileSync(join(stateDir, ".env"), 'IDA_WEB_URL="https://ida.example.ts.net/"\n', "utf-8");
+    writeFileSync(join(stateDir, ".env"), 'MINI_APP_URL="https://ida.example.test/"\n', "utf-8");
 
     const config = loadConfig({
       TELEGRAM_BOT_TOKEN: "test-token",
@@ -212,7 +212,7 @@ describe("Progressive disclosure: Overflow handling", () => {
           name: "reply",
           arguments: {
             chat_id: 1111111111,
-            text: "Summary with configured IDA_WEB_URL.",
+            text: "Summary with configured MINI_APP_URL.",
             detail: "Full details markdown.",
           },
         },
@@ -222,7 +222,7 @@ describe("Progressive disclosure: Overflow handling", () => {
       const flatButtons = (apiCalls[0].body.reply_markup?.inline_keyboard || []).flat();
       const detailsButton = flatButtons.find((b: any) => b.text === "🔍");
       expect(detailsButton).toBeDefined();
-      expect(detailsButton?.web_app?.url).toBe(`https://ida.example.ts.net/app/index.html?d=${parsedResult.detailsId}`);
+      expect(detailsButton?.web_app?.url).toBe(`https://ida.example.test/app/index.html?d=${parsedResult.detailsId}`);
     } finally {
       globalThis.fetch = origFetch;
       rmSync(stateDir, { recursive: true, force: true });

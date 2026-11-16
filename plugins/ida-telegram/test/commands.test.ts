@@ -67,7 +67,7 @@ describe("Native Telegram bot commands for Ida (FR-8.1)", () => {
       MINI_APP_URL: "https://ida.example.test",
       TELEGRAM_BOT_TOKEN: "test-token",
       IDA_TELEGRAM_ROLE: "primary",
-      TELEGRAM_ALLOW_FROM: "1111111111,12345678",
+      ALLOWED_USER_IDS: "1111111111,12345678",
       TELEGRAM_BOT_COMMANDS: MENU_JSON,
       STATE_DIR: stateDir,
     });
@@ -169,9 +169,9 @@ describe("Mini App URL configuration", () => {
     expect(() => loadConfig({ STATE_DIR: stateDir })).toThrow(/MINI_APP_URL/);
   });
 
-  test("loadConfig takes the Mini App URL from config and strips trailing slashes", () => {
+  test("loadConfig takes the Mini App URL from MINI_APP_URL and strips trailing slashes", () => {
     const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-url-"));
     expect(loadConfig({ STATE_DIR: stateDir, MINI_APP_URL: "https://ida.example.test/" }).miniAppUrl).toBe("https://ida.example.test");
-    expect(loadConfig({ STATE_DIR: stateDir, IDA_WEB_URL: "https://web.example.test" }).miniAppUrl).toBe("https://web.example.test");
+    expect(() => loadConfig({ STATE_DIR: stateDir, IDA_WEB_URL: "https://web.example.test" })).toThrow(/MINI_APP_URL/);
   });
 });

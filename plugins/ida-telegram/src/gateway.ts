@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { loadConfig, PluginConfig } from "./config.js";
+import { createNonPrimaryConfig, isPrimaryRole, loadConfig, PluginConfig } from "./config.js";
 import { PluginStore } from "./store.js";
 import { QuestionBroker } from "./telegram/questions.js";
 import { PermissionRelay } from "./mcp/permissions.js";
@@ -17,19 +17,33 @@ export interface GatewayOptions {
 
 export class ContainerGateway {
   public config: PluginConfig;
-  public store: PluginStore;
-  public broker: QuestionBroker;
-  public permRelay: PermissionRelay;
+  public store?: PluginStore;
+  public broker?: QuestionBroker;
+  public permRelay?: PermissionRelay;
   public bot: TelegramBotClient | null = null;
-  public channelCore: SharedTelegramChannelCore;
-  public turnManager: TurnManager;
+  public channelCore?: SharedTelegramChannelCore;
+  public turnManager?: TurnManager;
   private socketServer: NetServer | null = null;
 
   constructor(options: GatewayOptions = {}) {
-    this.config = options.config || loadConfig(process.env);
-    this.store = new PluginStore(this.config.stateDir);
-    this.broker = new QuestionBroker(this.config.stateDir);
-    this.permRelay = new PermissionRelay(this.config.stateDir);
+    if (options.config) {
+      this.config = options.config;
+    } else if (!isPrimaryRole(process.env)) {
+      this.config = createNonPrimaryConfig(process.env);
+    } else {
+      this.config = loadConfig(process.env);
+    }
+
+    if (!this.config.isPrimary) {
+      return;
+    }
+
+    const store = new PluginStore(this.config.stateDir);
+    const broker = new QuestionBroker(this.config.stateDir);
+    const permRelay = new PermissionRelay(this.config.stateDir);
+    this.store = store;
+    this.broker = broker;
+    this.permRelay = permRelay;
 
     const defaultRunner: TurnRunner = async (req, signal) => {
       // Default container turn runner: spawn agent CLI process
@@ -82,45 +96,48 @@ export class ContainerGateway {
       });
     };
 
-    this.turnManager = new TurnManager({
-      store: this.store,
+    const turnManager = new TurnManager({
+      store,
       autoInterrupt: this.config.autoInterrupt,
       runner: options.runner || defaultRunner,
     });
+    this.turnManager = turnManager;
 
-    this.channelCore = new SharedTelegramChannelCore({
+    const channelCore = new SharedTelegramChannelCore({
       config: this.config,
-      store: this.store,
-      broker: this.broker,
+      store,
+      broker,
       bot: null,
-      permRelay: this.permRelay,
-      turnManager: this.turnManager,
+      permRelay,
+      turnManager,
     });
+    this.channelCore = channelCore;
 
     if (this.config.botToken) {
       this.bot = new TelegramBotClient(
         this.config,
-        this.broker,
-        this.permRelay,
+        broker,
+        permRelay,
         (content, meta) => {
-          const chatId = meta?.chat_id ? parseInt(String(meta.chat_id), 10) : this.channelCore.getDefaultChatId();
-          this.turnManager.dispatchTurn({
+          const chatId = meta?.chat_id ? parseInt(String(meta.chat_id), 10) : channelCore.getDefaultChatId();
+          turnManager.dispatchTurn({
             chatId,
             prompt: content,
             meta,
           });
         },
-        this.store
+        store
       );
-      this.channelCore.bot = this.bot;
+      channelCore.bot = this.bot;
     }
   }
 
   public async start(): Promise<void> {
-    if (!this.config.isPrimary) {
+    if (!this.config.isPrimary || !this.channelCore) {
       console.log("[ida-telegram-gateway] Non-primary instance: poller and gateway disabled.");
       return;
     }
+    const channelCore = this.channelCore;
 
     // Start local IPC socket server
     if (existsSync(this.config.socketPath)) {
@@ -143,7 +160,7 @@ export class ContainerGateway {
           if (line) {
             try {
               const req = JSON.parse(line);
-              const resp = await this.channelCore.handleIpcMessage(req);
+              const resp = await channelCore.handleIpcMessage(req);
               client.write(JSON.stringify(resp) + "\n");
             } catch (err: any) {
               client.write(JSON.stringify({ error: err.message || String(err) }) + "\n");

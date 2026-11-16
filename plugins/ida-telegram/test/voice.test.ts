@@ -665,6 +665,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
         STATE_DIR: stateDir,
         VOICE_SPEAK_CMD: "speak.sh",
         TELEGRAM_BOT_TOKEN: "test-token",
+        ALLOWED_USER_IDS: "1111111111",
         IDA_TELEGRAM_ROLE: "primary",
       });
 
@@ -696,6 +697,7 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
         STATE_DIR: stateDir,
         VOICE_SPEAK_CMD: "nonexistent-speak.sh",
         TELEGRAM_BOT_TOKEN: "test-token",
+        ALLOWED_USER_IDS: "1111111111",
         IDA_TELEGRAM_ROLE: "primary",
       });
       const unresolvableBot = new TelegramBotClient(

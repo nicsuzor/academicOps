@@ -21,7 +21,7 @@ Ida's custom Telegram channel and Mini App plugin for Claude Code.
   - Every reply automatically attaches `[🧐 Check]`, `[💡 Explain]`, and `[🧾]` action buttons (unless `actions: false` is passed), with `🔍` (Details) consolidated on the same row in default reply keyboards. Binary recommendation buttons `[✅]` and `[❌]` attach only when `binary_decision: true` is passed on `reply`; multi-option decisions use labelled `buttons` with the recommended option highlighted instead, and replies with no decision carry neither. Tapping `🧐 Check` delivers an inbound request naming the message for a peer `premise-check`. Tapping `💡 Explain` delivers an inbound request to expand that message in more detail. Tapping `🧾` delivers an inbound request to provide the argument chain ("how do you know that?") with verbatim Argdown blocks attached in Details. Tapping `✅` or `❌` marks the card with the choice and delivers an event naming the message and whether the recommendation was accepted or declined.
 - **Mini App Security, Details, Review, Questions & Anchor:**
   - Loopback-only Bun HTTP server (`127.0.0.1:<port>`) serving `/app/*` and `/api/app/*`.
-  - `MINI_APP_URL` (or `IDA_WEB_URL`), required: the public URL at which this server is reachable, used for Mini App buttons. There is no default; the plugin refuses to start without it.
+  - `MINI_APP_URL`, required: the public URL at which this server is reachable, used for Mini App buttons. There is no default; the plugin refuses to start without it.
   - Telegram `initData` HMAC-SHA256 validation with 1-hour expiration and `allowFrom` whitelist check.
   - **Details tab (`FR-4.3`, `FR-1.6`):** Renders stored Details Markdown as formatted HTML (headings, inline formatting, collapsible `>!` quotes, syntax-highlighted code blocks, and HTML `<table>` elements).
   - **Review tab (`FR-4.4`, `FR-4.5`):** Displays live pending tool permission requests (`Bash` copyable scripts, `Edit`/`MultiEdit`/`Write` unified diffs, JSON inputs) with `Allow` / `Deny` actions that resolve the relay and edit the Telegram chat card (`Allowed via Mini App ✅`), alongside PR/branch diffs fetched via `GITHUB_TOKEN` with a file tree, syntax-highlighted hunks, and `Approve` / `Request changes` actions that emit channel events to the agent without mutating GitHub directly.
@@ -53,6 +53,6 @@ Ida's custom Telegram channel and Mini App plugin for Claude Code.
   - Excludes reserved official-plugin commands (`/start`, `/help`, `/status`) and headless worker commands (`/pull`, `/dump`); hyphens in configured names become underscores.
   - Commands reach the agent as typed (`meta.command`, `meta.args`); what a command does is set by the agent's instructions (`skills/telegram/SKILL.md`), not by plugin code.
 - **Concurrency & Host Locks:**
-  - Gated to `IDA_TELEGRAM_ROLE=primary`.
-  - Non-primary instances register zero tools, run no poller, and leave hooks inert.
+  - Gated to `IDA_TELEGRAM_ROLE=primary`. Primary instances require `STATE_DIR`, `MINI_APP_URL`, `TELEGRAM_BOT_TOKEN`, and `ALLOWED_USER_IDS` (configured in the environment or `$STATE_DIR/.env`), with no home-directory or Mini App URL fallbacks.
+  - Non-primary instances register zero tools, run no poller or web server, create no state directories or store files on disk, and leave hooks inert.
   - Same-host PID locking and exponential 409 Conflict backoff policy.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { loadConfig } from "./src/config.js";
+import { createNonPrimaryConfig, isPrimaryRole, loadConfig } from "./src/config.js";
 import { PluginStore } from "./src/store.js";
 import { QuestionBroker } from "./src/telegram/questions.js";
 import { PermissionRelay } from "./src/mcp/permissions.js";
@@ -15,6 +15,14 @@ import { randomBytes } from "node:crypto";
 import { broadcastSseEvent } from "./src/web/routes.js";
 
 async function main() {
+  if (!isPrimaryRole(process.env)) {
+    const inertConfig = createNonPrimaryConfig(process.env);
+    const mcpServer = new StdioMcpServer(inertConfig);
+    console.error("[ida-telegram] Non-primary instance: registering 0 tools, no poller, no web server.");
+    mcpServer.startStdioLoop();
+    return;
+  }
+
   const config = loadConfig(process.env);
   const store = new PluginStore(config.stateDir);
   const broker = new QuestionBroker(config.stateDir);
@@ -32,12 +40,6 @@ async function main() {
 
   // Stdio MCP server
   const mcpServer = new StdioMcpServer(config, store, broker, null, permRelay, channelCore);
-
-  if (!config.isPrimary) {
-    console.error("[ida-telegram] Non-primary instance: registering 0 tools, no poller, no web server.");
-    mcpServer.startStdioLoop();
-    return;
-  }
 
   // Session secret for Mini App tokens
   const sessionSecret = randomBytes(32).toString("hex");

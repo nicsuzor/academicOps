@@ -1,6 +1,5 @@
 import { createConnection } from "node:net";
 import { join } from "node:path";
-import { homedir } from "node:os";
 import { existsSync } from "node:fs";
 
 // PreToolUse Hook for AskUserQuestion
@@ -11,9 +10,16 @@ async function main() {
     process.exit(0);
   }
 
-  const socketPath =
-    process.env.SOCKET_PATH ||
-    join(process.env.STATE_DIR || join(homedir(), ".claude", "channels", "telegram"), "bridge.sock");
+  const explicitSocketPath = (process.env.SOCKET_PATH || "").trim();
+  const stateDir = (process.env.STATE_DIR || "").trim();
+  if (!explicitSocketPath && !stateDir) {
+    process.stderr.write(
+      "ida-telegram AskUserQuestion hook error: neither STATE_DIR nor SOCKET_PATH is set for primary instance\n"
+    );
+    process.exit(1);
+  }
+
+  const socketPath = explicitSocketPath || join(stateDir, "bridge.sock");
 
   if (!existsSync(socketPath)) {
     process.stderr.write(`ida-telegram AskUserQuestion hook error: Telegram bridge socket not found at ${socketPath}\n`);
