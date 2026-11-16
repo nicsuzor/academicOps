@@ -10,20 +10,24 @@ Write and consolidate knowledge notes under `synthesize-not-accrete`. State curr
 ## Invariants
 
 - **Current facts only (CURRENT STATE ONLY)**: The PKB holds what is true now, one canonical note per topic. Retaining historical provenance lists (`sources:` frontmatter arrays), session references, chronological changelogs, dated layers, or citations to non-existent or prior-state material is strictly prohibited. When encountered, strip historical source lists immediately. Never accumulate historical provenance.
-- **Rewrite in place**: A fact that is no longer true is deleted, not annotated. No superseded sections, changelogs, dated layers, or corrections that quote the old text.
-- **Custodial curation**: Pauli exclusively curates knowledge notes per `.agents/rules/pkb.md`; other agents offer durable facts to Pauli or record them under `## Durable Facts` in task records.
+- **Rewrite in place & concision (30–80 lines)**: A fact that is no longer true is deleted, not annotated. No superseded sections, changelogs, dated layers, or corrections that quote the old text. Capture durable principles, architectural decisions (that are not PKB rules), invariants, and verified current-state findings while stripping execution trivia, line numbers, and transient timestamps, keeping note bodies within 30–80 lines (<1,500 characters) so notes can be read and rewritten whole.
+- **Custodial curation**: Pauli exclusively curates knowledge notes per `.agents/rules/pkb.md`; other agents offer settled durable facts to Pauli or record them under `## Durable Facts` in task records and handover summaries.
 - **Search before writing**: Query existing notes before creating or updating.
+- **One note per subject and archive vs delete by PKB specification reference**: Decide one note per subject (co-locating substantive rulings and their operational or enforcement state in a single canonical topic note) and archive versus delete strictly by referencing the rules in the governing knowledge base specification, stating neither rule's operational test or criteria a second time.
+- **Unified four-category retirement on sight**: When encountering conflicting, unnecessary, demonstrably false, or stale content in the knowledge base, resolve, merge, correct, or retire it immediately on sight without deferring to a later pass, filing a maintenance ticket, or reserving it as the user's call:
+  - _Conflicting_: When sources disagree or contradict verified live state, state the resolved current fact and delete the losing version outright without recording the disagreement (where a retired premise would otherwise be re-derived by the next reader, keep one forward-looking line of warning and delete the reasoning it came from; if unresolvable from evidence, ask rather than filing both).
+  - _Unnecessary_: Merge duplicate notes, overlapping topic fragments, or observation scraps into the single canonical topic note and delete the redundant note immediately.
+  - _Demonstrably false_: Delete or correct claims contradicting verified live state or primary sources immediately on sight.
+  - _Stale_: Decide archive versus delete strictly by the governing knowledge base specification rules without restating them here. Do not archive or cancel notes based on age alone.
 - **Never fabricate**: Record citable facts and direct implications; omit opinions on what should have happened.
-- **Resolve contradictions**: When sources disagree, state the resolved fact and delete the losing version -- do not record the disagreement. Where a retired premise would otherwise be re-derived by the next reader, keep one forward-looking line of warning and delete the reasoning it came from. If the conflict cannot be resolved from evidence, ask; do not file both claims and move on.
 - **Target and task rules**: Target nodes carry only worth ($W_t \in \mathbb{R}$ on the open continuous log scale); task bodies are work checklists, not logs.
-- **Bugs on GitHub**: Report system, tool, and framework bugs on GitHub only.
-- **Age is not staleness**: Do not archive or cancel notes based on age alone.
+- **Bugs on GitHub (never in knowledge notes)**: Report system, tool, and framework bugs on GitHub only; faults diagnosed under `/learn` route to queued task nodes (`type: task`) on the PKB graph carrying the formatted issue payload, never to knowledge notes.
 
 ## Capture Workflow
 
-1. **Search**: Query existing notes for the topic.
-2. **Find canonical note**: Maintain one canonical note per primary topic (concept, tool, project). If a topic note exists, update it rather than creating a new one.
-3. **Augment in place**: Rewrite the relevant section to reflect current state. Replace superseded facts; do not append dated entries or provenance narratives. Grounding evidence lives in its own node linked by `[[wikilink]]`.
+1. **Search**: Query existing notes for the topic and scan completed task records or handover summaries for unfiled `## Durable Facts`.
+2. **Find canonical note**: Maintain one canonical note per primary topic (concept, tool, project) per the governing knowledge base specification. If a topic note exists, update it rather than creating a new one, and mark collected task facts incorporated.
+3. **Augment in place**: Rewrite the relevant section to reflect current state within the 30–80 line concision budget. Replace superseded facts; do not append dated entries or provenance narratives. Grounding evidence lives in its own node linked by `[[wikilink]]`.
 4. **Create when novel**: Create documents (`type: knowledge`) or atomic facts (`type: memory`) only when no canonical topic matches.
 
 ### Graph Integration
@@ -35,7 +39,7 @@ Write and consolidate knowledge notes under `synthesize-not-accrete`. State curr
 
 ## Routing Emerging Work
 
-- **Incidents and friction**: Route to `/aops:learn` for root-cause diagnosis.
+- **Incidents and friction**: Route to `/learn` (`ida:learn`) for root-cause diagnosis, which files diagnosed tool and framework faults as queued task nodes (`type: task`) on the PKB graph rather than knowledge notes.
 - **New asks or decisions**: Route to `/ida:q` for graph positioning and valuation.
 - **Fallback**: If an owning skill cannot run, create an `inbox` node noting the required skill.
 

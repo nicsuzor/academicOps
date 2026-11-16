@@ -25,6 +25,7 @@
 - [agents/external-state-recheck.md](agents/external-state-recheck.md) -- targeted external-state verification and read-only GitHub query authority for the knowledge base custodian.
 - [agents/dump-session-wrapup.md](agents/dump-session-wrapup.md) -- dump skill invocation modes: user-run emergency handover vs. agent-run routine wrap-up, consolidated daily note project pointers, retroactive tasks, durable facts, and handover traceability.
 - [agents/dump-faults-and-finds.md](agents/dump-faults-and-finds.md) -- dump skill triggers for significant operational fault recoveries and major diagnostic findings without code changes.
+- [agents/offering-filing-and-retiring-pkb-facts.md](agents/offering-filing-and-retiring-pkb-facts.md) -- offering settled durable facts to the custodian, anti-sprawl canonical filing, unified four-category content retirement, and `/learn` fault task queueing.
 
 ## Enforcement
 
