@@ -2,9 +2,10 @@
 """Token usage and estimated cost per session (and per PKB task) from Phoenix LLM spans.
 
 One screen, ranked by cost: session, agent/role, task, model, in/out/cache tokens,
-estimated USD. Reads the Phoenix REST API (``GET /v1/projects/{id}/spans`` with
-``span_kind`` and ``start_time``/``end_time`` filters) so it runs anywhere Phoenix is
-reachable over HTTP -- no Phoenix MCP, no SQLite access to the span store.
+estimated USD. Routes ``GET /v1/projects/{id}/...`` queries through the Phoenix MCP
+``phoenix_execute`` endpoint (using indexed keyset-paged session/trace joins when
+filtering spans on ``session.id``, with full-payload ``getSpans`` hydration for
+oversized rows).
 
 Method
 ------
@@ -67,6 +68,9 @@ PROJECT_ENV_VAR = "PHOENIX_MCP_PROJECT"
 _ACCESS_TOKEN_PAIRS = (("DISPATCHER_MCP_TOKEN_ID", "DISPATCHER_MCP_TOKEN_SECRET"),)
 _MCP_SESSIONS: dict[str, str] = {}
 PAGE_LIMIT = 1000
+SQL_PAGE_MAX_ROWS = 499
+SQL_ATTR_INLINE_BYTES = 200_000
+SQL_EVENTS_INLINE_BYTES = 50_000
 HTTP_TIMEOUT = 120
 
 EXIT_CONFIG = 2
@@ -229,10 +233,211 @@ def _mcp_init_session(mcp_url: str) -> str:
         raise ConfigError(f"cannot reach {mcp_url}: {exc.reason}") from exc
 
 
+_SQL_IDENT_PART_RE = re.compile(r"^[A-Za-z_]\w*$")
+
+
+def _sql_quote(value: str) -> str:
+    if "\x00" in value:
+        raise ConfigError("NUL byte is not permitted in Phoenix SQL literal")
+    return "'" + value.replace("'", "''") + "'"
+
+
+def _sql_attr_expr(attr_key: str) -> str:
+    if not attr_key or "\x00" in attr_key:
+        raise ConfigError(f"invalid attribute key: {attr_key!r}")
+    flat_path = '$."' + attr_key.replace('"', '""') + '"'
+    if "." not in attr_key:
+        return f"(s.attributes ->> {_sql_quote(flat_path)})"
+    parts = [
+        part if _SQL_IDENT_PART_RE.match(part) else '"' + part.replace('"', '""') + '"'
+        for part in attr_key.split(".")
+    ]
+    nested_path = "$." + ".".join(parts)
+    return (
+        f"COALESCE(s.attributes ->> {_sql_quote(nested_path)}, "
+        f"s.attributes ->> {_sql_quote(flat_path)})"
+    )
+
+
+def _build_session_spans_code(tool_args: dict[str, Any]) -> str:
+    """Build phoenix_execute code for indexed keyset-paged session.id span extraction.
+
+    Phoenix's ``getSpans(attribute=['session.id:...'])`` sequentially scans unindexed JSONB
+    attributes across the entire span table and times out on multi-hundred-thousand-row stores.
+    Joining ``project_sessions -> projects -> traces -> spans`` uses relational indexes while:
+      * preserving internal child spans on session traces whose ``session.id`` is NULL and
+        excluding foreign-session spans on shared traces;
+      * projecting NULL for rows exceeding SQLite's 256 KiB executeSql row cap and hydrating
+        those spans whole via indexed ``getSpans(span_id=[...])`` in the same call; and
+      * paging deterministically on monotonic ``s.id > cursor`` with ``LIMIT (page_limit + 1)``
+        so both small caller limits and 4 MiB byte-capped partial SQL pages advance losslessly.
+    """
+    attrs = [str(a) for a in (tool_args.get("attribute") or [])]
+    session_ids = [a.split(":", 1)[1] for a in attrs if a.startswith("session.id:")]
+    other_attrs = [a for a in attrs if not a.startswith("session.id:")]
+    unique_sids = list(dict.fromkeys(session_ids))
+    if not unique_sids or any(not sid for sid in unique_sids):
+        raise ConfigError("session.id attribute filter cannot be empty")
+    if len(unique_sids) > 1:
+        raise ConfigError(f"conflicting session.id attribute filters: {unique_sids}")
+
+    project_id = str(tool_args["project_identifier"])
+    session_id = unique_sids[0]
+    requested_limit = int(tool_args.get("limit", PAGE_LIMIT))
+    if requested_limit <= 0:
+        raise ConfigError(f"span limit must be positive, got {requested_limit}")
+    page_limit = min(requested_limit, SQL_PAGE_MAX_ROWS)
+
+    raw_cursor = tool_args.get("cursor")
+    if raw_cursor is None:
+        cursor_id = 0
+    else:
+        try:
+            cursor_id = int(str(raw_cursor))
+        except ValueError as exc:
+            raise ConfigError(f"invalid session span cursor: {raw_cursor!r}") from exc
+        if cursor_id < 0:
+            raise ConfigError(f"invalid negative session span cursor: {raw_cursor!r}")
+
+    q_proj = _sql_quote(project_id)
+    q_sid = _sql_quote(session_id)
+    sid_expr = _sql_attr_expr("session.id")
+    where_clauses = [
+        f"(p.name = {q_proj} OR p.graphql_node_id = {q_proj})",
+        f"ps.session_id = {q_sid}",
+        f"s.id > {cursor_id}",
+        f"({sid_expr} IS NULL OR {sid_expr} = ps.session_id)",
+    ]
+    if "start_time" in tool_args:
+        where_clauses.append(f"s.start_time >= {_sql_quote(str(tool_args['start_time']))}")
+    if "end_time" in tool_args:
+        where_clauses.append(f"s.start_time < {_sql_quote(str(tool_args['end_time']))}")
+    for col_expr, arg_key in (
+        ("t.trace_id", "trace_id"),
+        ("s.span_id", "span_id"),
+        ("s.span_kind", "span_kind"),
+    ):
+        values = tool_args.get(arg_key)
+        if values:
+            quoted_vals = ", ".join(_sql_quote(str(v)) for v in values)
+            where_clauses.append(f"{col_expr} IN ({quoted_vals})")
+    for raw_attr in other_attrs:
+        if ":" not in raw_attr:
+            raise ConfigError(f"invalid attribute filter (expected key:value): {raw_attr!r}")
+        attr_key, attr_val = raw_attr.split(":", 1)
+        if not attr_key:
+            raise ConfigError(f"empty key in attribute filter: {raw_attr!r}")
+        where_clauses.append(f"{_sql_attr_expr(attr_key)} = {_sql_quote(attr_val)}")
+
+    where_sql = "\n  AND ".join(where_clauses)
+    sql = (
+        "SELECT\n"
+        "  s.id,\n"
+        "  s.graphql_node_id,\n"
+        "  t.trace_id,\n"
+        "  s.span_id,\n"
+        "  s.parent_id,\n"
+        "  s.name,\n"
+        "  s.span_kind,\n"
+        "  s.start_time,\n"
+        "  s.end_time,\n"
+        "  s.status_code,\n"
+        "  s.status_message,\n"
+        f"  CASE WHEN LENGTH(s.attributes) <= {SQL_ATTR_INLINE_BYTES} THEN s.attributes ELSE NULL END AS attributes,\n"
+        f"  CASE WHEN LENGTH(s.events) <= {SQL_EVENTS_INLINE_BYTES} THEN s.events ELSE NULL END AS events,\n"
+        f"  CASE WHEN LENGTH(s.attributes) > {SQL_ATTR_INLINE_BYTES} OR LENGTH(s.events) > {SQL_EVENTS_INLINE_BYTES} THEN 1 ELSE 0 END AS oversized\n"
+        "FROM project_sessions ps\n"
+        "JOIN projects p ON ps.project_id = p.id\n"
+        "JOIN traces t ON t.project_session_rowid = ps.id\n"
+        "JOIN spans s ON s.trace_rowid = t.id\n"
+        f"WHERE {where_sql}\n"
+        "ORDER BY s.id ASC\n"
+        f"LIMIT {page_limit + 1}"
+    )
+
+    return (
+        "import json\n"
+        "def _norm_ts(val):\n"
+        "    if not val:\n"
+        "        return val\n"
+        "    s = str(val).strip().replace(' ', 'T', 1)\n"
+        "    if s.endswith('Z'):\n"
+        "        return s[:-1] + '+00:00'\n"
+        "    t_pos = s.find('T')\n"
+        "    tail = s[t_pos + 1:] if t_pos >= 0 else s\n"
+        "    if '+' not in tail and '-' not in tail:\n"
+        "        return s + '+00:00'\n"
+        "    return s\n"
+        "def _flatten(obj, prefix=''):\n"
+        "    out = {}\n"
+        "    if not isinstance(obj, dict):\n"
+        "        return out\n"
+        "    for k, v in obj.items():\n"
+        "        key = f'{prefix}.{k}' if prefix else str(k)\n"
+        "        if isinstance(v, dict) and v:\n"
+        "            out.update(_flatten(v, key))\n"
+        "        elif not isinstance(v, dict):\n"
+        "            out[key] = v\n"
+        "    return out\n"
+        f"page = await call_tool('executeSql', {{'sql': {json.dumps(sql)}}})\n"
+        "if not isinstance(page, dict) or 'error' in page:\n"
+        "    raise RuntimeError(f'executeSql failed: {page}')\n"
+        "raw_rows = page.get('rows')\n"
+        "if not isinstance(raw_rows, list):\n"
+        "    raise RuntimeError(f'executeSql returned invalid rows: {page}')\n"
+        f"has_more = len(raw_rows) > {page_limit} or bool(page.get('row_count_is_partial'))\n"
+        f"rows = raw_rows[:{page_limit}]\n"
+        "oversized_ids = [str(r[3]) for r in rows if r[13]]\n"
+        "hydrated = {}\n"
+        "if oversized_ids:\n"
+        f"    h_res = await call_tool('getSpans', {{'project_identifier': {json.dumps(project_id)}, 'span_id': oversized_ids, 'limit': len(oversized_ids)}})\n"
+        "    if not isinstance(h_res, dict) or 'error' in h_res or not isinstance(h_res.get('data'), list):\n"
+        "        raise RuntimeError(f'getSpans hydration failed: {h_res}')\n"
+        "    for sp in h_res['data']:\n"
+        "        if isinstance(sp, dict):\n"
+        "            sid = (sp.get('context') or {}).get('span_id') or sp.get('span_id')\n"
+        "            if sid:\n"
+        "                hydrated[str(sid)] = sp\n"
+        "data = []\n"
+        "for r in rows:\n"
+        "    span_id_val = str(r[3])\n"
+        "    if r[13]:\n"
+        "        if span_id_val not in hydrated:\n"
+        "            raise RuntimeError(f'getSpans hydration missing span_id={span_id_val}')\n"
+        "        data.append(hydrated[span_id_val])\n"
+        "        continue\n"
+        "    attrs_obj = json.loads(r[11]) if r[11] else {}\n"
+        "    events_obj = json.loads(r[12]) if r[12] else []\n"
+        "    data.append({\n"
+        "        'id': r[1] or str(r[0]),\n"
+        "        'name': r[5],\n"
+        "        'context': {'trace_id': r[2], 'span_id': span_id_val},\n"
+        "        'span_kind': r[6],\n"
+        "        'parent_id': r[4],\n"
+        "        'start_time': _norm_ts(r[7]),\n"
+        "        'end_time': _norm_ts(r[8]),\n"
+        "        'status_code': r[9] or 'UNSET',\n"
+        "        'status_message': r[10] or '',\n"
+        "        'attributes': _flatten(attrs_obj),\n"
+        "        'events': events_obj,\n"
+        "    })\n"
+        "next_cursor = str(rows[-1][0]) if (has_more and rows) else None\n"
+        "return {'data': data, 'next_cursor': next_cursor}\n"
+    )
+
+
 def get_json(url: str) -> Any:
     mcp_url, tool_name, tool_args = _parse_v1_url(url)
+    if tool_name == "getSpans" and any(
+        isinstance(a, str) and a.startswith("session.id:")
+        for a in (tool_args.get("attribute") or [])
+    ):
+        tool_label = "executeSql"
+        code = _build_session_spans_code(tool_args)
+    else:
+        tool_label = tool_name
+        code = f"return await call_tool({json.dumps(tool_name)}, {json.dumps(tool_args)})"
     session_id = _MCP_SESSIONS.get(mcp_url) or _mcp_init_session(mcp_url)
-    code = f"return await call_tool({json.dumps(tool_name)}, {json.dumps(tool_args)})"
     call_payload = {
         "jsonrpc": "2.0",
         "id": 2,
@@ -264,11 +469,14 @@ def get_json(url: str) -> Any:
     content = result.get("content") or []
     text = "".join(item.get("text", "") for item in content if isinstance(item, dict)).strip()
     if result.get("isError"):
-        raise ConfigError(f"Phoenix MCP tool {tool_name} failed: {text}")
+        raise ConfigError(f"Phoenix MCP tool {tool_label} failed: {text}")
     try:
-        return json.loads(text) if text else {}
+        parsed = json.loads(text) if text else {}
     except json.JSONDecodeError as exc:
-        raise ConfigError(f"Phoenix MCP tool {tool_name} returned non-JSON: {text[:400]}") from exc
+        raise ConfigError(f"Phoenix MCP tool {tool_label} returned non-JSON: {text[:400]}") from exc
+    if isinstance(parsed, dict) and "error" in parsed:
+        raise ConfigError(f"Phoenix MCP tool {tool_label} failed: {parsed['error']}")
+    return parsed
 
 
 def resolve_base_url(explicit: str | None) -> str:

@@ -9,11 +9,13 @@ call and tool call carries its wall-clock duration; every model call its tokens 
 estimated cost; the turns and the session carry totals.
 
 Fetch
-    One paged ``GET /v1/projects/{project}/spans?attribute=session.id:<id>`` sequence,
-    1,000 spans a page. A session slug (a prefix of the id) is resolved through the
-    project's sessions listing; a 32-hex trace id through one ``trace_id=`` fetch. With
-    ``--from-file`` the spans come from a saved payload instead (a JSON list, or an
-    object with ``data``), so spans fetched another way can be rendered offline.
+    One keyset-paged ``GET /v1/projects/{project}/spans?attribute=session.id:<id>``
+    sequence routed via indexed ``project_sessions -> traces -> spans`` lookup (hydrating
+    oversized span payloads whole via indexed ``span_id`` lookup so nothing is truncated).
+    A session slug (a prefix of the id) is resolved through the project's sessions listing;
+    a 32-hex trace id through one ``trace_id=`` fetch. With ``--from-file`` the spans come
+    from a saved payload instead (a JSON list, or an object with ``data``), so spans
+    fetched another way can be rendered offline.
 
 Assemble
     * Turns are clusters of root spans whose time windows overlap. Two emitters often
