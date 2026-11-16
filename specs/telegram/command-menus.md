@@ -45,12 +45,12 @@ As an operator reviewing or customizing the Telegram command surface, I want an 
 ## Shared interface contract
 
 1. **Skill Discovery Sources (when `TELEGRAM_BOT_COMMANDS` is unset):**
-   - **Project-local and Ida skills:** `<projectDir>/.agents/skills/*/SKILL.md` and `<projectDir>/.claude/skills/*/SKILL.md` (where `<projectDir>` is `$CLAUDE_PROJECT_DIR` or the working directory, plus `~/ida/.agents/skills` and `~/ida/.claude/skills` when present), capturing Ida's own skills such as `nudge`.
+   - **Project-local and Ida skills:** `<projectDir>/.agents/skills/*/SKILL.md` and `<projectDir>/.claude/skills/*/SKILL.md` (where `<projectDir>` is `$CLAUDE_PROJECT_DIR` or the working directory), capturing Ida's own skills such as `nudge`.
    - **User skills:** `<claudeConfigDir>/skills/*/SKILL.md` (where `<claudeConfigDir>` is `$CLAUDE_CONFIG_DIR` or `~/.claude`) and `~/.agents/skills/*/SKILL.md`.
    - **Installed plugin skills:** `$CLAUDE_PLUGIN_ROOT/skills/*/SKILL.md`, sibling plugins in the plugin root's parent or versioned plugin cache (`cache/<marketplace>/<plugin>/<version>/skills/*/SKILL.md`), plugin paths recorded in `<claudeConfigDir>/plugins/installed_plugins.json` and `known_marketplaces.json`, and repository `plugins/*/skills/*/SKILL.md`.
    - Symlinked skill directories are deduplicated by canonical real path so a skill reachable through multiple links is registered once.
 2. **Command Naming, Descriptions, and Disambiguation:**
-   - Each skill's `name` and `description` are parsed from `SKILL.md` YAML frontmatter (falling back to the directory basename and `Execute /<name>`).
+   - Each skill's `name` and `description` are parsed from `SKILL.md` YAML frontmatter. A skill file missing a non-empty `description` logs a warning and is skipped.
    - Command names are normalised via `normalizeCommandName()`: strip leading `/` and any `@botname` suffix, convert to lowercase, replace hyphens (`-`) with underscores (`_`), drop characters outside `[a-z0-9_]`, and cap at 32 characters (`^[a-z0-9_]{1,32}$`).
    - Descriptions are trimmed to 1–256 characters.
    - When two distinct skill directories produce the same normalised command name, the first source retains `<command>` and subsequent sources are disambiguated as `<source_prefix>_<command>` (or `<source_prefix>_<command>_<n>`) within 32 characters.
