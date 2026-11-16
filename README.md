@@ -74,31 +74,19 @@ Install what you need -- plugins are separately installable and loosely coupled:
 
 | Plugin | Owns |
 | - | - |
-| `aops` | pauli. Memory, effectual planning, workflow composition, PKB MCP client config; ida, the interactive face. |
-| `orchestrate` | james, dispatch; marsha, QA; the review skills; the handback hooks; the polecat container launcher. |
-| `rbg` | Automatic in-session rule enforcement, via turn-by-turn `PreToolUse` hook and a `Stop`/`SubagentStop` rule-check gate. |
+| `ida` | The strategic face and the only agent that speaks to the user, with prompt situation and premise check. |
+| `james` | Lead executor, review supervisor, and custodian agent suite (james, pauli, marsha, rbg, sara) with planning, execution, axioms, and dialectical review skills. |
 | `tools` | Domain research skills (analyst, peer-review, pdf, extract, diagram, etc.). |
-| `ts` | Tailscale bring-up for remote sessions. |
+| `ida-telegram` | Ida's custom Telegram channel and Mini App plugin for Claude Code. |
 | `aops-debug` | Debug plugin that dumps raw hook payloads. |
 
 ## Install
 
-```bash
-claude mcp add --transport http --scope user services <your PKB MCP endpoint>
-claude plugin marketplace add nicsuzor/academicOps@dist
-claude plugin install ida@academicOps
-claude plugin install rbg@academicOps
-claude plugin install tools@academicOps
-```
-
-`ida-telegram` and `aops-debug` install the same way as `ida`, with no
-`--config`.
-
-Requirements: Claude Code (or Antigravity), and Docker if you want polecat's containerised workers.
+See [`INSTALL.md`](INSTALL.md) for installation and configuration instructions.
 
 ## Where work runs
 
-When `orchestrate` dispatches a unit, it picks one of three surfaces by the size and cost of the work:
+When dispatching a unit of work, academicOps picks one of three surfaces by the size and cost of the work:
 
 | Surface | When it is picked | What it does |
 | :- | :- | :- |

@@ -21,7 +21,7 @@ type: template
 
 ## What this step does
 
-A live, TDD-shaped verification workflow that tests whether `aops:pauli` reliably composes correct `/brief` processes across a variety of task shapes.
+A live, TDD-shaped verification workflow that tests whether `james:pauli` reliably composes correct `/brief` processes across a variety of task shapes.
 
 This workflow distinguishes "the skill instructions say X" from "a cold agent composing under `/brief` actually executes X." It provides a repeatable qualitative test harness to verify that `/brief` reads components from all three sources, and adheres to the sizing rules and acceptance criteria formulation.
 
@@ -60,7 +60,7 @@ Template search path and tier precedence are out of scope: the `workflow-library
 Modeled on `[[wf-self-test]]` and `[[wf-agentic-e2e-certification]]` ("when to include"):
 
 - **Triggered, not continuously automated.**
-- Run after any change to `plugins/aops/skills/brief/SKILL.md` or `plugins/ida/agents/pauli.md`.
+- Run after any change to `plugins/aops/skills/brief/SKILL.md` or `plugins/james/agents/pauli.md`.
 - Run after any change to composed `wf-template` documents in the PKB template tier or `plugins/aops/workflows/*.md`.
 - Run as a periodic audit or quality certification before minor/major framework releases.
 

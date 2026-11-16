@@ -12,7 +12,7 @@ A process for creating and maintaining a flat, diagnostically useful enforcement
 
 ## When to use
 
-- Mapping or auditing how the framework enforces specific rules derived from our universal axioms (`plugins/rbg/skills/axioms/`) that apply to agents working in any third-party project.
+- Mapping or auditing how the framework enforces specific rules derived from our universal axioms (`plugins/james/skills/axioms/`) that apply to agents working in any third-party project.
 - Evaluating whether axiom-derived rules are appropriately bound across mechanism categories (`instructions`, `JIT injection`, `structural`, `process`, `post-hoc`).
 - Identifying unenforced axiom-derived rules, disabled mechanisms, and spec drift.
 
@@ -29,7 +29,7 @@ A process for creating and maintaining a flat, diagnostically useful enforcement
 ## 1. Rule Formulation & Logical Binding Principles
 
 1. **Axiom-Derived Universal Scope Only:**
-   - Every row must reference a specific rule derived from our axioms (`plugins/rbg/skills/axioms/`) and applicable to agents working in any third-party project.
+   - Every row must reference a specific rule derived from our axioms (`plugins/james/skills/axioms/`) and applicable to agents working in any third-party project.
    - Never add rows for repository-local project rules, persona-specific conversational habits, subsystem feature specs, or workflows.
    - Workflows are not rules and do not enforce rules; creating or modifying workflows must not produce token enforcement map rows, as the only applicable rule is "agents must follow workflows given to them" and nothing more than that.
 2. **Explain Operative Intent (What the Rule is Trying to Accomplish):**
@@ -50,12 +50,12 @@ The deliverable is a **single flat markdown table** with exactly 4 columns:
 
 ### Mechanism Controlled Vocabulary
 
-1. `doctrine only` — Declared principle or policy with no explicit path to agents.
-2. `instructions` — Guiding text provided to an agent (`suggestion`, `advisory`, `imperative`, `absolute`).
-3. `JIT injection` — Advisory information provided at a targeted point of a workflow.
-4. `structural` — Scope and force guarantees (`scoped`, `permissions`, `warning`, `friction`, `block`, `protection`, `isolation`).
-5. `process` — Review or gate requirements (`advisory check`, `routing`, `required gate`).
-6. `post-hoc` — Auditability and detection (`reversability`, `observability`, `proactive detection`).
+1. `doctrine only` -- Declared principle or policy with no explicit path to agents.
+2. `instructions` -- Guiding text provided to an agent (`suggestion`, `advisory`, `imperative`, `absolute`).
+3. `JIT injection` -- Advisory information provided at a targeted point of a workflow.
+4. `structural` -- Scope and force guarantees (`scoped`, `permissions`, `warning`, `friction`, `block`, `protection`, `isolation`).
+5. `process` -- Review or gate requirements (`advisory check`, `routing`, `required gate`).
+6. `post-hoc` -- Auditability and detection (`reversability`, `observability`, `proactive detection`).
 
 ### Severity Index (Escalation within Mechanisms)
 

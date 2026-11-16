@@ -144,7 +144,7 @@ staged with an `antigravity-oauth-token`, renders
 (`username (Google AI Ultra)`) appears, writes its logs to files rather than
 stdout, and requires an explicit `-i`/`--prompt-interactive` or `-p`/`--print`
 where `claude` accepts a positional prompt. Both take `--agent <name>`
-(`@aops:james` for `claude`, `james` for `agy`).
+(`@james:james` for `claude`, `james` for `agy`).
 
 ## Drive it
 
@@ -164,7 +164,7 @@ tmux send-keys -t "$TMUX_NAME" Down Down Enter
 `capture-pane` reflects what an attached user sees. It is an ephemeral buffer
 that dies with the tmux session, so capture anything you intend to cite.
 
-Teardown — container cleanup is automatic with `--rm`:
+Teardown -- container cleanup is automatic with `--rm`:
 
 ```bash
 tmux send-keys -t "$TMUX_NAME" -l "/exit"; tmux send-keys -t "$TMUX_NAME" Enter
@@ -175,7 +175,7 @@ tmux kill-session -t "$TMUX_NAME" 2>/dev/null || true
 ## Telemetry
 
 What a run actually did -- its tool calls, model output, errors, latencies and token
-spend -- is read from the Phoenix span store with the `session-trace` skill in the `ida`
+spend -- is read from the Phoenix span store with the `session-trace` skill in the `james`
 plugin. It assembles a session's transcript with durations and costs, and holds the
 span-store facts and SQL recipes.
 

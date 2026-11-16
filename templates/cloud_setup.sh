@@ -11,7 +11,7 @@ export NO_PROXY="$no_proxy"
 
 #apt-get update && apt-get install -y openssh-client rsync
 
-# 1) Runtime credential helper — emits the token fresh, never written to the cached snapshot
+# 1) Runtime credential helper -- emits the token fresh, never written to the cached snapshot
 cat > /usr/local/bin/gh-token-askpass <<'EOF'
 #!/bin/bash
 case "$1" in
@@ -34,10 +34,10 @@ claude plugin marketplace update academicOps || true
 claude plugin install ida@academicOps
 claude plugin install aops-debug@academicOps
 claude plugin install tools@academicOps
-claude plugin install rbg@academicOps
+claude plugin install james@academicOps
 
 # Disable claude.ai-synced copies so plugins are not loaded twice
-for p in ida rbg tools aops-debug; do
+for p in ida james tools aops-debug; do
   claude plugin disable "${p}@synced" 2>/dev/null || true
 done
 
