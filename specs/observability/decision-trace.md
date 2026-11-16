@@ -68,7 +68,7 @@ Every generated session outline contains, in order:
 3. **Chronological turn sections (`<a id="t{n}"></a>`, `## Turn {n} · {title}`)**:
    - Turn metadata line with UTC timestamp, duration, model/tool counts, turn cost, and Phoenix `[session]` and root `[span]` (`/redirects/spans/{span_id}`) links when a UI base URL is available.
    - Substantive prompt blockquote (with injected skill/system wrapper boilerplate stripped).
-   - Ordered model steps (`<a id="t{n}-{m}"></a>`, `### {n}.{m}`) showing model name, duration, built-in cost, token breakdown, and assistant reasoning prose (omitting raw tool-call request JSON arrays), interleaved with tool and subagent bullets (`* <a id="t{n}-{m}"></a>{n}.{m}`) showing action summary, tool/service name, duration, error status, and target path/command/arguments.
+   - Ordered model prose steps (`<a id="t{n}-{m}"></a>`, `### {n}.{m}`) showing model name, measured duration (omitted when telemetry records only synthetic `<= 1.5ms` post-turn timestamps), built-in cost, token breakdown, and assistant reasoning prose (omitting raw tool-call request JSON arrays, omitting empty `### {n}.{m}` headings when a model step dispatches only tool calls with no prose, and snapping truncated excerpts to clean word boundaries with trailing `...`), interleaved with single-line tool and subagent bullets (`* <a id="t{n}-{m}"></a>{n}.{m}`) showing action summary, tool/service name, duration, error status, and target path/command/arguments (with embedded newlines collapsed).
    - `### Turn {n} reply` blockquote when the turn's final response differs from the last model step's prose.
 
 ## Invariants and security boundaries

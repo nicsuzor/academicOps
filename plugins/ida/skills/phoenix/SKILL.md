@@ -9,16 +9,16 @@ Query Arize Phoenix telemetry, audit built-in token spend and tool usage on the 
 
 ## 1. Core Query Discipline
 
-- **Execute reads via authenticated Phoenix MCP**: Use `phoenix_execute` calling `executeGraphqlQuery`, `executeSql`, `describeSqlSchema`, and structured Phoenix MCP tools. Surface errors verbatim; never fall back to local `.jsonl` files, invent default URLs, or guess project names.
+- **Execute reads via authenticated Phoenix MCP**: Use `phoenix_execute` (Python code-mode calling `await call_tool("executeGraphqlQuery", {"query": ..., "variables": ...})`, `await call_tool("executeSql", {"sql": ...})`, and `await call_tool("describeSqlSchema", {})`) and structured Phoenix MCP tools. Surface errors verbatim; never fall back to local `.jsonl` files, invent default URLs, or guess project names.
 - **Dialect and schema awareness**: Run `describeSqlSchema()` before writing custom SQL so queries match the active SQL dialect (SQLite vs PostgreSQL) and allowlisted schema (`spans.trace_id` and `spans.project_name` do not exist -- join `project_sessions -> projects -> traces -> spans`).
-- **Query size & payload bounds**: Keep every SQL query statement <= 2,048 UTF-8 bytes. Bound cross-session scans on indexed `s.start_time`. Never select raw `s.attributes` or `s.events` blobs in list, cost, or outline queries. Keep code-mode returns compact (< 20 KB); when `row_count_is_partial` is true, page using keyset pagination on `s.id > <cursor_id>`. `phoenix_execute` runs remotely inside the MCP server -- return compact structured rows to the agent and write files locally with native file tools.
+- **Query size & payload bounds**: Keep every SQL query statement <= 2,048 UTF-8 bytes. Bound cross-session scans on indexed `s.start_time`. Never select raw `s.attributes` or `s.events` blobs in list, cost, or outline queries. Keep code-mode returns compact (< 20 KB) by paging outline batches (`LIMIT 25` on `s.id > <cursor_id>`). `phoenix_execute` runs remotely inside the MCP server -- return compact structured rows to the agent and write files locally with native file tools.
 
 ## 2. Routing to Declarative Resources
 
 Follow imperative procedural gating: load only the template needed for the task from `resources/`:
 
 - For identifier resolution (`session.id` UUID, 6--8 char slug, 32-hex `trace_id`, or `task.id`), dual-emitter deduplication, and subagent correlation: read `resources/span-store.md`.
-- For project-level or session-level token and USD spend: read `resources/session-costs.graphql` (`costSummary`, `tokenUsage`, `costDetailSummaryEntries` -- zero span fetches).
+- For listing/ranking sessions or reading project-level and session-level token and USD spend: read `resources/session-costs.graphql` (`costSummary`, `tokenUsage`, `costDetailSummaryEntries` -- zero span fetches).
 - For per-model spend (deduplicating dual-emitted model spans when multiple emitters cover a session) or per-tool / upstream MCP service call counts, latencies, errors, and payload bytes: read `resources/session-audit.sql`.
 - For keyset-pageable, column-projected chronological steps: read `resources/session-outline.sql`.
 - For task-level spend rollups: read `resources/cost-by-task.sql`.
@@ -38,8 +38,8 @@ Generate a single condensed outline `<slug>.outline.md` matching `specs/observab
 3. **Chronological turn sections (`<a id="t<n>"></a>`, `## Turn <n> · <title>`)**:
    - Turn metadata line with UTC timestamp, duration, model/tool counts, turn cost, and Phoenix `[session]` and root `[span]` (`/redirects/spans/<root_span_id>`) links when UI URL is known.
    - Substantive prompt blockquote (stripping `<system-reminder>`, `<skill>`, and `<ADDITIONAL_METADATA>` wrappers).
-   - Ordered model prose steps (`<a id="t<n>-<m>"></a>`, `### <n>.<m>`) showing model, duration, cost, tokens, and assistant reasoning prose (omitting raw tool-call request JSON arrays, collapsing duplicate hook/native LLM pairs).
-   - Interleaved tool and subagent bullets (`* <a id="t<n>-<m>"></a><n>.<m>`) showing action summary, tool/service name, duration, error status, and target path/command/arguments.
+   - Ordered model prose steps (`<a id="t<n>-<m>"></a>`, `### <n>.<m>`) showing model, measured duration (omit duration when `latency_ms` is `NULL` from synthetic `<= 1.5ms` post-turn spans), cost, tokens, and assistant reasoning prose from `reasoning_excerpt` / `output_excerpt` (omitting raw tool-call JSON arrays, collapsing duplicate hook/native LLM pairs, omitting empty `### <n>.<m>` headings when a model step dispatches only tool calls with no prose, and trimming any truncated `...` excerpt back to the last complete word so sentences never cut mid-word).
+   - Interleaved single-line tool and subagent bullets (`* <a id="t<n>-<m>"></a><n>.<m>`) showing action summary, tool/service name, duration, error status, and target path/command/arguments (collapsing embedded `\r`/`\n` to single spaces).
    - `### Turn <n> reply` blockquote when the turn's final response differs from the last model step's prose.
 
 ### Durable Persistence & Targeted Drill-Down
