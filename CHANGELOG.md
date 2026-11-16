@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.8.1](https://github.com/nicsuzor/academicOps/compare/v1.8.0...v1.8.1) (2026-11-15)
+## [1.8.2](https://github.com/nicsuzor/academicOps/compare/v1.8.0...v1.8.2) (2026-11-16)
 
 ### Bug Fixes
 
