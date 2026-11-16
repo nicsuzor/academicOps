@@ -52,7 +52,7 @@ tags: [deep-research, <topic-tags>]
 ---
 ```
 
-Body layout: one-paragraph context block with `[[wikilinks]]` to tasks/epics, separator `---`, and raw markdown with preserved citations.
+Body layout: one-paragraph context block with `[[wikilinks]]` to tasks, separator `---`, and raw markdown with preserved citations.
 
 ### 5. Update Task & Cleanup
 
