@@ -9,11 +9,13 @@ call and tool call carries its wall-clock duration; every model call its tokens 
 estimated cost; the turns and the session carry totals.
 
 Fetch
-    One paged ``GET /v1/projects/{project}/spans?attribute=session.id:<id>`` sequence,
-    1,000 spans a page. A session slug (a prefix of the id) is resolved through the
-    project's sessions listing; a 32-hex trace id through one ``trace_id=`` fetch. With
-    ``--from-file`` the spans come from a saved payload instead (a JSON list, or an
-    object with ``data``), so spans fetched another way can be rendered offline.
+    One keyset-paged ``GET /v1/projects/{project}/spans?attribute=session.id:<id>``
+    sequence routed via indexed ``project_sessions -> traces -> spans`` lookup (hydrating
+    oversized span payloads whole via indexed ``span_id`` lookup so nothing is truncated).
+    A session slug (a prefix of the id) is resolved through the project's sessions listing;
+    a 32-hex trace id through one ``trace_id=`` fetch. With ``--from-file`` the spans come
+    from a saved payload instead (a JSON list, or an object with ``data``), so spans
+    fetched another way can be rendered offline.
 
 Assemble
     * Turns are clusters of root spans whose time windows overlap. Two emitters often
@@ -258,74 +260,11 @@ def phoenix_execute_code(base_url: str, code: str) -> Any:
 
 
 def fetch_session_spans(base_url: str, project: str, session_id: str) -> tuple[list[Span], int]:
-    """Fetch one session's spans via indexed ``project_sessions`` SQL + ``span_id`` hydration."""
-    proj_sql = "'" + project.replace("'", "''") + "'"
-    sid_sql = "'" + session_id.replace("'", "''") + "'"
-    code = f"""
-import json
-
-proj = {json.dumps(project)}
-last_id = 0
-pages = 0
-spans = []
-oversized_ids = []
-
-while True:
-    sql = (
-        "SELECT s.id, t.trace_id, s.span_id, s.parent_id, s.name, s.span_kind, "
-        "s.start_time, s.end_time, s.status_code, s.status_message, "
-        "CASE WHEN LENGTH(s.attributes -> '$') <= 200000 THEN (s.attributes -> '$') ELSE NULL END AS attrs_json "
-        "FROM projects p "
-        "JOIN project_sessions ps ON ps.project_id = p.id "
-        "JOIN traces t ON t.project_session_rowid = ps.id "
-        "JOIN spans s ON s.trace_rowid = t.id "
-        "WHERE p.name = {proj_sql} "
-        "AND ps.session_id = {sid_sql} "
-        f"AND +s.id > {{int(last_id)}} "
-        "ORDER BY +s.id ASC LIMIT 2000"
+    return paged(
+        base_url,
+        project_path(project, "spans"),
+        [("attribute", f"session.id:{session_id}"), ("limit", str(PAGE_LIMIT))],
     )
-    res = await call_tool("executeSql", {{"sql": sql, "row_limit": 2000}})
-    if isinstance(res, dict) and "error" in res:
-        raise RuntimeError(f"executeSql failed: {{res['error']}}")
-    pages += 1
-    rows = (res or {{}}).get("rows") or []
-    if not rows:
-        break
-    for row in rows:
-        row_id, tr_id, sp_id, parent_id, name, kind, st, et, sc, sm, attrs_json = row
-        last_id = row_id
-        if attrs_json is None:
-            oversized_ids.append(sp_id)
-            continue
-        attrs = json.loads(attrs_json) if isinstance(attrs_json, str) else (attrs_json or {{}})
-        spans.append({{
-            "name": name,
-            "span_kind": kind,
-            "context": {{"trace_id": tr_id, "span_id": sp_id}},
-            "parent_id": parent_id,
-            "start_time": st,
-            "end_time": et,
-            "status_code": sc,
-            "status_message": sm,
-            "attributes": attrs,
-        }})
-    if len(rows) < 2000:
-        break
-
-for i in range(0, len(oversized_ids), 50):
-    batch = oversized_ids[i : i + 50]
-    hydrated = await call_tool(
-        "getSpans",
-        {{"project_identifier": proj, "span_id": batch, "limit": len(batch)}},
-    )
-    spans.extend((hydrated or {{}}).get("data") or [])
-
-return {{"spans": spans, "pages": pages}}
-"""
-    payload = phoenix_execute_code(base_url, code)
-    spans = payload.get("spans") or []
-    pages = int(payload.get("pages") or 1)
-    return spans, pages
 
 
 def resolve_session_id(base_url: str, project: str, ident: str) -> str:
