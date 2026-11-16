@@ -14,7 +14,7 @@ Answers two questions with numbers, not impression, before anyone touches
 
 Usage:
 
-    uv run --with fastmcp scripts/measure_pkb_injection.py --repeats 3 \\
+    uv run python scripts/measure_pkb_injection.py --repeats 3 \\
         --out /tmp/pkb_measure.json
 
 Requires `$PKB_MCP_URL` in the environment (no default, per project rule).
@@ -31,6 +31,8 @@ import os
 import statistics
 import sys
 import time
+import urllib.request
+import uuid
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -126,11 +128,84 @@ def _dist(values: list[float]) -> dict[str, float]:
 # --------------------------------------------------------------------------
 
 
-async def _one_search(client, prompt: str, family: str) -> SearchSample:
+def _resolve_session_id() -> str:
+    return (
+        os.environ.get("CLAUDE_CODE_SESSION_ID")
+        or os.environ.get("CLAUDE_SESSION_ID")
+        or os.environ.get("ANTIGRAVITY_CONVERSATION_ID")
+        or os.environ.get("AOPS_SESSION_ID")
+        or str(uuid.uuid4())
+    )
+
+
+def _call_pkb_search(url: str, headers: dict[str, str], session_id: str, arguments: dict) -> str:
+    req_headers = {
+        "User-Agent": "academicOps/0.10 (measure-pkb-injection)",
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream",
+        "MCP-Protocol-Version": "2026-07-28",
+        "Mcp-Method": "tools/call",
+        "Mcp-Name": "pkb_search",
+        "x-session-id": session_id,
+        **headers,
+    }
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+            "name": "pkb_search",
+            "arguments": {**arguments, "session_id": session_id},
+            "_meta": {
+                "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+                "io.modelcontextprotocol/clientCapabilities": {},
+                "io.modelcontextprotocol/clientInfo": {
+                    "name": "academicOps",
+                    "version": "0.10",
+                },
+            },
+        },
+    }
+    req = urllib.request.Request(
+        url, data=json.dumps(payload).encode("utf-8"), headers=req_headers, method="POST"
+    )
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        raw_body = resp.read().decode("utf-8", errors="replace")
+    parsed = None
+    try:
+        parsed = json.loads(raw_body)
+    except json.JSONDecodeError:
+        for line in raw_body.splitlines():
+            line = line.strip()
+            if line.startswith("data:"):
+                try:
+                    candidate = json.loads(line[5:].strip())
+                    if isinstance(candidate, dict) and "result" in candidate:
+                        parsed = candidate
+                        break
+                except json.JSONDecodeError:
+                    continue
+    if not isinstance(parsed, dict):
+        return ""
+    content = parsed.get("result", {}).get("content", [])
+    return next(
+        (item.get("text", "") for item in content if isinstance(item, dict) and item.get("text")),
+        "",
+    )
+
+
+async def _one_search(
+    url: str, headers: dict[str, str], session_id: str, prompt: str, family: str
+) -> SearchSample:
     t0 = time.perf_counter()
-    res = await client.call_tool("pkb_search", {"query": prompt, "limit": 5, "format": "json"})
+    text = await asyncio.to_thread(
+        _call_pkb_search,
+        url,
+        headers,
+        session_id,
+        {"query": prompt, "limit": 5, "format": "json"},
+    )
     t1 = time.perf_counter()
-    text = next((getattr(b, "text", "") for b in res.content if getattr(b, "text", "")), "")
     payload_bytes = len(text.encode())
     try:
         data = json.loads(text)
@@ -173,21 +248,19 @@ def _resolve_mcp_headers() -> dict[str, str]:
 
 
 async def measure_backend(repeats: int) -> list[SearchSample]:
-    from fastmcp import Client  # local import: optional dependency, only needed here
-    from fastmcp.client.transports import StreamableHttpTransport
-
     url = os.environ["PKB_MCP_URL"]
     headers = _resolve_mcp_headers()
-    transport = StreamableHttpTransport(url, headers=headers)
+    session_id = _resolve_session_id()
     samples: list[SearchSample] = []
-    async with Client(transport=transport) as client:
-        # Warm-up call, excluded from the distribution -- first call pays
-        # model/index cold-start, which every subsequent real fire does not.
-        await client.call_tool("pkb_search", {"query": "warmup", "limit": 1})
-        for family, prompts in PROMPT_FAMILIES.items():
-            for prompt in prompts:
-                for _ in range(repeats):
-                    samples.append(await _one_search(client, prompt, family))
+    # Warm-up call, excluded from the distribution -- first call pays
+    # model/index cold-start, which every subsequent real fire does not.
+    await asyncio.to_thread(
+        _call_pkb_search, url, headers, session_id, {"query": "warmup", "limit": 1}
+    )
+    for family, prompts in PROMPT_FAMILIES.items():
+        for prompt in prompts:
+            for _ in range(repeats):
+                samples.append(await _one_search(url, headers, session_id, prompt, family))
     return samples
 
 

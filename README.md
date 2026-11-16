@@ -80,7 +80,6 @@ Install what you need -- plugins are separately installable and loosely coupled:
 | `tools` | Domain research skills (analyst, peer-review, pdf, extract, diagram, etc.). |
 | `ts` | Tailscale bring-up for remote sessions. |
 | `aops-debug` | Debug plugin that dumps raw hook payloads. |
-| `james` | Opt-in standalone in-session supervision (`/supervise`, `/pull`, `/dump`, `/dialectical-review`, `/premise-check`, `/workflow-library`), subagents (`james`, `marsha`, `pauli`, `rbg`), build-staged `axioms`, and OpenTelemetry session tracing without hearsay or hydration hooks (installed instead of `ida` and `rbg`, never co-loaded; see [`plugins/james/README.md`](plugins/james/README.md)). |
 
 ## Install
 
@@ -90,14 +89,10 @@ claude plugin marketplace add nicsuzor/academicOps@dist
 claude plugin install ida@academicOps
 claude plugin install rbg@academicOps
 claude plugin install tools@academicOps
-# Opt-in standalone alternative (install INSTEAD of ida and rbg, never co-loaded in the same session):
-# claude plugin install james@aops
 ```
 
-`ida-telegram` and `aops-debug` install alongside `ida` the same way, with no
-`--config`. `james` is an opt-in standalone supervision alternative installed
-_instead of_ `ida` and `rbg` (never co-loaded in the same session; see
-[`plugins/james/README.md`](plugins/james/README.md)).
+`ida-telegram` and `aops-debug` install the same way as `ida`, with no
+`--config`.
 
 Requirements: Claude Code (or Antigravity), and Docker if you want polecat's containerised workers.
 

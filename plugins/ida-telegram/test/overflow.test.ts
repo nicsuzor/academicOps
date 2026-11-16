@@ -547,5 +547,48 @@ describe("Progressive disclosure: Overflow handling", () => {
       rmSync(stateDir, { recursive: true, force: true });
     }
   });
+
+  test("Default maxChatChars is 4000 so formatted replies up to 4000 characters stay whole in chat without overflowing", async () => {
+    const { loadConfig } = await import("../src/config.js");
+    const { mkdtempSync, rmSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { tmpdir } = await import("node:os");
+
+    const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-max4000-"));
+    try {
+      const config = loadConfig({
+        MINI_APP_URL: "https://ida.example.test",
+        TELEGRAM_BOT_TOKEN: "test-token",
+        IDA_TELEGRAM_ROLE: "primary",
+        ALLOWED_USER_IDS: "1111111111",
+        STATE_DIR: stateDir,
+      });
+      expect(config.maxChatChars).toBe(4000);
+
+      const formatted3200 =
+        "# Executive Summary\n\n" +
+        "- **Key point 1**: " +
+        "A".repeat(1400) +
+        "\n\n" +
+        ">! " +
+        "B".repeat(1500);
+      expect(formatted3200.length).toBeGreaterThan(2900);
+      expect(formatted3200.length).toBeLessThanOrEqual(4000);
+
+      const within4000 = processReplyOverflow({ text: formatted3200 });
+      expect(within4000.hasOverflow).toBe(false);
+      expect(within4000.hasDetailsButton).toBe(false);
+      expect(within4000.chatText).toBe(formatted3200);
+
+      const over4000 = processReplyOverflow({
+        text: `${formatted3200}\n\nParagraph exceeding 4000 chars: ${"C".repeat(1200)}`,
+      });
+      expect(over4000.hasOverflow).toBe(true);
+      expect(over4000.hasDetailsButton).toBe(true);
+      expect(over4000.chatText.length).toBeLessThanOrEqual(4000);
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
 });
 

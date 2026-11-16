@@ -92,26 +92,16 @@ def _stage_plugin(plugin: Plugin, stage_dir: Path, version: str) -> None:
     plugin_pyproject = plugin.source_dir / "pyproject.toml"
     plugin_uvlock = plugin.source_dir / "uv.lock"
 
-    shared_hooks_dir = repo_root / "plugins" / "ida" / "hooks"
+    shared_tracer = repo_root / "plugins" / "ida" / "hooks" / "claude_code_tracer.py"
     staged_hooks_dir = stage_dir / "hooks"
-    if staged_hooks_dir.is_dir() and shared_hooks_dir.is_dir():
-        for hook_name in (
-            "claude_code_tracer.py",
-            "dispatch.py",
-            "mcp_caller_session.py",
-            "token_extractor.py",
-            "agy_tracer.py",
-        ):
-            src_hook = shared_hooks_dir / hook_name
-            dst_hook = staged_hooks_dir / hook_name
-            if src_hook.is_file() and not dst_hook.exists():
-                shutil.copy2(src_hook, dst_hook)
+    staged_tracer = staged_hooks_dir / "claude_code_tracer.py"
+    if staged_hooks_dir.is_dir() and shared_tracer.is_file() and not staged_tracer.exists():
+        shutil.copy2(shared_tracer, staged_tracer)
 
-    if plugin.directory == "james":
-        shared_axioms_dir = repo_root / "plugins" / "rbg" / "skills" / "axioms"
-        staged_axioms_dir = stage_dir / "skills" / "axioms"
-        if shared_axioms_dir.is_dir() and not staged_axioms_dir.exists():
-            copytree_filtered(shared_axioms_dir, staged_axioms_dir)
+    shared_dispatch = repo_root / "lib" / "hooks" / "dispatch.py"
+    staged_dispatch = staged_hooks_dir / "dispatch.py"
+    if staged_hooks_dir.is_dir() and shared_dispatch.is_file() and not staged_dispatch.exists():
+        shutil.copy2(shared_dispatch, staged_dispatch)
 
     if plugin_pyproject.exists():
         shutil.copy2(plugin_pyproject, stage_dir / "pyproject.toml")

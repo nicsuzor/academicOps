@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -374,3 +375,56 @@ def test_post_tool_hearsay_arm_unifies_null_form_and_block_expected(tmp_path, mo
     assert pcg.is_armed(session_absent) is True
     st_absent = pcg.get_state(session_absent)
     assert st_absent.get("block_expected") is True
+
+
+def test_agy_system_message_triggers_only_on_invocation_zero(tmp_path, monkeypatch):
+    """agy SYSTEM_MESSAGE peer report triggers should_arm_hearsay/rule_against_hearsay/hearsay_arm only at invocationNum=0."""
+    import hearsay_gate
+    import premise_check_gate as pcg
+
+    monkeypatch.setenv("AOPS_PREMISE_GATE_DIR", str(tmp_path / "gate"))
+    session_id = "s-agy-trigger-inv"
+    pcg.clear_state(session_id)
+
+    transcript = tmp_path / "transcript.jsonl"
+    sys_msg = (
+        "[Message] timestamp=2026-11-14T00:00:00Z sender=peer-agent-1 "
+        "priority=MESSAGE_PRIORITY_HIGH content=### Check Report\n\nTask complete."
+    )
+    transcript.write_text(
+        json.dumps({"step_index": 0, "type": "SYSTEM_MESSAGE", "content": sys_msg}) + "\n",
+        encoding="utf-8",
+    )
+
+    ctx_0 = HookContext(
+        client="agy",
+        event="UserPromptSubmit",
+        agent_type="ida:ida",
+        session_id=session_id,
+        hooks_dir=IDA_HOOKS,
+        transcript_path=str(transcript),
+        raw={"invocationNum": 0, "transcriptPath": str(transcript), "conversationId": session_id},
+    )
+    assert hearsay_gate.should_arm_hearsay(ctx_0) is True
+    assert handlers.rule_against_hearsay(ctx_0) is not None
+    assert handlers.hearsay_arm(ctx_0) is not None
+    assert pcg.is_armed(session_id) is True
+
+    pcg.disarm(
+        session_id, claim_id=pcg.get_state(session_id)["claim_id"], verdict="PASS", reason="ok"
+    )
+    assert pcg.is_armed(session_id) is False
+
+    ctx_1 = HookContext(
+        client="agy",
+        event="UserPromptSubmit",
+        agent_type="ida:ida",
+        session_id=session_id,
+        hooks_dir=IDA_HOOKS,
+        transcript_path=str(transcript),
+        raw={"invocationNum": 1, "transcriptPath": str(transcript), "conversationId": session_id},
+    )
+    assert hearsay_gate.should_arm_hearsay(ctx_1) is False
+    assert handlers.rule_against_hearsay(ctx_1) is None
+    assert handlers.hearsay_arm(ctx_1) is None
+    assert pcg.is_armed(session_id) is False

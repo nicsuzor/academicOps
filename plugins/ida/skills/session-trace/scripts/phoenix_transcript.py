@@ -9,11 +9,13 @@ call and tool call carries its wall-clock duration; every model call its tokens 
 estimated cost; the turns and the session carry totals.
 
 Fetch
-    One paged ``GET /v1/projects/{project}/spans?attribute=session.id:<id>`` sequence,
-    1,000 spans a page. A session slug (a prefix of the id) is resolved through the
-    project's sessions listing; a 32-hex trace id through one ``trace_id=`` fetch. With
-    ``--from-file`` the spans come from a saved payload instead (a JSON list, or an
-    object with ``data``), so spans fetched another way can be rendered offline.
+    One keyset-paged ``GET /v1/projects/{project}/spans?attribute=session.id:<id>``
+    sequence routed via indexed ``project_sessions -> traces -> spans`` lookup (hydrating
+    oversized span payloads whole via indexed ``span_id`` lookup so nothing is truncated).
+    A session slug (a prefix of the id) is resolved through the project's sessions listing;
+    a 32-hex trace id through one ``trace_id=`` fetch. With ``--from-file`` the spans come
+    from a saved payload instead (a JSON list, or an object with ``data``), so spans
+    fetched another way can be rendered offline.
 
 Assemble
     * Turns are clusters of root spans whose time windows overlap. Two emitters often
@@ -44,6 +46,7 @@ Examples::
     uv run python phoenix_transcript.py <session-uuid>
     uv run python phoenix_transcript.py <32-hex-trace-id>
     uv run python phoenix_transcript.py <slug> --from-file spans.json
+    uv run python phoenix_transcript.py --since 2026-11-14T08:45:32Z --out ./sweep --sanitize-paths
 """
 
 from __future__ import annotations
@@ -53,18 +56,26 @@ import json
 import os
 import re
 import sys
+import urllib.error
 import urllib.parse
+import urllib.request
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import phoenix_token_cost as _ptc  # noqa: E402
 from phoenix_token_cost import (  # noqa: E402
+    _MCP_SESSIONS,
     BASE_URL_ENV_VAR,
+    HTTP_TIMEOUT,
     PRICES,
     PROJECT_ENV_VAR,
     ConfigError,
+    _extract_jsonrpc_payload,
+    _mcp_headers,
+    _mcp_init_session,
     cost_usd,
     get_json,
     price_row,
@@ -204,6 +215,48 @@ def paged(base_url: str, path: str, query: list[tuple[str, str]]) -> tuple[list[
 
 def project_path(project: str, tail: str) -> str:
     return f"/v1/projects/{urllib.parse.quote(project, safe='')}/{tail}"
+
+
+def phoenix_execute_code(base_url: str, code: str) -> Any:
+    """Execute a server-side Python snippet via the Phoenix MCP ``phoenix_execute`` tool."""
+    mcp_url = base_url.split("/v1/projects", 1)[0].rstrip("/")
+    mcp_sid = _MCP_SESSIONS.get(mcp_url) or _mcp_init_session(mcp_url)
+    call_payload = {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "tools/call",
+        "params": {
+            "name": "phoenix_execute",
+            "arguments": {"code": code},
+        },
+    }
+    request = urllib.request.Request(
+        mcp_url,
+        data=json.dumps(call_payload).encode("utf-8"),
+        headers=_mcp_headers(mcp_sid),
+        method="POST",
+    )
+    try:
+        with _ptc.urllib.request.urlopen(request, timeout=HTTP_TIMEOUT) as response:
+            raw_body = response.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", "replace")[:400]
+        raise ConfigError(f"HTTP {exc.code} from {mcp_url}: {body}") from exc
+    except urllib.error.URLError as exc:
+        raise ConfigError(f"cannot reach {mcp_url}: {exc.reason}") from exc
+
+    rpc = _extract_jsonrpc_payload(raw_body, mcp_url)
+    if "error" in rpc:
+        raise ConfigError(f"MCP error from {mcp_url}: {rpc['error']}")
+    result = rpc.get("result") or {}
+    content = result.get("content") or []
+    text = "".join(item.get("text", "") for item in content if isinstance(item, dict)).strip()
+    if result.get("isError"):
+        raise ConfigError(f"Phoenix MCP phoenix_execute failed: {text}")
+    try:
+        return json.loads(text) if text else {}
+    except json.JSONDecodeError as exc:
+        raise ConfigError(f"Phoenix MCP phoenix_execute returned non-JSON: {text[:400]}") from exc
 
 
 def fetch_session_spans(base_url: str, project: str, session_id: str) -> tuple[list[Span], int]:
@@ -399,6 +452,8 @@ FLAT_MESSAGE_RE = re.compile(
 def messages_attr(span: Span, prefix: str) -> Any:
     """OpenInference messages, whether stored as one list or as flattened indexed keys."""
     value = attr(span, prefix)
+    if isinstance(value, dict) and value and all(str(k).isdigit() for k in value):
+        return [value[k] for k in sorted(value, key=lambda x: int(str(x)))]
     if value not in (None, ""):
         return value
     rows: dict[int, dict[str, Any]] = {}
@@ -1287,16 +1342,486 @@ def sanitize_paths(text: str) -> str:
     return text
 
 
+# --- cross-session prompt scan (--since) -------------------------------------
+
+AUTOMATED_PREFIXES = (
+    "The following is a <SYSTEM_MESSAGE>",
+    "<SYSTEM_MESSAGE",
+    "<CONTEXT_SUMMARY>",
+    "<agent-message",
+    "<teammate-message",
+    "<task-notification",
+    "<cross-session-message",
+    "<system-reminder",
+    "<local-command-",
+    "<command-message>",
+    "<command-name>",
+    "<bash-",
+    "[polecat-exit]",
+)
+HEADLESS_ENTRYPOINT_RE = re.compile(r"^/(?:ida:)?(?:pull|supervise)\s+[A-Za-z0-9_.:-]+\s*$")
+CHANNEL_BLOCK_RE = re.compile(r"^\s*<channel\b([^>]*)>(.*?)</channel>\s*$", re.DOTALL)
+XML_ATTR_RE = re.compile(r'([A-Za-z_][\w:.-]*)\s*=\s*"([^"]*)"')
+USER_REQUEST_RE = re.compile(r"<USER_REQUEST>\s*(.*?)\s*</USER_REQUEST>", re.DOTALL)
+SUBAGENT_CONV_RE = re.compile(r'"conversationId"\s*:\s*"([0-9a-f-]{36})"')
+
+
+@dataclass
+class MatchedPrompt:
+    start: datetime
+    session_id: str
+    span_id: str
+    source: str
+    text: str
+    host: str = ""
+    message_id: str = ""
+    thread_id: str = ""
+    turn_index: int = 1
+
+
+def parse_since_utc(value: str) -> datetime:
+    """Parse an ISO-8601 timestamp requiring an explicit timezone offset, normalized to UTC."""
+    raw = (value or "").strip()
+    if not raw:
+        raise ConfigError("--since requires an ISO-8601 timestamp with an explicit timezone offset")
+    normalized = re.sub(r"^(\d{4}-\d{2}-\d{2})\s+", r"\1T", raw)
+    if normalized.endswith(("Z", "z")):
+        normalized = normalized[:-1] + "+00:00"
+    if "T" not in normalized and "t" not in normalized:
+        raise ConfigError(
+            f"--since timestamp {value!r} must include time and timezone offset (e.g. 2026-11-15T08:00:00Z)"
+        )
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError as exc:
+        raise ConfigError(f"cannot parse --since timestamp {value!r}") from exc
+    if parsed.tzinfo is None:
+        raise ConfigError(
+            f"--since timestamp {value!r} is missing an explicit timezone offset (e.g. Z or +00:00)"
+        )
+    return parsed.astimezone(UTC)
+
+
+def is_automated_wrapper(text: str) -> bool:
+    """True when ``text`` is an internal harness/agent transport wrapper or bare worker launch."""
+    stripped = text.strip()
+    if not stripped or is_id_stub(stripped):
+        return True
+    if any(stripped.startswith(prefix) for prefix in AUTOMATED_PREFIXES):
+        return True
+    if HEADLESS_ENTRYPOINT_RE.match(stripped):
+        return True
+    return False
+
+
+def _extract_prompt_from_chain_input(
+    input_value: str, name_prefix: str = ""
+) -> tuple[str, str, str, str] | None:
+    """Return ``(source, text, message_id, thread_id)`` for a human root CHAIN input, else None."""
+    if name_prefix.startswith("The following is a <SYSTEM_MESSAGE>"):
+        return None
+    raw = (input_value or "").strip()
+    if not raw or raw.startswith("The following is a <SYSTEM_MESSAGE>"):
+        return None
+
+    channel_match = CHANNEL_BLOCK_RE.match(raw)
+    if channel_match:
+        attrs = dict(XML_ATTR_RE.findall(channel_match.group(1)))
+        event = attrs.get("event", "message")
+        if event not in ("message", "bot_command"):
+            return None
+        body = channel_match.group(2).strip()
+        if is_automated_wrapper(body):
+            return None
+        source_raw = attrs.get("source", "channel")
+        source = source_raw.rsplit(":", 1)[-1] if ":" in source_raw else source_raw
+        msg_id = attrs.get("message_id", "")
+        thread_id = attrs.get("thread_id") or attrs.get("message_thread_id") or ""
+        return source, body, msg_id, thread_id
+
+    user_req = USER_REQUEST_RE.search(raw)
+    if user_req:
+        body = user_req.group(1).strip()
+        if is_automated_wrapper(body):
+            return None
+        return "agy", body, "", ""
+
+    if is_automated_wrapper(raw):
+        return None
+    return "cli", raw, "", ""
+
+
+def _extract_prompt_from_ups_input(input_value: str) -> str | None:
+    """Extract ``lastUserInput`` from an agy ``aops-debug.UserPromptSubmit`` hook payload."""
+    parsed = parse_json(input_value)
+    if not isinstance(parsed, dict):
+        return None
+    text = parsed.get("lastUserInput")
+    if not isinstance(text, str) or is_automated_wrapper(text):
+        return None
+    return text.strip()
+
+
+def extract_user_prompts_from_records(
+    chains: list[dict[str, Any]],
+    ups_rows: list[dict[str, Any]],
+    subagent_ids: set[str],
+    since_dt: datetime,
+) -> list[MatchedPrompt]:
+    """Deduplicate and merge human prompts across CLI, channel, and agy surfaces since ``since_dt``."""
+    raw_items: list[MatchedPrompt] = []
+
+    for row in chains:
+        sid = str(row.get("session_id") or "").strip()
+        if not sid or sid in subagent_ids:
+            continue
+        ts = parse_time(row.get("start_time"))
+        if ts is None or ts < since_dt:
+            continue
+        name_prefix = str(row.get("name_prefix") or "")
+        if name_prefix.startswith("aops-debug."):
+            continue
+        extracted = _extract_prompt_from_chain_input(str(row.get("input_value") or ""), name_prefix)
+        if not extracted:
+            continue
+        source, text, msg_id, thread_id = extracted
+        raw_items.append(
+            MatchedPrompt(
+                start=ts,
+                session_id=sid,
+                span_id=str(row.get("span_id") or ""),
+                source=source,
+                text=text,
+                host=str(row.get("host_name") or ""),
+                message_id=msg_id,
+                thread_id=thread_id,
+            )
+        )
+
+    for row in ups_rows:
+        sid = str(row.get("session_id") or "").strip()
+        if not sid or sid in subagent_ids:
+            continue
+        ts = parse_time(row.get("start_time"))
+        if ts is None or ts < since_dt:
+            continue
+        text = _extract_prompt_from_ups_input(str(row.get("input_value") or ""))
+        if not text:
+            continue
+        raw_items.append(
+            MatchedPrompt(
+                start=ts,
+                session_id=sid,
+                span_id=str(row.get("span_id") or ""),
+                source="agy",
+                text=text,
+                host=str(row.get("host_name") or ""),
+            )
+        )
+
+    raw_items.sort(key=lambda item: item.start)
+    deduped: list[MatchedPrompt] = []
+    seen_channel_msgs: set[tuple[str, str]] = set()
+    seen_session_prompts: set[tuple[str, str]] = set()
+
+    for item in raw_items:
+        if item.message_id:
+            ch_key = (item.source, item.message_id)
+            if ch_key in seen_channel_msgs:
+                continue
+            seen_channel_msgs.add(ch_key)
+        sp_key = (item.session_id, " ".join(item.text.split()))
+        if sp_key in seen_session_prompts:
+            continue
+        seen_session_prompts.add(sp_key)
+        deduped.append(item)
+
+    return deduped
+
+
+def discover_prompts_from_spans(universe: list[Span], since_dt: datetime) -> list[MatchedPrompt]:
+    """Offline ``--from-file`` prompt discovery using the same rules as live SQL discovery."""
+    subagent_ids: set[str] = set()
+    chains: list[dict[str, Any]] = []
+    ups_rows: list[dict[str, Any]] = []
+
+    for s in universe:
+        kind = s.get("span_kind")
+        name = str(s.get("name") or "")
+        if kind == "TOOL" and (
+            name == "invoke_subagent" or first_attr(s, TOOL_NAME_KEYS) == "invoke_subagent"
+        ):
+            out_val = str(first_attr(s, TOOL_OUTPUT_KEYS) or "")
+            subagent_ids.update(SUBAGENT_CONV_RE.findall(out_val))
+        elif (
+            name == "aops-debug.UserPromptSubmit" and str(attr(s, "hook.client") or "agy") == "agy"
+        ):
+            ups_rows.append(
+                {
+                    "span_id": span_id(s),
+                    "start_time": s.get("start_time"),
+                    "session_id": attr(s, "session.id"),
+                    "host_name": attr(s, "host.name") or "",
+                    "input_value": attr(s, "input.value") or "",
+                }
+            )
+        elif kind == "CHAIN" and not s.get("parent_id"):
+            chains.append(
+                {
+                    "span_id": span_id(s),
+                    "start_time": s.get("start_time"),
+                    "name_prefix": name[:80],
+                    "session_id": attr(s, "session.id"),
+                    "host_name": attr(s, "host.name") or "",
+                    "agent_name": attr(s, "agent.name") or "",
+                    "input_value": attr(s, "input.value") or "",
+                }
+            )
+
+    return extract_user_prompts_from_records(chains, ups_rows, subagent_ids, since_dt)
+
+
+def fetch_prompts_since(base_url: str, project: str, since_dt: datetime) -> list[MatchedPrompt]:
+    """Discover human prompts since ``since_dt`` via ``project_sessions -> traces`` joins."""
+    since_iso = since_dt.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    subagent_floor_iso = (
+        (since_dt - timedelta(hours=12)).astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    )
+    proj_sql = "'" + project.replace("'", "''") + "'"
+    since_sql = "'" + since_iso.replace("'", "''") + "'"
+    sub_floor_sql = "'" + subagent_floor_iso.replace("'", "''") + "'"
+    code = f"""
+import asyncio, re
+
+q_inv = (
+    "SELECT s.id, SUBSTR(COALESCE(s.attributes ->> '$.output.value', ''), 1, 800) "
+    "FROM projects p "
+    "JOIN project_sessions ps ON ps.project_id = p.id "
+    "JOIN traces t ON t.project_session_rowid = ps.id "
+    "JOIN spans s ON s.trace_rowid = t.id "
+    "WHERE p.name = {proj_sql} "
+    "AND ps.end_time >= {sub_floor_sql} "
+    "AND t.start_time >= {sub_floor_sql} "
+    "AND s.span_kind = 'TOOL' AND s.name = 'invoke_subagent'"
+)
+
+q_ch = (
+    "SELECT s.id, s.span_id, s.start_time, SUBSTR(s.name, 1, 80), "
+    "s.attributes ->> '$.session.id', s.attributes ->> '$.host.name', "
+    "s.attributes ->> '$.agent.name', "
+    "SUBSTR(COALESCE(s.attributes ->> '$.input.value', ''), 1, 16384) "
+    "FROM projects p "
+    "JOIN project_sessions ps ON ps.project_id = p.id "
+    "JOIN traces t ON t.project_session_rowid = ps.id "
+    "JOIN spans s ON s.trace_rowid = t.id "
+    "WHERE p.name = {proj_sql} "
+    "AND ps.end_time >= {since_sql} "
+    "AND t.start_time >= {since_sql} "
+    "AND s.span_kind = 'CHAIN' "
+    "AND (s.parent_id IS NULL OR s.parent_id = '') "
+    "AND s.name NOT LIKE 'The following is a <SYSTEM_MESSAGE>%' "
+    "AND s.name NOT LIKE 'aops-debug.%'"
+)
+
+q_up = (
+    "SELECT s.id, s.span_id, s.start_time, "
+    "s.attributes ->> '$.session.id', s.attributes ->> '$.host.name', "
+    "SUBSTR(COALESCE(s.attributes ->> '$.input.value', ''), 1, 16384) "
+    "FROM projects p "
+    "JOIN project_sessions ps ON ps.project_id = p.id "
+    "JOIN traces t ON t.project_session_rowid = ps.id "
+    "JOIN spans s ON s.trace_rowid = t.id "
+    "WHERE p.name = {proj_sql} "
+    "AND ps.end_time >= {since_sql} "
+    "AND t.start_time >= {since_sql} "
+    "AND s.name = 'aops-debug.UserPromptSubmit' "
+    "AND (s.attributes ->> '$.hook.client') = 'agy' "
+    "AND NOT EXISTS ("
+    "  SELECT 1 FROM spans r WHERE r.trace_rowid = s.trace_rowid "
+    "  AND r.span_kind = 'CHAIN' AND (r.parent_id IS NULL OR r.parent_id = '') "
+    "  AND r.name NOT LIKE 'aops-debug.%'"
+    ")"
+)
+
+r_inv, r_ch, r_up = await asyncio.gather(
+    call_tool("executeSql", {{"sql": q_inv, "row_limit": 5000}}),
+    call_tool("executeSql", {{"sql": q_ch, "row_limit": 5000}}),
+    call_tool("executeSql", {{"sql": q_up, "row_limit": 5000}}),
+)
+for label, res in (("invoke_subagent", r_inv), ("chains", r_ch), ("UserPromptSubmit", r_up)):
+    if isinstance(res, dict) and "error" in res:
+        raise RuntimeError(f"executeSql {{label}} failed: {{res['error']}}")
+
+subagent_ids = set()
+for _, out_val in (r_inv or {{}}).get("rows") or []:
+    for m in re.findall(r'"conversationId"\\s*:\\s*"([0-9a-f-]{{36}})"', out_val or ""):
+        subagent_ids.add(m)
+
+chains = [
+    {{
+        "id": r[0], "span_id": r[1], "start_time": r[2], "name_prefix": r[3],
+        "session_id": r[4], "host_name": r[5], "agent_name": r[6], "input_value": r[7],
+    }}
+    for r in ((r_ch or {{}}).get("rows") or [])
+]
+ups = [
+    {{
+        "id": r[0], "span_id": r[1], "start_time": r[2],
+        "session_id": r[3], "host_name": r[4], "input_value": r[5],
+    }}
+    for r in ((r_up or {{}}).get("rows") or [])
+]
+
+return {{"subagent_ids": sorted(subagent_ids), "chains": chains, "ups": ups}}
+"""
+    payload = phoenix_execute_code(base_url, code)
+    return extract_user_prompts_from_records(
+        payload.get("chains") or [],
+        payload.get("ups") or [],
+        set(payload.get("subagent_ids") or []),
+        since_dt,
+    )
+
+
+def _assign_turn_and_filter_stale(
+    prompts: list[MatchedPrompt], turns: list[Turn], since_dt: datetime
+) -> list[MatchedPrompt]:
+    """Bind each matched prompt to its assembled Turn (#tN) and drop pre-cursor hook echoes."""
+    if not turns:
+        return prompts
+    norm = lambda s: " ".join(s.split())
+    kept: list[MatchedPrompt] = []
+    for item in prompts:
+        needle = norm(item.text)
+        # 1. Exact span_id match on turn roots or other/step spans
+        matched_turn: Turn | None = None
+        for turn in turns:
+            all_turn_span_ids = {
+                *(span_id(r) for r in turn.roots),
+                *(span_id(o) for o in turn.others),
+                *(span_id(sp) for st in turn.steps for sp in st.spans),
+            }
+            if item.span_id and item.span_id in all_turn_span_ids:
+                matched_turn = turn
+                break
+        # 2. Check if this exact prompt belonged to an earlier pre-cursor turn (agy hook echo)
+        matching_text_turns = [t for t in turns if needle and needle in norm(t.prompt)]
+        if matching_text_turns:
+            if all(t.start < since_dt for t in matching_text_turns):
+                continue
+            post_turns = [t for t in matching_text_turns if t.start >= since_dt]
+            if post_turns:
+                matched_turn = post_turns[0]
+        if matched_turn is None:
+            # Nearest turn containing or closest to prompt timestamp
+            containing = [t for t in turns if t.start <= item.start <= t.end]
+            matched_turn = (
+                containing[0]
+                if containing
+                else min(turns, key=lambda t: abs((t.start - item.start).total_seconds()))
+            )
+        item.turn_index = matched_turn.index
+        kept.append(item)
+    return kept
+
+
+def _unique_slugs(session_ids: list[str]) -> dict[str, str]:
+    counts: dict[str, int] = {}
+    for sid in session_ids:
+        counts[sid[:8]] = counts.get(sid[:8], 0) + 1
+    return {sid: (sid[:8] if counts[sid[:8]] == 1 else sid) for sid in session_ids}
+
+
+def render_prompts_markdown(
+    prompts: list[MatchedPrompt],
+    slug_by_session: dict[str, str],
+    project: str,
+    since_dt: datetime,
+    ui_base_url: str | None = None,
+) -> str:
+    """Render a two-tier markdown index (summary table + blockquoted prompt entries)."""
+    session_count = len({p.session_id for p in prompts})
+    lines = [
+        f"# User Prompts Since `{since_dt.astimezone(UTC).strftime('%Y-%m-%dT%H:%M:%SZ')}`",
+        "",
+        f"- **Project:** {project}",
+        f"- **Since:** {fmt_time(since_dt)}",
+        f"- **Matched prompts:** {len(prompts)} across {session_count} session(s)",
+        "",
+    ]
+    if not prompts:
+        lines.append("No human user prompts recorded since this cursor.")
+        return "\n".join(lines) + "\n"
+
+    lines += [
+        "## Summary",
+        "",
+        "| # | Time (UTC) | Session | Source | Preview | Outline |",
+        "| -: | - | - | - | - | - |",
+    ]
+    for idx, p in enumerate(prompts, start=1):
+        slug = slug_by_session[p.session_id]
+        src_label = f"{p.source} #{p.message_id}" if p.message_id else p.source
+        preview = escape_cell(one_line(p.text, 60))
+        outline_ref = f"{slug}.outline.md#t{p.turn_index}"
+        lines.append(
+            f"| [{idx}](#p{idx}) | {p.start.astimezone(UTC).strftime('%m-%d %H:%M:%S')} | "
+            f"`{slug}` | {escape_cell(src_label)} | {preview} | "
+            f"[{slug}#t{p.turn_index}]({outline_ref}) |"
+        )
+
+    lines += ["", "## Prompts", ""]
+    for idx, p in enumerate(prompts, start=1):
+        slug = slug_by_session[p.session_id]
+        outline_ref = f"{slug}.outline.md#t{p.turn_index}"
+        src_head = f"{p.source} #{p.message_id}" if p.message_id else p.source
+        link_parts = [f"[outline]({outline_ref})"]
+        if ui_base_url:
+            link_parts.append(f"[session]({ui_base_url}/redirects/sessions/{p.session_id})")
+            if p.span_id:
+                link_parts.append(f"[span]({ui_base_url}/redirects/spans/{p.span_id})")
+        meta_parts = [f"`session_id: {p.session_id}`"]
+        if p.span_id:
+            meta_parts.append(f"`span_id: {p.span_id}`")
+        meta_parts.append(f"`source: {p.source}`")
+        if p.message_id:
+            meta_parts.append(f"`message_id: {p.message_id}`")
+        if p.thread_id:
+            meta_parts.append(f"`thread_id: {p.thread_id}`")
+        if p.host:
+            meta_parts.append(f"`host: {p.host}`")
+
+        lines += [
+            f'<a id="p{idx}"></a>',
+            "",
+            f"### {idx} · {fmt_time(p.start)} · `{slug}` · {escape_cell(src_head)}",
+            "",
+            f"- **Links:** {' · '.join(link_parts)}",
+            f"- **Metadata:** {' · '.join(meta_parts)}",
+            "",
+            quote(p.text),
+            "",
+        ]
+    return "\n".join(lines).rstrip() + "\n"
+
+
 # --- CLI ---------------------------------------------------------------------
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="phoenix_transcript.py",
-        description="Render a session's Phoenix spans as a markdown transcript with durations, tokens and costs.",
+        description="Render a session's Phoenix spans as a markdown transcript, or scan human user prompts since a UTC cursor.",
     )
     parser.add_argument(
-        "ident", help="session ID / conversation ID, session slug (ID prefix), or 32-hex trace ID"
+        "ident",
+        nargs="?",
+        default=None,
+        help="session ID / conversation ID, session slug (ID prefix), or 32-hex trace ID",
+    )
+    parser.add_argument(
+        "--since",
+        help="discover human user prompts since this ISO-8601 timestamp (explicit timezone offset required, e.g. 2026-11-14T08:45:32Z) and write outline transcripts for matches",
     )
     parser.add_argument("--base-url", help=f"Phoenix base URL (else ${BASE_URL_ENV_VAR})")
     parser.add_argument(
@@ -1312,7 +1837,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--out",
-        help="transcript path (default ./<session-slug>.transcript.md); the outline is written beside it",
+        help="transcript path in single-session mode, or output directory in --since mode",
     )
     parser.add_argument(
         "--sanitize-paths",
@@ -1322,10 +1847,89 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def run_since(args: argparse.Namespace, prices: dict[str, dict[str, float]]) -> int:
+    since_dt = parse_since_utc(args.since)
+    if args.from_file:
+        project = args.project or os.environ.get(PROJECT_ENV_VAR, "") or "(from file)"
+        universe = load_spans_from_file(Path(args.from_file).expanduser())
+        base_url = (args.base_url or os.environ.get(BASE_URL_ENV_VAR, "")).strip() or None
+        candidates = discover_prompts_from_spans(universe, since_dt)
+    else:
+        base_url = resolve_base_url(args.base_url)
+        project = resolve_project(args.project)
+        universe = []
+        candidates = fetch_prompts_since(base_url, project, since_dt)
+
+    ui_base_url = resolve_ui_base_url(getattr(args, "ui_base_url", None), base_url)
+    out_dir = Path(args.out).expanduser() if args.out else Path.cwd()
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    ordered_sids = list(dict.fromkeys(p.session_id for p in candidates))
+    prelim_slugs = _unique_slugs(ordered_sids)
+    kept_prompts: list[MatchedPrompt] = []
+    outlines_to_write: list[tuple[str, str]] = []
+
+    for sid in ordered_sids:
+        if args.from_file:
+            spans = [s for s in universe if str(attr(s, "session.id")) == sid]
+        else:
+            assert base_url is not None
+            spans, _ = fetch_session_spans(base_url, project, sid)
+        session_prompts = [p for p in candidates if p.session_id == sid]
+        if not spans:
+            kept_prompts.extend(session_prompts)
+            continue
+        spans.sort(key=start_of)
+        turns = assemble(spans, sid, prices)
+        bound = _assign_turn_and_filter_stale(session_prompts, turns, since_dt)
+        if not bound:
+            continue
+        kept_prompts.extend(bound)
+        _, outline, _ = render(turns, sid, project, spans, prices, ui_base_url=ui_base_url)
+        if getattr(args, "sanitize_paths", False):
+            outline = sanitize_paths(outline)
+        outlines_to_write.append((sid, outline))
+
+    kept_prompts.sort(key=lambda p: p.start)
+    final_sids = list(dict.fromkeys(p.session_id for p in kept_prompts))
+    slug_by_session = _unique_slugs(final_sids) if final_sids else prelim_slugs
+
+    written_outlines: list[Path] = []
+    for sid, outline in outlines_to_write:
+        if sid not in slug_by_session:
+            continue
+        outline_path = out_dir / f"{slug_by_session[sid]}.outline.md"
+        outline_path.write_text(outline)
+        written_outlines.append(outline_path)
+
+    prompts_md = render_prompts_markdown(
+        kept_prompts, slug_by_session, project, since_dt, ui_base_url=ui_base_url
+    )
+    if getattr(args, "sanitize_paths", False):
+        prompts_md = sanitize_paths(prompts_md)
+    prompts_path = out_dir / "prompts.md"
+    prompts_path.write_text(prompts_md)
+
+    print(
+        f"prompts:  {prompts_path} ({len(kept_prompts)} matched across {len(final_sids)} session(s))"
+    )
+    for p in written_outlines:
+        print(f"outline:  {p}")
+    return 0
+
+
 def run(args: argparse.Namespace) -> int:
+    if args.ident and args.since:
+        raise ConfigError("pass either <ident> or --since, not both")
+    if not args.ident and not args.since:
+        raise ConfigError("missing target: pass <ident> or --since <iso-timestamp>")
+
     prices = dict(PRICES)
     if args.prices:
         prices.update(json.loads(Path(args.prices).expanduser().read_text()))
+
+    if args.since:
+        return run_since(args, prices)
 
     if args.from_file:
         project = args.project or os.environ.get(PROJECT_ENV_VAR, "") or "(from file)"

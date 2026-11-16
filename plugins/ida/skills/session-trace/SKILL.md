@@ -65,6 +65,15 @@ time, find the session with Recipe A or F in [references/sql-recipes.md](referen
   `--by task`. Prices are list prices per million tokens; the dollar column is
   comparable spend, not an invoice. Gemini spans may carry no token counts.
 
+## Cross-session user prompts since a cursor
+
+```bash
+uv run python "${CLAUDE_SKILL_DIR:-plugins/ida/skills/session-trace}/scripts/phoenix_transcript.py" --since <utc-iso-timestamp> --out <dir> [--sanitize-paths]
+```
+
+- Discovers human-submitted prompts across CLI, messaging channels, and Antigravity sessions since `<utc-iso-timestamp>` (explicit timezone offset required, e.g. `2026-11-14T08:45:32Z`), excluding automated notifications, subagent briefs, and bare headless worker entrypoints.
+- Writes `<dir>/prompts.md` (summary index table + blockquoted prompts with Phoenix links and `#t<N>` turn anchors) and `<dir>/<slug>.outline.md` for each matched session.
+
 ## Cross-session search
 
 With no session id in hand ("every prompt mentioning X"), follow "Cross-session search" in

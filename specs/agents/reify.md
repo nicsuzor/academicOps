@@ -66,19 +66,24 @@ Step inlining is interpretive, not mechanical transcription:
 - Outcome-oriented criteria: Reified tasks define observable end-state conditions and verification criteria rather than implementation mechanisms. Line numbers, line ranges, and narrow code slice prescriptions are strictly forbidden in `Goal`, `Acceptance criteria`, and `Execution steps` / `Instructions`.
 - Combined single-session task body by default: `/reify` writes a single combined repo-scoped task body by default, keeping design, subagent dialectical review, build, incremental `git push` checkpoints, and PR verification inside the single supervised container session rather than mandating separate Stage 1 Design / Stage 2 Build / QA child tasks.
 
-## Task Splitting and Out-of-Session Boundaries
+## Task Splitting, Two-Task Reviewed Classes, and Out-of-Session Boundaries
 
-`/reify` writes a single combined repo-scoped task body by default. Subagent dialectical review, testing, incremental `git push` checkpoints, and PR verification all execute in-session under `/supervise`.
+`/reify` writes a single combined repo-scoped task body by default under container supervision (`/supervise`), where subagent dialectical review, testing, incremental `git push` checkpoints, and PR verification execute in-session.
 
-Separate tasks are split ONLY when a workflow explicitly mandates:
+When a class of task has an independent review process reified onto the task graph (rather than folded into a single-session `/supervise` run), reifying it yields **two separate tasks** under the parent container:
+
+1. **The work task**: Completes the deliverable, opens the draft PR (`gh pr create --draft`) or records the PKB artifact, ticks met acceptance criteria with primary evidence, and releases with one completion status: **`done`** (never `review`).
+2. **The review task** (`needs: [<work_task_id>]`): Unblocks when the work task is `done`, runs the independent proportionate review, posts verdicts to the PR thread, marks the draft PR ready (`gh pr ready`), and releases `done` on pass or `failed` on fail.
+
+Unreviewed task classes (routine documentation, notes, trivial chores, and low-risk internal bugfixes) yield only the work task, which releases as `done`. Outside the work-task + review-task pair for reviewed classes, separate tasks are split ONLY when a workflow explicitly mandates:
 
 1. A different repository (strictly one task per repository);
 2. A different time or external wait condition;
-3. A separate external agent or session (such as closed-loop `assignee: ida` user-channel delivery).
+3. A separate external agent or session (such as independent downstream review or closed-loop `assignee: ida` user-channel delivery).
 
-For research tasks investigating open design questions or architectural choices, the agent does the groundwork and makes the decision itself (selecting the recommended route); it never composes a decision task assigned to the user (`assignee: user`) unless the user explicitly directed to decide it themselves (tg 1013).
+For research tasks investigating open design questions or architectural choices, the agent does the groundwork and makes the decision itself (selecting the recommended route); it never composes a decision task assigned to the user (`assignee: user`) unless the user explicitly directed to decide it themselves.
 
-Worker self-release to `done` is preserved across all tasks: workers self-release to `done` upon satisfying the frozen acceptance checklist with concrete evidence, without being held in `review`.
+Worker self-release to `done` is preserved across all tasks: every work task has one completion release status (`done`) upon satisfying the frozen acceptance checklist with concrete evidence, and is never released or moved to `review`.
 
 ## Context gathering
 

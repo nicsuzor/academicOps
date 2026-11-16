@@ -1,6 +1,6 @@
 [project]
 name = "academicops"
-version = "1.7.0"
+version = "1.8.2"
 description = "A principled, integrated approach to operationalising what academic integrity requires in a distributed, AI-assisted workflow"
 requires-python = ">=3.11"
 dependencies = [
@@ -221,9 +221,9 @@ exclude = [
 ignore = ["**/site-packages"]
 # Python path for internal imports
 extraPaths = [
+  "lib/hooks",
   "plugins/rbg/hooks",
   "plugins/ida/hooks",
-  "plugins/james/hooks",
   "plugins/aops-debug/hooks",
   "plugins/tools/hooks",
   "lib/py",
@@ -275,7 +275,7 @@ reportUnusedImport = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 norecursedirs = ["archived", "tests/archived"]
-pythonpath = [".", "lib/py"]
+pythonpath = [".", "lib/py", "lib/hooks"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]

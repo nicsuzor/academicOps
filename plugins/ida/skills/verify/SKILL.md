@@ -28,7 +28,7 @@ Review the artifact in its actual rendered form as experienced by the user:
 
 ## 3. Review Findings & Self-Fixes
 
-- **Uncontroversial Self-Fixes:** When authorized by the supervising workflow (e.g. in `strategic-review` with `--fix`), directly apply and commit obvious typographic, minor formatting, or visual layout corrections (`fix(review): ...`), documenting them under `### Reviewer Self-Fixes Applied`. In the standard parallel pre-handback review (`wf-finish.md`), report suggested repairs under `### Suggested Fixes` for the writer to incorporate during the single fix pass, preventing concurrent git write conflicts.
+- **Uncontroversial Self-Fixes:** When authorized by the supervising workflow (e.g. in `strategic-review` with `--fix`), directly apply and commit obvious typographic, minor formatting, or visual layout corrections (`fix(review): ...`), documenting them under `### Reviewer Self-Fixes Applied`. When self-fixes are not authorized (such as read-only parallel subagent reviews), report suggested repairs under `### Suggested Fixes` for the writer to incorporate during the fix pass, preventing concurrent git write conflicts.
 - **Substantive Findings:** Document qualitative shortcomings with clear, constructive guidance on tone, layout, structure, or audience alignment.
 
 ## 4. Verdict Schema

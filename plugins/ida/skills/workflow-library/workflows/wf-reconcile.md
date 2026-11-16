@@ -1,5 +1,5 @@
 ---
-description: Truth maintenance over the task graph -- reconcile merged PRs, transition tasks in review to done when covered by review tasks or open PRs, handle failed tasks by deciding next actions from the parent epic, write items reaching the user to today's daily note, record world-fact cancellations, and demote affected tasks to inbox.
+description: Truth maintenance over the task graph -- advance open high-value-prompt tracking tasks and multi-part asks via groundwork, reconcile merged PRs and shipped releases, route user decisions with completed groundwork to review (assignee user) while transitioning agent tasks out of review, handle failed tasks from parent epics, write items reaching the user to today's daily note, record world-fact cancellations, and demote affected tasks to inbox.
 id: wf-reconcile
 tags:
   - wf-template
@@ -10,23 +10,23 @@ type: template
 
 ## What this step does
 
-Maintains truth over the task graph: establishes facts about in-flight work and landed changes, brings `review` tasks up to date with reality, checks returned work on the papers, writes items that have reached the user to today's daily note, and returns touched tasks to `inbox` for re-planning.
+Maintains truth over the task graph: advances open high-value-prompt tracking tasks and multi-part user asks through groundwork, establishes facts about in-flight work and landed changes, brings `review` tasks up to date with reality, checks returned work on the papers, writes items that have reached the user to today's daily note, and returns touched tasks to `inbox` for re-planning.
 
 ## Obligations
 
-1. **Load active and failed tasks**: Read non-terminal tasks across active statuses AND tasks marked `failed` within the sweep window. Closures made directly by the principal are self-authorizing and presumed intentional (no worker completion receipts required; never demote or flag).
-2. **Reconcile pull requests**: Match closed pull requests to tasks by structured indicators (`pr_url`, body task ID, recorded branch, `polecat/` prefix, exact title).
-   - **Merged PRs**: Write `status: done` unconditionally on an observed merged PR (`pr_url`, merge timestamp, branch). Do not re-judge acceptance criteria. Where a merged PR resolves part of a multi-component task or user request, itemize completed versus incomplete elements in the task record; uncompleted components remain active or carry over as open work.
+1. **Load active, prompt-tracking, and failed tasks**: Read non-terminal tasks across active statuses (including open high-value-prompt tracking tasks tagged `high-value-prompt` or `prompt-sweep` and multi-part user asks in `inbox`/`ready`) AND tasks marked `failed` within the sweep window. When invoked with a cursor (`since: <cursor_utc>`), scope task, PR, and failure queries to records changed or unblocked since `<cursor_utc>` alongside open `high-value-prompt` tracking tasks and `status: review` tasks, and project fields (`id`, `title`, `status`, `assignee`, `pr_url`, `parent`) in batch queries so payloads stay under inline limits (`< 8 KB`) before opening full bodies on candidate mutations. Closures made directly by the principal are self-authorizing and presumed intentional (no worker completion receipts required; never demote or flag). For every open high-value-prompt tracking task or multi-part user ask, perform groundwork to move it on rather than leaving it in `inbox` or reporting it as passively "stuck": settle unknowns by querying the PKB first (tasks, notes, closed records) and then live GitHub PRs/issues/releases and traces; itemize completed versus remaining parts; close (`done`) tasks whose deliverable or release has shipped and the user knows about; place or promote the concrete next agent step onto the graph as `status: queued` via `/q`; and when agent groundwork and option evaluation are complete (with a reasoned recommendation written in the body) and the item genuinely waits on the user's own decision or host action, set `status: review` (`assignee: user`) so it surfaces in the daily note's `## With you`.
+2. **Reconcile pull requests and shipped releases**: Match closed pull requests and shipped releases to tasks by structured indicators (`pr_url`, body task ID, recorded branch, `polecat/` prefix, exact title), batching PR checks per repository (`gh pr list --repo <owner/repo> --state all --limit 100 --json number,title,state,isDraft,mergedAt,closedAt,headRefName,url,reviewDecision,statusCheckRollup`) and calling `gh pr view <n>` only for PRs outside the batch window.
+   - **Merged PRs and shipped releases**: Write `status: done` unconditionally on an observed merged PR (`pr_url`, merge timestamp, branch) or on a deliverable/release that has shipped and been communicated to the user (never hold tasks open waiting to prove the user installed, pulled, or deployed a release). Do not re-judge acceptance criteria. Where a merged PR or release resolves part of a multi-component task or user request, itemize completed versus incomplete elements in the task record; uncompleted components remain active or are queued (`status: queued`) as concrete next-step work tasks.
    - **Closed without merge**: Surface for routing; never auto-complete or auto-requeue.
-   - **Open PRs**: Read review and check state with `gh pr view <n> --repo <owner/repo> --json state,isDraft,mergedAt,reviewDecision,statusCheckRollup`. `reviewDecision: CHANGES_REQUESTED` or a failing check in `statusCheckRollup` routes the task to `queued` or a follow-up task, never `done` or `review`.
-3. **Reconciling Tasks in Review**: Agents never release tasks into `review`. Tasks explicitly held in `review` by the user (`assignee: user`) represent manual inspection holds and are left untouched. For all other tasks in `status: review`:
+   - **Open PRs**: Inspect `state`, `isDraft`, `mergedAt`, `reviewDecision`, and `statusCheckRollup` from the batched repository listing (or `gh pr view <n>` if older than the batch). A work task released as `done` with an open PR remains `done` while the PR is open (whether checks are green, pending review, or awaiting merge); never move or demote an open-PR task to `review` awaiting review or merge (pending review is tracked on its separate review task, and merge is tracked on the PR-tracking task or parent epic). Only `reviewDecision: CHANGES_REQUESTED` or a failing check in `statusCheckRollup` routes work to `queued` or a rework follow-up task under the parent epic, never `review`.
+3. **Reconciling Tasks in Review**: Agents never release work or deliverable tasks into `review`. Tasks in `status: review` assigned to the user (`assignee: user`) represent either manual inspection holds or user-decision items whose agent groundwork is complete (options evaluated and reasoned recommendation recorded on the task) and that genuinely wait on the user's own decision or host action; leave them in `status: review` (`assignee: user`) so they surface in today's daily note `## With you` and `/decide`. For all other tasks in `status: review`:
    - **Covered by a review or QA task**: If an active review or QA task points to the task via graph prerequisite edges (`needs` contains the task ID), mutate the task status immediately to `done`. This unblocks dependent tasks on the graph.
    - **Uncovered with an open PR**: If no review or QA task covers the task, but an open pull request is recorded on the task, mutate the task status to `done` and, if the PR risk tier warrants verification, mint/queue a `QA: <title>` follow-up task with `needs: [<task_id>]`.
    - **Uncovered without a PR**: If the task has no PR and no covering review task, verify recorded evidence against acceptance criteria:
-     - If criteria are fully satisfied with verifiable evidence: mutate status to `done`.
+     - If criteria are fully satisfied with verifiable evidence (or the deliverable has shipped and the user is informed): mutate status to `done`.
      - If incomplete agent work remains: transition to `queued` (or `partial` if partly delivered).
-     - If principal input is required: transition to `partial` (recording the question in `reason`) and escalate to today's daily note `## With you`.
-       No agent task is left in `review`.
+     - If principal input is genuinely required after agent groundwork and option evaluation are recorded: set `status: review` with `assignee: user` (recording the recommendation and one-line decision in `reason`) and surface in today's daily note `## With you`.
+       No agent work task is left in `review`.
 4. **Parent Rollup Lifecycle**: When all open children under a composite task (`parent`) reach `done`, the composite task does not automatically close if it contains substantive acceptance criteria. Instead, transition it to `ready` for an explicit synthesis and sign-off pass. Verify composite criteria against the combined deliverables of its completed child set before marking the composite task `done`.
 5. **Decide next action for failed tasks from the parent epic**: Workers never create or name follow-up tasks, and release `failed` when a check (e.g. QA or review) or implementation fails. For every task marked `failed` within the sweep window:
    - Inspect the failure record: failure evidence, unmet criteria, and documented root cause in `## Report` and `reason`.
@@ -53,30 +53,12 @@ Maintains truth over the task graph: establishes facts about in-flight work and 
 
 ## Must not
 
-- Must not run concurrently with another reconcile: maintain single-flight execution (one reconcile at a time; halt immediately if another reconcile is active).
-- Must not move a claimed (`in_progress`) task backwards while an active worker holds it.
-- Must not leave minted agent review tasks in review or unowned (minted review tasks must be queued or dispatched).
-- Must not write `done` on any evidence other than an observed merged PR, a clean finished part of a split task, or an agent task in `review` covered by a review/QA task, open PR, or complete verifiable evidence.
-- Must not leave agent tasks in `review` or route tasks to `review`; all agent tasks found in `review` must be transitioned immediately.
-- Must not defer `review` outcomes to a later pass or to the original dispatcher.
-- Must not escalate outside the framework (escalation is one level per hop on the record).
-- Must not demand completion receipts for direct principal closures.
-- Must not certify work complete or judge acceptance criteria after merge.
-- Must not reset abandoned claims to `ready` or forward uncertified work to dispatcher.
-- Must not close or cancel without required evidence written to the node body.
-- Must not cancel on missing paths appearing only in narrative or provenance prose.
-- Must not re-open or adjudicate settled principal decisions or merged pull requests.
-- Must not annotate a body with status changes without mutating frontmatter `status`.
-- Must not use `batch_update` for status mutations or demotions.
-- Must not prune, re-plan, or restructure (delegate repositioning to `/q`).
-- Must not write `intent`, `priority`, or `severity`.
-- Must not promote `inbox` or `ready` work into `queued`.
-- Must not ignore `failed` tasks within the sweep window: reconcile must examine each failed task and decide the next action from its parent epic.
-- Must not allow workers to direct their own follow-up tasks or leave stale pointers in review reports; sequencing lives in the parent epic.
-- Must not append unowned sections to the daily note outside `## With you`.
-- Must not dump raw reconcile summaries, commit hashes, branch names, PR merge logs, or worker/container identifiers to the daily note.
-- Must not generate or append `## Daily Log` or execution run heartbeats to the daily note (audit and run traces belong in runner logs/OTel).
-- Must not write items with unverified or insufficient evidence to the daily note.
+- Must not run concurrently with another reconcile (halt immediately if an active reconcile lock exists) or move a claimed (`in_progress`) task backwards while an active worker holds it, reset abandoned claims to `ready`, or forward uncertified work to the dispatcher.
+- Must not leave agent work tasks or minted review tasks in `review` or unowned, route agent tasks to `review`, defer `review` outcomes, or demote a `done` work task with an open PR to `review`; reserve `status: review` (`assignee: user`) strictly for manual user holds and completed-groundwork user decisions.
+- Must not write `done` or `cancelled` without affirmative evidence recorded in the node body (ignoring missing paths appearing only in narrative or provenance prose), demand completion receipts for direct principal closures, certify work or judge acceptance criteria after merge, or re-open settled principal decisions or merged pull requests.
+- Must not annotate status changes in the body without mutating frontmatter `status`, use `batch_update` for status mutations or demotions, prune/re-plan/restructure (delegate repositioning to `/q`), or write `intent`, `priority`, or `severity`.
+- Must not blindly promote unexamined `inbox` or `ready` work into `queued` without groundwork and `/q` placement, ignore `failed` tasks within the sweep window, allow workers to direct their own follow-ups or leave stale pointers in review reports, or escalate outside the framework (one level per hop on the record).
+- Must not append unowned sections outside `## With you`, dump raw reconcile summaries, commit hashes, branch names, PR merge logs, container identifiers, or `## Daily Log` heartbeats, or write unverified items to the daily note.
 
 ## Output contract
 
@@ -93,4 +75,4 @@ Emit one synthesized result:
 
 ## When to include
 
-Re-engagement after absence, within periodic consolidation cycles (`remember`), before daily note composition (`tpl-daily`), or on-demand graph truth maintenance.
+Re-engagement after absence, periodic memory consolidation cycles, pre-briefing graph truth maintenance, or on-demand reconciliation.

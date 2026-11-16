@@ -1,5 +1,47 @@
 # Changelog
 
+## [1.8.2](https://github.com/nicsuzor/academicOps/compare/v1.8.0...v1.8.2) (2026-11-16)
+
+### Bug Fixes
+
+- **session-trace:** route session.id span queries via indexed joins ([#3642](https://github.com/nicsuzor/academicOps/issues/3642)) ([59438a4](https://github.com/nicsuzor/academicOps/commit/59438a4210bab5b9d80465559edd3acbbac90ec8))
+
+### Documentation
+
+- **workflows:** define default completion workflow with two-task review and single done release ([b169dd3](https://github.com/nicsuzor/academicOps/commit/b169dd3e8780e1eba65f01dfc84e410507987022))
+- **workflows:** define default completion workflow with two-task review and single done release ([aa7d8d9](https://github.com/nicsuzor/academicOps/commit/aa7d8d9b5d10d0c48a4f44f23e85065503ce6edf))
+
+## [1.8.0](https://github.com/nicsuzor/academicOps/compare/v1.7.0...v1.8.0) (2026-11-15)
+
+### Features
+
+- **ida,specs:** route related-work searches to Pauli with conceptual queries ([86f53eb](https://github.com/nicsuzor/academicOps/commit/86f53eb42d0f8caf911b5c2fa4addff689d8736a))
+- **ida,specs:** route related-work searches to Pauli with conceptual queries ([d2e892f](https://github.com/nicsuzor/academicOps/commit/d2e892fb443f49b4b02d3adfb55a91200d61de46))
+- **ida:** stateless MCP 2026-07-28 and top-level caller session_id ([e58d6cc](https://github.com/nicsuzor/academicOps/commit/e58d6cce385323b34ceb3c45c8c9b82941404636))
+- **telegram:** gate accept/decline buttons on binary_decision and document decision-fit reply buttons ([49cc6b3](https://github.com/nicsuzor/academicOps/commit/49cc6b30b30698640465e99d22287e345f8da3c3))
+- **telegram:** gate accept/decline buttons on binary_decision and document decision-fit reply buttons ([759186a](https://github.com/nicsuzor/academicOps/commit/759186a6277baee6f7b31a3677c92279d5f66b92))
+
+### Bug Fixes
+
+- **hooks:** remove debug spans from ida and cover all events in aops-debug ([0d95be6](https://github.com/nicsuzor/academicOps/commit/0d95be6c66525982b20d9aca584bb86589049909))
+- **hooks:** scope prompt hydration, guard agy hearsay turns, and centralize debug spans ([1b213df](https://github.com/nicsuzor/academicOps/commit/1b213df8e22783fa441ceca009a3f2dd2cf621c0))
+- **ida:** guard agy _agy_turn_start on invocationNum and fix multi-turn subagent detection ([7d97905](https://github.com/nicsuzor/academicOps/commit/7d97905f2e3107f9d1f9eed33da41e12d83ab428))
+- **ida:** scope prompt hydration to top-level ida user and channel prompts ([c0dcbd5](https://github.com/nicsuzor/academicOps/commit/c0dcbd550e9d09c3d7ff94ad0c0474980f50192c))
+
+### Code Refactoring
+
+- **hooks:** consolidate shared dispatch.py into lib/hooks and fix agy agent precedence ([de08ec4](https://github.com/nicsuzor/academicOps/commit/de08ec47b0cab165d1784125b0042d5a3b917e33))
+
+### Documentation
+
+- **rbg:** strengthen no-over-engineering axiom for hard tasks ([c5e3248](https://github.com/nicsuzor/academicOps/commit/c5e324877e65090c3a9ff74c8925e3412db7087f))
+- **rbg:** strengthen no-over-engineering axiom for hard tasks ([d7dcd20](https://github.com/nicsuzor/academicOps/commit/d7dcd201a9d8a512c800d102233bcb3161353457))
+
+### Miscellaneous
+
+- **hooks:** align ida and aops-debug dispatchers ([422811a](https://github.com/nicsuzor/academicOps/commit/422811ae1b8b3e12840812cf5ac4e5bf878db76a))
+- **hooks:** merge dev into fix/hook-bugs-hydration-hearsay-debug ([7177ccf](https://github.com/nicsuzor/academicOps/commit/7177ccf604a43c25837402c1f033b4e44ebf2b39))
+
 ## [1.7.0](https://github.com/nicsuzor/academicOps/compare/v1.6.0...v1.7.0) (2026-11-13)
 
 ### Features
