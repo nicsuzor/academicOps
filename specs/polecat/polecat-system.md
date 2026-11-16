@@ -14,9 +14,9 @@ Polecat runs one agent CLI invocation inside an isolated Docker container, on an
 isolated git clone, so dispatched work never touches the caller's own checkout or
 host credentials. It is a single command -- `polecat run` -- not a task-claiming
 service: task lifecycle (claim, work, record, hand over) is the invoked agent's own
-job, driven either by a container coordinator (`james`) running `/ida:supervise <task-id>`
+job, driven either by a container coordinator (`james`) running `/supervise <task-id>`
 inside an `agy` session on a coordinator model calibrated to task complexity and
-importance for repo-scoped epic tasks, or by a seeded `/ida:pull <task-id>` prompt
+importance for repo-scoped epic tasks, or by a seeded `/pull <task-id>` prompt
 running `pull` as the fast-path for already-decomposed leaf tasks.
 
 This file is the umbrella. The individual designs are
@@ -31,11 +31,11 @@ This file is the umbrella. The individual designs are
 
 The container launcher (`scripts/polecat`) and worker image are maintained outside this repository and supplied by the installer, together with the Docker MCP server (`polecat_run_container`) registered behind the `services` portal.
 
-- [[plugins/ida/skills/supervise/SKILL.md]] -- container coordinator-side: claims the repo-scoped epic task, reifies workflows onto a combined task body, coordinates subagents with incremental git checkpoints, delivers in-session outputs and pull requests, and queues out-of-session follow-ups -- what a seeded `/ida:supervise <task-id>` prompt does inside the container
-- [[plugins/ida/skills/pull/SKILL.md]] -- worker-side: claim, execute, record, hand
-  over -- what a seeded `/ida:pull <task-id>` prompt actually does once inside the
+- [[plugins/james/skills/supervise/SKILL.md]] -- container coordinator-side: claims the repo-scoped epic task, reifies workflows onto a combined task body, coordinates subagents with incremental git checkpoints, delivers in-session outputs and pull requests, and queues out-of-session follow-ups -- what a seeded `/supervise <task-id>` prompt does inside the container
+- [[plugins/james/skills/pull/SKILL.md]] -- worker-side: claim, execute, record, hand
+  over -- what a seeded `/pull <task-id>` prompt actually does once inside the
   container as the fast-path for already-decomposed leaf tasks
-- [[plugins/ida/skills/dispatch/SKILL.md]] -- coordinator-side: the dispatch skill that starts
+- [[lib/skills/dispatch/SKILL.md]] -- coordinator-side: the dispatch skill that starts
   polecat workers on queued tasks via the Docker MCP server (`polecat_run_container`) or the
   host launcher (`scripts/polecat`)
 - [[.agents/skills/debug/SKILL.md]] -- the operational skill for driving a
@@ -96,7 +96,7 @@ The container launcher (`scripts/polecat`) and worker image are maintained outsi
    `sleep`, or any other passthrough binary). With `--task <id>` and no explicit
    prompt: launches the container coordinator (`james`) inside an `agy` session on
    a `coordinator` model calibrated to task complexity and importance, seeded with
-   `/ida:supervise <task-id>` for repo-scoped epic tasks; or seeds `/ida:pull <task-id>`
+   `/supervise <task-id>` for repo-scoped epic tasks; or seeds `/pull <task-id>`
    for already-decomposed leaf tasks. Every dispatch without `-i` runs headless
    (`--print`), whatever the host's stdin is, so the container exits when the agent's
    loop completes rather than idling forever; `-i` is the only way into the interactive UI.

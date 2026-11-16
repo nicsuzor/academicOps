@@ -45,7 +45,7 @@ making further routing decisions:
 - **3-Tier Resolution**:
   1. `Project`: PKB documents carrying `type: template` and the task's `project`, id `<project>-<slug>`.
   2. `PKB`: PKB documents carrying `type: template` and no `project`.
-  3. `Universal`: Built-in templates in `plugins/ida/skills/workflow-library/workflows/wf-*.md`.
+  3. `Universal`: Built-in templates in `plugins/james/skills/workflow-library/workflows/wf-*.md`.
 
 Selection is interpretive, not mechanical: `/reify` reads the template and generates steps for the specific request. A plan that instructs the main agent to go read a workflow file has failed -- the whole cost saving is that the reading already happened.
 

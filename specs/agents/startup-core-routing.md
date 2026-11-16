@@ -27,11 +27,11 @@ As a framework architect and maintainer, I want agent persona definitions to con
 
 ### US-3 Plugin-Scoped Startup Injection
 
-As an agent operating outside a repository checkout or within client workspaces, I want each installed plugin to inject its plugin-scoped `CORE.md` into ambient session context at startup, so that I receive essential instructions for using and learning that plugin's features without extraneous or agent-specific text.
+As an agent operating outside a repository checkout or within client workspaces, I want each installed hook-bearing plugin to inject its plugin-scoped `CORE.md` into ambient session context at startup, so that I receive essential instructions for using and learning that plugin's features without extraneous or agent-specific text.
 
-- **AC-3.1** Given any framework plugin loaded in a session, when `SessionStart` fires, then the plugin injects its plugin-scoped `CORE.md` (at most 20 lines) into ambient session context.
+- **AC-3.1** Given any hook-bearing framework plugin loaded in a session, when `SessionStart` fires, then the plugin injects its plugin-scoped `CORE.md` (at most 20 lines) into ambient session context.
 - **AC-3.2** Given a plugin-scoped `CORE.md`, when evaluated for admission, then every line passes the four tests: (1) valuable to all agents in every deployment, (2) every value presented works and is filled in, (3) nothing is duplicated, and (4) nothing is extraneous.
-- **AC-3.3** Given the `ida` plugin's `CORE.md`, when inspected, then it instructs formatting Argdown assertions (`ida:argdown-toulmin`), evaluating incoming briefs per `ida:premise-check`, including valid Argdown blocks on all outgoing assertions, and routing PKB custody, planning, and all knowledge tasks exclusively to Pauli, with zero agent-specific rules.
+- **AC-3.3** Given the `ida` plugin's `CORE.md`, when inspected, then it instructs formatting Argdown assertions (`ida:argdown-toulmin`), evaluating incoming briefs per `ida:premise-check`, worker dispatch (`ida:dispatch`), and including valid Argdown blocks on all outgoing assertions, with zero agent-specific rules.
 
 ## Design
 
@@ -69,18 +69,17 @@ Workspace Root
 
 ### Plugin-Scoped Startup Injection
 
-When agents execute outside a repository checkout or within client workspaces, repository startup files (`CLAUDE.md` / `AGENTS.md`) are unreachable. To ensure universal baseline instructions and tool contracts are available in all execution contexts, each plugin injects its own plugin-scoped `CORE.md` via a `SessionStart` hook.
+When agents execute outside a repository checkout or within client workspaces, repository startup files (`CLAUDE.md` / `AGENTS.md`) are unreachable. To ensure universal baseline instructions and tool contracts are available in all execution contexts, each hook-bearing plugin injects its own plugin-scoped `CORE.md` via a `SessionStart` hook.
 
-To protect prompt context budgets, every plugin `CORE.md` is strictly bounded to at most 20 lines and must contain zero agent-specific or extraneous rules.
+To protect prompt context budgets, every hook-bearing plugin `CORE.md` is strictly bounded to at most 20 lines and must contain zero agent-specific or extraneous rules.
 
 #### Plugin Hook Inventory
 
-The following table inventories current session startup hook registration across all repository plugins:
+The following table inventories current session startup hook registration across all hook-bearing repository plugins:
 
 | Plugin | `SessionStart` Hook Registered? | Current Injected Content | Target State |
 | :- | :- | :- | :- |
 | `plugins/ida` | Yes (`Claude Code`: `dispatch.py claude SessionStart`; `agy`: `SessionStart` and `PreInvocation` pointer) | Formatted session metadata (`session`, `time`, `host`, `cwd`, `pkb`, `plugins`, `tracing`), single-line `PREMISE_CHECK_POINTER`, optional image staleness warning, optional credential isolation notification. | Reconcile hook to inject `plugins/ida/CORE.md` alongside metadata (max 20 lines). |
-| `plugins/rbg` | No (hooks registered for `PreToolUse`, `Stop`, `SubagentStop`, and `PreInvocation` only; currently unwired) | None (0 hooks firing). | Wire `SessionStart` hook to inject `plugins/rbg/CORE.md` (max 20 lines). |
 | `plugins/tools` | No (no hooks registered in manifest) | None. | Register `SessionStart` hook in manifest to inject `plugins/tools/CORE.md` (max 20 lines). |
 | `plugins/aops-debug` | Yes (`Claude Code`: `dispatch.py claude SessionStart`; `agy`: `SessionStart`) | Executes `dump_payload` to write raw payload to temp file and emit debug trace; injects zero text into session context. | Retain debug tracing; inject `plugins/aops-debug/CORE.md` (max 20 lines). |
 | `plugins/ida-telegram` | No (`PreToolUse` for `AskUserQuestion` only) | None. | Register `SessionStart` hook to inject `plugins/ida-telegram/CORE.md` (max 20 lines). |
@@ -97,8 +96,7 @@ Every plugin's draft `CORE.md` is evaluated against the four tests for startup i
 
 | Plugin | Draft Lines | Test 1: Valuable to All | Test 2: Working & Filled | Test 3: No Duplication | Test 4: Nothing Extraneous |
 | :- | :- | :- | :- | :- | :- |
-| `plugins/ida` | 8 | Directs all agents to Argdown formatting, premise-check brief reviews, PKB custody and all knowledge tasks exclusively under Pauli, and dynamic workflow discovery. | Pointers to `ida:argdown-toulmin`, `ida:premise-check`, `ida:workflow-library`, and Pauli are active and functional. | Replaces 57-line legacy file; removes inlined agent persona blocks and git branch rules. | Contains only actionable directives; no persona voice, sub-agent spawning rules, or background essays. |
-| `plugins/rbg` | 7 | Establishes the 3-tier rule hierarchy (Axioms → Project Rules → PKB User Rules), authority boundaries, and fail-fast invariant for all agents. | References to `rbg:axioms`, `.agents/rules/`, and `type: rule` match active runtime loaders. | Does not duplicate axiom bodies or test configurations. | Concise constraints and routing to `rbg` compliance review. |
+| `plugins/ida` | 8 | Directs all agents to Argdown formatting (`ida:argdown-toulmin`), premise-check brief reviews (`ida:premise-check`), and worker dispatch (`ida:dispatch`). | Pointers to `ida:argdown-toulmin`, `ida:premise-check`, and `ida:dispatch` are active and functional. | Replaces 57-line legacy file; removes inlined agent persona blocks and git branch rules. | Contains only actionable directives; no persona voice, sub-agent spawning rules, or background essays. |
 | `plugins/tools` | 7 | Routes research pipeline tasks (analysis, transformations, plotting, publishing, diagramming) to specialized domain skills. | Pointers to `tools:analyst`, `tools:dbt`, `tools:streamlit`, `tools:python-viz`, `tools:pdf`, and `tools:diagram` exist and run. | Does not duplicate skill bodies or library options. | High-density routing pointers without implementation instructions. |
 | `plugins/aops-debug` | 5 | Informs executing agents that diagnostic telemetry and payload logging are active with zero behavioral side-effects. | Telemetry endpoints and temp file logging match `handlers.py`. | Does not repeat OTel configuration or tracer internals. | 3 brief lines defining role and zero-side-effect invariant. |
 | `plugins/ida-telegram` | 7 | Informs agents of Telegram channel constraints: mandatory startup skill loading, expandable blockquote progressive disclosure, broker-routed user questions, and applying reaction/status emoji to all messages. | Pointers to `AskUserQuestion` broker and `ida-telegram:telegram` skill are operational. | Does not repeat bot setup, authentication tokens, or web app internals. | Essential channel invariants only. |
@@ -122,10 +120,10 @@ Downstream implementation of this design must satisfy the following verifiable o
 
 #### Goal 3: Plugin-Scoped Startup Injection
 
-- **OBC-3.1**: Every plugin provides a `CORE.md` in its root directory containing at most 20 lines of markdown instructions.
-- **OBC-3.2**: Each plugin's `SessionStart` hook injects its plugin-scoped `CORE.md` into ambient session context at initialization.
+- **OBC-3.1**: Every hook-bearing plugin provides a `CORE.md` in its root directory containing at most 20 lines of markdown instructions.
+- **OBC-3.2**: Each hook-bearing plugin's `SessionStart` hook injects its plugin-scoped `CORE.md` into ambient session context at initialization.
 - **OBC-3.3**: Every line in every plugin `CORE.md` passes the four tests: valuable to all agents in every deployment, values filled in, no duplication, and nothing extraneous.
-- **OBC-3.4**: `plugins/ida/CORE.md` instructs using `ida:argdown-toulmin` and `ida:premise-check`, enforcing valid Argdown blocks on outgoing assertions, placing all durable context in the PKB, routing PKB curation, planning, and all knowledge tasks exclusively to Pauli, and carries zero agent-specific rules.
+- **OBC-3.4**: `plugins/ida/CORE.md` instructs using `ida:argdown-toulmin` and `ida:premise-check`, worker dispatch (`ida:dispatch`), enforcing valid Argdown blocks on outgoing assertions, placing all durable context in the PKB, and carries zero agent-specific rules.
 
 ## Enforcement Map Extract
 
@@ -153,7 +151,7 @@ The following extract defines the enforcement register row for downstream merge 
 ### Regulatory Experiment Record
 
 - **Hypothesis**: Injecting a bounded (≤ 20 lines) plugin-scoped `CORE.md` via `SessionStart` hooks provides agents operating outside the repository checkout or in client workspaces with essential plugin operational invariants and skill discovery routing without polluting context quota or introducing duplicate instructions into agent persona definitions.
-- **What moved**: From zero startup injection for non-ida plugins (and legacy 57-line persona-bloated ida startup instructions) to JIT injection of concise (5–8 lines, bounded to max 20 lines) plugin-scoped `CORE.md` files at `SessionStart` across all five plugins (`ida`, `rbg`, `tools`, `aops-debug`, `ida-telegram`).
+- **What moved**: From zero startup injection for non-ida plugins (and legacy 57-line persona-bloated ida startup instructions) to JIT injection of concise (5-8 lines, bounded to max 20 lines) plugin-scoped `CORE.md` files at `SessionStart` across the hook-bearing plugins (`ida`, `tools`, `aops-debug`, `ida-telegram`).
 - **On what evidence**: When agents execute outside repository roots or within isolated client workspaces, ambient workspace startup files (`CLAUDE.md` / `AGENTS.md`) are unreachable, leaving agents without essential plugin routing (Argdown standards, rule hierarchy, research pipeline tools, diagnostic tracing, and channel invariants). Conversely, inlining rules into agent definitions at build time caused severe prompt bloat and duplication across subagent definitions.
 - **Observation / Promotion Criteria**: Verified by `test_fresh_session_outside_deployment_repo_shows_plugin_core_md` and `test_every_shipped_plugin_session_start_hook_injects_core_md`: fresh sessions initialized outside any repository receive each installed plugin's `CORE.md` within ambient context, each file strictly bounded to at most 20 lines, with zero persona-specific or extraneous text.
 - **Kill / Escalation Criteria**: If agent adherence to plugin invariants remains inadequate without enforcement, evaluate progressive escalation through specific turn-level advisory hooks. If session context usage from plugin startup files exceeds 5% of startup token budgets, compress or consolidate plugin entry points.

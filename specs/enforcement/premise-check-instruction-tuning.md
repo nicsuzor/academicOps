@@ -40,7 +40,7 @@ As an agent whose verdict or block fails recorder validation, I want recorder st
 As a framework architect, I want the report-writing instruction to reside in a single canonical home with just-in-time delivery while preserving existing execution persona stability, so that DRY invariants are satisfied without introducing behavioral regressions in runtime environments.
 
 - **AC-4.1** Given the report handback instructions across the repository, when locating the authoritative specification and schema, then the canonical definition resides exclusively in `plugins/ida/skills/premise-check/SKILL.md` (and its reference files), while task execution and exit skills (`pull`, `dump`) maintain lean pointers.
-- **AC-4.2** Given the established stability of `plugins/ida/agents/james.md` in runtime environments, when updating handback instructions, then `james.md` remains unmodified, avoiding prompt-cache invalidation and execution drift.
+- **AC-4.2** Given the established stability of `plugins/james/agents/james.md` in runtime environments, when updating handback instructions, then `james.md` remains unmodified, avoiding prompt-cache invalidation and execution drift.
 
 ## Targeted Format Errors and Empirical Baseline
 
@@ -130,7 +130,7 @@ An empirical census of 254 verdict recorder refusals over a representative 7-day
 - **Problem & Root Cause:** 30 historical refusals and 10 of the 20 most recent `REVISE` verdicts in telemetry. Dispatched subagents and workers emit unstructured prose conclusions without fencing an Argdown block, triggering automatic `REVISE` loops.
 - **Affected Surfaces:**
   - `plugins/ida/hooks/messages/honesty.md` (JIT prompt injection on `SubagentStart`)
-  - `plugins/ida/skills/dump/SKILL.md`
+  - `plugins/james/skills/dump/SKILL.md`
 - **Proposed Text Changes:**
   - In `plugins/ida/hooks/messages/honesty.md`:
     ```markdown
@@ -268,7 +268,7 @@ The surfaces modified by this specification align with the existing Evidence Con
 
 | Rule | Mechanism | Severity | Detail |
 | :- | :- | :- | :- |
-| [Rule: The Evidence Contract](evidence-contract.md) | instructions, JIT injection, structural, process, post-hoc | imperative, warning, block, required gate, observability | `specs/enforcement/evidence-contract.md`, `specs/enforcement/evidence-contract-enforcement.md`, `specs/enforcement/handback-format-design.md`, `specs/enforcement/premise-check-instruction-tuning.md`, `plugins/ida/skills/premise-check/SKILL.md`, `plugins/ida/skills/premise-check/references/checker-reason.md`, `plugins/ida/skills/premise-check/references/report-form.md`, `plugins/ida/hooks/messages/honesty.md`, `plugins/ida/hooks/messages/hearsay.md`, `plugins/ida/hooks/report_argument.py`, `plugins/ida/skills/dump/SKILL.md` |
+| [Rule: The Evidence Contract](evidence-contract.md) | instructions, JIT injection, structural, process, post-hoc | imperative, warning, block, required gate, observability | `specs/enforcement/evidence-contract.md`, `specs/enforcement/evidence-contract-enforcement.md`, `specs/enforcement/handback-format-design.md`, `specs/enforcement/premise-check-instruction-tuning.md`, `plugins/ida/skills/premise-check/SKILL.md`, `plugins/ida/skills/premise-check/references/checker-reason.md`, `plugins/ida/skills/premise-check/references/report-form.md`, `plugins/ida/hooks/messages/honesty.md`, `plugins/ida/hooks/messages/hearsay.md`, `plugins/ida/hooks/report_argument.py`, `plugins/james/skills/dump/SKILL.md` |
 
 ## Open questions
 

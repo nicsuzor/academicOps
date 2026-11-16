@@ -14,12 +14,12 @@ Work moves through four stages. Each runs, then stops; no stage fires the next.
 | - | - | - | - |
 | 1. Capture | `/q` | one ask | Situate an ask on the graph -- placing repo-scoped epic tasks (strictly one per repo, consolidated across open and closed tasks, wired via `serves` to targets or target-serving epics), valued at intake per [R1](graph-valuation.md#3-r1----placement-at-intake-q). |
 | 2. Expand | `/decompose` | one objective (optional) | Expand an objective into an abstract graph of sub-objectives at objective altitude, decision branches, prerequisites, and alternate paths, each a node bound to no executor. Reads the record first and stops at the first unknown before implementation detail. |
-| 3. Dispatch | `/dispatch` | ready tasks | Start polecat containers directly on queued repo-scoped epic tasks (seeded with `/ida:supervise <task-id>`), or dispatch already-decomposed leaf tasks via `/ida:pull <task-id>`. Writes no tasks. |
+| 3. Dispatch | `/dispatch` | ready tasks | Start polecat containers directly on queued repo-scoped epic tasks (seeded with `/supervise <task-id>`), or dispatch already-decomposed leaf tasks via `/pull <task-id>`. Writes no tasks. |
 | 4. Supervise & Reify | `/supervise` (running `/reify`) | one claimed container task | Inside the container at execution time, lead executor (`james`) claims the task, runs `/reify` to compose workflows from the 3-tier library onto a single combined task body by default, coordinates subagents with incremental `git push` checkpoints, and delivers in-session pull requests. |
 
 The PKB custodian (Pauli) runs Stage 1 (`/q`), optional Stage 2 (`/decompose`), and `/strategize`. Stage 3 belongs to the dispatcher (`/dispatch`). Stage 4 belongs to container supervision (`/supervise`), where the lead executor (`james`) runs `/reify` in-session.
 
-The stages are operative instructions and live in `plugins/ida/skills/`. This spec does not restate them.
+The stages are operative instructions and live in `plugins/james/skills/` and `lib/skills/`. This spec does not restate them.
 
 ## Altitude: what each planning skill is about
 
@@ -55,12 +55,12 @@ Components come from three sources:
 | Source | Where |
 | - | - |
 | Project | PKB documents carrying `type: template` and the task's `project`, id `<project>-<slug>` |
-| Universal | `plugins/ida/skills/workflow-library/workflows/*.md` |
+| Universal | `plugins/james/skills/workflow-library/workflows/*.md` |
 | Personal knowledge base | PKB documents carrying `type: template` and no `project` |
 
 ### Universal templates
 
-Universal baseline templates in `plugins/ida/skills/workflow-library/workflows/` include:
+Universal baseline templates in `plugins/james/skills/workflow-library/workflows/` include:
 
 - `wf-code-task-base`: Foundation for standard code-change tasks (test-first build, PR, independent review).
 - `wf-dispatch`: Direct worker dispatch workflow for headless execution and worker dispatch -- delegates directly to the dispatcher with no child task creation, no pull or dump ceremony, and handback with premise-check Argdown.
@@ -77,7 +77,7 @@ Universal baseline templates in `plugins/ida/skills/workflow-library/workflows/`
 
 1. **Outline, not script.** Enumerate the steps the class of work requires, each stated as an outcome the caller can recognise as met -- never the specific tool calls or prose that satisfy it this time. Several components must fit in one context window together; target ≲100 lines. Substance that outgrows that belongs in a skill the component points at -- a component orchestrates, a skill executes.
 2. **Name the blanks.** Every point where a step depends on something the caller supplies -- a lens, a depth, a sibling component, an artifact shape -- is stated as a blank in that step, not silently assumed.
-3. **No history or meta-commentary in the body.** A component states the current process only, per [`synthesize-not-accrete`](../../lib/axioms/synthesize-not-accrete.md) -- never why a step was added, what it replaced, or how the template evolved. That belongs in git.
+3. **No history or meta-commentary in the body.** A component states the current process only, per [`current-state-only`](../../.agents/rules/current-state-only.md) -- never why a step was added, what it replaced, or how the template evolved. That belongs in git.
 4. **Revisable.** Components are standardised work, not law: versioned, and improved from execution feedback.
 
 ## Existence, not registration
