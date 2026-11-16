@@ -12,7 +12,7 @@ Nothing is written to the graph until placement and composition pass.
 
 ## 0. Verify Placement (/q Precondition)
 
-Reifying binds an already situated node to execution. A node must be situated on the strategic graph under an active parent container (epic or project) and wired per the Three-Purpose Edge Taxonomy (ADR-0002) before it can be reified.
+Reifying binds an already situated node to execution. A node must be situated on the strategic graph under an active parent container (composite parent `type: "task"` or project) and wired per the Three-Purpose Edge Taxonomy (ADR-0002) before it can be reified.
 
 - **Unplaced Asks / Objectives**: If called with a raw natural-language ask or an unplaced objective lacking a parent container, do not write a task to the project root. Invoke `/q` first (routing related-work searches through the custodian with distilled conceptual queries) to search existing work, place the node under the active governing epic, and wire what it serves.
 - **Unparented Existing Tasks**: If given an unparented task ID, search for its governing epic using distilled conceptual queries and update its parentage via `/q` placement before proceeding with workflow composition.
@@ -45,7 +45,7 @@ Halt when composition comes up short: create nothing and report precisely what f
   1. _Different repository_: Strictly one task per repository.
   2. _Different time_: A distinct external wait or execution window.
   3. _Different agent/session_: A workflow-mandated external agent or session, including independent downstream review tasks (`needs: [<work_task_id>]`) or closed-loop user-channel delivery dependent on container tasks via `needs`.
-- **Graph Topology & Edge Invariants**: Never pass `type: "epic"` to `pkb_create_task` (epics are organizational containers, not task types). Where splitting is explicitly required, wire execution gating via `needs: [<task_id>]`. Top-level deliverable tasks wire `serves` to priced targets or to existing epics that serve priced targets; subtasks never carry redundant `serves` edges (single injection invariant). Contextual references are plain markdown `[[wikilinks]]` under `## Pointers`. Write tasks with status `queued`.
+- **Graph Topology & Edge Invariants**: Never pass `type: "epic"` to `pkb_create_task` or `pkb_create` (composite work is a `type: "task"` node with child tasks, not a separate node type). Where splitting is explicitly required, wire execution gating via `needs: [<task_id>]`. Top-level deliverable tasks wire `serves` to priced targets or to existing composite parent tasks that serve priced targets; subtasks never carry redundant `serves` edges (single injection invariant). Contextual references are plain markdown `[[wikilinks]]` under `## Pointers`. Write tasks with status `queued`.
 
 Fill the canonical task structure:
 

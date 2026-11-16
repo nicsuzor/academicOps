@@ -20,7 +20,7 @@ tags: [base, task, docs, instructions, composite]
 
 ## Composition
 
-Structure documentation and instruction workflows per the follow-up placement invariant: as a single task with internal subtasks when executable by the same agent in one session, or as a dedicated epic with child tasks (Child 1: Stages 1--2 Drafting and Proof, Child 2: Stage 3 Review by an independent agent, with `needs: [<child_1_id>]`), never as loose siblings under an external parent. A minor docs repair or trivial chore omits stage 3.
+Structure documentation and instruction workflows per the follow-up placement invariant: as a single task with internal subtasks when executable by the same agent in one session, or as a composite parent task (`type: task`) with child tasks (Child 1: Stages 1--2 Drafting and Proof, Child 2: Stage 3 Review by an independent agent, with `needs: [<child_1_id>]`), never as loose siblings under an external parent. A minor docs repair or trivial chore omits stage 3.
 
 Where the same change also alters a specification or code that executes, the specification and implementation are built and verified together and arrive in one PR.
 
