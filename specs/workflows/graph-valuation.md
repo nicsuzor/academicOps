@@ -10,11 +10,10 @@ tags: [spec, workflow, valuation, ranking, densify, deadlines, intake, email, pk
 
 # Graph valuation: skills and agent logic for the flow rule
 
-**Home:** `specs/workflows/graph-valuation.md` in nicsuzor/academicOps. Skills and templates it
+**Home:** `specs/workflows/graph-valuation.md`. Skills and templates it
 changes are listed in §9.
 
-**Depends on:** the settled flow-rule spec,
-[`specs/flow-rule.md` in nicsuzor/mem](https://github.com/nicsuzor/mem/blob/main/specs/flow-rule.md).
+**Depends on:** the settled flow-rule specification (`specs/flow-rule.md` in the knowledge-base engine).
 That spec owns the maths, the edge fields and the scales. This spec owns everything an agent does
 around them: who writes which field, when, on what evidence, affordable loss assessment, decomposition probes,
 capital stock wiring, and valuation.
@@ -24,8 +23,8 @@ capital stock wiring, and valuation.
 _PKB Architecture & Prioritization Framework_. `FQn` are settled decisions in flow-rule §15.
 `Kn` are the workflow decisions settled in §12.
 
-**Status: settled (points 1–30 of spec_866ee53d).** This canonical specification governs how agents
-(Pauli, Ida) triage, capture, place, densify, and maintain the task graph under the settled flow model.
+**Status: settled (points 1–30).** This canonical specification governs how agents
+triage, capture, place, densify, and maintain the task graph under the settled flow model.
 
 ## 0. Executive Summary
 
@@ -73,9 +72,29 @@ Marking it hard needs your word, or the rule below. Settled rule: a soft date th
 back twice becomes hard on the second push. The agent records why and tells you in one line, and one
 word from you reverses it.
 
-**Email.** Each message is placed against the graph before it becomes a task: what it would serve,
-and how much. A bcc circular with a date in it becomes a note or nothing, never an emergency. A
-sender's name adds no weight.
+**Email.** Each message undergoes mandatory source preparation before classification or intake:
+the full message body, thread history (`Re:`/`Fwd:`), and reachable non-banner attachments are
+fetched and read, recording a concise summary on the record (or stating the access boundary if behind
+an unreachable system or login). No sweep or intake path ever mints a task whose action for the
+principal is reading, opening, or checking an email, document, or link. Intake then applies a four-way
+obligation and triage gate:
+
+1. `noise` (automated notices, newsletters, broadcasts, calendar confirmations, CC observer copies)
+   creates nothing.
+2. `reference` (informational updates, granted approvals, outcomes, circulars, or forwarded threads
+   where the covering message asks nothing of the principal) updates existing gating tasks or knowledge
+   notes in place, creating zero user tasks.
+3. `opportunity` and unagreed work (invitations, offers, and inbound review, supervision, reference, or
+   collaboration asks where the principal was asked specifically rather than broadcast and has not yet
+   accepted the obligation; a calendar entry existing is not an agreed commitment) never becomes an
+   execution task for the principal; it is prepared on a single record (`status: review`, `assignee: user`,
+   `classification: opportunity` where applicable, `deadline_class: fake` by default unless accepted in
+   sent mail) with source summary, candidate options in the body (including decline or do nothing), and a
+   `[Recommended]` rationale so it reaches the principal solely as a decision.
+4. `action` (obligations the principal has already agreed to or requested) is prepared with agent
+   groundwork (`status: queued`) or a draft reply so any remaining step for the principal is a prepared
+   substantive action.
+   A sender's name adds no weight, and a stated date creates no deadline unless agreed to in sent mail.
 
 **How often you are asked.** One sitting a week of about twenty minutes: one link batch (up to 50 rows)
 or one pricing set (at most 10 targets). At most one other valuation question a day, sent in the daily
@@ -227,29 +246,56 @@ Covers U8, U9, U10, U11, S7, S24, S27, I7, I9.
     - Redundant child-to-ancestor `serves` edges on decomposed subtasks.
     - `quantum` or `probability` on `needs` prerequisite edges.
 
-**Headless context** (mobile capture, email). The same steps, headless with no interactive prompt.
-Where the container or the targets cannot be identified, leave the input untouched for the next
-interactive pass. This matches the capture-intake contract (`specs/workflows/capture-intake.md`).
+**Headless context** (mobile capture, email). The same steps run headlessly with no interactive prompt,
+preceded by mandatory source preparation: sweeps fetch and read the full message body, thread history
+(`Re:`/`Fwd:`), and reachable non-banner attachments (or summarize reachable context and state the
+access boundary if an item sits behind an unreachable login), writing a concise summary on the record.
+No sweep or intake path ever mints a task whose action for the principal is reading, opening, or
+checking an email, document, or link. Capture triage evaluates obligation before placement: external asks
+or unagreed opportunities reach the principal solely as a prepared decision (`status: review`,
+`assignee: user`) with options in the body (including decline or do nothing) and a recommendation, or as
+an agent investigation probe (`classification: probe`), never as an accepted user execution task.
+Where the container or targets cannot be identified autonomously, leave the input untouched for the
+next interactive pass. This matches the capture-intake contract (`specs/workflows/capture-intake.md`).
 
 ## 4. R2 -- Email placement
 
 Covers U1, U15, S5, S7, and calibration case 1.
 
-The correspondence sweep (PKB-tier template `wf-email-sweep`) already captures unmatched inbound
-asks "through intake" (module C). This spec adds a placement judgment to that step:
+The correspondence sweep (PKB-tier template `wf-email-sweep`) captures unmatched inbound asks
+through intake (module C). This spec adds mandatory source preparation and an obligation and placement
+judgment to that step:
 
-1. **Classify first**: `noise`, `reference`, `action` or `opportunity`. This keeps the existing
-   classification (email triage guide) and adds `opportunity` for invitations and offers.
-2. **`noise`** gets nothing. **`reference`** becomes a knowledge note or nothing. A circular or bcc
-   message is `reference` unless it asks by name for something only they can give.
-3. **`action` and `opportunity`** go to `/q` in the headless context, carrying the message id. The
-   edges `/q` proposes cite the message in their justification.
-4. **Dates in the message** are captured `fake`. They become `soft` only where sent mail
-   accepts the date, and `hard` only through R5. A sender's own stated date ("by next Monday")
-   creates no pressure (U15).
-5. **The sender's name adds no worth** (FR:498). Who is waiting is context in the body, and moves
-   worth only through an edge to a priced target.
-6. **Strategic contacts.** Some senders bear on a target, for example institutional leadership
+1. **Mandatory source preparation before classification**: Sweeps fetch and read the full message
+   body, thread history (`Re:`/`Fwd:`), and reachable non-banner attachments (or summarize reachable
+   context and explicitly state the access boundary when an item sits behind an unreachable system or
+   login), writing a concise summary on the record. No sweep or intake path ever mints a task whose
+   action for the principal is reading, opening, or checking an email, document, or link.
+2. **Four-way obligation and triage gate**:
+   - **`noise`** (automated notices, newsletters, broadcasts, calendar auto-confirmations, CC observer
+     copies): creates nothing.
+   - **`reference`** (informational updates, approvals granted, project outcomes, circulars, or forwarded
+     action headers addressed to third parties where the covering message asks nothing of the
+     principal): updates any gating task or knowledge note in place and creates zero user tasks. A circular
+     or bcc message is `reference` unless it explicitly asks by name for something only the principal can provide.
+   - **`opportunity` / unagreed work** (invitations, offers, and inbound review, supervision, reference,
+     or collaboration asks where the principal was asked specifically rather than broadcast and has not yet
+     accepted the obligation; a calendar entry existing is not an agreed commitment): never minted as an
+     execution task for the principal. Prepared on a single record (`status: review`, `assignee: user`,
+     `classification: opportunity` where applicable, `deadline_class: fake` default unless accepted in
+     sent mail) with source summary, candidate options inside the body (including decline or do nothing), and
+     a `[Recommended]` rationale so it reaches the principal solely as a decision.
+   - **`action`** (obligations the principal has already agreed to or requested): prepared with agent
+     groundwork (`status: queued`) or a draft reply so any remaining step for the principal is a prepared
+     substantive action.
+3. **Headless intake routing**: `action` and `opportunity` records route through `/q` in the headless
+   context, carrying the message identifier. The edges `/q` proposes cite the message in their justification.
+4. **Dates in the message**: Captured as `deadline_class: fake`. They become `soft` only where sent mail
+   confirms explicit acceptance of the date, and `hard` only through R5. A sender's own stated deadline
+   ("by next Monday") creates no pressure (U15).
+5. **The sender's name adds no worth** (FR:498): Who is waiting is context recorded in the task body, and
+   moves worth strictly through an edge to a priced target.
+6. **Strategic contacts**: Some senders bear on a target, for example institutional leadership
    (calibration case 4). The agent proposes the edge to that target. If no target fits, it adds a
    one-line "no target fits" entry to the ask queue (R7). It never forces a mismatched target.
 
@@ -495,7 +541,7 @@ Each test can be checked by an observer reading the graph or a transcript.
 | A1 | `/q` writes only proposals | Run `/q` on three fixture asks. `get_task` on each new node shows every outgoing edge with `label`, `effect`, a justification and `set_by: agent-proposed`. None shows `set_by: user`, `intent`, `severity` or target worth. | S7, U9, R1 |
 | A2 | A bare idea carries nothing | `/q` on an idea that names no target. The node has a container and no other edge. Flow `gain` and `loss_averted` are both 0. | U9, I7 |
 | A3 | An opportunity is one node | Fingerprint every other node's fields before and after `/q` on an opportunity. Only the new node and its own edges differ. | U10, I9 |
-| A4 | The circular stays quiet | Replay calibration case 1 (the "Dear Friends" Copyright Plus forward) through R2. It is classed `reference`, or captured with `deadline_class: fake` and no edge above the default quantum. It is not in the top 50 under any display key. | U1, U15 |
+| A4 | The circular stays quiet | Replay calibration case 1 (the "Dear Friends" Copyright Plus forward) through R2. It is classed `reference`, updating existing notes in place with zero user tasks created, or captured with `deadline_class: fake` and no edge above the default quantum. It is not in the top 50 under any display key. | U1, U15 |
 | A5 | No worth from a sender | Two fixture emails, identical except the sender (a strategic contact versus an unknown). They produce identical edge proposals. | FR:498, U1 |
 | A6 | Densify batch shape | One `wf-densify` run produces one message with ≤ 50 rows, sorted by reach in descending order, each row carrying every column. | S7, U20 |
 | A7 | Densify writes proposals directly | One `wf-densify` run writes edge proposals as `agent-proposed` without pausing for sign-off. | U20, R3 |
@@ -516,6 +562,8 @@ Each test can be checked by an observer reading the graph or a transcript.
 | A22 | Project hierarchy single injection | Inspect subtasks under an epic or composite task. Verify subtasks carry no redundant child-to-ancestor `serves` links to targets already served by their parent. | ADR-0002, AC3 |
 | A23 | Strict supports semantics | Inspect tracking and coordination tasks (e.g. an operational tracking task). Verify they do not link `supports` to tracked tasks, and link only to user understanding targets. | ADR-0002, AC4 |
 | A24 | Weight contracts enforced | Verify `needs` edges carry neither quantum nor probability; verify target weight edges (`serves`) and `supports` carry explicit quantum and probability. | ADR-0002, AC5 |
+| A25 | Mandatory source preparation | Replay correspondence sweep on messages containing attachments, thread history, and external links. Verify sweeps fetch and read full bodies, threads, and reachable attachments, producing summaries on the record; verify zero tasks are minted whose action for the principal is reading, opening, or checking an email, document, or link. | R2.1 |
+| A26 | Four-way obligation gate | Replay fixture emails across four classes: (1) `noise` creates nothing; (2) `reference` updates existing notes or tasks in place with zero new user tasks; (3) unagreed `opportunity` creates a single record at `status: review`, `assignee: user` with summary, candidate options (including decline), and a recommendation; (4) agreed `action` creates a queued task prepared with agent groundwork or a draft reply. | R2.2 |
 
 ## 12. Settled decisions
 
@@ -535,8 +583,10 @@ All questions K1–K11 are settled under the product-grade workflow redesign:
 5. **K5: Re-pricing. Settled (§6):** Targets are re-confirmed after 180 days in a routine pricing sitting.
 6. **K6: Proposed hard dates. Settled (§7.1):** Agents propose `hard` on published evidence; it enters
    the priority ask queue if due within 14 days, otherwise waits for the weekly sitting.
-7. **K7: Email opportunity class. Settled (§4):** Invitations and offers become `opportunity` nodes
-   when they name something of indicated interest or that contributes to a known target.
+7. **K7: Email opportunity class. Settled (§4):** Invitations, offers, and unagreed inbound
+   collaboration asks reach the principal solely as decisions (`status: review`, `assignee: user`)
+   prepared with source summary, candidate options (including decline or do nothing), and recommendation,
+   never as execution tasks.
 8. **K8: Batch size. Settled (§5):** Batches are capped at 50 rows, ordered by reach.
 9. **K9: Pricing sitting size. Settled (§6):** Capped at 10 targets per sitting. Positive and negative
    targets are judged in the same sitting to maintain ratio consistency.
