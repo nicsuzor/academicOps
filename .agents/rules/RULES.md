@@ -77,13 +77,13 @@ Task titles and filenames must be brief, descriptive, and unambiguous:
 - **No person's name in titles or filenames:** A task title, note title, or filename must **never** contain a person's name or persona prefix (e.g., no `<name>: decision: ...`, `<name>-task-...`, `for-<name>.md`). Assignment belongs exclusively in the `assigned_to` or `assignee` frontmatter field.
 - **Filenames are kebab-case and purpose-driven:** All lowercase alphanumeric characters with hyphens, stating what the file contains or does.
 - **Task bodies are strictly concise:** Follow the canonical template in [`specs/meta/naming-and-decisions.md`](../../specs/meta/naming-and-decisions.md) (Goal, Deliverable, Scope, Acceptance criteria, Pointers). Never add narrative sections (`Background`, `References`, `Implementation Plan`) or prose task-to-task links.
-- **Parent/child is already an edge:** Setting `parent_id` links the hierarchy; do not redundantly wire edges between siblings/descendants of the parent without specific interactions. Tasks requiring review or follow-up must be structured either as a single task with internal subtasks (if single session) or as a dedicated epic with child tasks (if multi-session), never as loose siblings under an external parent.
+- **Parent/child is already an edge:** Setting `parent_id` links the hierarchy; do not redundantly wire edges between siblings/descendants of the parent without specific interactions. Tasks requiring review or follow-up must be structured either as a single task with internal subtasks (if single session) or as a composite parent task (`type: task`) with child tasks (if multi-session), never as loose siblings under an external parent.
 
 ## Three-Purpose Edge Taxonomy and Invariants
 
 Task graph edges follow the Three-Purpose Edge Taxonomy per [`specs/decisions/0002-distinguish-pkb-graph-edge-purposes-and-enforce-parsimony.md`](../../specs/decisions/0002-distinguish-pkb-graph-edge-purposes-and-enforce-parsimony.md):
 
-- **Single injection invariant**: Top-level deliverable tasks wire `serves` weight-flow links either directly to priced targets or to existing epics that `serves` priced targets, avoiding duplicate links to the same target; subtasks never carry redundant `serves` edges. Auxiliary tasks that directly reduce effort or raise success probability wire `supports` (forbidden for tracking tasks).
+- **Single injection invariant**: Top-level deliverable tasks wire `serves` weight-flow links either directly to priced targets or to existing composite parent tasks (epics) that `serves` priced targets, avoiding duplicate links to the same target; subtasks never carry redundant `serves` edges. Auxiliary tasks that directly reduce effort or raise success probability wire `supports` (forbidden for tracking tasks).
 - **Prerequisites use `needs`**: Upward execution gating is declared exclusively via `needs: [<task_id>]`.
 - **Contextual references use `## Pointers`**: Soft references, cited documentation, and related artifacts live exclusively as markdown `[[wikilinks]]` in `## Pointers`. Duplicate frontmatter edges for body citations are prohibited.
 
@@ -110,9 +110,9 @@ Subagent helpers are kept bounded through timely lifecycle management, batched o
 - **Batched operations**: Batch multi-item reads and mutations into single turns rather than serial round-trips.
 - **Active cache management**: Helpers must yield or complete before the 5-minute cache TTL expires; idling across cache invalidation boundaries is prohibited.
 
-## Bundled Pull Requests under Epics
+## Bundled Pull Requests under Composite Parent Tasks
 
-When tasks execute under a parent task marked `bundle_pr: true` or under an active epic (`type: epic`), workers must commit directly to the designated epic branch (`polecat/<epic-id>` or `topic/<slug>`) and must not open detached pull requests against `dev`. All changes, test receipts, and review records bundle into the epic's single consolidated pull request for cohesive user review. If a standalone tracking pull request exists, it is marked superseded and closed upon consolidation.
+When tasks execute under a parent task marked `bundle_pr: true` or under an active composite task (a parent `type: task` node with child tasks), workers must commit directly to the designated parent branch (`polecat/<parent-id>` or `topic/<slug>`) and must not open detached pull requests against `dev`. All changes, test receipts, and review records bundle into the composite parent task's single consolidated pull request for cohesive user review. If a standalone tracking pull request exists, it is marked superseded and closed upon consolidation.
 
 ## Decisions Emerge from Graph Relationships, Not Standalone Tasks
 
