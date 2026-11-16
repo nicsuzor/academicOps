@@ -9,8 +9,8 @@ The task record is the whole message to the container. Start it as written. The 
 
 A polecat is an isolated container session: it gets in, executes its task, and gets out cleanly. Dispatched containers operate across two distinct modes:
 
-- **Supervised Container Execution (`/ida:supervise <task-id>`)**: Default for repo-scoped epic tasks queued by `/q`. Launches the container coordinator (`james`) on a `coordinator` model calibrated to task complexity and importance. The container coordinator enriches its claimed task via `/reify` in-session, composes the workflow, fans out across subagents to deliver everything possible in session, and leaves follow-up tasks on the graph only for out-of-session work.
-- **Plain Leaf Execution (`/ida:pull <task-id>`)**: Fast-path execution for already-decomposed leaf tasks or single-skill runs without re-reifying. Plain leaf workers operate strictly under the worker state-only invariant: they mutate only their claimed task's own state and never mint follow-up tasks.
+- **Supervised Container Execution (`/james:supervise <task-id>`)**: Default for repo-scoped epic tasks queued by `/q`. Launches the container coordinator (`james`) on a `coordinator` model calibrated to task complexity and importance. The container coordinator enriches its claimed task via `/reify` in-session, composes the workflow, fans out across subagents to deliver everything possible in session, and leaves follow-up tasks on the graph only for out-of-session work.
+- **Plain Leaf Execution (`/james:pull <task-id>`)**: Fast-path execution for already-decomposed leaf tasks or single-skill runs without re-reifying. Plain leaf workers operate strictly under the worker state-only invariant: they mutate only their claimed task's own state and never mint follow-up tasks.
 
 ## 1. Check Each Task Is Ready
 
@@ -29,11 +29,11 @@ Launch one polecat container per ready task, in parallel, through the project's 
 
 - **Repo-scoped epic tasks**: Launch the container coordinator (`james`) on an appropriate `coordinator` model (calibrated to the task's complexity or importance) with the command:
   ```bash
-  /ida:supervise <task-id>
+  /james:supervise <task-id>
   ```
 - **Already-decomposed leaf tasks**: Launch a worker container with the fast-path command:
   ```bash
-  /ida:pull <task-id>
+  /james:pull <task-id>
   ```
 
 Containers launch asynchronously; callers are not notified when they start, and neither track nor report starts. Assume work proceeds unless an error comes back. A container dispatch failure is a halt: report the task ID and the failure verbatim.
@@ -42,7 +42,7 @@ Containers launch asynchronously; callers are not notified when they start, and 
 
 Dispatch is fire-and-forget: the container records its result on the task graph. Once tasks are dispatched, output the dispatch report and end your turn immediately:
 
-- Output one line per task: title, id, selected command (`/ida:supervise` or `/ida:pull`), and that the container is launched.
+- Output one line per task: title, id, selected command (`/james:supervise` or `/james:pull`), and that the container is launched.
 - Never wait for a container to finish in the dispatch turn, never wait for or report container starts, and never call or block on event-stream tools, status checks, sleep loops, or timers.
 
 ## 4. Act on a Completed Container (Separate Invocation or Turn)

@@ -5,7 +5,7 @@ description: Extract and reconstruct the argument a text or draft makes -- main 
 
 # Argument Extraction
 
-Reconstruct what a text argues, preserving the author's framing while making every inference step, warrant, and source trace explicit, without editorialising. Read `ida:argdown-toulmin` before drafting: it sets the grammar, metadata, tags, granularity levels, layout, and parser validation.
+Reconstruct what a text argues, preserving the author's framing while making every inference step, warrant, and source trace explicit, without editorialising. Read `james:argdown-toulmin` before drafting: it sets the grammar, metadata, tags, granularity levels, layout, and parser validation.
 
 ## When to Use
 

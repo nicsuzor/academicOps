@@ -26,12 +26,13 @@ import pytest
 pytestmark = pytest.mark.integration
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-RBG_HOOKS = REPO_ROOT / "plugins" / "rbg" / "hooks"
+COPE_HOOKS = REPO_ROOT / "lib" / "hooks" / "cope"
+LIB_HOOKS = REPO_ROOT / "lib" / "hooks"
 POLICY_FILE = REPO_ROOT / "tests" / "policy.toml"
 
 _policy = tomllib.loads(POLICY_FILE.read_text(encoding="utf-8"))
 
-RULE_CHECK_TEXT = (RBG_HOOKS / "messages" / "rule-check.md").read_text(encoding="utf-8").strip()
+RULE_CHECK_TEXT = (COPE_HOOKS / "messages" / "rule-check.md").read_text(encoding="utf-8").strip()
 
 # Loaded from tests/policy.toml to support Policy-as-Code
 STOP_EVENTS = tuple(_policy["rbg"]["stop_gate"]["stop_events"])
@@ -46,7 +47,8 @@ def _require_rbg_enabled():
 def staged(tmp_path) -> Path:
     """A plugin `hooks/` directory assembled with dispatch.py and handlers.py."""
     hooks = tmp_path / "hooks"
-    shutil.copytree(RBG_HOOKS, hooks, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(COPE_HOOKS, hooks, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copy2(LIB_HOOKS / "dispatch.py", hooks / "dispatch.py")
     return hooks
 
 

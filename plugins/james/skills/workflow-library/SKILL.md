@@ -52,11 +52,11 @@ Resolve the template slug across tiers in precedence order. Output the winning c
    - **Project**: Specific to one project. Write it to the PKB with `project: <project>` and id `<project>-<slug>`.
    - **PKB**: Portable personal workflow. Write it to the PKB with no `project`.
    - **Universal**: Core baseline standard across projects (`workflows/` inside this skill directory).
-3. Author the template following `ida:craft` (`## Workflow Templates`), which is the authoritative style, schema, and authoring standard across all tiers. Compliance with its contract separation, headless worker execution, approval boundary, and deliverable rules is mandatory.
+3. Author the template following `james:craft` (`## Workflow Templates`), which is the authoritative style, schema, and authoring standard across all tiers. Compliance with its contract separation, headless worker execution, approval boundary, and deliverable rules is mandatory.
 
 ### edit
 
-Update existing templates in place. Authoring changes must comply with `ida:craft` (`## Workflow Templates`).
+Update existing templates in place. Authoring changes must comply with `james:craft` (`## Workflow Templates`).
 
 - **Universal**: Edit the file directly.
 - **PKB**: Update only the markdown body below the closing `---` in the PKB node to prevent frontmatter duplication.

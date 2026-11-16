@@ -16,10 +16,11 @@ description = "The strategic face, and the only agent that speaks to the user."
 category = "productivity"
 
 [[plugins]]
-directory = "rbg"
-name = "rbg"
-description = "Automatic in-session rule enforcement."
+directory = "james"
+name = "james"
+description = "Lead executor and dialectical review supervisor."
 category = "productivity"
+clients = ["claude", "agy", "openclaw"]
 
 [[plugins]]
 directory = "tools"

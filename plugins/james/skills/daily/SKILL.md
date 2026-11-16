@@ -24,7 +24,7 @@ A daily note run executes change-only steps defined canonically in PKB template 
 - **Single-Flight Concurrency**: Never start a run while another daily note run is in progress.
 - **Graceful Degradation**: When external services (GitHub, Email, Calendar) are unreachable, attempt all available tool channels before recording quiet single-line status in-place.
 - **Trace Receipts Only**: Record step completion receipts in internal execution traces and telemetry. Never append run execution logs, hourly heartbeats, cron timestamps, or raw reconcile mutation dumps to the daily note body.
-- **No Local Transcript or Hook Log Scraping**: Sweeps and subagents must never read or scrape local `.system_generated/logs/transcript*.jsonl` or `/tmp/aops_debug_hooks_*.jsonl` files. Prompt and trace recoveries query Arize Phoenix via `ida:session-trace`.
+- **No Local Transcript or Hook Log Scraping**: Sweeps and subagents must never read or scrape local `.system_generated/logs/transcript*.jsonl` or `/tmp/aops_debug_hooks_*.jsonl` files. Prompt and trace recoveries query Arize Phoenix via `james:session-trace`.
 - **Groundwork-First Prompt and Task Progression**: Every daily run's prompt and reconciliation sweeps load open high-value-prompt tracking tasks alongside window prompts and advance each item via groundwork:
   - Settle unknowns from the PKB first, then live GitHub and traces.
   - Close (`done`) shipped deliverables and releases the user knows about without waiting to verify user-side installation.

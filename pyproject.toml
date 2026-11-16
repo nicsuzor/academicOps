@@ -222,7 +222,7 @@ ignore = ["**/site-packages"]
 # Python path for internal imports
 extraPaths = [
   "lib/hooks",
-  "plugins/rbg/hooks",
+  "lib/hooks/cope",
   "plugins/ida/hooks",
   "plugins/aops-debug/hooks",
   "plugins/tools/hooks",

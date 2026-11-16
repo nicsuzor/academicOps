@@ -16,11 +16,11 @@ from opentelemetry.sdk.trace.export import SpanExportResult
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 IDA_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
-RBG_HOOKS = REPO_ROOT / "plugins" / "rbg" / "hooks"
+COPE_HOOKS = REPO_ROOT / "lib" / "hooks" / "cope"
 SCRIPTS_DIR = REPO_ROOT / "scripts"
 
 # Make sure IDA_HOOKS is first in sys.path so handlers imports from ida
-for p in (str(SCRIPTS_DIR), str(RBG_HOOKS), str(IDA_HOOKS)):
+for p in (str(SCRIPTS_DIR), str(COPE_HOOKS), str(IDA_HOOKS)):
     if p in sys.path:
         sys.path.remove(p)
     sys.path.insert(0, p)

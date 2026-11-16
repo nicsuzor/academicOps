@@ -606,7 +606,7 @@ def test_tool_span_with_tool_summary_parsed_by_phoenix_transcript():
         },
     }
 
-    SCRIPTS = REPO_ROOT / "plugins/ida/skills/session-trace/scripts"
+    SCRIPTS = REPO_ROOT / "plugins/james/skills/session-trace/scripts"
     if str(SCRIPTS) not in sys.path:
         sys.path.insert(0, str(SCRIPTS))
     import phoenix_transcript as pt

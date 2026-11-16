@@ -35,8 +35,8 @@ Write and consolidate knowledge notes under `synthesize-not-accrete`. State curr
 
 ## Routing Emerging Work
 
-- **Incidents and friction**: Route to `/aops:learn` for root-cause diagnosis.
-- **New asks or decisions**: Route to `/ida:q` for graph positioning and valuation.
+- **Incidents and friction**: Route to `/james:learn` for root-cause diagnosis.
+- **New asks or decisions**: Route to `/james:q` for graph positioning and valuation.
 - **Fallback**: If an owning skill cannot run, create an `inbox` node noting the required skill.
 
 ## Consolidation

@@ -64,10 +64,10 @@ Audit generated notes for:
 3. **Consolidate knowledge**: Extract durable content from daily notes, meeting notes, and closed tasks to canonical topic notes per the extraction method. Rewrite notes to current state only; prune historical provenance lists and dead source references on sight, keeping active claim citations in prose or `source`. Create navigation nodes (`type: index`) for clusters of 5+ notes -- there is no `moc` type. Delete episodic notes once their content is written at the destination.
 4. **Reconcile data quality**:
    - _Duplicates_: Inspect candidates from `find_duplicates(mode="both")` semantically before merging.
-   - _Staleness_: Delegate task staleness and closure to `/ida:reconcile sweep`, scoped to the cycle's window.
-   - _Misclassifications_: Reclassify informational tasks to memories or invoke `/ida:q` to reposition.
+   - _Staleness_: Delegate task staleness and closure to `/james:reconcile sweep`, scoped to the cycle's window.
+   - _Misclassifications_: Reclassify informational tasks to memories or invoke `/james:q` to reposition.
 5. **Sweep orphans**: Review tag-orphan notes surfaced by `pkb.get_consolidation_cluster` and tasks with no parent or project (`pkb.batch_update(orphan=true, dry_run=true)` lists them).
-6. **Process refiles**: Reposition tasks flagged with `refile` using `/ida:q` and clear the flag.
+6. **Process refiles**: Reposition tasks flagged with `refile` using `/james:q` and clear the flag.
 7. **Maintain graph**: Run `pkb.refresh_graph`, then compare `pkb.status` against the baseline to confirm convergence.
 8. **Densify graph (weekly)**: Run `wf-densify` to draft link proposals for unvalued edges ordered by reach (R3).
 9. **Audit output**: Verify that new or updated notes satisfy the extraction tests and defect checklist.

@@ -36,7 +36,7 @@ def built(tmp_path_factory) -> Path:
 
 @pytest.fixture(scope="module")
 def built_orchestrate(tmp_path_factory) -> Path:
-    """The real ida plugin, not a fixture — its agents carry the
+    """The real ida and james plugins, not fixtures -- their agents carry the
     per-client frontmatter semantics these tests assert."""
     dist_root = tmp_path_factory.mktemp("build-dist-ida")
     build_all(
@@ -44,7 +44,7 @@ def built_orchestrate(tmp_path_factory) -> Path:
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
         clients=CLIENTS,
-        plugins=["ida"],
+        plugins=["ida", "james"],
         version=VERSION,
     )
     return dist_root
@@ -67,6 +67,38 @@ def test_pyproject_toml_included_in_built_distributions(built_orchestrate):
         content = pyproject.read_text(encoding="utf-8")
         assert 'name = "ida"' in content
         assert "opentelemetry" in content
+
+
+def test_shared_skills_staged_into_ida_and_james_across_all_clients(tmp_path):
+    """Building ida and james across claude, agy, and openclaw stages shared skills
+    from lib/skills/ (argdown-toulmin, dispatch) into both built plugins without
+    source duplication.
+    """
+    for plugin_dir in ("ida", "james"):
+        for shared in ("argdown-toulmin", "dispatch"):
+            assert not (PROJECT_ROOT / "plugins" / plugin_dir / "skills" / shared).exists(), (
+                f"Source duplication: {shared} exists under plugins/{plugin_dir}/skills"
+            )
+
+    dist_root = tmp_path / "dist"
+    build_all(
+        PROJECT_ROOT,
+        dist_root,
+        marketplace_path=REAL_MARKETPLACE,
+        clients=CLIENTS,
+        plugins=["ida", "james"],
+        version=VERSION,
+    )
+
+    for plugin_name in ("ida", "james"):
+        for client in CLIENTS:
+            plugin_dist = dist_root / f"{plugin_name}-{client}"
+            assert plugin_dist.is_dir(), f"Missing build directory: {plugin_dist}"
+            for shared in ("argdown-toulmin", "dispatch"):
+                skill_dir = plugin_dist / "skills" / shared
+                assert (skill_dir / "SKILL.md").is_file(), (
+                    f"{plugin_name}-{client} missing staged shared skill {shared}"
+                )
 
 
 # --- stage 3: manifest rendering --------------------------------------------
@@ -410,11 +442,11 @@ def test_agent_no_tools_key_semantics(built_orchestrate):
 
     accepted_tools, _ = load_tool_config()
 
-    claude_agent = built_orchestrate / "ida-claude" / "agents" / "marsha.md"
+    claude_agent = built_orchestrate / "james-claude" / "agents" / "marsha.md"
     claude_fm = yaml.safe_load(claude_agent.read_text().split("---")[1])
     assert "tools" not in claude_fm
 
-    agy_agent = built_orchestrate / "ida-agy" / "agents" / "marsha.md"
+    agy_agent = built_orchestrate / "james-agy" / "agents" / "marsha.md"
     agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
     assert agy_fm["tools"] == accepted_tools
 
@@ -425,10 +457,10 @@ def test_agy_agent_carries_source_color_through_unmodified(built_orchestrate):
     file, not restated, so this only fails if the build actually changes it."""
     import yaml
 
-    source_marsha = PROJECT_ROOT / "plugins" / "ida" / "agents" / "marsha.md"
+    source_marsha = PROJECT_ROOT / "plugins" / "james" / "agents" / "marsha.md"
     source_fm = yaml.safe_load(source_marsha.read_text().split("---")[1])
 
-    agy_marsha = built_orchestrate / "ida-agy" / "agents" / "marsha.md"
+    agy_marsha = built_orchestrate / "james-agy" / "agents" / "marsha.md"
     agy_marsha_fm = yaml.safe_load(agy_marsha.read_text().split("---")[1])
     assert agy_marsha_fm["color"] == source_fm["color"]
 

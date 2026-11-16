@@ -140,7 +140,13 @@ _PAYLOADS: dict[str, dict] = {
 
 
 def _build_real_plugins(root: Path) -> None:
-    build_all(_REPO_ROOT, root, marketplace_path=_MARKETPLACE, version=_VERSION)
+    build_all(
+        _REPO_ROOT,
+        root,
+        marketplace_path=_MARKETPLACE,
+        clients=("claude", "agy", "openclaw"),
+        version=_VERSION,
+    )
 
 
 @pytest.fixture(scope="session")
@@ -875,24 +881,26 @@ def test_every_axiom_is_live_in_the_built_clients(pristine_dist, tmp_path, monke
     marked anything else ships as reading material that no session is given, so
     a misspelt marker silently drops the axiom.
     """
-    source = _REPO_ROOT / "plugins" / "rbg" / "skills" / "axioms"
+    source = _REPO_ROOT / "plugins" / "james" / "skills" / "axioms"
     slugs = {p.stem for p in source.glob("*.md")} - {"README", "SKILL"}
     assert "proportionate" in slugs
 
-    jsonl = (pristine_dist / "rbg-claude" / "axioms.jsonl").read_text(encoding="utf-8")
+    jsonl = (pristine_dist / "james-claude" / "axioms.jsonl").read_text(encoding="utf-8")
     assert {json.loads(line)["slug"] for line in jsonl.splitlines()} == slugs
-    assert {p.stem for p in (pristine_dist / "rbg-agy" / "rules").glob("*.md")} == slugs
+    jsonl_openclaw = (pristine_dist / "james-openclaw" / "axioms.jsonl").read_text(encoding="utf-8")
+    assert {json.loads(line)["slug"] for line in jsonl_openclaw.splitlines()} == slugs
+    assert {p.stem for p in (pristine_dist / "james-agy" / "rules").glob("*.md")} == slugs
 
     monkeypatch.delenv("COPE_USER_RULES_DIR", raising=False)
     spec = importlib.util.spec_from_file_location(
-        "rbg_rules", _REPO_ROOT / "plugins" / "rbg" / "hooks" / "rules.py"
+        "cope_rules", _REPO_ROOT / "lib" / "hooks" / "cope" / "rules.py"
     )
     assert spec is not None and spec.loader is not None
     rules = importlib.util.module_from_spec(spec)
-    monkeypatch.setitem(sys.modules, "rbg_rules", rules)  # dataclass resolves its module here
+    monkeypatch.setitem(sys.modules, "cope_rules", rules)  # dataclass resolves its module here
     spec.loader.exec_module(rules)
 
-    loaded = rules.load(pristine_dist / "rbg-claude", tmp_path)
+    loaded = rules.load(pristine_dist / "james-claude", tmp_path)
     assert {s for s, r in loaded.items() if r.trigger == rules.TRIGGER_ON} == slugs
 
     readme = (source / "README.md").read_text(encoding="utf-8")

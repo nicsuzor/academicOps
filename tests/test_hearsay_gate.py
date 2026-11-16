@@ -103,9 +103,9 @@ def test_evaluator_otel_trace_attributes_resolves_root_session_id(tmp_path, monk
     """evaluator_otel_trace._attributes sets OpenInference session.id to root session and agent.id for subagents."""
     import json
 
-    rbg_hooks = _REPO_ROOT / "plugins" / "rbg" / "hooks"
-    if str(rbg_hooks) not in sys.path:
-        sys.path.insert(0, str(rbg_hooks))
+    cope_hooks = _REPO_ROOT / "lib" / "hooks" / "cope"
+    if str(cope_hooks) not in sys.path:
+        sys.path.insert(0, str(cope_hooks))
     import evaluator_otel_trace as eot
 
     monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)

@@ -1,7 +1,7 @@
 ---
 title: Doc task base
 type: template
-description: Foundation for tasks that change instruction text or documentation in a repository, executed via /ida:pull -- write the change with no tests, prove instruction text by a fresh agent's run and docs by independent agent review, push and PR, then a fresh agent worker's review ending in a verdict on the PR.
+description: Foundation for tasks that change instruction text or documentation in a repository, executed via /james:pull -- write the change with no tests, prove instruction text by a fresh agent's run and docs by independent agent review, push and PR, then a fresh agent worker's review ending in a verdict on the PR.
 tags: [base, task, docs, instructions, composite]
 ---
 
@@ -10,7 +10,7 @@ tags: [base, task, docs, instructions, composite]
   - <criterion>
   - <criterion>
 - [ ] **OUTPUT:** <repository and base branch the PR targets>
-- **REPORT:** Use /ida:dump to update your task. Do not append your observations as a log; update the prose to reflect current state and delete any content that is no longer relevant, true, or that reflects prior state or prior instructions. Update the ACCEPTANCE CRITERIA block: an item is ticked only with evidence of that item itself; any other item stays unticked with its limit stated. On the same line, provide a relevant extract of your evidence supporting your assertion, along with a citation for the source of the evidence.
+- **REPORT:** Use /james:dump to update your task. Do not append your observations as a log; update the prose to reflect current state and delete any content that is no longer relevant, true, or that reflects prior state or prior instructions. Update the ACCEPTANCE CRITERIA block: an item is ticked only with evidence of that item itself; any other item stays unticked with its limit stated. On the same line, provide a relevant extract of your evidence supporting your assertion, along with a citation for the source of the evidence.
 
 ## Stages
 

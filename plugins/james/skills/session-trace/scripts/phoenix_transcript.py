@@ -1359,7 +1359,7 @@ AUTOMATED_PREFIXES = (
     "<bash-",
     "[polecat-exit]",
 )
-HEADLESS_ENTRYPOINT_RE = re.compile(r"^/(?:ida:)?(?:pull|supervise)\s+[A-Za-z0-9_.:-]+\s*$")
+HEADLESS_ENTRYPOINT_RE = re.compile(r"^/(?:ida:|james:)?(?:pull|supervise)\s+[A-Za-z0-9_.:-]+\s*$")
 CHANNEL_BLOCK_RE = re.compile(r"^\s*<channel\b([^>]*)>(.*?)</channel>\s*$", re.DOTALL)
 XML_ATTR_RE = re.compile(r'([A-Za-z_][\w:.-]*)\s*=\s*"([^"]*)"')
 USER_REQUEST_RE = re.compile(r"<USER_REQUEST>\s*(.*?)\s*</USER_REQUEST>", re.DOTALL)

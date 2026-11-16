@@ -1,7 +1,7 @@
 ---
 title: Code task base
 type: template
-description: Foundation for code-change tasks executed via /ida:supervise (or /ida:pull for plain leaf tasks) -- by default in a single supervised container session combining reviewed design, test-first build, incremental push and draft PR, and independent multi-lens review ending in a verdict on the PR.
+description: Foundation for code-change tasks executed via /james:supervise (or /james:pull for plain leaf tasks) -- by default in a single supervised container session combining reviewed design, test-first build, incremental push and draft PR, and independent multi-lens review ending in a verdict on the PR.
 tags: [base, task, code, composite]
 ---
 
@@ -10,7 +10,7 @@ tags: [base, task, code, composite]
   - <criterion>
   - <criterion>
 - [ ] **OUTPUT:** <repository and base branch the PR targets>
-- **REPORT:** Use /ida:dump to update your task. Do not append your observations as a log; update the prose to reflect current state and delete any content that is no longer relevant, true, or that reflects prior state or prior instructions. Update the ACCEPTANCE CRITERIA block: an item is ticked only with evidence of that item itself; any other item stays unticked with its limit stated. On the same line, provide a relevant extract of your evidence supporting your assertion, along with a citation for the source of the evidence.
+- **REPORT:** Use /james:dump to update your task. Do not append your observations as a log; update the prose to reflect current state and delete any content that is no longer relevant, true, or that reflects prior state or prior instructions. Update the ACCEPTANCE CRITERIA block: an item is ticked only with evidence of that item itself; any other item stays unticked with its limit stated. On the same line, provide a relevant extract of your evidence supporting your assertion, along with a citation for the source of the evidence.
 
 ## One PR, opened by the build
 
@@ -51,7 +51,7 @@ Steps must never be placed as loose siblings under an external parent. When sepa
 - Stages 2--3 form one task that opens the draft PR (`gh pr create --draft`) into the base branch, with the spec still editable.
 - Stage 4 is a child task that `needs` it, so a fresh agent worker picks it up, posts proportionate review verdicts to the PR thread, and marks the PR ready for review (`gh pr ready`) once the check passes, without waiting for approval.
 
-Plain leaf workers running under `/ida:pull` operate strictly state-only: mutate only the claimed task's own record, never inspect or modify edges across tasks, and never mint follow-up verification tasks.
+Plain leaf workers running under `/james:pull` operate strictly state-only: mutate only the claimed task's own record, never inspect or modify edges across tasks, and never mint follow-up verification tasks.
 
 For a low-risk internal change, chiefly a bugfix, omit the separate Stage 4 verification run on the fix task. Where a blocked dependent exists waiting on the fix (prerequisite `needs` on the dependent task), the parent epic handles sequencing the dependent task's next run; no verification follow-up task is minted by workers.
 

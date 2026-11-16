@@ -31,13 +31,13 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 # The CoPE client now ships in the rbg plugin — `plugins/cope/` was renamed to
 # `plugins/rbg/` in e3a8bd39/8edff6fa. The evaluator module, its `Config`, and
 # its `check()` are the same surface under the new directory.
-_RBG_HOOKS = _REPO_ROOT / "plugins" / "rbg" / "hooks"
+_COPE_HOOKS = _REPO_ROOT / "lib" / "hooks" / "cope"
 
-for _dir in (_REPO_ROOT / "scripts", _REPO_ROOT / "lib" / "hooks", _RBG_HOOKS):
+for _dir in (_REPO_ROOT / "scripts", _REPO_ROOT / "lib" / "hooks", _COPE_HOOKS):
     if str(_dir) not in sys.path:
         sys.path.insert(0, str(_dir))
 
-import evaluator  # noqa: E402  (plugins/rbg/hooks/evaluator.py)
+import evaluator  # noqa: E402  (lib/hooks/cope/evaluator.py)
 from cope_eval_shim import NO_LOGPROB_CONFIDENCE, Config, build_server  # noqa: E402
 
 # The CoPE-B model card's prompt, written out here rather than imported: a
@@ -277,7 +277,7 @@ def test_copes_own_client_accepts_what_the_shim_answers(upstream, shim):
         api_key=None,
         timeout=10.0,
     )
-    matches, failures = evaluator.check(config, [("no-verify", _POLICY)], _CONTENT, _RBG_HOOKS)
+    matches, failures = evaluator.check(config, [("no-verify", _POLICY)], _CONTENT, _COPE_HOOKS)
 
     assert failures == []
     assert [verdict.slug for verdict in matches] == ["no-verify"]

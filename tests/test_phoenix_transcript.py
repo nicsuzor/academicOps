@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-SCRIPTS = Path(__file__).resolve().parent.parent / "plugins/ida/skills/session-trace/scripts"
+SCRIPTS = Path(__file__).resolve().parent.parent / "plugins/james/skills/session-trace/scripts"
 sys.path.insert(0, str(SCRIPTS))
 _spec = importlib.util.spec_from_file_location(
     "phoenix_transcript", SCRIPTS / "phoenix_transcript.py"

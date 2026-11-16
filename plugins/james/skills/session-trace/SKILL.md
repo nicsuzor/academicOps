@@ -11,7 +11,7 @@ counts and millisecond latencies. Read it rather than a session's own account of
 ## Transcript: how did this decision get made
 
 ```bash
-uv run python "${CLAUDE_SKILL_DIR:-plugins/ida/skills/session-trace}/scripts/phoenix_transcript.py" <session-id / conversation-id | slug | trace-id> --out <dir>/<slug>.transcript.md [--sanitize-paths]
+uv run python "${CLAUDE_SKILL_DIR:-plugins/james/skills/session-trace}/scripts/phoenix_transcript.py" <session-id / conversation-id | slug | trace-id> --out <dir>/<slug>.transcript.md [--sanitize-paths]
 ```
 
 - Configuration is flags or environment: `--base-url` or `$PHOENIX_MCP_URL` (the Phoenix
@@ -57,18 +57,18 @@ time, find the session with Recipe A or F in [references/sql-recipes.md](referen
 
 ## Other exports
 
-- `uv run python "${CLAUDE_SKILL_DIR:-plugins/ida/skills/session-trace}/scripts/phoenix_trace.py" <session-id / conversation-id>` -- the span forest as JSON (`full`, with
+- `uv run python "${CLAUDE_SKILL_DIR:-plugins/james/skills/session-trace}/scripts/phoenix_trace.py" <session-id / conversation-id>` -- the span forest as JSON (`full`, with
   `roots` and `orphans`) and a controller view. Check `meta.session_error_count`,
   `orphans`, `meta.trace_contamination` (traces shared with other sessions), and rank
   `subagents[]` by `collapsed_span_count` for the expensive branches.
-- `uv run python "${CLAUDE_SKILL_DIR:-plugins/ida/skills/session-trace}/scripts/phoenix_token_cost.py" --since <time>` -- spend ranked across sessions, or
+- `uv run python "${CLAUDE_SKILL_DIR:-plugins/james/skills/session-trace}/scripts/phoenix_token_cost.py" --since <time>` -- spend ranked across sessions, or
   `--by task`. Prices are list prices per million tokens; the dollar column is
   comparable spend, not an invoice. Gemini spans may carry no token counts.
 
 ## Cross-session user prompts since a cursor
 
 ```bash
-uv run python "${CLAUDE_SKILL_DIR:-plugins/ida/skills/session-trace}/scripts/phoenix_transcript.py" --since <utc-iso-timestamp> --out <dir> [--sanitize-paths]
+uv run python "${CLAUDE_SKILL_DIR:-plugins/james/skills/session-trace}/scripts/phoenix_transcript.py" --since <utc-iso-timestamp> --out <dir> [--sanitize-paths]
 ```
 
 - Discovers human-submitted prompts across CLI, messaging channels, and Antigravity sessions since `<utc-iso-timestamp>` (explicit timezone offset required, e.g. `2026-11-14T08:45:32Z`), excluding automated notifications, subagent briefs, and bare headless worker entrypoints.

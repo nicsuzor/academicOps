@@ -17,8 +17,8 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-RBG_PLUGIN_ROOT = REPO_ROOT / "plugins" / "rbg"
-RULES_PY = RBG_PLUGIN_ROOT / "hooks" / "rules.py"
+JAMES_PLUGIN_ROOT = REPO_ROOT / "plugins" / "james"
+RULES_PY = REPO_ROOT / "lib" / "hooks" / "cope" / "rules.py"
 POLICY_FILE = REPO_ROOT / "tests" / "policy.toml"
 
 
@@ -60,7 +60,7 @@ def test_user_rules_load_when_dir_configured(rules_mod, tmp_path, monkeypatch):
     # Ensure legacy env is clean
     monkeypatch.delenv("ACA_DATA", raising=False)
 
-    loaded = rules_mod.load(RBG_PLUGIN_ROOT, tmp_path)
+    loaded = rules_mod.load(JAMES_PLUGIN_ROOT, tmp_path)
     assert "custom-user-rule" in loaded
     rule = loaded["custom-user-rule"]
     assert rule.layer == 3
@@ -77,7 +77,7 @@ def test_user_rules_silent_when_unset(rules_mod, tmp_path, monkeypatch, capsys):
     monkeypatch.delenv(env_var, raising=False)
     monkeypatch.delenv("ACA_DATA", raising=False)
 
-    loaded = rules_mod.load(RBG_PLUGIN_ROOT, tmp_path)
+    loaded = rules_mod.load(JAMES_PLUGIN_ROOT, tmp_path)
     user_rules = [r for r in loaded.values() if r.layer == 3]
     assert user_rules == []
 
@@ -96,7 +96,7 @@ def test_user_rules_degraded_when_nonexistent_dir(rules_mod, tmp_path, monkeypat
     monkeypatch.setenv(env_var, str(nonexistent))
     monkeypatch.delenv("ACA_DATA", raising=False)
 
-    loaded = rules_mod.load(RBG_PLUGIN_ROOT, tmp_path)
+    loaded = rules_mod.load(JAMES_PLUGIN_ROOT, tmp_path)
     # Axioms should still be loaded
     assert "proportionate" in loaded
     # User rules are empty
@@ -133,7 +133,7 @@ def test_user_rules_precedence_cannot_override_earlier_scopes(rules_mod, tmp_pat
     monkeypatch.setenv(env_var, str(user_rules_dir))
     monkeypatch.delenv("ACA_DATA", raising=False)
 
-    loaded = rules_mod.load(RBG_PLUGIN_ROOT, tmp_path)
+    loaded = rules_mod.load(JAMES_PLUGIN_ROOT, tmp_path)
     assert loaded["proportionate"].layer == 1
     assert loaded["proportionate"].body != "Shadowed axiom body."
 

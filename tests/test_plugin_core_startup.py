@@ -23,7 +23,11 @@ pytest_plugins = ["tests.test_shipped_hooks"]
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _MARKETPLACE = _REPO_ROOT / "build" / "marketplace.toml"
 
-_ALL_PLUGINS = [entry["directory"] for entry in load_marketplace_toml(_MARKETPLACE)["plugins"]]
+_HOOK_BEARING_PLUGINS = [
+    entry["directory"]
+    for entry in load_marketplace_toml(_MARKETPLACE)["plugins"]
+    if (_REPO_ROOT / "plugins" / entry["directory"] / "hooks").is_dir()
+]
 
 
 def test_every_shipped_plugin_session_start_hook_injects_core_md(dist_root: Path):
@@ -31,7 +35,9 @@ def test_every_shipped_plugin_session_start_hook_injects_core_md(dist_root: Path
     checked = 0
     payload = {"hook_event_name": "SessionStart", "session_id": "core-test-session"}
 
-    for _name, client, build_dir in _build_dirs(dist_root):
+    for name, client, build_dir in _build_dirs(dist_root):
+        if name not in _HOOK_BEARING_PLUGINS:
+            continue
         core_file = build_dir / "CORE.md"
         assert core_file.is_file(), f"{build_dir.name} missing shipped CORE.md"
         core_text = core_file.read_text(encoding="utf-8").strip()
@@ -80,7 +86,7 @@ def test_every_shipped_plugin_session_start_hook_injects_core_md(dist_root: Path
 
         checked += 1
 
-    assert checked >= 9, f"Expected at least 9 plugin-client builds checked, got {checked}"
+    assert checked >= 7, f"Expected at least 7 plugin-client builds checked, got {checked}"
 
 
 def test_fresh_session_outside_deployment_repo_shows_plugin_core_md(
@@ -109,6 +115,8 @@ def test_fresh_session_outside_deployment_repo_shows_plugin_core_md(
     seen_plugins = set()
 
     for name, client, build_dir in _build_dirs(dist_root):
+        if name not in _HOOK_BEARING_PLUGINS:
+            continue
         core_file = build_dir / "CORE.md"
         core_lines = core_file.read_text(encoding="utf-8").splitlines()
         assert len(core_lines) <= 20
@@ -144,6 +152,6 @@ def test_fresh_session_outside_deployment_repo_shows_plugin_core_md(
 
         seen_plugins.add(name)
 
-    assert seen_plugins == set(_ALL_PLUGINS), (
-        f"Missing plugins outside repo: {set(_ALL_PLUGINS) - seen_plugins}"
+    assert seen_plugins == set(_HOOK_BEARING_PLUGINS), (
+        f"Missing plugins outside repo: {set(_HOOK_BEARING_PLUGINS) - seen_plugins}"
     )

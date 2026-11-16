@@ -1,6 +1,6 @@
 ---
 name: "argument-map"
-description: "Build a reviewable map of a text's argument (thesis chapter, paper, submission, judgment, policy, or an author's own mind map). Gives a charitable reconstruction with every gap tagged, a list of what the argument still needs, and a readable overview page. Use for \"map the argument\", \"what does this argument still need\", \"show me how the chapter hangs together\", or for weaving an author's new notes or diagrams into an existing map. Not for plain extraction without assessment (use ida:argument-extraction), for a formal sufficiency audit without a page (use ida:argument-audit), or for mind maps and concept maps with no inferential structure (use tools:diagram)."
+description: "Build a reviewable map of a text's argument (thesis chapter, paper, submission, judgment, policy, or an author's own mind map). Gives a charitable reconstruction with every gap tagged, a list of what the argument still needs, and a readable overview page. Use for \"map the argument\", \"what does this argument still need\", \"show me how the chapter hangs together\", or for weaving an author's new notes or diagrams into an existing map. Not for plain extraction without assessment (use james:argument-extraction), for a formal sufficiency audit without a page (use james:argument-audit), or for mind maps and concept maps with no inferential structure (use tools:diagram)."
 ---
 
 # Argument map
@@ -18,8 +18,8 @@ Produce three things:
 
 ## Reconstruct
 
-- **Write to `ida:argdown-toulmin`.** It sets the grammar, metadata, relations, tags, and parser validation.
-- **Extract first with `ida:argument-extraction`**, then reconstruct on top of what it produces.
+- **Write to `james:argdown-toulmin`.** It sets the grammar, metadata, relations, tags, and parser validation.
+- **Extract first with `james:argument-extraction`**, then reconstruct on top of what it produces.
 - **Follow the text's own structure.** Put the thesis first, then one Argdown section per part of the text, in the text's order. A reader checks a map against the text, so the map should match it.
 - **Reconstruct charitably.** Build the strongest valid version of each step, adding as assumed items the premises and warrants validity needs that the author never states.
 - **Read claims at the strength the evidence can carry.** When the wording overstates (for example "veto" where the evidence shows "sometimes limits"), narrow your label but keep the author's words verbatim in `source`. Record the narrower reading as a decision.
@@ -37,7 +37,7 @@ Produce three things:
 Rebuild the Excalidraw canvases, SVGs, and overview page automatically from the canonical Argdown source or PKB note:
 
 ```bash
-python3 "${CLAUDE_SKILL_DIR:-plugins/ida/skills/argument-map}/scripts/render.py" <source-path-or-note-id> [--out <dir>]
+python3 "${CLAUDE_SKILL_DIR:-plugins/james/skills/argument-map}/scripts/render.py" <source-path-or-note-id> [--out <dir>]
 ```
 
 Execution runs through the four-stage rebuild contract ([specs/tools/argument-map-rendering.md](../../../../specs/tools/argument-map-rendering.md)):

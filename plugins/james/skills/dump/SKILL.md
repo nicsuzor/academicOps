@@ -7,7 +7,7 @@ description: Session exit and handover -- execute an immediate emergency handove
 
 Determine the invocation mode before acting:
 
-- **User-run `/dump` (Emergency Handover)**: Invoked when the user runs `/dump` (or `/ida:dump`) as a command in their prompt turn (not an informational question about `/dump`), **whatever wording, context, or trailing instructions accompany it**.
+- **User-run `/dump` (Emergency Handover)**: Invoked when the user runs `/dump` (or `/james:dump`) as a command in their prompt turn (not an informational question about `/dump`), **whatever wording, context, or trailing instructions accompany it**.
 - **Agent-run `/dump` (Routine Wrap-Up)**: Invoked on the agent's own initiative at session end (task completion via `/pull`, context reset, or environment transition).
 
 ## Mode 1: User-Run `/dump` (Emergency Handover)
