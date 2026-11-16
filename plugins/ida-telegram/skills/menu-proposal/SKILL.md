@@ -19,7 +19,7 @@ Review, customize, and allocate the native Telegram command menu for Ida.
 3. **Separate interactive menus from headless workers (`headless-workers.md`):**
    - Telegram command menus exclusively serve interactive operator sessions. Headless worker lifecycle commands (`pull`, `dump`) must never appear on conversational menus or in candidate pools.
    - Telegram command menus serve interactive operator dialogue; do not dispatch this workflow to headless workers.
-4. **Inspect current allocations:** Read the active `TELEGRAM_BOT_COMMANDS` list in the channel's `$STATE_DIR/.env`.
+4. **Inspect current allocations:** Check whether an explicit custom override is set in `TELEGRAM_BOT_COMMANDS` in the channel's `$STATE_DIR/.env`, or if the instance uses the default menu generated from available skills at poller start.
 
 ### 2. Synthesize Considered Recommendations
 
@@ -48,6 +48,6 @@ Present a scannable proposal table to the user in interactive operator sessions:
 
 ### 4. Codify Approved Allocations
 
-1. The menu is exactly the JSON list in `TELEGRAM_BOT_COMMANDS`; the plugin builds none of its own. Codify the approved command list as JSON into `TELEGRAM_BOT_COMMANDS` in the channel's environment configuration (`$STATE_DIR/.env`); it is registered at the next poller start.
+1. The default menu is generated from all available skills at poller start, while `TELEGRAM_BOT_COMMANDS` in the channel's `$STATE_DIR/.env` codifies an explicit custom override when requested by the operator. Write the approved custom override command list as a JSON array to `TELEGRAM_BOT_COMMANDS` in `$STATE_DIR/.env` for registration at the next poller start.
 2. Run test verification (`cd plugins/ida-telegram && bun test test/commands.test.ts`) to ensure command registration passes cleanly.
 3. Confirm updated menu to the user.
