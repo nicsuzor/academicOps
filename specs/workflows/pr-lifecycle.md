@@ -1,7 +1,7 @@
 ---
 title: Pull Request Lifecycle and Consolidated Feature-Branch Workflow
 type: spec
-status: active
+status: ready
 tier: workflow
 ---
 
@@ -58,7 +58,7 @@ flowchart TD
 **As a** repository maintainer working through open pull requests across my projects, **I want** agents to first review and fix open pull requests, retarget and clump them into consolidated feature branches and hotfixes, and then bring ready pull requests to me one at a time with a structured run-down while adapting presentation to the active surface, **so that** I can evaluate and approve one cohesive unit at a time without cognitive overload.
 
 - **AC-3.1** **Given** open pull requests across one or more repositories, **When** the consolidation workflow runs, **Then** it first dispatches agents in parallel to screen descriptions for compliance, run three-lens diff reviews on unreviewed pull requests, fix review findings and failing checks, and merge any pull requests that repository policy authorizes agents to merge autonomously.
-- **AC-3.2** **Given** surviving reviewed pull requests that require maintainer approval, **When** the clumping stage runs, **Then** it retargets any stray base branches to the repository's integration branch, groups related pull requests into consolidated feature-branch pull requests (`bundle/<slug>`) while keeping zero-overlap urgent fixes as standalone hotfixes, closes every absorbed donor pull request immediately with a link to its consolidated pull request, and runs the description-only compliance check on each consolidated pull request.
+- **AC-3.2** **Given** surviving reviewed pull requests that require maintainer approval, **When** the clumping stage runs, **Then** it retargets any stray base branches to the repository's integration branch, groups related pull requests into consolidated feature-branch pull requests (`bundle/<slug>`) while keeping zero-overlap urgent fixes as standalone hotfixes, closes every absorbed donor pull request in the same step with a link to its consolidated pull request, and runs the description-only compliance check on each consolidated pull request.
 - **AC-3.3** **Given** one or more consolidated feature-branch pull requests or standalone hotfixes that are green and ready for maintainer review, **When** the interactive agent presents work to the maintainer, **Then** it brings **one pull request at a time** with a run-down of (1) what it does, (2) how it does it, and (3) what to pay attention to, leaving the exact presentation mechanics open to the interactive agent and its runtime surface and refining the workflow template from the maintainer's feedback after each pull request.
 
 ### US-4: Post-approval rebase, full combined diff review, and merge into the base branch
