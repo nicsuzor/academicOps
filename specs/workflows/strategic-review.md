@@ -27,7 +27,7 @@ The workflow is implemented operationally via `plugins/ida/skills/strategic-revi
 
 ```
       [ James: Upfront Proportionality & Altitude Calibration ]
-              (Rounds, Depth, Model Selection: pro vs flash)
+           (Rounds, Depth, Model Tier: flagship vs mid-tier)
                                   │
                        [ Artifact & Standards ]
                                   │
@@ -56,8 +56,8 @@ The workflow is implemented operationally via `plugins/ida/skills/strategic-revi
 
 Before dispatching reviewers, the Supervisor (`james`) sets the target altitude (Strategic, Design, or Implementation), identifies the format and quality standard governing the artifact's genre (`specs/meta/doc-taxonomy.md` -- e.g., `specs/meta/writing-specs.md` for specifications, `craft` for agent instructions, disciplinary standards for manuscripts/articles, or task acceptance criteria for task handbacks; never applying task-handback sections like `## Ask` to non-task artifacts), and explicitly calibrates review proportionality to the artifact's importance and risk:
 
-- **High-stakes / high-risk / foundational artifacts** (architecture, core rules, workflow specifications, high-risk code): Multi-round dialectical refinement using higher-capability models (`pro`), cycling revisions until reviewer critiques converge.
-- **Routine / low-stakes changes**: Single-round sanity pass using lighter, faster models (`flash` or `flash_lite`) without primary-material expeditions to verify the artifact is sound without wasting time or compute.
+- **High-stakes / high-risk / foundational artifacts** (architecture, core rules, workflow specifications, high-risk code): Multi-round dialectical refinement using flagship models, cycling revisions until reviewer critiques converge.
+- **Routine / low-stakes changes**: Single-round sanity pass using mid-tier models without primary-material expeditions to verify the artifact is sound without wasting time or compute.
 
 ### 2. Specialized Reviewer Roles & Shared Briefing
 
