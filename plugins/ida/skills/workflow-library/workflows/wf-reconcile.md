@@ -10,7 +10,7 @@ type: template
 
 ## What this step does
 
-Maintains truth over the task graph: advances open high-value-prompt tracking tasks and multi-part user asks through groundwork, establishes facts about in-flight work and landed changes, brings `review` tasks up to date with reality, checks returned work on the papers, writes items that have reached the user to today's daily note, and returns touched tasks to `inbox` for re-planning.
+Maintains truth over the task graph: advances open high-value-prompt tracking tasks and multi-part user asks through groundwork, establishes facts about in-flight work and landed changes, brings `review` tasks up to date with reality, checks that the recorded evidence for returned work formally supports its claim of completion, writes items that have reached the user to today's daily note, and returns touched tasks to `inbox` for re-planning.
 
 ## Obligations
 
@@ -37,10 +37,10 @@ Maintains truth over the task graph: advances open high-value-prompt tracking ta
      - _Escalation_: If the failure requires principal input or changes epic scope, escalate to the daily note `## With you` naming the epic and the decision required.
    - Annotate the failed task record with the reconcile determination so it is settled on the graph and not re-processed on subsequent sweeps.
 6. **Escalation on the record**: If an unrecorded fact, external commitment, or reserved field forces escalation, reduce to a single one-line question in `reason`, queue a review task for the next escalation level, wire `needs`, dispatch or queue it, and transition source task to `partial` (outcome 2).
-7. **Check returned work on the papers**: Verify the account of returned work on the record before deciding what reaches the user:
-   - _Chain of evidence_: verify `pr_url`, `completion_evidence`, or named artifact exists.
-   - _Soundness_: verify cited evidence actually answers acceptance criteria. If insufficient, return to `ready`/`queued` or `partial` with an agent review task (outcome 1 or 2); never escalate unproven claims to the user.
-   - _Liveness_: verify question is still live; discard moot items settled by events.
+7. **Check that the recorded evidence formally supports the claim**: For each returned task, read what is already written on the record (`pr_url`, `completion_evidence`, named artifact, `## Report`) and decide whether, taking that evidence as present and genuine, it is sufficient to support the claim that the work is done. This is a formal sufficiency check of the record on its face; do not re-run the work, re-review the PR's code, or re-judge quality.
+   - _Citation present_: the task cites a `pr_url`, `completion_evidence`, or named artifact. Do not fetch or inspect the artifact itself.
+   - _Sufficiency_: the cited evidence, as described, addresses each acceptance criterion. If it does not, return to `ready`/`queued` or `partial` with an agent review task (outcome 1 or 2); never escalate an unsupported claim to the user.
+   - _Liveness_: the question is still live; discard moot items settled by events.
 8. **Reset stale claims**: Stale `in_progress` tasks with no live claim (>24h unmodified without active session or worker) reset to `queued`. Never move a claimed task backwards while an active worker holds it.
 9. **Demote affected tasks**: Set unblocked dependents, siblings of landed work, rot (>14d in `ready`/`queued`), and invalidated assumption nodes to `status: inbox` with explanatory annotations.
 10. **Cancel on world-facts**: Cancel only on affirmative evidence recorded in the node body:
