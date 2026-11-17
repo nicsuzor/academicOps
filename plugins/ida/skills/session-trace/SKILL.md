@@ -61,9 +61,15 @@ time, find the session with Recipe A or F in [references/sql-recipes.md](referen
   `roots` and `orphans`) and a controller view. Check `meta.session_error_count`,
   `orphans`, `meta.trace_contamination` (traces shared with other sessions), and rank
   `subagents[]` by `collapsed_span_count` for the expensive branches.
-- `uv run python "${CLAUDE_SKILL_DIR:-plugins/ida/skills/session-trace}/scripts/phoenix_token_cost.py" --since <time>` -- spend ranked across sessions, or
-  `--by task`. Prices are list prices per million tokens; the dollar column is
-  comparable spend, not an invoice. Gemini spans may carry no token counts.
+- `uv run python "${CLAUDE_SKILL_DIR:-plugins/ida/skills/session-trace}/scripts/phoenix_token_cost.py" --since <time> --by harness-model` -- spend per harness
+  (`aops.surface`) and model, summed on the server in adaptive time chunks (Recipe I), so
+  a week-wide window completes instead of timing out. Use this for anything longer than a
+  few hours.
+- The same script with `--by session` (default) or `--by task` ranks spend across sessions
+  or tasks, but downloads every span in the window: keep that to a few hours. Prices are
+  list prices per million tokens; the dollar column is comparable spend, not an invoice.
+  Gemini models are unpriced (cost 0, flagged), though their token counts are reported.
+- Phoenix holds nothing before 2026-11-12 01:39 UTC.
 
 ## Cross-session user prompts since a cursor
 

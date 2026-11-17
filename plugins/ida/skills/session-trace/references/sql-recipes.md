@@ -81,18 +81,49 @@ the two zero cases when you write it up. Zero tool calls for an item is
 done". One fuzzy `task_search` returning nothing is a search miss, not proof the
 target does not exist.
 
-**E -- token accounting and cache ratio.**
+**E -- token accounting and cache ratio (one session).** Attributes are nested JSON, so
+the cache keys are `llm.token_count.prompt_details.cache_read` and `.cache_write` (the
+older `llm.prompt_details.cache_read` does not exist and sums to NULL/0). `prompt`
+already includes both cache counts: fresh input = prompt - cache_read - cache_write.
 
 ```sql
-SELECT name,
+SELECT attributes->>'llm.model_name' AS model, COUNT(*) AS calls,
        SUM(llm_token_count_prompt) AS prompt_tokens,
        SUM(llm_token_count_completion) AS completion_tokens,
-       SUM(CAST(JSON_EXTRACT(attributes, '$.\"llm.prompt_details.cache_read\"') AS INTEGER)) AS cache_read_tokens
+       SUM(attributes->>'llm.token_count.prompt_details.cache_read') AS cache_read_tokens,
+       SUM(attributes->>'llm.token_count.prompt_details.cache_write') AS cache_write_tokens
 FROM spans
 WHERE JSON_EXTRACT(attributes, '$.session.id') = '<SESSION_UUID>'
   AND span_kind = 'LLM'
-GROUP BY name
+GROUP BY model
 ```
+
+**I -- spend by harness and model over a long window (a week).** Never aggregate LLM
+spans over a day or a week in one `executeSql`: it times out (MCP error -32001, ~60 s),
+and an unwindowed `ORDER BY start_time` never returns. Sum on the server in small
+`start_time` chunks (ids and sums only, never payload columns) and add the chunks up in
+the caller. A 6-hour chunk can still time out when traffic is heavy: halve it and retry.
+The harness is `attributes->>'aops.surface'` (`claude-code`, `agy`), which beats guessing
+from the model name. Duplicate LLM spans share `llm.message.id`; group on it so they
+count once (spans without one, such as Gemini, fall back to `span_id`).
+
+```sql
+SELECT h, m, COUNT(*) n, SUM(p) p, SUM(o) o, SUM(cr) cr, SUM(cw) cw FROM (
+  SELECT attributes->>'aops.surface' h, attributes->>'llm.model_name' m,
+         MAX(attributes->>'llm.token_count.prompt') p,
+         MAX(attributes->>'llm.token_count.completion') o,
+         MAX(attributes->>'llm.token_count.prompt_details.cache_read') cr,
+         MAX(attributes->>'llm.token_count.prompt_details.cache_write') cw
+  FROM spans WHERE span_kind='LLM'
+    AND start_time >= '<CHUNK_START>+00:00' AND start_time < '<CHUNK_END>+00:00'
+  GROUP BY COALESCE(attributes->>'llm.message.id', span_id)
+) GROUP BY h, m
+```
+
+The ready-made loop (adaptive chunking, list prices, unpriced models flagged) is
+`phoenix_token_cost.py --since <t> --by harness-model`. Phoenix holds nothing before
+2026-11-12 01:39 UTC, so a "last 7 days" window mostly returns empty chunks; start
+there and each empty chunk still costs a couple of seconds.
 
 **F -- correlate a spawned subagent's own session.** When a child worker or subagent
 runs under its own `session.id` (standard in `agy` via `invoke_subagent`, and in `claude`
@@ -212,6 +243,8 @@ SQL is capped at 2 KiB per call. Keep one-off aggregations in code mode as above
 
 | Symptom | Cause | Fix |
 | - | - | - |
+| `executeSql` returns `{'error': {'code': 'timeout'...}}` or MCP error -32001 | Aggregate over too wide a `start_time` window, or no window at all | Recipe I: chunk the window and halve on timeout; never `ORDER BY start_time` unwindowed |
+| Cache tokens come back 0 or NULL | Wrong attribute key (`llm.prompt_details.cache_read`) | Use `llm.token_count.prompt_details.cache_read` / `.cache_write` (Recipe E) |
 | `executeSql` result "exceeds maximum allowed tokens", dumped to a `.txt` file | Query returned too many rows, or unbounded `input.value`/`output.value` columns | Narrow with `SUBSTR(...)` and a tighter `WHERE`/`LIMIT`; if already dumped, read the saved file with `jq` rather than re-querying |
 | `{"data":[],"next_cursor":null}` searching for a session by id | Queried `session.id` with a 32-hex `trace_id` | Resolve via `WHERE t.trace_id = '<32_HEX>'` on the joined `traces` table (Recipe A0) first |
 | MCP tool calls missing from the agent's response | The agent grepped answers off disk instead of executing tools | `SELECT count(*) FROM spans WHERE span_kind='TOOL' AND attributes->>'session.id'='<UUID>'` |
