@@ -797,10 +797,9 @@ PREMISE_CHECK_POINTER = (
 )
 
 PKB_SESSION_POINTER = (
-    "PKB requires top-level `session_id` on ALL MCP tool calls (both reads and writes,"
-    " including `pkb.*` calls inside `portal_codemode_execute`), set to your own active"
-    " session/conversation ID (`CLAUDE_CODE_SESSION_ID` / `ANTIGRAVITY_CONVERSATION_ID`"
-    " or session context)."
+    "Pass active `session_id` (`caller_session` when shown, else `session:` or client"
+    " session env) explicitly on all `pkb_*` and instrumented `services` proxy MCP calls;"
+    " hooks never inject it."
 )
 
 

@@ -27,15 +27,6 @@
         ],
         "PreToolUse": [
           {
-            "matcher": "mcp__.*",
-            "hooks": [
-              {
-                "type": "command",
-                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/mcp_caller_session.py\""
-              }
-            ]
-          },
-          {
             "hooks": [
               {
                 "type": "command",
@@ -204,15 +195,6 @@
           }
         ],
         "PreToolUse": [
-          {
-            "matcher": "mcp_pkb_.*|mcp__pkb__.*|call_mcp_tool",
-            "hooks": [
-              {
-                "type": "command",
-                "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python \"${AGY_PLUGIN_ROOT}/hooks/mcp_caller_session.py\" agy"
-              }
-            ]
-          },
           {
             "hooks": [
               {

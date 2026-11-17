@@ -5,8 +5,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 SCRIPT = (
-    Path(__file__).resolve().parents[1]
-    / "plugins/ida/skills/session-trace/scripts/phoenix_token_cost.py"
+    Path(__file__).resolve().parents[1] / "plugins/ida/skills/phoenix/scripts/phoenix_token_cost.py"
 )
 spec = importlib.util.spec_from_file_location("phoenix_token_cost", SCRIPT)
 ptc = importlib.util.module_from_spec(spec)

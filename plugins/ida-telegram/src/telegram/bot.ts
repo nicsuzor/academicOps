@@ -1,4 +1,5 @@
 import { PluginConfig } from "../config.js";
+import { resolveBotCommands } from "./commands.js";
 import { FormattedMessage, formatMarkdownToEntities } from "./format.js";
 import { parseInboundUpdate, TelegramUpdate } from "./inbound.js";
 import { QuestionBroker, matchOptionIndex } from "./questions.js";
@@ -1607,6 +1608,18 @@ export class TelegramBotClient {
   public async registerCommands(): Promise<boolean> {
     if (!this.config.isPrimary) {
       return false;
+    }
+
+    if (this.config.env) {
+      const resolved = resolveBotCommands(this.config.env.TELEGRAM_BOT_COMMANDS, {
+        projectDir: this.config.env.CLAUDE_PROJECT_DIR,
+        claudeConfigDir: this.config.env.CLAUDE_CONFIG_DIR,
+        pluginRoot: this.config.env.CLAUDE_PLUGIN_ROOT,
+        env: this.config.env,
+      });
+      if (resolved.length > 0) {
+        this.config.botCommands = resolved;
+      }
     }
 
     const commands = this.config.botCommands ?? [];

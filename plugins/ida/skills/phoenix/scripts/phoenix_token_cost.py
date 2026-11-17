@@ -134,7 +134,7 @@ class ConfigError(Exception):
 
 def _mcp_headers(session_id: str | None = None) -> dict[str, str]:
     headers: dict[str, str] = {
-        "User-Agent": "academicOps/0.10 (session-trace)",
+        "User-Agent": "academicOps/0.10 (phoenix)",
         "Content-Type": "application/json",
         "Accept": "application/json, text/event-stream",
     }
@@ -216,7 +216,7 @@ def _mcp_init_session(mcp_url: str) -> str:
         "params": {
             "protocolVersion": "2024-11-05",
             "capabilities": {},
-            "clientInfo": {"name": "academicOps-session-trace", "version": "0.10"},
+            "clientInfo": {"name": "academicOps-phoenix", "version": "0.10"},
         },
     }
     request = urllib.request.Request(

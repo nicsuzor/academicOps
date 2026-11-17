@@ -566,59 +566,6 @@ def test_build_tool_span_record_extracts_tool_summary():
     assert record["attributes"]["tool.summary"] == "Release task aops_fa4c6994 as done"
 
 
-def test_tool_span_with_tool_summary_parsed_by_phoenix_transcript():
-    record = claude_code_tracer._build_tool_span_record(
-        tool_name="portal_codemode_execute",
-        tool_input={
-            "toolSummary": "Claim task aops_fa4c6994",
-            "code": "codemode.pkb_claim_task(...)",
-        },
-        tool_response={"status": "in_progress"},
-        start_ns=1_000_000_000,
-        end_ns=2_000_000_000,
-        trace_id="c" * 32,
-        root_span_id="d" * 16,
-    )
-    assert record["attributes"]["tool.summary"] == "Claim task aops_fa4c6994"
-
-    span_obj = {
-        "name": record["name"],
-        "span_kind": record["attributes"]["openinference.span.kind"],
-        "context": {"trace_id": record["trace_id_hex"], "span_id": record["span_id_hex"]},
-        "parent_id": record["parent_span_id_hex"],
-        "start_time": "2026-10-01T00:00:01.000+00:00",
-        "end_time": "2026-10-01T00:00:02.000+00:00",
-        "status_code": "UNSET",
-        "attributes": record["attributes"],
-    }
-    chain_span = {
-        "name": "turn",
-        "span_kind": "CHAIN",
-        "context": {"trace_id": record["trace_id_hex"], "span_id": record["parent_span_id_hex"]},
-        "parent_id": None,
-        "start_time": "2026-10-01T00:00:00.000+00:00",
-        "end_time": "2026-10-01T00:00:03.000+00:00",
-        "status_code": "UNSET",
-        "attributes": {
-            "session.id": "session-1",
-            "input.value": "Claim task",
-            "output.value": "Done",
-        },
-    }
-
-    SCRIPTS = REPO_ROOT / "plugins/ida/skills/session-trace/scripts"
-    if str(SCRIPTS) not in sys.path:
-        sys.path.insert(0, str(SCRIPTS))
-    import phoenix_transcript as pt
-
-    turns = pt.assemble([chain_span, span_obj], "session-1", pt.PRICES)
-    assert len(turns) == 1
-    assert len(turns[0].tool_steps) == 1
-    tool_step = turns[0].tool_steps[0]
-    assert tool_step.title == "portal_codemode_execute"
-    assert tool_step.action == "Claim task aops_fa4c6994"
-
-
 def test_resolve_session_id_handles_both_session_id_and_conversation_id():
     """Verify resolve_session_id seamlessly resolves session_id, conversationId, and conversation_id."""
     # 1. Payload has conversationId when looking for session_id

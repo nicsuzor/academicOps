@@ -159,12 +159,9 @@ def is_continuation(event: str, raw: dict[str, Any]) -> bool:
     return event in CONTINUATION_EVENTS and bool(raw.get("stop_hook_active"))
 
 
-# The one place a Claude Cowork session is recognised. Both hook entry points
-# (this dispatcher and ``mcp_caller_session.py``) ask it before doing anything,
-# and in Cowork they do nothing: Cowork refuses any MCP call whose input a
-# plugin hook changed ("A plugin hook changed this tool call's input. That is
-# allowed only for calls that run in the same environment as the hook"), and
-# its sessions carry none of the environment SessionStart needs.
+# The one place a Claude Cowork session is recognised. The dispatcher asks it
+# before doing anything, and in Cowork does nothing: Cowork sessions carry
+# none of the environment SessionStart needs.
 #
 # The signal is Claude Code's own, read from the 2.1.314 binary (build
 # 2026-10-29, 5c99a5b6). ``CLAUDE_CODE_IS_COWORK`` is in the set of variables
