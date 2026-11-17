@@ -16,7 +16,9 @@ the cache tokens, so::
 
 Spans are deduplicated on ``(session.id, start_time, output.value)`` before summing:
 roughly a sixth of Opus spans arrive twice (same start, same output) and would double
-the bill. Gemini spans (``gemini-*``) carry no token counts and are counted as calls only.
+the bill. Gemini spans (``gemini-*``) are priced from the Gemini rows in PRICES; a model
+with a long-context tier (``threshold``) is priced per span by that span's prompt size. In the
+aggregated ``--by harness-model`` rollup the tier cannot be applied per call.
 
 ``session.id`` is the aggregation key. Subagents inherit the parent's session id
 (``subagent.id == session.id``), so a row is a whole desk/face/subagent tree.
@@ -95,6 +97,28 @@ PRICES: dict[str, dict[str, float]] = {
     "claude-opus-5": {"in": 5.0, "out": 25.0, "cache_read": 0.5, "cache_write": 6.25},
     "claude-sonnet-5": {"in": 2.0, "out": 10.0, "cache_read": 0.2, "cache_write": 2.5},
     "claude-haiku-4-5": {"in": 1.0, "out": 5.0, "cache_read": 0.1, "cache_write": 1.25},
+    # Gemini list prices, https://aistudio.google.com/docs/pricing (paid tier, Standard) as
+    # read on 2026-11-17. Gemini caches implicitly, so cache_write is 0. Gemini 4 Argon and
+    # Carbon rise to 4.0 / 0.2 / 20.0 on 2026-12-01; 3.8 Flash rises to 1.5 / 0.15 / 7.5 on
+    # 2027-01-01. Only 3.1 Pro has a long-context tier: when one call's whole prompt exceeds
+    # ``threshold`` tokens the ``long_*`` rates apply (the page labels the rows "prompts >
+    # 200k tokens"; it does not say whether the rate covers the whole call, so the whole call
+    # is priced at the higher rate, as for Gemini 2.5 Pro).
+    "gemini-4-argon": {"in": 2.0, "out": 10.0, "cache_read": 0.1, "cache_write": 0.0},
+    "gemini-4-carbon": {"in": 2.0, "out": 10.0, "cache_read": 0.1, "cache_write": 0.0},
+    "gemini-4-hydrogen": {"in": 1.5, "out": 7.5, "cache_read": 0.075, "cache_write": 0.0},
+    "gemini-3.8-flash": {"in": 0.75, "out": 3.75, "cache_read": 0.075, "cache_write": 0.0},
+    "gemini-3.5-flash-lite": {"in": 0.3, "out": 2.5, "cache_read": 0.03, "cache_write": 0.0},
+    "gemini-3.1-pro": {
+        "in": 2.0,
+        "out": 12.0,
+        "cache_read": 0.2,
+        "cache_write": 0.0,
+        "threshold": 200_000,
+        "long_in": 4.0,
+        "long_out": 18.0,
+        "long_cache_read": 0.4,
+    },
 }
 
 # Substrings of model names that share a price row (dated ids, provider prefixes).
@@ -105,6 +129,16 @@ PRICE_ALIASES: list[tuple[str, str]] = [
     ("opus", "claude-opus-5"),
     ("sonnet", "claude-sonnet-5"),
     ("haiku", "claude-haiku-4-5"),
+    # agy emits effort suffixes (-low/-medium/-high) and internal aliases for these models.
+    # None of the aliases has a published price; they take the price of the model they run.
+    ("gemini-4-argon", "gemini-4-argon"),
+    ("gemini-pro-orchestrator", "gemini-4-argon"),  # assumed Argon; unpublished alias
+    ("gemini-4-carbon", "gemini-4-carbon"),
+    ("gemini-4-hydrogen", "gemini-4-hydrogen"),
+    ("gemini-3.8-flash", "gemini-3.8-flash"),  # also -tiered
+    ("gemini-flash-worker-agy", "gemini-3.8-flash"),  # assumed Flash; unpublished alias
+    ("gemini-3.5-flash-lite", "gemini-3.5-flash-lite"),
+    ("gemini-3.1-pro", "gemini-3.1-pro"),
 ]
 
 # TOOL span names that name a PKB task in their input. Claim/release are the strongest
@@ -570,11 +604,17 @@ def price_row(model: str, prices: dict[str, dict[str, float]]) -> dict[str, floa
 def cost_usd(tokens: dict[str, int], row: dict[str, float] | None) -> float:
     if not row:
         return 0.0
+    prefix = ""
+    threshold = row.get("threshold")
+    if threshold:
+        prompt = tokens["in"] + tokens["cache_read"] + tokens["cache_write"]
+        if prompt > threshold:
+            prefix = "long_"
     return (
-        tokens["in"] * row["in"]
-        + tokens["out"] * row["out"]
-        + tokens["cache_read"] * row["cache_read"]
-        + tokens["cache_write"] * row["cache_write"]
+        tokens["in"] * row.get(prefix + "in", row["in"])
+        + tokens["out"] * row.get(prefix + "out", row["out"])
+        + tokens["cache_read"] * row.get(prefix + "cache_read", row["cache_read"])
+        + tokens["cache_write"] * row.get(prefix + "cache_write", row["cache_write"])
     ) / 1e6
 
 

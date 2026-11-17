@@ -39,3 +39,15 @@ def test_rollup_halves_chunk_on_timeout(monkeypatch):
     assert t["calls"] == 4 and t["cache_read"] == 120
     (row,) = ptc.rollup_rows(totals, dict(ptc.PRICES))
     assert row["in"] == 40 and row["priced"]
+
+
+def test_gemini_aliases_and_long_context_tier():
+    prices = dict(ptc.PRICES)
+    assert ptc.price_row("gemini-4-argon-high", prices) is prices["gemini-4-argon"]
+    assert ptc.price_row("gemini-3.8-flash-tiered", prices) is prices["gemini-3.8-flash"]
+    assert ptc.price_row("gemini-4-hydrogen-medium", prices) is prices["gemini-4-hydrogen"]
+    row = ptc.price_row("gemini-3.1-pro-preview", prices)
+    short = {"in": 100_000, "out": 0, "cache_read": 0, "cache_write": 0}
+    long_ = {"in": 300_000, "out": 0, "cache_read": 0, "cache_write": 0}
+    assert ptc.cost_usd(short, row) == 0.2
+    assert ptc.cost_usd(long_, row) == 1.2
