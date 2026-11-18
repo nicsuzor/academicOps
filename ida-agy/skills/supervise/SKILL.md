@@ -30,7 +30,8 @@ Check the claimed task body before composing:
 1. **Calibrated Delegation**: Fan out disjoint work chunks in parallel to appropriately sized subagent models:
    - **High-capability models**: Complex architecture, specifications, and multi-constraint synthesis.
    - **Fast lightweight models**: Focused file edits, template updates, mechanical sweeps, and index synchronization.
-   - Provide complete inputs and target artifact paths in Turn-1 briefs, and instruct subagents to return their final `ida:premise-check` report cleanly on exit without duplicate mid-turn status messages.
+   - Delegate reading and investigation to a subagent, taking back a short, cited answer; the supervisor's context persists across the whole tree, so it keeps briefs, summaries, and decisions.
+   - Instruct subagents to return their final `ida:premise-check` report cleanly on exit without duplicate mid-turn status messages.
 2. **Incremental Checkpoint Invariant**: After every chunk of subagent work:
    - Verify handbacks via `ida:premise-check`.
    - Run formatting and linters on modified files.

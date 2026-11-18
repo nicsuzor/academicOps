@@ -1,5 +1,5 @@
 ---
-description: Answer "how did this decision get made" about a past agent session -- assemble the session's readable transcript from the trace store, with step durations, tokens and costs, and answer the question from it, citing the steps where the decision was made.
+description: Answer "how did this decision get made" about a past agent session -- assemble the session outline from the trace store via Phoenix MCP, with step durations, tokens and costs, and answer the question from it, citing the steps where the decision was made.
 id: trace-decision
 tags:
   - wf-template
@@ -21,25 +21,20 @@ record of the session that made it rather than from any agent's account of itsel
 
 ## Steps
 
-1. **Resolve the session.** Turn the identifier into the owning session ID / conversation ID. A task id or
-   a time window resolves through the trace store's spans for that task or window.
-2. **Assemble and persist the transcripts.** Run the `session-trace` skill's transcript
-   script (`phoenix_transcript.py`) on the session. It fetches the session's spans in one
-   paged sequence and generates two primary files: `<slug>.transcript.md` (full record with
-   durations, tokens, and folded payloads) and `<slug>.outline.md` (condensed outline of prompts,
-   model calls, and tool actions). Save both files to a durable destination (such as the PKB via
-   `pkb_create` or committed to the repository/PR branch) rather than leaving them solely in an
-   ephemeral container filesystem. When saving to the PKB, pass `--sanitize-paths` (or sanitize
-   literal host filesystem paths) to satisfy PKB host-path guards.
-3. **Read narrowly.** Read the summary and the outline, then open only the folded
-   payloads of the steps that bear on the question, by anchor.
-4. **Answer.** Say how the decision was made, citing the turn and step anchors in the
-   transcript where it happened, and the duration and cost of the work that led to it
-   where the question touches on them.
+1. **Resolve the session.** Resolve the owning `session.id` (UUID, slug, trace ID, task ID, or time window)
+   via Phoenix MCP.
+2. **Assemble and persist the outline.** Run the `phoenix` skill (`plugins/ida/skills/phoenix/SKILL.md`)
+   to assemble `<slug>.outline.md` (single condensed outline with built-in token/cost totals, step
+   durations, prompts, model prose, and tool actions) via Phoenix MCP. Save the file to a durable
+   destination (such as PKB note `out-<slug>` with literal local `~/...` host paths sanitized, or
+   committed to the repository/PR branch) rather than leaving it in ephemeral scratch storage.
+3. **Read narrowly.** Read `<slug>.outline.md` narrowly; when a step's bounded excerpt is insufficient
+   to answer the question, fetch full payload fields via Phoenix MCP only for the targeted `span_id` values.
+4. **Answer.** Say how the decision was made, citing `#t<turn>` and `#t<turn>-<step>` anchors where it
+   happened, and the duration and cost of the work that led to it where relevant.
 
 ## Output contract
 
-- The primary deliverables: the two generated transcript files (`<slug>.transcript.md` full
-  and `<slug>.outline.md` condensed), saved to a durable location (PKB note/document or
-  committed repository path; sanitized for PKB persistence).
-- The answer, citing turn and step anchors into the transcript.
+- The deliverable: the single persisted `<slug>.outline.md` artifact, saved to a durable location (PKB
+  note `out-<slug>` with sanitized paths, or committed to the repository/PR branch).
+- The answer, citing `#t<turn>` and `#t<turn>-<step>` anchors into the outline.

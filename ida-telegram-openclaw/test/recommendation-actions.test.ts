@@ -77,7 +77,7 @@ describe("Message Actions: Recommendation Buttons (AC1, AC2)", () => {
 
       expect(flatButtons.find((b: any) => b.callback_data === "accept_recommendation")).toBeUndefined();
       expect(flatButtons.find((b: any) => b.callback_data === "decline_recommendation")).toBeUndefined();
-      expect(flatButtons.map((b: any) => b.text)).toEqual(["🧐 Check", "💡 Explain", "🧾"]);
+      expect(flatButtons.map((b: any) => b.text)).toEqual(["🧐 Check", "💡 Explain", "🧾", "🙏"]);
     } finally {
       cleanup();
     }
@@ -123,7 +123,7 @@ describe("Message Actions: Recommendation Buttons (AC1, AC2)", () => {
       expect(declineBtn).toBeDefined();
       expect(declineBtn.callback_data).toBe("decline_recommendation");
       expect(declineBtn.text).toBe("❌");
-      expect(flatButtons.map((b: any) => b.text)).toEqual(["🧐 Check", "💡 Explain", "🧾", "✅", "❌"]);
+      expect(flatButtons.map((b: any) => b.text)).toEqual(["🧐 Check", "💡 Explain", "🧾", "🙏", "✅", "❌"]);
     } finally {
       cleanup();
     }
@@ -161,7 +161,7 @@ describe("Message Actions: Recommendation Buttons (AC1, AC2)", () => {
       expect(kb[0]).toEqual([{ text: "⭐ Canary rollout (Recommended)", callback_data: "rollout_canary" }]);
       expect(kb[1]).toEqual([{ text: "Full cutover", callback_data: "rollout_full" }]);
       expect(kb[2]).toEqual([{ text: "Hold until Monday", callback_data: "rollout_hold" }]);
-      expect(kb[3].map((b: any) => b.text)).toEqual(["🧐 Check", "💡 Explain", "🧾"]);
+      expect(kb[3].map((b: any) => b.text)).toEqual(["🧐 Check", "💡 Explain", "🧾", "🙏"]);
 
       const flatButtons = kb.flat();
       expect(flatButtons.find((b: any) => b.callback_data === "accept_recommendation")).toBeUndefined();

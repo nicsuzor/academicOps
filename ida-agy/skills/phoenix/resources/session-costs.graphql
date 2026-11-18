@@ -1,0 +1,77 @@
+# Phoenix GraphQL accepts one operation per executeGraphqlQuery call (<= 2,048 UTF-8 bytes).
+# Pass only the chosen operation block below, not both in one document.
+# Omit traceCount/sessionCount/tokenCountTotal on large SQLite stores: costSummary reads indexed span_costs directly and includes token totals.
+# To rank multiple sessions by spend over a time window, use QUERY 2 in cost-by-task.sql.
+
+# === OPERATION 1: Project-level built-in token & cost summary (zero span fetches) ===
+# Variables:
+# {
+#   "projectName": "<PROJECT_NAME>",
+#   "start": "<START_UTC>",  # ISO-8601 UTC (e.g. "2026-11-16T00:00:00Z")
+#   "end": "<END_UTC>"       # ISO-8601 UTC (e.g. "2026-11-16T08:00:00Z")
+# }
+query GetProjectCosts(
+  $projectName: String!
+  $start: DateTime
+  $end: DateTime
+) {
+  getProjectByName(name: $projectName) {
+    name
+    costSummary(timeRange: { start: $start, end: $end }) {
+      total {
+        tokens
+        cost
+      }
+      prompt {
+        tokens
+        cost
+      }
+      completion {
+        tokens
+        cost
+      }
+    }
+  }
+}
+
+# === OPERATION 2: Single-session built-in token & cost breakdown (zero span fetches) ===
+# Variables:
+# {
+#   "sessionId": "<SESSION_ID>"
+# }
+query GetSessionCosts($sessionId: String!) {
+  getProjectSessionById(sessionId: $sessionId) {
+    sessionId
+    startTime
+    endTime
+    numTraces
+    numTracesWithError
+    tokenUsage {
+      prompt
+      completion
+      total
+    }
+    costSummary {
+      total {
+        tokens
+        cost
+      }
+      prompt {
+        tokens
+        cost
+      }
+      completion {
+        tokens
+        cost
+      }
+    }
+    costDetailSummaryEntries {
+      tokenType
+      isPrompt
+      value {
+        tokens
+        cost
+      }
+    }
+  }
+}

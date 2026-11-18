@@ -22,15 +22,6 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "mcp__.*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/mcp_caller_session.py\""
-          }
-        ]
-      },
-      {
         "hooks": [
           {
             "type": "command",

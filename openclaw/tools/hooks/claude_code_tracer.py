@@ -17,7 +17,7 @@ Hook events:
   stop               — complete the current trace and clean up session state
 
 Config priority (highest first):
-  1. Env vars: GENAI_ENGINE_API_KEY (or DISPATCHER_MCP_TOKEN_ID + DISPATCHER_MCP_TOKEN_SECRET), GENAI_ENGINE_TASK_ID, GENAI_ENGINE_TRACE_ENDPOINT
+  1. Env vars: CF_ACCESS_CLIENT_ID + CF_ACCESS_CLIENT_SECRET, GENAI_ENGINE_TASK_ID, GENAI_ENGINE_TRACE_ENDPOINT
   2. Silent no-op if nothing configured
 """
 
@@ -433,6 +433,23 @@ def sanitize_headers(headers: Any) -> dict[str, str]:
 
 _UNCONFIGURED_WARNING_EMITTED: set[str] = set()
 
+# The one Cloudflare Access service-token pair, named after the HTTP headers it
+# becomes. The launching context decides which stored token fills it. The
+# headers are built here and handed to the exporter constructor; they are never
+# placed in OTEL_EXPORTER_OTLP_HEADERS, which every OTel SDK in the process tree
+# would read.
+_CF_ACCESS_ID_VAR = "CF_ACCESS_CLIENT_ID"
+_CF_ACCESS_SECRET_VAR = "CF_ACCESS_CLIENT_SECRET"
+
+
+def _cf_access_headers() -> dict[str, str]:
+    """OTLP auth headers from the CF Access pair; empty unless both halves are set."""
+    cf_id = (os.environ.get(_CF_ACCESS_ID_VAR) or "").strip()
+    cf_secret = (os.environ.get(_CF_ACCESS_SECRET_VAR) or "").strip()
+    if cf_id and cf_secret:
+        return {"CF-Access-Client-Id": cf_id, "CF-Access-Client-Secret": cf_secret}
+    return {}
+
 
 def report_unconfigured_tracer_if_needed(session_id: str | None = None, caller: str = "") -> None:
     """Surface unconfigured telemetry endpoint to stderr once per session or run."""
@@ -448,18 +465,9 @@ def report_unconfigured_tracer_if_needed(session_id: str | None = None, caller: 
 
 
 def discover_config(data: dict | None = None) -> dict | None:
-    """Returns config dict with keys: api_key, task_id, endpoint, protocol (optional), project_name, cwd, agent_name.
+    """Returns config dict with keys: auth_headers, task_id, endpoint, protocol (optional), project_name, cwd, agent_name.
     Returns None if not configured."""
-    api_key = (
-        os.environ.get("GENAI_ENGINE_API_KEY")
-        or os.environ.get("OTEL_EXPORTER_OTLP_HEADERS")
-        or os.environ.get("OTEL_EXPORTER_OTLP_TRACES_HEADERS", "")
-    )
-    if not api_key:
-        cf_id = (os.environ.get("DISPATCHER_MCP_TOKEN_ID") or "").strip()
-        cf_secret = (os.environ.get("DISPATCHER_MCP_TOKEN_SECRET") or "").strip()
-        if cf_id and cf_secret:
-            api_key = f"CF-Access-Client-Id={cf_id},CF-Access-Client-Secret={cf_secret}"
+    auth_headers = _cf_access_headers()
     endpoint = (
         os.environ.get("GENAI_ENGINE_TRACE_ENDPOINT")
         or os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
@@ -508,7 +516,7 @@ def discover_config(data: dict | None = None) -> dict | None:
     agent_name = resolve_agent_name(data)
 
     cfg = {
-        "api_key": api_key,
+        "auth_headers": auth_headers,
         "task_id": task_id,
         "endpoint": endpoint,
         "project_name": project_name,
@@ -1360,8 +1368,8 @@ def _redact_secrets(value: Any) -> str:
         os.environ.get("GH_TOKEN"),
         os.environ.get("GITHUB_TOKEN"),
         os.environ.get("AOPS_BOT_GH_TOKEN"),
-        os.environ.get("DISPATCHER_MCP_TOKEN_ID"),
-        os.environ.get("DISPATCHER_MCP_TOKEN_SECRET"),
+        os.environ.get("CF_ACCESS_CLIENT_ID"),
+        os.environ.get("CF_ACCESS_CLIENT_SECRET"),
     ]
     for k, v in os.environ.items():
         if (k.endswith("_API_KEY") or k.endswith("_TOKEN_SECRET")) and v:
@@ -1866,27 +1874,7 @@ def _build_and_export_spans(
                 parent_hex = None
             parents[span_id_hex] = parent_hex
         try:
-            headers = {}
-            if config.get("api_key"):
-                api_key_str = config["api_key"]
-                if "=" in api_key_str and ":" not in api_key_str and "Bearer" not in api_key_str:
-                    for item in api_key_str.split(","):
-                        if "=" in item:
-                            k, v = item.split("=", 1)
-                            headers[k.strip()] = v.strip()
-                elif ":" in api_key_str:
-                    for item in api_key_str.split(","):
-                        if ":" in item:
-                            k, v = item.split(":", 1)
-                            headers[k.strip()] = v.strip()
-                else:
-                    headers["authorization"] = f"Bearer {api_key_str}"
-
-            cf_id = (os.environ.get("DISPATCHER_MCP_TOKEN_ID") or "").strip()
-            cf_secret = (os.environ.get("DISPATCHER_MCP_TOKEN_SECRET") or "").strip()
-            if cf_id and cf_secret and not any(k.lower() == "cf-access-client-id" for k in headers):
-                headers["CF-Access-Client-Id"] = cf_id
-                headers["CF-Access-Client-Secret"] = cf_secret
+            headers = dict(config.get("auth_headers") or {})
 
             if project_name and "openinference-project-name" not in headers:
                 headers["openinference-project-name"] = project_name

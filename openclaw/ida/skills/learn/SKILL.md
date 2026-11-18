@@ -1,11 +1,11 @@
 ---
 name: learn
-description: Diagnose systemic root causes of framework faults from session execution records, recommend minimally effective workflow remedies first, and persist session transcripts. Use for "diagnose this error", "why did the session fail", "learn from this run", or session post-mortems; the PKB custodian (Pauli) runs it. Exclude for non-traceable sessions, non-framework faults (including local problems in third-party repositories), or immediate task retries.
+description: Diagnose systemic root causes of framework faults from session execution records, recommend minimally effective workflow remedies first, and persist session outlines. Use for "diagnose this error", "why did the session fail", "learn from this run", or session post-mortems; the PKB custodian (Pauli) runs it. Exclude for non-traceable sessions, non-framework faults (including local problems in third-party repositories), or immediate task retries.
 ---
 
 # Learn
 
-Perform root-cause analysis on systemic failure classes in the framework using session execution records. Diagnose observable failure mechanisms from OpenTelemetry spans (or session logs where the surface does not emit traces), generate and durably persist session transcripts, and recommend minimally effective workflow remedies before escalating to the framework enforcement-map process; do not inspect source code directly. /learn diagnoses faults in our own framework (including local workflow, rule, or instruction problems when working on third-party repositories) only; non-framework faults (such as local problems in third-party repositories themselves, external tools, CLIs, models, or third-party service issues) are not handled by /learn. The PKB custodian (Pauli) runs this skill.
+Perform root-cause analysis on systemic failure classes in the framework using session execution records. Diagnose observable failure mechanisms from OpenTelemetry spans (or session logs where the surface does not emit traces), generate and durably persist session outlines, and recommend minimally effective workflow remedies before escalating to the framework enforcement-map process; do not inspect source code directly. /learn diagnoses faults in our own framework (including local workflow, rule, or instruction problems when working on third-party repositories) only; non-framework faults (such as local problems in third-party repositories themselves, external tools, CLIs, models, or third-party service issues) are not handled by /learn. The PKB custodian (Pauli) runs this skill.
 
 ## Execution Environment
 
@@ -13,12 +13,11 @@ Mandate execution exclusively within an isolated polecat container in the `acade
 
 ## Protocol
 
-1. **Retrieve session execution record and persist transcripts**:
-   - Retrieve session logs and traces via OpenTelemetry spans using the `ida:session-trace` skill (running its packaged transcript export script `phoenix_transcript.py`, querying Phoenix MCP tools, or reading existing PKB transcript notes `tr-<session_slug>` and `out-<session_slug>`), alongside `academicOps` governance documents (`specs/ENFORCEMENT-MAP.md` and `specs/enforcement/enforcement.md`).
-   - If Phoenix spans are available but unpersisted, synthesize full transcript and condensed outline notes and save them directly into the PKB using `pkb_create`:
-     - Full transcript: `type: "note"`, `title: "Transcript: <session_slug> (<summary>)"`, `slug: "tr-<session_slug>"`, `tags: ["session-trace", "transcript", "learn"]`.
-     - Outline: `type: "note"`, `title: "Outline: <session_slug> (<summary>)"`, `slug: "out-<session_slug>"`, `tags: ["session-trace", "outline", "learn"]`.
-   - **Ground analysis in traces and governance specifications**: Ground analysis strictly in runtime execution records from Arize Phoenix (`ida:session-trace`) and framework governance specifications. Do not inspect, grep, or read application source code, and never read or scrape local `.system_generated/logs/transcript*.jsonl` or `/tmp/aops_debug_hooks_*.jsonl` files. If Phoenix traces are absent, unexported, or unavailable, halt immediately and state that the trace is unavailable; never fall back to local JSONL log scraping.
+1. **Retrieve session execution record and persist session outline**:
+   - Retrieve session logs and traces via OpenTelemetry spans using the `ida:phoenix` skill (querying Phoenix MCP via `ida:phoenix` declarative templates, or reading existing PKB outline note `out-<session_slug>`), alongside `academicOps` governance documents (`specs/ENFORCEMENT-MAP.md` and `specs/enforcement/enforcement.md`).
+   - If Phoenix spans are available but unpersisted, synthesize the condensed outline note and save it directly into the PKB using `pkb_create`:
+     - Outline: `type: "note"`, `title: "Outline: <session_slug> (<summary>)"`, `slug: "out-<session_slug>"`, `tags: ["phoenix", "outline", "learn"]`.
+   - **Ground analysis in traces and governance specifications**: Ground analysis strictly in runtime execution records from Arize Phoenix (`ida:phoenix`) and framework governance specifications. Do not inspect, grep, or read application source code, and never read or scrape local `.system_generated/logs/transcript*.jsonl` or `/tmp/aops_debug_hooks_*.jsonl` files. If Phoenix traces are absent, unexported, or unavailable, halt immediately and state that the trace is unavailable; never fall back to local JSONL log scraping.
 2. **Diagnose systemic cause from execution evidence**:
    - **Root causes are framework defects, never agent faults.** A root cause is never an agent's fault, capability limitation, choice, or action; it is always the framework's: the instructions, skills, workflows, contracts, or tools that led the agent to act as it did. An agent's action (e.g. dispatching to an agent without necessary credentials or access, rewording an ask, skipping a step, never delivering a result) is an intermediate event on the execution trace, never the root cause. When an agent acts, locate and quote the instruction, skill, workflow, or prompt text that led that agent to take that action, and identify the framework defect (missing constraint, contradictory rule, or ambiguous guidance) that permitted or caused the failure. Never cite an agent, its brief, its capabilities, or its choices as the root cause.
    - **Workflow non-compliance is never a missing rule:** When an agent fails to follow an applicable workflow or skips steps within a workflow, diagnose the failure as poor workflow compliance or ambiguous/unclear instructions within that workflow under the universal framework rule ("follow the applicable workflow"). Never diagnose workflow execution failures as a missing framework-level enforcement rule, and never propose or file issues minting per-workflow framework rules, specs, or gates.
@@ -59,7 +58,7 @@ Mandate execution exclusively within an isolated polecat container in the `acade
 
 Return a markdown report containing:
 
-- **Transcripts**: PKB note wikilinks for the full transcript (`[[<transcript_note_id>]]`) and condensed outline (`[[<outline_note_id>]]`).
+- **Session outline**: PKB note wikilink for the condensed outline (`[[<outline_note_id>]]`).
 - **Evidence**: Session ID / Conversation ID, relevant OTel span IDs (or session log excerpts if the surface does not emit traces), and execution excerpts (tool calls, error payloads, latencies).
 - **Root cause**: The framework or workflow defect the execution record shows let the failure happen: the missing, unreached, ambiguous, or contradicted instruction, workflow step, contract, or tool that led the agent to act as it did. State strictly in active voice, name the actor who acted, quote the governing instruction text that led them to act, and explain the framework defect. Never cite an agent, an agent's capability limitation, or an agent's choice as the root cause, and never use passive voice.
 - **Verification miss**: The check that should have caught the instance, and why it did not.

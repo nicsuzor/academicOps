@@ -5,6 +5,7 @@ import { QuestionBroker } from "../telegram/questions.js";
 import { TelegramBotClient } from "../telegram/bot.js";
 import { sanitizeChannelMeta } from "../telegram/inbound.js";
 import { PermissionRelay } from "./permissions.js";
+import { TOOL_TIMEOUT_MS, withToolDeadline } from "./timeout.js";
 import { SharedTelegramChannelCore } from "../core/channel-core.js";
 
 export class StdioMcpServer {
@@ -14,6 +15,8 @@ export class StdioMcpServer {
   private _bot: TelegramBotClient | null;
   private permRelay: PermissionRelay;
   public channelCore: SharedTelegramChannelCore;
+  /** Per-call deadline for tools not in LONG_RUNNING_TOOLS; overridable in tests. */
+  public toolTimeoutMs: number = TOOL_TIMEOUT_MS;
 
   constructor(
     config: PluginConfig,
@@ -152,7 +155,11 @@ export class StdioMcpServer {
       const args = toolParams.arguments || {};
 
       try {
-        const result = await this.executeTool(toolName, args);
+        const result = await withToolDeadline(
+          toolName,
+          () => this.executeTool(toolName, args),
+          this.toolTimeoutMs
+        );
         const isFailure = Boolean(
           result &&
             typeof result === "object" &&

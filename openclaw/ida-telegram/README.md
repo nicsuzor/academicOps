@@ -5,19 +5,20 @@ Ida's custom Telegram channel and Mini App plugin for Claude Code.
 ## Architecture
 
 - **Channel Protocol:** Stdio MCP server with `experimental["claude/channel"]` support.
-- **Progressive Disclosure:**
-  - Tier 1: Bold headline and bullets in chat.
+- **Progressive Disclosure & Rich Formatting:**
+  - Tier 1: Bold headline, section headings (`#`), bold lead-in bullets, inline entities (`**bold**`, `*italic*`, `__underline__`, `~~strikethrough~~`, `||spoiler||`, `` `code` ``, ` ```lang `, `[links](https://example.com)`, `![emoji](tg://emoji?id=<id>)`, nested inline formatting), and Markdown tables (narrow `<= 36` cols as `pre`, wide `> 36` cols as bulleted cards) in chat.
   - Tier 2: Expandable blockquotes (`>!`) collapsed by default.
   - Tier 3: Immutable Details pages viewed via the Telegram Mini App (`🔍 Details` button).
-  - Overflow handling: Text exceeding `max_chat_chars` (default 1200) splits at whole paragraphs and relocates cleanly to the Details page without loss.
+  - Overflow handling: Text exceeding `max_chat_chars` (default `4000`) splits at whole paragraphs and relocates cleanly to the Details page without loss.
+  - Interactive Bot API features: `copy_text` inline keyboard buttons, `quote` (with `quote_entities` and `quote_position`) in `reply_parameters`, `link_preview_options` / `disable_link_preview`, `show_caption_above_media`, and `message_effect_id`.
 - **Asynchronous Questions:**
   - `ask_user` tool and `PreToolUse` hook for `AskUserQuestion`.
   - Vertical numbered keyboard options with recommendation first.
   - Never blocks or assumes answers; delivers answers as channel notification events upon reply.
 - **Option Buttons & Message Actions:**
   - `reply` takes `buttons` for the answers to a question asked in the reply; a tap edits the card to `Selected: <label> ✅` and emits a `button_tap` channel event. Supports 2D row arrays (`ReplyButtonOption[][]`), layout chunking via `button_layout` (e.g. `[3, 3, 2]`) or `buttons_per_row` (e.g. `4`), and per-button `row` properties, defaulting to 1 button per row when flat.
-  - Setting `predefined_row: true` groups all active predefined buttons (`🔍`, `🔍 Review diff`, `👍`/`👎`, `[🧐 Check]`, `[💡 Explain]`, `[🧾]`, and when `binary_decision: true`, `[✅]`, `[❌]`) onto a single consolidated first row above any caller buttons.
-  - Every reply automatically attaches `[🧐 Check]`, `[💡 Explain]`, and `[🧾]` action buttons (unless `actions: false` is passed), with `🔍` (Details) consolidated on the same row in default reply keyboards. Binary recommendation buttons `[✅]` and `[❌]` attach only when `binary_decision: true` is passed on `reply`; multi-option decisions use labelled `buttons` with the recommended option highlighted instead, and replies with no decision carry neither. Tapping `🧐 Check` delivers an inbound request naming the message for a peer `premise-check`. Tapping `💡 Explain` delivers an inbound request to expand that message in more detail. Tapping `🧾` delivers an inbound request to provide the argument chain ("how do you know that?") with verbatim Argdown blocks attached in Details. Tapping `✅` or `❌` marks the card with the choice and delivers an event naming the message and whether the recommendation was accepted or declined.
+  - Setting `predefined_row: true` groups all active predefined buttons (`🔍`, `🔍 Review diff`, `👍`/`👎`, `[🧐 Check]`, `[💡 Explain]`, `[🧾]`, `[🙏]`, and when `binary_decision: true`, `[✅]`, `[❌]`) onto a single consolidated first row above any caller buttons.
+  - Every reply automatically attaches `[🧐 Check]`, `[💡 Explain]`, `[🧾]`, and `[🙏]` action buttons (unless `actions: false` is passed), with `🔍` (Details) consolidated on the same row in default reply keyboards. Binary recommendation buttons `[✅]` and `[❌]` attach only when `binary_decision: true` is passed on `reply`; multi-option decisions use labelled `buttons` with the recommended option highlighted instead, and replies with no decision carry neither. Tapping `🧐 Check` delivers an inbound request naming the message for a peer `premise-check`. Tapping `💡 Explain` delivers an inbound request to expand that message in more detail. Tapping `🧾` delivers an inbound request to provide the argument chain ("how do you know that?") with verbatim Argdown blocks attached in Details. Tapping `🙏` marks the card and delivers a `thanks` event meaning "read and done": close the thread unless more on its topic is due soon. Tapping `✅` or `❌` marks the card with the choice and delivers an event naming the message and whether the recommendation was accepted or declined.
 - **Mini App Security, Details, Review, Questions & Anchor:**
   - Loopback-only Bun HTTP server (`127.0.0.1:<port>`) serving `/app/*` and `/api/app/*`.
   - `MINI_APP_URL` (or `IDA_WEB_URL`), required: the public URL at which this server is reachable, used for Mini App buttons. There is no default; the plugin refuses to start without it.
@@ -48,10 +49,16 @@ Ida's custom Telegram channel and Mini App plugin for Claude Code.
   - Unthreaded chats omit thread parameters from outbound requests.
 - **Native Bot Commands:**
   - Registers the native command menu via `setMyCommands` at `botCommandScopeChat` for each `allowFrom` chat on startup, surviving channel restarts and overriding `all_private_chats` defaults.
-  - The menu is the JSON list configured in `TELEGRAM_BOT_COMMANDS`; with none configured, no menu is registered. The plugin reads no other plugin's files to build it.
-  - Excludes reserved official-plugin commands (`/start`, `/help`, `/status`) and headless worker commands (`/pull`, `/dump`); hyphens in configured names become underscores.
-  - Commands reach the agent as typed (`meta.command`, `meta.args`); what a command does is set by the agent's instructions (`skills/telegram/SKILL.md`), not by plugin code.
+  - Unified menu is built at primary poller startup from all available skills across installed plugins, project-local skills (`.agents/skills`, `.claude/skills`), and user skills (`~/.claude/skills`), with `TELEGRAM_BOT_COMMANDS` retained as an explicit JSON override.
+  - Excludes reserved official-plugin commands (`/start`, `/help`, `/status`) and headless worker lifecycle commands (`/pull`, `/dump`).
+  - Normalises skill names to `[a-z0-9_]{1,32}` by converting hyphens to underscores, disambiguating colliding names across sources, and trimming descriptions to 1–256 characters.
+  - Reports an explicit error when total resolved skills or commands exceed Telegram's 100-command limit rather than silently truncating.
+  - Commands reach the agent as typed (`meta.command`, `meta.args`); what a command does when invoked is governed by agent-side command routing via `skills/telegram/SKILL.md`, not by plugin code.
 - **Concurrency & Host Locks:**
   - Gated to `IDA_TELEGRAM_ROLE=primary`.
   - Non-primary instances register zero tools, run no poller, and leave hooks inert.
   - Same-host PID locking and exponential 409 Conflict backoff policy.
+- **Tool Deadline (30 s):**
+  - Every MCP tool except the exempt ones below answers within 30 seconds or the caller gets an error result (`<tool> timed out after 30s without an answer`); the deadline is ours, in `src/mcp/timeout.ts`, and is separate from Claude Code's `MCP_TOOL_TIMEOUT`, which applies to every MCP server alike.
+  - Rule for authors: a tool that should be basically instant is covered by default, so a new tool needs no registration. Only a tool that legitimately runs longer goes in `LONG_RUNNING_TOOLS`, with the reason beside its entry. Today that is `reply` (voice-out synthesis has its own 60 s limit) and the upload tools `send_photo`, `send_document`, `send_video`, `send_animation`, `send_media_group`, `send_audio` and `send_video_note` (time scales with file size). `ask_user` is covered because it only posts the question and returns, never waiting for the answer.
+  - On timeout the call is abandoned, not cancelled: the underlying Telegram request may still complete after the error is returned.

@@ -73,6 +73,8 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
       expect(explainBtn.callback_data).toBe("explain");
       expect(reasonsBtn).toBeDefined();
       expect(reasonsBtn.callback_data).toBe("reasons");
+      const thanksBtn = flatButtons.find((b: any) => b.text === "🙏");
+      expect(thanksBtn?.callback_data).toBe("thanks");
     } finally {
       globalThis.fetch = origFetch;
       rmSync(stateDir, { recursive: true, force: true });
@@ -453,6 +455,106 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
       expect(editCall?.body.text).toContain("Selected: 🧾 Reasons ✅");
       const remainingKb = editCall?.body.reply_markup?.inline_keyboard || [];
       expect(remainingKb.flat().find((b: any) => b.callback_data === "reasons")).toBeUndefined();
+      expect(remainingKb.flat().find((b: any) => b.callback_data === "logic_check")).toBeUndefined();
+      expect(remainingKb.flat().find((b: any) => b.callback_data === "explain")).toBeUndefined();
+
+      // 5. Verify callback answered
+      const answerCall = apiCalls.find((c) => c.method === "answerCallbackQuery");
+      expect(answerCall).toBeDefined();
+    } finally {
+      globalThis.fetch = origFetch;
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  test("pressing the thanks button marks card and tells Ida the user is done with the thread", async () => {
+    const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-thanks-"));
+    const config = loadConfig({
+      MINI_APP_URL: "https://ida.example.test",
+      TELEGRAM_BOT_TOKEN: "test-token",
+      IDA_TELEGRAM_ROLE: "primary",
+      ALLOWED_USER_IDS: "1111111111",
+      STATE_DIR: stateDir,
+      VOICE_REPLIES: "off",
+    });
+
+    const store = new PluginStore(config.stateDir);
+    const broker = new QuestionBroker(config.stateDir);
+    const permRelay = new PermissionRelay();
+
+    const emittedEvents: Array<{ content: string; meta: Record<string, unknown> }> = [];
+    const apiCalls: Array<{ method: string; body: any }> = [];
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      const method = String(url).split("/").pop() || "";
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      apiCalls.push({ method, body });
+      return new Response(JSON.stringify({ ok: true, result: { message_id: 2005 } }), { status: 200 });
+    }) as typeof fetch;
+
+    try {
+      const bot = new TelegramBotClient(config, broker, permRelay, (content, meta) => {
+        emittedEvents.push({ content, meta });
+      });
+      const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
+
+      // 1. Ida sends a message with default action buttons
+      const messageText = "**Finding:** The pipeline verified 14 invariant properties.";
+      await mcp.handleMessage({
+        jsonrpc: "2.0",
+        id: 30,
+        method: "tools/call",
+        params: {
+          name: "reply",
+          arguments: {
+            chat_id: 1111111111,
+            text: messageText,
+          },
+        },
+      });
+
+      // 2. User presses the thanks button on message 2005
+      await (bot as any).handleUpdate({
+        update_id: 504,
+        callback_query: {
+          id: "cb_thx_1",
+          from: { id: 1111111111, is_bot: false, first_name: "Alex" },
+          message: {
+            message_id: 2005,
+            date: Date.now(),
+            chat: { id: 1111111111, type: "private" },
+            text: messageText,
+            reply_markup: {
+              inline_keyboard: [[
+                { text: "🧐 Check logic", callback_data: "logic_check" },
+                { text: "💡 Explain", callback_data: "explain" },
+                { text: "🧾", callback_data: "reasons" },
+                { text: "🙏", callback_data: "thanks" },
+              ]],
+            },
+          },
+          data: "thanks",
+        },
+      });
+
+      // 3. Verify channel event delivered to session naming the message, meaning read and done
+      expect(emittedEvents.length).toBe(1);
+      const event = emittedEvents[0];
+      expect(event.meta.event).toBe("thanks");
+      expect(event.meta.action).toBe("thanks");
+      expect(event.meta.payload).toBe("thanks");
+      expect(event.meta.target_message_id).toBe("2005");
+      expect(event.meta.target_excerpt).toContain("pipeline verified 14 invariant properties");
+      expect(event.content).toContain("2005");
+      expect(event.content).toContain("done with its thread");
+      expect(event.content).toContain("close the thread unless more on its topic is due soon");
+
+      // 4. Verify card was marked with Selected: 🙏 Thanks ✅ and action buttons removed
+      const editCall = apiCalls.find((c) => c.method === "editMessageText");
+      expect(editCall).toBeDefined();
+      expect(editCall?.body.text).toContain("Selected: 🙏 Thanks ✅");
+      const remainingKb = editCall?.body.reply_markup?.inline_keyboard || [];
+      expect(remainingKb.flat().find((b: any) => b.callback_data === "thanks")).toBeUndefined();
       expect(remainingKb.flat().find((b: any) => b.callback_data === "logic_check")).toBeUndefined();
       expect(remainingKb.flat().find((b: any) => b.callback_data === "explain")).toBeUndefined();
 

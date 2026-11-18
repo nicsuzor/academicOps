@@ -256,6 +256,28 @@ describe("Inbound completeness: Updates routing and parsing", () => {
     expect(result?.content).toContain("How do you know that?");
   });
 
+  test("delivers thanks button tap event naming target message", () => {
+    const update: TelegramUpdate = {
+      update_id: 530,
+      callback_query: {
+        id: "cb_thx_1",
+        from: { id: 12345678, is_bot: false, first_name: "Alex" },
+        message: {
+          message_id: 91,
+          date: Date.now(),
+          chat: { id: 12345678, type: "private" },
+          text: "Result.",
+        },
+        data: "thanks",
+      },
+    };
+    const result = parseInboundUpdate(update, allowFrom);
+    expect(result?.event).toBe("thanks");
+    expect(result?.meta.action).toBe("thanks");
+    expect(result?.meta.target_message_id).toBe("91");
+    expect(result?.content).toContain("close the thread unless more on its topic is due soon");
+  });
+
   test("delivers accept_recommendation button tap event naming target message and acceptance", () => {
     const update: TelegramUpdate = {
       update_id: 54,
