@@ -267,7 +267,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
 
         const kb = apiCalls[0].body.reply_markup?.inline_keyboard || [];
         expect(kb.length).toBe(1);
-        expect(kb[0].length).toBe(4);
+        expect(kb[0].length).toBe(5);
         expect(kb[0][0].text).toBe("🔍");
         expect(kb[0][1].text).toBe("🧐 Check");
         expect(kb[0][2].text).toBe("💡 Explain");
@@ -325,6 +325,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           "🧐 Check",
           "💡 Explain",
           "🧾",
+          "🙏",
         ]);
         expect(kb[1].map((b: any) => b.text)).toEqual(["B1", "B2", "B3", "B4"]);
         expect(kb[2].map((b: any) => b.text)).toEqual(["B5", "B6", "B7", "B8"]);
@@ -366,6 +367,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           "🧐 Check",
           "💡 Explain",
           "🧾",
+          "🙏",
         ]);
       } finally {
         cleanup();
@@ -421,6 +423,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           "🧐 Check",
           "💡 Explain",
           "🧾",
+          "🙏",
         ]);
       } finally {
         cleanup();
@@ -523,6 +526,7 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           "🧐 Check",
           "💡 Explain",
           "🧾",
+          "🙏",
         ]);
       } finally {
         cleanup();
