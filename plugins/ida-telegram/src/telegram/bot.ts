@@ -476,6 +476,7 @@ export class TelegramBotClient {
       actionBtns.push({ text: "🧐 Check", callback_data: "logic_check" });
       actionBtns.push({ text: "💡 Explain", callback_data: "explain" });
       actionBtns.push({ text: "🧾", callback_data: "reasons" });
+      actionBtns.push({ text: "🙏", callback_data: "thanks" });
 
       // Attach tick/cross buttons ONLY if binary_decision is explicitly true
       if (binary_decision === true) {
@@ -2066,7 +2067,9 @@ export class TelegramBotClient {
           data === "explain" ||
           data.startsWith("explain:") ||
           data === "reasons" ||
-          data.startsWith("reasons:")) &&
+          data.startsWith("reasons:") ||
+          data === "thanks" ||
+          data.startsWith("thanks:")) &&
         cb.message &&
         this.config.allowFrom.includes(cb.from.id)
       ) {
@@ -2075,8 +2078,18 @@ export class TelegramBotClient {
         const isLogicCheck = data === "logic_check" || data.startsWith("logic_check:");
         const isExplain = data === "explain" || data.startsWith("explain:");
         const isReasons = data === "reasons" || data.startsWith("reasons:");
-        const defaultLabel = isLogicCheck ? "🧐 Check" : isExplain ? "💡 Explain" : "🧾 Reasons";
-        const label = matchedBtn?.text && matchedBtn.text !== "🧾" ? matchedBtn.text : defaultLabel;
+        const isThanks = data === "thanks" || data.startsWith("thanks:");
+        const defaultLabel = isLogicCheck
+          ? "🧐 Check"
+          : isExplain
+          ? "💡 Explain"
+          : isThanks
+          ? "🙏 Thanks"
+          : "🧾 Reasons";
+        const label =
+          matchedBtn?.text && matchedBtn.text !== "🧾" && matchedBtn.text !== "🙏"
+            ? matchedBtn.text
+            : defaultLabel;
         const originalText = cb.message.text || "";
 
         // Remove the action buttons row, but preserve other buttons (e.g. Details, Review diff)
@@ -2087,6 +2100,8 @@ export class TelegramBotClient {
                 b.callback_data !== "logic_check" &&
                 b.callback_data !== "explain" &&
                 b.callback_data !== "reasons" &&
+                b.callback_data !== "thanks" &&
+                !b.callback_data?.startsWith("thanks:") &&
                 !b.callback_data?.startsWith("logic_check:") &&
                 !b.callback_data?.startsWith("explain:") &&
                 !b.callback_data?.startsWith("reasons:")
@@ -2102,8 +2117,10 @@ export class TelegramBotClient {
         );
 
         const targetExcerpt = cb.message.text || this.getMessageExcerpt(cb.message.message_id) || "";
-        const action = isLogicCheck ? "logic_check" : isExplain ? "explain" : "reasons";
-        const content = isLogicCheck
+        const action = isLogicCheck ? "logic_check" : isExplain ? "explain" : isThanks ? "thanks" : "reasons";
+        const content = isThanks
+          ? `The user has read message ${cb.message.message_id} and is done with its thread: close the thread unless more on its topic is due soon.`
+          : isLogicCheck
           ? `Give me a logic check on message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""} as if you were receiving it from a peer.`
           : isExplain
           ? `Please explain message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""} in more detail.`
@@ -2217,6 +2234,7 @@ export class TelegramBotClient {
           if (cd === "logic_check" || cd.startsWith("logic_check:")) return true;
           if (cd === "explain" || cd.startsWith("explain:")) return true;
           if (cd === "reasons" || cd.startsWith("reasons:")) return true;
+          if (cd === "thanks" || cd.startsWith("thanks:")) return true;
           if (cd === "accept_recommendation" || cd.startsWith("accept_recommendation:")) return true;
           if (cd === "decline_recommendation" || cd.startsWith("decline_recommendation:")) return true;
           if (cd.startsWith("fb:")) return true;

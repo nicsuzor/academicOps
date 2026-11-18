@@ -68,6 +68,7 @@ export interface InboundChannelEvent {
     | "logic_check"
     | "explain"
     | "reasons"
+    | "thanks"
     | "accept_recommendation"
     | "decline_recommendation";
   content: string;
@@ -330,6 +331,16 @@ export function parseInboundUpdate(
       return {
         event: "explain",
         content: `Please explain message ${cb.message?.message_id ?? ""}${targetExcerpt ? `: "${targetExcerpt}"` : ""} in more detail.`,
+        meta,
+      };
+    }
+
+    if (callbackPrefix === "thanks" || rawData === "thanks") {
+      meta.event = "thanks";
+      meta.action = "thanks";
+      return {
+        event: "thanks",
+        content: `The user has read message ${cb.message?.message_id ?? ""} and is done with its thread: close the thread unless more on its topic is due soon.`,
         meta,
       };
     }
