@@ -897,3 +897,200 @@ answers:
             tracer_mod=tracer,
             judged_file=str(judged_file),
         )
+
+
+def test_judged_file_rejects_disarmed_foreign_and_mismatched_claims_while_allowing_task_revise_pass(
+    tmp_path: Path,
+):
+    """--judged-file blocks replay of disarmed, foreign-slot, mismatched, or unarmed gate claims, while task REVISE->PASS succeeds."""
+    tracer = _StubTracer()
+    session_id = "sess-judged-guards"
+    valid_report = (
+        "```argdown\n"
+        "===\nasks:\n  a1: ok?\nanswers:\n  a1: 2\n===\n"
+        "(1) Direct observation (`x=1`).\n"
+        "-- valid rule. Unless: none; ruled out. --\n"
+        "(2) So, answer holds.\n```"
+    )
+    other_file = tmp_path / "other.md"
+    other_file.write_text(valid_report.replace("x=1", "x=2"), encoding="utf-8")
+    same_file = tmp_path / "same.md"
+    same_file.write_text(valid_report, encoding="utf-8")
+
+    def _valid_reason(cid: str) -> str:
+        return (
+            f"Judged: {cid}; asks a1\n"
+            "Valid: (2) holds -- valid rule\n"
+            f"Supported: weakest {_ANY_BASIS} -- (1)\n"
+            "Answered: a1 ← (2)\n"
+            "Sufficient: (2) material; verification of report; obvious\n"
+            "Waived: none\n"
+            'Relay: "answer holds" ← (2)'
+        )
+
+    # 1. Already-disarmed gate claim cannot be masked or re-recorded via --judged-file
+    hg.arm(session_id, claim_id="claim-11112222", judged_text=valid_report, block_expected=True)
+    pcv.record_verdict(
+        session_id=session_id,
+        claim_id="claim-11112222",
+        verdict="REVISE",
+        reason="Valid: (2) fails #missing -- needs fix",
+        tracer_mod=tracer,
+    )
+    with pytest.raises(ValueError, match="already disarmed|not armed"):
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id="claim-11112222",
+            verdict="PASS",
+            reason=_valid_reason("claim-11112222"),
+            tracer_mod=tracer,
+            judged_file=str(same_file),
+        )
+
+    # 2. Foreign-slot claim cannot be consumed via --judged-file from another agent or omitted --agent
+    hg.arm(
+        session_id,
+        claim_id="claim-33334444",
+        judged_text=valid_report,
+        block_expected=True,
+        agent_id="sub-b",
+    )
+    with pytest.raises(ValueError, match="armed for.*sub-b|not.*sub-a|foreign|other agent"):
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id="claim-33334444",
+            verdict="PASS",
+            reason=_valid_reason("claim-33334444"),
+            tracer_mod=tracer,
+            judged_file=str(same_file),
+            agent_id="sub-a",
+        )
+    assert hg.is_armed(session_id, agent_id="sub-b") is True
+
+    # 3. Substituting a different file SHA against stored .judged.txt in the owning slot is refused
+    with pytest.raises(ValueError, match="mismatch|does not match"):
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id="claim-33334444",
+            verdict="PASS",
+            reason=_valid_reason("claim-33334444"),
+            tracer_mod=tracer,
+            judged_file=str(other_file),
+            agent_id="sub-b",
+        )
+
+    # 4. Unarmed gate-minted claim-<8hex> ID cannot bypass arming via --judged-file
+    with pytest.raises(ValueError, match="currently armed|not armed|unknown"):
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id="claim-deadbeef",
+            verdict="PASS",
+            reason=_valid_reason("claim-deadbeef"),
+            tracer_mod=tracer,
+            judged_file=str(same_file),
+        )
+
+    # 5. Out-of-band task_id and report-* labels MUST still allow REVISE -> PASS via --judged-file
+    rev_task = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="task_a1b2c3d4",
+        verdict="REVISE",
+        reason="Valid: (2) fails #missing -- expand evidence",
+        tracer_mod=tracer,
+        judged_file=str(other_file),
+    )
+    assert rev_task["ok"] is True
+    pass_task = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="task_a1b2c3d4",
+        verdict="PASS",
+        reason=_valid_reason("task_a1b2c3d4"),
+        tracer_mod=tracer,
+        judged_file=str(same_file),
+    )
+    assert pass_task["ok"] is True
+
+    rev_rep = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="report-out-of-band",
+        verdict="REVISE",
+        reason="Valid: (2) fails #missing -- expand evidence",
+        tracer_mod=tracer,
+        judged_file=str(other_file),
+    )
+    assert rev_rep["ok"] is True
+    pass_rep = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="report-out-of-band",
+        verdict="PASS",
+        reason=_valid_reason("report-out-of-band"),
+        tracer_mod=tracer,
+        judged_file=str(same_file),
+    )
+    assert pass_rep["ok"] is True
+
+
+def test_cli_agent_flag_binds_slot_and_rejects_mismatch(tmp_path: Path, monkeypatch, capsys):
+    """CLI --agent/--recipient disarms strictly the targeted slot and refuses foreign --judged-file."""
+    tracer = _StubTracer()
+    monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: tracer)
+    session_id = "sess-cli-agent"
+    valid_report = (
+        "```argdown\n===\nasks:\n  a1: ok?\nanswers:\n  a1: 2\n===\n"
+        "(1) Direct observation (`v=1`).\n-- rule. Unless: none; ruled out. --\n(2) So, holds.\n```"
+    )
+    hg.arm(
+        session_id,
+        claim_id="claim-a1b2c3d4",
+        judged_text=valid_report,
+        block_expected=True,
+        agent_id="sub-x",
+    )
+    reason_file = tmp_path / "reason.txt"
+    reason_file.write_text(
+        f"Judged: claim-a1b2c3d4; asks a1\nValid: (2) holds -- rule\n"
+        f"Supported: weakest {_ANY_BASIS} -- (1)\nAnswered: a1 ← (2)\n"
+        "Sufficient: (2) material; cli check; obvious\nWaived: none\nRelay: none\n",
+        encoding="utf-8",
+    )
+    wrong_file = tmp_path / "wrong.md"
+    wrong_file.write_text(valid_report.replace("v=1", "v=9"), encoding="utf-8")
+
+    # Wrong --judged-file exits non-zero and leaves slot armed
+    rc_bad = pcv.main(
+        [
+            "--claim",
+            "claim-a1b2c3d4",
+            "--verdict",
+            "PASS",
+            "--reason-file",
+            str(reason_file),
+            "--session",
+            session_id,
+            "--agent",
+            "sub-x",
+            "--judged-file",
+            str(wrong_file),
+        ]
+    )
+    assert rc_bad == 1
+    assert "mismatch" in capsys.readouterr().err.lower()
+    assert hg.is_armed(session_id, agent_id="sub-x") is True
+
+    # Correct --recipient (--agent alias) succeeds and disarms sub-x slot
+    rc_ok = pcv.main(
+        [
+            "--claim",
+            "claim-a1b2c3d4",
+            "--verdict",
+            "PASS",
+            "--reason-file",
+            str(reason_file),
+            "--session",
+            session_id,
+            "--recipient",
+            "sub-x",
+        ]
+    )
+    assert rc_ok == 0
+    assert hg.is_armed(session_id, agent_id="sub-x") is False

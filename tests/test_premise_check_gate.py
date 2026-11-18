@@ -2559,3 +2559,718 @@ def test_agy_subagent_pretool_pre_handback_check_multiturn_without_tracer(tmp_pa
         },
     )
     assert hg.subagent_pre_handback_check(ctx_root_turn2) is None
+
+
+# ---------------------------------------------------------------------------
+# Multi-agent recipient isolation, metadata filtering, batch & handback plumbing
+# ---------------------------------------------------------------------------
+
+
+def _agent_dispatch_ctx_for(
+    session_id: str,
+    agent_id: str = "",
+    tool: str = "Agent",
+    agent_type: str = "ida:ida",
+) -> dispatch.HookContext:
+    return dispatch.HookContext(
+        client="claude",
+        event="PreToolUse",
+        tool=tool,
+        session_id=session_id,
+        agent_id=agent_id,
+        agent_type=agent_type,
+        raw={"agent_id": agent_id} if agent_id else {},
+    )
+
+
+def _post_tool_ctx_for(
+    session_id: str,
+    tool_input: dict[str, Any],
+    tool_response: Any,
+    tool: str = "Agent",
+    agent_id: str = "",
+    agent_type: str = "ida:ida",
+    tool_use_id: str = "toolu_test",
+) -> dispatch.HookContext:
+    raw: dict[str, Any] = {
+        "tool_input": tool_input,
+        "tool_response": tool_response,
+        "tool_use_id": tool_use_id,
+    }
+    if agent_id:
+        raw["agent_id"] = agent_id
+    return dispatch.HookContext(
+        client="claude",
+        event="PostToolUse",
+        tool=tool,
+        session_id=session_id,
+        agent_id=agent_id,
+        agent_type=agent_type,
+        raw=raw,
+    )
+
+
+def test_concurrent_agent_ids_isolate_gate_slots_and_prevent_cross_blocking_or_consumption():
+    """Different agent_ids sharing session_id isolate armed slots, judged files, and verdicts."""
+    import handlers
+
+    session_id = "sess-concurrent-isolation"
+    report_root, reason_root = _valid_report_argdown("ask-root")
+    report_sub_b, reason_sub_b = _valid_report_argdown("ask-sub-b")
+
+    # Root receives a report -> only Root is armed and blocked
+    root_prompt = _prompt_ctx(
+        session_id,
+        f'<agent-message from="worker-1" id="claim-root-101">{report_root}</agent-message>',
+    )
+    assert handlers.user_prompt_submit(root_prompt) is not None
+    assert pcg.is_armed(session_id) is True
+    assert pcg.is_armed(session_id, agent_id="sub-a") is False
+
+    # Concurrent subagent sub-a is NOT blocked by Root's armed slot
+    assert pcg.premise_check_handler(_agent_dispatch_ctx_for(session_id, agent_id="sub-a")) is None
+    assert (
+        pcg.premise_check_handler(
+            _agent_dispatch_ctx_for(session_id, agent_id="sub-a", tool="SendMessage")
+        )
+        is None
+    )
+    # Root IS still blocked
+    root_blk = pcg.premise_check_handler(_agent_dispatch_ctx_for(session_id, agent_id=""))
+    assert root_blk is not None and root_blk.kind == dispatch.Kind.REFUSE
+
+    # Sub-b arms an identically titled claim in parallel
+    pcg.arm(
+        session_id,
+        claim_id="Audit module",
+        judged_text=report_sub_b,
+        judged_ref="toolu_b",
+        block_expected=True,
+        agent_id="sub-b",
+    )
+    pcg.arm(
+        session_id,
+        claim_id="Audit module",
+        judged_text=report_root,
+        judged_ref="toolu_root",
+        block_expected=True,
+        agent_id="",
+    )
+    assert pcg.is_armed(session_id, agent_id="sub-b") is True
+    assert pcg.is_armed(session_id, agent_id="sub-a") is False
+
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    # Omitting --agent NEVER matches or consumes sub-b's pending slot; must only see Root
+    with pytest.raises(ValueError, match="unknown or mismatched|not armed"):
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id="claim-only-on-sub-b",
+            verdict="PASS",
+            reason=reason_root.format(claim_id="claim-only-on-sub-b"),
+            tracer_mod=tracer,
+        )
+
+    # Disarming sub-b's "Audit module" leaves Root's "Audit module" judged file and slot intact
+    res_b = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="Audit module",
+        verdict="PASS",
+        reason=reason_sub_b.format(claim_id="Audit module"),
+        tracer_mod=tracer,
+        agent_id="sub-b",
+    )
+    assert res_b["ok"] is True
+    assert pcg.is_armed(session_id, agent_id="sub-b") is False
+    root_judged, _ = pcg.get_judged(session_id, "Audit module")
+    assert root_judged is not None and "ask-root" in root_judged
+    assert pcg.is_armed(session_id) is True
+
+
+def test_resolve_session_id_ignores_agent_suffix_and_parents_file(monkeypatch):
+    """resolve_session_id returns the raw session_id JSON field rather than filename stems."""
+    session_id = "sess-resolve-root"
+    sub_id = "sub-alpha-99"
+    report_text, reason_tmpl = _valid_report_argdown("ask-resolve")
+
+    pcg.arm(
+        session_id,
+        claim_id="claim-sub-resolve",
+        judged_text=report_text,
+        judged_ref="toolu_res",
+        block_expected=True,
+        agent_id=sub_id,
+    )
+    # Write a coordination sidecar too, which must be ignored
+    parents_file = pcg._state_dir() / f"{session_id}.parents.json"
+    parents_file.write_text(json.dumps({"subagent_parents": {sub_id: ""}}), encoding="utf-8")
+
+    monkeypatch.delenv("AOPS_SESSION_ID", raising=False)
+    monkeypatch.delenv("CLAUDE_SESSION_ID", raising=False)
+    monkeypatch.delenv("CLAUDE_ENV_FILE", raising=False)
+    resolved = pcv.resolve_session_id("", "claim-sub-resolve", agent_id=sub_id)
+    assert resolved == session_id
+
+
+def test_block_message_identifies_this_agent_and_keeps_two_line_contract():
+    """hearsay_blocked keeps <=2 lines, armed indicator prefix, and emits --agent when scoped."""
+    session_id = "sess-blk-agent"
+    sub_id = "sub-coord-1"
+    claim_id = "claim-sub-blk"
+    pcg.arm(
+        session_id, claim_id=claim_id, judged_text="pending", block_expected=True, agent_id=sub_id
+    )
+
+    ctx = _agent_dispatch_ctx_for(session_id, agent_id=sub_id)
+    res = pcg.premise_check_handler(ctx)
+    assert res is not None and res.kind == dispatch.Kind.REFUSE
+    lines = res.inject_text.splitlines()
+    assert len(lines) == 2
+    assert lines[0].startswith(_POLICY["premise_check"]["armed_indicator"])
+    assert "this agent's received report" in lines[0]
+    assert f"--agent {sub_id}" in lines[1]
+    assert lines[1] == pcg.format_verdict_command(
+        claim_id, ctx.hooks_dir, session_id, agent_id=sub_id
+    )
+    assert res.user_text is not None and len(res.user_text.splitlines()) == 1
+
+
+def test_block_expected_does_not_leak_between_claims_in_same_slot():
+    """block_expected is scoped per claim entry, not shared top-level across claims in a slot."""
+    session_id = "sess-block-expected-per-claim"
+    pcg.arm(
+        session_id, claim_id="claim-with-block-req", judged_text="no block", block_expected=True
+    )
+    pcg.arm(
+        session_id,
+        claim_id="claim-optional-block",
+        judged_text="Status ping only",
+        block_expected=False,
+    )
+
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="claim-optional-block",
+        verdict="PASS",
+        reason="Judged: claim-optional-block; no claim -- status ping",
+        tracer_mod=tracer,
+    )
+    assert res["ok"] is True and res["no_claim"] is True
+    assert pcg.is_armed(session_id) is True
+
+    with pytest.raises(ValueError, match="no argument block"):
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id="claim-with-block-req",
+            verdict="PASS",
+            reason=_pass_reason("claim-with-block-req"),
+            tracer_mod=tracer,
+        )
+
+
+def test_agent_post_tool_completion_metadata_without_report_body_does_not_arm_metadata_json():
+    """PostToolUse(Agent) carrying status/prompt metadata without body text does not arm metadata JSON."""
+    import handlers
+
+    session_id = "sess-meta-only"
+    ctx = _post_tool_ctx_for(
+        session_id,
+        tool_input={"description": "Check repo", "prompt": "inspect"},
+        tool_response={"status": "completed", "prompt": "inspect", "agentId": "child-meta"},
+        tool_use_id="toolu_meta_1",
+    )
+    res = handlers.post_tool(ctx)
+    assert res is None
+    assert pcg.is_armed(session_id) is False
+
+
+def test_foreground_subagent_handback_plus_metadata_agent_return_bridges_notice_and_passes():
+    """Child SubagentHandback + metadata-only foreground PostToolUse(Agent) arm caller and PASS."""
+    import handlers
+
+    session_id = "sess-fg-handback-bridge"
+    caller_id = "sub-caller-fg"
+    child_id = "child-fg-9"
+    report_text, reason_tmpl = _valid_report_argdown("ask-fg")
+
+    # 1. Foreground Agent PreToolUse fires in caller before SubagentHandback
+    pre_ctx = dispatch.HookContext(
+        client="claude",
+        event="PreToolUse",
+        tool="Agent",
+        session_id=session_id,
+        agent_id=caller_id,
+        agent_type="ida:ida",
+        raw={
+            "agent_id": caller_id,
+            "tool_use_id": "toolu_fg_call",
+            "tool_input": {"description": "FG check"},
+        },
+    )
+    assert pcg.premise_check_handler(pre_ctx) is None
+
+    # 2. Child executes SubagentHandback before caller's PostToolUse(Agent) returns
+    hb_ctx = _post_tool_ctx_for(
+        session_id,
+        tool_input={"message": report_text},
+        tool_response={"success": True, "message": "Report delivered to your caller."},
+        tool="SubagentHandback",
+        agent_id=child_id,
+        agent_type="ida:pauli",
+        tool_use_id="toolu_hb_fg",
+    )
+    # Must stay silent for the child itself
+    assert handlers.post_tool(hb_ctx) is None
+
+    # 3. Foreground PostToolUse(Agent) returns metadata-only completion to caller
+    ret_ctx = _post_tool_ctx_for(
+        session_id,
+        tool_input={"description": "FG check", "prompt": "do work"},
+        tool_response={"status": "completed", "agentId": child_id, "prompt": "do work"},
+        tool="Agent",
+        agent_id=caller_id,
+        agent_type="ida:ida",
+        tool_use_id="toolu_fg_call",
+    )
+    ret_res = handlers.post_tool(ret_ctx)
+    assert ret_res is not None
+    assert pcg.is_armed(session_id, agent_id=caller_id) is True
+
+    state = pcg.get_state(session_id, agent_id=caller_id)
+    claim_id = state["claim_id"]
+    assert f"--agent {caller_id}" in ret_res.inject_text
+    stored_text, _ = pcg.get_judged(session_id, claim_id, agent_id=caller_id)
+    assert stored_text is not None and "```argdown" in stored_text
+    assert '"status": "completed"' not in stored_text
+
+    res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=claim_id,
+        verdict="PASS",
+        reason=reason_tmpl.format(claim_id=claim_id),
+        tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
+        agent_id=caller_id,
+    )
+    assert res["ok"] is True
+    assert pcg.is_armed(session_id, agent_id=caller_id) is False
+
+
+def test_post_tool_batch_multiple_agent_results_arms_all_claims_and_handles_same_description():
+    """PostToolBatch arms every completed dispatch result (even with duplicate description) and records all PASS."""
+    import handlers
+
+    session_id = "sess-batch-3"
+    rep1, tmpl1 = _valid_report_argdown("ask-b1")
+    rep2, tmpl2 = _valid_report_argdown("ask-b2")
+    rep3, tmpl3 = _valid_report_argdown("ask-b3")
+
+    batch_ctx = dispatch.HookContext(
+        client="claude",
+        event="PostToolBatch",
+        session_id=session_id,
+        agent_type="ida:ida",
+        hooks_dir=_HOOKS_DIR,
+        tool_calls=(
+            {
+                "tool_name": "Agent",
+                "tool_use_id": "toolu_batch_1",
+                "tool_input": {"description": "Audit module"},
+                "tool_response": {
+                    "status": "completed",
+                    "content": [{"type": "text", "text": rep1}],
+                },
+            },
+            {
+                "tool_name": "Agent",
+                "tool_use_id": "toolu_batch_2",
+                "tool_input": {"description": "Audit module"},
+                "tool_response": {
+                    "status": "completed",
+                    "content": [{"type": "text", "text": rep2}],
+                },
+            },
+            {
+                "tool_name": "Agent",
+                "tool_use_id": "toolu_batch_3",
+                "tool_input": {"description": "Check specs"},
+                "tool_response": {
+                    "status": "completed",
+                    "content": [{"type": "text", "text": rep3}],
+                },
+            },
+        ),
+    )
+    arm_res = handlers.post_tool_batch(batch_ctx)
+    assert arm_res is not None
+    state = pcg.get_state(session_id)
+    assert len(state["claim_ids"]) == 3
+    for cid in state["claim_ids"]:
+        assert cid in arm_res.inject_text
+    assert arm_res.user_text is not None and len(arm_res.user_text.splitlines()) == 1
+
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    for cid, tmpl in zip(state["claim_ids"], (tmpl1, tmpl2, tmpl3), strict=True):
+        assert pcg.is_armed(session_id) is True
+        res = pcv.record_verdict(
+            session_id=session_id,
+            claim_id=cid,
+            verdict="PASS",
+            reason=tmpl.format(claim_id=cid),
+            tracer_mod=tracer,
+        )
+        assert res["ok"] is True
+    assert pcg.is_armed(session_id) is False
+
+
+def test_post_tool_use_then_post_tool_batch_deduplicates_already_armed_calls(monkeypatch):
+    """Firing PostToolUse then PostToolBatch for the same dispatch tool_use_id arms once without double OTel."""
+    import handlers
+
+    session_id = "sess-post-dedup"
+    spans: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        hg, "_emit_hearsay_trace", lambda ctx, cid, ref, **_kw: spans.append((cid, str(ref or "")))
+    )
+
+    rep1, _ = _valid_report_argdown("ask-d1")
+    pt_ctx = _post_tool_ctx_for(
+        session_id,
+        tool_input={"description": "Unique single task"},
+        tool_response={"status": "completed", "content": [{"type": "text", "text": rep1}]},
+        tool_use_id="toolu_dedup_1",
+    )
+    assert handlers.post_tool(pt_ctx) is not None
+
+    batch_ctx = dispatch.HookContext(
+        client="claude",
+        event="PostToolBatch",
+        session_id=session_id,
+        agent_type="ida:ida",
+        hooks_dir=_HOOKS_DIR,
+        tool_calls=(
+            {
+                "tool_name": "Agent",
+                "tool_use_id": "toolu_dedup_1",
+                "tool_input": {"description": "Unique single task"},
+                "tool_response": {
+                    "status": "completed",
+                    "content": [{"type": "text", "text": rep1}],
+                },
+            },
+        ),
+    )
+    # Second arrival on PostToolBatch must neither double-arm nor emit a second trace
+    batch_res = handlers.post_tool_batch(batch_ctx)
+    assert len(pcg.get_state(session_id)["claim_ids"]) == 1
+    assert len(spans) == 1
+    assert batch_res is None
+
+
+def test_user_prompt_submit_multiple_envelopes_arms_all_and_skips_code_fences():
+    """Multiple peer envelopes in one UserPromptSubmit arm every genuine report and ignore pointers/fences."""
+    session_id = "sess-multi-env"
+    rep1, tmpl1 = _valid_report_argdown("ask-e1")
+    rep2, tmpl2 = _valid_report_argdown("ask-e2")
+
+    prompt = (
+        "<task-notification>\n<task-id>a111</task-id>\n<status>completed</status>\n"
+        '<result>The report was delivered to you as a message from "a111" (its SubagentHandback call).</result>\n'
+        "</task-notification>\n"
+        '<agent-message from="a111">\n'
+        "First report discussing an example tag:\n"
+        '```xml\n<agent-message from="fake">not a real envelope</agent-message>\n```\n'
+        f"{rep1}\n"
+        "</agent-message>\n"
+        f'<agent-message from="a222">\n{rep2}\n</agent-message>'
+    )
+    arm_res = pcg.premise_check_arm(_prompt_ctx(session_id, prompt))
+    assert arm_res is not None
+    state = pcg.get_state(session_id)
+    assert len(state["claim_ids"]) == 2
+    assert state["claim_ids"][0] in arm_res.inject_text
+    assert state["claim_ids"][1] in arm_res.inject_text
+
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    for cid, tmpl in zip(state["claim_ids"], (tmpl1, tmpl2), strict=True):
+        res = pcv.record_verdict(
+            session_id=session_id,
+            claim_id=cid,
+            verdict="PASS",
+            reason=tmpl.format(claim_id=cid),
+            tracer_mod=tracer,
+        )
+        assert res["ok"] is True
+    assert pcg.is_armed(session_id) is False
+
+
+def test_subcoordinator_async_and_sendmessage_resumed_child_handback_arms_subcoordinator():
+    """Child SubagentHandback (initial & SendMessage-resumed) arms subcoordinator, wakes SubagentStart, gates SubagentHandback."""
+    import handlers
+
+    session_id = "sess-subcoord-routing"
+    sub_coord = "subcoord-1"
+    child_id = "child-async-1"
+    rep1, tmpl1 = _valid_report_argdown("ask-c1")
+    rep2, tmpl2 = _valid_report_argdown("ask-c2")
+
+    # 1. Subcoordinator spawns async child
+    spawn_ctx = _post_tool_ctx_for(
+        session_id,
+        tool_input={"description": "Spawn child"},
+        tool_response={"isAsync": True, "status": "async_launched", "agentId": child_id},
+        tool="Agent",
+        agent_id=sub_coord,
+        tool_use_id="toolu_spawn_child",
+    )
+    assert handlers.post_tool(spawn_ctx) is None
+
+    # 2. Child returns SubagentHandback -> silent for child, arms ONLY sub_coord
+    hb1_ctx = _post_tool_ctx_for(
+        session_id,
+        tool_input={"message": rep1},
+        tool_response={"success": True, "message": "Report delivered to your caller."},
+        tool="SubagentHandback",
+        agent_id=child_id,
+        agent_type="ida:pauli",
+        tool_use_id="toolu_hb1",
+    )
+    assert handlers.post_tool(hb1_ctx) is None
+    assert pcg.is_armed(session_id) is False
+    assert pcg.is_armed(session_id, agent_id=sub_coord) is True
+
+    # 3. SubagentStart waking sub_coord includes honesty.md + --agent + armed claim_id
+    wake_ctx = dispatch.HookContext(
+        client="claude",
+        event="SubagentStart",
+        session_id=session_id,
+        agent_id=sub_coord,
+        agent_type="ida:ida",
+        hooks_dir=_HOOKS_DIR,
+        raw={"agent_id": sub_coord, "agent_type": "ida:ida"},
+    )
+    wake_res = handlers.subagent_start(wake_ctx)
+    assert wake_res is not None
+    cid1 = pcg.get_state(session_id, agent_id=sub_coord)["claim_id"]
+    assert cid1 in wake_res.inject_text
+    assert f"--agent {sub_coord}" in wake_res.inject_text
+
+    # 4. PreToolUse(SubagentHandback) on armed sub_coord MUST refuse upward relay
+    relay_refuse = pcg.premise_check_handler(
+        _agent_dispatch_ctx_for(session_id, agent_id=sub_coord, tool="SubagentHandback")
+    )
+    assert relay_refuse is not None and relay_refuse.kind == dispatch.Kind.REFUSE
+
+    # Unarmed child executing SubagentHandback proceeds freely
+    assert (
+        pcg.premise_check_handler(
+            _agent_dispatch_ctx_for(session_id, agent_id="unrelated-leaf", tool="SubagentHandback")
+        )
+        is None
+    )
+
+    # 5. Subcoordinator judges rep1 PASS -> unblocked
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    res1 = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=cid1,
+        verdict="PASS",
+        reason=tmpl1.format(claim_id=cid1),
+        tracer_mod=tracer,
+        agent_id=sub_coord,
+    )
+    assert res1["ok"] is True
+    assert (
+        pcg.premise_check_handler(
+            _agent_dispatch_ctx_for(session_id, agent_id=sub_coord, tool="SubagentHandback")
+        )
+        is None
+    )
+
+    # 6. Subcoordinator resumes child via SendMessage -> subsequent SubagentHandback re-arms sub_coord even while awake
+    resume_ctx = _post_tool_ctx_for(
+        session_id,
+        tool_input={
+            "to": child_id,
+            "message": "Follow-up task\n```argdown\n===\nasks: none\n===\n\n[no claim]\n```",
+        },
+        tool_response={"success": True, "resumedAgentId": child_id, "revivedAgentId": child_id},
+        tool="SendMessage",
+        agent_id=sub_coord,
+        tool_use_id="toolu_resume",
+    )
+    assert handlers.post_tool(resume_ctx) is None
+    assert pcg.is_armed(session_id, agent_id=sub_coord) is False
+
+    hb2_ctx = _post_tool_ctx_for(
+        session_id,
+        tool_input={"message": rep2},
+        tool_response={"success": True, "message": "Report delivered to your caller."},
+        tool="SubagentHandback",
+        agent_id=child_id,
+        tool_use_id="toolu_hb2",
+    )
+    assert handlers.post_tool(hb2_ctx) is None
+    assert pcg.is_armed(session_id, agent_id=sub_coord) is True
+    relay_refuse2 = pcg.premise_check_handler(
+        _agent_dispatch_ctx_for(session_id, agent_id=sub_coord, tool="SubagentHandback")
+    )
+    assert relay_refuse2 is not None and relay_refuse2.kind == dispatch.Kind.REFUSE
+
+
+def test_child_send_message_to_stopped_subcoordinator_arms_target_without_inverting_parent():
+    """Child SendMessage with resumedAgentId arms stopped sub-coordinator without inverting parent DAG."""
+    import handlers
+
+    session_id = "sess-sendmsg-stopped"
+    sub_coord = "sub-coord-parent"
+    child_r = "child-reviewer-1"
+    rep_child, tmpl_child = _valid_report_argdown("ask-sm-1")
+
+    # Root spawns sub_coord; sub_coord spawns named child_r
+    assert (
+        handlers.post_tool(
+            _post_tool_ctx_for(
+                session_id,
+                tool_input={"description": "Coordinator", "name": "coord-1"},
+                tool_response={"isAsync": True, "status": "async_launched", "agentId": sub_coord},
+                tool="Agent",
+                agent_id="",
+                tool_use_id="toolu_root_spawn",
+            )
+        )
+        is None
+    )
+    assert (
+        handlers.post_tool(
+            _post_tool_ctx_for(
+                session_id,
+                tool_input={"description": "Review", "name": "reviewer-1"},
+                tool_response={"isAsync": True, "status": "async_launched", "agentId": child_r},
+                tool="Agent",
+                agent_id=sub_coord,
+                tool_use_id="toolu_sub_spawn",
+            )
+        )
+        is None
+    )
+
+    # Child sends report via SendMessage to stopped sub_coord -> Claude returns resumedAgentId == sub_coord
+    child_sm = _post_tool_ctx_for(
+        session_id,
+        tool_input={"to": "coord-1", "message": rep_child},
+        tool_response={"success": True, "resumedAgentId": sub_coord, "revivedAgentId": sub_coord},
+        tool="SendMessage",
+        agent_id=child_r,
+        tool_use_id="toolu_child_sm",
+    )
+    assert handlers.post_tool(child_sm) is None
+
+    # sub_coord MUST be armed; Root MUST stay unarmed
+    assert pcg.is_armed(session_id, agent_id=sub_coord) is True
+    assert pcg.is_armed(session_id) is False
+
+    # Parent mapping of sub_coord MUST NOT be inverted to child_r
+    parents = json.loads(
+        (pcg._state_dir() / f"{session_id}.parents.json").read_text(encoding="utf-8")
+    )
+    assert parents["subagent_parents"].get(sub_coord) == ""
+
+    # Verify parent->child direction via SendMessage leaves child unarmed
+    parent_dir = _post_tool_ctx_for(
+        session_id,
+        tool_input={"to": "reviewer-1", "message": "Please inspect line 10."},
+        tool_response={"success": True, "resumedAgentId": child_r, "revivedAgentId": child_r},
+        tool="SendMessage",
+        agent_id=sub_coord,
+        tool_use_id="toolu_dir_sm",
+    )
+    assert handlers.post_tool(parent_dir) is None
+    assert pcg.is_armed(session_id, agent_id=child_r) is False
+
+    cid = pcg.get_state(session_id, agent_id=sub_coord)["claim_id"]
+    res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=cid,
+        verdict="PASS",
+        reason=tmpl_child.format(claim_id=cid),
+        tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
+        agent_id=sub_coord,
+    )
+    assert res["ok"] is True
+
+
+def test_subagent_handback_from_main_child_dedups_with_user_prompt_submit_and_warns_root(
+    monkeypatch,
+):
+    """Child handback + immediate Root UserPromptSubmit share one claim_id without losing Root warning."""
+    import handlers
+
+    session_id = "sess-main-dedup"
+    child_id = "child-of-main"
+    report_text, reason_tmpl = _valid_report_argdown("ask-main-1")
+    traces: list[str] = []
+    monkeypatch.setattr(hg, "_emit_hearsay_trace", lambda ctx, cid, ref, **_kw: traces.append(cid))
+
+    # Root spawns async child
+    handlers.post_tool(
+        _post_tool_ctx_for(
+            session_id,
+            tool_input={"description": "Root child"},
+            tool_response={"isAsync": True, "status": "async_launched", "agentId": child_id},
+            tool="Agent",
+            agent_id="",
+            tool_use_id="toolu_main_spawn",
+        )
+    )
+    # Child sends SubagentHandback -> silently arms Root
+    assert (
+        handlers.post_tool(
+            _post_tool_ctx_for(
+                session_id,
+                tool_input={"message": report_text},
+                tool_response={"success": True, "message": "Report delivered to your caller."},
+                tool="SubagentHandback",
+                agent_id=child_id,
+                tool_use_id="toolu_main_hb",
+            )
+        )
+        is None
+    )
+    cid_after_hb = pcg.get_state(session_id)["claim_id"]
+
+    # Root UserPromptSubmit delivers wrapped handback 4ms later -> reuses claim_id, still warns Root
+    ups_ctx = _prompt_ctx(
+        session_id,
+        f'<agent-message from="{child_id}">\n[Subagent hand-back] Report:\n{report_text}\n</agent-message>',
+    )
+    ups_res = pcg.premise_check_arm(ups_ctx)
+    assert ups_res is not None
+    state = pcg.get_state(session_id)
+    assert state["claim_ids"] == [cid_after_hb]
+    assert cid_after_hb in ups_res.inject_text
+    assert len(traces) == 1
+
+    res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=cid_after_hb,
+        verdict="PASS",
+        reason=reason_tmpl.format(claim_id=cid_after_hb),
+        tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
+    )
+    assert res["ok"] is True
+    assert pcg.is_armed(session_id) is False
+
+
+def test_teammate_spawned_without_agent_id_does_not_crash():
+    """PostToolUse(Agent) teammate_spawned missing agentId returns None cleanly without arming."""
+    import handlers
+
+    session_id = "sess-teammate-no-id"
+    ctx = _post_tool_ctx_for(
+        session_id,
+        tool_input={"description": "Teammate", "name": "tm-1"},
+        tool_response={"status": "teammate_spawned", "name": "tm-1"},
+        tool_use_id="toolu_tm",
+    )
+    assert handlers.post_tool(ctx) is None
+    assert pcg.is_armed(session_id) is False
