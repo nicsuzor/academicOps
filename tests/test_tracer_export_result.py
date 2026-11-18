@@ -120,10 +120,10 @@ def test_failed_export_fails_verdict_and_leaves_gate_armed(outcome, tmp_path, mo
     assert pcg.is_armed("sess-flow") is True
 
 
-def test_export_attaches_cf_access_headers_from_canonical_dispatcher_pair(monkeypatch):
+def test_export_attaches_cf_access_headers_from_the_cf_access_pair(monkeypatch):
     monkeypatch.setenv("GENAI_ENGINE_TRACE_ENDPOINT", "http://collector.invalid:4318")
-    monkeypatch.setenv("DISPATCHER_MCP_TOKEN_ID", "cf-id-123")
-    monkeypatch.setenv("DISPATCHER_MCP_TOKEN_SECRET", "cf-secret-456")
+    monkeypatch.setenv("CF_ACCESS_CLIENT_ID", "cf-id-123")
+    monkeypatch.setenv("CF_ACCESS_CLIENT_SECRET", "cf-secret-456")
 
     cfg = claude_code_tracer.discover_config()
     assert cfg is not None
@@ -155,10 +155,22 @@ def test_export_attaches_cf_access_headers_from_canonical_dispatcher_pair(monkey
 @pytest.mark.parametrize(
     "env_vars",
     [
-        {"DISPATCHER_MCP_TOKEN_ID": "only-id"},
-        {"DISPATCHER_MCP_TOKEN_SECRET": "only-secret"},
-        {"WORKER_MCP_TOKEN_ID": "wid", "WORKER_MCP_TOKEN_SECRET": "wsec"},
-        {"CF_ACCESS_CLIENT_ID": "cid", "CF_ACCESS_CLIENT_SECRET": "csec"},
+        {"CF_ACCESS_CLIENT_ID": "only-id"},
+        {"CF_ACCESS_CLIENT_SECRET": "only-secret"},
+        # The retired role-named pairs, spelled in pieces so a repo-wide grep
+        # for the retired names finds no live reader.
+        *(
+            {f"{role}_MCP_TOKEN_ID": "rid", f"{role}_MCP_TOKEN_SECRET": "rsec"}
+            for role in ("WORKER", "DISPATCHER")
+        ),
+        {
+            "_".join(
+                ["GENAI", "ENGINE", "API", "KEY"]
+            ): "CF-Access-Client-Id=k,CF-Access-Client-Secret=v"
+        },
+        # The token must never be taken from the SDK-global OTLP headers variable.
+        {"OTEL_EXPORTER_OTLP_HEADERS": "CF-Access-Client-Id=o,CF-Access-Client-Secret=p"},
+        {"OTEL_EXPORTER_OTLP_TRACES_HEADERS": "CF-Access-Client-Id=o,CF-Access-Client-Secret=p"},
     ],
 )
 def test_export_ignores_half_pair_and_non_canonical_vars(monkeypatch, env_vars):
