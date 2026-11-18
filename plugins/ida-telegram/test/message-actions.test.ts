@@ -513,7 +513,7 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
         },
       });
 
-      // 2. User presses the reasons button on message 2005
+      // 2. User presses the thanks button on message 2005
       await (bot as any).handleUpdate({
         update_id: 504,
         callback_query: {
@@ -537,7 +537,7 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
         },
       });
 
-      // 3. Verify channel event delivered to session naming target message and excerpt
+      // 3. Verify channel event delivered to session naming the message, meaning read and done
       expect(emittedEvents.length).toBe(1);
       const event = emittedEvents[0];
       expect(event.meta.event).toBe("thanks");
