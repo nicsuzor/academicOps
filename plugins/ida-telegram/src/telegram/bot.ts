@@ -292,6 +292,11 @@ export class TelegramBotClient {
     const threadId = msg.message_thread_id;
     if (!this.store || threadId === undefined) return;
     const chatId = msg.chat.id;
+    const isServiceEvent = Boolean(
+      msg.forum_topic_created || msg.forum_topic_closed || msg.forum_topic_reopened || msg.forum_topic_edited
+    );
+    // message_thread_id also marks reply chains outside forum topics; only topic messages count.
+    if (!isServiceEvent && msg.is_topic_message !== true) return;
     if (msg.forum_topic_created) {
       this.store.recordThread(chatId, threadId, {
         name: msg.forum_topic_created.name,

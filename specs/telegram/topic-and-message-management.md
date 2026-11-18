@@ -68,8 +68,8 @@ The Telegram Bot API has no method that lists a chat's forum topics (the documen
 
 - **AC-7.1 (No Telegram Call)** `list_threads({ chat_id?, state? })` (`state` one of `all` default, `open`, `closed`) dispatches no Bot API method and returns `{ success: true, chat_id, threads: [{ message_thread_id, thread_id, name, state, source, updated_at }], count, note }`; an invalid `state` returns `{ success: false, error }`.
 - **AC-7.2 (Own Tool Calls)** Successful `create_thread`, `close_thread`, `reopen_thread`, `rename_thread` and `delete_thread` calls record `open`, `closed`, `open`, the new name, and removal respectively.
-- **AC-7.3 (Service Messages and Sightings)** Service messages update name and state; a message seen in an unrecorded topic creates an `open` record with a `null` name, and never changes a recorded state. General topic `#1` is never listed.
-- **AC-7.4 (Persistence and Known Gap)** The record survives restarts. Topics that predate it and have been silent since are absent; the `note` field states this limit on every call.
+- **AC-7.3 (Service Messages and Sightings)** Service messages update name and state; a topic message (`is_topic_message`) seen in an unrecorded topic creates a record with state `unknown` and a `null` name, and never changes a recorded state; `state: "open"` and `"closed"` return only confirmed states. General topic `#1` is never listed.
+- **AC-7.4 (Persistence and Known Gap)** The record survives restarts. Topics that predate it and have been silent since are absent, and closes or deletions made by anyone else (or while the plugin was down) can be missed; the `note` field states this limit on every call.
 
 ## Shared interface contract
 

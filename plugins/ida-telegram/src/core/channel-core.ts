@@ -516,7 +516,7 @@ export class SharedTelegramChannelCore {
   }
 
   public async listThreads(args: Record<string, unknown>): Promise<Record<string, unknown>> {
-    const chatId = (args.chat_id as number) || this.getDefaultChatId();
+    const chatId = Number(args.chat_id) || this.getDefaultChatId();
     const filter = args.state === undefined ? "all" : String(args.state);
     if (filter !== "all" && filter !== "open" && filter !== "closed") {
       return { success: false, error: "Invalid state: must be one of all, open, closed" };
@@ -540,7 +540,7 @@ export class SharedTelegramChannelCore {
       note:
         "The Telegram Bot API has no method to list forum topics, so this is the plugin's own record of topics it created, " +
         "or saw created, closed, reopened, renamed or posted in. Topics that predate the record and have been silent since are missing; " +
-        "a null name means only a message in the topic was seen.",
+        "state unknown (null name) means only a post in the topic was seen and its open or closed state is unconfirmed; closes or deletions made by anyone else, or while the plugin was down, may be missed.",
     };
   }
 

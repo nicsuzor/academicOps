@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import { ReplayCache } from "./web/auth.js";
@@ -38,7 +38,8 @@ export interface ChatState {
   topicsEnabled?: boolean;
 }
 
-export type ThreadState = "open" | "closed" | "deleted";
+/** `unknown` means a post was seen in the topic but its open or closed state was never observed. */
+export type ThreadState = "open" | "closed" | "deleted" | "unknown";
 
 /** The plugin's own record of one forum topic (the Bot API cannot list topics). */
 export interface ThreadRecord {
@@ -103,7 +104,13 @@ export class PluginStore {
         if (isNaN(chatId) || !records || typeof records !== "object") continue;
         const byThread = new Map<number, ThreadRecord>();
         for (const rec of Object.values(records as Record<string, ThreadRecord>)) {
-          if (rec && typeof rec.threadId === "number") byThread.set(rec.threadId, rec);
+          if (
+            rec &&
+            typeof rec.threadId === "number" &&
+            ["open", "closed", "deleted", "unknown"].includes(rec.state)
+          ) {
+            byThread.set(rec.threadId, rec);
+          }
         }
         this.threads.set(chatId, byThread);
       }
@@ -120,7 +127,9 @@ export class PluginStore {
         obj[String(chatId)] = {};
         for (const [tid, rec] of byThread.entries()) obj[String(chatId)][String(tid)] = rec;
       }
-      writeFileSync(this.threadsFile, JSON.stringify(obj, null, 2), "utf-8");
+      const tmp = `${this.threadsFile}.tmp`;
+      writeFileSync(tmp, JSON.stringify(obj, null, 2), "utf-8");
+      renameSync(tmp, this.threadsFile);
     } catch (err) {
       console.warn("[ida-telegram] Failed to save threads file:", err);
     }
@@ -128,7 +137,7 @@ export class PluginStore {
 
   /**
    * Record what the plugin learned about a forum topic. A `seen` observation only
-   * creates a record (open) and never overrides a known one; other sources override.
+   * creates a record with state `unknown` and never overrides a known one; other sources override.
    * General topic #1 is never recorded.
    */
   public recordThread(
@@ -147,21 +156,15 @@ export class PluginStore {
     byThread.set(threadId, {
       threadId,
       name: patch.name ?? existing?.name,
-      state: patch.state ?? existing?.state ?? "open",
+      state: patch.state ?? existing?.state ?? "unknown",
       source: patch.source,
       updatedAt: new Date().toISOString(),
     });
     this.saveThreads();
   }
 
-  /** Threads the plugin knows about in a chat, newest-updated first. Deleted topics are omitted. */
+  /** Threads the plugin has a record of in a chat, newest-updated first. Deleted topics are omitted. Pure read. */
   public listThreads(chatId: number): ThreadRecord[] {
-    const state = this.chatStates.get(chatId);
-    for (const tid of [state?.activeThreadId, state?.lastInboundThreadId]) {
-      if (tid !== undefined && !this.threads.get(chatId)?.has(tid)) {
-        this.recordThread(chatId, tid, { source: "seen" });
-      }
-    }
     return [...(this.threads.get(chatId)?.values() ?? [])]
       .filter((r) => r.state !== "deleted")
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));

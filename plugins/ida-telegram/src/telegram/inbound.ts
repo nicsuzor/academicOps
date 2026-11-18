@@ -21,6 +21,7 @@ export interface TelegramMessage {
   from?: TelegramUser;
   text?: string;
   caption?: string;
+  is_topic_message?: boolean;
   forum_topic_created?: { name: string };
   forum_topic_edited?: { name?: string };
   forum_topic_closed?: Record<string, never>;

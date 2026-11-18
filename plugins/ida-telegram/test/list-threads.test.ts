@@ -109,6 +109,7 @@ describe("list_threads (specs/telegram/topic-and-message-management.md US-7)", (
         date: 1,
         chat: { id: 12345, type: "supergroup" },
         from: { id: 12345, is_bot: false, first_name: "N" },
+        is_topic_message: true,
         ...extra,
       },
     });
@@ -123,7 +124,7 @@ describe("list_threads (specs/telegram/topic-and-message-management.md US-7)", (
       const byId = Object.fromEntries(res.threads.map((t: any) => [t.message_thread_id, t]));
       expect(byId[50]).toMatchObject({ name: "Renamed by hand", state: "open" });
       expect(byId[51]).toMatchObject({ name: "Closed by hand", state: "closed" });
-      expect(byId[52]).toMatchObject({ name: null, state: "open", source: "seen" });
+      expect(byId[52]).toMatchObject({ name: null, state: "unknown", source: "seen" });
 
       // General topic is never recorded, and a seen post never reopens a closed topic.
       await (bot as any).handleUpdate(msg(6, 1, { text: "general" }));
@@ -132,6 +133,19 @@ describe("list_threads (specs/telegram/topic-and-message-management.md US-7)", (
       expect(again.threads.some((t: any) => t.message_thread_id === 1)).toBe(false);
       expect(again.threads.find((t: any) => t.message_thread_id === 51).state).toBe("closed");
       expect(store.listThreads(12345).length).toBe(3);
+
+      // Reply chains outside forum topics (no is_topic_message) are not threads.
+      await (bot as any).handleUpdate(msg(8, 99, { is_topic_message: undefined, text: "reply chain" }));
+      expect(store.listThreads(12345).some((t) => t.threadId === 99)).toBe(false);
+
+      // "open" excludes unknown-state threads.
+      const open = await call("list_threads", { chat_id: 12345, state: "open" });
+      expect(open.threads.map((t: any) => t.message_thread_id)).toEqual([50]);
+
+      // Listing never writes records.
+      const before = JSON.stringify(store.listThreads(12345));
+      await call("list_threads", { chat_id: "12345" });
+      expect(JSON.stringify(store.listThreads(12345))).toBe(before);
     } finally {
       cleanup();
     }
