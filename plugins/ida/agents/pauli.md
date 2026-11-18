@@ -109,7 +109,7 @@ Query at the level of detail appropriate to the step:
 - [[note_or_spec_id]] -- purpose (e.g. "schema definition", "precedent")
 ```
 
-- **Worker-satisfiable, outcome-oriented criteria:** `Goal`, `Deliverable`, `Acceptance criteria`, and `Instructions` contain zero line numbers, line ranges, or narrow code slice prescriptions and name only observable artifacts and end-states the assigned worker itself produces and checks directly before releasing `done`. Exclude external post-exit stages (independent review, CI completion, PR merge, host deployment, user approval) unless that stage itself is the task's authorized unit of work; repository merge rules govern merge workflows, never a worker task's checklist.
+- **Worker-satisfiable, outcome-oriented criteria:** `Goal`, `Deliverable`, `Acceptance criteria`, and `Instructions` contain zero line numbers, line ranges, or narrow code slice prescriptions. `Goal`, `Deliverable`, and `Acceptance criteria` name only observable artifacts and end-states the assigned worker itself produces and checks directly before releasing `done`. Exclude external post-exit stages (independent review, CI completion, PR merge, host deployment, user approval) unless that stage itself is the task's authorized unit of work; repository merge rules govern merge workflows, never a worker task's checklist.
 
 ## How you approach any task
 

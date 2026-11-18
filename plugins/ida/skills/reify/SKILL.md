@@ -86,7 +86,7 @@ Fill the canonical task structure:
 ### Requirements for Writing Tasks
 
 - Filter incoming mechanism prescriptions and translate them into observable outcome criteria. Line numbers, line ranges, and narrow code slice prescriptions are strictly forbidden in `Goal`, `Acceptance`, and `Instructions`. Give the worker the end state and the bounds; leave the method to it.
-- **Executor satisfiability:** `Goal`, `Deliverable`, and `Acceptance` name only outcomes the bound executor produces and checks directly before releasing `done`. Exclude external post-exit acts (independent review, CI completion, PR merge, host deployment, user approval) unless that stage itself is the task's authorized scope, regardless of repository merge policy; when downstream stages are required, compose separate dependent tasks (`needs: [<work_task_id>]`).
+- **Executor satisfiability:** `Goal`, `Acceptance`, and `Output` name only outcomes the bound executor produces and checks directly before releasing `done`. Exclude external post-exit acts (independent review, CI completion, PR merge, host deployment, user approval) unless that stage itself is the task's authorized scope, regardless of repository merge policy; when downstream stages are required, compose separate dependent tasks (`needs: [<work_task_id>]`).
 - Record the asker's own words once, in `## Ask`, with their ids, and never rewrite them: the task carries the ask as an immutable referent. Link asks to prior context, recompose into a clear logical structure, and cite message ids. Restate terse, fragmented words into clear, complete criteria, judged by fidelity to meaning and distinctions.
 - State the Goal and each criterion over the whole class the request covers. When asked what broke a mechanism, compose the debugging workflow and preserve the full failure question in Acceptance across its lifecycle rather than narrowing to a single symptom.
 - Every heading is a prompt to fill without restriction slots: say what has to be done, not what shouldn't.
@@ -96,7 +96,8 @@ Fill the canonical task structure:
 - Change an existing task only for a defect in its text; never rewrite its `## Ask` or renumber its criteria.
 - A skill may be a step (`invoke /<skill-name>`). A workflow template is never a step; its steps are.
 - Close every task with a one-line appendix section listing the workflow templates and skills it was composed from: `## Appendix: Sources` followed by `- Composed from: <workflows and skills>.`
-- Reify plans, roadmaps, and designs as tasks on the PKB task graph; never create standalone decision tasks or unresearched question tasks (apply the groundwork-first route invariant above, keep competing options in the scoping task or ADR until chosen, and model unknowns as `classification: probe` tasks wired via `needs: [<probe_task_id>]`).
+- Reify plans, roadmaps, and designs as tasks on the PKB task graph.
+- Never create standalone decision tasks or unresearched question tasks: apply the Groundwork-First Route Decisions Invariant (Section 2), keep competing options in the scoping task or ADR until chosen, and model unknowns as `classification: probe` tasks wired via `needs: [<probe_task_id>]`.
 - Worker state-only vs container supervision boundary: plain leaf workers (`/pull`) mutate only their claimed task's own state and never mint follow-up tasks; container coordinators (`/supervise`) enrich their claimed task via `/reify` and create follow-up tasks solely under the strict out-of-session splitting conditions above.
 
 ## 4. Report
