@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.9.0](https://github.com/nicsuzor/academicOps/compare/v1.8.2...v1.9.0) (2026-11-18)
+
+### Features
+
+- **ida,ida-telegram,specs:** consolidate /phoenix skill, SQLite allowlist, stateless MCP caller session, and dynamic Telegram menus ([#3671](https://github.com/nicsuzor/academicOps/issues/3671)) ([27a3084](https://github.com/nicsuzor/academicOps/commit/27a3084418d9828ef906410f784aec90af864bed))
+- **ida:** add phoenix_transcript --since scan and streamline /q delegation ([2567f37](https://github.com/nicsuzor/academicOps/commit/2567f375f12f4ced7e29f17a528d31f10560eca1))
+- **phoenix:** price Gemini models in phoenix_token_cost, with long-context tier ([#3676](https://github.com/nicsuzor/academicOps/issues/3676)) ([87ed944](https://github.com/nicsuzor/academicOps/commit/87ed944870d5c49f27dd16f168a7fb4a7c4ceb62))
+- **telegram:** add advanced formatting and raise formatted reply allowance to 4000 chars ([98d6f9f](https://github.com/nicsuzor/academicOps/commit/98d6f9f2b54c46d193332cf10a26daf8fc78f184))
+
+### Bug Fixes
+
+- **daily,reconcile:** bound sweep queries, use unprefixed subagents, and enforce single-pass drafting ([90ec573](https://github.com/nicsuzor/academicOps/commit/90ec573d6555ad598d75b6f6055ffdd1c7669071))
+- **daily,reconcile:** bound sweep queries, use unprefixed subagents, and enforce single-pass drafting ([caee1cc](https://github.com/nicsuzor/academicOps/commit/caee1cc93d1da24ef2a0f4a3a84477aee5f2d45b))
+- **ida-telegram:** 30s deadline for basically-instant MCP tools ([21da0ef](https://github.com/nicsuzor/academicOps/commit/21da0efa6ea1776095ef38e7f98c0125e48b9b6c))
+- **ida-telegram:** give basically-instant MCP tools a 30s deadline ([c34014d](https://github.com/nicsuzor/academicOps/commit/c34014dc625a457b1a6f8f46a13576bf9f982cca))
+- **ida:** read one Cloudflare Access pair for PKB/MCP and OTLP auth ([8d08333](https://github.com/nicsuzor/academicOps/commit/8d08333e748ed05b52f684e38515d954c784bab1))
+- **review:** drop constant-pinning test; README says exempt tools are excluded from the 30s rule ([2509e06](https://github.com/nicsuzor/academicOps/commit/2509e06a2aca0532df0f419513e104034d2c577b))
+- **review:** revert unneeded enforcement spec and map edits per rules ([0137945](https://github.com/nicsuzor/academicOps/commit/0137945c65ca9e49c8f1630d7d26d7a2e3697f54))
+- **review:** supervise: drop fixed lightweight tier for all reading ([470d216](https://github.com/nicsuzor/academicOps/commit/470d216b158044bb273f9972aef50ac7bd12f4fc))
+- **session-trace:** correct cache key and add week-wide harness/model cost rollup ([#3673](https://github.com/nicsuzor/academicOps/issues/3673)) ([456ab50](https://github.com/nicsuzor/academicOps/commit/456ab5014575de8e83a6945f2097f48bb08052b0))
+
+### Code Refactoring
+
+- **ci:** Actions secrets hold the Access pair under its runtime names ([38e5fdf](https://github.com/nicsuzor/academicOps/commit/38e5fdf0c191cd863a09d3227e76813bfdf6510e))
+- **ida:** read one Cloudflare Access pair for PKB/MCP and OTLP auth ([59ce199](https://github.com/nicsuzor/academicOps/commit/59ce19906aca082da6184c0a42f37188e46fddc6))
+
+### Miscellaneous
+
+- **session-trace:** merge dev and deduplicate fetch_session_spans SQL routing ([e602875](https://github.com/nicsuzor/academicOps/commit/e6028752527e43ba512fc3da0de0b69bbb446541))
+- **workflows:** name capability tiers instead of specific models ([d2f9d72](https://github.com/nicsuzor/academicOps/commit/d2f9d722ce7d1e0f4256fcc7c2da111873340cdc))
+- **workflows:** name capability tiers instead of specific models ([fc277fb](https://github.com/nicsuzor/academicOps/commit/fc277fbce3489e9e3f3c647e83e4ef1d147be3d8))
+
 ## [1.8.2](https://github.com/nicsuzor/academicOps/compare/v1.8.0...v1.8.2) (2026-11-16)
 
 ### Bug Fixes
