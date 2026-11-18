@@ -8,4 +8,4 @@ description: Generate or update today's daily note and reply with a scannable ru
 The canonical daily-note lifecycle and interactive conversational handover are defined in PKB template `tpl_daily`.
 
 - Fetch `tpl_daily` untruncated via `pkb_get_document` (`id: "tpl_daily"`, `detail: "full"`). If truncated or unavailable, halt immediately per fail-fast.
-- Execute `tpl_daily` verbatim, including its Step 5 attended handover (opening with day shape/relief, `## Ways in` options without steering, `## Today` schedule plus due-today or overdue commitments, and the `## With you` decision count). Do not duplicate or override `tpl_daily` rules here.
+- Execute `tpl_daily` verbatim, including its Step 5 attended handover. Do not duplicate or override `tpl_daily` rules here.
