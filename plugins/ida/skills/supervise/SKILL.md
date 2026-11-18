@@ -29,8 +29,9 @@ Check the claimed task body before composing:
 
 1. **Calibrated Delegation**: Fan out disjoint work chunks in parallel to appropriately sized subagent models:
    - **High-capability models**: Complex architecture, specifications, and multi-constraint synthesis.
-   - **Fast lightweight models**: Focused file edits, template updates, mechanical sweeps, and index synchronization.
-   - Provide complete inputs and target artifact paths in Turn-1 briefs, and instruct subagents to return their final `ida:premise-check` report cleanly on exit without duplicate mid-turn status messages.
+   - **Fast lightweight models**: Focused file edits, template updates, mechanical sweeps, and index synchronization, plus all reading and investigation: locating files, reading and summarising them, tracing code, searching the repository or PKB, and gathering evidence.
+   - **Delegate reading, don't do it**: The supervisor's context is the most expensive on the tree and is re-read from cache at every later step, so it holds briefs, summaries, and decisions rather than file contents. Before opening a file or running a search yourself, hand the question to a lightweight subagent and ask for a short, cited answer. Open a source yourself only to settle a conflict between two subagent reports, or when the exact text decides a verdict.
+   - Give each subagent the goal, the question to answer, and the artifact paths or task IDs you already hold; where a path is unknown, ask the subagent to find it instead of reading first to supply it. Instruct subagents to return their final `ida:premise-check` report cleanly on exit without duplicate mid-turn status messages.
 2. **Incremental Checkpoint Invariant**: After every chunk of subagent work:
    - Verify handbacks via `ida:premise-check`.
    - Run formatting and linters on modified files.
