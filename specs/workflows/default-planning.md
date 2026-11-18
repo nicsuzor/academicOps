@@ -13,8 +13,8 @@ Defines the planning workflow across projects: in academicOps, design changes re
 flowchart TD
     Architect(["User / Framework Architect"]) -->|Directs or Proposes Design| Intake["Task Intake & Reification"]
     Intake -->|academicOps repo| SpecFirst["Spec-then-Build (In-repo Spec in Stage 1)"]
-    Intake -->|Other projects (default)| Execute["Execute & Draft PR via Task Graph"]
-    Intake -->|Explicitly user-reserved plan gate| HoldPlan["Reviewed Plan & Explicit Approval on Graph"]
+    Intake -->|"Other projects: default"| Execute["Execute & Draft PR via Task Graph"]
+    Intake -->|"Other projects: explicit hold or boundary"| HoldPlan["Reviewed Plan & Explicit Approval on Graph"]
     SpecFirst -->|Independent Review Passes| Build["Build & Deliver on Single Draft PR into dev"]
     HoldPlan -->|Approved| Execute
     Execute -->|Independent Check Passes| Ready["Mark Ready (gh pr ready)"]
