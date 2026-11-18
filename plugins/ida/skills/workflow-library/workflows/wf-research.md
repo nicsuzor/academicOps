@@ -35,7 +35,7 @@ Keep the artifact and the report on it concise: the answer and recommendation fi
 
 ## Composition
 
-When `/reify` composes a research task investigating an open design question or architectural alternatives, candidate options stay in the task body and the agent does the groundwork and decides the route itself, selecting the recommended implementation route and unblocking downstream implementation; it never creates a decision task assigned to the user (`assignee: user`) unless the user explicitly directed to decide it themselves (tg 1013). Tasks requiring review or follow-up are structured as a single task with internal subtasks or as an epic with child tasks, never as loose siblings.
+When `/reify` composes a research task investigating an open design question or architectural alternatives, candidate options stay in the task body and the agent treats user direction as delegating route selection -- performing groundwork, selecting the recommended implementation route, and unblocking downstream implementation without creating an `assignee: user` decision task unless the user explicitly reserved that choice personally prior to execution. Tasks requiring review or follow-up are structured as a single task with internal subtasks or as an epic with child tasks, never as loose siblings.
 
 ## When to include
 
