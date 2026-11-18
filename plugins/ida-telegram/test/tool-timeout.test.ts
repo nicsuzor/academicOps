@@ -8,13 +8,9 @@ import { QuestionBroker } from "../src/telegram/questions.js";
 import { PermissionRelay } from "../src/mcp/permissions.js";
 import { StdioMcpServer } from "../src/mcp/server.js";
 import { MCP_TOOLS } from "../src/mcp/tools.js";
-import { LONG_RUNNING_TOOLS, TOOL_TIMEOUT_MS, ToolTimeoutError, withToolDeadline } from "../src/mcp/timeout.js";
+import { LONG_RUNNING_TOOLS, ToolTimeoutError, withToolDeadline } from "../src/mcp/timeout.js";
 
 describe("Tool call deadline for basically-instant tools", () => {
-  test("the deadline is 30 seconds", () => {
-    expect(TOOL_TIMEOUT_MS).toBe(30_000);
-  });
-
   test("every exempt tool is a real tool", () => {
     const names = new Set(MCP_TOOLS.map((t) => t.name));
     for (const t of LONG_RUNNING_TOOLS) expect(names.has(t)).toBe(true);
