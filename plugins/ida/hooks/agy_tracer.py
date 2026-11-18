@@ -32,6 +32,7 @@ from claude_code_tracer import (
     _build_and_export_spans,
     _build_tool_span_record,
     _delete_state,
+    _extract_payload_context_attrs,
     _load_state,
     _new_span_id,
     _new_trace_id,
@@ -39,6 +40,7 @@ from claude_code_tracer import (
     _save_state,
     _session_lock,
     _truncate,
+    classify_prompt_origin,
     report_unconfigured_tracer_if_needed,
     resolve_agent_name,
     resolve_client_agent_name,
@@ -562,10 +564,12 @@ def _init_turn_state_agy(
     # Anchor turn at the latest USER_INPUT or SYSTEM_MESSAGE entry in transcript.jsonl
     start_line_index = len(entries)
     turn_prompt = ""
+    turn_opener_is_system = False
     for idx in range(len(entries) - 1, -1, -1):
         if _is_turn_start_entry_agy(entries[idx]):
             start_line_index = idx
             turn_prompt = entries[idx].get("content", "")
+            turn_opener_is_system = entries[idx].get("type") == "SYSTEM_MESSAGE"
             break
 
     handback_subagent_id = None
@@ -583,6 +587,21 @@ def _init_turn_state_agy(
             elif sender_id != session_id:
                 if sender_id != state.get("parent_session_id") or not _load_state(sender_id):
                     handback_subagent_id = sender_id
+
+    prompt_origin, classified_hb, channel_source = classify_prompt_origin(
+        turn_prompt,
+        session_id=session_id,
+        is_system_message=turn_opener_is_system,
+    )
+    if handback_subagent_id:
+        prompt_origin = "handback"
+    elif (
+        classified_hb and not background_task_id and classified_hb != state.get("parent_session_id")
+    ):
+        handback_subagent_id = classified_hb
+    elif prompt_origin == "handback" and not handback_subagent_id:
+        prompt_origin = "system" if turn_opener_is_system else "user"
+    context_attrs = _extract_payload_context_attrs(data, state)
 
     # Count GENERIC entries before this turn (or before the latest PLANNER_RESPONSE if mid-turn)
     if from_mid_turn and entries:
@@ -654,7 +673,10 @@ def _init_turn_state_agy(
         "start_line_index": start_line_index,
         "turn_prompt": turn_prompt,
         "prompt_preview": _truncate(turn_prompt) if turn_prompt else "",
+        "prompt_origin": prompt_origin,
         "handback_subagent_id": handback_subagent_id,
+        "channel_source": channel_source,
+        "context_attrs": context_attrs,
         "background_task_id": background_task_id,
     }
     state["surface"] = "agy"
@@ -955,7 +977,7 @@ def handle_stop(data: dict, config: dict) -> None:
             if step_idx is not None and step_idx not in emitted_steps:
                 emitted_steps.append(step_idx)
 
-        # Find the user prompt and preview to set as CHAIN name and input.value
+        # Find the user prompt to set as CHAIN input.value
         first_llm_attrs = llm_spans[0].get("attributes", {}) if llm_spans else {}
         turn_input_text = (
             ct.get("turn_prompt")
@@ -963,11 +985,6 @@ def handle_stop(data: dict, config: dict) -> None:
             or first_llm_attrs.get("input.value")
             or ""
         )
-        prompt_preview = "agy session"
-        if turn_input_text:
-            prompt_preview = _truncate(turn_input_text)
-        elif ct.get("prompt_preview"):
-            prompt_preview = ct["prompt_preview"]
 
         turn_output_text = data.get("last_assistant_message") or ""
         if not turn_output_text and llm_spans:
@@ -990,20 +1007,30 @@ def handle_stop(data: dict, config: dict) -> None:
         )
         agent_name = state.get("agent_name") or resolve_agent_name(data)
 
+        is_subagent = bool(parent_session_id or (agent_id and agent_id != phoenix_session_id))
         chain_attrs: dict[str, Any] = {
             "openinference.span.kind": "AGENT" if ct.get("parent_span_id") else "CHAIN",
             "session.id": phoenix_session_id,
         }
         if turn_input_text:
             chain_attrs["input.value"] = _truncate(turn_input_text)
+            chain_attrs["input.mime_type"] = "text/plain"
         if turn_output_text:
             chain_attrs["output.value"] = _truncate(turn_output_text)
+            chain_attrs["output.mime_type"] = "text/plain"
         if agent_id:
             chain_attrs["agent.id"] = agent_id
-            chain_attrs["subagent.id"] = agent_id
+            if is_subagent:
+                chain_attrs["subagent.id"] = agent_id
         if ct.get("handback_subagent_id"):
             chain_attrs["subagent.id"] = ct["handback_subagent_id"]
             chain_attrs["handback.subagent_id"] = ct["handback_subagent_id"]
+        if ct.get("prompt_origin"):
+            chain_attrs["prompt.origin"] = ct["prompt_origin"]
+        if ct.get("channel_source"):
+            chain_attrs["channel.source"] = ct["channel_source"]
+        for k, v in (ct.get("context_attrs") or {}).items():
+            chain_attrs.setdefault(k, v)
         if ct.get("background_task_id"):
             chain_attrs["agent.task_id"] = ct["background_task_id"]
         if parent_session_id:
@@ -1025,7 +1052,7 @@ def handle_stop(data: dict, config: dict) -> None:
 
         # Emit CHAIN span
         chain_span = {
-            "name": prompt_preview,
+            "name": "agy-turn",
             "kind": None,
             "start_ns": ct["turn_start_ns"],
             "end_ns": end_ns,
