@@ -1,7 +1,7 @@
 import { PluginConfig } from "../config.js";
 import { resolveBotCommands } from "./commands.js";
 import { FormattedMessage, formatMarkdownToEntities } from "./format.js";
-import { parseInboundUpdate, TelegramUpdate } from "./inbound.js";
+import { parseInboundUpdate, TelegramMessage, TelegramUpdate } from "./inbound.js";
 import { QuestionBroker, matchOptionIndex } from "./questions.js";
 import { FeedbackManager } from "./feedback.js";
 import { prepareVoiceText, buildVoiceInEvent } from "./voice.js";
@@ -284,6 +284,28 @@ export class TelegramBotClient {
   public recordMessageThread(messageId: number | undefined, threadId: number | undefined): void {
     if (messageId !== undefined && threadId !== undefined) {
       this.messageThreads.set(messageId, threadId);
+    }
+  }
+
+  /** Learn topic names and open/closed state from Telegram service messages and messages seen in a topic. */
+  private recordForumEvent(msg: TelegramMessage): void {
+    const threadId = msg.message_thread_id;
+    if (!this.store || threadId === undefined) return;
+    const chatId = msg.chat.id;
+    if (msg.forum_topic_created) {
+      this.store.recordThread(chatId, threadId, {
+        name: msg.forum_topic_created.name,
+        state: "open",
+        source: "service_message",
+      });
+    } else if (msg.forum_topic_closed) {
+      this.store.recordThread(chatId, threadId, { state: "closed", source: "service_message" });
+    } else if (msg.forum_topic_reopened) {
+      this.store.recordThread(chatId, threadId, { state: "open", source: "service_message" });
+    } else if (msg.forum_topic_edited) {
+      this.store.recordThread(chatId, threadId, { name: msg.forum_topic_edited.name, source: "service_message" });
+    } else {
+      this.store.recordThread(chatId, threadId, { source: "seen" });
     }
   }
 
@@ -982,7 +1004,9 @@ export class TelegramBotClient {
     if (iconCustomEmojiId !== undefined) {
       payload.icon_custom_emoji_id = iconCustomEmojiId;
     }
-    return await this.callApi("editForumTopic", payload);
+    const res = await this.callApi("editForumTopic", payload);
+    if (res?.ok) this.store?.recordThread(chatId, messageThreadId, { name, source: "tool" });
+    return res;
   }
 
   public async createForumTopic(
@@ -1024,6 +1048,11 @@ export class TelegramBotClient {
         lastInboundThreadId: threadId,
         topicsEnabled: true,
       });
+      this.store?.recordThread(chatId, threadId, {
+        name: res.result.name || name,
+        state: "open",
+        source: "tool",
+      });
     }
     return res;
   }
@@ -1032,20 +1061,24 @@ export class TelegramBotClient {
     chatId: number,
     messageThreadId: number
   ): Promise<{ ok: boolean; result?: boolean; description?: string; error_code?: number }> {
-    return await this.callApi("closeForumTopic", {
+    const res = await this.callApi("closeForumTopic", {
       chat_id: chatId,
       message_thread_id: messageThreadId,
     });
+    if (res?.ok) this.store?.recordThread(chatId, messageThreadId, { state: "closed", source: "tool" });
+    return res;
   }
 
   public async reopenForumTopic(
     chatId: number,
     messageThreadId: number
   ): Promise<{ ok: boolean; result?: boolean; description?: string; error_code?: number }> {
-    return await this.callApi("reopenForumTopic", {
+    const res = await this.callApi("reopenForumTopic", {
       chat_id: chatId,
       message_thread_id: messageThreadId,
     });
+    if (res?.ok) this.store?.recordThread(chatId, messageThreadId, { state: "open", source: "tool" });
+    return res;
   }
 
   public async deleteForumTopic(
@@ -1057,6 +1090,7 @@ export class TelegramBotClient {
       message_thread_id: messageThreadId,
     });
     if (res?.ok) {
+      this.store?.recordThread(chatId, messageThreadId, { state: "deleted", source: "tool" });
       if (this.lastThreadIdByChat.get(chatId) === messageThreadId) {
         this.lastThreadIdByChat.delete(chatId);
       }
@@ -1739,6 +1773,7 @@ export class TelegramBotClient {
     }
     if (update.message?.message_id && update.message.message_thread_id !== undefined) {
       this.recordMessageThread(update.message.message_id, update.message.message_thread_id);
+      this.recordForumEvent(update.message);
     }
     if (update.callback_query?.message?.message_id && update.callback_query.message.message_thread_id !== undefined) {
       this.recordMessageThread(update.callback_query.message.message_id, update.callback_query.message.message_thread_id);

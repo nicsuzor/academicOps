@@ -38,6 +38,18 @@ export interface ChatState {
   topicsEnabled?: boolean;
 }
 
+export type ThreadState = "open" | "closed" | "deleted";
+
+/** The plugin's own record of one forum topic (the Bot API cannot list topics). */
+export interface ThreadRecord {
+  threadId: number;
+  name?: string;
+  state: ThreadState;
+  /** How the record last changed: our own tool call, a Telegram service message, or a message seen in the thread. */
+  source: "tool" | "service_message" | "seen";
+  updatedAt: string;
+}
+
 export interface AnchorState {
   focus: string;
   taskId?: string;
@@ -56,6 +68,8 @@ export class PluginStore {
   private contextFile: string;
   private chatStateFile: string;
   private chatStates: Map<number, ChatState> = new Map();
+  private threadsFile: string;
+  private threads: Map<number, Map<number, ThreadRecord>> = new Map();
   private sessionsFile: string;
   private startedAt: number;
   private seq: number = 1;
@@ -72,9 +86,85 @@ export class PluginStore {
     this.contextFile = join(stateDir, "context.json");
     this.chatStateFile = join(stateDir, "chat_state.json");
     this.sessionsFile = join(stateDir, "sessions.json");
+    this.threadsFile = join(stateDir, "threads.json");
     this.startedAt = Date.now();
     this.initDirs();
     this.loadChatStates();
+    this.loadThreads();
+  }
+
+  private loadThreads() {
+    if (!existsSync(this.threadsFile)) return;
+    try {
+      const raw = JSON.parse(readFileSync(this.threadsFile, "utf-8"));
+      if (!raw || typeof raw !== "object") return;
+      for (const [chatKey, records] of Object.entries(raw)) {
+        const chatId = Number(chatKey);
+        if (isNaN(chatId) || !records || typeof records !== "object") continue;
+        const byThread = new Map<number, ThreadRecord>();
+        for (const rec of Object.values(records as Record<string, ThreadRecord>)) {
+          if (rec && typeof rec.threadId === "number") byThread.set(rec.threadId, rec);
+        }
+        this.threads.set(chatId, byThread);
+      }
+    } catch (err) {
+      console.warn("[ida-telegram] Failed to read threads file:", err);
+    }
+  }
+
+  private saveThreads() {
+    try {
+      this.initDirs();
+      const obj: Record<string, Record<string, ThreadRecord>> = {};
+      for (const [chatId, byThread] of this.threads.entries()) {
+        obj[String(chatId)] = {};
+        for (const [tid, rec] of byThread.entries()) obj[String(chatId)][String(tid)] = rec;
+      }
+      writeFileSync(this.threadsFile, JSON.stringify(obj, null, 2), "utf-8");
+    } catch (err) {
+      console.warn("[ida-telegram] Failed to save threads file:", err);
+    }
+  }
+
+  /**
+   * Record what the plugin learned about a forum topic. A `seen` observation only
+   * creates a record (open) and never overrides a known one; other sources override.
+   * General topic #1 is never recorded.
+   */
+  public recordThread(
+    chatId: number,
+    threadId: number,
+    patch: { name?: string; state?: ThreadState; source: ThreadRecord["source"] }
+  ): void {
+    if (threadId === 1) return;
+    let byThread = this.threads.get(chatId);
+    if (!byThread) {
+      byThread = new Map();
+      this.threads.set(chatId, byThread);
+    }
+    const existing = byThread.get(threadId);
+    if (existing && patch.source === "seen") return;
+    byThread.set(threadId, {
+      threadId,
+      name: patch.name ?? existing?.name,
+      state: patch.state ?? existing?.state ?? "open",
+      source: patch.source,
+      updatedAt: new Date().toISOString(),
+    });
+    this.saveThreads();
+  }
+
+  /** Threads the plugin knows about in a chat, newest-updated first. Deleted topics are omitted. */
+  public listThreads(chatId: number): ThreadRecord[] {
+    const state = this.chatStates.get(chatId);
+    for (const tid of [state?.activeThreadId, state?.lastInboundThreadId]) {
+      if (tid !== undefined && !this.threads.get(chatId)?.has(tid)) {
+        this.recordThread(chatId, tid, { source: "seen" });
+      }
+    }
+    return [...(this.threads.get(chatId)?.values() ?? [])]
+      .filter((r) => r.state !== "deleted")
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   }
 
   private loadChatStates() {

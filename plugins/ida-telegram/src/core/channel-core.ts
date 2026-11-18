@@ -515,6 +515,35 @@ export class SharedTelegramChannelCore {
     };
   }
 
+  public async listThreads(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const chatId = (args.chat_id as number) || this.getDefaultChatId();
+    const filter = args.state === undefined ? "all" : String(args.state);
+    if (filter !== "all" && filter !== "open" && filter !== "closed") {
+      return { success: false, error: "Invalid state: must be one of all, open, closed" };
+    }
+    const threads = this.store
+      .listThreads(chatId)
+      .filter((t) => filter === "all" || t.state === filter)
+      .map((t) => ({
+        message_thread_id: t.threadId,
+        thread_id: t.threadId,
+        name: t.name ?? null,
+        state: t.state,
+        source: t.source,
+        updated_at: t.updatedAt,
+      }));
+    return {
+      success: true,
+      chat_id: chatId,
+      threads,
+      count: threads.length,
+      note:
+        "The Telegram Bot API has no method to list forum topics, so this is the plugin's own record of topics it created, " +
+        "or saw created, closed, reopened, renamed or posted in. Topics that predate the record and have been silent since are missing; " +
+        "a null name means only a message in the topic was seen.",
+    };
+  }
+
   public async renameThread(args: Record<string, unknown>): Promise<Record<string, unknown>> {
     if (!this.bot) {
       return { success: false, error: "Telegram bot client is not available" };
@@ -1527,6 +1556,11 @@ export class SharedTelegramChannelCore {
       case "create_topic":
       case "create_forum_topic":
         return await this.createThread(msg);
+
+      case "list_threads":
+      case "list_topics":
+      case "list_forum_topics":
+        return await this.listThreads(msg);
 
       case "rename_thread":
       case "rename_topic":
