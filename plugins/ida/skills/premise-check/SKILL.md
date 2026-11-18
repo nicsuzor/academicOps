@@ -79,7 +79,7 @@ Premises state clean natural assertions citing sources and locators directly inl
 
 When an incoming direction arrives from another agent:
 
-1. Verify that every instruction and requirement derives faithfully from `## Ask` (or active user directives).
+1. Verify that every instruction and requirement derives faithfully from `## Ask` (or active user directives), preserving the user's directed authorization without adding unrequested pre-execution approval holds or user-assigned decision tasks.
 2. **Turn-1 required input verification**: Even when the incoming direction carries the null-form `argdown` block (`asks: none` / `[no claim]`) or clears the premise gate, verify on Turn 1 that all required inputs, parameters, task context, and target artifacts are present in the brief. If required inputs or target artifacts are omitted from the brief, immediately return `REVISE` via `send_message` specifying the missing inputs or artifacts, without executing `verdict.py` (do not run `verdict.py` or record a gate verdict for direction briefs; `verdict.py` is reserved exclusively for judging reports carrying evidence-backed claims).
 3. **No local transcript or debug log scraping**: Do not attempt to recover missing caller inputs or prompts by scraping local `.system_generated/logs/transcript*.jsonl` or `/tmp/aops_debug_hooks_*.jsonl` files. If past session context or execution traces are needed, query Arize Phoenix exclusively via `ida:phoenix`.
 4. Verify brief satisfiability: evaluate whether all demanded deliverables can be produced by your own role and route before terminating. Refuse (`REVISE`) directions demanding deliverables belonging to subsequent pipeline stages or unfulfillable by construction at your stopping point.
@@ -107,7 +107,7 @@ In addition to the four inference tests, the checker examines the entire report 
 
 | Test | Passes when | Failure looks like |
 | - | - | - |
-| **Rule-Consistent** | The actions, omissions, and claims in the delivered work do not contradict standing axioms, project rules, or specifications. Disclosing an out-of-scope breach under Rule 4 is compliant escalation. | Report states or admits leaving a rule breach in place in its own deliverable, waives a rule without a higher rule or direct user directive, or describes an action forbidden by a standing rule. Record it as `Valid: (n) fails #conflict` on the step the breach touches. |
+| **Rule-Consistent** | The actions, omissions, and claims in the delivered work do not contradict standing axioms, project rules, or specifications, nor hold directed work for user approval or assign choices to the user (even citing a workflow template) outside external-audience, unruled-merge, unbounded-cost, or explicit user-hold boundaries. Disclosing an out-of-scope breach under Rule 4 is compliant escalation. | Report states or admits leaving a rule breach in place in its own deliverable, waives a rule without a higher rule or direct user directive, holds or routes directed work to user approval without an applicable boundary, or describes an action forbidden by a standing rule. Record it as `Valid: (n) fails #conflict` on the step the breach touches. |
 
 Run four tests on every inference line:
 
