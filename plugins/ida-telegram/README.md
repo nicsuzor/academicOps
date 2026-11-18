@@ -58,3 +58,7 @@ Ida's custom Telegram channel and Mini App plugin for Claude Code.
   - Gated to `IDA_TELEGRAM_ROLE=primary`.
   - Non-primary instances register zero tools, run no poller, and leave hooks inert.
   - Same-host PID locking and exponential 409 Conflict backoff policy.
+- **Tool Deadline (30 s):**
+  - Every MCP tool except the exempt ones below answers within 30 seconds or the caller gets an error result (`<tool> timed out after 30s without an answer`); the deadline is ours, in `src/mcp/timeout.ts`, and is separate from Claude Code's `MCP_TOOL_TIMEOUT`, which applies to every MCP server alike.
+  - Rule for authors: a tool that should be basically instant is covered by default, so a new tool needs no registration. Only a tool that legitimately runs longer goes in `LONG_RUNNING_TOOLS`, with the reason beside its entry. Today that is `reply` (voice-out synthesis has its own 60 s limit) and the upload tools `send_photo`, `send_document`, `send_video`, `send_animation`, `send_media_group`, `send_audio` and `send_video_note` (time scales with file size). `ask_user` is covered because it only posts the question and returns, never waiting for the answer.
+  - On timeout the call is abandoned, not cancelled: the underlying Telegram request may still complete after the error is returned.
