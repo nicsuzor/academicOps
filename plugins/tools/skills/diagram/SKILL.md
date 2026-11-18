@@ -89,6 +89,7 @@ pkb-excalidraw FILE screenshot [--out <path>] [--format svg|png] [--no-backgroun
 ```
 
 - **Invariants**: Text binds to container (`containerId`/`boundElements`); arrows bind both ends (`startBinding`/`endBinding`).
+- **Arrowheads, not bindings, determine direction**: `startBinding`/`endBinding` are attachment points only; edge direction is read from `startArrowhead`/`endArrowhead`. Both arrowheads set means bidirectional (`<->`); a start-only arrowhead points at `startBinding` (opposite binding order). Any reader or script inspecting Excalidraw topology must derive direction from `startArrowhead`/`endArrowhead` rather than assuming `startBinding -> endBinding`.
 - Change text with `set-text` or `fit`, which update `text` and `originalText` together. Change any other property with `update <id> --set '<json>'`.
 - Validate after every edit with `pkb-excalidraw FILE check` and `pkb-excalidraw FILE overlap`. `check` does not flag line-wrap-only differences between `text` and `originalText`.
 - Requires `pkb-excalidraw` from `mem >= v0.3.101` or newer, which natively trims `connect` arrow endpoints to shape outlines and mints valid fractional index keys.
