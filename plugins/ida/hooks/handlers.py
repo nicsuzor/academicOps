@@ -241,22 +241,20 @@ def extract_prompt_query(prompt: str) -> str:
     return text[:_MAX_QUERY_CHARS]
 
 
-# Cloudflare Access service-token credentials. The hook and runtime expect
-# a single canonical set of variable names: DISPATCHER_MCP_TOKEN_ID and
-# DISPATCHER_MCP_TOKEN_SECRET. Launching applications substitute the
-# appropriate keys (e.g. worker-scoped credentials for worker containers)
-# into these environment variables.
-_TOKEN_ID_VAR = "DISPATCHER_MCP_TOKEN_ID"
-_TOKEN_SECRET_VAR = "DISPATCHER_MCP_TOKEN_SECRET"
+# Cloudflare Access service-token credentials: one pair, named after the
+# HTTP headers it becomes. The launching context (shell, polecat container,
+# launchd, CI) decides which stored service token fills it; least privilege is
+# the launcher's job, not the hook's.
+_TOKEN_ID_VAR = "CF_ACCESS_CLIENT_ID"
+_TOKEN_SECRET_VAR = "CF_ACCESS_CLIENT_SECRET"
 
 
 def _resolve_mcp_headers() -> dict[str, str]:
     """HTTP headers for the PKB endpoint, from the environment only.
 
-    The hook and runtime expect the canonical Cloudflare Access token pair:
-    `DISPATCHER_MCP_TOKEN_ID` and `DISPATCHER_MCP_TOKEN_SECRET`. Launching
-    applications substitute the appropriate keys for different surfaces and
-    use cases (such as worker-scoped credentials in isolated worker containers).
+    Reads the one Cloudflare Access pair, `CF_ACCESS_CLIENT_ID` and
+    `CF_ACCESS_CLIENT_SECRET`; the launching context chooses which stored
+    service token fills it.
     """
     cf_id = os.environ.get(_TOKEN_ID_VAR)
     cf_secret = os.environ.get(_TOKEN_SECRET_VAR)
@@ -494,7 +492,7 @@ def _post_mcp_search(
 
     if status in (401, 403):
         raise RuntimeError(
-            f"the PKB endpoint refused authorisation (HTTP {status}); check DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
+            f"the PKB endpoint refused authorisation (HTTP {status}); check CF_ACCESS_CLIENT_ID / CF_ACCESS_CLIENT_SECRET"
         )
     if status != 200:
         clean_body = " ".join(body.split())

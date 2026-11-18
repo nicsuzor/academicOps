@@ -43,7 +43,7 @@ As an auditor inspecting traces, I want every custom MCP server to emit OpenTele
 As a platform operator deploying MCP servers in various runtime environments, I want servers in any language to use a uniform, fail-fast configuration contract for OpenTelemetry export, so that telemetry pipelines deploy reliably and configuration errors halt immediately at startup.
 
 - **AC-4.1** Given an instrumented MCP server initializing telemetry, when resolving the collector OTLP traces endpoint, then the server resolves the endpoint in precedence order from `GENAI_ENGINE_ENDPOINT` followed by `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, and if neither variable is set, halts startup immediately with an explicit configuration error.
-- **AC-4.2** Given an instrumented MCP server initializing telemetry with an endpoint configured, when configuring export credentials, then the server resolves authentication headers in precedence order from `GENAI_ENGINE_API_KEY` (formatted as comma-delimited `Key=Value` pairs) followed by `OTEL_EXPORTER_OTLP_HEADERS`.
+- **AC-4.2** Given an instrumented MCP server initializing telemetry with an endpoint configured, when configuring export credentials, then the server builds the `CF-Access-Client-Id` and `CF-Access-Client-Secret` headers from `CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET` and passes them to the exporter constructor; it never reads or sets `OTEL_EXPORTER_OTLP_HEADERS` as a carrier for the token, since every OTel SDK in the process tree would pick it up.
 - **AC-4.3** Given an instrumented MCP server exporting tool spans, when the collector endpoint is unreachable or span delivery encounters an error, then the server surfaces the export failure with diagnostic error details to standard error output.
 
 ## Design
@@ -128,8 +128,7 @@ Custom MCP servers configure OpenTelemetry export using environment variables co
 | :- | :- | :- |
 | `GENAI_ENGINE_ENDPOINT` | 1 | Primary OTLP traces export URL (e.g. `https://otel.example.org/v1/traces` or `http://localhost:4318/v1/traces`). |
 | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | 2 | Secondary OTLP traces export URL evaluated if `GENAI_ENGINE_ENDPOINT` is unset. |
-| `GENAI_ENGINE_API_KEY` | 1 | Primary authentication credentials formatted as comma-delimited headers (`Key1=Value1,Key2=Value2`). |
-| `OTEL_EXPORTER_OTLP_HEADERS` | 2 | Secondary OTLP headers evaluated if `GENAI_ENGINE_API_KEY` is unset. |
+| `CF_ACCESS_CLIENT_ID` + `CF_ACCESS_CLIENT_SECRET` | 1 | The one Cloudflare Access service-token pair, sent as `CF-Access-Client-Id` / `CF-Access-Client-Secret`. The launching context chooses which stored token fills it. |
 | `OTEL_SERVICE_NAME` | 1 | Logical service name for the server instance. |
 
 #### Fail-Fast Startup and Export Reliability

@@ -184,7 +184,6 @@ def test_discover_config_sanitizes_task_id():
     with patch.dict(
         "os.environ",
         {
-            "GENAI_ENGINE_API_KEY": "test-key",
             "GENAI_ENGINE_TRACE_ENDPOINT": "http://localhost:4317",
             "GENAI_ENGINE_TASK_ID": "ns",
         },
@@ -199,7 +198,6 @@ def test_discover_config_sanitizes_task_id():
     with patch.dict(
         "os.environ",
         {
-            "GENAI_ENGINE_API_KEY": "test-key",
             "GENAI_ENGINE_TRACE_ENDPOINT": "http://localhost:4317",
             "AOPS_TASK_ID": "task-456",
         },
@@ -214,7 +212,6 @@ def test_discover_config_resolves_polecat_target_task():
     with patch.dict(
         "os.environ",
         {
-            "GENAI_ENGINE_API_KEY": "test-key",
             "GENAI_ENGINE_TRACE_ENDPOINT": "http://localhost:4317",
             "POLECAT_TARGET_TASK": "aops_940d9db2",
         },
@@ -227,7 +224,6 @@ def test_discover_config_resolves_polecat_target_task():
     with patch.dict(
         "os.environ",
         {
-            "GENAI_ENGINE_API_KEY": "test-key",
             "GENAI_ENGINE_TRACE_ENDPOINT": "http://localhost:4317",
             "POLECAT_TASK": "aops_7b1b67fe",
         },
@@ -241,7 +237,6 @@ def test_discover_config_resolves_polecat_target_task():
     with patch.dict(
         "os.environ",
         {
-            "GENAI_ENGINE_API_KEY": "test-key",
             "GENAI_ENGINE_TRACE_ENDPOINT": "http://localhost:4317",
             "GENAI_ENGINE_TASK_ID": "ns",
             "POLECAT_TARGET_TASK": "aops_940d9db2",
@@ -256,7 +251,6 @@ def test_discover_config_resolves_polecat_target_task():
     with patch.dict(
         "os.environ",
         {
-            "GENAI_ENGINE_API_KEY": "test-key",
             "GENAI_ENGINE_TRACE_ENDPOINT": "http://localhost:4317",
             "AOPS_TASK_ID": "task-123",
             "POLECAT_TARGET_TASK": "aops_940d9db2",
@@ -271,7 +265,6 @@ def test_discover_config_resolves_polecat_target_task():
     with patch.dict(
         "os.environ",
         {
-            "GENAI_ENGINE_API_KEY": "test-key",
             "GENAI_ENGINE_TRACE_ENDPOINT": "http://localhost:4317",
             "POLECAT_TARGET_TASK": "aops_940d9db2",
         },

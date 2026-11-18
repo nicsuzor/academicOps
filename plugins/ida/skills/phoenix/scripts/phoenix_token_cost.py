@@ -73,7 +73,6 @@ from typing import Any
 
 BASE_URL_ENV_VAR = "PHOENIX_MCP_URL"
 PROJECT_ENV_VAR = "PHOENIX_MCP_PROJECT"
-_ACCESS_TOKEN_PAIRS = (("DISPATCHER_MCP_TOKEN_ID", "DISPATCHER_MCP_TOKEN_SECRET"),)
 _MCP_SESSIONS: dict[str, str] = {}
 PAGE_LIMIT = 1000
 SQL_PAGE_MAX_ROWS = 499
@@ -172,13 +171,11 @@ def _mcp_headers(session_id: str | None = None) -> dict[str, str]:
         "Content-Type": "application/json",
         "Accept": "application/json, text/event-stream",
     }
-    for id_var, secret_var in _ACCESS_TOKEN_PAIRS:
-        cf_id = os.environ.get(id_var)
-        cf_secret = os.environ.get(secret_var)
-        if cf_id and cf_secret:
-            headers["CF-Access-Client-Id"] = cf_id
-            headers["CF-Access-Client-Secret"] = cf_secret
-            break
+    cf_id = os.environ.get("CF_ACCESS_CLIENT_ID")
+    cf_secret = os.environ.get("CF_ACCESS_CLIENT_SECRET")
+    if cf_id and cf_secret:
+        headers["CF-Access-Client-Id"] = cf_id
+        headers["CF-Access-Client-Secret"] = cf_secret
     if session_id:
         headers["mcp-session-id"] = session_id
     return headers
