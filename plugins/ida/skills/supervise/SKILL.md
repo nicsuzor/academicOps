@@ -30,7 +30,7 @@ Check the claimed task body before composing:
 1. **Calibrated Delegation**: Fan out disjoint work chunks in parallel to appropriately sized subagent models:
    - **High-capability models**: Complex architecture, specifications, and multi-constraint synthesis.
    - **Fast lightweight models**: Focused file edits, template updates, mechanical sweeps, and index synchronization.
-   - **Delegate reading, don't do it**: The supervisor's context lives longest on the tree and is re-read at every later step, so it holds briefs, summaries, and decisions rather than file contents. Hand reading beyond a quick look to a subagent on the cheapest tier that can do it, and take back a short, cited answer. Read it yourself when it is small: the claimed task body, subagent handbacks, a diff you are about to commit, linter output, or one short file whose exact text you need. Open a larger source yourself only to settle a conflict between two subagent reports, or when its exact text decides a verdict.
+   - Delegate reading and investigation to a subagent, taking back a short, cited answer; the supervisor's context persists across the whole tree, so it keeps briefs, summaries, and decisions.
    - Instruct subagents to return their final `ida:premise-check` report cleanly on exit without duplicate mid-turn status messages.
 2. **Incremental Checkpoint Invariant**: After every chunk of subagent work:
    - Verify handbacks via `ida:premise-check`.
