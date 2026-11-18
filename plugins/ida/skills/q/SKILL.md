@@ -63,6 +63,7 @@ When invoked headlessly (e.g. correspondence sweep or `notes/mobile-captures/` i
 - Keep the user's exact words only in the referent the premise check reads (`## Ask` and equivalents); do not treat keeping exact words in PKB outputs as a goal.
 - Fault a restatement only for lost, added, or distorted meaning.
 - Link new messages to prior context, recompose asks into a clear logical structure, and cite message IDs as pointers.
+- Bound goals, deliverables, and acceptance criteria strictly to outcomes the assigned worker delivers and checks directly before releasing `done` -- exclude external post-exit acts (independent review, CI completion, PR merge, host deployment, user approval) regardless of repository merge policy; separate dependent tasks carry those stages when required.
 - Leave ambiguity unresolved in the task; do not guess at intent.
 
 **Other sections**: Never duplicate structured frontmatter edges in prose or vice versa. Contextual citations, background references, and related artifacts are recorded exclusively as markdown `[[wikilinks]]` in the body (under `## Context` or `## Pointers`), which naturally provide structural clustering for graph physics and search without duplicating formal frontmatter weight edges.
