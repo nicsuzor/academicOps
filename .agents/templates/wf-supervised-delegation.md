@@ -14,10 +14,10 @@ tags:
 
 ## What this covers
 
-Delegating substantive execution from Claude-side supervisors to the Gemini harness
+Delegating substantive execution from Claude-side supervisors to the `agy` harness
 under strict, tiered acceptance criteria. Flagship-model tokens are spent only on
 supervision and judgment, which is a thin layer; the bulk of execution tokens
-land on the cheaper Gemini harness. Supervision quality survives because
+land on the cheaper `agy` harness. Supervision quality survives because
 principal -> Ida -> James -> agy places a different class of check at each level.
 
 ## The three roles
