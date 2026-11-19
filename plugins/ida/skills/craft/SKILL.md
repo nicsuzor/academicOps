@@ -11,7 +11,7 @@ Author and review agent-facing instructions, personas, and workflow templates fo
 ## First Principles
 
 1. **Trust the harness, not today's quirks**: Write for durable capabilities. Avoid hard-coding workarounds for transient model behaviors.
-2. **Specify process, not keystrokes**: State when to invoke a capability and what outcome proves it worked. Omit basic sub-steps or flags the agent already knows.
+2. **Specify outcomes and constraints, not procedural how-to or thresholds**: State what must hold and what outcome proves success; omit step-by-step keystroke scripts, internal flags, or arbitrary numeric thresholds.
 3. **One component, one job**: Keep instructions and templates focused on their singular purpose. Dispatch to peer skills rather than summarizing their internals. Leave another agent's domain to that agent: name the hand-off, never how it does its work.
 4. **State the contract, not the neighbour**: Specify what a component needs as input and delivers as output. Never couple to specific neighbour names or slugs; composing agents decide what fills each slot.
 5. **Decouple persona from execution (Who vs How)**: Personas establish persistent identity, authority boundaries, and behavioral tone; skills define modular, reusable execution recipes. Personas name capabilities without inlining skill mechanics; skills specify operational contracts, and where one agent owns a skill the skill names that owner in one line so callers route to it, with the body otherwise written for any capable agent.
@@ -32,7 +32,7 @@ Maintain strict architectural separation between agent definitions and skill ins
 1. **Agent Personas (The "Who")**: Global, persistent system instructions loaded on every turn. Bound to 5–10% of base token budget. Define role identity (1–3 sentences), authority limits, behavioral postures, output schemas, and safety invariants.
 2. **Skills (The "How")**: Modular, transient workflow packages loaded just-in-time when invoked. Define step-by-step procedures, tool calling sequences, input/output contracts, and validation criteria.
 3. **Linking and Decoupling**:
-   - **Personas never inline skill mechanics**: An agent persona names available skills or declares tool access, but never prescribes a skill's internal steps, modes, or argument flags. Skills evolve without requiring persona updates.
+   - **Personas never name workflow slugs or skill entrypoints**: Agent personas define identity, boundaries, and universal capabilities needed on every task, never naming workflow templates (`wf-*`), skill entrypoints, slash commands, argument flags, or step mechanics (a compliance reviewer may point to its `axioms` skill solely as its rule catalog). Skills and workflows evolve without requiring persona updates.
    - **Skills name an owner, never a persona's mechanics**: Instructions define objective contracts executable by any capable agent. A skill one agent is responsible for states that owner once (description and opening line) and nothing else about the persona; the procedure carries no persona-specific language or assumptions.
 
 ### Three-Level Progressive Disclosure
@@ -95,7 +95,7 @@ Maximize actionable constraints per token:
 
 ## Workflow Templates
 
-Workflow templates (`type: template`) govern repeatable multi-stage execution and task composition (<100 lines target).
+Workflow templates (`type: template`) govern repeatable multi-stage execution and task composition (30–60 lines target; <=100 lines hard ceiling).
 
 - **Schema**:
   ```yaml
@@ -113,13 +113,14 @@ Workflow templates (`type: template`) govern repeatable multi-stage execution an
 
 ## Quality Gates
 
-Every agent instruction, skill, persona definition, and subagent prompt must pass these five gates before merging:
+Every agent instruction, skill, persona definition, and subagent prompt must pass these six gates before merging:
 
 1. **Categorical generality (Categorical Imperative)**: Express rules in general terms covering the full class of situations. Prohibit hyper-specific quotas, rigid interaction numbers, or one-off compromises.
 2. **Entity abstraction (Name the process, not the actor)**: Refer to the principal as "the user", never by a personal proper noun or name. Refer to collaborators by role or capability.
 3. **No PKB leakage (Data Boundaries)**: Never include private PKB note or task IDs (`aops_...`, `task_...`, `mem_...`, `kb_...`) or Obsidian wikilinks (`[[...]]`) in distributed framework instruction files. Use standard relative markdown links for file references.
 4. **Zero historical provenance (CURRENT STATE ONLY)**: Strictly eliminate incident stories, post-mortem recaps ("after an incident on..."), PR/commit changelog citations, or historical `sources:` frontmatter arrays. Instructions, workflow templates, and knowledge notes define what is true now, never how it came to be true. No instruction, skill, or workflow template may instruct agents to accumulate or maintain historical source lists or obsolete prior-state material.
 5. **Adjudication against empirical evidence**: When an instruction design choice or length budget is contested during review, cite the empirical findings and sources in `references/evidence.md`.
+6. **Model agnosticism**: Instruction text permits capability tiers (`mid-tier`, `flagship`) while banning concrete model names, model families/versions, and client-specific harness tier names (banned examples: `sonnet`, `opus`, `haiku`, `pro`, `flash`, `flash_lite`, `gemini`). Deployment configurations are exempt.
 
 ## Agent Definitions
 
@@ -128,9 +129,9 @@ Limit agent definition bodies to:
 1. **Identity/role**: 1–3 sentences defining the persona.
 2. **Behavioral rules**: Terse operational constraints.
 3. **Output schema**: Expected report structure and verdict states.
-4. **Routing table**: Clean table without per-route narrative.
+4. **Routing table**: Clean capability/role table without workflow slugs, skill entrypoints, or per-route narrative.
 
-Name a skill the agent uses; leave its modes, arguments, and when each applies to the skill. A change to a skill's modes or arguments owes the agent definitions that use it no edit.
+Define only universal identity, boundaries, capabilities, and output schema needed on every task; never name workflow templates (`wf-*`), skill entrypoints, slash commands, argument flags, or step mechanics (a compliance reviewer may point to its `axioms` skill solely as its rule catalog). Changes to skills or workflows owe agent definitions no edit.
 
 ## Schemas and Construction
 

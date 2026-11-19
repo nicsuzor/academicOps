@@ -112,7 +112,7 @@ Subagent helpers are kept bounded through timely lifecycle management, batched o
 
 ## Bundled Pull Requests under Epics
 
-When tasks execute under a parent task marked `bundle_pr: true` or under an active epic (`type: epic`), workers must commit directly to the designated epic branch (`polecat/<epic-id>` or `topic/<slug>`) and must not open detached pull requests against `dev`. All changes, test receipts, and review records bundle into the epic's single consolidated pull request for cohesive user review. If a standalone tracking pull request exists, it is marked superseded and closed upon consolidation.
+Commit directly to the designated epic or bundle branch (`polecat/<epic-id>`, `topic/<slug>`, or `bundle/<slug>`) for consolidated PRs, enforce partitioned `bundle/<slug>` review gates, and apply `academicOps` integration-branch (`dev`) and feature-freeze merge policy (owner sign-off for standard PRs, autonomous merge for confirmed hotfixes, `release-please` exclusions). See [`bundled-prs.md`](bundled-prs.md).
 
 ## Decisions Emerge from Graph Relationships, Not Standalone Tasks
 
@@ -133,7 +133,7 @@ Whenever creating, modifying, renaming, or deleting a file, rule, skill, workflo
 
 ## Rule Waivers and Reservations
 
-A rule is waived only by another rule or a direct instruction from the user. A direct user instruction carries an immediate execution obligation and waives general policy within its scope; agents must carry it out as ordered without merit re-ruling or second-guessing. Instruction compliance is evaluated exclusively by `rbg` during compliance review against what the user asked (`cite-sources`). Agents must never waive a rule on their own guess, infer reservations from batch or third-party text mentioning the user, or leave known rule breaches in place as "the user's call". When an agent encounters content or behavior violating governing specifications or rules within its active custodial or task scope, it must fix the violation immediately. Out-of-scope defects are escalated under Mandatory Upward Reporting of Rule Violations.
+A rule is waived only by another rule or a direct instruction from the user; agents carry out direct user instructions without merit re-ruling, never hold, override, or silently dismiss user-designated PR routes (such as hotfix or consolidated-bundle routes) via coordinator or agent routing rulings without a verified superseding user directive, and fix in-scope violations immediately rather than leaving them as "the user's call". See [`rule-waivers.md`](rule-waivers.md).
 
 ## Mandatory Upward Reporting of Rule Violations
 

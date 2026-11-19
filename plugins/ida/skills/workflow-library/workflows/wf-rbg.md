@@ -3,7 +3,7 @@ alias:
   - wf-rbg
   - wf-rule-check
   - wf-rbg-review
-description: Universal compliance review -- evaluate candidate artifact, change, or decision against universal axioms, governing rules, scope of delegated authority (ultra vires), and the enforcement pyramid, returning a PASS, REVISE, or FAIL verdict with required changes.
+description: Universal compliance review -- evaluate candidate artifact, change, or decision against universal axioms, governing rules, scope of delegated authority (ultra vires), data boundaries, and least-invasive enforcement, returning a PASS, REVISE, or FAIL verdict with required changes.
 id: wf-rbg
 tags:
   - wf-template
@@ -17,59 +17,65 @@ type: template
 
 ## What this step does
 
-Universal compliance review (`rbg`): evaluates an artifact, specification, design proposal, code change, or decision for compliance with universal axioms, project-local rules, scope of delegated authority (_ultra vires_), data boundaries, and the enforcement pyramid's least-invasive intervention hierarchy. Exercises direct logical judgment against the intent behind the rule, the intended and incidental uses of the work, and the gravity of the situation rather than mechanical pattern-matching.
+Universal compliance review (`rbg`): evaluates an artifact, specification, design proposal, code change, or decision against universal axioms, project-local rules, user rules, delegated authority (_ultra vires_), data boundaries, and least-invasive enforcement using direct logical judgment rather than mechanical pattern-matching.
 
 ## Input contract
 
 Draws its brief from the shared review briefing. Additional role-specific inputs:
 
-- **Rule sources** -- assembled in priority order:
-  - Framework axioms: the `rbg:axioms` skill (inviolable baseline).
-  - Project-local rules: `$CWD/.agents/rules/`.
-  - User-scoped rules: read from active PKB documents with `type: rule` (optional).
-  - Enforcement architecture: `specs/enforcement/enforcement.md` (when behavior-shaping mechanisms are touched).
+- **Universal axioms**: Injected `always_on` axioms, or read from the `axioms` skill when not injected.
+- **Repository local rules**: `.agents/rules/*.md` or equivalent when present.
+- **User rules**: Active PKB `type: rule` documents (optional).
+- **Repository standards**: Enforcement architecture or document-placement specs when present and touched.
 
 ## Procedure
 
-1. **Assemble active rules** -- load governing axioms, project rules, and companion specs (e.g. `specs/enforcement/enforcement.md`) before judging; never rule from memory.
-2. **Evaluate proportion, non-mechanical baseline, and scope of authority upfront (Gate 0)** -- from the originating request in the shared review briefing, state the non-mechanical baseline: can this request be fulfilled by an agent workflow (`wf-*`), prompt instructions (`SKILL.md`), or existing tools without new executable code? If YES, and the artifact builds a script, CLI, or test harness, immediately halt and issue `FAIL` under `no-over-engineering` and `proportionate` before reading the diff or line-by-line repo auditing. State the smallest mechanism meeting the request across its class before reading the artifact or its diff, and check whether the artifact stays within the authority granted by the request. If the artifact acts _ultra vires_ or is materially disproportionate under `proportionate` and `do-one-thing`, stop immediately and issue `FAIL` before line-by-line repo auditing. Preserve full rule coverage when the artifact is proportionate and within scope.
-3. **Evaluate compliance and per-claim fail-fast** -- test the artifact against governing axioms (categorical imperative, closure, data boundaries, excellence, fail-fast, full observability, honest epistemics, human readability first, no over-engineering, non-delegable qualitative judgment, proportionate, single source of truth) and verify that any behavior-shaping change respects the enforcement pyramid (`specs/enforcement/enforcement.md`, defaulting to least-invasive instructions before adding mechanical gates). Verify that specifications evaluate work from the human principal's perspective (`excellence`, `process-not-actor.md`), never casting an agent, persona, or worker as the user in `## User stories` (`As an agent, I want...`), since agents do not want anything and are given capabilities only to fulfil human user requirements. Verify that skills creating or assembling tasks (such as `plugins/ida/skills/reify/SKILL.md`) do not embed hardcoded workflow branching or QA restrictions, enforcing Single Source of Truth (`single-source-of-truth`) and Runtime Workflow Composition (`runtime-workflow-composition.md`). For any added or modified row in `specs/ENFORCEMENT-MAP.md`, verify entry validity: every row must **only** reference a specific rule derived from our axioms (`plugins/rbg/skills/axioms/`) and applicable to agents working in any third-party project (never a repository-local project rule, subsystem feature specification, or workflow; workflows are not rules and do not enforce rules, and creating or modifying workflows must not produce token enforcement map rows, as the only applicable rule is "agents must follow workflows given to them" and nothing more than that). For candidate publications and trust-boundary transitions, evaluate the full published surface against destination repository visibility under `data-boundaries`. Apply per-claim fail-fast with uncontroversial self-fix carve-out: if an identified compliance defect is uncontroversial and deterministic (such as scrubbing private identifiers, session IDs, internal hostnames, or commit trailers under `data-boundaries`, updating language/formatting, or fixing obvious pinpoint citations), apply the fix immediately to the branch, commit with an explanatory message (`fix(review): ...`), and report under `### Reviewer Self-Fixes Applied`. Do not return `REVISE` solely for self-fixed uncontroversial items. For issues lacking a reasonably deterministic solution (competing designs, architectural trade-offs, scope expansion, or missing authority), do not guess or search the repository to author complex fixes; record the violation immediately under `### Required Changes` and return `REVISE` or `FAIL`.
-4. **Determine required changes vs suggested improvements**:
-   - A _Required Change_ names a rule violation, its likelihood and consequence, and costs less than the failure it prevents.
-   - Anything else is a _Suggested Improvement_. Where the work exceeds the request, require less, not more.
-5. **Review boundaries** -- confine evaluation strictly to the artifact text/diff and governing rule/spec sources (including companion-spec checks). Does not test functional requirement satisfaction, execute runtime tests/probes, or perform whole-codebase omission scans (the quality role, `marsha`), and does not evaluate the core premise, PKB strategic direction, or congruence with existing graph material (the strategic congruence role, `pauli`).
-6. **Issue verdict**: exactly one of `PASS`, `REVISE`, or `FAIL`.
+If the target artifact, diff, or originating ask is missing on Turn 1, return `REVISE` listing missing inputs without recording a gate verdict.
+
+1. **Resolve rules**: Treat injected `always_on` universal axioms as loaded (inspect unmodified axiom text only if edited in the diff; read from the `axioms` skill only when not injected). Read repository local rules (`.agents/rules/*.md` or equivalent when present) and active PKB `type: rule` documents directly from source, never from memory.
+2. **Inspect full PR metadata, diff, and referenced tests**: Read PR title and body (`data-boundaries`), verify PR labels match any confirmed user route (e.g., hotfix label vs coordinator or user confirmation), read the full diff including deletions, check negative constraints, and inspect static text of test files modified in the PR diff or explicitly cited by the artifact for tautological, change-detector, mirror, or mock-coupled assertions without running repo-wide searches or executing test suites.
+3. **Evaluate Gate 0 authority and substantive compliance**:
+   - **Ask-bounded authority and non-mechanical baseline (Gate 0)**: Hold additions, deletions, and brief-locked prescriptions strictly to the verbatim user ask or standing user mandate rather than drifted intermediate acceptance criteria. Before line-by-line review, state the non-mechanical baseline from the ask: if an agent workflow, instruction, or existing tool meets the request, halt and `FAIL` unnecessary scripts, CLIs, or harnesses under `no-over-engineering` and `proportionate`; halt and `FAIL` _ultra vires_ or materially disproportionate work.
+   - **Least-invasive mechanism and prose generality**: Verify loaded instructions on the same occasion and surface were tried and shown insufficient before accepting hooks, scripts, or extra mechanisms; reject multi-file prose bloat and single-incident prohibitive rules; distinguish neutral baseline runtime orientation from mutable world state, conduct rules, and force gradations.
+   - **Waivers, turn errors, and anti-circularity**: Hold cited user or rule waivers strictly to literal quoted bounds (never inferred waivers); reject errors suppressed from the executing agent turn context behind stderr or telemetry logs (`fail-fast`); reject circular specification, test, or tool-injected output relaxations (`closure`); reject unnecessary restatements of existing axioms as new rules, deferred DRY/SSoT defects, or platform-native duplication (`single-source-of-truth`, `use-native-mechanism`).
+   - **Required Changes vs Suggested Improvements**: A Required Change names a rule violation, its likelihood and consequence, and costs less than the failure it prevents; anything else is a Suggested Improvement (where work exceeds the request, require less, not more).
+4. **Apply conditional genre, destination, and egress compliance**: When diffs touch agent definitions, skills, workflows, specifications, or plan/doc destinations, apply the repository's governing instruction/craft, specification, and document-placement rules when present (contract separation, human-principal user stories never casting agents as users, runtime workflow composition without hardcoded template routing or workflow rows in enforcement maps) alongside `data-boundaries` public egress across diffs, titles, bodies, commits, trailers, and route/auth or endpoint-visibility diffs risking unapproved public exposure of private endpoints.
+5. **Certify committed fixes, respect boundaries, and post verdict**: Apply uncontroversial deterministic repairs (scrubbing private identifiers under `data-boundaries`, typos, pinpoint citations) directly, commit (`fix(review): ...`), and push so `HEAD` matches inspected diff before `PASS` (or itemize under `### Suggested Fixes` when dispatched read-only in parallel for single-writer commit before `PASS`; never `REVISE` solely for self-fixed items); leave non-deterministic issues under `### Required Changes`. `Needs judgment: no` in proportion notes cannot bypass Gate 0 or fail-fast checks. Confine evaluation strictly to static compliance, authority, and egress (never runtime QA, qualitative taste, relay truth/fidelity, or strategic congruence), and post explicit `## RBG Review: PASS | REVISE | FAIL` directly on the PR thread when permitted by `data-boundaries`.
 
 ## Verdict contract
 
-The review returns structured Markdown (standard sections and bullet lists formatted for human readability, never programmatic JSON/YAML schemas) conforming to:
+Return structured Markdown for human readability (never JSON/YAML schemas):
 
 ```markdown
-## RBG Review: **[PASS | REVISE | FAIL]**
+## RBG Review: [PASS | REVISE | FAIL]
 
 [1-2 line summary of confidence and overall assessment]
 
 ### Reviewer Self-Fixes Applied
 
-- **[Category / Rule]**: [Description of uncontroversial fix] ([pinpoint reference], Commit: `[commit-hash]`)
+- **[Category / Rule]**: [Description of fix] ([pinpoint reference], Commit: `[commit-hash]`)
+
+### Proportion & Mechanisms
+
+- **Baseline vs Artifact**: [Minimal non-mechanical baseline vs mechanism proposed; consequence, `Needs judgment: yes|no`, rule]
 
 ### Required Changes
 
-- **[Rule Name]**: [Violation reason] ([pinpoint reference])
+- **[Rule Name]**: [Violation reason and risk] ([pinpoint reference])
 
 ### Suggested Improvements
 
 - **[Rule Name]**: [Improvement suggestion] ([pinpoint reference])
 ```
 
-- **PASS:** Work satisfies governing rules, stays within its delegated authority, exhibits coherent reasoning, and carries valid evidentiary support (with any non-blocking suggestions noted under Suggested Improvements).
-- **REVISE:** Material deficiencies or missing proof requiring remediation within the accepted scope.
-- **FAIL:** Fundamental rule contradiction, ungrounded assertions, _ultra vires_ overreach, or disproportionate work.
+- **PASS:** Compliant with governing rules, within delegated authority, coherent, and validly supported.
+- **REVISE:** Remediable rule gaps or missing justification within accepted scope.
+- **FAIL:** Fundamental rule breach, ungrounded assertions, _ultra vires_ overreach, or disproportionate mechanism.
 
 ## Output contract
 
-The structured review artifact containing exactly one verdict token (`PASS`, `REVISE`, or `FAIL`), itemized required changes with pinpoint citations, and suggested improvements.
+Structured review returning one verdict token (`PASS`, `REVISE`, or `FAIL`), proportion assessment, any committed and pushed self-fixes, itemized required changes with pinpoint citations, and suggested improvements.
 
 ## When to include
 
-Any workflow that produces an intellectual artifact, specification, design proposal, code change, or decision for review, before delivery or escalated sign-off.
+Any workflow producing an artifact, specification, design proposal, code change, or decision for compliance review prior to merge or release.

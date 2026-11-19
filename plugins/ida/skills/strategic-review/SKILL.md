@@ -16,22 +16,22 @@ Coordinate modular multi-agent dialectical review under **`james` as Supervisor*
 
 ### 1. Supervisor Calibration: Proportionality, Altitude & Governing Standard (`james`)
 
-Before dispatching reviewers, the Supervisor (`james`) loads the artifact, its originating request, the format/quality standard governing the artifact's genre (`specs/meta/doc-taxonomy.md` -- e.g., `specs/meta/writing-specs.md` for specifications, `craft` for agent instructions, disciplinary standards for manuscripts/articles, or task acceptance criteria for task handbacks), and whatever specifications, requirements, or acceptance criteria are available, determines destination repository visibility (public or private), and explicitly calibrates:
+Before dispatching reviewers, the Supervisor (`james`) loads the artifact, its originating request, the repository's governing genre and document standards when present (e.g., `craft` for agent instructions, specification standards, disciplinary standards for manuscripts/articles, or task acceptance criteria for task handbacks), and whatever specifications, requirements, or acceptance criteria are available, determines destination repository visibility (public or private), and explicitly calibrates:
 
-- **Proportionality (depth, rounds, model selection, and primary-material scope)**: Weigh the importance, risk, blast radius, and reversibility of the task or artifact at the start:
+- **Proportionality (depth, rounds, and model selection)**: Weigh the importance, risk, blast radius, and reversibility of the task or artifact at the start:
   - **High-stakes / high-risk / architectural work**: Allocate deeper refinement, multiple rounds of dialectical cross-examination, and flagship models.
   - **Low-stakes / routine / reversible checks**: Keep the review to a fast, single-pass sanity check with mid-tier models to confirm the change is sound without wasting time and money.
 - **Altitude alignment & artifact-matched standard**: Define the target abstraction focus for the review and ensure reviewers apply the standard matching the artifact's genre (never applying task-handback sections like `## Ask` to non-task artifacts).
 
 ### 2. Deploy the Three Review Components in Parallel
 
-Dispatch all three specialist reviewers concurrently in a single turn at the calibrated model tier. Every reviewer's brief is drawn from the shared review briefing (quoting the originating request, governing genre standard, and available specifications/requirements/criteria before the artifact or diff) and returns a verdict in the unified `PASS` / `REVISE` / `FAIL` vocabulary:
+Dispatch all three specialist reviewers concurrently in a single turn at the calibrated model tier. Every reviewer's brief is drawn from the shared review briefing (quoting the originating request, governing genre standard, and available specifications/requirements/criteria neutrally before the artifact or diff without leading prompts) and returns a verdict in the unified `PASS` / `REVISE` / `FAIL` vocabulary:
 
-- **Rule compliance** (TypeName `rbg`): Axiom, rule, authority, and enforcement-pyramid compliance per `wf-rbg`.
-- **Strategic fit** (TypeName `pauli`): Core premise, strategic direction, and PKB congruence per `wf-strategic-fit` (supplied with an inline brief).
-- **Quality** (TypeName `marsha`): Qualitative excellence and audience resonance across live rendered outputs against purpose and genre standards per `verify`.
+- **Rule compliance** (TypeName `rbg`): Axiom, rule, ask-authority, data-boundary, and least-invasive enforcement compliance.
+- **Strategic fit** (TypeName `pauli`): Core premise, strategic direction, parsimony, and PKB congruence (supplied with an inline brief).
+- **Quality** (TypeName `marsha`): Pure qualitative excellence and audience resonance across live rendered outputs against external purpose and genre standards per `verify` (excluding primary-source truth audits, runtime test/QA execution, and rule checks).
 
-Every reviewer also judges proportion within its lens: whether the artifact builds more machinery than the request needs, and whether each requested change is worth its cost given the failure's likelihood and consequence. Reviewers immediately self-fix defects that can be resolved without controversy (language updates, data scrubbing under `data-boundaries`, simple deterministic repairs), commit them with `fix(review):`, and document them under `### Reviewer Self-Fixes Applied`. Uncontroversial self-fixes do not trigger `REVISE`; issues lacking a reasonably deterministic solution stay itemized findings.
+Every reviewer also judges proportion within its lens: whether the artifact builds more machinery than the request needs, and whether each requested change is worth its cost given the failure's likelihood and consequence. When running sequentially or holding single-writer branch access, reviewers apply deterministic fixes (`data-boundaries` scrubbing, wording, links), commit (`fix(review): <description>`), and push before `PASS`; during concurrent read-only parallel subagent dispatch, reviewers instead report deterministic repairs under `### Suggested Fixes` for the supervisor or single-writer pass to apply cleanly without concurrent git conflicts. Uncontroversial self-fixes do not trigger `REVISE` once applied; non-deterministic trade-offs stay itemized findings.
 
 ### 3. Dialectical Deliberation & Critical Synthesis _(Proportional to Stakes)_
 
@@ -48,13 +48,13 @@ Synthesize component outputs into a unified findings table and compile itemized 
 - Include a calibration header noting the chosen proportionality (model selection and rounds) and target altitude.
 - Collapse concordant findings across reviewers into a single row that keeps each reviewer's own verdict/disposition; where they differ, state the disposition adopted and why.
 - Give the strategic congruence review (`pauli`) its own row (`PASS`, `REVISE`, or `FAIL`), even when concordant with other rows.
-- Itemize all self-fixes applied across reviewers under `### Reviewer Self-Fixes Applied`. If all identified defects were uncontroversial and self-fixed cleanly, do not issue `REVISE` solely for those items.
-- **Overall verdict**: `PASS`, `REVISE`, or `FAIL`. Any expert reviewer's (`pauli`, `rbg`, or `marsha`) `FAIL` makes the combined verdict `FAIL`. The consolidating agent must never downgrade, overrule, or soften an expert reviewer's `FAIL` (e.g. to `REVISE` or `PASS`). If an expert reviewer is judged too harsh, that is the user's responsibility to fix by reviewing that reviewer agent, not the consolidating agent's job to soften. Any `REVISE` without a `FAIL` forces `REVISE` unless all pass (`PASS`).
+- Itemize all self-fixes applied across reviewers under `### Reviewer Self-Fixes Applied`, and confirm every `fix(review):` commit is pushed so `HEAD` matches the reviewed state before reporting `PASS`. If all identified defects were uncontroversial and self-fixed cleanly, do not issue `REVISE` solely for those items.
+- **Overall verdict**: `PASS`, `REVISE`, or `FAIL`. Preserve per-finding risk-vs-cost proportionality during reconciliation (do not auto-inflate minor convergent items to maximum severity), while never downgrading, overruling, or softening any expert reviewer's (`pauli`, `rbg`, or `marsha`) `FAIL` -- any specialist `FAIL` makes the combined verdict `FAIL`. If an expert reviewer is judged too harsh, that is the user's responsibility to fix by reviewing that reviewer agent, not the consolidating agent's job to soften. Any `REVISE` without a `FAIL` forces `REVISE` unless all pass (`PASS`).
 
 ### 5. Action and Reporting
 
-- **Reviewer self-fixes**: Reviewers apply uncontroversial fixes directly to the working tree / branch, commit immediately (`fix(review): <description>`), and report them under `### Reviewer Self-Fixes Applied`. Issues lacking a reasonably deterministic solution remain as findings.
+- **Reviewer self-fixes**: In sequential/single-writer runs, reviewers commit (`fix(review): <description>`) and push deterministic repairs directly; in concurrent parallel read-only runs, they list deterministic repairs under `### Suggested Fixes` so the supervisor or single-writer pass commits (`fix(review): <description>`), pushes (`HEAD` matching reviewed state), and records them under `### Reviewer Self-Fixes Applied` before `PASS`. Non-deterministic defects remain itemized findings.
 - **Default**: Return the calibration summary, reviewer self-fixes applied, synthesis table, and overall verdict (`PASS`, `REVISE`, or `FAIL`) to the caller.
-- **`comment`**: Run the `data-boundaries` check against destination visibility before posting; then post reconciled feedback to the PR review or task note.
-- **`fix`**: Run the `data-boundaries` check against destination visibility before pushing; apply straightforward mechanical remedies immediately.
+- **`comment`**: Run the `data-boundaries` check against destination visibility before posting. On pull requests, post explicit distinct headers matched cleanly to the reviewed head commit SHA (`## Strategic Review: [PASS | REVISE | FAIL]` and `## RBG Review: [PASS | REVISE | FAIL]`, plus qualitative assessment) to the PR review thread; otherwise post reconciled feedback to the task note.
+- **`fix`**: Run the `data-boundaries` check against destination visibility before pushing; commit and push straightforward mechanical remedies immediately so `HEAD` matches the reviewed state.
 - Write the final verdict and evidence to the artifact's task record.

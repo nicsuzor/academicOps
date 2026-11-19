@@ -36,7 +36,7 @@
 - [enforcement/workflow.md](enforcement/workflow.md) -- the four-step workflow shape and review-depth call.
 - [enforcement/evidence-contract.md](enforcement/evidence-contract.md) -- the universal claim-evidence shape.
 - [enforcement/evidence-contract-enforcement.md](enforcement/evidence-contract-enforcement.md) -- the reminders, gate, and proportional interventions that hold agents to the evidence contract.
-- [enforcement/reviewer-class-standard-check.md](enforcement/reviewer-class-standard-check.md) -- reviewer class-standard verification across changed files in candidate changes.
+- [enforcement/rbg-review-coverage-and-rule-dispatch.md](enforcement/rbg-review-coverage-and-rule-dispatch.md) -- complete SHA-matched PR review coverage and cross-repository rule dispatch and isolation.
 - [enforcement/coordinator-failure-enforcement.md](enforcement/coordinator-failure-enforcement.md) -- design enforcement moves and observable build criteria for five coordinator failure classes.
 - [enforcement/auto-mode-classifier.md](enforcement/auto-mode-classifier.md) -- Claude Code auto-mode classifier design and cost model.
 - [enforcement/handback-format-design.md](enforcement/handback-format-design.md) -- premise-check handback format design review: empirical sample, Toulmin structure preservation, and migration plan.
@@ -76,7 +76,7 @@
 - [workflows/plan-view.md](workflows/plan-view.md) -- formal plan view generation and redrawing on decomposed objectives.
 - [workflows/conceptual-review-workflow.md](workflows/conceptual-review-workflow.md) -- composable-lens multi-agent review of intellectual artifacts.
 - [workflows/default-dialectic-review.md](workflows/default-dialectic-review.md) -- dialectical multi-agent evaluation as the workflow library's default independent review stage.
-- [workflows/pr-lifecycle.md](workflows/pr-lifecycle.md) -- PR lifecycle workflows: sweep task queuing and move-along fan-out.
+- [workflows/pr-lifecycle.md](workflows/pr-lifecycle.md) -- partitioned PR gates, sweep triage, Class D triggers, and move-along lifecycle.
 - [workflows/research-decomposition.md](workflows/research-decomposition.md) -- research-specific decomposition primitives and sequencing.
 - [workflows/reconcile.md](workflows/reconcile.md) -- GitHub ↔ PKB task-graph reconciliation.
 - [workflows/strategic-review.md](workflows/strategic-review.md) -- design intent for the parallel-review-and-reconcile quality gate.

@@ -33,8 +33,8 @@ As a compliance reviewer evaluating artifacts across host, container, or remote 
 
 User-scoped rules operate across two distinct enforcement subsystems with separate reachability boundaries and execution models:
 
-1. **In-Session Runtime Evaluator (COPE):** Automated turn-by-turn tool-call classification. The evaluator runs in low-latency hook subprocesses without asynchronous tool execution capabilities. It sources user-scoped rules from local Markdown files (`*.md`) located in the directory specified by `COPE_USER_RULES_DIR`.
-2. **Qualitative Compliance Reviewer (RBG):** Deliberative compliance review of specifications, code, and pull requests. RBG operates in sandboxed execution environments, worker containers, and headless agent sessions where arbitrary host filesystem paths are unmounted and unreachable. RBG reads only plugin distribution assets (`skills/axioms/`), the current repository (`.agents/rules/`), and the knowledge base. Consequently, RBG sources user-scoped rules from the knowledge base via its `type: rule` document attribute.
+1. **In-Session Runtime Evaluator (COPE, `plugins/rbg/hooks/rules.py`):** Automated turn-by-turn tool-call classification. The evaluator runs in low-latency hook subprocesses without asynchronous tool execution capabilities. It sources user-scoped rules strictly from local Markdown files (`*.md`) located in the directory specified by `$COPE_USER_RULES_DIR` alongside shipped `plugins/rbg/skills/axioms/*.md` and project `.agents/rules/*.md`.
+2. **Qualitative Compliance Reviewer (RBG, `plugins/rbg/agents/rbg.md`):** Deliberative compliance review of specifications, code, and pull requests. RBG operates across interactive sessions, polecat containers, and CI workflows where host filesystem rule directories are unmounted and unreachable. RBG reads strictly injected `always_on` universal axioms (or `plugins/rbg/skills/axioms/*.md`), the target repository's `.agents/rules/*.md`, and active knowledge base `type: rule` documents. RBG never reads `$COPE_USER_RULES_DIR`.
 
 ### 2. Knowledge Base Sourcing Contract for Compliance Review
 
@@ -66,9 +66,9 @@ An axiom always overrides a project or user rule; a project rule always override
 
 | Deployment Surface | Runtime Evaluator (COPE) | Compliance Reviewer (RBG) |
 | - | - | - |
-| **Interactive Host Session** | Reads `COPE_USER_RULES_DIR/*.md`. Silent no-op when unset. | Queries knowledge base documents with `type: rule`. |
-| **Polecat Container Worker** | Reads container mount `/etc/cope/rules` (`ENV COPE_USER_RULES_DIR=/etc/cope/rules`). | Queries knowledge base documents with `type: rule`. |
-| **Continuous Integration (CI)** | Deterministic run with `COPE_USER_RULES_DIR` unset (0 user rules). | Evaluates universal axioms and project rules (0 user rules when no PKB configured). |
+| **Interactive Host Session** | Reads `$COPE_USER_RULES_DIR/*.md` alongside axioms and `.agents/rules/*.md` (`plugins/rbg/hooks/rules.py`). Silent no-op when unset. | Evaluates `always_on` axioms, `.agents/rules/*.md`, and PKB documents with `type: rule` (never `$COPE_USER_RULES_DIR`). |
+| **Polecat Container Worker** | Reads container mount `/etc/cope/rules` (`ENV COPE_USER_RULES_DIR=/etc/cope/rules`). | Evaluates `always_on` axioms, `.agents/rules/*.md`, and PKB documents with `type: rule` (never `$COPE_USER_RULES_DIR`). |
+| **Continuous Integration (CI)** | Deterministic run with `COPE_USER_RULES_DIR` unset (0 user rules). | Evaluates shipped universal axioms and repository `.agents/rules/*.md` (0 user rules when no PKB configured). |
 
 ## Open questions
 
