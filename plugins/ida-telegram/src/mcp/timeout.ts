@@ -28,6 +28,21 @@ export const LONG_RUNNING_TOOLS: ReadonlySet<string> = new Set([
   "send_video_note",
 ]);
 
+function hasLocalUploadRef(ref: unknown): boolean {
+  if (typeof ref !== "string" || !ref.trim()) return false;
+  if (/^https?:\/\//i.test(ref)) return false;
+  return ref.includes("/") || ref.includes("\\") || /\.[a-zA-Z0-9]{1,8}$/.test(ref);
+}
+
+/** Skip 30s MCP cutoff only for exempt tools or `send_rich_message` with multipart local media uploads. */
+export function isToolDeadlineExempt(toolName: string, args?: Record<string, unknown>): boolean {
+  if (LONG_RUNNING_TOOLS.has(toolName)) return true;
+  if (toolName === "send_rich_message" && Array.isArray(args?.media)) {
+    return args.media.some((item) => item && typeof item === "object" && hasLocalUploadRef((item as Record<string, unknown>).file));
+  }
+  return false;
+}
+
 export class ToolTimeoutError extends Error {
   constructor(
     public readonly toolName: string,
@@ -42,9 +57,10 @@ export class ToolTimeoutError extends Error {
 export async function withToolDeadline<T>(
   toolName: string,
   run: () => Promise<T>,
-  timeoutMs: number = TOOL_TIMEOUT_MS
+  timeoutMs: number = TOOL_TIMEOUT_MS,
+  args?: Record<string, unknown>
 ): Promise<T> {
-  if (LONG_RUNNING_TOOLS.has(toolName)) {
+  if (isToolDeadlineExempt(toolName, args)) {
     return run();
   }
   let timer: ReturnType<typeof setTimeout> | undefined;

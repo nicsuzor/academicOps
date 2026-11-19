@@ -125,7 +125,7 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     // Stub callApi to capture outbound Telegram payloads
     (bot as any).callApi = async (method: string, payload: Record<string, unknown>) => {
       apiCalls.push({ method, payload });
-      if (method === "sendMessage") {
+      if (method === "sendWidget" || method === "sendMessage") {
         return { ok: true, result: { message_id: ++nextMessageId } };
       }
       return { ok: true, result: true };
@@ -173,17 +173,15 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       },
     });
 
-    const sentCards = apiCalls.filter((c) => c.method === "sendMessage");
-    // Must render 3 separate Telegram cards (one per decision in batch)
-    expect(sentCards.length).toBe(3);
+    const sentWidgets = apiCalls.filter((c) => c.method === "sendWidget");
+    // Must render 3 separate Telegram HTML Widgets (one per decision in batch)
+    expect(sentWidgets.length).toBe(3);
 
-    // Card 1 must have formatted UTF-16 entities (bold header, inline code, expandable_blockquote) and option descriptions
-    const card1Payload = sentCards[0].payload;
-    expect(card1Payload.text as string).toContain("Value model weight");
-    expect(card1Payload.text as string).toContain("Prioritizes due-within-48h tasks immediately");
-    expect(Array.isArray(card1Payload.entities)).toBe(true);
-    expect((card1Payload.entities as any[]).some((e) => e.type === "bold")).toBe(true);
-    expect((card1Payload.entities as any[]).some((e) => e.type === "expandable_blockquote")).toBe(true);
+    // Card 1 widget must contain header, question, option descriptions, and allow_queries=true
+    const card1Payload = sentWidgets[0].payload;
+    expect(card1Payload.allow_queries).toBe(true);
+    expect(card1Payload.html as string).toContain("Value model weight");
+    expect(card1Payload.html as string).toContain("Prioritizes due-within-48h tasks immediately");
 
     // 2. Send a result card with custom action buttons and PR review via `reply`
     await mcp.handleMessage({
@@ -221,11 +219,12 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
 
     await (bot as any).handleUpdate({
       update_id: 501,
-      callback_query: {
-        id: "cb_1",
-        from: { id: 999, first_name: "Alex" },
-        message: { message_id: 101, chat: { id: 999, type: "private" }, text: card1Payload.text as string },
-        data: `q:${q1.id}:0:0`,
+      widget_query: {
+        id: "wq_1",
+        from: { id: 999, is_bot: false, first_name: "Alex" },
+        chat_instance: "batch_chat",
+        message: { message_id: 101, date: 1700000000, chat: { id: 999, type: "private" } },
+        data: `q:${q1.id}:opt:0`,
       },
     });
 
@@ -234,57 +233,37 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     expect(channelEvents[0].meta.question_id).toBe(q1.id);
     expect(channelEvents[0].meta.choice).toBe("Raise to 2.5x (Recommended)");
 
-    const edit1 = apiCalls.find((c) => c.method === "editMessageText" && c.payload.message_id === 101);
+    const edit1 = apiCalls.find((c) => c.method === "editMessageWidgetData" && c.payload.message_id === 101);
     expect(edit1).toBeDefined();
-    expect(edit1?.payload.text as string).toContain("Selected: Raise to 2.5x (Recommended) ✅");
-    expect((edit1?.payload.reply_markup as any)?.inline_keyboard).toEqual([]);
+    expect(JSON.parse(edit1?.payload.chat_data as string)).toMatchObject({
+      s: "answered",
+      lbl: "Raise to 2.5x (Recommended)",
+    });
 
-    // 4. Resolve Card 2 (multi-select: toggle option 0 and option 2, then tap Done)
+    // 4. Resolve Card 2 (multi-select: submit bitmask for options 0 and 2 -> 1 + 4 = 5)
     await (bot as any).handleUpdate({
       update_id: 502,
-      callback_query: {
-        id: "cb_2a",
-        from: { id: 999, first_name: "Alex" },
-        message: { message_id: 102, chat: { id: 999, type: "private" }, text: sentCards[1].payload.text as string },
-        data: `q:${q2.id}:0:0`,
-      },
-    });
-    // Must NOT have emitted channel event yet on multi-select toggle!
-    expect(channelEvents.length).toBe(1);
-
-    await (bot as any).handleUpdate({
-      update_id: 503,
-      callback_query: {
-        id: "cb_2b",
-        from: { id: 999, first_name: "Alex" },
-        message: { message_id: 102, chat: { id: 999, type: "private" }, text: sentCards[1].payload.text as string },
-        data: `q:${q2.id}:0:2`,
-      },
-    });
-    expect(channelEvents.length).toBe(1);
-
-    // Now tap Done on Card 2
-    await (bot as any).handleUpdate({
-      update_id: 504,
-      callback_query: {
-        id: "cb_2c",
-        from: { id: 999, first_name: "Alex" },
-        message: { message_id: 102, chat: { id: 999, type: "private" }, text: sentCards[1].payload.text as string },
-        data: `q:${q2.id}:0:done`,
+      widget_query: {
+        id: "wq_2",
+        from: { id: 999, is_bot: false, first_name: "Alex" },
+        chat_instance: "batch_chat",
+        message: { message_id: 102, date: 1700000000, chat: { id: 999, type: "private" } },
+        data: `q:${q2.id}:m:5`,
       },
     });
     expect(channelEvents.length).toBe(2);
     expect(channelEvents[1].meta.question_id).toBe(q2.id);
     expect(channelEvents[1].meta.choice).toBe("Allow GitHub API, Block raw socket egress");
 
-    // 5. Resolve Card 3 via "✏️ Other" force_reply prompt and custom text reply
+    // 5. Resolve Card 3 via Other force_reply prompt and custom text reply
     await (bot as any).handleUpdate({
       update_id: 505,
-      callback_query: {
-        id: "cb_3_other",
-        from: { id: 999, first_name: "Alex" },
-        message: { message_id: 103, chat: { id: 999, type: "private" }, text: sentCards[2].payload.text as string },
-        data: `q:${q3.id}:0:other`,
+      widget_query: {
+        id: "wq_3_other",
+        from: { id: 999, is_bot: false, first_name: "Alex" },
+        chat_instance: "batch_chat",
+        message: { message_id: 103, date: 1700000000, chat: { id: 999, type: "private" } },
+        data: `q:${q3.id}:other`,
       },
     });
     // Tapping Other should send a force_reply prompt and NOT resolve with empty string
@@ -1579,9 +1558,9 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     const permRelay = new PermissionRelay();
 
     const bot = new TelegramBotClient(config as any, broker, permRelay, () => {});
-    // Simulate Telegram sendMessage failing
+    // Simulate Telegram sendWidget/sendMessage failing
     (bot as any).callApi = async (method: string) => {
-      if (method === "sendMessage") {
+      if (method === "sendWidget" || method === "sendMessage") {
         return { ok: false, description: "Bad Request: chat not found" };
       }
       return { ok: true };
@@ -1858,8 +1837,9 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     }
   });
 
-  test("AC1.3: sendQuestionCard falls back to plain text send when formatted entities are rejected", async () => {
+  test("AC1.3: sendReply falls back to plain text send when formatted entities are rejected, while sendQuestionCard never downgrades failed sendWidget silently", async () => {
     const { TelegramBotClient } = await import("../src/telegram/bot.js");
+    const { formatMarkdownToEntities } = await import("../src/telegram/format.js");
 
     const config = {
       botToken: "test-token",
@@ -1881,6 +1861,9 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     const bot = new TelegramBotClient(config as any, broker, permRelay, () => {});
     (bot as any).callApi = async (method: string, payload: any) => {
       calls.push({ method, payload });
+      if (method === "sendWidget") {
+        return { ok: false, description: "Bad Request: widget rejected" };
+      }
       // First sendMessage with entities fails
       if (method === "sendMessage" && payload.entities) {
         return { ok: false, description: "Bad Request: can't parse entities" };
@@ -1893,20 +1876,25 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     };
 
     const q = await broker.askUser({
-      question: "Fallback test question?",
+      question: "No silent fallback question?",
       options: [{ label: "OK" }],
       chatId: 999,
     });
-
     const card = broker.renderQuestionCard(q.questionId)!;
-    const sendRes = await bot.sendQuestionCard(999, q.questionId, card);
+    const widgetFailRes = await bot.sendQuestionCard(999, q.questionId, card);
+    expect(widgetFailRes.ok).toBe(false);
+    expect(calls.some((c) => c.method === "sendMessage")).toBe(false);
 
-    expect(sendRes.ok).toBe(true);
-    expect(sendRes.result.message_id).toBe(88888);
-    // Verified fallback plain text call was made with keyboard intact
+    calls.length = 0;
+    const replyRes = await bot.sendReply({
+      chatId: 999,
+      formatted: formatMarkdownToEntities("**Bold** reply"),
+      buttons: [{ label: "Continue", callback_data: "cont:1" }],
+    });
+    expect(replyRes.ok).toBe(true);
+    expect(replyRes.messageId).toBe(88888);
     expect(calls.length).toBe(2);
     expect(calls[1].payload.entities).toBeUndefined();
     expect(calls[1].payload.reply_markup.inline_keyboard.length).toBeGreaterThanOrEqual(1);
-    expect(broker.getQuestion(q.questionId)!.messageId).toBe(88888);
   });
 });

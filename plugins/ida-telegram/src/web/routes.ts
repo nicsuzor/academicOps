@@ -9,6 +9,7 @@ import {
 } from "./auth.js";
 import { fetchPrDiff, FormattedPrDiff } from "./review.js";
 import { PluginConfig } from "../config.js";
+import { buildSettledWidgetChatData } from "../telegram/widgets.js";
 
 export interface WebContext {
   store: PluginStore;
@@ -19,6 +20,8 @@ export interface WebContext {
   emitChannelEvent: (event: string, content: string, meta: Record<string, unknown>) => void;
   resolvePermissionRelay?: (id: string, decision: "allow" | "deny") => void;
   editTelegramCard?: (chatId: number, messageId: number, text: string, replyMarkup?: Record<string, unknown>) => Promise<void>;
+  editTelegramWidgetData?: (chatId: number, messageId: number, chatData: string) => Promise<void>;
+  editTelegramReplyMarkup?: (chatId: number, messageId: number) => Promise<void>;
   bot?: any;
 }
 
@@ -293,8 +296,20 @@ export async function handleApiRequest(req: Request, ctx: WebContext): Promise<R
             headers: { "Content-Type": "application/json" },
           });
         }
-        if (ctx.editTelegramCard && result.question.chatId && result.question.messageId) {
-          await ctx.editTelegramCard(result.question.chatId, result.question.messageId, result.cardText, { inline_keyboard: [] });
+        if (result.question.chatId && result.question.messageId) {
+          if (result.question.presentation === "widget" && ctx.editTelegramWidgetData) {
+            await ctx.editTelegramWidgetData(
+              result.question.chatId,
+              result.question.messageId,
+              buildSettledWidgetChatData("answered", result.channelEvent.choice)
+            );
+          } else if (result.question.presentation === "rich" && ctx.editTelegramReplyMarkup) {
+            await ctx.editTelegramReplyMarkup(result.question.chatId, result.question.messageId);
+          } else if (ctx.editTelegramCard) {
+            await ctx.editTelegramCard(result.question.chatId, result.question.messageId, result.cardText, {
+              inline_keyboard: [],
+            });
+          }
         }
         ctx.emitChannelEvent(
           result.channelEvent.event,
@@ -365,8 +380,20 @@ export async function handleApiRequest(req: Request, ctx: WebContext): Promise<R
           });
         }
 
-        if (ctx.editTelegramCard && result.question.chatId && result.question.messageId) {
-          await ctx.editTelegramCard(result.question.chatId, result.question.messageId, result.cardText, { inline_keyboard: [] });
+        if (result.question.chatId && result.question.messageId) {
+          if (result.question.presentation === "widget" && ctx.editTelegramWidgetData) {
+            await ctx.editTelegramWidgetData(
+              result.question.chatId,
+              result.question.messageId,
+              buildSettledWidgetChatData("closed", result.channelEvent.reason)
+            );
+          } else if (result.question.presentation === "rich" && ctx.editTelegramReplyMarkup) {
+            await ctx.editTelegramReplyMarkup(result.question.chatId, result.question.messageId);
+          } else if (ctx.editTelegramCard) {
+            await ctx.editTelegramCard(result.question.chatId, result.question.messageId, result.cardText, {
+              inline_keyboard: [],
+            });
+          }
         }
 
         ctx.emitChannelEvent(

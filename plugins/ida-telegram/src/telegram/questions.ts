@@ -8,6 +8,8 @@ export interface QuestionOption {
   label: string;
   description?: string;
   recommended?: boolean;
+  pros?: string[];
+  cons?: string[];
 }
 
 export interface QuestionPayload {
@@ -15,9 +17,13 @@ export interface QuestionPayload {
   header?: string;
   context?: string;
   recommendation?: string;
+  kind?: "question" | "decision";
+  stakes?: string;
+  presentation?: "widget" | "rich";
   options: QuestionOption[];
   multiSelect?: boolean;
   allowOther?: boolean;
+  allowDefer?: boolean;
   turnId?: string;
   turn_id?: string;
   sessionId?: string;
@@ -43,7 +49,7 @@ export interface StoredQuestion extends QuestionPayload {
   text: string;
   createdAt: string;
   created_at: string;
-  status: "pending" | "answered" | "closed" | "failed";
+  status: "pending" | "answered" | "closed" | "deferred" | "failed";
   sessionId?: string;
   session_id?: string;
   turnId?: string;
@@ -100,9 +106,26 @@ export interface QuestionClosedEvent {
   thread_id?: string;
 }
 
+export interface QuestionDeferredEvent {
+  event: "question_deferred";
+  question_id: string;
+  question: string;
+  choice: "Deferred";
+  turn_id?: string;
+  session_id?: string;
+  message_thread_id?: string;
+  thread_id?: string;
+}
+
 export interface ResolveAnswerResult {
   cardText: string;
   channelEvent: QuestionAnswerEvent;
+  question: StoredQuestion;
+}
+
+export interface ResolveDeferResult {
+  cardText: string;
+  channelEvent: QuestionDeferredEvent;
   question: StoredQuestion;
 }
 
@@ -409,6 +432,39 @@ export class QuestionBroker {
     };
 
     return { cardText, channelEvent, question: q };
+  }
+
+  public async resolveDefer(id: string): Promise<ResolveDeferResult | null> {
+    const q = this.questions.get(id);
+    if (!q || q.status !== "pending") return null;
+
+    q.status = "deferred";
+    q.closedReason = "Deferred by user";
+    q.closedAt = new Date().toISOString();
+    this.saveState();
+
+    const headerPrefix = q.header ? `**${q.header}**\n\n` : "";
+    const cardText = `${headerPrefix}**${q.question}**\n\nDeferred for later review`;
+    const threadId = q.messageThreadId ?? q.message_thread_id ?? q.threadId ?? q.thread_id;
+    const channelEvent: QuestionDeferredEvent = {
+      event: "question_deferred",
+      question_id: id,
+      question: q.question,
+      choice: "Deferred",
+      ...(q.turnId || q.turn_id ? { turn_id: q.turnId || q.turn_id } : {}),
+      ...(q.sessionId || q.session_id ? { session_id: q.sessionId || q.session_id } : {}),
+      ...(threadId !== undefined ? { message_thread_id: String(threadId), thread_id: String(threadId) } : {}),
+    };
+
+    return { cardText, channelEvent, question: q };
+  }
+
+  public setPresentation(id: string, presentation: "widget" | "rich") {
+    const q = this.questions.get(id);
+    if (q) {
+      q.presentation = presentation;
+      this.saveState();
+    }
   }
 
   public async closeQuestion(id: string, reason: string): Promise<CloseQuestionResult | null> {

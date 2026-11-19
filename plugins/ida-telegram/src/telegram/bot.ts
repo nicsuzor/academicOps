@@ -1,10 +1,23 @@
 import { PluginConfig } from "../config.js";
 import { resolveBotCommands } from "./commands.js";
 import { FormattedMessage, formatMarkdownToEntities } from "./format.js";
-import { parseInboundUpdate, TelegramUpdate } from "./inbound.js";
-import { QuestionBroker, matchOptionIndex } from "./questions.js";
+import { parseInboundUpdate, TelegramCallbackQuery, TelegramMessage, TelegramUpdate } from "./inbound.js";
+import { QuestionBroker, StoredQuestion, matchOptionIndex } from "./questions.js";
 import { FeedbackManager } from "./feedback.js";
 import { prepareVoiceText, buildVoiceInEvent } from "./voice.js";
+import {
+  buildInputRichMessagePayload,
+  extractRichMessageText,
+  InputRichMessageSpec,
+  validateRichMessageContent,
+} from "./rich-message.js";
+import {
+  buildQuestionWidget,
+  buildSettledWidgetChatData,
+  formatQuestionRichMarkdown,
+  validateWidgetData,
+  validateWidgetHtml,
+} from "./widgets.js";
 import { PermissionRelay } from "../mcp/permissions.js";
 import { PluginStore } from "../store.js";
 import { broadcastSseEvent } from "../web/routes.js";
@@ -299,15 +312,70 @@ export class TelegramBotClient {
     return this.messageExcerpts.get(messageId);
   }
 
-  private async callApi(method: string, payload: Record<string, unknown>): Promise<any> {
+  private async callApi(method: string, payload: Record<string, unknown>, timeoutMs?: number): Promise<any> {
     const baseUrl = this.config.apiBaseUrl || "https://api.telegram.org";
     const url = `${baseUrl}/bot${this.config.botToken}/${method}`;
+    const effectiveTimeout = timeoutMs ?? (method === "getUpdates" ? 35_000 : 30_000);
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(effectiveTimeout),
     });
     return await res.json();
+  }
+
+  public async sendVoiceReply(
+    chatId: number,
+    summaryText: string,
+    options: { replyTo?: number; messageThreadId?: number } = {}
+  ): Promise<{ ok: boolean; result?: any; error?: string }> {
+    if (!this.config.voiceSpeakCmd) {
+      return { ok: false, error: "VOICE_SPEAK_CMD is not configured" };
+    }
+    const stamp = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const tempText = join(tmpdir(), `voice_out_${stamp}.txt`);
+    const tempOgg = join(tmpdir(), `voice_out_${stamp}.ogg`);
+    try {
+      const spoken = prepareVoiceText(summaryText);
+      if (!existsSync(this.config.stateDir)) {
+        mkdirSync(this.config.stateDir, { recursive: true });
+      }
+      writeFileSync(tempText, spoken, "utf-8");
+
+      await execFileAsync(this.config.voiceSpeakCmd, [tempText, tempOgg], {
+        timeout: 60000,
+        cwd: this.config.stateDir,
+        env: { ...process.env, ...(this.config.env || {}) },
+      });
+
+      if (!existsSync(tempOgg)) {
+        throw new Error(`TTS script did not produce output file: ${tempOgg}`);
+      }
+      const oggBuffer = readFileSync(tempOgg);
+      if (oggBuffer.byteLength === 0) {
+        throw new Error(`TTS script produced an empty audio file: ${tempOgg}`);
+      }
+
+      const voiceRes = await this.callVoiceApi(chatId, oggBuffer, {
+        replyTo: options.replyTo,
+        messageThreadId: options.messageThreadId,
+      });
+      if (!voiceRes?.ok || !voiceRes?.result) {
+        return { ok: false, error: voiceRes?.description || "Telegram sendVoice API call failed" };
+      }
+      this.recordMessageThread(voiceRes.result.message_id, options.messageThreadId);
+      return { ok: true, result: voiceRes.result };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    } finally {
+      try {
+        if (existsSync(tempText)) unlinkSync(tempText);
+        if (existsSync(tempOgg)) unlinkSync(tempOgg);
+      } catch {
+        // Ignore temp cleanup errors
+      }
+    }
   }
 
   private async callVoiceApi(
@@ -346,6 +414,7 @@ export class TelegramBotClient {
     const res = await fetch(url, {
       method: "POST",
       body: formData,
+      signal: AbortSignal.timeout(120_000),
     });
     return await res.json();
   }
@@ -795,6 +864,85 @@ export class TelegramBotClient {
     });
     const effectiveThreadId = messageThreadId ?? this.getLastThreadId(chatId);
     const effectiveReplyTo = effectiveThreadId === undefined ? this.getLastInboundMessageId(chatId) : undefined;
+    const storedQ = this.broker.getQuestion(qid);
+    const presentation = storedQ?.presentation ?? "widget";
+
+    if (storedQ && presentation === "widget") {
+      try {
+        const built = buildQuestionWidget({
+          id: storedQ.id,
+          question: storedQ.question,
+          header: storedQ.header,
+          context: storedQ.context,
+          kind: storedQ.kind,
+          stakes: storedQ.stakes,
+          multiSelect: storedQ.multiSelect,
+          allowOther: storedQ.allowOther,
+          allowDefer: storedQ.allowDefer,
+          options: storedQ.options,
+        });
+        const detailsBtn = card.buttons.find((b) => b.web_app);
+        const widgetRes = await this.sendWidget({
+          chatId,
+          html: built.html,
+          chatData: built.chatData,
+          caption: built.caption,
+          allowQueries: true,
+          messageThreadId: effectiveThreadId,
+          inlineKeyboard: detailsBtn ? [[{ text: detailsBtn.text, web_app: detailsBtn.web_app }]] : undefined,
+        });
+        if (widgetRes?.ok && widgetRes?.result?.message_id) {
+          this.broker.setPresentation(qid, "widget");
+          this.broker.setMessageId(qid, widgetRes.result.message_id);
+          if (this.store) {
+            this.store.setLastCard(chatId, widgetRes.result.message_id, built.caption);
+          }
+          return { ok: true, messageId: widgetRes.result.message_id, result: widgetRes.result };
+        }
+        return {
+          ok: false,
+          description: widgetRes?.description || "Telegram sendWidget failed",
+          error_code: widgetRes?.error_code,
+        };
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) };
+      }
+    }
+
+    if (storedQ && presentation === "rich") {
+      const markdown = formatQuestionRichMarkdown({
+        id: storedQ.id,
+        question: storedQ.question,
+        header: storedQ.header,
+        context: storedQ.context,
+        kind: storedQ.kind,
+        stakes: storedQ.stakes,
+        multiSelect: storedQ.multiSelect,
+        allowOther: storedQ.allowOther,
+        allowDefer: storedQ.allowDefer,
+        options: storedQ.options,
+      });
+      const richRes = await this.sendRichMessage({
+        chatId,
+        richMessage: { markdown },
+        inlineKeyboard: inline_keyboard,
+        messageThreadId: effectiveThreadId,
+      });
+      if (richRes?.ok && richRes?.result?.message_id) {
+        this.broker.setPresentation(qid, "rich");
+        this.broker.setMessageId(qid, richRes.result.message_id);
+        if (this.store) {
+          this.store.setLastCard(chatId, richRes.result.message_id, card.text);
+        }
+        return { ok: true, messageId: richRes.result.message_id, result: richRes.result };
+      }
+      return {
+        ok: false,
+        description: richRes?.description || "Telegram sendRichMessage failed",
+        error_code: richRes?.error_code,
+      };
+    }
+
     const payload: Record<string, unknown> = {
       chat_id: chatId,
       text: formatted.plainText,
@@ -1264,6 +1412,7 @@ export class TelegramBotClient {
     const res = await fetch(url, {
       method: "POST",
       body: formData,
+      signal: AbortSignal.timeout(120_000),
     });
     return await res.json();
   }
@@ -1544,10 +1693,67 @@ export class TelegramBotClient {
   public async sendMessageDraft(options: {
     chatId: number;
     draftId: number;
-    text: string;
+    text?: string;
+    markdown?: string;
+    html?: string;
+    blocks?: Array<Record<string, unknown>>;
+    isRtl?: boolean;
+    skipEntityDetection?: boolean;
+    canStop?: boolean;
+    keepOnStop?: boolean;
     messageThreadId?: number;
   }): Promise<{ ok: boolean; effectiveThreadId?: number; description?: string; error_code?: number }> {
     const routing = this.resolveOutboundThreadAndReply(options.chatId, options.messageThreadId, undefined, false);
+    const isRich =
+      options.markdown !== undefined || options.html !== undefined || options.blocks !== undefined;
+
+    if (isRich) {
+      if (options.text !== undefined) {
+        return { ok: false, description: "Provide either text or one of markdown, html, blocks on send_message_draft" };
+      }
+      if (options.chatId < 0) {
+        return { ok: false, description: "Rich message drafts are restricted to private chats (chat_id > 0)" };
+      }
+      const check = validateRichMessageContent({
+        markdown: options.markdown,
+        html: options.html,
+        blocks: options.blocks,
+        allowMedia: false,
+      });
+      if (!check.ok) {
+        return { ok: false, description: check.error };
+      }
+      const richMessage: Record<string, unknown> = {};
+      if (options.markdown !== undefined) richMessage.markdown = options.markdown;
+      if (options.html !== undefined) richMessage.html = options.html;
+      if (options.blocks !== undefined) richMessage.blocks = options.blocks;
+      if (options.isRtl !== undefined) richMessage.is_rtl = options.isRtl;
+      if (options.skipEntityDetection !== undefined) richMessage.skip_entity_detection = options.skipEntityDetection;
+
+      const payload: Record<string, unknown> = {
+        chat_id: options.chatId,
+        draft_id: options.draftId,
+        rich_message: richMessage,
+      };
+      if (routing.effectiveThreadId !== undefined) payload.message_thread_id = routing.effectiveThreadId;
+      if (options.canStop !== undefined) payload.can_stop = options.canStop;
+      if (options.keepOnStop !== undefined) payload.keep_on_stop = options.keepOnStop;
+
+      const res = await this.callApi("sendRichMessageDraft", payload);
+      if (!res?.ok) {
+        return {
+          ok: false,
+          description: res?.description || "Telegram sendRichMessageDraft failed",
+          error_code: res?.error_code,
+        };
+      }
+      return { ok: true, effectiveThreadId: routing.effectiveThreadId };
+    }
+
+    if (typeof options.text !== "string" || options.text.trim().length === 0) {
+      return { ok: false, description: "send_message_draft requires non-empty text or rich content" };
+    }
+
     const formatted = formatMarkdownToEntities(options.text);
     const payload: Record<string, unknown> = {
       chat_id: options.chatId,
@@ -1576,6 +1782,256 @@ export class TelegramBotClient {
       };
     }
     return { ok: true, effectiveThreadId: routing.effectiveThreadId };
+  }
+
+  public async sendRichMessage(options: {
+    chatId: number;
+    richMessage: InputRichMessageSpec;
+    messageThreadId?: number;
+    replyTo?: number;
+    quoteRichTexts?: string[];
+    inlineKeyboard?: Array<Array<Record<string, unknown>>>;
+    feedbackButtons?: boolean;
+    voice?: boolean;
+    disableNotification?: boolean;
+    protectContent?: boolean;
+    messageEffectId?: string;
+  }): Promise<{
+    ok: boolean;
+    result?: any;
+    effectiveThreadId?: number;
+    voiceMessageId?: number;
+    voiceError?: string;
+    description?: string;
+    error_code?: number;
+  }> {
+    const check = validateRichMessageContent({ ...options.richMessage, allowMedia: true });
+    if (!check.ok) {
+      return { ok: false, description: check.error };
+    }
+
+    const routing = this.resolveOutboundThreadAndReply(options.chatId, options.messageThreadId, options.replyTo);
+    const files: Array<{ fieldName: string; filePath: string }> = [];
+    const richPayload = buildInputRichMessagePayload(options.richMessage, files, (ref) => this.isLocalFilePath(ref));
+
+    const payload: Record<string, unknown> = {
+      chat_id: options.chatId,
+      rich_message: richPayload,
+    };
+    if (routing.effectiveThreadId !== undefined) payload.message_thread_id = routing.effectiveThreadId;
+    if (routing.effectiveReplyTo !== undefined) {
+      const replyParams: Record<string, unknown> = { message_id: routing.effectiveReplyTo };
+      if (options.quoteRichTexts && options.quoteRichTexts.length > 0) {
+        replyParams.quote_rich_texts = options.quoteRichTexts;
+      }
+      payload.reply_parameters = replyParams;
+    } else if (options.quoteRichTexts && options.quoteRichTexts.length > 0) {
+      payload.reply_parameters = { quote_rich_texts: options.quoteRichTexts };
+    }
+
+    const kbRows = [...(options.inlineKeyboard || [])];
+    if (options.feedbackButtons) {
+      kbRows.push(this.feedbackManager.getInitialFeedbackButtons());
+    }
+    if (kbRows.length > 0) {
+      payload.reply_markup = { inline_keyboard: kbRows };
+    }
+    if (options.disableNotification !== undefined) payload.disable_notification = options.disableNotification;
+    if (options.protectContent !== undefined) payload.protect_content = options.protectContent;
+    if (options.messageEffectId !== undefined) payload.message_effect_id = options.messageEffectId;
+
+    const excerpt = extractRichMessageText(options.richMessage);
+    const res = await this.callMultipartOrJsonApi("sendRichMessage", payload, files);
+    const finalized = this.finalizeSentMessageResult(options.chatId, res, routing.effectiveThreadId, excerpt);
+    if (!finalized.ok) return finalized;
+
+    const shouldVoice =
+      options.voice ??
+      (this.config.voiceReplies === "mirror" &&
+        (this.lastInboundWasVoiceByChat.get(options.chatId) ??
+          Boolean(this.store?.getChatState(options.chatId)?.lastInboundVoice)));
+
+    let voiceMessageId: number | undefined;
+    let voiceError: string | undefined;
+    if (shouldVoice && excerpt) {
+      const vRes = await this.sendVoiceReply(options.chatId, excerpt, {
+        replyTo: finalized.result?.message_id,
+        messageThreadId: finalized.effectiveThreadId,
+      });
+      if (vRes?.ok && vRes.result?.message_id) {
+        voiceMessageId = vRes.result.message_id;
+      } else {
+        voiceError = vRes?.error || "Voice summary synthesis failed";
+      }
+    }
+
+    return {
+      ...finalized,
+      ...(voiceMessageId !== undefined ? { voiceMessageId } : {}),
+      ...(voiceError ? { voiceError } : {}),
+    };
+  }
+
+  public async editRichMessage(options: {
+    chatId: number;
+    messageId: number;
+    richMessage: InputRichMessageSpec;
+    inlineKeyboard?: Array<Array<Record<string, unknown>>>;
+  }): Promise<{ ok: boolean; result?: any; description?: string; error_code?: number }> {
+    const check = validateRichMessageContent({ ...options.richMessage, allowMedia: false });
+    if (!check.ok) {
+      return { ok: false, description: check.error };
+    }
+    const richPayload = buildInputRichMessagePayload(options.richMessage, [], () => false);
+    const payload: Record<string, unknown> = {
+      chat_id: options.chatId,
+      message_id: options.messageId,
+      rich_message: richPayload,
+    };
+    if (options.inlineKeyboard) {
+      payload.reply_markup = { inline_keyboard: options.inlineKeyboard };
+    }
+    const res = await this.callApi("editMessageText", payload);
+    if (res?.ok) {
+      this.recordMessageExcerpt(options.messageId, extractRichMessageText(options.richMessage));
+    }
+    return res;
+  }
+
+  public async sendWidget(options: {
+    chatId: number;
+    html: string;
+    width?: number;
+    height?: number;
+    publicData?: string;
+    chatData?: string;
+    caption?: string;
+    parseMode?: string;
+    showCaptionAboveMedia?: boolean;
+    allowQueries?: boolean;
+    isShared?: boolean;
+    messageThreadId?: number;
+    replyTo?: number;
+    disableNotification?: boolean;
+    protectContent?: boolean;
+    messageEffectId?: string;
+    inlineKeyboard?: Array<Array<Record<string, unknown>>>;
+  }): Promise<{ ok: boolean; result?: any; effectiveThreadId?: number; description?: string; error_code?: number }> {
+    const htmlCheck = validateWidgetHtml(options.html);
+    if (!htmlCheck.ok) return { ok: false, description: htmlCheck.error };
+    const pubCheck = validateWidgetData("public_data", options.publicData);
+    if (!pubCheck.ok) return { ok: false, description: pubCheck.error };
+    const chatCheck = validateWidgetData("chat_data", options.chatData);
+    if (!chatCheck.ok) return { ok: false, description: chatCheck.error };
+
+    const routing = this.resolveOutboundThreadAndReply(options.chatId, options.messageThreadId, options.replyTo);
+    const payload: Record<string, unknown> = {
+      chat_id: options.chatId,
+      html: options.html,
+      allow_queries: options.allowQueries ?? false,
+    };
+    if (routing.effectiveThreadId !== undefined) payload.message_thread_id = routing.effectiveThreadId;
+    if (routing.effectiveReplyTo !== undefined) payload.reply_parameters = { message_id: routing.effectiveReplyTo };
+    if (options.width !== undefined) payload.width = options.width;
+    if (options.height !== undefined) payload.height = options.height;
+    if (options.publicData !== undefined) payload.public_data = options.publicData;
+    if (options.chatData !== undefined) payload.chat_data = options.chatData;
+    if (options.caption !== undefined) payload.caption = options.caption;
+    if (options.parseMode !== undefined) payload.parse_mode = options.parseMode;
+    if (options.showCaptionAboveMedia !== undefined) payload.show_caption_above_media = options.showCaptionAboveMedia;
+    if (options.isShared !== undefined) payload.is_shared = options.isShared;
+    if (options.disableNotification !== undefined) payload.disable_notification = options.disableNotification;
+    if (options.protectContent !== undefined) payload.protect_content = options.protectContent;
+    if (options.messageEffectId !== undefined) payload.message_effect_id = options.messageEffectId;
+    if (options.inlineKeyboard && options.inlineKeyboard.length > 0) {
+      payload.reply_markup = { inline_keyboard: options.inlineKeyboard };
+    }
+
+    const res = await this.callApi("sendWidget", payload);
+    return this.finalizeSentMessageResult(
+      options.chatId,
+      res,
+      routing.effectiveThreadId,
+      options.caption || "Interactive widget"
+    );
+  }
+
+  public async editMessageWidgetData(options: {
+    chatId?: number;
+    messageId?: number;
+    inlineMessageId?: string;
+    publicData?: string;
+    chatData?: string;
+  }): Promise<{ ok: boolean; updated?: boolean; not_modified?: boolean; description?: string; error_code?: number }> {
+    const pubCheck = validateWidgetData("public_data", options.publicData);
+    if (!pubCheck.ok) return { ok: false, description: pubCheck.error };
+    const chatCheck = validateWidgetData("chat_data", options.chatData);
+    if (!chatCheck.ok) return { ok: false, description: chatCheck.error };
+
+    const payload: Record<string, unknown> = {};
+    if (options.inlineMessageId !== undefined) {
+      payload.inline_message_id = options.inlineMessageId;
+    } else {
+      payload.chat_id = options.chatId;
+      payload.message_id = options.messageId;
+    }
+    if (options.publicData !== undefined) payload.public_data = options.publicData;
+    if (options.chatData !== undefined) payload.chat_data = options.chatData;
+
+    const res = await this.callApi("editMessageWidgetData", payload);
+    if (!res?.ok && /message is not modified/i.test(String(res?.description || ""))) {
+      return { ok: true, not_modified: true };
+    }
+    if (!res?.ok) {
+      return {
+        ok: false,
+        description: res?.description || "Telegram editMessageWidgetData failed",
+        error_code: res?.error_code,
+      };
+    }
+    return { ok: true, updated: true };
+  }
+
+  public async answerWidgetQuery(options: {
+    widgetQueryId: string;
+    data?: string;
+  }): Promise<{ ok: boolean; description?: string; error_code?: number }> {
+    const check = validateWidgetData("data", options.data);
+    if (!check.ok) return { ok: false, description: check.error };
+    const payload: Record<string, unknown> = { widget_query_id: options.widgetQueryId };
+    if (options.data !== undefined) payload.data = options.data;
+    const res = await this.callApi("answerWidgetQuery", payload);
+    if (!res?.ok) {
+      return {
+        ok: false,
+        description: res?.description || "Telegram answerWidgetQuery failed",
+        error_code: res?.error_code,
+      };
+    }
+    return { ok: true };
+  }
+
+  public async settleQuestionMessage(
+    question: StoredQuestion,
+    cardText: string,
+    status: "answered" | "deferred" | "closed",
+    outcomeLabel: string,
+    note?: string
+  ): Promise<void> {
+    if (!question.chatId || !question.messageId) return;
+    if (question.presentation === "widget") {
+      await this.editMessageWidgetData({
+        chatId: question.chatId,
+        messageId: question.messageId,
+        chatData: buildSettledWidgetChatData(status, outcomeLabel, note),
+      });
+      return;
+    }
+    if (question.presentation === "rich") {
+      await this.editMessageReplyMarkup(question.chatId, question.messageId, []);
+      return;
+    }
+    await this.editMessage(question.chatId, question.messageId, cardText, { inline_keyboard: [] });
   }
 
   public async stopPoll(options: {
@@ -1673,7 +2129,14 @@ export class TelegramBotClient {
         const res = await this.callApi("getUpdates", {
           offset: this.lastUpdateId + 1,
           timeout: 20,
-          allowed_updates: ["message", "edited_message", "callback_query", "message_reaction"],
+          allowed_updates: [
+            "message",
+            "edited_message",
+            "callback_query",
+            "message_reaction",
+            "widget_query",
+            "stopped_message_generation",
+          ],
         });
 
         if (res.ok && Array.isArray(res.result)) {
@@ -1722,15 +2185,202 @@ export class TelegramBotClient {
     this.emitChannelEvent(content, meta);
   }
 
+  private extractMessageTextOrRich(msg?: TelegramMessage): string {
+    if (!msg) return "";
+    if (msg.text) return msg.text;
+    const rich = extractRichMessageText(msg.rich_message);
+    if (rich) return rich;
+    return msg.caption || "";
+  }
+
+  private async applyCallbackSelectionUpdate(
+    cb: TelegramCallbackQuery,
+    label: string,
+    remainingRows: Array<Array<Record<string, unknown>>>
+  ): Promise<void> {
+    if (!cb.message) return;
+    if (cb.message.rich_message && !cb.message.text) {
+      await this.editMessageReplyMarkup(cb.message.chat.id, cb.message.message_id, remainingRows);
+      return;
+    }
+    const rawText = cb.message.text || cb.message.caption || "";
+    const originalText = rawText.includes("\n\nSelected: ")
+      ? rawText.split("\n\nSelected: ")[0]
+      : rawText;
+    await this.editMessage(
+      cb.message.chat.id,
+      cb.message.message_id,
+      `${originalText}\n\nSelected: ${label} ✅`,
+      { inline_keyboard: remainingRows }
+    );
+  }
+
   private async handleUpdate(update: TelegramUpdate) {
+    // 0a. Stopped streaming draft signal (no sender `from` object; authorize by chat allowlist)
+    if (update.stopped_message_generation) {
+      const parsed = parseInboundUpdate(update, this.config.allowFrom);
+      if (parsed) {
+        this.emitEvent(parsed.content, parsed.meta, update.stopped_message_generation.chat.id);
+      }
+      return;
+    }
+
     // AC-1.2: Drop updates from unauthorized senders silently without invoking the agent or emitting a reply
     const senderId =
       update.message?.from?.id ??
       update.message_reaction?.user?.id ??
-      update.callback_query?.from?.id;
+      update.callback_query?.from?.id ??
+      update.widget_query?.from?.id;
 
     const isFeedbackCb = update.callback_query?.data?.startsWith("fb:");
     if (!isFeedbackCb && (senderId === undefined || !this.config.allowFrom.includes(senderId))) {
+      return;
+    }
+
+    if (update.widget_query) {
+      const wq = update.widget_query;
+      const msg = wq.message;
+      if (msg?.chat.id !== undefined && msg.message_thread_id !== undefined) {
+        this.recordMessageThread(msg.message_id, msg.message_thread_id);
+        this.lastThreadIdByChat.set(msg.chat.id, msg.message_thread_id);
+        this.topicsEnabledChats.add(msg.chat.id);
+        this.store?.updateChatState(msg.chat.id, {
+          activeThreadId: msg.message_thread_id,
+          topicsEnabled: true,
+        });
+      }
+
+      const data = wq.data || "";
+      if (data.startsWith("q:")) {
+        const parts = data.split(":");
+        const qid = parts[1];
+        const verb = parts[2];
+        const arg = parts[3];
+        const q = this.broker.getQuestion(qid);
+
+        if (!q || q.status !== "pending") {
+          await this.answerWidgetQuery({
+            widgetQueryId: wq.id,
+            data: JSON.stringify({ ok: false, status: "already_resolved" }),
+          });
+          if (msg && q) {
+            await this.editMessageWidgetData({
+              chatId: msg.chat.id,
+              messageId: msg.message_id,
+              chatData: buildSettledWidgetChatData(
+                q.status === "deferred" ? "deferred" : q.status === "closed" ? "closed" : "answered",
+                q.answeredChoice || q.closedReason || "Already resolved"
+              ),
+            });
+          }
+          return;
+        }
+
+        if (verb === "other") {
+          await this.answerWidgetQuery({
+            widgetQueryId: wq.id,
+            data: JSON.stringify({ ok: true, status: "awaiting_reply" }),
+          });
+          if (msg) {
+            await this.editMessageWidgetData({
+              chatId: msg.chat.id,
+              messageId: msg.message_id,
+              chatData: buildSettledWidgetChatData("awaiting_reply", "Awaiting reply in chat"),
+            });
+            const promptTitle = q.header || q.question || qid;
+            const threadId = msg.message_thread_id ?? this.getLastThreadId(msg.chat.id);
+            const promptRes = await this.callApi("sendMessage", {
+              chat_id: msg.chat.id,
+              ...(threadId !== undefined ? { message_thread_id: threadId } : {}),
+              text: `✏️ Reply to this message with your answer for: ${promptTitle}`,
+              reply_parameters: { message_id: msg.message_id },
+              reply_markup: { force_reply: true, selective: true },
+            });
+            if (promptRes?.ok && promptRes?.result?.message_id) {
+              this.broker.setPromptMessageId(qid, promptRes.result.message_id);
+              this.recordMessageThread(promptRes.result.message_id, threadId);
+            }
+          }
+          return;
+        }
+
+        if (verb === "defer") {
+          const defRes = await this.broker.resolveDefer(qid);
+          await this.answerWidgetQuery({
+            widgetQueryId: wq.id,
+            data: JSON.stringify({ ok: Boolean(defRes), status: "deferred" }),
+          });
+          if (defRes && msg) {
+            await this.settleQuestionMessage(
+              { ...defRes.question, chatId: msg.chat.id, messageId: msg.message_id, presentation: "widget" },
+              defRes.cardText,
+              "deferred",
+              "Deferred"
+            );
+            this.emitEvent(
+              `Question deferred: ${defRes.question.question}`,
+              defRes.channelEvent as unknown as Record<string, unknown>,
+              msg.chat.id
+            );
+          }
+          return;
+        }
+
+        let res = null;
+        if (verb === "opt") {
+          res = await this.broker.resolveAnswer(qid, parseInt(arg || "0", 10));
+        } else if (verb === "m") {
+          const mask = parseInt(arg || "0", 36);
+          const indices: number[] = [];
+          for (let i = 0; i < Math.min(31, q.options.length); i++) {
+            if ((mask & (1 << i)) !== 0) indices.push(i);
+          }
+          res = await this.broker.resolveAnswer(qid, undefined, undefined, indices);
+        }
+
+        if (res) {
+          await this.answerWidgetQuery({
+            widgetQueryId: wq.id,
+            data: JSON.stringify({ ok: true, status: "answered", choice: res.channelEvent.choice }),
+          });
+          if (msg) {
+            await this.settleQuestionMessage(
+              { ...res.question, chatId: msg.chat.id, messageId: msg.message_id, presentation: "widget" },
+              res.cardText,
+              "answered",
+              res.channelEvent.choice
+            );
+            this.emitEvent(
+              `Question answered: ${res.channelEvent.choice}`,
+              res.channelEvent as unknown as Record<string, unknown>,
+              msg.chat.id
+            );
+            if (this.store) {
+              const seq = this.store.nextSeq("question_resolved", {
+                question_id: qid,
+                choice: res.channelEvent.choice,
+                turn_id: res.channelEvent.turn_id,
+              });
+              broadcastSseEvent(
+                "question_resolved",
+                {
+                  question_id: qid,
+                  choice: res.channelEvent.choice,
+                  turn_id: res.channelEvent.turn_id,
+                },
+                seq
+              );
+            }
+          }
+          return;
+        }
+      }
+
+      // Custom (non-brokered) widget query: emit transparently with no synthetic auto-ack timer
+      const parsedWq = parseInboundUpdate(update, this.config.allowFrom);
+      if (parsedWq) {
+        this.emitEvent(parsedWq.content, parsedWq.meta, wq.message?.chat.id ?? wq.from.id);
+      }
       return;
     }
 
@@ -1817,7 +2467,12 @@ export class TelegramBotClient {
         const res = await this.broker.resolveAnswer(pendingQ.id, optIdxOrOther, customText);
         if (res) {
           const targetMsgId = pendingQ.messageId || replyToMsgId;
-          await this.editMessage(update.message.chat.id, targetMsgId, res.cardText, { inline_keyboard: [] });
+          await this.settleQuestionMessage(
+            { ...res.question, chatId: update.message.chat.id, messageId: targetMsgId },
+            res.cardText,
+            "answered",
+            res.channelEvent.choice
+          );
           this.emitEvent(
             `Question answered: ${res.channelEvent.choice}`,
             res.channelEvent as unknown as Record<string, unknown>,
@@ -1913,7 +2568,12 @@ export class TelegramBotClient {
         const optIdx = action === "done" ? "done" : parseInt(action, 10);
         const res = await this.broker.resolveAnswer(qid, optIdx);
         if (res && cb.message) {
-          await this.editMessage(cb.message.chat.id, cb.message.message_id, res.cardText, { inline_keyboard: [] });
+          await this.settleQuestionMessage(
+            { ...res.question, chatId: cb.message.chat.id, messageId: cb.message.message_id },
+            res.cardText,
+            "answered",
+            res.channelEvent.choice
+          );
           this.emitEvent(
             `Question answered: ${res.channelEvent.choice}`,
             res.channelEvent as unknown as Record<string, unknown>,
@@ -1983,7 +2643,7 @@ export class TelegramBotClient {
           await this.callApi("answerCallbackQuery", { callback_query_id: cb.id, text: "Noted 👍" });
           await this.feedbackManager.handleUpvote({
             messageId: cb.message.message_id,
-            messageExcerpt: cb.message.text || "",
+            messageExcerpt: this.extractMessageTextOrRich(cb.message),
           });
           const updatedKeyboard = this.feedbackManager.replaceFeedbackButtonsInKeyboard(
             cb.message.reply_markup?.inline_keyboard,
@@ -2034,7 +2694,7 @@ export class TelegramBotClient {
           const critique = parts.slice(3).join(":");
           const res = await this.feedbackManager.handleCritique({
             messageId: cb.message.message_id,
-            messageExcerpt: cb.message.text || "",
+            messageExcerpt: this.extractMessageTextOrRich(cb.message),
             critique,
           });
 
@@ -2109,14 +2769,9 @@ export class TelegramBotClient {
           )
           .filter((row) => row.length > 0);
 
-        await this.editMessage(
-          cb.message.chat.id,
-          cb.message.message_id,
-          `${originalText}\n\nSelected: ${label} ✅`,
-          { inline_keyboard: remainingRows }
-        );
+        await this.applyCallbackSelectionUpdate(cb, label, remainingRows);
 
-        const targetExcerpt = cb.message.text || this.getMessageExcerpt(cb.message.message_id) || "";
+        const targetExcerpt = this.extractMessageTextOrRich(cb.message) || this.getMessageExcerpt(cb.message.message_id) || "";
         const action = isLogicCheck ? "logic_check" : isExplain ? "explain" : isThanks ? "thanks" : "reasons";
         const content = isThanks
           ? `The user has read message ${cb.message.message_id} and is done with its thread: close the thread unless more on its topic is due soon.`
@@ -2182,14 +2837,9 @@ export class TelegramBotClient {
           )
           .filter((row) => row.length > 0);
 
-        await this.editMessage(
-          cb.message.chat.id,
-          cb.message.message_id,
-          `${originalText}\n\nSelected: ${label} ✅`,
-          { inline_keyboard: remainingRows }
-        );
+        await this.applyCallbackSelectionUpdate(cb, label, remainingRows);
 
-        const targetExcerpt = cb.message.text || this.getMessageExcerpt(cb.message.message_id) || "";
+        const targetExcerpt = this.extractMessageTextOrRich(cb.message) || this.getMessageExcerpt(cb.message.message_id) || "";
         const action = isAccept ? "accept_recommendation" : "decline_recommendation";
         const decision = isAccept ? "accepted" : "declined";
         const content = `The user ${decision} the recommendation for message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""}.`;
@@ -2245,12 +2895,7 @@ export class TelegramBotClient {
           .map((row) => row.filter((b) => isPredefinedButton(b)))
           .filter((row) => row.length > 0);
 
-        await this.editMessage(
-          cb.message.chat.id,
-          cb.message.message_id,
-          `${originalText}\n\nSelected: ${label} ✅`,
-          { inline_keyboard: remainingRows }
-        );
+        await this.applyCallbackSelectionUpdate(cb, label, remainingRows);
 
         const btnMeta: Record<string, string> = {
           event: "button_tap",

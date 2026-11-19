@@ -21,6 +21,7 @@ export interface TelegramMessage {
   from?: TelegramUser;
   text?: string;
   caption?: string;
+  rich_message?: { blocks?: unknown[]; html?: string; markdown?: string };
   reply_to_message?: TelegramMessage;
   quote?: { text: string };
   photo?: Array<{ file_id: string; file_size?: number }>;
@@ -48,12 +49,29 @@ export interface TelegramCallbackQuery {
   data?: string;
 }
 
+export interface TelegramWidgetQuery {
+  id: string;
+  from: TelegramUser;
+  message?: TelegramMessage;
+  inline_message_id?: string;
+  chat_instance: string;
+  data?: string;
+}
+
+export interface TelegramMessageGenerationStopped {
+  chat: TelegramChat;
+  message_thread_id?: number;
+  draft_id: number;
+}
+
 export interface TelegramUpdate {
   update_id: number;
   message?: TelegramMessage;
   edited_message?: TelegramMessage;
   message_reaction?: TelegramReactionUpdate;
   callback_query?: TelegramCallbackQuery;
+  widget_query?: TelegramWidgetQuery;
+  stopped_message_generation?: TelegramMessageGenerationStopped;
 }
 
 export interface InboundChannelEvent {
@@ -61,6 +79,8 @@ export interface InboundChannelEvent {
     | "message"
     | "reaction"
     | "button_tap"
+    | "widget_query"
+    | "stopped_message_generation"
     | "bot_command"
     | "voice"
     | "attachment"
@@ -404,6 +424,64 @@ export function parseInboundUpdate(
     return {
       event: "button_tap",
       content: `tapped ${payload || callbackPrefix}`,
+      meta,
+    };
+  }
+
+  // 4. Widget Query
+  if (update.widget_query) {
+    const wq = update.widget_query;
+    const userId = wq.from.id;
+    if (!allowFrom.includes(userId)) {
+      return null;
+    }
+    const meta: Record<string, string> = {
+      event: "widget_query",
+      widget_query_id: wq.id,
+      user_id: String(userId),
+      chat_instance: wq.chat_instance,
+      data: wq.data || "",
+    };
+    if (wq.message?.chat.id !== undefined) {
+      meta.chat_id = String(wq.message.chat.id);
+    }
+    if (wq.message?.message_id !== undefined) {
+      meta.target_message_id = String(wq.message.message_id);
+      meta.message_id = String(wq.message.message_id);
+    }
+    if (wq.message?.message_thread_id !== undefined) {
+      meta.message_thread_id = String(wq.message.message_thread_id);
+      meta.thread_id = String(wq.message.message_thread_id);
+    }
+    if (wq.inline_message_id) {
+      meta.inline_message_id = wq.inline_message_id;
+    }
+    return {
+      event: "widget_query",
+      content: `widget_query: ${wq.data || ""}`,
+      meta,
+    };
+  }
+
+  // 5. Stopped Message Generation (streaming draft interrupted by user)
+  if (update.stopped_message_generation) {
+    const st = update.stopped_message_generation;
+    const chatId = st.chat.id;
+    if (!allowFrom.includes(chatId)) {
+      return null;
+    }
+    const meta: Record<string, string> = {
+      event: "stopped_message_generation",
+      chat_id: String(chatId),
+      draft_id: String(st.draft_id),
+    };
+    if (st.message_thread_id !== undefined) {
+      meta.message_thread_id = String(st.message_thread_id);
+      meta.thread_id = String(st.message_thread_id);
+    }
+    return {
+      event: "stopped_message_generation",
+      content: `User stopped streaming draft ${st.draft_id}`,
       meta,
     };
   }

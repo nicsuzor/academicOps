@@ -10,6 +10,11 @@ import {
 import { PermissionRelay } from "../mcp/permissions.js";
 import { processReplyOverflow } from "../telegram/overflow.js";
 import { formatMarkdownToEntities, normalizeReaction } from "../telegram/format.js";
+import {
+  extractRichMessageText,
+  type InputRichMessageSpec,
+  type RichMediaInputItem,
+} from "../telegram/rich-message.js";
 import { splitVoiceTier2Quotes } from "../telegram/voice.js";
 import { TurnManager } from "./turn-manager.js";
 
@@ -77,11 +82,22 @@ export interface OutboundReactResult {
 export interface QuestionSpec {
   question: string;
   header?: string;
-  options: Array<{ label: string; description?: string; recommended?: boolean }>;
+  kind?: "question" | "decision";
+  stakes?: string;
+  presentation?: "widget" | "rich";
+  options: Array<{
+    label: string;
+    description?: string;
+    recommended?: boolean;
+    pros?: string[];
+    cons?: string[];
+  }>;
   multi_select?: boolean;
   multiSelect?: boolean;
   allow_custom?: boolean;
   allowOther?: boolean;
+  allow_defer?: boolean;
+  allowDefer?: boolean;
   turn_id?: string;
   turnId?: string;
   message_thread_id?: number;
@@ -103,6 +119,7 @@ export interface QuestionSpec {
 export interface OutboundAskUserParams {
   turn_id?: string;
   turnId?: string;
+  presentation?: "widget" | "rich";
   questions: QuestionSpec[];
   chat_id?: number;
   message_thread_id?: number;
@@ -122,12 +139,21 @@ export interface OutboundAskUserResult {
   error?: string;
   question_ids: string[];
   status: "posted" | "failed";
+  presentation?: "widget" | "rich";
   message: string;
 }
 
 export interface OutboundEditMessageParams {
   message_id: number;
-  text: string;
+  text?: string;
+  markdown?: string;
+  html?: string;
+  blocks?: Array<Record<string, unknown>>;
+  is_rtl?: boolean;
+  skip_entity_detection?: boolean;
+  buttons?: unknown;
+  button_layout?: number[] | number;
+  buttons_per_row?: number;
   chat_id?: number;
   link_preview_options?: LinkPreviewOptions;
   linkPreviewOptions?: LinkPreviewOptions;
@@ -349,6 +375,7 @@ export class SharedTelegramChannelCore {
     );
     const topThreadId = (params.message_thread_id ?? params.messageThreadId ?? params.thread_id ?? params.threadId) as number | undefined;
     const topDetail = params.detail ?? params.details;
+    const topPresentation = params.presentation ?? "widget";
 
     if (questions.length === 0) {
       throw new Error("No questions provided");
@@ -358,6 +385,8 @@ export class SharedTelegramChannelCore {
     for (const q of questions) {
       const multiSelect = q.multi_select !== undefined ? q.multi_select : q.multiSelect;
       const allowOther = q.allow_custom !== undefined ? q.allow_custom : q.allowOther;
+      const allowDefer = q.allow_defer !== undefined ? q.allow_defer : q.allowDefer;
+      const presentation = q.presentation ?? topPresentation;
       const isMiniAppOnly = Boolean(
         topMiniAppOnly || q.mini_app_only || q.miniapp_only || q.miniAppOnly || q.chat === false
       );
@@ -371,9 +400,13 @@ export class SharedTelegramChannelCore {
       const result = await this.broker.askUser({
         question: q.question,
         header: q.header,
+        kind: q.kind,
+        stakes: q.stakes,
+        presentation,
         options: q.options,
         multiSelect,
         allowOther,
+        allowDefer,
         turnId: q.turn_id || q.turnId || topTurnId,
         chatId: defaultChatId,
         mini_app_only: isMiniAppOnly,
@@ -430,17 +463,53 @@ export class SharedTelegramChannelCore {
     return {
       question_ids: postedIds,
       status: "posted",
+      ...(topMiniAppOnly ? {} : { presentation: topPresentation }),
       message,
     };
   }
 
   /**
    * Outbound tool contract: edit_message
-   * Modifies the text of an agent-sent message.
+   * Modifies the text or rich_message of an agent-sent message.
    */
   public async editMessage(params: OutboundEditMessageParams): Promise<OutboundEditMessageResult> {
     const chatId = params.chat_id || this.getDefaultChatId();
     const messageId = params.message_id;
+    const hasRich =
+      params.markdown !== undefined || params.html !== undefined || params.blocks !== undefined;
+    const inlineKeyboard = this.extractInlineKeyboard(params as unknown as Record<string, unknown>);
+
+    if (hasRich) {
+      if (params.text !== undefined) {
+        return {
+          success: false,
+          error: "Provide either text or one of markdown, html, blocks on edit_message",
+        };
+      }
+      if (!this.bot) {
+        return { success: false, error: "Telegram bot client is not available" };
+      }
+      const res = await this.bot.editRichMessage({
+        chatId,
+        messageId,
+        richMessage: {
+          markdown: params.markdown,
+          html: params.html,
+          blocks: params.blocks,
+          is_rtl: params.is_rtl,
+          skip_entity_detection: params.skip_entity_detection,
+        },
+        ...(inlineKeyboard.length > 0 ? { inlineKeyboard } : {}),
+      });
+      if (!res?.ok) {
+        return { success: false, error: res?.description || "Failed to edit rich message" };
+      }
+      return { success: true };
+    }
+
+    if (typeof params.text !== "string") {
+      return { success: false, error: "edit_message requires text or one of markdown, html, blocks" };
+    }
     const text = params.text;
     const linkPreviewOptions = this.resolveLinkPreviewOptions(
       params.link_preview_options ?? params.linkPreviewOptions,
@@ -448,7 +517,13 @@ export class SharedTelegramChannelCore {
     );
 
     if (this.bot) {
-      await this.bot.editMessage(chatId, messageId, text, undefined, linkPreviewOptions);
+      await this.bot.editMessage(
+        chatId,
+        messageId,
+        text,
+        inlineKeyboard.length > 0 ? { inline_keyboard: inlineKeyboard } : undefined,
+        linkPreviewOptions
+      );
     }
     return { success: true };
   }
@@ -1320,18 +1395,27 @@ export class SharedTelegramChannelCore {
       return { success: false, error: "Telegram bot client is not available" };
     }
     const draftId = args.draft_id as number;
-    const text = typeof args.text === "string" ? args.text : "";
+    const text = typeof args.text === "string" ? args.text : undefined;
+    const isRich =
+      args.markdown !== undefined || args.html !== undefined || args.blocks !== undefined;
     if (typeof draftId !== "number" || !Number.isInteger(draftId) || draftId === 0) {
       return { success: false, error: "send_message_draft requires a non-zero integer draft_id" };
     }
-    if (!text.trim()) {
-      return { success: false, error: "send_message_draft requires non-empty text" };
+    if (!isRich && (!text || !text.trim())) {
+      return { success: false, error: "send_message_draft requires non-empty text or rich content" };
     }
     const chatId = (args.chat_id as number) || this.getDefaultChatId();
     const res = await this.bot.sendMessageDraft({
       chatId,
       draftId,
       text,
+      markdown: typeof args.markdown === "string" ? args.markdown : undefined,
+      html: typeof args.html === "string" ? args.html : undefined,
+      blocks: Array.isArray(args.blocks) ? (args.blocks as Array<Record<string, unknown>>) : undefined,
+      isRtl: typeof args.is_rtl === "boolean" ? args.is_rtl : undefined,
+      skipEntityDetection: typeof args.skip_entity_detection === "boolean" ? args.skip_entity_detection : undefined,
+      canStop: typeof args.can_stop === "boolean" ? args.can_stop : undefined,
+      keepOnStop: typeof args.keep_on_stop === "boolean" ? args.keep_on_stop : undefined,
       messageThreadId: this.extractExplicitThreadId(args),
     });
     if (!res.ok) {
@@ -1342,6 +1426,137 @@ export class SharedTelegramChannelCore {
       draft_id: draftId,
       ...(res.effectiveThreadId !== undefined ? { message_thread_id: res.effectiveThreadId } : {}),
     };
+  }
+
+  public async sendRichMessage(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const chatId = (args.chat_id as number) || this.getDefaultChatId();
+    const richMessage: InputRichMessageSpec = {
+      markdown: typeof args.markdown === "string" ? args.markdown : undefined,
+      html: typeof args.html === "string" ? args.html : undefined,
+      blocks: Array.isArray(args.blocks) ? (args.blocks as Array<Record<string, unknown>>) : undefined,
+      is_rtl: typeof args.is_rtl === "boolean" ? args.is_rtl : undefined,
+      skip_entity_detection: typeof args.skip_entity_detection === "boolean" ? args.skip_entity_detection : undefined,
+      media: Array.isArray(args.media) ? (args.media as RichMediaInputItem[]) : undefined,
+    };
+    const replyRaw = args.reply_to ?? args.reply_to_message_id ?? args.replyToMessageId;
+    const replyTo = typeof replyRaw === "number" ? replyRaw : undefined;
+    const quoteRichTexts = Array.isArray(args.quote_rich_texts)
+      ? args.quote_rich_texts.map((q) => String(q))
+      : undefined;
+
+    const res = await this.bot.sendRichMessage({
+      chatId,
+      richMessage,
+      messageThreadId: this.extractExplicitThreadId(args),
+      replyTo,
+      quoteRichTexts,
+      inlineKeyboard: this.extractInlineKeyboard(args),
+      feedbackButtons: typeof args.feedback_buttons === "boolean" ? args.feedback_buttons : undefined,
+      voice: typeof args.voice === "boolean" ? args.voice : undefined,
+      disableNotification: typeof args.disable_notification === "boolean" ? args.disable_notification : undefined,
+      protectContent: typeof args.protect_content === "boolean" ? args.protect_content : undefined,
+      messageEffectId: typeof args.message_effect_id === "string" ? args.message_effect_id : undefined,
+    });
+    if (!res.ok) {
+      return { success: false, error: res.description || "Failed to send rich message" };
+    }
+    this.store.recordTurn("out", extractRichMessageText(richMessage));
+    return {
+      success: true,
+      message_id: res.result?.message_id,
+      ...(res.effectiveThreadId !== undefined ? { message_thread_id: res.effectiveThreadId } : {}),
+      ...(res.voiceMessageId !== undefined ? { voice_message_id: res.voiceMessageId, voice_sent: true } : {}),
+      ...(res.voiceError ? { voice_error: res.voiceError } : {}),
+    };
+  }
+
+  public async sendWidget(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    if (typeof args.html !== "string") {
+      return { success: false, error: "send_widget requires string html" };
+    }
+    const chatId = (args.chat_id as number) || this.getDefaultChatId();
+    const replyRaw = args.reply_to ?? args.reply_to_message_id ?? args.replyToMessageId;
+    const replyTo = typeof replyRaw === "number" ? replyRaw : undefined;
+    const caption = typeof args.caption === "string" ? args.caption : undefined;
+    const res = await this.bot.sendWidget({
+      chatId,
+      html: args.html,
+      width: typeof args.width === "number" ? args.width : undefined,
+      height: typeof args.height === "number" ? args.height : undefined,
+      publicData: typeof args.public_data === "string" ? args.public_data : undefined,
+      chatData: typeof args.chat_data === "string" ? args.chat_data : undefined,
+      caption,
+      parseMode: typeof args.parse_mode === "string" ? args.parse_mode : undefined,
+      showCaptionAboveMedia:
+        typeof args.show_caption_above_media === "boolean" ? args.show_caption_above_media : undefined,
+      allowQueries: typeof args.allow_queries === "boolean" ? args.allow_queries : undefined,
+      isShared: typeof args.is_shared === "boolean" ? args.is_shared : undefined,
+      messageThreadId: this.extractExplicitThreadId(args),
+      replyTo,
+      disableNotification: typeof args.disable_notification === "boolean" ? args.disable_notification : undefined,
+      protectContent: typeof args.protect_content === "boolean" ? args.protect_content : undefined,
+      messageEffectId: typeof args.message_effect_id === "string" ? args.message_effect_id : undefined,
+      inlineKeyboard: this.extractInlineKeyboard(args),
+    });
+    if (!res.ok) {
+      return { success: false, error: res.description || "Failed to send widget" };
+    }
+    this.store.recordTurn("out", caption && caption.trim() ? caption : "Interactive widget");
+    return {
+      success: true,
+      message_id: res.result?.message_id,
+      ...(res.effectiveThreadId !== undefined ? { message_thread_id: res.effectiveThreadId } : {}),
+    };
+  }
+
+  public async editMessageWidgetData(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const inlineMessageId = typeof args.inline_message_id === "string" ? args.inline_message_id : undefined;
+    const messageId = typeof args.message_id === "number" ? args.message_id : undefined;
+    const chatId = inlineMessageId ? undefined : ((args.chat_id as number) || this.getDefaultChatId());
+    if (!inlineMessageId && messageId === undefined) {
+      return { success: false, error: "edit_message_widget_data requires message_id or inline_message_id" };
+    }
+    const res = await this.bot.editMessageWidgetData({
+      chatId,
+      messageId,
+      inlineMessageId,
+      publicData: typeof args.public_data === "string" ? args.public_data : undefined,
+      chatData: typeof args.chat_data === "string" ? args.chat_data : undefined,
+    });
+    if (!res.ok) {
+      return { success: false, error: res.description || "Failed to update widget data" };
+    }
+    return {
+      success: true,
+      ...(res.not_modified ? { not_modified: true } : { updated: true }),
+    };
+  }
+
+  public async answerWidgetQuery(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
+    }
+    const widgetQueryId = typeof args.widget_query_id === "string" ? args.widget_query_id.trim() : "";
+    if (!widgetQueryId) {
+      return { success: false, error: "answer_widget_query requires widget_query_id" };
+    }
+    const res = await this.bot.answerWidgetQuery({
+      widgetQueryId,
+      data: typeof args.data === "string" ? args.data : undefined,
+    });
+    if (!res.ok) {
+      return { success: false, error: res.description || "Failed to answer widget query" };
+    }
+    return { success: true, answered: true };
   }
 
   public async sendPoll(args: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -1607,9 +1822,12 @@ export class SharedTelegramChannelCore {
           return { success: false, error: "Question not found or not pending" };
         }
         if (this.bot && result.question.chatId && result.question.messageId) {
-          await this.bot.editMessage(result.question.chatId, result.question.messageId, result.cardText, {
-            inline_keyboard: [],
-          });
+          await this.bot.settleQuestionMessage(
+            result.question,
+            result.cardText,
+            "answered",
+            result.channelEvent.choice
+          );
         }
         if (this.emitChannelNotification) {
           this.emitChannelNotification(`Question answered: ${result.channelEvent.choice}`, {
@@ -1637,9 +1855,12 @@ export class SharedTelegramChannelCore {
           return { success: false, error: "Question not found or not pending" };
         }
         if (this.bot && result.question.chatId && result.question.messageId) {
-          await this.bot.editMessage(result.question.chatId, result.question.messageId, result.cardText, {
-            inline_keyboard: [],
-          });
+          await this.bot.settleQuestionMessage(
+            result.question,
+            result.cardText,
+            "closed",
+            result.channelEvent.reason
+          );
         }
         if (this.emitChannelNotification) {
           this.emitChannelNotification(`Question closed: ${result.channelEvent.reason}`, {
@@ -1706,6 +1927,22 @@ export class SharedTelegramChannelCore {
       case "send_message_draft":
       case "sendMessageDraft":
         return await this.sendMessageDraft(msg);
+
+      case "send_rich_message":
+      case "sendRichMessage":
+        return await this.sendRichMessage(msg);
+
+      case "send_widget":
+      case "sendWidget":
+        return await this.sendWidget(msg);
+
+      case "edit_message_widget_data":
+      case "editMessageWidgetData":
+        return await this.editMessageWidgetData(msg);
+
+      case "answer_widget_query":
+      case "answerWidgetQuery":
+        return await this.answerWidgetQuery(msg);
 
       case "send_poll":
       case "sendPoll":

@@ -158,7 +158,8 @@ export class StdioMcpServer {
         const result = await withToolDeadline(
           toolName,
           () => this.executeTool(toolName, args),
-          this.toolTimeoutMs
+          this.toolTimeoutMs,
+          args
         );
         const isFailure = Boolean(
           result &&
