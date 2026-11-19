@@ -47,7 +47,7 @@ making further routing decisions:
   2. `PKB`: PKB documents carrying `type: template` and no `project`.
   3. `Universal`: Built-in templates in `plugins/ida/skills/workflow-library/workflows/wf-*.md`.
 
-Selection is interpretive, not mechanical: `/reify` reads the template and generates steps for the specific request. A plan that instructs the main agent to go read a workflow file has failed -- the whole cost saving is that the reading already happened.
+Selection is interpretive and contract-driven, not mechanical or hard-coded by task class: `/reify` selects templates solely from frontmatter descriptions and `workflow-library` contracts (with zero hard-coded task-class branching and zero low-risk bugfix review exemptions), verifies that the selected template's `## Output` destination conforms to target repository document-placement rules (`specs/meta/doc-taxonomy.md` when in-repo, keeping plans, roadmaps, and designs on the PKB unless repo rules dictate otherwise), reads the chosen templates, and generates concrete numbered steps for the specific request. A plan that instructs the main agent to go read a workflow file has failed -- the whole cost saving is that the reading already happened.
 
 **`CHECKPOINT:` is behavioural guidance, not enforcement.** No code blocks
 progress when verification is skipped. This is deliberate: enforcement here would
@@ -63,19 +63,19 @@ Step inlining is interpretive, not mechanical transcription:
 - Workflow templates (`wf-*`) cannot be invoked by workers. Each composed template stage, obligation, and quality gate is interpreted into a concise numbered imperative step in Instructions.
 - Inlining distills the required outcome or verification checkpoint for each stage; it omits narrative prose, rationale, background explanations, and implementation methods the worker can determine for itself.
 - Every composed template stage and finish obligation is represented as a concrete step so no required process or gate is lost, while staying strictly within the 300-word ceiling for composite workflows (or 150 words for atomic tasks).
-- Outcome-oriented criteria: Reified tasks define observable end-state conditions and verification criteria rather than implementation mechanisms. Line numbers, line ranges, and narrow code slice prescriptions are strictly forbidden in `Goal`, `Acceptance criteria`, and `Execution steps` / `Instructions`.
+- Outcome-oriented criteria and brief-lock check: Reified tasks define observable end-state conditions and verification criteria rather than implementation mechanisms. Line numbers, line ranges, and narrow code slice prescriptions are strictly forbidden in `Goal`, `Acceptance criteria`, and `Execution steps` / `Instructions`. Brief-locked constraints remain subject to Gate 0 ask authority during composition and review: verify every imposed constraint derives from the originating user ask or standing mandate rather than freezing unverified caller prescriptions into unquestioned requirements.
 - Combined single-session task body by default: `/reify` writes a single combined repo-scoped task body by default, keeping design, subagent dialectical review, build, incremental `git push` checkpoints, and PR verification inside the single supervised container session rather than mandating separate Stage 1 Design / Stage 2 Build / QA child tasks.
 
-## Task Splitting, Two-Task Reviewed Classes, and Out-of-Session Boundaries
+## Task Splitting and Out-of-Session Boundaries
 
-`/reify` writes a single combined repo-scoped task body by default under container supervision (`/supervise`), where subagent dialectical review, testing, incremental `git push` checkpoints, and PR verification execute in-session.
+`/reify` writes a single combined repo-scoped task body by default under container supervision (`/supervise`), where subagent dialectical review, testing, incremental `git push` checkpoints, and PR verification execute in-session. Workflow selection and review depth follow template frontmatter descriptions and `workflow-library` contracts without hard-coded task-class branching or low-risk review bypasses.
 
-When a class of task has an independent review process reified onto the task graph (rather than folded into a single-session `/supervise` run), reifying it yields **two separate tasks** under the parent container:
+When a selected workflow mandates an independent downstream review task on the graph (rather than folding review into a single-session `/supervise` run, e.g., under `/pull` leaf execution or a required separate review session), reifying it yields **two separate tasks** under the parent container:
 
 1. **The work task**: Completes the deliverable, opens the draft PR (`gh pr create --draft`) or records the PKB artifact, ticks met acceptance criteria with primary evidence, and releases with one completion status: **`done`** (never `review`).
-2. **The review task** (`needs: [<work_task_id>]`): Unblocks when the work task is `done`, runs the independent proportionate review, posts verdicts to the PR thread, marks the draft PR ready (`gh pr ready`), and releases `done` on pass or `failed` on fail.
+2. **The review task** (`needs: [<work_task_id>]`): Unblocks when the work task is `done`, runs the independent proportionate review, posts head-SHA-matched verdicts to the PR thread, marks the draft PR ready (`gh pr ready`), and releases `done` on pass or `failed` on fail.
 
-Unreviewed task classes (routine documentation, notes, trivial chores, and low-risk internal bugfixes) yield only the work task, which releases as `done`. Outside the work-task + review-task pair for reviewed classes, separate tasks are split ONLY when a workflow explicitly mandates:
+Outside that workflow-mandated boundary, separate tasks are split ONLY when a workflow explicitly mandates:
 
 1. A different repository (strictly one task per repository);
 2. A different time or external wait condition;

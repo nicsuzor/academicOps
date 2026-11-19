@@ -22,16 +22,36 @@ The following variables are set in the job environment. Read them with `$VAR` in
 
 ## Task
 
-Review PR `$PR_NUMBER` in `$REPO` against the universal axioms.
+Review PR `$PR_NUMBER` in `$REPO` against the universal axioms and repository local rules.
 
 ### 1. Load project context
 
+Load the universal axioms from `plugins/rbg/skills/axioms/*.md` (excluding `SKILL.md` and `README.md`), the enforcement reference from `specs/enforcement/enforcement.md`, and any repository local context and rules from `.agents/CORE.md` and `.agents/rules/*.md`. When running from a workflow sparse checkout (`.aops/`), read the canonical axioms and enforcement spec from `.aops/` first and fall back to the repository root.
+
 ```bash
-# Read local project rules if present
+# Read universal axioms (prefer canonical .aops sparse checkout when present)
+AXIOM_DIR=".aops/plugins/rbg/skills/axioms"
+[ -d "$AXIOM_DIR" ] || AXIOM_DIR="plugins/rbg/skills/axioms"
+for f in "$AXIOM_DIR"/*.md; do
+  case "$(basename "$f")" in SKILL.md|README.md) continue ;; esac
+  echo "=== $f ==="; cat "$f"
+done
+
+# Read enforcement architecture reference
+ENFORCEMENT_SPEC=".aops/specs/enforcement/enforcement.md"
+[ -f "$ENFORCEMENT_SPEC" ] || ENFORCEMENT_SPEC="specs/enforcement/enforcement.md"
+cat "$ENFORCEMENT_SPEC" 2>/dev/null || true
+
+# Read local project context and rules if present
 cat .agents/CORE.md 2>/dev/null || true
+for f in .agents/rules/*.md; do
+  [ -f "$f" ] && echo "=== $f ===" && cat "$f"
+done
 ```
 
 ### 2. Read the PR
+
+**Independence invariant:** Evaluate strictly from the PR ask, PR diff, repository files, universal axioms, and local rules. Only inspect your own prior `## Enforcer Review` comments (Step 4) for SHA idempotency or API failure fallback, never consulting other reviews prior to independent evaluation.
 
 ```bash
 gh pr view "$PR_NUMBER" --repo "$REPO"
@@ -40,7 +60,7 @@ gh pr diff "$PR_NUMBER" --repo "$REPO"
 
 ### 3. Apply axiom review
 
-Judge the diff against the axioms (loaded above from `AXIOMS.md` + `AXIOMS-REVIEW.md`). Return the verdict in the format defined in `rbg.md`. Adjacent concerns (criterion-substitution, scope-awareness, keystone disclosure, sensitive-data, instruction-review) are NOT your inline rules -- they live on the surfaces described in `specs/enforcement/enforcement.md`. Surface them as context if relevant, but the verdict you return is whether an axiom has been violated.
+Judge the diff against the universal axioms (`plugins/rbg/skills/axioms/*.md`, excluding `SKILL.md` and `README.md`) and repository local rules (`.agents/CORE.md` and `.agents/rules/*.md`) loaded in Step 1. Return the verdict in the format defined in `plugins/rbg/agents/rbg.md` (with the `## Enforcer Review` header required by Step 5). Adjacent concerns (criterion-substitution, scope-awareness, keystone disclosure, sensitive-data, instruction-review) are NOT your inline rules -- they live on the surfaces described in `specs/enforcement/enforcement.md`. Surface them as context if relevant, but the verdict you return is whether an axiom or project rule has been violated.
 
 For **mechanical violations** (typos, missing required frontmatter, orphan files, misnamed tools, wrong paths): fix them yourself with Edit/Write and push the fix. Writing "Fix: add X" in a review when you could apply the edit is a failure mode -- do it instead.
 
@@ -50,7 +70,7 @@ A violation you fixed yourself in this step is **resolved** -- it does not count
 
 ### 4. Check before posting (idempotent verdict)
 
-**Check first, then act once.** Before posting, list the reviews for this exact SHA and see whether an enforcer verdict already stands:
+**Check first, then act once.** Only after completing your independent evaluation in Step 3, list your own prior `Enforcer Review` verdicts for this exact SHA (and never other reviewers' threads prior to evaluation) to see whether an enforcer verdict already stands:
 
 ```bash
 gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \

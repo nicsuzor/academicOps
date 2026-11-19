@@ -115,7 +115,7 @@ The one-step move implements the rule across four synchronized areas:
    - Replaces the overly rigid "never link tasks" phrasing with the user's exact specification: header edges carry density, bodies link nodes only where discussed in text, MoCs link in body by definition, and dedicated related sections are strictly banned.
 4. **Release and Reporting Skills (`plugins/ida/skills/dump/SKILL.md`, `plugins/ida/skills/premise-check/SKILL.md`):**
    - Explicitly instructs workers that reporting evidence requires citing specific supporting facts, forbidding the compilation of related-work lists or basis catalogs.
-5. **Review Lens Verification (`specs/enforcement/reviewer-class-standard-check.md`, `wf-dialectical-review.md`, `wf-qa.md`):**
+5. **Review Lens Verification (`.agents/rules/doc-taxonomy.md`, `wf-rbg.md`, `verify/SKILL.md`, `wf-dialectical-review.md`, `wf-qa.md`):**
    - Instructs quality and compliance reviewers to verify that task bodies, release handbacks, and documentation PRs contain zero dedicated related-work sections.
 
 ### 6. Outcome-Level Build Criteria for Implementation (Stage 2: Build)

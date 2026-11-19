@@ -26,6 +26,7 @@ one is covered.
 | Failed tasks from workers (e.g. QA or review failures) → next actions decided from parent epic | Built |
 | Multi-part task / open high-value-prompt tracking task → settle unknowns from PKB first, close shipped deliverables/releases the user knows about, itemize completed vs incomplete elements, and queue (`status: queued`) concrete next agent steps | Built |
 | Task in `review`: agent work tasks covered by a review/QA task, open PR, or complete evidence transition to `done` (and completed `done` work tasks with open PRs stay `done`, never moved to `review` awaiting merge); tasks with completed groundwork and recommendation waiting on the user's own decision stay in `status: review` (`assignee: user`) for `## With you` | Built |
+| Completed Class D `/learn` tasks (`status: done`) → typed remedy proposals surfaced (`bug fix at source` queued/for `/q` vs `recurring local-rule or mechanism proposal` for approval) | Built |
 | Manual `gh issue close` with `state_reason: not_planned` or `duplicate` | Not built -- forward-issue leg, below |
 | PKB task done → GH issue comment/close beyond the native `Closes #N` commit convention | Not built -- reverse direction, M3 |
 
@@ -53,6 +54,12 @@ one is covered.
 9. **Failed task sequencing lives in the parent epic.** Workers never create or name follow-up tasks,
    and release `failed` on failure. Reconcile reads `failed` tasks within its sweep window,
    examines failure root causes and evidence, and determines next actions from the parent epic.
+10. **Lightweight Class D `/learn` typed remedy surfacing.** Reconcile reads completed Class D `/learn`
+    tasks (`status: done` within the sweep window, projecting summary fields before opening
+    `## Report` on matches) and surfaces each typed remedy in its report (and via `## With you`
+    when a `recurring local-rule or mechanism proposal` awaits user approval), listing any queued
+    `bug fix at source` task IDs or unqueued `/q` proposals for `/q` intake without re-analyzing raw
+    PRs, logs, or spans, re-running `/learn`, or unilaterally restructuring the task graph.
 
 ## Invocation contexts
 

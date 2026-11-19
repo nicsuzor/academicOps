@@ -27,6 +27,7 @@ jobs:
         with:
           # Fetch full history so Claude can see the diff properly
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
           token: ${{ secrets.AOPS_BOT_GH_TOKEN }}
 
       - name: Build RBG Prompt
@@ -34,20 +35,22 @@ jobs:
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           PROMPT=$(cat << 'EOF'
 
-          1. Read the universal axioms located in `.agents/rules/*.md`. These are your single source of truth.
-          2. Review the changes in PR #$PR_NUMBER for for violations of the universal axioms.
-          3. If you find clear, fixable violations, fix them directly: edit the files, commit, and push to the PR branch.
+          1. Read the universal axioms located in `plugins/rbg/skills/axioms/*.md` (excluding `SKILL.md` and `README.md`) and the repository local rules located in `.agents/rules/*.md`. Universal axioms are your inviolable baseline and repository local rules apply on top of them.
+          2. Review the changes in PR #$PR_NUMBER (in $REPO at HEAD $HEAD_SHA) for violations of the universal axioms and repository local rules. Form your verdict independently from the PR ask, diff, and rules without consulting prior peer reviews first.
+          3. If you find clear, fixable violations, fix them directly: edit the files, commit, and push to the PR branch before posting your review.
           4. For violations that require developer judgment or cannot be safely auto-fixed, you MUST request changes via a native GitHub PR review with line-level comments. Do NOT just post a standard issue comment.
           5. To post a native review with inline comments, construct a JSON payload for the GitHub API. The JSON must match the `POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews` schema, containing:
-             - "body": A general summary of your findings.
+             - "body": A general summary of your findings starting with `## RBG Review: REVISE` or `## RBG Review: FAIL`.
              - "event": "REQUEST_CHANGES"
              - "comments": An array of objects with `path`, `line`, and `body`. Provide ```suggestion blocks in the body where appropriate.
-          6. Save this JSON to `review.json` and use the `gh` CLI to submit it:
-             `gh api --method POST -H "Accept: application/vnd.github+json" /repos/$REPO/pulls/$PR_NUMBER/reviews --input review.json`
-          7. If no axioms are violated, submit an APPROVE review via standard CLI: `gh pr review $PR_NUMBER --approve -b "All axioms upheld."`.
+          6. Save this JSON to `"$RUNNER_TEMP/review.json"` and use the `gh` CLI to submit it:
+             `gh api --method POST -H "Accept: application/vnd.github+json" "/repos/$REPO/pulls/$PR_NUMBER/reviews" --input "$RUNNER_TEMP/review.json"`
+          7. If no violations remain, submit an APPROVE review via standard CLI:
+             `gh pr review "$PR_NUMBER" --repo "$REPO" --approve -b "## RBG Review: PASS -- All axioms and local rules upheld."`
           EOF
           )
 
@@ -72,9 +75,13 @@ jobs:
 
       - name: Run Claude Code (RBG Persona)
         id: claude
+        continue-on-error: true
         uses: anthropics/claude-code-action@v1
         env:
           GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         with:
           settings: ${{ steps.otel.outputs.settings }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -98,5 +105,37 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
         run: |
-          gh pr edit $PR_NUMBER --remove-label 'request-rbg-review' || true
+          if gh pr view "$PR_NUMBER" --repo "$REPO" --json labels --jq '[.labels[].name] | index("request-rbg-review") != null' | grep -qx true; then
+            gh pr edit "$PR_NUMBER" --repo "$REPO" --remove-label 'request-rbg-review'
+          fi
+
+      - name: Verify review posted and propagate failure
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_URL: "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        run: |
+          OUTCOME="${{ steps.claude.outcome }}"
+          if [ "$OUTCOME" != "success" ]; then
+            echo "::error::RBG review run did not succeed (step outcome: $OUTCOME)."
+            gh pr comment "$PR_NUMBER" --repo "$REPO" --body "## RBG Review: ERROR
+
+          The RBG Axiom Review run failed to complete (outcome: \`$OUTCOME\`) for HEAD \`$HEAD_SHA\`. See [workflow run]($RUN_URL)." || echo "::warning::Failed to post failure notice to PR #$PR_NUMBER"
+            exit 1
+          fi
+
+          CURRENT_SHA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha')
+          REVIEW_COUNT=$(gh api --paginate --slurp "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
+            --jq "[.[][] | select(.commit_id == \"$CURRENT_SHA\") | select((.body // \"\") | test(\"RBG Review\")) | select(.state == \"APPROVED\" or .state == \"CHANGES_REQUESTED\")] | length")
+          if [ "${REVIEW_COUNT:-0}" -eq 0 ]; then
+            echo "::error::RBG review step exited cleanly without posting a PR review for HEAD $CURRENT_SHA."
+            gh pr comment "$PR_NUMBER" --repo "$REPO" --body "## RBG Review: ERROR
+
+          The RBG Axiom Review run exited without posting an \`## RBG Review\` verdict for HEAD \`$CURRENT_SHA\`. See [workflow run]($RUN_URL)." || echo "::warning::Failed to post failure notice to PR #$PR_NUMBER"
+            exit 1
+          fi
