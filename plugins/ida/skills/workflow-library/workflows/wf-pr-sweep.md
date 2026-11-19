@@ -25,7 +25,7 @@ Sweep execution runs via parallel fan-out: evaluate each PR independently and ag
 ## Obligations
 
 1. **Enumerate Open PRs and Recent Updates (`since: <cursor>`)**:
-   - Query open pull requests AND pull requests updated or merged `since: <cursor>` (`gh pr list --state all --json number,title,state,isDraft,updatedAt,mergedAt,closedAt,headRefName,headRefOid,url,labels,reviewDecision,statusCheckRollup,reviews,comments`, projecting `reviews` (`id`, `author.login`, `state`, `submittedAt`, `body`) and comments, or fetching per-PR reviews when list payloads omit review IDs) so fast-merged PRs between sweeps are inspected.
+   - Query both open pull requests and PRs updated or merged `since: <cursor>` (`gh pr list --state all`, projecting PR metadata, branch/head commit SHA, state/draft/mergeability, labels, check rollups, comments, and `reviews` including review `id`, author, state, `submittedAt`, and body -- or fetching per-PR reviews when list payloads omit review IDs) so fast-merged PRs between sweeps are inspected.
    - Classify open PRs: _Draft_ (author WIP excluded while active; completed worker draft awaiting verification queued for check/review without marking ready inline), _Automated Release_ (excluded from automated sweep), or _Standard / Consolidated Feature_.
 
 2. **Evaluate Project Rules and Partitioned Gates in Parallel**:

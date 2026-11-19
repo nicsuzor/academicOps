@@ -5,67 +5,49 @@ description: Diagnose systemic root causes of framework faults from session exec
 
 # Learn
 
-Perform root-cause analysis on systemic failure classes in the framework using session execution records (or PR diffs, review comments, and governing instructions via `gh` solely when the target execution ran on a non-traced surface such as CI / GitHub Actions). Diagnose observable failure mechanisms, persist session outlines when traces apply, classify typed remedies, and consolidate shared-root-cause issues before escalating up the enforcement pyramid; do not inspect application source code directly during trace analysis. `/learn` diagnoses faults in our own framework (including local workflow, rule, or instruction problems when working on third-party repositories) only; non-framework faults (such as local problems in third-party repositories themselves, external tools, CLIs, models, or third-party service issues) are not handled by `/learn`. The PKB custodian (Pauli) runs this skill.
+Diagnose systemic framework faults using Arize Phoenix execution traces (or `gh` PR diffs, review comments, and instructions solely for non-traced CI / GitHub Actions runs). Scope covers faults in our own framework (including workflow, rule, or instruction defects surfaced while working in third-party repositories); exclude local third-party repo bugs, external services/CLIs, and direct application source-code inspection.
 
 ## Execution Environment
 
-Mandate execution exclusively within an isolated polecat container in the `academicOps` repository environment (`project: aops`). Never run `/learn` in other project workspaces or uncontained local sessions. Running inside `academicOps` guarantees the worker has direct access to framework governance specifications (`specs/ENFORCEMENT-MAP.md`, `specs/enforcement/enforcement.md`, and `plugins/rbg/skills/axioms/`).
+Run `/learn` in an isolated `academicOps` (`project: aops`) container environment so governance specifications (`specs/ENFORCEMENT-MAP.md`, `specs/enforcement/enforcement.md`, `plugins/rbg/skills/axioms/`) are present.
 
 ## Protocol
 
 1. **Retrieve execution record and persist session outline**:
-   - **Traced sessions**: Retrieve OpenTelemetry spans using the `ida:phoenix` skill (querying Phoenix MCP via `ida:phoenix` declarative templates, or reading existing PKB outline note `out-<session_slug>`), alongside governance documents (`specs/ENFORCEMENT-MAP.md` and `specs/enforcement/enforcement.md`). If Phoenix spans are available but unpersisted, synthesize the condensed outline note and save it to the PKB using `pkb_create`:
-     - Outline: `type: "note"`, `title: "Outline: <session_slug> (<summary>)"`, `slug: "out-<session_slug>"`, `tags: ["phoenix", "outline", "learn"]`.
-   - **Mandatory Phoenix halt invariant for traced sessions**: Ground trace analysis strictly in Arize Phoenix (`ida:phoenix`) and governance specifications. Never read or scrape local `.system_generated/logs/transcript*.jsonl` or `/tmp/aops_debug_hooks_*.jsonl` files. If Phoenix traces for a traced session surface are absent, unexported, or unavailable, halt immediately and state that the trace is unavailable; never fall back to local JSONL log scraping.
-   - **Non-traced surface exception (CI / GitHub Actions)**: Solely when the target execution ran on a non-traced surface (such as CI or GitHub Actions) that emits no OTel spans, inspect the PR diff, review comments, check runs, and governing instructions via `gh` instead of halting on absent Phoenix spans.
-2. **Diagnose systemic cause from execution evidence**:
-   - **Root causes are framework defects, never agent faults.** A root cause is never an agent's fault, capability limitation, choice, or action; it is always the framework's: the instructions, skills, workflows, contracts, or tools that led the agent to act as it did. An agent's action (e.g. dispatching to an agent without necessary credentials or access, rewording an ask, skipping a step, never delivering a result) is an intermediate event on the execution trace, never the root cause. When an agent acts, locate and quote the instruction, skill, workflow, or prompt text that led that agent to take that action, and identify the framework defect (missing constraint, contradictory rule, or ambiguous guidance) that permitted or caused the failure. Never cite an agent, its brief, its capabilities, or its choices as the root cause.
-   - **Workflow non-compliance is never a missing rule:** When an agent fails to follow an applicable workflow or skips steps within a workflow, diagnose the failure as poor workflow compliance or ambiguous/unclear instructions within that workflow under the universal framework rule ("follow the applicable workflow"). Never diagnose workflow execution failures as a missing framework-level enforcement rule, and never propose or file issues minting per-workflow framework rules, specs, or gates.
-   - **Login and authentication failures are configuration failures, not bugs.** Login and authentication failures (for example a server or service requiring re-authentication) are configuration failures, not bugs. `/learn` files no issue and posts no comment for them; return to the caller that the failure is a configuration failure.
-   - **No passive voice; name the actor and quote the instruction.** Use active voice throughout all findings, issue descriptions, and reports; passive voice is strictly prohibited (e.g. "the run went to X" or "a file was modified" is forbidden). Every finding must explicitly state who acted by naming the specific actor (e.g. "Ida Prime sent the run to Pauli"), followed immediately by quoting the exact instruction, skill, or workflow text that led them to act (e.g. "The instructions provided to Ida in `<file>` state: `[extract]`"). Then state the framework defect in those instructions or tools.
-   - Ground findings in observable runtime mechanisms shown in the Phoenix trace: failing tool invocations, unexpected tool error payloads, schema mismatches, hook blocks, timeout spikes.
-   - Describe what the session attempted and where execution broke down. The runtime execution record is the evidence; do not inspect source files or name responsible code lines.
-   - Treat an agent's account of its causes as hearsay, never as evidence of mechanism. Re-read the case from the primary user words independently of the caller's framing; what each agent received, ran, and chose on the record is the evidence.
-   - Address the class of failure rather than proximate mistakes. Focus on mechanisms and contracts rather than speculating on agent psychology or internal states.
-3. **Generalise the instance**: when the ask names one instance, take both steps below yourself, even if the instance is already fixed.
-   - _General bug_: name the mechanism that produced the instance and will produce more like it.
-   - _Verification miss_: search for the existing control (in axioms, rules, skills, and enforcement maps) governing the failure class; determine why that control did not fire or pass, and never assert that no control exists without an exhaustive search.
-4. **Proportional Workflow Remedy Ladder & Typed Remedy Classification**:
-   - Evaluate remedies in strict least-invasive priority order, and classify every diagnosed remedy explicitly as one of two types:
-     - **`bug fix at source`**: a single-incident concrete defect in a tool, workflow, local rule, or instruction (addressed at the lowest effective tier below).
-     - **`recurring local-rule or one-step mechanism proposal`**: only when repeated instances or structural gaps establish that single-incident fixes are insufficient, proposing a local project rule or advancing one step up the enforcement pyramid (`specs/enforcement/enforcement.md`).
-   - Remedy tiers (lowest effective level first):
-     1. **Local project workflows, rules, and instructions**: Propose or update project-scoped templates (`type: template`, `project: <project_id>`) or local project rules and instructions (`.agents/rules/`, `AGENTS.md`).
-     2. **User-level PKB workflow** (`type: template`, `project: null`): Propose or update a user-scoped template in the PKB.
-     3. **Universal workflow** (`plugins/ida/skills/workflow-library/workflows/`): For recurring operational failures across projects, patch existing universal templates (`wf-*.md`) minimally.
-     4. **Framework enforcement issue** (Fallback of last resort): Only when workflow instructions, rules, or prompt guidance cannot remedy the failure class (e.g. hard security bounds, credential leakage, container isolation failures, or universal behavioral rules derived from axioms), evaluate against `specs/ENFORCEMENT-MAP.md` and `specs/enforcement/enforcement.md` and apply Step 6.
-   - **Workflow remedies bypass the formal framework change process:** Workflows are not rules and do not enforce rules; creating or modifying workflows requires no Stage 1/Stage 2 framework change decomposition gate, no enforcement map extract, and owes 0 rows on `specs/ENFORCEMENT-MAP.md`. User and project workflow remedies are updated or created directly in the PKB; universal workflow remedies are opened as standard PRs into `dev`.
-   - **Minimally effective standard:** Prefer patching an existing workflow template over creating a new one. Address the exact missing step, handback requirement, or acceptance criterion that failed without introducing redundant narrative or checklist bloat.
-5. **Follow-Up Placement, Worker Bounds, and Clean Completion (`headless-workers.md`)**:
-   - `/learn` diagnoses faults in our own framework (including local workflow, rule, or instruction problems when working on third-party repositories) only; non-framework faults (local problems in third-party repositories, external tools, CLIs, models, or third-party services) are excluded.
-   - A worker inside the `academicOps` polecat must not modify source code in remote repositories directly.
-   - **Inside the user's boundary** (**the user's own organisations and designated repositories** under `data-boundaries`):
-     - When executing under custodian (`pauli`) or container supervision (`/supervise`), mint and wire the follow-up fix task on the PKB graph via `/q` targeted to the owning repository and project with concise goal, scope, acceptance criteria, and typed remedy (`bug fix at source` or approved local-rule/mechanism proposal).
-     - When executing as a plain leaf `/pull` worker (state-only invariant under `headless-workers.md`), never mutate other tasks or mint follow-up tasks directly; record the typed remedy and structured `/q` proposal under `## Report` for coordinator or `/reconcile` `/q` intake.
-   - **Outside the user's boundary** (any repository or surface with an external audience under `data-boundaries`): keep the proposed remedy in the report and on the PKB for explicit user approval before queueing external-facing PRs or issues.
-   - **Complete cleanly to `done`**: Release the `/learn` task as **`done`** once diagnosis, typed remedy classification, issue/comment handling, and queued fix-task IDs or `## Report` `/q` proposals are recorded (never `partial` solely because follow-up tasks remain to execute).
-6. **Shared-Root-Cause Issue Consolidation & Boundary Rules** (Fallback for Tier 4 / recurring mechanism gaps):
-   - File no issue and post no comment for login or authentication configuration failures, or for single-incident fixes fully handled at Tiers 1-3 unless a recurring escalation applies.
-   - **One GitHub issue per shared root cause**: Before opening any issue, query existing open framework issues (`gh issue list`, `gh issue view`) for the same root mechanism / error class. When an existing open issue covers the shared root cause, append an evidence comment citing the new instance rather than opening a duplicate issue.
-   - Format new draft or filed issues under `.github/ISSUE_TEMPLATE/learn.md`, grounded strictly in execution evidence (OTel span IDs or `gh` PR/review excerpts for non-traced CI runs) and scrubbed of personal names, credentials, private file paths/domains, session IDs, internal trailers, and PKB note/task IDs.
-   - **Boundary handling (`data-boundaries`)**:
-     - Inside **the user's own organisations and designated repositories** (including the framework repository itself): repository-capable execution (or an internal subagent delegated by a read-only agent) may create the single consolidated issue or post the evidence-bump comment directly after scrubbing private identifiers, without adding extra approval friction.
-     - Outside **the user's own organisations and designated repositories** (any surface with an external audience): keep the scrubbed draft issue or comment in the report and on the PKB for the user's explicit item-by-item approval before posting.
+   - **Traced sessions (`ida:phoenix` only)**: Fetch spans via `ida:phoenix` declarative templates or an existing `out-<session_slug>` note alongside governance specs. If Phoenix spans exist without a saved note, persist `out-<session_slug>` via `pkb_create` (`type: "note"`, `title: "Outline: <session_slug> (<summary>)"`, `slug: "out-<session_slug>"`, `tags: ["phoenix", "outline", "learn"]`). Never fall back to local `.system_generated/logs/transcript*.jsonl` or `/tmp/aops_debug_hooks_*.jsonl`; if Phoenix spans are missing or unavailable, halt immediately and report the gap.
+   - **Non-traced surface exception (CI / GitHub Actions)**: Solely when execution ran on a non-traced CI/GHA surface emitting no OTel spans, inspect PR diffs, review comments, check runs, and instructions via `gh`.
+
+2. **Diagnose systemic framework cause (active voice, hearsay-free)**:
+   - **Framework defect, never agent fault**: Agent choices, omitted steps, or capabilities are trace events, never root causes. Name the specific acting role in active voice (e.g. `"the coordinator dispatched without credentials"` -- passive voice prohibited), quote the exact instruction/skill/workflow/tool contract that led them to act, and identify the missing, contradicted, or ambiguous framework defect.
+   - **Workflow compliance vs missing rules**: Skipped or misapplied workflow steps are workflow-compliance or ambiguous-wording failures under `"follow the applicable workflow"`, never grounds to invent per-workflow rules, specs, or enforcement-map rows.
+   - **Authentication/login failures**: Stop immediately and report as configuration failure (file no issue, post no comment).
+   - **Empirical trace evidence & hearsay bar**: Cite observed span mechanics (tool errors, schema mismatches, hook blocks, timeouts) and primary user prompts directly rather than agent self-explanations or unread application source code.
+
+3. **Generalise instance & search existing controls**:
+   - _General bug_: Name the mechanism generating the failure class, even if the instance is already patched.
+   - _Verification miss_: Exhaustively search axioms, rules, skills, and `specs/ENFORCEMENT-MAP.md` for the governing control and explain why it failed to fire or block.
+
+4. **Classify typed remedy & proportional ladder**:
+   - Classify each remedy explicitly as either:
+     - **`bug fix at source`**: single-incident defect in a tool, workflow, local rule, or instruction (addressed at the lowest effective tier).
+     - **`recurring local-rule or one-step mechanism proposal`**: local project rule or single-step enforcement-pyramid escalation (`specs/enforcement/enforcement.md`) only when repeated instances prove single-incident fixes insufficient.
+   - Remedy ladder (prefer patching existing artifacts cleanly; never copy narrative bloat):
+     1. Project template (`type: template`, project-scoped) or local repo rules (`AGENTS.md`, `.agents/rules/`).
+     2. User-scoped PKB template (`type: template`, `project: null`).
+     3. Universal workflow (`plugins/ida/skills/workflow-library/workflows/wf-*.md` via standard PR into base; workflows bypass formal framework-change enforcement-map/spec gates and add 0 map rows).
+     4. Framework enforcement issue (Tier 4 fallback for universal axioms, security bounds, or structural gates).
+
+5. **Follow-up placement & clean completion (`headless-workers.md`)**:
+   - Never modify third-party repository source directly from the framework container.
+   - **Inside the user's own organisations and designated repositories**: When executed by custodian or container coordinator (`/supervise`), mint and wire the follow-up `/q` fix task (`typed remedy`, concise criteria, target repo/project); when run by a leaf `/pull` worker, record the structured `/q` proposal in `## Report` without mutating sibling tasks.
+   - **Outside the user's boundary**: Keep proposed follow-up PRs/issues in `## Report` and the PKB for explicit prior user approval.
+   - **Complete to `done`**: On traced sessions, verify `out-<session_slug>` is persisted; then release `done` (never `partial` solely because queued follow-ups remain).
+
+6. **Shared-root-cause issue consolidation (`data-boundaries`)**:
+   - File no issue for auth failures or for Tier 1–3 bugs **only when actually executed/persisted** (template created/updated, PR opened, or `/q` fix task queued -- unexecuted prose proposals must escalate to Tier 4).
+   - Search open framework issues (`gh issue list`, `gh issue view`) before creating one: append an evidence comment citing the new instance when an open issue covers the shared root cause; otherwise draft/file one evidence-grounded issue using `.github/ISSUE_TEMPLATE/learn.md` (when present) scrubbed of personal names, credentials, private paths/domains, session IDs, internal trailers, and PKB note/task IDs.
+   - **Boundary handling**: Inside **the user's own organisations and designated repositories**, create the consolidated issue or append the evidence comment directly; outside that boundary, hold the scrubbed draft in `## Report` / PKB pending explicit user approval.
 
 ## Output
 
-Return a markdown report containing:
-
-- **Session outline / Target surface**: PKB note wikilink (`[[<outline_note_id>]]`) for traced sessions, or PR / CI run reference for non-traced CI / GitHub Actions runs.
-- **Evidence**: Session/Run/PR identifier, OTel span IDs (or `gh` PR diff, review comments, and instruction excerpts solely for non-traced CI / GitHub Actions surfaces), and execution excerpts.
-- **Root cause**: The framework or workflow defect the execution record shows let the failure happen: the missing, unreached, ambiguous, or contradicted instruction, workflow step, contract, or tool that led the agent to act as it did. State strictly in active voice, name the actor who acted, quote the governing instruction text that led them to act, and explain the framework defect. Never cite an agent, an agent's capability limitation, or an agent's choice as the root cause, and never use passive voice.
-- **Verification miss**: The check that should have caught the instance, and why it did not.
-- **Typed Remedy**: Explicit classification (`bug fix at source` vs `recurring local-rule or one-step mechanism proposal`) plus proportional remedy ladder tier (`1-4`).
-- **Follow-up `/q` tasks & Issue consolidation**: Queued `/q` fix-task IDs (when run under custodian or `/supervise`) or structured `/q` proposal in `## Report` (when run as a leaf `/pull` worker), plus the single consolidated GitHub issue / evidence-comment URL (inside the user's own organisations and designated repositories) or scrubbed draft awaiting approval (external-audience surfaces). Complete the task cleanly as `done`.
-
-For login or authentication failures, return to the caller that the failure is a configuration failure (file no issue and post no comment).
+Emit a concise Markdown report containing **Session outline / Target surface** (`[[out-<session_slug>]]` or CI/PR ref), **Evidence** (span IDs or `gh` CI excerpts), **Root cause** (active voice, named actor, quoted instruction, framework defect), **Verification miss**, **Typed Remedy** (classification + tier `1–4`), and **Follow-up `/q` tasks & Issue consolidation** (queued task IDs or `/q` proposal + single issue/comment URL or held draft). Return auth failures immediately as configuration failures.

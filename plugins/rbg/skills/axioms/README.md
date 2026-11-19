@@ -18,7 +18,7 @@ description: Index of academicOps axioms.
 | `excellence` | Excellence is the standard; compliance is the floor. | always_on |
 | `exercise-authority` | Within your delegated authority, you must act. | always_on |
 | `explanations-not-reasons` | An agent's explanation of what it did is not its reason; self-reports are hearsay and never taken at face value. | always_on |
-| `fail-fast` | Everything Must Work. Halt and escalate on any infrastrure failure or conflicting demand. | always_on |
+| `fail-fast` | Everything Must Work. Halt and escalate on any infrastructure failure or conflicting demand. | always_on |
 | `full-observability` | Persist material actions in git commits with clear rationale for complete auditability. | always_on |
 | `halt-on-failure` | Halt on failure and report verbatim without workarounds, fallbacks, or bypasses. | always_on |
 | `honest-epistemics` | Tailor claims strictly to available evidence. | always_on |

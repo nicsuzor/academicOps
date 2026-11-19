@@ -47,7 +47,7 @@ All three review components draw their brief from this shared structure, present
    - **Compliance (`rbg`)**: Evaluates universal axioms, local/user rules, Gate 0 ask-bounded authority and non-mechanical baseline, data boundaries, and least-invasive enforcement.
    - **Qualitative Excellence (`marsha`)**: Evaluates pure qualitative excellence, structural clarity, and audience resonance across live rendered outputs against external purpose and governing genre standards (no runtime test execution, primary-source fact audits, or rule checks; absent governing standard or purpose triggers `FAIL`).
 5. **Uncontroversial Self-Fixes vs Non-Deterministic Findings**:
-   - Deterministic, uncontroversial fixes (typos, formatting, dead relative links, `data-boundaries` scrubbing) are applied directly, committed (`fix(review): <description>`), pushed so `HEAD` matches inspected state before `PASS`, and listed under `### Reviewer Self-Fixes Applied` (never `REVISE` solely for self-fixed items).
+   - Deterministic, uncontroversial fixes (typos, formatting, dead relative links, `data-boundaries` scrubbing) are applied directly when running sequentially (or returned under `### Suggested Fixes` during concurrent read-only parallel reviews for single-writer application to prevent git conflicts), committed (`fix(review): <description>`), pushed so `HEAD` matches inspected state before `PASS`, and listed under `### Reviewer Self-Fixes Applied` (never `REVISE` solely for self-fixed items).
    - Non-deterministic defects (competing designs, missing specs, scope expansion, broken logic, failing checks) remain under `### Required Changes` / `### Findings` with `REVISE` or `FAIL`.
 
 ## Input contract
