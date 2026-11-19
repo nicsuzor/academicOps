@@ -70,9 +70,11 @@ export interface LinkPreviewOptions {
   show_above_text?: boolean;
 }
 
+export type ReplyButtonInput = ReplyButtonOption | string;
+
 export type ReplyButtonsInput =
-  | ReplyButtonOption[]
-  | ReplyButtonOption[][];
+  | ReplyButtonInput[]
+  | ReplyButtonInput[][];
 
 export function buildInlineKeyboardRows(
   buttons?: ReplyButtonsInput,
@@ -84,8 +86,13 @@ export function buildInlineKeyboardRows(
     return callerRows;
   }
 
-  const formatBtn = (b: ReplyButtonOption): Record<string, unknown> => {
-    const btnObj: Record<string, unknown> = { text: b.label };
+  const formatBtn = (raw: ReplyButtonInput): Record<string, unknown> => {
+    if (typeof raw === "string") {
+      return { text: raw, callback_data: `action:${raw}` };
+    }
+    const b = raw as ReplyButtonOption & { text?: string };
+    const label = b.label ?? b.text ?? "";
+    const btnObj: Record<string, unknown> = { text: label };
     const copyTextVal =
       typeof b.copy_text === "string"
         ? b.copy_text
@@ -101,23 +108,23 @@ export function buildInlineKeyboardRows(
     } else if (b.web_app) {
       btnObj.web_app = { url: b.web_app };
     } else {
-      btnObj.callback_data = `action:${b.label}`;
+      btnObj.callback_data = `action:${label}`;
     }
     return btnObj;
   };
 
   if (Array.isArray(buttons[0])) {
     // Direct 2D array of rows
-    for (const row of buttons as ReplyButtonOption[][]) {
+    for (const row of buttons as ReplyButtonInput[][]) {
       callerRows.push(row.map(formatBtn));
     }
   } else {
-    const flatButtons = buttons as ReplyButtonOption[];
-    const hasRowProp = flatButtons.some((b) => typeof b.row === "number");
+    const flatButtons = buttons as ReplyButtonInput[];
+    const hasRowProp = flatButtons.some((b) => typeof b === "object" && b !== null && typeof b.row === "number");
     if (hasRowProp) {
-      const rowMap = new Map<number, ReplyButtonOption[]>();
+      const rowMap = new Map<number, ReplyButtonInput[]>();
       for (const b of flatButtons) {
-        const r = b.row ?? 0;
+        const r = typeof b === "object" && b !== null ? (b.row ?? 0) : 0;
         if (!rowMap.has(r)) rowMap.set(r, []);
         rowMap.get(r)!.push(b);
       }
@@ -209,6 +216,7 @@ export class TelegramBotClient {
   private topicsEnabledChats = new Set<number>();
   private messageThreads = new Map<number, number>();
   public store?: PluginStore;
+  public apiTimeoutMs = 25_000;
   private messageExcerpts = new Map<number, string>();
 
   constructor(
@@ -299,15 +307,55 @@ export class TelegramBotClient {
     return this.messageExcerpts.get(messageId);
   }
 
+  private async fetchJsonWithTimeout(method: string, url: string, init: RequestInit, timeoutMs: number): Promise<any> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { ...init, signal: controller.signal });
+      try {
+        return await res.json();
+      } catch (err) {
+        return {
+          ok: false,
+          error_code: res.status || 500,
+          description: `Telegram Bot API ${method} returned invalid JSON (HTTP ${res.status}): ${err instanceof Error ? err.message : String(err)}`,
+        };
+      }
+    } catch (err) {
+      if (controller.signal.aborted || (err instanceof Error && err.name === "AbortError")) {
+        return {
+          ok: false,
+          error_code: 408,
+          description: `Telegram Bot API ${method} timed out after ${timeoutMs}ms`,
+        };
+      }
+      return {
+        ok: false,
+        error_code: 500,
+        description: `Telegram Bot API ${method} failed: ${err instanceof Error ? err.message : String(err)}`,
+      };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   private async callApi(method: string, payload: Record<string, unknown>): Promise<any> {
     const baseUrl = this.config.apiBaseUrl || "https://api.telegram.org";
     const url = `${baseUrl}/bot${this.config.botToken}/${method}`;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    return await res.json();
+    const timeoutMs =
+      method === "getUpdates" && typeof payload.timeout === "number"
+        ? Math.max(this.apiTimeoutMs, (payload.timeout + 10) * 1000)
+        : this.apiTimeoutMs;
+    return await this.fetchJsonWithTimeout(
+      method,
+      url,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+      timeoutMs
+    );
   }
 
   private async callVoiceApi(
@@ -343,11 +391,15 @@ export class TelegramBotClient {
       formData.append("reply_markup", JSON.stringify({ inline_keyboard: options.inlineKeyboard }));
     }
 
-    const res = await fetch(url, {
-      method: "POST",
-      body: formData,
-    });
-    return await res.json();
+    return await this.fetchJsonWithTimeout(
+      "sendVoice",
+      url,
+      {
+        method: "POST",
+        body: formData,
+      },
+      this.apiTimeoutMs
+    );
   }
 
   public async setReaction(
@@ -732,6 +784,15 @@ export class TelegramBotClient {
       };
     }
 
+    if (res?.error_code === 408) {
+      return {
+        ok: false,
+        success: false,
+        messageId: 0,
+        error: res.description || "Telegram sendMessage timed out",
+      };
+    }
+
     // If Telegram rejects formatted entities, resend once as plain text per FR-1.5
     const fallbackRes = await this.callApi("sendMessage", {
       chat_id: chatId,
@@ -774,7 +835,12 @@ export class TelegramBotClient {
       };
     }
 
-    return null;
+    return {
+      ok: false,
+      success: false,
+      messageId: 0,
+      error: fallbackRes?.description || res?.description || "Telegram sendMessage failed",
+    };
   }
 
   public async sendQuestionCard(
@@ -819,6 +885,12 @@ export class TelegramBotClient {
         return { ok: true, messageId: res.result.message_id, result: res.result };
       }
       this.recordMessageExcerpt(res?.result?.message_id, formatted.plainText);
+
+      if (res?.error_code === 408) {
+        const errorMsg = res.description || "Telegram sendMessage timed out";
+        this.broker.markDeliveryFailed(qid, errorMsg);
+        return { ok: false, error: errorMsg, description: errorMsg };
+      }
 
       // If Telegram rejects formatted entities, resend once as plain text per FR-1.5
       const fallbackRes = await this.callApi("sendMessage", {
