@@ -3274,3 +3274,117 @@ def test_teammate_spawned_without_agent_id_does_not_crash():
     )
     assert handlers.post_tool(ctx) is None
     assert pcg.is_armed(session_id) is False
+
+
+def test_foreground_subcoordinator_pre_dispatch_registers_known_subagent_for_child_sendmessage():
+    """Foreground sub-coordinator calling PreToolUse(Agent) is registered so child SendMessage arms it."""
+    import handlers
+
+    session_id = "sess-fg-subcoord-sm"
+    sub_coord = "fg-subcoord-1"
+    child_id = "fg-child-1"
+    rep, tmpl = _valid_report_argdown("ask-fg-sm")
+
+    # Root has NOT yet received PostToolUse(Agent) for foreground sub_coord;
+    # sub_coord spawns child via PreToolUse(Agent)
+    pre_ctx = dispatch.HookContext(
+        client="claude",
+        event="PreToolUse",
+        tool="Agent",
+        session_id=session_id,
+        agent_id=sub_coord,
+        agent_type="ida:ida",
+        raw={
+            "agent_id": sub_coord,
+            "tool_use_id": "toolu_fg_sub_spawn",
+            "tool_input": {"description": "Spawn child from fg subcoord"},
+        },
+    )
+    assert handlers.pre_tool(pre_ctx) is None
+
+    # Child delivers report via SendMessage(to=sub_coord) while sub_coord is still active
+    sm_ctx = _post_tool_ctx_for(
+        session_id,
+        tool_input={"to": sub_coord, "message": rep},
+        tool_response={"success": True},
+        tool="SendMessage",
+        agent_id=child_id,
+        tool_use_id="toolu_child_to_fg",
+    )
+    assert handlers.post_tool(sm_ctx) is None
+    assert pcg.is_armed(session_id, agent_id=sub_coord) is True
+    assert pcg.is_armed(session_id) is False
+
+    cid = pcg.get_state(session_id, agent_id=sub_coord)["claim_id"]
+    res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=cid,
+        verdict="PASS",
+        reason=tmpl.format(claim_id=cid),
+        tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
+        agent_id=sub_coord,
+    )
+    assert res["ok"] is True
+    assert pcg.is_armed(session_id, agent_id=sub_coord) is False
+
+
+def test_subagent_handback_lowercase_or_prefixed_tool_arms_caller():
+    """SubagentHandback matching handles snake_case and MCP-prefixed tool names cleanly."""
+    import handlers
+
+    session_id = "sess-hb-toolname"
+    caller_id = "sub-hb-caller"
+    child_id = "child-hb-snake"
+    rep, tmpl = _valid_report_argdown("ask-hb-snake")
+
+    handlers.post_tool(
+        _post_tool_ctx_for(
+            session_id,
+            tool_input={"description": "Spawn child"},
+            tool_response={"isAsync": True, "status": "async_launched", "agentId": child_id},
+            tool="Agent",
+            agent_id=caller_id,
+            tool_use_id="toolu_spawn_snake",
+        )
+    )
+    hb_ctx = _post_tool_ctx_for(
+        session_id,
+        tool_input={"message": rep},
+        tool_response={"success": True},
+        tool="mcp__ida__subagent_handback",
+        agent_id=child_id,
+        tool_use_id="toolu_hb_snake",
+    )
+    assert handlers.post_tool(hb_ctx) is None
+    assert pcg.is_armed(session_id, agent_id=caller_id) is True
+
+    cid = pcg.get_state(session_id, agent_id=caller_id)["claim_id"]
+    res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=cid,
+        verdict="PASS",
+        reason=tmpl.format(claim_id=cid),
+        tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
+        agent_id=caller_id,
+    )
+    assert res["ok"] is True
+
+
+def test_corrupt_parents_and_slot_files_fail_loudly():
+    """Corrupt parents or state JSON fails loudly instead of silently resetting."""
+    session_id = "sess-corrupt-fail-loud"
+    parents_path = pcg._parents_path(session_id)
+    parents_path.parent.mkdir(parents=True, exist_ok=True)
+    parents_path.write_text("{corrupt json", encoding="utf-8")
+
+    with pytest.raises(json.JSONDecodeError):
+        pcg._load_parents(session_id)
+
+    parents_path.write_text(json.dumps(["not", "a", "dict"]), encoding="utf-8")
+    with pytest.raises(ValueError, match="corrupt parents metadata"):
+        pcg._load_parents(session_id)
+
+    slot_path = pcg._state_path(session_id, agent_id="sub-bad")
+    slot_path.write_text(json.dumps(["not", "a", "dict"]), encoding="utf-8")
+    with pytest.raises(ValueError, match="corrupt gate state"):
+        pcg.find_armed_owner(session_id, "claim-12345678")

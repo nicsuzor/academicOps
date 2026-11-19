@@ -228,16 +228,20 @@ def _session_file_lock(session_id: str) -> Generator[None, None, None]:
             fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
 
 
-def _write_json_atomic(path: Path, data: dict[str, Any]) -> None:
+def _write_text_atomic(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_name = tempfile.mkstemp(dir=str(path.parent), prefix=f".{path.name}.", suffix=".tmp")
     tmp_path = Path(tmp_name)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            fh.write(json.dumps(data, indent=2))
+            fh.write(content)
         os.replace(tmp_path, path)
     finally:
         tmp_path.unlink(missing_ok=True)
+
+
+def _write_json_atomic(path: Path, data: dict[str, Any]) -> None:
+    _write_text_atomic(path, json.dumps(data, indent=2))
 
 
 def _load_state(session_id: str, agent_id: str | None = None) -> dict[str, Any]:
@@ -257,12 +261,10 @@ def _save_state(session_id: str, state: dict[str, Any], agent_id: str | None = N
 def _load_parents(session_id: str) -> dict[str, Any]:
     path = _parents_path(session_id)
     if path.exists():
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-            if isinstance(data, dict):
-                return data
-        except (json.JSONDecodeError, OSError):
-            pass
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise ValueError(f"corrupt parents metadata in {path}: expected JSON object")
+        return data
     return {
         "session_id": session_id,
         "subagent_parents": {},
@@ -343,6 +345,63 @@ def _normalized_body_hash(text: str) -> str:
     return hashlib.sha256(norm.encode("utf-8")).hexdigest()
 
 
+def _arm_locked(
+    session_id: str,
+    claim_id: str | None = None,
+    judged_text: str | None = None,
+    judged_ref: str | None = None,
+    block_expected: bool = False,
+    agent_id: str | None = None,
+    source_agent_id: str = "",
+    caller_notified: bool | None = None,
+    armed_via: str = "",
+) -> None:
+    """Locked core of arm(); caller must hold _session_file_lock(session_id)."""
+    canon_agent = _canonical_agent_id(session_id, agent_id)
+    state = _load_state(session_id, agent_id=canon_agent)
+    cid = claim_id or state.get("claim_id") or "unnamed-claim"
+    state["armed"] = True
+    state["pending"] = True  # backward compat
+    state["claim_id"] = cid
+    claim_ids = state.get("claim_ids") or []
+    if cid not in claim_ids:
+        claim_ids.append(cid)
+    state["claim_ids"] = claim_ids
+    state["armed_at"] = _now()
+    disarmed_map = state.get("disarmed_claims")
+    if isinstance(disarmed_map, dict) and cid in disarmed_map:
+        disarmed_map.pop(cid, None)
+        state["disarmed_claims"] = disarmed_map
+    if (
+        judged_text is not None
+        or judged_ref
+        or block_expected
+        or source_agent_id
+        or caller_notified is not None
+        or armed_via
+    ):
+        judged = state.get("judged") or {}
+        raw_prev = judged.get(cid)
+        prev: dict[str, Any] = raw_prev if isinstance(raw_prev, dict) else {}
+        entry: dict[str, Any] = {**prev, "ref": judged_ref or prev.get("ref") or cid}
+        entry["block_expected"] = bool(block_expected)
+        if source_agent_id:
+            entry["source_agent_id"] = source_agent_id
+        if caller_notified is not None:
+            entry["caller_notified"] = caller_notified
+        if armed_via:
+            entry["armed_via"] = armed_via
+        if judged_text is not None:
+            path = _judged_path(session_id, cid, agent_id=canon_agent)
+            _write_text_atomic(path, judged_text)
+            entry["file"] = path.name
+            entry["body_sha256"] = _normalized_body_hash(judged_text)
+        judged[cid] = entry
+        state["judged"] = judged
+    _sync_top_level_block_expected(state)
+    _save_state(session_id, state, agent_id=canon_agent)
+
+
 def arm(
     session_id: str,
     claim_id: str | None = None,
@@ -362,50 +421,18 @@ def arm(
     tool-use id of a subagent result, the id of a peer envelope, or a task id.
     ``block_expected`` records whether an Argdown block was required on this report.
     """
-    canon_agent = _canonical_agent_id(session_id, agent_id)
     with _session_file_lock(session_id):
-        state = _load_state(session_id, agent_id=canon_agent)
-        cid = claim_id or state.get("claim_id") or "unnamed-claim"
-        state["armed"] = True
-        state["pending"] = True  # backward compat
-        state["claim_id"] = cid
-        claim_ids = state.get("claim_ids") or []
-        if cid not in claim_ids:
-            claim_ids.append(cid)
-        state["claim_ids"] = claim_ids
-        state["armed_at"] = _now()
-        disarmed_map = state.get("disarmed_claims")
-        if isinstance(disarmed_map, dict) and cid in disarmed_map:
-            disarmed_map.pop(cid, None)
-            state["disarmed_claims"] = disarmed_map
-        if (
-            judged_text is not None
-            or judged_ref
-            or block_expected
-            or source_agent_id
-            or caller_notified is not None
-            or armed_via
-        ):
-            judged = state.get("judged") or {}
-            raw_prev = judged.get(cid)
-            prev: dict[str, Any] = raw_prev if isinstance(raw_prev, dict) else {}
-            entry: dict[str, Any] = {**prev, "ref": judged_ref or prev.get("ref") or cid}
-            entry["block_expected"] = bool(block_expected)
-            if source_agent_id:
-                entry["source_agent_id"] = source_agent_id
-            if caller_notified is not None:
-                entry["caller_notified"] = caller_notified
-            if armed_via:
-                entry["armed_via"] = armed_via
-            if judged_text is not None:
-                path = _judged_path(session_id, cid, agent_id=canon_agent)
-                path.write_text(judged_text, encoding="utf-8")
-                entry["file"] = path.name
-                entry["body_sha256"] = _normalized_body_hash(judged_text)
-            judged[cid] = entry
-            state["judged"] = judged
-        _sync_top_level_block_expected(state)
-        _save_state(session_id, state, agent_id=canon_agent)
+        _arm_locked(
+            session_id,
+            claim_id=claim_id,
+            judged_text=judged_text,
+            judged_ref=judged_ref,
+            block_expected=block_expected,
+            agent_id=agent_id,
+            source_agent_id=source_agent_id,
+            caller_notified=caller_notified,
+            armed_via=armed_via,
+        )
 
 
 def get_judged(
@@ -425,6 +452,73 @@ def get_judged(
     return text, entry.get("ref")
 
 
+def _disarm_locked(
+    session_id: str,
+    claim_id: str,
+    verdict: str,
+    reason: str,
+    verification_id: str = "",
+    title: str | None = None,
+    machine: bool = False,
+    agent_id: str | None = None,
+) -> None:
+    """Locked core of disarm(); caller must hold _session_file_lock(session_id)."""
+    canon_agent = _canonical_agent_id(session_id, agent_id)
+    state = _load_state(session_id, agent_id=canon_agent)
+    claim_ids = state.get("claim_ids") or []
+    was_pending = claim_id in claim_ids
+    if claim_id in claim_ids:
+        claim_ids.remove(claim_id)
+    state["claim_id"] = claim_id  # overwritten below if claims remain
+    state["claim_ids"] = claim_ids
+    judged = state.get("judged") or {}
+    entry = judged.pop(claim_id, None)
+    if entry and entry.get("file"):
+        (_state_dir() / entry["file"]).unlink()
+    state["judged"] = judged
+
+    # Track gate-armed claims that have been disarmed (excludes unarmed out-of-band labels)
+    if entry is not None or was_pending:
+        disarmed = state.get("disarmed_claims") or {}
+        disarmed[claim_id] = {
+            "verdict": verdict,
+            "verification_id": verification_id,
+            "disarmed_at": _now(),
+        }
+        while len(disarmed) > _DISARMED_HISTORY_LIMIT:
+            oldest_key = next(iter(disarmed))
+            disarmed.pop(oldest_key, None)
+        state["disarmed_claims"] = disarmed
+
+    _sync_top_level_block_expected(state)
+
+    if claim_ids:
+        state["armed"] = True
+        state["pending"] = True
+        state["claim_id"] = claim_ids[-1]
+    else:
+        state["armed"] = False
+        state["pending"] = False
+        state["claim_id"] = claim_id
+
+    last_verdict: dict[str, Any] = {
+        "claim_id": claim_id,
+        "verdict": verdict,
+        "reason": reason,
+        "recorded_at": _now(),
+    }
+    if verification_id:
+        last_verdict["verification_id"] = verification_id
+    if title:
+        last_verdict["title"] = title
+    if machine:
+        last_verdict["machine"] = True
+    if verdict == "no-claim":
+        last_verdict["no_claim"] = True
+    state["last_verdict"] = last_verdict
+    _save_state(session_id, state, agent_id=canon_agent)
+
+
 def disarm(
     session_id: str,
     claim_id: str,
@@ -436,60 +530,17 @@ def disarm(
     agent_id: str | None = None,
 ) -> None:
     """Disarm the hearsay check after a verdict is recorded."""
-    canon_agent = _canonical_agent_id(session_id, agent_id)
     with _session_file_lock(session_id):
-        state = _load_state(session_id, agent_id=canon_agent)
-        claim_ids = state.get("claim_ids") or []
-        was_pending = claim_id in claim_ids
-        if claim_id in claim_ids:
-            claim_ids.remove(claim_id)
-        state["claim_ids"] = claim_ids
-        judged = state.get("judged") or {}
-        entry = judged.pop(claim_id, None)
-        if entry and entry.get("file"):
-            (_state_dir() / entry["file"]).unlink()
-        state["judged"] = judged
-
-        # Track gate-armed claims that have been disarmed (excludes unarmed out-of-band labels)
-        if entry is not None or was_pending:
-            disarmed = state.get("disarmed_claims") or {}
-            disarmed[claim_id] = {
-                "verdict": verdict,
-                "verification_id": verification_id,
-                "disarmed_at": _now(),
-            }
-            while len(disarmed) > _DISARMED_HISTORY_LIMIT:
-                oldest_key = next(iter(disarmed))
-                disarmed.pop(oldest_key, None)
-            state["disarmed_claims"] = disarmed
-
-        _sync_top_level_block_expected(state)
-
-        if claim_ids:
-            state["armed"] = True
-            state["pending"] = True
-            state["claim_id"] = claim_ids[-1]
-        else:
-            state["armed"] = False
-            state["pending"] = False
-            state["claim_id"] = claim_id
-
-        last_verdict: dict[str, Any] = {
-            "claim_id": claim_id,
-            "verdict": verdict,
-            "reason": reason,
-            "recorded_at": _now(),
-        }
-        if verification_id:
-            last_verdict["verification_id"] = verification_id
-        if title:
-            last_verdict["title"] = title
-        if machine:
-            last_verdict["machine"] = True
-        if verdict == "no-claim":
-            last_verdict["no_claim"] = True
-        state["last_verdict"] = last_verdict
-        _save_state(session_id, state, agent_id=canon_agent)
+        _disarm_locked(
+            session_id,
+            claim_id=claim_id,
+            verdict=verdict,
+            reason=reason,
+            verification_id=verification_id,
+            title=title,
+            machine=machine,
+            agent_id=agent_id,
+        )
 
 
 def is_armed(session_id: str, agent_id: str | None = None) -> bool:
@@ -514,26 +565,26 @@ def find_armed_owner(
     state_dir = _state_dir()
     if not state_dir.is_dir():
         return None
-    candidates = [
-        state_dir / f"{safe_session}.json",
-        *state_dir.glob(f"{safe_session}.agent-*.json"),
-    ]
-    for sfile in candidates:
-        if not sfile.is_file():
-            continue
-        try:
+    with _session_file_lock(session_id):
+        candidates = [
+            state_dir / f"{safe_session}.json",
+            *state_dir.glob(f"{safe_session}.agent-*.json"),
+        ]
+        for sfile in candidates:
+            if not sfile.is_file():
+                continue
             data = json.loads(sfile.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            continue
-        if not (data.get("armed") or data.get("pending")):
-            continue
-        owner_agent = _canonical_agent_id(session_id, data.get("agent_id", ""))
-        if owner_agent == canon_excluded:
-            continue
-        cids = data.get("claim_ids") or ([data["claim_id"]] if data.get("claim_id") else [])
-        judged = data.get("judged") or {}
-        if claim_id in cids or claim_id in judged:
-            return owner_agent or "main"
+            if not isinstance(data, dict):
+                raise ValueError(f"corrupt gate state in {sfile}: expected JSON object")
+            if not (data.get("armed") or data.get("pending")):
+                continue
+            owner_agent = _canonical_agent_id(session_id, data.get("agent_id", ""))
+            if owner_agent == canon_excluded:
+                continue
+            cids = data.get("claim_ids") or ([data["claim_id"]] if data.get("claim_id") else [])
+            judged = data.get("judged") or {}
+            if claim_id in cids or claim_id in judged:
+                return owner_agent or "main"
     return None
 
 
@@ -1481,6 +1532,10 @@ def _register_parent_locked(
         sub_parents[child_id] = caller_id
 
 
+def _tool_base_lower(tool_name: str | None) -> str:
+    return (tool_name or "").strip().split("__")[-1].lower()
+
+
 def record_pre_dispatch(ctx: HookContext) -> None:
     """Record caller agent for an in-flight dispatch tool_use_id under session lock."""
     if ctx.event != "PreToolUse" or ctx.tool not in _DISPATCH_TOOLS or not ctx.session_id:
@@ -1491,6 +1546,10 @@ def record_pre_dispatch(ctx: HookContext) -> None:
     caller_id = _canonical_agent_id(ctx.session_id, ctx.agent_id)
     with _session_file_lock(ctx.session_id):
         parents = _load_parents(ctx.session_id)
+        if caller_id:
+            known = parents.setdefault("known_subagents", [])
+            if caller_id not in known:
+                known.append(caller_id)
         pending = parents.setdefault("pending_spawns", {})
         pending[tuid] = caller_id
         while len(pending) > 100:
@@ -1517,7 +1576,7 @@ def _record_single_post_dispatch_locked(
         if child_id:
             sub_name = str(ti.get("name") or "").strip()
             _register_parent_locked(parents, child_id, caller_id, name=sub_name, overwrite=True)
-    elif tool_name in ("SendMessage", "send_message"):
+    elif _tool_base_lower(tool_name) in ("sendmessage", "send_message"):
         resumed = str(tr.get("resumedAgentId") or tr.get("revivedAgentId") or "").strip()
         if resumed:
             _register_parent_locked(parents, resumed, caller_id, overwrite=False)
@@ -1528,7 +1587,9 @@ def record_post_dispatch(ctx: HookContext) -> None:
     if not ctx.session_id:
         return
     caller_id = _canonical_agent_id(ctx.session_id, ctx.agent_id)
-    if ctx.event == "PostToolUse" and ctx.tool in (*_DISPATCH_TOOLS, "SendMessage", "send_message"):
+    if ctx.event == "PostToolUse" and (
+        ctx.tool in _DISPATCH_TOOLS or _tool_base_lower(ctx.tool) in ("sendmessage", "send_message")
+    ):
         with _session_file_lock(ctx.session_id):
             parents = _load_parents(ctx.session_id)
             _record_single_post_dispatch_locked(
@@ -1784,80 +1845,90 @@ def _apply_incoming_items(
     emit_notice: bool = True,
 ) -> list[tuple[str, bool, str]]:
     """Process extracted reports against target_agent's slot; return notice tuples [(cid, absent, cmd)]."""
+    if not items:
+        return []
     canon_target = _canonical_agent_id(ctx.session_id, target_agent)
     notice_items: list[tuple[str, bool, str]] = []
     batch_used: set[str] = set()
+    traces_to_emit: list[tuple[str, str]] = []
 
-    for judged_text, judged_ref, base_cid, sender_id in items:
-        block_text = ra.extract_block(judged_text)
-        body_sha = _normalized_body_hash(judged_text)
+    with _session_file_lock(ctx.session_id):
+        for judged_text, judged_ref, base_cid, sender_id in items:
+            block_text = ra.extract_block(judged_text)
+            body_sha = _normalized_body_hash(judged_text)
 
-        # 1. Null form clears without blocking
-        if block_text is not None and ra.is_null_form(block_text):
-            disarm(
-                ctx.session_id,
-                claim_id=base_cid,
-                verdict="no-claim",
-                reason="null form",
-                machine=True,
-                agent_id=canon_target,
+            # 1. Null form clears without blocking
+            if block_text is not None and ra.is_null_form(block_text):
+                _disarm_locked(
+                    ctx.session_id,
+                    claim_id=base_cid,
+                    verdict="no-claim",
+                    reason="null form",
+                    machine=True,
+                    agent_id=canon_target,
+                )
+                continue
+
+            slot_state = _load_state(ctx.session_id, agent_id=canon_target)
+            slot_judged = slot_state.get("judged") or {}
+
+            # Deduplicate UserPromptSubmit <agent-message> against silent PostToolUse(SubagentHandback)
+            if ctx.event == "UserPromptSubmit":
+                dedup = _find_active_dedup(slot_judged, body_sha, sender_id)
+                if dedup is not None:
+                    existing_cid, _entry = dedup
+                    if allow_dedup_notice:
+                        is_absent = block_text is None
+                        cmd = format_verdict_command(
+                            existing_cid,
+                            ctx.hooks_dir,
+                            ctx.session_id,
+                            verdict="REVISE" if is_absent else "<PASS|REVISE|FAIL>",
+                            reason="no argument supplied" if is_absent else None,
+                            agent_id=canon_target,
+                        )
+                        notice_items.append((existing_cid, is_absent, cmd))
+                    continue
+
+            # Dedup PostToolBatch vs PostToolUse by exact ref + sha; disambiguate same-description collisions
+            cid, already_same_ref = _allocate_non_colliding_claim_id(
+                base_cid, judged_ref, body_sha, slot_judged, batch_used
             )
-            continue
+            if ctx.event == "PostToolBatch" and already_same_ref:
+                raw_existing = slot_judged.get(cid)
+                if (
+                    isinstance(raw_existing, dict)
+                    and raw_existing.get("armed_via") == "PostToolUse"
+                ):
+                    continue
 
-        slot_state = _load_state(ctx.session_id, agent_id=canon_target)
-        slot_judged = slot_state.get("judged") or {}
+            _arm_locked(
+                ctx.session_id,
+                claim_id=cid,
+                judged_text=judged_text,
+                judged_ref=judged_ref,
+                block_expected=True,
+                agent_id=canon_target,
+                source_agent_id=sender_id,
+                caller_notified=emit_notice,
+                armed_via=ctx.event,
+            )
+            traces_to_emit.append((cid, judged_ref))
 
-        # Deduplicate UserPromptSubmit <agent-message> against silent PostToolUse(SubagentHandback)
-        if ctx.event == "UserPromptSubmit":
-            dedup = _find_active_dedup(slot_judged, body_sha, sender_id)
-            if dedup is not None:
-                existing_cid, _entry = dedup
-                if allow_dedup_notice:
-                    is_absent = block_text is None
-                    cmd = format_verdict_command(
-                        existing_cid,
-                        ctx.hooks_dir,
-                        ctx.session_id,
-                        verdict="REVISE" if is_absent else "<PASS|REVISE|FAIL>",
-                        reason="no argument supplied" if is_absent else None,
-                        agent_id=canon_target,
-                    )
-                    notice_items.append((existing_cid, is_absent, cmd))
-                continue
+            if emit_notice:
+                is_absent = block_text is None
+                cmd = format_verdict_command(
+                    cid,
+                    ctx.hooks_dir,
+                    ctx.session_id,
+                    verdict="REVISE" if is_absent else "<PASS|REVISE|FAIL>",
+                    reason="no argument supplied" if is_absent else None,
+                    agent_id=canon_target,
+                )
+                notice_items.append((cid, is_absent, cmd))
 
-        # Dedup PostToolBatch vs PostToolUse by exact ref + sha; disambiguate same-description collisions
-        cid, already_same_ref = _allocate_non_colliding_claim_id(
-            base_cid, judged_ref, body_sha, slot_judged, batch_used
-        )
-        if ctx.event == "PostToolBatch" and already_same_ref:
-            raw_existing = slot_judged.get(cid)
-            if isinstance(raw_existing, dict) and raw_existing.get("armed_via") == "PostToolUse":
-                continue
-
-        arm(
-            ctx.session_id,
-            claim_id=cid,
-            judged_text=judged_text,
-            judged_ref=judged_ref,
-            block_expected=True,
-            agent_id=canon_target,
-            source_agent_id=sender_id,
-            caller_notified=emit_notice,
-            armed_via=ctx.event,
-        )
+    for cid, judged_ref in traces_to_emit:
         _emit_hearsay_trace(ctx, cid, judged_ref, target_agent_id=canon_target or None)
-
-        if emit_notice:
-            is_absent = block_text is None
-            cmd = format_verdict_command(
-                cid,
-                ctx.hooks_dir,
-                ctx.session_id,
-                verdict="REVISE" if is_absent else "<PASS|REVISE|FAIL>",
-                reason="no argument supplied" if is_absent else None,
-                agent_id=canon_target,
-            )
-            notice_items.append((cid, is_absent, cmd))
 
     return notice_items
 
@@ -1895,32 +1966,33 @@ def _bridge_foreground_child(
         )
 
     # Check if child_id already armed caller_id earlier (e.g. via meta.json sidecar) and hasn't notified yet
-    slot_state = _load_state(ctx.session_id, agent_id=caller_id)
-    slot_judged = slot_state.get("judged") or {}
     bridged: list[tuple[str, bool, str]] = []
-    for cid, entry in list(slot_judged.items()):
-        if not isinstance(entry, dict) or entry.get("source_agent_id") != child_id:
-            continue
-        if entry.get("caller_notified"):
-            continue
-        stored_text, _ = get_judged(ctx.session_id, cid, agent_id=caller_id)
-        is_absent = ra.extract_block(stored_text) is None
-        arm(
-            ctx.session_id,
-            claim_id=cid,
-            block_expected=bool(entry.get("block_expected", True)),
-            agent_id=caller_id,
-            caller_notified=True,
-        )
-        cmd = format_verdict_command(
-            cid,
-            ctx.hooks_dir,
-            ctx.session_id,
-            verdict="REVISE" if is_absent else "<PASS|REVISE|FAIL>",
-            reason="no argument supplied" if is_absent else None,
-            agent_id=caller_id,
-        )
-        bridged.append((cid, is_absent, cmd))
+    with _session_file_lock(ctx.session_id):
+        slot_state = _load_state(ctx.session_id, agent_id=caller_id)
+        slot_judged = slot_state.get("judged") or {}
+        for cid, entry in list(slot_judged.items()):
+            if not isinstance(entry, dict) or entry.get("source_agent_id") != child_id:
+                continue
+            if entry.get("caller_notified"):
+                continue
+            stored_text, _ = get_judged(ctx.session_id, cid, agent_id=caller_id)
+            is_absent = ra.extract_block(stored_text) is None
+            _arm_locked(
+                ctx.session_id,
+                claim_id=cid,
+                block_expected=bool(entry.get("block_expected", True)),
+                agent_id=caller_id,
+                caller_notified=True,
+            )
+            cmd = format_verdict_command(
+                cid,
+                ctx.hooks_dir,
+                ctx.session_id,
+                verdict="REVISE" if is_absent else "<PASS|REVISE|FAIL>",
+                reason="no argument supplied" if is_absent else None,
+                agent_id=caller_id,
+            )
+            bridged.append((cid, is_absent, cmd))
     return bridged
 
 
@@ -1972,8 +2044,10 @@ def hearsay_arm(ctx: HookContext) -> Result | None:
 
     caller_id = _canonical_agent_id(ctx.session_id, ctx.agent_id)
 
+    tool_base = _tool_base_lower(ctx.tool)
+
     # 1. SubagentHandback PostToolUse: child sends report silently into caller's gate slot
-    if ctx.event == "PostToolUse" and (ctx.tool or "").strip() == "SubagentHandback":
+    if ctx.event == "PostToolUse" and tool_base in ("subagenthandback", "subagent_handback"):
         child_id = caller_id
         msg = str(_tool_input(ctx).get("message") or "").strip()
         if not msg or not child_id:
@@ -1993,7 +2067,7 @@ def hearsay_arm(ctx: HookContext) -> Result | None:
         return None
 
     # 2. Subagent-to-subagent SendMessage PostToolUse: silently arm target (excluding parent->child briefs)
-    if ctx.event == "PostToolUse" and (ctx.tool or "").strip().lower() in (
+    if ctx.event == "PostToolUse" and tool_base in (
         "sendmessage",
         "send_message",
     ):
