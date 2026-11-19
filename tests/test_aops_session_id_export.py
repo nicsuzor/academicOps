@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -121,6 +122,7 @@ def _clean_env(tmp_path: Path) -> dict[str, str]:
     return env
 
 
+@pytest.mark.integration
 def test_verdict_script_records_without_session_flag(tmp_path):
     """End to end, as Claude Code runs it: SessionStart through dispatch.py,
     then the documented verdict command in a Bash that sources CLAUDE_ENV_FILE,
@@ -129,8 +131,12 @@ def test_verdict_script_records_without_session_flag(tmp_path):
     env_file = tmp_path / "claude-env" / "sessionstart-hook-0.sh"
     env["CLAUDE_ENV_FILE"] = str(env_file)
 
+    staged_hooks = tmp_path / "staged_hooks"
+    shutil.copytree(IDA_HOOKS, staged_hooks, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copy2(REPO_ROOT / "lib" / "hooks" / "dispatch.py", staged_hooks / "dispatch.py")
+
     start = subprocess.run(
-        [sys.executable, str(IDA_HOOKS / "dispatch.py"), "claude", "SessionStart"],
+        [sys.executable, str(staged_hooks / "dispatch.py"), "claude", "SessionStart"],
         input=json.dumps({"hook_event_name": "SessionStart", "session_id": SESSION}),
         capture_output=True,
         text=True,

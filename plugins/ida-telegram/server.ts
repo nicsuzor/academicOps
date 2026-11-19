@@ -6,6 +6,7 @@ import { PermissionRelay } from "./src/mcp/permissions.js";
 import { TelegramBotClient } from "./src/telegram/bot.js";
 import { StdioMcpServer } from "./src/mcp/server.js";
 import { startWebServer } from "./src/web/server.js";
+import { SharedTelegramChannelCore } from "./src/core/channel-core.js";
 import { createServer } from "node:net";
 import { existsSync, unlinkSync, chmodSync } from "node:fs";
 import { join } from "node:path";
@@ -21,8 +22,16 @@ async function main() {
 
   let bot: TelegramBotClient | null = null;
 
+  const channelCore = new SharedTelegramChannelCore({
+    config,
+    store,
+    broker,
+    bot: null,
+    permRelay,
+  });
+
   // Stdio MCP server
-  const mcpServer = new StdioMcpServer(config, store, broker, null, permRelay);
+  const mcpServer = new StdioMcpServer(config, store, broker, null, permRelay, channelCore);
 
   if (!config.isPrimary) {
     console.error("[ida-telegram] Non-primary instance: registering 0 tools, no poller, no web server.");
@@ -84,14 +93,27 @@ async function main() {
     }
   }
 
-  const socketServer = createBridgeServer(
-    config,
-    broker,
-    bot,
-    (content, meta) => mcpServer.emitChannelNotification(content, meta),
-    store,
-    broadcastSseEvent
-  );
+  const socketServer = createServer((client) => {
+    let raw = "";
+    client.on("data", async (chunk) => {
+      raw += chunk.toString();
+      let newlineIdx = raw.indexOf("\n");
+      while (newlineIdx !== -1) {
+        const line = raw.substring(0, newlineIdx).trim();
+        raw = raw.substring(newlineIdx + 1);
+        if (line) {
+          try {
+            const req = JSON.parse(line);
+            const resp = await channelCore.handleIpcMessage(req);
+            client.write(JSON.stringify(resp) + "\n");
+          } catch (err: any) {
+            client.write(JSON.stringify({ error: err.message || "malformed request" }) + "\n");
+          }
+        }
+        newlineIdx = raw.indexOf("\n");
+      }
+    });
+  });
 
   socketServer.listen(config.socketPath, () => {
     try {
@@ -118,9 +140,26 @@ async function main() {
       webContext.editTelegramCard(chatId, messageId, text, replyMarkup)
     );
 
+    // Sweep undelivered questions that were left pending with no messageId
+    const undelivered = broker.sweepUndeliveredQuestions();
+    for (const q of undelivered) {
+      mcpServer.emitChannelNotification(
+        `Undelivered question ${q.id} detected: ${q.deliveryError || "No messageId recorded"}`,
+        {
+          event: "question_delivery_failed",
+          question_id: q.id,
+          error: q.deliveryError || "No messageId recorded",
+          turn_id: q.turnId || q.turn_id,
+          session_id: q.sessionId || q.session_id,
+        }
+      );
+    }
+
     // Start background polling
     bot.startPolling().catch((e) => console.error("[ida-telegram] Polling stopped:", e));
   }
+
+  channelCore.bot = bot;
 
   // Connect bot instance to McpServer
   (mcpServer as any).bot = bot;
@@ -148,13 +187,14 @@ async function main() {
 }
 
 export function createBridgeServer(
-  config: PluginConfig,
+  config: ReturnType<typeof loadConfig>,
   broker: QuestionBroker,
-  bot: TelegramBotClient | null,
+  bot: TelegramBotClient | null | (() => TelegramBotClient | null),
   emitChannelNotification?: (content: string, meta: Record<string, unknown>) => void,
   store?: PluginStore,
   broadcastSse?: typeof broadcastSseEvent
 ) {
+  const getBot = () => (typeof bot === "function" ? (bot as () => TelegramBotClient | null)() : bot);
   return createServer((client) => {
     let raw = "";
     client.on("data", async (chunk) => {
@@ -163,36 +203,100 @@ export function createBridgeServer(
         const line = raw.trim();
         try {
           const req = JSON.parse(line);
+          const activeBot = getBot();
           if (req.type === "ask_user") {
             const postedIds: string[] = [];
+            const failedDeliveries: Array<{ questionId: string; error: string }> = [];
             const topMiniAppOnly = req.mini_app_only === true || req.chat === false;
+            const topThreadId = (req.message_thread_id ?? req.thread_id) as number | undefined;
+            const defaultChatId = config.allowFrom[0];
+
+            if (!topMiniAppOnly && !activeBot) {
+              client.write(JSON.stringify({ status: "error", error: "Telegram bot client is not running" }) + "\n");
+              return;
+            }
+            if (!topMiniAppOnly && !defaultChatId) {
+              client.write(JSON.stringify({ status: "error", error: "No allowed chat ID configured for Telegram questions" }) + "\n");
+              return;
+            }
+
             for (const q of req.questions || []) {
               const isMiniAppOnly = topMiniAppOnly || q.mini_app_only === true || q.chat === false;
+              const effectiveThreadId =
+                (q.message_thread_id ?? q.thread_id ?? topThreadId) ??
+                (defaultChatId ? activeBot?.getLastThreadId(defaultChatId) : undefined);
+              const detailText = q.detail ?? q.details ?? req.detail ?? req.details;
+              let detailsId = q.detailsId ?? q.details_id;
+              if (!detailsId && detailText && store) {
+                detailsId = store.storeDetails(detailText);
+              }
               const result = await broker.askUser({
                 question: q.question,
                 header: q.header,
                 context: q.context,
-                detail: q.detail,
+                detail: detailText,
+                detailsId,
                 mini_app_only: isMiniAppOnly,
                 recommendation: q.recommendation,
                 options: q.options,
                 multiSelect: q.multiSelect,
                 allowOther: q.allowOther,
-                chatId: config.allowFrom[0],
+                chatId: defaultChatId,
+                messageThreadId: effectiveThreadId,
                 turnId: q.turnId || q.turn_id || req.turn_id || req.turnId,
                 sessionId: q.sessionId || q.session_id || req.session_id || req.sessionId,
               });
-              postedIds.push(result.questionId);
 
-              if (bot && !isMiniAppOnly) {
-                const card = broker.renderQuestionCard(result.questionId);
-                if (card && config.allowFrom[0]) {
-                  await bot.sendQuestionCard(config.allowFrom[0], result.questionId, card);
+              if (!isMiniAppOnly) {
+                if (!activeBot || !defaultChatId) {
+                  const errorMsg = "Telegram bot is unavailable or no authorized chat configured";
+                  broker.markDeliveryFailed(result.questionId, errorMsg);
+                  failedDeliveries.push({ questionId: result.questionId, error: errorMsg });
+                } else {
+                  const card = broker.renderQuestionCard(result.questionId, config.miniAppUrl, config.instance);
+                  if (card) {
+                    const sendRes = await activeBot.sendQuestionCard(defaultChatId, result.questionId, card, effectiveThreadId);
+                    if (!sendRes?.ok || !sendRes?.result?.message_id) {
+                      const errorMsg = sendRes?.description || sendRes?.error || "Telegram sendMessage failed";
+                      broker.markDeliveryFailed(result.questionId, errorMsg);
+                      failedDeliveries.push({ questionId: result.questionId, error: errorMsg });
+                    } else {
+                      postedIds.push(result.questionId);
+                    }
+                  } else {
+                    const errorMsg = `Failed to render question card for ${result.questionId}`;
+                    broker.markDeliveryFailed(result.questionId, errorMsg);
+                    failedDeliveries.push({ questionId: result.questionId, error: errorMsg });
+                  }
                 }
+              } else {
+                postedIds.push(result.questionId);
               }
             }
 
-            client.write(JSON.stringify({ status: "ok", questionId: postedIds[0], questionIds: postedIds }) + "\n");
+            if (failedDeliveries.length > 0) {
+              const failed = failedDeliveries[0];
+              if (emitChannelNotification) {
+                emitChannelNotification(`Question delivery failed: ${failed.error}`, {
+                  event: "question_delivery_failed",
+                  question_id: failed.questionId,
+                  error: failed.error,
+                  turn_id: req.turn_id || req.turnId,
+                  session_id: req.session_id || req.sessionId,
+                });
+              }
+              client.write(
+                JSON.stringify({
+                  status: "error",
+                  error: failed.error,
+                  questionId: failed.questionId,
+                  questionIds: postedIds,
+                  failedDeliveries,
+                }) + "\n"
+              );
+            } else {
+              client.write(JSON.stringify({ status: "ok", questionId: postedIds[0], questionIds: postedIds }) + "\n");
+            }
           } else if (req.type === "close_question") {
             const questionId = req.question_id || req.questionId || req.id;
             const reason = typeof req.reason === "string" ? req.reason.trim() : "";
@@ -205,8 +309,8 @@ export function createBridgeServer(
               return;
             }
             const result = await broker.closeQuestion(questionId, reason);
-            if (result && bot && result.question.chatId && result.question.messageId) {
-              await bot.editMessage(result.question.chatId, result.question.messageId, result.cardText, { inline_keyboard: [] });
+            if (result && activeBot && result.question.chatId && result.question.messageId) {
+              await activeBot.editMessage(result.question.chatId, result.question.messageId, result.cardText, { inline_keyboard: [] });
             }
             if (result && emitChannelNotification) {
               emitChannelNotification(`Question closed: ${result.channelEvent.reason}`, {
@@ -242,8 +346,8 @@ export function createBridgeServer(
               return;
             }
             const result = await broker.resolveAnswer(questionId, optionIndex !== undefined ? optionIndex : "other", choice);
-            if (result && bot && result.question.chatId && result.question.messageId) {
-              await bot.editMessage(result.question.chatId, result.question.messageId, result.cardText, { inline_keyboard: [] });
+            if (result && activeBot && result.question.chatId && result.question.messageId) {
+              await activeBot.editMessage(result.question.chatId, result.question.messageId, result.cardText, { inline_keyboard: [] });
             }
             if (result && emitChannelNotification) {
               emitChannelNotification(`Question answered: ${result.channelEvent.choice}`, {

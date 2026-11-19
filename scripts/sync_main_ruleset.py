@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 """Sync branch protection ruleset for main to GitHub via gh api.
 
-Reads .github/rulesets/main-requires-review.yml and ensures the ruleset
-is created and active on nicsuzor/academicOps targeting refs/heads/main.
+Reads .github/rulesets/main-requires-review.yml and creates or updates the
+ruleset on nicsuzor/academicOps targeting refs/heads/main.
+
+The release pipeline publishes to main by a direct push
+(scripts/publish-dist-to-main.sh), which a pull_request or
+required_status_checks rule rejects unless the pushing identity is a bypass
+actor. So this script refuses to apply a ruleset that has such a rule and no
+bypass actor.
 """
 
 import json
@@ -19,6 +25,32 @@ RULESET_FILE = (
 )
 
 
+def build_payload(data: dict) -> dict:
+    """Build the GitHub Ruleset API payload dictionary from parsed YAML."""
+    return {
+        "name": data["name"],
+        "target": data["target"],
+        "enforcement": data["enforcement"],
+        "conditions": data["conditions"],
+        "bypass_actors": data.get("bypass_actors") or [],
+        "rules": data.get("rules") or [],
+    }
+
+
+def validate_payload(payload: dict) -> tuple[bool, str]:
+    """Validate that push-blocking rules have a bypass actor for the release pipeline."""
+    push_blocking = {"pull_request", "required_status_checks", "update"}
+    rules = payload.get("rules") or []
+    if not payload.get("bypass_actors") and any(r.get("type") in push_blocking for r in rules):
+        return False, (
+            "ERROR: refusing to apply: the ruleset has a rule that rejects the "
+            "release pipeline's direct push to main "
+            f"({', '.join(sorted(push_blocking))}) and no bypass_actors. Add the "
+            "publishing identity as a bypass actor first."
+        )
+    return True, ""
+
+
 def main() -> int:
     if not RULESET_FILE.exists():
         print(f"ERROR: {RULESET_FILE} does not exist", file=sys.stderr)
@@ -27,14 +59,12 @@ def main() -> int:
     with open(RULESET_FILE, encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
-    payload = {
-        "name": data["name"],
-        "target": data["target"],
-        "enforcement": data["enforcement"],
-        "conditions": data["conditions"],
-        "bypass_actors": data.get("bypass_actors") or [],
-        "rules": data.get("rules", []),
-    }
+    payload = build_payload(data)
+    valid, err_msg = validate_payload(payload)
+    if not valid:
+        print(err_msg, file=sys.stderr)
+        return 1
+
     payload_json = json.dumps(payload, indent=2)
 
     print("Target ruleset payload:")
@@ -55,21 +85,30 @@ def main() -> int:
 
     rulesets = json.loads(res.stdout)
     existing_id = None
+
+    # First pass: match exact ruleset name
     for r in rulesets:
-        # Check if ruleset targets main or matches name
-        r_id = r["id"]
-        detail_res = subprocess.run(
-            ["gh", "api", f"repos/{REPO}/rulesets/{r_id}"],
-            capture_output=True,
-            text=True,
-        )
-        if detail_res.returncode == 0:
-            detail = json.loads(detail_res.stdout)
-            inc = detail.get("conditions", {}).get("ref_name", {}).get("include", [])
-            if "refs/heads/main" in inc or detail.get("name") == data["name"]:
-                existing_id = r_id
-                print(f"Found matching ruleset ID: {existing_id}")
-                break
+        if r.get("name") == data["name"]:
+            existing_id = r["id"]
+            print(f"Found matching ruleset ID by name: {existing_id}")
+            break
+
+    # Second pass: if no exact name match, check rulesets targeting refs/heads/main
+    if not existing_id:
+        for r in rulesets:
+            r_id = r["id"]
+            detail_res = subprocess.run(
+                ["gh", "api", f"repos/{REPO}/rulesets/{r_id}"],
+                capture_output=True,
+                text=True,
+            )
+            if detail_res.returncode == 0:
+                detail = json.loads(detail_res.stdout)
+                inc = detail.get("conditions", {}).get("ref_name", {}).get("include", [])
+                if "refs/heads/main" in inc:
+                    existing_id = r_id
+                    print(f"Found matching ruleset ID by target branch: {existing_id}")
+                    break
 
     if existing_id:
         print(f"Updating ruleset {existing_id}...")

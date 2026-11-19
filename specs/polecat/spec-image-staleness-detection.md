@@ -10,9 +10,8 @@ tags: [spec, polecat, provenance, staleness]
 
 # Polecat Container Image Staleness Detection & Surfacing
 
-Originally implemented in `lib/polecat/staleness.py` in academicOps;
-container image definitions and builds are now maintained outside this repository and
-supplied by the installer.
+Container image definitions, staleness checks, and builds are maintained outside this
+repository and supplied by the installer.
 
 ## The failure mode
 
@@ -207,8 +206,7 @@ Workspace commit: f31ebcf7
 
 ### In-container `SessionStart` hook
 
-`run` sets four container variables (declared in `lib/polecat/env_contract.py`'s
-`FORWARDED_ENV`, so their values reach the container through the `docker`
+`run` sets four container variables (forwarded through the `docker`
 process's own environment rather than on argv): `AOPS_IMAGE_PROVENANCE` (the full
 record as JSON),
 `AOPS_IMAGE_STALE` (`0`/`1`), `AOPS_IMAGE_PLUGINS_VERSION`, and -- only when stale -- `AOPS_IMAGE_STALENESS_WARNING`.

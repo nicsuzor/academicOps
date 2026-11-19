@@ -22,7 +22,7 @@ If repo exists, halt and prompt user: rename, adopt existing, or abort. For loca
 Generate the following core files using minimal project templates:
 
 - **`.agents/CORE.md`**: Title, one-line purpose, key directory list, development commands (`uv sync`, `uv run pytest`, `pre-commit run --all-files`), and rules: check repo first, search PKB before tasks, research data is immutable, edit files with native file tools only.
-- **`CLAUDE.md`**: Include `@.agents/CORE.md`, immutable data notice, and data freshness section (authoritative source, local cache path, refresh script, staleness definition).
+- **`AGENTS.md`**: Universal operational instructions, immutable data notice, and data freshness section (authoritative source, local cache path, refresh script, staleness definition).
 - **`.claude/settings.json`**:
   ```json
   {
@@ -70,19 +70,13 @@ Create `.agents/INDEX.md` listing `README.md`, `.agents/CORE.md`, `docs/METHODOL
 
 ## Step 7: PKB integration
 
-Check for existing node, then create, via the `services` MCP server's code-mode interface (`portal_codemode_execute`; in agy via `call_mcp_tool` with `ServerName: "services"`, in Claude Code via `mcp__services__portal_codemode_execute`):
+Check for an existing project node via PKB search (`<title or slug>`). If a matching project node exists, halt and prompt the user. Otherwise, create a new project node:
 
-```javascript
-const results = await codemode.pkb_search({ query: "<title or slug>", limit: 10 });
-// If matching project node exists, halt and prompt user. Else:
-await codemode.pkb_create_task({
-  title: "Project: <title>",
-  type: "project",
-  body: "<description>",
-  tags: ["project-<slug>"],
-  parent: "<goal_id>" // if specified
-});
-```
+- `title`: "Project: <title>"
+- `type`: "project"
+- `body`: "<description>"
+- `tags`: ["project-<slug>"]
+- `parent`: "<goal_id>" (if specified)
 
 ## Step 8: Git & project registration
 

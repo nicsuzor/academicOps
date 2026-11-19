@@ -433,6 +433,23 @@ def test_agy_agent_carries_source_color_through_unmodified(built_orchestrate):
     assert agy_marsha_fm["color"] == source_fm["color"]
 
 
+def test_agy_agent_body_carries_source_body_unchanged(built):
+    """_adapt_agents prepends the '# Agent System Instructions' heading when absent
+    and otherwise carries the source agent body through unmodified, even when
+    translated tools include send_message."""
+    source_raw = (TESTDATA / "plugins" / "alpha" / "agents" / "alpha-agent.md").read_text(
+        encoding="utf-8"
+    )
+    source_body = source_raw.split("---", 2)[2].strip()
+
+    agy_raw = (built / "fixture-alpha-agy" / "agents" / "alpha-agent.md").read_text(
+        encoding="utf-8"
+    )
+    agy_body = agy_raw.split("---", 2)[2].strip()
+
+    assert agy_body == f"# Agent System Instructions\n\n{source_body}"
+
+
 def test_agent_empty_tools_list_raises_build_error(tmp_path):
     from build.clients.agy import adapt as adapt_agy
     from build.clients.claude import adapt as adapt_claude
@@ -918,6 +935,31 @@ def test_disallowed_tools_subtraction(tmp_path):
     res3_claude = yaml.safe_load((agents_dir3 / "agent3.md").read_text().split("---")[1])
     assert res3_claude["disallowedTools"] == "Write, Edit"
 
+    # Case 4: explicit scoped tool + native agy disallowedTools (e.g. Bash(...) + disallowedTools: run_command)
+    plugin_dir4 = tmp_path / "disallowed-native-agy"
+    agents_dir4 = plugin_dir4 / "agents"
+    agents_dir4.mkdir(parents=True)
+    (agents_dir4 / "agent4.md").write_text(
+        "---\nname: agent4\ndescription: Scoped bash with disallowed run_command\ntools:\n  - Bash(gh pr view:*)\n  - WebSearch\ndisallowedTools: run_command\n---\n\nBody",
+        encoding="utf-8",
+    )
+    ctx4 = BuildContext(
+        plugin=Plugin(
+            directory="disallowed-native-agy",
+            marketplace_name="disallowed-native-agy",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir4,
+        ),
+        client="agy",
+        version=VERSION,
+        manifests={"plugin": {"name": "disallowed-native-agy"}},
+    )
+    adapt_agy(plugin_dir4, ctx4)
+    res4 = yaml.safe_load((agents_dir4 / "agent4.md").read_text().split("---")[1])
+    assert res4["tools"] == ["search_web"]
+    assert "run_command" not in res4["tools"]
+
 
 def test_mcpservers_dropped_for_agy_kept_for_claude(tmp_path):
     import yaml
@@ -969,6 +1011,7 @@ def test_mcpservers_dropped_for_agy_kept_for_claude(tmp_path):
     assert "includeSections" not in res_agy
 
 
+@pytest.mark.integration
 def test_openclaw_dist_built_and_packaged(tmp_path):
     dist_root = tmp_path / "dist"
     build_all(
@@ -1026,6 +1069,7 @@ def test_openclaw_does_not_bake_urls(tmp_path):
     assert claude_mcp == openclaw_mcp
 
 
+@pytest.mark.integration
 def test_agy_plugins_dir_prevents_bulk_install_overwrite(tmp_path):
     """`agy plugin install <dir>` checks `<dir>/plugins/` before bulk-scanning
     `<dir>` itself. Without `dist/plugins/<name>`, bulk-scanning the bare root

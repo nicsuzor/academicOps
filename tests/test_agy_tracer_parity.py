@@ -689,3 +689,374 @@ def test_agy_handback_turn_names_subagent(tmp_path: Path):
         ]
         assert len(turn_roots) == 1
         assert turn_roots[0]["attributes"].get("subagent.id") == child_subagent_id
+
+
+def test_agy_root_session_not_corrupted_by_background_task_or_subagent_handback(tmp_path: Path):
+    """A root agy session (started with USER_INPUT) must keep its own session.id when woken by
+    a background task (sender=<root>/task-1) or a child subagent handback (sender=<child>)."""
+    state_store: dict[str, dict] = {}
+
+    def load_state(sid: str) -> dict:
+        return json.loads(json.dumps(state_store.get(sid, {})))
+
+    def save_state(sid: str, st: dict) -> None:
+        state_store[sid] = json.loads(json.dumps(st))
+
+    exported_records: list[dict] = []
+
+    def mock_export(config, session_id, username, span_records, parent_session_id=None, **kwargs):
+        for r in span_records:
+            r["_exported_session_id"] = session_id
+            r["_exported_parent_session_id"] = parent_session_id
+            r["_exported_agent_id"] = kwargs.get("agent_id")
+            exported_records.append(r)
+
+    root_session = "root-uuid-1111"
+    child_subagent = "child-uuid-2222"
+    config = {"endpoint": "localhost:4317"}
+    transcript = tmp_path / "root_transcript.jsonl"
+
+    with (
+        patch("agy_tracer._load_state", side_effect=load_state),
+        patch("agy_tracer._save_state", side_effect=save_state),
+        patch("agy_tracer._delete_state"),
+        patch("agy_tracer._build_and_export_spans", side_effect=mock_export),
+        patch("agy_tracer._session_lock"),
+    ):
+        # Turn 1: Root session starts with USER_INPUT
+        _append_jsonl(
+            transcript,
+            {"step_index": 0, "type": "USER_INPUT", "content": "Run a background check"},
+        )
+        agy_tracer.handle_pre_invocation(
+            {"conversationId": root_session, "transcriptPath": str(transcript)},
+            config,
+        )
+        _append_jsonl(
+            transcript,
+            {
+                "step_index": 1,
+                "source": "MODEL",
+                "type": "PLANNER_RESPONSE",
+                "content": "Started background task.",
+            },
+        )
+        agy_tracer.handle_stop(
+            {
+                "conversationId": root_session,
+                "transcriptPath": str(transcript),
+                "last_assistant_message": "Started background task.",
+            },
+            config,
+        )
+
+        # Turn 2: Background task completion arrives with sender=<root_session>/task-1
+        exported_records.clear()
+        bg_msg = (
+            "<SYSTEM_MESSAGE>\n"
+            f'[Message] timestamp=2026-10-30T22:40:00Z sender={root_session}/task-1 priority=MESSAGE_PRIORITY_HIGH content=Task id "{root_session}/task-1" finished\n'
+            "</SYSTEM_MESSAGE>"
+        )
+        _append_jsonl(
+            transcript,
+            {"step_index": 2, "type": "SYSTEM_MESSAGE", "content": bg_msg},
+        )
+        agy_tracer.handle_pre_invocation(
+            {"conversationId": root_session, "transcriptPath": str(transcript)},
+            config,
+        )
+        _append_jsonl(
+            transcript,
+            {
+                "step_index": 3,
+                "source": "MODEL",
+                "type": "PLANNER_RESPONSE",
+                "content": "Background task finished.",
+            },
+        )
+        agy_tracer.handle_stop(
+            {
+                "conversationId": root_session,
+                "transcriptPath": str(transcript),
+                "last_assistant_message": "Background task finished.",
+            },
+            config,
+        )
+
+        assert len(exported_records) >= 2
+        for r in exported_records:
+            assert r["_exported_session_id"] == root_session
+            assert r["_exported_parent_session_id"] is None
+            assert r["_exported_agent_id"] == root_session
+            assert r["attributes"].get("session.id") == root_session
+            assert "parent.session_id" not in r["attributes"]
+            assert "handback.subagent_id" not in r["attributes"]
+            assert r["attributes"].get("subagent.id") != f"{root_session}/task-1"
+            assert r["attributes"].get("agent.task_id") == "task-1"
+
+        # Turn 3: Child subagent handback arrives with sender=<child_subagent>
+        exported_records.clear()
+        hb_msg = (
+            "<SYSTEM_MESSAGE>\n"
+            f"[Message] timestamp=2026-10-30T22:41:00Z sender={child_subagent} priority=MESSAGE_PRIORITY_HIGH content=Subagent report\n"
+            "</SYSTEM_MESSAGE>"
+        )
+        _append_jsonl(
+            transcript,
+            {"step_index": 4, "type": "SYSTEM_MESSAGE", "content": hb_msg},
+        )
+        agy_tracer.handle_pre_invocation(
+            {"conversationId": root_session, "transcriptPath": str(transcript)},
+            config,
+        )
+        _append_jsonl(
+            transcript,
+            {
+                "step_index": 5,
+                "source": "MODEL",
+                "type": "PLANNER_RESPONSE",
+                "content": "Processed subagent report.",
+            },
+        )
+        agy_tracer.handle_stop(
+            {
+                "conversationId": root_session,
+                "transcriptPath": str(transcript),
+                "last_assistant_message": "Processed subagent report.",
+            },
+            config,
+        )
+
+        assert len(exported_records) >= 2
+        for r in exported_records:
+            assert r["_exported_session_id"] == root_session
+            assert r["_exported_parent_session_id"] is None
+            assert r["_exported_agent_id"] == root_session
+            assert r["attributes"].get("session.id") == root_session
+            assert "parent.session_id" not in r["attributes"]
+
+        chain_spans = [
+            r
+            for r in exported_records
+            if r.get("attributes", {}).get("openinference.span.kind") == "CHAIN"
+        ]
+        assert len(chain_spans) == 1
+        assert chain_spans[0]["attributes"].get("subagent.id") == child_subagent
+        assert chain_spans[0]["attributes"].get("handback.subagent_id") == child_subagent
+
+
+def test_agy_subagent_preserves_own_subagent_id_and_multihop_root_session_id(tmp_path: Path):
+    """Multi-hop agy subagents (root -> sub1 -> sub2) all roll up to root session.id,
+    preserve their own subagent.id on Turn 1, and parent under invoke_subagent tool spans."""
+    state_store: dict[str, dict] = {}
+
+    def load_state(sid: str) -> dict:
+        return json.loads(json.dumps(state_store.get(sid, {})))
+
+    def save_state(sid: str, st: dict) -> None:
+        state_store[sid] = json.loads(json.dumps(st))
+
+    exported_records: list[dict] = []
+
+    def mock_export(config, session_id, username, span_records, parent_session_id=None, **kwargs):
+        for r in span_records:
+            r["_exported_session_id"] = session_id
+            r["_exported_parent_session_id"] = parent_session_id
+            r["_exported_agent_id"] = kwargs.get("agent_id")
+            exported_records.append(r)
+
+    root_session = "root-sess-000"
+    sub1_session = "sub1-sess-111"
+    sub2_session = "sub2-sess-222"
+    config = {"endpoint": "localhost:4317"}
+
+    root_transcript = tmp_path / "root.jsonl"
+    sub1_transcript = tmp_path / "sub1.jsonl"
+    sub2_transcript = tmp_path / "sub2.jsonl"
+
+    with (
+        patch("agy_tracer._load_state", side_effect=load_state),
+        patch("agy_tracer._save_state", side_effect=save_state),
+        patch("agy_tracer._delete_state"),
+        patch("agy_tracer._build_and_export_spans", side_effect=mock_export),
+        patch("agy_tracer._session_lock"),
+    ):
+        # 1. Root starts and invokes sub1
+        _append_jsonl(
+            root_transcript,
+            {"step_index": 0, "type": "USER_INPUT", "content": "Start root"},
+        )
+        agy_tracer.handle_pre_invocation(
+            {"conversationId": root_session, "transcriptPath": str(root_transcript)},
+            config,
+        )
+        _append_jsonl(
+            root_transcript,
+            {
+                "step_index": 1,
+                "source": "MODEL",
+                "type": "PLANNER_RESPONSE",
+                "tool_calls": [{"name": "invoke_subagent", "args": {"TypeName": "james"}}],
+            },
+        )
+        agy_tracer.handle_pre_tool(
+            {
+                "conversationId": root_session,
+                "transcriptPath": str(root_transcript),
+                "toolCall": {"name": "invoke_subagent", "args": {"TypeName": "james"}},
+            },
+            config,
+        )
+        _append_jsonl(
+            root_transcript,
+            {
+                "step_index": 2,
+                "source": "MODEL",
+                "type": "GENERIC",
+                "content": f'{{"conversationId": "{sub1_session}"}}',
+            },
+        )
+        agy_tracer.handle_post_tool(
+            {
+                "conversationId": root_session,
+                "transcriptPath": str(root_transcript),
+                "toolCall": {"name": "invoke_subagent", "args": {"TypeName": "james"}},
+            },
+            config,
+        )
+        root_invoke_span_id = exported_records[-1]["span_id_hex"]
+
+        # 2. Sub1 runs Turn 1 (sender=root_session) and invokes sub2
+        exported_records.clear()
+        _append_jsonl(
+            sub1_transcript,
+            {
+                "step_index": 0,
+                "source": "SYSTEM",
+                "type": "SYSTEM_MESSAGE",
+                "content": f"[Message] sender={root_session} content=Delegate to sub1",
+            },
+        )
+        agy_tracer.handle_pre_invocation(
+            {"conversationId": sub1_session, "transcriptPath": str(sub1_transcript)},
+            config,
+        )
+        _append_jsonl(
+            sub1_transcript,
+            {
+                "step_index": 1,
+                "source": "MODEL",
+                "type": "PLANNER_RESPONSE",
+                "tool_calls": [{"name": "invoke_subagent", "args": {"TypeName": "pauli"}}],
+            },
+        )
+        agy_tracer.handle_pre_tool(
+            {
+                "conversationId": sub1_session,
+                "transcriptPath": str(sub1_transcript),
+                "toolCall": {"name": "invoke_subagent", "args": {"TypeName": "pauli"}},
+            },
+            config,
+        )
+        _append_jsonl(
+            sub1_transcript,
+            {
+                "step_index": 2,
+                "source": "MODEL",
+                "type": "GENERIC",
+                "content": f'{{"conversationId": "{sub2_session}"}}',
+            },
+        )
+        agy_tracer.handle_post_tool(
+            {
+                "conversationId": sub1_session,
+                "transcriptPath": str(sub1_transcript),
+                "toolCall": {"name": "invoke_subagent", "args": {"TypeName": "pauli"}},
+            },
+            config,
+        )
+        sub1_invoke_span_id = exported_records[-1]["span_id_hex"]
+        _append_jsonl(
+            sub1_transcript,
+            {
+                "step_index": 3,
+                "source": "MODEL",
+                "type": "PLANNER_RESPONSE",
+                "content": "Sub1 turn 1 done",
+            },
+        )
+        agy_tracer.handle_stop(
+            {
+                "conversationId": sub1_session,
+                "transcriptPath": str(sub1_transcript),
+                "last_assistant_message": "Sub1 turn 1 done",
+            },
+            config,
+        )
+
+        sub1_turn_roots = [
+            r
+            for r in exported_records
+            if r.get("attributes", {}).get("openinference.span.kind") in ("CHAIN", "AGENT")
+        ]
+        assert len(sub1_turn_roots) == 1
+        sub1_root = sub1_turn_roots[0]
+        assert sub1_root["attributes"].get("session.id") == root_session
+        assert sub1_root["attributes"].get("parent.session_id") == root_session
+        assert sub1_root["attributes"].get("agent.id") == sub1_session
+        assert sub1_root["attributes"].get("subagent.id") == sub1_session
+        assert "handback.subagent_id" not in sub1_root["attributes"]
+        assert sub1_root["parent_span_id_hex"] == root_invoke_span_id
+
+        # 3. Sub2 runs Turn 1 (sender=sub1_session)
+        exported_records.clear()
+        _append_jsonl(
+            sub2_transcript,
+            {
+                "step_index": 0,
+                "source": "SYSTEM",
+                "type": "SYSTEM_MESSAGE",
+                "content": f"[Message] sender={sub1_session} content=Hydrate context",
+            },
+        )
+        agy_tracer.handle_pre_invocation(
+            {"conversationId": sub2_session, "transcriptPath": str(sub2_transcript)},
+            config,
+        )
+        _append_jsonl(
+            sub2_transcript,
+            {
+                "step_index": 1,
+                "source": "MODEL",
+                "type": "PLANNER_RESPONSE",
+                "content": "Sub2 turn 1 done",
+            },
+        )
+        agy_tracer.handle_stop(
+            {
+                "conversationId": sub2_session,
+                "transcriptPath": str(sub2_transcript),
+                "last_assistant_message": "Sub2 turn 1 done",
+            },
+            config,
+        )
+
+        assert len(exported_records) >= 2
+        for r in exported_records:
+            assert r["_exported_session_id"] == root_session
+            assert r["_exported_parent_session_id"] == sub1_session
+            assert r["_exported_agent_id"] == sub2_session
+            assert r["attributes"].get("session.id") == root_session
+            assert r["attributes"].get("parent.session_id") == sub1_session
+
+        sub2_turn_roots = [
+            r
+            for r in exported_records
+            if r.get("attributes", {}).get("openinference.span.kind") in ("CHAIN", "AGENT")
+        ]
+        assert len(sub2_turn_roots) == 1
+        sub2_root = sub2_turn_roots[0]
+        assert sub2_root["attributes"].get("agent.id") == sub2_session
+        assert sub2_root["attributes"].get("subagent.id") == sub2_session
+        assert "handback.subagent_id" not in sub2_root["attributes"]
+        assert sub2_root["parent_span_id_hex"] == sub1_invoke_span_id

@@ -14,10 +14,10 @@ tags:
 
 ## What this covers
 
-Delegating substantive execution from Claude-side supervisors to the Gemini harness
+Delegating substantive execution from Claude-side supervisors to the `agy` harness
 under strict, tiered acceptance criteria. Flagship-model tokens are spent only on
 supervision and judgment, which is a thin layer; the bulk of execution tokens
-land on the cheaper Gemini harness. Supervision quality survives because
+land on the cheaper `agy` harness. Supervision quality survives because
 principal -> Ida -> James -> agy places a different class of check at each level.
 
 ## The three roles
@@ -55,8 +55,7 @@ principal -> Ida -> James -> agy places a different class of check at each level
   goes back to its author.
 - **Tune timeouts and model tiers explicitly.** Raise `--print-timeout` for long
   units (the default is 5 minutes; an overrun returns status `ERROR` with an
-  empty response). Use `--model gemini-3.1-pro-high` only for genuinely complex
-  units.
+  empty response). Use the flagship model only for genuinely complex units.
 - **Escalate off `agy`.** Send the unit back to a Claude-side agent when it needs
   a tool `agy` lacks, or when it is a judgment call rather than execution.
 

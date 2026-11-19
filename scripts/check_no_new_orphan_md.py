@@ -13,7 +13,7 @@ Canonical locations (allowed adds):
 - .agents/**/*.md                    project-local rules + status
 - .github/**/*.md                    GitHub-surface docs
 - .claude/**/*.md                    Claude configuration docs
-- README.md, CHANGELOG.md, GEMINI.md, INSTALL.md, CONTRIBUTING.md, CLAUDE.md, AGENTS.md, RULES.md at repo root only
+- README.md, CHANGELOG.md, GEMINI.md, INSTALL.md, CONTRIBUTING.md, AGENTS.md, RULES.md at repo root only
 
 The point: agents must place new markdown in a canonical home, or the
 content belongs in the task body / parent epic / PKB instead.
@@ -44,7 +44,6 @@ ALLOWED_ROOT_FILES = {
     "GEMINI.md",
     "INSTALL.md",
     "CONTRIBUTING.md",
-    "CLAUDE.md",
     "AGENTS.md",
     "RULES.md",
 }

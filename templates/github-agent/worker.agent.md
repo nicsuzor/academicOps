@@ -59,5 +59,6 @@ Repo conventions -- language, tooling, test layout, commit format -- are in
 ## PR Description
 
 Write a PR description a reviewer can check you against: what the issue asked
-for, what you changed and why, and the evidence that it works -- the commands you
-ran and what they returned, not an assurance that you ran them.
+for, what was done and the approach taken to do it, and the evidence that it works --
+the commands you ran and what they returned. Do not list every single change in detail;
+the diff is available for that. Follow the repo's PR template or conventions.

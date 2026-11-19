@@ -21,7 +21,7 @@ Prepare evidence-based, signable peer reviews matching current round criteria. T
 
 ## Five-Stage Workflow
 
-Serial execution by a single agent is the default. Lead sessions with multi-review rounds may parallelise Stage 2 (isolated per-application verifiers) and Stage 3 (whole-set de-templating).
+Serial execution is the default. Multi-review rounds may parallelise Stage 2 (isolated per-application verifiers) and Stage 3 (whole-set de-templating).
 
 ### Stage 0: Intake & Setup
 

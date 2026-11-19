@@ -71,7 +71,7 @@ describe("Progressive disclosure: Overflow handling", () => {
     expect(result.combinedDetail).toContain(existingDetail);
   });
 
-  test("FR-1.3: a reply sent with detail carries a 🔍 Details button whose link opens that detailsId even when MINI_APP_URL is unset", async () => {
+  test("FR-1.3: a reply sent with detail carries a 🔍 Details button whose link opens that detailsId under the configured MINI_APP_URL", async () => {
     const { loadConfig } = await import("../src/config.js");
     const { StdioMcpServer } = await import("../src/mcp/server.js");
     const { TelegramBotClient } = await import("../src/telegram/bot.js");
@@ -84,9 +84,10 @@ describe("Progressive disclosure: Overflow handling", () => {
 
     const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-details-btn-"));
     const config = loadConfig({
+      MINI_APP_URL: "https://ida.example.test",
       TELEGRAM_BOT_TOKEN: "test-token",
       IDA_TELEGRAM_ROLE: "primary",
-      ALLOWED_USER_IDS: "8860530746",
+      ALLOWED_USER_IDS: "1111111111",
       STATE_DIR: stateDir,
       VOICE_REPLIES: "off",
     });
@@ -115,7 +116,7 @@ describe("Progressive disclosure: Overflow handling", () => {
         params: {
           name: "reply",
           arguments: {
-            chat_id: 8860530746,
+            chat_id: 1111111111,
             text: "**Headline:** Summary in chat.\n\n>! Collapsible note. Tap Details for specs and sources.",
             detail: "## Q1 Specs\n\n- Detailed specification and source links.",
           },
@@ -131,7 +132,7 @@ describe("Progressive disclosure: Overflow handling", () => {
       expect(apiCalls[0].method).toBe("sendMessage");
 
       const flatButtons = (apiCalls[0].body.reply_markup?.inline_keyboard || []).flat();
-      const detailsButton = flatButtons.find((b: any) => b.text === "🔍 Details");
+      const detailsButton = flatButtons.find((b: any) => b.text === "🔍");
       expect(detailsButton).toBeDefined();
       expect(detailsButton?.web_app?.url).toMatch(/^https:\/\/.+\/app\/index\.html\?d=/);
       expect(detailsButton?.web_app?.url).toContain(`/app/index.html?d=${parsedResult.detailsId}`);
@@ -181,7 +182,7 @@ describe("Progressive disclosure: Overflow handling", () => {
     const config = loadConfig({
       TELEGRAM_BOT_TOKEN: "test-token",
       IDA_TELEGRAM_ROLE: "primary",
-      ALLOWED_USER_IDS: "8860530746",
+      ALLOWED_USER_IDS: "1111111111",
       STATE_DIR: stateDir,
       VOICE_REPLIES: "off",
     });
@@ -210,7 +211,7 @@ describe("Progressive disclosure: Overflow handling", () => {
         params: {
           name: "reply",
           arguments: {
-            chat_id: 8860530746,
+            chat_id: 1111111111,
             text: "Summary with configured IDA_WEB_URL.",
             detail: "Full details markdown.",
           },
@@ -219,7 +220,7 @@ describe("Progressive disclosure: Overflow handling", () => {
 
       const parsedResult = JSON.parse((resp?.result as any)?.content?.[0]?.text || "{}");
       const flatButtons = (apiCalls[0].body.reply_markup?.inline_keyboard || []).flat();
-      const detailsButton = flatButtons.find((b: any) => b.text === "🔍 Details");
+      const detailsButton = flatButtons.find((b: any) => b.text === "🔍");
       expect(detailsButton).toBeDefined();
       expect(detailsButton?.web_app?.url).toBe(`https://ida.example.ts.net/app/index.html?d=${parsedResult.detailsId}`);
     } finally {
@@ -241,9 +242,10 @@ describe("Progressive disclosure: Overflow handling", () => {
 
     const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-no-details-"));
     const config = loadConfig({
+      MINI_APP_URL: "https://ida.example.test",
       TELEGRAM_BOT_TOKEN: "test-token",
       IDA_TELEGRAM_ROLE: "primary",
-      ALLOWED_USER_IDS: "8860530746",
+      ALLOWED_USER_IDS: "1111111111",
       STATE_DIR: stateDir,
       VOICE_REPLIES: "off",
     });
@@ -272,7 +274,7 @@ describe("Progressive disclosure: Overflow handling", () => {
         params: {
           name: "reply",
           arguments: {
-            chat_id: 8860530746,
+            chat_id: 1111111111,
             text: "**Short reply:** No detail attached and under maxChatChars.",
           },
         },
@@ -287,10 +289,304 @@ describe("Progressive disclosure: Overflow handling", () => {
       expect(apiCalls[0].method).toBe("sendMessage");
 
       const flatButtons = (apiCalls[0].body.reply_markup?.inline_keyboard || []).flat();
-      const detailsButton = flatButtons.find((b: any) => b.text === "🔍 Details");
+      const detailsButton = flatButtons.find((b: any) => b.text === "🔍 Details" || b.text === "🔍");
       expect(detailsButton).toBeUndefined();
     } finally {
       globalThis.fetch = origFetch;
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  test("Regression: reply with detail (and details alias) attaches instance-scoped Details link that app.js resolves and renders in-app", async () => {
+    const { loadConfig } = await import("../src/config.js");
+    const { StdioMcpServer } = await import("../src/mcp/server.js");
+    const { TelegramBotClient } = await import("../src/telegram/bot.js");
+    const { PluginStore } = await import("../src/store.js");
+    const { QuestionBroker } = await import("../src/telegram/questions.js");
+    const { PermissionRelay } = await import("../src/mcp/permissions.js");
+    const { startWebServer } = await import("../src/web/server.js");
+    const { mkdtempSync, rmSync, readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { tmpdir } = await import("node:os");
+    const vm = await import("node:vm");
+
+    const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-details-e2e-"));
+    const config = loadConfig({
+      MINI_APP_URL: "https://dash.example.test",
+      IDA_NAME: "prime",
+      TELEGRAM_BOT_TOKEN: "test-token",
+      IDA_TELEGRAM_ROLE: "primary",
+      ALLOWED_USER_IDS: "1111111111",
+      STATE_DIR: stateDir,
+      VOICE_REPLIES: "off",
+    });
+
+    const store = new PluginStore(config.stateDir);
+    const broker = new QuestionBroker(config.stateDir);
+    const permRelay = new PermissionRelay();
+
+    const apiCalls: Array<{ method: string; body: any }> = [];
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      const method = String(url).split("/").pop() || "";
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      apiCalls.push({ method, body });
+      return new Response(JSON.stringify({ ok: true, result: { message_id: 2001 } }), { status: 200 });
+    }) as typeof fetch;
+
+    try {
+      const bot = new TelegramBotClient(config, broker, permRelay, () => {});
+      const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
+
+      // 1. Verify reply with `detail` (and `details` alias) stores Details and attaches instance-scoped button
+      const resp = await mcp.handleMessage({
+        jsonrpc: "2.0",
+        id: 10,
+        method: "tools/call",
+        params: {
+          name: "reply",
+          arguments: {
+            chat_id: 1111111111,
+            text: "**Headline:** Summary in chat.",
+            detail: "## Deep Audit Trail\n\n- Point alpha\n- Point beta",
+          },
+        },
+      });
+
+      const parsedResult = JSON.parse((resp?.result as any)?.content?.[0]?.text || "{}");
+      expect(parsedResult.success).toBe(true);
+      expect(parsedResult.detailsId).toMatch(/^d_[a-f0-9]+$/);
+
+      const aliasResp = await mcp.handleMessage({
+        jsonrpc: "2.0",
+        id: 101,
+        method: "tools/call",
+        params: {
+          name: "reply",
+          arguments: {
+            chat_id: 1111111111,
+            text: "**Headline:** Summary with details alias.",
+            details: "## Alias Detail Content\n\n- Item one",
+          },
+        },
+      });
+      const aliasResult = JSON.parse((aliasResp?.result as any)?.content?.[0]?.text || "{}");
+      expect(aliasResult.detailsId).toMatch(/^d_[a-f0-9]+$/);
+      expect(store.getDetails(aliasResult.detailsId)?.markdown).toBe("## Alias Detail Content\n\n- Item one");
+
+      const flatButtons = (apiCalls[0].body.reply_markup?.inline_keyboard || []).flat();
+      const detailsButton = flatButtons.find((b: any) => b.text === "🔍");
+      expect(detailsButton).toBeDefined();
+      const buttonUrl = new URL(detailsButton.web_app.url);
+      expect(buttonUrl.origin + buttonUrl.pathname).toBe("https://dash.example.test/app/index.html");
+      expect(buttonUrl.searchParams.get("instance")).toBe("prime");
+      expect(buttonUrl.searchParams.get("d")).toBe(parsedResult.detailsId);
+
+      // 2. Start web server and verify both /api/app/instances/:instance/details/:id and /api/app/details/:id resolve
+      const appDir = join(import.meta.dir, "..", "app");
+      const server = startWebServer(
+        {
+          store,
+          broker,
+          permRelay,
+          config,
+          sessionSecret: "test-secret-key-32-characters!!",
+          emitChannelEvent: () => {},
+        },
+        appDir
+      );
+
+      try {
+        const instanceRes = await origFetch(
+          `http://127.0.0.1:${server.port}/api/app/instances/prime/details/${parsedResult.detailsId}`
+        );
+        expect(instanceRes.status).toBe(200);
+        const instanceJson: any = await instanceRes.json();
+        expect(instanceJson.markdown).toBe("## Deep Audit Trail\n\n- Point alpha\n- Point beta");
+
+        // 3. Execute app/app.js against the button's query string (?instance=prime&d=<detailsId>)
+        const elements: Record<string, any> = {
+          "details-content": { innerHTML: "Loading details...", textContent: "", style: {}, classList: { add() {}, remove() {} } },
+          "view-details": { classList: { add() {}, remove() {} } },
+          "view-questions": { classList: { add() {}, remove() {} } },
+          "view-review": { classList: { add() {}, remove() {} } },
+          "view-anchor": { classList: { add() {}, remove() {} } },
+        };
+        const fetchedUrls: string[] = [];
+        const sandboxFetch = async (relUrl: string, init?: RequestInit) => {
+          fetchedUrls.push(relUrl);
+          const resolved = new URL(relUrl, `http://127.0.0.1:${server.port}/app/index.html`);
+          return origFetch(resolved.toString(), init);
+        };
+
+        const appJsCode = readFileSync(join(appDir, "app.js"), "utf-8");
+        const sandbox: Record<string, any> = {
+          URLSearchParams,
+          Date,
+          Math,
+          Number,
+          String,
+          Boolean,
+          Array,
+          Object,
+          JSON,
+          RegExp,
+          Error,
+          encodeURIComponent,
+          decodeURIComponent,
+          console,
+          fetch: sandboxFetch,
+          window: {
+            location: { search: buttonUrl.search },
+            Telegram: { WebApp: { expand() {}, initData: "" } },
+          },
+          document: {
+            querySelectorAll: () => [],
+            querySelector: () => ({ classList: { add() {}, remove() {} } }),
+            getElementById: (id: string) =>
+              elements[id] || {
+                innerHTML: "",
+                textContent: "",
+                style: {},
+                classList: { add() {}, remove() {} },
+                addEventListener() {},
+              },
+          },
+        };
+        sandbox.window.window = sandbox.window;
+        vm.runInNewContext(appJsCode, sandbox);
+
+        // Wait for async init() -> loadDetails() to settle
+        await new Promise((r) => setTimeout(r, 50));
+
+        expect(fetchedUrls.some((u) => u.includes("instance=prime") || u.includes("/instances/prime/details/"))).toBe(true);
+        expect(elements["details-content"].innerHTML).toContain("<h2>Deep Audit Trail</h2>");
+        expect(elements["details-content"].innerHTML).toContain("<li>Point alpha</li>");
+      } finally {
+        server.stop();
+      }
+    } finally {
+      globalThis.fetch = origFetch;
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  test("Regression: ask_user with detail stores Details page and attaches instance-scoped 🔍 Details button", async () => {
+    const { loadConfig } = await import("../src/config.js");
+    const { StdioMcpServer } = await import("../src/mcp/server.js");
+    const { TelegramBotClient } = await import("../src/telegram/bot.js");
+    const { PluginStore } = await import("../src/store.js");
+    const { QuestionBroker } = await import("../src/telegram/questions.js");
+    const { PermissionRelay } = await import("../src/mcp/permissions.js");
+    const { mkdtempSync, rmSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { tmpdir } = await import("node:os");
+
+    const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-ask-details-"));
+    const config = loadConfig({
+      MINI_APP_URL: "https://dash.example.test",
+      IDA_NAME: "prime",
+      TELEGRAM_BOT_TOKEN: "test-token",
+      IDA_TELEGRAM_ROLE: "primary",
+      ALLOWED_USER_IDS: "1111111111",
+      STATE_DIR: stateDir,
+      VOICE_REPLIES: "off",
+    });
+
+    const store = new PluginStore(config.stateDir);
+    const broker = new QuestionBroker(config.stateDir);
+    const permRelay = new PermissionRelay();
+
+    const apiCalls: Array<{ method: string; body: any }> = [];
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      const method = String(url).split("/").pop() || "";
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      apiCalls.push({ method, body });
+      return new Response(JSON.stringify({ ok: true, result: { message_id: 2002 } }), { status: 200 });
+    }) as typeof fetch;
+
+    try {
+      const bot = new TelegramBotClient(config, broker, permRelay, () => {});
+      const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
+
+      await mcp.handleMessage({
+        jsonrpc: "2.0",
+        id: 11,
+        method: "tools/call",
+        params: {
+          name: "ask_user",
+          arguments: {
+            chat_id: 1111111111,
+            questions: [
+              {
+                header: "Architecture",
+                question: "Which transport should we adopt?",
+                detail: "## Transport Trade-offs\n\nFull comparison table and benchmarks.",
+                options: [{ label: "Option A" }, { label: "Option B" }],
+              },
+            ],
+          },
+        },
+      });
+
+      expect(apiCalls.length).toBe(1);
+      const flatButtons = (apiCalls[0].body.reply_markup?.inline_keyboard || []).flat();
+      const detailsButton = flatButtons.find((b: any) => b.text === "🔍 Details");
+      expect(detailsButton).toBeDefined();
+
+      const btnUrl = new URL(detailsButton.web_app.url);
+      expect(btnUrl.searchParams.get("instance")).toBe("prime");
+      const dParam = btnUrl.searchParams.get("d");
+      expect(dParam).toMatch(/^d_[a-f0-9]+$/);
+
+      const stored = store.getDetails(dParam!);
+      expect(stored?.markdown).toBe("## Transport Trade-offs\n\nFull comparison table and benchmarks.");
+    } finally {
+      globalThis.fetch = origFetch;
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  test("Default maxChatChars is 4000 so formatted replies up to 4000 characters stay whole in chat without overflowing", async () => {
+    const { loadConfig } = await import("../src/config.js");
+    const { mkdtempSync, rmSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { tmpdir } = await import("node:os");
+
+    const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-max4000-"));
+    try {
+      const config = loadConfig({
+        MINI_APP_URL: "https://ida.example.test",
+        TELEGRAM_BOT_TOKEN: "test-token",
+        IDA_TELEGRAM_ROLE: "primary",
+        ALLOWED_USER_IDS: "1111111111",
+        STATE_DIR: stateDir,
+      });
+      expect(config.maxChatChars).toBe(4000);
+
+      const formatted3200 =
+        "# Executive Summary\n\n" +
+        "- **Key point 1**: " +
+        "A".repeat(1400) +
+        "\n\n" +
+        ">! " +
+        "B".repeat(1500);
+      expect(formatted3200.length).toBeGreaterThan(2900);
+      expect(formatted3200.length).toBeLessThanOrEqual(4000);
+
+      const within4000 = processReplyOverflow({ text: formatted3200 });
+      expect(within4000.hasOverflow).toBe(false);
+      expect(within4000.hasDetailsButton).toBe(false);
+      expect(within4000.chatText).toBe(formatted3200);
+
+      const over4000 = processReplyOverflow({
+        text: `${formatted3200}\n\nParagraph exceeding 4000 chars: ${"C".repeat(1200)}`,
+      });
+      expect(over4000.hasOverflow).toBe(true);
+      expect(over4000.hasDetailsButton).toBe(true);
+      expect(over4000.chatText.length).toBeLessThanOrEqual(4000);
+    } finally {
       rmSync(stateDir, { recursive: true, force: true });
     }
   });

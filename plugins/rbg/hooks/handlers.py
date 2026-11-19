@@ -287,9 +287,23 @@ def rule_check(ctx: HookContext) -> Result | None:
     return block(reason, user_text)
 
 
+def session_start(ctx: HookContext) -> Result | None:
+    core_path = (
+        ctx.hooks_dir.parent
+        if ctx.hooks_dir and str(ctx.hooks_dir) != "."
+        else Path(__file__).resolve().parent.parent
+    ) / "CORE.md"
+    if core_path.is_file():
+        content = core_path.read_text(encoding="utf-8").strip()
+        if content:
+            return warn(content)
+    return None
+
+
 # TEMPORARY (2026-08-08, v0.7.1) — rbg's hooks are deliberately unregistered.
 # Re-enable by uncommenting; do not delete the entries.
 HANDLERS = {
+    "SessionStart": [session_start],
     # "PreToolUse": [evaluate],
     # "UserPromptSubmit": [inject_ruleset],
     # "Stop": [rule_check],

@@ -24,6 +24,7 @@ Red-green-refactor development for a change to code that executes, where correct
 
 ## Constraints (normative)
 
+- Tests check outputs, never contents. Never write unit tests for documentation or instruction files: text documents are not functions and produce no outputs, so we do not test them. For code, never write a test that asserts that code says a particular phrase or uses a particular variable, enum, constant, condition, or similar; assert observable outputs, never contents themselves.
 - One behavior per test, one behavior per cycle. Test before code.
 - Black-box only: assert inputs → output or observable effect through the public interface, never private helpers, internal state, call order, or a mock's call log.
 - Mutation check: introducing the named bug must turn the test red. A test that survives it guards nothing; drop it.
@@ -31,6 +32,7 @@ Red-green-refactor development for a change to code that executes, where correct
 - No change-detector (mirror) tests -- never assert that an agent, skill, settings, config, or instruction file, a mapping, or a directory holds what it holds today: a string, tool name, or skill name it contains, an entry the same change added, a source-to-dist file inventory. Test what the code does with the file (it parses, a path it names resolves, its content drives an observable effect). If a value must be checked, read it live from its real source and compare it to a real, independently-produced outcome -- never restate the value as a second literal in the test.
 - Acceptance evidence is not a test: a one-off check that the change worked (a listing diff, a command's output, a fresh agent's run) goes in the PR and task report, and joins the suite only if it also guards code that executes against a plausible regression.
 - A change to instruction text alone owes no test: a run that follows the instruction proves it.
+- Configuration -- values a program reads, such as settings, allowlists, policy entries, hostnames, environment and compose files, including such values written inside a script -- is not code that executes. A change to configuration alone owes no test: the applied, live state proves it.
 - Hermetic and deterministic: no network, live services, wall clock, sleeps, unseeded randomness, or state shared between tests; use temp directories and fixtures. Test doubles only at process boundaries (network, model calls, clock), never on the unit under test.
 - Arrange-act-assert, named for the behaviour and its condition, with a failure message that says what broke.
 - At least 2-3 distinct cases per non-trivial behavior, including boundary and error conditions.

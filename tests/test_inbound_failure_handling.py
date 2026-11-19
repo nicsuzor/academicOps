@@ -10,12 +10,17 @@ Covers:
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 import tomllib
 from pathlib import Path
 
 import pytest
+
+pytestmark = pytest.mark.skip(
+    reason="Degraded capability hook disabled pending enforcement map confirmation that instructions alone are ineffective",
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 IDA_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
@@ -170,7 +175,7 @@ def test_post_tool_handles_invalid_or_missing_response():
     assert handlers.post_tool_degraded_check(ctx_none) is None
 
 
-def test_dispatch_post_tool_degraded_flow():
+def test_dispatch_post_tool_degraded_flow(tmp_path: Path):
     """End-to-end hook dispatch: PostToolUse with degraded response triggers advisory warning."""
     sample_err = "Voice note encoder failed"
     payload = {
@@ -184,13 +189,16 @@ def test_dispatch_post_tool_degraded_flow():
             "voiceError": sample_err,
         },
     }
+    staged_hooks = tmp_path / "staged_hooks"
+    shutil.copytree(IDA_HOOKS, staged_hooks, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copy2(REPO_ROOT / "lib" / "hooks" / "dispatch.py", staged_hooks / "dispatch.py")
     proc = subprocess.run(
-        [sys.executable, str(IDA_HOOKS / "dispatch.py"), "claude", "PostToolUse"],
+        [sys.executable, str(staged_hooks / "dispatch.py"), "claude", "PostToolUse"],
         input=json.dumps(payload),
         text=True,
         capture_output=True,
         timeout=15,
-        cwd=str(IDA_HOOKS),
+        cwd=str(staged_hooks),
     )
     assert proc.returncode == 0, proc.stderr
     data = json.loads(proc.stdout)

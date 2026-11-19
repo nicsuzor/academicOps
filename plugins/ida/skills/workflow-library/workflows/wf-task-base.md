@@ -1,12 +1,14 @@
 ---
 title: Task base
 type: template
-description: Foundation for every task executed from a task file via /ida:pull -- compose all other workflows onto it.
+description: Foundation for every task executed from a task file via /ida:supervise (repo-scoped epic tasks) or /ida:pull (plain leaf tasks) -- compose all other workflows onto it with single-session combined-task default.
 tags: [base, task]
 ---
 
-- **GOAL:** <one sentence>
-- **ACCEPTANCE CRITERIA:** <one line each>
+- **GOAL:** <one sentence stating the observable outcome>
+- **STRUCTURAL PLACEMENT:** Tasks requiring review or follow-up must be structured as a single combined repo-scoped task by default under `/ida:supervise` (handling design review, test-first build, PR creation, and independent verification in one container session), splitting into separate child/follow-up tasks ONLY when explicitly requiring a different repository, different time, or separate external agent/session; never as loose siblings under an external parent. Plain leaf workers under `/ida:pull` operate strictly state-only. An agent given a task does the groundwork first (settling unknowns from the PKB first) and makes the decision itself; never file a task back to the user without groundwork, and set `status: review` (`assignee: user`) with a recorded recommendation only when the item genuinely waits on the user's own decision.
+- **BOUNDARY:** A refusal at or beyond the container boundary is a halt, never a method. In-container sandbox refusals are not walls.
+- **ACCEPTANCE CRITERIA:** <one line each, stating observable end-state conditions rather than mechanism prescriptions or file:line edits; workers read target files in full before editing>
   - <criterion>
   - <criterion>
 - [ ] **OUTPUT:** <destination repo or URI (no local paths, polecats run isolated)>

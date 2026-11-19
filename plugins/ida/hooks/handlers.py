@@ -10,8 +10,8 @@ import re
 import secrets
 import shlex
 import socket
+import sys
 import tempfile
-import time
 import urllib.error
 import urllib.request
 from collections.abc import Callable
@@ -21,17 +21,25 @@ from typing import Any
 
 from dispatch import (
     HookContext,
+    Kind,
     Result,
     _merge,
     _run_handler,
     load_message_pair,
+    refuse,
     warn,
 )
 from hearsay_gate import (
+    _AGY_USER_REQUEST,
+    _agy_turn_start,
+    _is_subagent_conversation,
     hearsay_arm,
     hearsay_handler,
     prompt_text,
+    record_pre_dispatch,
     should_arm_hearsay,
+    subagent_pre_handback_check,
+    subagent_start_gate_notice,
 )
 from hearsay_gate import (
     is_peer_report as is_peer_report,
@@ -84,15 +92,44 @@ _SEARCH_TIMEOUT_SECONDS = 5
 _MAX_INJECT_CHARS = 8000
 _TRUNCATION_MARKER = "\n[...truncated, output exceeded injection budget...]"
 _MAX_QUERY_CHARS = 8192
+_DEFAULT_SEARCH_LIMIT = 5
+_DEFAULT_SEARCH_DETAIL = "snippet"
+
+_ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]")
 
 _PEER_PREAMBLE = re.compile(
     r"^(?:Another Claude session sent a message:\s*)+",
     re.IGNORECASE,
 )
 
-_ENVELOPE_RE = re.compile(
-    r"^\s*<(?:channel|cross-session-message|teammate-message|task-notification|subagent-handback|agent-message|handback)\b[^>]*>(.*?)(?:</[^>]+>|\s*$)",
-    re.DOTALL,
+_NON_CHANNEL_WRAPPER_RE = re.compile(
+    r"^\s*<(?:"
+    r"(?:cross-session-message|teammate-message|task-notification|subagent-handback|"
+    r"agent-message|handback|command-message|system-reminder|subagent_reminder|subagent-reminder)(?=[\s>/]|$)"
+    r"|local-command-"
+    r"|scheduled-"
+    r")",
+    re.IGNORECASE,
+)
+
+_CHANNEL_FULL_RE = re.compile(
+    r"^\s*<channel\b[^>]*>(.*)</channel>\s*$",
+    re.DOTALL | re.IGNORECASE,
+)
+_CHANNEL_LEADING_RE = re.compile(
+    r"^\s*<channel\b[^>]*>(.*?)</channel>\s*(.+)$",
+    re.DOTALL | re.IGNORECASE,
+)
+_CHANNEL_OPEN_RE = re.compile(
+    r"^\s*<channel\b[^>]*>(.*)$",
+    re.DOTALL | re.IGNORECASE,
+)
+
+_AUTOMATED_AUTHORS = frozenset({"loop_wakeup", "schedule_wakeup", "poll_event"})
+_CHANNEL_PREFIX_RE = re.compile(r"^\s*<channel\b", re.IGNORECASE)
+_CONTEXT_SUMMARY_PREFIX_RE = re.compile(
+    r"^\s*<CONTEXT_SUMMARY\b[^>]*>.*?</CONTEXT_SUMMARY>\s*",
+    re.DOTALL | re.IGNORECASE,
 )
 
 
@@ -154,38 +191,50 @@ def _cap_output(out: str) -> str:
     return out[:cutoff].rstrip() + _TRUNCATION_MARKER
 
 
+def _has_non_channel_wrapper(text: str) -> bool:
+    return bool(_PEER_PREAMBLE.match(text) or _NON_CHANNEL_WRAPPER_RE.match(text))
+
+
 def extract_prompt_query(prompt: str) -> str:
-    """Extract searchable text from a prompt, unwrapping channel and message envelopes.
+    """Extract searchable text from a real user prompt or `<channel>` envelope.
 
-    Unwraps <channel ...> envelopes, peer envelopes (<cross-session-message>,
-    <teammate-message>, <subagent-handback>, <task-notification>, etc.), and
-    peer preambles. Prompts without envelopes are used as typed. ANSI escape
-    codes are removed and surrounding whitespace stripped.
+    Unwraps at most one outer `<channel ...>...</channel>` envelope (e.g.
+    Telegram, Discord, Slack). Rejects peer preambles and non-channel
+    system/peer/agent/command/reminder wrappers — both at top level and nested
+    inside `<channel>` — returning an empty string so zero peer or automated
+    envelopes are searched. ANSI escape codes are removed and surrounding
+    whitespace stripped.
 
-    Skips argument-less slash commands (/cmd) by returning an empty string so
-    no PKB search runs. Slash commands with arguments (/cmd <arg>) send <arg>
-    whole up to 8 KB.
+    Skips argument-less slash commands (`/cmd`) as well as `/pull` and
+    `/ida:pull` (bare or with arguments) by returning an empty string so no
+    PKB search runs. Other slash commands with arguments (`/cmd <arg>`) send
+    `<arg>` whole up to 8 KB.
     """
     if not prompt:
         return ""
-    text = prompt
-    while True:
-        pm = _PEER_PREAMBLE.match(text)
-        if pm:
-            text = text[pm.end() :].lstrip()
-        m = _ENVELOPE_RE.match(text)
-        if m:
-            text = m.group(1).strip()
-            continue
-        break
+    text = _ANSI_ESCAPE_RE.sub("", prompt).strip()
+    if not text or _has_non_channel_wrapper(text):
+        return ""
 
-    text = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", text).strip()
-    if not text:
+    if m := _CHANNEL_FULL_RE.match(text):
+        text = m.group(1)
+    elif m := _CHANNEL_LEADING_RE.match(text):
+        inner = _ANSI_ESCAPE_RE.sub("", m.group(1)).strip()
+        trailing = _ANSI_ESCAPE_RE.sub("", m.group(2)).strip()
+        if _has_non_channel_wrapper(inner) or _has_non_channel_wrapper(trailing):
+            return ""
+        text = f"{inner}\n{trailing}".strip() if inner else trailing
+    elif m := _CHANNEL_OPEN_RE.match(text):
+        text = m.group(1)
+
+    text = _ANSI_ESCAPE_RE.sub("", text).strip()
+    if not text or _has_non_channel_wrapper(text):
         return ""
 
     if text.startswith("/"):
         parts = text.split(None, 1)
-        if len(parts) == 1:
+        cmd_base = parts[0].lower().split("@", 1)[0]
+        if cmd_base in ("/pull", "/ida:pull") or len(parts) == 1:
             return ""
         arg = parts[1].strip()
         if not arg:
@@ -195,93 +244,44 @@ def extract_prompt_query(prompt: str) -> str:
     return text[:_MAX_QUERY_CHARS]
 
 
-# Cloudflare Access service-token pairs, in order of preference. The worker
-# pair comes first because it has no polecat dispatch access (Nic, tg 2369).
-_ACCESS_TOKEN_PAIRS = (
-    ("WORKER_MCP_TOKEN_ID", "WORKER_MCP_TOKEN_SECRET"),
-    ("DISPATCHER_MCP_TOKEN_ID", "DISPATCHER_MCP_TOKEN_SECRET"),
-    ("CF_ACCESS_CLIENT_ID", "CF_ACCESS_CLIENT_SECRET"),
-)
-
-
-def _read_client_mcp_headers() -> dict[str, str]:
-    """Read MCP headers from client configuration files (Claude and agy) when unset in env."""
-    headers: dict[str, str] = {}
-    config_paths = [
-        Path(os.environ.get("CLAUDE_CONFIG_DIR", Path.home() / ".claude")) / ".claude.json",
-        Path.home() / ".claude.json",
-        Path(os.environ.get("CLAUDE_CONFIG_DIR", Path.home() / ".claude")) / "mcp_config.json",
-        Path.home() / ".gemini" / "config" / "mcp_config.json",
-        Path.home() / ".gemini" / "antigravity-cli" / "mcp_config.json",
-    ]
-    for p in config_paths:
-        if p.is_file():
-            try:
-                data = json.loads(p.read_text(encoding="utf-8"))
-                servers = data.get("mcpServers", {})
-                for server_name in ("services", "pkb"):
-                    srv = servers.get(server_name)
-                    if isinstance(srv, dict):
-                        h = srv.get("headers")
-                        if isinstance(h, dict):
-                            for k, v in h.items():
-                                headers.setdefault(str(k), str(v))
-            except Exception as exc:
-                log.debug("Could not read client MCP config %s: %s", p, exc)
-    return headers
+# Cloudflare Access service-token credentials: one pair, named after the
+# HTTP headers it becomes. The launching context (shell, polecat container,
+# launchd, CI) decides which stored service token fills it; least privilege is
+# the launcher's job, not the hook's.
+_TOKEN_ID_VAR = "CF_ACCESS_CLIENT_ID"
+_TOKEN_SECRET_VAR = "CF_ACCESS_CLIENT_SECRET"
 
 
 def _resolve_mcp_headers() -> dict[str, str]:
-    """HTTP headers for the PKB endpoint.
+    """HTTP headers for the PKB endpoint, from the environment only.
 
-    Resolves from the environment first: `PKB_MCP_HEADERS` (JSON object) and
-    Cloudflare Access service-token pairs (`WORKER_MCP_TOKEN_*`, `DISPATCHER_MCP_TOKEN_*`,
-    or `CF_ACCESS_CLIENT_*`). If no Access client ID is set, falls back to reading
-    headers from client MCP configurations (~/.claude/.claude.json,
-    ~/.gemini/config/mcp_config.json) to authenticate local and crew sessions reliably.
+    Reads the one Cloudflare Access pair, `CF_ACCESS_CLIENT_ID` and
+    `CF_ACCESS_CLIENT_SECRET`; the launching context chooses which stored
+    service token fills it.
     """
-    headers: dict[str, str] = {}
-
-    env_headers = os.environ.get("PKB_MCP_HEADERS")
-    if env_headers:
-        try:
-            parsed = json.loads(env_headers)
-        except json.JSONDecodeError as exc:
-            log.warning("PKB_MCP_HEADERS is not valid JSON, ignoring it: %s", exc)
-        else:
-            if isinstance(parsed, dict):
-                headers.update({str(k): str(v) for k, v in parsed.items()})
-            else:
-                log.warning("PKB_MCP_HEADERS is not a JSON object, ignoring it")
-
-    for id_var, secret_var in _ACCESS_TOKEN_PAIRS:
-        cf_id = os.environ.get(id_var)
-        cf_secret = os.environ.get(secret_var)
-        if cf_id and cf_secret:
-            headers.setdefault("CF-Access-Client-Id", cf_id)
-            headers.setdefault("CF-Access-Client-Secret", cf_secret)
-            break
-
-    if "CF-Access-Client-Id" not in headers:
-        for k, v in _read_client_mcp_headers().items():
-            headers.setdefault(k, v)
-
-    return headers
+    cf_id = os.environ.get(_TOKEN_ID_VAR)
+    cf_secret = os.environ.get(_TOKEN_SECRET_VAR)
+    if cf_id and cf_secret:
+        return {
+            "CF-Access-Client-Id": cf_id,
+            "CF-Access-Client-Secret": cf_secret,
+        }
+    return {}
 
 
 def _tracer_state_dir() -> Path:
-    env_dir = os.environ.get("TRACER_STATE_DIR") or os.environ.get("AOPS_TRACER_DIR")
+    env_dir = (
+        os.environ.get("AOPS_TRACER_STATE_DIR")
+        or os.environ.get("TRACER_STATE_DIR")
+        or os.environ.get("AOPS_TRACER_DIR")
+    )
     if env_dir:
         return Path(env_dir)
+    if claude_code_tracer is not None and hasattr(claude_code_tracer, "_tracer_state_dir"):
+        return claude_code_tracer._tracer_state_dir()
     if claude_code_tracer is not None and hasattr(claude_code_tracer, "STATE_DIR"):
-        state_dir = Path(claude_code_tracer.STATE_DIR)
-        if state_dir.is_absolute():
-            try:
-                return Path.home().joinpath(*state_dir.parts[-2:])
-            except Exception:
-                pass
-        return state_dir
-    return Path.home() / ".aops" / "tracer"
+        return Path(claude_code_tracer.STATE_DIR)
+    return Path.home() / ".claude" / "tracer"
 
 
 def _resolve_tracer_traceparent(session_id: str | None = None) -> str:
@@ -306,36 +306,6 @@ def _resolve_tracer_traceparent(session_id: str | None = None) -> str:
     trace_id = secrets.token_hex(16)
     span_id = secrets.token_hex(8)
     return f"00-{trace_id}-{span_id}-01"
-
-
-def _session_cache_path() -> Path:
-    return _tracer_state_dir() / "pkb_session_cache.json"
-
-
-def _get_cached_mcp_session(cache_path: Path | None = None) -> str | None:
-    path = cache_path or _session_cache_path()
-    if path.is_file():
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-            if isinstance(data, dict):
-                ts = data.get("timestamp", 0)
-                if time.time() - float(ts) < 86400:
-                    return data.get("session_id")
-        except Exception as exc:
-            log.debug("Could not read PKB session cache: %s", exc)
-    return None
-
-
-def _save_cached_mcp_session(session_id: str, cache_path: Path | None = None) -> None:
-    path = cache_path or _session_cache_path()
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            json.dumps({"session_id": session_id, "timestamp": time.time()}),
-            encoding="utf-8",
-        )
-    except Exception as exc:
-        log.warning("Could not write PKB session cache: %s", exc)
 
 
 def _parse_mcp_response(raw_body: str) -> str | None:
@@ -377,51 +347,6 @@ def _parse_mcp_response(raw_body: str) -> str | None:
     return _cap_output(out) if out else None
 
 
-def _initialize_mcp_session(mcp_url: str, base_headers: dict[str, str]) -> str | None:
-    init_headers = dict(base_headers)
-    init_headers.pop("mcp-session-id", None)
-    init_payload = {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "initialize",
-        "params": {
-            "protocolVersion": "2024-11-05",
-            "capabilities": {},
-            "clientInfo": {"name": "academicOps", "version": "0.10"},
-        },
-    }
-    data_bytes = json.dumps(init_payload).encode("utf-8")
-    req = urllib.request.Request(mcp_url, data=data_bytes, headers=init_headers, method="POST")
-    try:
-        with urllib.request.urlopen(req, timeout=_SEARCH_TIMEOUT_SECONDS) as resp:
-            sess_id = resp.headers.get("mcp-session-id")
-            if sess_id:
-                _save_cached_mcp_session(sess_id)
-                return sess_id
-    except urllib.error.HTTPError as exc:
-        if exc.code in (401, 403):
-            raise RuntimeError(
-                f"the PKB endpoint refused authorisation (HTTP {exc.code}); check PKB_MCP_HEADERS, WORKER_MCP_TOKEN_ID / WORKER_MCP_TOKEN_SECRET, or DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
-            ) from exc
-        raise RuntimeError(
-            f"the PKB endpoint failed with HTTP {exc.code} during initialize: {exc.reason}"
-        ) from exc
-    except TimeoutError as exc:
-        raise TimeoutError(
-            f"the PKB endpoint did not answer within {_SEARCH_TIMEOUT_SECONDS} seconds"
-        ) from exc
-    except urllib.error.URLError as exc:
-        if (
-            isinstance(exc.reason, (TimeoutError, socket.timeout))
-            or "timed out" in str(exc.reason).lower()
-        ):
-            raise TimeoutError(
-                f"the PKB endpoint did not answer within {_SEARCH_TIMEOUT_SECONDS} seconds"
-            ) from exc
-        raise RuntimeError(f"the PKB endpoint is unreachable ({mcp_url}): {exc.reason}") from exc
-    return None
-
-
 def _resolve_surface(ctx: HookContext | None = None) -> str:
     """Resolve the execution surface class."""
     if env_surface := os.environ.get("AOPS_SURFACE"):
@@ -444,18 +369,43 @@ def _post_mcp_search(
     prompt_id: str | None = None,
     agent_id: str | None = None,
     surface: str | None = None,
+    limit: int = _DEFAULT_SEARCH_LIMIT,
+    detail: str = _DEFAULT_SEARCH_DETAIL,
 ) -> str | None:
-    """Search the PKB over a single streamable-HTTP POST to PKB_MCP_URL."""
-    sess_id = session_id if session_id is not None else (os.environ.get("AOPS_SESSION_ID") or "")
+    """Search the PKB over a single stateless MCP 2026-07-28 streamable-HTTP POST to PKB_MCP_URL."""
+    resolved_surface = surface or _resolve_surface()
+    if session_id is not None:
+        sess_id = session_id
+    elif resolved_surface == "agy":
+        sess_id = (
+            os.environ.get("ANTIGRAVITY_CONVERSATION_ID") or os.environ.get("AOPS_SESSION_ID") or ""
+        )
+    else:
+        sess_id = (
+            os.environ.get("CLAUDE_CODE_SESSION_ID")
+            or os.environ.get("CLAUDE_SESSION_ID")
+            or os.environ.get("AOPS_SESSION_ID")
+            or ""
+        )
     tp = traceparent or _resolve_tracer_traceparent(sess_id)
 
+    root_sess_id = sess_id
+    if "/" in sess_id:
+        root_sess_id = sess_id.split("/", 1)[0]
+
     pid = prompt_id or ""
-    if not pid and sess_id:
+    if sess_id:
         tracer_file = _tracer_state_dir() / f"{sess_id}.json"
         if tracer_file.is_file():
             try:
                 tdata = json.loads(tracer_file.read_text(encoding="utf-8"))
-                pid = (tdata.get("current_trace") or {}).get("prompt_id") or ""
+                phx_sid = tdata.get("phoenix_session_id")
+                if phx_sid:
+                    phx_root = str(phx_sid).split("/", 1)[0]
+                    if phx_root and phx_root != sess_id:
+                        root_sess_id = phx_root
+                if not pid:
+                    pid = (tdata.get("current_trace") or {}).get("prompt_id") or ""
             except Exception:
                 pass
     if not pid:
@@ -475,30 +425,22 @@ def _post_mcp_search(
                     "Could not update prompt_id in tracer file for session %s: %s", sess_id, exc
                 )
 
+    prefix = os.environ.get("PKB_MCP_TOOL_PREFIX", "pkb_")
+    tool_name = f"{prefix}search"
     req_headers: dict[str, str] = {
         "User-Agent": "academicOps/0.10 (prompt-hydration)",
         "Content-Type": "application/json",
         "Accept": "application/json, text/event-stream",
-        "x-session-id": sess_id,
+        "MCP-Protocol-Version": "2026-07-28",
+        "Mcp-Method": "tools/call",
+        "Mcp-Name": tool_name,
+        "x-session-id": root_sess_id,
         "traceparent": tp,
     }
     if headers:
         for k, v in headers.items():
             req_headers[k] = v
 
-    cached_session = _get_cached_mcp_session()
-    if cached_session:
-        req_headers["mcp-session-id"] = cached_session
-
-    prefix = os.environ.get("PKB_MCP_TOOL_PREFIX", "pkb_")
-    tool_name = f"{prefix}search"
-    session_payload = {
-        "session_id": sess_id,
-        "prompt_id": pid,
-        "agent_id": agent_id or "",
-        "caller": "hook",
-        "surface": surface or _resolve_surface(),
-    }
     payload = {
         "jsonrpc": "2.0",
         "id": 1,
@@ -507,7 +449,17 @@ def _post_mcp_search(
             "name": tool_name,
             "arguments": {
                 "query": query,
-                "_session": session_payload,
+                "limit": limit,
+                "detail": detail,
+                "session_id": root_sess_id,
+            },
+            "_meta": {
+                "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+                "io.modelcontextprotocol/clientCapabilities": {},
+                "io.modelcontextprotocol/clientInfo": {
+                    "name": "academicOps",
+                    "version": "0.10",
+                },
             },
         },
     }
@@ -543,65 +495,9 @@ def _post_mcp_search(
 
     if status in (401, 403):
         raise RuntimeError(
-            f"the PKB endpoint refused authorisation (HTTP {status}); check PKB_MCP_HEADERS, WORKER_MCP_TOKEN_ID / WORKER_MCP_TOKEN_SECRET, or DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
+            f"the PKB endpoint refused authorisation (HTTP {status}); check CF_ACCESS_CLIENT_ID / CF_ACCESS_CLIENT_SECRET"
         )
-
-    session_needed = False
-    err_obj = None
-
-    try:
-        parsed = json.loads(body)
-        if isinstance(parsed, dict) and "error" in parsed:
-            err_obj = parsed["error"]
-    except json.JSONDecodeError:
-        for line in body.splitlines():
-            line = line.strip()
-            if line.startswith("data:"):
-                try:
-                    payload = json.loads(line[5:].strip())
-                    if isinstance(payload, dict) and "error" in payload:
-                        err_obj = payload["error"]
-                        break
-                except json.JSONDecodeError:
-                    continue
-
-    if err_obj is not None:
-        err_msg = str(err_obj).lower()
-        if "session" in err_msg:
-            session_needed = True
-        elif status == 200:
-            raise RuntimeError(f"PKB MCP error: {err_obj}")
-
-    if (err_obj is not None and "session" in str(err_obj).lower()) or (
-        "session" in body.lower() and status in (400, 404, 422)
-    ):
-        session_needed = True
-
-    if session_needed:
-        cache_path = _session_cache_path()
-        try:
-            if cache_path.is_file():
-                cache_path.unlink()
-        except OSError:
-            pass
-        req_headers.pop("mcp-session-id", None)
-        new_session = _initialize_mcp_session(mcp_url, req_headers)
-        if new_session:
-            req_headers["mcp-session-id"] = new_session
-            status, body = _execute_post(req_headers)
-            if status in (401, 403):
-                raise RuntimeError(
-                    f"the PKB endpoint refused authorisation (HTTP {status}); check PKB_MCP_HEADERS, WORKER_MCP_TOKEN_ID / WORKER_MCP_TOKEN_SECRET, or DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
-                )
-            if status != 200:
-                clean_body = " ".join(body.split())
-                raise RuntimeError(f"the PKB endpoint failed with HTTP {status}: {clean_body}")
-        else:
-            clean_body = " ".join(body.split())
-            raise RuntimeError(
-                f"the PKB endpoint requires session initialization but initialize failed: HTTP {status} {clean_body}"
-            )
-    elif status != 200:
+    if status != 200:
         clean_body = " ".join(body.split())
         raise RuntimeError(f"the PKB endpoint failed with HTTP {status}: {clean_body}")
 
@@ -616,6 +512,8 @@ def _run_pkb_search(
     prompt_id: str | None = None,
     agent_id: str | None = None,
     surface: str | None = None,
+    limit: int | None = None,
+    detail: str | None = None,
 ) -> str | None:
     query = extract_prompt_query(prompt)[:_MAX_QUERY_CHARS]
     if not query:
@@ -638,6 +536,10 @@ def _run_pkb_search(
         kwargs["agent_id"] = agent_id
     if surface is not None:
         kwargs["surface"] = surface
+    if limit is not None:
+        kwargs["limit"] = limit
+    if detail is not None:
+        kwargs["detail"] = detail
 
     if kwargs:
         return _post_mcp_search(mcp_url, query, headers, **kwargs)
@@ -645,42 +547,72 @@ def _run_pkb_search(
 
 
 def search_the_pkb(ctx: HookContext) -> Result | None:
-    """Ground every prompt in the PKB before the agent acts on it.
+    """Ground real user prompts for top-level Ida sessions in the PKB before acting.
 
     Returns the output of `pkb search {prompt}` wrapped in
     `<academicOps PKB search results>` tags when matches are found;
     otherwise returns None. Empty results inject nothing.
-    Argument-less slash commands are skipped so they make no PKB call.
-    Peer reports, subagent handbacks, task notifications, and incoming channel
-    messages are searched to ground the turn in existing PKB context.
+
+    Fires only on top-level `ida` sessions and only on real user prompts from
+    an interactive console or an incoming `<channel ...>` envelope. Non-`ida`
+    agents, unnamed sessions, subagents, automated wakeups, non-`<channel>`
+    `author == "system"` turns, `agy` `SYSTEM_MESSAGE` turns, peer/agent/task/
+    command/reminder wrappers, argument-less slash commands, and `/pull` /
+    `/ida:pull` make zero PKB calls.
     """
-    prompt_str = prompt_text(ctx)
+    if not is_ida(ctx):
+        return None
+
+    raw = ctx.raw or {}
+    agent_id = getattr(ctx, "agent_id", None) or raw.get("agent_id") or raw.get("agentId") or None
+    if agent_id:
+        return None
+
+    if ctx.client == "agy":
+        inv_num = raw.get("invocationNum")
+        if inv_num is not None and inv_num != 0:
+            return None
+        turn_start = _agy_turn_start(ctx)
+        if turn_start is None or turn_start.get("type") != "USER_INPUT":
+            return None
+        if _is_subagent_conversation(ctx):
+            return None
+        content = str(turn_start.get("content") or "").strip()
+        m = _AGY_USER_REQUEST.search(content)
+        if m:
+            prompt_str = m.group(1).strip()
+        else:
+            prompt_str = _CONTEXT_SUMMARY_PREFIX_RE.sub("", content).strip()
+    else:
+        if _is_subagent_conversation(ctx):
+            return None
+        author = str(raw.get("author") or "").strip().lower()
+        if author in _AUTOMATED_AUTHORS:
+            return None
+        prompt_str = prompt_text(ctx)
+        if author == "system" and not _CHANNEL_PREFIX_RE.match(_ANSI_ESCAPE_RE.sub("", prompt_str)):
+            return None
+
     query = extract_prompt_query(prompt_str)
     if not query:
         return None
 
     session_id = (
         getattr(ctx, "session_id", None)
-        or ctx.raw.get("session_id")
-        or ctx.raw.get("conversationId")
+        or raw.get("session_id")
+        or raw.get("conversationId")
         or os.environ.get("AOPS_SESSION_ID")
         or None
     )
     prompt_id = (
-        getattr(ctx, "prompt_id", None)
-        or ctx.raw.get("prompt_id")
-        or ctx.raw.get("promptId")
-        or None
+        getattr(ctx, "prompt_id", None) or raw.get("prompt_id") or raw.get("promptId") or None
     )
-    agent_id = getattr(ctx, "agent_id", None) or ctx.raw.get("agent_id") or None
 
     search_kwargs: dict[str, Any] = {"cwd": ctx.cwd}
     if session_id:
         search_kwargs["session_id"] = session_id
     if prompt_id:
         search_kwargs["prompt_id"] = prompt_id
-    if agent_id:
-        search_kwargs["agent_id"] = agent_id
 
     output = _run_pkb_search(query, **search_kwargs)
     if output and output.strip():
@@ -699,10 +631,17 @@ def _resolve_plugin_version(ctx: HookContext) -> str | None:
     """Resolve the installed plugin version from env or manifest."""
     if ver := os.environ.get("AOPS_IMAGE_PLUGINS_VERSION"):
         return ver.strip()
-    if ctx.hooks_dir:
-        manifest_file = ctx.hooks_dir.parent / ".claude-plugin" / "plugin.json"
-        if manifest_file.is_file():
-            data = json.loads(manifest_file.read_text(encoding="utf-8"))
+    plugin_dir = (
+        ctx.hooks_dir.parent
+        if ctx.hooks_dir and str(ctx.hooks_dir) != "."
+        else Path(__file__).resolve().parent.parent
+    )
+    for candidate in (
+        plugin_dir / ".claude-plugin" / "plugin.json",
+        plugin_dir / "plugin.json",
+    ):
+        if candidate.is_file():
+            data = json.loads(candidate.read_text(encoding="utf-8"))
             if v := data.get("version"):
                 return str(v).strip()
     return None
@@ -753,30 +692,18 @@ def _format_session_metadata(ctx: HookContext) -> str:
     return " | ".join(parts)
 
 
-def _get_injected_files(ctx: HookContext) -> list[str]:
-    injected_str = os.environ.get("AOPS_INJECT_FILES", "").strip()
-    if not injected_str:
-        return []
-
-    lines = []
-    base_dir = ctx.cwd
-    for p_str in injected_str.split(","):
-        p_str = p_str.strip()
-        if not p_str:
-            continue
-        p = Path(p_str)
-        if not p.is_absolute():
-            p = base_dir / p
-
-        if p.exists() and p.is_file():
-            try:
-                content = p.read_text(encoding="utf-8")
-                lines.append(f"--- START: {p_str} ---\n{content}\n--- END: {p_str} ---")
-            except Exception as e:
-                lines.append(f"--- ERROR reading {p_str}: {e} ---")
-        else:
-            lines.append(f"--- MISSING: {p_str} ---")
-    return lines
+def _get_workspace_core_md(ctx: HookContext) -> str | None:
+    """Read the project-local .agents/CORE.md if present in target workspace."""
+    if not ctx.cwd:
+        return None
+    workspace_core = Path(ctx.cwd) / ".agents" / "CORE.md"
+    if workspace_core.is_file():
+        try:
+            content = workspace_core.read_text(encoding="utf-8").strip()
+            return content or None
+        except Exception as exc:
+            log.warning("Could not read workspace .agents/CORE.md: %s", exc)
+    return None
 
 
 def _read_env_file(path: Path) -> dict[str, str]:
@@ -864,18 +791,65 @@ def _export_session_id(ctx: HookContext) -> bool:
 
 PREMISE_CHECK_POINTER = (
     "Reports follow `premise-check`: written in its shape and checked on receipt."
+    " Load the skill (`ida:premise-check`) before writing or checking one;"
+    " its form is a restricted subset of Argdown."
+    " Every `send_message` / `SendMessage` report to a calling/peer agent"
+    " (and every foreground subagent return) must end with a fenced `argdown` block or `[no claim]`."
+)
+
+PKB_SESSION_POINTER = (
+    "Pass active `session_id` (`caller_session` when shown, else `session:` or client"
+    " session env) explicitly on all `pkb_*` and instrumented `services` proxy MCP calls;"
+    " hooks never inject it."
 )
 
 
 def session_start(ctx: HookContext) -> Result | None:
     """Handle SessionStart for Claude Code and SessionStart for agy."""
-    emit_debug_span(ctx)
     metadata = _format_session_metadata(ctx)
     parts = [
         metadata,
-        PREMISE_CHECK_POINTER,
+        f"{PREMISE_CHECK_POINTER}\n{PKB_SESSION_POINTER}",
     ]
+    core_path = (
+        ctx.hooks_dir.parent
+        if ctx.hooks_dir and str(ctx.hooks_dir) != "."
+        else Path(__file__).resolve().parent.parent
+    ) / "CORE.md"
+    if core_path.is_file():
+        core_text = core_path.read_text(encoding="utf-8").strip()
+        if core_text:
+            parts.append(core_text)
     user_parts = [metadata]
+
+    is_telemetry_ok = True
+    if claude_code_tracer is not None:
+        is_telemetry_ok = claude_code_tracer.is_telemetry_configured()
+    else:
+        is_telemetry_ok = bool(
+            os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
+            or os.environ.get("BETA_TRACING_ENDPOINT")
+            or os.environ.get("GENAI_ENGINE_TRACE_ENDPOINT")
+        )
+
+    mode = "warn"
+    if claude_code_tracer is not None:
+        mode = claude_code_tracer.get_telemetry_failure_mode()
+    elif os.environ.get("AOPS_TELEMETRY_FAILURE_MODE") == "block":
+        mode = "block"
+
+    if not is_telemetry_ok:
+        unconfigured_err = (
+            "WARNING: OpenTelemetry tracing unconfigured (endpoint or credentials unset). "
+            "Telemetry will NOT be exported."
+        )
+        print(unconfigured_err, file=sys.stderr)
+        unconfigured_ctx = "WARNING: OpenTelemetry tracing is unconfigured. Spans and metrics for this session are dropped."
+        parts.append(unconfigured_ctx)
+        user_parts.append(unconfigured_ctx)
+        if mode == "block":
+            return refuse("\n\n".join(parts), "\n\n".join(user_parts))
+
     stale_warning = os.environ.get("AOPS_IMAGE_STALENESS_WARNING") or ctx.raw.get(
         "image_staleness_warning"
     )
@@ -897,11 +871,17 @@ def session_start(ctx: HookContext) -> Result | None:
         user_parts.insert(0, "Credentials isolated.")
     _export_session_id(ctx)
 
-    injected = _get_injected_files(ctx)
-    if injected:
-        files_str = "Injected context files:\n" + "\n".join(injected)
-        parts.append(files_str)
-        user_parts.append(files_str)
+    if ctx.session_id:
+        safe_session = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", ctx.session_id)
+        marker = _session_pointer_dir() / f"{safe_session}.delivered"
+        try:
+            with marker.open("w", encoding="utf-8") as f:
+                f.write(datetime.now().astimezone().isoformat())
+        except OSError as exc:
+            log.warning("Could not write session pointer marker %s: %s", marker, exc)
+
+    if ws_core := _get_workspace_core_md(ctx):
+        parts.append(ws_core)
 
     return warn("\n\n".join(parts), "\n\n".join(user_parts))
 
@@ -926,12 +906,41 @@ def agy_session_pointer(ctx: HookContext) -> Result | None:
         return None
     safe_session = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", ctx.session_id)
     marker = _session_pointer_dir() / f"{safe_session}.delivered"
+    if marker.exists():
+        return None
     try:
         with marker.open("x", encoding="utf-8") as f:
             f.write(datetime.now().astimezone().isoformat())
-    except FileExistsError:
+    except (FileExistsError, OSError):
         return None
-    return warn(PREMISE_CHECK_POINTER)
+    pointer_text = f"{PREMISE_CHECK_POINTER}\n{PKB_SESSION_POINTER}"
+    try:
+        tracer_file = _tracer_state_dir() / f"{ctx.session_id}.json"
+        if tracer_file.is_file():
+            tdata = json.loads(tracer_file.read_text(encoding="utf-8"))
+            phx_sid = tdata.get("phoenix_session_id")
+            if phx_sid:
+                phx_root = str(phx_sid).split("/", 1)[0]
+                if phx_root and phx_root != ctx.session_id:
+                    pointer_text = (
+                        f"{PREMISE_CHECK_POINTER}\n{PKB_SESSION_POINTER}\n"
+                        f"caller_session: {phx_root} | agent_id: {ctx.session_id}"
+                    )
+    except Exception:
+        pass
+
+    if _is_subagent_conversation(ctx):
+        hooks_dir = (
+            ctx.hooks_dir
+            if ctx.hooks_dir and str(ctx.hooks_dir) != "."
+            else Path(__file__).resolve().parent
+        )
+        honesty_agent, honesty_user = load_message_pair(hooks_dir, "honesty")
+        if honesty_agent:
+            pointer_text = f"{honesty_agent}\n\n{pointer_text}"
+        return warn(pointer_text, honesty_user or pointer_text)
+
+    return warn(pointer_text)
 
 
 honesty_on_peer_message = honest_output
@@ -949,6 +958,7 @@ def _prepare_tracer_data(ctx: HookContext) -> dict[str, Any]:
     data = dict(ctx.raw)
     if ctx.session_id:
         data.setdefault("session_id", ctx.session_id)
+        data.setdefault("conversationId", ctx.session_id)
     if ctx.cwd:
         data.setdefault("cwd", ctx.cwd)
     if ctx.agent_type:
@@ -1033,46 +1043,75 @@ def agy_stop(ctx: HookContext) -> Result | None:
 
 
 def post_tool_degraded_check(ctx: HookContext) -> Result | None:
-    """Detect degraded capability flags in tool results and warn."""
-    tool_resp = ctx.raw.get("tool_response") or ctx.raw.get("toolResponse")
-    if not tool_resp:
-        return None
+    """Detect degraded capability flags in tool results and warn.
 
-    if isinstance(tool_resp, str):
-        try:
-            tool_resp = json.loads(tool_resp)
-        except Exception:
-            return None
-
-    if not isinstance(tool_resp, dict):
-        return None
-
-    has_degraded = False
-    details = []
-    if tool_resp.get("voiceSent") is False or tool_resp.get("voiceError"):
-        has_degraded = True
-        err = tool_resp.get("voiceError") or "voiceSent is false"
-        details.append(f"voiceError: {err}")
-
-    for k, v in tool_resp.items():
-        if k.endswith("_error") and v:
-            has_degraded = True
-            details.append(f"{k}: {v}")
-
-    if has_degraded:
-        msg_template, user_template = load_message_pair(ctx.hooks_dir, "degraded_capability")
-        if not msg_template:
-            msg_template = (
-                "Degraded capability failure detected in tool response. Under `halt-on-failure` and `fail-fast`:\n"
-                "- Do not silently swallow this degradation or treat the action as fully successful.\n"
-                "- Required: Report the capability failure verbatim to the user and log an escalation issue/task."
-            )
-        inject_text = f"{msg_template}\n\nDegraded output details:\n" + "\n".join(
-            f"- {d}" for d in details
-        )
-        return warn(inject_text, user_template)
-
+    Disabled pending enforcement map confirmation that instructions alone are ineffective.
+    """
     return None
+
+
+def telemetry_diagnostic_handler(ctx: HookContext) -> Result | None:
+    """Inspect tracer state for telemetry errors and inject diagnostic notice into turn context."""
+    sess_id = (
+        ctx.session_id
+        or ctx.raw.get("session_id")
+        or ctx.raw.get("conversationId")
+        or os.environ.get("AOPS_SESSION_ID")
+    )
+    if not sess_id:
+        return None
+    tracer_file = _tracer_state_dir() / f"{sess_id}.json"
+    if not tracer_file.is_file():
+        return None
+    try:
+        tdata = json.loads(tracer_file.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+    err = tdata.get("telemetry_error")
+    if not err or err.get("reported_to_session"):
+        return None
+
+    err_type = err.get("type")
+    endpoint = err.get("endpoint", "unknown")
+
+    if err_type == "auth_refusal":
+        code = err.get("status_code", 401)
+        diag = (
+            f"ERROR: OpenTelemetry export refused by collector (HTTP {code}) at {endpoint}. "
+            "Authentication invalid or expired. Telemetry spans are being dropped."
+        )
+    elif err_type == "server_error":
+        code = err.get("status_code", 500)
+        diag = (
+            f"ERROR: OpenTelemetry collector returned HTTP {code} at {endpoint}. "
+            "Collector is failing to ingest spans."
+        )
+    elif err_type == "network_error":
+        net_err = err.get("error_type", "Timeout/ConnectionError")
+        diag = (
+            f"ERROR: OpenTelemetry export failed ({net_err}) connecting to {endpoint}. "
+            "Check network route or collector health."
+        )
+    else:
+        msg = err.get("message", "export failure")
+        diag = f"ERROR: OpenTelemetry export failed at {endpoint}: {msg}"
+
+    err["reported_to_session"] = True
+    try:
+        tracer_file.write_text(json.dumps(tdata), encoding="utf-8")
+    except Exception:
+        pass
+
+    mode = "warn"
+    if claude_code_tracer is not None:
+        mode = claude_code_tracer.get_telemetry_failure_mode()
+    elif os.environ.get("AOPS_TELEMETRY_FAILURE_MODE") == "block":
+        mode = "block"
+
+    if mode == "block":
+        return refuse(diag, user_text=diag)
+    return warn(diag, user_text=diag)
 
 
 def user_prompt_submit(ctx: HookContext) -> Result | None:
@@ -1102,7 +1141,6 @@ def user_prompt_submit(ctx: HookContext) -> Result | None:
 
     ctx = replace(ctx, prompt_id=prompt_id)
 
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_user_prompt_submit")
     agy_user_prompt_submit(ctx)
     steps = (
@@ -1116,115 +1154,88 @@ def user_prompt_submit(ctx: HookContext) -> Result | None:
 
 def pre_tool(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical PreToolUse."""
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_pre_tool")
     agy_pre_tool(ctx)
-    return _run_handler(hearsay_handler, ctx)
+    res = subagent_pre_handback_check(ctx)
+    if res is not None:
+        return res
+    gate_res = _run_handler(hearsay_handler, ctx)
+    if gate_res is not None and gate_res.kind == Kind.REFUSE:
+        return gate_res
+    record_pre_dispatch(ctx)
+    return gate_res
 
 
 def post_tool(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical PostToolUse."""
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_post_tool")
     agy_post_tool(ctx)
-    steps = (
-        post_tool_degraded_check,
-        hearsay_arm,
-    )
+    steps = (hearsay_arm, telemetry_diagnostic_handler)
     return _merge([_run_handler(step, ctx) for step in steps])
 
 
 def post_tool_batch(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical PostToolBatch."""
-    emit_debug_span(ctx)
-    return _run_handler(rule_against_hearsay, ctx)
+    steps = (rule_against_hearsay, hearsay_arm)
+    return _merge([_run_handler(step, ctx) for step in steps])
 
 
 def post_tool_failure(ctx: HookContext) -> Result | None:
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_post_tool_failure")
-    return None
+    return _run_handler(telemetry_diagnostic_handler, ctx)
 
 
 def subagent_start(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical SubagentStart."""
-    emit_debug_span(ctx)
-    return _run_handler(honest_output, ctx)
+    steps = (honest_output, subagent_start_gate_notice)
+    return _merge([_run_handler(step, ctx) for step in steps])
 
 
 def stop(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical Stop."""
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_stop")
     agy_stop(ctx)
-    return _run_handler(hearsay_handler, ctx)
+    steps = (hearsay_handler, telemetry_diagnostic_handler)
+    return _merge([_run_handler(step, ctx) for step in steps])
 
 
 def subagent_stop(ctx: HookContext) -> Result | None:
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_subagent_stop")
-    return None
+    return _run_handler(hearsay_arm, ctx)
 
 
 def stop_failure(ctx: HookContext) -> Result | None:
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_stop_failure")
     return None
 
 
 def permission_request(ctx: HookContext) -> Result | None:
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_permission_request")
     return None
 
 
 def permission_denied(ctx: HookContext) -> Result | None:
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_permission_denied")
     return None
 
 
 def notification(ctx: HookContext) -> Result | None:
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_notification")
     return None
 
 
 def pre_compact(ctx: HookContext) -> Result | None:
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_pre_compact")
     return None
 
 
 def post_compact(ctx: HookContext) -> Result | None:
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_post_compact")
     return None
 
 
 def session_end(ctx: HookContext) -> Result | None:
-    emit_debug_span(ctx)
     _run_claude_tracer(ctx, "handle_session_end")
-    return None
-
-
-def emit_debug_span(ctx: HookContext) -> Result | None:
-    """Export an aops-debug span for any hook event on every surface the hook tracer runs on."""
-    if claude_code_tracer is None:
-        return None
-    try:
-        data = _prepare_tracer_data(ctx)
-        config = claude_code_tracer.discover_config(data)
-        if config is not None:
-            claude_code_tracer.emit_debug_hook_span(
-                data,
-                config,
-                client=ctx.client,
-                event=ctx.event,
-                raw_payload=ctx.raw,
-            )
-    except Exception as exc:
-        log.debug("Debug hook span export failed (%s): %s", ctx.event, exc)
     return None
 
 

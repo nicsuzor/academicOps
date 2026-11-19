@@ -1,6 +1,6 @@
 [project]
 name = "academicops"
-version = "0.10.26"
+version = "1.9.0"
 description = "A principled, integrated approach to operationalising what academic integrity requires in a distributed, AI-assisted workflow"
 requires-python = ">=3.11"
 dependencies = [
@@ -140,7 +140,7 @@ include = [
   "CONTRIBUTING.md",
   "README.md",
   "INSTALL.md",
-  "CLAUDE.md",
+  "AGENTS.md",
   ".github/copilot-instructions.md",
 ]
 
@@ -220,7 +220,14 @@ exclude = [
 ]
 ignore = ["**/site-packages"]
 # Python path for internal imports
-extraPaths = ["plugins/rbg/hooks", "plugins/ida/hooks", "plugins/aops-debug/hooks", "lib/py"]
+extraPaths = [
+  "lib/hooks",
+  "plugins/rbg/hooks",
+  "plugins/ida/hooks",
+  "plugins/aops-debug/hooks",
+  "plugins/tools/hooks",
+  "lib/py",
+]
 # By default BasedPyright is very strict, so you almost certainly want to disable
 # some of the rules.
 # First, these turn off warnings about (yes) how you ignore warnings:
@@ -268,7 +275,7 @@ reportUnusedImport = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 norecursedirs = ["archived", "tests/archived"]
-pythonpath = [".", "lib/py"]
+pythonpath = [".", "lib/py", "lib/hooks"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]

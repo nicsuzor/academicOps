@@ -14,15 +14,22 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from dispatch import HookContext, Result
-
-log = logging.getLogger("aops.debug")
-
-_HOOKS_DIR = Path(__file__).resolve().parent
+_HERE = Path(__file__).resolve()
+_HOOKS_DIR = _HERE.parent
 _IDA_HOOKS_DIR = _HOOKS_DIR.parent.parent / "ida" / "hooks"
+for _parent in _HERE.parents:
+    _lib_hooks = _parent / "lib" / "hooks"
+    if (_lib_hooks / "dispatch.py").is_file():
+        if str(_lib_hooks) not in sys.path:
+            sys.path.insert(0, str(_lib_hooks))
+        break
 for _p in (_HOOKS_DIR, _IDA_HOOKS_DIR):
     if _p.is_dir() and str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
+
+from dispatch import HookContext, Result, warn
+
+log = logging.getLogger("aops.debug")
 
 try:
     import claude_code_tracer
@@ -87,4 +94,17 @@ def dump_payload(ctx: HookContext) -> Result | None:
     return None
 
 
-HANDLERS: dict[str, list] = {"*": [dump_payload]}
+def session_start(ctx: HookContext) -> Result | None:
+    core_path = (
+        ctx.hooks_dir.parent
+        if ctx.hooks_dir and str(ctx.hooks_dir) != "."
+        else Path(__file__).resolve().parent.parent
+    ) / "CORE.md"
+    if core_path.is_file():
+        content = core_path.read_text(encoding="utf-8").strip()
+        if content:
+            return warn(content)
+    return None
+
+
+HANDLERS: dict[str, list] = {"*": [dump_payload], "SessionStart": [session_start]}

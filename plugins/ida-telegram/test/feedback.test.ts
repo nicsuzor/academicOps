@@ -24,9 +24,10 @@ describe("Feedback: vote buttons default and opt-in", () => {
 
   test("a reply call with no feedback argument sends a message with no vote buttons", async () => {
     const config = loadConfig({
+      MINI_APP_URL: "https://ida.example.test",
       TELEGRAM_BOT_TOKEN: "test-token",
       IDA_TELEGRAM_ROLE: "primary",
-      ALLOWED_USER_IDS: "8860530746",
+      ALLOWED_USER_IDS: "1111111111",
       STATE_DIR: testStateDir,
       VOICE_REPLIES: "off",
     });
@@ -55,7 +56,7 @@ describe("Feedback: vote buttons default and opt-in", () => {
         params: {
           name: "reply",
           arguments: {
-            chat_id: 8860530746,
+            chat_id: 1111111111,
             text: "**Default feedback test**: No feedback arg specified.",
           },
         },
@@ -75,9 +76,10 @@ describe("Feedback: vote buttons default and opt-in", () => {
 
   test("feedback: true still attaches the buttons", async () => {
     const config = loadConfig({
+      MINI_APP_URL: "https://ida.example.test",
       TELEGRAM_BOT_TOKEN: "test-token",
       IDA_TELEGRAM_ROLE: "primary",
-      ALLOWED_USER_IDS: "8860530746",
+      ALLOWED_USER_IDS: "1111111111",
       STATE_DIR: testStateDir,
       VOICE_REPLIES: "off",
     });
@@ -106,7 +108,7 @@ describe("Feedback: vote buttons default and opt-in", () => {
         params: {
           name: "reply",
           arguments: {
-            chat_id: 8860530746,
+            chat_id: 1111111111,
             text: "**Opt-in feedback test**: feedback true specified.",
             feedback: true,
           },
@@ -127,9 +129,10 @@ describe("Feedback: vote buttons default and opt-in", () => {
 
   test("feedback: false does not attach vote buttons", async () => {
     const config = loadConfig({
+      MINI_APP_URL: "https://ida.example.test",
       TELEGRAM_BOT_TOKEN: "test-token",
       IDA_TELEGRAM_ROLE: "primary",
-      ALLOWED_USER_IDS: "8860530746",
+      ALLOWED_USER_IDS: "1111111111",
       STATE_DIR: testStateDir,
       VOICE_REPLIES: "off",
     });
@@ -158,7 +161,7 @@ describe("Feedback: vote buttons default and opt-in", () => {
         params: {
           name: "reply",
           arguments: {
-            chat_id: 8860530746,
+            chat_id: 1111111111,
             text: "**Explicit false feedback test**.",
             feedback: false,
           },
@@ -179,9 +182,10 @@ describe("Feedback: vote buttons default and opt-in", () => {
 
   test("upvote callback records to trace and updates button", async () => {
     const config = loadConfig({
+      MINI_APP_URL: "https://ida.example.test",
       TELEGRAM_BOT_TOKEN: "test-token",
       IDA_TELEGRAM_ROLE: "primary",
-      ALLOWED_USER_IDS: "8860530746",
+      ALLOWED_USER_IDS: "1111111111",
       STATE_DIR: testStateDir,
       VOICE_REPLIES: "off",
     });
@@ -204,11 +208,11 @@ describe("Feedback: vote buttons default and opt-in", () => {
       update_id: 101,
       callback_query: {
         id: "cb_up_1",
-        from: { id: 8860530746, is_bot: false, first_name: "User" },
+        from: { id: 1111111111, is_bot: false, first_name: "User" },
         message: {
           message_id: 501,
           date: 1700000000,
-          chat: { id: 8860530746, type: "private" },
+          chat: { id: 1111111111, type: "private" },
           text: "A brief message",
           reply_markup: { inline_keyboard: initialKeyboard },
         },
@@ -229,9 +233,10 @@ describe("Feedback: vote buttons default and opt-in", () => {
 
   test("downvote callback opens critique keyboard and selecting critique emits channel event", async () => {
     const config = loadConfig({
+      MINI_APP_URL: "https://ida.example.test",
       TELEGRAM_BOT_TOKEN: "test-token",
       IDA_TELEGRAM_ROLE: "primary",
-      ALLOWED_USER_IDS: "8860530746",
+      ALLOWED_USER_IDS: "1111111111",
       STATE_DIR: testStateDir,
       VOICE_REPLIES: "off",
     });
@@ -258,11 +263,11 @@ describe("Feedback: vote buttons default and opt-in", () => {
       update_id: 102,
       callback_query: {
         id: "cb_down_1",
-        from: { id: 8860530746, is_bot: false, first_name: "User" },
+        from: { id: 1111111111, is_bot: false, first_name: "User" },
         message: {
           message_id: 502,
           date: 1700000010,
-          chat: { id: 8860530746, type: "private" },
+          chat: { id: 1111111111, type: "private" },
           text: "A verbose reply card",
           reply_markup: { inline_keyboard: initialKeyboard },
         },
@@ -284,11 +289,11 @@ describe("Feedback: vote buttons default and opt-in", () => {
       update_id: 103,
       callback_query: {
         id: "cb_critique_1",
-        from: { id: 8860530746, is_bot: false, first_name: "User" },
+        from: { id: 1111111111, is_bot: false, first_name: "User" },
         message: {
           message_id: 502,
           date: 1700000010,
-          chat: { id: 8860530746, type: "private" },
+          chat: { id: 1111111111, type: "private" },
           text: "A verbose reply card",
           reply_markup: { inline_keyboard: downKeyboard },
         },
@@ -303,9 +308,10 @@ describe("Feedback: vote buttons default and opt-in", () => {
 
   test("unauthorized user attempting feedback callback is rejected with Unauthorized and no state changes", async () => {
     const config = loadConfig({
+      MINI_APP_URL: "https://ida.example.test",
       TELEGRAM_BOT_TOKEN: "test-token",
       IDA_TELEGRAM_ROLE: "primary",
-      ALLOWED_USER_IDS: "8860530746",
+      ALLOWED_USER_IDS: "1111111111",
       STATE_DIR: testStateDir,
       VOICE_REPLIES: "off",
     });

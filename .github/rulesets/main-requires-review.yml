@@ -1,14 +1,19 @@
-# GitHub Ruleset: main requires fully green releases
-# Ruleset ID: none yet (not created live)
-# Applied to: refs/heads/main of nicsuzor/academicOps
+# GitHub Ruleset: lock main against pushes (release pipeline only)
+# Applied to: refs/heads/main (the published distribution branch) of nicsuzor/academicOps
 #
-# Record of the ruleset to create. Creating it needs repository admin:
-#   POST repos/nicsuzor/academicOps/rulesets
+# Purpose: `main` holds distribution artifacts only and stays the repository default
+# branch so client harnesses (Claude Code, Antigravity) look there for plugins.
+# Nobody, admins included, can push to `main`.
+# Only the release pipeline automation (GitHub Actions integration id 2921286)
+# can push to `main` via `scripts/publish-dist-to-main.sh`.
 #
-# Merges to main are absolutely restricted to fully green releases:
-# Lint, Type Check, and Pytest pass on the PR head; no bypass is allowed.
+# Non-release PRs opened against `main` are automatically retargeted to `dev`
+# by `.github/workflows/auto-retarget-pr.yml`.
+#
+# Applying/updating this ruleset on GitHub requires repository administrator
+# privileges (run via `python3 scripts/sync_main_ruleset.py`).
 
-name: main requires fully green releases
+name: lock main against pushes (release pipeline only)
 
 target: branch
 conditions:
@@ -19,28 +24,26 @@ conditions:
 
 enforcement: active
 
+# Only the release pipeline automation may push to main.
+# Admins are deliberately NOT included here, enforcing that nobody, admins included,
+# can push to main.
 bypass_actors:
+  - actor_id: 2921286
+    actor_type: Integration
+    bypass_mode: always
 
 rules:
+  # ─────────────────────────────────────────
+  # Block branch deletion
+  # ─────────────────────────────────────────
   - type: deletion
 
+  # ─────────────────────────────────────────
+  # Prevent force-pushes
+  # ─────────────────────────────────────────
   - type: non_fast_forward
 
-  - type: pull_request
-    parameters:
-      required_approving_review_count: 0
-      dismiss_stale_reviews_on_push: false
-      require_code_owner_review: false
-      require_last_push_approval: false
-      require_review_thread_resolution: false
-      allowed_merge_methods:
-        - merge
-
-  - type: required_status_checks
-    parameters:
-      strict_required_status_checks_policy: false
-      do_not_enforce_on_create: false
-      required_status_checks:
-        - context: "Lint / Lint"
-        - context: "Type Check / Type Check"
-        - context: "Pytest / Pytest"
+  # ─────────────────────────────────────────
+  # Block all branch updates (direct pushes and PR merges) by non-bypass actors
+  # ─────────────────────────────────────────
+  - type: update

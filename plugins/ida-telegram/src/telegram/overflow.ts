@@ -13,7 +13,7 @@ export interface ProcessReplyResult {
 
 export function processReplyOverflow(input: ProcessReplyInput): ProcessReplyResult {
   const { text, detail } = input;
-  const maxChars = input.maxChatChars || 1200;
+  const maxChars = input.maxChatChars || 4000;
 
   // If text fits comfortably under maxChars and no detail was provided:
   if (text.length <= maxChars && !detail) {

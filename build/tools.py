@@ -96,6 +96,18 @@ def process_agent_tools_agy(
 
     rejected: set[str] = set()
 
+    # Parse disallowed_list upfront if present
+    disallowed_list: list[str] = []
+    if has_disallowed_tools_key and raw_disallowed_tools is not None:
+        if isinstance(raw_disallowed_tools, str):
+            disallowed_list = [t.strip() for t in raw_disallowed_tools.split(",") if t.strip()]
+        elif isinstance(raw_disallowed_tools, list):
+            disallowed_list = [
+                str(t).strip()
+                for t in raw_disallowed_tools
+                if isinstance(t, str) and str(t).strip()
+            ]
+
     if not has_tools_key:
         # Absence semantics: emit the full accepted vocabulary explicitly
         initial_tools = list(accepted_tools)
@@ -134,9 +146,13 @@ def process_agent_tools_agy(
                 if has_scope:
                     unrestricted_name = mapped[0] if mapped else "tool"
                     prefix = f"{plugin_name}/" if plugin_name else ""
-                    print(
-                        f"warning: {prefix}{agent_name}: '{tool_name}' scope dropped for agy; {unrestricted_name} is unrestricted"
-                    )
+                    if not (
+                        has_disallowed_tools_key
+                        and (base_name in disallowed_list or unrestricted_name in disallowed_list)
+                    ):
+                        print(
+                            f"warning: {prefix}{agent_name}: '{tool_name}' scope dropped for agy; {unrestricted_name} is unrestricted"
+                        )
                 expanded.extend(mapped)
             elif base_name in accepted_tools:
                 # Already agy-native. A `<name>.agy.md` variant writes its
@@ -155,17 +171,7 @@ def process_agent_tools_agy(
 
     # Process disallowedTools if present
     denied_tools: list[str] = []
-    if has_disallowed_tools_key and raw_disallowed_tools is not None:
-        disallowed_list: list[str] = []
-        if isinstance(raw_disallowed_tools, str):
-            disallowed_list = [t.strip() for t in raw_disallowed_tools.split(",") if t.strip()]
-        elif isinstance(raw_disallowed_tools, list):
-            disallowed_list = [
-                str(t).strip()
-                for t in raw_disallowed_tools
-                if isinstance(t, str) and str(t).strip()
-            ]
-
+    if disallowed_list:
         for tool_name in disallowed_list:
             has_scope = "(" in tool_name
             base_name = tool_name.split("(", 1)[0].strip() if has_scope else tool_name
@@ -179,13 +185,9 @@ def process_agent_tools_agy(
                     denied_tools.append(translated_mcp)
             elif base_name in tool_map:
                 mapped = tool_map[base_name]
-                if has_scope:
-                    unrestricted_name = mapped[0] if mapped else "tool"
-                    prefix = f"{plugin_name}/" if plugin_name else ""
-                    print(
-                        f"warning: {prefix}{agent_name}: '{tool_name}' scope dropped for agy; {unrestricted_name} is unrestricted"
-                    )
                 denied_tools.extend(mapped)
+            elif base_name in accepted_tools:
+                denied_tools.append(base_name)
             else:
                 rejected.add(tool_name)
 

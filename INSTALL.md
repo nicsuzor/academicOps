@@ -14,8 +14,9 @@ claude mcp add --transport http --scope user services <your PKB MCP endpoint>
 
 # 2. Install plugins from the marketplace:
 claude plugin marketplace add nicsuzor/academicOps@dist
-claude plugin install pkb@academicOps
-claude plugin install aops@academicOps
+claude plugin install ida@academicOps
+claude plugin install rbg@academicOps
+claude plugin install tools@academicOps
 ```
 
 The `services` MCP server is installed at user level across all surfaces, never shipped inside a plugin:
@@ -24,7 +25,7 @@ The `services` MCP server is installed at user level across all surfaces, never 
 - **Claude Code Cloud / Cowork**: The claude.ai account connector named `services`.
 - **Antigravity (agy)**: Configured in user-level MCP settings (`~/.gemini/antigravity-cli/settings.json` or `~/.gemini/antigravity-cli/mcp/services.json`).
 
-Plugins install with no `--config`: `orchestrate`, `rbg`, `tools`, `ts`, and `aops-debug` install the same way as `pkb` and `aops`.
+Plugins install with no `--config`: `ida-telegram` and `aops-debug` install the same way as `ida`, `rbg` and `tools`.
 
 Nothing else has a default. Set the environment variables each plugin needs
 before first use -- the full list is in [`README.md`](README.md#configure),
@@ -37,15 +38,19 @@ The `ida` plugin's `UserPromptSubmit` hook searches the PKB at `PKB_MCP_URL`
 with every prompt. The hook is a separate process: it cannot use the OAuth
 token the client holds for its own `services` connection, so it needs its own
 credential in the environment the client is launched from (the container or
-launchd environment, not the agent's shell). Set one of:
+launchd environment, not the agent's shell).
 
-- `PKB_MCP_HEADERS` -- a JSON object of HTTP headers, e.g.
-  `{"Authorization": "Bearer <token>"}`
-- `WORKER_MCP_TOKEN_ID` and `WORKER_MCP_TOKEN_SECRET` -- a Cloudflare Access
-  service token without polecat dispatch access, the default
-- `DISPATCHER_MCP_TOKEN_ID` and `DISPATCHER_MCP_TOKEN_SECRET` -- the
-  dispatcher's Cloudflare Access service token, used only when the worker pair
-  is absent
+The hook, the tracer and the rest of the runtime read one Cloudflare Access
+service-token pair, named after the HTTP headers it becomes:
+
+- `CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET` -- sent as
+  `CF-Access-Client-Id` and `CF-Access-Client-Secret` on PKB/MCP calls and on
+  OTLP trace export. The launching context (interactive shell, polecat
+  container, launchd, CI) decides which stored service token fills the pair;
+  least privilege is the launcher's job (for example, a worker container gets
+  a token without polecat dispatch access). Nothing reads the token from
+  `OTEL_EXPORTER_OTLP_HEADERS`, which every OTel SDK in the process tree would
+  pick up.
 
 **Check it is working.** A grounded turn carries
 `<academicOps PKB search results>` in its hook context. A failing one carries
@@ -53,14 +58,15 @@ launchd environment, not the agent's shell). Set one of:
 an HTTP 401 as `MCPError(-32603, 'Server returned an error response')`; seen
 on every prompt, that means the hook has no valid credential.
 
-**Find the cause.** From where the client runs, send the MCP `initialize`
+**Find the cause.** From where the client runs, send a stateless MCP `server/discover`
 request with the headers the hook would send (add `-H` for each), and read the
 status:
 
 ```bash
 curl -sS -D - -o /dev/null -X POST "$PKB_MCP_URL" \
   -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
-  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"probe","version":"0"}}}'
+  -H 'MCP-Protocol-Version: 2026-07-28' -H 'Mcp-Method: server/discover' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"server/discover","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{},"io.modelcontextprotocol/clientInfo":{"name":"probe","version":"0"}}}}'
 ```
 
 | Status | Meaning | Fix |

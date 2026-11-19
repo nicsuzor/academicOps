@@ -24,18 +24,38 @@ chmod +x /usr/local/bin/gh-token-askpass
 git config --global url."https://github.com/nicsuzor/academicOps".insteadOf "https://github.com/nicsuzor/academicOps"
 git config --global core.askPass /usr/local/bin/gh-token-askpass
 
-# 3) Now the marketplaces in .claude/settings.json (extraKnownMarketplaces, ref: dist) can fetch.
+# 3) Now the marketplaces in .claude/settings.json (extraKnownMarketplaces) can fetch.
 #    Optional explicit kick if auto-registration still doesn't trigger on boot:
-claude plugin marketplace add nicsuzor/academicOps#dist || true
+claude plugin marketplace add nicsuzor/academicOps || true
 claude plugin marketplace update academicOps || true
 
-claude plugin install pkb@academicOps
 if [ -n "${PKB_MCP_URL:-}" ]; then
   claude mcp add --transport http --scope user services "${PKB_MCP_URL}"
 fi
 claude plugin install ida@academicOps
-claude plugin install orchestrate@academicOps
 claude plugin install rbg@academicOps
-claude plugin install ts@academicOps
 claude plugin install tools@academicOps
 claude plugin install aops-debug@academicOps
+
+# Disable claude.ai-synced copies so plugins are not loaded twice
+for p in ida rbg tools aops-debug; do
+  claude plugin disable "${p}@synced" 2>/dev/null || true
+done
+
+if [ -d /etc/claude-code/managed-settings.d ] || [ -w /etc ] || sudo -n true 2>/dev/null; then
+  sudo install -d -m 0755 /etc/claude-code/managed-settings.d 2>/dev/null || mkdir -p /etc/claude-code/managed-settings.d 2>/dev/null || true
+  cat <<'SETTINGS_EOF' | (sudo tee /etc/claude-code/managed-settings.d/aops-plugins.json >/dev/null 2>&1 || cat > /etc/claude-code/managed-settings.d/aops-plugins.json 2>/dev/null || true)
+{
+  "enabledPlugins": {
+    "aops-debug@academicOps": true,
+    "ida@academicOps": true,
+    "rbg@academicOps": true,
+    "tools@academicOps": true,
+    "aops-debug@synced": false,
+    "ida@synced": false,
+    "rbg@synced": false,
+    "tools@synced": false
+  }
+}
+SETTINGS_EOF
+fi

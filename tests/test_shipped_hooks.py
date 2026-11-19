@@ -35,12 +35,14 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.integration
+
 from build.build import build_all
 from build.marketplace import load_marketplace_toml
 from build.tree import EXCLUDE_NAMES, has_shebang
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_LIB_HOOKS = _REPO_ROOT / "plugins" / "ida" / "hooks"
+_LIB_HOOKS = _REPO_ROOT / "lib" / "hooks"
 _MARKETPLACE = _REPO_ROOT / "build" / "marketplace.toml"
 _POLICY_FILE = _REPO_ROOT / "tests" / "policy.toml"
 _policy = tomllib.loads(_POLICY_FILE.read_text(encoding="utf-8")) if _POLICY_FILE.exists() else {}
@@ -266,7 +268,8 @@ def _run_shipped_hook(
     env.pop("VIRTUAL_ENV", None)
     for k in (
         "GENAI_ENGINE_TRACE_ENDPOINT",
-        "GENAI_ENGINE_API_KEY",
+        "CF_ACCESS_CLIENT_ID",
+        "CF_ACCESS_CLIENT_SECRET",
         "GENAI_ENGINE_TRACE_PROTOCOL",
         "GENAI_ENGINE_TASK_ID",
         "OTEL_EXPORTER_OTLP_ENDPOINT",
@@ -606,9 +609,9 @@ class _StubReflexesEvaluator(BaseHTTPRequestHandler):
 def stub_evaluator_env(tmp_path):
     """Environment overrides pointing cope's hook at the loopback evaluator.
 
-    `ACA_DATA` is cleared and the OS temp directory redirected because the hook
+    `COPE_USER_RULES_DIR` is cleared and the OS temp directory redirected because the hook
     reports its own degradation on the same response (lib/hooks/degraded.py),
-    once per session, behind a marker file: an ambient `ACA_DATA` naming no
+    once per session, behind a marker file: an ambient `COPE_USER_RULES_DIR` naming no
     rules directory is a real fault, and a marker left in the real temp
     directory would decide whether the next run saw it.
     """
@@ -623,7 +626,7 @@ def stub_evaluator_env(tmp_path):
         "COPE_EVALUATOR_API_KEY": None,
         "COPE_EVALUATOR_TIMEOUT": "20",
         "COPE_EVALUATOR_TRACE_PATH": None,  # unset here; tests that want it set it themselves
-        "ACA_DATA": None,
+        "COPE_USER_RULES_DIR": None,
         "TMPDIR": str(marker_root),
     }
     server.shutdown()
@@ -881,7 +884,7 @@ def test_every_axiom_is_live_in_the_built_clients(pristine_dist, tmp_path, monke
     assert {json.loads(line)["slug"] for line in jsonl.splitlines()} == slugs
     assert {p.stem for p in (pristine_dist / "rbg-agy" / "rules").glob("*.md")} == slugs
 
-    monkeypatch.delenv("ACA_DATA", raising=False)
+    monkeypatch.delenv("COPE_USER_RULES_DIR", raising=False)
     spec = importlib.util.spec_from_file_location(
         "rbg_rules", _REPO_ROOT / "plugins" / "rbg" / "hooks" / "rules.py"
     )
@@ -1021,8 +1024,14 @@ def test_registered_handler_events_are_exactly_the_wired_events(dist_root):
                 allowed_missing.update(_wires_for("PostToolBatch"))
             if not p.get("honest_output_enabled", True):
                 allowed_missing.update(_wires_for("SubagentStart"))
-        elif name == "rbg" and not _policy.get("rbg", {}).get("evaluate", {}).get("enabled", True):
-            allowed_missing.update(_wires_for("PreToolUse"))
+        elif name == "rbg":
+            if not _policy.get("rbg", {}).get("evaluate", {}).get("enabled", True):
+                allowed_missing.update(_wires_for("PreToolUse"))
+            if not _policy.get("rbg", {}).get("stop_gate", {}).get("stop_events"):
+                allowed_missing.update(_wires_for("Stop"))
+                allowed_missing.update(_wires_for("SubagentStop"))
+            if not _policy.get("rbg", {}).get("inject_ruleset", {}).get("enabled", False):
+                allowed_missing.update(_wires_for("UserPromptSubmit"))
         elif name == "ida" and not _policy.get("ida", {}).get("strip_the_reply_enabled", True):
             allowed_missing.update(_wires_for("PostToolBatch"))
             allowed_missing.update(_wires_for("Stop"))

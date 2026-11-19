@@ -53,7 +53,7 @@ describe("Progressive disclosure: Format and Entities", () => {
     expect(stdQuotes.length).toBe(0);
   });
 
-  test("groups consecutive standard > lines into a single blockquote entity per spec_7a9caca5 FR-1.2", () => {
+  test("groups consecutive standard > lines into a single blockquote entity per format specification FR-1.2", () => {
     const text = "> Line 1\n> Line 2\n\nBody";
     const { plainText, entities } = formatMarkdownToEntities(text);
 
@@ -125,12 +125,120 @@ describe("Progressive disclosure: Format and Entities", () => {
     }
   });
 
-  test("normalizes reactions to Telegram allow-list and strips VS16", () => {
+  test("normalizes reactions by stripping VS16, canonical mapping, and validating single emoji grapheme", () => {
     // ✍️ has VS16 (\uFE0F); Telegram requires bare ✍
     expect(normalizeReaction("✍️")).toBe("✍");
     expect(normalizeReaction("👍")).toBe("👍");
     expect(normalizeReaction("❤️")).toBe("❤");
-    // Invalid reaction maps to null or fallback
-    expect(normalizeReaction("🚀")).toBeNull();
+    // Arbitrary single valid emojis are accepted
+    expect(normalizeReaction("🚀")).toBe("🚀");
+    expect(normalizeReaction("🐱")).toBe("🐱");
+    // Multi-emoji strings or non-emoji text are rejected
+    expect(normalizeReaction("💩🦄")).toBeNull();
+    expect(normalizeReaction("hello")).toBeNull();
+  });
+
+  test("formats Telegram advanced inline entities: spoiler, strikethrough, underline, and custom_emoji", () => {
+    const text =
+      "Check ||secret spoiler||, ~~struck text~~, __underlined__, <u>html underline</u>, and ![🔥](tg://emoji?id=5368324170671202286)!";
+    const { plainText, entities } = formatMarkdownToEntities(text);
+
+    expect(plainText).toBe(
+      "Check secret spoiler, struck text, underlined, html underline, and 🔥!"
+    );
+
+    const spoiler = entities.find((e) => e.type === "spoiler");
+    expect(spoiler).toBeDefined();
+    expect(plainText.slice(spoiler!.offset, spoiler!.offset + spoiler!.length)).toBe(
+      "secret spoiler"
+    );
+
+    const strike = entities.find((e) => e.type === "strikethrough");
+    expect(strike).toBeDefined();
+    expect(plainText.slice(strike!.offset, strike!.offset + strike!.length)).toBe(
+      "struck text"
+    );
+
+    const underlines = entities.filter((e) => e.type === "underline");
+    expect(underlines.length).toBe(2);
+    expect(plainText.slice(underlines[0].offset, underlines[0].offset + underlines[0].length)).toBe(
+      "underlined"
+    );
+    expect(plainText.slice(underlines[1].offset, underlines[1].offset + underlines[1].length)).toBe(
+      "html underline"
+    );
+
+    const customEmoji = entities.find((e) => e.type === "custom_emoji");
+    expect(customEmoji).toBeDefined();
+    expect(customEmoji?.custom_emoji_id).toBe("5368324170671202286");
+    expect(plainText.slice(customEmoji!.offset, customEmoji!.offset + customEmoji!.length)).toBe(
+      "🔥"
+    );
+  });
+
+  test("converts ATX markdown headings (# to ######) into bold entities outside code blocks", () => {
+    const text = "# Main Title\n\n## Section Two\n\n```bash\n# shell comment stays literal\necho hi\n```";
+    const { plainText, entities } = formatMarkdownToEntities(text);
+
+    expect(plainText).toBe("Main Title\n\nSection Two\n\n# shell comment stays literal\necho hi");
+    const bolds = entities.filter((e) => e.type === "bold");
+    expect(bolds.length).toBe(2);
+    expect(plainText.slice(bolds[0].offset, bolds[0].offset + bolds[0].length)).toBe("Main Title");
+    expect(plainText.slice(bolds[1].offset, bolds[1].offset + bolds[1].length)).toBe("Section Two");
+
+    const pre = entities.find((e) => e.type === "pre");
+    expect(pre).toBeDefined();
+    expect(plainText.slice(pre!.offset, pre!.offset + pre!.length)).toContain(
+      "# shell comment stays literal"
+    );
+  });
+
+  test("automatically converts markdown tables inside formatMarkdownToEntities", () => {
+    const narrowMsg = "Summary:\n\n| Key | Val |\n|---|---|\n| A | 1 |\n\nDone.";
+    const narrowRes = formatMarkdownToEntities(narrowMsg);
+    const preEntity = narrowRes.entities.find((e) => e.type === "pre");
+    expect(preEntity).toBeDefined();
+    expect(narrowRes.plainText).toContain("Key | Val");
+
+    const wideMsg =
+      "Wide report:\n\n| Component Subsystem Name | Operational Status Summary | Owner |\n|---|---|---|\n| Telegram Formatting Engine | Active and verified in prod | Core |";
+    const wideRes = formatMarkdownToEntities(wideMsg);
+    expect(wideRes.plainText).toContain("• Component Subsystem Name: Telegram Formatting Engine");
+    const boldHeaders = wideRes.entities.filter((e) => e.type === "bold");
+    expect(boldHeaders.length).toBeGreaterThanOrEqual(3);
+  });
+
+  test("supports nested inline formatting entities with accurate UTF-16 offsets", () => {
+    const text = "**Bold with *italic* and `code` and [link](https://example.com)** plus ||spoiler **bold**||";
+    const { plainText, entities } = formatMarkdownToEntities(text);
+
+    expect(plainText).toBe("Bold with italic and code and link plus spoiler bold");
+
+    const outerBold = entities.find(
+      (e) => e.type === "bold" && plainText.slice(e.offset, e.offset + e.length) === "Bold with italic and code and link"
+    );
+    expect(outerBold).toBeDefined();
+
+    const innerItalic = entities.find((e) => e.type === "italic");
+    expect(innerItalic).toBeDefined();
+    expect(plainText.slice(innerItalic!.offset, innerItalic!.offset + innerItalic!.length)).toBe("italic");
+
+    const innerCode = entities.find((e) => e.type === "code");
+    expect(innerCode).toBeDefined();
+    expect(plainText.slice(innerCode!.offset, innerCode!.offset + innerCode!.length)).toBe("code");
+
+    const innerLink = entities.find((e) => e.type === "text_link");
+    expect(innerLink).toBeDefined();
+    expect(innerLink?.url).toBe("https://example.com");
+    expect(plainText.slice(innerLink!.offset, innerLink!.offset + innerLink!.length)).toBe("link");
+
+    const spoiler = entities.find((e) => e.type === "spoiler");
+    expect(spoiler).toBeDefined();
+    expect(plainText.slice(spoiler!.offset, spoiler!.offset + spoiler!.length)).toBe("spoiler bold");
+
+    const spoilerBold = entities.find(
+      (e) => e.type === "bold" && plainText.slice(e.offset, e.offset + e.length) === "bold"
+    );
+    expect(spoilerBold).toBeDefined();
   });
 });

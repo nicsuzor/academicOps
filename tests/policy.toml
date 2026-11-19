@@ -6,6 +6,10 @@
 # Events that the RBG stop gate will block on. Currently empty because rbg hooks are disabled.
 stop_events = []
 
+[rbg.inject_ruleset]
+# The UserPromptSubmit/PreInvocation rule set injector is currently disabled
+enabled = false
+
 [hooks.messages]
 # Messages that ship with no .user.md because they have no second reader
 no_user_counterpart = { "rbg: ruleset" = "agy-only injection; agy has no user channel", "rbg: classifier-prompt" = "evaluator request payload, never injected into a session" }
@@ -40,6 +44,9 @@ valid_statuses = [
 # The PreToolUse rule evaluator (cope) is currently disabled
 enabled = false
 
+[rbg.rules]
+user_rules_env = "COPE_USER_RULES_DIR"
+
 [ida]
 strip_the_reply_enabled = true
 search_the_pkb_enabled = true
@@ -69,11 +76,7 @@ override_vars = [
   "AOP_FORCE",
   "AOP_OVERRIDE",
 ]
+claim_tool_name = "premise_check_claim"
+claim_status = "to_be_verified"
 armed_indicator = "Premise-check gate armed by"
 direction_checklist_indicator = "frozen acceptance checklist"
-
-[rbg.axioms]
-# Aliases mapping alternative names or historical variants to canonical axiom slugs
-aliases = { nondelegablequalitativejudgment = "judgment-non-delegable", qualitativejudgment = "judgment-non-delegable" }
-# Context words or non-axiom markdown words in backticks exempt from axiom checks
-exempt_words = ["cwd"]

@@ -326,9 +326,8 @@ something a human typed, and the prompt ledger reads that key.
 ## Testing
 
 There is no committed fixture/snapshot suite for this pipeline on this branch
-today -- `lib/py/transcripts/` ships without a matching test package.
-`tests/polecat/test_transcript_persistence.py` covers the polecat-side
-persistence contract only. A contract and snapshot suite against real,
+today -- `lib/py/transcripts/` ships without a matching test package. A
+contract and snapshot suite against real,
 anonymized Claude and agy session fixtures (adapter event mapping, call-tree
 lineage, token badges, `[!ERROR_BLOCK]` rendering, and stable `.md`/`.full.md`/
 `.html`/`.json` snapshots) is owed, not shipped.

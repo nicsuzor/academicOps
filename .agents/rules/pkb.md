@@ -1,0 +1,15 @@
+---
+trigger: always_on
+description: Ruling on PKB write authority and basic PKB usage conventions.
+---
+
+## PKB writes and usage
+
+- **Who writes knowledge**: Pauli exclusively curates, updates, and prunes knowledge notes (`note`, `knowledge`, `memory`, `target`) and planning graph structure. Other agents never mutate knowledge notes directly; offer durable facts to Pauli in-session or record under `## Durable Facts` in task records for custodian collection.
+- **Who writes task lifecycle**: Workers claim (`pkb_claim_task`) and release (`pkb_release_task`) their own assigned tasks directly, recording completion evidence under `## Report`. Sessions running `/dump` create retroactive tasks for unparented edits and operational recoveries.
+- **Basic usage**:
+  - Hooks do not inject `session_id` into MCP calls; explicitly pass top-level `session_id` (your active session/conversation ID from `caller_session`, `CLAUDE_CODE_SESSION_ID`, `ANTIGRAVITY_CONVERSATION_ID`, or session context) on EVERY PKB MCP call (reads and writes) and on any other instrumented MCP tool called directly or through the `services` proxy (`portal_codemode_execute`).
+  - Search before creating; use `metadata` or `summary` for broad scans, reserving `full` for target bodies.
+  - Links are strictly one-way: tasks link upward to parent project or epic; tasks never link to indexes or MoCs.
+  - Current state only (`synthesize-not-accrete`): The PKB is CURRENT STATE ONLY. Rewrite notes in place; delete superseded facts and obsolete material immediately. Never accumulate historical accretion lists (such as legacy `sources:` frontmatter arrays), session references, or changelogs; cite non-trivial claims inline or via the `source` property per `cite-sources`. Task bodies hold only goal, scope, checklist, and pointers; bugs go to GitHub only.
+- **No read-back of error-free writes**: When writing to our own MCP servers (`pkb`, `services`), never read back a file, task, note, or edge to confirm the write. MCP write tools fail loudly and return an error on failure; an error-free tool return is authoritative confirmation of success. If an MCP write request comes back without error, do not spend another turn reading the file back.

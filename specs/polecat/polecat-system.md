@@ -14,8 +14,10 @@ Polecat runs one agent CLI invocation inside an isolated Docker container, on an
 isolated git clone, so dispatched work never touches the caller's own checkout or
 host credentials. It is a single command -- `polecat run` -- not a task-claiming
 service: task lifecycle (claim, work, record, hand over) is the invoked agent's own
-job, driven by a seeded `/pull <task-id>` prompt and the `pull` skill running inside
-the container.
+job, driven either by a container coordinator (`james`) running `/ida:supervise <task-id>`
+inside an `agy` session on a coordinator model calibrated to task complexity and
+importance for repo-scoped epic tasks, or by a seeded `/ida:pull <task-id>` prompt
+running `pull` as the fast-path for already-decomposed leaf tasks.
 
 This file is the umbrella. The individual designs are
 [base-ref resolution](spec-base-ref-resolution.md),
@@ -27,15 +29,15 @@ This file is the umbrella. The individual designs are
 
 ## Giving Effect
 
-The container launcher (`polecat`) and worker image are maintained outside this repository and supplied by the installer, together with any Docker MCP server registered behind the `services` portal. The legacy in-tree `Dockerfile` and `lib/polecat/` CLI scripts in academicOps have been removed.
+The container launcher (`scripts/polecat`) and worker image are maintained outside this repository and supplied by the installer, together with the Docker MCP server (`polecat_run_container`) registered behind the `services` portal.
 
+- [[plugins/ida/skills/supervise/SKILL.md]] -- container coordinator-side: claims the repo-scoped epic task, reifies workflows onto a combined task body, coordinates subagents with incremental git checkpoints, delivers in-session outputs and pull requests, and queues out-of-session follow-ups -- what a seeded `/ida:supervise <task-id>` prompt does inside the container
 - [[plugins/ida/skills/pull/SKILL.md]] -- worker-side: claim, execute, record, hand
-  over -- what a seeded `/pull <task-id>` prompt actually does once inside the
-  container
-- [[plugins/aops/skills/polecat/SKILL.md]] -- coordinator-side: the launcher skill that builds
-  the `polecat run` command and runs it synchronously (or wrapped under tmux), locally
-  or over ssh. It is one route in, not a gate: `run`'s own guarantees hold on any
-  invocation, and nothing stops a caller reaching the CLI directly
+  over -- what a seeded `/ida:pull <task-id>` prompt actually does once inside the
+  container as the fast-path for already-decomposed leaf tasks
+- [[plugins/ida/skills/dispatch/SKILL.md]] -- coordinator-side: the dispatch skill that starts
+  polecat workers on queued tasks via the Docker MCP server (`polecat_run_container`) or the
+  host launcher (`scripts/polecat`)
 - [[.agents/skills/debug/SKILL.md]] -- the operational skill for driving a
   `polecat run` container interactively via tmux
 
@@ -85,20 +87,21 @@ The container launcher (`polecat`) and worker image are maintained outside this 
    logs and transcripts are visible on the host live, not just at container exit.
    When the operator's config names a `rules_dir` (or `$POLECAT_RULES_DIR` is
    set), that host directory is mounted read-only at the container's own
-   `$ACA_DATA/.agents/rules/` (`/data/.agents/rules` -- `ENV ACA_DATA=/data` in
-   the `Dockerfile`), which is what makes cope/rbg's user-scoped rules reach a container;
+   `/etc/cope/rules` (`ENV COPE_USER_RULES_DIR=/etc/cope/rules`), which is what makes cope's user-scoped rules reach a container;
    absent, the container simply has no user-scoped rules, and a configured-but-unreadable
    directory is a hard failure before any container starts. The image is never
    pulled from a registry -- it must already be built locally or CI-produced; a
    missing image is a hard failure with an actionable message.
 8. Builds the inner command from `AGENT_CMD` (`claude`, `agy`, `shell`/`bash`,
    `sleep`, or any other passthrough binary). With `--task <id>` and no explicit
-   prompt, seeds `/pull <id>` as the prompt. Every dispatch without `-i` runs
-   headless (`--print`), whatever the host's stdin is, so the container exits
-   when the agent's loop completes rather than idling forever; `-i` is the only
-   way into the interactive UI. An `agy` dispatch also gets an optional
-   `--print-timeout`: `polecat.yaml`'s `timeout` supplies that value on _every_
-   headless dispatch.
+   prompt: launches the container coordinator (`james`) inside an `agy` session on
+   a `coordinator` model calibrated to task complexity and importance, seeded with
+   `/ida:supervise <task-id>` for repo-scoped epic tasks; or seeds `/ida:pull <task-id>`
+   for already-decomposed leaf tasks. Every dispatch without `-i` runs headless
+   (`--print`), whatever the host's stdin is, so the container exits when the agent's
+   loop completes rather than idling forever; `-i` is the only way into the interactive UI.
+   An `agy` dispatch also gets an optional `--print-timeout`: `polecat.yaml`'s `timeout`
+   supplies that value on _every_ headless dispatch.
 9. On completion, verifies delivery before reporting success (Guarantee 3), then
    writes `run.json`.
 
@@ -166,6 +169,12 @@ The container launcher (`polecat`) and worker image are maintained outside this 
    reaches stdout per invocation: on the seed-verification retry path, aborted
    attempt output is buffered and suppressed so callers never receive
    concatenated streams.
+9. **Completion record and event observability.** Container exit is recorded by
+   the exit listener, exported as OpenTelemetry `polecat.container.exit` spans,
+   and enqueued in the `polecat_events` event queue. There is no direct UNIX
+   domain socket (UDS) push or raw text injection into agent sessions;
+   downstream supervisors and reconcile passes consume completion events from
+   the event queue or trace store via the operational dashboard daemon bridge.
 
 ## What `run` does not do
 
@@ -175,5 +184,9 @@ stdout, quiet by default. There is no `start`, `finish`, `crew`, `nuke`, `swarm`
 `list`, `init`, or `sync` subcommand, no bare-mirror registry under a `.repos/`
 directory, no workspace that survives past a single invocation, and no claiming,
 PR-filing, or status-setting performed by the CLI itself. Those either don't exist
-or are the invoked agent's own job, driven by the `pull` skill against the PKB
-task graph from inside the container.
+or are the invoked agent's own job, driven by the `supervise` skill (for repo-scoped
+epic tasks) or `pull` skill (for already-decomposed leaf tasks) against the PKB
+task graph from inside the container. There is no UDS socket push or interactive
+session injection of completion strings (such as `[polecat-exit]`); completion
+events are retrieved from the durable queue or observability spans by
+higher-level services.

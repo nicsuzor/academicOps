@@ -66,6 +66,7 @@ def get_plugin_dirs():
     get_plugin_dirs(),
     ids=lambda d: f"{d.parent.name}/{d.name}" if d.parent.name in ("cowork", "plugins") else d.name,
 )
+@pytest.mark.integration
 def test_plugin_validates_against_cli(plugin_dir):
     """
     Checks each built plugin package against the native CLI plugin validate command.

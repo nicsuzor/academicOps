@@ -1,45 +1,56 @@
 ---
 name: dispatch
-description: Start polecat workers on queued tasks already on the graph, given task ids or a parent whose ready tasks should run. Writes no tasks. Exclude for turning an objective into tasks or changing a task's text (use /reify).
+description: Start polecat containers on queued repo-scoped tasks or ready leaf tasks on the graph. Writes no tasks. Use for headless worker container execution and dispatching ready tasks. Exclude for intake and task placement (use /q) or interactive queue selection (use /dispatch-queue).
 ---
 
-# /dispatch: start polecat workers on queued tasks
+# /dispatch: Start Polecat Containers on Queued Tasks
 
-The task record is the whole message to the worker. Start it as written. Questions and lookups are answered directly by the session that receives them; the task dispatch pipeline is used only for real code changes. Never dispatch questions or lookups to workers.
+The task record is the whole message to the container; dispatch ready tasks without rewriting them. The task dispatch pipeline is used for any durable deliverable -- including agent workflows, instruction updates, specifications, and code changes. Questions and lookups that can be answered in-turn are answered directly without queueing tasks. Never dispatch questions or lookups to containers.
 
-A polecat is a short-running container: it gets in, does its task, and gets out cleanly. Follow-up lives on the task graph, where the workflow puts it, never in a worker waiting for it.
+A polecat is an isolated container session: it gets in, executes its task, and gets out cleanly. Dispatched containers operate across two distinct modes:
 
-## 1. Check each task is ready
+- **Supervised Container Execution (`/ida:supervise <task-id>`)**: Default for repo-scoped tasks queued by `/q`, un-reified multi-stage tasks, or pre-reified composite tasks needing coordinator supervision or multi-agent fan-out. Launches the container coordinator (`james`) on a `coordinator` model calibrated to task complexity and importance. The container coordinator runs `/reify` in-session if un-reified (or takes the fast path if already composed), coordinates subagents to deliver everything possible in session, and leaves follow-up tasks on the graph only for out-of-session work.
+- **Plain Leaf Execution (`/ida:pull <task-id>`)**: Fast-path execution for already-decomposed leaf tasks or single-skill runs without re-reifying. Plain leaf workers operate strictly under the worker state-only invariant: they mutate only their claimed task's own state and never mint follow-up tasks.
 
-Read each task you were given; for a parent, read its children and take the ready ones.
+## 1. Check Each Task Is Ready
 
-A task is ready when its status is `queued`, it has no open `needs` edges or incomplete children, it fills the `/reify` task template (Goal, Acceptance, Instructions, Output), and its Instructions conclude with the composed workflow's release step.
+Read each task you were given; for a parent container, read its children and select ready tasks.
 
-- A QA follow-up stays queued until its hard dependency completes; it is not ready yet.
-- A task that folds follow-ups into itself is not ready: send it to `/reify` to be cut.
-- Send a task that is unready or underspecified to `/reify` with its id, because writing and rewriting tasks is that skill's job. Dispatch the rest.
-- **Intake Contract:** On receiving a direction or work brief, the receiving agent must record its own summary stating deliverables as a frozen `## Acceptance` checklist on a PKB task before work starts.
-- **Source of record check**: Before dispatching, identify each claim's source of record -- the live configuration, repository, code, or spec it describes -- and read the claim against it. Do not dispatch work on claims or constraints the source of record does not support.
+A task is ready for dispatch when its status is `queued` and it has no open `needs` edges or incomplete prerequisite dependencies. Dispatch invokes polecat containers directly with the repo-scoped task queued by `/q` without pre-dispatch reification or hunting for leaf tasks. When all open children under a composite task reach `done`, the composite task becomes `ready` for synthesis and sign-off managed by `/reconcile`.
 
-## 2. Start the workers
+- **Queue readiness**: A repo-scoped task queued by `/q` with no open `needs` is immediately ready for container dispatch.
+- **Dependency satisfaction**: A dependent task or QA follow-up stays `queued` until its prerequisite releases `done`; once satisfied, it becomes ready for dispatch.
+- **Deduplication and conflict check**: Verify that no conflicting or overlapping running container exists before dispatching. If an unlinked task covers identical subsystem artifacts, halt and resolve the overlap before launching.
+- **Intake Contract & Satisfiability Gate**: Dispatched tasks carry explicit acceptance criteria on the PKB task before launching a container. Check every `queued` task's criteria, scope, and composition state before choosing a command:
+  - _Unsatisfiable criteria_: If any acceptance criterion demands an external or post-exit outcome outside the unit's authorized scope that neither `/ida:supervise` nor `/ida:pull` can produce and verify directly before releasing `done` (such as downstream independent review, PR merge, host deployment, or human approval), halt dispatch for that task and report the task ID and unreachable criterion to the caller for task repair; launch neither `/ida:supervise` nor `/ida:pull`.
+  - _Supervised container tasks (`/ida:supervise`)_: Tasks with container-satisfiable criteria that are un-reified (lacking `## Instructions` + `## Appendix: Sources` and not a single-skill `invoke /<skill>` directive) or are pre-reified composite/multi-stage tasks requiring container supervision or multi-agent fan-out: launch `/ida:supervise <task-id>`.
+  - _Reified atomic leaf or single-skill tasks (`/ida:pull`)_: Single-skill directives (`invoke /<skill>`) or reified atomic leaf tasks (`## Instructions` + `## Appendix: Sources`) requiring no container supervision or fan-out whose criteria are all satisfiable by a single leaf worker before releasing `done`: launch `/ida:pull <task-id>`.
 
-Start one polecat worker per ready task, in parallel, through the project's dispatch pathway. The worker's whole prompt is `/ida:pull <task-id>`, because the task carries everything else.
+## 2. Start the Containers
 
-Confirm each worker started. A worker that failed to start is a halt: report the task id and the failure verbatim.
+Launch one polecat container per ready task, in parallel, through the project's dispatch pathway:
 
-## 3. Receive completion events
+- **Supervised container tasks**: Launch the container coordinator (`james`) on an appropriate `coordinator` model (calibrated to the task's complexity or importance) with the command:
+  ```bash
+  /ida:supervise <task-id>
+  ```
+- **Reified atomic leaf or single-skill tasks**: Launch a worker container with the fast-path command:
+  ```bash
+  /ida:pull <task-id>
+  ```
 
-Do not poll workers or wait on a timer (no status checking loops, no sleep loops, no cron timers). The dispatching session learns that a polecat has finished from polecat-mcp's completion event delivered over the event route or cross-session bus:
+Containers launch asynchronously; callers are not notified when they start, and neither track nor report starts. Assume work proceeds unless an error comes back. A container dispatch failure is a halt: report the task ID and the failure verbatim.
 
-`[polecat-exit] task=<task-id> container=<container-name> exit_code=<code|0> status=<review|done|partial|failed> pr_url=<url> duration=<seconds>s`
+## 3. Report and Stop (Fire-and-Forget)
 
-## 4. Act on completion
+Dispatch is fire-and-forget: the container records its result on the task graph. Once tasks are dispatched, output the dispatch report and end your turn immediately:
 
-When the completion event arrives, act on it immediately:
+- Output one line per task: title, id, selected command (`/ida:supervise` or `/ida:pull`), and that the container is launched.
+- Never wait for a container to finish in the dispatch turn, never wait for or report container starts, and never call or block on event-stream tools, status checks, sleep loops, or timers.
 
-- **Review or Done (`status=review` or `status=done`, `exit_code=0`)**: The worker delivered. Trigger `/verify` on the deliverable or `/reconcile` to process the PR and update task state. Read downstream tasks on the graph whose `needs` dependencies are now satisfied, and dispatch any that are ready.
-- **Partial or Failed (`status=partial` or `status=failed`, or `exit_code!=0`)**: Inspect the failure reason recorded on the task and container logs. If unfinished work remains, route the follow-up through `/reify` or escalate per fail-fast.
+## 4. Act on a Completed Container (Separate Invocation or Turn)
 
-## 5. Report
+Container outputs (`status`, `completion_evidence`, `pr_url`) return on the PKB task graph after the container exits. When a session is invoked in a separate turn to check or `/reconcile` a completed container:
 
-Output one line per task: title, id, and the worker started (container name), or the `/reify` hand-back and why.
+- **Done (`status=done`, `exit_code=0`)**: Read the container's report on the task record and check it per `premise-check`. Read downstream tasks on the graph whose `needs` dependencies are now satisfied, and dispatch any that are ready. Trigger `/verify` on the deliverable or `/reconcile` as needed.
+- **Partial or Failed (`status=partial` or `status=failed`, or `exit_code!=0`)**: Inspect the failure reason recorded on the task and container logs. If unfinished work remains, route follow-up tasks through the graph engine or escalate per fail-fast.

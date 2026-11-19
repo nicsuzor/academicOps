@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import { PluginStore } from "../store.js";
+import { buildMiniAppUrl } from "./bot.js";
 
 export interface QuestionOption {
   label: string;
@@ -21,6 +22,10 @@ export interface QuestionPayload {
   turn_id?: string;
   sessionId?: string;
   session_id?: string;
+  messageThreadId?: number;
+  message_thread_id?: number;
+  threadId?: number;
+  thread_id?: number;
   text?: string;
   chatId?: number;
   detail?: string;
@@ -38,11 +43,15 @@ export interface StoredQuestion extends QuestionPayload {
   text: string;
   createdAt: string;
   created_at: string;
-  status: "pending" | "answered" | "closed";
+  status: "pending" | "answered" | "closed" | "failed";
   sessionId?: string;
   session_id?: string;
   turnId?: string;
   turn_id?: string;
+  messageThreadId?: number;
+  message_thread_id?: number;
+  threadId?: number;
+  thread_id?: number;
   selectedOptions?: number[];
   answeredChoice?: string;
   closedReason?: string;
@@ -55,6 +64,7 @@ export interface StoredQuestion extends QuestionPayload {
   mini_app_only?: boolean;
   miniAppOnly?: boolean;
   chat?: boolean;
+  deliveryError?: string;
 }
 
 export interface QuestionButton {
@@ -75,6 +85,8 @@ export interface QuestionAnswerEvent {
   choice: string;
   turn_id?: string;
   session_id?: string;
+  message_thread_id?: string;
+  thread_id?: string;
 }
 
 export interface QuestionClosedEvent {
@@ -84,6 +96,8 @@ export interface QuestionClosedEvent {
   reason: string;
   turn_id?: string;
   session_id?: string;
+  message_thread_id?: string;
+  thread_id?: string;
 }
 
 export interface ResolveAnswerResult {
@@ -122,6 +136,8 @@ export class QuestionBroker {
           if (!q.turnId && q.turn_id) q.turnId = q.turn_id;
           if (!q.session_id && q.sessionId) q.session_id = q.sessionId;
           if (!q.sessionId && q.session_id) q.sessionId = q.session_id;
+          if (q.messageThreadId === undefined && q.message_thread_id !== undefined) q.messageThreadId = q.message_thread_id;
+          if (q.message_thread_id === undefined && q.messageThreadId !== undefined) q.message_thread_id = q.messageThreadId;
           if (!q.detailsId && (q as any).details_id) q.detailsId = (q as any).details_id;
           if (!q.details_id && q.detailsId) q.details_id = q.detailsId;
           if (!q.detail && (q as any).details) q.detail = (q as any).details;
@@ -151,6 +167,7 @@ export class QuestionBroker {
     const id = "q_" + randomBytes(4).toString("hex");
     const turnId = payload.turnId || payload.turn_id;
     const sessionId = payload.sessionId || payload.session_id;
+    const messageThreadId = payload.messageThreadId ?? payload.message_thread_id ?? payload.threadId ?? payload.thread_id;
     const text = payload.text || payload.question;
     const createdAt = new Date().toISOString();
     const isMiniAppOnly = Boolean(
@@ -175,6 +192,7 @@ export class QuestionBroker {
       selectedOptions: [],
       ...(turnId ? { turnId, turn_id: turnId } : {}),
       ...(sessionId ? { sessionId, session_id: sessionId } : {}),
+      ...(messageThreadId !== undefined ? { messageThreadId, message_thread_id: messageThreadId, threadId: messageThreadId, thread_id: messageThreadId } : {}),
       ...(detailText ? { detail: detailText } : {}),
       ...(detailsId ? { detailsId, details_id: detailsId } : {}),
       ...(isMiniAppOnly ? { mini_app_only: true, miniAppOnly: true, chat: false } : { chat: true }),
@@ -196,6 +214,31 @@ export class QuestionBroker {
       q.messageId = messageId;
       this.saveState();
     }
+  }
+
+  public markDeliveryFailed(id: string, error: string) {
+    const q = this.questions.get(id);
+    if (q) {
+      q.status = "failed";
+      q.deliveryError = error;
+      this.saveState();
+    }
+  }
+
+  public sweepUndeliveredQuestions(): StoredQuestion[] {
+    const undelivered: StoredQuestion[] = [];
+    for (const q of this.questions.values()) {
+      const isMiniAppOnly = Boolean(q.mini_app_only || q.miniAppOnly || q.chat === false);
+      if (q.status === "pending" && !isMiniAppOnly && !q.messageId) {
+        q.status = "failed";
+        q.deliveryError = q.deliveryError || "Undelivered question: no Telegram messageId recorded";
+        undelivered.push(q);
+      }
+    }
+    if (undelivered.length > 0) {
+      this.saveState();
+    }
+    return undelivered;
   }
 
   public setPromptMessageId(id: string, promptMessageId: number) {
@@ -247,7 +290,7 @@ export class QuestionBroker {
     return this.renderQuestionCard(id);
   }
 
-  public renderQuestionCard(id: string, miniAppUrl?: string): QuestionCard | null {
+  public renderQuestionCard(id: string, miniAppUrl?: string, instance?: string): QuestionCard | null {
     const q = this.questions.get(id);
     if (!q) return null;
 
@@ -302,10 +345,9 @@ export class QuestionBroker {
 
     const detailsId = q.detailsId || q.details_id;
     if (detailsId && miniAppUrl) {
-      const baseUrl = miniAppUrl.replace(/\/+$/, "");
       buttons.push({
         text: "🔍 Details",
-        web_app: { url: `${baseUrl}/app/index.html?d=${detailsId}` },
+        web_app: { url: buildMiniAppUrl(miniAppUrl, { d: detailsId, instance }) },
       });
     }
 
@@ -355,6 +397,7 @@ export class QuestionBroker {
     const formattedQuestion = qLines.join("\n");
     const headerPrefix = q.header ? `**${q.header}**\n\n` : "";
     const cardText = `${headerPrefix}${formattedQuestion}\n\nSelected: ${choice} ✅`;
+    const threadId = q.messageThreadId ?? q.message_thread_id ?? q.threadId ?? q.thread_id;
     const channelEvent: QuestionAnswerEvent = {
       event: "question_answered",
       question_id: id,
@@ -362,6 +405,7 @@ export class QuestionBroker {
       choice,
       ...(q.turnId || q.turn_id ? { turn_id: q.turnId || q.turn_id } : {}),
       ...(q.sessionId || q.session_id ? { session_id: q.sessionId || q.session_id } : {}),
+      ...(threadId !== undefined ? { message_thread_id: String(threadId), thread_id: String(threadId) } : {}),
     };
 
     return { cardText, channelEvent, question: q };
@@ -385,6 +429,7 @@ export class QuestionBroker {
     const formattedQuestion = qLines.join("\n");
     const headerPrefix = q.header ? `**${q.header}**\n\n` : "";
     const cardText = `${headerPrefix}${formattedQuestion}\n\nClosed: ${trimmedReason}`;
+    const threadId = q.messageThreadId ?? q.message_thread_id ?? q.threadId ?? q.thread_id;
     const channelEvent: QuestionClosedEvent = {
       event: "question_closed",
       question_id: id,
@@ -392,6 +437,7 @@ export class QuestionBroker {
       reason: trimmedReason,
       ...(q.turnId || q.turn_id ? { turn_id: q.turnId || q.turn_id } : {}),
       ...(q.sessionId || q.session_id ? { session_id: q.sessionId || q.session_id } : {}),
+      ...(threadId !== undefined ? { message_thread_id: String(threadId), thread_id: String(threadId) } : {}),
     };
 
     return { cardText, channelEvent, question: q };

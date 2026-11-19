@@ -23,6 +23,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.integration
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 RBG_HOOKS = REPO_ROOT / "plugins" / "rbg" / "hooks"
 POLICY_FILE = REPO_ROOT / "tests" / "policy.toml"

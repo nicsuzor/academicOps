@@ -7,16 +7,17 @@ for every traced event, and nothing else from the ida plugin, so a CI agent is
 traced without inheriting ida's gates.
 
 Configuration comes from the same variables every other surface uses
-(``GENAI_ENGINE_TRACE_ENDPOINT``, ``GENAI_ENGINE_API_KEY``,
-``GENAI_ENGINE_TRACE_PROTOCOL``). Without an endpoint and an Access token the
-settings carry no hooks and the run is untraced. Tracing never fails the run: setup problems degrade
+(``GENAI_ENGINE_TRACE_ENDPOINT``, ``GENAI_ENGINE_TRACE_PROTOCOL``, and the
+Cloudflare Access pair ``CF_ACCESS_CLIENT_ID`` / ``CF_ACCESS_CLIENT_SECRET``).
+Without an endpoint and both halves of the Access pair the settings carry no
+hooks and the run is untraced. Tracing never fails the run: setup problems degrade
 to no hooks with a ``::warning::``, and the hook wrapper always exits 0.
 
 The Access token never enters settings.json, which claude-code-action logs on
 a second invocation in the same job. It lives in ``hook.sh`` (mode 0700),
 which exports the configuration and runs a private copy of the tracer, so a
 branch checkout during the run can't change the tracer. Note that mode 0700
-does not stop a same-user agent from reading GENAI_ENGINE_API_KEY in hook.sh,
+does not stop a same-user agent from reading CF_ACCESS_CLIENT_SECRET in hook.sh,
 as the agent runs as the same OS user. When the collector is unreachable,
 each tool call hook incurs a ~4s latency cost from OTel export timeouts.
 
@@ -62,8 +63,9 @@ TOOL_EVENTS = {"PreToolUse", "PostToolUse", "PostToolUseFailure"}
 
 CONFIG_ENV = (
     "GENAI_ENGINE_TRACE_ENDPOINT",
-    "GENAI_ENGINE_API_KEY",
     "GENAI_ENGINE_TRACE_PROTOCOL",
+    "CF_ACCESS_CLIENT_ID",
+    "CF_ACCESS_CLIENT_SECRET",
 )
 # Captured at setup so spans carry the run's identity even if the agent's
 # environment drops them.
@@ -140,7 +142,17 @@ def _hook_script(python: str, tracer: Path, project: str) -> str:
     lines.append('    echo "Tracer failed for event \'$1\' (exit status $STATUS):" >> "$MARKER"')
     lines.append('    cat "$TMP_ERR" >> "$MARKER"')
     lines.append('    cat "$TMP_OUT" >> "$MARKER"')
-    lines.append('elif grep -q "OTel span export failed" "$TMP_ERR" "$TMP_OUT" 2>/dev/null; then')
+    lines.append(
+        'elif grep -qE "export refused \\(HTTP 40[13]\\)|refused by collector" "$TMP_ERR" "$TMP_OUT" 2>/dev/null; then'
+    )
+    lines.append('    echo "::error::OTel export refused by collector (HTTP 401/403)"')
+    lines.append('    echo "Tracer export refused (HTTP 401/403) for event \'$1\':" >> "$MARKER"')
+    lines.append('    cat "$TMP_ERR" >> "$MARKER"')
+    lines.append('    cat "$TMP_OUT" >> "$MARKER"')
+    lines.append(
+        'elif grep -qE "OpenTelemetry export failed|OTel span export failed|timed out|unreachable" "$TMP_ERR" "$TMP_OUT" 2>/dev/null; then'
+    )
+    lines.append('    echo "::warning::OTel export failed (network error or timeout)"')
     lines.append('    echo "Tracer export failed for event \'$1\':" >> "$MARKER"')
     lines.append('    cat "$TMP_ERR" >> "$MARKER"')
     lines.append('    cat "$TMP_OUT" >> "$MARKER"')
@@ -169,13 +181,23 @@ def build_settings(
 ) -> dict:
     if not os.environ.get("GENAI_ENGINE_TRACE_ENDPOINT", "").strip():
         print(
-            "::notice::GENAI_ENGINE_TRACE_ENDPOINT is not set; this agent run is not traced to Phoenix."
+            "::notice::Trace endpoint unset; run untraced (GENAI_ENGINE_TRACE_ENDPOINT is not set)."
+        )
+        print(
+            "NOTICE: OpenTelemetry tracing unconfigured in CI (GENAI_ENGINE_TRACE_ENDPOINT unset). Run is untraced."
         )
         return base
-    if not os.environ.get("GENAI_ENGINE_API_KEY", "").strip():
-        # A fork PR or a caller that doesn't pass the secret: the collector would
+    missing = [
+        var
+        for var in ("CF_ACCESS_CLIENT_ID", "CF_ACCESS_CLIENT_SECRET")
+        if not os.environ.get(var, "").strip()
+    ]
+    if missing:
+        # A fork PR or a caller that doesn't pass the secrets: the collector would
         # refuse every export, after making each tool call wait for it.
-        print("::notice::GENAI_ENGINE_API_KEY is not set; this agent run is not traced to Phoenix.")
+        names = " and ".join(missing)
+        print(f"::notice::Cloudflare Access pair incomplete; run untraced ({names} not set).")
+        print(f"NOTICE: OpenTelemetry tracing unconfigured in CI ({names} unset). Run is untraced.")
         return base
 
     tracer_src = aops_root / TRACER_RELPATH

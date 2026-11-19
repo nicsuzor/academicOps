@@ -61,7 +61,7 @@ Execute [[wf-trace-sample-eval]] comparing candidate performance against baselin
 
 ## Closing Pipeline
 
-1. **Render and pin artifacts.** Pin specific session IDs, transcript captures, and trace spans before delegating write-up to prevent evaluation drift.
+1. **Render and pin artifacts.** Pin specific session IDs / conversation IDs, transcript captures, and trace spans before delegating write-up to prevent evaluation drift.
 2. **Independent evidence extraction.** Extract verbatim receipts (hook exit logs, context payloads, pane outputs) for every tested axis.
 3. **Independent compliance review.** Rule on pinned evidence against framework axioms (data boundaries, honest epistemics, halt-on-failure).
 4. **Certification report.** Produce a unified certification matrix (surfaces × test phases × verdicts × receipts). File any defect as one task per root cause (never per symptom).

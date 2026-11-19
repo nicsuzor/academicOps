@@ -59,13 +59,7 @@ academicOps/
 
 ### Commit Messages
 
-Use descriptive messages. Include task ID if working on a tracked task:
-
-```
-<descriptive summary>
-
-Closes: <task-id>
-```
+Use descriptive messages that say what changed and why.
 
 ### Key Principles (from `plugins/rbg/skills/axioms/`)
 

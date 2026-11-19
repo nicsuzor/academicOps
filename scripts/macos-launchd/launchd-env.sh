@@ -36,14 +36,11 @@
 # --- AOPS URLs ---
 [ -n "$PKB_MCP_URL" ] && launchctl setenv PKB_MCP_URL "$PKB_MCP_URL"
 
-# --- PKB endpoint credentials (read by the ida UserPromptSubmit hook) ---
-# Expected in ~/.env.local. Set whichever the endpoint accepts.
-[ -n "$PKB_MCP_HEADERS" ] && launchctl setenv PKB_MCP_HEADERS "$PKB_MCP_HEADERS"
-[ -n "$DISPATCHER_MCP_TOKEN" ] && launchctl setenv DISPATCHER_MCP_TOKEN "$DISPATCHER_MCP_TOKEN"
-[ -n "$WORKER_MCP_TOKEN_ID" ] && launchctl setenv WORKER_MCP_TOKEN_ID "$WORKER_MCP_TOKEN_ID"
-[ -n "$WORKER_MCP_TOKEN_SECRET" ] && launchctl setenv WORKER_MCP_TOKEN_SECRET "$WORKER_MCP_TOKEN_SECRET"
-[ -n "$DISPATCHER_MCP_TOKEN_ID" ] && launchctl setenv DISPATCHER_MCP_TOKEN_ID "$DISPATCHER_MCP_TOKEN_ID"
-[ -n "$DISPATCHER_MCP_TOKEN_SECRET" ] && launchctl setenv DISPATCHER_MCP_TOKEN_SECRET "$DISPATCHER_MCP_TOKEN_SECRET"
+# --- PKB & OTel endpoint credentials (read by the ida hooks and tracer) ---
+# Expected in ~/.env.local: the one Cloudflare Access service-token pair, used
+# for both PKB/MCP calls and OTLP trace export.
+[ -n "$CF_ACCESS_CLIENT_ID" ] && launchctl setenv CF_ACCESS_CLIENT_ID "$CF_ACCESS_CLIENT_ID"
+[ -n "$CF_ACCESS_CLIENT_SECRET" ] && launchctl setenv CF_ACCESS_CLIENT_SECRET "$CF_ACCESS_CLIENT_SECRET"
 
 # --- Git configuration ---
 # Sourced from ~/.env as AOPS_GIT_CONFIG_GLOBAL. Forwarded to launchd without
@@ -61,7 +58,6 @@
 # --- TRACING via OTEL ---
 [ -n "$GENAI_ENGINE_TRACE_ENDPOINT" ] && launchctl setenv GENAI_ENGINE_TRACE_ENDPOINT "$GENAI_ENGINE_TRACE_ENDPOINT"
 [ -n "$GENAI_ENGINE_TRACE_PROTOCOL" ] && launchctl setenv GENAI_ENGINE_TRACE_PROTOCOL "$GENAI_ENGINE_TRACE_PROTOCOL"
-[ -n "$GENAI_ENGINE_API_KEY" ] && launchctl setenv GENAI_ENGINE_API_KEY "$GENAI_ENGINE_API_KEY"
 [ -n "$GENAI_ENGINE_TASK_ID" ] && launchctl setenv GENAI_ENGINE_TASK_ID "$GENAI_ENGINE_TASK_ID"
 
 [ -n "$OTEL_METRICS_EXPORTER" ] && launchctl setenv OTEL_METRICS_EXPORTER "$OTEL_METRICS_EXPORTER"

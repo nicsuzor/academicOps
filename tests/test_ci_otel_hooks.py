@@ -11,13 +11,16 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.integration
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "ci_otel_hooks.py"
 TRACER = REPO_ROOT / "plugins" / "ida" / "hooks" / "claude_code_tracer.py"
 
 _CONFIGURED = {
     "GENAI_ENGINE_TRACE_ENDPOINT": "https://otel.example.test/v1/traces",
-    "GENAI_ENGINE_API_KEY": "CF-Access-Client-Id=abc,CF-Access-Client-Secret=s3cr3t'x",
+    "CF_ACCESS_CLIENT_ID": "abc.access",
+    "CF_ACCESS_CLIENT_SECRET": "s3cr3t'x",
     "GENAI_ENGINE_TRACE_PROTOCOL": "http/protobuf",
     "GITHUB_ACTIONS": "true",
     "GITHUB_REPOSITORY": "nicsuzor/academicOps",
@@ -109,7 +112,8 @@ def test_configured_settings_never_contain_the_api_key(tmp_path):
 
     text = (tmp_path / "otel" / "settings.json").read_text()
     assert "s3cr3t" not in text
-    assert "GENAI_ENGINE_API_KEY" not in text
+    assert "abc.access" not in text
+    assert "CF_ACCESS_CLIENT" not in text
 
 
 def test_hook_wrapper_is_private_and_runs_a_copy_of_the_tracer(tmp_path):
@@ -131,7 +135,8 @@ def test_hook_wrapper_exports_config_and_run_identity(tmp_path):
     probe = tmp_path / "probe.py"
     probe.write_text(
         "import json, os, sys\n"
-        "keys = ['GENAI_ENGINE_TRACE_ENDPOINT', 'GENAI_ENGINE_API_KEY', 'GENAI_ENGINE_TRACE_PROTOCOL',"
+        "keys = ['GENAI_ENGINE_TRACE_ENDPOINT', 'CF_ACCESS_CLIENT_ID', 'CF_ACCESS_CLIENT_SECRET',"
+        " 'GENAI_ENGINE_TRACE_PROTOCOL',"
         " 'PHOENIX_PROJECT_NAME', 'GITHUB_ACTIONS', 'GITHUB_REPOSITORY', 'GITHUB_RUN_ID']\n"
         "print(json.dumps({'argv': sys.argv[1:], 'stdin': sys.stdin.read(),"
         " 'env': {k: os.environ.get(k) for k in keys}}))\n"
@@ -153,7 +158,8 @@ def test_hook_wrapper_exports_config_and_run_identity(tmp_path):
     assert seen["stdin"] == '{"session_id": "x"}'
     assert seen["env"] == {
         "GENAI_ENGINE_TRACE_ENDPOINT": _CONFIGURED["GENAI_ENGINE_TRACE_ENDPOINT"],
-        "GENAI_ENGINE_API_KEY": _CONFIGURED["GENAI_ENGINE_API_KEY"],
+        "CF_ACCESS_CLIENT_ID": _CONFIGURED["CF_ACCESS_CLIENT_ID"],
+        "CF_ACCESS_CLIENT_SECRET": _CONFIGURED["CF_ACCESS_CLIENT_SECRET"],
         "GENAI_ENGINE_TRACE_PROTOCOL": "http/protobuf",
         "PHOENIX_PROJECT_NAME": "gh-test",
         "GITHUB_ACTIONS": "true",
@@ -285,13 +291,23 @@ def test_blank_endpoint_counts_as_unconfigured(tmp_path, value):
     assert _settings(tmp_path) == {}
 
 
-def test_missing_api_key_counts_as_unconfigured(tmp_path):
-    # Fork PRs and callers that don't pass the secret: no hooks, rather than
-    # every tool call waiting on a collector that will refuse the export.
-    env = {k: v for k, v in _CONFIGURED.items() if k != "GENAI_ENGINE_API_KEY"}
+@pytest.mark.parametrize(
+    "dropped",
+    [
+        ("CF_ACCESS_CLIENT_ID", "CF_ACCESS_CLIENT_SECRET"),
+        ("CF_ACCESS_CLIENT_ID",),
+        ("CF_ACCESS_CLIENT_SECRET",),
+    ],
+)
+def test_missing_access_pair_counts_as_unconfigured(tmp_path, dropped):
+    # Fork PRs and callers that don't pass the secrets: no hooks, rather than
+    # every tool call waiting on a collector that will refuse the export. Half
+    # a pair is not a credential either.
+    env = {k: v for k, v in _CONFIGURED.items() if k not in dropped}
 
     proc = _run(tmp_path, env)
 
     assert proc.returncode == 0, proc.stderr
     assert _settings(tmp_path) == {}
-    assert "GENAI_ENGINE_API_KEY" in proc.stdout
+    for var in dropped:
+        assert var in proc.stdout

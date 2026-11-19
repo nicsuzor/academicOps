@@ -15,6 +15,10 @@ type: template
 
 Facilitates strategic exploration under uncertainty to produce an effectual planning brief. Maps available means, explores core tensions across thinking-time dimensions, surfaces load-bearing untested assumptions, and proposes one or two bounded, high-information next steps without executing them.
 
+## Executor
+
+The PKB custodian (Pauli), as the graph-wide strategic pass. Its output is a planning brief, never a task: the hand-off points it names are filled by capture and decomposition afterwards.
+
 ## Procedure
 
 1. **Reconnaissance and inventory** -- Ground inquiry in available means: current tools, existing artifacts, verified capacities, and active constraints.

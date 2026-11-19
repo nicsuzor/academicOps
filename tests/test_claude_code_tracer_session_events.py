@@ -9,8 +9,14 @@ exporter in place of OTLP.
 
 from __future__ import annotations
 
+import importlib.util
+import io
 import json
+import os
+import shutil
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -254,6 +260,98 @@ def test_turn_opened_by_pre_tool_continues_after_resume(tracer_env, exporter):
     _hook(cct.handle_pre_tool, tracer_env, tool_name="Bash", tool_input={}, tool_use_id="t")
     _hook(cct.handle_stop, tracer_env)
     assert _turn_numbers(exporter) == [1, 2]
+
+
+def test_unprompted_turn_root_carries_own_trigger_not_repeated_prompt(tracer_env, exporter):
+    """A turn starting without a new user prompt (e.g. continuation or unprompted tool)
+    carries its own trigger as input.value and turn.source, rather than repeating
+    the earlier turn's prompt."""
+    _hook(cct.handle_user_prompt_submit, tracer_env, prompt="first prompt")
+    _append_prompt(tracer_env, "first prompt")
+    _hook(cct.handle_stop, tracer_env, last_assistant_message="first reply")
+
+    # Turn 2 starts via PreToolUse without a new UserPromptSubmit or new transcript entry
+    _hook(
+        cct.handle_pre_tool,
+        tracer_env,
+        tool_name="Bash",
+        tool_input={"command": "ls -la", "description": "list files"},
+        tool_use_id="t2",
+    )
+    _hook(cct.handle_stop, tracer_env, last_assistant_message="second reply")
+
+    roots = exporter.named("claude-code-turn")
+    assert len(roots) == 2
+    turn1, turn2 = roots
+    assert turn1.attributes["input.value"] == "first prompt"
+    assert turn1.attributes["output.value"] == "first reply"
+
+    assert turn2.attributes.get("input.value") != "first prompt"
+    assert "Bash" in turn2.attributes.get("input.value", "")
+    assert turn2.attributes.get("turn.source") == "tool"
+    assert turn2.attributes["output.value"] == "second reply"
+
+
+def test_subagent_background_tool_does_not_create_phantom_repeated_prompt_turn(
+    tracer_env, exporter
+):
+    """In-process subagent background tool calls while the main turn is closed
+    must not open a phantom turn root that repeats the parent turn's prompt."""
+    # Turn 1: Main thread dispatches a subagent
+    _hook(cct.handle_user_prompt_submit, tracer_env, prompt="scheduled task")
+    _append_prompt(tracer_env, "scheduled task")
+    tin = {"subagent_type": "sweeper", "prompt": "run sweep"}
+    _hook(cct.handle_pre_tool, tracer_env, tool_name="Agent", tool_input=tin, tool_use_id="a1")
+    _hook(
+        cct.handle_post_tool,
+        tracer_env,
+        tool_name="Agent",
+        tool_input=tin,
+        tool_use_id="a1",
+        tool_response={"agentId": "sub_1", "agentType": "sweeper"},
+    )
+    _hook(cct.handle_stop, tracer_env, last_assistant_message="sweeper running")
+
+    # Background subagent executes a tool call while main turn is closed
+    sub_tool_in = {"command": "echo check"}
+    _hook(
+        cct.handle_pre_tool,
+        tracer_env,
+        agent_id="sub_1",
+        agent_type="sweeper",
+        tool_name="Bash",
+        tool_input=sub_tool_in,
+        tool_use_id="st1",
+    )
+    _hook(
+        cct.handle_post_tool,
+        tracer_env,
+        agent_id="sub_1",
+        agent_type="sweeper",
+        tool_name="Bash",
+        tool_input=sub_tool_in,
+        tool_use_id="st1",
+        tool_response={"stdout": "check"},
+    )
+
+    # Hand-back arrives from subagent
+    _hook(
+        cct.handle_user_prompt_submit,
+        tracer_env,
+        prompt="<agent-message from='sub_1'>done</agent-message>",
+    )
+    _append_prompt(tracer_env, "<agent-message from='sub_1'>done</agent-message>")
+    _hook(cct.handle_stop, tracer_env, last_assistant_message="finished all work")
+
+    roots = exporter.named("claude-code-turn")
+    # Must only have 2 real turn roots, not 3 (no phantom turn root)
+    assert len(roots) == 2, (
+        f"Expected 2 turn roots, found {len(roots)}: {[r.attributes.get('input.value') for r in roots]}"
+    )
+    assert roots[0].attributes["input.value"] == "scheduled task"
+    assert roots[0].attributes["output.value"] == "sweeper running"
+    assert roots[1].attributes["input.value"] == "<agent-message from='sub_1'>done</agent-message>"
+    assert roots[1].attributes["output.value"] == "finished all work"
 
 
 # --- turn_number: entries that are not prompts ----------------------------------
@@ -654,11 +752,12 @@ def _load_aops_debug_handlers():
     return mod
 
 
-def test_aops_debug_emits_full_untruncated_redacted_trace_and_threads_into_turn(
+def test_aops_debug_emits_full_payload_in_input_value_without_raw_payload_duplication(
     tracer_env, exporter, monkeypatch, tmp_path
 ):
-    """aops-debug hooks send full untruncated debug payloads (secret-redacted) to OTel
-    and thread pre-turn, mid-turn, and post-turn debug spans into the turn's trace_id and root_span_id."""
+    """aops-debug hooks send full untruncated payloads (secret-redacted) in input.value to OTel,
+    do not duplicate into hook.raw_payload, and thread pre-turn, mid-turn, and post-turn debug spans
+    into the turn's trace_id and root_span_id."""
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://collector.invalid:4318")
     monkeypatch.setenv("GH_TOKEN", SECRET)
     monkeypatch.setattr(cct, "_MAX_ATTR_BYTES", 64)
@@ -685,6 +784,7 @@ def test_aops_debug_emits_full_untruncated_redacted_trace_and_threads_into_turn(
         "tool_name": "Bash",
         "tool_use_id": "call-1",
         "payload": large_blob,
+        "tool_input": {"description": "Run shell check", "command": large_blob},
     }
     debug_handlers.dump_payload(
         dispatch.HookContext(client="claude", event="PreToolUse", session_id=SESSION, raw=pre_raw)
@@ -707,13 +807,22 @@ def test_aops_debug_emits_full_untruncated_redacted_trace_and_threads_into_turn(
         assert dbg_span.parent is not None
         assert dbg_span.parent.span_id == turn_root.context.span_id
         assert dbg_span.attributes["session.id"] == SESSION
-        raw_attr = dbg_span.attributes["hook.raw_payload"]
-        assert SECRET not in raw_attr
-        assert "<REDACTED_SECRET>" in raw_attr
-        # Must NOT be truncated despite _MAX_ATTR_BYTES=64
-        assert "...[truncated]" not in raw_attr
-        assert "A" * 500 in raw_attr
-        assert "B" * 500 in raw_attr
+        assert dbg_span.attributes["hook.plugin"] == "aops-debug"
+        assert "description" in dbg_span.attributes
+        # Stops duplicating into hook.raw_payload
+        assert "hook.raw_payload" not in dbg_span.attributes
+        # Preserves full text in input.value, untruncated despite _MAX_ATTR_BYTES=64
+        assert dbg_span.attributes["input.mime_type"] == "application/json"
+        input_val = dbg_span.attributes["input.value"]
+        assert SECRET not in input_val
+        assert "<REDACTED_SECRET>" in input_val
+        assert "...[truncated]" not in input_val
+        assert "A" * 500 in input_val
+        assert "B" * 500 in input_val
+
+    assert dbg_pre.attributes.get("tool.name") == "Bash"
+    assert dbg_pre.attributes.get("tool.type") == "Bash"
+    assert dbg_pre.attributes.get("description") == "Run shell check"
 
 
 def test_aops_debug_subagent_session_id_threading(tracer_env, exporter, monkeypatch):
@@ -733,6 +842,374 @@ def test_aops_debug_subagent_session_id_threading(tracer_env, exporter, monkeypa
     assert dbg_span.attributes["session.id"] == "root-session-uuid"
     assert dbg_span.attributes["subagent.id"] == sub_session
     assert dbg_span.attributes["parent.session_id"] == "root-session-uuid"
+
+
+@pytest.mark.parametrize(
+    "event,raw_extra",
+    [
+        ("SessionStart", {"source": "startup", "substantive_payload": "SUBSTANTIVE_SESSION_START"}),
+        ("Setup", {"setup_notes": "SUBSTANTIVE_SETUP_DATA"}),
+        ("UserPromptSubmit", {"prompt": "SUBSTANTIVE_USER_PROMPT"}),
+        ("UserPromptExpansion", {"prompt": "SUBSTANTIVE_EXPANDED_PROMPT"}),
+        (
+            "PreToolUse",
+            {
+                "tool_name": "Bash",
+                "tool_use_id": "call-pre-1",
+                "tool_input": {
+                    "command": "echo SUBSTANTIVE_TOOL_INPUT",
+                    "description": "Run shell check",
+                },
+            },
+        ),
+        (
+            "PermissionRequest",
+            {
+                "tool_name": "Bash",
+                "tool_use_id": "call-perm-1",
+                "tool_input": {"command": "rm -rf SUBSTANTIVE"},
+            },
+        ),
+        (
+            "PermissionDenied",
+            {
+                "tool_name": "Bash",
+                "tool_use_id": "call-denied-1",
+                "reason": "SUBSTANTIVE_DENIAL_REASON",
+            },
+        ),
+        (
+            "PostToolUse",
+            {
+                "tool_name": "FileRead",
+                "tool_use_id": "call-post-1",
+                "tool_input": {"file_path": "/secret/path"},
+                "tool_response": "SUBSTANTIVE_FILE_CONTENTS_XYZ",
+            },
+        ),
+        (
+            "PostToolUseFailure",
+            {
+                "tool_name": "FileRead",
+                "tool_use_id": "call-post-fail-1",
+                "error": "SUBSTANTIVE_FAILURE_STACK_TRACE",
+            },
+        ),
+        (
+            "PostToolBatch",
+            {
+                "tool_calls": [
+                    {"tool_name": "Bash", "tool_input": {"command": "SUBSTANTIVE_BATCH_CMD"}},
+                ]
+            },
+        ),
+        ("Notification", {"message": "SUBSTANTIVE_NOTIFICATION_MSG", "title": "Build Failed"}),
+        ("MessageDisplay", {"content": "SUBSTANTIVE_DISPLAY_CONTENT"}),
+        (
+            "SubagentStart",
+            {"agent_type": "pauli", "subagent_id": "sub-1", "brief": "SUBSTANTIVE_BRIEF"},
+        ),
+        ("SubagentStop", {"subagent_id": "sub-1", "result": "SUBSTANTIVE_SUBAGENT_RESULT"}),
+        ("TaskCreated", {"task": {"title": "Test task", "body": "SUBSTANTIVE_TASK_BODY"}}),
+        ("TaskCompleted", {"task_id": "task-1", "notes": "SUBSTANTIVE_COMPLETION_NOTES"}),
+        ("Stop", {"last_assistant_message": "SUBSTANTIVE_FINAL_REPLY"}),
+        ("StopFailure", {"error": "SUBSTANTIVE_STOP_ERROR"}),
+        ("TeammateIdle", {"teammate": "bob", "reason": "SUBSTANTIVE_IDLE_REASON"}),
+        ("InstructionsLoaded", {"instructions": "SUBSTANTIVE_INSTRUCTIONS_BODY"}),
+        ("ConfigChange", {"diff": "SUBSTANTIVE_CONFIG_DIFF"}),
+        ("CwdChanged", {"new_cwd": "/substantive/new/cwd"}),
+        ("DirectoryAdded", {"directory": "/substantive/added/dir"}),
+        ("FileChanged", {"file_path": "/substantive/path.py", "diff": "SUBSTANTIVE_FILE_DIFF"}),
+        ("WorktreeCreate", {"branch": "feat/substantive", "path": "/substantive/wt"}),
+        ("WorktreeRemove", {"path": "/substantive/wt"}),
+        ("PreCompact", {"raw_transcript": "SUBSTANTIVE_COMPACT_TRANSCRIPT"}),
+        ("PostCompact", {"summary": "SUBSTANTIVE_COMPACT_SUMMARY"}),
+        ("Elicitation", {"prompt": "SUBSTANTIVE_ELICITATION_PROMPT"}),
+        ("ElicitationResult", {"response": "SUBSTANTIVE_ELICITATION_RESPONSE"}),
+        ("PreModelSwitch", {"from_model": "sonnet", "to_model": "substantive-opus"}),
+        ("PostModelSwitch", {"model": "substantive-opus", "reason": "SUBSTANTIVE_MODEL_SWITCH"}),
+        ("SessionEnd", {"reason": "SUBSTANTIVE_END_REASON"}),
+    ],
+)
+def test_aops_debug_claude_events_carry_full_payload_without_raw_payload_duplication(
+    tracer_env, exporter, monkeypatch, event, raw_extra
+):
+    """Every Claude Code hook event handled by aops-debug emits a span with identifying
+    metadata and full payload in input.value, without duplicating into hook.raw_payload."""
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://collector.invalid:4318")
+
+    debug_handlers = _load_aops_debug_handlers()
+    raw = {
+        "session_id": SESSION,
+        "transcript_path": str(tracer_env),
+        "hook_event_name": event,
+        **raw_extra,
+    }
+
+    debug_handlers.dump_payload(
+        dispatch.HookContext(client="claude", event=event, session_id=SESSION, raw=raw)
+    )
+
+    spans = [s for s in exporter.spans if s.name == f"aops-debug.{event}"]
+    assert len(spans) == 1
+    span = spans[0]
+
+    # No hook.raw_payload attribute
+    assert "hook.raw_payload" not in span.attributes
+
+    # Full payload JSON preserved in input.value
+    assert span.attributes.get("input.mime_type") == "application/json"
+    assert "input.value" in span.attributes
+    assert "substantive" in span.attributes["input.value"].lower()
+
+    # Identifying metadata (event, description, tool type, session)
+    assert span.attributes["hook.plugin"] == "aops-debug"
+    assert span.attributes["hook.client"] == "claude"
+    assert span.attributes["hook.event"] == event
+    assert span.attributes["session.id"] == SESSION
+    assert "description" in span.attributes
+    assert span.attributes["description"]
+
+    if "tool_name" in raw_extra:
+        assert span.attributes.get("tool.name") == raw_extra["tool_name"]
+        assert span.attributes.get("tool.type") == raw_extra["tool_name"]
+
+
+@pytest.mark.parametrize(
+    "event,raw_extra",
+    [
+        ("SessionStart", {"modelName": "gemini-4", "substantive_payload": "SUBSTANTIVE_AGY_START"}),
+        ("PreInvocation", {"modelName": "gemini-4", "prompt": "SUBSTANTIVE_AGY_PROMPT"}),
+        (
+            "PreToolUse",
+            {
+                "toolCall": {
+                    "name": "invoke_subagent",
+                    "args": {
+                        "toolAction": "Dispatching reviewer",
+                        "toolSummary": "Dispatch rbg",
+                        "Subagents": [{"Prompt": "SUBSTANTIVE_PROMPT_AGENT"}],
+                    },
+                }
+            },
+        ),
+        (
+            "PostToolUse",
+            {
+                "toolCall": {
+                    "name": "invoke_subagent",
+                    "args": {"toolAction": "Dispatching reviewer"},
+                },
+                "error": "SUBSTANTIVE_AGY_ERROR",
+            },
+        ),
+        (
+            "PostInvocation",
+            {"modelName": "gemini-4", "response": "SUBSTANTIVE_AGY_POST_INVOCATION"},
+        ),
+        ("Stop", {"lastMessage": "SUBSTANTIVE_AGY_STOP_MSG"}),
+    ],
+)
+def test_aops_debug_agy_events_carry_full_payload_without_raw_payload_duplication(
+    tracer_env, exporter, monkeypatch, event, raw_extra
+):
+    """Every agy hook event handled by aops-debug emits a span with identifying
+    metadata and full payload in input.value, without duplicating into hook.raw_payload."""
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://collector.invalid:4318")
+
+    debug_handlers = _load_aops_debug_handlers()
+    raw = {
+        "conversationId": SESSION,
+        "transcriptPath": str(tracer_env),
+        **raw_extra,
+    }
+
+    debug_handlers.dump_payload(
+        dispatch.HookContext(client="agy", event=event, session_id=SESSION, raw=raw)
+    )
+
+    spans = [s for s in exporter.spans if s.name == f"aops-debug.{event}"]
+    assert len(spans) == 1
+    span = spans[0]
+
+    # No hook.raw_payload attribute
+    assert "hook.raw_payload" not in span.attributes
+
+    # Full payload JSON preserved in input.value
+    assert span.attributes.get("input.mime_type") == "application/json"
+    assert "input.value" in span.attributes
+    assert "substantive" in span.attributes["input.value"].lower()
+
+    # Identifying metadata (event, description, tool type, session)
+    assert span.attributes["hook.plugin"] == "aops-debug"
+    assert span.attributes["hook.client"] == "agy"
+    assert span.attributes["hook.event"] == event
+    assert span.attributes["session.id"] == SESSION
+    assert "description" in span.attributes
+    assert span.attributes["description"]
+
+    if "toolCall" in raw_extra:
+        expected_tool = raw_extra["toolCall"]["name"]
+        assert span.attributes.get("tool.name") == expected_tool
+        assert span.attributes.get("tool.type") == expected_tool
+
+
+def _stage_aops_debug_hooks(tmp_path: Path) -> Path:
+    """Assemble an executable aops-debug hooks/ tree with lib/hooks/dispatch.py."""
+    hooks_dir = tmp_path / "debug_hooks"
+    hooks_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(
+        REPO_ROOT / "plugins" / "aops-debug" / "hooks" / "handlers.py",
+        hooks_dir / "handlers.py",
+    )
+    shutil.copy2(REPO_ROOT / "lib" / "hooks" / "dispatch.py", hooks_dir / "dispatch.py")
+    shutil.copy2(IDA_HOOKS / "claude_code_tracer.py", hooks_dir / "claude_code_tracer.py")
+    return hooks_dir
+
+
+def _load_aops_debug_dispatch(monkeypatch, tmp_path: Path):
+    hooks_dir = _stage_aops_debug_hooks(tmp_path)
+    debug_dispatch_path = hooks_dir / "dispatch.py"
+    spec = importlib.util.spec_from_file_location("aops_debug_dispatch", debug_dispatch_path)
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    monkeypatch.setitem(sys.modules, "aops_debug_dispatch", mod)
+    monkeypatch.setitem(sys.modules, "dispatch", mod)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_aops_debug_dispatch_agy_post_invocation_writes_jsonl_and_emits_span(
+    tracer_env, exporter, monkeypatch, tmp_path
+):
+    """aops-debug dispatch captures agy PostInvocation via its wildcard handler, writing the
+    raw JSONL payload and emitting an aops-debug.PostInvocation span."""
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://collector.invalid:4318")
+    monkeypatch.setenv("TMPDIR", str(tmp_path))
+    monkeypatch.setattr(tempfile, "tempdir", None)
+    monkeypatch.delenv("CLAUDE_CODE_IS_COWORK", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_ENTRYPOINT", raising=False)
+
+    debug_dispatch = _load_aops_debug_dispatch(monkeypatch, tmp_path)
+
+    payload = {
+        "conversationId": SESSION,
+        "transcriptPath": str(tracer_env),
+        "response": "SUBSTANTIVE_AGY_POST_INVOCATION_DISPATCH",
+    }
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
+
+    rc = debug_dispatch.main(["dispatch.py", "agy", "PostInvocation"])
+    assert rc == 0
+
+    log_path = tmp_path / f"aops_debug_hooks_{SESSION}.jsonl"
+    assert log_path.is_file()
+    entries = [
+        json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines() if line
+    ]
+    assert entries == [payload]
+
+    (span,) = exporter.named("aops-debug.PostInvocation")
+    assert span.attributes["hook.plugin"] == "aops-debug"
+    assert span.attributes["hook.client"] == "agy"
+    assert span.attributes["hook.event"] == "PostInvocation"
+    assert span.attributes["session.id"] == SESSION
+    assert "hook.raw_payload" not in span.attributes
+    assert "SUBSTANTIVE_AGY_POST_INVOCATION_DISPATCH" in span.attributes["input.value"]
+
+
+def test_aops_debug_dispatch_subprocess_agy_post_invocation_writes_jsonl(tmp_path):
+    """Spawning staged lib/hooks/dispatch.py with aops-debug handlers handles agy PostInvocation."""
+    dispatch_script = _stage_aops_debug_hooks(tmp_path) / "dispatch.py"
+    payload = {
+        "conversationId": f"{SESSION}-subproc",
+        "response": "SUBSTANTIVE_SUBPROCESS_POST_INVOCATION",
+    }
+    stripped = {
+        "CLAUDE_CODE_IS_COWORK",
+        "CLAUDE_CODE_ENTRYPOINT",
+        "OTEL_EXPORTER_OTLP_ENDPOINT",
+        "BETA_TRACING_ENDPOINT",
+        "GENAI_ENGINE_TRACE_ENDPOINT",
+    }
+    env = {k: v for k, v in os.environ.items() if k not in stripped}
+    env.update(
+        {
+            "HOME": str(tmp_path),
+            "TMPDIR": str(tmp_path),
+            "TEMP": str(tmp_path),
+            "TMP": str(tmp_path),
+        }
+    )
+    proc = subprocess.run(
+        [sys.executable, str(dispatch_script), "agy", "PostInvocation"],
+        input=json.dumps(payload),
+        text=True,
+        capture_output=True,
+        env=env,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr
+
+    log_path = tmp_path / f"aops_debug_hooks_{SESSION}-subproc.jsonl"
+    assert log_path.is_file()
+    entries = [
+        json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines() if line
+    ]
+    assert entries == [payload]
+
+
+def test_aops_debug_dispatch_cowork_skips_agy_post_invocation(
+    tracer_env, exporter, monkeypatch, tmp_path
+):
+    """Under Cowork, aops-debug dispatch exits 0 early without dumping payloads or spans."""
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://collector.invalid:4318")
+    monkeypatch.setenv("CLAUDE_CODE_IS_COWORK", "1")
+    monkeypatch.setenv("TMPDIR", str(tmp_path))
+    monkeypatch.setattr(tempfile, "tempdir", None)
+
+    debug_dispatch = _load_aops_debug_dispatch(monkeypatch, tmp_path)
+    payload = {"conversationId": f"{SESSION}-cowork", "response": "IGNORED"}
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
+
+    rc = debug_dispatch.main(["dispatch.py", "agy", "PostInvocation"])
+    assert rc == 0
+    assert not (tmp_path / f"aops_debug_hooks_{SESSION}-cowork.jsonl").exists()
+    assert exporter.named("aops-debug.PostInvocation") == []
+
+
+def test_aops_debug_dispatch_skips_unmapped_event_without_wildcard_handler(tmp_path):
+    """Plugins without a wildcard ('*') handler exit 0 on agy PostInvocation without running."""
+    hooks_dir = tmp_path / "hooks"
+    hooks_dir.mkdir()
+    shutil.copy2(
+        REPO_ROOT / "lib" / "hooks" / "dispatch.py",
+        hooks_dir / "dispatch.py",
+    )
+    marker = tmp_path / "handler_ran.txt"
+    (hooks_dir / "handlers.py").write_text(
+        "from pathlib import Path\n"
+        "def on_start(ctx):\n"
+        f"    Path({str(marker)!r}).write_text(ctx.event, encoding='utf-8')\n"
+        "HANDLERS = {'SessionStart': [on_start]}\n",
+        encoding="utf-8",
+    )
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if k not in ("CLAUDE_CODE_IS_COWORK", "CLAUDE_CODE_ENTRYPOINT")
+    }
+    env["HOME"] = str(tmp_path)
+    proc = subprocess.run(
+        [sys.executable, str(hooks_dir / "dispatch.py"), "agy", "PostInvocation"],
+        input=json.dumps({"conversationId": f"{SESSION}-nowild"}),
+        text=True,
+        capture_output=True,
+        env=env,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert not marker.exists()
 
 
 def test_claude_code_background_subagent_run_span(tracer_env, exporter, monkeypatch):
@@ -807,23 +1284,114 @@ def test_claude_code_handback_turn_names_subagent(tracer_env, exporter, monkeypa
     assert turn_root.attributes.get("subagent.id") == sub_agent_id
 
 
-def test_ida_handlers_emit_debug_spans_without_aops_debug_plugin(tracer_env, exporter, monkeypatch):
-    """Debug spans are emitted on every surface the hook tracer runs on, cloud sessions included,
-    even when aops-debug plugin is not loaded."""
+def test_ida_handlers_do_not_emit_debug_spans(tracer_env, exporter, monkeypatch, tmp_path):
+    """ida handlers emit zero aops-debug.* spans across claude and agy hook events while real
+    session, turn, LLM, and tool tracing remains active."""
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://collector.invalid:4318")
+    monkeypatch.delenv("PKB_MCP_URL", raising=False)
+    monkeypatch.setenv("AOPS_SESSION_POINTER_DIR", str(tmp_path / "ptr"))
 
-    ctx = dispatch.HookContext(
-        client="claude",
-        event="UserPromptSubmit",
-        session_id=SESSION,
-        raw={"session_id": SESSION, "prompt": "Hello"},
+    claude_sid = f"{SESSION}-claude"
+    claude_events = [
+        ("SessionStart", {"source": "startup"}),
+        ("UserPromptSubmit", {"prompt": "Hello claude"}),
+        (
+            "PreToolUse",
+            {
+                "tool_name": "Bash",
+                "tool_use_id": "call-c1",
+                "tool_input": {"command": "echo hi"},
+            },
+        ),
+        (
+            "PostToolUse",
+            {
+                "tool_name": "Bash",
+                "tool_use_id": "call-c1",
+                "tool_input": {"command": "echo hi"},
+                "tool_response": {"stdout": "hi"},
+            },
+        ),
+        ("PostToolBatch", {"tool_calls": []}),
+        (
+            "PostToolUseFailure",
+            {"tool_name": "Bash", "tool_use_id": "call-c2", "error": "boom"},
+        ),
+        ("SubagentStart", {"agent_type": "pauli", "subagent_id": "sub-1"}),
+        ("SubagentStop", {"subagent_id": "sub-1", "last_assistant_message": "done"}),
+        ("PermissionRequest", {"tool_name": "Bash"}),
+        ("PermissionDenied", {"tool_name": "Bash", "reason": "denied"}),
+        ("Notification", {"notification_type": "idle_prompt", "message": "waiting"}),
+        ("PreCompact", {}),
+        ("PostCompact", {"summary": "compacted"}),
+        ("StopFailure", {"error": "rate limit"}),
+        ("Stop", {"last_assistant_message": "Finished claude turn."}),
+        ("SessionEnd", {"reason": "exit"}),
+    ]
+    for event, extra in claude_events:
+        if event == "SessionStart":
+            monkeypatch.setenv("PKB_MCP_URL", "http://127.0.0.1:9/mcp")
+        else:
+            monkeypatch.delenv("PKB_MCP_URL", raising=False)
+        raw = {"session_id": claude_sid, "transcript_path": str(tracer_env), **extra}
+        ctx = dispatch.HookContext(client="claude", event=event, session_id=claude_sid, raw=raw)
+        for h in handlers.HANDLERS.get(event, []):
+            h(ctx)
+
+    assert exporter.named("claude-code-turn"), "claude real turn span should export"
+    assert exporter.named("Bash"), "claude real tool span should export"
+
+    agy_sid = f"{SESSION}-agy"
+    agy_transcript = tmp_path / "agy_session.jsonl"
+    agy_transcript.write_text(
+        json.dumps({"step_index": 0, "type": "USER_INPUT", "content": "Hello agy"})
+        + "\n"
+        + json.dumps(
+            {
+                "step_index": 1,
+                "source": "MODEL",
+                "type": "PLANNER_RESPONSE",
+                "text": "Running agy check.",
+                "tool_calls": [{"name": "run_command", "args": {"CommandLine": "echo agy"}}],
+            }
+        )
+        + "\n"
+        + json.dumps(
+            {
+                "step_index": 2,
+                "type": "GENERIC",
+                "status": "DONE",
+                "content": "agy",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
     )
+    agy_events = [
+        ("SessionStart", {"modelName": "gemini-4"}),
+        ("UserPromptSubmit", {"prompt": "Hello agy"}),
+        (
+            "PreToolUse",
+            {"toolCall": {"name": "run_command", "args": {"CommandLine": "echo agy"}}},
+        ),
+        (
+            "PostToolUse",
+            {"toolCall": {"name": "run_command", "args": {"CommandLine": "echo agy"}}},
+        ),
+        ("Stop", {"lastMessage": "Finished agy turn."}),
+    ]
+    for event, extra in agy_events:
+        if event == "SessionStart":
+            monkeypatch.setenv("PKB_MCP_URL", "http://127.0.0.1:9/mcp")
+        else:
+            monkeypatch.delenv("PKB_MCP_URL", raising=False)
+        raw = {"conversationId": agy_sid, "transcriptPath": str(agy_transcript), **extra}
+        ctx = dispatch.HookContext(client="agy", event=event, session_id=agy_sid, raw=raw)
+        for h in handlers.HANDLERS.get(event, []):
+            h(ctx)
 
-    # Run UserPromptSubmit through ida's handlers
-    ida_handlers = handlers.HANDLERS.get("UserPromptSubmit", [])
-    for h in ida_handlers:
-        h(ctx)
+    assert any(s.name == "Hello agy" for s in exporter.spans), "agy real turn span should export"
+    assert exporter.named("run_command"), "agy real tool span should export"
 
-    dbg_spans = exporter.named("aops-debug.UserPromptSubmit")
-    assert len(dbg_spans) == 1
-    assert dbg_spans[0].attributes["session.id"] == SESSION
+    debug_spans = [s for s in exporter.spans if s.name.startswith("aops-debug.")]
+    assert debug_spans == []

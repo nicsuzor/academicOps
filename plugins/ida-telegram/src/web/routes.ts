@@ -1,7 +1,12 @@
 import { PluginStore } from "../store.js";
 import { QuestionBroker } from "../telegram/questions.js";
 import { PermissionRelay } from "../mcp/permissions.js";
-import { verifySessionToken, verifyTelegramInitData, createSessionToken } from "./auth.js";
+import {
+  verifySessionToken,
+  verifyTelegramInitData,
+  createSessionToken,
+  verifyCfAccessJwt,
+} from "./auth.js";
 import { fetchPrDiff, FormattedPrDiff } from "./review.js";
 import { PluginConfig } from "../config.js";
 
@@ -41,7 +46,7 @@ export function broadcastSseEvent(event: string, data: any, seq: number) {
   }
 }
 
-function authenticateRequest(req: Request, ctx: WebContext): boolean {
+async function authenticateRequest(req: Request, ctx: WebContext): Promise<boolean> {
   // Mode A: Cookie ida_session
   const cookieHeader = req.headers.get("Cookie") || "";
   const match = cookieHeader.match(/ida_session=([^;]+)/);
@@ -67,15 +72,27 @@ function authenticateRequest(req: Request, ctx: WebContext): boolean {
   // Mode B: Perimeter identity assertion header
   const cfHeader = req.headers.get("Cf-Access-Jwt-Assertion");
   if (cfHeader && cfHeader.trim().length > 0) {
-    return true;
+    const cfResult = await verifyCfAccessJwt(cfHeader.trim(), {
+      keys: ctx.config.cfAccessKeys,
+      aud: ctx.config.cfAccessAud,
+      teamDomain: ctx.config.cfAccessTeamDomain,
+      allowedEmails: ctx.config.cfAccessAllowedEmails,
+      certsUrl: ctx.config.cfAccessCertsUrl,
+    });
+    if (cfResult.valid) {
+      return true;
+    }
+    return false;
   }
 
   return false;
 }
 
-export function handleApiRequest(req: Request, ctx: WebContext): Response | Promise<Response> {
+export async function handleApiRequest(req: Request, ctx: WebContext): Promise<Response> {
   const url = new URL(req.url);
-  const path = url.pathname;
+  const rawPath = url.pathname;
+  const instanceMatch = rawPath.match(/^\/api\/app\/instances\/[^/]+\/(.+)$/);
+  const path = instanceMatch ? `/api/app/${instanceMatch[1]}` : rawPath;
 
   // 1. Auth endpoint: POST /api/app/auth
   if (path === "/api/app/auth" && req.method === "POST") {
@@ -113,7 +130,7 @@ export function handleApiRequest(req: Request, ctx: WebContext): Response | Prom
   // Details pages are immutable Tier 3 message overflow pages with high-entropy unguessable capability IDs (d_<hex>).
   // They are read-only and publicly accessible to recipients opening the 🔍 Details button.
   if (path.startsWith("/api/app/details/") && req.method === "GET") {
-    const id = path.substring("/api/app/details/".length);
+    const id = decodeURIComponent(path.substring("/api/app/details/".length).replace(/\/+$/, ""));
     const details = ctx.store.getDetails(id);
     if (!details) {
       return new Response(JSON.stringify({ error: "Details page not found" }), {
@@ -128,7 +145,7 @@ export function handleApiRequest(req: Request, ctx: WebContext): Response | Prom
   }
 
   // All other /api/app/* routes require valid session cookie or perimeter/bridge credentials
-  if (!authenticateRequest(req, ctx)) {
+  if (!(await authenticateRequest(req, ctx))) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { "Content-Type": "application/json" },

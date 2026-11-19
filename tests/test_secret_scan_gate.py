@@ -41,9 +41,12 @@ _CLEAN_CONTENT = (
     "```\n"
 )
 
-pytestmark = pytest.mark.skipif(
-    not _PRE_COMMIT_BIN.exists(), reason="pre-commit not installed in this venv"
-)
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.skipif(
+        not _PRE_COMMIT_BIN.exists(), reason="pre-commit not installed in this venv"
+    ),
+]
 
 
 def _gitleaks_hook_config() -> str:

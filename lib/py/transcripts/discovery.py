@@ -17,7 +17,7 @@ them.
 
 `find_container_transcripts` is the container-local view. It reads only the
 client state roots, never `$AOPS_SESSIONS`, which is a host-side value polecat
-does not forward into a container (`lib/polecat/env_contract.py`).
+does not forward into a container.
 """
 
 from __future__ import annotations

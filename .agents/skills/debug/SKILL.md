@@ -1,6 +1,6 @@
 ---
 name: debug
-description: Drive and audit a real framework run — choose an execution surface, dispatch a worker, spin up a polecat container under tmux for live interaction, and hand off to `session-trace` for what the run did. Use when asked to debug a polecat, investigate what broke a container or client mechanism (such as authentication, a token, or a service), run a polecat container interactively, attach to a polecat session, check container or session logs, or verify that a change to plugins, hooks, `lib/`, or skills actually fires inside a real container rather than merely being installed in the image. Covers both clients, `claude` and `agy`. Not the standard for scoring the run itself — that is `dogfood`.
+description: Drive and audit a real framework run -- choose an execution surface, dispatch a worker, spin up a polecat container under tmux for live interaction, and hand off to `phoenix` for what the run did. Use when asked to debug a polecat, investigate what broke a container or client mechanism (such as authentication, a token, or a service), run a polecat container interactively, attach to a polecat session, check container or session logs, or verify that a change to plugins, hooks, `lib/`, or skills actually fires inside a real container rather than merely being installed in the image. Covers both clients, `claude` and `agy`. Not the standard for scoring the run itself -- that is `dogfood`.
 ---
 
 # Driving a framework run
@@ -19,9 +19,8 @@ Pick the cheapest surface that answers the question, and name it in your report
   `agy --agent james --print "<prompt>"`
 - **A polecat container** when the work needs isolation. Driving one
   interactively is the rest of this file.
-- **The `pc` launcher with a task id** for complex work you will not supervise.
-  It is fire-and-forget: results do not come back to you and you get no
-  completion notification either way.
+- **Headless polecat dispatch (`polecat_run_container` via `services` MCP or `scripts/polecat -t <id>`)**
+  for isolated task execution.
 
 Spawn independent agents from `Bash` in the background. Do not poll and do not
 sleep — go idle and read the result when the completion notification arrives.
@@ -102,7 +101,7 @@ fails in two directions:
 output and it will grep that output out of any file lying around — including the
 logs, task outputs and transcripts your own probing left behind — and report it
 as though it had made the call. Score the tool-call record instead: the session's Phoenix
-spans (`session-trace`), `tool_calls` in agy's
+spans (`phoenix`), `tool_calls` in agy's
 `transcript_full.jsonl`, or `tool_use` in claude's session jsonl. That is what
 authoritative MCP verification checks.
 
@@ -176,9 +175,9 @@ tmux kill-session -t "$TMUX_NAME" 2>/dev/null || true
 ## Telemetry
 
 What a run actually did -- its tool calls, model output, errors, latencies and token
-spend -- is read from the Phoenix span store with the `session-trace` skill in the `ida`
-plugin. It assembles a session's transcript with durations and costs, and holds the
-span-store facts and SQL recipes.
+spend -- is read from the Phoenix span store with the `phoenix` skill in the `ida`
+plugin (`ida:phoenix`). It generates a concise session outline (`<slug>.outline.md`) with
+built-in durations and costs, and executes declarative query templates via Phoenix MCP.
 
 ## Host filesystem audit
 
@@ -187,14 +186,12 @@ Container artifacts land at
 
 ```bash
 SESS_DIR="$AOPS_SESSIONS/logs/$(date +%Y%m%d)/$TMUX_NAME/workspace"
-jq '{schema_version, status, exit_code, delivery_guard, transcript, degraded}' "$SESS_DIR/run.json"
+jq '{schema_version, exit_code, agent_exit_code, final_task_status, task_guard_outcome}' "$SESS_DIR/run.json"
 jq -c '.' "$SESS_DIR/polecat-session-hooks.jsonl" | head -n 10
-uv run pytest tests/transcripts/test_polecat_discovery.py -v
 ```
 
-Pass assertions: `run.json` has `.schema_version == 1`, `.status == "success"`,
-`.delivery_guard.ok == true`, and `.transcript.found == true` with
-`event_count > 0`. Every `polecat-session-hooks.jsonl` line conforms to the
+Pass assertions: `run.json` has `.schema_version == 1` and `.exit_code == 0`.
+Every `polecat-session-hooks.jsonl` line conforms to the
 five-field schema `ts` (ISO 8601, microsecond UTC), `client` (`claude`|`agy`),
 `event`, `session_id`, `tool`.
 
@@ -233,7 +230,7 @@ Quote verbatim excerpts from `capture-pane`, session logs, and Phoenix output in
 your report.
 
 1. **Pre-flight** — confirm `_log_fire` and `_load_handlers` in
-   `plugins/ida/hooks/dispatch.py` are not returning early.
+   `lib/hooks/dispatch.py` are not returning early.
 2. **§0 image freshness** — verify container image freshness against the `Dockerfile` it was built from.
 3. **§1 structural** — confirm plugins are installed in the container image.
 4. **§2 boot signals** — `claude`: banner and `❯` box render inside
@@ -243,7 +240,7 @@ your report.
    the pane or transcript. A rendered prompt box is not proof of success.
 6. **§4 exercise the changed path** — invoke the specific changed skill, hook,
    or tool call and capture the execution output.
-7. **§5 audit** — pull the session's spans with `session-trace` and assert `TOOL`
+7. **§5 audit** -- pull the session's spans with `phoenix` and assert `TOOL`
    spans exist with `status_code != 'ERROR'`. Then the host filesystem audit above.
 8. **§6 teardown** — `/exit`, `sleep 2`, kill the session.
 

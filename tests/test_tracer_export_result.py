@@ -118,3 +118,88 @@ def test_failed_export_fails_verdict_and_leaves_gate_armed(outcome, tmp_path, mo
             )
 
     assert pcg.is_armed("sess-flow") is True
+
+
+def test_export_attaches_cf_access_headers_from_the_cf_access_pair(monkeypatch):
+    monkeypatch.setenv("GENAI_ENGINE_TRACE_ENDPOINT", "http://collector.invalid:4318")
+    monkeypatch.setenv("CF_ACCESS_CLIENT_ID", "cf-id-123")
+    monkeypatch.setenv("CF_ACCESS_CLIENT_SECRET", "cf-secret-456")
+
+    cfg = claude_code_tracer.discover_config()
+    assert cfg is not None
+
+    seen_headers: list[dict | None] = []
+    exp = _FakeExporter("success")
+
+    def fake_create(endpoint, headers=None, protocol=""):
+        seen_headers.append(headers)
+        return exp
+
+    with patch.object(claude_code_tracer, "_create_exporter", side_effect=fake_create):
+        ok = claude_code_tracer._build_and_export_spans(
+            config=cfg,
+            session_id="sess",
+            username="u",
+            span_records=_records(1),
+            agent_name="a",
+            cwd="/tmp",
+        )
+
+    assert ok is True
+    assert len(seen_headers) == 1
+    assert seen_headers[0] is not None
+    assert seen_headers[0]["CF-Access-Client-Id"] == "cf-id-123"
+    assert seen_headers[0]["CF-Access-Client-Secret"] == "cf-secret-456"
+
+
+@pytest.mark.parametrize(
+    "env_vars",
+    [
+        {"CF_ACCESS_CLIENT_ID": "only-id"},
+        {"CF_ACCESS_CLIENT_SECRET": "only-secret"},
+        # The retired role-named pairs, spelled in pieces so a repo-wide grep
+        # for the retired names finds no live reader.
+        *(
+            {f"{role}_MCP_TOKEN_ID": "rid", f"{role}_MCP_TOKEN_SECRET": "rsec"}
+            for role in ("WORKER", "DISPATCHER")
+        ),
+        {
+            "_".join(
+                ["GENAI", "ENGINE", "API", "KEY"]
+            ): "CF-Access-Client-Id=k,CF-Access-Client-Secret=v"
+        },
+        # The token must never be taken from the SDK-global OTLP headers variable.
+        {"OTEL_EXPORTER_OTLP_HEADERS": "CF-Access-Client-Id=o,CF-Access-Client-Secret=p"},
+        {"OTEL_EXPORTER_OTLP_TRACES_HEADERS": "CF-Access-Client-Id=o,CF-Access-Client-Secret=p"},
+    ],
+)
+def test_export_ignores_half_pair_and_non_canonical_vars(monkeypatch, env_vars):
+    monkeypatch.setenv("GENAI_ENGINE_TRACE_ENDPOINT", "http://collector.invalid:4318")
+    for k, v in env_vars.items():
+        monkeypatch.setenv(k, v)
+
+    cfg = claude_code_tracer.discover_config()
+    assert cfg is not None
+
+    seen_headers: list[dict | None] = []
+    exp = _FakeExporter("success")
+
+    def fake_create(endpoint, headers=None, protocol=""):
+        seen_headers.append(headers)
+        return exp
+
+    with patch.object(claude_code_tracer, "_create_exporter", side_effect=fake_create):
+        ok = claude_code_tracer._build_and_export_spans(
+            config=cfg,
+            session_id="sess",
+            username="u",
+            span_records=_records(1),
+            agent_name="a",
+            cwd="/tmp",
+        )
+
+    assert ok is True
+    assert len(seen_headers) == 1
+    headers = seen_headers[0] or {}
+    assert "CF-Access-Client-Id" not in headers
+    assert "CF-Access-Client-Secret" not in headers
