@@ -48,7 +48,7 @@ Send once with `send_widget({ html, caption: "Status: ...", chat_data: JSON.stri
 }
 ```
 
-Status values for top state (`s`): `"running"`, `"done"`, `"blocked"`, `"paused"`. Step statuses (`st`): `"done"`, `"run"`, `"todo"`, `"err"`. Optional `"act": 1` displays a `Refresh` button (`TelegramWidget.request("st:refresh")`, handled by caller + `answer_widget_query`). Notice long step titles wrap naturally across 2 lines with top-aligned icons, and `edit_message_widget_data` returns `{ not_modified: true }` cleanly on idempotent updates:
+Status values for top state (`s`): `"running"`, `"done"`, `"blocked"`, `"paused"`. Step statuses (`st`): `"done"`, `"run"`, `"todo"`, `"err"`. Optional `"act": 1` displays a `Refresh` button (`TelegramWidget.request("st:refresh")`, handled by caller + `answer_widget_query`). Notice long step titles wrap naturally across multiple lines with top-aligned icons, and `edit_message_widget_data` returns `{ not_modified: true }` cleanly on idempotent updates:
 
 ```html
 <!DOCTYPE html><html><head><meta charset="utf-8"><style>

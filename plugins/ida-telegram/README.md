@@ -1,62 +1,70 @@
 # ida-telegram
 
-Ida's custom Telegram channel and Mini App plugin for Claude Code.
+Connects Telegram chats, forum topics, voice notes, Bot API 10.1-10.4 Rich Messages and HTML Widgets, and the Mini App dashboard to the primary conversational agent.
 
 ## Architecture
 
-- **Channel Protocol:** Stdio MCP server with `experimental["claude/channel"]` support covering Bot API 10.1-10.4 updates (`message`, `callback_query`, `message_reaction`, `widget_query`, `stopped_message_generation`).
-- **Native Rich Messages (`send_rich_message`, `send_message_draft`, `edit_message`):**
-  - Sends structured Markdown, Rich HTML, or `InputRichBlock[]` (`<= 32,768` chars, `<= 500` blocks) supporting headings, collapsed `<details>`, `<aside>`, `<footer>`, native `<table bordered striped compact>`, math, `<tg-map>`, in-body `<tg-button-row>`, and `tg://<type>?id=<id>` inline media (`<= 50` items uploaded seamlessly via multipart `FormData` when local files are provided).
-  - Supports private-chat rich streaming drafts (`send_message_draft` via `sendRichMessageDraft` with `<tg-thinking>`, `can_stop`, and `keep_on_stop`), `reply_parameters.quote_rich_texts`, `feedback_buttons`, `voice` mirror synthesis, and in-place rich edits (`edit_message`).
-- **Bot API 10.4 HTML Widgets & Unified `ask_user` (`send_widget`, `edit_message_widget_data`, `answer_widget_query`, `ask_user`):**
-  - Enforces Sandbox Profile 1 constraints locally (`<= 32,768 B` raw HTML, `<= 4,096 B` zlib-9 compressed, no NUL bytes; `<= 1,024 B` `public_data`/`chat_data` updates handling `message is not modified`; `allow_queries` defaulting to `false`; explicit `answer_widget_query` within Telegram's 15s budget).
-  - `ask_user` and the `PreToolUse` `AskUserQuestion` hook deliver native interactive HTML Widgets in private chats by default -- supporting `kind: "question" | "decision"`, `stakes`, option `recommended`/`pros`/`cons` toggles, `allow_defer`, multi-select bitmasks, and Mini App sync -- without silent downgrade on group chats (`chat_id < 0`, which require explicit `presentation: "rich"`).
-- **Fallback Plain Progressive Disclosure & Overflow (`reply`):**
-  - Casual and short plain replies (`reply`) retain Tier 1 UTF-16 entity conversion, Tier 2 expandable blockquotes (`>!`), Tier 3 immutable Details pages via the Mini App (`🔍 Details`), `quote`, `copy_text`, `link_preview_options`, `show_caption_above_media`, and `message_effect_id`, splitting overflow at `max_chat_chars` (default `4000`).
-- **Option Buttons & Message Actions:**
-  - `reply` takes `buttons` for the answers to a question asked in the reply; a tap edits the card to `Selected: <label> ✅` and emits a `button_tap` channel event. Supports 2D row arrays (`ReplyButtonOption[][]`), layout chunking via `button_layout` (e.g. `[3, 3, 2]`) or `buttons_per_row` (e.g. `4`), and per-button `row` properties, defaulting to 1 button per row when flat.
-  - Setting `predefined_row: true` groups all active predefined buttons (`🔍`, `🔍 Review diff`, `👍`/`👎`, `[🧐 Check]`, `[💡 Explain]`, `[🧾]`, `[🙏]`, and when `binary_decision: true`, `[✅]`, `[❌]`) onto a single consolidated first row above any caller buttons.
-  - Every reply automatically attaches `[🧐 Check]`, `[💡 Explain]`, `[🧾]`, and `[🙏]` action buttons (unless `actions: false` is passed), with `🔍` (Details) consolidated on the same row in default reply keyboards. Binary recommendation buttons `[✅]` and `[❌]` attach only when `binary_decision: true` is passed on `reply`; multi-option decisions use labelled `buttons` with the recommended option highlighted instead, and replies with no decision carry neither. Tapping `🧐 Check` delivers an inbound request naming the message for a peer `premise-check`. Tapping `💡 Explain` delivers an inbound request to expand that message in more detail. Tapping `🧾` delivers an inbound request to provide the argument chain ("how do you know that?") with verbatim Argdown blocks attached in Details. Tapping `🙏` marks the card and delivers a `thanks` event meaning "read and done": close the thread unless more on its topic is due soon. Tapping `✅` or `❌` marks the card with the choice and delivers an event naming the message and whether the recommendation was accepted or declined.
-- **Mini App Security, Details, Review, Questions & Anchor:**
-  - Loopback-only Bun HTTP server (`127.0.0.1:<port>`) serving `/app/*` and `/api/app/*`.
-  - `MINI_APP_URL` (or `IDA_WEB_URL`), required: the public URL at which this server is reachable, used for Mini App buttons. There is no default; the plugin refuses to start without it.
-  - Telegram `initData` HMAC-SHA256 validation with 1-hour expiration and `allowFrom` whitelist check.
-  - **Details tab (`FR-4.3`, `FR-1.6`):** Renders stored Details Markdown as formatted HTML (headings, inline formatting, collapsible `>!` quotes, syntax-highlighted code blocks, and HTML `<table>` elements).
-  - **Review tab (`FR-4.4`, `FR-4.5`):** Displays live pending tool permission requests (`Bash` copyable scripts, `Edit`/`MultiEdit`/`Write` unified diffs, JSON inputs) with `Allow` / `Deny` actions that resolve the relay and edit the Telegram chat card (`Allowed via Mini App ✅`), alongside PR/branch diffs fetched via `GITHUB_TOKEN` with a file tree, syntax-highlighted hunks, and `Approve` / `Request changes` actions that emit channel events to the agent without mutating GitHub directly.
-  - **Questions tab (`FR-4.6`):** Renders pending questions with `header`, option `description` lines, Recommended badges, radio options for single-select, checkboxes with a Submit button for `multiSelect`, a free-text input box for custom answers, and the `"To answer by voice, send a voice note in chat"` hint.
-  - **Anchor tab (`FR-4.7`):** Displays live `focus`, `taskId`, `uptime`, `waitingOn`, `delegations`, `pendingQuestions`, `recentTurns` (inbound and outbound), context window gauge (`contextTokens`), `🛑 Stop Session`, and the overwhelm dashboard link.
-- **Voice In & Out:**
-  - **Voice In (Inbound transcription):** Inbound Telegram voice notes (`voice` and `audio` updates) are downloaded to `inbox/` under `stateDir`. The plugin executes `VOICE_TRANSCRIBE_CMD <audio-path>` with `cwd` set to `stateDir` and merged environment variables from `stateDir/.env` and `process.env`. The transcribed text is delivered directly as a `notifications/claude/channel` event without agent tool calls.
-  - **Voice Out (Outbound speech synthesis):** When `voice: true` is specified on `reply` (or by default when `voice_replies` is `mirror` and the last inbound message was a voice note), the plugin synthesises Tier 1 text (headline and bullets, stripping Markdown syntax, quotes, and links) using Gemini 3.8 Flash TTS via `VOICE_SPEAK_CMD <text-file> <out.ogg>` and sends it as a Telegram voice note (`sendVoice`) with inline keyboards and captions. Tier 2 quotes are relocated to the Details page.
-  - **Required Dependencies:**
-    - `ffmpeg` with `libopus` encoder: Required in `PATH` by voice-out to transcode Gemini synthesized audio into Telegram voice note OGG/Opus format.
-    - `python3` (≥ 3.10): Required to run speech synthesis (`scripts/speak-gemini.py` via `scripts/speak.sh`) and transcription scripts.
-    - `uv` (or `assemblyai` Python package): Required by `transcribe-voice` script.
-    - Stable working directory & environment inheritance: Child processes run with `cwd` explicitly set to `stateDir` (guaranteed to exist), preventing `getcwd` and `(os error 2)` failures in ephemeral containers, and inherit merged variables from `stateDir/.env` and `process.env`.
-  - **Required Environment Variables:**
-    - `ASSEMBLY_AI_API_KEY`: API key for AssemblyAI transcription service (used by `transcribe-voice` / `transcribe.sh` for voice-in).
-    - `GEMINI_API_KEY`: API key for Gemini 3.8 Flash TTS (`gemini-3.8-flash-tts`) speech synthesis (used by `scripts/speak.sh` for voice-out).
-    - `VOICE_TRANSCRIBE_CMD`: Optional path override for transcription command. Defaults to `~/.claude/channels/telegram/transcribe.sh`.
-    - `VOICE_SPEAK_CMD`: Optional path override for speech synthesis command. Defaults to the bundled `${CLAUDE_PLUGIN_ROOT}/scripts/speak.sh`.
-    - `GEMINI_TTS_VOICE`: Optional prebuilt voice name for Gemini TTS (default: `Aoede`).
-    - `VOICE_REPLIES`: Speech synthesis reply policy: `off`, `mirror`, or `always` (default: `mirror`).
-- **Threaded Conversations by Default:**
-  - Messages arriving in Telegram forum topics or message threads are received with their thread identity (`meta.message_thread_id` and `meta.thread_id`).
-  - Outbound paths (`reply`, `ask_user` question cards, `force_reply` prompts for `✏️ Other`, message edits, and emoji reactions) automatically stay in that thread without requiring configuration or opt-in settings.
-  - Callers may optionally supply `message_thread_id` (or `thread_id`) explicitly to target a specific thread.
-  - Unthreaded chats omit thread parameters from outbound requests.
-- **Native Bot Commands:**
-  - Registers the native command menu via `setMyCommands` at `botCommandScopeChat` for each `allowFrom` chat on startup, surviving channel restarts and overriding `all_private_chats` defaults.
-  - Unified menu is built at primary poller startup from all available skills across installed plugins, project-local skills (`.agents/skills`, `.claude/skills`), and user skills (`~/.claude/skills`), with `TELEGRAM_BOT_COMMANDS` retained as an explicit JSON override.
-  - Excludes reserved official-plugin commands (`/start`, `/help`, `/status`) and headless worker lifecycle commands (`/pull`, `/dump`).
-  - Normalises skill names to `[a-z0-9_]{1,32}` by converting hyphens to underscores, disambiguating colliding names across sources, and trimming descriptions to 1–256 characters.
-  - Reports an explicit error when total resolved skills or commands exceed Telegram's 100-command limit rather than silently truncating.
-  - Commands reach the agent as typed (`meta.command`, `meta.args`); what a command does when invoked is governed by agent-side command routing via `skills/telegram/SKILL.md`, not by plugin code.
-- **Concurrency & Host Locks:**
-  - Gated to `IDA_TELEGRAM_ROLE=primary`.
-  - Non-primary instances register zero tools, run no poller, and leave hooks inert.
-  - Same-host PID locking and exponential 409 Conflict backoff policy.
-- **Tool Deadline (30 s):**
-  - Every MCP tool except the exempt ones below answers within 30 seconds or the caller gets an error result (`<tool> timed out after 30s without an answer`); the deadline is ours, in `src/mcp/timeout.ts`, and is separate from Claude Code's `MCP_TOOL_TIMEOUT`, which applies to every MCP server alike.
-  - Rule for authors: a tool that should be basically instant is covered by default, so a new tool needs no registration. Only a tool that legitimately runs longer goes in `LONG_RUNNING_TOOLS`, with the reason beside its entry. Today that is the upload tools `send_photo`, `send_document`, `send_video`, `send_animation`, `send_media_group`, `send_audio`, and `send_video_note` (time scales with file size), plus `send_rich_message` exclusively when `media` includes local filesystem paths requiring multipart upload. `reply`, `ask_user`, `send_widget`, `edit_message_widget_data`, and `answer_widget_query` are all covered by the 30 s deadline (`ask_user` only posts the question and returns, never waiting for the answer).
-  - On timeout the call is abandoned, not cancelled: the underlying Telegram request may still complete after the error is returned.
+```mermaid
+flowchart LR
+    User["User on Telegram / Mini App"] -->|"Message, Voice, Reaction, Widget Query, Stop"| Poller["Primary Poller & Auth Guard"]
+    Poller -->|"Normalized Channel Event"| Agent["Primary Agent Session"]
+    Hook["PreToolUse: AskUserQuestion"] -->|"Local IPC Socket"| Broker["Question Broker & Store"]
+    Agent -->|"reply, send_rich_message, send_message_draft, edit_message"| Out["Telegram Bot API 10.1-10.4"]
+    Agent -->|"ask_user, send_widget, edit_message_widget_data, answer_widget_query"| Out
+    Agent -->|"Media, Polls, Threads, Reactions"| Out
+    Out -->|"Rich Message, HTML Widget, Voice, Thread Action"| User
+    User -->|"Widget Tap / Mini App Submit / Reply"| Broker
+    Broker -->|"In-Place Lock & Event"| Agent
+    MiniApp["Loopback Mini App Server (/api/app/*)"] -->|"SSE Updates & Actions"| User
+```
+
+- **Role gating:** Only the primary instance (`IDA_TELEGRAM_ROLE=primary`) registers tools, acquires the host polling lock, exposes the loopback Mini App API, and relays `AskUserQuestion` hook calls; non-primary instances remain inert.
+- **Channel transport:** Inbound Telegram updates from allowlisted user IDs mark arrival with `👀`, transcribe voice notes or fetch attachments, and deliver events into the agent turn queue. Outbound answers and reports use Rich Messages (`send_rich_message`) or private-chat streaming drafts (`send_message_draft`), while interactive questions and decisions default to Profile-1 HTML Widgets (`ask_user`) synchronized with the Mini App API.
+- **Tool deadlines:** Every MCP tool enforces a 30-second execution deadline and 25-second Bot API request timeout except file-upload tools (`send_photo`, `send_document`, `send_video`, `send_animation`, `send_media_group`, `send_audio`, `send_video_note`, and `send_rich_message` when uploading existing local files via multipart form data).
+
+## What it provides
+
+| Kind | Name | Purpose |
+| :- | :- | :- |
+| Skill | `telegram` | Guides message-kind selection across plain replies, streaming Rich drafts, Rich Messages, HTML Widgets, interactive buttons, reactions, threads, voice, and bot commands. |
+| Skill | `menu-proposal` | Reviews telemetry and available skills to propose and configure the native Telegram bot command menu. |
+| Skill | `refresh-questions` | Sweeps pending Mini App questions against external state, closes settled items with cited reasons, and checks recommendation context. |
+| Hook | `SessionStart` | Runs startup readiness notice for the Telegram channel environment. |
+| Hook | `PreToolUse` (`AskUserQuestion`) | Intercepts interactive question tool calls in primary sessions and posts them through the Telegram question broker over the local Unix socket. |
+| MCP Server | `ida-telegram` | Exposes outbound messaging, Rich Message, HTML Widget, media, poll, thread, reaction, and question tools alongside `notifications/claude/channel` inbound events and permission relays. |
+| HTTP API | Mini App backend (`/api/app/*`) | Loopback server backing Details pages, tool permission approvals, PR diff review actions, interactive Question settlements, Anchor status, and session stop signals via SSE. |
+
+## Configuration
+
+Variables load from the environment and `$STATE_DIR/.env` (environment variables override `$STATE_DIR/.env`):
+
+| Variable | Purpose | Default / Requirement |
+| :- | :- | :- |
+| `MINI_APP_URL` (`IDA_WEB_URL`) | Public HTTPS URL reaching the plugin Mini App server. | Required; fails to start if unset (no default). |
+| `TELEGRAM_BOT_TOKEN` | Telegram Bot API token for polling and outbound calls. | Required for live Telegram connectivity; empty disables polling. |
+| `IDA_TELEGRAM_ROLE` | Enables primary poller, MCP tools, HTTP server, and hooks when set to `primary`. | Unset (inert non-primary mode). |
+| `ALLOWED_USER_IDS` (`TELEGRAM_ALLOW_FROM`) | Space- or comma-separated authorized Telegram numeric user IDs. | Empty list (drops all updates). |
+| `TELEGRAM_API_BASE_URL` | Custom Bot API endpoint base URL. | `https://api.telegram.org` |
+| `STATE_DIR` | Persistent directory for chat state, questions, details, inbox audio, and `.env`. | `~/.claude/channels/telegram` |
+| `SOCKET_PATH` | Unix domain socket path for `AskUserQuestion` IPC bridge. | `$STATE_DIR/bridge.sock` |
+| `PORT` | Loopback HTTP port (`127.0.0.1`) for the Mini App API server. | `8093` |
+| `MAX_CHAT_CHARS` | Character threshold for splitting plain `reply` overflow into Details pages. | `4000` |
+| `VOICE_REPLIES` | Outbound voice synthesis policy (`off`, `mirror`, or `always`). | `mirror` |
+| `VOICE_TRANSCRIBE_CMD` | Executable used to transcribe inbound voice notes. | Resolves `transcribe.sh` from `$STATE_DIR` or standard bin paths. |
+| `VOICE_SPEAK_CMD` | Executable used to synthesize outbound OGG/Opus voice replies. | Resolves bundled `scripts/speak.sh` or `$STATE_DIR/speak.sh`. |
+| `ASSEMBLY_AI_API_KEY` | API key passed to the default AssemblyAI voice transcription script. | No default. |
+| `GEMINI_API_KEY` | API key passed to the default Gemini speech synthesis script. | No default. |
+| `GEMINI_TTS_VOICE` | Prebuilt Gemini TTS voice name used by `scripts/speak.sh`. | `Aoede` |
+| `TELEGRAM_BOT_COMMANDS` | Explicit JSON array overriding the auto-discovered skill command menu. | Auto-discovered from installed skills. |
+| `TELEGRAM_AUTO_INTERRUPT` | Cancels active turns on new free-text messages unless set to `"false"`. | Enabled (`!== "false"`). |
+| `IDA_NAME` (`INSTANCE_NAME`, `INSTANCE_ID`) | Instance identifier appended to Mini App URLs. | Unset. |
+| `GITHUB_TOKEN` | GitHub token used to fetch PR diffs in the Mini App Review tab. | Unset. |
+| `IDA_BRIDGE_TOKEN` (`BRIDGE_TOKEN`) | Shared bearer/header secret for authenticated Mini App bridge requests. | Unset. |
+| `CF_ACCESS_TEAM_DOMAIN` (`CF_ACCESS_TEAM_NAME`), `CF_ACCESS_AUD`, `CF_ACCESS_ALLOWED_EMAILS`, `CF_ACCESS_CERTS_URL`, `CF_ACCESS_KEYS` (`CF_ACCESS_PUBKEY`) | Cloudflare Access JWT verification settings for perimeter authentication on `/api/app/*`. | Unset. |
+
+## Dependencies
+
+- **Bun runtime:** Executes the stdio MCP server, Telegram bot poller, and HTTP server.
+- **Telegram Bot API 10.1-10.4:** Required for Rich Messages, private-chat Rich drafts, and Profile-1 HTML Widgets.
+- **Public HTTPS reverse proxy or tunnel:** Routes external Telegram Mini App traffic to `127.0.0.1:$PORT` at `MINI_APP_URL`.
+- **Voice tooling (`ffmpeg` with `libopus`, `python3 >= 3.10`, `uv` / `assemblyai`):** Required when voice transcription or spoken replies are enabled.
