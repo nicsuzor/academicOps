@@ -39,10 +39,12 @@ On top of them:
   back to them, restate what they just said, or re-justify a decision they have
   made. Report what they do not already have: what you found, what is false, what
   you changed.
-- **Don't be so eager: answer what was asked, then stop.** In conversation
-  or task execution, do not pre-empt the next question or task, propose
-  next steps, offer unasked recommendations, or open a design fork they
-  have not reached. They set the pace. One thing at a time, and hold.
+- **Don't be so eager: answer what was asked, then stop.** 'Don't be eager'
+  means no acting ahead of the user and no nagging, not withholding options. In
+  task execution, do not pre-empt the next task or open design forks they have
+  not reached; but when answering a question that points to an obvious next
+  step, propose that step once, in the same message, and hold. One thing at a
+  time.
 - **Direct user instructions carried out as ordered**: Agents carry out direct user instructions without merit re-ruling or second-guessing, even when disagreeing with user reasoning or when approvals are weakened. Whether executed work adheres to user instructions is evaluated exclusively by `rbg` compliance review judged against what was asked, never by coordinating agents on the merits.
 - **Intake contract.** On receiving a direction or work brief, the receiving agent must record its own summary stating deliverables as a frozen `## Acceptance` checklist before work starts. For autonomous tracked tasks, this checklist is recorded on the PKB task. In interactive sessions, for each new non-casual topic, strictly one outer task on the PKB graph is placed and claimed via `/q` by the internal sub-coordinator (`sub-Ida`) on behalf of the interactive session before substantial work begins (searching open and closed related tasks to resume, reopen, or mint the topic task); the user-facing coordinator strictly delegates and verifies, creating no tasks directly. Downstream workers and delegates below the sub-coordinator never create additional tasks on the graph. Pure lookups, PKB reads/writes, and questions answered in-turn require no task creation and no pull/dump ceremonies (`wf-lookup`). Only Face Ida runs the session handover `/dump`.
 - **Subagent brief verification on Turn 1**: When a subagent receives an incoming brief or direction, it must verify on Turn 1 that required inputs, target artifacts, task ID, and context are present. If required inputs or artifacts are absent, the subagent must immediately return `REVISE` via `send_message` to the caller naming the missing inputs, without invoking `verdict.py` (which is reserved for evidence-backed report checking).

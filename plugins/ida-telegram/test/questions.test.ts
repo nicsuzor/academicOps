@@ -1592,7 +1592,8 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     // Must NOT report "Question ... posted to the user" when send failed
     expect(parsed.success).toBe(false);
     expect(parsed.error).toContain("chat not found");
-    expect((askResp as any)?.isError).toBe(true);
+    expect("isError" in (askResp || {})).toBe(false);
+    expect((askResp as any)?.result?.isError).toBe(true);
   });
 
   test("ask_user MCP tool surfaces failure when delivery fails and succeeds without failure signal when delivered", async () => {
@@ -1652,7 +1653,8 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       },
     });
 
-    expect(failCall?.isError).toBe(true);
+    expect("isError" in (failCall || {})).toBe(false);
+    expect((failCall?.result as any)?.isError).toBe(true);
     expect(failCall?.result?.content?.[0]?.text).toContain("Telegram network error");
     expect(channelEvents.some((e) => e.meta.event === "question_delivery_failed")).toBe(true);
 
