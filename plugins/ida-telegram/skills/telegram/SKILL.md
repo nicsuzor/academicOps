@@ -1,131 +1,77 @@
 ---
 name: telegram
-description: "Format, structure, and interaction rules for communicating with the user over Telegram. Use when a Telegram channel is attached or when processing Telegram messages, reactions, or commands. Not for other channels or for general content composition."
+description: "Format, select interfaces for, and manage interactions with the user over Telegram. Use when a Telegram channel is attached or handling Telegram messages, Rich Messages, HTML Widgets, interactive questions/decisions, reactions, or commands. Exclude for non-Telegram channels or general prose composition."
 ---
 
-# Telegram replies
+# Telegram Interface Guide
 
-Core interaction rules determine message content; these rules govern presentation and interaction over Telegram.
+Choose the native Bot API surface matching message purpose before sending. Load this skill before the first reply.
 
-## Progressive Disclosure & Length Budget
+## Message-Kind Selection Matrix
 
-The user reads on a phone between other commitments. Cognitive load is the binding constraint.
+| Message Kind | Primary Tool & Surface | Rules |
+| :- | :- | :- |
+| Casual / Ack (`1-3` lines) | `reply` or reaction-only | Plain Markdown (`reply`); use reaction-only (`🫡`, `✍`, `🐳`, `🎉`) when no prose is needed. |
+| Streaming Draft (private chat) | `send_message_draft` | Consistent non-zero `draft_id`; pass `markdown`/`html`/`blocks` (`<tg-thinking>`, `can_stop: true`). Private chats only; finalize with `send_rich_message`. |
+| Answer, Explanation, Analysis, Report | `send_rich_message` | Headline -> scannable bullets / native tables -> `<details>` collapsed receipts -> `<footer>`. One major conclusion per message; never use `reply` markup hacks. |
+| Question or Decision (private chat) | `ask_user` (HTML Widget default) | Option cards with optional `kind: "decision"`, `stakes`, option `recommended`/`pros`/`cons`, `allow_defer`. Set `mini_app_only: true` for non-urgent queues. Async only. |
+| Question / Decision in Group (`chat_id < 0`) | `ask_user` (`presentation: "rich"`) | Groups forbid widgets; pass `presentation: "rich"` explicitly or use `send_poll` for simple group tallies without broker resumption. |
+| Live Multi-Step Status / Progress | `send_widget` + `edit_message_widget_data` | Send compact Profile-1 status HTML once; stream state silently via `chat_data` (`<= 1,024 B`). Never spam follow-up status messages. |
+| In-place Correction / Appending Links | `edit_message` | Patch existing messages (`text` or `markdown`/`html`/`blocks`) to append PR links, branch names, or outcomes instead of reposting. |
 
-- **Setup & pre-reply loading:** Load `ida-telegram:telegram` before sending the first reply. Pass `reply_to` when referencing or replying to messages over two or three turns back.
-- **Two-tier length budget (~100 words plain; up to ~4,000 characters when formatted for scanning):** Keep plain conversational replies concise (~100 words). When a reply is carefully structured for mobile scanning--using a bold one-line headline, section headings (`#`), bold lead-in bullets (`- **Point**: ...`), expandable blockquotes (`>!`) for verbose receipts or secondary detail, spoilers (`||...||`), Markdown tables, or code blocks--you may use up to Telegram's ~4,000-character limit (`maxChatChars` default `4000`) so rich structured content stays whole in chat without spilling to Details. Unformatted walls of prose exceeding ~100 words are prohibited. A summary is functional, not a length cap: a summary of a plan or proposal explains how the plan fixes each problem (the mechanism), using Tier 2 (`>!`) and Tier 3 (`detail`) to carry depth without dropping the mechanism.
-- **Bare identifiers prohibited:** Never send a bare identifier (task, PR, issue, commit, session, or Telegram message ID) without a plain-language descriptive gloss and clickable URL where available.
-- **Local 24-hour time:** Present timestamps and scheduling information in local 24-hour time.
-- **Complete in one message without spilling:** Keep replies and summaries whole in chat without spilling essential content to detail views; details hold deep context and logs, not the remainder of the message.
-- **One decision per message:** Format decision requests with a two-line context summary, a reasoned recommendation on the choice itself, and expandable spoiler blocks (`>!`) for background or logs.
-- **Multi-bot single delivery:** Each item reaches the user once on its designated bot. Never echo another bot's window or volunteer unprompted status on threads held on another bot.
-- **In-place updates:** Update existing messages in-place via message editing (`edit_message`) to append late-arriving links, branch names, or identifiers rather than posting follow-up messages.
-- **Cross-channel handover:** When a request originates on a non-Telegram channel (such as console), suppress Telegram intake or progress notices during execution; transmit a concise one- or two-line summary upon completion so the user can pick up asynchronously without scrolling.
-- **One conclusion per message:** When a message carries two or more major conclusions, send each as a separate message, one per conclusion, so the user can react to each individually.
-- **Tier 1 (Chat):** Lead with a bold one-line headline stating the takeaway or decision needed, followed by concise bullet points.
-- **Tier 2 (Expandable evidence):** Place receipts, quotes, and evidence in expandable blockquotes (`>!`). Telegram renders these collapsed by default so the user opens them on demand. Use standard blockquotes (`>`) for ordinary quotes.
-- **Tier 3 (Details page):** Place deep context, long logs, code snippets, and background into details or extended properties (e.g. `detail` parameter of `reply` or `ask_user` questions) rather than inline chat text. If chat text exceeds the budget, overflow relocates to details automatically without losing content.
-- **Rich & advanced Telegram formatting:** Write standard and extended Markdown (`**bold**`, `*italic*`, `__underline__` or `<u>...</u>`, `~~strikethrough~~`, `||spoiler||`, `` `code` ``, fenced ` ```lang ` code blocks, `#` ATX headings rendered as bold headers, Markdown tables auto-converted into monospace `pre` blocks (`<= 36` cols) or stacked bullet cards (`> 36` cols), `[links](https://example.com)`, `>` blockquotes, `>!` expandable blockquotes, `![emoji](tg://emoji?id=<id>)` custom emoji, and nested inline formatting). Do not escape MarkdownV2 characters; formatting converts directly to native Telegram UTF-16 entities. Use `copy_text` on inline buttons (`{ label, copy_text }`) for one-tap clipboard copying of commands or IDs, `quote` (with optional `quote_position`) on `reply` to quote a specific Markdown-formatted excerpt of the replied-to message, `disable_link_preview` or `link_preview_options` to control link previews, `show_caption_above_media` on media sends, and `message_effect_id` when appropriate.
+## Rich Answer Median Skeleton
 
-## Questions
+Use this structure on `send_rich_message({ markdown, feedback_buttons?, buttons? })` (pass `reply_to` and `quote_rich_texts` when replying > 2-3 turns back):
 
-- **Inbound ask routing:** Inbound questions and lookups received from the user route to the knowledge base custodian as knowledge tasks, never in the user-facing main context; the task dispatch pipeline is used only for real code changes. Never send inbound questions or lookups into the dispatch pipeline.
-- **Option buttons on questions:** Provide selectable option buttons whenever asking questions so the user can reply with a single tap. Use multi-row layouts (`button_layout`, `buttons_per_row`, or 2D button arrays) when offering multiple options (such as skill or checklist proposals) to keep choices compact on mobile screens.
-- **Decision-fit recommendation buttons (`binary_decision` vs `buttons`):** Match recommendation markup on `reply` to the decision in the message:
-  1. _Binary decision (`binary_decision: true`):_ When a message carries a binary yes/no decision (such as proposing a single obvious next step), pass `binary_decision: true` on `reply` to attach `[✅]` and `[❌]`.
-  2. _Multi-option decision (`buttons`):_ When presenting a choice among multiple alternatives, pass labelled option buttons in `buttons` with the recommended option highlighted (prefixed with `⭐` or marked `(Recommended)`), and do not set `binary_decision: true`.
-  3. _No decision:_ When replying with informational findings, status updates, exploration, or an answer without an immediate proposal, omit `binary_decision` and recommendation `buttons`. Never attach `[✅]` or `[❌]` to messages without a binary decision.
-- **Predefined row consolidation:** In default reply keyboards, Details (`🔍`) sits on the same row as predefined action buttons; pass `predefined_row: true` on `reply` to consolidate all active system actions (`🔍`, `[🧐 Check]`, `[💡 Explain]`, `[🧾]`, `[🙏]`, and when `binary_decision: true`, `[✅]`, `[❌]`) onto a single default header row above custom option buttons.
-- **Route non-urgent decisions to the Mini App (`mini_app_only: true`):** When asking questions that do not block immediate progress or when queuing options for the user's later review, set `mini_app_only: true` (or `chat: false`) on `ask_user` or individual questions. The question is stored in the broker and appears when the user opens the Mini App, without posting a card to chat. Note that Mini App-only questions rely on the user opening the Mini App, so time-sensitive questions requiring prompt intervention should remain in chat.
-- **Enough information and proportionate evidence:** Every question or decision request to the user must provide enough self-contained information to make the decision and evidence proportionate to the decision. Provide deep context, evidence, logs, or detailed tradeoffs in the `detail` parameter of a question. The Mini App displays a `🔍 Details` button on the question card that opens this fuller background on demand, keeping the card compact.
-- **Asynchronous by default with reasoned recommendation:** Post questions with structured options, placing the recommended choice first (`"(Recommended)"`) supported by functional reasoning. When no recommendation is available, offer to have one assessed.
-- **Question resolution lifecycle:** Questions answered via Telegram cards or the Mini App are dismissed automatically by the broker. Never leave settled questions unresolved in chat follow-ups.
-- **Never wait or block:** Questions never block or time out. Proceed with other ready work or conclude the turn; answers arrive asynchronously as channel events.
+```markdown
+**Headline: bottom-line takeaway**
 
-## Message Action Buttons (Logic Check, Explain, Reasons, Thanks & Recommendation)
+Concise 1-2 line context or direct answer.
 
-Every reply sent over Telegram automatically carries inline action buttons with compact, phone-friendly labels `[🧐 Check]`, `[💡 Explain]`, `[🧾]`, and `[🙏]` (unless `actions: false` is passed). Binary recommendation buttons `[✅]` and `[❌]` attach only when `binary_decision: true` is passed on `reply`:
+- **Key point:** Evidence or mechanism
+- **Next:** Concrete action or open check
 
-- **Logic check (`🧐 Check`):** Requests a formal logic check on that specific message statement (`event: "logic_check"`).
-  - Apply the formal premise-check procedure: test whether the inference is valid, the premises supported, the ask answered, and warrants sufficient.
-  - Reply with the verdict (`PASS`, `REVISE`, or `FAIL`) and its reason (`Judged · Valid · Supported · Answered · Sufficient · Waived · Relay`).
-- **Explain (`💡 Explain`):** Requests more detail on that specific message statement (`event: "explain"`).
-  - Reply expanding that message in greater detail with context, underlying rationale, and evidence.
-- **Reasons (`🧾`):** Requests the underlying argument and evidence chain behind that specific message statement (`event: "reasons"`), answering "how do you know that?".
-  - Returns the arguments behind the message verbatim (Chained Toulmin Argdown blocks), one per link of the chain, each labelled with who argued it and to whom (e.g. `Prime to user`, `coordinator to Prime`, `worker to coordinator`), nested by delegation depth, in the reply's details (`detail` parameter).
-  - A link whose argument cannot be found is named as missing (e.g. `[Missing argument: no premise-check record found for ...]`), never paraphrased.
-  - Chat text provides a concise summary (~100 words) with the primary takeaway and the chain structure, referencing the Details page for the full verbatim Argdown blocks.
-- **Thanks (`🙏`):** Tells the session the user has read the message and is done with its thread (`event: "thanks"`; meta carries `target_message_id`, `chat_id`, `user_id` and, when known, `message_thread_id`; content reads "The user has read message N and is done with its thread: close the thread unless more on its topic is due soon.").
-  - Close the thread (`close_thread`) unless more on its topic is due soon; send no reply to the tap, since the card is marked `Selected: 🙏 Thanks ✅`.
-- **Accept recommendation (`✅`, when `binary_decision: true`):** Marks the card and notifies the agent that the user accepted the binary recommendation (`event: "accept_recommendation"`).
-  - Act on the accepted recommendation or confirm execution.
-- **Decline recommendation (`❌`, when `binary_decision: true`):** Marks the card and notifies the agent that the user declined the binary recommendation (`event: "decline_recommendation"`).
-  - Acknowledge declination, avoid proceeding with the declined course, and offer alternatives or seek clarification if needed.
+<details>
+  <summary>Evidence &amp; receipts</summary>
+  Verbatim quotes, command outputs, or checks.
+</details>
 
-## Reactions & Feedback
+<footer>Scope · HH:MM</footer>
+```
 
-- **Act on semantic reactions:** When the user adds a 👎 reaction to a message (a `reaction` event whose `added` contains 👎), treat it as feedback on substance -- the failure or blocker the message reported -- not on how the message was written. Act directly on the reported failure (investigate, fix, unblock, or replan) without asking the user to classify the reaction or critique the wording. Negative user reactions (such as `😡`) route directly to systemic error diagnosis (`/learn`); thinking reactions (`🤔`) route to an immediate status investigation and report of current progress.
-- **Reaction-only completion:** Completed background work or handled requests requiring no user action or decision receive only a reaction update (such as `🫡`, `✍`, or `🐳`), eliminating chatter.
-- **Inbound message status:** The channel marks inbound messages with 👀 upon arrival.
-- **Shared reaction legend:** All bot personas share a single reaction legend with exactly one meaning per reaction and one reaction per state. Telegram authoritatively validates reactions; unsupported reactions surface platform errors directly.
-  - _Lifecycle states:_
-    - `👀` inbound: message received and being read/assessed.
-    - `✍` captured: note, decision, intake, or task persisted to knowledge base.
-    - `🐳` dispatched (polecat): work briefed and dispatched to an isolated background worker (a polecat holds it).
-    - `🕊` dispatched (subagent): work delegated to an internal subagent (a subagent holds it).
-    - `🤔` waiting: a question, choice, or clarification is pending user reply in chat.
-    - `💔` blocked or failed: execution halted or hit an external blocker (reply details the refusal).
-    - `🎉` completed: task answered or resolved with substantive reply.
-    - `🫡` acknowledged: request handled or completed where no substantive reply was owed.
-  - _Feedback and semantic reactions:_
-    - `👎` substance defect: negative feedback on substance or report failure (prompts autonomous remediation).
-    - `👍` affirmation: affirmative confirmation or approval.
-    - `🔥` breakthrough: exceptional idea, high resonance, or breakthrough.
-    - `🤝` agreement: consensus reached or proposal accepted.
-    - `💯` aligned: exact agreement, fully aligned.
-    - `🏆` milestone: difficult feat accomplished or significant milestone reached.
-    - `🙏` appreciation: gratitude or appreciation.
-    - `🤣` humor: humor or joke acknowledged.
-    - `🤯` surprising: unexpected finding or revelation.
-    - `😢` regret: regrettable outcome or unfortunate news.
+- **Reference loading:** If composing Rich Messages with headings, native `<table bordered striped compact>`, `<aside>`, math, `<tg-map>`, `tg://<type>?id=...` `media`, or `<tg-thinking>` drafts, read [references/rich-messages.md](references/rich-messages.md) before sending.
+- **Widget loading:** If authoring or updating a Live Status tracker or custom HTML Widget via `send_widget`, `edit_message_widget_data`, or `answer_widget_query`, read [references/widgets.md](references/widgets.md) before writing HTML.
 
-## Reviews & State Tracking
+## Core Presentation & Delivery Invariants
 
-- **Diff reviews:** Attach review metadata when presenting a pull request or branch for review, allowing the user to inspect changes and submit approval or critique directly.
-- **Cognitive anchor:** Update the live cognitive anchor whenever primary focus changes or work is delegated, keeping the status view current.
+- **Mobile scan budget:** Plain `reply` stays <= ~100 words. Structured Rich reports keep takeaway whole in chat with collapsed `<details>` for receipts and `detail` (on `reply`/`ask_user`) reserved for deep logs or background context. Avoid unformatted walls of prose.
+- **No bare identifiers:** Gloss every task, PR, issue, commit, session, or message ID in plain language with a clickable URL where available.
+- **Local 24-hour time:** Express all timestamps and schedules in local 24-hour `HH:MM` format.
+- **Multi-bot & cross-channel discipline:** Deliver each item once on its designated bot; suppress Telegram progress notices for non-Telegram requests until sending a concise 1-2 line completion note.
+- **Self-contained decisions:** Present one decision per message with a two-line context summary, reasoned recommendation first (`recommended: true`), and proportionate evidence (`pros`/`cons`/`detail`). Never block or assume answers; broker notifications wake continuation turns.
+- **Inbound ask routing:** Route user knowledge questions and lookups to the knowledge custodian, reserving task dispatch strictly for code or execution work.
 
-## Threaded Conversations & Topic Lifecycle
+## Interactive Buttons, Actions & `reply` Markup
 
-- **Thread confinement by default:** In Telegram supergroups or topics-enabled chats, messages arriving in a thread are tagged with `meta.message_thread_id` and `meta.thread_id`. All outbound paths (replies, voice notes, question cards, edits, and reactions) automatically stay in that thread without configuration.
-- **Routing when no thread is defined:** When replying to a message sent outside any thread, the reply attaches directly to that inbound message via reply parameters so it lands in the chat context where the user wrote, rather than falling into an unopenable General `#` topic. Active thread memory is preserved across server restarts. Outbound thread verification catches unexpected thread destinations rather than reporting silent success.
-- **Explicit target overriding:** If work requires posting into a specific topic, pass `message_thread_id` (or `thread_id`) explicitly to `reply` or `ask_user`.
-- **Opening new threads (`create_thread`):** When starting a dedicated discussion, branching off a topic, or when the user asks to open the conversation in a new window or thread, create a new forum topic using `create_thread({ name: "..." })` (choosing custom icons from `get_forum_topic_icon_stickers` when needed). Once created, the new thread automatically becomes active and subsequent replies (`reply`, `ask_user`, etc.) land inside it without needing an explicit thread ID.
-- **Renaming threads (`rename_thread`):** When a conversation shifts focus or a thread requires a descriptive title, rename the forum topic using `rename_thread({ name: "..." })`. If `message_thread_id` is omitted, the active thread is renamed automatically.
-- **Closing, reopening, unpinning, and deleting threads:** Close a resolved topic with `close_thread`, reopen a closed topic with `reopen_thread`, clear all topic pins with `unpin_all_thread_messages`, or permanently delete an obsolete topic and its history with `delete_thread` (which also clears active thread tracking for that chat). When `message_thread_id` is omitted, the active topic in session context is targeted.
-- **General topic `#1` management:** Standard topic tools reject `message_thread_id: 1`. Manage the General topic explicitly via `edit_general_thread`, `close_general_thread`, `reopen_general_thread`, `hide_general_thread`, `unhide_general_thread`, and `unpin_all_general_thread_messages`.
+- **`ask_user` vs `reply` decisions:** Use `ask_user` for structured single/multi-select decisions and clarifications (widget in private chats, `presentation: "rich"` in groups). On `reply`, pass `binary_decision: true` ONLY for binary yes/no proposals (attaching `[✅]`/`[❌]`), labelled `buttons` (`{ label, callback_data }` or `{ label, copy_text }`, using 2D arrays/`button_layout`/`buttons_per_row`) for inline action rows, or neither for plain notices. Pass `predefined_row: true` to consolidate `🔍`, `[🧐 Check]`, `[💡 Explain]`, `[🧾]`, and `[🙏]` onto row 1.
+- **Message action buttons (`reply` & Rich Messages with `buttons`):**
+  - `🧐 Check` (`event: "logic_check"`): Run formal `premise-check` on that message and reply with `PASS`/`REVISE`/`FAIL` plus verdict reason.
+  - `💡 Explain` (`event: "explain"`): Expand that message with rationale and supporting evidence.
+  - `🧾` (`event: "reasons"`): Reply with concise summary + full verbatim Chained Toulmin Argdown blocks per delegation link in `detail` (name missing links explicitly).
+  - `🙏` (`event: "thanks"`): Card updates automatically; close the thread (`close_thread`) with no reply unless more on its topic is due soon.
+  - `✅` / `❌` (`accept_recommendation` / `decline_recommendation` when `binary_decision: true`): Act on accepted path or pause and offer alternatives when declined.
+- **Widget queries (`widget_query`):** Question widgets settle automatically via the broker; custom `send_widget` flows with `allow_queries: true` emit `widget_query` and require explicit `answer_widget_query` within `15 s`.
 
-## Message Management (Pinning, Batch Transfer, Deletion & Button Editing)
+## Reactions & Shared Legend
 
-- **Pinning and unpinning:** Pin key reference messages or decisions silently (`disable_notification: true` by default) with `pin_message`, unpin a specific or most recent pin with `unpin_message`, or clear all pins in the active topic or chat with `unpin_all_messages`.
-- **Batch migration and cleanup:** Reorganize conversations into dedicated topics by transferring 1-100 messages per call with `forward_messages` (preserving attribution) or `copy_messages` (without forward headers), and remove superseded messages within Telegram's 48-hour deletion window using `delete_messages`.
-- **In-place button updates:** Attach, replace, or clear (`buttons: []` / omitted) inline keyboard buttons on existing messages without reposting text using `edit_message_reply_markup`.
+- **Semantic feedback:** Treat `👎` as feedback on reported substance/blockers and act directly to investigate or fix without asking the user to classify it; route `😡` to systemic diagnosis (`/learn`) and `🤔` to status investigation. Use reaction-only completion (`🫡`, `✍`, `🐳`) when no reply is needed. Inbound messages get `👀` on arrival.
+- **Shared reaction legend (one meaning per reaction; Telegram validates):**
+  - _Lifecycle:_ `👀` inbound/reading | `✍` captured to knowledge base | `🐳` dispatched worker | `🕊` dispatched subagent | `🤔` waiting on user reply | `💔` blocked/failed | `🎉` completed with reply | `🫡` handled silently
+  - _Feedback:_ `👎` substance defect | `👍` affirmation | `🔥` breakthrough | `🤝` agreement | `💯` aligned | `🏆` milestone | `🙏` appreciation | `🤣` humor | `🤯` surprising | `😢` regret
 
-## Rich Media, Location, Interactivity & Polls
+## Threads, Media, Voice & Commands
 
-All outbound media, location, interactivity, draft, and poll send tools default to the active chat and thread (or the thread of `reply_to`) just like `reply`, and format Markdown captions and quiz explanations into native Telegram entities:
-
-- **Images, documents, video, and audio (`send_photo`, `send_document`, `send_video`, `send_animation`, `send_audio`, `send_video_note`):** Send visual artifacts, plots (`send_photo`), reports or archives (`send_document`), recordings (`send_video`), silent loops (`send_animation`), music or audio tracks (`send_audio`), or circular video notes (`send_video_note`) by passing a local file path, Telegram `file_id`, or HTTP(S) URL along with an optional Markdown `caption` (except `send_video_note`), `has_spoiler`, or inline `buttons`.
-- **Multi-item albums (`send_media_group`):** Group 2 to 10 related photos, videos, documents, animations, or audio tracks into a single album call (`media: [{ type, media, caption?, has_spoiler? }, ...]`) rather than sending separate messages.
-- **Locations, venues, contacts, and dice (`send_location`, `send_venue`, `send_contact`, `send_dice`):** Share map coordinates (`send_location`), named places with street addresses (`send_venue`), structured contact cards (`send_contact`), or animated random throws (`send_dice` with `🎲`, `🎯`, `🏀`, `⚽`, `🎳`, or `🎰`).
-- **Activity indicators and streaming drafts (`send_chat_action`, `send_message_draft`):** Broadcast transient activity status (`send_chat_action` with `typing`, `upload_photo`, `upload_document`, etc.) before long-running uploads, or stream incremental Markdown previews in private chats using `send_message_draft` with a consistent non-zero `draft_id`.
-- **Native polls (`send_poll`, `stop_poll`):** Create regular or quiz polls with 2 to 12 options (`send_poll` with `question`, `options`, optional `allows_multiple_answers`, `is_anonymous`, or `type: "quiz"` + `correct_option_id` + Markdown `explanation`) for quick group or user tallies, and close an open poll by `message_id` using `stop_poll`. Use `ask_user` when a structured decision card should resume the agent turn automatically upon selection.
-
-## Voice
-
-- **Phonetic dictation resolution:** When processing voice notes or dictated messages, resolve odd words as possible homophones in context, relaying the fitting interpretation while noting the original transcription where ambiguity remains.
-- **Inbound voice:** Spoken voice notes from the user are transcribed automatically before reaching the agent. If transcription fails (`transcript_error`), report the failure and error immediately in chat and log an escalation; do not retry manually via Bash or silently drop it.
-- **Voice replies:** Mirror voice input with spoken audio replies for primary takeaways when voice response mode is enabled, keeping text captions in chat. If speech synthesis fails, report the failure verbatim and log an escalation rather than silently swallowing the degradation.
-
-## Bot Commands
-
-- **Bare commands:** When a native Telegram menu command arrives without arguments (`meta.command`), invoke the skill of that name (underscores in the command stand for hyphens in the skill name) on the current conversation: act on the message it replies to or the active topic, or ask the user what the command should act on.
-- **Commands with arguments:** When user arguments are provided with a command, process them within the target workflow.
+- **Threads:** Messages stay confined to the active forum thread automatically; unthreaded chats anchor via `reply_to`. Pass `message_thread_id` to target elsewhere, or manage topics with `create_thread`, `rename_thread`, `close_thread`, `reopen_thread`, `delete_thread`, `unpin_all_thread_messages`, and General `#1` tools (`edit_general_thread`, etc.). Update the cognitive anchor on focus/delegation shifts.
+- **Message ops & standalone media:** `pin_message`, `unpin_message`, `unpin_all_messages`, `forward_messages`, `copy_messages`, `delete_messages` (<= 48h), `edit_message_reply_markup`. Standalone attachments: `send_photo`, `send_document`, `send_video`, `send_animation`, `send_audio`, `send_video_note`, `send_media_group` (2-10 items), `send_location`, `send_venue`, `send_contact`, `send_dice`, `send_chat_action`, `send_poll`, `stop_poll`. Prefer `send_rich_message` with `media` URIs when text and visual artifacts belong together.
+- **Voice:** Resolve dictated homophones in context. If `transcript_error` or TTS synthesis fails, report verbatim immediately without silent fallback. Mirror voice with `voice: true` / `VOICE_REPLIES=mirror` (`reply` and `send_rich_message`).
+- **Bot commands:** On bare `meta.command` (underscores map to hyphens), invoke that skill on the replied-to message, active topic, or ask what to target; pass `meta.args` when present.

@@ -4,17 +4,15 @@ Ida's custom Telegram channel and Mini App plugin for Claude Code.
 
 ## Architecture
 
-- **Channel Protocol:** Stdio MCP server with `experimental["claude/channel"]` support.
-- **Progressive Disclosure & Rich Formatting:**
-  - Tier 1: Bold headline, section headings (`#`), bold lead-in bullets, inline entities (`**bold**`, `*italic*`, `__underline__`, `~~strikethrough~~`, `||spoiler||`, `` `code` ``, ` ```lang `, `[links](https://example.com)`, `![emoji](tg://emoji?id=<id>)`, nested inline formatting), and Markdown tables (narrow `<= 36` cols as `pre`, wide `> 36` cols as bulleted cards) in chat.
-  - Tier 2: Expandable blockquotes (`>!`) collapsed by default.
-  - Tier 3: Immutable Details pages viewed via the Telegram Mini App (`🔍 Details` button).
-  - Overflow handling: Text exceeding `max_chat_chars` (default `4000`) splits at whole paragraphs and relocates cleanly to the Details page without loss.
-  - Interactive Bot API features: `copy_text` inline keyboard buttons, `quote` (with `quote_entities` and `quote_position`) in `reply_parameters`, `link_preview_options` / `disable_link_preview`, `show_caption_above_media`, and `message_effect_id`.
-- **Asynchronous Questions:**
-  - `ask_user` tool and `PreToolUse` hook for `AskUserQuestion`.
-  - Vertical numbered keyboard options with recommendation first.
-  - Never blocks or assumes answers; delivers answers as channel notification events upon reply.
+- **Channel Protocol:** Stdio MCP server with `experimental["claude/channel"]` support covering Bot API 10.1-10.4 updates (`message`, `callback_query`, `message_reaction`, `widget_query`, `stopped_message_generation`).
+- **Native Rich Messages (`send_rich_message`, `send_message_draft`, `edit_message`):**
+  - Sends structured Markdown, Rich HTML, or `InputRichBlock[]` (`<= 32,768` chars, `<= 500` blocks) supporting headings, collapsed `<details>`, `<aside>`, `<footer>`, native `<table bordered striped compact>`, math, `<tg-map>`, in-body `<tg-button-row>`, and `tg://<type>?id=<id>` inline media (`<= 50` items uploaded seamlessly via multipart `FormData` when local files are provided).
+  - Supports private-chat rich streaming drafts (`send_message_draft` via `sendRichMessageDraft` with `<tg-thinking>`, `can_stop`, and `keep_on_stop`), `reply_parameters.quote_rich_texts`, `feedback_buttons`, `voice` mirror synthesis, and in-place rich edits (`edit_message`).
+- **Bot API 10.4 HTML Widgets & Unified `ask_user` (`send_widget`, `edit_message_widget_data`, `answer_widget_query`, `ask_user`):**
+  - Enforces Sandbox Profile 1 constraints locally (`<= 32,768 B` raw HTML, `<= 4,096 B` zlib-9 compressed, no NUL bytes; `<= 1,024 B` `public_data`/`chat_data` updates handling `message is not modified`; `allow_queries` defaulting to `false`; explicit `answer_widget_query` within Telegram's 15s budget).
+  - `ask_user` and the `PreToolUse` `AskUserQuestion` hook deliver native interactive HTML Widgets in private chats by default -- supporting `kind: "question" | "decision"`, `stakes`, option `recommended`/`pros`/`cons` toggles, `allow_defer`, multi-select bitmasks, and Mini App sync -- without silent downgrade on group chats (`chat_id < 0`, which require explicit `presentation: "rich"`).
+- **Fallback Plain Progressive Disclosure & Overflow (`reply`):**
+  - Casual and short plain replies (`reply`) retain Tier 1 UTF-16 entity conversion, Tier 2 expandable blockquotes (`>!`), Tier 3 immutable Details pages via the Mini App (`🔍 Details`), `quote`, `copy_text`, `link_preview_options`, `show_caption_above_media`, and `message_effect_id`, splitting overflow at `max_chat_chars` (default `4000`).
 - **Option Buttons & Message Actions:**
   - `reply` takes `buttons` for the answers to a question asked in the reply; a tap edits the card to `Selected: <label> ✅` and emits a `button_tap` channel event. Supports 2D row arrays (`ReplyButtonOption[][]`), layout chunking via `button_layout` (e.g. `[3, 3, 2]`) or `buttons_per_row` (e.g. `4`), and per-button `row` properties, defaulting to 1 button per row when flat.
   - Setting `predefined_row: true` groups all active predefined buttons (`🔍`, `🔍 Review diff`, `👍`/`👎`, `[🧐 Check]`, `[💡 Explain]`, `[🧾]`, `[🙏]`, and when `binary_decision: true`, `[✅]`, `[❌]`) onto a single consolidated first row above any caller buttons.
@@ -59,6 +57,6 @@ Ida's custom Telegram channel and Mini App plugin for Claude Code.
   - Non-primary instances register zero tools, run no poller, and leave hooks inert.
   - Same-host PID locking and exponential 409 Conflict backoff policy.
 - **Tool Deadline (30 s):**
-  - Every MCP tool except the exempt ones below answers within 30 seconds or the caller gets an error result (`<tool> timed out after 30s without an answer`); the deadline is ours, in `src/mcp/timeout.ts`, and is separate from Claude Code's `MCP_TOOL_TIMEOUT`, which applies to every MCP server alike.
-  - Rule for authors: a tool that should be basically instant is covered by default, so a new tool needs no registration. Only a tool that legitimately runs longer goes in `LONG_RUNNING_TOOLS`, with the reason beside its entry. Today that is `reply` (voice-out synthesis has its own 60 s limit) and the upload tools `send_photo`, `send_document`, `send_video`, `send_animation`, `send_media_group`, `send_audio` and `send_video_note` (time scales with file size). `ask_user` is covered because it only posts the question and returns, never waiting for the answer.
+  - Every MCP tool except the exempt ones below answers within 30 seconds or the caller gets an error result (`<tool> timed out after 30s without an answer`); the deadline lives in `src/mcp/timeout.ts` and is separate from client-level tool timeouts.
+  - Exempt long-running tools: `reply` (voice synthesis has its own 60 s limit), single/album upload tools (`send_photo`, `send_document`, `send_video`, `send_animation`, `send_media_group`, `send_audio`, `send_video_note`), and `send_rich_message` exclusively when `media` includes local filesystem paths requiring multipart upload. `ask_user`, `send_widget`, `edit_message_widget_data`, and `answer_widget_query` are strictly covered by the 30 s deadline.
   - On timeout the call is abandoned, not cancelled: the underlying Telegram request may still complete after the error is returned.
