@@ -1,5 +1,5 @@
 ---
-description: Everything Must Work. Halt and escalate on any infrastrure failure or conflicting demand.
+description: Everything Must Work. Halt and escalate on any infrastructure failure or conflicting demand.
 trigger: always_on
 ---
 

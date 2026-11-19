@@ -12,13 +12,13 @@ Specifies the pull request lifecycle across universal sweep triage (`wf-pr-sweep
 ```mermaid
 flowchart TD
     User(["Repository Maintainer"]) -->|"Dispatches task"| Worker["Implementation Worker"]
-    Worker -->|"Opens draft PR (or pushes bundle/<slug>)"| GitHub["Draft PR (gh pr create --draft)"]
+    Worker -->|"Opens draft PR (or pushes bundle/{slug})"| GitHub["Draft PR (gh pr create --draft)"]
     GitHub -->|"Triggers HEAD CI & independent review"| Gate{"Partitioned PR Gate"}
     Gate -->|"fix(review) pushed + green HEAD CI + SHA-matched PASS"| Ready["Mark Ready (gh pr ready)"]
     Gate -->|"Stale SHA, startup_failure, or unresolved CHANGES_REQUESTED"| Rework["Hold Open / Queue Next Action"]
-    Ready -->|"Notifies"| User
-    User -->|"Approves"| PostRebase{"Post-Approval Rebase Check"}
-    PostRebase -->|"Consolidated bundle/<slug>: combined-diff review on rebased HEAD"| Merge["Merge per Project Policy"]
+    Ready -->|"Notifies maintainer"| Approve(["Repository Maintainer Approves"])
+    Approve --> PostRebase{"Post-Approval Rebase Check"}
+    PostRebase -->|"Consolidated bundle/{slug}: combined-diff review on rebased HEAD"| Merge["Merge per Project Policy"]
     PostRebase -->|"Standalone / constituent PR: rebase if behind"| Merge
 ```
 

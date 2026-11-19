@@ -30,7 +30,7 @@ Run `/learn` in an isolated `academicOps` (`project: aops`) container environmen
 4. **Classify typed remedy & proportional ladder**:
    - Classify each remedy explicitly as either:
      - **`bug fix at source`**: single-incident defect in a tool, workflow, local rule, or instruction (addressed at the lowest effective tier).
-     - **`recurring local-rule or one-step mechanism proposal`**: local project rule or single-step enforcement-pyramid escalation (`specs/enforcement/enforcement.md`) only when repeated instances prove single-incident fixes insufficient.
+     - **`recurring local-rule or mechanism proposal`**: local project rule or single-step enforcement-pyramid escalation (`specs/enforcement/enforcement.md`) only when repeated instances prove single-incident fixes insufficient.
    - Remedy ladder (prefer patching existing artifacts cleanly; never copy narrative bloat):
      1. Project template (`type: template`, project-scoped) or local repo rules (`AGENTS.md`, `.agents/rules/`).
      2. User-scoped PKB template (`type: template`, `project: null`).
@@ -44,7 +44,7 @@ Run `/learn` in an isolated `academicOps` (`project: aops`) container environmen
    - **Complete to `done`**: On traced sessions, verify `out-<session_slug>` is persisted; then release `done` (never `partial` solely because queued follow-ups remain).
 
 6. **Shared-root-cause issue consolidation (`data-boundaries`)**:
-   - File no issue for auth failures or for Tier 1–3 bugs **only when actually executed/persisted** (template created/updated, PR opened, or `/q` fix task queued -- unexecuted prose proposals must escalate to Tier 4).
+   - Suppress issue filing for auth failures, and skip issue filing for Tier 1-3 bugs **only once** the Tier 1-3 remedy is actually executed or persisted (template created/updated, PR opened, or `/q` fix task queued) -- unexecuted prose proposals must escalate to Tier 4.
    - Search open framework issues (`gh issue list`, `gh issue view`) before creating one: append an evidence comment citing the new instance when an open issue covers the shared root cause; otherwise draft/file one evidence-grounded issue using `.github/ISSUE_TEMPLATE/learn.md` (when present) scrubbed of personal names, credentials, private paths/domains, session IDs, internal trailers, and PKB note/task IDs.
    - **Boundary handling**: Inside **the user's own organisations and designated repositories**, create the consolidated issue or append the evidence comment directly; outside that boundary, hold the scrubbed draft in `## Report` / PKB pending explicit user approval.
 
