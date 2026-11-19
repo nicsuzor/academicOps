@@ -5,7 +5,7 @@ status: ready
 
 # Shared Telegram channel
 
-The shared Telegram channel provides a unified conversational transport layer between the user on Telegram and the primary conversational agent across both interactive and containerized runtimes. It consolidates update ingestion, sender authorization, rich-text entity formatting, paragraph overflow splitting, voice synthesis, and asynchronous question posting into a single shared engine, ensuring an identical communication contract regardless of host execution topology. Higher-level conversational capabilities, including dashboard web views and operator review cards, operate above this transport layer.
+The shared Telegram channel provides a unified conversational transport layer between the user on Telegram and the primary conversational agent across both interactive and containerized runtimes. It consolidates update ingestion, sender authorization, rich-text entity formatting, paragraph overflow splitting, voice synthesis, and asynchronous question posting into a single shared engine, ensuring an identical communication contract regardless of host execution topology. Native Bot API 10.1–10.4 Rich Messages and HTML Widgets are specified in [`specs/telegram/rich-messages-and-widgets.md`](rich-messages-and-widgets.md); higher-level dashboard web views operate above this transport layer.
 
 ## User stories
 
@@ -27,10 +27,10 @@ As a user reading on a phone, I want agent replies formatted with scannable typo
 
 ### US-3 Asynchronous interactive questions
 
-As a user asked to make a choice, I want a vertical button card on Telegram supporting single-select, multi-select, and custom text entry, so that I can answer from my phone at my own pace and have my selection resume the conversation in a subsequent turn.
+As a user asked to make a choice or decision, I want an interactive HTML Widget (or explicit Rich Message in group contexts) on Telegram supporting single-select, multi-select, optional decision trade-offs, defer, and custom text entry, so that I can answer cleanly from my phone and have my choice lock in place and resume the conversation in a subsequent turn.
 
-- **AC-3.1** Given an agent invokes the question tool during a turn, when the channel posts the question card to Telegram, then the channel acknowledges the post immediately and the agent turn concludes without blocking on user input.
-- **AC-3.2** Given a pending question card in single-select, multi-select, or custom-reply mode, when the authorized user selects an option, confirms a multi-select set, or replies with custom text, then the channel updates the card state on Telegram and delivers the user's choice as a new inbound event to continue the conversation in a subsequent turn.
+- **AC-3.1** Given an agent invokes the question tool during a turn, when the channel posts the prompt (defaulting to HTML Widget via `sendWidget`, or `sendRichMessage` when `presentation: "rich"` is selected explicitly), then the channel acknowledges the post immediately and the agent turn concludes without blocking on user input.
+- **AC-3.2** Given a pending question or decision widget in single-select, multi-select, defer, or custom-reply mode, when the authorized user interacts via widget tap (`widget_query`), Mini App submission, or custom reply, then the channel locks or updates the card state via `editMessageWidgetData` (`editMessageReplyMarkup` for Rich cards) and delivers the user's choice as a new inbound event to continue the conversation.
 
 ### US-4 Asynchronous background completion and explicit failure reporting
 
@@ -120,22 +120,20 @@ Posts a non-blocking interactive question card to Telegram. The tool records the
   - `chat_id` (integer, optional): Destination chat identifier.
   - `message_thread_id`, `thread_id` (integer, optional): Destination forum topic ID.
   - `turn_id` (string, optional): Correlation identifier for the question.
-  - `questions` (array of objects, required): One or more question specifications, each containing:
-    - `question` (string, required): The prompt text.
-    - `header` (string, optional): Short context label.
-    - `options` (array of objects, required): Selectable options, each with `label` (string) and optional `description` (string).
-    - `multi_select` (boolean, optional): Whether multiple options may be selected.
-    - `allow_custom` (boolean, optional): Whether free-text responses are permitted.
+  - `presentation` (`"widget" | "rich"`, optional): Presentation surface (defaults to `"widget"` HTML Widget; explicit `"rich"` sends a `sendRichMessage` card).
+  - `questions` (array of objects, required): One or more prompt specifications, each containing `question`, optional `header`, `kind` (`"question" | "decision"`), `stakes`, `options` (`{ label, description?, recommended?, pros?, cons? }`), `multi_select`, `allow_custom` (`allowOther`), and `allow_defer` (`allowDefer`).
 - **Returns:** Object with `question_ids` (array of strings) and `status` (`"posted" | "failed"`), plus `success: false` and `error` (string) on card delivery failure.
 
 #### `edit_message`
 
-Modifies the text of a message previously sent by the agent.
+Modifies the plain text or rich content (`rich_message`) of a message previously sent by the agent.
 
 - **Parameters:**
   - `message_id` (integer, required): Message identifier to modify.
-  - `text` (string, required): Replacement Markdown text.
+  - `text` (string, optional): Replacement Markdown text (mutually exclusive with rich inputs).
+  - `markdown`, `html`, `blocks` (optional): Replacement `InputRichMessage` content (`rich_message`).
   - `chat_id` (integer, optional): Telegram chat identifier.
+  - `buttons`, `button_layout`, `buttons_per_row` (optional): Updated inline keyboard buttons.
 - **Returns:** Object with `success` (boolean).
 
 #### Rich media, location, interactivity, draft streaming, and poll tools
@@ -156,7 +154,7 @@ All fourteen outbound send tools (`send_photo`, `send_document`, `send_video`, `
 | `send_contact` | `phone_number` (string), `first_name` (string) | `last_name`, `vcard` (strings), `disable_notification` (boolean) | `{ success: true, message_id, message_thread_id? }` |
 | `send_dice` | _(none)_ | `emoji` (`"🎲" \| "🎯" \| "🏀" \| "⚽" \| "🎳" \| "🎰"`), `disable_notification` (boolean) | `{ success: true, message_id, value?: integer, emoji?: string, message_thread_id? }` |
 | `send_chat_action` | `action` (`"typing" \| "upload_photo" \| "record_video" \| "upload_video" \| "record_voice" \| "upload_voice" \| "upload_document" \| "choose_sticker" \| "find_location" \| "record_video_note" \| "upload_video_note"`) | _(chat and thread routing)_ | `{ success: true, message_thread_id? }` |
-| `send_message_draft` | `draft_id` (non-zero integer), `text` (Markdown string) | _(chat and thread routing)_ | `{ success: true, draft_id, message_thread_id? }` |
+| `send_message_draft` | `draft_id` (non-zero integer), `text` OR `markdown`/`html`/`blocks` | `can_stop`, `keep_on_stop`, thread routing (`rich` draft mode private chats only) | `{ success: true, draft_id, message_thread_id? }` |
 | `send_poll` | `question` (string, 1–300 chars), `options` (array of 2–12 strings or `{ text: string }` items, 1–100 chars each) | `is_anonymous`, `allows_multiple_answers`, `is_closed`, `disable_notification` (booleans), `type` (`"regular" \| "quiz"`), `correct_option_id` (0-based integer), `explanation` (Markdown, 0–200 chars), `open_period` (5–600s), `close_date` (integer) | `{ success: true, message_id, poll_id?: string, message_thread_id? }` |
 | `stop_poll` | `message_id` (integer) | `chat_id` (integer), `buttons`, `button_layout`, `buttons_per_row` | `{ success: true, message_id, poll?: object, message_thread_id? }` |
 
