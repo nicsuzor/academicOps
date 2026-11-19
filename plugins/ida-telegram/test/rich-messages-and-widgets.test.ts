@@ -1,5 +1,5 @@
 import { describe, expect, test, afterEach } from "bun:test";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import zlib from "node:zlib";
@@ -841,5 +841,112 @@ describe("Bot API 10.1-10.4 Rich Messages and HTML Widgets", () => {
     const editErr = apiCalls.find((c) => c.method === "editMessageWidgetData" && c.payload.message_id === 995);
     expect(JSON.parse(editErr!.payload.chat_data)).toMatchObject({ err: "Bad Request: message to reply not found" });
     expect(events.some((e) => e.meta.event === "question_delivery_failed" && e.meta.question_id === qOther.questionId)).toBe(true);
+  });
+
+  test("presentation='rich' supports allow_defer callback settlement, parseInboundUpdate reads rich_message excerpts, and Status Tracker starter hides Refresh on done", async () => {
+    const { config, store, broker, permRelay } = makeEnv();
+    const apiCalls: Array<{ method: string; payload: any }> = [];
+    const events: Array<{ content: string; meta: Record<string, string> }> = [];
+    const bot = new TelegramBotClient(config, broker, permRelay, (c, m) => events.push({ content: c, meta: m }), store);
+    (bot as any).callApi = async (method: string, payload: any) => {
+      apiCalls.push({ method, payload });
+      return { ok: true, result: { message_id: 998, chat: { id: payload.chat_id } } };
+    };
+    const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
+
+    const askRes = await mcp.handleMessage({
+      jsonrpc: "2.0",
+      id: 401,
+      method: "tools/call",
+      params: {
+        name: "ask_user",
+        arguments: {
+          chat_id: -100888,
+          presentation: "rich",
+          questions: [
+            {
+              kind: "decision",
+              question: "Proceed in group?",
+              allow_defer: true,
+              options: [{ label: "Ship" }, { label: "Hold" }],
+            },
+          ],
+        },
+      },
+    });
+    const qid = JSON.parse((askRes?.result as any).content[0].text).question_ids[0];
+    const richSend = apiCalls.find((c) => c.method === "sendRichMessage");
+    expect(richSend).toBeDefined();
+    expect(richSend!.payload.reply_markup.inline_keyboard.flat().some((b: any) => b.callback_data === `q:${qid}:0:defer`)).toBe(true);
+
+    await (bot as any).handleUpdate({
+      update_id: 940,
+      callback_query: {
+        id: "cb_rich_defer",
+        from: { id: 1111111111, is_bot: false, first_name: "Alex" },
+        data: `q:${qid}:0:defer`,
+        message: {
+          message_id: 998,
+          date: 1,
+          chat: { id: -100888, type: "supergroup" },
+          rich_message: { markdown: "**Proceed in group?**" },
+        },
+      },
+    });
+    expect(apiCalls.some((c) => c.method === "editMessageReplyMarkup" && c.payload.message_id === 998)).toBe(true);
+    expect(apiCalls.some((c) => c.method === "editMessageText" && c.payload.message_id === 998)).toBe(false);
+    expect(events.some((e) => e.meta.event === "question_deferred" && e.meta.question_id === qid)).toBe(true);
+
+    // parseInboundUpdate reads rich_message excerpts directly
+    const parsedReasons = parseInboundUpdate(
+      {
+        update_id: 941,
+        callback_query: {
+          id: "cb_r_rich",
+          from: { id: 1111111111, is_bot: false, first_name: "Alex" },
+          data: "reasons:998",
+          message: {
+            message_id: 998,
+            date: 1,
+            chat: { id: 1111111111, type: "private" },
+            rich_message: { markdown: "**Headline:** Direct rich excerpt" },
+          },
+        },
+      },
+      [1111111111]
+    );
+    expect(parsedReasons?.meta.target_excerpt).toBe("Headline: Direct rich excerpt");
+
+    // Status Tracker HTML template in references/widgets.md validates cleanly and hides Refresh on done
+    const { validateWidgetHtml } = await import("../src/telegram/widgets.js");
+    const refMd = readFileSync(join(import.meta.dir, "..", "skills", "telegram", "references", "widgets.md"), "utf8");
+    const htmlMatch = refMd.match(/```html\n([\s\S]*?)\n```/);
+    expect(htmlMatch).not.toBeNull();
+    const statusHtml = htmlMatch![1];
+    expect(statusHtml).not.toContain("\\\\u2014");
+    const check = validateWidgetHtml(statusHtml);
+    expect(check.ok).toBe(true);
+    if (check.ok) {
+      expect(check.compressedBytes).toBeLessThanOrEqual(3696);
+    }
+    const statusMatch = statusHtml.match(/<script>([\s\S]*?)<\/script>/);
+    const stIds = ["pl", "up", "ti", "fl", "pc", "er", "ss", "nt", "rf"];
+    const stEls: Record<string, any> = {};
+    for (const id of stIds) {
+      stEls[id] = { style: {}, className: "", textContent: "", innerHTML: "", disabled: false, addEventListener() {} };
+    }
+    const runner = new Function("window", "document", statusMatch![1]);
+    runner(
+      {
+        TelegramWidget: {
+          chatData: JSON.stringify({ t: "Pipeline", s: "done", pct: 100, act: 1, steps: [] }),
+          onEvent() {},
+          ready() {},
+          request: async () => "",
+        },
+      },
+      { getElementById: (id: string) => stEls[id] || null }
+    );
+    expect(stEls.rf.className).toBe("bt");
   });
 });

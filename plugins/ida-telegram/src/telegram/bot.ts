@@ -2578,11 +2578,31 @@ export class TelegramBotClient {
           return;
         }
 
+        if (action === "defer") {
+          const defRes = await this.broker.resolveDefer(qid);
+          if (defRes && cb.message) {
+            await this.settleQuestionMessage(
+              { ...defRes.question, chatId: cb.message.chat.id, messageId: cb.message.message_id },
+              defRes.cardText,
+              "deferred",
+              "Deferred"
+            );
+            this.emitEvent(
+              `Question deferred: ${defRes.question.question}`,
+              defRes.channelEvent as unknown as Record<string, unknown>,
+              cb.message.chat.id
+            );
+          }
+          return;
+        }
+
         if (q?.multiSelect && action !== "done") {
           const optIdx = parseInt(action, 10);
           const updatedCard = this.broker.toggleOption(qid, optIdx);
           if (updatedCard && cb.message) {
-            const inline_keyboard = updatedCard.buttons.map((b) => [{ text: b.text, callback_data: b.callbackData }]);
+            const inline_keyboard = updatedCard.buttons.map((b) => [
+              b.web_app ? { text: b.text, web_app: b.web_app } : { text: b.text, callback_data: b.callbackData },
+            ]);
             await this.callApi("editMessageReplyMarkup", {
               chat_id: cb.message.chat.id,
               message_id: cb.message.message_id,

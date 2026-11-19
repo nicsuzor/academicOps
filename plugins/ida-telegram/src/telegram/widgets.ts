@@ -251,6 +251,7 @@ export function buildQuestionWidget(input: WidgetPromptInput): {
     `${needSg ? `$("sg").className="sg"+(busy?" sh":"");` : ""}` +
     `const md=s.s;` +
     `if(md==="answered"||md==="deferred"||md==="closed"||md==="awaiting_reply"){` +
+    `err="";$("er").className="er";` +
     `$("os").style.display="none";${hasPg ? '$("pg").style.display="none";' : ""}$("ft").style.display="none";${needSg ? `$("sg").className="sg";` : ""}` +
     `$("dc").className="dn sh"+(md==="awaiting_reply"||md==="deferred"?" wt":"");` +
     `$("dm").innerHTML=md==="deferred"?P:(md==="awaiting_reply"?"…":C);` +
@@ -265,7 +266,7 @@ export function buildQuestionWidget(input: WidgetPromptInput): {
     `${allowDef ? `$("df").disabled=busy;` : ""}${allowOth ? `$("ot").disabled=busy;` : ""}` +
     `}` +
     `const EM={TIMEOUT:"Timed out (15s) \\u2014 retry",NOT_ALLOWED:"Forwarded widget disabled",RATE_LIMITED:"Slow down \\u2014 retry"};` +
-    `async function req(p){if(!W)return;busy=1;err="";draw();try{H&&H.notificationOccurred("success");await W.request(p)}catch(e){err=e&&e.name==="WidgetRequestError"?(EM[e.code]||e.message):((e&&e.message)||"Request failed")}finally{busy=0;draw()}}` +
+    `async function req(p){if(!W)return;busy=1;err="";draw();try{await W.request(p);H&&H.notificationOccurred("success")}catch(e){H&&H.notificationOccurred("error");err=e&&e.name==="WidgetRequestError"?(EM[e.code]||e.message):((e&&e.message)||"Request failed")}finally{busy=0;draw()}}` +
     `$("os").addEventListener("click",e=>{` +
     `${hasT ? `const tb=e.target.closest("[data-t]");if(tb){e.stopPropagation();if(W&&typeof W.setResizeAnchor==="function")W.setResizeAnchor("top");const i=+tb.dataset.t;exp[i]=!exp[i];draw();return}` : ""}` +
     `const el=e.target.closest("[data-i]");if(!el||busy)return;const i=+el.dataset.i;` +

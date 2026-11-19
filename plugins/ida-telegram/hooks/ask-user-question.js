@@ -48,22 +48,29 @@ async function main() {
   const sessionId = payload.session_id || payload.sessionId;
   const topChat = typeof toolInput.chat === "boolean" ? toolInput.chat : undefined;
   const topMiniAppOnly = toolInput.mini_app_only ?? toolInput.miniapp_only ?? toolInput.miniAppOnly;
+  const topPresentation = toolInput.presentation;
   const rawQuestions = toolInput.questions || [
     {
       question: toolInput.question || "Input requested",
       header: toolInput.header,
+      kind: toolInput.kind,
+      stakes: toolInput.stakes,
+      presentation: topPresentation,
       context: toolInput.context,
       detail: toolInput.detail || toolInput.details,
       recommendation: toolInput.recommendation,
       options: toolInput.options || [{ label: "Acknowledge" }],
       multiSelect: toolInput.multiSelect,
       allowOther: toolInput.allowOther,
+      allowDefer: toolInput.allowDefer ?? toolInput.allow_defer,
       mini_app_only: topMiniAppOnly,
       chat: topChat,
     },
   ];
   const questions = rawQuestions.map((q) => ({
     ...q,
+    presentation: q.presentation ?? topPresentation,
+    allowDefer: q.allowDefer ?? q.allow_defer,
     mini_app_only: q.mini_app_only ?? q.miniapp_only ?? q.miniAppOnly ?? topMiniAppOnly,
     chat: q.chat ?? topChat,
     detail: q.detail || q.details,
@@ -78,6 +85,7 @@ async function main() {
         type: "ask_user",
         session_id: sessionId,
         turn_id: turnId,
+        ...(topPresentation ? { presentation: topPresentation } : {}),
         questions,
       }) + "\n"
     );

@@ -359,6 +359,13 @@ export class QuestionBroker {
       });
     }
 
+    if (q.allowDefer) {
+      buttons.push({
+        text: "⏸ Defer",
+        callbackData: `q:${id}:0:defer`,
+      });
+    }
+
     if (q.allowOther !== false) {
       buttons.push({
         text: "✏️ Other",

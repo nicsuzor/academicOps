@@ -80,8 +80,8 @@ $("pl").className="pl"+cls;$("pl").textContent=md.toUpperCase();$("up").textCont
 $("fl").className="fl"+cls;$("fl").style.width=pct+"%";$("pc").textContent=pct+"%";
 $("er").textContent=err;$("er").className="er"+(err?" sh":"");
 $("ss").innerHTML=(d.steps||[]).map(x=>'<div class="st '+(x.st||"todo")+'"><span class="ic '+(x.st||"todo")+'">'+(I[x.st]||I.todo)+'</span><span class="sl">'+E(x.l||"")+'</span></div>').join("");
-$("nt").textContent=busy?"Refreshing…":(d.note||"");$("rf").className="bt"+(d.act?" sh":"");$("rf").disabled=busy}
-$("rf").addEventListener("click",async()=>{if(!W||busy)return;busy=1;err="";draw();try{await W.request("st:refresh")}catch(e){err=e&&e.name==="WidgetRequestError"?(e.code==="TIMEOUT"?"Timed out (15s) \\u2014 tap to retry":e.code==="NOT_ALLOWED"?"Actions disabled on forwarded widgets":e.code==="RATE_LIMITED"?"Too many taps \\u2014 wait briefly":e.message):"Request failed"}finally{busy=0;draw()}});
+$("nt").textContent=busy?"Refreshing…":(d.note||"");$("rf").className="bt"+(d.act&&md!=="done"?" sh":"");$("rf").disabled=busy}
+$("rf").addEventListener("click",async()=>{if(!W||busy)return;busy=1;err="";draw();try{await W.request("st:refresh")}catch(e){err=e&&e.name==="WidgetRequestError"?(e.code==="TIMEOUT"?"Timed out (15s) \u2014 tap to retry":e.code==="NOT_ALLOWED"?"Actions disabled on forwarded widgets":e.code==="RATE_LIMITED"?"Too many taps \u2014 wait briefly":e.message):"Request failed"}finally{busy=0;draw()}});
 if(W){W.onEvent("chatDataChanged",draw);W.ready()}draw();
 </script></body></html>
 ```

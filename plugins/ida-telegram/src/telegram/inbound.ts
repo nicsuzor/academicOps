@@ -1,4 +1,5 @@
 import { normalizeCommandName } from "./commands.js";
+import { extractRichMessageText } from "./rich-message.js";
 
 export interface TelegramUser {
   id: number;
@@ -328,8 +329,13 @@ export function parseInboundUpdate(
       meta.chat_id = String(cb.message.chat.id);
     }
 
+    const extractCbExcerpt = () =>
+      cb.message?.text ||
+      extractRichMessageText(cb.message?.rich_message) ||
+      (getExcerpt && cb.message?.message_id ? getExcerpt(cb.message.message_id) : undefined);
+
     if (callbackPrefix === "logic_check" || rawData === "logic_check") {
-      const targetExcerpt = cb.message?.text || (getExcerpt && cb.message?.message_id ? getExcerpt(cb.message.message_id) : undefined);
+      const targetExcerpt = extractCbExcerpt();
       meta.event = "logic_check";
       meta.action = "logic_check";
       if (targetExcerpt) {
@@ -343,7 +349,7 @@ export function parseInboundUpdate(
     }
 
     if (callbackPrefix === "explain" || rawData === "explain") {
-      const targetExcerpt = cb.message?.text || (getExcerpt && cb.message?.message_id ? getExcerpt(cb.message.message_id) : undefined);
+      const targetExcerpt = extractCbExcerpt();
       meta.event = "explain";
       meta.action = "explain";
       if (targetExcerpt) {
@@ -367,7 +373,7 @@ export function parseInboundUpdate(
     }
 
     if (callbackPrefix === "reasons" || rawData === "reasons") {
-      const targetExcerpt = cb.message?.text || (getExcerpt && cb.message?.message_id ? getExcerpt(cb.message.message_id) : undefined);
+      const targetExcerpt = extractCbExcerpt();
       meta.event = "reasons";
       meta.action = "reasons";
       if (targetExcerpt) {
@@ -386,7 +392,7 @@ export function parseInboundUpdate(
       callbackPrefix === "accept_rec" ||
       rawData === "accept_rec"
     ) {
-      const targetExcerpt = cb.message?.text || (getExcerpt && cb.message?.message_id ? getExcerpt(cb.message.message_id) : undefined);
+      const targetExcerpt = extractCbExcerpt();
       meta.event = "accept_recommendation";
       meta.action = "accept_recommendation";
       meta.recommendation = "accepted";
@@ -407,7 +413,7 @@ export function parseInboundUpdate(
       callbackPrefix === "decline_rec" ||
       rawData === "decline_rec"
     ) {
-      const targetExcerpt = cb.message?.text || (getExcerpt && cb.message?.message_id ? getExcerpt(cb.message.message_id) : undefined);
+      const targetExcerpt = extractCbExcerpt();
       meta.event = "decline_recommendation";
       meta.action = "decline_recommendation";
       meta.recommendation = "declined";
