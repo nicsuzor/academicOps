@@ -22,6 +22,7 @@ export interface TelegramMessage {
   text?: string;
   caption?: string;
   rich_message?: { blocks?: unknown[]; html?: string; markdown?: string };
+  widget?: Record<string, unknown>;
   reply_to_message?: TelegramMessage;
   quote?: { text: string };
   photo?: Array<{ file_id: string; file_size?: number }>;

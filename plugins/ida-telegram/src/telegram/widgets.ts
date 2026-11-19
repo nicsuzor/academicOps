@@ -254,7 +254,7 @@ export function buildQuestionWidget(input: WidgetPromptInput): {
     `$("os").style.display="none";${hasPg ? '$("pg").style.display="none";' : ""}$("ft").style.display="none";${needSg ? `$("sg").className="sg";` : ""}` +
     `$("dc").className="dn sh"+(md==="awaiting_reply"||md==="deferred"?" wt":"");` +
     `$("dm").innerHTML=md==="deferred"?P:(md==="awaiting_reply"?"…":C);` +
-    `$("dt").textContent=md==="deferred"?"Deferred":md==="awaiting_reply"?"Awaiting reply in chat":md==="closed"?"Closed: "+(s.note||"Resolved"):("Selected: "+(s.lbl||"Recorded"));` +
+    `$("dt").textContent=md==="deferred"?"Deferred":md==="awaiting_reply"?"Awaiting reply in chat":md==="closed"?"Closed: "+(s.lbl||s.note||"Resolved"):("Selected: "+(s.lbl||"Recorded"));` +
     `$("dn").textContent=s.note||(md==="awaiting_reply"?"Reply directly in chat to answer":"Recorded · "+(s.t||hhmm()));return}` +
     `${isDec ? "if(typeof s.sel==='number')sel=s.sel;if(s.exp)exp=Object.assign({},exp,s.exp);" : multi ? "if(Array.isArray(s.pk))pk=new Set(s.pk);" : "if(typeof s.sel==='number')sel=s.sel;"}` +
     `${hasPg ? `const ps=${ps},pgs=Math.max(1,Math.ceil(O.length/ps));if(pg>=pgs)pg=pgs-1;const sl=O.slice(pg*ps,(pg+1)*ps);$("pl").textContent=(pg+1)+" / "+pgs;$("pv").disabled=pg===0;$("nx").disabled=pg>=pgs-1;` : "const sl=O;"}` +
@@ -265,7 +265,7 @@ export function buildQuestionWidget(input: WidgetPromptInput): {
     `${allowDef ? `$("df").disabled=busy;` : ""}${allowOth ? `$("ot").disabled=busy;` : ""}` +
     `}` +
     `const EM={TIMEOUT:"Timed out (15s) \\u2014 retry",NOT_ALLOWED:"Forwarded widget disabled",RATE_LIMITED:"Slow down \\u2014 retry"};` +
-    `async function req(p){if(!W)return;busy=1;err="";draw();try{H&&H.notificationOccurred("success");await W.request(p)}catch(e){err=e&&e.name==="WidgetRequestError"?(EM[e.code]||e.message):"Request failed"}finally{busy=0;draw()}}` +
+    `async function req(p){if(!W)return;busy=1;err="";draw();try{H&&H.notificationOccurred("success");await W.request(p)}catch(e){err=e&&e.name==="WidgetRequestError"?(EM[e.code]||e.message):((e&&e.message)||"Request failed")}finally{busy=0;draw()}}` +
     `$("os").addEventListener("click",e=>{` +
     `${hasT ? `const tb=e.target.closest("[data-t]");if(tb){e.stopPropagation();if(W&&typeof W.setResizeAnchor==="function")W.setResizeAnchor("top");const i=+tb.dataset.t;exp[i]=!exp[i];draw();return}` : ""}` +
     `const el=e.target.closest("[data-i]");if(!el||busy)return;const i=+el.dataset.i;` +

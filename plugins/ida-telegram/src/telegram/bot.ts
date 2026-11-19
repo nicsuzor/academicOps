@@ -1811,6 +1811,9 @@ export class TelegramBotClient {
     }
 
     const routing = this.resolveOutboundThreadAndReply(options.chatId, options.messageThreadId, options.replyTo);
+    if (routing.error) {
+      return { ok: false, description: routing.error };
+    }
     const files: Array<{ fieldName: string; filePath: string }> = [];
     const richPayload = buildInputRichMessagePayload(options.richMessage, files, (ref) => this.isLocalFilePath(ref));
 
@@ -1925,6 +1928,9 @@ export class TelegramBotClient {
     if (!chatCheck.ok) return { ok: false, description: chatCheck.error };
 
     const routing = this.resolveOutboundThreadAndReply(options.chatId, options.messageThreadId, options.replyTo);
+    if (routing.error) {
+      return { ok: false, description: routing.error };
+    }
     const payload: Record<string, unknown> = {
       chat_id: options.chatId,
       html: options.html,
@@ -2199,7 +2205,7 @@ export class TelegramBotClient {
     remainingRows: Array<Array<Record<string, unknown>>>
   ): Promise<void> {
     if (!cb.message) return;
-    if (cb.message.rich_message && !cb.message.text) {
+    if ((cb.message.rich_message || cb.message.widget) && !cb.message.text) {
       await this.editMessageReplyMarkup(cb.message.chat.id, cb.message.message_id, remainingRows);
       return;
     }
@@ -2277,16 +2283,7 @@ export class TelegramBotClient {
         }
 
         if (verb === "other") {
-          await this.answerWidgetQuery({
-            widgetQueryId: wq.id,
-            data: JSON.stringify({ ok: true, status: "awaiting_reply" }),
-          });
           if (msg) {
-            await this.editMessageWidgetData({
-              chatId: msg.chat.id,
-              messageId: msg.message_id,
-              chatData: buildSettledWidgetChatData("awaiting_reply", "Awaiting reply in chat"),
-            });
             const promptTitle = q.header || q.question || qid;
             const threadId = msg.message_thread_id ?? this.getLastThreadId(msg.chat.id);
             const promptRes = await this.callApi("sendMessage", {
@@ -2296,10 +2293,40 @@ export class TelegramBotClient {
               reply_parameters: { message_id: msg.message_id },
               reply_markup: { force_reply: true, selective: true },
             });
-            if (promptRes?.ok && promptRes?.result?.message_id) {
-              this.broker.setPromptMessageId(qid, promptRes.result.message_id);
-              this.recordMessageThread(promptRes.result.message_id, threadId);
+            if (!promptRes?.ok || !promptRes?.result?.message_id) {
+              const errMsg = promptRes?.description || promptRes?.error || "Failed to send custom reply prompt";
+              await this.answerWidgetQuery({
+                widgetQueryId: wq.id,
+                data: JSON.stringify({ ok: false, error: errMsg }),
+              });
+              await this.editMessageWidgetData({
+                chatId: msg.chat.id,
+                messageId: msg.message_id,
+                chatData: JSON.stringify({ err: errMsg }),
+              });
+              this.emitEvent(
+                `Failed to open custom reply prompt for question ${qid}: ${errMsg}`,
+                { event: "question_delivery_failed", question_id: qid, error: errMsg },
+                msg.chat.id
+              );
+              return;
             }
+            this.broker.setPromptMessageId(qid, promptRes.result.message_id);
+            this.recordMessageThread(promptRes.result.message_id, threadId);
+            await this.answerWidgetQuery({
+              widgetQueryId: wq.id,
+              data: JSON.stringify({ ok: true, status: "awaiting_reply" }),
+            });
+            await this.editMessageWidgetData({
+              chatId: msg.chat.id,
+              messageId: msg.message_id,
+              chatData: buildSettledWidgetChatData("awaiting_reply", "Awaiting reply in chat"),
+            });
+          } else {
+            await this.answerWidgetQuery({
+              widgetQueryId: wq.id,
+              data: JSON.stringify({ ok: false, error: "Missing source message for custom reply" }),
+            });
           }
           return;
         }

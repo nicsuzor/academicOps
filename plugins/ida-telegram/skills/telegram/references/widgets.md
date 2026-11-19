@@ -26,7 +26,7 @@ Use `send_widget`, `edit_message_widget_data`, and `answer_widget_query` in priv
   - `RATE_LIMITED` -> `"Too many taps -- wait briefly"`
   - Fallback -> `e.message || "Request failed"`
 
-## Starter Template: Live Multi-Step Status Tracker (`<= 1,900 B` zlib-9)
+## Starter Template: Live Multi-Step Status Tracker (~2,290 B zlib-9, ~1,800 B headroom)
 
 Send once with `send_widget({ html, caption: "Status: ...", chat_data: JSON.stringify(...) })` (`allow_queries: false` for read-only progress, or `true` if `act: 1` query button is enabled), then update silently in place using `edit_message_widget_data({ message_id, chat_data })`:
 

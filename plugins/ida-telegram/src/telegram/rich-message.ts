@@ -40,9 +40,9 @@ export function validateRichMessageContent(spec: {
   media?: unknown;
   allowMedia?: boolean;
 }): ValidationResult {
-  const hasMd = typeof spec.markdown === "string" && spec.markdown.trim().length > 0;
-  const hasHtml = typeof spec.html === "string" && spec.html.trim().length > 0;
-  const hasBlocks = Array.isArray(spec.blocks);
+  const hasMd = spec.markdown !== undefined;
+  const hasHtml = spec.html !== undefined;
+  const hasBlocks = spec.blocks !== undefined;
 
   const count = (hasMd ? 1 : 0) + (hasHtml ? 1 : 0) + (hasBlocks ? 1 : 0);
   if (count !== 1) {
@@ -50,24 +50,30 @@ export function validateRichMessageContent(spec: {
   }
 
   if (hasMd) {
-    const md = spec.markdown as string;
+    if (typeof spec.markdown !== "string" || spec.markdown.trim().length === 0) {
+      return { ok: false, error: "Rich message markdown must be a non-empty string" };
+    }
+    const md = spec.markdown;
     const len = Math.max(md.length, Buffer.byteLength(md, "utf8"));
     if (len > RICH_MESSAGE_MAX_CHARS) {
       return { ok: false, error: `Rich message markdown size ${len} exceeds ${RICH_MESSAGE_MAX_CHARS} limit` };
     }
   }
   if (hasHtml) {
-    const html = spec.html as string;
+    if (typeof spec.html !== "string" || spec.html.trim().length === 0) {
+      return { ok: false, error: "Rich message html must be a non-empty string" };
+    }
+    const html = spec.html;
     const len = Math.max(html.length, Buffer.byteLength(html, "utf8"));
     if (len > RICH_MESSAGE_MAX_CHARS) {
       return { ok: false, error: `Rich message html size ${len} exceeds ${RICH_MESSAGE_MAX_CHARS} limit` };
     }
   }
   if (hasBlocks) {
-    const blocks = spec.blocks as unknown[];
-    if (blocks.length === 0) {
-      return { ok: false, error: "Rich message blocks array must not be empty" };
+    if (!Array.isArray(spec.blocks) || spec.blocks.length === 0) {
+      return { ok: false, error: "Rich message blocks must be a non-empty array" };
     }
+    const blocks = spec.blocks;
     if (blocks.length > RICH_MESSAGE_MAX_BLOCKS) {
       return { ok: false, error: `Rich message blocks length ${blocks.length} exceeds ${RICH_MESSAGE_MAX_BLOCKS} limit` };
     }

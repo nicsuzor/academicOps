@@ -6,7 +6,7 @@ Use `send_rich_message`, `send_message_draft` (private chats), and `edit_message
 
 - Provide **exact exclusivity**: supply exactly one of `markdown`, `html`, or `blocks`. Mixing formats or combining `text` with `markdown`/`html`/`blocks` on `edit_message` or `send_message_draft` rejects locally.
 - Rich formatting compiles natively on Telegram's renderer: write standard Markdown or Rich HTML directly; never manually escape MarkdownV2 punctuation.
-- Media attachments (`media`): up to `50` items (`{ id, type, file, mime_type?, caption?, duration?, width?, height?, has_spoiler? }`). Every `id` matches `[A-Za-z0-9_-]{1,64}` and is unique. Local filesystem `file` paths upload transparently over multipart `FormData`; HTTPS URLs and Telegram `file_id` pass by reference. Allowed `type` values: `photo`, `video`, `audio`, `document`, `animation`, `voice` / `voice_note` (normalized to `voice_note`).
+- Media attachments (`media`): up to `50` items (`{ id, type, file, mime_type?, duration?, performer?, title?, width?, height?, has_spoiler?, supports_streaming?, disable_content_type_detection? }`). Every `id` matches `[A-Za-z0-9_-]{1,64}` and is unique. Local filesystem `file` paths upload transparently over multipart `FormData`; HTTPS URLs and Telegram `file_id` pass by reference. Allowed `type` values: `photo`, `video`, `audio`, `document`, `animation`, `voice` / `voice_note` (normalized to `voice_note`).
 - `quote_rich_texts`: pass exact quoted snippets from a target Rich Message under `reply_parameters.quote_rich_texts` when replying to a specific passage.
 - `voice: true` (or `VOICE_REPLIES=mirror` after an inbound voice turn): synthesizes spoken audio from extracted prose (stripping collapsed `<details>` content) alongside the Rich Message.
 
@@ -24,7 +24,7 @@ Use `send_rich_message`, `send_message_draft` (private chats), and `edit_message
 | Code block | ` ```ts\n...\n``` ` | `<pre><code class="language-ts">...</code></pre>` | Native syntax highlighting and horizontal scroll. |
 | Embedded media | `![alt](tg://photo?id=chart_1)` | `<img src="tg://photo?id=chart_1"/>` | Also supports `tg://video?id=`, `tg://audio?id=`, `tg://document?id=`, `tg://animation?id=`, `tg://voice_note?id=`. Matching item must exist in `media`. |
 | Map preview | `<tg-map lat="-27.47" lon="153.02" title="Lab"/>` | `<tg-map lat="-27.47" lon="153.02" title="Lab"/>` | Embedded interactive location card inside Rich body. |
-| Footer metadata | `<footer>Scope · HH:MM</footer>` | `<footer>Scope · HH:MM</footer>` | Subdued footer for timestamps (24h local) and scope glosses. |
+| Footer metadata | `<footer>Scope</footer>` | `<footer>Scope</footer>` | Subdued footer for scope glosses or attribution. |
 | In-body button row | `<tg-button-row>` | `<tg-button-row>` | Prefer inline `reply_markup` (`buttons`) when message actions or callback mutation (`editMessageReplyMarkup`) are needed. |
 
 ## Private-Chat Streaming Drafts (`send_message_draft`)

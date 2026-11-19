@@ -382,6 +382,7 @@ export class SharedTelegramChannelCore {
     }
 
     const postedIds: string[] = [];
+    const usedPresentations = new Set<"widget" | "rich">();
     for (const q of questions) {
       const multiSelect = q.multi_select !== undefined ? q.multi_select : q.multiSelect;
       const allowOther = q.allow_custom !== undefined ? q.allow_custom : q.allowOther;
@@ -390,6 +391,9 @@ export class SharedTelegramChannelCore {
       const isMiniAppOnly = Boolean(
         topMiniAppOnly || q.mini_app_only || q.miniapp_only || q.miniAppOnly || q.chat === false
       );
+      if (!isMiniAppOnly) {
+        usedPresentations.add(presentation);
+      }
       const effectiveThreadId = (q.message_thread_id ?? q.messageThreadId ?? q.thread_id ?? q.threadId ?? topThreadId) ?? this.bot?.getLastThreadId(defaultChatId);
       const detailText = q.detail ?? q.details ?? topDetail;
       let detailsId = q.detailsId ?? q.details_id;
@@ -460,10 +464,13 @@ export class SharedTelegramChannelCore {
           : `Questions ${postedIds.join(", ")} posted to the user. Do not assume an answer; continue other work or end your turn.`;
     }
 
+    const resolvedPresentation =
+      usedPresentations.size === 1 ? usedPresentations.values().next().value : topPresentation;
+
     return {
       question_ids: postedIds,
       status: "posted",
-      ...(topMiniAppOnly ? {} : { presentation: topPresentation }),
+      ...(topMiniAppOnly ? {} : { presentation: resolvedPresentation }),
       message,
     };
   }
@@ -1400,6 +1407,9 @@ export class SharedTelegramChannelCore {
       args.markdown !== undefined || args.html !== undefined || args.blocks !== undefined;
     if (typeof draftId !== "number" || !Number.isInteger(draftId) || draftId === 0) {
       return { success: false, error: "send_message_draft requires a non-zero integer draft_id" };
+    }
+    if (args.media !== undefined) {
+      return { success: false, error: "Draft messages do not support media attachments" };
     }
     if (!isRich && (!text || !text.trim())) {
       return { success: false, error: "send_message_draft requires non-empty text or rich content" };

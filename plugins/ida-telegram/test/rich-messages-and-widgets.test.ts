@@ -156,6 +156,7 @@ describe("Bot API 10.1-10.4 Rich Messages and HTML Widgets", () => {
 
     for (const [idx, [args, expectedText]] of ([
       [{ markdown: "a", html: "<b>a</b>" }, "exactly one"],
+      [{ markdown: "a", html: "" }, "exactly one"],
       [{}, "exactly one"],
       [{ markdown: "x".repeat(32_769) }, "32768"],
       [{ blocks: Array.from({ length: 501 }, () => ({ type: "paragraph", text: [] })) }, "500"],
@@ -696,5 +697,87 @@ describe("Bot API 10.1-10.4 Rich Messages and HTML Widgets", () => {
     expect(widgetEdits).toHaveLength(2);
     expect(JSON.parse(widgetEdits[0].chatData)).toMatchObject({ s: "answered", lbl: "Yes" });
     expect(JSON.parse(widgetEdits[1].chatData)).toMatchObject({ s: "closed", lbl: "Superseded" });
+  });
+
+  test("fail-fast guards: topics missing thread abort sendRichMessage/sendWidget, widget closed renders s.lbl, force_reply failure surfaces inline err, and draft forbids media", async () => {
+    const { config, store, broker, permRelay } = makeEnv();
+    store.updateChatState(1111111111, { topicsEnabled: true });
+    const apiCalls: Array<{ method: string; payload: any }> = [];
+    const events: Array<{ content: string; meta: Record<string, string> }> = [];
+    const bot = new TelegramBotClient(config, broker, permRelay, (c, m) => events.push({ content: c, meta: m }), store);
+    (bot as any).callApi = async (method: string, payload: any) => {
+      apiCalls.push({ method, payload });
+      if (method === "sendMessage" && (payload.reply_markup as any)?.force_reply) {
+        return { ok: false, description: "Bad Request: message to reply not found" };
+      }
+      return { ok: true, result: { message_id: 990 + apiCalls.length, chat: { id: payload.chat_id } } };
+    };
+    const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
+
+    // 1. send_rich_message & send_widget respect topicsEnabled routing.error before callApi
+    const richNoThread = await mcp.handleMessage({
+      jsonrpc: "2.0",
+      id: 301,
+      method: "tools/call",
+      params: { name: "send_rich_message", arguments: { markdown: "Missing thread" } },
+    });
+    expect((richNoThread?.result as any)?.isError).toBe(true);
+
+    const widgetNoThread = await mcp.handleMessage({
+      jsonrpc: "2.0",
+      id: 302,
+      method: "tools/call",
+      params: { name: "send_widget", arguments: { html: "<p>Missing thread</p>" } },
+    });
+    expect((widgetNoThread?.result as any)?.isError).toBe(true);
+    expect(apiCalls.some((c) => c.method === "sendRichMessage" || c.method === "sendWidget")).toBe(false);
+
+    // 2. send_message_draft rejects undeclared media
+    const draftMedia = await mcp.handleMessage({
+      jsonrpc: "2.0",
+      id: 303,
+      method: "tools/call",
+      params: { name: "send_message_draft", arguments: { draft_id: 9, markdown: "hi", media: [] } },
+    });
+    expect((draftMedia?.result as any)?.isError).toBe(true);
+    expect(String((draftMedia?.result as any)?.content?.[0]?.text)).toContain("media");
+
+    // 3. widget closed branch reads s.lbl (reason) rather than s.note
+    const { buildQuestionWidget } = await import("../src/telegram/widgets.js");
+    const built = buildQuestionWidget({
+      id: "q_close_lbl",
+      question: "Proceed?",
+      options: [{ label: "Yes" }],
+    });
+    expect(built.html).toContain('md==="closed"?"Closed: "+(s.lbl||s.note||"Resolved")');
+
+    // 4. widget_query `other` when force_reply fails does not claim awaiting_reply; surfaces inline err
+    store.updateChatState(1111111111, { activeThreadId: 77, topicsEnabled: true });
+    bot.setTopicsEnabled(1111111111, true);
+    const qOther = await broker.askUser({
+      question: "Other fail test?",
+      presentation: "widget",
+      options: [{ label: "A" }],
+      chatId: 1111111111,
+      messageThreadId: 77,
+    });
+    broker.setMessageId(qOther.questionId, 995);
+
+    await (bot as any).handleUpdate({
+      update_id: 999,
+      widget_query: {
+        id: "wq_other_fail",
+        from: { id: 1111111111, is_bot: false, first_name: "Alex" },
+        chat_instance: "c",
+        data: `q:${qOther.questionId}:other`,
+        message: { message_id: 995, message_thread_id: 77, chat: { id: 1111111111, type: "private" }, date: 1 },
+      },
+    });
+
+    const ansFail = apiCalls.find((c) => c.method === "answerWidgetQuery" && c.payload.widget_query_id === "wq_other_fail");
+    expect(JSON.parse(ansFail!.payload.data)).toMatchObject({ ok: false });
+    const editErr = apiCalls.find((c) => c.method === "editMessageWidgetData" && c.payload.message_id === 995);
+    expect(JSON.parse(editErr!.payload.chat_data)).toMatchObject({ err: "Bad Request: message to reply not found" });
+    expect(events.some((e) => e.meta.event === "question_delivery_failed" && e.meta.question_id === qOther.questionId)).toBe(true);
   });
 });

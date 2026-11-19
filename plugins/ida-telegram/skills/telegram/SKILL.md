@@ -36,7 +36,7 @@ Concise 1-2 line context or direct answer.
   Verbatim quotes, command outputs, or checks.
 </details>
 
-<footer>Scope · HH:MM</footer>
+<footer>Scope</footer>
 ```
 
 - **Reference loading:** If composing Rich Messages with headings, native `<table bordered striped compact>`, `<aside>`, math, `<tg-map>`, `tg://<type>?id=...` `media`, or `<tg-thinking>` drafts, read [references/rich-messages.md](references/rich-messages.md) before sending.
