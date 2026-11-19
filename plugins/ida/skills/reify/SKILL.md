@@ -36,7 +36,7 @@ Call `/hydrate` on the objective, or on the task if given an ID (delegating to t
 - **Groundwork-First Route Decisions Invariant**: An agent given a task or high-value prompt does the groundwork first (settling unknowns from the PKB first, then live GitHub and traces) and makes architectural or route decisions itself; it never leaves actionable agent steps in `inbox` or files a task back to the user without groundwork. Research tasks investigating design or implementation trade-offs evaluate alternatives and choose the recommended route directly, placing the concrete next agent step at `status: queued` for dispatch and closing (`done`) tasks whose deliverable or release has shipped and the user knows about. Only when agent groundwork and option evaluation are complete (with a reasoned recommendation recorded in the body) and the item genuinely waits on the user's own decision or host action is the task set to `status: review` (`assignee: user`) so it reaches the daily note's `## With you`.
 - **Template Interpretation**: Read each selected template and translate its stages into concise, numbered imperative steps in `## Instructions`. Do not copy narrative rationale, explanatory prose, or background. Skills are invoked directly (`invoke /<skill-name>`). Where tasks involve qualitative judgment, curation, or evaluation, compose an agent workflow rather than specifying deterministic scripts or wrappers.
 
-Halt when composition comes up short: create nothing and report precisely what failed.
+When composition has a gap, write nothing incomplete to the graph and ask the supervisor for clarification rather than declining the task.
 
 ## 3. Write Each Task
 
