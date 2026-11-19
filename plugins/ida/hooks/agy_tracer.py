@@ -584,7 +584,7 @@ def _init_turn_state_agy(
                 prefix, suffix = sender_id.split("/", 1)
                 if prefix == session_id and suffix:
                     background_task_id = suffix
-            elif sender_id != session_id:
+            elif sender_id not in (session_id, "system"):
                 if sender_id != state.get("parent_session_id") or not _load_state(sender_id):
                     handback_subagent_id = sender_id
 

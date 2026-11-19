@@ -711,7 +711,7 @@ def classify_prompt_origin(
 
     if "sender=" in prompt_text:
         m_sender = re.search(r'\bsender=["\']?([^\s,>"\']+)["\']?', prompt_text)
-        if m_sender and m_sender.group(1) != session_id:
+        if m_sender and m_sender.group(1) not in (session_id, "system"):
             return "handback", m_sender.group(1), None
 
     m_chan = re.search(r'<channel\b[^>]*\bsource=["\']([^"\']+)["\']', prompt_text)

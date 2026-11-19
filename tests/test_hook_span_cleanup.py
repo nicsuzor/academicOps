@@ -228,6 +228,12 @@ def test_payload_context_attributes_attached_when_present(isolated_state, export
             "telegram",
         ),
         ("The following is a <SYSTEM_MESSAGE> notice", "system", None, None),
+        (
+            "<SYSTEM_MESSAGE>\n[Message] sender=system content=Subagent went idle\n</SYSTEM_MESSAGE>",
+            "system",
+            None,
+            None,
+        ),
     ],
 )
 def test_prompt_origin_classification_on_user_prompt_submit(
@@ -252,3 +258,5 @@ def test_prompt_origin_classification_on_user_prompt_submit(
     assert span.attributes.get("prompt.origin") == expected_origin
     if extra_key:
         assert span.attributes.get(extra_key) == extra_val
+    else:
+        assert "handback.subagent_id" not in span.attributes
