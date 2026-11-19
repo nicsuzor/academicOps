@@ -11,11 +11,12 @@ Universal qualitative verification procedure for evaluating whether an artifact 
 
 Before inspecting details:
 
-1. **Identify Artifact Genre:** Determine the governing standard for the artifact's genre per `specs/meta/doc-taxonomy.md` (e.g. `craft` for instructions, `writing-specs.md` for specs, visual design standards for UI/plots, publication standards for manuscripts).
+1. **Identify Artifact Genre:** Determine the governing standard for the artifact's genre per the repository's governing genre and document standards, when present (e.g. `craft` for instructions, specification standards for specs, visual design standards for UI/plots, publication standards for manuscripts).
 2. **Identify Audience & Purpose:** Define who reads or uses this artifact, what cognitive state they bring, and what outcome the artifact must achieve for them.
 3. **Set Proportionality Bar:**
    - _Routine / Low-Risk:_ Fast single-pass sanity check; low bar.
    - _High-Stakes / Public:_ Comprehensive aesthetic and cognitive audit.
+4. **External Purpose Over Circular Criteria:** Ground judgment in the external human or system purpose rather than internal phrasing alone; never accept a changed or PR-modified specification or acceptance criteria circularly merely because code or outputs match its internal phrasing if the external human or system purpose is degraded.
 
 ## 2. Live Rendered Multimodal Inspection
 
@@ -28,7 +29,7 @@ Review the artifact in its actual rendered form as experienced by the user:
 
 ## 3. Review Findings & Self-Fixes
 
-- **Uncontroversial Self-Fixes:** When authorized by the supervising workflow (e.g. in `strategic-review` with `--fix`), directly apply and commit obvious typographic, minor formatting, or visual layout corrections (`fix(review): ...`), documenting them under `### Reviewer Self-Fixes Applied`. When self-fixes are not authorized (such as read-only parallel subagent reviews), report suggested repairs under `### Suggested Fixes` for the writer to incorporate during the fix pass, preventing concurrent git write conflicts.
+- **Uncontroversial Self-Fixes:** When authorized by the supervising review, directly apply and commit obvious typographic, minor formatting, or visual layout corrections (`fix(review): ...`), documenting them under `### Reviewer Self-Fixes Applied`. When self-fixes are not authorized (such as read-only parallel subagent reviews), report suggested repairs under `### Suggested Fixes` for the writer to incorporate during the fix pass, preventing concurrent git write conflicts.
 - **Substantive Findings:** Document qualitative shortcomings with clear, constructive guidance on tone, layout, structure, or audience alignment.
 
 ## 4. Verdict Schema

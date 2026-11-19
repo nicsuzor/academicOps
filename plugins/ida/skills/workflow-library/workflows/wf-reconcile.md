@@ -1,5 +1,5 @@
 ---
-description: Truth maintenance over the task graph -- advance open high-value-prompt tracking tasks and multi-part asks via groundwork, reconcile merged PRs and shipped releases, route user decisions with completed groundwork to review (assignee user) while transitioning agent tasks out of review, handle failed tasks from parent epics, write items reaching the user to today's daily note, record world-fact cancellations, and demote affected tasks to inbox.
+description: Truth maintenance over the task graph -- advance open high-value-prompt tracking tasks and multi-part asks via groundwork, reconcile merged PRs and shipped releases, route user decisions with completed groundwork to review (assignee user) while transitioning agent tasks out of review, handle failed tasks from parent epics, surface completed /learn remedy proposals, write items reaching the user to today's daily note, record world-fact cancellations, and demote affected tasks to inbox.
 id: wf-reconcile
 tags:
   - wf-template
@@ -50,13 +50,16 @@ Maintains truth over the task graph: advances open high-value-prompt tracking ta
     - _Source-stated retirement_: opportunity's source confirms it is no longer open, or explicit principal instruction ("drop X"). Set `status: cancelled` with reason starting `not ripe:` quoting statement and source.
 11. **Two-step mutation contract**: Write annotation/evidence to markdown body first, then mutate frontmatter `status` via `pkb.update_task` (never `batch_update`). Do not read back to confirm status; an error-free write is authoritative confirmation of success.
 12. **Escalate**: Settle items reaching the user under the one-level escalation rule (e.g. review tasks reaching the front agent `ida` at the top of the chain requiring user decision, or open questions/asks needing user choice). When running standalone, write them to today's daily note (PKB note `YYYYMMDD-daily`) in `## With you`. When invoked as part of an enclosing run (such as the daily note pipeline), return the escalated items to the caller to fold into `## With you` during its single atomic write, accompanied by current verification timestamps. Reconcile interfaces with the daily note _exclusively_ via `## With you` for escalated decisions; it must never write or append raw mutation summaries, commit SHAs, PR merge logs, branch names, container IDs, or execution heartbeats to the daily note, nor create or append to sections outside `## With you`.
+13. **Surface completed Class D `/learn` remedy proposals**: Read completed `/learn` tasks (`status: done` within the sweep window, projecting summary fields before reading `## Report` on matches) without re-analyzing raw PRs, logs, or spans, and without unilaterally restructuring the task graph. Surface each typed remedy in the report (and via `## With you` when awaiting user approval):
+    - `bug fix at source`: list any queued fix-task ID, or surface unqueued `/q` fix-task proposals recorded in `## Report` for `/q` intake.
+    - `recurring local-rule or mechanism proposal`: surface the proposed local-rule/mechanism escalation or draft issue awaiting user approval.
 
 ## Must not
 
 - Must not run concurrently with another reconcile (halt immediately if an active reconcile lock exists) or move a claimed (`in_progress`) task backwards while an active worker holds it, reset abandoned claims to `ready`, or forward uncertified work to the dispatcher.
 - Must not leave agent work tasks or minted review tasks in `review` or unowned, route agent tasks to `review`, defer `review` outcomes, or demote a `done` work task with an open PR to `review`; reserve `status: review` (`assignee: user`) strictly for manual user holds and completed-groundwork user decisions.
 - Must not write `done` or `cancelled` without affirmative evidence recorded in the node body (ignoring missing paths appearing only in narrative or provenance prose), demand completion receipts for direct principal closures, certify work or judge acceptance criteria after merge, or re-open settled principal decisions or merged pull requests.
-- Must not annotate status changes in the body without mutating frontmatter `status`, use `batch_update` for status mutations or demotions, prune/re-plan/restructure (delegate repositioning to `/q`), or write `intent`, `priority`, or `severity`.
+- Must not annotate status changes in the body without mutating frontmatter `status`, use `batch_update` for status mutations or demotions, re-analyze raw PRs or re-run `/learn` during truth maintenance, prune/re-plan/restructure (delegate repositioning to `/q`), or write `intent`, `priority`, or `severity`.
 - Must not blindly promote unexamined `inbox` or `ready` work into `queued` without groundwork and `/q` placement, ignore `failed` tasks within the sweep window, allow workers to direct their own follow-ups or leave stale pointers in review reports, or escalate outside the framework (one level per hop on the record).
 - Must not append unowned sections outside `## With you`, dump raw reconcile summaries, commit hashes, branch names, PR merge logs, container identifiers, or `## Daily Log` heartbeats, or write unverified items to the daily note.
 
@@ -72,6 +75,7 @@ Emit one synthesized result:
 6. Name IDs for every touched task (no bare counts).
 7. State the covered sweep window and what the next sweep should pick up.
 8. Failed tasks reconciled with next actions decided from their parent epics (task ID, root cause, remediation task minted or epic-level adjustment made).
+9. Completed Class D `/learn` remedy proposals surfaced (task ID, typed remedy: `bug fix at source` vs `recurring local-rule or mechanism proposal`, and queued fix-task ID or `/q` / approval status).
 
 ## When to include
 

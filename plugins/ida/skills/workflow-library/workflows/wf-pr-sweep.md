@@ -1,5 +1,5 @@
 ---
-description: Sweeps open pull requests across repositories, triaging each against project-local rules, fanning out in parallel to identify next steps, queuing discrete tasks, and reporting disposition reasons.
+description: Sweeps open pull requests and PRs updated or merged since a cursor across repositories, evaluating partitioned gates, surfacing Class D /learn proposals from maintainer feedback on agent-reviewed PRs, and queuing discrete next-step tasks.
 tags:
   - wf-template
   - pr
@@ -11,68 +11,46 @@ type: template
 
 ## What this template does
 
-Coordinates a comprehensive sweep of open pull requests across repositories. Fanning out in parallel across candidate PRs, the coordinator categorizes each against project-specific branch and merge policies, decouples triage from execution by identifying and queuing discrete next-step tasks, and generates an honest disposition report accounting for every item.
+Coordinates a parallel sweep of open pull requests and PRs updated or merged `since: <cursor>` across target repositories. Categorizes open PRs against project rules and partitioned PR gates, detects maintainer `CHANGES_REQUESTED` reviews or rule-miss comments on agent-reviewed PRs for Class D learning intake, and queues discrete next-step tasks without executing resolutions or `/learn` inline.
 
 ## Execution
 
-Sweep execution runs via parallel fan-out: evaluate each PR independently and aggregate dispositions into a single sweep handback.
+Sweep execution runs via parallel fan-out: evaluate each PR independently and aggregate dispositions and Class D proposals into a single sweep handback.
 
 ## Input contract
 
 - List of target repositories or current working repository context.
-- Platform CLI credentials (`gh`).
-- Project rules, merge policies, and risk tier definitions.
+- Platform CLI credentials (`gh`), project rules, merge/consolidation policies, and optional `since: <cursor>` timestamp.
 
 ## Obligations
 
-1. **Enumerate and Classify Open PRs**:
-   - Query open pull requests across target repositories.
-   - For each PR, determine its category:
-     - _Draft_: Active WIP or author-staged draft PRs remain excluded while still in progress; completed worker draft PRs awaiting verification are triaged to queue their independent check and review task without marking ready inline, and transition to ready for review (`gh pr ready`) only after the independent check passes and its review verdict is posted to the PR thread.
-     - _Automated Release_: Package or version release PRs managed by release automation; excluded from automated sweeping and reserved for explicit release approvals.
-     - _Standard / Feature_: Active changes subject to review, checks, and project merge rules.
+1. **Enumerate Open PRs and Recent Updates (`since: <cursor>`)**:
+   - Query open pull requests AND pull requests updated or merged `since: <cursor>` (`gh pr list --state all --json number,title,state,isDraft,updatedAt,mergedAt,closedAt,headRefName,headRefOid,url,labels,reviewDecision,statusCheckRollup,reviews,comments`, projecting `reviews` (`id`, `author.login`, `state`, `submittedAt`, `body`) and comments, or fetching per-PR reviews when list payloads omit review IDs) so fast-merged PRs between sweeps are inspected.
+   - Classify open PRs: _Draft_ (author WIP excluded while active; completed worker draft awaiting verification queued for check/review without marking ready inline), _Automated Release_ (excluded from automated sweep), or _Standard / Consolidated Feature_.
 
-2. **Apply Project-Override Rules in Parallel**:
-   - Fan out across candidate PRs in parallel to evaluate each against project-local governance rules:
-     - Verify active base branch matches the project's designated integration branch (from project instructions).
-     - Identify required approval roles (autonomous agent merge vs. human/principal sign-off).
-     - Respect repository-specific feature freezes, review blocking rules, and risk boundaries.
+2. **Evaluate Project Rules and Partitioned Gates in Parallel**:
+   - Fan out across candidate PRs to verify base branch, merge authority, label-vs-confirmed-route consistency, and project consolidation rules.
+   - Audit `HEAD` CI (rejecting bypassed, errored, cancelled, or `startup_failure` runs), all open `CHANGES_REQUESTED` reviews, and head-SHA-matched **posted** reviews carrying distinct lens headers (`## RBG Review: PASS` plus proportionate dialectical review; for consolidated feature-branch PRs where configured: constituent diff receipts + green `HEAD` CI + head-SHA-matched posted description-only `## RBG Review: PASS` pre-approval, and full combined-diff review after post-approval rebase). Never queue pre-approval PRs for conflict rebase.
 
-3. **Triage and Queue Next-Step Tasks**:
-   - Decouple triage from execution: the sweep does not execute inline resolutions or perform merges. It queues tasks for the next step, either queuing an existing task (located via the custodian or exact PR/branch metadata lookup) or creating a follow-up and queuing that.
-   - For each non-draft PR or completed worker draft PR awaiting verification requiring action:
-     - Audit CI check status.
-     - Inspect review status (proportionate review by independent agents posted to the PR, changes requested, or author feedback).
-     - Check approval status per project policy.
-     - Before approval, a PR requires green checks and review by independent agents posted to the PR; mergeability against the base branch is not required before approval, and PRs awaiting approval must not be queued for conflict resolution or rebase.
-     - Identify the discrete next action needed:
-       - If unreviewed (including a completed worker draft PR awaiting its initial check): queue task to conduct proportionate risk-tier review by independent agents and post verdicts to the PR.
-       - If review feedback or changes requested: queue task to address feedback.
-       - If green, reviewed, but awaiting required approval: mark blocked on approval (do not queue conflict resolution or rebase).
-       - If approved (or autonomous merge authorized) and merge conflicts exist: queue task to bring branch up to date with base and resolve merge conflicts.
-       - If approved (or autonomous merge authorized) and clean: queue landing / merge task.
-     - Verify whether an existing open task covers this action by routing the related-work search to the custodian (`pauli`) or performing an exact PR/branch metadata lookup (never running broad semantic searches with raw text), and ensure it is set to `queued` status, or create a discrete follow-up task and set it to `queued` status.
+3. **Detect Class D Learning Triggers on Agent-Reviewed PRs**:
+   - Across both open PRs and PRs updated or merged `since: <cursor>`, inspect projected `reviews` and comments to detect maintainer `CHANGES_REQUESTED` reviews or rule-miss comments on PRs that already carried an agent review (`## RBG Review`, `## Strategic Review`, `## Enforcer Review`, or agent review comments).
+   - Deduplicate each `(repo, pr, review_id)` against existing PKB `/learn` tasks (via custodian `/hydrate` or exact metadata lookup) and open `/learn` GitHub issues (consolidating shared root causes into one issue).
+   - Emit structured `/learn` `/q` proposals for non-duplicate findings (naming `repo`, `pr`, `review_id`, maintainer feedback summary, and any matching open `/learn` issue for evidence-comment consolidation) without running `/learn` inline.
 
-4. **Compile Sweep Disposition Report and File Closed Summary Task**:
-   - For every enumerated PR, record an explicit disposition:
-     - `Queued for Review`: Awaiting initial review; next-step task queued.
-     - `Queued for Feedback`: Blocked on requested changes or review feedback; next-step task queued.
-     - `Queued for Conflicts`: Approved PR with merge conflicts against base branch; next-step conflict resolution task queued (PRs awaiting approval are never queued for conflicts).
-     - `Queued for Landing`: Approved and clean (or autonomous merge authorized); next-step landing/merge task queued.
-     - `Blocked on Approval`: Green and reviewed, awaiting designated principal sign-off per project policy (mergeable not required before approval).
-     - `Excluded`: Active WIP/author-staged draft or automated release PR outside automated sweep scope.
-   - Conclude by filing a closed task for the sweep itself listing all outstanding tasks and their queued task identifiers, so the coordinator can pick it up and decide whether to dispatch.
+4. **Triage and Queue Next-Step Tasks**:
+   - For open PRs needing action, locate existing open tasks via custodian/metadata lookup and set `queued`, or create and queue a discrete next-step task (initial review, address feedback, post-approval conflict rebase, or landing; never queue pre-approval PRs for rebase).
+
+5. **Compile Sweep Disposition Report and File Closed Summary Task**:
+   - Record explicit dispositions for all open PRs (`Queued for Review`, `Queued for Feedback`, `Queued for Conflicts`, `Queued for Landing`, `Blocked on Approval`, `Excluded`) alongside all deduplicated Class D `/learn` `/q` proposals, and file a closed summary task listing queued task IDs and `/learn` proposals.
 
 ## Output contract
 
-- A complete sweep disposition report accounting for every evaluated PR with its exact status, next step, and queued task identifier.
+- Complete sweep disposition report accounting for every open PR and every `since: <cursor>` Class D `(repo, pr, review_id)` finding with deduplicated `/learn` `/q` proposals.
 - Closed coordinator summary task filed on the record.
 
 ## Must not
 
-- Must not merge automated release PRs without explicit human release approval.
-- Must not merge PRs lacking required project-level approvals or reviews.
-- Must not queue merge conflict resolution or rebase tasks for PRs that are awaiting approval.
-- Must not merge PRs with active changes-requested reviews or failing checks.
-- Must not execute inline resolutions or landing within the triage sweep (all next steps are queued as discrete tasks).
-- Must not omit any evaluated PR from the sweep handback report.
+- Must not execute resolutions, merges, or `/learn` diagnoses inline during triage.
+- Must not omit fast-merged `since: <cursor>` PRs or `(repo, pr, review_id)` deduplication against PKB `/learn` tasks and open `/learn` issues.
+- Must not treat bypassed, errored, or `startup_failure` checks, stale-SHA approvals, or deferred DRY/SSoT/compliance findings as ready.
+- Must not queue conflict rebase tasks for PRs awaiting approval, or omit any evaluated PR from the report.
