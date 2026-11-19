@@ -2726,12 +2726,15 @@ def test_block_message_identifies_this_agent_and_keeps_two_line_contract():
     lines = res.inject_text.splitlines()
     assert len(lines) == 2
     assert lines[0].startswith(_POLICY["premise_check"]["armed_indicator"])
-    assert "this agent's received report" in lines[0]
+    assert claim_id in lines[0]
     assert f"--agent {sub_id}" in lines[1]
     assert lines[1] == pcg.format_verdict_command(
         claim_id, ctx.hooks_dir, session_id, agent_id=sub_id
     )
     assert res.user_text is not None and len(res.user_text.splitlines()) == 1
+    assert (
+        pcg.premise_check_handler(_agent_dispatch_ctx_for(session_id, agent_id="sub-other")) is None
+    )
 
 
 def test_block_expected_does_not_leak_between_claims_in_same_slot():
@@ -3388,3 +3391,34 @@ def test_corrupt_parents_and_slot_files_fail_loudly():
     slot_path.write_text(json.dumps(["not", "a", "dict"]), encoding="utf-8")
     with pytest.raises(ValueError, match="corrupt gate state"):
         pcg.find_armed_owner(session_id, "claim-12345678")
+    with pytest.raises(ValueError, match="corrupt gate state"):
+        pcg.get_state(session_id, agent_id="sub-bad")
+
+
+def test_corrupt_sidecar_and_missing_snapshot_fail_loudly(tmp_path: Path):
+    """Existing corrupt agent-<id>.meta.json and missing .judged.txt fail loudly without silent defaults."""
+    session_id = "sess-corrupt-sidecar"
+    child_id = "child-bad-meta"
+    transcript = tmp_path / "sess.jsonl"
+    transcript.write_text("", encoding="utf-8")
+    sidecar = tmp_path / f"agent-{child_id}.meta.json"
+    sidecar.write_text("{corrupt json", encoding="utf-8")
+
+    ctx = dispatch.HookContext(
+        client="claude",
+        event="PostToolUse",
+        tool="SubagentHandback",
+        session_id=session_id,
+        agent_id=child_id,
+        transcript_path=str(transcript),
+        raw={"agent_id": child_id, "transcript_path": str(transcript)},
+    )
+    with pytest.raises(json.JSONDecodeError):
+        pcg._lookup_sidecar_tool_use_id(ctx, child_id)
+
+    sidecar.write_text(json.dumps(["not", "a", "dict"]), encoding="utf-8")
+    with pytest.raises(ValueError, match="corrupt sidecar metadata"):
+        pcg._lookup_sidecar_tool_use_id(ctx, child_id)
+
+    with pytest.raises(FileNotFoundError):
+        pcg._entry_block_absent({"file": "does-not-exist.judged.txt"})

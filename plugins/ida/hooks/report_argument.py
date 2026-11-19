@@ -482,13 +482,6 @@ _NULL_FORM_RE = re.compile(
     re.IGNORECASE,
 )
 
-_HYBRID_NULL_MSG = (
-    "Hybrid null-form error: '[no claim]' is valid only when 'asks: none'. "
-    "A message defining asks cannot use '[no claim]': caller direction briefs "
-    "do not go through verdict.py (never record a gate verdict on a direction brief), "
-    "and reports leaving defined asks unanswered must return REVISE with an argument block."
-)
-
 
 def is_null_form(block_text: str | None) -> bool:
     """True when a fenced argdown block is the null form declaring no claim."""
@@ -496,56 +489,6 @@ def is_null_form(block_text: str | None) -> bool:
         return False
     norm = normalise_argdown_block(block_text)
     return bool(_NULL_FORM_RE.match(norm.strip()))
-
-
-def _extract_frontmatter_and_body(block_text: str) -> tuple[dict[str, Any] | None, str]:
-    """Return parsed YAML frontmatter mapping (if present) and stripped body text after ===."""
-    lines = normalise_argdown_block(block_text).splitlines()
-    start = next((i for i, ln in enumerate(lines) if ln.strip()), None)
-    if start is None or lines[start].strip() != _FRONTMATTER_FENCE:
-        return None, "\n".join(lines).strip()
-    end = None
-    for i in range(start + 1, len(lines)):
-        if lines[i].strip() == _FRONTMATTER_FENCE:
-            end = i
-            break
-    if end is None:
-        return None, ""
-    fm_text = textwrap.dedent("\n".join(lines[start + 1 : end])).strip("\n")
-    try:
-        fm_data = yaml.safe_load(fm_text)
-    except yaml.YAMLError:
-        return None, "\n".join(lines[end + 1 :]).strip()
-    return (fm_data if isinstance(fm_data, dict) else None), "\n".join(lines[end + 1 :]).strip()
-
-
-def _ask_ids_from_fm(fm_data: dict[str, Any] | None) -> list[str]:
-    if not fm_data:
-        return []
-    asks_val = fm_data.get("asks")
-    if isinstance(asks_val, dict):
-        return [str(k) for k in asks_val.keys()]
-    if isinstance(asks_val, list):
-        ids: list[str] = []
-        for item in asks_val:
-            if isinstance(item, dict) and "id" in item:
-                ids.append(str(item["id"]))
-            elif isinstance(item, str) and item.strip():
-                ids.append(item.strip())
-        return ids
-    if isinstance(asks_val, str) and asks_val.strip().lower() != "none":
-        return [asks_val.strip()]
-    return []
-
-
-def is_hybrid_null_form(block_text: str | None) -> bool:
-    """True when a block defines non-empty asks alongside a sole '[no claim]' body."""
-    if not block_text or not block_text.strip() or is_null_form(block_text):
-        return False
-    fm_data, body = _extract_frontmatter_and_body(block_text)
-    if not _ask_ids_from_fm(fm_data):
-        return False
-    return bool(re.fullmatch(r"\[no\s+claim\]", body, re.IGNORECASE))
 
 
 def clean_ansi(text: str, file_path: str | None = None) -> str:
@@ -687,9 +630,6 @@ def check_argdown_block(
                     ask_ids = [asks_val.strip()]
 
             if ask_ids:
-                body_after_fm = "\n".join(lines[end + 1 :]).strip()
-                if re.fullmatch(r"\[no\s+claim\]", body_after_fm, re.IGNORECASE):
-                    return (False, _HYBRID_NULL_MSG, None)
                 if answers_val is None:
                     return (
                         False,
@@ -1386,9 +1326,6 @@ def pass_failures(
         return []
 
     failures: list[str] = []
-    if block_text is not None and is_hybrid_null_form(block_text):
-        failures.append(_HYBRID_NULL_MSG)
-        return failures
     waived = reason.waived_items(vocab)
     block_waived = "block" in waived
     ask_wording_waived = "ask wording" in waived

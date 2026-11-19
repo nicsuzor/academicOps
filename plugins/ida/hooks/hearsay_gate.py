@@ -247,7 +247,10 @@ def _write_json_atomic(path: Path, data: dict[str, Any]) -> None:
 def _load_state(session_id: str, agent_id: str | None = None) -> dict[str, Any]:
     target = _state_path(session_id, agent_id=agent_id)
     if target.exists():
-        return json.loads(target.read_text(encoding="utf-8"))
+        data = json.loads(target.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise ValueError(f"corrupt gate state in {target}: expected JSON object")
+        return data
     return {}
 
 
@@ -1648,13 +1651,12 @@ def _lookup_sidecar_tool_use_id(ctx: HookContext, child_id: str) -> str:
         )
     for cand in candidates:
         if cand.is_file():
-            try:
-                data = json.loads(cand.read_text(encoding="utf-8"))
-                tuid = str(data.get("toolUseId") or "").strip()
-                if tuid:
-                    return tuid
-            except (json.JSONDecodeError, OSError):
-                continue
+            data = json.loads(cand.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                raise ValueError(f"corrupt sidecar metadata in {cand}: expected JSON object")
+            tuid = str(data.get("toolUseId") or "").strip()
+            if tuid:
+                return tuid
     return ""
 
 
@@ -1765,11 +1767,8 @@ def _entry_block_absent(entry: Any) -> bool:
     fname = entry.get("file")
     if not isinstance(fname, str) or not fname:
         return False
-    try:
-        txt = (_state_dir() / fname).read_text(encoding="utf-8")
-        return ra.extract_block(txt) is None
-    except OSError:
-        return False
+    txt = (_state_dir() / fname).read_text(encoding="utf-8")
+    return ra.extract_block(txt) is None
 
 
 def _format_notice_pair(

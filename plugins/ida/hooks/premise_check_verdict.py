@@ -142,7 +142,7 @@ def _export_tool_span(
                 state.get("parent_session_id") if state else None
             ) or phoenix_session_id
 
-    if canon_agent and not resolved_agent_id:
+    if canon_agent:
         resolved_agent_id = canon_agent
         if not parent_session_id and phoenix_session_id and canon_agent != phoenix_session_id:
             parent_session_id = phoenix_session_id
@@ -616,19 +616,15 @@ def record_verdict(
                 "  Command: verdict.py --claim <id> --verdict REVISE --reason-file <path>"
             )
 
-    # Machine check on Argdown block for PASS verdicts unless block is waived (hybrid null-form never waivable)
+    # Machine check on Argdown block for PASS verdicts unless block is waived
     if token == "PASS" and block_text is not None and not ra.is_null_form(block_text):
         vocab = ra.load_vocabulary()
         parsed_reason = ra.parse_reason(reason, vocab)
-        if ra.is_hybrid_null_form(block_text) or "block" not in parsed_reason.waived_items(vocab):
+        if "block" not in parsed_reason.waived_items(vocab):
             valid, parser_output, _ = ra.check_argdown_block(
                 _block_as_waived(block_text, parsed_reason, vocab) or block_text
             )
             if not valid:
-                if ra.is_hybrid_null_form(block_text):
-                    raise ValueError(
-                        f"PASS verdict refused for {cid}: invalid hybrid null-form block:\n{parser_output}"
-                    )
                 raise ValueError(
                     f"PASS verdict refused for {cid}: could not parse argdown block:\n{parser_output}\n"
                     f"Required remediation: The argdown block failed syntax validation. Return the message "
@@ -787,27 +783,26 @@ def resolve_session_id(session_arg: str = "", claim_id: str = "", agent_id: str 
                 if p.is_file() and not p.name.endswith(".parents.json") and ".agent-" not in p.name
             ]
         for sfile in state_files:
-            try:
-                data = json.loads(sfile.read_text(encoding="utf-8"))
-                cid = data.get("claim_id")
-                cids = data.get("claim_ids") or []
-                judged = data.get("judged") or {}
-                last_verdict = data.get("last_verdict") or {}
-                if (
-                    claim_id == cid
-                    or claim_id in cids
-                    or claim_id in judged
-                    or claim_id == last_verdict.get("claim_id")
-                ):
-                    explicit_sid = str(data.get("session_id") or "").strip()
-                    if explicit_sid:
-                        return explicit_sid
-                    stem = sfile.stem
-                    if ".agent-" in stem:
-                        return stem.split(".agent-", 1)[0]
-                    return stem
-            except (json.JSONDecodeError, OSError):
-                continue
+            data = json.loads(sfile.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                raise ValueError(f"corrupt gate state in {sfile}: expected JSON object")
+            cid = data.get("claim_id")
+            cids = data.get("claim_ids") or []
+            judged = data.get("judged") or {}
+            last_verdict = data.get("last_verdict") or {}
+            if (
+                claim_id == cid
+                or claim_id in cids
+                or claim_id in judged
+                or claim_id == last_verdict.get("claim_id")
+            ):
+                explicit_sid = str(data.get("session_id") or "").strip()
+                if explicit_sid:
+                    return explicit_sid
+                stem = sfile.stem
+                if ".agent-" in stem:
+                    return stem.split(".agent-", 1)[0]
+                return stem
 
     return ""
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 from typing import Any
@@ -1094,3 +1095,84 @@ def test_cli_agent_flag_binds_slot_and_rejects_mismatch(tmp_path: Path, monkeypa
     )
     assert rc_ok == 0
     assert hg.is_armed(session_id, agent_id="sub-x") is False
+
+
+def test_subagent_agent_flag_overrides_root_tracer_state_attribution(monkeypatch):
+    """--agent attribution stamps recipient_agent_id and export agent_id even when root tracer state exists."""
+    monkeypatch.delenv("AOPS_SESSION_ID", raising=False)
+    tracer = _StubTracer()
+    root_session = "root-attr-sess"
+    sub_agent = "sub-x"
+
+    # Simulate claude_code_tracer where _load_state("sub-x") is empty and root state populates
+    # resolved_agent_id = root_session (claude_code_tracer.py:628).
+    tracer._load_state = lambda sid: (
+        {"session_id": root_session, "phoenix_session_id": root_session}
+        if sid == root_session
+        else {}
+    )
+    tracer._resolve_agent_and_parent_ids = lambda state, data=None, session_key="session_id": (
+        state.get("phoenix_session_id") or state.get("session_id"),
+        state.get("session_id"),
+        state.get("parent_session_id"),
+    )
+
+    exported_calls: list[dict[str, Any]] = []
+
+    def capture_export(*, config, session_id, username, span_records, **kw):
+        exported_calls.append({"session_id": session_id, "spans": span_records, "kwargs": kw})
+        return True
+
+    tracer._build_and_export_spans = capture_export
+
+    claim_id = "claim-sub-attr"
+    hg.arm(
+        session_id=root_session,
+        claim_id=claim_id,
+        judged_text="report",
+        judged_ref=claim_id,
+        block_expected=False,
+        agent_id=sub_agent,
+    )
+    reason = (
+        f"Judged: {claim_id}; asks tg-1\n"
+        "Valid: (2) fails #missing -- condition not met\n"
+        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
+        "Answered: tg-1 ← (2)\n"
+        "Sufficient: (2) material; low-stakes\n"
+        "Waived: block -- task handback review\n"
+        "Relay: none"
+    )
+    res = pcv.record_verdict(
+        session_id=root_session,
+        claim_id=claim_id,
+        verdict="REVISE",
+        reason=reason,
+        tracer_mod=tracer,
+        agent_id=sub_agent,
+    )
+    assert res["ok"] is True
+    assert len(exported_calls) == 1
+    call = exported_calls[0]
+    assert call["session_id"] == root_session
+    assert call["kwargs"].get("agent_id") == sub_agent
+    assert call["kwargs"].get("parent_session_id") == root_session
+    assert call["spans"][0]["attributes"].get("premise_check.recipient_agent_id") == sub_agent
+
+
+def test_resolve_session_id_raises_on_corrupt_slot_json(monkeypatch):
+    """resolve_session_id fails loudly instead of silently skipping corrupt slot state JSON."""
+    for var in (
+        "AOPS_SESSION_ID",
+        "CLAUDE_SESSION_ID",
+        "SESSION_ID",
+        "ANTIGRAVITY_SESSION_ID",
+        "GEMINI_SESSION_ID",
+        "CLAUDE_ENV_FILE",
+    ):
+        monkeypatch.delenv(var, raising=False)
+    corrupt_file = hg._state_dir() / "sess-corrupt-resolve.json"
+    corrupt_file.write_text("{corrupt json", encoding="utf-8")
+
+    with pytest.raises(json.JSONDecodeError):
+        pcv.resolve_session_id("", "claim-any")
