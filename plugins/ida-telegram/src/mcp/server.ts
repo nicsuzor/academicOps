@@ -241,10 +241,15 @@ export class StdioMcpServer {
         if (line.length > 0) {
           try {
             const parsed = JSON.parse(line);
-            const response = await this.handleMessage(parsed);
-            if (response) {
-              process.stdout.write(JSON.stringify(response) + "\n");
-            }
+            void this.handleMessage(parsed)
+              .then((response) => {
+                if (response) {
+                  process.stdout.write(JSON.stringify(response) + "\n");
+                }
+              })
+              .catch((e) => {
+                console.error("Failed to handle JSON-RPC message:", e);
+              });
           } catch (e) {
             console.error("Failed to parse JSON-RPC message:", e);
           }
