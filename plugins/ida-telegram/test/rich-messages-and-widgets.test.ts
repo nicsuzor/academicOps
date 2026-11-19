@@ -33,12 +33,54 @@ describe("Bot API 10.1-10.4 Rich Messages and HTML Widgets", () => {
     return { dir, config, store, broker, permRelay };
   }
 
-  afterEach(() => {
+    afterEach(() => {
     while (dirs.length > 0) {
       const dir = dirs.pop()!;
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  function runWidgetScript(
+    html: string,
+    chatDataObj: Record<string, unknown> | null,
+    requestImpl: (payload: string) => Promise<unknown> = async () => ""
+  ) {
+    const match = html.match(/<script>([\s\S]*?)<\/script>/);
+    if (!match) throw new Error("Missing widget script");
+    const ids = ["er", "sg", "os", "pg", "pv", "nx", "pl", "ft", "go", "df", "ot", "dc", "dm", "dt", "dn"];
+    const elements: Record<string, any> = {};
+    for (const id of ids) {
+      const listeners: Record<string, Array<(e: any) => unknown>> = {};
+      elements[id] = {
+        id,
+        style: {} as Record<string, string>,
+        className: "",
+        textContent: "",
+        innerHTML: "",
+        disabled: false,
+        listeners,
+        addEventListener(ev: string, fn: (e: any) => unknown) {
+          (listeners[ev] ||= []).push(fn);
+        },
+        click() {
+          for (const fn of listeners.click || []) fn({ target: { closest: () => null }, stopPropagation() {} });
+        },
+      };
+    }
+    const widgetApi = {
+      chatData: chatDataObj ? JSON.stringify(chatDataObj) : "",
+      HapticFeedback: { selectionChanged() {}, notificationOccurred() {} },
+      onEvent() {},
+      ready() {},
+      setResizeAnchor() {},
+      request: requestImpl,
+    };
+    const fakeDocument = { getElementById: (id: string) => elements[id] || null };
+    const fakeWindow = { TelegramWidget: widgetApi };
+    const runner = new Function("window", "document", match[1]);
+    runner(fakeWindow, fakeDocument);
+    return { elements, widgetApi };
+  }
 
   test("send_rich_message dispatches markdown/html/blocks, quote_rich_texts, feedback_buttons, and thread routing cleanly", async () => {
     const { config, store, broker, permRelay } = makeEnv();
@@ -479,9 +521,25 @@ describe("Bot API 10.1-10.4 Rich Messages and HTML Widgets", () => {
     expect(zlib.deflateSync(Buffer.from(built.html, "utf8"), { level: 9 }).length).toBe(built.compressedBytes);
     expect(built.html).toContain("font-family:system-ui,sans-serif");
     expect(built.html).not.toMatch(/BlinkMacSystemFont|Segoe UI|Roboto|<input|<select|<textarea|<progress|<meter|overflow:\s*(auto|scroll)|https?:\/\//);
-    expect(built.html).toContain("Sending…");
-    expect(built.html).toContain("Timed out (15s)");
     expect(built.caption.length).toBeGreaterThan(0);
+
+    // Behavioral script verification: in-flight Sending… state and inline TIMEOUT error banner
+    let rejectReq!: (err: Error) => void;
+    const { elements: decEls } = runWidgetScript(
+      built.html,
+      { s: "open" },
+      () => new Promise((_, reject) => {
+        rejectReq = reject;
+      })
+    );
+    decEls.go.click();
+    expect(Boolean(decEls.go.disabled)).toBe(true);
+    expect(decEls.go.textContent).toBe("Sending…");
+    rejectReq(Object.assign(new Error("timeout"), { name: "WidgetRequestError", code: "TIMEOUT" }));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(Boolean(decEls.go.disabled)).toBe(false);
+    expect(decEls.er.className).toContain("sh");
+    expect(decEls.er.textContent).toContain("Timed out (15s)");
 
     // End-to-end Defer via widget_query settles broker & locks widget cleanly via editMessageWidgetData
     const { config, store, broker, permRelay } = makeEnv();
@@ -742,14 +800,18 @@ describe("Bot API 10.1-10.4 Rich Messages and HTML Widgets", () => {
     expect((draftMedia?.result as any)?.isError).toBe(true);
     expect(String((draftMedia?.result as any)?.content?.[0]?.text)).toContain("media");
 
-    // 3. widget closed branch reads s.lbl (reason) rather than s.note
+    // 3. widget closed state renders close reason (s.lbl) and hides interactive chrome
     const { buildQuestionWidget } = await import("../src/telegram/widgets.js");
     const built = buildQuestionWidget({
       id: "q_close_lbl",
       question: "Proceed?",
       options: [{ label: "Yes" }],
     });
-    expect(built.html).toContain('md==="closed"?"Closed: "+(s.lbl||s.note||"Resolved")');
+    const { elements: closedEls } = runWidgetScript(built.html, { s: "closed", lbl: "Superseded" });
+    expect(closedEls.dt.textContent).toBe("Closed: Superseded");
+    expect(closedEls.dc.className).toContain("sh");
+    expect(closedEls.os.style.display).toBe("none");
+    expect(closedEls.ft.style.display).toBe("none");
 
     // 4. widget_query `other` when force_reply fails does not claim awaiting_reply; surfaces inline err
     store.updateChatState(1111111111, { activeThreadId: 77, topicsEnabled: true });

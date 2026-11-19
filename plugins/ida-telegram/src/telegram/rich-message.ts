@@ -10,8 +10,6 @@ export interface RichMediaInputItem {
   type: RichMediaKind;
   file: string;
   mime_type?: string;
-  filename?: string;
-  caption?: string;
   duration?: number;
   performer?: string;
   title?: string;

@@ -465,12 +465,16 @@ export class SharedTelegramChannelCore {
     }
 
     const resolvedPresentation =
-      usedPresentations.size === 1 ? usedPresentations.values().next().value : topPresentation;
+      usedPresentations.size === 1
+        ? usedPresentations.values().next().value
+        : usedPresentations.size > 0
+          ? topPresentation
+          : undefined;
 
     return {
       question_ids: postedIds,
       status: "posted",
-      ...(topMiniAppOnly ? {} : { presentation: resolvedPresentation }),
+      ...(resolvedPresentation ? { presentation: resolvedPresentation } : {}),
       message,
     };
   }
