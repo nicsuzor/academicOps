@@ -8,7 +8,7 @@ import { QuestionBroker } from "../src/telegram/questions.js";
 import { PermissionRelay } from "../src/mcp/permissions.js";
 import { StdioMcpServer } from "../src/mcp/server.js";
 import { MCP_TOOLS } from "../src/mcp/tools.js";
-import { TelegramBotClient } from "../src/telegram/bot.js";
+import { TelegramBotClient, buildInlineKeyboardRows } from "../src/telegram/bot.js";
 import { LONG_RUNNING_TOOLS, ToolTimeoutError, withToolDeadline } from "../src/mcp/timeout.js";
 
 describe("Tool call deadline for basically-instant tools", () => {
@@ -67,6 +67,8 @@ describe("Tool call deadline for basically-instant tools", () => {
         params: { name: "close_thread", arguments: { message_thread_id: 1 } },
       });
       const result = res?.result as { isError?: boolean; content: Array<{ text: string }> };
+      expect("isError" in (res || {})).toBe(false);
+      expect(Object.keys(res || {}).sort()).toEqual(["id", "jsonrpc", "result"]);
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain("close_thread");
       expect(result.content[0].text).toContain("timed out");
@@ -97,6 +99,8 @@ describe("Tool call deadline for basically-instant tools", () => {
         params: { name: "reply", arguments: { text: "hello" } },
       });
       const result = res?.result as { isError?: boolean; content: Array<{ text: string }> };
+      expect("isError" in (res || {})).toBe(false);
+      expect(Object.keys(res || {}).sort()).toEqual(["id", "jsonrpc", "result"]);
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain("reply");
       expect(result.content[0].text).toContain("timed out");
@@ -189,9 +193,32 @@ describe("Tool call deadline for basically-instant tools", () => {
       );
       expect(replyApiErrPayload.success).toBe(false);
       expect(replyApiErrPayload.error).toContain("TOPIC_NOT_MODIFIED");
+      expect("isError" in (closeApiErrRes || {})).toBe(false);
+      expect("isError" in (replyApiErrRes || {})).toBe(false);
+      expect((closeApiErrRes?.result as { isError?: boolean }).isError).toBe(true);
+      expect((replyApiErrRes?.result as { isError?: boolean }).isError).toBe(true);
     } finally {
       globalThis.fetch = origFetch;
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  test("buildInlineKeyboardRows accepts string buttons and text-keyed button objects", () => {
+    const stringRows = buildInlineKeyboardRows([
+      ["Try neon again", "Hydrogen xhigh instead"],
+      ["Defer"],
+    ]);
+    expect(stringRows).toEqual([
+      [
+        { text: "Try neon again", callback_data: "action:Try neon again" },
+        { text: "Hydrogen xhigh instead", callback_data: "action:Hydrogen xhigh instead" },
+      ],
+      [{ text: "Defer", callback_data: "action:Defer" }],
+    ]);
+
+    const textKeyedRows = buildInlineKeyboardRows([
+      { text: "Approve", callback_data: "approve" } as unknown as { label: string; callback_data: string },
+    ]);
+    expect(textKeyedRows).toEqual([[{ text: "Approve", callback_data: "approve" }]]);
   });
 });

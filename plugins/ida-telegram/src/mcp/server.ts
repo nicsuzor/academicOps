@@ -169,7 +169,6 @@ export class StdioMcpServer {
         return {
           jsonrpc: "2.0",
           id,
-          ...(isFailure ? { isError: true } : {}),
           result: {
             ...(isFailure ? { isError: true } : {}),
             content: [{ type: "text", text: typeof result === "string" ? result : JSON.stringify(result) }],
@@ -179,7 +178,6 @@ export class StdioMcpServer {
         return {
           jsonrpc: "2.0",
           id,
-          isError: true,
           result: {
             isError: true,
             content: [{ type: "text", text: `Error executing ${toolName}: ${String(err)}` }],

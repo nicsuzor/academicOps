@@ -70,9 +70,11 @@ export interface LinkPreviewOptions {
   show_above_text?: boolean;
 }
 
+export type ReplyButtonInput = ReplyButtonOption | string;
+
 export type ReplyButtonsInput =
-  | ReplyButtonOption[]
-  | ReplyButtonOption[][];
+  | ReplyButtonInput[]
+  | ReplyButtonInput[][];
 
 export function buildInlineKeyboardRows(
   buttons?: ReplyButtonsInput,
@@ -84,8 +86,13 @@ export function buildInlineKeyboardRows(
     return callerRows;
   }
 
-  const formatBtn = (b: ReplyButtonOption): Record<string, unknown> => {
-    const btnObj: Record<string, unknown> = { text: b.label };
+  const formatBtn = (raw: ReplyButtonInput): Record<string, unknown> => {
+    if (typeof raw === "string") {
+      return { text: raw, callback_data: `action:${raw}` };
+    }
+    const b = raw as ReplyButtonOption & { text?: string };
+    const label = b.label ?? b.text ?? "";
+    const btnObj: Record<string, unknown> = { text: label };
     const copyTextVal =
       typeof b.copy_text === "string"
         ? b.copy_text
@@ -101,23 +108,23 @@ export function buildInlineKeyboardRows(
     } else if (b.web_app) {
       btnObj.web_app = { url: b.web_app };
     } else {
-      btnObj.callback_data = `action:${b.label}`;
+      btnObj.callback_data = `action:${label}`;
     }
     return btnObj;
   };
 
   if (Array.isArray(buttons[0])) {
     // Direct 2D array of rows
-    for (const row of buttons as ReplyButtonOption[][]) {
+    for (const row of buttons as ReplyButtonInput[][]) {
       callerRows.push(row.map(formatBtn));
     }
   } else {
-    const flatButtons = buttons as ReplyButtonOption[];
-    const hasRowProp = flatButtons.some((b) => typeof b.row === "number");
+    const flatButtons = buttons as ReplyButtonInput[];
+    const hasRowProp = flatButtons.some((b) => typeof b === "object" && b !== null && typeof b.row === "number");
     if (hasRowProp) {
-      const rowMap = new Map<number, ReplyButtonOption[]>();
+      const rowMap = new Map<number, ReplyButtonInput[]>();
       for (const b of flatButtons) {
-        const r = b.row ?? 0;
+        const r = typeof b === "object" && b !== null ? (b.row ?? 0) : 0;
         if (!rowMap.has(r)) rowMap.set(r, []);
         rowMap.get(r)!.push(b);
       }
@@ -777,6 +784,15 @@ export class TelegramBotClient {
       };
     }
 
+    if (res?.error_code === 408) {
+      return {
+        ok: false,
+        success: false,
+        messageId: 0,
+        error: res.description || "Telegram sendMessage timed out",
+      };
+    }
+
     // If Telegram rejects formatted entities, resend once as plain text per FR-1.5
     const fallbackRes = await this.callApi("sendMessage", {
       chat_id: chatId,
@@ -869,6 +885,12 @@ export class TelegramBotClient {
         return { ok: true, messageId: res.result.message_id, result: res.result };
       }
       this.recordMessageExcerpt(res?.result?.message_id, formatted.plainText);
+
+      if (res?.error_code === 408) {
+        const errorMsg = res.description || "Telegram sendMessage timed out";
+        this.broker.markDeliveryFailed(qid, errorMsg);
+        return { ok: false, error: errorMsg, description: errorMsg };
+      }
 
       // If Telegram rejects formatted entities, resend once as plain text per FR-1.5
       const fallbackRes = await this.callApi("sendMessage", {
