@@ -6,7 +6,7 @@ set -euo pipefail
 
 export DEBIAN_FRONTEND=noninteractive
 
-export no_proxy="${no_proxy:+$no_proxy,}ts.net,.ts.net"
+export no_proxy="${no_proxy:+$no_proxy,}ts.net,.ts.net,github.com,githubusercontent.com,raw.githubusercontent.com,api.github.com,.github.com"
 export NO_PROXY="$no_proxy"
 
 #apt-get update && apt-get install -y openssh-client rsync
