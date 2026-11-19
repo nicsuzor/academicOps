@@ -9,7 +9,7 @@ Axioms are packaged across three scopes:
 
 1. Universal axioms: every `*.md` file in this skill's own directory except `SKILL.md` and `README.md`. Read them all; `README.md` indexes them.
 2. Project local axioms: `$CWD/.agents/rules/*.md`.
-3. User-specific axioms: stored in the `pkb`; use the MCP tool to search for 'type: axiom'.
+3. User-specific rules: stored in the `pkb`; use the MCP tool to search for 'type: rule'.
 
 ## Scope does not weaken baseline axioms
 
