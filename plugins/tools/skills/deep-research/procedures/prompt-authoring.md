@@ -27,6 +27,12 @@ Use when cataloguing tools, datasets, or literature:
 2. **Item schema**: Specify required table columns (e.g. name, URL, mechanism, provenance).
 3. **Verifiable grounding**: Require active source links consulted by the tool, label claims vs benchmarks, and include an anti-padding instruction ("return only genuine matches").
 
+## Source Bundles
+
+- **Gemini Deep Research**: Accepts at most **10 file attachments** per run.
+- When assembling a source bundle for a Gemini run, keep the total number of attached files to **10 or fewer** (including files inside any archive/zip bundle intended for upload).
+- If the source material exceeds 10 files, consolidate related documents into combined files with clear section separators (or omit low-signal files) until the bundle contains at most 10 files.
+
 ## Task Template
 
 Store authored prompts in the sourcing PKB probe task:
