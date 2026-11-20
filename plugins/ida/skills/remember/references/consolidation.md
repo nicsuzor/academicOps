@@ -1,32 +1,32 @@
 # Knowledge Extraction and Consolidation Cycle
 
-Consolidation synthesises episodic records into durable knowledge and maintains graph data quality.
+Consolidation synthesises episodic records into durable knowledge under custodian curation (`ida:remember`), preserving offered/filed/retired PKB facts and maintaining graph data quality.
 
 ## Safety Controls
 
 - **Dry run by default**: Bulk operations (`batch_update`, `batch_merge`, `apply_consolidation_batch`) default to `dry_run=true`. Set `dry_run=false` only after inspecting previews.
 - **Destination-first persistence**: Write the destination note before modifying or deleting any source task body or episodic note. If the destination write fails, halt immediately.
-- **Halt on tool failure**: When a tool fails, emit `HALT: <tool_name>` and report immediately; never use workarounds or perform destructive partial edits.
+- **Halt on tool failure**: When a tool fails, emit `HALT: <tool_name>` and report immediately; never use workarounds or destructive partial edits.
 - **Control context volume**: Query slices by `status` or `project` rather than pulling full unindexed graphs.
 
 ## Focus
 
-A cycle may be given a focus: a keyword, a topic, or a path. With a focus:
+When given a focus (keyword, topic, or path):
 
-- **Seed the working set**: Union of PKB search for the focus term and a literal search of the brain for the term (`grep -rli "<focus>"`) across notes, memories, tasks, and specs, plus nodes one `[[wikilink]]` hop out from any hit.
-- **Scope the stages**: Run Stages 3, 4, 5, and 8 over the working set only. Skip transcript mining unless the focus names a session.
-- **Establish current truth before consolidating**: For each claim in the working set, identify its source of record (the live configuration, repository, code, or spec the claim describes) and check the claim against it. A claim the source no longer supports is superseded: replace it in the canonical note; delete or archive nodes whose only content is superseded claims. Where live sources contradict each other, resolve it and state the resolved fact; if it cannot be resolved from evidence, ask rather than filing both. A claim with no reachable source is kept with a low `confidence:` float, never deleted on suspicion.
-- **Report the working set**: The summary lists every node in the working set with its outcome (verified, superseded, merged, deleted, unverifiable).
+- **Seed the working set**: Union of PKB search for the focus term and literal search across notes, memories, and tasks, plus nodes one `[[wikilink]]` hop out.
+- **Scope stages**: Run Stages 3, 4, 5, and 8 over the working set only; skip transcript mining unless the focus names a session.
+- **Verify current truth**: Check each claim against its source of record (live config, repo, code, or spec). Replace superseded claims in the canonical note and delete or archive nodes holding only superseded claims; resolve contradicting live sources into the settled fact (or ask if unresolvable); retain unreachable-source claims with low `confidence:` rather than deleting on suspicion.
+- **Report the working set**: List every working-set node with its outcome (verified, superseded, merged, deleted, unverifiable).
 
-Without a focus, stages run in order as listed below.
+Without a focus, run stages in order below.
 
 ## Knowledge Extraction Method
 
-1. **Cluster siblings**: Group sibling tasks under the same parent to synthesise into one canonical note. When clustering 3+ sibling tasks under a new or existing component or initiative epic on the task graph, hoist the full holistic `serves -> target` weight onto the parent epic (never priced as a remainder after child tasks) and strip all direct `serves` edges from the clustered child tasks so children inherit worth via `parent`.
-2. **Find canonical note**: Search for existing topic notes. Augment existing notes or create a new note.
-3. **Persist destination first**: Write durable content to the destination note.
-4. **Rewrite source task body**: Once the destination write succeeds, rewrite the task body in place (<1,500 chars) to its minimal form: Goal, completed checklist, and `## Pointers` with `[[destination-id]]` and PR links. Do not alter status or graph edges.
-5. **Densify links**: Add `[[wikilink]]` pointers from the destination note to peer concepts and Maps of Content.
+1. **Cluster siblings**: Group sibling tasks under the same parent to synthesise into one canonical note. When clustering 3+ siblings under a component or initiative epic, hoist the full holistic `serves -> target` weight onto the parent epic (never priced as a remainder) and strip direct `serves` edges from clustered child tasks.
+2. **Find canonical note**: Search existing topic notes; update an existing note or create a new one.
+3. **Persist destination first**: Write durable content to the destination note before touching source records.
+4. **Rewrite source task body**: Once the destination write succeeds, slim the task body in place (<1,500 chars) to Goal, completed checklist, and `## Pointers` with `[[destination-id]]` and PR links (leave status and graph edges unchanged).
+5. **Densify links**: Add `[[wikilink]]` pointers in prose to peer concepts and index notes.
 
 ### Content Boundaries
 
@@ -36,48 +36,29 @@ Without a focus, stages run in order as listed below.
 
 ### Extraction Verification
 
-Evaluate extractions against four criteria:
-
 - **Lossy (FAIL)**: Any durable fact or link in the source is missing from the destination note within one `[[wikilink]]` hop.
 - **Accretive (FAIL)**: Source content pasted verbatim under dated headers or duplicated across notes.
 - **Fabricated (FAIL)**: Unverified assertions not supported by source bodies or cited commits.
-- **Good (PASS)**: Concise source task body pointing to a comprehensive, well-linked canonical topic note.
+- **Good (PASS)**: Concise source task body pointing to a well-linked canonical topic note.
 
-_Empty extraction_: If a task contains only ephemeral coordination, write nothing to the knowledge layer and rewrite the task body to its minimal state.
+_Empty extraction_: If a task holds only ephemeral coordination, write nothing to the knowledge layer and slim the task body.
 
 ### Defect Checklist
 
-Audit generated notes for:
-
-1. Duplicate canonical/narrow pairs.
-2. Title-encoded dates or session IDs (`note-2026-04-18`).
-3. Historical provenance lists (such as frontmatter `sources:` arrays), session references, or narration of prior-state material -- prune on sight per CURRENT STATE ONLY, preserving authoritative citations in prose or `source` field per `cite-sources`.
-4. Missing frontmatter `confidence:` (a float 0-1; `pkb.create` accepts it, nothing else writes it).
-5. Status or progress tables misfiled in knowledge notes.
-6. Zero wikilinks to existing concepts.
-7. Stagnation at `status: inbox`.
+Audit generated notes for: (1) duplicate canonical/narrow pairs, (2) title-encoded dates or session IDs, (3) historical provenance lists (`sources:` arrays) or prior-state narration (prune on sight, preserving active citations inline or in `source` per `cite-sources`), (4) missing frontmatter `confidence:` float, (5) status/progress tables misfiled in knowledge notes, (6) zero wikilinks to existing concepts, and (7) stagnation at `status: inbox`.
 
 ## Cycle Stages
 
-1. **Baseline**: Run `pkb.status` and `pkb.get_stats`. Record document count and index freshness.
-2. **Mine transcripts**: Process unmined transcripts (up to 15 per cycle). Synthesise durable topics into current state. The PKB is CURRENT STATE ONLY: do not record historical provenance lists (`sources:` or `mined:`) in frontmatter or accumulate obsolete session lists; retain claim citations inline or in `source` per `cite-sources`. Do not edit transcript bodies.
-3. **Consolidate knowledge**: Extract durable content from daily notes, meeting notes, and closed tasks to canonical topic notes per the extraction method. Rewrite notes to current state only; prune historical provenance lists and dead source references on sight, keeping active claim citations in prose or `source`. Create navigation nodes (`type: index`) for clusters of 5+ notes -- there is no `moc` type. Delete episodic notes once their content is written at the destination.
-4. **Reconcile data quality**:
-   - _Duplicates_: Inspect candidates from `find_duplicates(mode="both")` semantically before merging.
-   - _Staleness_: Delegate task staleness and closure to `/ida:reconcile sweep`, scoped to the cycle's window.
-   - _Misclassifications_: Reclassify informational tasks to memories or invoke `/ida:q` to reposition.
-5. **Sweep orphans**: Review tag-orphan notes surfaced by `pkb.get_consolidation_cluster` and tasks with no parent or project (`pkb.batch_update(orphan=true, dry_run=true)` lists them).
-6. **Process refiles**: Reposition tasks flagged with `refile` using `/ida:q` under their governing component or initiative epic with zero leaf `serves` edges and clear the flag.
-7. **Maintain graph**: Run `pkb.refresh_graph`, then compare `pkb.status` against the baseline to confirm convergence.
-8. **Densify graph (weekly)**: Run `wf-densify` to draft holistic `serves -> target` link proposals on Strategic Value Carriers ordered by reach (R3), hoisting any residual leaf `serves` edges onto parent component epics and stripping `serves` from child tasks.
-9. **Audit output**: Verify that new or updated notes satisfy the extraction tests and defect checklist.
+1. **Baseline**: Run `pkb.status` and `pkb.get_stats`; record document count and index freshness.
+2. **Mine transcripts**: Process unmined transcripts (up to 15 per cycle) into current-state topic notes without modifying transcript bodies or recording `sources:` / `mined:` provenance arrays.
+3. **Consolidate knowledge**: Extract durable content from daily notes, meeting notes, and closed tasks into canonical topic notes per the extraction method. Create `type: index` navigation notes for clusters of 5+ notes (no `moc` type); delete episodic notes once persisted at the destination.
+4. **Reconcile data quality**: Inspect `find_duplicates(mode="both")` candidates semantically before merging; delegate staleness sweeps to `/reconcile`; reclassify informational tasks or reposition via `/q`.
+5. **Sweep orphans**: Review tag-orphan notes via `pkb.get_consolidation_cluster` and parentless/projectless tasks via `pkb.batch_update(orphan=true, dry_run=true)`.
+6. **Process refiles**: Reposition `refile`-flagged tasks via `/q` under their governing epic with zero leaf `serves` edges, then clear the flag.
+7. **Maintain graph**: Run `pkb.refresh_graph` and compare `pkb.status` against baseline.
+8. **Calibrate graph edges (weekly)**: Review Strategic Value Carriers ordered by reach and draft holistic `serves -> target` link proposals; hoist any residual leaf `serves` edges onto parent component epics and strip `serves` from child tasks.
+9. **Audit output**: Confirm all new or updated notes satisfy extraction checks and the defect checklist.
 
 ## Summary Report
 
-Emit a structured summary for each cycle:
-
-1. **Halt count**: Listed at top with phase and failure details (or `0`).
-2. **Baseline and deltas**: Initial vs. final graph stats and orphan counts.
-3. **Stage details**: IDs of processed, augmented, rewritten, and merged nodes.
-4. **Empty extractions**: List of tasks containing no durable knowledge.
-5. **Next actions**: Focus items for subsequent cycles.
+Emit a structured cycle summary with: (1) **Halt count** (with phase and failure details, or `0`), (2) **Baseline and deltas** (graph stats and orphan counts), (3) **Stage details** (processed, augmented, rewritten, and merged node IDs), (4) **Empty extractions**, and (5) **Next actions**.

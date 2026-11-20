@@ -1,11 +1,11 @@
 ---
 name: strategic-review
-description: Modular multi-agent dialectical review of any artifact (specification, design, plan, document, PR) supervised by James. Calibrates proportionality and altitude upfront, deploys Pauli (strategic direction, core premise, and congruence with existing material), RBG (compliance and scope of authority), and Marsha (qualitative excellence and audience resonance across rendered outputs against purpose and genre standards) in parallel, directs immediate self-fixes for uncontroversial issues, drives dialectical deliberation when warranted, and reconciles findings into a single PASS, REVISE, or FAIL verdict. Pass comment or fix flags to write results back.
+description: Modular multi-agent dialectical review of any artifact (specification, design, plan, document, PR) supervised by James. Calibrates proportionality and altitude upfront, deploys Pauli (strategic direction, core premise, and congruence with existing material), RBG (compliance and scope of authority), and Marsha (qualitative taste and audience resonance across rendered outputs against purpose and genre standards, never linters or functional QA) in parallel, directs serialized self-fixes when authorized, drives dialectical deliberation when warranted, and reconciles findings into PASS, REVISE, or FAIL. Pass comment or fix flags to write results back.
 ---
 
 # Strategic Review
 
-Coordinate modular multi-agent dialectical review under **`james` as Supervisor** across three distinct review components and synthesize findings into one reconciled verdict (`PASS`, `REVISE`, or `FAIL`).
+Coordinate modular multi-agent dialectical review under **`james` as Supervisor** across three specialist lenses and reconcile findings into one verdict (`PASS`, `REVISE`, or `FAIL`).
 
 ## Inputs
 
@@ -14,47 +14,43 @@ Coordinate modular multi-agent dialectical review under **`james` as Supervisor*
 
 ## Review Process
 
-### 1. Supervisor Calibration: Proportionality, Altitude & Governing Standard (`james`)
+### 1. Supervisor Calibration (`james`)
 
-Before dispatching reviewers, the Supervisor (`james`) loads the artifact, its originating request, the format/quality standard governing the artifact's genre (`specs/meta/doc-taxonomy.md` -- e.g., `specs/meta/writing-specs.md` for specifications, `craft` for agent instructions, disciplinary standards for manuscripts/articles, or task acceptance criteria for task handbacks), and whatever specifications, requirements, or acceptance criteria are available, determines destination repository visibility (public or private), and explicitly calibrates:
+Before dispatching reviewers, load the artifact, its originating request, available specifications or acceptance criteria, and the governing genre standard (e.g., specification standards, `craft` for agent instructions, disciplinary standards for manuscripts, or task criteria for handbacks). Determine destination visibility (public or private) and calibrate:
 
-- **Proportionality (depth, rounds, model selection, and primary-material scope)**: Weigh the importance, risk, blast radius, and reversibility of the task or artifact at the start:
-  - **High-stakes / high-risk / architectural work**: Allocate deeper refinement, multiple rounds of dialectical cross-examination, and flagship models.
-  - **Low-stakes / routine / reversible checks**: Keep the review to a fast, single-pass sanity check with mid-tier models to confirm the change is sound without wasting time and money.
-- **Altitude alignment & artifact-matched standard**: Define the target abstraction focus for the review and ensure reviewers apply the standard matching the artifact's genre (never applying task-handback sections like `## Ask` to non-task artifacts).
+- **Proportionality**: Match depth, rounds, primary-material scope, and capability tier to risk, blast radius, and reversibility:
+  - _High-stakes / architectural_: Deeper refinement, multi-round dialectical cross-examination, highest-capability reasoning tier.
+  - _Low-stakes / routine / reversible_: Fast single-pass sanity check at mid-tier capability.
+- **Altitude & genre fit**: Fix the target abstraction level and apply only the standard matching the artifact's genre (never apply task-handback rules to non-task artifacts).
 
-### 2. Deploy the Three Review Components in Parallel
+### 2. Parallel Specialist Dispatch
 
-Dispatch all three specialist reviewers concurrently in a single turn at the calibrated model tier. Every reviewer's brief is drawn from the shared review briefing (quoting the originating request, governing genre standard, and available specifications/requirements/criteria before the artifact or diff) and returns a verdict in the unified `PASS` / `REVISE` / `FAIL` vocabulary:
+Dispatch all three reviewers concurrently in one turn using a shared briefing (originating request, governing genre standard, and requirements before the artifact or diff), returning `PASS`, `REVISE`, or `FAIL`:
 
-- **Rule compliance** (TypeName `rbg`): Axiom, rule, authority, and enforcement-pyramid compliance per `wf-rbg`.
-- **Strategic fit** (TypeName `pauli`): Core premise, strategic direction, and PKB congruence per `wf-strategic-fit` (supplied with an inline brief).
-- **Quality** (TypeName `marsha`): Qualitative excellence and audience resonance across live rendered outputs against purpose and genre standards per `verify`.
+- **Rule compliance** (`rbg`): Axiom, rule, authority, and enforcement-pyramid compliance.
+- **Strategic fit** (`pauli`): Core premise, strategic direction, and PKB congruence (with an inline brief).
+- **Quality** (`marsha`): Qualitative taste and audience resonance across live rendered outputs against purpose and genre standards per `verify` (never linters or functional QA).
 
-Every reviewer also judges proportion within its lens: whether the artifact builds more machinery than the request needs, and whether each requested change is worth its cost given the failure's likelihood and consequence. Reviewers immediately self-fix defects that can be resolved without controversy (language updates, data scrubbing under `data-boundaries`, simple deterministic repairs), commit them with `fix(review):`, and document them under `### Reviewer Self-Fixes Applied`. Uncontroversial self-fixes do not trigger `REVISE`; issues lacking a reasonably deterministic solution stay itemized findings.
+Every reviewer judges proportion within its lens: whether the artifact builds more machinery than needed, and whether each requested change justifies its cost. Reviewers apply and commit uncontroversial fixes (`fix(review): <description>`, listed under `### Reviewer Self-Fixes Applied`) only when serialized and authorized on a writable branch (e.g. `fix` mode); during parallel read-only dispatch, list suggested repairs under `### Suggested Fixes` for the fix pass instead.
 
-### 3. Dialectical Deliberation & Critical Synthesis _(Proportional to Stakes)_
+### 3. Dialectical Deliberation _(Proportional to Stakes)_
 
-- **Fast path (low-stakes sanity check)**: When proportionality is set to single-pass and reviewers surface no fatal blockers or cross-component contradictions, proceed directly to reconciliation.
-- **Dialectical rounds (high-stakes or conflicting findings)**: Read reviewer outputs critically rather than rubber-stamping them. Verify reviewer warrants: a documentation note (`README.md`, knowledge note) stating a behaviour proves only what the document says, not current working state (require a completed task record with verification evidence or live state, or else record it as an open question); a cited PR or code reference is authoritative only if it is the most recent merged change, reflects current working behaviour, and is backed by an authoritative specification or decision record. When reviewers surface competing tensions (e.g. compliance constraint vs strategic parsimony, or existing spec congruence vs implementation approach), `james` cross-examines the relevant reviewers with each other's critiques (`send_message`), demanding explicit defense, concession, or synthesis while holding the tension honestly. Intervene immediately if any reviewer drifts off the calibrated altitude.
+- **Fast path**: For single-pass sanity checks with no fatal blockers or cross-lens contradictions, proceed directly to reconciliation.
+- **Dialectical rounds**: Read outputs critically and verify warrants. Documentation (`README.md`, knowledge notes) proves only what the text says, not live working state (require completed verification evidence or record an open question); cited PRs or code are authoritative only if current and backed by a specification or decision record. When reviewers clash (e.g. compliance vs strategic parsimony), cross-examine them directly with each other's critiques to force defense, concession, or synthesis without softening the tension. Intervene immediately on altitude drift.
 
 ### 4. Reconcile Findings
 
-Synthesize component outputs into a unified findings table and compile itemized self-fixes:
+Compile a calibration header (chosen tier, rounds, target altitude), itemized self-fixes or suggested fixes, and a unified findings table:
 
 | Reviewer | Issue | Feedback | Verdict / Disposition |
 | - | - | - | - |
 
-- Include a calibration header noting the chosen proportionality (model selection and rounds) and target altitude.
-- Collapse concordant findings across reviewers into a single row that keeps each reviewer's own verdict/disposition; where they differ, state the disposition adopted and why.
-- Give the strategic congruence review (`pauli`) its own row (`PASS`, `REVISE`, or `FAIL`), even when concordant with other rows.
-- Itemize all self-fixes applied across reviewers under `### Reviewer Self-Fixes Applied`. If all identified defects were uncontroversial and self-fixed cleanly, do not issue `REVISE` solely for those items.
-- **Overall verdict**: `PASS`, `REVISE`, or `FAIL`. Any expert reviewer's (`pauli`, `rbg`, or `marsha`) `FAIL` makes the combined verdict `FAIL`. The consolidating agent must never downgrade, overrule, or soften an expert reviewer's `FAIL` (e.g. to `REVISE` or `PASS`). If an expert reviewer is judged too harsh, that is the user's responsibility to fix by reviewing that reviewer agent, not the consolidating agent's job to soften. Any `REVISE` without a `FAIL` forces `REVISE` unless all pass (`PASS`).
+- Collapse concordant findings across reviewers into one row preserving each reviewer's verdict; where they differ, state the adopted disposition and why. Keep `pauli`'s strategic congruence review as its own row even when concordant.
+- Do not issue `REVISE` solely for items already resolved cleanly by authorized self-fixes.
+- **Overall verdict**: Any specialist `FAIL` forces `FAIL` (never downgrade or soften an expert `FAIL`). Any `REVISE` without a `FAIL` forces `REVISE`. Otherwise `PASS`.
 
 ### 5. Action and Reporting
 
-- **Reviewer self-fixes**: Reviewers apply uncontroversial fixes directly to the working tree / branch, commit immediately (`fix(review): <description>`), and report them under `### Reviewer Self-Fixes Applied`. Issues lacking a reasonably deterministic solution remain as findings.
-- **Default**: Return the calibration summary, reviewer self-fixes applied, synthesis table, and overall verdict (`PASS`, `REVISE`, or `FAIL`) to the caller.
-- **`comment`**: Run the `data-boundaries` check against destination visibility before posting; then post reconciled feedback to the PR review or task note.
-- **`fix`**: Run the `data-boundaries` check against destination visibility before pushing; apply straightforward mechanical remedies immediately.
-- Write the final verdict and evidence to the artifact's task record.
+- **Default**: Return calibration summary, applied/suggested fixes, synthesis table, and overall verdict to the caller.
+- **`comment` / `fix`**: Verify `data-boundaries` against destination visibility before posting comments or pushing commits (`fix` applies straightforward mechanical remedies).
+- Record the final verdict and evidence on the artifact's task record.
