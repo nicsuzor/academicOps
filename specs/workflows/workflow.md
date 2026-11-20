@@ -60,7 +60,7 @@ Components come from three sources:
 
 ### Universal templates
 
-The universal workflow library (`plugins/ida/skills/workflow-library/workflows/`) holds **28 templates** (six former templates -- `trace-decision`, `wf-densify`, `wf-gate-compliance`, `wf-price-targets`, `wf-surface-probe`, and `wf-trace-sample-eval` -- moved to Project/User PKB workflow tiers):
+The universal workflow library (`plugins/ida/skills/workflow-library/workflows/`) holds **28 templates**:
 
 - `wf-code-task-base`: Foundation for code-change tasks executed via `/supervise` or `/pull`.
 - `wf-dialectical-review`: Universal default dialectical review workflow coordinating strategic coherence, compliance, and empirical verification perspectives.

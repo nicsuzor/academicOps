@@ -13,7 +13,7 @@ description: Triage a corpus, classify, and dispatch outputs across three modes 
 | `trend` | Many sessions / audit files | Trend report + recommendations |
 | `sweep` | Open GitHub issues | PKB tasks (leaf and composite parent tasks), closures |
 
-Every mode dispatches to `pauli`: premise evaluation and graph mutation belong to her.
+Every mode dispatches to `pauli`: premise evaluation and graph mutation belong to the custodian.
 
 - **Read [references/forensic-scope.md](references/forensic-scope.md) before starting any mode.** Its in-scope/out-of-scope split and anonymisation clause bind `retro`, `trend`, and `sweep` alike.
 - **Read [references/mode-procedures.md](references/mode-procedures.md) for the active mode before executing**, to apply exact selection rules, classification tables, output templates, and landing steps.
