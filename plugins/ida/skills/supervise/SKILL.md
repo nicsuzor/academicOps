@@ -25,7 +25,7 @@ Supervise a repository-scoped composite task (`type: "task"`, never `type: "epic
 
 ## 3. Calibrated Delegation & Incremental Checkpoints
 
-1. **Calibrated fan-out**: Delegate disjoint chunks to subagents matched by capability required (highest-reasoning capability for complex architecture and multi-constraint synthesis; general capability for coordination; cheapest capable subagent for focused edits, template updates, and index sync). Delegate heavy reading and investigation where proportionate, taking back short cited answers so the supervisor context holds briefs, summaries, and decisions. Instruct subagents to return their final report solely in clean Argdown prose per `ida:premise-check` on exit without duplicate mid-turn status messages.
+1. **Calibrated fan-out**: Delegate disjoint chunks to subagents matched by capability tier (`flagship` for complex architecture and multi-constraint synthesis; `mid-tier` for general coordination; `fast` for focused edits, template updates, and index sync). Delegate heavy reading and investigation where proportionate, taking back short cited answers so the supervisor context holds briefs, summaries, and decisions. Instruct subagents to return their final report solely in clean Argdown prose per `ida:premise-check` on exit without duplicate mid-turn status messages.
 2. **Incremental checkpoint invariant**: After every chunk of subagent work:
    - Evaluate handbacks on the face of the record per `ida:premise-check` (zero _de novo_ fact-checking) and run formatters/linters on modified files.
    - Stage and commit modified files scrubbed of private identifiers, PKB task/note/session IDs, `Task:` trailers, personal names, and private hostnames (`data-boundaries`).

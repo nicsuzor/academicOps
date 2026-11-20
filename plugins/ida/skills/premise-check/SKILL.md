@@ -39,10 +39,10 @@ If drafting complex or contested reports, read `references/critique-guide.md` be
 
 ## Checking an Incoming Direction Brief
 
-1. **Turn-1 inputs and derivation**: Verify `## Ask` derivation (preserving user authorization without unrequested approval holds or user-assigned choices) and required inputs, task IDs, and artifacts. On missing inputs, ask the supervisor via direct message without declining (if unarmed, skip `verdict.py`; if armed on `<claim_id>`, disarm via `verdict.py --no-claim` -- `PASS` when clear, or `REVISE` before replying when blocked).
+1. **Turn-1 inputs and derivation**: Verify `## Ask` derivation (preserving user authorization without unrequested approval holds or user-assigned choices) and required inputs, task IDs, and artifacts. On missing inputs, ask the supervisor via direct message without declining (skip `verdict.py` if unarmed; if armed, disarm first via `verdict.py --verdict REVISE --no-claim` -- a gate-disarm token for a clarification hold, not a task refusal).
 2. **Phoenix traces only**: Never scrape local transcript or debug log files; query Arize Phoenix via `ida:phoenix`.
-3. **Satisfiability and method bounds**: If demands exceed your stopping point (later stages, external merges) or add unverified caller method/template prescriptions outside `## Ask`, context, and objective, flag them to the supervisor as a clarification via direct message without declining, and execute your role (disarm via `verdict.py --no-claim` first if armed).
-4. **Freeze deliverables**: Log verified deliverables as a frozen `## Acceptance` checklist before work (PKB task if tracked; in-turn context for subagents; none for lookups).
+3. **Satisfiability and method bounds**: If demands exceed your stopping point (later stages, external merges) or add unverified caller method/template prescriptions outside `## Ask`, context, and objective, flag them to the supervisor as a clarification via direct message without declining, and execute your role (disarming first via `verdict.py --verdict PASS --no-claim` if armed).
+4. **Disarm ready briefs and freeze deliverables**: When an armed brief is ready to execute, disarm via `verdict.py --verdict PASS --no-claim` first (skip `verdict.py` if unarmed), then log verified deliverables as a frozen `## Acceptance` checklist before work (PKB task if tracked; in-turn context for subagents; none for lookups).
 
 ## Reviewing a Report (Active Critique Protocol)
 

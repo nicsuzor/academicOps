@@ -1785,12 +1785,12 @@ def _format_notice_pair(
         claim_id, cmd = items[0]
         if not agent_tmpl:
             agent_tmpl = (
-                "Premise-check gate armed by {claim_id}; if this is a direction brief, verify "
-                "Turn-1 inputs, derivation from `## Ask`, and satisfiability, then disarm via "
-                "`verdict.py --no-claim` (`PASS` before logging a frozen acceptance checklist, or "
-                "`REVISE` before returning `REVISE` via `send_message`); otherwise load "
-                "`ida:premise-check`, review formally on the face of the record (zero de novo "
-                "fact-checking), and record appealable reasons.\n{command}"
+                "Premise-check gate armed by {claim_id}. Direction brief: verify Turn-1 inputs, "
+                "`## Ask`, and satisfiability, flagging gaps or unverified prescriptions without "
+                "declining; disarm via `verdict.py --no-claim` (`PASS` before logging a frozen "
+                "acceptance checklist; `REVISE` pending clarification). Report: load "
+                "`ida:premise-check`, review on the record (zero de novo), and record appealable "
+                "reasons.\n{command}"
             )
         inject = agent_tmpl.format(claim_id=claim_id, command=cmd)
         user_msg = (

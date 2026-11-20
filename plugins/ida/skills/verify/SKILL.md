@@ -28,7 +28,7 @@ Review the artifact in its rendered form as experienced by the user:
 
 ## 3. Review Findings & Self-Fixes
 
-- **Serialized vs. Parallel Fixes:** Apply and commit uncontroversial typographic, formatting, or visual layout corrections (`fix(review): ...`) only when serialized and authorized on a writable branch, recording them as Argdown observations in internal handbacks (and under `### Reviewer Self-Fixes Applied` in published PR/issue or user-facing outputs). When running as a parallel or read-only review, report suggested repairs as Argdown findings internally (and under `### Suggested Fixes` in published/user-facing outputs) for the fix pass to avoid concurrent write conflicts.
+- **Serialized vs. Parallel Fixes:** Apply and commit uncontroversial typographic, formatting, or layout corrections (`fix(review): ...`) only when serialized and authorized on a writable branch, itemizing applied fixes. During parallel or read-only reviews, itemize suggested fixes for the fix pass to avoid concurrent write conflicts.
 - **Substantive Findings:** Document qualitative shortcomings with concrete guidance on tone, taste, layout, structure, or audience alignment.
 
 ## 4. Verdict Schema

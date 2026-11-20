@@ -37,7 +37,7 @@ As the user, I want every non-user-facing agent report written in clean, human-r
 As the user, I want every verdict to carry clear, appealable natural-language reasons I can audit against the report it judged, so that a `PASS`, `REVISE`, or `FAIL` demonstrates facial validity and authority rather than asserting a bare outcome.
 
 - Verdict reasons are self-contained natural-language records (no fixed line counts or regex keys) naming the judged claim and asks, explaining why load-bearing inferences hold or fail, rivals tested, evidence-to-stakes fit, ask/authority/rule compliance (with remand cures on `REVISE`/`FAIL`), and which checked conclusions (with qualifiers) may relay upward.
-- A standalone canonical `[no claim]` notice (bare `[no claim]` or standalone fenced `argdown` `[no claim]` block with zero accompanying prose) auto-disarms; a claim-free prose notice or armed direction brief that arms the gate clears via `verdict.py --verdict PASS --no-claim` (or `--verdict REVISE --no-claim` when remanding a defective brief) with a plain natural-language reason.
+- A standalone canonical `[no claim]` notice (bare `[no claim]` or standalone fenced `argdown` `[no claim]` block with zero accompanying prose) auto-disarms; a claim-free prose notice or armed direction brief that arms the gate clears via `verdict.py --verdict PASS --no-claim` (or `--verdict REVISE --no-claim` as a gate-disarm token when holding on missing inputs pending supervisor clarification) with a plain natural-language reason.
 - Each verdict mints a `verification_id` exported on its OpenTelemetry span alongside the judged reference, judged text SHA-256 digest, `premise_check.no_claim`, and recorded natural-language reason.
 
 ### 4. Strength that survives every hop
@@ -68,7 +68,9 @@ As the user, I want partial delivery, inability, and unreachability to be accept
 As the user, I want my directions to reach a worker as I gave them, so that an agent in the chain cannot add to what I asked.
 
 - Relayed directions cite the original ask and derive faithfully from it (judged by meaning and distinctions, not harmless rewording), demanding only what the recipient can hold when it stops. Dispatchers compose briefs from the ask and task record without inspecting primary sources.
-- Recipients verify Turn-1 required inputs, derivation, and brief satisfiability before logging a frozen acceptance checklist. When unarmed (no gate claim armed, such as a fresh subagent invocation or structural parent-to-child dispatch), return `REVISE` directly via `send_message` on omitted inputs, unfulfillable demands, or unverified caller method prescriptions (no `verdict.py`). When an incoming peer or messaging direction brief arms a gate claim, disarm it via `verdict.py --claim <id> --verdict PASS --no-claim --reason-file <path>` when intake passes, or `--verdict REVISE --no-claim --reason-file <path>` before returning `REVISE` via `send_message`. Missing context never scrapes local JSONL transcripts or debug logs (Arize Phoenix via `ida:phoenix` only).
+- Recipients verify Turn-1 required inputs, derivation, and brief satisfiability before logging a frozen acceptance checklist, never declining handed work or scraping local JSONL transcripts/debug logs (Arize Phoenix via `ida:phoenix` only).
+- On omitted required inputs, ask the supervisor via direct message without declining (skip `verdict.py` if unarmed; if armed, disarm first via `verdict.py --claim <id> --verdict REVISE --no-claim --reason-file <path>` as a gate-disarm token for a clarification hold).
+- On unreachable demands or unverified caller prescriptions, flag them to the supervisor as a clarification via direct message without declining and execute the assigned role; disarm ready or flag-and-execute armed briefs via `verdict.py --claim <id> --verdict PASS --no-claim --reason-file <path>` (skip `verdict.py` when unarmed).
 
 ### 8. Explanations are not reasons (hearsay)
 
@@ -84,8 +86,8 @@ As the user, I want diagnoses and evaluations to trace causes to runtime evidenc
 ```mermaid
 flowchart TD
     Ask(["User Ask"]) --> Brief["1. Brief & Turn-1 Intake<br/>(Derive, verify inputs & satisfiability)"]
-    Brief -->|Missing / Unsatisfiable| BriefRevise["Return REVISE via send_message<br/>(If armed: verdict.py --verdict REVISE --no-claim first)"]
-    Brief -->|Valid| BriefClear["Disarm if Armed (--verdict PASS --no-claim)<br/>& Freeze Acceptance Checklist"]
+    Brief -->|Missing Inputs| BriefClarify["Ask Supervisor via Direct Message Without Declining<br/>(If armed: --verdict REVISE --no-claim hold token first)"]
+    Brief -->|Ready or Flag & Execute| BriefClear["Flag Unreachable/Prescriptions if Any & Disarm if Armed<br/>(--verdict PASS --no-claim) & Freeze Acceptance Checklist"]
     BriefClear --> Author["2. Author Argdown Report<br/>(Upfront ask/conclusion, inline primary quotes)"]
     Author --> Gate{"3. Arrival Gate<br/>(Standalone [no claim]?)"}
     Gate -->|Yes| AutoClear["Auto-Disarm<br/>(no-claim)"]

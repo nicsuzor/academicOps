@@ -9,7 +9,7 @@ The task record is the whole message to the isolated worker container; dispatch 
 
 Dispatched worker containers operate in two modes:
 
-- **Supervised container (`/ida:supervise <task-id>`)**: Default for repo-scoped tasks queued by `/q`, un-reified multi-stage tasks, or composite tasks needing coordination and fan-out. Launches the lead executor (`james`) calibrated to task complexity; runs `/reify` in session if un-reified and leaves follow-ups only for out-of-session work.
+- **Supervised container (`/ida:supervise <task-id>`)**: Default for repo-scoped tasks queued by `/q`, un-reified multi-stage tasks, or composite tasks needing coordination and fan-out. Launches the lead executor (`james`) calibrated by complexity tier; runs `/reify` in session if un-reified and leaves follow-ups only for out-of-session work.
 - **Leaf container (`/ida:pull <task-id>`)**: Fast-path execution for already-decomposed leaf tasks or single-skill directives without re-reifying, strictly state-only on the claimed task.
 
 ## 1. Verify Readiness & Satisfiability
