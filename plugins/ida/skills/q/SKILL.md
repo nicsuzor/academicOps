@@ -12,7 +12,7 @@ Situate natural-language asks on the task graph: parented, connected, and valued
 ## 1. Search, Hydrate, and Consolidate
 
 1. **Custodian intake**: The PKB custodian (`pauli`) executes `/q` intake and related-work lookup via `/hydrate`. Non-custodian callers delegate `/q` on Turn 1 with only the verbatim ask and source identifiers, running zero pre-delegation lookups or bundled sweep work.
-2. **Distill and search**: Distill 1-3 short (5-15 word) conceptual queries per topic facet (never pass raw verbatim prompts) and search open and closed tasks (`include_done: true`) plus related targets before minting any task.
+2. **Search via hydrate**: Search open and closed tasks (`include_done: true`) plus related targets via `/hydrate` before minting any task.
 3. **Evaluate outcome**:
    - _Consolidate or resume_: Extend an open or in-progress task covering the topic or repository scope rather than creating a duplicate.
    - _Reopen or close_: Reopen a closed task needing follow-up (`queued` or `ready`). If the deliverable already shipped and the user is informed, mark tracking and work tasks `done` rather than holding them open to verify user installation or deployment.

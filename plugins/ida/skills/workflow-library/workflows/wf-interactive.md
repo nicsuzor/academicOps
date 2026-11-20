@@ -19,7 +19,7 @@ Governs direct user-facing interactive sessions: task creation boundaries, subag
    - Downstream workers and subagents never create additional tasks on the task graph for the session's work.
 2. **Delegation pipeline**:
    - The user-facing coordinator delegates first to an internal delegate.
-   - Pre-creation overlap checks route directly to the PKB custodian, who searches with short conceptual queries distilled from the ask (never raw prompt text) before an outer task is minted via `/q`.
+   - Pre-creation overlap checks route directly to the PKB custodian before an outer task is minted via `/q`.
    - Internal delegates route work to the PKB custodian, review coordinator, or dispatcher as needed (`/supervise` for repo-scoped composite tasks; `/pull` for plain leaf tasks).
 3. **Seam verification**:
    - Every inter-agent report and handback requires verification at the seam and carries a `premise-check` Argdown argument; any result drawing `REVISE` during review must be revised and re-reviewed before handback.

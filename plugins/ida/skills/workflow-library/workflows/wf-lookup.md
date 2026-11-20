@@ -13,7 +13,7 @@ Governs Personal Knowledge Base (PKB) reads, PKB writes, memory curation, graph 
 
 ## Requirements
 
-1. **Direct delegation to custodian**: Dispatch PKB reads, writes, graph operations, and overlap searches directly to the PKB custodian, who queries with short (5--15 word) conceptual queries distilled from the ask rather than raw prompt text.
+1. **Direct delegation to custodian**: Dispatch PKB reads, writes, graph operations, and overlap searches directly to the PKB custodian.
 2. **No task creation**: Do not create, queue, or reify a task on the task graph.
 3. **No pull or dump ceremony**: Neither the caller nor the custodian executes `/pull`, `/dump`, or task claim or release.
 4. **Handback requirement**: Hand back with a valid `premise-check` Argdown argument.

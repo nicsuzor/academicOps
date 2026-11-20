@@ -13,7 +13,7 @@ A node must sit under an active parent container (`type: "task"`, never `type: "
 
 ## 1. Hydrate
 
-Invoke `/hydrate` (via custodian when called by a non-custodian) using short (5-15 word) distilled conceptual queries per topic facet, never raw composite prompts. Cite hydration findings before composing: update existing matching tasks instead of duplicating, continue unfinished matches, and wire `needs` for unfinished prerequisites.
+Invoke `/hydrate` (via custodian when called by a non-custodian). Cite hydration findings before composing: update existing matching tasks instead of duplicating, continue unfinished matches, and wire `needs` for unfinished prerequisites.
 
 ## 2. Compose Workflows
 
