@@ -142,3 +142,7 @@ Every agent must always report all rule violations -- whether committed during e
 ## Session traces through Phoenix, never local JSONL logs
 
 Direct all session, prompt, and execution trace lookups exclusively to Arize Phoenix via `ida:phoenix`. Agents are strictly prohibited from reading or scraping raw local `.system_generated/logs/transcript*.jsonl` or `/tmp/aops_debug_hooks_*.jsonl` files. When a subagent receives a brief with missing inputs or target artifacts, it must verify on Turn 1 and immediately return `REVISE` via `send_message` to the caller rather than scraping local transcripts or debug files, without executing `verdict.py`.
+
+## Name model tiers, not model names
+
+Instructions, workflows, skills, agent definitions, rules, and specs name a model only by capability tier (`flagship`, `mid-tier`, or `fast`), never by concrete model name, family, or version. A polecat launch is the only exception, where a concrete model must be named. See [`model-tiers.md`](model-tiers.md).
