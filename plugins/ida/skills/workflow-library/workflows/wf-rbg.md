@@ -3,7 +3,7 @@ alias:
   - wf-rbg
   - wf-rule-check
   - wf-rbg-review
-description: Universal compliance review -- evaluate candidate artifact, change, or decision against universal axioms, user and project rules, delegated authority scope (ultra vires), data boundaries, and the least-invasive enforcement hierarchy, returning PASS, REVISE, or FAIL.
+description: Universal judicial compliance review -- adjudicate candidate artifact, change, or decision independently against universal axioms, user and project rules, delegated jurisdiction (ultra vires), abdication, non-delegable discretion, data boundaries, and the least-invasive enforcement hierarchy, returning PASS, REVISE, or FAIL.
 id: wf-rbg
 tags:
   - wf-template
@@ -16,27 +16,37 @@ type: template
 
 ## What this step does
 
-Universal compliance review: a compliance reviewer evaluates an artifact, specification, design, code change, or decision against universal axioms, project-local and user-scoped rules, scope of delegated authority (_ultra vires_), data boundaries, and the least-invasive intervention hierarchy, exercising direct qualitative judgment over intent and gravity rather than mechanical pattern-matching.
+Universal judicial compliance review: an independent compliance adjudicator tests an artifact, specification, design, code change, or decision against the constitutional axiom baseline, project-local and user-scoped rules, delegated jurisdiction (_ultra vires_), _abdication_, non-delegable discretion, data boundaries, and the least-invasive enforcement hierarchy -- judging rule intent and gravity without reading prior reviews or deferring to peers.
 
 ## Input contract
 
-Draws its brief from the shared review briefing plus active rule sources assembled in priority order:
+Draws its brief from the shared review briefing plus active law assembled in priority order:
 
-- **Universal axioms**: inviolable framework baseline.
+- **Universal axioms**: inviolable constitutional baseline.
 - **Project-local rules**: project rule definitions in the active repository.
 - **User-scoped rules**: active user rule records (when present).
 - **Enforcement architecture**: governing enforcement policy when behavior-shaping mechanisms are modified.
 
 ## Procedure
 
-1. **Assemble active rules & verify Turn-1 inputs** -- load governing axioms, project rules, user rules, and applicable enforcement policy before judging; never rule from memory. If the target artifact, diff, or originating ask is missing on Turn 1, return `REVISE` listing missing inputs without recording a verdict.
-2. **Stage 0: Proportion, non-mechanical baseline & authority** -- from the verbatim ask or standing mandate alone, state the smallest proportionate non-mechanical mechanism before reading the diff; if an agent workflow, instruction update, or existing tool meets the request and the artifact builds a new script, CLI, or harness, halt immediately with `FAIL`. Audit unrequested deletions equally alongside additions against verbatim ask authority (`do-one-thing`), halting with `FAIL` on _ultra vires_ or materially disproportionate work. Verify loaded instructions on the same surface were tried and proved insufficient before escalating mechanisms; reject multi-file prose bloat, single-incident prohibitive rules, and single-use migration/structural scripts. In **PR description-only mode** on a pre-approval consolidated feature-branch PR (whose constituent branches already passed three-lens diff review) or open-PR intake screening, evaluate only the PR title, description (summary, approach, trade-offs, constituent review receipts, test receipts), donor PR closure status, and external-audience `data-boundaries` without re-reading the combined code diff.
-3. **Evaluate compliance** -- inspect full PR metadata, the complete diff (including deletions), and static text of modified or explicitly cited test files (rejecting tautological, mirror, or mock-coupled assertions without repo-wide searches or test execution). Test against governing axioms, project/user rules, and least-invasive enforcement:
-   - Hold cited waivers strictly to literal quoted bounds (`closure`); reject turn errors suppressed behind stderr or telemetry (`fail-fast`), circular test/spec relaxations, and redundant axiom restatements or deferred DRY/SSoT defects (`single-source-of-truth`).
-   - When diffs touch agent definitions, skills, workflows, or specifications, verify compliance with instruction craft standards (contract separation, progressive disclosure, model/harness agnosticism, zero historical provenance), human-principal user stories (never casting agents as users), and generic single-sourced task composition / enforcement tables (no hardcoded workflow branching or workflow rows).
-   - Evaluate full published surfaces (diffs, titles, bodies, commits, trailers) under `data-boundaries` for destination visibility, and hard-reject (`FAIL`) unauthenticated public-endpoint exposure or route/auth changes risking unapproved public exposure of private endpoints.
-4. **Apply fix discipline** -- apply uncontroversial deterministic fixes (`fix(review): <description>`) ONLY when serialized or explicitly authorized on a writable branch, pushed and verified against committed `HEAD` state before `PASS`; during parallel or read-only review passes, report suggested fixes under `### Suggested Fixes` for single-writer commit and `HEAD` verification before `PASS` (never `REVISE` solely for self-fixed items). Non-deterministic or contested defects go under `### Required Changes` (`REVISE` or `FAIL`). A _Required Change_ names a rule breach whose prevention cost is less than its risk; anything else is a _Suggested Improvement_ (requiring less, not more, when work exceeds the ask).
-5. **Respect boundaries & issue verdict** -- judge strictly on static compliance, authority, and egress within the artifact text/diff and rule sources (leaving strategic congruence and runtime verification to their respective review roles), returning one verdict (`PASS`, `REVISE`, or `FAIL`) in readable Markdown (`## Compliance Review: **[PASS | REVISE | FAIL]**` with `### Reviewer Self-Fixes Applied`, `### Proportion & Mechanisms`, `### Required Changes`, and `### Suggested Improvements`).
+1. **Assemble active law & verify Turn-1 inputs**:
+   - Load governing axioms, project rules, user rules, active glossaries, and applicable enforcement policy before judging; never rule from memory or waive axioms.
+   - If the target artifact, diff, or originating mandate is missing on Turn 1, ask the supervisor to supply it without declining or recording a report verdict.
+2. **Stage 0: Proportion, non-mechanical baseline & _ultra vires_ screen** (judging independently before reading prior reviews):
+   - From the verbatim ask or standing mandate alone -- before reading the diff -- state the smallest proportionate non-mechanical remedy across its class; issue `FAIL` at once if an agent workflow, instruction update, or existing tool suffices while the artifact builds scripts, CLIs, or test harnesses.
+   - Audit unrequested deletions equally alongside additions against the verbatim mandate (`do-one-thing`), halting with `FAIL` on _ultra vires_ overreach or materially disproportionate work.
+   - Verify loaded instructions on the same surface were tried and proved insufficient before escalating mechanisms; reject multi-file prose bloat, single-incident prohibitive rules, and single-use structural/migration scripts.
+   - _PR description-only mode_: On a pre-approval consolidated feature-branch PR (whose constituent branches already passed three-lens diff review) or open-PR intake screening, evaluate only the PR title, description (summary, approach, trade-offs, constituent review receipts, test receipts), donor PR closure status, and external-audience `data-boundaries` without re-reading the combined diff.
+3. **Evaluate compliance & runtime consequences**:
+   - Inspect full PR metadata, the complete diff (including deletions), and static text of modified or cited test files (rejecting tautological, mirror, or mock-coupled assertions without repo sweeps or running tests).
+   - Name each added mechanism by the decision it takes once running and whether it requires qualitative judgment; enforce literal waiver bounds (`closure`), fail-closed errors (`fail-fast`), and single source of truth without deferred DRY/compliance debt.
+   - When diffs touch agent definitions, skills, workflows, or specs, check instruction craft standards (including preservation of authorial public-law voice), human-principal user stories, and generic workflow composition / enforcement tables.
+   - Audit full published surfaces (diffs, titles, bodies, commits, trailers) under `data-boundaries`, and issue `FAIL` for unauthenticated public-endpoint exposure or auth changes risking private exposure.
+4. **Apply fix discipline & duty to give reasons**:
+   - _Serialized writable branch_: Apply uncontroversial deterministic fixes (`fix(review): <description>`) only when serialized or explicitly authorized, committed, pushed, and verified against `HEAD` before issuing `PASS`.
+   - _Parallel or read-only passes_: Report suggested fixes under `### Suggested Fixes` for single-writer commit and `HEAD` verification before `PASS` (never issuing `REVISE` solely for cleanly self-fixed items).
+   - _Contested defects_: Place non-deterministic defects under `### Required Changes` (`REVISE` or `FAIL`), stating the broken rule and a remedy costing less than the failure prevented; anything else is a _Suggested Improvement_ (requiring less, not more, when work exceeds the ask).
+5. **Respect jurisdiction & issue verdict** -- confine adjudication to static compliance, delegated jurisdiction, and egress (leaving strategic coherence and runtime verification to their branches), returning `## RBG Review: **[PASS | REVISE | FAIL]**` with `### Reviewer Self-Fixes Applied`, `### Proportion & Mechanisms`, `### Required Changes`, and `### Suggested Improvements`.
 
 ## Output contract
 

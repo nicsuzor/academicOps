@@ -19,7 +19,7 @@ Author and review agent-facing instructions, personas, and workflow templates fo
 7. **Write for a headless worker**: Assume unattended execution with no human in the loop. Never pause or wait mid-task; end at approval boundaries and wire dependent work as blocked.
 8. **Promise only what the executor delivers**: Output contracts list only artifacts and state the executing agent produces, never another party's subsequent act, sign-off, or user installation/deployment of a shipped release.
 9. **Verification must be real**: Demand direct inspection of live artifacts (outputs, logs, diffs) rather than compliance checklists.
-10. **Instruction density over conversational prose**: Maximize high-signal constraints per token; eliminate incident stories, post-mortems, and historical rationales.
+10. **Conceptual density over bureaucratic padding**: Maximize conceptual leverage per token and strip incident stories, post-mortems, and boilerplate filler, while explicitly preserving distinctive authorial voice and high-leverage public-law vocabulary (constitutionalism, democratic theory, separation of powers, administrative law -- e.g., _ultra vires_, _abdication_, _ministerial_, _jurisdiction_, _delegated authority_, _standing mandate_, _duty to give reasons_, _hearsay_, _seamless web_, _checks and balances_). Jurisprudential concepts activate deep latent model priors around authority limits, institutional separation of powers, and non-delegable discretion that bloodless corporate prose forfeits; terse never means telegraphic.
 
 ## The Deletion Test
 
@@ -73,7 +73,8 @@ Hold operational content under the 150-200 line ceiling (target 30-80 lines):
 
 - **Structural anchoring & caching**: Place critical invariants first and stopping rules at the start or end (U-shaped attention); emit static rules/templates before variable tail content to maximize prompt caching.
 - **Shape, not logic**: Provide structural skeletons rather than exhaustive worked examples; define strict schemas with `required` fields and `additionalProperties: false`.
-- **Positive imperatives with functional reasoning**: Frame rules around what to do ("Use X because Y"), pairing any prohibition with its mandatory alternative. Strip conversational padding.
+- **Positive imperatives with functional reasoning**: Frame rules around what to do ("Use X because Y"), pairing any prohibition with its mandatory alternative. Strip boilerplate padding without flattening distinctive authorial voice or public-law terminology.
+- **Scannable clauses, no walls of text**: Split dense multi-clause obligations into focused sentences or indented sub-bullets rather than packing 400+ character single-line bullets.
 
 ## Quality Standards
 
@@ -84,4 +85,4 @@ Every agent instruction, skill, persona definition, and subagent prompt must pas
 3. **No PKB leakage (Data Boundaries)**: Never include private PKB IDs (`aops_...`, `task_...`, `mem_...`, `kb_...`) or Obsidian wikilinks (`[[...]]`) in distributed instructions; use standard relative markdown links.
 4. **Zero historical provenance (CURRENT STATE ONLY)**: Eliminate incident stories, post-mortem recaps, changelog citations, and historical `sources:` arrays; state only what is true now.
 5. **Adjudication against empirical evidence**: If an instruction design choice or length budget is contested during review, read `references/evidence.md` and cite its empirical findings.
-6. **Model, tier, and harness agnosticism**: Shipped instructions name no model, tier, or harness variant; state the capability required (e.g., cheapest subagent able to complete the task vs. high-reasoning synthesis), leaving deployment-specific model/harness mappings to deployment configuration.
+6. **Model and harness agnosticism**: Name models strictly by capability tier (`flagship`, `mid-tier`, `fast`), never by concrete model name, family, version, or client harness; concrete models appear only at polecat launch.

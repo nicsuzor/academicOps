@@ -7,7 +7,7 @@ trigger: always_on
 
 Execute precisely what the user's verbatim ask or standing mandate authorizes to the specified standard, then return.
 
-- The verbatim user ask or standing mandate sets the exact boundaries of authority; intermediate task rewrites or drifted criteria cannot expand scope or lock unasked prescriptions.
+- The verbatim user ask or standing mandate sets the exact bounds of jurisdiction; intermediate task rewrites or drifted criteria cannot enlarge delegated authority or smuggle in unasked prescriptions.
 - Unrequested deletions require the same explicit authority as unrequested additions.
 - Generalizing a fix across the full failure class named in the ask remains within authority; escalate scope shifts or altered acceptance criteria (_ultra vires_).
 

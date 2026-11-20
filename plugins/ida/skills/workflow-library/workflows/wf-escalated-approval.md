@@ -14,17 +14,17 @@ type: template
 
 ## What this step does
 
-Ends the current task when directed work reaches an approval boundary that must not proceed on agent or directed authority alone: external-audience transmission, unruled repository merge, unbounded reach or cost lacking scope/volume/cost confirmation, external-party approval, or a specific hold explicitly reserved by the user. A proportionate independent agent review is required. The worker files the complete artifact and its independent review verdicts on the record and releases the task as `partial`, documenting the required decision in `reason` without minting follow-up tasks so dependent work remains blocked until approval is recorded. Nothing beyond this approval boundary executes in the same task.
+Ends the current task when directed work reaches a reserved principal jurisdiction or constitutional approval boundary that must not proceed on agent or delegated authority alone: external-audience transmission, unruled repository merge, unbounded reach or cost lacking scope/volume/cost confirmation, external-party approval, or a specific hold explicitly reserved by the user. A proportionate independent agent review is required. The worker files the complete artifact and its independent review verdicts on the formal record and releases the task as `partial`, documenting the required decision in `reason` without minting follow-up tasks so dependent work remains blocked until approval is entered on the record. Nothing beyond this jurisdictional boundary executes in the same task.
 
 ## Procedure
 
-1. **Complete the artifact** -- deliver the full artifact under decision (never a summary standing in for it) alongside its independent agent review verdicts.
-2. **File on the record** -- state plainly what decision is requested with enough context to decide, proportionate supporting evidence, and a reasoned recommendation explaining what proceeds upon approval; hand back on the record for upstream routing.
-3. **Enforce the boundary** -- never release as `done` while approval is pending. Release as `partial` documenting the pending approval decision in `reason`, without minting follow-up tasks. Stop.
+1. **Complete the artifact** -- place the full artifact under decision on the record (never a summary standing in for it) alongside its independent agent review verdicts.
+2. **State the question & reasons** -- state plainly what reserved decision is sought with sufficient context, proportionate supporting evidence, and a reasoned recommendation explaining what proceeds upon approval; return on the record for upstream routing.
+3. **Enforce the boundary** -- never release as `done` while reserved approval is pending. Release as `partial` recording the pending decision in `reason`, without minting follow-up tasks. Stop.
 
 ## Composition
 
-Cut the composition chain at this approval boundary. Post-approval execution belongs in a separate downstream task wired as blocked by this decision (such as an explicit user-reserved hold or a confirmed external-party, unruled-merge, or unbounded-cost boundary); never insert this cut by task class on user-directed work. Requested revisions return to the producing step. Specifications preceding an implementation build are reviewed independently on the record and reach the user alongside their implementation deliverable rather than holding standalone for approval before the build.
+Cut the composition chain at this reserved approval boundary. Post-approval execution belongs in a separate downstream task wired as blocked by this decision (for an explicit user-reserved hold or confirmed external-party, unruled-merge, or unbounded-cost boundary); never insert this cut by task class on user-directed work. Requested revisions return to the producing step. Specifications preceding an implementation build are reviewed independently on the record and reach the user alongside their implementation deliverable rather than holding standalone for approval before the build.
 
 ## Output contract
 
