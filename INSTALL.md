@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- [Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview), or Antigravity
+- [Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview), Antigravity (`agy`), or OpenClaw
 - Node.js and `@argdown/cli` (`npm install -g @argdown/cli`) for Argdown argument gating
 - Docker, only if you want polecat's containerised workers
 
@@ -15,7 +15,7 @@ claude mcp add --transport http --scope user services <your PKB MCP endpoint>
 # 2. Install plugins from the marketplace:
 claude plugin marketplace add nicsuzor/academicOps@dist
 claude plugin install ida@academicOps
-claude plugin install rbg@academicOps
+claude plugin install james@academicOps
 claude plugin install tools@academicOps
 ```
 
@@ -24,11 +24,16 @@ The `services` MCP server is installed at user level across all surfaces, never 
 - **Local Claude Code**: `claude mcp add --transport http --scope user services <PKB_MCP_URL>`. Must use `--scope user`; `--scope local` was observed to register nothing.
 - **Claude Code Cloud / Cowork**: The claude.ai account connector named `services`.
 - **Antigravity (agy)**: Configured in user-level MCP settings (`~/.gemini/antigravity-cli/settings.json` or `~/.gemini/antigravity-cli/mcp/services.json`).
+- **OpenClaw**: Configure the `services` MCP server in your OpenClaw MCP settings.
 
-Plugins install with no `--config`: `ida-telegram` and `aops-debug` install the same way as `ida`, `rbg` and `tools`.
+### OpenClaw plugins
+
+Install from the `openclaw/` directory marketplace on the `dist` branch (or `dist/openclaw/` locally), which provides `ida`, `james`, `tools`, `ida-telegram`, and `aops-debug` (plus `*-v*.zip` archives), or download the standalone `*-openclaw.tar.gz` bundles from GitHub Releases.
+
+Plugins install with no `--config`: `ida-telegram` and `aops-debug` install the same way as `ida`, `james` and `tools`.
 
 Nothing else has a default. Set the environment variables each plugin needs
-before first use -- the full list is in [`README.md`](README.md#configure),
+before first use -- the telemetry variables are in [`README.md`](README.md#telemetry--otel-tracing-architecture),
 and each plugin's own `plugins/<dir>/README.md` documents its complete
 surface.
 
@@ -87,9 +92,10 @@ uv sync
 make install-dev
 ```
 
-`make install-dev` builds `dist/`, registers it as a local marketplace named
+`make install-dev` builds `dist/` (including `dist/openclaw/` for OpenClaw), registers it as a local marketplace named
 `aops`, installs every plugin from it into Claude Code (and Antigravity when
-`agy` is on `PATH`), and activates pre-commit.
+`agy` is on `PATH`), and activates pre-commit. For OpenClaw, point your
+OpenClaw plugin directory or marketplace config at `dist/openclaw/`.
 
 `make uninstall-dev` reverses it and restores the release channel.
 

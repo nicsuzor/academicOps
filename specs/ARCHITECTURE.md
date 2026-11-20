@@ -10,9 +10,11 @@ lib/                    Shared source, never shipped as-is. Most of it is inject
                         into plugin build trees; the rest feeds the image build.
   agy/                  Shared config for the agy client.
   hooks/                Hook runtime shared by every plugin that hooks
-                        (dispatch.py).
+                        (`dispatch.py`), and dormant CoPE rule hooks (`cope/`).
   py/                   Shared Python helpers, including the transcript
                         pipeline (`py/transcripts/`).
+  skills/               Shared skills (`argdown-toulmin`, `dispatch`) staged
+                        into plugins at build time.
   telemetry/            Shared observability config, injected into whichever
                         plugin ships a given skill's references.
 build/                  Build system: stages, client adapters, marketplace
@@ -22,13 +24,11 @@ templates/              Build-time file templates, GitHub Actions workflow
 scripts/                Repo tooling, not shipped in any plugin.
 plugins/                Plugin sources. Only what a client needs.
   ida/                  ida -- the interactive face, and the only agent that
-                        talks to the user; james, marsha, sara and pauli
-                        (the custodian for PKB graph, planning, and all knowledge
-                        tasks); PKB, workflow, review and premise-check skills;
-                        session, PKB-search, tracing and premise-check hooks.
-  rbg/                  Rule enforcement: the rbg agent, the axioms skill,
-                        an advisory turn-by-turn evaluator plus a stop-side
-                        rule-check gate.
+                        talks to the user; premise-check skill; session,
+                        PKB-search, tracing, and premise-check hooks.
+  james/                Dialectical review, execution supervision, and knowledge
+                        curation: james, marsha, pauli, rbg, and sara agents;
+                        axioms and custodian, planning, review, and execution skills.
   tools/                Domain research skills.
   aops-debug/           Debug plugin that dumps raw hook payloads.
   ida-telegram/         Ida's custom Telegram channel and Mini App plugin.
@@ -48,8 +48,8 @@ source of truth for the built plugin set.
 
 | Directory | Owns |
 | - | - |
-| `plugins/ida` | ida (`plugins/ida/agents/ida.md`) -- the interactive face and the only agent that talks to the user; james, marsha, sara, and pauli (`plugins/ida/agents/pauli.md`) -- the knowledge base custodian for memory, planning, decomposition, graph writes, and every knowledge task (questions, finding things, web, GitHub, read-only code inspections, and config lookups); capture, memory, decomposition, dispatch, workflow-library, review, and premise-check skills; session, PKB-search, tracing, and premise-check hooks. |
-| `plugins/rbg` | Rule enforcement: the rbg agent (`plugins/rbg/agents/rbg.md`), the `axioms` skill whose files are the axioms (`plugins/rbg/skills/axioms/`), an advisory turn-by-turn evaluator plus a stop-side rule-check gate. |
+| `plugins/ida` | ida (`plugins/ida/agents/ida.md`) -- the interactive face and the only agent that talks to the user; `premise-check` skill (`plugins/ida/skills/premise-check/`) plus shared `argdown-toulmin` and `dispatch` skills staged from `lib/skills/`; session, PKB-search, tracing, and premise-check hooks. |
+| `plugins/james` | Dialectical review, execution supervision, and knowledge curation: james, marsha, pauli, rbg, and sara agents (`plugins/james/agents/`); axioms (`plugins/james/skills/axioms/`); and custodian, planning, supervision, review, and execution skills. |
 | `plugins/tools` | Domain research skills (data analysis, document conversion, diagramming, peer review, project scaffolding). |
 | `plugins/aops-debug` | Debug plugin that dumps raw hook payloads. |
 | `plugins/ida-telegram` | Ida's custom Telegram channel and Mini App plugin: stdio MCP channel server, progressive disclosure with expandable blockquotes, async question broker, feedback trace collection, Mini App (Details, Review, Questions, Anchor), voice notes, and role-gated polling. |
@@ -80,23 +80,24 @@ Plugin hooks never rewrite or inject MCP tool-call inputs; agents pass
 | Plugin | Events registered | What it's for |
 | - | - | - |
 | `ida` | Claude Code: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PostToolBatch`, `SubagentStart`, `Stop`, `SubagentStop`, `StopFailure`, `PermissionRequest`, `PermissionDenied`, `Notification`, `PreCompact`, `PostCompact`, `SessionEnd`. agy: `SessionStart`, `PreInvocation` (canonical `UserPromptSubmit`), `PreToolUse`, `PostToolUse`, `Stop` | Session setup and `SessionStart` pointers; OTel tracing (`SubagentStop` tracer-only); `SubagentStart` uniform `honesty.md` reminders with recipient `--agent` and armed-claim context; `UserPromptSubmit` PKB prompt grounding ([prompt hydration](agents/prompt-hydration.md)) and incoming report reminders (`hearsay.md`); recipient-scoped `(session_id, agent_id)` `hearsay_gate` (`premise_check_gate`) arming across `UserPromptSubmit`, `PostToolUse`, and `PostToolBatch`, enforced per agent on `PreToolUse` and `Stop` (see [evidence contract enforcement](enforcement/evidence-contract-enforcement.md)). |
-| `rbg` | `PreToolUse`, `Stop`, `SubagentStop` (declared, unwired) | Rule-compliance evaluation and the stop-side rule-check gate, as designed. `HANDLERS` in `plugins/rbg/hooks/handlers.py` currently has every entry commented out, so this pillar ships no live hook today. |
 
-`plugins/tools` and `plugins/aops-debug` ship no hooks or a debug-only
-passthrough respectively; see each plugin's own README.
+The `ida` plugin registers hooks for session lifecycle, tracing, and premise-check gating. The `aops-debug` plugin provides diagnostic telemetry interception; see each plugin's README.
 
 ## Build
 
 `build/build.py` assembles `dist/<plugin>-<client>` for each plugin and
 client. Stages, in order: **inject** (copy each plugin's declared `lib/`
 content into its build tree, per `manifest/plugin.toml`'s `[[shared]]`
-entries), **render manifests** (merge each `manifest/*.template.json`'s
-`clients.__base__` with its `clients.<client>` section), **adapt to client**
-(client-specific transforms in `build/clients/`), and **package** (tar per
-client). Then `build/marketplace.py` generates the marketplace manifests,
-including the `dist/cowork/` and `dist/openclaw/` directory-marketplace
-channels and `dist/plugins/` (Antigravity's native multi-plugin directory,
-populated from `dist/<plugin>-agy`).
+entries), **stage shared skills** (stage shared skills from `lib/skills/`
+into plugins declaring them), **render manifests** (merge each
+`manifest/*.template.json`'s `clients.__base__` with its `clients.<client>`
+section), **adapt to client** (client-specific transforms in `build/clients/`,
+including axiom compilation and rule injection across `claude`, `openclaw`, and
+`agy`), and **package** (tar per client). Then `build/marketplace.py`
+generates the marketplace manifests, including the `dist/cowork/` and
+`dist/openclaw/` directory-marketplace channels and `dist/plugins/`
+(Antigravity's native multi-plugin directory, populated from
+`dist/<plugin>-agy`).
 
 ### Client adapters
 
@@ -107,6 +108,8 @@ A client adapter is the only place a client-specific workaround may live.
 - `manifest/plugin.json` -> `.claude-plugin/plugin.json`
 - `manifest/hooks.json` -> `hooks/hooks.json` (the only path Claude Code reads)
 - `manifest/mcp.json` -> `.mcp.json`
+- axioms carrying `trigger: always_on` -> `axioms.jsonl`
+- rules (`skills/axioms/*.md`) -> `rules/<source_file>`
 
 `build/clients/openclaw.py`:
 
@@ -121,6 +124,7 @@ A client adapter is the only place a client-specific workaround may live.
 - `manifest/hooks.json` -> `hooks.json`, reshaped from the Claude Code hook
   schema
 - `manifest/mcp.json` -> `mcp_config.json`
+- axioms carrying `trigger: always_on` -> `rules/<source_file>`
 
 An agent's `tools:` list is translated into agy's accepted vocabulary through
 `build/tool_map.toml`. Full detail on the vocabulary contract, translation

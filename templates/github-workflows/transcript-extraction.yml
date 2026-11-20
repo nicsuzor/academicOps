@@ -122,8 +122,8 @@ jobs:
 
             ## Instructions
             Read the unified memory skill for knowledge standards and transcript mining guidance:
-              ${{ github.workspace }}/_aops/plugins/ida/skills/remember/SKILL.md
-              ${{ github.workspace }}/_aops/plugins/ida/skills/remember/references/consolidation.md
+              ${{ github.workspace }}/_aops/plugins/james/skills/remember/SKILL.md
+              ${{ github.workspace }}/_aops/plugins/james/skills/remember/references/consolidation.md
 
             ## Environment
             - Brain repo (knowledge base): ${{ github.workspace }}
@@ -177,8 +177,8 @@ jobs:
               reference mcp__services__pkb__* tools. Changes sync to PKB consumers via git push.
             - Time budget: 25 minutes. Exit cleanly when time is up.
             - **Sub-agent dispatch**: if you delegate any per-transcript work to
-              an `ida:pauli` sub-agent (defined in
-              `_aops/plugins/ida/agents/pauli.md`), pass an explicit `tools`
+              a `james:pauli` sub-agent (defined in
+              `_aops/plugins/james/agents/pauli.md`), pass an explicit `tools`
               list. On CI: `Bash,
               Glob, Grep, Read, Write, Edit, Skill` (omit mcp__services__pkb__*
               -- not available). `Edit` is restricted to transcript frontmatter

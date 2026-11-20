@@ -103,6 +103,16 @@ def _stage_plugin(plugin: Plugin, stage_dir: Path, version: str) -> None:
     if staged_hooks_dir.is_dir() and shared_dispatch.is_file() and not staged_dispatch.exists():
         shutil.copy2(shared_dispatch, staged_dispatch)
 
+    shared_skills_dir = repo_root / "lib" / "skills"
+    if plugin.directory in ("ida", "james") and shared_skills_dir.is_dir():
+        staged_skills_dir = stage_dir / "skills"
+        staged_skills_dir.mkdir(parents=True, exist_ok=True)
+        for skill_dir in sorted(shared_skills_dir.iterdir()):
+            if skill_dir.is_dir() and not skill_dir.name.startswith("."):
+                target = staged_skills_dir / skill_dir.name
+                if not target.exists():
+                    shutil.copytree(skill_dir, target, ignore=ignore())
+
     if plugin_pyproject.exists():
         shutil.copy2(plugin_pyproject, stage_dir / "pyproject.toml")
         if plugin_uvlock.exists():

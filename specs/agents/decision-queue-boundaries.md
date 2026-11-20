@@ -52,7 +52,7 @@ This specification addresses a failure class observed during interactive session
    The prompt was an informational question asking what decisions were waiting across research tasks. Because the message was prefixed with the slash command `/decide`, the platform delivered it as a command event, triggering the decision walk-through skill.
 
 2. **Permissive Instruction Text**:
-   - `plugins/ida/skills/decide/SKILL.md`: The frontmatter description (`Use for "decide", "go through my decisions", morning triage, or when open items in the daily note need interactive resolution`) lacked boundary constraints against questions or queries carrying arguments. Furthermore, while Section 1 directed reading the dedicated escalation section, it lacked an explicit prohibition against pulling tasks from general work sections or slicing complex plans into decision cards. In Section 3, the instruction `Immediately output the next card (Decision N+1 of M) with no intermediate chatter` forced a rigid, rapid-fire sequence on every turn.
+   - `plugins/james/skills/decide/SKILL.md`: The frontmatter description (`Use for "decide", "go through my decisions", morning triage, or when open items in the daily note need interactive resolution`) lacked boundary constraints against questions or queries carrying arguments. Furthermore, while Section 1 directed reading the dedicated escalation section, it lacked an explicit prohibition against pulling tasks from general work sections or slicing complex plans into decision cards. In Section 3, the instruction `Immediately output the next card (Decision N+1 of M) with no intermediate chatter` forced a rigid, rapid-fire sequence on every turn.
    - `plugins/ida/agents/ida.md`: Under `Briefing on returned work`, the rule `One decision or question per message` was misapplied outside its briefing context: the agent took a multi-faceted research plan review, carved it into four sequential button-choice cards, posted card 1 via interactive buttons (tool span `c860a8efcdb4f1d0`), and hid the substantive methodology and trade-offs behind expandable details.
 
 3. **Subsequent Telemetry Traces**:
@@ -68,7 +68,7 @@ This specification addresses a failure class observed during interactive session
 
 In accordance with the enforcement pyramid, these behavioural constraints are established at Level 1 (Instructions), which provides the least-invasive intervention fitting the failure class:
 
-#### 2.1 File: `plugins/ida/skills/decide/SKILL.md`
+#### 2.1 File: `plugins/james/skills/decide/SKILL.md`
 
 - **Proposed Text Changes**:
   1. _Frontmatter Description_: Update to state the discrete operational scope affirmatively and explicitly exclude informational queries, design discussions, and research methodology:

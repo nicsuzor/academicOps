@@ -65,7 +65,7 @@ Enforcement moves follow the proportionality framework and controlled vocabulary
 
 #### Class 1: Unbacked Behavioral Promises
 
-- **Breached Rule and Location**: `Axiom: Categorical Imperative` (`plugins/rbg/skills/axioms/categorical-imperative.md:8-10`), `Axiom: Durable Capture` (`plugins/rbg/skills/axioms/durable-capture.md:8-10`), and `Behavioral commitments persisted same-turn` (`specs/agents/ida-interaction-rules.md:74`, `plugins/ida/agents/ida.md:25-34`).
+- **Breached Rule and Location**: `Axiom: Categorical Imperative` (`plugins/james/skills/axioms/categorical-imperative.md:8-10`), `Axiom: Durable Capture` (`plugins/james/skills/axioms/durable-capture.md:8-10`), and `Behavioral commitments persisted same-turn` (`specs/agents/ida-interaction-rules.md:74`, `plugins/ida/agents/ida.md:25-34`).
 - **Circumstance of Failure**: When answering a user challenge or correcting operational behavior, the coordinator promises future operational conduct in conversation reply text (such as assuring that future items will be checked against rulings, or promising not to use specific tools) without either executing a corresponding in-turn persistent write (instruction edit, rule addition, configuration update, or tracked task creation) or citing an already-active persistent control. Outbound replies pass without verification because premise-checking gates arm only on incoming messages, allowing unbacked assurances to reach the user.
 - **Proposed One-Step Move**: Advance from Level 2 `instructions` (`imperative`) to Level 3 **`JIT injection`**.
 - **New Behaviour Design**:
@@ -74,7 +74,7 @@ Enforcement moves follow the proportionality framework and controlled vocabulary
 
 #### Class 2: Escalation of Settled Items
 
-- **Breached Rule and Location**: `User Attention Protection` (`specs/enforcement/enforcement.md:59-65`, `plugins/ida/agents/ida.md:70-81`) and `Axiom: Exercise Authority` (`plugins/rbg/skills/axioms/exercise-authority.md:8-23`).
+- **Breached Rule and Location**: `User Attention Protection` (`specs/enforcement/enforcement.md:59-65`, `plugins/ida/agents/ida.md:70-81`) and `Axiom: Exercise Authority` (`plugins/james/skills/axioms/exercise-authority.md:8-23`).
 - **Circumstance of Failure**: When incoming worker reports or card proposals categorize an item as requiring user escalation (e.g., labeled "needs user"), the coordinator escalates the item directly without validating whether the decision is already settled within delegated authority by active standing rulings or merge policies. Premise-check verdicts treat user escalation as a safe default rather than testing whether the item can be resolved autonomously.
 - **Proposed One-Step Move**: Advance from Level 2 `instructions` (`imperative`) to Level 3 **`JIT injection`**.
 - **New Behaviour Design**:
@@ -83,7 +83,7 @@ Enforcement moves follow the proportionality framework and controlled vocabulary
 
 #### Class 3: Orphaned Remediation Remainders
 
-- **Breached Rule and Location**: `Axiom: Do One Thing` (`plugins/rbg/skills/axioms/do-one-thing.md:8-21`), `Dropped Means Not Delivered` (`plugins/ida/agents/ida.md:26`), and `Separate Dispatch from Capture` (`plugins/ida/agents/ida.md:32`).
+- **Breached Rule and Location**: `Axiom: Do One Thing` (`plugins/james/skills/axioms/do-one-thing.md:8-21`), `Dropped Means Not Delivered` (`plugins/ida/agents/ida.md:26`), and `Separate Dispatch from Capture` (`plugins/ida/agents/ida.md:32`).
 - **Circumstance of Failure**: Upon discovering review or quality gaps whose remediation execution is authorized, the coordinator routes task creation to the graph custodian alone. Once the custodian creates the tasks and hands back a valid report answering the graph-curation ask, the coordinator records `PASS` on the custodian's handback and terminates the turn without routing the queued tasks to the execution dispatcher, leaving authorized remediation tasks unowned.
 - **Proposed One-Step Move**: Advance from Level 4 `structural` (`friction`) to Level 5 **`process` (`routing`)**.
 - **New Behaviour Design**:
@@ -91,7 +91,7 @@ Enforcement moves follow the proportionality framework and controlled vocabulary
 
 #### Class 4: Partition Widening and Unchecked Cards
 
-- **Breached Rule and Location**: `User Attention Protection` (`specs/enforcement/enforcement.md:59-65`, `plugins/ida/agents/ida.md:70-81`) and `Axiom: Do One Thing` (`plugins/rbg/skills/axioms/do-one-thing.md:8-21`).
+- **Breached Rule and Location**: `User Attention Protection` (`specs/enforcement/enforcement.md:59-65`, `plugins/ida/agents/ida.md:70-81`) and `Axiom: Do One Thing` (`plugins/james/skills/axioms/do-one-thing.md:8-21`).
 - **Circumstance of Failure**: When asked for a filtered subset (such as uncontroversial pull requests suitable for batch approval), the coordinator widens the brief into a full partition, explicitly demanding failure reasons and presenting decision cards for excluded complement items. Concurrently, older standing schedule prompts re-arm without accounting for narrower user directives. The coordinator aggregates these into multi-question cards emitted across structured question paths without pre-post validation.
 - **Proposed One-Step Move**: Advance question serialization from Level 3 `JIT injection` to Level 4 **`structural` (`friction`)**; advance filter scoping from Level 2 `instructions` (`imperative`) to Level 3 **`JIT injection`**.
 - **New Behaviour Design**:
@@ -101,7 +101,7 @@ Enforcement moves follow the proportionality framework and controlled vocabulary
 
 #### Class 5: Dropped Interrupted Turns on Restart
 
-- **Breached Rule and Location**: `Axiom: Full Observability` (`plugins/rbg/skills/axioms/full-observability.md:8-10`) and `Dropped Means Not Delivered` (`plugins/ida/agents/ida.md:26`).
+- **Breached Rule and Location**: `Axiom: Full Observability` (`plugins/james/skills/axioms/full-observability.md:8-10`) and `Dropped Means Not Delivered` (`plugins/ida/agents/ida.md:26`).
 - **Circumstance of Failure**: When coordinator or worker sessions restart mid-turn after receiving user prompts or launching dispatches, unhandled prompts are silently dropped, and the new session treats interrupted turns as finished without resuming in-flight work. The `SessionStart` hook exports session identity and environment variables but executes no audit of prior turn completion status.
 - **Proposed One-Step Move**: Advance from Level 2 `instructions` (`imperative`) to Level 3 **`JIT injection`**.
 - **New Behaviour Design**:

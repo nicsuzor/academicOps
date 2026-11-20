@@ -5,7 +5,7 @@ description: Prohibit fixed-syntax phrases, mechanical NLP/regex intent matching
 
 ## No Shitty NLP and Agentic-First Design
 
-Per [Human Readability First](../../plugins/rbg/skills/axioms/human-readability-first.md), readability by future human reviewers is of paramount importance and mechanical parsing must not compromise human-visible prose. The "no shitty NLP" rule explicitly covers three prohibitions:
+Per [Human Readability First](../../plugins/james/skills/axioms/human-readability-first.md), readability by future human reviewers is of paramount importance and mechanical parsing must not compromise human-visible prose. The "no shitty NLP" rule explicitly covers three prohibitions:
 
 1. **Prohibit writing fixed-syntax phrases:** Do not force agents to compose rigid syntax formulas or unnatural template boilerplate for human-visible text.
 2. **Prohibit checking natural language mechanically:** Legacy NLP (keyword matching, regex heuristics, fuzzy string matching) is forbidden for semantic decisions or checking prose. Evaluate semantically using agentic comprehension, not pattern matching.

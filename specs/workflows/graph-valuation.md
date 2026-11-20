@@ -112,10 +112,10 @@ Redundant child-to-ancestor weight edges. Stored `alternative` and `settles` edg
 **Problem.** Agents set values today under instructions written for the old engine, and link density suffered an over-correction:
 
 - `/q` wires `contributes_to` with "quantum and certainty" but no field contract
-  (`plugins/ida/skills/q/SKILL.md:18`). It also defaults `intent` to 3
-  (`plugins/ida/skills/q/SKILL.md:24`).
+  (`plugins/james/skills/q/SKILL.md:18`). It also defaults `intent` to 3
+  (`plugins/james/skills/q/SKILL.md:24`).
 - pauli authors "target severity magnitude vs contributing edge weight probability"
-  (`plugins/ida/agents/pauli.md:104`).
+  (`plugins/james/agents/pauli.md:104`).
 - Over-dense linking: ambiguous prohibitions on body interconnections led agents to duplicate every
   markdown body wikilink as a formal frontmatter edge with weights.
 - Tracking tasks authored frontmatter `supports` links to every task they tracked,
@@ -165,11 +165,11 @@ flowchart LR
 
 | Role | Owner | Reads | Writes |
 | - | - | - | - |
-| Placement at intake | `/q` (`plugins/ida/skills/q/SKILL.md`) | graph search, the input | node, edges at `set_by: agent-proposed`, `due` + `deadline_class` |
+| Placement at intake | `/q` (`plugins/james/skills/q/SKILL.md`) | graph search, the input | node, edges at `set_by: agent-proposed`, `due` + `deadline_class` |
 | Email placement | correspondence sweep, module C (PKB-tier template `wf-email-sweep`) → `/q` | mailbox, graph | through `/q` only |
 | Densify | pauli, run by universal template `wf-densify` | flow outputs (`stake`), edges | edge proposals (`set_by: agent-proposed`) |
 | Target pricing | pauli, run by universal template `wf-price-targets` | targets, their contributors | writes approximate target worth directly, leaves `intent` untouched |
-| Deadline upkeep | `/reconcile` (`plugins/ida/skills/workflow-library/workflows/wf-reconcile.md`) | `due`, class, history, sent mail | class transitions per R5 |
+| Deadline upkeep | `/reconcile` (`plugins/james/skills/workflow-library/workflows/wf-reconcile.md`) | `due`, class, history, sent mail | class transitions per R5 |
 | Retirement | `/reconcile` for source-stated closures; pauli for direct instructions | input, world facts | `status: cancelled` + reason |
 
 pauli estimates target worth and edge weights, leaving `intent` untouched. Corrections are made directly on the graph.
@@ -428,7 +428,7 @@ placements, "no target fits", proposed hard dates further out, and pricing for n
 are ordered by reach (§5) and drained only through the channels above. An item over budget waits.
 It never escalates by repetition, and an unanswered item is not re-asked in the same week. This
 keeps pauli's rule "never raise the same non-blocking concern twice"
-(`plugins/ida/agents/pauli.md:117`).
+(`plugins/james/agents/pauli.md:117`).
 
 **Expected load.**
 
@@ -440,18 +440,18 @@ keeps pauli's rule "never raise the same non-blocking concern twice"
 
 | File | Change |
 | - | - |
-| `plugins/ida/skills/q/SKILL.md` | Steps 4-6 are replaced by R1. Description :4 changes from "wire contributes_to/depends_on" to "wire what it serves, propose values". :18 becomes the FR §5.1 edge contract with `set_by: agent-proposed`. :19 keeps `needs` and drops `soft_depends_on` and `supersedes`. :23 keeps effort and adds dates with class (R5). :24: the default `intent` of 3 is removed, and the line goes entirely if FQ10 drops the field. A headless context is added (R1). |
-| `plugins/ida/agents/pauli.md` | :104 "two-axis model (target severity magnitude vs contributing edge weight probability)" becomes: pauli drafts link proposals and estimates target prices directly, leaving intent untouched. :23 "carry … severity magnitude" becomes "carry worth". |
+| `plugins/james/skills/q/SKILL.md` | Steps 4-6 are replaced by R1. Description :4 changes from "wire contributes_to/depends_on" to "wire what it serves, propose values". :18 becomes the FR §5.1 edge contract with `set_by: agent-proposed`. :19 keeps `needs` and drops `soft_depends_on` and `supersedes`. :23 keeps effort and adds dates with class (R5). :24: the default `intent` of 3 is removed, and the line goes entirely if FQ10 drops the field. A headless context is added (R1). |
+| `plugins/james/agents/pauli.md` | :104 "two-axis model (target severity magnitude vs contributing edge weight probability)" becomes: pauli drafts link proposals and estimates target prices directly, leaving intent untouched. :23 "carry … severity magnitude" becomes "carry worth". |
 | `plugins/ida/agents/ida.md` | Adds that valuation asks reach the attention queue through routine notice and the digest (R7). Governed by the one decision or question per message rule at :76. |
-| `plugins/ida/skills/remember/SKILL.md` | :22 "carry only graph weights and severity" becomes "carry only worth". :37 "a wikilink … is a real graph edge" is qualified as not read by the flow, pending FQ23. :45 `/pkb:q` becomes `/ida:q`. |
-| `plugins/ida/skills/remember/references/consolidation.md` | Adds a weekly densify stage that runs `wf-densify` (R3). |
-| `plugins/ida/skills/workflow-library/workflows/wf-reconcile.md` | Adds deadline upkeep (R5) and source-stated retirement (R6). :49 reserved fields add `deadline_class: hard` and target worth. |
-| `plugins/ida/skills/decide/SKILL.md` | Draws open items from the daily note (which carries ask queue items from reconcile per R7). |
-| `plugins/ida/skills/decompose/SKILL.md` | ADR-0002: Three-Purpose Taxonomy. Competing options stay inside task bodies; probes wire `needs`; contextual citations in `## Pointers`. |
-| `plugins/ida/skills/reify/SKILL.md`, `plugins/ida/skills/dispatch/SKILL.md` | `depends_on` becomes `needs` in :20, :43, :79-80 and dispatch :14. Readiness keeps its meaning (FR:517). |
-| `plugins/ida/skills/pull/SKILL.md`, `plugins/ida/skills/dump/SKILL.md` | "wire directed `blocks` edges" becomes "wire a `needs` edge from the blocked task" (FR:334). |
-| `plugins/ida/skills/workflow-library/SKILL.md` and templates `wf-escalated-approval`, `wf-research-and-implement`, `wf-code-task-base`, `wf-finish` | `depends_on` becomes `needs` in the skill and the first three templates. The parent in `wf-finish` follows FQ1. |
-| New universal template `wf-densify` (in `plugins/ida/skills/workflow-library/workflows/`) | R3 as an outline: pool, ordering, granularity, table, reply grammar, exit criteria. |
+| `plugins/james/skills/remember/SKILL.md` | :22 "carry only graph weights and severity" becomes "carry only worth". :37 "a wikilink … is a real graph edge" is qualified as not read by the flow, pending FQ23. :45 `/pkb:q` becomes `/q`. |
+| `plugins/james/skills/remember/references/consolidation.md` | Adds a weekly densify stage that runs `wf-densify` (R3). |
+| `plugins/james/skills/workflow-library/workflows/wf-reconcile.md` | Adds deadline upkeep (R5) and source-stated retirement (R6). :49 reserved fields add `deadline_class: hard` and target worth. |
+| `plugins/james/skills/decide/SKILL.md` | Draws open items from the daily note (which carries ask queue items from reconcile per R7). |
+| `plugins/james/skills/decompose/SKILL.md` | ADR-0002: Three-Purpose Taxonomy. Competing options stay inside task bodies; probes wire `needs`; contextual citations in `## Pointers`. |
+| `plugins/james/skills/reify/SKILL.md`, `lib/skills/dispatch/SKILL.md` | `depends_on` becomes `needs` in :20, :43, :79-80 and dispatch :14. Readiness keeps its meaning (FR:517). |
+| `plugins/james/skills/pull/SKILL.md`, `plugins/james/skills/dump/SKILL.md` | "wire directed `blocks` edges" becomes "wire a `needs` edge from the blocked task" (FR:334). |
+| `plugins/james/skills/workflow-library/SKILL.md` and templates `wf-escalated-approval`, `wf-research-and-implement`, `wf-code-task-base`, `wf-finish` | `depends_on` becomes `needs` in the skill and the first three templates. The parent in `wf-finish` follows FQ1. |
+| New universal template `wf-densify` (in `plugins/james/skills/workflow-library/workflows/`) | R3 as an outline: pool, ordering, granularity, table, reply grammar, exit criteria. |
 | New universal template `wf-price-targets` (same directory) | R4 as an outline. |
 | PKB-tier template `wf-weight-repair` | Retired in favour of `wf-densify`. Its granularity rule, correction tests and "measure from the source of record" rule move across. |
 | PKB-tier template `wf-email-sweep` | Module C gains R2 steps 1-6. |
@@ -583,11 +583,11 @@ All questions K1–K11 are settled under the product-grade workflow redesign:
 
 ## 13. Behaviour removed
 
-- `/q` defaults `intent` to 3 (`plugins/ida/skills/q/SKILL.md:24`).
-- `/q` wires `soft_depends_on` and `supersedes` at intake (`plugins/ida/skills/q/SKILL.md:19`).
+- `/q` defaults `intent` to 3 (`plugins/james/skills/q/SKILL.md:24`).
+- `/q` wires `soft_depends_on` and `supersedes` at intake (`plugins/james/skills/q/SKILL.md:19`).
 - `contributes_to` "quantum and certainty" with no field contract
-  (`plugins/ida/skills/q/SKILL.md:18`).
-- pauli authors target severity and the "two-axis model" (`plugins/ida/agents/pauli.md:104`).
+  (`plugins/james/skills/q/SKILL.md:18`).
+- pauli authors target severity and the "two-axis model" (`plugins/james/agents/pauli.md:104`).
 - The seven-word `stated_weight` vocabulary as the only link value (weight-repair template;
   `specs/meta/naming-and-decisions.md:150`; `.agents/skills/triage/SKILL.md:219-220`).
 - Five positive-only standing-weight anchors.

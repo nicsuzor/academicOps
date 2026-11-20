@@ -108,11 +108,11 @@ that set without extensions (`partial` and `failed` are part of it).
 
 - [[specs/polecat/polecat-system.md]] -- Isolated task workspaces and the delivery
   guarantees the supervisor dispatches onto
-- [[plugins/ida/skills/supervise/SKILL.md]] -- The container supervisor: claims the
+- [[plugins/james/skills/supervise/SKILL.md]] -- The container supervisor: claims the
   repo-scoped epic task, reifies workflows onto a combined task body, coordinates
   subagents with incremental git checkpoints, delivers in-session outputs, and
   queues out-of-session follow-ups
-- [[plugins/ida/skills/pull/SKILL.md]] -- The operative skill: claiming a leaf unit,
+- [[plugins/james/skills/pull/SKILL.md]] -- The operative skill: claiming a leaf unit,
   working it, and carrying it to a terminal state
 - [[plugins/aops/skills/polecat/SKILL.md]] -- The launcher that puts a worker in front of a unit.
   It launches containers; it makes no eligibility or ordering decision about which

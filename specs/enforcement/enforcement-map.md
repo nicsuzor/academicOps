@@ -30,7 +30,7 @@ As a repository maintainer or compliance reviewer, I want strict inclusion bound
 
 ### 1. Document Role and Boundaries
 
-The enforcement map (`specs/ENFORCEMENT-MAP.md`) is a concise cross-reference table showing what kind of enforcement is applied to each rule. When editing the enforcement map, every row must only reference a specific rule derived from our axioms (`plugins/rbg/skills/axioms/`) and applicable to agents working in any third-party project. Workflows are not rules and do not enforce rules; creating or modifying workflows must not produce token enforcement map rows, as the only applicable rule is "agents must follow workflows given to them" and nothing more than that. Architectural explanations belong in subsystem specifications; process instructions belong in workflow templates; repository-local rules belong in `.agents/rules/`; runtime status belongs in observability tooling. The map records only the mapping from universal axiom-derived rules to their enforcement mechanisms.
+The enforcement map (`specs/ENFORCEMENT-MAP.md`) is a concise cross-reference table showing what kind of enforcement is applied to each rule. When editing the enforcement map, every row must only reference a specific rule derived from our axioms (`plugins/james/skills/axioms/`) and applicable to agents working in any third-party project. Workflows are not rules and do not enforce rules; creating or modifying workflows must not produce token enforcement map rows, as the only applicable rule is "agents must follow workflows given to them" and nothing more than that. Architectural explanations belong in subsystem specifications; process instructions belong in workflow templates; repository-local rules belong in `.agents/rules/`; runtime status belongs in observability tooling. The map records only the mapping from universal axiom-derived rules to their enforcement mechanisms.
 
 ### 2. Four-Column Schema
 
@@ -47,7 +47,7 @@ The map formats all entries using a standard four-column schema:
 
 A row earns a place in the map if and only if it satisfies all of the following conditions:
 
-1. **Axiom-Derived Universal Rule Governance:** The entry references a specific rule derived from our axioms (`plugins/rbg/skills/axioms/`) and applicable to agents working in any third-party project (never a repository-local project rule, subsystem feature specification, or workflow);
+1. **Axiom-Derived Universal Rule Governance:** The entry references a specific rule derived from our axioms (`plugins/james/skills/axioms/`) and applicable to agents working in any third-party project (never a repository-local project rule, subsystem feature specification, or workflow);
 2. **Workflow Exclusion:** Workflows are not rules and do not enforce rules. Creating or modifying a workflow (`wf-*.md`, `SKILL.md`, or process template) never qualifies for a row in the map, because the only applicable rule is "agents must follow workflows given to them" and nothing more than that; and
 3. **Binary Inclusion Filter:** The axiom-derived rule meets at least one of the following two closed criteria:
    - Universal Axiom Standing: It is a canonical axiom declared in the framework's universal axiom set; OR

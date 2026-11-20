@@ -1,0 +1,26 @@
+{
+  "manifestVersion": "1.0",
+  "name": "james",
+  "clients": {
+    "__base__": {
+      "name": "james",
+      "description": "Lead executor and dialectical review supervisor.",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "license": "MIT",
+      "keywords": [
+        "academicOps",
+        "aops",
+        "james",
+        "execution",
+        "review",
+        "supervision",
+        "axioms"
+      ]
+    },
+    "claude": {},
+    "agy": {},
+    "openclaw": {}
+  }
+}

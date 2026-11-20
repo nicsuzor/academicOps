@@ -21,11 +21,11 @@ import pytest
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _HOOKS_DIR = _REPO_ROOT / "plugins" / "ida" / "hooks"
-_DUMP_SCRIPTS = _REPO_ROOT / "plugins" / "ida" / "skills" / "dump" / "scripts"
+_PREMISE_CHECK_SCRIPTS = _REPO_ROOT / "plugins" / "ida" / "skills" / "premise-check" / "scripts"
 if str(_HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(_HOOKS_DIR))
-if str(_DUMP_SCRIPTS) not in sys.path:
-    sys.path.insert(0, str(_DUMP_SCRIPTS))
+if str(_PREMISE_CHECK_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(_PREMISE_CHECK_SCRIPTS))
 
 import file_claims
 import premise_check_verdict as pcv

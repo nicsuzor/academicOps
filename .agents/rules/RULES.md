@@ -5,7 +5,7 @@ description: Project-local rules for the academicOps repository, applied on top 
 
 # Project Rules
 
-These apply to this repository in addition to the axioms in `plugins/rbg/skills/axioms/`, never
+These apply to this repository in addition to the axioms in `plugins/james/skills/axioms/`, never
 in place of them. A rule belongs here only if it states a project-level
 commitment a reviewer can name from the diff, and cannot be derived from an
 axiom alone.
@@ -31,7 +31,7 @@ scope -- changed.
 
 When editing the enforcement map ([`specs/ENFORCEMENT-MAP.md`](../../specs/ENFORCEMENT-MAP.md)),
 every row must **only** reference a specific rule derived from our axioms
-([`plugins/rbg/skills/axioms/`](../../plugins/rbg/skills/axioms/)) and applicable
+([`plugins/james/skills/axioms/`](../../plugins/james/skills/axioms/)) and applicable
 to agents working in any third-party project -- never repository-local project
 rules, subsystem feature specifications, or workflows. Workflows are not rules
 and do not enforce rules; creating or modifying workflows (`wf-*.md`, `SKILL.md`,
@@ -56,7 +56,7 @@ Do not hardcode architectural policies, messaging invariants, or enforcement lev
 
 ## No Shitty NLP and Agentic-First Design
 
-Per [Human Readability First](../../plugins/rbg/skills/axioms/human-readability-first.md), readability by future human reviewers is of paramount importance and mechanical parsing must not compromise human-visible prose. The "no shitty NLP" rule explicitly covers three prohibitions:
+Per [Human Readability First](../../plugins/james/skills/axioms/human-readability-first.md), readability by future human reviewers is of paramount importance and mechanical parsing must not compromise human-visible prose. The "no shitty NLP" rule explicitly covers three prohibitions:
 
 1. **Prohibit writing fixed-syntax phrases:** Do not force agents to compose rigid syntax formulas or unnatural template boilerplate for human-visible text.
 2. **Prohibit checking natural language mechanically:** Legacy NLP (keyword matching, regex heuristics, fuzzy string matching) is forbidden for semantic decisions or checking prose. Evaluate semantically using agentic comprehension, not pattern matching.
@@ -128,7 +128,7 @@ Whenever creating, modifying, renaming, or deleting a file, rule, skill, workflo
 
 - **Derive directly from canonical source:** Each row or entry (slug, title, description, trigger, or signature) must accurately reflect the canonical metadata or frontmatter in the source file. Do not author divergent summaries or paraphrases.
 - **Maintain across all indexes:** This obligation applies generally across the repository (e.g. axiom indexes, rule catalogs, skill tables, workflow registries), not just specific file types.
-- **Enforcement map is not a workflow or project-rule catalog:** When editing `specs/ENFORCEMENT-MAP.md`, every row must only reference a specific rule derived from our axioms (`plugins/rbg/skills/axioms/`) and applicable to agents working in any third-party project. Workflows are not rules and do not enforce rules; creating or modifying workflows must not produce token enforcement map rows, as the only applicable rule is "agents must follow workflows given to them" and nothing more than that.
+- **Enforcement map is not a workflow or project-rule catalog:** When editing `specs/ENFORCEMENT-MAP.md`, every row must only reference a specific rule derived from our axioms (`plugins/james/skills/axioms/`) and applicable to agents working in any third-party project. Workflows are not rules and do not enforce rules; creating or modifying workflows must not produce token enforcement map rows, as the only applicable rule is "agents must follow workflows given to them" and nothing more than that.
 - **Agentic maintenance over mechanical mirror checks:** Agents maintain documentation accuracy semantically as part of their work. Do not write bespoke generation scripts, linters, or change-detector tests for individual index files.
 
 ## Rule Waivers and Reservations
@@ -141,7 +141,7 @@ Every agent must always report all rule violations -- whether committed during e
 
 ## Session traces through Phoenix, never local JSONL logs
 
-Direct all session, prompt, and execution trace lookups exclusively to Arize Phoenix via `ida:phoenix`. Agents are strictly prohibited from reading or scraping raw local `.system_generated/logs/transcript*.jsonl` or `/tmp/aops_debug_hooks_*.jsonl` files. When a subagent receives a brief with missing inputs or target artifacts, it must verify on Turn 1 and immediately return `REVISE` via `send_message` to the caller rather than scraping local transcripts or debug files, without executing `verdict.py`.
+Direct all session, prompt, and execution trace lookups exclusively to Arize Phoenix via `james:phoenix`. Agents are strictly prohibited from reading or scraping raw local `.system_generated/logs/transcript*.jsonl` or `/tmp/aops_debug_hooks_*.jsonl` files. When a subagent receives a brief with missing inputs or target artifacts, it must verify on Turn 1 and immediately return `REVISE` via `send_message` to the caller rather than scraping local transcripts or debug files, without executing `verdict.py`.
 
 ## Name model tiers, not model names
 
