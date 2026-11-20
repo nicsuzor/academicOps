@@ -24,6 +24,7 @@ The `services` MCP server is installed at user level across all surfaces, never 
 - **Local Claude Code**: `claude mcp add --transport http --scope user services <PKB_MCP_URL>`. Must use `--scope user`; `--scope local` was observed to register nothing.
 - **Claude Code Cloud / Cowork**: The claude.ai account connector named `services`.
 - **Antigravity (agy)**: Configured in user-level MCP settings (`~/.gemini/antigravity-cli/settings.json` or `~/.gemini/antigravity-cli/mcp/services.json`).
+- **OpenClaw**: Install the OpenClaw plugin bundles (`ida-openclaw`, `james-openclaw`, `tools-openclaw`, `ida-telegram-openclaw`, `aops-debug-openclaw`) from the `dist/openclaw/` directory-marketplace channel (or the `openclaw` release bundles) and configure `services` in your OpenClaw MCP settings.
 
 Plugins install with no `--config`: `ida-telegram` and `aops-debug` install the same way as `ida`, `james` and `tools`.
 
@@ -87,9 +88,10 @@ uv sync
 make install-dev
 ```
 
-`make install-dev` builds `dist/`, registers it as a local marketplace named
+`make install-dev` builds `dist/` (including `dist/openclaw/` for OpenClaw), registers it as a local marketplace named
 `aops`, installs every plugin from it into Claude Code (and Antigravity when
-`agy` is on `PATH`), and activates pre-commit.
+`agy` is on `PATH`), and activates pre-commit. For OpenClaw, point your
+OpenClaw plugin directory or marketplace config at `dist/openclaw/`.
 
 `make uninstall-dev` reverses it and restores the release channel.
 

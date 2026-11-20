@@ -13,7 +13,8 @@ academicOps is a modular suite of five plugins for Claude Code, Antigravity (`ag
 1. **Strategic Face & Premise-Check Gate (`ida`):** Grounds top-level user prompts in PKB history (`UserPromptSubmit`), arms and enforces the `hearsay_gate` on incoming peer/worker reports (`premise-check`), and dispatches work to isolated containers (`dispatch`).
 2. **Execution, Custody & Dialectical Review (`james`):** Provides the hookless operational agent suite (`james`, `pauli`, `rbg`, `marsha`, `sara`), universal `axioms`, and custodian, planning, supervision (`/james:supervise`), leaf execution (`/james:pull`), and three-lens review skills.
 3. **Domain Research Tools (`tools`):** Provides research analysis, SQL transformation, visualization, document typesetting, diagramming, and peer-review skills.
-4. **Telegram Channel (`ida-telegram`) & Debug (`aops-debug`):** Optional channel integration (Claude Code / OpenClaw) and raw hook payload diagnostics.
+4. **Telegram Channel (`ida-telegram`):** Optional Telegram channel and Mini App plugin for Claude Code and OpenClaw.
+5. **Debug Telemetry (`aops-debug`):** Optional debug plugin that dumps raw hook payloads.
 
 ## How It Works
 
@@ -36,16 +37,22 @@ flowchart TD
 
 ## Master Hook Lifecycle Matrix
 
-Only `ida` (plus `aops-debug` and `ida-telegram`) registers runtime hooks; `james` and `tools` are hookless:
+`james` is hookless. `ida` owns the primary runtime and premise-check gating hooks, `tools` registers `SessionStart` (`CORE.md` injection), `ida-telegram` registers `SessionStart` and `PreToolUse` (`AskUserQuestion`), and `aops-debug` logs raw hook payloads:
 
 | Plugin | Canonical Event | Target Client | Required Context / Env | Injected Payload / Action | WHY (Purpose & Rationale) |
 | :- | :- | :- | :- | :- | :- |
 | `ida` | `SessionStart` | Claude Code, OpenClaw, AGY | `PKB_MCP_URL`, `AOPS_SESSION_ID` | Injects `CORE.md`, session metadata, and `premise-check` pointer. | Establishes universal baseline instructions and session attribution at startup. |
 | `ida` | `UserPromptSubmit` (`PreInvocation` on AGY) | Claude Code, OpenClaw, AGY | `PKB_MCP_URL`, `CF_ACCESS_CLIENT_ID` + `CF_ACCESS_CLIENT_SECRET` | Grounds top-level `ida` user prompts in PKB search; arms `hearsay_gate` on incoming reports. | Grounds interactive turns in PKB history and arms verification on incoming reports. |
-| `ida` | `SubagentStart` | Claude Code | none | Injects `honesty.md` report-formatting reminder with recipient context. | Ensures spawned subagents return verifiable `premise-check` Argdown reports. |
-| `ida` | `PostToolUse` / `PostToolBatch` | Claude Code, OpenClaw, AGY | none | Arms `hearsay_gate` on foreground subagent returns (`hearsay.md`) and emits OTel spans. | Binds the receiver the instant a subagent report lands. |
+| `ida` | `SubagentStart` | Claude Code, OpenClaw | none | Injects `honesty.md` report-formatting reminder with recipient context. | Ensures spawned subagents return verifiable `premise-check` Argdown reports. |
+| `ida` | `PostToolUse` | Claude Code, OpenClaw, AGY | none | Arms `hearsay_gate` on foreground subagent returns (`hearsay.md`) and emits OTel spans. | Binds the receiver the instant a subagent report lands. |
+| `ida` | `PostToolBatch` | Claude Code, OpenClaw | none | Arms `hearsay_gate` on foreground subagent returns and reminds once per batch (`hearsay.md`). | Captures batched subagent returns in Claude Code and OpenClaw. |
 | `ida` | `PreToolUse` | Claude Code, OpenClaw, AGY | none | Refuses dispatches/messages while `hearsay_gate` is armed; emits OTel spans. | Prevents acting on or relaying unchecked reports. |
-| `ida` | `Stop` / `SubagentStop` | Claude Code, OpenClaw, AGY | none | Enforces `hearsay_gate` on `Stop`; emits OTel spans on `SubagentStop`. | Prevents session handover with unverified claims. |
+| `ida` | `Stop` | Claude Code, OpenClaw, AGY | none | Enforces `hearsay_gate` on `Stop` and emits OTel spans. | Prevents session handover with unverified claims. |
+| `ida` | `SubagentStop` | Claude Code, OpenClaw | none | Emits OTel spans and invokes `hearsay_arm`. | Records subagent completion and arms verification when warranted. |
+| `ida` | Lifecycle & Telemetry (`SessionEnd`, `PreCompact`, `PostCompact`, `PermissionRequest`, `PermissionDenied`, `Notification`, `PostToolUseFailure`, `StopFailure`) | Claude Code, OpenClaw | none | Emits OpenTelemetry spans and session lifecycle telemetry. | Provides full session observability across tool and compaction events. |
+| `tools` | `SessionStart` | Claude Code, OpenClaw, AGY | none | Injects `plugins/tools/CORE.md` into ambient session context. | Exposes research-tool skill routing outside repo checkouts. |
+| `ida-telegram` | `SessionStart`, `PreToolUse` (`AskUserQuestion`) | Claude Code, OpenClaw | `AOPS_BOT_TOKEN` (when active) | Injects channel `CORE.md` and brokers `AskUserQuestion` via Telegram. | Supports interactive Telegram channel and Mini App workflows. |
+| `aops-debug` | All lifecycle events | Claude Code, OpenClaw, AGY | none | Dumps raw hook payloads to temp debug files and OTel traces. | Captures raw client hook payloads for debugging. |
 
 ## Telemetry & OTEL Tracing Architecture
 
@@ -67,7 +74,7 @@ Install what you need -- plugins are separately installable and loosely coupled:
 | `ida` | The strategic face and the only agent that speaks to the user, with prompt situation and premise check. |
 | `james` | Lead executor, review supervisor, and custodian agent suite (james, pauli, marsha, rbg, sara) with planning, execution, axioms, and dialectical review skills. |
 | `tools` | Domain research skills (analyst, peer-review, pdf, extract, diagram, etc.). |
-| `ida-telegram` | Ida's custom Telegram channel and Mini App plugin for Claude Code. |
+| `ida-telegram` | Ida's custom Telegram channel and Mini App plugin for Claude Code and OpenClaw. |
 | `aops-debug` | Debug plugin that dumps raw hook payloads. |
 
 ## Install
