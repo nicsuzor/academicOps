@@ -13,7 +13,7 @@ GitHub issue and implement it to completion.
 
 ## Error Handling
 
-If any tool or API call fails, follow the Anti-Silent-Failure protocol. See `.github/agents/shared-error-handling.md` (if present) for required actions.
+If any tool or API call fails, follow the Anti-Silent-Failure protocol: halt immediately and report the exact failure rather than masking or retrying silently.
 
 ## Execution Protocol
 
