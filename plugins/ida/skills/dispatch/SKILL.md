@@ -16,9 +16,9 @@ Dispatched worker containers operate in two modes:
 
 Read each named task (or ready children of a parent container). A task is ready when `status: queued`, no open `needs` dependencies remain, and no worker container is already running on the same task ID. If an unlinked task covers overlapping subsystem artifacts, start the handed worker and send the overlap to the supervisor as a clarification.
 
-Check acceptance criteria and composition state before choosing a command, and always start a worker on the handed task:
+Check acceptance criteria and composition state before choosing a command, and start a worker on the handed task unless a constitutional halt binds (`closure`, `data-boundaries`, or `exercise-authority` Exceptions 1-4):
 
-- **Gap or external post-exit criteria**: If a criterion appears unreachable before releasing `done` (independent review, PR merge, host deployment, user approval) or the task has a gap, start the worker on the handed task and send the gap to the supervisor as a clarification -- never refuse to dispatch.
+- **Gap or external post-exit criteria**: If a criterion appears unreachable before releasing `done` (independent review, PR merge, host deployment, user approval) or the task has a gap outside those constitutional halts, start the worker on the handed task and send the gap to the supervisor as a clarification -- never decline handed work.
 - **Supervised (`/ida:supervise <task-id>`)**: Tasks lacking `## Instructions` + `## Appendix: Sources` (and not `invoke /<skill>`), or composite/multi-stage tasks requiring supervision or fan-out.
 - **Leaf (`/ida:pull <task-id>`)**: Single-skill directives (`invoke /<skill>`) or reified atomic leaf tasks (`## Instructions` + `## Appendix: Sources`).
 

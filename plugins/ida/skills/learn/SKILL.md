@@ -5,12 +5,16 @@ description: Diagnose systemic root causes of framework faults from session exec
 
 # Learn
 
-Diagnose systemic failure classes in the framework from Arize Phoenix execution traces (or `gh` PR diffs, review comments, check runs, and instructions solely for non-traced CI / CI-workflow runs), verify `out-<session_slug>` persistence, and execute or persist minimally effective remedies before escalating to framework enforcement issues. Scope covers framework faults only (including local workflow, rule, or instruction defects surfaced in third-party repos), never third-party repo bugs, external tools, models, or services. The PKB custodian (Pauli) runs this skill inside an isolated container in the framework repository (`project: aops`) with access to framework governance documents and `rbg:axioms`.
+Diagnose systemic failure classes in the framework from Arize Phoenix execution traces (or `gh` PR diffs, review comments, check runs, and instructions solely for non-traced CI / CI-workflow runs), verify `out-<session_slug>` persistence, and execute or persist minimally effective remedies before escalating to framework enforcement issues.
+
+- **Scope**: Framework faults only (including local workflow, rule, or instruction defects surfaced in third-party repos), never third-party repo bugs, external tools, models, or services.
+- **Executor**: The PKB custodian (`pauli`) runs this skill inside an isolated container in `project: aops` with access to framework governance documents and `rbg:axioms`.
 
 ## Protocol
 
 1. **Retrieve execution record and persist outline**:
-   - **Traced sessions (`ida:phoenix` only)**: Query OpenTelemetry spans via `ida:phoenix` or read existing outline note `out-<session_slug>` alongside framework governance documents. If Phoenix spans exist without a persisted note, save `out-<session_slug>` via `pkb_create` (`type: "note"`, `title: "Outline: <session_slug> (<summary>)"`, `slug: "out-<session_slug>"`, `tags: ["phoenix", "outline", "learn"]`). Never inspect application source code or scrape local transcript or debug log files; if Phoenix spans are missing or unavailable on a traced session, halt immediately and report.
+   - **Traced sessions (`ida:phoenix` only)**: Query OpenTelemetry spans via `ida:phoenix` or read `out-<session_slug>` alongside framework governance docs; if spans exist without a note, save `out-<session_slug>` via `pkb_create` (`type: "note"`, `title: "Outline: <session_slug> (<summary>)"`, `slug: "out-<session_slug>"`, `tags: ["phoenix", "outline", "learn"]`).
+   - **Strict trace boundary**: Never inspect repo source code or scrape local transcript/debug log files; if Phoenix spans are unavailable on a traced session, halt immediately and report.
    - **Non-traced CI / CI-workflow runs**: Solely when execution ran on a non-traced CI surface emitting no OTel spans, inspect PR diffs, review comments, check runs, and instructions via `gh`.
 2. **Diagnose systemic framework cause (active voice, hearsay-free)**:
    - **Framework defect, never agent fault**: An agent's action is an intermediate trace event, never the root cause. Name the specific acting role in active voice (passive voice is forbidden), quote the exact instruction, workflow, contract, or tool gap that led them to act, and state the framework defect.
@@ -26,7 +30,9 @@ Diagnose systemic failure classes in the framework from Arize Phoenix execution 
      1. **Local project workflow or instruction**: Create/update a project-scoped PKB template (`type: template`, `project: <project_id>`) or, inside `data-boundaries` for another repo, queue a follow-up `type: task` via `/q` targeting that repo.
      2. **User PKB workflow**: Create or update a user-scoped PKB template (`type: template`, `project: null`).
      3. **Universal workflow**: Open a PR patching an existing universal workflow template (or queue the follow-up task).
-     4. **Framework enforcement issue** (last resort for universal axioms, security bounds, or structural controls): Check open framework issues read-only (`gh issue list`, `gh issue view`) to consolidate shared root causes (append an evidence comment to a matching open issue, or prepare one new issue). Format using any repository learn template when present or [issue-template.md](references/issue-template.md) scrubbed of personal names, credentials, private paths/domains, session IDs, internal trailers, and PKB/task IDs, and queue a `type: task` node on the PKB graph carrying [issue-template.md](references/issue-template.md) (holding external-audience items in the report and PKB for explicit prior user approval per `data-boundaries`).
+     4. **Framework enforcement issue** (last resort for universal axioms, security bounds, or structural controls):
+        - Check open framework issues read-only (`gh issue list`, `gh issue view`) to consolidate shared root causes (append an evidence comment to a matching open issue, or prepare one new issue).
+        - Format with any repo learn template present or [issue-template.md](references/issue-template.md) scrubbed of personal names, credentials, private paths/domains, session IDs, internal trailers, and PKB/task IDs, then queue a `type: task` node carrying [issue-template.md](references/issue-template.md) (holding external-audience items for explicit prior user approval per `data-boundaries`).
    - Hold any remote-repo or external-audience remedy outside the user's boundary in the report and PKB pending explicit prior approval; never modify third-party repository source directly from the framework container.
    - Before finishing a traced session, verify `out-<session_slug>` is persisted in the PKB and release `done` once remedies/queued tasks are recorded (never `partial` solely because follow-up tasks remain queued). Knowledge notes (`type: note`, `knowledge`, `memory`) never hold bug logs or issue commentary.
 

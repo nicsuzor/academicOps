@@ -16,7 +16,7 @@ type: template
 
 ## What this step does
 
-Universal judicial compliance review: an independent compliance adjudicator tests an artifact, specification, design, code change, or decision against the constitutional axiom baseline, project-local and user-scoped rules, delegated jurisdiction (_ultra vires_), _abdication_, non-delegable discretion, data boundaries, and the least-invasive enforcement hierarchy -- judging rule intent and gravity without reading prior reviews or deferring to peers.
+Universal judicial compliance review: an independent adjudicator tests an artifact, design, code change, or decision against constitutional axioms, project and user rules, delegated jurisdiction (_ultra vires_), _abdication_, non-delegable discretion, data boundaries, and the enforcement hierarchy without reading prior reviews or deferring to peers.
 
 ## Input contract
 

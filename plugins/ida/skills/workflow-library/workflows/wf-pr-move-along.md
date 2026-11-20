@@ -16,18 +16,23 @@ Progresses an individual open pull request through verification, independent rev
 ## Input contract
 
 - An open pull request identifier or URL with repository and git-hosting access.
-- Project merge rules, target base branch, and risk-tier policy (or fallback defaults).
+- Project merge rules, target base branch, risk-tier policy, and any standing user ruling covering the repository.
 
 ## Obligations
 
-1. **Resolve project merge policy**: Inspect the repository for local PR rules, branch conventions, and merge authority (autonomous merge on green vs. user or maintainer sign-off). Project rules strictly override defaults; where none exist, merge low-risk changes after independent verification and require reviewer sign-off for operational or high-risk changes.
+1. **Resolve project merge policy**: Inspect repository PR rules, branch conventions, and standing user rulings covering merge authority.
+   - Project rules and constitutional boundaries govern strictly; never merge into a base branch without an explicit standing user ruling naming the repository and zero external audience (`data-boundaries`, `exercise-authority` Exceptions 1-2).
+   - Where no standing ruling authorizes autonomous merge, hold for explicit user approval with verification receipts and a reasoned recommendation.
 2. **Ensure pre-approval readiness**:
    - Confirm all required CI checks pass on the latest head commit.
-   - For a constituent branch or standalone PR, verify the full three-lens diff review (strategic fit, rule compliance, quality) by independent agents returned `PASS` (coordinating one if missing). When a constituent branch targeting a shared feature branch (`bundle/<slug>` or `feat/<slug>`) passes checks and its three-lens diff review, merge it directly into the shared feature branch without waiting for user approval and immediately close any superseded donor PR with a link to the consolidated PR.
-   - For a consolidated feature-branch PR (`bundle/<slug>` -> base) whose constituent branches passed three-lens diff review, pre-approval review is satisfied by a compliance description-only check on the PR title and description posted as `## Compliance Review: PASS` without re-reviewing constituent code before user approval.
-   - Resolve open review comments and requested changes via branch commits or substantiated rebuttals on the record, and mark completed drafts ready for review (`gh pr ready`) once independent checks and review verdicts are posted.
-3. **Respect the approval boundary**: Before approval, a PR only requires green checks and its required pre-approval review posted (with absorbed donor PRs closed). Present ready PRs to the user one at a time. If required external approval, unmerged dependencies, or substantive revisions remain pending, leave the PR open with the blocking reason recorded. Never rebase or resolve conflicts against base before approval.
-4. **Post-approval rebase, combined-diff review, and land**: Once required approvals are recorded (or autonomous merge is authorized), bring the branch up to date with base, resolve any conflicts, run local tests, and push. For a consolidated feature-branch PR (`bundle/<slug>`) or any PR whose rebase resolved conflicts, run the full three-lens diff review over the combined diff against base and post `PASS` verdicts (`## Strategic Review: PASS` and `## Compliance Review: PASS`) before merging via the repository's convention when checks are green and zero `CHANGES_REQUESTED` reviews remain.
+   - _Constituent PRs_: Verify independent three-lens diff review (`PASS`, coordinating one if missing). When clean against checks and review, merge constituent branches targeting `bundle/<slug>` or `feat/<slug>` directly without waiting for approval and close any superseded donor PR with a link to the consolidated PR.
+   - _Standalone PRs_: Verify full three-lens diff review (`PASS`), resolve open review feedback via branch commits or substantiated rebuttals on the record, and mark completed drafts ready (`gh pr ready`) once CI checks and verdicts post.
+   - _Consolidated feature-branch PRs_: When constituent branches passed three-lens diff review, pre-approval review on `bundle/<slug>` is satisfied by a compliance description-only check posted as `## RBG Review: PASS` without re-reviewing constituent code before approval.
+   - Resolve open feedback via branch commits or substantiated rebuttals, and mark completed drafts ready (`gh pr ready`) once CI and review verdicts are posted.
+3. **Respect the approval boundary**: Present ready PRs to the user one at a time with green checks, posted review verdicts, and closed donor PRs. If required external approval, unmerged dependencies, or revisions remain pending, leave the PR open with the blocking reason recorded; never rebase or resolve base-branch conflicts before approval.
+4. **Post-approval rebase, combined-diff review, and land**:
+   - Once required approvals are recorded (or autonomous merge is explicitly authorized by a standing user ruling), rebase onto base, resolve conflicts, run local tests, and push.
+   - For consolidated PRs or PRs with resolved conflicts, run the full three-lens diff review over the combined diff against base and post `## Strategic Review: PASS`, `## RBG Review: PASS`, and quality/verification `PASS` before merging with green CI and zero `CHANGES_REQUESTED`.
 
 ## Output contract
 
