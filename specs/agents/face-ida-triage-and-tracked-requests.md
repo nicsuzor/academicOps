@@ -5,7 +5,7 @@ status: ready
 
 # Face-Ida Triage and Tracked-Request Workflow
 
-This specification defines the consolidated workflow and triage contract for the user-facing agent persona ("Face Ida"). It replaces scattered, contradictory instructions regarding in-session handling, delegation, and ask tracking. Under this architecture, the user-facing agent never executes substantive work directly, delegates every request to an internal subagent twin ("Sub-Ida"), and performs an explicit upfront triage decision with a formal reasons block evaluating whether an ask can be resolved ad-hoc in-session or requires an asynchronously tracked task. Tracked requests flow exclusively through the standard intake and dispatch pipeline (`/q` -> `/dispatch`), which dispatches repo-scoped epic tasks directly to polecat containers running `/supervise` (where `/reify` executes in-session at execution time), ensuring verified results are returned to the user through dedicated delivery tasks assigned to the user-facing agent where channel reporting is required, while retiring ad-hoc task tracking via the legacy tracking command.
+This specification defines the consolidated workflow and triage contract for the user-facing agent persona ("Face Ida"). It replaces scattered, contradictory instructions regarding in-session handling, delegation, and ask tracking. Under this architecture, the user-facing agent never executes substantive work directly, delegates every request to an internal subagent twin ("Sub-Ida"), and performs an explicit upfront triage decision in clean Argdown prose per `premise-check` evaluating whether an ask can be resolved ad-hoc in-session or requires an asynchronously tracked task. Tracked requests flow exclusively through the standard intake and dispatch pipeline (`/q` -> `/dispatch`), which dispatches repo-scoped epic tasks directly to polecat containers running `/supervise` (where `/reify` executes in-session at execution time), ensuring verified results are returned to the user through dedicated delivery tasks assigned to the user-facing agent where channel reporting is required, while retiring ad-hoc task tracking via the legacy tracking command.
 
 ## User stories
 
@@ -17,11 +17,7 @@ As a researcher, I want incoming session requests evaluated at intake to classif
 - **AC-1.2** Given an incoming request, when the user-facing agent prepares to delegate, then it makes an explicit triage classification:
   - `ad-hoc in-session`: The request is an immediate clarification, conversational reasoning, or lookup answerable within the active session turn without background workers; in-session knowledge inquiries and lookups route to the custodian (`pauli`) rather than executing ad-hoc without consulting the knowledge route.
   - `tracked task`: The request requires work beyond the immediate turn or session (code modifications, multi-step investigations, background executions, external pull requests, or evaluations).
-- **AC-1.3** Given a triage classification, when the user-facing agent delegates to Sub-Ida, then the delegation payload includes:
-  1. The verbatim, unmodified text of the user's prompt as an immutable referent;
-  2. The triage classification (`ad-hoc in-session` or `tracked task`);
-  3. A written justification stating why the request fits the chosen category;
-  4. A structured Toulmin Argdown `reasons` block validating the triage choice.
+- **AC-1.3** Given a triage classification, when the user-facing agent delegates to Sub-Ida, then the delegation message is a single clean Argdown-only payload per `ida:premise-check` (no parallel prose summary bolted onto a trailing block) opening with the verbatim, unmodified user prompt under `**Original Ask (<message-id>):**` and the chosen triage classification (`ad-hoc in-session` or `tracked task`) under `**Main Conclusion:**`, followed by an unfenced `### Triage Classification` argument block whose premises and plain-prose warrant justify the route.
 
 ### US-2 Subagent Twin Verification and Execution Routing
 
@@ -38,7 +34,7 @@ As a researcher, I want delegated triage classifications verified against the or
 - **AC-2.3** Given a validated `tracked task` request, when Sub-Ida executes, then Sub-Ida routes the request through the intake (`/q`) and dispatch (`/dispatch`) pipeline. `/q` places repo-scoped tasks on the graph (strictly one per repo, consolidated across open and closed tasks, situated under their governing component or initiative epic with zero leaf `serves` edges while Strategic Value Carriers wire `serves` directly to priced targets). To maintain single-assignee boundaries and ensure headless workers never hold user delivery obligations:
   - Where user channel reporting or interactive delivery is required, `/q` wires a closed-loop terminal delivery task assigned to the user-facing agent (`assignee: ida`, dependent on the worker task or epic) to deliver the completed artifact to the user.
   - `/dispatch` dispatches repo-scoped epic tasks directly to polecat containers running `/supervise`, where `/reify` executes inside the container to compose workflows onto a single combined task body at execution time.
-- **AC-2.4** Given a completed subagent report, when the user-facing agent receives it, then the agent verifies the report argument and relay line derivations, applies attention-protection brevity rules (bottom-line first, at most 3 bullets unless detail was requested), and communicates the result or task confirmation to the user.
+- **AC-2.4** Given a completed subagent report, when the user-facing agent receives it, then the agent runs administrative-law formal compliance review on the face of the record per `premise-check` (zero _de novo_ fact-checking), relays strictly checked conclusions with their qualifiers, applies attention-protection brevity rules (bottom-line first, at most 3 bullets unless detail was requested), and communicates the result or task confirmation to the user.
 
 ### US-3 Retirement of Legacy `/mine` Ask Tracking
 
@@ -69,7 +65,7 @@ When an inbound user message arrives, the user-facing agent executes the followi
 ```mermaid
 flowchart TD
     UserPrompt["Inbound User Prompt"] --> FaceTriage["Face-Ida Triage Decision<br/>(Ad-hoc in-session vs Tracked task)"]
-    FaceTriage --> ConstructPayload["Construct Delegation Payload:<br/>1. Verbatim User Prompt<br/>2. Triage Classification<br/>3. Justification<br/>4. Toulmin Argdown Reasons Block"]
+    FaceTriage --> ConstructPayload["Construct Single Argdown-Only Payload:<br/>Original Ask (verbatim), Main Conclusion (route),<br/>and Triage Classification argument"]
     ConstructPayload --> DelegateTwin["Delegate to Sub-Ida Twin (ida:ida)"]
     
     DelegateTwin --> TwinCheck{"Twin Verification:<br/>Justification matches prompt?"}
@@ -100,26 +96,21 @@ The triage choice is strictly bounded:
    - **Examples**: PR reviews and sweeps across multiple repositories; building or refactoring tools; comparing CI test suites; generating complex analytical datasets; any multi-file code change.
    - **Execution Surface**: Handled by Sub-Ida via `/q` -> `/dispatch` (dispatching to polecats running `/supervise`).
 
-#### 2.2 Delegation Payload and Reasons Block Format
+#### 2.2 Delegation Payload Format
 
-The delegation message from Face Ida to Sub-Ida adheres to the standard inter-agent premise contract. It includes:
+The delegation message from Face Ida to Sub-Ida is a single clean Argdown-only payload per `ida:premise-check` (never a parallel prose summary bolted onto a trailing block, and never wrapped in a monolithic `argdown` code fence), opening with the verbatim unmodified user prompt and chosen route followed by a non-circular triage argument:
 
-1. **Referent Ask**: The verbatim, unmodified prompt and source message ID.
-2. **Triage Classification**: Stated as `ad-hoc in-session` or `tracked task` with concise justification.
-3. **Reasons Block**: Chained Toulmin Argdown argument adhering to standard premise-check syntax and closed basis vocabulary:
+```markdown
+**Original Ask (`<message-id>`):** <verbatim, unmodified user prompt>
 
-```argdown
-===
-asks:
-  user_ask: Evaluate request for triage
-answers:
-  user_ask: (3)
-===
+**Main Conclusion:** Route `<message-id>` as `<ad-hoc in-session | tracked task>`.
 
-(1) The user request asks for <summary of request> [source: <message-id>]. -- I read it
-(2) Requests that require <in-session lookup | persistent background execution> are classified as <ad-hoc in-session | tracked task>. -- rule
--- A request requiring <operational criteria> belongs to <classification>. Unless: contrary operational requirements; none observed. --
-(3) The request is classified as <ad-hoc in-session | tracked task> (1, 2).
+### Triage Classification
+
+(1) The verbatim user prompt (`<message-id>`) asks to <concrete requested work, e.g., modify repository files and open a PR | answer an immediate lookup from accessible docs>.
+(2) Fulfilling that ask requires <multi-file repository mutations and background verification | only an in-turn lookup with zero repository side effects>.
+-- Work requiring repository mutations, background execution, or multi-stage verification cannot complete safely inside one conversational turn and belongs in the persistent task pipeline (`tracked task`), whereas a self-contained single-turn lookup with no external side effects resolves directly in-session (`ad-hoc in-session`). Hidden dependencies or narrower scope constraints could flip the required surface, so Sub-Ida audits this classification against the verbatim ask before acting. --
+(3) So `<message-id>` routes as `<ad-hoc in-session | tracked task>`.
 ```
 
 #### 2.3 Sub-Ida Twin Verification
@@ -130,7 +121,7 @@ Upon receiving the delegation message, Sub-Ida (`ida:ida`):
 2. If verified, executes the designated pathway (ad-hoc in-session execution without child task creation, or `/q` -> `/dispatch` for tracked tasks). Pure lookups and questions proceed without task creation or pull/dump ceremonies (`wf-lookup`).
 3. If defective (e.g. Face Ida attempted to run a complex PR sweep ad-hoc in-session, or created a tracked task for a trivial conversational question):
    - Corrects the routing to the appropriate pathway;
-   - Records the defect in the return report's reason block under `premise-check`.
+   - Records the defect in the return Argdown report under `premise-check`.
 
 ### 3. Tracked Request Lifecycle and Closed-Loop Delivery
 
