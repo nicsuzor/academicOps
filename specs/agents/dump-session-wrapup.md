@@ -100,7 +100,7 @@ As a framework auditor investigating execution history, I want the session ident
 2. **Summary**: Concise synthesis of findings, modifications, and outcomes.
 3. **Status & Safeguards**:
    - STATUS: <done | partial | failed | cancelled | in_progress>
-   - GATE: <the acceptance criterion id tested, and observed result against it>
+   - CRITERION: <the acceptance criterion id tested, and observed result against it>
    - CONFIDENCE: <high | med | low> + <what single check would falsify this>
    - CONFOUND CHECK: <did a clean-room/differential control run? result? -- or "NOT RUN">
 4. **Output**: <branch + commit SHA> | <PR or artifact link>

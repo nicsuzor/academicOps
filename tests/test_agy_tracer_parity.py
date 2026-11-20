@@ -276,7 +276,7 @@ def test_handle_stop_sets_chain_input_output_and_passes_state_cwd(tmp_path: Path
     chain_span = records[0]
     llm_span = records[1]
 
-    assert "Explain OTel context propagation" in chain_span["name"]
+    assert chain_span["name"] == "agy-turn"
     assert "Explain OTel context propagation" in chain_span["attributes"]["input.value"]
     assert (
         chain_span["attributes"]["output.value"] == "W3C TraceContext uses the traceparent header."

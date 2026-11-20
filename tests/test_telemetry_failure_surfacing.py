@@ -44,13 +44,14 @@ def clean_env(monkeypatch, tmp_path):
     monkeypatch.setenv("AOPS_TRACER_STATE_DIR", str(tmp_path / "tracer_state"))
     monkeypatch.setenv("AOPS_SESSION_POINTER_DIR", str(tmp_path / "pointer_dir"))
     monkeypatch.setenv("AOPS_PREMISE_GATE_DIR", str(tmp_path / "gate_state"))
-    monkeypatch.setenv("PKB_MCP_URL", "http://localhost:8000/sse")
+    monkeypatch.setenv("PKB_MCP_URL", "http://localhost:8000/mcp")
     for var in (
         "OTEL_EXPORTER_OTLP_ENDPOINT",
         "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
         "BETA_TRACING_ENDPOINT",
         "GENAI_ENGINE_TRACE_ENDPOINT",
-        "GENAI_ENGINE_API_KEY",
+        "CF_ACCESS_CLIENT_ID",
+        "CF_ACCESS_CLIENT_SECRET",
         "AOPS_TELEMETRY_FAILURE_MODE",
         "PREMISE_CHECK_VERDICT_TRACING",
         "COPE_EVALUATOR_OTEL_TRACE_PATH",

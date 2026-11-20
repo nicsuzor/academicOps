@@ -122,7 +122,7 @@ existing node can carry.
 - **Merge into what exists.** Search before minting, `done` tasks and workflow templates included.
   Where a candidate overlaps an existing node, extend that node; mint only for a genuinely new
   step. Where the overlap is with completed work, cut the candidate down to what that work left
-  unanswered and wire it `soft_depends_on` that work; if nothing is left, do not mint.
+  unanswered and cite that completed work via markdown `[[wikilinks]]` under `## Pointers`; if nothing is left, do not mint.
 - **A first run is not a step.** The first execution of a node -- a baseline, a first pass of an
   instrument already modelled -- belongs to that node, not to a new node beside it.
 
@@ -138,16 +138,13 @@ the judgement they demand.
    commitment.
 2. **Assumptions are first-class.** Every load-bearing assumption carries a confidence level, a
    validation path, and a contingency.
-3. **Non-linear dependencies.** `depends_on` for hard gates, `soft_depends_on` for informational
-   dependencies where findings reshape downstream work. The downstream task is not blocked; when
-   the upstream lands, `reconcile` writes the finding and returns what it touched to `inbox`.
+3. **Dependencies and single-injection value inheritance.** Wire `needs` for execution prerequisite gates and `parent` for structural decomposition, with contextual references as markdown `[[wikilinks]]` in `## Pointers` (retiring legacy `depends_on`, `soft_depends_on`, and `supports`). Decomposed child nodes carry zero `serves` edges and inherit worth via `parent` and `needs`; `serves` edges to `type: target` nodes remain exclusively on the parent Strategic Value Carrier.
 4. **Collaboration gates.** Any step requiring judgment beyond the assigned agent's scope or external input is a separate task
    marked as a gate.
 5. **Artifact-aware.** Each task specifies its output type: document, dataset, code, presentation,
    decision.
 6. **Every task that unblocks judgment-required work carries an explicit follow-up mechanism** --
-   a supervisor task that checks readiness, or a `soft_depends_on` from the downstream task to the
-   session pipeline so it surfaces. Test: "when this completes, who notices?" If the answer is
+   a supervisor task that checks readiness, or an execution prerequisite `needs` edge from the downstream convergence task so it surfaces. Test: "when this completes, who notices?" If the answer is
    nobody, add a convergence check.
 7. **Every decomposition creating parallel tracks includes an explicit convergence task**
    depending on all of them, whose job is synthesising findings across threads. Assign it to a

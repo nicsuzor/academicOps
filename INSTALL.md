@@ -40,13 +40,17 @@ token the client holds for its own `services` connection, so it needs its own
 credential in the environment the client is launched from (the container or
 launchd environment, not the agent's shell).
 
-The hook and runtime expect canonical Cloudflare Access service-token credentials:
+The hook, the tracer and the rest of the runtime read one Cloudflare Access
+service-token pair, named after the HTTP headers it becomes:
 
-- `DISPATCHER_MCP_TOKEN_ID` and `DISPATCHER_MCP_TOKEN_SECRET` -- the Cloudflare Access
-  service token pair. The hook itself and everything running in the framework
-  expects only this set of names. Launching apps substitute the appropriate keys
-  for different surfaces and use cases (for example, substituting worker-scoped
-  keys without polecat dispatch access for isolated worker containers).
+- `CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET` -- sent as
+  `CF-Access-Client-Id` and `CF-Access-Client-Secret` on PKB/MCP calls and on
+  OTLP trace export. The launching context (interactive shell, polecat
+  container, launchd, CI) decides which stored service token fills the pair;
+  least privilege is the launcher's job (for example, a worker container gets
+  a token without polecat dispatch access). Nothing reads the token from
+  `OTEL_EXPORTER_OTLP_HEADERS`, which every OTel SDK in the process tree would
+  pick up.
 
 **Check it is working.** A grounded turn carries
 `<academicOps PKB search results>` in its hook context. A failing one carries

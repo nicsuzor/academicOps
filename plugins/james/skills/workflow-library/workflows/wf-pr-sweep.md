@@ -38,19 +38,18 @@ Sweep execution runs via parallel fan-out: evaluate each PR independently and ag
      - Identify required approval roles (autonomous agent merge vs. human/principal sign-off).
      - Respect repository-specific feature freezes, review blocking rules, and risk boundaries.
 
-3. **Triage and Queue Next-Step Tasks**:
-   - Decouple triage from execution: the sweep does not execute inline resolutions or perform merges. It queues tasks for the next step, either queuing an existing task (located via the custodian or exact PR/branch metadata lookup) or creating a follow-up and queuing that.
+3. **Triage, Clump Related PRs, and Queue Next-Step Tasks**:
+   - Decouple triage from execution: the sweep does not execute inline code resolutions or final base-branch merges, and never hands the user mechanical inspection or reading tasks ("read/check PR"). It queues tasks for the next step, either queuing an existing task (located via the custodian or exact PR/branch metadata lookup) or creating a follow-up and queuing that.
    - For each non-draft PR or completed worker draft PR awaiting verification requiring action:
-     - Audit CI check status.
-     - Inspect review status (proportionate review by independent agents posted to the PR, changes requested, or author feedback).
-     - Check approval status per project policy.
-     - Before approval, a PR requires green checks and review by independent agents posted to the PR; mergeability against the base branch is not required before approval, and PRs awaiting approval must not be queued for conflict resolution or rebase.
+     - Screen unreviewed PR titles and descriptions for obvious compliance failures ("is this stupid?") so defective PRs are flagged for closure before diff review.
+     - Audit CI check status, three-lens diff review status, and approval status per project policy.
+     - Group related PRs requiring maintainer approval into cohesive **consolidated feature-branch clumps** (`bundle/<slug>` or `feat/<slug>`), keeping zero-overlap urgent fixes as standalone hotfixes. When constituent PRs are merged into a shared feature branch (`bundle/<slug>`), each absorbed donor PR must be closed immediately in the same step with a comment linking to the consolidated PR, and pre-approval review on the consolidated PR is a compliance description-only check (`## RBG Review: PASS`) without pre-approval rebase against the base branch.
      - Identify the discrete next action needed:
-       - If unreviewed (including a completed worker draft PR awaiting its initial check): queue task to conduct proportionate risk-tier review by independent agents and post verdicts to the PR.
-       - If review feedback or changes requested: queue task to address feedback.
-       - If green, reviewed, but awaiting required approval: mark blocked on approval (do not queue conflict resolution or rebase).
-       - If approved (or autonomous merge authorized) and merge conflicts exist: queue task to bring branch up to date with base and resolve merge conflicts.
-       - If approved (or autonomous merge authorized) and clean: queue landing / merge task.
+       - If unreviewed (including a completed worker draft PR awaiting its initial check): queue agent task to conduct compliance description screen and three-lens diff review by independent agents.
+       - If review feedback or changes requested: queue agent task to address feedback on the branch.
+       - If three-lens diff review passed and the PR belongs to a consolidation clump: queue task to merge into `bundle/<slug>`, close the donor PR with a pointer comment, and run the compliance description check on the consolidated PR.
+       - If green, reviewed, and awaiting required approval: mark ready for one-at-a-time user walkthrough; reaches the user only after independent agent review and checks are summarized on the record with a concrete recommendation (do not queue conflict resolution or rebase before approval).
+       - If approved (or autonomous merge authorized): queue task to rebase onto the base branch, resolve conflicts, run the full three-lens combined-diff review, and merge.
      - Verify whether an existing open task covers this action by routing the related-work search to the custodian (`pauli`) or performing an exact PR/branch metadata lookup (never running broad semantic searches with raw text), and ensure it is set to `queued` status, or create a discrete follow-up task and set it to `queued` status.
 
 4. **Compile Sweep Disposition Report and File Closed Summary Task**:
@@ -59,7 +58,7 @@ Sweep execution runs via parallel fan-out: evaluate each PR independently and ag
      - `Queued for Feedback`: Blocked on requested changes or review feedback; next-step task queued.
      - `Queued for Conflicts`: Approved PR with merge conflicts against base branch; next-step conflict resolution task queued (PRs awaiting approval are never queued for conflicts).
      - `Queued for Landing`: Approved and clean (or autonomous merge authorized); next-step landing/merge task queued.
-     - `Blocked on Approval`: Green and reviewed, awaiting designated principal sign-off per project policy (mergeable not required before approval).
+     - `Blocked on Approval`: Green and reviewed, awaiting designated principal sign-off per project policy (mergeable not required before approval); reaches the user only after independent agent review and checks are summarized with a concrete recommendation.
      - `Excluded`: Active WIP/author-staged draft or automated release PR outside automated sweep scope.
    - Conclude by filing a closed task for the sweep itself listing all outstanding tasks and their queued task identifiers, so the coordinator can pick it up and decide whether to dispatch.
 
@@ -70,6 +69,7 @@ Sweep execution runs via parallel fan-out: evaluate each PR independently and ag
 
 ## Must not
 
+- Must not hand the user mechanical inspection or reading tasks (such as "read/check PR"); unreviewed PRs and PRs with unaddressed feedback queue agent tasks, and Blocked on Approval reaches the user only after independent agent review and checks are summarized on the record with a concrete recommendation.
 - Must not merge automated release PRs without explicit human release approval.
 - Must not merge PRs lacking required project-level approvals or reviews.
 - Must not queue merge conflict resolution or rebase tasks for PRs that are awaiting approval.

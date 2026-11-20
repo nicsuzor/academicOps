@@ -12,9 +12,9 @@ Nothing is written to the graph until placement and composition pass.
 
 ## 0. Verify Placement (/q Precondition)
 
-Reifying binds an already situated node to execution. A node must be situated on the strategic graph under an active parent container (epic or project) and wired per the Three-Purpose Edge Taxonomy (ADR-0002) before it can be reified.
+Reifying binds an already situated node to execution. A node must be situated on the strategic graph under an active parent container (composite parent `type: "task"` or project) and wired per the Three-Purpose Edge Taxonomy (ADR-0002) before it can be reified.
 
-- **Unplaced Asks / Objectives**: If called with a raw natural-language ask or an unplaced objective lacking a parent container, do not write a task to the project root. Invoke `/q` first (routing related-work searches through the custodian with distilled conceptual queries) to search existing work, place the node under the active governing epic, and wire what it serves.
+- **Unplaced Asks / Objectives**: If called with a raw natural-language ask or an unplaced objective lacking a parent container, do not write a task to the project root. Invoke `/q` first (routing related-work searches through the custodian with distilled conceptual queries) to search existing work, place the node under the active governing component or initiative epic with zero leaf `serves` edges, and wire `serves -> target` links solely on Strategic Value Carriers.
 - **Unparented Existing Tasks**: If given an unparented task ID, search for its governing epic using distilled conceptual queries and update its parentage via `/q` placement before proceeding with workflow composition.
 
 ## 1. Hydrate
@@ -45,7 +45,7 @@ Halt when composition comes up short: create nothing and report precisely what f
   1. _Different repository_: Strictly one task per repository.
   2. _Different time_: A distinct external wait or execution window.
   3. _Different agent/session_: A workflow-mandated external agent or session, including independent downstream review tasks (`needs: [<work_task_id>]`) or closed-loop user-channel delivery dependent on container tasks via `needs`.
-- **Graph Topology & Edge Invariants**: Never pass `type: "epic"` to `pkb_create_task` (epics are organizational containers, not task types). Where splitting is explicitly required, wire execution gating via `needs: [<task_id>]`. Top-level deliverable tasks wire `serves` to priced targets or to existing epics that serve priced targets; subtasks never carry redundant `serves` edges (single injection invariant). Contextual references are plain markdown `[[wikilinks]]` under `## Pointers`. Write tasks with status `queued`.
+- **Graph Topology & Edge Invariants**: Never pass `type: "epic"` to `pkb_create_task` or `pkb_create` (composite work is a `type: "task"` node with child tasks, not a separate node type). Where splitting is explicitly required, wire execution gating via `needs: [<task_id>]`. Strategic Value Carriers (enduring component epics, multi-session initiative epics, and standalone major deliverables belonging to no component or initiative epic) wire `serves` strictly to priced `type: target` nodes (never task-to-epic), priced at their full holistic weight; child tasks, bugfixes, and subtasks carry zero `serves` edges and inherit worth via `parent` or `needs` (single injection invariant). Contextual references are plain markdown `[[wikilinks]]` under `## Pointers`. Write tasks with status `queued`.
 
 Fill the canonical task structure:
 
@@ -64,7 +64,7 @@ Fill the canonical task structure:
 
 ## Acceptance
 
-[ Numbered criteria (AC1, AC2, ...). Criteria state observable outcomes and verifiable evidence proving substantive completion, not line numbers, line ranges, or narrow slice prescriptions. ]
+[ Numbered criteria (AC1, AC2, ...). Criteria state observable outcomes and verifiable evidence proving substantive completion (bounded to what the executor delivers, ending once shipped and reported), not line numbers, line ranges, or narrow slice prescriptions. ]
 
 ## Instructions
 
@@ -85,7 +85,8 @@ Fill the canonical task structure:
 
 ### Requirements for Writing Tasks
 
-- Filter incoming mechanism prescriptions and translate them into observable outcome criteria. Line numbers, line ranges, and narrow code slice prescriptions are strictly forbidden in `Goal`, `Acceptance`, and `Instructions`. Give the worker the end state and the bounds; leave the method to it.
+- Filter incoming mechanism prescriptions and translate them into observable outcome criteria bounded to what the executor delivers (ending once the release is shipped and the user is informed, never requiring proof that the user installed, pulled, or deployed a shipped release). Line numbers, line ranges, and narrow code slice prescriptions are strictly forbidden in `Goal`, `Acceptance`, and `Instructions`. Give the worker the end state and the bounds; leave the method to it.
+- **Executor satisfiability:** `Goal`, `Acceptance`, and `Output` name only outcomes the bound executor produces and checks directly before releasing `done`. Exclude external post-exit acts (independent review, CI completion, PR merge, host deployment, user approval) unless that stage itself is the task's authorized scope, regardless of repository merge policy; when downstream stages are required, compose separate dependent tasks (`needs: [<work_task_id>]`).
 - Record the asker's own words once, in `## Ask`, with their ids, and never rewrite them: the task carries the ask as an immutable referent. Link asks to prior context, recompose into a clear logical structure, and cite message ids. Restate terse, fragmented words into clear, complete criteria, judged by fidelity to meaning and distinctions.
 - State the Goal and each criterion over the whole class the request covers. When asked what broke a mechanism, compose the debugging workflow and preserve the full failure question in Acceptance across its lifecycle rather than narrowing to a single symptom.
 - Every heading is a prompt to fill without restriction slots: say what has to be done, not what shouldn't.
@@ -95,9 +96,9 @@ Fill the canonical task structure:
 - Change an existing task only for a defect in its text; never rewrite its `## Ask` or renumber its criteria.
 - A skill may be a step (`invoke /<skill-name>`). A workflow template is never a step; its steps are.
 - Close every task with a one-line appendix section listing the workflow templates and skills it was composed from: `## Appendix: Sources` followed by `- Composed from: <workflows and skills>.`
-- Do not create standalone decision tasks or file unresearched questions as tasks. Groundwork-first route decisions invariant applies: settle unknowns from the PKB first, queue (`status: queued`) concrete next agent steps for dispatch, close shipped deliverables the user knows about, and set `status: review` (`assignee: user`) with a recorded recommendation only when a genuine user decision remains after groundwork. Competing candidate options stay inside the body of the scoping task or ADR until chosen. Model unknowns as empirical probes (`classification: probe`) wired via `needs: [<probe_task_id>]`.
-- Worker state-only vs container supervision boundary: plain leaf workers (`/pull`) mutate only their claimed task's own state and never mint follow-up tasks; container coordinators (`/supervise`) enrich their claimed task via `/reify` and create follow-up tasks solely under the strict out-of-session splitting conditions above.
 - Reify plans, roadmaps, and designs as tasks on the PKB task graph.
+- Never create standalone decision tasks or unresearched question tasks: apply the Groundwork-First Route Decisions Invariant (Section 2), keep competing options in the scoping task or ADR until chosen, and model unknowns as `classification: probe` tasks wired via `needs: [<probe_task_id>]`.
+- Worker state-only vs container supervision boundary: plain leaf workers (`/pull`) mutate only their claimed task's own state and never mint follow-up tasks; container coordinators (`/supervise`) enrich their claimed task via `/reify` and create follow-up tasks solely under the strict out-of-session splitting conditions above.
 
 ## 4. Report
 

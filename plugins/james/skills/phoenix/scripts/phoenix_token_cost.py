@@ -16,7 +16,9 @@ the cache tokens, so::
 
 Spans are deduplicated on ``(session.id, start_time, output.value)`` before summing:
 roughly a sixth of Opus spans arrive twice (same start, same output) and would double
-the bill. Gemini spans (``gemini-*``) carry no token counts and are counted as calls only.
+the bill. Gemini spans (``gemini-*``) are priced from the Gemini rows in PRICES; a model
+with a long-context tier (``threshold``) is priced per span by that span's prompt size. In the
+aggregated ``--by harness-model`` rollup the tier cannot be applied per call.
 
 ``session.id`` is the aggregation key. Subagents inherit the parent's session id
 (``subagent.id == session.id``), so a row is a whole desk/face/subagent tree.
@@ -41,7 +43,13 @@ Prices are USD per million tokens and live in :data:`PRICES`; override with
 Configuration is flags or environment, matching ``phoenix_transcript.py``: ``--base-url`` or
 ``$PHOENIX_MCP_URL``; ``--project`` or ``$PHOENIX_MCP_PROJECT``. Standard library only.
 
+``--by harness-model`` skips the span download: it asks Phoenix for sums per (harness,
+model) in time chunks (halved on timeout), deduplicated on ``llm.message.id``, so a
+week-wide breakdown finishes. Use it for any window longer than a few hours.
+
 Examples::
+
+    uv run python phoenix_token_cost.py --since 2026-11-12T00:00:00Z --by harness-model
 
     uv run python phoenix_token_cost.py --since "2026-09-12 00:00" --tz +10:00
     uv run python phoenix_token_cost.py --since 2026-09-11T14:00:00Z --by task --json
@@ -65,7 +73,6 @@ from typing import Any
 
 BASE_URL_ENV_VAR = "PHOENIX_MCP_URL"
 PROJECT_ENV_VAR = "PHOENIX_MCP_PROJECT"
-_ACCESS_TOKEN_PAIRS = (("DISPATCHER_MCP_TOKEN_ID", "DISPATCHER_MCP_TOKEN_SECRET"),)
 _MCP_SESSIONS: dict[str, str] = {}
 PAGE_LIMIT = 1000
 SQL_PAGE_MAX_ROWS = 499
@@ -89,6 +96,28 @@ PRICES: dict[str, dict[str, float]] = {
     "claude-opus-5": {"in": 5.0, "out": 25.0, "cache_read": 0.5, "cache_write": 6.25},
     "claude-sonnet-5": {"in": 2.0, "out": 10.0, "cache_read": 0.2, "cache_write": 2.5},
     "claude-haiku-4-5": {"in": 1.0, "out": 5.0, "cache_read": 0.1, "cache_write": 1.25},
+    # Gemini list prices, https://aistudio.google.com/docs/pricing (paid tier, Standard) as
+    # read on 2026-11-17. Gemini caches implicitly, so cache_write is 0. Gemini 4 Argon and
+    # Carbon rise to 4.0 / 0.2 / 20.0 on 2026-12-01; 3.8 Flash rises to 1.5 / 0.15 / 7.5 on
+    # 2027-01-01. Only 3.1 Pro has a long-context tier: when one call's whole prompt exceeds
+    # ``threshold`` tokens the ``long_*`` rates apply (the page labels the rows "prompts >
+    # 200k tokens"; it does not say whether the rate covers the whole call, so the whole call
+    # is priced at the higher rate, as for Gemini 2.5 Pro).
+    "gemini-4-argon": {"in": 2.0, "out": 10.0, "cache_read": 0.1, "cache_write": 0.0},
+    "gemini-4-carbon": {"in": 2.0, "out": 10.0, "cache_read": 0.1, "cache_write": 0.0},
+    "gemini-4-hydrogen": {"in": 1.5, "out": 7.5, "cache_read": 0.075, "cache_write": 0.0},
+    "gemini-3.8-flash": {"in": 0.75, "out": 3.75, "cache_read": 0.075, "cache_write": 0.0},
+    "gemini-3.5-flash-lite": {"in": 0.3, "out": 2.5, "cache_read": 0.03, "cache_write": 0.0},
+    "gemini-3.1-pro": {
+        "in": 2.0,
+        "out": 12.0,
+        "cache_read": 0.2,
+        "cache_write": 0.0,
+        "threshold": 200_000,
+        "long_in": 4.0,
+        "long_out": 18.0,
+        "long_cache_read": 0.4,
+    },
 }
 
 # Substrings of model names that share a price row (dated ids, provider prefixes).
@@ -99,6 +128,16 @@ PRICE_ALIASES: list[tuple[str, str]] = [
     ("opus", "claude-opus-5"),
     ("sonnet", "claude-sonnet-5"),
     ("haiku", "claude-haiku-4-5"),
+    # agy emits effort suffixes (-low/-medium/-high) and internal aliases for these models.
+    # None of the aliases has a published price; they take the price of the model they run.
+    ("gemini-4-argon", "gemini-4-argon"),
+    ("gemini-pro-orchestrator", "gemini-4-argon"),  # assumed Argon; unpublished alias
+    ("gemini-4-carbon", "gemini-4-carbon"),
+    ("gemini-4-hydrogen", "gemini-4-hydrogen"),
+    ("gemini-3.8-flash", "gemini-3.8-flash"),  # also -tiered
+    ("gemini-flash-worker-agy", "gemini-3.8-flash"),  # assumed Flash; unpublished alias
+    ("gemini-3.5-flash-lite", "gemini-3.5-flash-lite"),
+    ("gemini-3.1-pro", "gemini-3.1-pro"),
 ]
 
 # TOOL span names that name a PKB task in their input. Claim/release are the strongest
@@ -128,17 +167,15 @@ class ConfigError(Exception):
 
 def _mcp_headers(session_id: str | None = None) -> dict[str, str]:
     headers: dict[str, str] = {
-        "User-Agent": "academicOps/0.10 (session-trace)",
+        "User-Agent": "academicOps/0.10 (phoenix)",
         "Content-Type": "application/json",
         "Accept": "application/json, text/event-stream",
     }
-    for id_var, secret_var in _ACCESS_TOKEN_PAIRS:
-        cf_id = os.environ.get(id_var)
-        cf_secret = os.environ.get(secret_var)
-        if cf_id and cf_secret:
-            headers["CF-Access-Client-Id"] = cf_id
-            headers["CF-Access-Client-Secret"] = cf_secret
-            break
+    cf_id = os.environ.get("CF_ACCESS_CLIENT_ID")
+    cf_secret = os.environ.get("CF_ACCESS_CLIENT_SECRET")
+    if cf_id and cf_secret:
+        headers["CF-Access-Client-Id"] = cf_id
+        headers["CF-Access-Client-Secret"] = cf_secret
     if session_id:
         headers["mcp-session-id"] = session_id
     return headers
@@ -210,7 +247,7 @@ def _mcp_init_session(mcp_url: str) -> str:
         "params": {
             "protocolVersion": "2024-11-05",
             "capabilities": {},
-            "clientInfo": {"name": "academicOps-session-trace", "version": "0.10"},
+            "clientInfo": {"name": "academicOps-phoenix", "version": "0.10"},
         },
     }
     request = urllib.request.Request(
@@ -437,6 +474,11 @@ def get_json(url: str) -> Any:
     else:
         tool_label = tool_name
         code = f"return await call_tool({json.dumps(tool_name)}, {json.dumps(tool_args)})"
+    return _phoenix_execute(mcp_url, code, tool_label, url)
+
+
+def _phoenix_execute(mcp_url: str, code: str, tool_label: str, where: str = "") -> Any:
+    """Run one ``phoenix_execute`` code block through the MCP proxy and parse its JSON."""
     session_id = _MCP_SESSIONS.get(mcp_url) or _mcp_init_session(mcp_url)
     call_payload = {
         "jsonrpc": "2.0",
@@ -458,9 +500,9 @@ def get_json(url: str) -> Any:
             raw_body = response.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", "replace")[:400]
-        raise ConfigError(f"HTTP {exc.code} from {url}: {body}") from exc
+        raise ConfigError(f"HTTP {exc.code} from {where or mcp_url}: {body}") from exc
     except urllib.error.URLError as exc:
-        raise ConfigError(f"cannot reach {url}: {exc.reason}") from exc
+        raise ConfigError(f"cannot reach {where or mcp_url}: {exc.reason}") from exc
 
     rpc = _extract_jsonrpc_payload(raw_body, mcp_url)
     if "error" in rpc:
@@ -559,11 +601,17 @@ def price_row(model: str, prices: dict[str, dict[str, float]]) -> dict[str, floa
 def cost_usd(tokens: dict[str, int], row: dict[str, float] | None) -> float:
     if not row:
         return 0.0
+    prefix = ""
+    threshold = row.get("threshold")
+    if threshold:
+        prompt = tokens["in"] + tokens["cache_read"] + tokens["cache_write"]
+        if prompt > threshold:
+            prefix = "long_"
     return (
-        tokens["in"] * row["in"]
-        + tokens["out"] * row["out"]
-        + tokens["cache_read"] * row["cache_read"]
-        + tokens["cache_write"] * row["cache_write"]
+        tokens["in"] * row.get(prefix + "in", row["in"])
+        + tokens["out"] * row.get(prefix + "out", row["out"])
+        + tokens["cache_read"] * row.get(prefix + "cache_read", row["cache_read"])
+        + tokens["cache_write"] * row.get(prefix + "cache_write", row["cache_write"])
     ) / 1e6
 
 
@@ -911,6 +959,138 @@ def render_markdown(
 # --- main ------------------------------------------------------------------
 
 
+# --- server-side rollup (week-wide, by harness and model) -------------------
+
+# One executeSql call fits inside the MCP proxy's ~60 s limit only for a small window of
+# LLM spans: a day-wide aggregate over ``attributes`` times out (MCP error -32001), and
+# an unwindowed ORDER BY never returns. So the rollup asks the server for sums, never
+# rows, per time chunk, and halves a chunk that times out.
+ROLLUP_CHUNK_HOURS = 6.0
+ROLLUP_MIN_CHUNK = timedelta(minutes=15)
+
+
+def _is_timeout(exc: Exception) -> bool:
+    text = str(exc).lower()
+    return "-32001" in text or "timed out" in text or "timeout" in text
+
+
+def rollup_sql(start: datetime, end: datetime) -> str:
+    """Sums per (harness, model) for LLM spans in [start, end), deduped on message id.
+
+    Harness is ``aops.surface`` (``claude-code``, ``agy``...). Duplicate spans share a
+    ``llm.message.id``; spans without one (Gemini) are kept by span id. Cache counts are
+    ``llm.token_count.prompt_details.cache_read`` / ``cache_write`` (nested keys).
+    """
+
+    def f(dt: datetime) -> str:
+        return dt.astimezone(UTC).strftime("%Y-%m-%d %H:%M:%S") + "+00:00"
+
+    a = "attributes->>'{}'"
+    return (
+        "SELECT h, m, COUNT(*) n, SUM(p) p, SUM(o) o, SUM(cr) cr, SUM(cw) cw FROM ("
+        f"SELECT {a.format('aops.surface')} h, {a.format('llm.model_name')} m, "
+        f"MAX({a.format('llm.token_count.prompt')}) p, "
+        f"MAX({a.format('llm.token_count.completion')}) o, "
+        f"MAX({a.format('llm.token_count.prompt_details.cache_read')}) cr, "
+        f"MAX({a.format('llm.token_count.prompt_details.cache_write')}) cw "
+        f"FROM spans WHERE span_kind='LLM' AND start_time>='{f(start)}' "
+        f"AND start_time<'{f(end)}' "
+        f"GROUP BY COALESCE({a.format('llm.message.id')}, span_id)"
+        ") GROUP BY h, m"
+    )
+
+
+def sql_rows(base_url: str, sql: str) -> list[list[Any]]:
+    code = f"return await call_tool('executeSql', {{'sql': {json.dumps(sql)}}})"
+    result = _phoenix_execute(base_url, code, "executeSql")
+    if isinstance(result, dict) and "error" in result:
+        raise ConfigError(f"executeSql failed: {result['error']}")
+    return list(result.get("rows", []))
+
+
+def rollup(
+    base_url: str, since: datetime, until: datetime, chunk_hours: float = ROLLUP_CHUNK_HOURS
+) -> tuple[dict[tuple[str, str], dict[str, int]], int]:
+    """Sum LLM tokens per (harness, model) over [since, until) in adaptive time chunks."""
+    totals: dict[tuple[str, str], dict[str, int]] = defaultdict(
+        lambda: {"calls": 0, "prompt": 0, "out": 0, "cache_read": 0, "cache_write": 0}
+    )
+    splits = 0
+    pending = []
+    step = timedelta(hours=chunk_hours)
+    cur = since
+    while cur < until:
+        pending.append((cur, min(cur + step, until)))
+        cur += step
+    pending.reverse()
+    while pending:
+        start, end = pending.pop()
+        try:
+            rows = sql_rows(base_url, rollup_sql(start, end))
+        except ConfigError as exc:
+            if not _is_timeout(exc) or end - start <= ROLLUP_MIN_CHUNK:
+                raise
+            mid = start + (end - start) / 2
+            pending.extend([(mid, end), (start, mid)])
+            splits += 1
+            print(f"  split {iso(start)} -> {iso(end)} (timeout)", file=sys.stderr)
+            continue
+        print(f"  {iso(start)} -> {iso(end)}: {len(rows)} groups", file=sys.stderr)
+        for h, m, n, p, o, cr, cw in rows:
+            t = totals[(h or "unknown", m or "unknown")]
+            t["calls"] += as_int(n)
+            t["prompt"] += as_int(p)
+            t["out"] += as_int(o)
+            t["cache_read"] += as_int(cr)
+            t["cache_write"] += as_int(cw)
+    return totals, splits
+
+
+def rollup_rows(
+    totals: dict[tuple[str, str], dict[str, int]], prices: dict[str, dict[str, float]]
+) -> list[dict[str, Any]]:
+    out = []
+    for (harness, model), t in totals.items():
+        tokens = {
+            "in": max(t["prompt"] - t["cache_read"] - t["cache_write"], 0),
+            "out": t["out"],
+            "cache_read": t["cache_read"],
+            "cache_write": t["cache_write"],
+        }
+        row = price_row(model, prices)
+        out.append(
+            {
+                "harness": harness,
+                "model": model,
+                "calls": t["calls"],
+                **tokens,
+                "cost": cost_usd(tokens, row),
+                "priced": row is not None,
+            }
+        )
+    return sorted(out, key=lambda r: -r["cost"])
+
+
+def render_rollup(rows: list[dict[str, Any]], window: tuple[datetime, datetime]) -> str:
+    lines = [
+        f"Token cost by harness and model, {iso(window[0])} -> {iso(window[1])}",
+        f"{'harness':<14} {'model':<26} {'calls':>7} {'in':>8} {'out':>8} "
+        f"{'c.read':>9} {'c.write':>9} {'USD':>9}",
+    ]
+    for r in rows:
+        flag = "" if r["priced"] else "  (unpriced)"
+        lines.append(
+            f"{r['harness']:<14} {r['model']:<26} {r['calls']:>7} {fmt_k(r['in']):>8} "
+            f"{fmt_k(r['out']):>8} {fmt_k(r['cache_read']):>9} {fmt_k(r['cache_write']):>9} "
+            f"{r['cost']:>9.2f}{flag}"
+        )
+    lines.append(
+        f"{'total':<41} {sum(r['calls'] for r in rows):>7} "
+        f"{'':>8} {'':>8} {'':>9} {'':>9} {sum(r['cost'] for r in rows):>9.2f}"
+    )
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n", 1)[0])
     parser.add_argument(
@@ -921,7 +1101,17 @@ def main(argv: list[str] | None = None) -> int:
         "--tz", default="+00:00", help="offset for naive --since/--until, e.g. +10:00 for AEST"
     )
     parser.add_argument(
-        "--by", choices=("session", "task"), default="session", help="row grain (default session)"
+        "--by",
+        choices=("session", "task", "harness-model"),
+        default="session",
+        help="row grain (default session). harness-model sums on the server in time chunks: "
+        "use it for windows longer than a few hours",
+    )
+    parser.add_argument(
+        "--chunk-hours",
+        type=float,
+        default=ROLLUP_CHUNK_HOURS,
+        help="harness-model: initial chunk size; halved automatically on timeout",
     )
     parser.add_argument("--session", help="only this session id (prefix ok)")
     parser.add_argument("--labels", help="JSON file: session-id prefix -> agent/role label")
@@ -947,6 +1137,27 @@ def main(argv: list[str] | None = None) -> int:
         if args.prices:
             prices.update(json.loads(Path(args.prices).expanduser().read_text()))
         labels = load_labels(args.labels)
+
+        if args.by == "harness-model":
+            base_url = resolve_base_url(args.base_url)
+            totals, splits = rollup(base_url, since, until, args.chunk_hours)
+            rows = rollup_rows(totals, prices)
+            if not rows:
+                print(f"no LLM spans in {iso(since)} -> {iso(until)}", file=sys.stderr)
+                return EXIT_EMPTY
+            if args.json:
+                print(
+                    json.dumps(
+                        {
+                            "rows": rows,
+                            "meta": {"window": [iso(since), iso(until)], "chunk_splits": splits},
+                        },
+                        indent=1,
+                    )
+                )
+            else:
+                print(render_rollup(rows, (since, until)))
+            return 0
 
         if args.from_file:
             saved = json.loads(Path(args.from_file).expanduser().read_text())

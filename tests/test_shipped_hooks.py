@@ -274,7 +274,8 @@ def _run_shipped_hook(
     env.pop("VIRTUAL_ENV", None)
     for k in (
         "GENAI_ENGINE_TRACE_ENDPOINT",
-        "GENAI_ENGINE_API_KEY",
+        "CF_ACCESS_CLIENT_ID",
+        "CF_ACCESS_CLIENT_SECRET",
         "GENAI_ENGINE_TRACE_PROTOCOL",
         "GENAI_ENGINE_TASK_ID",
         "OTEL_EXPORTER_OTLP_ENDPOINT",

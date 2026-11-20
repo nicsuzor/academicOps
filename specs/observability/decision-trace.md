@@ -1,64 +1,80 @@
 ---
-title: Session decision transcripts and prompt-window outlines
+title: Agent-assisted Phoenix querying and session outlines
 status: ready
 ---
 
-# Session decision transcripts and prompt-window outlines
+# Agent-assisted Phoenix querying and session outlines
 
-Anyone working in a project where the framework's plugins are installed can inspect how an agent session reached a decision or review every human prompt submitted across sessions since a UTC cursor, receiving navigable markdown transcripts and condensed outlines assembled directly from the OpenTelemetry trace store. Tool inputs and outputs, model responses, token usage, estimated spend, and latencies are preserved without truncation in the full transcript while condensed outlines keep per-step summaries compact for rapid human and agent review.
-
-This capability complements [cross-surface observability](observability.md), which covers direct operator inspection of telemetry dashboards without markdown export or agent synthesis.
+Anyone working in a project where the framework's plugins are installed can ask what a past session did, how an agent reached a decision, or where time and token spend went, and receive a concise, verifiable answer backed by Arize Phoenix telemetry without pulling raw span archives into model context. The `/phoenix` skill in `plugins/ida/skills/phoenix/` equips agents with reusable GraphQL and SQL templates and outline-generation instructions, serving as the agent-assisted complement to [cross-surface observability](observability.md).
 
 ## User experience flow
 
 ```mermaid
 flowchart LR
-    Operator(["Researcher or Developer"]) -->|"Session ID or --since UTC cursor"| CLI["phoenix_transcript.py"]
-    CLI -->|"Authenticated MCP / REST query"| Store["Phoenix Trace Store"]
-    Store -->|"Session & prompt spans"| CLI
-    CLI -->|"Markdown files (<slug>.outline.md, <slug>.transcript.md, prompts.md)"| Operator
+    User(["User / Operator"]) -->|"Ask about session, decision, or spend"| Agent["Agent running /phoenix"]
+    Agent -->|"Built-in cost & lean column queries"| Phoenix["Arize Phoenix MCP"]
+    Phoenix -->|"Aggregated totals & projected rows"| Agent
+    Agent -->|"Persist <slug>.outline.md"| Storage["Durable Storage (PKB / Repo)"]
+    Agent -->|"Anchored answer & spend summary"| User
 ```
 
 ## Capabilities and user stories
 
-### US-1 Audit how a session arrived at a decision
+### US-1 Assemble a readable session outline and trace decisions
 
-As a researcher or developer auditing agent work, I want to request the transcript of any session by its session ID, prefix slug, or trace ID, so that I can read every turn's prompt, model reasoning, tool calls, wall-clock latencies, and token spend with direct deep-links into Phoenix.
+As a user working in a project where the framework's plugins are installed, I want to ask what a session ran or how a decision got made and receive a clear, scannable markdown outline alongside an anchored answer, so that I can audit agent reasoning and tool actions without reading megabytes of raw payloads.
 
-- **AC-1.1** Given a valid session UUID, unique session-ID prefix slug, or 32-character hex trace ID and configured Phoenix endpoint variables, when `phoenix_transcript.py <ident>` runs, then it resolves the owning session, fetches its spans via indexed session-to-trace lookup (preserving oversized span payloads whole without truncation and halting with `ConfigError` on any backend query or hydration failure), and writes both `<slug>.transcript.md` (full untruncated payloads in `<details>` folds) and `<slug>.outline.md` (condensed step bullets without folded payloads), completing within 15 seconds for a 1,000-span session.
-- **AC-1.2** Given generated transcript and outline files, when rendered as markdown, then every turn header (`#t<N>`) and step anchor (`#t<N>-<M>`) displays wall-clock duration, token totals (`in`, `cache read`, `cache write`, `out`), estimated USD list-price spend, and direct links to `/redirects/sessions/{session_id}` and `/redirects/spans/{span_id}`.
+- **AC-1.1** Given a full session or conversation UUID, a 6–8 character session slug, or a 32-character hex trace ID, when a session transcript or decision trace is requested, then the agent resolves the owning `session.id`, selects only scalar metadata and bounded text excerpts (omitting raw attribute maps, event arrays, and passive debug-hook spans), and writes a single condensed markdown outline (`<slug>.outline.md`, with no full-payload transcript variant) to durable storage carrying session and turn-span Phoenix deep-links when a UI base URL is configured.
+- **AC-1.2** Given `<slug>.outline.md` and a question whose answer depends on a specific step's untruncated input or output, when the bounded excerpt in the outline is insufficient, then the agent fetches full payload fields only for the targeted `span_id` values and cites the turn and step anchors (`#t<turn>` and `#t<turn>-<step>`) where the decision occurred.
 
-### US-2 Recover human prompts across sessions since a UTC cursor
+### US-2 Query built-in token spend and audit tool calls on the server
 
-As a researcher or operator reviewing open requests across interactive channels and terminals, I want to scan all human prompts submitted since a given UTC timestamp and generate condensed session outlines for matches, so that morning briefings and prompt sweeps verify logged work in seconds without scanning full session histories.
+As a user monitoring token spend and operational bottlenecks, I want cost summaries, session audits, and cross-session searches computed directly by the trace store from its built-in pricing and structured telemetry fields, so that investigations finish in a few turns without whole-span fetches or brittle client-side parsers.
 
-- **AC-2.1** Given `--since <iso-timestamp>` with an explicit timezone offset (such as `Z` or `+00:00`), when `phoenix_transcript.py --since <iso-timestamp> --out <dir>` runs, then it discovers human-submitted prompts since that cursor across interactive CLI turns, messaging channel envelopes (deduplicated by channel `message_id`), and Antigravity user turns while excluding automated system notifications, subagent delegation briefs, and bare headless worker launch commands, completing within 30 seconds across a 48-hour project window.
-- **AC-2.2** Given one or more matched prompts in the `--since` window, when export finishes, then `<dir>/prompts.md` lists a summary index table and chronological blockquoted prompt entries linking each prompt to its Phoenix session/span URLs and to the exact turn anchor (`<slug>.outline.md#t<N>`) in the generated `<dir>/<slug>.outline.md` file; when zero human prompts match in the window, `prompts.md` records zero matches and the command exits `0`.
+- **AC-2.1** Given a project, session, or UTC time window, when token usage or spend is requested, then the agent reads Phoenix's built-in cost and token totals (deduplicating dual-emitted model calls when multiple emitters cover the same session) rather than paging spans or maintaining custom model price tables.
+- **AC-2.2** Given a session or bounded UTC time window, when a session audit, per-call-type tool and MCP profile, or cross-session search is requested, then the agent executes declarative query templates from `plugins/ida/skills/phoenix/resources/` that aggregate call counts, latencies, error counts, and payload byte sizes on the server from structured telemetry fields, without hardcoded server lists or regular-expression parsing of code-mode payloads.
 
-### US-3 Fail fast on missing or ambiguous configuration
+### US-3 Operate portably across Phoenix deployments
 
-As an operator running trace exports in automated workflows, I want missing endpoints, missing project names, conflicting target flags, or timezone-naive cursors to fail with a non-zero configuration exit code, so that misconfigured runs never guess defaults or silently drop windows.
+As a developer or operator running Arize Phoenix across local or hosted environments, I want the `/phoenix` skill and its query templates to run through the client's configured Phoenix MCP connection without custom transport wrappers or deployment-specific assumptions, so that trace workflows survive backend and authentication changes.
 
-- **AC-3.1** Given execution without `--from-file` when either `PHOENIX_MCP_URL` / `--base-url` or `PHOENIX_MCP_PROJECT` / `--project` is unset, when `phoenix_transcript.py` starts, then it exits with code `2` (`ConfigError`) without falling back to default URLs or project names.
-- **AC-3.2** Given neither `<ident>` nor `--since`, both `<ident>` and `--since`, or a `--since` timestamp lacking an explicit timezone offset, when `phoenix_transcript.py` parses arguments, then it writes an actionable diagnostic to `stderr` and exits with code `2`.
+- **AC-3.1** Given any Arize Phoenix instance reachable via the client's Phoenix MCP surface, when an agent executes `/phoenix` templates or authors an ad-hoc query, then it checks the server's advertised schema and SQL dialect before running custom SQL and surfaces server or configuration errors verbatim without silent default endpoints, projects, or fallback branches.
 
 ## Shared interface contract
 
-- **Single-session CLI**:
-  `phoenix_transcript.py <session-id | slug | trace-id> [--out <file.transcript.md>] [--base-url <url>] [--ui-base-url <url>] [--project <name>] [--from-file <spans.json>] [--prices <prices.json>] [--sanitize-paths]`
-  - Exit codes: `0` when spans are rendered; `1` (`EXIT_EMPTY`) when the target session holds zero spans; `2` (`EXIT_CONFIG`) on configuration, argument, or transport errors.
-- **Cross-session `--since` CLI**:
-  `phoenix_transcript.py --since <iso-8601-with-tz> [--out <dir>] [--base-url <url>] [--ui-base-url <url>] [--project <name>] [--from-file <spans.json>] [--prices <prices.json>] [--sanitize-paths]`
-  - Writes `<dir>/prompts.md` and one `<dir>/<slug>.outline.md` per session containing at least one matched human prompt since `--since`.
-  - Exit codes: `0` when the window scan succeeds (including zero matched prompts); `2` (`EXIT_CONFIG`) on missing timezone offset, conflicting flags, missing endpoint/project configuration, or upstream query failure.
-- **Turn and step anchor contract**:
-  - Turn headers emit `<a id="t<N>"></a>` (`1`-indexed per session in chronological order); step entries emit `<a id="t<N>-<M>"></a>`.
-  - Prompt entries in `prompts.md` emit `<a id="p<K>"></a>` and link directly to `<slug>.outline.md#t<N>`.
-- **UI URL derivation**:
-  - Resolved from `--ui-base-url`, `$PHOENIX_UI_URL`, or derived from the configured gateway endpoint (mapping `https://mcp.<domain>/mcp` to `https://phoenix.<domain>`).
+### Skill and template layout
+
+- **Skill router and instructions**: `plugins/ida/skills/phoenix/SKILL.md` defines query efficiency rules, identifier resolution, outline generation, durable persistence, and single-span drill-down.
+- **Declarative query templates**: `plugins/ida/skills/phoenix/resources/` ships portable, configuration-neutral templates executed through the Phoenix MCP `phoenix_execute` tool (`executeGraphqlQuery` and `executeSql`):
+  - `session-costs.graphql` -- single-operation project and per-session built-in token and cost summaries (`GetProjectCosts` via `costSummary` and `GetSessionCosts` via `tokenUsage`, `costSummary`, and per-token-type `costDetailSummaryEntries`).
+  - `session-outline.sql` -- keyset-pageable, column-projected chronological step query for one session, returning scalar timing, model, token, built-in cost, tool summary, and bounded prompt/reply/argument excerpts while excluding bulky attribute and event blobs.
+  - `session-audit.sql` -- server-side aggregation of model spend (with dual-emitter deduplication) and tool / upstream MCP call counts, latencies, errors, and payload sizes.
+  - `cost-by-task.sql` -- server-side token and built-in cost rollups grouped by task identifier and model, plus fast session-spend ranking directly from `span_costs` over a bounded UTC window.
+  - `cross-session-search.sql` -- time-bounded server-side prompt, tool, error, subagent-correlation, and single-span detail lookups.
+  - `span-store.md` -- identifier shapes, session-vs-trace grouping rules, dual-emitter and subagent correlation semantics, and query size bounds.
+- **Decision-trace workflow**: `plugins/ida/skills/workflow-library/workflows/trace-decision.md` defines the input/output contract (`<slug>.outline.md` persisted durably plus an answer anchored to `#t<turn>-<step>`).
+
+### Session outline document contract (`<slug>.outline.md`)
+
+Every generated session outline contains, in order:
+
+1. **Top-level heading & session header**:
+   - `# Session Outline: {slug}` H1 heading.
+   - Session header block: session ID, project name, UTC start/end timestamps and wall duration, turn/model/tool/error counts, built-in token breakdown (`input`, `cache_read`, `cache_write`, `output`), built-in comparable USD cost, active subagent labels, and Phoenix session redirect link (`/redirects/sessions/{session_id}`) when a UI base URL is available.
+2. **`## Overview` executive summary tables**:
+   - `### Turns`: turn number linked to `#t{n}`, concise turn title (capped at ~5--8 words describing the prompt intent so the overview table never wraps excessively), start time, duration, model calls, tool calls, output tokens, and turn cost.
+   - `### Cost & Tool Profile`: per-model calls, token breakdown, and built-in cost; plus per-tool / upstream MCP service call count, total and max latency, and error count.
+   - `### Errors` (included when errors > 0): step anchor link `#t{n}-{m}`, failing span/tool name, and status message.
+3. **Chronological turn sections (`<a id="t{n}"></a>`, `## Turn {n} · {title}`)**:
+   - Turn metadata line with UTC timestamp, duration, model/tool counts, turn cost, and Phoenix `[session]` and root `[span]` (`/redirects/spans/{span_id}`) links when a UI base URL is available.
+   - Substantive prompt blockquote (with injected skill/system wrapper boilerplate stripped).
+   - Ordered model prose steps (`<a id="t{n}-{m}"></a>`, `### {n}.{m}`) showing model name, measured duration (omitted when telemetry records only synthetic `<= 1.5ms` post-turn timestamps), built-in cost, token breakdown, and assistant reasoning prose (omitting raw tool-call request JSON arrays, omitting empty `### {n}.{m}` headings when a model step dispatches only tool calls with no prose, and snapping truncated excerpts to clean word boundaries with trailing `...`), interleaved with single-line tool and subagent bullets (`* <a id="t{n}-{m}"></a>{n}.{m}`) showing action summary, tool/service name, duration, error status, and target path/command/arguments (with embedded newlines collapsed).
+   - `### Turn {n} reply` blockquote when the turn's final response differs from the last model step's prose.
 
 ## Invariants and security boundaries
 
-- **Authenticated read-only access**: Authorized operators and worker containers authenticate to the Phoenix MCP proxy using per-environment access credentials (`CF-Access-Client-Id` and `CF-Access-Client-Secret` when configured in environment variables) over HTTPS; trace queries are strictly read-only.
-- **Host path sanitization for durable storage**: Passing `--sanitize-paths` replaces literal user home paths (`/home/<user>`, `/Users/<user>`, `C:\Users\<user>`) and ephemeral session temp directories with `~` or generic placeholders before writing markdown outputs destined for shared or knowledge-base storage.
-- **Idempotent deterministic rendering**: Re-running `phoenix_transcript.py` over an identical span set produces identical turn clustering, deduplicated tool/model steps, and anchor identifiers, deduplicating repeated channel webhook deliveries by `(source, message_id)` and repeated client hook emissions by `(session_id, prompt_text)`.
+- **Authenticated MCP perimeter**: All Phoenix reads execute through the caller's authenticated Phoenix MCP server connection using read-only GraphQL and analytics SQL tools; shipped templates embed zero endpoints, credentials, project names, hostnames, or personal identifiers.
+- **Session-scoped grouping**: Multi-turn sessions are filtered and assembled by `session.id` rather than `trace_id`, because a single trace can span cross-agent boundaries while a multi-turn session spans one trace per turn.
+- **Bounded context footprint**: Routine cost, audit, and outline queries never select raw `attributes` or `events` JSON blobs across a session or time window, and keep individual code-mode responses within portal size bounds via server-side projection and keyset pagination.
+- **Durable persistence and path hygiene**: Generated `<slug>.outline.md` artifacts are persisted to the knowledge base or committed to a designated repository path rather than left in ephemeral container scratch space, with literal local user home paths (`~/...`) sanitized prior to knowledge-base ingestion.
+- **No local log fallback**: When Phoenix spans are absent, unreachable, or refused, `/phoenix` reports the exact failure and halts rather than scraping local client transcript or debug JSONL files.

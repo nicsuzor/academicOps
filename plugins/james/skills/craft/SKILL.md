@@ -1,6 +1,6 @@
 ---
 name: craft
-description: Authoring standard and quality gate for agent-facing instruction text and workflow templates. Use when writing, reviewing, or revising SKILL.md bodies, frontmatter descriptions, agent definitions, subagent prompts, tool descriptions, or workflow templates. Exclude for human-facing prose (specs, reports).
+description: Authoring standard and quality checklist for agent-facing instruction text and workflow templates. Use when writing, reviewing, or revising SKILL.md bodies, frontmatter descriptions, agent definitions, subagent prompts, tool descriptions, or workflow templates. Exclude for human-facing prose (specs, reports).
 allowed-tools: Read, Write, Edit
 ---
 
@@ -17,7 +17,7 @@ Author and review agent-facing instructions, personas, and workflow templates fo
 5. **Decouple persona from execution (Who vs How)**: Personas establish persistent identity, authority boundaries, and behavioral tone; skills define modular, reusable execution recipes. Personas name capabilities without inlining skill mechanics; skills specify operational contracts, and where one agent owns a skill the skill names that owner in one line so callers route to it, with the body otherwise written for any capable agent.
 6. **Progressive disclosure over monolithic injection**: Expose only routing metadata upfront; load procedural bodies just-in-time, and offload dense references to on-demand files.
 7. **Write for a headless worker**: Assume unattended, asynchronous execution with no interactive human in the loop. A step never pauses or waits for human input; explicit approval boundaries terminate the task and wire dependent tasks as blocked.
-8. **Promise only what the executor delivers**: Output contracts list only artifacts and state the executing agent itself produces. Another party's subsequent act (human sign-off, reviewer verdict) is never an executor deliverable.
+8. **Promise only what the executor delivers**: Output contracts list only artifacts and state the executing agent itself produces. Another party's subsequent act (human sign-off, reviewer verdict, or user installation/deployment of a shipped release) is never an executor deliverable.
 9. **Verification must be real**: Demand direct inspection of live artifacts (outputs, logs, diffs) rather than relying on compliance checklists.
 10. **Instruction density over conversational prose**: Maximize high-signal constraints per token. Every line earns its place; eliminate incident stories, post-mortems, and historical rationales.
 
@@ -47,7 +47,7 @@ To prevent context bloat and instruction dilution, structure skill packages in t
 
 Agents rarely explore unprompted reference files. To ensure Level 3 assets are read reliably without bloating median context:
 
-1. **Imperative Procedural Gating**: Never rely on passive suggestions ("see references/...", "consult X"). State an explicit condition, exact relative path, and action in the Level 2 procedure: e.g., `If <condition>, read references/<file>.md before <action>`.
+1. **Imperative Procedural Routing**: Never rely on passive suggestions ("see references/...", "consult X"). State an explicit condition, exact relative path, and action in the Level 2 procedure: e.g., `If <condition>, read references/<file>.md before <action>`.
 2. **Shape Inline, Depth in Reference**: Provide structural contracts, schema skeletons, and expected shapes inline in the Level 2 body so the agent understands the pattern immediately. Use Level 3 files strictly for exhaustive enumerations, raw schemas, or rare edge cases.
 3. **The Median Path Invariant**: If an agent must read a file on the median execution path, that content belongs inline in Level 2 (refactored to fit the 30–80 line budget), not in Level 3. Level 3 is reserved strictly for off-median branches, deep references, or secondary lookups.
 
@@ -59,7 +59,7 @@ Adhere to quantitative token and line limits to prevent attention degradation ("
 | :- | :- | :- | :- |
 | **Agent Persona** | 30–60 lines (~200–500 tokens) | 100 lines (<2,500 chars) | Role identity, behavioral boundaries, safety invariants, output schema. |
 | **Skill Description** | 1–3 sentences (150–400 chars) | 1,024 chars | Frontmatter router: trigger conditions, primary domain, explicit exclusions. |
-| **Skill Body (`SKILL.md`)** | 30–80 lines (~400–1,000 tokens) | 150–200 lines (~1,500 tokens) | Step-by-step procedure, input/output contract, verification gate. |
+| **Skill Body (`SKILL.md`)** | 30–80 lines (~400–1,000 tokens) | 150–200 lines (~1,500 tokens) | Step-by-step procedure, input/output contract, verification check. |
 | **Workflow Template** | 30–60 lines | 100 lines | High-level stage composition and handoff contracts. |
 | **Tool Description** | 150–400 chars | 800 chars | Purpose, when to use, when NOT to use, argument constraints. |
 | **Reference File (Level 3)** | 50–150 lines | 300 lines | Modular single-topic technical documentation or schemas. |
@@ -108,12 +108,12 @@ Workflow templates (`type: template`) govern repeatable multi-stage execution an
   ```
 - **Contract over neighbour**: Define input and output contracts per stage. Never name another template slug in frontmatter or body. A composite lists stages as contract expectations in order ("an independent review verdict on the spec"), never as slugs.
 - **Headless execution & approval boundaries**: A step never pauses, waits, or prompts a human mid-task. Where approval is required, the step ends there: the worker files the complete artifact on the record and structures the boundary so downstream work remains strictly blocked until approval is recorded (e.g. releasing as `partial` with an explicit decision task or dependency-wired review task). Cut the composition chain at that boundary; work following the decision belongs in a separate dependent task.
-- **Promise only executor deliverables**: Output contracts specify only artifacts and state generated by the executing agent. Future external decisions or approvals are not executor deliverables.
+- **Promise only executor deliverables**: Output contracts specify only artifacts and state generated by the executing agent. Future external decisions, approvals, or post-release user acts (installing, pulling, or deploying a shipped release) are not executor deliverables; agent responsibility ends once the release is shipped and the user is informed.
 - **`wf-` prefix**: Templates stating an obligation that blocks acceptance rather than a process that proceeds conventionally carry a `wf-` prefix.
 
-## Quality Gates
+## Quality Standards
 
-Every agent instruction, skill, persona definition, and subagent prompt must pass these five gates before merging:
+Every agent instruction, skill, persona definition, and subagent prompt must pass these five checks before merging:
 
 1. **Categorical generality (Categorical Imperative)**: Express rules in general terms covering the full class of situations. Prohibit hyper-specific quotas, rigid interaction numbers, or one-off compromises.
 2. **Entity abstraction (Name the process, not the actor)**: Refer to the principal as "the user", never by a personal proper noun or name. Refer to collaborators by role or capability.

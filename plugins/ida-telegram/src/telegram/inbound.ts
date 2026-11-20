@@ -21,6 +21,11 @@ export interface TelegramMessage {
   from?: TelegramUser;
   text?: string;
   caption?: string;
+  is_topic_message?: boolean;
+  forum_topic_created?: { name: string };
+  forum_topic_edited?: { name?: string };
+  forum_topic_closed?: Record<string, never>;
+  forum_topic_reopened?: Record<string, never>;
   reply_to_message?: TelegramMessage;
   quote?: { text: string };
   photo?: Array<{ file_id: string; file_size?: number }>;
@@ -68,6 +73,7 @@ export interface InboundChannelEvent {
     | "logic_check"
     | "explain"
     | "reasons"
+    | "thanks"
     | "accept_recommendation"
     | "decline_recommendation";
   content: string;
@@ -330,6 +336,16 @@ export function parseInboundUpdate(
       return {
         event: "explain",
         content: `Please explain message ${cb.message?.message_id ?? ""}${targetExcerpt ? `: "${targetExcerpt}"` : ""} in more detail.`,
+        meta,
+      };
+    }
+
+    if (callbackPrefix === "thanks" || rawData === "thanks") {
+      meta.event = "thanks";
+      meta.action = "thanks";
+      return {
+        event: "thanks",
+        content: `The user has read message ${cb.message?.message_id ?? ""} and is done with its thread: close the thread unless more on its topic is due soon.`,
         meta,
       };
     }

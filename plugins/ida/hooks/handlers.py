@@ -21,6 +21,7 @@ from typing import Any
 
 from dispatch import (
     HookContext,
+    Kind,
     Result,
     _merge,
     _run_handler,
@@ -35,8 +36,10 @@ from hearsay_gate import (
     hearsay_arm,
     hearsay_handler,
     prompt_text,
+    record_pre_dispatch,
     should_arm_hearsay,
     subagent_pre_handback_check,
+    subagent_start_gate_notice,
 )
 from hearsay_gate import (
     is_peer_report as is_peer_report,
@@ -241,22 +244,20 @@ def extract_prompt_query(prompt: str) -> str:
     return text[:_MAX_QUERY_CHARS]
 
 
-# Cloudflare Access service-token credentials. The hook and runtime expect
-# a single canonical set of variable names: DISPATCHER_MCP_TOKEN_ID and
-# DISPATCHER_MCP_TOKEN_SECRET. Launching applications substitute the
-# appropriate keys (e.g. worker-scoped credentials for worker containers)
-# into these environment variables.
-_TOKEN_ID_VAR = "DISPATCHER_MCP_TOKEN_ID"
-_TOKEN_SECRET_VAR = "DISPATCHER_MCP_TOKEN_SECRET"
+# Cloudflare Access service-token credentials: one pair, named after the
+# HTTP headers it becomes. The launching context (shell, polecat container,
+# launchd, CI) decides which stored service token fills it; least privilege is
+# the launcher's job, not the hook's.
+_TOKEN_ID_VAR = "CF_ACCESS_CLIENT_ID"
+_TOKEN_SECRET_VAR = "CF_ACCESS_CLIENT_SECRET"
 
 
 def _resolve_mcp_headers() -> dict[str, str]:
     """HTTP headers for the PKB endpoint, from the environment only.
 
-    The hook and runtime expect the canonical Cloudflare Access token pair:
-    `DISPATCHER_MCP_TOKEN_ID` and `DISPATCHER_MCP_TOKEN_SECRET`. Launching
-    applications substitute the appropriate keys for different surfaces and
-    use cases (such as worker-scoped credentials in isolated worker containers).
+    Reads the one Cloudflare Access pair, `CF_ACCESS_CLIENT_ID` and
+    `CF_ACCESS_CLIENT_SECRET`; the launching context chooses which stored
+    service token fills it.
     """
     cf_id = os.environ.get(_TOKEN_ID_VAR)
     cf_secret = os.environ.get(_TOKEN_SECRET_VAR)
@@ -494,7 +495,7 @@ def _post_mcp_search(
 
     if status in (401, 403):
         raise RuntimeError(
-            f"the PKB endpoint refused authorisation (HTTP {status}); check DISPATCHER_MCP_TOKEN_ID / DISPATCHER_MCP_TOKEN_SECRET"
+            f"the PKB endpoint refused authorisation (HTTP {status}); check CF_ACCESS_CLIENT_ID / CF_ACCESS_CLIENT_SECRET"
         )
     if status != 200:
         clean_body = " ".join(body.split())
@@ -797,10 +798,9 @@ PREMISE_CHECK_POINTER = (
 )
 
 PKB_SESSION_POINTER = (
-    "PKB requires top-level `session_id` on ALL MCP tool calls (both reads and writes,"
-    " including `pkb.*` calls inside `portal_codemode_execute`), set to your own active"
-    " session/conversation ID (`CLAUDE_CODE_SESSION_ID` / `ANTIGRAVITY_CONVERSATION_ID`"
-    " or session context)."
+    "Pass active `session_id` (`caller_session` when shown, else `session:` or client"
+    " session env) explicitly on all `pkb_*` and instrumented `services` proxy MCP calls;"
+    " hooks never inject it."
 )
 
 
@@ -1159,7 +1159,11 @@ def pre_tool(ctx: HookContext) -> Result | None:
     res = subagent_pre_handback_check(ctx)
     if res is not None:
         return res
-    return _run_handler(hearsay_handler, ctx)
+    gate_res = _run_handler(hearsay_handler, ctx)
+    if gate_res is not None and gate_res.kind == Kind.REFUSE:
+        return gate_res
+    record_pre_dispatch(ctx)
+    return gate_res
 
 
 def post_tool(ctx: HookContext) -> Result | None:
@@ -1172,7 +1176,8 @@ def post_tool(ctx: HookContext) -> Result | None:
 
 def post_tool_batch(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical PostToolBatch."""
-    return _run_handler(rule_against_hearsay, ctx)
+    steps = (rule_against_hearsay, hearsay_arm)
+    return _merge([_run_handler(step, ctx) for step in steps])
 
 
 def post_tool_failure(ctx: HookContext) -> Result | None:
@@ -1182,7 +1187,8 @@ def post_tool_failure(ctx: HookContext) -> Result | None:
 
 def subagent_start(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical SubagentStart."""
-    return _run_handler(honest_output, ctx)
+    steps = (honest_output, subagent_start_gate_notice)
+    return _merge([_run_handler(step, ctx) for step in steps])
 
 
 def stop(ctx: HookContext) -> Result | None:

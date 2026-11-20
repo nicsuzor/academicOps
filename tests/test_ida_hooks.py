@@ -766,6 +766,7 @@ def test_session_start_followed_by_user_prompt_submit_emits_pointer_once(
     start_res = handlers.session_start(start_ctx)
     assert start_res is not None
     assert handlers.PREMISE_CHECK_POINTER in start_res.inject_text
+    assert handlers.PKB_SESSION_POINTER in start_res.inject_text
 
     transcript = tmp_path / "transcript.jsonl"
     transcript.write_text(json.dumps({"type": "SYSTEM_MESSAGE", "content": "started"}) + "\n")
@@ -819,3 +820,28 @@ def test_session_start_injects_only_workspace_core_md(
     res_empty = handlers.session_start(ctx_empty)
     assert res_empty is not None
     assert "# Project Local Rules" not in res_empty.inject_text
+
+
+def test_dispatch_normalize_env_session_id_precedence(monkeypatch: pytest.MonkeyPatch):
+    """dispatch.normalize prioritizes CLAUDE_CODE_SESSION_ID / CLAUDE_SESSION_ID / ANTIGRAVITY_CONVERSATION_ID over stdin."""
+    from dispatch import normalize
+
+    claude_raw = {"session_id": "stdin-claude", "prompt": "hi"}
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "env-cc-1")
+    monkeypatch.setenv("CLAUDE_SESSION_ID", "env-c-2")
+    assert normalize("claude", "UserPromptSubmit", claude_raw, IDA_HOOKS).session_id == "env-cc-1"
+
+    monkeypatch.delenv("CLAUDE_CODE_SESSION_ID")
+    assert normalize("claude", "UserPromptSubmit", claude_raw, IDA_HOOKS).session_id == "env-c-2"
+
+    monkeypatch.delenv("CLAUDE_SESSION_ID")
+    assert (
+        normalize("claude", "UserPromptSubmit", claude_raw, IDA_HOOKS).session_id == "stdin-claude"
+    )
+
+    agy_raw = {"conversationId": "stdin-agy"}
+    monkeypatch.setenv("ANTIGRAVITY_CONVERSATION_ID", "env-agy-1")
+    assert normalize("agy", "PreToolUse", agy_raw, IDA_HOOKS).session_id == "env-agy-1"
+
+    monkeypatch.delenv("ANTIGRAVITY_CONVERSATION_ID")
+    assert normalize("agy", "PreToolUse", agy_raw, IDA_HOOKS).session_id == "stdin-agy"

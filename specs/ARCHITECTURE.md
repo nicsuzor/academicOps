@@ -66,21 +66,20 @@ table names only which plugin registers which event and to what end, read
 from each plugin's own hooks/handlers.py (e.g. `plugins/ida/hooks/handlers.py`).
 
 One surface is excepted. In a Claude Cowork session (the Claude desktop app's
-Cowork surface) the ida hooks do nothing: no handler runs, no fire is logged,
-no input is changed. Cowork refuses any MCP call whose input a plugin hook
-changed and its sessions carry none of the environment `SessionStart` needs.
-The decision is `is_cowork` in `lib/hooks/dispatch.py`, made once in
-each hook entry point (`dispatch.py` and `mcp_caller_session.py`) before any
-other work, from Claude Code's own signal in the hook's inherited environment:
-`CLAUDE_CODE_IS_COWORK` set to `1` or `true`, or `CLAUDE_CODE_ENTRYPOINT` set
-to a Cowork entrypoint (`local-agent`, `local_agent`, `remote_cowork`,
-`remote_cowork_trigger`). Every other surface -- the CLI, the desktop app's
-Code tab, cloud sessions, agy -- runs normally, including `session_id`
-injection on PKB MCP tool calls.
+Cowork surface) the ida hooks do nothing: no handler runs and no fire is
+logged, because Cowork sessions carry none of the environment `SessionStart`
+needs. The decision is `is_cowork` in `lib/hooks/dispatch.py`, made once in
+`dispatch.py` before any other work, from Claude Code's own signal in the
+hook's inherited environment: `CLAUDE_CODE_IS_COWORK` set to `1` or `true`, or
+`CLAUDE_CODE_ENTRYPOINT` set to a Cowork entrypoint (`local-agent`,
+`local_agent`, `remote_cowork`, `remote_cowork_trigger`). Every other surface
+-- the CLI, the desktop app's Code tab, cloud sessions, agy -- runs normally.
+Plugin hooks never rewrite or inject MCP tool-call inputs; agents pass
+`session_id` explicitly in tool arguments where accepted.
 
 | Plugin | Events registered | What it's for |
 | - | - | - |
-| `ida` | Claude Code: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PostToolBatch`, `SubagentStart`, `Stop`, `SubagentStop`, `StopFailure`, `PermissionRequest`, `PermissionDenied`, `Notification`, `PreCompact`, `PostCompact`, `SessionEnd`. agy: `PreInvocation` (canonical `UserPromptSubmit`), `PreToolUse`, `PostToolUse`, `Stop` | Session credential/path setup, session-id export, and the one-line `premise-check` pointer on `SessionStart`; OTel tracing spans; on `SubagentStart`, reminds spawned subagents to write reports per `premise-check` (`honesty.md`); on `UserPromptSubmit`, grounds the user's prompt in a PKB search (`search_the_pkb`, see [prompt hydration](agents/prompt-hydration.md)) and reminds the receiving agent to check incoming peer reports and directions (`hearsay.md`); on `PostToolBatch`, reminds the calling agent once per resolved tool batch when a dispatch call (`Agent`, `invoke_subagent`, `Task`) returned a foreground subagent's `completed` result (`hearsay.md`); the `hearsay_gate` (`premise_check_gate`), armed on `UserPromptSubmit` (for an incoming agent message carrying a report or direction; on agy, a `SYSTEM_MESSAGE` from another agent) and on `PostToolUse` (for each foreground subagent return, never spawn acknowledgements) and enforced on `PreToolUse` and `Stop` (see [evidence contract enforcement](enforcement/evidence-contract-enforcement.md)). |
+| `ida` | Claude Code: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PostToolBatch`, `SubagentStart`, `Stop`, `SubagentStop`, `StopFailure`, `PermissionRequest`, `PermissionDenied`, `Notification`, `PreCompact`, `PostCompact`, `SessionEnd`. agy: `SessionStart`, `PreInvocation` (canonical `UserPromptSubmit`), `PreToolUse`, `PostToolUse`, `Stop` | Session setup and `SessionStart` pointers; OTel tracing (`SubagentStop` tracer-only); `SubagentStart` uniform `honesty.md` reminders with recipient `--agent` and armed-claim context; `UserPromptSubmit` PKB prompt grounding ([prompt hydration](agents/prompt-hydration.md)) and incoming report reminders (`hearsay.md`); recipient-scoped `(session_id, agent_id)` `hearsay_gate` (`premise_check_gate`) arming across `UserPromptSubmit`, `PostToolUse`, and `PostToolBatch`, enforced per agent on `PreToolUse` and `Stop` (see [evidence contract enforcement](enforcement/evidence-contract-enforcement.md)). |
 
 The `ida` plugin registers hooks for session lifecycle, tracing, and premise-check gating. The `aops-debug` plugin provides diagnostic telemetry interception; see each plugin's README.
 
