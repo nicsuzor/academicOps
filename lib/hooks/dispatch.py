@@ -560,14 +560,11 @@ _OTEL_TRACE_ENV = "COPE_EVALUATOR_OTEL_TRACE_PATH"
 def _get_evaluator_otel_trace():
     """The OTel emitter, when the plugin this dispatch ships inside provides it.
 
-    `evaluator_otel_trace` ships in rbg. This file is shared into every
-    plugin's `hooks/` directory, and the entry point puts this module's own
-    directory on `sys.path`, so the import below resolves against whichever
-    plugin this copy is shipping inside — rbg's, in the builds checked. That
-    is a file reading its own plugin's directory, not another plugin's. The
-    traversal to `plugins/rbg/hooks` that used to sit here named another
-    plugin by path, and in the `dist/<name>-<client>/` layout resolved to
-    nothing, leaving the instrumentation a silent no-op.
+    `evaluator_otel_trace` is kept in `lib/hooks/cope/` (dormant CoPE
+    evaluators). This file is shared into every plugin's `hooks/` directory,
+    and the entry point puts this module's own directory on `sys.path`, so the
+    import below resolves against whichever plugin carries it. That is a file
+    reading its own plugin's directory, not another plugin's.
 
     Tests may resolve this import by injecting a path instead; the sibling
     rule describes the shipped layout, not every possible one.
@@ -583,8 +580,7 @@ def _get_evaluator_otel_trace():
         if os.environ.get(_OTEL_TRACE_ENV):
             print(
                 f"aops hooks: {_OTEL_TRACE_ENV} is set but evaluator_otel_trace is not "
-                "importable here — OTel instrumentation ships with rbg, and this "
-                "dispatch is running inside a plugin that does not carry it.",
+                "importable here — OTel evaluator instrumentation is not shipped in this plugin.",
                 file=sys.stderr,
             )
         return None

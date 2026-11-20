@@ -8,54 +8,44 @@ You can delegate execution to AI without delegating judgment.
 
 Academics are going to use AI to improve their productivity. The longer-term bet behind academicOps is that judgement remains the stumbling block: academic integrity requires accountability and trust in your processes, and that trust is not there yet, least of all where several tools from different vendors are used together in novel configurations with little way to verify or validate across them. academicOps is the layer above those tools. It can incorporate commercial offerings, and it facilitates, and sometimes replicates, the expert strategic judgement that anyone using them needs. It is not a production line for more outputs: it builds the modular blocks that let a changing research strategy run across many projects.
 
-academicOps is a streamlined suite of six plugins for Claude Code and Antigravity built around **4 core pillars** and **session telemetry**:
+academicOps is a modular suite of five plugins for Claude Code, Antigravity (`agy`), and OpenClaw built around **prompt situation**, **containerized execution**, **dialectical review**, and **session telemetry**:
 
-1. **Prompt Situation (`aops`):** Intercepts incoming prompts and grounds them in strategic history from the PKB.
-2. **Workflow Composition (`aops`):** Selects appropriate risk-matched review and QA assurance levels for the task.
-3. **Containerized Execution & Dispatch (`orchestrate`):** Dispatches tasks to safe, isolated Docker containers (`polecat`), writing results back to the PKB task record, committing changes, and pushing.
-4. **Dual-Layer Rule Enforcement (`rbg`):** Runs a turn-by-turn local model evaluator on tool calls, advisory only; plus a stop gate that withholds the stop once per chain, directing the agent to verify RBG rule compliance (`axioms/` + project + local rules) and present checkable evidence before handing back.
+1. **Strategic Face & Premise-Check Gate (`ida`):** Grounds top-level user prompts in PKB history (`UserPromptSubmit`), arms and enforces the `hearsay_gate` on incoming peer/worker reports (`premise-check`), and dispatches work to isolated containers (`dispatch`).
+2. **Execution, Custody & Dialectical Review (`james`):** Provides the hookless operational agent suite (`james`, `pauli`, `rbg`, `marsha`, `sara`), universal `axioms`, and custodian, planning, supervision (`/james:supervise`), leaf execution (`/james:pull`), and three-lens review skills.
+3. **Domain Research Tools (`tools`):** Provides research analysis, SQL transformation, visualization, document typesetting, diagramming, and peer-review skills.
+4. **Telegram Channel (`ida-telegram`) & Debug (`aops-debug`):** Optional channel integration (Claude Code / OpenClaw) and raw hook payload diagnostics.
 
 ## How It Works
 
 ```mermaid
 flowchart TD
-    U([User Prompt]) --> P1["<b>1. Ground & Situate</b><br/>(aops / UserPromptSubmit)<br/>Grounds prompt in PKB history"]
-    P1 --> P2["<b>2. Compose Workflow</b><br/>(aops / workflow)<br/>Selects risk-matched QA assurance depth"]
-    P2 --> P3["<b>3. Dispatch & Containerize</b><br/>(orchestrate / polecat)<br/>Runs isolated in Docker container,<br/>updates PKB, commits & pushes"]
-    
-    subgraph Enforcement["<b>4. Dual-Layer Rule Enforcement</b>"]
-        E1["<b>Layer 1: Turn-by-Turn COPE</b><br/>(rbg / PreToolUse)<br/>Parallel local model checks tool calls -- advisory"]
-        E2["<b>Layer 2: Stop Gate</b><br/>(rbg / Stop & SubagentStop)<br/>Blocks once per chain -- run the RBG<br/>rule check and show the evidence"]
-    end
+    U([User Prompt]) --> P1["<b>1. Ground & Situate</b><br/>(ida / UserPromptSubmit)<br/>Grounds prompt in PKB history"]
+    P1 --> P2["<b>2. Dispatch to Container</b><br/>(ida / dispatch)<br/>Launches isolated worker container"]
+    P2 --> P3["<b>3. Compose & Execute</b><br/>(james / supervise or pull)<br/>Composes workflow, runs work, commits & pushes"]
+    P3 --> P4["<b>4. Dialectical Review & Premise Gate</b><br/>(james / strategic-review + ida / PreToolUse & Stop)<br/>Checks strategic fit, compliance, quality, and Argdown proof"]
+    P4 --> F([Verified User Briefing])
 
-    P3 -.-> E1
-    P3 --> E2
-    E2 --> F([Task Handover & Completion])
-
-    subgraph Tracing["<b>Telemetry & Tracing (c)</b>"]
-        OTEL["<b>OpenTelemetry Collector</b><br/>Session/Container Traces → installer's OTLP collector"]
+    subgraph Tracing["<b>Telemetry & Tracing</b>"]
+        OTEL["<b>OpenTelemetry Collector</b><br/>Session/Container Traces -> OTLP collector"]
     end
 
     P1 -.-> OTEL
     P3 -.-> OTEL
-    Enforcement -.-> OTEL
+    P4 -.-> OTEL
 ```
 
 ## Master Hook Lifecycle Matrix
 
-Every hook across the plugins is deterministic, lightweight, and single-purpose. The table below details when each hook fires, which plugin owns it, what context it requires, what payload it injects, and **WHY** it exists:
+Only `ida` (plus `aops-debug` and `ida-telegram`) registers runtime hooks; `james` and `tools` are hookless:
 
 | Plugin | Canonical Event | Target Client | Required Context / Env | Injected Payload / Action | WHY (Purpose & Rationale) |
 | :- | :- | :- | :- | :- | :- |
-| `ida` | `UserPromptSubmit` | Both (Claude Code & AGY) | `PKB_MCP_URL`, plus credential: `CF_ACCESS_CLIENT_ID` + `CF_ACCESS_CLIENT_SECRET` (the launcher picks which service token fills the pair; [INSTALL.md](INSTALL.md#prompt-hydration-credentials)) | Strategic context search instructions & relevant PKB history. | **Pillar 1 (Situation):** Ground every user prompt in historical knowledge and prior decisions before acting. |
-| `rbg` | `PreToolUse` | Claude Code | `COPE_EVALUATOR_*` (Local Reflexes LLM model) | Parallel rule compliance advisory with matched rule text & reasoning. | **Pillar 4 (Enforcement L1):** Non-blocking, turn-by-turn evaluation of tool calls against active rules via a fast local model. |
-| `rbg` | `UserPromptSubmit` | AGY (`PreInvocation`) | Live rule set files | Summary roster of active rules for the turn. | Provides rule visibility on surfaces that lack tool-call interception. |
-| `orchestrate` | `PostToolBatch` | Claude Code | none | Non-blocking reminder carrying the handback doctrine: a subagent's report is second-hand, so expect proof with it and send back anything without proof. Emits nothing unless the batch contains an `Agent` call. | Binds the **receiver** the instant a synchronous report lands. Verifying, re-running, or completing the work on the worker's behalf is never the receiver's job. |
-| `orchestrate` | `Stop` / `SubagentStop` | Both | none | Blocking reminder (`block`) carrying the same handback doctrine plus the worker-side register: name what you did not do, Observed vs Reported, "changed, unverified" until the originally-failing behaviour is observed passing. Fires blocking so the harness sets `stop_hook_active` to prevent repeat injections. | Binds the **worker** at its own stop -- the last moment its report can still carry the evidence, since a returned result cannot be amended after it lands. |
-| `aops` | `Stop` | Claude Code (ida face) | none | Advisory quiet gate: strip the reply down to load-bearing content before speaking to the person. | Face-scoped by its event. `SubagentStop` is deliberately not wired -- it fires on a stopping subagent's own context, which sends no reply to the person. |
-| `rbg` | `Stop` / `SubagentStop` | Both | `stop_hook_active` / `background_tasks` checks | Blocks once per stop-chain (`decision: "block"`), directing the agent to invoke the RBG rule checker (`axioms` + project + local rules) and present checkable evidence before stopping. Silent on the continuation stop and while background work runs. Advisory-only on AGY. | **Pillar 4 (Enforcement L2):** Every turn ends with a rule-compliance review. The hook obliges the check; it never runs or grades it. |
-| `ts` | `SessionStart` | Claude Code | `CLAUDE_CODE_REMOTE=true`, `TS_AUTHKEY` | Launches background `tailscale up` for remote connectivity. | Enables remote session access over Tailnet. |
-| `ts` | `SessionEnd` | Claude Code | `TS_SESSION_SYNC_HOST` | Transmits session log bundle to remote sync host. | Secures session history after termination. |
+| `ida` | `SessionStart` | Claude Code, OpenClaw, AGY | `PKB_MCP_URL`, `AOPS_SESSION_ID` | Injects `CORE.md`, session metadata, and `premise-check` pointer. | Establishes universal baseline instructions and session attribution at startup. |
+| `ida` | `UserPromptSubmit` (`PreInvocation` on AGY) | Claude Code, OpenClaw, AGY | `PKB_MCP_URL`, `CF_ACCESS_CLIENT_ID` + `CF_ACCESS_CLIENT_SECRET` | Grounds top-level `ida` user prompts in PKB search; arms `hearsay_gate` on incoming reports. | Grounds interactive turns in PKB history and arms verification on incoming reports. |
+| `ida` | `SubagentStart` | Claude Code | none | Injects `honesty.md` report-formatting reminder with recipient context. | Ensures spawned subagents return verifiable `premise-check` Argdown reports. |
+| `ida` | `PostToolUse` / `PostToolBatch` | Claude Code, OpenClaw, AGY | none | Arms `hearsay_gate` on foreground subagent returns (`hearsay.md`) and emits OTel spans. | Binds the receiver the instant a subagent report lands. |
+| `ida` | `PreToolUse` | Claude Code, OpenClaw, AGY | none | Refuses dispatches/messages while `hearsay_gate` is armed; emits OTel spans. | Prevents acting on or relaying unchecked reports. |
+| `ida` | `Stop` / `SubagentStop` | Claude Code, OpenClaw, AGY | none | Enforces `hearsay_gate` on `Stop`; emits OTel spans on `SubagentStop`. | Prevents session handover with unverified claims. |
 
 ## Telemetry & OTEL Tracing Architecture
 

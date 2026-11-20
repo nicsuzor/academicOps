@@ -7,14 +7,15 @@ Ida is the strategic user-facing coordination and reporting integrity plugin for
 ```mermaid
 flowchart TD
     User["User Prompt"] --> PromptSubmit["Hook: UserPromptSubmit"]
-    Report["Agent Handback / Hearsay"] --> PreTool["Hook: PreToolUse / Hearsay Gate"]
     PromptSubmit --> Ida["Agent: Ida (Strategic Face)"]
-    PreTool --> PremiseCheck["Skill: premise-check"]
-    PremiseCheck -->|PASS| Ida
-    PremiseCheck -->|REVISE / FAIL| ReturnSender["Return to Sender"]
     Ida --> Dispatch["Skill: dispatch"]
     Dispatch --> Workers["Container Session Execution"]
-    Workers --> Report
+    Workers --> Report["Agent Handback / Incoming Message"]
+    Report --> Arm["Arm Hearsay Gate (UserPromptSubmit / PostToolUse / PostToolBatch)"]
+    Arm --> Gate["Enforce Gate (PreToolUse / Stop)"]
+    Gate --> PremiseCheck["Skill: premise-check"]
+    PremiseCheck -->|PASS| Ida
+    PremiseCheck -->|REVISE / FAIL| ReturnSender["Return to Sender"]
     Ida --> Output["Verified User Briefing"]
 ```
 
@@ -26,11 +27,13 @@ flowchart TD
 | Skills | `premise-check` | Verifies evidence-backed claims and arguments against 7-keyed-line standards |
 | Skills | `argdown-toulmin` | Chained Toulmin Argdown grammar and presentation standard |
 | Skills | `dispatch` | Starts polecat container sessions on queued tasks |
-| Hooks | `SessionStart` | Injects core session instructions and initializes session telemetry |
-| Hooks | `UserPromptSubmit` | Grounds top-level Ida user prompts in PKB search and guards cognitive load |
-| Hooks | `PreToolUse` | Runs telemetry tracing and gates unchecked hearsay claims |
-| Hooks | `PostToolUse` | Arms hearsay checks on foreground subagent returns and emits OpenTelemetry spans |
-| Hooks | `Stop` | Enforces premise-check completion before session handover |
+| Hooks | `SessionStart` | Injects `CORE.md`, session metadata, and `premise-check` pointer |
+| Hooks | `UserPromptSubmit` | Grounds top-level Ida prompts in PKB search and arms `hearsay_gate` on incoming reports |
+| Hooks | `SubagentStart` | Injects `honesty.md` report-formatting reminders with recipient context |
+| Hooks | `PostToolUse` / `PostToolBatch` | Arms `hearsay_gate` on foreground subagent returns and emits OpenTelemetry spans |
+| Hooks | `PreToolUse` | Runs telemetry tracing and gates dispatches/messages while `hearsay_gate` is armed |
+| Hooks | `Stop` / `SubagentStop` | Enforces `hearsay_gate` on `Stop` and emits OpenTelemetry spans on `SubagentStop` |
+| Hooks | Lifecycle & Telemetry (`SessionEnd`, `PreCompact`, `PostCompact`, `PermissionRequest`, `PermissionDenied`, `Notification`, `PostToolUseFailure`, `StopFailure`) | Emits OpenTelemetry spans and session lifecycle telemetry |
 
 ## How It Is Configured
 

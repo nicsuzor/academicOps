@@ -48,7 +48,7 @@ source of truth for the built plugin set.
 
 | Directory | Owns |
 | - | - |
-| `plugins/ida` | ida (`plugins/ida/agents/ida.md`) -- the interactive face and the only agent that talks to the user; premise-check skill (`plugins/ida/skills/premise-check/`); session, PKB-search, tracing, and premise-check hooks. |
+| `plugins/ida` | ida (`plugins/ida/agents/ida.md`) -- the interactive face and the only agent that talks to the user; `premise-check` skill (`plugins/ida/skills/premise-check/`) plus shared `argdown-toulmin` and `dispatch` skills staged from `lib/skills/`; session, PKB-search, tracing, and premise-check hooks. |
 | `plugins/james` | Dialectical review, execution supervision, and knowledge curation: james, marsha, pauli, rbg, and sara agents (`plugins/james/agents/`); axioms (`plugins/james/skills/axioms/`); and custodian, planning, supervision, review, and execution skills. |
 | `plugins/tools` | Domain research skills (data analysis, document conversion, diagramming, peer review, project scaffolding). |
 | `plugins/aops-debug` | Debug plugin that dumps raw hook payloads. |
@@ -109,6 +109,7 @@ A client adapter is the only place a client-specific workaround may live.
 - `manifest/hooks.json` -> `hooks/hooks.json` (the only path Claude Code reads)
 - `manifest/mcp.json` -> `.mcp.json`
 - axioms carrying `trigger: always_on` -> `axioms.jsonl`
+- rules (`skills/axioms/*.md`) -> `rules/<source_file>`
 
 `build/clients/openclaw.py`:
 

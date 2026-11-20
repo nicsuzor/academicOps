@@ -1112,7 +1112,7 @@ def test_channel_wrapped_human_prompts_send_full_text_up_to_8kb():
 
 
 def test_slash_command_with_arg_sends_arg_whole_up_to_8kb():
-    """AC2: /cmd <arg> prompts send <arg> whole up to 8 KB, while /pull and /ida:pull skip hydration."""
+    """AC2: /cmd <arg> prompts send <arg> whole up to 8 KB, while /pull, /ida:pull, and /james:pull skip hydration."""
     arg_500 = "y" * 500
     prompt = f"/cmd {arg_500}"
     ctx = HookContext(
@@ -1128,7 +1128,14 @@ def test_slash_command_with_arg_sends_arg_whole_up_to_8kb():
         args, _ = mock_search.call_args
         assert args[0] == arg_500
 
-    for pull_prompt in ("/pull", "/pull work-item-1", "/ida:pull", "/ida:pull work-item-1"):
+    for pull_prompt in (
+        "/pull",
+        "/pull work-item-1",
+        "/ida:pull",
+        "/ida:pull work-item-1",
+        "/james:pull",
+        "/james:pull work-item-1",
+    ):
         ctx_pull = HookContext(
             client="claude",
             event="UserPromptSubmit",

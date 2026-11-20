@@ -205,10 +205,10 @@ def extract_prompt_query(prompt: str) -> str:
     envelopes are searched. ANSI escape codes are removed and surrounding
     whitespace stripped.
 
-    Skips argument-less slash commands (`/cmd`) as well as `/pull` and
-    `/ida:pull` (bare or with arguments) by returning an empty string so no
-    PKB search runs. Other slash commands with arguments (`/cmd <arg>`) send
-    `<arg>` whole up to 8 KB.
+    Skips argument-less slash commands (`/cmd`) as well as `/pull`,
+    `/ida:pull`, and `/james:pull` (bare or with arguments) by returning an
+    empty string so no PKB search runs. Other slash commands with arguments
+    (`/cmd <arg>`) send `<arg>` whole up to 8 KB.
     """
     if not prompt:
         return ""
@@ -234,7 +234,7 @@ def extract_prompt_query(prompt: str) -> str:
     if text.startswith("/"):
         parts = text.split(None, 1)
         cmd_base = parts[0].lower().split("@", 1)[0]
-        if cmd_base in ("/pull", "/ida:pull") or len(parts) == 1:
+        if cmd_base in ("/pull", "/ida:pull", "/james:pull") or len(parts) == 1:
             return ""
         arg = parts[1].strip()
         if not arg:
@@ -558,7 +558,7 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
     agents, unnamed sessions, subagents, automated wakeups, non-`<channel>`
     `author == "system"` turns, `agy` `SYSTEM_MESSAGE` turns, peer/agent/task/
     command/reminder wrappers, argument-less slash commands, and `/pull` /
-    `/ida:pull` make zero PKB calls.
+    `/ida:pull` / `/james:pull` make zero PKB calls.
     """
     if not is_ida(ctx):
         return None

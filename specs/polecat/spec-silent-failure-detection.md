@@ -24,7 +24,7 @@ As a dispatching supervisor, I want polecat launch and container boot to verify 
 
 ### US-2 Post-launch startup liveness and claim verification
 
-As a dispatching supervisor, I want container dispatch to verify that a newly started worker survives its initial boot and claims its assigned task within the startup grace window, so that a container that exits during startup or drops its `/ida:pull` seed prompt is detected immediately rather than disappearing under `auto_remove=True`.
+As a dispatching supervisor, I want container dispatch to verify that a newly started worker survives its initial boot and claims its assigned task within the startup grace window, so that a container that exits during startup or drops its `/james:pull` seed prompt is detected immediately rather than disappearing under `auto_remove=True`.
 
 - **AC-2.1** Given a detached container launch for a target task, when the startup grace window elapses, then the launcher or healthcheck verifies that the container has not exited prematurely and that the target task has transitioned out of `queued` (or that an active session transcript has been created), surfacing a launch failure if the container died or failed to claim its task.
 
@@ -192,7 +192,7 @@ The table below lists every lifecycle point across the deployment's dotfiles rep
    - On container exit (`on_exit`), `polecat-entrypoint.sh` inspects `final_status` of `TARGET_TASK`:
      - **`done` / `partial` / `cancelled` / `failed`**: The worker released its own task cleanly; `task_guard_outcome="worker_released"`.
      - **`in_progress`**: The worker claimed the task but exited without releasing it. The task guard calls `release_task(TARGET_TASK, status="partial", reason=f"Headless polecat runner exited (code {exit_code}) with task still in_progress; logs: /data/sessions/logs/{date}/{TARGET_TASK}/")`, sets `exit_code=1`, and records `task_guard_outcome="guard_released_from_in_progress"`.
-     - **`queued` / `ready`**: The worker container exited before `/ida:pull` even claimed `TARGET_TASK` (e.g. startup crash, auth failure, or dropped prompt). The task guard claims and immediately releases `TARGET_TASK` as `partial` (or updates `status="partial"` with `reason=f"Polecat worker exited (code {exit_code}) before claiming task; logs: /data/sessions/logs/{date}/{TARGET_TASK}/"`), sets `exit_code=1`, and records `task_guard_outcome="guard_released_from_queued"`.
+     - **`queued` / `ready`**: The worker container exited before `/james:pull` even claimed `TARGET_TASK` (e.g. startup crash, auth failure, or dropped prompt). The task guard claims and immediately releases `TARGET_TASK` as `partial` (or updates `status="partial"` with `reason=f"Polecat worker exited (code {exit_code}) before claiming task; logs: /data/sessions/logs/{date}/{TARGET_TASK}/"`), sets `exit_code=1`, and records `task_guard_outcome="guard_released_from_queued"`.
      - **`error: ...` (or `release` failure after all retries)**: The PKB MCP server remained unreachable across all backoff retries. The entrypoint sets `exit_code=1` and writes `task_guard_outcome="mcp_unreachable"` with the verbatim error into `run.json`.
 3. **Durable `run.json` and Latest-Run Transcript Harvest (`/usr/local/bin/harvest-session-logs.sh`)**:
    - `harvest-session-logs.sh` copies both `agy` logs/transcripts (`~/.gemini/antigravity-cli/{log,brain}`) and `claude` transcripts (`~/.claude/projects/`).
@@ -217,5 +217,5 @@ The table below lists every lifecycle point across the deployment's dotfiles rep
 ### 3. Supervisory & Reconciliation Contract
 
 1. **Zero-Wait Live Container Cross-Check (`wf-reconcile.md`)**:
-   - During `/ida:reconcile` (Obligation 6) and supervisory check-ins, any PKB task with `status: in_progress` and `assignee: james` (or a `polecat/*` branch/tag) is cross-checked against `polecat_list_containers`.
+   - During `/james:reconcile` (Obligation 6) and supervisory check-ins, any PKB task with `status: in_progress` and `assignee: james` (or a `polecat/*` branch/tag) is cross-checked against `polecat_list_containers`.
    - If no running container carries label `task=<task_id>`, the task is immediately recognised as an exited polecat run (without waiting for the 24-hour staleness threshold). The reconciling agent reads `/data/sessions/logs/<YYYYMMDD>/<task_id>/run.json` and transitions the task to `partial` (recording the failure reason from `run.json`) or resets it to `queued` for re-dispatch.

@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- [Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview), or Antigravity
+- [Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview), Antigravity (`agy`), or OpenClaw
 - Node.js and `@argdown/cli` (`npm install -g @argdown/cli`) for Argdown argument gating
 - Docker, only if you want polecat's containerised workers
 
@@ -28,7 +28,7 @@ The `services` MCP server is installed at user level across all surfaces, never 
 Plugins install with no `--config`: `ida-telegram` and `aops-debug` install the same way as `ida`, `james` and `tools`.
 
 Nothing else has a default. Set the environment variables each plugin needs
-before first use -- the full list is in [`README.md`](README.md#configure),
+before first use -- the telemetry variables are in [`README.md`](README.md#telemetry--otel-tracing-architecture),
 and each plugin's own `plugins/<dir>/README.md` documents its complete
 surface.
 
