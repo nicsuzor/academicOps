@@ -22,7 +22,7 @@ Investigates a problem space, existing system or literature context, constraints
 
 ## Output contract
 
-A concise, channel-neutral research artifact leading with the answer and recommendation followed only by the evidence needed to verify them:
+A concise, channel-neutral research artifact leading with the answer and recommendation followed only by the evidence needed to verify them (persisted human-facing research artifacts use clear Markdown; internal agent-to-agent handbacks report solely in clean Argdown prose per `premise-check`, stating the original ask upfront and quoting deciding primary evidence inline):
 
 - Answers to primary research questions with pinpoint citations.
 - Comparison of candidate approaches with trade-offs and active constraints.

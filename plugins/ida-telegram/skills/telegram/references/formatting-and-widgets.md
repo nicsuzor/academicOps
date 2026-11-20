@@ -37,9 +37,9 @@ Every reply carries `[🧐 Check]`, `[💡 Explain]`, `[🧾]`, and `[🙏]` unl
 
 | Button | Event | Required Handling |
 | - | - | - |
-| `🧐 Check` | `logic_check` | Run formal `premise-check`; reply with verdict (`PASS`/`REVISE`/`FAIL`) and 7-part reason (`Judged · Valid · Supported · Answered · Sufficient · Waived · Relay`). |
+| `🧐 Check` | `logic_check` | Run formal `premise-check` on the face of the record (zero _de novo_ fact-checking); record and reply with verdict (`PASS`/`REVISE`/`FAIL`) and appealable natural-language administrative-law reasons via `verdict.py`. |
 | `💡 Explain` | `explain` | Reply expanding that message with context, rationale, and evidence. |
-| `🧾` | `reasons` | Place verbatim Chained Toulmin Argdown blocks in `detail` labelled by link (`lead to user`, `coordinator to lead`, `worker to coordinator`), marking missing links `[Missing argument: ...]`; summarize the chain in ~100 chat words. |
+| `🧾` | `reasons` | Place verbatim Argdown argument blocks in `detail` labelled by link (`lead to user`, `coordinator to lead`, `worker to coordinator`), marking missing links `[Missing argument: ...]`; summarize the chain in ~100 chat words. |
 | `🙏` | `thanks` | Meta carries `target_message_id`, `chat_id`, `user_id`, optional `message_thread_id`. Call `close_thread` unless more on the topic is due soon; send no reply (`Selected: 🙏 Thanks ✅`). |
 | `✅` / `❌` | `accept_recommendation` / `decline_recommendation` | Available when `binary_decision: true`. Execute/confirm on `✅`; halt declined course and clarify or offer alternatives on `❌`. |
 

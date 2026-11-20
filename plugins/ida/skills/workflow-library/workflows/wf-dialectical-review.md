@@ -35,18 +35,18 @@ Every branch receives the same neutrally framed briefing, quoting the commission
    - **Strategic coherence reviewer**: Evaluates core premise, problem class, parsimony, lifecycle coherence, and congruence with the **seamless web** of knowledge-base records, specifications, topic notes, parent objectives, and active sibling work from an inline graph brief.
    - **Compliance reviewer**: Adjudicates universal axioms, user/project rules, delegated authority scope (_ultra vires_), _abdication_, data boundaries, and the least-invasive enforcement hierarchy independently (reading zero prior reviews first); states the smallest proportionate non-mechanical baseline from the quoted mandate before reading the diff.
    - **Quality & verification reviewer**: Verifies requirements, acceptance criteria, and whether work is amazingly good against genre/document standards across live tests and actual rendered outputs (never simulated renders or code alone), plus primary materials on high-risk asks; missing standards/criteria are `FAIL`.
-   - **Applied fixes & `HEAD` parity**: Apply uncontroversial `fix(review):` edits only when serialized or explicitly authorized on a writable branch; parallel passes list `### Suggested Fixes`. Commit, push, and verify fixes at `HEAD` before `PASS` (no `REVISE` solely for fixed items); contested defects stay in `### Required Changes`.
+   - **Applied fixes & `HEAD` parity**: Apply uncontroversial `fix(review):` edits only when serialized or explicitly authorized on a writable branch (itemizing them as Argdown observations internally, or `### Reviewer Self-Fixes Applied` in published/user-facing reviews); parallel passes list suggested fixes as Argdown findings internally (or `### Suggested Fixes` in published/user-facing outputs). Commit, push, and verify fixes at `HEAD` before `PASS` (no `REVISE` solely for fixed items); contested defects stay as Argdown findings internally (or `### Required Changes` in published/user-facing outputs).
 
 ## Stages
 
 1. **Calibrate**: Coordinator sets proportionality, deliberation round budget, capability tier, primary-material audit scope, target altitude, and governing standard.
 2. **Evaluate independently**: Dispatch specialist branches concurrently against the neutral shared brief (or run a single-pass check when calibrated for routine low-stakes work). Halt verbatim without silently falling back to single-perspective review if required branches are unavailable.
-3. **Deliberate** _(scaled by proportionality)_: Skip on routine checks with no tensions. Otherwise interrogate warrants, route opposing critiques across reviewers, verify cited PRs/code against current merged state, and require `status: done` evidence or live state rather than bare doc claims (else mark **open questions**).
+3. **Deliberate** _(scaled by proportionality)_: Skip on routine checks with no tensions. Otherwise review specialist handbacks strictly on the face of the record per `premise-check` (zero _de novo_ factual re-checking of primary sources; remand unsupported or conflicting factual claims to the reviewer), route opposing critiques across reviewers, and require the record to show cited PRs/code are current and backed by spec/decision authority and doc claims have `status: done` evidence or quoted live state (else mark **open questions**).
 4. **Reconcile & release**:
    - Synthesize unified findings, itemized self-fixes applied, open questions, and reconciled verdict (`PASS`, `REVISE`, or `FAIL`), matching posted PR headers to the reviewed head commit SHA when permitted by `data-boundaries`.
    - Preserve per-finding risk-vs-cost proportionality while enforcing separation of powers: **an expert `FAIL` stands unsoftened** -- the coordinator holds no authority to downgrade or overrule another branch's `FAIL`.
    - Verify all `fix(review):` edits are committed, pushed, and matched to `HEAD` before issuing `PASS`.
-   - Release headless review tasks strictly per outcome (`done` on `PASS`; `failed` or `partial` with findings and defect tags on `REVISE` or `FAIL`), never prompting interactively or minting downstream tasks.
+   - Release headless review tasks strictly per outcome (`done` on `PASS`; `failed` or `partial` with findings and defect reasons on `REVISE` or `FAIL`), never prompting interactively or minting downstream tasks.
 
 ## Input contract
 
@@ -56,7 +56,7 @@ Every branch receives the same neutrally framed briefing, quoting the commission
 
 ## Output contract
 
-- Unified review report containing calibration summary, itemized `### Reviewer Self-Fixes Applied` (with commit references verified at `HEAD`, if any), itemized findings table with open questions, and exactly one overall verdict (`PASS`, `REVISE`, or `FAIL`), persisted to the task or review record.
+- Internal agent-to-agent review handbacks (from specialists and coordinator to callers) report **only** in clean Argdown prose per `premise-check` (leading with original ask and verdict, quoting deciding evidence inline); structured Markdown headings (`### Reviewer Self-Fixes Applied`, `### Suggested Fixes`, `### Required Changes`) and findings tables apply strictly to published PR/issue or user-facing summaries. Every unified review covers calibration summary, itemized self-fixes (with commit references verified at `HEAD`, if any), reconciled findings with open questions, and exactly one overall verdict (`PASS`, `REVISE`, or `FAIL`), persisted to the task or review record.
 
 ## When to include
 

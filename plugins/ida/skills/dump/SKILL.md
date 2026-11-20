@@ -26,7 +26,7 @@ Offer settled durable facts (decisions, constraints, verified current-state find
 
 ### 4. Release Claimed Tasks (Children First)
 
-1. Refetch current task state (`pkb_get_task`), update `## Report` with outcome and the `premise-check` `argdown` block (using frozen ask IDs), and call `pkb_release_task` with `session_id`:
+1. Refetch current task state (`pkb_get_task`), update `## Report` solely in clean Argdown prose per `ida:premise-check` (leading with original ask/criteria and release outcome, quoting deciding evidence inline), and call `pkb_release_task` with `session_id`:
    - `done`: Single completion status when all in-scope criteria have primary evidence in `## Report` and deliverables are delivered (draft PR opened with `pr_url`/`branch`, or PKB artifact recorded -- without waiting for CI, review, merge, or proof of user installation/deployment). Coordinators (`/supervise`) release `done` when in-session deliverables finish and out-of-session work is queued as follow-up tasks; leaf workers (`/pull`) satisfy all criteria directly.
    - `partial`: Worker's own criteria or in-session subtasks remain unfinished (blocker, scope seam, missing tool, pre-work approval boundary), or task includes an unreachable post-exit criterion (finish reachable work, leave that item unticked, cite in `reason`).
    - `failed`: Unrecoverable blocker or check failure.
@@ -34,18 +34,24 @@ Offer settled durable facts (decisions, constraints, verified current-state find
    - `in_progress`: Immediate active successor session continuing.
    - Never set or release `review` (human hold only). Workers never write `## Premise-Check Verdict`.
 
-````markdown
-### Task: <task-id> (<title>) -- <status>
+```markdown
+**Original Ask (`<task-id>/AC1`):** <Original acceptance criterion in full>
 
-- **Update**: [1-3 sentences on completed and remaining work]
-- **Output**: [Branch, commit SHA, PR link, or artifact path]
-- **Rule Violations**: [None | Rule name, source, explanation]
-- **Proof**:
+**Main Conclusion:** Task `<task-id>` (<title>) released as `<status>` on `<branch>` (`<commit-sha>`, `<pr-url or artifact>`).
 
-```argdown
-<premise-check argdown block, asked by task ask IDs>
+### Deliverable Verification
+
+(1) <Atomic primary observation quoting deciding outputs, branch, commit SHA, PR URL, or test receipts inline>.
+(2) Rule compliance check: <none observed, or explicit rule violation disclosure with rule citation>.
+-- <Plain-prose warrant linking observations to criterion; name nearest plausible rival or exception and whether (1)-(2) rule it out or leave a qualifier.> --
+(3) So, <earned qualifier>, `<task-id>/AC1` is satisfied.
+
+### Handover Context
+
+- **Limitations and uncertainties:** <untested edges or partial remainder, else none>.
+- **Durable facts:** <settled facts offered to custodian with pointers, else none>.
+- **Next step:** <task-id link | 2-4 sentence resumption prompt | none>.
 ```
-````
 
 ### 5. Consolidated Daily Note Updates
 
@@ -57,20 +63,5 @@ Never invent speculative follow-ups: list pre-existing dependent task pointers, 
 
 ### 7. Emit Final Handover Report
 
-```markdown
-## Handover: <agent> <session-id>
-
-1. **Task**: <task-id and title, or "Ad-hoc / Retroactive: <id>">
-2. **Summary**: <findings, modifications, outcomes>
-3. **Status & Safeguards**:
-   - STATUS: <done | partial | failed | cancelled | in_progress>
-   - CRITERION: <acceptance criterion ID tested and observed result>
-   - CONFIDENCE: <high | med | low> + <single falsifying check>
-   - CONFOUND CHECK: <clean-room/differential control result | NOT RUN>
-4. **Output**: <branch + commit SHA | PR or artifact link>
-5. **Next step**: <task-id link | Resumption prompt | None>
-6. **Durable Facts**: <None | list for custodian>
-7. **Argument**: <argdown block from ## Report>
-8. **Limitations**: <unresolved items, out-of-scope elements, verbatim errors>
-9. **Rule Violations**: <None | violations with citations>
-```
+- **Non-user-facing agents (workers, subagents, container coordinators)**: Report solely in clean Argdown prose per `ida:premise-check` covering task ID and release status (`done | partial | failed | cancelled | in_progress`), original ask and acceptance criteria with inline quoted primary evidence (branch, commit SHA, PR/artifact link, test/control receipts), limitations, durable facts, next step (`task-id` link | resumption prompt | none), and disclosed rule violations.
+- **User-facing handover directly to the user**: Present a concise Markdown handover covering task, status, outputs, verified evidence, next step, durable facts, limitations, and any disclosed rule violations.
