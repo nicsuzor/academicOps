@@ -23,7 +23,7 @@ record of the session that made it rather than from any agent's account of itsel
 
 1. **Resolve the session.** Resolve the owning `session.id` (UUID, slug, trace ID, task ID, or time window)
    via Phoenix MCP.
-2. **Assemble and persist the outline.** Run the `phoenix` skill (`plugins/ida/skills/phoenix/SKILL.md`)
+2. **Assemble and persist the outline.** Run the `phoenix` skill (`plugins/james/skills/phoenix/SKILL.md`)
    to assemble `<slug>.outline.md` (single condensed outline with built-in token/cost totals, step
    durations, prompts, model prose, and tool actions) via Phoenix MCP. Save the file to a durable
    destination (such as PKB note `out-<slug>` with literal local `~/...` host paths sanitized, or
