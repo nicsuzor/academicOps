@@ -12,44 +12,31 @@ type: template
 
 ## What this template does
 
-Provides a shortened delivery route for simple, uncontroversial changes to a project, bypassing post-hoc review when fully verified by automated tests.
+Provides a shortened delivery route for simple, uncontroversial changes, bypassing post-hoc review when fully verified by automated tests.
 
 ## Scope
 
-- **Eligible**: Simple, uncontroversial changes to a project -- such as isolated bugfixes, minor documentation repairs, small configuration updates, or tight, non-breaking edits.
-- **Ineligible**: Any change that is controversial, architectural, schema-altering, cross-cutting, security-sensitive, code that executes without automated test coverage, or altering established contracts.
+- **Eligible**: Isolated bugfixes, minor documentation repairs, small configuration updates, and tight non-breaking edits.
+- **Ineligible**: Controversial, architectural, schema-altering, cross-cutting, or security-sensitive changes; executable code without automated test coverage; or contract changes.
 
-## Route Rule
+## Route Rule and Fallback
 
-Route delivery through whichever shortened PR or merge process the destination repository offers and permits under its own project rules:
+Deliver through whichever shortened PR or merge mechanism the destination repository permits under its own rules and branch protections (e.g. auto-merging PR or direct push to an unprotected dev/main branch).
 
-- Takes whichever shortened route the repository provides -- such as an auto-merging pull request, a direct push to a development branch (e.g. `dev`), or a direct push to an unprotected default branch (e.g. `main`).
-- The route rule names no fixed mechanism; it adapts to the specific mechanism configured and permitted by the target repository's rules and branch protections.
-- Where a project's own rules prohibit a given mechanism (e.g. branch protection forbidding direct pushes to `main` or requiring linear history), the worker complies with the project's rules.
+Fall back to the repository's standard PR, full CI, and independent review process whenever a change exceeds eligible scope, executable code lacks unit test coverage, local checks fail, or no shortened route exists.
 
 ## Review Exemption
 
-A quick fix is exempt from post-hoc review (independent follow-up QA tasks, manual sign-off, or multi-agent review passes) if and only if:
+Exempt from post-hoc review if and only if both conditions hold:
 
-1. **Unit tests**: Where the change touches code that executes, it carries unit tests covering the modified behaviour. Instruction text, configuration and docs get no tests; configuration -- values a program reads, such as settings, allowlists, policy entries, hostnames, environment and compose files, including such values written inside a script -- is not code that executes.
-2. **Green destination tests**: All test suites on the destination branch or target environment are confirmed green following the merge or rebase.
+1. **Unit tests**: Changes to executable code include unit tests covering the modified behavior (write no tests for instruction text, docs, or configuration values).
+2. **Green destination tests**: All destination branch/target environment test suites pass after merge or rebase.
 
-If both conditions are met, the task concludes upon successful merge and verification without scheduling follow-up review.
-
-If destination tests fail after merge or rebase, the change has failed: set the task status to `failed` and record the failure evidence on the task record for escalation. This failure must be escalated, not repeated by the same agent.
-
-## Fallback
-
-Any change falling outside the eligible scope, code that executes lacking unit test coverage, failing local test verification prior to delivery, or where the destination repository offers no shortened route, falls back to the repository's standard delivery process: standard pull request into the development branch, full CI verification, and mandatory independent review.
+If destination tests fail after merge or rebase, set the task to **`failed`**, record the failure logs on the task, and escalate without retrying delivery in the same session.
 
 ## Worker Completion Checklist
 
-1. Implement the minimal change, with unit tests where it touches code that executes; write no test for instruction text, configuration or docs.
-2. Verify automated test suite and linters pass locally.
-3. Deliver via the repository's permitted shortened route (e.g. auto-merging PR or direct push); if delivered via a worker pull request, open it as a draft (`gh pr create --draft`) and mark it ready for review (`gh pr ready`) only after the independent check passes, without waiting for approval.
-4. Verify all destination tests are green after merge or rebase. If destination tests fail, set the task status to `failed` and document the failure logs on the task record so it is escalated; do not repeat or retry the delivery within the same session.
-5. Record verifiable evidence on the task (test execution output, commit SHA or PR URL).
-6. Release the task:
-   - As `done` if destination tests pass green, without minting follow-up review tasks.
-   - As `failed` if destination tests fail after merge or rebase, escalating for triage.
-   - As standard handoff status (e.g. `partial` if blocked, or `done` if delivered via standard PR) if fallback to the standard delivery process was triggered prior to delivery. Never release as `review`.
+1. Implement the minimal change (with unit tests for executable code only) and confirm local tests and linters pass.
+2. Deliver via the repository's permitted shortened route; if using a worker PR, open as a draft (`gh pr create --draft`) and mark ready (`gh pr ready`) only after independent checks pass.
+3. Verify destination tests are green post-merge/rebase and record primary evidence (test output, commit SHA, or PR URL).
+4. Release the task: **`done`** if destination tests pass (minting no review tasks), **`failed`** if destination tests fail, or standard handoff status (`done` or `partial`, never `review`) if fallback triggered prior to delivery.

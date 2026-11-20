@@ -1,5 +1,5 @@
 ---
-description: Drives an individual open pull request through CI checks, proportionate review, feedback resolution, and post-approval merge conflict settlement and landing under the project-override model.
+description: Drive an open pull request through CI checks, proportionate independent review, feedback resolution, post-approval conflict settlement, and landing under project merge rules.
 tags:
   - wf-template
   - pr
@@ -11,55 +11,33 @@ type: template
 
 ## What this template does
 
-Drives an individual open pull request through its progression lifecycle: confirming passing checks, securing a proportionate review, addressing review feedback, settling merge conflicts against the base branch post-approval, and executing or staging the merge according to project-local merge rules.
-
-**Review lenses**: Conduct required independent checks or review lenses concurrently.
+Progresses an individual open pull request through verification, independent review, feedback resolution, post-approval conflict settlement against its base branch, and merge under repository-specific governance.
 
 ## Input contract
 
-- An open pull request identifier or URL.
-- Repository git access and platform CLI (`gh`).
-- Project rules and merge policy (from repository project rules or local templates).
+- An open pull request identifier or URL with repository and git-hosting access.
+- Project merge rules, target base branch, and risk-tier policy (or fallback defaults).
 
 ## Obligations
 
-1. **Resolve Project Merge Policy**:
-   - Inspect the target repository for project-local PR rules, branch policies, or local finish templates.
-   - The project's own policy strictly overrides universal defaults:
-     - Target base branch is defined by project rules.
-     - Merge authority (such as autonomous merge on green, human sign-off gate, or release cut approval) is determined by project policy.
-     - When no project override exists, fallback to standard risk-tier governance: low-risk changes merge on independent verification; operational or high-risk changes require reviewer sign-off.
-     - Pre-approval readiness: Before approval, a PR must be green and reviewed by independent agents; mergeability against the base branch is not required before approval. A worker PR opens as a draft (`gh pr create --draft`) and is marked ready for review (`gh pr ready`) only after the independent check passes and proportionate review by independent agents is posted to the PR thread, without waiting for approval.
-
-2. **Audit CI Checks and Proportionate Review**:
-   - Query CI pipeline status on the latest head commit. All required checks must pass cleanly.
-   - Verify that a review by independent agents proportionate to the PR's blast radius and risk tier has been recorded, with verdicts posted to the PR.
-   - If the PR lacks proportionate review by independent agents, coordinate a fresh independent agent review and post verdicts to the PR before advancing.
-
-3. **Address Review Feedback and Requested Changes**:
-   - Inspect open review threads, comments, and review states.
-   - Review comments and requested changes must be met by diff modifications on the feature branch or answered with substantiated rebuttals on the record. Once the independent check passes and review verdicts are posted to the PR thread, ensure any draft PR is marked ready for review (`gh pr ready`).
-   - A pull request with unresolved requested changes must not merge.
-
-4. **Verify Approval and Readiness**:
-   - Check whether required approvals are recorded per project policy.
-   - Before approval, a PR only requires green checks and proportionate review by independent agents posted to the PR; do not rebase or resolve merge conflicts before approval.
-   - If the PR is gated on external human approval, unmerged dependencies, or substantive author revisions, leave the PR open and record an explicit disposition reason.
-
-5. **Settle Merge Conflicts and Land**:
-   - Once all approvals required for merge are filed (or for changes authorized for autonomous merge):
-     - Query mergeability state against the base branch.
-     - When merge conflicts exist or the branch is behind the base, bring the branch up to date with the latest base branch, resolving conflicts, running local tests, and pushing the resolved head.
-     - Execute the merge following repository merge conventions (merge commit, rebase, or squash).
+1. **Resolve project merge policy**: Inspect the repository for local PR rules, branch conventions, and merge authority (autonomous merge on green vs. user or maintainer sign-off). Project rules strictly override defaults; where none exist, merge low-risk changes after independent verification and require reviewer sign-off for operational or high-risk changes.
+2. **Ensure pre-approval readiness**:
+   - Confirm all required CI checks pass on the latest head commit.
+   - Verify a proportionate independent review is posted to the PR thread (running independent review lenses concurrently where multiple checks apply); if missing, coordinate an independent review and post verdicts before advancing.
+   - Resolve open review comments and requested changes via branch commits or substantiated rebuttals on the record.
+   - Transition a completed draft PR to ready for review once independent checks pass and review verdicts are posted, without waiting for merge approval.
+3. **Respect the approval boundary**: If required external approval, unmerged dependencies, or substantive author revisions remain pending, leave the PR open and record the blocking reason. Never rebase or resolve merge conflicts before required approvals are recorded.
+4. **Settle conflicts and land**: Once required approvals are recorded (or autonomous merge is authorized), check mergeability against the target base branch. If behind or conflicted, update from base, resolve conflicts, run tests, and push; then merge using the repository's convention (merge commit, rebase, or squash).
 
 ## Output contract
 
-- The pull request merged into its base branch, or left open with an explicit, substantiated status and blocking reason recorded.
+- Either the pull request merged into its base branch, or the pull request left open with substantiated blocking status recorded on the PR and task.
 
 ## Must not
 
-- Must not merge a pull request with failing or pending required checks.
-- Must not merge a pull request with an active changes-requested review.
-- Must not rebase or resolve merge conflicts before required approvals are recorded.
-- Must not bypass project-specific merge gates or approval requirements.
-- Must not leave an unmerged pull request without a documented, checkable reason.
+- Must not merge with failing or pending required checks, unresolved changes-requested reviews, or missing project-required approvals.
+- Must not rebase or resolve merge conflicts prior to required approvals.
+
+## When to include
+
+Advancing an active feature or fix pull request toward merge under project governance.

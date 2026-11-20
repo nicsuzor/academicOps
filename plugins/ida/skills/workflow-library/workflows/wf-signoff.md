@@ -6,23 +6,29 @@ id: wf-signoff
 tags:
   - wf-template
   - gate
-title: wf-signoff
+title: Sign-Off Brief
 type: template
 ---
 
 ## What this step does
 
-Produces the one-page prose summary on the record when a full task or epic completes: what was delivered, against what it was asked to do, with every checked claim carrying a resolvable link. This is the synthesis capstone of the workflow -- not a re-review, a synthesis of what the other steps already established.
+Produces a concise, one-page summary on the record when a full task or epic completes: what was delivered against what was asked, with every checked claim carrying a resolvable link. Serves as a synthesis capstone of prior steps, not a re-review.
+
+## Input contract
+
+- Commissioning ask and acceptance criteria.
+- Completed deliverable references (PR, document ID, or artifact paths).
+- Recorded verification and review verdicts from prior stages.
 
 ## Output contract
 
-The signoff brief must:
+The sign-off brief must:
 
-- Fit on one page/screen -- prose, not a bullet dump of every subtask.
-- State what was delivered and link to it (PR, doc id, artifact).
-- Name every load-bearing claim ("this works," "this is complete," "this matches the spec") with its resolving evidence -- command output, file:line, or a linked review verdict from an earlier step. No claim without a link or an honest "unverified."
-- State plainly what wasn't done or couldn't be verified, if anything -- a clean brief with a stated gap is more useful than a brief that hides one.
+- Fit on one page/screen in readable prose (not a raw bullet dump of every subtask).
+- State what was delivered and link directly to it (PR, doc ID, or artifact).
+- Ground every load-bearing claim ("works", "complete", "matches spec") in resolving evidence -- command output, `file:line`, or a linked prior verdict -- never an unlinked claim unless explicitly marked `"unverified"`.
+- State plainly what was omitted or could not be verified, if anything.
 
 ## When to include
 
-Every task or epic that reaches escalated sign-off -- i.e., anything requiring an explicit sign-off decision on the record to confirm completion. Write one at the level of the full unit under review, not per subtask.
+At completion of any task or epic requiring an explicit sign-off record; author once at the unit level, not per subtask.
