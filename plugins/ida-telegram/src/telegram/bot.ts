@@ -1,6 +1,7 @@
 import { PluginConfig } from "../config.js";
+import { resolveBotCommands } from "./commands.js";
 import { FormattedMessage, formatMarkdownToEntities } from "./format.js";
-import { parseInboundUpdate, TelegramUpdate } from "./inbound.js";
+import { parseInboundUpdate, TelegramMessage, TelegramUpdate } from "./inbound.js";
 import { QuestionBroker, matchOptionIndex } from "./questions.js";
 import { FeedbackManager } from "./feedback.js";
 import { prepareVoiceText, buildVoiceInEvent } from "./voice.js";
@@ -57,12 +58,23 @@ export interface ReplyButtonOption {
   callback_data?: string;
   url?: string;
   web_app?: string;
+  copy_text?: string | { text: string };
   row?: number;
 }
 
+export interface LinkPreviewOptions {
+  is_disabled?: boolean;
+  url?: string;
+  prefer_small_media?: boolean;
+  prefer_large_media?: boolean;
+  show_above_text?: boolean;
+}
+
+export type ReplyButtonInput = ReplyButtonOption | string;
+
 export type ReplyButtonsInput =
-  | ReplyButtonOption[]
-  | ReplyButtonOption[][];
+  | ReplyButtonInput[]
+  | ReplyButtonInput[][];
 
 export function buildInlineKeyboardRows(
   buttons?: ReplyButtonsInput,
@@ -74,32 +86,45 @@ export function buildInlineKeyboardRows(
     return callerRows;
   }
 
-  const formatBtn = (b: ReplyButtonOption): Record<string, unknown> => {
-    const btnObj: Record<string, unknown> = { text: b.label };
+  const formatBtn = (raw: ReplyButtonInput): Record<string, unknown> => {
+    if (typeof raw === "string") {
+      return { text: raw, callback_data: `action:${raw}` };
+    }
+    const b = raw as ReplyButtonOption & { text?: string };
+    const label = b.label ?? b.text ?? "";
+    const btnObj: Record<string, unknown> = { text: label };
+    const copyTextVal =
+      typeof b.copy_text === "string"
+        ? b.copy_text
+        : b.copy_text && typeof b.copy_text === "object" && typeof b.copy_text.text === "string"
+          ? b.copy_text.text
+          : undefined;
     if (b.callback_data) {
       btnObj.callback_data = b.callback_data;
+    } else if (copyTextVal !== undefined) {
+      btnObj.copy_text = { text: copyTextVal };
     } else if (b.url) {
       btnObj.url = b.url;
     } else if (b.web_app) {
       btnObj.web_app = { url: b.web_app };
     } else {
-      btnObj.callback_data = `action:${b.label}`;
+      btnObj.callback_data = `action:${label}`;
     }
     return btnObj;
   };
 
   if (Array.isArray(buttons[0])) {
     // Direct 2D array of rows
-    for (const row of buttons as ReplyButtonOption[][]) {
+    for (const row of buttons as ReplyButtonInput[][]) {
       callerRows.push(row.map(formatBtn));
     }
   } else {
-    const flatButtons = buttons as ReplyButtonOption[];
-    const hasRowProp = flatButtons.some((b) => typeof b.row === "number");
+    const flatButtons = buttons as ReplyButtonInput[];
+    const hasRowProp = flatButtons.some((b) => typeof b === "object" && b !== null && typeof b.row === "number");
     if (hasRowProp) {
-      const rowMap = new Map<number, ReplyButtonOption[]>();
+      const rowMap = new Map<number, ReplyButtonInput[]>();
       for (const b of flatButtons) {
-        const r = b.row ?? 0;
+        const r = typeof b === "object" && b !== null ? (b.row ?? 0) : 0;
         if (!rowMap.has(r)) rowMap.set(r, []);
         rowMap.get(r)!.push(b);
       }
@@ -153,6 +178,10 @@ export interface SendReplyOptions {
   predefinedRow?: boolean;
   voice?: boolean;
   replyTo?: number;
+  quote?: string;
+  quotePosition?: number;
+  linkPreviewOptions?: LinkPreviewOptions;
+  messageEffectId?: string;
   feedback?: boolean;
   review?: { repo: string; pr?: number };
   actions?: boolean;
@@ -187,6 +216,7 @@ export class TelegramBotClient {
   private topicsEnabledChats = new Set<number>();
   private messageThreads = new Map<number, number>();
   public store?: PluginStore;
+  public apiTimeoutMs = 25_000;
   private messageExcerpts = new Map<number, string>();
 
   constructor(
@@ -265,6 +295,33 @@ export class TelegramBotClient {
     }
   }
 
+  /** Learn topic names and open/closed state from Telegram service messages and messages seen in a topic. */
+  private recordForumEvent(msg: TelegramMessage): void {
+    const threadId = msg.message_thread_id;
+    if (!this.store || threadId === undefined) return;
+    const chatId = msg.chat.id;
+    const isServiceEvent = Boolean(
+      msg.forum_topic_created || msg.forum_topic_closed || msg.forum_topic_reopened || msg.forum_topic_edited
+    );
+    // message_thread_id also marks reply chains outside forum topics; only topic messages count.
+    if (!isServiceEvent && msg.is_topic_message !== true) return;
+    if (msg.forum_topic_created) {
+      this.store.recordThread(chatId, threadId, {
+        name: msg.forum_topic_created.name,
+        state: "open",
+        source: "service_message",
+      });
+    } else if (msg.forum_topic_closed) {
+      this.store.recordThread(chatId, threadId, { state: "closed", source: "service_message" });
+    } else if (msg.forum_topic_reopened) {
+      this.store.recordThread(chatId, threadId, { state: "open", source: "service_message" });
+    } else if (msg.forum_topic_edited) {
+      this.store.recordThread(chatId, threadId, { name: msg.forum_topic_edited.name, source: "service_message" });
+    } else {
+      this.store.recordThread(chatId, threadId, { source: "seen" });
+    }
+  }
+
   private recordMessageExcerpt(messageId: number | undefined, text: string | undefined) {
     if (messageId === undefined || !text) return;
     const trimmed = text.trim();
@@ -277,15 +334,55 @@ export class TelegramBotClient {
     return this.messageExcerpts.get(messageId);
   }
 
+  private async fetchJsonWithTimeout(method: string, url: string, init: RequestInit, timeoutMs: number): Promise<any> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { ...init, signal: controller.signal });
+      try {
+        return await res.json();
+      } catch (err) {
+        return {
+          ok: false,
+          error_code: res.status || 500,
+          description: `Telegram Bot API ${method} returned invalid JSON (HTTP ${res.status}): ${err instanceof Error ? err.message : String(err)}`,
+        };
+      }
+    } catch (err) {
+      if (controller.signal.aborted || (err instanceof Error && err.name === "AbortError")) {
+        return {
+          ok: false,
+          error_code: 408,
+          description: `Telegram Bot API ${method} timed out after ${timeoutMs}ms`,
+        };
+      }
+      return {
+        ok: false,
+        error_code: 500,
+        description: `Telegram Bot API ${method} failed: ${err instanceof Error ? err.message : String(err)}`,
+      };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   private async callApi(method: string, payload: Record<string, unknown>): Promise<any> {
     const baseUrl = this.config.apiBaseUrl || "https://api.telegram.org";
     const url = `${baseUrl}/bot${this.config.botToken}/${method}`;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    return await res.json();
+    const timeoutMs =
+      method === "getUpdates" && typeof payload.timeout === "number"
+        ? Math.max(this.apiTimeoutMs, (payload.timeout + 10) * 1000)
+        : this.apiTimeoutMs;
+    return await this.fetchJsonWithTimeout(
+      method,
+      url,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+      timeoutMs
+    );
   }
 
   private async callVoiceApi(
@@ -321,11 +418,15 @@ export class TelegramBotClient {
       formData.append("reply_markup", JSON.stringify({ inline_keyboard: options.inlineKeyboard }));
     }
 
-    const res = await fetch(url, {
-      method: "POST",
-      body: formData,
-    });
-    return await res.json();
+    return await this.fetchJsonWithTimeout(
+      "sendVoice",
+      url,
+      {
+        method: "POST",
+        body: formData,
+      },
+      this.apiTimeoutMs
+    );
   }
 
   public async setReaction(
@@ -454,6 +555,7 @@ export class TelegramBotClient {
       actionBtns.push({ text: "🧐 Check", callback_data: "logic_check" });
       actionBtns.push({ text: "💡 Explain", callback_data: "explain" });
       actionBtns.push({ text: "🧾", callback_data: "reasons" });
+      actionBtns.push({ text: "🙏", callback_data: "thanks" });
 
       // Attach tick/cross buttons ONLY if binary_decision is explicitly true
       if (binary_decision === true) {
@@ -648,7 +750,27 @@ export class TelegramBotClient {
     }
 
     if (effectiveReplyTo) {
-      payload.reply_parameters = { message_id: effectiveReplyTo };
+      const replyParams: Record<string, unknown> = { message_id: effectiveReplyTo };
+      if (typeof opts.quote === "string" && opts.quote.trim().length > 0) {
+        const formattedQuote = formatMarkdownToEntities(opts.quote);
+        replyParams.allow_sending_without_reply = true;
+        replyParams.quote = formattedQuote.plainText;
+        if (formattedQuote.entities.length > 0) {
+          replyParams.quote_entities = formattedQuote.entities;
+        }
+        if (typeof opts.quotePosition === "number") {
+          replyParams.quote_position = opts.quotePosition;
+        }
+      }
+      payload.reply_parameters = replyParams;
+    }
+
+    if (opts.linkPreviewOptions) {
+      payload.link_preview_options = opts.linkPreviewOptions;
+    }
+
+    if (opts.messageEffectId) {
+      payload.message_effect_id = opts.messageEffectId;
     }
 
     if (inlineKeyboard.length > 0) {
@@ -686,6 +808,15 @@ export class TelegramBotClient {
         success: true,
         messageId: res.result.message_id,
         messageThreadId: res.result.message_thread_id ?? effectiveThreadId,
+      };
+    }
+
+    if (res?.error_code === 408) {
+      return {
+        ok: false,
+        success: false,
+        messageId: 0,
+        error: res.description || "Telegram sendMessage timed out",
       };
     }
 
@@ -731,7 +862,12 @@ export class TelegramBotClient {
       };
     }
 
-    return null;
+    return {
+      ok: false,
+      success: false,
+      messageId: 0,
+      error: fallbackRes?.description || res?.description || "Telegram sendMessage failed",
+    };
   }
 
   public async sendQuestionCard(
@@ -776,6 +912,12 @@ export class TelegramBotClient {
         return { ok: true, messageId: res.result.message_id, result: res.result };
       }
       this.recordMessageExcerpt(res?.result?.message_id, formatted.plainText);
+
+      if (res?.error_code === 408) {
+        const errorMsg = res.description || "Telegram sendMessage timed out";
+        this.broker.markDeliveryFailed(qid, errorMsg);
+        return { ok: false, error: errorMsg, description: errorMsg };
+      }
 
       // If Telegram rejects formatted entities, resend once as plain text per FR-1.5
       const fallbackRes = await this.callApi("sendMessage", {
@@ -875,7 +1017,13 @@ export class TelegramBotClient {
     return res;
   }
 
-  public async editMessage(chatId: number, messageId: number, text: string, replyMarkup?: Record<string, unknown>) {
+  public async editMessage(
+    chatId: number,
+    messageId: number,
+    text: string,
+    replyMarkup?: Record<string, unknown>,
+    linkPreviewOptions?: LinkPreviewOptions
+  ) {
     const formatted = formatMarkdownToEntities(text);
     let res = await this.callApi("editMessageText", {
       chat_id: chatId,
@@ -883,6 +1031,7 @@ export class TelegramBotClient {
       text: formatted.plainText,
       entities: formatted.entities,
       reply_markup: replyMarkup,
+      ...(linkPreviewOptions ? { link_preview_options: linkPreviewOptions } : {}),
     });
 
     if (!res?.ok && res?.description?.includes("no text in the message to edit")) {
@@ -908,6 +1057,7 @@ export class TelegramBotClient {
         message_id: messageId,
         text: formatted.plainText,
         reply_markup: replyMarkup,
+        ...(linkPreviewOptions ? { link_preview_options: linkPreviewOptions } : {}),
       });
     }
 
@@ -931,7 +1081,9 @@ export class TelegramBotClient {
     if (iconCustomEmojiId !== undefined) {
       payload.icon_custom_emoji_id = iconCustomEmojiId;
     }
-    return await this.callApi("editForumTopic", payload);
+    const res = await this.callApi("editForumTopic", payload);
+    if (res?.ok) this.store?.recordThread(chatId, messageThreadId, { name, source: "tool" });
+    return res;
   }
 
   public async createForumTopic(
@@ -973,6 +1125,11 @@ export class TelegramBotClient {
         lastInboundThreadId: threadId,
         topicsEnabled: true,
       });
+      this.store?.recordThread(chatId, threadId, {
+        name: res.result.name || name,
+        state: "open",
+        source: "tool",
+      });
     }
     return res;
   }
@@ -981,20 +1138,24 @@ export class TelegramBotClient {
     chatId: number,
     messageThreadId: number
   ): Promise<{ ok: boolean; result?: boolean; description?: string; error_code?: number }> {
-    return await this.callApi("closeForumTopic", {
+    const res = await this.callApi("closeForumTopic", {
       chat_id: chatId,
       message_thread_id: messageThreadId,
     });
+    if (res?.ok) this.store?.recordThread(chatId, messageThreadId, { state: "closed", source: "tool" });
+    return res;
   }
 
   public async reopenForumTopic(
     chatId: number,
     messageThreadId: number
   ): Promise<{ ok: boolean; result?: boolean; description?: string; error_code?: number }> {
-    return await this.callApi("reopenForumTopic", {
+    const res = await this.callApi("reopenForumTopic", {
       chat_id: chatId,
       message_thread_id: messageThreadId,
     });
+    if (res?.ok) this.store?.recordThread(chatId, messageThreadId, { state: "open", source: "tool" });
+    return res;
   }
 
   public async deleteForumTopic(
@@ -1006,6 +1167,7 @@ export class TelegramBotClient {
       message_thread_id: messageThreadId,
     });
     if (res?.ok) {
+      this.store?.recordThread(chatId, messageThreadId, { state: "deleted", source: "tool" });
       if (this.lastThreadIdByChat.get(chatId) === messageThreadId) {
         this.lastThreadIdByChat.delete(chatId);
       }
@@ -1368,6 +1530,7 @@ export class TelegramBotClient {
       media: string;
       caption?: string;
       has_spoiler?: boolean;
+      show_caption_above_media?: boolean;
     }>;
     messageThreadId?: number;
     replyTo?: number;
@@ -1399,6 +1562,9 @@ export class TelegramBotClient {
       }
       if (item.has_spoiler !== undefined) {
         entry.has_spoiler = item.has_spoiler;
+      }
+      if (item.show_caption_above_media !== undefined) {
+        entry.show_caption_above_media = item.show_caption_above_media;
       }
       return entry;
     });
@@ -1556,6 +1722,18 @@ export class TelegramBotClient {
       return false;
     }
 
+    if (this.config.env) {
+      const resolved = resolveBotCommands(this.config.env.TELEGRAM_BOT_COMMANDS, {
+        projectDir: this.config.env.CLAUDE_PROJECT_DIR,
+        claudeConfigDir: this.config.env.CLAUDE_CONFIG_DIR,
+        pluginRoot: this.config.env.CLAUDE_PLUGIN_ROOT,
+        env: this.config.env,
+      });
+      if (resolved.length > 0) {
+        this.config.botCommands = resolved;
+      }
+    }
+
     const commands = this.config.botCommands ?? [];
 
     if (commands.length === 0) {
@@ -1672,6 +1850,7 @@ export class TelegramBotClient {
     }
     if (update.message?.message_id && update.message.message_thread_id !== undefined) {
       this.recordMessageThread(update.message.message_id, update.message.message_thread_id);
+      this.recordForumEvent(update.message);
     }
     if (update.callback_query?.message?.message_id && update.callback_query.message.message_thread_id !== undefined) {
       this.recordMessageThread(update.callback_query.message.message_id, update.callback_query.message.message_thread_id);
@@ -2000,7 +2179,9 @@ export class TelegramBotClient {
           data === "explain" ||
           data.startsWith("explain:") ||
           data === "reasons" ||
-          data.startsWith("reasons:")) &&
+          data.startsWith("reasons:") ||
+          data === "thanks" ||
+          data.startsWith("thanks:")) &&
         cb.message &&
         this.config.allowFrom.includes(cb.from.id)
       ) {
@@ -2009,8 +2190,18 @@ export class TelegramBotClient {
         const isLogicCheck = data === "logic_check" || data.startsWith("logic_check:");
         const isExplain = data === "explain" || data.startsWith("explain:");
         const isReasons = data === "reasons" || data.startsWith("reasons:");
-        const defaultLabel = isLogicCheck ? "🧐 Check" : isExplain ? "💡 Explain" : "🧾 Reasons";
-        const label = matchedBtn?.text && matchedBtn.text !== "🧾" ? matchedBtn.text : defaultLabel;
+        const isThanks = data === "thanks" || data.startsWith("thanks:");
+        const defaultLabel = isLogicCheck
+          ? "🧐 Check"
+          : isExplain
+          ? "💡 Explain"
+          : isThanks
+          ? "🙏 Thanks"
+          : "🧾 Reasons";
+        const label =
+          matchedBtn?.text && matchedBtn.text !== "🧾" && matchedBtn.text !== "🙏"
+            ? matchedBtn.text
+            : defaultLabel;
         const originalText = cb.message.text || "";
 
         // Remove the action buttons row, but preserve other buttons (e.g. Details, Review diff)
@@ -2021,6 +2212,8 @@ export class TelegramBotClient {
                 b.callback_data !== "logic_check" &&
                 b.callback_data !== "explain" &&
                 b.callback_data !== "reasons" &&
+                b.callback_data !== "thanks" &&
+                !b.callback_data?.startsWith("thanks:") &&
                 !b.callback_data?.startsWith("logic_check:") &&
                 !b.callback_data?.startsWith("explain:") &&
                 !b.callback_data?.startsWith("reasons:")
@@ -2036,8 +2229,10 @@ export class TelegramBotClient {
         );
 
         const targetExcerpt = cb.message.text || this.getMessageExcerpt(cb.message.message_id) || "";
-        const action = isLogicCheck ? "logic_check" : isExplain ? "explain" : "reasons";
-        const content = isLogicCheck
+        const action = isLogicCheck ? "logic_check" : isExplain ? "explain" : isThanks ? "thanks" : "reasons";
+        const content = isThanks
+          ? `The user has read message ${cb.message.message_id} and is done with its thread: close the thread unless more on its topic is due soon.`
+          : isLogicCheck
           ? `Give me a logic check on message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""} as if you were receiving it from a peer.`
           : isExplain
           ? `Please explain message ${cb.message.message_id}${targetExcerpt ? `: "${targetExcerpt}"` : ""} in more detail.`
@@ -2151,6 +2346,7 @@ export class TelegramBotClient {
           if (cd === "logic_check" || cd.startsWith("logic_check:")) return true;
           if (cd === "explain" || cd.startsWith("explain:")) return true;
           if (cd === "reasons" || cd.startsWith("reasons:")) return true;
+          if (cd === "thanks" || cd.startsWith("thanks:")) return true;
           if (cd === "accept_recommendation" || cd.startsWith("accept_recommendation:")) return true;
           if (cd === "decline_recommendation" || cd.startsWith("decline_recommendation:")) return true;
           if (cd.startsWith("fb:")) return true;

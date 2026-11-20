@@ -6,15 +6,15 @@ description: Hand a complete artifact over for an escalated explicit decision at
 id: wf-escalated-approval
 tags:
   - wf-template
-  - gate
   - approval
-title: Escalated Approval Gate
+  - workflow
+title: Escalated Approval Boundary
 type: template
 ---
 
 ## What this step does
 
-Ends the current task at a decision requiring explicit user approval after proportionate independent agent review. The worker files the complete artifact and its independent review verdicts on the record and releases the task as `partial`, documenting the required decision in `reason` without minting follow-up tasks so dependent work remains blocked until approval is recorded. Nothing beyond this gate executes in the same task.
+Ends the current task at a decision requiring explicit user approval after proportionate independent agent review. The worker files the complete artifact and its independent review verdicts on the record and releases the task as `partial`, documenting the required decision in `reason` without minting follow-up tasks so dependent work remains blocked until approval is recorded. Nothing beyond this approval boundary executes in the same task.
 
 ## Procedure
 
@@ -24,7 +24,7 @@ Ends the current task at a decision requiring explicit user approval after propo
 
 ## Composition
 
-Cut the composition chain at this gate. Post-approval execution belongs in a separate downstream task wired as blocked by this decision; requested revisions return to the producing step. Specifications preceding an implementation build are reviewed independently on the record and reach the user alongside their implementation deliverable rather than gating standalone before the build.
+Cut the composition chain at this approval boundary. Post-approval execution belongs in a separate downstream task wired as blocked by this decision; requested revisions return to the producing step. Specifications preceding an implementation build are reviewed independently on the record and reach the user alongside their implementation deliverable rather than holding standalone for approval before the build.
 
 ## Output contract
 
@@ -33,4 +33,4 @@ Cut the composition chain at this gate. Post-approval execution belongs in a sep
 
 ## When to include
 
-Before any irreversible one-way-door action, competing research route choice, or commitment the user has reserved for explicit sign-off -- never to gate a pre-build specification standalone.
+Before any irreversible one-way-door action, competing research route choice, or commitment the user has reserved for explicit sign-off -- never to hold a pre-build specification for approval standalone.

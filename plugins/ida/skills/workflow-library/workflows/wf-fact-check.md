@@ -24,7 +24,7 @@ The fact-check handback states, per claim checked:
 
 ## Record surface (mandatory)
 
-Working ledgers, logs, and intermediate reasoning belong on the commissioning PKB task -- never committed to a public or shared artifact repository. The repository under review receives only the completed work and, where required by a review gate, a concise summary (verdict, counts, and a task pointer) rather than internal deliberation logs.
+Working ledgers, logs, and intermediate reasoning belong on the commissioning PKB task -- never committed to a public or shared artifact repository. The repository under review receives only the completed work and, where required by a review requirement, a concise summary (verdict, counts, and a task pointer) rather than internal deliberation logs.
 
 ## When to include
 

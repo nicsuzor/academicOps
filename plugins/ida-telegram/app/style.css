@@ -134,11 +134,31 @@ body {
   margin: 8px 0 8px 20px;
 }
 
+.markdown-body {
+  font-size: 1rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.markdown-body > :first-child {
+  margin-top: 0;
+}
+
+.markdown-body li {
+  margin: 4px 0;
+}
+
 .markdown-body blockquote {
   border-left: 3px solid var(--button-color);
-  padding-left: 10px;
-  color: var(--hint-color);
-  margin: 8px 0;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 0 8px 8px 0;
+  padding: 2px 12px;
+  color: var(--text-color);
+  margin: 10px 0;
+}
+
+.markdown-body blockquote p {
+  margin: 10px 0;
 }
 
 .markdown-body code {

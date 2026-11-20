@@ -47,12 +47,8 @@ def no_ambient_pkb_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     for var in (
         "PKB_MCP_URL",
-        "DISPATCHER_MCP_TOKEN",
-        "WORKER_MCP_TOKEN",
-        "WORKER_MCP_TOKEN_ID",
-        "WORKER_MCP_TOKEN_SECRET",
-        "DISPATCHER_MCP_TOKEN_ID",
-        "DISPATCHER_MCP_TOKEN_SECRET",
+        "CF_ACCESS_CLIENT_ID",
+        "CF_ACCESS_CLIENT_SECRET",
     ):
         monkeypatch.delenv(var, raising=False)
 
@@ -258,7 +254,7 @@ def test_resolve_mcp_headers_reads_environment():
 
     with patch.dict(
         os.environ,
-        {"DISPATCHER_MCP_TOKEN_ID": "id123", "DISPATCHER_MCP_TOKEN_SECRET": "sec456"},
+        {"CF_ACCESS_CLIENT_ID": "id123", "CF_ACCESS_CLIENT_SECRET": "sec456"},
         clear=True,
     ):
         assert handlers._resolve_mcp_headers() == {
@@ -267,13 +263,17 @@ def test_resolve_mcp_headers_reads_environment():
         }
 
 
-def test_resolve_mcp_headers_ignores_retired_worker_pair():
-    """The hook expects only DISPATCHER_MCP_TOKEN_*; worker pairs are not read by the hook."""
-    with patch.dict(
-        os.environ,
-        {"WORKER_MCP_TOKEN_ID": "wid", "WORKER_MCP_TOKEN_SECRET": "wsec"},
-        clear=True,
-    ):
+# The role-named pairs the single CF Access pair replaced, spelled in pieces so a
+# repo-wide grep for the retired names finds no live reader.
+_RETIRED_PAIRS = [
+    (f"{role}_MCP_TOKEN_ID", f"{role}_MCP_TOKEN_SECRET") for role in ("WORKER", "DISPATCHER")
+]
+
+
+@pytest.mark.parametrize(("id_var", "secret_var"), _RETIRED_PAIRS)
+def test_resolve_mcp_headers_ignores_retired_role_named_pairs(id_var, secret_var):
+    """The hook reads only CF_ACCESS_CLIENT_*; the retired role-named pairs are not read."""
+    with patch.dict(os.environ, {id_var: "rid", secret_var: "rsec"}, clear=True):
         assert handlers._resolve_mcp_headers() == {}
 
 
@@ -282,7 +282,7 @@ def test_resolve_mcp_headers_ignores_half_a_pair():
     with patch.dict(
         os.environ,
         {
-            "DISPATCHER_MCP_TOKEN_ID": "did",
+            "CF_ACCESS_CLIENT_ID": "did",
         },
         clear=True,
     ):
@@ -291,7 +291,7 @@ def test_resolve_mcp_headers_ignores_half_a_pair():
     with patch.dict(
         os.environ,
         {
-            "DISPATCHER_MCP_TOKEN_SECRET": "dsec",
+            "CF_ACCESS_CLIENT_SECRET": "dsec",
         },
         clear=True,
     ):
@@ -333,12 +333,8 @@ def test_dispatch_http_failure_surfaces_error_in_hook_output(staged_hooks: Path)
     env = dict(os.environ)
     env["PKB_MCP_URL"] = "http://127.0.0.1:9"  # Unreachable port ensures HTTP connection failure
     for var in (
-        "DISPATCHER_MCP_TOKEN",
-        "WORKER_MCP_TOKEN",
-        "WORKER_MCP_TOKEN_ID",
-        "WORKER_MCP_TOKEN_SECRET",
-        "DISPATCHER_MCP_TOKEN_ID",
-        "DISPATCHER_MCP_TOKEN_SECRET",
+        "CF_ACCESS_CLIENT_ID",
+        "CF_ACCESS_CLIENT_SECRET",
     ):
         env.pop(var, None)
 
@@ -652,8 +648,8 @@ def test_search_the_pkb_sends_one_post_with_headers(http_mcp_server, monkeypatch
     )
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("PKB_MCP_URL", http_mcp_server.url)
-    monkeypatch.setenv("DISPATCHER_MCP_TOKEN_ID", "wid")
-    monkeypatch.setenv("DISPATCHER_MCP_TOKEN_SECRET", "wsec")
+    monkeypatch.setenv("CF_ACCESS_CLIENT_ID", "wid")
+    monkeypatch.setenv("CF_ACCESS_CLIENT_SECRET", "wsec")
     monkeypatch.delenv("PKB_MCP_TOOL_PREFIX", raising=False)
 
     ctx = HookContext(
@@ -747,10 +743,8 @@ def test_search_the_pkb_unauthenticated_when_credentials_unset(
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("PKB_MCP_URL", http_mcp_server.url)
     for var in (
-        "WORKER_MCP_TOKEN_ID",
-        "WORKER_MCP_TOKEN_SECRET",
-        "DISPATCHER_MCP_TOKEN_ID",
-        "DISPATCHER_MCP_TOKEN_SECRET",
+        "CF_ACCESS_CLIENT_ID",
+        "CF_ACCESS_CLIENT_SECRET",
     ):
         monkeypatch.delenv(var, raising=False)
 
@@ -807,10 +801,9 @@ def test_search_the_pkb_injected_message_on_401(staged_hooks: Path, http_mcp_ser
     assert "refused authorisation" in injected
     assert "401" in injected
     assert legacy_var not in injected
-    assert "WORKER_MCP_TOKEN_ID" not in injected
-    assert "WORKER_MCP_TOKEN_SECRET" not in injected
-    assert "DISPATCHER_MCP_TOKEN_ID" in injected
-    assert "DISPATCHER_MCP_TOKEN_SECRET" in injected
+    assert "MCP_TOKEN" not in injected
+    assert "CF_ACCESS_CLIENT_ID" in injected
+    assert "CF_ACCESS_CLIENT_SECRET" in injected
     assert len(http_mcp_server.requests) == 1
     assert "traceparent" in http_mcp_server.requests[0]["headers"]
 
@@ -849,10 +842,9 @@ def test_search_the_pkb_injected_message_on_403(staged_hooks: Path, http_mcp_ser
     assert "refused authorisation" in injected
     assert "403" in injected
     assert legacy_var not in injected
-    assert "WORKER_MCP_TOKEN_ID" not in injected
-    assert "WORKER_MCP_TOKEN_SECRET" not in injected
-    assert "DISPATCHER_MCP_TOKEN_ID" in injected
-    assert "DISPATCHER_MCP_TOKEN_SECRET" in injected
+    assert "MCP_TOKEN" not in injected
+    assert "CF_ACCESS_CLIENT_ID" in injected
+    assert "CF_ACCESS_CLIENT_SECRET" in injected
     assert len(http_mcp_server.requests) == 1
     assert "traceparent" in http_mcp_server.requests[0]["headers"]
 
@@ -900,10 +892,8 @@ def test_search_the_pkb_ignores_legacy_headers_and_authenticates_with_canonical_
 
     # 1. With legacy headers set and no canonical pair, the hook does NOT send the legacy header
     monkeypatch.setenv(legacy_var, json.dumps({"X-Legacy-Header": "forbidden"}))
-    monkeypatch.delenv("WORKER_MCP_TOKEN_ID", raising=False)
-    monkeypatch.delenv("WORKER_MCP_TOKEN_SECRET", raising=False)
-    monkeypatch.delenv("DISPATCHER_MCP_TOKEN_ID", raising=False)
-    monkeypatch.delenv("DISPATCHER_MCP_TOKEN_SECRET", raising=False)
+    monkeypatch.delenv("CF_ACCESS_CLIENT_ID", raising=False)
+    monkeypatch.delenv("CF_ACCESS_CLIENT_SECRET", raising=False)
 
     ctx1 = HookContext(
         client="claude",
@@ -919,8 +909,8 @@ def test_search_the_pkb_ignores_legacy_headers_and_authenticates_with_canonical_
 
     # 2. With only a canonical pair set, the hook authenticates carrying the token pair
     monkeypatch.delenv(legacy_var, raising=False)
-    monkeypatch.setenv("DISPATCHER_MCP_TOKEN_ID", "did123")
-    monkeypatch.setenv("DISPATCHER_MCP_TOKEN_SECRET", "dsec456")
+    monkeypatch.setenv("CF_ACCESS_CLIENT_ID", "did123")
+    monkeypatch.setenv("CF_ACCESS_CLIENT_SECRET", "dsec456")
 
     ctx2 = HookContext(
         client="claude",

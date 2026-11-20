@@ -111,10 +111,13 @@ tool's own help and the project's `debug` skill.
 
 - Grade every component you drove against the real bar: **green** — observed
   working end-to-end _and_ efficient and useful; **amber** — works, but with
-  caveats, pending operator action, or usefulness unproven; **unmarked** — not
+  caveats or usefulness unproven; **unmarked** — not
   field-tested. "Technically working" is not a grade. Repeated injections,
   redundant token spend, and noise a user must wade through are amber findings
-  even when the mechanism functions.
+  even when the mechanism functions. A component verified end-to-end in the
+  built artifact and test environment is graded on that proof, never downgraded
+  to amber or held open waiting to prove the user pulled, installed, or
+  deployed a shipped release.
 - **Mark the grades on the project's wired map** (the excalidraw file the
   umbrella epic names). Convention: append-only badge elements placed beside the
   component — green `✅` / amber `⚠` text, each badge dated and naming the PR it

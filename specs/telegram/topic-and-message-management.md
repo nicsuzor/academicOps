@@ -5,7 +5,7 @@ status: ready
 
 # Telegram Topic and Message Management Tools
 
-This specification defines the MCP tools for forum-topic lifecycle administration (`close_thread`, `reopen_thread`, `delete_thread`, `unpin_all_thread_messages`), custom topic icon discovery (`get_forum_topic_icon_stickers`), General topic `#1` administration (`edit_general_thread`, `close_general_thread`, `reopen_general_thread`, `hide_general_thread`, `unhide_general_thread`, `unpin_all_general_thread_messages`), and message management (`pin_message`, `unpin_message`, `unpin_all_messages`, `forward_messages`, `copy_messages`, `delete_messages`, `edit_message_reply_markup`). Default thread routing and topic creation/renaming (`create_thread`, `rename_thread`) are specified in `specs/telegram/threaded-conversations.md`, and core outbound messaging (`reply`, `react`, `ask_user`, `edit_message`) is specified in `specs/telegram/shared-telegram-channel.md`.
+This specification defines the MCP tools for forum-topic lifecycle administration (`close_thread`, `reopen_thread`, `delete_thread`, `unpin_all_thread_messages`), thread listing (`list_threads`), custom topic icon discovery (`get_forum_topic_icon_stickers`), General topic `#1` administration (`edit_general_thread`, `close_general_thread`, `reopen_general_thread`, `hide_general_thread`, `unhide_general_thread`, `unpin_all_general_thread_messages`), and message management (`pin_message`, `unpin_message`, `unpin_all_messages`, `forward_messages`, `copy_messages`, `delete_messages`, `edit_message_reply_markup`). Default thread routing and topic creation/renaming (`create_thread`, `rename_thread`) are specified in `specs/telegram/threaded-conversations.md`, and core outbound messaging (`reply`, `react`, `ask_user`, `edit_message`) is specified in `specs/telegram/shared-telegram-channel.md`.
 
 ## User experience flow
 
@@ -60,6 +60,17 @@ As an operator using forum supergroups, I want the agent to inspect available cu
 - **AC-6.1 (Icon Stickers Discovery)** When the agent invokes `get_forum_topic_icon_stickers()`, the tool dispatches `getForumTopicIconStickers` and returns `{ success: true, stickers: [...] }`.
 - **AC-6.2 (General Topic Lifecycle)** `edit_general_thread({ name })` (validating 1–128 trimmed characters), `close_general_thread()`, `reopen_general_thread()`, `hide_general_thread()`, `unhide_general_thread()`, and `unpin_all_general_thread_messages()` dispatch the corresponding `*GeneralForumTopic*` Bot API methods and return `{ success: true, chat_id, ... }` or `{ success: false, error }` (`isError: true`).
 
+### US-7 Thread Listing (`list_threads`)
+
+As an operator who wants to close finished threads, I want the agent to list a conversation's threads with their open or closed state, so that I can tell which are still open.
+
+The Telegram Bot API has no method that lists a chat's forum topics (the documented topic methods are create, edit, close, reopen, delete, unpin-all and `getForumTopicIconStickers`; listing exists only in the MTProto client API, which a bot token cannot use). `list_threads` therefore reads the plugin's own persisted record (`threads.json` in the state directory), kept up to date from three sources: the plugin's own topic tool calls, Telegram service messages (`forum_topic_created`, `forum_topic_edited`, `forum_topic_closed`, `forum_topic_reopened`) from allowed users, and messages seen in a topic.
+
+- **AC-7.1 (No Telegram Call)** `list_threads({ chat_id?, state? })` (`state` one of `all` default, `open`, `closed`) dispatches no Bot API method and returns `{ success: true, chat_id, threads: [{ message_thread_id, thread_id, name, state, source, updated_at }], count, note }`; an invalid `state` returns `{ success: false, error }`.
+- **AC-7.2 (Own Tool Calls)** Successful `create_thread`, `close_thread`, `reopen_thread`, `rename_thread` and `delete_thread` calls record `open`, `closed`, `open`, the new name, and removal respectively.
+- **AC-7.3 (Service Messages and Sightings)** Service messages update name and state; a topic message (`is_topic_message`) seen in an unrecorded topic creates a record with state `unknown` and a `null` name, and never changes a recorded state; `state: "open"` and `"closed"` return only confirmed states. General topic `#1` is never listed.
+- **AC-7.4 (Persistence and Known Gap)** The record survives restarts. Topics that predate it and have been silent since are absent, and closes or deletions made by anyone else (or while the plugin was down) can be missed; the `note` field states this limit on every call.
+
 ## Shared interface contract
 
 | MCP Tool | Backing Telegram Bot API Method | Parameters & Validation Contract | Return Payload |
@@ -68,6 +79,7 @@ As an operator using forum supergroups, I want the agent to inspect available cu
 | `reopen_thread` | `reopenForumTopic` | `chat_id?`, `message_thread_id?` / `thread_id?` (defaults to active thread; rejects `#1`). | `{ success: true, chat_id, message_thread_id, thread_id, reopened: true }` |
 | `delete_thread` | `deleteForumTopic` | `chat_id?`, `message_thread_id?` / `thread_id?` (defaults to active thread; rejects `#1`; clears active thread on success). | `{ success: true, chat_id, message_thread_id, thread_id, deleted: true }` |
 | `unpin_all_thread_messages` | `unpinAllForumTopicMessages` | `chat_id?`, `message_thread_id?` / `thread_id?` (defaults to active thread). | `{ success: true, chat_id, message_thread_id, thread_id, unpinned_all: true }` |
+| `list_threads` | none (plugin's own record) | `chat_id?`, `state?` (`all` / `open` / `closed`, default `all`). | `{ success: true, chat_id, threads, count, note }` |
 | `get_forum_topic_icon_stickers` | `getForumTopicIconStickers` | No required parameters. | `{ success: true, stickers }` |
 | `edit_general_thread` | `editGeneralForumTopic` | `name` (required, 1–128 trimmed chars), `chat_id?`. | `{ success: true, chat_id, name }` |
 | `close_general_thread` | `closeGeneralForumTopic` | `chat_id?`. | `{ success: true, chat_id, closed: true }` |

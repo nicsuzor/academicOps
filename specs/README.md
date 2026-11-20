@@ -6,10 +6,12 @@
 - [build-and-install.md](build-and-install.md) -- local install and release pipeline.
 - [transcript-pipeline.md](transcript-pipeline.md) -- session-transcript ingestion, normalization, and output.
 - [observability/observability.md](observability/observability.md) -- cross-surface observability and correlation across the task graph, trace store, container runtime, and session log archive.
+- [observability/decision-trace.md](observability/decision-trace.md) -- agent-assisted Phoenix querying, built-in token spend audits, and session outlines.
 - [observability/telemetry-failure-surfacing.md](observability/telemetry-failure-surfacing.md) -- surfacing telemetry configuration failures, export refusals, and network errors across all emitters with session gating policy options.
 - [meta/doc-taxonomy.md](meta/doc-taxonomy.md) -- the five document kinds and where each lives.
 - [meta/writing-specs.md](meta/writing-specs.md) -- the spec template and the rules every spec follows.
 - [meta/naming-and-decisions.md](meta/naming-and-decisions.md) -- task naming, filename standards, and graph-relationship decision representation.
+- [glossary.md](glossary.md) -- canonical glossary of defined technical terms that agents must never use loosely.
 
 ## Agents
 
@@ -25,6 +27,7 @@
 - [agents/external-state-recheck.md](agents/external-state-recheck.md) -- targeted external-state verification and read-only GitHub query authority for the knowledge base custodian.
 - [agents/dump-session-wrapup.md](agents/dump-session-wrapup.md) -- dump skill invocation modes: user-run emergency handover vs. agent-run routine wrap-up, consolidated daily note project pointers, retroactive tasks, durable facts, and handover traceability.
 - [agents/dump-faults-and-finds.md](agents/dump-faults-and-finds.md) -- dump skill triggers for significant operational fault recoveries and major diagnostic findings without code changes.
+- [agents/offering-filing-and-retiring-pkb-facts.md](agents/offering-filing-and-retiring-pkb-facts.md) -- offering settled durable facts to the custodian, anti-sprawl canonical filing, unified four-category content retirement, and `/learn` fault task queueing.
 
 ## Enforcement
 
@@ -75,10 +78,10 @@
 - [workflows/plan-view.md](workflows/plan-view.md) -- formal plan view generation and redrawing on decomposed objectives.
 - [workflows/conceptual-review-workflow.md](workflows/conceptual-review-workflow.md) -- composable-lens multi-agent review of intellectual artifacts.
 - [workflows/default-dialectic-review.md](workflows/default-dialectic-review.md) -- dialectical multi-agent evaluation as the workflow library's default independent review stage.
-- [workflows/pr-lifecycle.md](workflows/pr-lifecycle.md) -- PR lifecycle workflows: sweep task queuing and move-along fan-out.
+- [workflows/pr-lifecycle.md](workflows/pr-lifecycle.md) -- pull request lifecycle and consolidated feature-branch workflow.
 - [workflows/research-decomposition.md](workflows/research-decomposition.md) -- research-specific decomposition primitives and sequencing.
 - [workflows/reconcile.md](workflows/reconcile.md) -- GitHub ↔ PKB task-graph reconciliation.
-- [workflows/strategic-review.md](workflows/strategic-review.md) -- design intent for the parallel-review-and-reconcile quality gate.
+- [workflows/strategic-review.md](workflows/strategic-review.md) -- design intent for the parallel-review-and-reconcile review workflow.
 - [workflows/graph-valuation.md](workflows/graph-valuation.md) -- how agents capture, value and maintain the graph under the flow rule: placement, densify batches, pricing, deadline classes, ripeness, and the budget for asking the user.
 
 ## Future

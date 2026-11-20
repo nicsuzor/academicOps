@@ -1,6 +1,6 @@
 ---
 name: craft
-description: Authoring standard and quality gate for agent-facing instruction text and workflow templates. Use when writing, reviewing, or revising SKILL.md bodies, frontmatter descriptions, agent definitions, subagent prompts, tool descriptions, or workflow templates. Exclude for human-facing prose (specs, reports).
+description: Authoring standard and quality checklist for agent-facing instruction text and workflow templates. Use when writing, reviewing, or revising SKILL.md bodies, frontmatter descriptions, agent definitions, subagent prompts, tool descriptions, or workflow templates. Exclude for human-facing prose (specs, reports).
 allowed-tools: Read, Write, Edit
 ---
 
@@ -17,7 +17,7 @@ Author and review agent-facing instructions, personas, and workflow templates fo
 5. **Decouple persona from execution (Who vs How)**: Personas define identity, authority, and tone; skills define reusable execution recipes. Skills owned by one agent name that owner in one line and remain otherwise agent-agnostic.
 6. **Progressive disclosure over monolithic injection**: Expose routing metadata upfront, load procedural bodies just-in-time, and offload dense references to on-demand files.
 7. **Write for a headless worker**: Assume unattended execution with no human in the loop. Never pause or wait mid-task; end at approval boundaries and wire dependent work as blocked.
-8. **Promise only what the executor delivers**: Output contracts list only artifacts and state the executing agent produces, never another party's subsequent act or sign-off.
+8. **Promise only what the executor delivers**: Output contracts list only artifacts and state the executing agent produces, never another party's subsequent act, sign-off, or user installation/deployment of a shipped release.
 9. **Verification must be real**: Demand direct inspection of live artifacts (outputs, logs, diffs) rather than compliance checklists.
 10. **Instruction density over conversational prose**: Maximize high-signal constraints per token; eliminate incident stories, post-mortems, and historical rationales.
 
@@ -41,7 +41,7 @@ Structure skill packages in three tiers:
 
 - **Level 1 (Router)**: Frontmatter `name` and `description` loaded into the system prompt.
 - **Level 2 (`SKILL.md`)**: Operational procedure loaded just-in-time, keeping structural shapes inline and median paths within the 30-80 line budget.
-- **Level 3 (`references/`, `scripts/`)**: Exhaustive schemas or off-median branches stored one directory deep. Load via imperative procedural gates (`If <condition>, read references/<file>.md before <action>`), never passive suggestions ("see...").
+- **Level 3 (`references/`, `scripts/`)**: Exhaustive schemas or off-median branches stored one directory deep. Load via imperative procedural routing (`If <condition>, read references/<file>.md before <action>`), never passive suggestions ("see...").
 
 ## Type-Specific References
 
@@ -54,7 +54,7 @@ Structure skill packages in three tiers:
 | :- | :- | :- | :- |
 | **Agent Persona** | 30-60 lines (~200-500 tokens) | 100 lines (<2,500 chars) | Role identity, behavioral boundaries, safety invariants, output schema. |
 | **Skill Description** | 1-3 sentences (150-400 chars) | 1,024 chars | Frontmatter router: trigger conditions, primary domain, explicit exclusions. |
-| **Skill Body (`SKILL.md`)** | 30-80 lines (~400-1,000 tokens) | 150-200 lines (~1,500 tokens) | Step-by-step procedure, input/output contract, verification gate. |
+| **Skill Body (`SKILL.md`)** | 30-80 lines (~400-1,000 tokens) | 150-200 lines (~1,500 tokens) | Step-by-step procedure, input/output contract, verification check. |
 | **Workflow Template** | 30-60 lines | 100 lines | High-level stage composition and handoff contracts. |
 | **Tool Description** | 150-400 chars | 800 chars | Purpose, when to use, when NOT to use, argument constraints. |
 | **Reference File (Level 3)** | 50-150 lines | 300 lines | Modular single-topic technical documentation or schemas. |
@@ -75,9 +75,9 @@ Hold operational content under the 150-200 line ceiling (target 30-80 lines):
 - **Shape, not logic**: Provide structural skeletons rather than exhaustive worked examples; define strict schemas with `required` fields and `additionalProperties: false`.
 - **Positive imperatives with functional reasoning**: Frame rules around what to do ("Use X because Y"), pairing any prohibition with its mandatory alternative. Strip conversational padding.
 
-## Quality Gates
+## Quality Standards
 
-Every agent instruction, skill, persona definition, and subagent prompt must pass these six gates before merging:
+Every agent instruction, skill, persona definition, and subagent prompt must pass these six checks before merging:
 
 1. **Categorical generality (Categorical Imperative)**: Express rules covering the full class of situations; prohibit hyper-specific quotas, rigid interaction numbers, or one-off fixes.
 2. **Entity abstraction (Name the process, not the actor)**: Refer to the principal as "the user", never by a personal name; refer to collaborators by role or capability.

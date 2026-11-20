@@ -20,6 +20,7 @@ description: Index of academicOps axioms.
 | `explanations-not-reasons` | An agent's explanation of what it did is not its reason; self-reports are hearsay and never taken at face value. | always_on |
 | `fail-fast` | Everything Must Work. Halt and escalate on any infrastructure failure or conflicting demand. | always_on |
 | `full-observability` | Persist material actions in git commits with clear rationale for complete auditability. | always_on |
+| `glossaries` | Look for active glossaries and never use their defined terms loosely. | always_on |
 | `halt-on-failure` | Halt on failure and report verbatim without workarounds, fallbacks, or bypasses. | always_on |
 | `honest-epistemics` | Tailor claims strictly to available evidence. | always_on |
 | `human-readability-first` | Future readability by human reviewers comes before mechanical parsing of text agents write. | always_on |

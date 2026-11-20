@@ -187,29 +187,25 @@ function renderMarkdown(markdown) {
       continue;
     }
 
-    // Expandable blockquote (>!)
-    if (line.startsWith(">!")) {
-      const quoteLines = [];
-      while (i < lines.length && (lines[i].startsWith(">!") || lines[i].startsWith(">"))) {
-        quoteLines.push(lines[i].replace(/^>!? ?/, ""));
-        i++;
-      }
-      blocks.push(
-        `<details class="expandable-quote"><summary>Details</summary><blockquote>${quoteLines
-          .map((q) => formatInlineMarkdown(q))
-          .join("<br>")}</blockquote></details>`
-      );
-      continue;
-    }
-
-    // Standard blockquote (>)
+    // Expandable blockquote (>!) and standard blockquote (>): quote bodies are
+    // rendered as markdown blocks (one paragraph per source line), never as one
+    // run-on line. Expandable (>!) quotes render the same as standard ones: a Details
+    // page is already the "expanded" view, so hiding its body behind a tap, or
+    // adding a label the author never wrote, defeats its purpose.
     if (line.startsWith(">")) {
       const quoteLines = [];
       while (i < lines.length && lines[i].startsWith(">")) {
-        quoteLines.push(lines[i].replace(/^> ?/, ""));
+        quoteLines.push(lines[i].replace(/^>!? ?/, ""));
         i++;
       }
-      blocks.push(`<blockquote>${quoteLines.map((q) => formatInlineMarkdown(q)).join("<br>")}</blockquote>`);
+      const isListLine = (l) => /^\s*([-*]|\d+\.)\s+/.test(l);
+      const spaced = quoteLines
+        .map((q, idx) =>
+          idx > 0 && !(isListLine(q) && isListLine(quoteLines[idx - 1])) ? "\n" + q : q
+        )
+        .join("\n");
+      const inner = renderMarkdown(spaced);
+      blocks.push(`<blockquote>${inner}</blockquote>`);
       continue;
     }
 

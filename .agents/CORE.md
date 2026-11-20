@@ -11,7 +11,7 @@ This repository holds the `academicOps` (`aops`) framework.
 ## Repository Constraints
 
 - **Integration base branch**: Active development and pull requests target `dev`; retarget PRs pointing elsewhere.
-- **Pre-approval PR readiness**: Under feature freeze, PRs must pass checks and independent review with feedback addressed before approval; rebase and resolve merge conflicts after approval, just before merge.
+- **Pre-approval PR readiness and consolidation**: Related changes gather on a shared feature branch (`bundle/<slug>` or `feat/<slug>`) targeting `dev` (merging reviewed constituent branches and closing absorbed PRs), needing green CI and a description-only compliance check before user approval; standalone PRs pass full three-lens review pre-approval, and rebase, conflict resolution, and combined review happen after approval before merge.
 - **Shared plugin code**: Code used by more than one plugin lives in `lib/` and is injected at build time; duplicate copies fail the build.
 - **Plugin isolation**: A plugin never reads another plugin's files (only `lib/`).
 - **No hardcoded defaults**: Endpoints, URLs, hosts, paths, tokens, and credentials come from the environment or client `userConfig`, never hardcoded in shipped artifacts.

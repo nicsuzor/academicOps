@@ -24,7 +24,7 @@ tags: [base, task, docs, instructions, composite]
 
 ## Composition
 
-Structure as one task with internal subtasks when executable in one session, or as a dedicated epic with two sequential child tasks (Child 1: Stages 1--2 drafting and proof; Child 2: Stage 3 independent review with `needs: [<child_1_id>]`), never loose siblings under an external parent. When a change spans both a specification and executable code, build and verify both together in one PR.
+Structure as one task with internal subtasks when executable in one session, or as a composite parent task with two sequential child tasks (Child 1: Stages 1--2 drafting and proof; Child 2: Stage 3 independent review with `needs: [<child_1_id>]`), never loose siblings under an external parent. When a change spans both a specification and executable code, build and verify both together in one PR.
 
 ## Output Contract
 

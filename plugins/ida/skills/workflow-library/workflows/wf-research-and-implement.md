@@ -25,7 +25,7 @@ Sequences work that requires upfront investigation and a reviewed design before 
 
 ## Composition
 
-Structure either as a single task with subtasks (one continuous session) or as a dedicated epic with `needs`-chained child tasks (never loose siblings). Requested spec revisions return to Stage 2 before implementation proceeds.
+Structure either as a single task with subtasks (one continuous session) or as a composite parent task with `needs`-chained child tasks (never loose siblings). Requested spec revisions return to Stage 2 before implementation proceeds.
 
 ## Output contract
 

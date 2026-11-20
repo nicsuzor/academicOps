@@ -19,7 +19,7 @@ Follow `instructions/init.md` to construct the repository:
 - Git hygiene: `.gitignore`, pre-commit hooks, immutable `data/raw/`.
 - Documentation stubs and issue templates.
 - Provision no secrets or credentials; report commands for the user to run.
-- Create no tasks or epics; direct the user to `/ida:strategize`.
+- Create no tasks; direct the user to `/ida:strategize`.
 
 ## Report
 

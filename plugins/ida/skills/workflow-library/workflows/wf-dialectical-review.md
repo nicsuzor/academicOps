@@ -29,7 +29,7 @@ Universal default review workflow. A coordinator calibrates **proportionality**,
 Every review perspective receives the same briefing structure, placing the commissioning ask and criteria before the artifact or diff so reviewers judge intent and proportion before inspecting implementation details:
 
 1. **Originating Request & Governing Standard (Read First)**: Verbatim commissioning ask with source ID, artifact genre and its governing standard (e.g., specification standard, instruction craft standard, genre criteria, or task acceptance criteria -- never applying task-handback checklists to non-task artifacts), and explicit requirements or criteria (or `"NONE AVAILABLE"`).
-2. **Coordinator Calibration**: Proportionality tier (single-pass sanity check with lightweight capability for low-stakes routine work vs. multi-round dialectical deliberation with high-reasoning capability and primary-material audit for high-stakes or high-risk work) and target abstraction altitude.
+2. **Coordinator Calibration**: Proportionality tier (single-pass sanity check with mid-tier capability for low-stakes routine work vs. multi-round dialectical deliberation with flagship capability and primary-material audit for high-stakes or high-risk work) and target abstraction altitude.
 3. **Target Artifact**: Repository, PR/artifact pointer, branch and head commit, and diff or content reference.
 4. **Perspective Mandates & Fix Discipline**:
    - **Strategic coherence reviewer**: Evaluates core premise, problem class, parsimony, lifecycle coherence, and congruence with existing knowledge-base records, specifications, topic notes, parent objectives, and active sibling work from an inline graph brief.

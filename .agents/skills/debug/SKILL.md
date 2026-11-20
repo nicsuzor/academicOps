@@ -1,6 +1,6 @@
 ---
 name: debug
-description: Drive and audit a real framework run — choose an execution surface, dispatch a worker, spin up a polecat container under tmux for live interaction, and hand off to `session-trace` for what the run did. Use when asked to debug a polecat, investigate what broke a container or client mechanism (such as authentication, a token, or a service), run a polecat container interactively, attach to a polecat session, check container or session logs, or verify that a change to plugins, hooks, `lib/`, or skills actually fires inside a real container rather than merely being installed in the image. Covers both clients, `claude` and `agy`. Not the standard for scoring the run itself — that is `dogfood`.
+description: Drive and audit a real framework run -- choose an execution surface, dispatch a worker, spin up a polecat container under tmux for live interaction, and hand off to `phoenix` for what the run did. Use when asked to debug a polecat, investigate what broke a container or client mechanism (such as authentication, a token, or a service), run a polecat container interactively, attach to a polecat session, check container or session logs, or verify that a change to plugins, hooks, `lib/`, or skills actually fires inside a real container rather than merely being installed in the image. Covers both clients, `claude` and `agy`. Not the standard for scoring the run itself -- that is `dogfood`.
 ---
 
 # Driving a framework run
@@ -101,7 +101,7 @@ fails in two directions:
 output and it will grep that output out of any file lying around — including the
 logs, task outputs and transcripts your own probing left behind — and report it
 as though it had made the call. Score the tool-call record instead: the session's Phoenix
-spans (`session-trace`), `tool_calls` in agy's
+spans (`phoenix`), `tool_calls` in agy's
 `transcript_full.jsonl`, or `tool_use` in claude's session jsonl. That is what
 authoritative MCP verification checks.
 
@@ -175,9 +175,9 @@ tmux kill-session -t "$TMUX_NAME" 2>/dev/null || true
 ## Telemetry
 
 What a run actually did -- its tool calls, model output, errors, latencies and token
-spend -- is read from the Phoenix span store with the `session-trace` skill in the `ida`
-plugin. It assembles a session's transcript with durations and costs, and holds the
-span-store facts and SQL recipes.
+spend -- is read from the Phoenix span store with the `phoenix` skill in the `ida`
+plugin (`ida:phoenix`). It generates a concise session outline (`<slug>.outline.md`) with
+built-in durations and costs, and executes declarative query templates via Phoenix MCP.
 
 ## Host filesystem audit
 
@@ -240,7 +240,7 @@ your report.
    the pane or transcript. A rendered prompt box is not proof of success.
 6. **§4 exercise the changed path** — invoke the specific changed skill, hook,
    or tool call and capture the execution output.
-7. **§5 audit** — pull the session's spans with `session-trace` and assert `TOOL`
+7. **§5 audit** -- pull the session's spans with `phoenix` and assert `TOOL`
    spans exist with `status_code != 'ERROR'`. Then the host filesystem audit above.
 8. **§6 teardown** — `/exit`, `sleep 2`, kill the session.
 

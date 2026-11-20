@@ -22,7 +22,7 @@ Without a focus, stages run in order as listed below.
 
 ## Knowledge Extraction Method
 
-1. **Cluster siblings**: Group sibling tasks under the same parent to synthesise into one canonical note.
+1. **Cluster siblings**: Group sibling tasks under the same parent to synthesise into one canonical note. When clustering 3+ sibling tasks under a new or existing component or initiative epic on the task graph, hoist the full holistic `serves -> target` weight onto the parent epic (never priced as a remainder after child tasks) and strip all direct `serves` edges from the clustered child tasks so children inherit worth via `parent`.
 2. **Find canonical note**: Search for existing topic notes. Augment existing notes or create a new note.
 3. **Persist destination first**: Write durable content to the destination note.
 4. **Rewrite source task body**: Once the destination write succeeds, rewrite the task body in place (<1,500 chars) to its minimal form: Goal, completed checklist, and `## Pointers` with `[[destination-id]]` and PR links. Do not alter status or graph edges.
@@ -67,9 +67,9 @@ Audit generated notes for:
    - _Staleness_: Delegate task staleness and closure to `/ida:reconcile sweep`, scoped to the cycle's window.
    - _Misclassifications_: Reclassify informational tasks to memories or invoke `/ida:q` to reposition.
 5. **Sweep orphans**: Review tag-orphan notes surfaced by `pkb.get_consolidation_cluster` and tasks with no parent or project (`pkb.batch_update(orphan=true, dry_run=true)` lists them).
-6. **Process refiles**: Reposition tasks flagged with `refile` using `/ida:q` and clear the flag.
+6. **Process refiles**: Reposition tasks flagged with `refile` using `/ida:q` under their governing component or initiative epic with zero leaf `serves` edges and clear the flag.
 7. **Maintain graph**: Run `pkb.refresh_graph`, then compare `pkb.status` against the baseline to confirm convergence.
-8. **Densify graph (weekly)**: Run `wf-densify` to draft link proposals for unvalued edges ordered by reach (R3).
+8. **Densify graph (weekly)**: Run `wf-densify` to draft holistic `serves -> target` link proposals on Strategic Value Carriers ordered by reach (R3), hoisting any residual leaf `serves` edges onto parent component epics and stripping `serves` from child tasks.
 9. **Audit output**: Verify that new or updated notes satisfy the extraction tests and defect checklist.
 
 ## Summary Report

@@ -5,6 +5,7 @@ import { QuestionBroker } from "../telegram/questions.js";
 import { TelegramBotClient } from "../telegram/bot.js";
 import { sanitizeChannelMeta } from "../telegram/inbound.js";
 import { PermissionRelay } from "./permissions.js";
+import { TOOL_TIMEOUT_MS, withToolDeadline } from "./timeout.js";
 import { SharedTelegramChannelCore } from "../core/channel-core.js";
 
 export class StdioMcpServer {
@@ -14,6 +15,8 @@ export class StdioMcpServer {
   private _bot: TelegramBotClient | null;
   private permRelay: PermissionRelay;
   public channelCore: SharedTelegramChannelCore;
+  /** Per-call deadline for tools not in LONG_RUNNING_TOOLS; overridable in tests. */
+  public toolTimeoutMs: number = TOOL_TIMEOUT_MS;
 
   constructor(
     config: PluginConfig,
@@ -152,7 +155,11 @@ export class StdioMcpServer {
       const args = toolParams.arguments || {};
 
       try {
-        const result = await this.executeTool(toolName, args);
+        const result = await withToolDeadline(
+          toolName,
+          () => this.executeTool(toolName, args),
+          this.toolTimeoutMs
+        );
         const isFailure = Boolean(
           result &&
             typeof result === "object" &&
@@ -162,7 +169,6 @@ export class StdioMcpServer {
         return {
           jsonrpc: "2.0",
           id,
-          ...(isFailure ? { isError: true } : {}),
           result: {
             ...(isFailure ? { isError: true } : {}),
             content: [{ type: "text", text: typeof result === "string" ? result : JSON.stringify(result) }],
@@ -172,7 +178,6 @@ export class StdioMcpServer {
         return {
           jsonrpc: "2.0",
           id,
-          isError: true,
           result: {
             isError: true,
             content: [{ type: "text", text: `Error executing ${toolName}: ${String(err)}` }],
@@ -234,10 +239,15 @@ export class StdioMcpServer {
         if (line.length > 0) {
           try {
             const parsed = JSON.parse(line);
-            const response = await this.handleMessage(parsed);
-            if (response) {
-              process.stdout.write(JSON.stringify(response) + "\n");
-            }
+            void this.handleMessage(parsed)
+              .then((response) => {
+                if (response) {
+                  process.stdout.write(JSON.stringify(response) + "\n");
+                }
+              })
+              .catch((e) => {
+                console.error("Failed to handle JSON-RPC message:", e);
+              });
           } catch (e) {
             console.error("Failed to parse JSON-RPC message:", e);
           }

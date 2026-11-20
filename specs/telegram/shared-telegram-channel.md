@@ -22,7 +22,7 @@ As a user on Telegram, I want my messages, commands, reply quotes, attachments, 
 
 As a user reading on a phone, I want agent replies formatted with scannable typography, expandable detail blocks, paragraph-level overflow protection, emoji reactions, and spoken audio when I spoke to the agent, so that every response is easy to scan without walls of text.
 
-- **AC-2.1** Given the agent invokes the reply, react, or edit tool during a turn, when the channel processes the call, then the channel formats replies with Telegram-compatible rich typography (including expandable blockquotes), splits replies exceeding 1,200 characters at whole-paragraph boundaries with a continuation notice, and delivers the payload to Telegram.
+- **AC-2.1** Given the agent invokes the reply, react, or edit tool during a turn, when the channel processes the call, then the channel formats replies with Telegram-compatible rich typography (including bold, italic, underline, strikethrough, spoilers, code, pre, ATX headings, auto-formatted tables, custom emoji, nested inline entities, and expandable blockquotes), splits replies exceeding 4,000 characters at whole-paragraph boundaries with a continuation notice, and delivers the payload to Telegram.
 - **AC-2.2** Given the user's most recent inbound turn in a chat was a voice message and speech synthesis is configured, when the agent sends a reply in that chat, then the channel synthesizes spoken audio from the top-level summary text (excluding blockquotes and code blocks) and sends a Telegram voice note alongside the text.
 
 ### US-3 Asynchronous interactive questions
@@ -78,7 +78,7 @@ The channel core provides identical formatting, overflow handling, question card
 1. **In-session channel transport:** In interactive runtime environments where the host process accepts asynchronous event streaming directly, the channel core runs in-process, polls updates, pushes inbound events into the active turn queue, and handles outbound tool calls directly.
 2. **Container gateway transport:** In headless container environments where turns run as isolated per-turn invocations, a dedicated gateway process hosts the shared channel core and manages local IPC. For each inbound event, the gateway executes the per-turn process with serialized event parameters and the recorded session identifier. Outbound tool calls connect back to the gateway over a local IPC bridge.
 
-Separating the protocol engine from transport adaptation ensures that parsing, formatting, 1,200-character paragraph splitting, voice synthesis, and question state logic remain implemented once without coupling to specific execution runtimes.
+Separating the protocol engine from transport adaptation ensures that parsing, formatting, 4,000-character paragraph splitting, voice synthesis, and question state logic remain implemented once without coupling to specific execution runtimes.
 
 ### Outbound tool contracts
 
@@ -93,7 +93,11 @@ Sends an agent response to the Telegram chat with rich typography, expandable bl
   - `chat_id` (integer, optional): Telegram chat identifier; defaults to the chat that initiated the session.
   - `message_thread_id` (integer, optional): Telegram message thread ID (for forum supergroups or topics-enabled chats; defaults to active thread).
   - `thread_id` (integer, optional): Alias for `message_thread_id`.
-  - `reply_to` (integer, optional): Message identifier to quote or reply to.
+  - `reply_to`, `reply_to_message_id` (integer, optional): Message identifier to quote or reply to.
+  - `quote` (string, optional): Markdown substring of the replied-to message to quote via `reply_parameters` (`quote` and `quote_entities`), with optional `quote_position` (integer).
+  - `buttons` (array, optional): Custom inline buttons (`{ label, callback_data?, url?, web_app?, copy_text? }`).
+  - `disable_link_preview` (boolean, optional) / `link_preview_options` (object, optional): Controls link preview rendering (`LinkPreviewOptions`).
+  - `message_effect_id` (string, optional): Unique identifier of a Telegram message effect to attach.
   - `voice` (boolean, optional): When true, generates and sends spoken audio for top-level summary text.
   - `detail` (string, optional): Supplementary Markdown content linked when overflow occurs.
 - **Returns:** Object with `message_id` (integer), `message_thread_id` (integer when sent in a thread), and optional `voice_message_id` (integer); or `{ success: false, error: string }` if delivery or thread verification fails.

@@ -84,6 +84,13 @@ describe("Telegram Reactions & Shared Legend (specs/telegram/reactions.md)", () 
     expect(normalizeReaction("👨‍💻")).toBe("👨‍💻");
     expect(normalizeReaction("🤝")).toBe("🤝");
     expect(normalizeReaction("👌")).toBe("👌");
+    expect(normalizeReaction("🤓")).toBe("🤓");
+    expect(normalizeReaction("🗿")).toBe("🗿");
+    expect(normalizeReaction("💅")).toBe("💅");
+    expect(normalizeReaction("🤪")).toBe("🤪");
+    expect(normalizeReaction("🐳")).toBe("🐳");
+    expect(normalizeReaction("👾")).toBe("👾");
+    expect(normalizeReaction("👻")).toBe("👻");
 
     // Rejects multi-emoji strings upfront
     expect(normalizeReaction("💩🦄")).toBeNull();

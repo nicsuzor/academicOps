@@ -5,14 +5,15 @@ description: Author a concise, one-page summary digest for decision or release s
 id: wf-signoff
 tags:
   - wf-template
-  - gate
+  - review
+  - signoff
 title: Sign-Off Brief
 type: template
 ---
 
 ## What this step does
 
-Produces a concise, one-page summary on the record when a full task or epic completes: what was delivered against what was asked, with every checked claim carrying a resolvable link. Serves as a synthesis capstone of prior steps, not a re-review.
+Produces a concise, one-page summary on the record when a full task (leaf or composite parent task with children) completes: what was delivered against what was asked, with every checked claim carrying a resolvable link. Serves as a synthesis capstone of prior steps, not a re-review.
 
 ## Input contract
 
@@ -31,4 +32,4 @@ The sign-off brief must:
 
 ## When to include
 
-At completion of any task or epic requiring an explicit sign-off record; author once at the unit level, not per subtask.
+At completion of any task (leaf or composite) requiring an explicit sign-off record; author once at the unit level, not per subtask.

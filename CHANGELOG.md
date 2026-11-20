@@ -1,5 +1,87 @@
 # Changelog
 
+## [1.10.0](https://github.com/nicsuzor/academicOps/compare/v1.9.0...v1.10.0) (2026-11-20)
+
+### Features
+
+- **axioms,ida,specs:** consolidate glossary axiom, PKB fact lifecycle, premise-check rival hypotheses, and Face-Ida delegation ([9154411](https://github.com/nicsuzor/academicOps/commit/915441105d4c983399851b8a5c97349234d971b2))
+- **glossary:** add framework glossary and universal axiom to honour glossaries ([5f88a74](https://github.com/nicsuzor/academicOps/commit/5f88a7484a931ebfd9cecf573ff1c6d9c0f265fa))
+- **ida-telegram:** list_threads tool showing which forum threads are open ([feb0331](https://github.com/nicsuzor/academicOps/commit/feb0331bc9ae8ff0c0913f7273c14d7b1d8617dc))
+- **ida-telegram:** list_threads tool showing which forum threads are open ([a4340bc](https://github.com/nicsuzor/academicOps/commit/a4340bcbb2d138a43030c0c0befdbff486174fd8))
+- **ida,specs:** implement offering, filing, and retiring PKB facts ([b71fc71](https://github.com/nicsuzor/academicOps/commit/b71fc71b8194a7d262802924a239fdde33c0a37d))
+- **ida:** add standing problem-level task consolidation and verbatim backup support ([d6d8e5b](https://github.com/nicsuzor/academicOps/commit/d6d8e5bf0fe14e3060a57dfd63e7ffb318ffe3bf))
+- **ida:** allow proposing an obvious next step once when answering a question ([4925999](https://github.com/nicsuzor/academicOps/commit/49259996f9f7a89db7aa360d7fe00f57ed6a9709))
+- **ida:** allow proposing an obvious next step once when answering a question ([c4ada02](https://github.com/nicsuzor/academicOps/commit/c4ada0256135c86339dc00d66ca4197cf982db7d))
+- **premise-check:** require rival hypothesis testing and versioned failure claims ([f19e844](https://github.com/nicsuzor/academicOps/commit/f19e8440a3146ae5472ba699b8493dee07ace09b))
+
+### Bug Fixes
+
+- **daily:** align /daily skill entrypoint with canonical tpl_daily ([4300a8a](https://github.com/nicsuzor/academicOps/commit/4300a8a513a5655a3f19e8674f1153a0c2bca8ce))
+- **daily:** align /daily skill entrypoint with canonical workflow template ([f32b819](https://github.com/nicsuzor/academicOps/commit/f32b8195ff532735749de10d6f63e8f2a80e07e1))
+- **daily:** trim parenthetical Step 5 summary from /daily skill ([6ea9799](https://github.com/nicsuzor/academicOps/commit/6ea97998439fccfaadee4bc061c791d480d48a14))
+- **hooks:** scope premise-check gate per agent slot and fix subagent handbacks ([#3686](https://github.com/nicsuzor/academicOps/issues/3686)) ([11efe6d](https://github.com/nicsuzor/academicOps/commit/11efe6da49e36010434eb489fb3a027a396f5771))
+- **ida-telegram:** bound reply and Bot API fetch calls within 30s deadline ([81d6615](https://github.com/nicsuzor/academicOps/commit/81d6615b0821ac67f3d4dd2ba97b18930077bf8b))
+- **ida-telegram:** drop invalid top-level isError on JSON-RPC responses and accept string/text buttons ([a2e1b9b](https://github.com/nicsuzor/academicOps/commit/a2e1b9b7cbc2124ded1ce18928ce433ee683af1e))
+- **ida-telegram:** list_threads review fixes ([ba25a28](https://github.com/nicsuzor/academicOps/commit/ba25a28e389cb7126fd130ac913a92bed6a9b86d))
+- **ida:** enforce worker-satisfiable task criteria across authoring and dispatch ([1e0d1cb](https://github.com/nicsuzor/academicOps/commit/1e0d1cbd964c7872002d71e0aec5a677e1be9ef0))
+- **ida:** reconcile face-Ida relay-only delegation lines and require re-review after REVISE ([5564815](https://github.com/nicsuzor/academicOps/commit/5564815f2dffbc15d314c161ea8e072e10bed07e))
+- **otel:** clean up hook span naming, attributes, and prompt origin ([2f6578f](https://github.com/nicsuzor/academicOps/commit/2f6578f6b51a32686d91f6ea1aebfb407ed8978c))
+- **otel:** clean up hook span naming, attributes, and prompt origin ([d920903](https://github.com/nicsuzor/academicOps/commit/d920903a022661a4cc43978d529e777c10cd41ea))
+- **review:** close dispatch composite-task seam and align reify/pauli/dump wording ([4b641b0](https://github.com/nicsuzor/academicOps/commit/4b641b08ff78084b9184906edb66d27722b0ef7c))
+- **review:** ensure US-4 user story subject is strictly a human person per process-not-actor ([8356818](https://github.com/nicsuzor/academicOps/commit/83568182b244ab20af468ad17f3bff955c775d08))
+- **review:** exclude sender=system from handback prompt classification ([f3aa86a](https://github.com/nicsuzor/academicOps/commit/f3aa86ac51b993f234f992b61c45f9a3f715141e))
+
+### Code Refactoring
+
+- **ida:** replace loose gate terminology across agents and skills ([f02d204](https://github.com/nicsuzor/academicOps/commit/f02d20468f26776e69959cd843374ca4b4f29291))
+- **workflows:** align workflow templates and enforcement spec to strict gate usage ([5a09e33](https://github.com/nicsuzor/academicOps/commit/5a09e33ac01b9982ed640ec21e5cef965dab5153))
+
+### Documentation
+
+- **deep-research:** document 10-file attachment limit for Gemini Deep Research ([62a09d0](https://github.com/nicsuzor/academicOps/commit/62a09d071161c3f8d4a349f45f3dd8bc4fb7ddc7))
+- **deep-research:** document 10-file attachment limit for Gemini Deep Research ([e8e05ec](https://github.com/nicsuzor/academicOps/commit/e8e05ec46bbb095f1eb6f5beb930abfbd430f274))
+- **enforcement:** register Honour Glossaries axiom and regulatory experiment ([0fe99dc](https://github.com/nicsuzor/academicOps/commit/0fe99dc7a51d070fede23a1693f506f7dedd3486))
+- **rules:** add project-local rule to name model tiers, not model names ([1c5b517](https://github.com/nicsuzor/academicOps/commit/1c5b51796662c726c366d0bc6912d6908f9a3e93))
+- **rules:** add project-local rule to name model tiers, not model names ([6fa7258](https://github.com/nicsuzor/academicOps/commit/6fa72584ea17cf00de88aed8efb805adf8503fa4))
+- **specs:** restore open-ended log worth scale in graph-valuation and wf-price-targets ([5361be7](https://github.com/nicsuzor/academicOps/commit/5361be7d7f17d2aab4bf9c2d7966c188daab5dc3))
+- **specs:** restore open-ended log worth scale in graph-valuation and wf-price-targets ([8fa6185](https://github.com/nicsuzor/academicOps/commit/8fa6185e17808d7c7fe953788047bea57c41928c))
+
+### Miscellaneous
+
+- publish v1.9.0 distribution to main [skip ci] ([c0b4930](https://github.com/nicsuzor/academicOps/commit/c0b4930cdc8ac93e226134e8d56ba2684f2d956d))
+
+## [1.9.0](https://github.com/nicsuzor/academicOps/compare/v1.8.2...v1.9.0) (2026-11-18)
+
+### Features
+
+- **ida,ida-telegram,specs:** consolidate /phoenix skill, SQLite allowlist, stateless MCP caller session, and dynamic Telegram menus ([#3671](https://github.com/nicsuzor/academicOps/issues/3671)) ([27a3084](https://github.com/nicsuzor/academicOps/commit/27a3084418d9828ef906410f784aec90af864bed))
+- **ida:** add phoenix_transcript --since scan and streamline /q delegation ([2567f37](https://github.com/nicsuzor/academicOps/commit/2567f375f12f4ced7e29f17a528d31f10560eca1))
+- **phoenix:** price Gemini models in phoenix_token_cost, with long-context tier ([#3676](https://github.com/nicsuzor/academicOps/issues/3676)) ([87ed944](https://github.com/nicsuzor/academicOps/commit/87ed944870d5c49f27dd16f168a7fb4a7c4ceb62))
+- **telegram:** add advanced formatting and raise formatted reply allowance to 4000 chars ([98d6f9f](https://github.com/nicsuzor/academicOps/commit/98d6f9f2b54c46d193332cf10a26daf8fc78f184))
+
+### Bug Fixes
+
+- **daily,reconcile:** bound sweep queries, use unprefixed subagents, and enforce single-pass drafting ([90ec573](https://github.com/nicsuzor/academicOps/commit/90ec573d6555ad598d75b6f6055ffdd1c7669071))
+- **daily,reconcile:** bound sweep queries, use unprefixed subagents, and enforce single-pass drafting ([caee1cc](https://github.com/nicsuzor/academicOps/commit/caee1cc93d1da24ef2a0f4a3a84477aee5f2d45b))
+- **ida-telegram:** 30s deadline for basically-instant MCP tools ([21da0ef](https://github.com/nicsuzor/academicOps/commit/21da0efa6ea1776095ef38e7f98c0125e48b9b6c))
+- **ida-telegram:** give basically-instant MCP tools a 30s deadline ([c34014d](https://github.com/nicsuzor/academicOps/commit/c34014dc625a457b1a6f8f46a13576bf9f982cca))
+- **ida:** read one Cloudflare Access pair for PKB/MCP and OTLP auth ([8d08333](https://github.com/nicsuzor/academicOps/commit/8d08333e748ed05b52f684e38515d954c784bab1))
+- **review:** drop constant-pinning test; README says exempt tools are excluded from the 30s rule ([2509e06](https://github.com/nicsuzor/academicOps/commit/2509e06a2aca0532df0f419513e104034d2c577b))
+- **review:** revert unneeded enforcement spec and map edits per rules ([0137945](https://github.com/nicsuzor/academicOps/commit/0137945c65ca9e49c8f1630d7d26d7a2e3697f54))
+- **review:** supervise: drop fixed lightweight tier for all reading ([470d216](https://github.com/nicsuzor/academicOps/commit/470d216b158044bb273f9972aef50ac7bd12f4fc))
+- **session-trace:** correct cache key and add week-wide harness/model cost rollup ([#3673](https://github.com/nicsuzor/academicOps/issues/3673)) ([456ab50](https://github.com/nicsuzor/academicOps/commit/456ab5014575de8e83a6945f2097f48bb08052b0))
+
+### Code Refactoring
+
+- **ci:** Actions secrets hold the Access pair under its runtime names ([38e5fdf](https://github.com/nicsuzor/academicOps/commit/38e5fdf0c191cd863a09d3227e76813bfdf6510e))
+- **ida:** read one Cloudflare Access pair for PKB/MCP and OTLP auth ([59ce199](https://github.com/nicsuzor/academicOps/commit/59ce19906aca082da6184c0a42f37188e46fddc6))
+
+### Miscellaneous
+
+- **session-trace:** merge dev and deduplicate fetch_session_spans SQL routing ([e602875](https://github.com/nicsuzor/academicOps/commit/e6028752527e43ba512fc3da0de0b69bbb446541))
+- **workflows:** name capability tiers instead of specific models ([d2f9d72](https://github.com/nicsuzor/academicOps/commit/d2f9d722ce7d1e0f4256fcc7c2da111873340cdc))
+- **workflows:** name capability tiers instead of specific models ([fc277fb](https://github.com/nicsuzor/academicOps/commit/fc277fbce3489e9e3f3c647e83e4ef1d147be3d8))
+
 ## [1.8.2](https://github.com/nicsuzor/academicOps/compare/v1.8.0...v1.8.2) (2026-11-16)
 
 ### Bug Fixes

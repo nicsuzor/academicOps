@@ -30,7 +30,7 @@ A concise, channel-neutral research artifact leading with the answer and recomme
 
 ## Composition
 
-For open design questions or competing alternatives, retain candidate options in the task body, complete the groundwork, and select the recommended route to unblock downstream work; assign a decision to the user only when the user explicitly reserved that choice. Structure follow-up or review work as internal subtasks or as child tasks under an epic, never as loose siblings.
+For open design questions or competing alternatives, retain candidate options in the task body, complete the groundwork, and select the recommended route to unblock downstream work; assign a decision to the user only when the user explicitly reserved that choice. Structure follow-up or review work as internal subtasks or as child tasks under a composite parent task, never as loose siblings.
 
 ## When to include
 

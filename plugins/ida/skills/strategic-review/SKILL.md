@@ -19,13 +19,13 @@ Coordinate modular multi-agent dialectical review under **`james` as Supervisor*
 Before dispatching reviewers, the Supervisor (`james`) loads the artifact, its originating request, the format/quality standard governing the artifact's genre (`specs/meta/doc-taxonomy.md` -- e.g., `specs/meta/writing-specs.md` for specifications, `craft` for agent instructions, disciplinary standards for manuscripts/articles, or task acceptance criteria for task handbacks), and whatever specifications, requirements, or acceptance criteria are available, determines destination repository visibility (public or private), and explicitly calibrates:
 
 - **Proportionality (depth, rounds, model selection, and primary-material scope)**: Weigh the importance, risk, blast radius, and reversibility of the task or artifact at the start:
-  - **High-stakes / high-risk / architectural work**: Allocate deeper refinement, multiple rounds of dialectical cross-examination, and smarter, higher-capability models (`Model: "pro"`).
-  - **Low-stakes / routine / reversible checks**: Keep the review to a fast, single-pass sanity check with lighter models (`Model: "flash"` or `"flash_lite"`) to confirm the change is sound without wasting time and money.
+  - **High-stakes / high-risk / architectural work**: Allocate deeper refinement, multiple rounds of dialectical cross-examination, and flagship models.
+  - **Low-stakes / routine / reversible checks**: Keep the review to a fast, single-pass sanity check with mid-tier models to confirm the change is sound without wasting time and money.
 - **Altitude alignment & artifact-matched standard**: Define the target abstraction focus for the review and ensure reviewers apply the standard matching the artifact's genre (never applying task-handback sections like `## Ask` to non-task artifacts).
 
 ### 2. Deploy the Three Review Components in Parallel
 
-Dispatch all three specialist reviewers concurrently in a single turn using the calibrated `Model` selection. Every reviewer's brief is drawn from the shared review briefing (quoting the originating request, governing genre standard, and available specifications/requirements/criteria before the artifact or diff) and returns a verdict in the unified `PASS` / `REVISE` / `FAIL` vocabulary:
+Dispatch all three specialist reviewers concurrently in a single turn at the calibrated model tier. Every reviewer's brief is drawn from the shared review briefing (quoting the originating request, governing genre standard, and available specifications/requirements/criteria before the artifact or diff) and returns a verdict in the unified `PASS` / `REVISE` / `FAIL` vocabulary:
 
 - **Rule compliance** (TypeName `rbg`): Axiom, rule, authority, and enforcement-pyramid compliance per `wf-rbg`.
 - **Strategic fit** (TypeName `pauli`): Core premise, strategic direction, and PKB congruence per `wf-strategic-fit` (supplied with an inline brief).

@@ -11,7 +11,7 @@ description: "Triage a corpus, classify, and dispatch outputs. Three modes: retr
 | - | - | - |
 | `retro` | Session transcripts (one at a time) | GitHub issues filed via `gh` |
 | `trend` | Many sessions / audit files | Trend report + recommendations |
-| `sweep` | Open GitHub issues | PKB tasks, fix-epics, closures |
+| `sweep` | Open GitHub issues | PKB tasks (leaf and composite parent tasks), closures |
 
 **Read [`references/forensic-scope.md`](references/forensic-scope.md) before
 starting any mode.** Its in-scope/out-of-scope split and its anonymisation clause
@@ -166,10 +166,10 @@ classify each:
 | - | - | - | - |
 | `close-as-stale` | >90d old, no activity, or describes retired behavior. | Close issue with explanatory comment. | `triaged-stale` |
 | `consolidate-duplicate` | Describes the same underlying problem. | Merge details into canonical issue; close duplicate with cross-link comment (`#N`). | `triaged-duplicate` |
-| `aggregate` | Multiple issues sharing one root cause/fix surface. | Fold into one `fix-epic` task (leave queued); close source issues with pointer comments. | `triaged-aggregate` |
-| `evidence-bump` | Accumulates evidence for a related open issue/epic. | Leave open; add comment citing canonical issue (`#N`). | `triaged-evidence-bump` |
-| `single-task` | Atomic task (AC clear, ≤3 files, obvious fix). | File polecat task with `Closes #N`. | `triaged-single` |
-| `fix-epic` | Multi-step, multi-file, or design-required work. | Create epic task, leave at `inbox` for the user to brief. | `triaged-epic` |
+| `aggregate` | Multiple issues sharing one root cause/fix surface. | Fold into one composite `type: task` node with child tasks (leave queued); close source issues with pointer comments. | `triaged-aggregate` |
+| `evidence-bump` | Accumulates evidence for a related open issue or parent task. | Leave open; add comment citing canonical issue (`#N`). | `triaged-evidence-bump` |
+| `single-task` | Atomic task (AC clear, ≤3 files, obvious fix). | File polecat task (`type: task`) with `Closes #N`. | `triaged-single` |
+| `fix-epic` | Multi-step, multi-file, or design-required work. | Create a composite parent task (`type: task` with child tasks, never `type: epic`), leave at `inbox` for the user to brief. | `triaged-epic` |
 | `defer` | Real but blocked or low-criticality. | Apply defer label and revisit-by date. | `triaged-defer` |
 
 Apply low blast-radius dispositions autonomously. Gate only on an ambiguous
@@ -196,12 +196,12 @@ Before assigning a disposition to any proposal that **adds or modifies** a rule 
 ### Applied autonomously (done)
 
 - Consolidate-duplicate: #R → unique detail merged into #S, #R verified state:closed
-- Aggregate: #A, #B, #C → folded into fix-epic <id> (queued)
+- Aggregate: #A, #B, #C → folded into composite task <id> (queued)
 - Evidence bump: #T → bumped #U
 - Close (stale): #P
 - Defer: #Q (revisit-by YYYY-MM-DD)
 - Single-task: #X → "<title>"
-- Fix-epic (queued): <title> ← #D, #E
+- Composite fix task (queued): <title> ← #D, #E
 
 ### Needs human triage / decision (waiting)
 

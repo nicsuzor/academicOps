@@ -26,7 +26,8 @@ const OUTBOUND_MESSAGE_ROUTING_PROPS: Record<string, unknown> = {
 const OUTBOUND_KEYBOARD_PROPS: Record<string, unknown> = {
   buttons: {
     type: "array",
-    description: "Optional custom inline buttons (flat or 2D row array of { label, url?, callback_data?, web_app? })",
+    description:
+      "Optional custom inline buttons (flat or 2D row array of { label, url?, callback_data?, web_app?, copy_text? })",
   },
   button_layout: {
     description: "Optional explicit row sizes array (e.g. [2, 1]) or buttons-per-row integer for flat button arrays",
@@ -65,6 +66,9 @@ export const MCP_TOOLS: ToolDefinition[] = [
               callback_data: { type: "string" },
               url: { type: "string" },
               web_app: { type: "string" },
+              copy_text: {
+                description: "Text (or { text }) copied to the user's clipboard when the button is tapped",
+              },
             },
             required: ["label"],
           },
@@ -76,6 +80,27 @@ export const MCP_TOOLS: ToolDefinition[] = [
         },
         voice: { type: "boolean", description: "Send tier 1 as a spoken voice note" },
         reply_to: { type: "integer", description: "Telegram message ID to reply to" },
+        reply_to_message_id: { type: "integer", description: "Alias for reply_to" },
+        quote: {
+          type: "string",
+          description: "Optional Markdown substring of the replied-to message to quote in reply_parameters",
+        },
+        quote_position: {
+          type: "integer",
+          description: "Optional UTF-16 offset of the quoted substring in the original message",
+        },
+        disable_link_preview: {
+          type: "boolean",
+          description: "Disable web page preview generation for links in the message",
+        },
+        link_preview_options: {
+          type: "object",
+          description: "Telegram LinkPreviewOptions (is_disabled, url, prefer_small_media, prefer_large_media, show_above_text)",
+        },
+        message_effect_id: {
+          type: "string",
+          description: "Optional unique identifier of the message effect to be added to the message",
+        },
         review: {
           type: "object",
           description: "Attach PR diff review card",
@@ -177,6 +202,14 @@ export const MCP_TOOLS: ToolDefinition[] = [
         chat_id: { type: "integer" },
         message_id: { type: "integer" },
         text: { type: "string" },
+        disable_link_preview: {
+          type: "boolean",
+          description: "Disable web page preview generation for links in the edited message",
+        },
+        link_preview_options: {
+          type: "object",
+          description: "Telegram LinkPreviewOptions (is_disabled, url, prefer_small_media, prefer_large_media, show_above_text)",
+        },
       },
       required: ["message_id", "text"],
     },
@@ -200,6 +233,22 @@ export const MCP_TOOLS: ToolDefinition[] = [
         },
       },
       required: ["name"],
+    },
+  },
+  {
+    name: "list_threads",
+    description:
+      "List the forum topic threads known in a Telegram conversation with thread id, title and open or closed state. Telegram's Bot API has no list-topics method, so this is the plugin's own record of topics it created, or saw created, closed, reopened, renamed or posted in; topics that predate the record and have been silent since are missing.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        chat_id: { type: "integer", description: "Telegram chat ID (defaults to primary chat)" },
+        state: {
+          type: "string",
+          enum: ["all", "open", "closed"],
+          description: "Only return threads in this state (default: all)",
+        },
+      },
     },
   },
   {
@@ -490,6 +539,10 @@ export const MCP_TOOLS: ToolDefinition[] = [
         photo: { type: "string", description: "Local file path, Telegram file_id, or HTTP(S) URL for the photo" },
         caption: { type: "string", description: "Optional Markdown caption" },
         has_spoiler: { type: "boolean", description: "Cover the photo with a spoiler animation" },
+        show_caption_above_media: {
+          type: "boolean",
+          description: "Pass true if the caption must be shown above the sent media",
+        },
         ...OUTBOUND_MESSAGE_ROUTING_PROPS,
         ...OUTBOUND_KEYBOARD_PROPS,
       },
@@ -528,6 +581,10 @@ export const MCP_TOOLS: ToolDefinition[] = [
         width: { type: "integer", description: "Video width in pixels" },
         height: { type: "integer", description: "Video height in pixels" },
         has_spoiler: { type: "boolean", description: "Cover the video with a spoiler animation" },
+        show_caption_above_media: {
+          type: "boolean",
+          description: "Pass true if the caption must be shown above the sent media",
+        },
         supports_streaming: { type: "boolean", description: "Pass true if the uploaded video is suitable for streaming" },
         ...OUTBOUND_MESSAGE_ROUTING_PROPS,
         ...OUTBOUND_KEYBOARD_PROPS,
@@ -551,6 +608,10 @@ export const MCP_TOOLS: ToolDefinition[] = [
         width: { type: "integer", description: "Animation width in pixels" },
         height: { type: "integer", description: "Animation height in pixels" },
         has_spoiler: { type: "boolean", description: "Cover the animation with a spoiler animation" },
+        show_caption_above_media: {
+          type: "boolean",
+          description: "Pass true if the caption must be shown above the sent media",
+        },
         ...OUTBOUND_MESSAGE_ROUTING_PROPS,
         ...OUTBOUND_KEYBOARD_PROPS,
       },
@@ -581,6 +642,10 @@ export const MCP_TOOLS: ToolDefinition[] = [
               },
               caption: { type: "string", description: "Optional Markdown caption for this item" },
               has_spoiler: { type: "boolean", description: "Optional spoiler flag for photo/video/animation items" },
+              show_caption_above_media: {
+                type: "boolean",
+                description: "Optional flag to show the caption above the media item",
+              },
             },
             required: ["type", "media"],
           },

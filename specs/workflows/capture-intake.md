@@ -30,6 +30,13 @@ items reach my agenda without manual sorting.
   then the source capture remains untouched in the intake directory.
 - **AC-1.5** Given a capture triaged as a reference note, when the destination note write is confirmed,
   then the source capture note is deleted.
+- **AC-1.6** Given a capture referencing an external link, document, or inbound message, when triage processes
+  it, then reachable sources are fetched and prepared with a summary on the record, with zero mechanical
+  "read/open/check X" tasks created for the user.
+- **AC-1.7** Given an inbound request or uncommitted opportunity the user has not agreed to take on, when
+  triage processes it, then the item is routed as a user decision (`status: review`, `assignee: user` with
+  summary, candidate options including decline or do nothing, and recommendation) or an agent probe task
+  (`classification: probe`), never as an active user execution task.
 
 ### US-2 Handling captures with unreadable or ambiguous intent
 
@@ -72,22 +79,38 @@ the step exits immediately without modifying documents or outputting log entries
 
 ### Per-capture routing dispositions
 
-Every capture is evaluated and routed to one of four dispositions:
+Every capture is evaluated and routed to one of four dispositions, preceded by mandatory source
+preparation: reachable URLs, documents, or message links are fetched, read, and summarized on the
+record (or annotated with their access boundary if behind authentication). Triage never mints a task
+whose action for the user is reading, opening, or checking a link, document, or email. Triage also
+evaluates obligation before routing: pure informational items create zero tasks, and external asks or
+uncommitted opportunities the user has not agreed to take on reach the user solely as a decision or
+agent probe, never as an accepted execution task.
 
-- **Task:** An actionable request or project task. The document is converted in place into an active
-  task: the file is moved out of the intake directory into the tasks directory, retyped as a task, and
-  assigned an imperative title, concise body, parent container, and intake valuation edges. Its
-  unique identifier and git history are preserved. When deduplication identifies an existing open task
-  already carrying the ask, the capture's content is synthesized into that existing task, and the
-  source capture is deleted under the deletion gate.
-- **Note:** A durable reference, observation, or non-actionable insight. Content is synthesized into an
-  existing canonical topic note or written as a new topic note. Once the destination write is
-  verified, the source capture is deleted under the deletion gate.
+- **Task:** An actionable obligation the user has already agreed to or requested. Triage prepares
+  reachable sources with a summary on the record and conducts necessary groundwork rather than minting
+  mechanical reading tasks. The document is converted in place into an active task: the file is moved out
+  of the intake directory into the tasks directory, retyped as a task, and assigned an imperative title,
+  concise body, and governing component or initiative epic (`parent: <epic_id>`) with zero leaf `serves`
+  edges on child fixes (inheriting worth via `parent`, while `serves` edges to `type: target` nodes are
+  authored exclusively on Strategic Value Carriers -- enduring component epics, multi-session initiative
+  epics, or standalone major deliverables). Its unique identifier and git history are preserved. When
+  deduplication identifies an existing open task already carrying the ask, the capture's content is
+  synthesized into that existing task, and the source capture is deleted under the deletion gate. External
+  asks, invitations, or uncommitted opportunities the user has not explicitly agreed to take on are excluded:
+  they are routed as a user decision (`status: review`, `assignee: user` with source summary, candidate
+  options including decline or do nothing, and a recommendation) or an agent probe under **Expand**, never
+  as an active user execution task.
+- **Note:** A durable reference, observation, informational update, or non-actionable insight. Pure
+  informational updates create zero user tasks. Content is synthesized into an existing canonical topic
+  note or written as a new topic note. Once the destination write is verified, the source capture is
+  deleted under the deletion gate.
 - **Expand:** Substantive content whose requirements, scope, or actionability need investigation or
-  clarification before becoming an active task or note. Converted in place into an inbox probe task
-  carrying a probe classification and documenting the captured text and open questions. When expanding
-  an existing note directly, content is synthesized into that note and the source capture deleted under
-  the deletion gate.
+  clarification before becoming an active task or note, or uncommitted external opportunities requiring
+  clarification. Converted in place into an inbox probe task carrying `classification: probe` and
+  documenting the captured text, prepared source summary, and open questions or candidate options. When
+  expanding an existing note directly, content is synthesized into that note and the source capture deleted
+  under the deletion gate.
 - **Discard:** Noise, accidental dictations, or uninterpretable fragments with no discernible
   substantive value. Deleted outright.
 

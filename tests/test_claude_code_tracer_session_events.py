@@ -1390,7 +1390,7 @@ def test_ida_handlers_do_not_emit_debug_spans(tracer_env, exporter, monkeypatch,
         for h in handlers.HANDLERS.get(event, []):
             h(ctx)
 
-    assert any(s.name == "Hello agy" for s in exporter.spans), "agy real turn span should export"
+    assert any(s.name == "agy-turn" for s in exporter.spans), "agy real turn span should export"
     assert exporter.named("run_command"), "agy real tool span should export"
 
     debug_spans = [s for s in exporter.spans if s.name.startswith("aops-debug.")]
