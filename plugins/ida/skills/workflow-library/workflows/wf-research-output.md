@@ -19,7 +19,7 @@ Sequences research aimed at an audience-facing academic output. Each stage defin
 1. **Direction**: Define the question or claim, sought contribution, discipline, and target reader loosely enough to set analytical standards without fixing form or venue. Multiple audiences sharing one evidence base form separate directions if each output stands alone.
 2. **Prior work**: Map the intellectual neighborhood -- existing claims, open questions, and adjacent fields using alternative methods.
 3. **Design**: Justify a methodology, analytical frame, and required pilots against the question and audience standards, recording forks where alternatives compete.
-4. **External Approvals**: Address external approvals (ethics, data access, collaborator agreements). Where an external approval applies, end the task in `partial` (or a decision task) and wire downstream work with `needs: [<approval_task_id>]`; where none applies, record that finding and why.
+4. **External Approvals**: Address external approvals (ethics, data access, collaborator agreements). Where an external approval applies, end the task in `partial` documenting the external approval in `reason` so dependent work remains strictly blocked until approval is recorded; wire downstream work with `needs: [<approval_task_id>]`. Where none applies, record that finding and why.
 5. **Evidence**: Execute data collection and analysis (or conceptual development) to the design's standard.
 6. **Form and venue**: Choose output form and venue supported by the evidence, revisiting only if evidence or audience shifts.
 7. **Output**: Produce the artifact in the chosen form to that audience's standard.
@@ -32,7 +32,7 @@ Sequences research aimed at an audience-facing academic output. Each stage defin
 
 ## Composition
 
-Cut the task chain at every Stage 4 authorization boundary, at Stage 6 when venue/form belongs to the user, and before Stage 8 independent review. Revisit Stage 1 if Stage 2 or 3 shifts direction; revisit Stage 2 if Stage 5 uncovers unmapped literature.
+Cut the task chain at every Stage 4 authorization boundary, at Stage 6 when venue/form is explicitly reserved by the user, and before Stage 8 independent review. Revisit Stage 1 if Stage 2 or 3 shifts direction; revisit Stage 2 if Stage 5 uncovers unmapped literature.
 
 ## Output contract
 

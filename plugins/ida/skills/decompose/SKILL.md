@@ -25,7 +25,7 @@ State what needs doing, never how. Decompose reads and runs nothing; what the re
 4. **Resolve unknowns**:
    - **Decide**: Choose the obvious path and record the rationale in one bullet.
    - **Defer**: Mint an empirical probe task (`classification: probe`) and wire dependent nodes via `needs: [<probe_id>]`.
-   - **Surface**: When interactive with the user, surface open forks one per turn and reify only the chosen branch under `parent: <scoping_task_id>`.
+   - **Surface**: When interactive with the user, surface forks one per turn strictly when the user explicitly reserved that choice prior to action (or an invariant boundary applies); where directed work delegates or implies the choice, evaluate alternatives and select the recommended branch directly without holding downstream work. Reify only the selected branch under `parent: <scoping_task_id>` (`needs` for downstream tasks).
 5. **Collapse and merge before minting**:
    - **Collapse to session units**: Combine two components one worker would execute in one session against the same material into one node, unless they must run separately (review, verification, merge), wait on external approval, or choosing one alters the other.
    - **Merge into existing work**: Search the graph via `ida:hydrate` (`done` tasks and templates included) and extend overlapping nodes instead of minting siblings. Trim candidates overlapping completed work to what remains unanswered, linking context with `[[wikilinks]]` under `## Pointers`; mint nothing if nothing remains. A node's first execution belongs to that node.

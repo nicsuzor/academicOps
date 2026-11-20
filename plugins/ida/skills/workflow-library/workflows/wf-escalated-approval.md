@@ -14,7 +14,7 @@ type: template
 
 ## What this step does
 
-Ends the current task at a decision requiring explicit user approval after proportionate independent agent review. The worker files the complete artifact and its independent review verdicts on the record and releases the task as `partial`, documenting the required decision in `reason` without minting follow-up tasks so dependent work remains blocked until approval is recorded. Nothing beyond this approval boundary executes in the same task.
+Ends the current task when directed work reaches an approval boundary that must not proceed on agent or directed authority alone: external-audience transmission, unruled repository merge, unbounded reach or cost lacking scope/volume/cost confirmation, external-party approval, or a specific hold explicitly reserved by the user. A proportionate independent agent review is required. The worker files the complete artifact and its independent review verdicts on the record and releases the task as `partial`, documenting the required decision in `reason` without minting follow-up tasks so dependent work remains blocked until approval is recorded. Nothing beyond this approval boundary executes in the same task.
 
 ## Procedure
 
@@ -24,7 +24,7 @@ Ends the current task at a decision requiring explicit user approval after propo
 
 ## Composition
 
-Cut the composition chain at this approval boundary. Post-approval execution belongs in a separate downstream task wired as blocked by this decision; requested revisions return to the producing step. Specifications preceding an implementation build are reviewed independently on the record and reach the user alongside their implementation deliverable rather than holding standalone for approval before the build.
+Cut the composition chain at this approval boundary. Post-approval execution belongs in a separate downstream task wired as blocked by this decision (such as an explicit user-reserved hold or a confirmed external-party, unruled-merge, or unbounded-cost boundary); never insert this cut by task class on user-directed work. Requested revisions return to the producing step. Specifications preceding an implementation build are reviewed independently on the record and reach the user alongside their implementation deliverable rather than holding standalone for approval before the build.
 
 ## Output contract
 
@@ -33,4 +33,4 @@ Cut the composition chain at this approval boundary. Post-approval execution bel
 
 ## When to include
 
-Before any irreversible one-way-door action, competing research route choice, or commitment the user has reserved for explicit sign-off -- never to hold a pre-build specification for approval standalone.
+Before an operation reaching a boundary that must not start on user direction alone: external-audience transmission, an unruled repository merge, an operation with unbounded reach or cost lacking explicit prior approval naming scope, volume, and cost (or expanding beyond approved scope), an external-party approval, or a specific hold or choice explicitly reserved by the user prior to execution. Never include by task class (complexity, new components, or competing alternatives) or to hold a pre-build specification for approval standalone.

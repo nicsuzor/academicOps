@@ -20,8 +20,8 @@ Sequences work that requires upfront investigation and a reviewed design before 
 1. **Research**: Grounded findings on the problem space, constraints, and candidate approaches with primary citations and a recommended direction, recorded in the knowledge base.
 2. **Spec**: Complete design, interface contracts, and falsifiable acceptance criteria mapped to verification, drafted in a knowledge-base note referenced by the implementation task. Stage 1 commits no standalone plan/design file and opens no PR.
 3. **Independent review**: Verdicts on both research and spec from non-authoring agents covering factual claims, rule compliance, and proportionality. Resolve defects before advancing; never release as `review` or send a standalone spec for user approval.
-4. **Route decision (when alternatives compete)**: Evaluate options on the record and select the recommended route to unblock implementation; assign a decision to the user only when the user explicitly reserved that choice.
-5. **Implementation**: Separate dependent task (`needs` the research/spec task) executing test-first for code. Opens one draft PR onto the base branch carrying both the build and editable spec, and marks it ready for review only after independent verification passes and review verdicts are posted to the PR thread.
+4. **Route decision (when alternatives compete)**: Evaluate options on the record and treat user direction as delegating route selection -- selecting the recommended route to unblock implementation without assigning `assignee: user` unless the user explicitly reserved that choice prior to execution.
+5. **Implementation**: In the same task or a separate dependent task (`needs` the research/spec task and any explicit user-reserved hold) executing test-first for code. Opens one draft PR onto the base branch carrying both the build and editable spec, and marks it ready for review only after independent verification passes and review verdicts are posted to the PR thread.
 
 ## Composition
 
