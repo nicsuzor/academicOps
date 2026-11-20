@@ -1,5 +1,62 @@
 # Changelog
 
+## [1.11.0](https://github.com/nicsuzor/academicOps/compare/v1.10.0...v1.11.0) (2026-11-20)
+
+
+### Features
+
+* **authority:** count user direction as approval outside invariant boundaries (from [#3685](https://github.com/nicsuzor/academicOps/issues/3685)) ([ab3e724](https://github.com/nicsuzor/academicOps/commit/ab3e72429acb8bb0171ca0241260e35800d3c820))
+* **hooks:** retire mechanical premise-check parser and preserve procedural gate ([6213359](https://github.com/nicsuzor/academicOps/commit/6213359bae9656127496c140b9c7a7c49ac99e91))
+* **ida-telegram:** add Bot API 10.1-10.4 Rich Messages and HTML Widgets ([9f49ed5](https://github.com/nicsuzor/academicOps/commit/9f49ed5e140cb247e15e1daae0800ffa263564ed))
+* **ida,specs:** enforce component weighting across custodian, planning, reconcile, and densify ([034a403](https://github.com/nicsuzor/academicOps/commit/034a403706b7351c123bb2a675a03407cb513cdf))
+* **ida,specs:** enforce component-weighted serves hierarchy across intake and supervision ([12d4a71](https://github.com/nicsuzor/academicOps/commit/12d4a719d51f1a6034b686caf37abb658b4480d0))
+* **ida:** require source preparation and obligation gating across intake and sweeps ([cd54acd](https://github.com/nicsuzor/academicOps/commit/cd54acdc5d7b3efa833992542e6b5be63aa62dc6))
+* **instructions:** adopt non-declining handed-work principle (from [#3723](https://github.com/nicsuzor/academicOps/issues/3723)) ([4ef7763](https://github.com/nicsuzor/academicOps/commit/4ef7763a5cea43a39f7b0ac66b54ebe150351944))
+* **phoenix:** add windowed cross-session prompt and reply query (from [#3730](https://github.com/nicsuzor/academicOps/issues/3730)) ([60100e9](https://github.com/nicsuzor/academicOps/commit/60100e96932b27593a57e559cc1d3a7671fdc337))
+* **rbg,workflows:** adopt compliance and review-lens principles (from [#3721](https://github.com/nicsuzor/academicOps/issues/3721)) ([b1757ac](https://github.com/nicsuzor/academicOps/commit/b1757ac05955eaff69599551cca9efa4430f6330))
+* **workflows,instructions:** consolidate PR lifecycle, post-release boundary, sweep obligation gating, component-weighted serves, and composite parent tasks ([43b0126](https://github.com/nicsuzor/academicOps/commit/43b012642bc01b5e8eb3a7b9f918d836a0cdf491))
+* **workflows:** establish consolidated feature-branch PR lifecycle and description check ([86a2719](https://github.com/nicsuzor/academicOps/commit/86a2719f26e2c5b5a56a12c33ca6170d823b81d7))
+
+
+### Bug Fixes
+
+* **review:** complete post-release user-act boundary across wf-code-task-base, wf-reconcile Step 7, pr-lifecycle, and workflow specs ([9bac9ee](https://github.com/nicsuzor/academicOps/commit/9bac9eee3642d31d25cae6c2ebc6887c3ab8c2b7))
+* **review:** reconcile compliance conflicts, QA prompt split, spec sync, and bullet readability ([6d7f5b7](https://github.com/nicsuzor/academicOps/commit/6d7f5b73a105ddcd4e69d5c78da674c0a5b0be31))
+* **review:** reconcile post-rebase direction-intake, capability tiers, persona decoupling, and readability ([8cd653b](https://github.com/nicsuzor/academicOps/commit/8cd653bc47b7e7f46e61859c59dd399667f48af5))
+* **review:** repair acceptance template grammar and prune out-of-context splices ([5423990](https://github.com/nicsuzor/academicOps/commit/54239908246bf1b9fa7356d8091a63d848ec8ef9))
+* **review:** replace unbounded adverb with concrete step bounds in pr-lifecycle spec ([be3c3d4](https://github.com/nicsuzor/academicOps/commit/be3c3d495feb181dfaa9f1a50eb8309ed57a0304))
+* **review:** resolve pronoun, routing, current-state, and enforcement-sync slips ([d4977a7](https://github.com/nicsuzor/academicOps/commit/d4977a7dcbca0588613df5e167b3b391cb44226d))
+* **review:** standardize pr-lifecycle spec status and bound donor closure in AC-3.2 ([cef196d](https://github.com/nicsuzor/academicOps/commit/cef196d5d4d82b60f890f151b66c4bdafe1d3670))
+* **review:** synchronize ADR-0002 index and intake terminology ([e760b79](https://github.com/nicsuzor/academicOps/commit/e760b798ca3c2fcc43c6cc7fb51256232b26b8f3))
+* **review:** synchronize edge-taxonomy rule with composite parent task terminology and fix grammar ([458e64c](https://github.com/nicsuzor/academicOps/commit/458e64cdeee6cfb4f72fc51bbe16fc0a9e96a5cf))
+* **review:** update task follow-up invariant description in enforcement map ([b9ee880](https://github.com/nicsuzor/academicOps/commit/b9ee880866bbc8224fddee18b30325ace0d42c08))
+* **skills:** prohibit task criteria or holds waiting on post-release user acts ([093105e](https://github.com/nicsuzor/academicOps/commit/093105e7b840ad0dae8c38c07a0c9e8b05605c1f))
+* **specs:** resolve remaining conflict markers in graph-valuation acceptance table ([c3c7307](https://github.com/nicsuzor/academicOps/commit/c3c73072caa524eeeb0fd0420e2b7d5569c26c18))
+* **workflows:** end agent responsibility once release is shipped and user is informed ([8213147](https://github.com/nicsuzor/academicOps/commit/8213147c2b24787ace92fff4aa01e10837e0965c))
+
+
+### Code Refactoring
+
+* **craft,voice:** preserve authorial public-law voice across craft, personas, axioms, and review workflows ([6e7bc52](https://github.com/nicsuzor/academicOps/commit/6e7bc52fb2c986edd6fa384630eea47e8802bccf))
+* **craft:** modularise craft skill and add model-agnostic quality gates ([4f53d93](https://github.com/nicsuzor/academicOps/commit/4f53d930ade66ad4348451c167b83a0d2e4d0189))
+* **ida:** deduplicate conceptual query distillation solely to hydrate (from [#3727](https://github.com/nicsuzor/academicOps/issues/3727)) ([70f43a6](https://github.com/nicsuzor/academicOps/commit/70f43a6f61e823561f0000737bf8aeb1fd2ffcb2))
+* **instructions:** align axioms, personas, skills, and workflows with administrative-law review ([c6e7ad2](https://github.com/nicsuzor/academicOps/commit/c6e7ad21a1fad11321eea47ec49a223b0bf0a097))
+* **instructions:** slim agent personas, CORE files, and project rules; retire non-universal workflows ([25e9b19](https://github.com/nicsuzor/academicOps/commit/25e9b19250d2e3e9bd7a7b44336ecb62e2ed0c8c))
+* **instructions:** slim, deduplicate, and generalise agent instructions and workflows ([8decf87](https://github.com/nicsuzor/academicOps/commit/8decf872d6a08b72d3e59419d1eaa97628c8150d))
+* **skills:** slim, deduplicate, and generalise plugin and project skills ([9e5350e](https://github.com/nicsuzor/academicOps/commit/9e5350e5f524188522f01bae9cdf21d6ba4ff110))
+* **workflows:** slim, deduplicate, and generalise universal workflow templates ([9ba0d3c](https://github.com/nicsuzor/academicOps/commit/9ba0d3cc5cb2769932a8f107ed4a8ab1c33c9e12))
+
+
+### Documentation
+
+* **diagram:** clarify that arrowheads determine edge direction (from [#3688](https://github.com/nicsuzor/academicOps/issues/3688)) ([19cbfe9](https://github.com/nicsuzor/academicOps/commit/19cbfe9b13922ec434ab399d430038c0a06e17a6))
+* **plugins:** remove epic as a node type from skills, agents, and workflow templates ([8be3f81](https://github.com/nicsuzor/academicOps/commit/8be3f81b437bdfbbef7eccb19b6dd024a5fb248a))
+* **rules,specs:** remove epic as a node type and describe composite work as parent tasks with children ([b73f737](https://github.com/nicsuzor/academicOps/commit/b73f737e1a522465f2e0f0b3e373f7a251c9a73f))
+* **specs,rules:** align ADR-0002, rules, and enforcement map with component-weighted serves hierarchy ([e035904](https://github.com/nicsuzor/academicOps/commit/e035904b86eadb85a6fef0ba9329803a14d3e0d0))
+* **specs:** adopt ADR-0003 and align specs and enforcement map ([8f18516](https://github.com/nicsuzor/academicOps/commit/8f18516734fa0447eb4b2e478c17fa35ee0fb22b))
+* **specs:** require source preparation and obligation gating in intake sweeps ([f239bd7](https://github.com/nicsuzor/academicOps/commit/f239bd7609ef326c7caa6b442eca2bdbfc9aab87))
+* **specs:** synchronise enforcement specs and indexes with instruction cleanup ([ab28ace](https://github.com/nicsuzor/academicOps/commit/ab28ace91105b1f785d27cc5288cfeef68e5ca31))
+
 ## [1.10.0](https://github.com/nicsuzor/academicOps/compare/v1.9.0...v1.10.0) (2026-11-20)
 
 ### Features
