@@ -1688,7 +1688,8 @@ describe("Threaded Conversations Support", () => {
           method: "tools/call",
           params: { name: "edit_general_thread", arguments: { name: "   " } },
         });
-        expect(invalidRes?.isError).toBe(true);
+        expect("isError" in (invalidRes || {})).toBe(false);
+        expect((invalidRes?.result as any)?.isError).toBe(true);
         expect(JSON.parse((invalidRes?.result as any).content[0].text).success).toBe(false);
 
         // Validate non-integer icon_color rejection on create_thread
@@ -1698,7 +1699,8 @@ describe("Threaded Conversations Support", () => {
           method: "tools/call",
           params: { name: "create_thread", arguments: { name: "Bad Color", icon_color: "not-an-int" } },
         });
-        expect(invalidColorRes?.isError).toBe(true);
+        expect("isError" in (invalidColorRes || {})).toBe(false);
+        expect((invalidColorRes?.result as any)?.isError).toBe(true);
         const invalidColorParsed = JSON.parse((invalidColorRes?.result as any).content[0].text);
         expect(invalidColorParsed.success).toBe(false);
         expect(invalidColorParsed.error).toContain("icon_color");

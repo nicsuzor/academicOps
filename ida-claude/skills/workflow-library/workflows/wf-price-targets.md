@@ -2,7 +2,7 @@
 alias:
   - wf-price-targets
   - wf-target-pricing
-description: Universal target pricing routine for estimating and writing approximate target worth directly to the graph within the bounded [-1.0, 1.0] engine range.
+description: Universal target pricing routine for estimating and writing approximate target worth directly to the graph on the open-ended continuous log scale.
 id: wf-price-targets
 tags:
   - wf-template
@@ -16,13 +16,13 @@ type: template
 
 ## What this template does
 
-Estimates and writes approximate worth for target nodes on the bounded continuous scale ($W_t \in [-1.0, 1.0]$) directly to the graph with supporting evidence (R4 in `specs/workflows/graph-valuation.md`). Agents work out the best approximate worth, write it to the graph, leave `intent` untouched, and rely on corrections made directly on the graph.
+Estimates and writes approximate worth for target nodes on the open-ended continuous log scale ($W_t \in \mathbb{R}$, no cap) directly to the graph with supporting evidence (R4 in `specs/workflows/graph-valuation.md`). Agents work out the best approximate worth, write it to the graph, leave `intent` untouched, and rely on corrections made directly on the graph.
 
 ## Procedure
 
-1. **Scale**: Price targets on the bounded continuous scale within server-enforced engine bounds ($W_t \in [-1.0, 1.0]$):
-   - Positive aspirations: From +0.05 up to +1.00, with core commitments (accreditation, livelihood) around +0.70 to +0.80, up to +1.00 for top-tier moonshots.
-   - Negative anti-targets: Mirrored from -0.05 down to -1.00 for ruinous catastrophe.
+1. **Scale**: Price targets on the open-ended continuous log scale ($W_t \in \mathbb{R}$, no cap; S26):
+   - Positive aspirations: Positive values on the open log scale, using price ratios to express relative value across fat-tailed outcomes (e.g., a 10% moonshot priced ~9x a 90% sure thing; a 2% moonshot priced ~45x; 100x+ outcomes are uncapped).
+   - Negative anti-targets: Negative values on the open log scale, proportional to the loss or catastrophe averted.
    - Hub targets: Configure capital stocks (reputation, funding reserve, infrastructure) as hubs (S27).
 2. **Inspect node links**: Go through the node's links before setting its price. Inspect incoming and outgoing edges (`serves`, `depends_on`, `part_of`, `supports`), checking edge quantum, effect, and whether linked work is decomposed and active, so valuation reflects the real work and dependencies connected to the node.
 3. **Estimate approximate worth**: Work out the best approximate worth for each unpriced target using the inspected links, open work behind it, and existing severity as an anchor prompt.

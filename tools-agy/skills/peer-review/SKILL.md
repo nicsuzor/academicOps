@@ -53,8 +53,8 @@ Execute an independent cold check per `references/verification.md`:
 
 ### Stage 4: Final Check & Submit
 
-1. Execute pre-ready gate: verbatim-quote grep, spelling check, and budget verification.
-2. Boundary gate: verification applies to committed artifacts; post-verification edits require re-verification.
+1. Execute pre-ready checklist: verbatim-quote grep, spelling check, and budget verification.
+2. Verification boundary: verification applies to committed artifacts; post-verification edits require re-verification.
 3. Academic reviews, assigns scores, and submits. Record confirmation in the task file.
 
 ## Scribe Mode (Collegial Review)

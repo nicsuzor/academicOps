@@ -27,7 +27,7 @@ The fact-check handback must state, per claim checked:
 
 ## Record surface (mandatory)
 
-The ledger, the work log, and the reasoning behind them are working records. Their durable home is the PKB, attached to the commissioning task -- never a public or shared artifact repository. The repository under review receives only the completed work itself and, where the surrounding process requires a report (a PR review gate, an editor sign-off), a summary -- verdict and counts, with a pointer to the task that holds the record -- not the internal ledger or narrative. This applies to every project, not any one repo: a reasoning log committed to a shared repo publishes the team's internal deliberations alongside the work.
+The ledger, the work log, and the reasoning behind them are working records. Their durable home is the PKB, attached to the commissioning task -- never a public or shared artifact repository. The repository under review receives only the completed work itself and, where the surrounding process requires a report (a PR review requirement, an editor sign-off), a summary -- verdict and counts, with a pointer to the task that holds the record -- not the internal ledger or narrative. This applies to every project, not any one repo: a reasoning log committed to a shared repo publishes the team's internal deliberations alongside the work.
 
 ## When to include
 

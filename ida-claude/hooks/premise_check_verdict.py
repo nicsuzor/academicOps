@@ -25,7 +25,26 @@ from pathlib import Path
 from typing import Any
 
 import report_argument as ra
-from premise_check_gate import disarm, get_judged, get_state, is_armed, mint_verification_id
+from premise_check_gate import (
+    _canonical_agent_id,
+    _normalized_body_hash,
+    _safe_token,
+    _state_dir,
+    disarm,
+    find_armed_owner,
+    get_judged,
+    get_state,
+    is_armed,
+    mint_verification_id,
+)
+
+_GATE_MINTED_ID_RE = re.compile(r"^(?:claim-[0-9a-f]{8}(?:-|$)|toolu_)", re.IGNORECASE)
+
+
+def is_gate_minted_id(identifier: str) -> bool:
+    """True for gate-generated claim-<8hex> or tool_use_id claim identifiers."""
+    return bool(_GATE_MINTED_ID_RE.match((identifier or "").strip()))
+
 
 VERDICTS: tuple[str, ...] = ("PASS", "REVISE", "FAIL")
 
@@ -81,6 +100,7 @@ def _export_tool_span(
     tool_response: dict[str, Any],
     attributes: dict[str, Any],
     config: dict[str, Any] | None,
+    agent_id: str | None = None,
 ) -> None:
     """Ship one TOOL span through claude_code_tracer's pipeline, or raise RuntimeError."""
     if config is None:
@@ -98,15 +118,18 @@ def _export_tool_span(
     parent_span_id = tracer_mod._new_span_id()
 
     env_session_id = os.environ.get("AOPS_SESSION_ID")
-    state = tracer_mod._load_state(session_id) if session_id else {}
+    canon_agent = _canonical_agent_id(session_id, agent_id)
+    state = (tracer_mod._load_state(canon_agent) if canon_agent else None) or (
+        tracer_mod._load_state(session_id) if session_id else {}
+    )
     if not state and env_session_id and env_session_id != session_id:
         state = tracer_mod._load_state(env_session_id)
 
-    agent_id = None
+    resolved_agent_id: str | None = None
     parent_session_id = None
     if state and hasattr(tracer_mod, "_resolve_agent_and_parent_ids"):
-        phoenix_session_id, agent_id, parent_session_id = tracer_mod._resolve_agent_and_parent_ids(
-            state
+        phoenix_session_id, resolved_agent_id, parent_session_id = (
+            tracer_mod._resolve_agent_and_parent_ids(state)
         )
     else:
         raw_phx = (
@@ -114,10 +137,15 @@ def _export_tool_span(
         )
         phoenix_session_id = str(raw_phx).split("/", 1)[0]
         if session_id and session_id != phoenix_session_id:
-            agent_id = session_id.split("/", 1)[1] if "/" in session_id else session_id
+            resolved_agent_id = session_id.split("/", 1)[1] if "/" in session_id else session_id
             parent_session_id = (
                 state.get("parent_session_id") if state else None
             ) or phoenix_session_id
+
+    if canon_agent:
+        resolved_agent_id = canon_agent
+        if not parent_session_id and phoenix_session_id and canon_agent != phoenix_session_id:
+            parent_session_id = phoenix_session_id
 
     current_trace = state.get("current_trace") if state else None
     if current_trace:
@@ -137,6 +165,8 @@ def _export_tool_span(
     record["attributes"].update(attributes)
     record["attributes"]["service.name"] = "aops-verdict-hooks"
     record["attributes"]["aops.surface"] = surface
+    if resolved_agent_id:
+        record["attributes"]["premise_check.recipient_agent_id"] = resolved_agent_id
 
     username = os.environ.get("USER") or os.environ.get("USERNAME") or None
     export_kwargs: dict[str, Any] = {
@@ -147,8 +177,8 @@ def _export_tool_span(
         "service_name": "aops-verdict-hooks",
         "surface": surface,
     }
-    if agent_id:
-        export_kwargs["agent_id"] = agent_id
+    if resolved_agent_id:
+        export_kwargs["agent_id"] = resolved_agent_id
     if parent_session_id:
         export_kwargs["parent_session_id"] = parent_session_id
     try:
@@ -179,6 +209,7 @@ def emit_verdict_span(
     title: str | None = None,
     config: dict[str, Any] | None = None,
     attributes: dict[str, Any] | None = None,
+    agent_id: str | None = None,
 ) -> bool:
     """Ship one TOOL span for this verdict via claude_code_tracer's pipeline.
 
@@ -211,6 +242,7 @@ def emit_verdict_span(
         tool_response,
         attrs,
         config,
+        agent_id=agent_id,
     )
     return True
 
@@ -325,6 +357,7 @@ def emit_hearsay_span(
     judged_ref: str | None = None,
     attributes: dict[str, Any] | None = None,
     config: dict[str, Any] | None = None,
+    agent_id: str | None = None,
 ) -> bool:
     """Ship one TOOL span for this hearsay check via claude_code_tracer's pipeline."""
     attrs: dict[str, Any] = {
@@ -347,6 +380,7 @@ def emit_hearsay_span(
         {"status": "armed"},
         attrs,
         config,
+        agent_id=agent_id,
     )
     return True
 
@@ -458,6 +492,23 @@ def _block_as_waived(block_text: str | None, parsed: Any, vocab: Any) -> str | N
     return block_text
 
 
+def _judged_matches_stored(jf_text: str, stored_text: str) -> bool:
+    if _normalized_body_hash(jf_text) == _normalized_body_hash(stored_text):
+        return True
+    # Also accept unwrapped inner text if stored_text carries an outer XML envelope
+    stripped = re.sub(
+        r"^\s*<(?:cross-session-message|teammate-message|task-notification|subagent-handback|agent-message)\b[^>]*>(.*?)</(?:cross-session-message|teammate-message|task-notification|subagent-handback|agent-message)>\s*$",
+        r"\1",
+        stored_text,
+        flags=re.DOTALL,
+    )
+    if stripped != stored_text and _normalized_body_hash(jf_text) == _normalized_body_hash(
+        stripped
+    ):
+        return True
+    return False
+
+
 def record_verdict(
     session_id: str = "",
     claim_id: str = "",
@@ -468,6 +519,7 @@ def record_verdict(
     machine: bool = False,
     judged_file: str | Path | None = None,
     judged_text: str | None = None,
+    agent_id: str | None = None,
 ) -> dict[str, Any]:
     """Validate, emit the span, and disarm the premise check."""
     cid = (claim_id or "").strip()
@@ -481,19 +533,38 @@ def record_verdict(
     if not reason:
         raise ValueError("a verdict needs a reason; got none")
 
-    armed = is_armed(session_id)
+    target_agent = _canonical_agent_id(session_id, agent_id)
+    armed = is_armed(session_id, agent_id=target_agent)
     is_task_claim = is_task_id(cid)
+    state = get_state(session_id, agent_id=target_agent)
+    judged_map = state.get("judged") or {}
+    disarmed_map = state.get("disarmed_claims") or {}
+    expected_id = state.get("claim_id")
+    valid_ids = state.get("claim_ids") or ([expected_id] if expected_id else [])
 
-    if not armed:
-        if not is_task_claim and judged_file is None:
-            raise ValueError(f"no premise check is currently armed for session {session_id!r}")
-        state = get_state(session_id)
-    else:
-        state = get_state(session_id)
-        expected_id = state.get("claim_id")
-        valid_ids = state.get("claim_ids") or ([expected_id] if expected_id else [])
-        if cid != expected_id and cid not in valid_ids:
-            if not is_task_claim and judged_file is None:
+    # Check if this claim belongs to a DIFFERENT active agent slot in this session
+    foreign_owner = find_armed_owner(session_id, cid, exclude_agent=target_agent)
+    if foreign_owner is not None and cid not in valid_ids:
+        caller_label = target_agent or "main"
+        raise ValueError(
+            f"claim {cid!r} is armed for agent {foreign_owner!r}, not {caller_label!r}"
+        )
+
+    is_active_in_slot = armed and (cid == expected_id or cid in valid_ids)
+    if not is_active_in_slot:
+        if not is_task_claim and cid in disarmed_map:
+            prev_verdict = (disarmed_map.get(cid) or {}).get("verdict") or "recorded"
+            raise ValueError(
+                f"claim {cid!r} is already disarmed in gate state (last verdict: {prev_verdict}); not armed"
+            )
+        if not armed:
+            if not is_task_claim and (judged_file is None or is_gate_minted_id(cid)):
+                raise ValueError(
+                    f"no premise check is currently armed for session {session_id!r}"
+                    + (f" (agent {target_agent!r})" if target_agent else "")
+                )
+        else:
+            if not is_task_claim and (judged_file is None or is_gate_minted_id(cid)):
                 raise ValueError(
                     f"unknown or mismatched report id {cid!r}; gate is armed for {expected_id!r}"
                 )
@@ -502,17 +573,27 @@ def record_verdict(
         jf_path = Path(judged_file)
         if not jf_path.is_file():
             raise FileNotFoundError(f"judged file not found: {judged_file!r}")
-        judged_text = jf_path.read_text(encoding="utf-8")
+        jf_text = jf_path.read_text(encoding="utf-8")
+        if is_active_in_slot and cid in judged_map:
+            stored_text, _ = get_judged(session_id, cid, agent_id=target_agent)
+            if stored_text is not None and not _judged_matches_stored(jf_text, stored_text):
+                raise ValueError(
+                    f"--judged-file content mismatch: {str(judged_file)!r} does not match the report that armed {cid!r}"
+                )
+        judged_text = jf_text
         judged_ref = str(judged_file)
     elif judged_text is None:
-        judged_text, judged_ref = get_judged(session_id, cid)
+        judged_text, judged_ref = get_judged(session_id, cid, agent_id=target_agent)
         if is_task_claim and not judged_ref:
             judged_ref = cid
 
     block_text = ra.extract_block(judged_text)
 
-    entry = (state.get("judged") or {}).get(cid, {})
-    block_expected = bool(entry.get("block_expected") or state.get("block_expected"))
+    entry = judged_map.get(cid) if isinstance(judged_map.get(cid), dict) else None
+    if entry is not None:
+        block_expected = bool(entry.get("block_expected"))
+    else:
+        block_expected = bool(state.get("block_expected"))
     is_peer = block_expected or any(
         str(judged_ref or "").startswith(prefix)
         for prefix in ("<cross-session-message", "<teammate-message", "<task-notification")
@@ -574,6 +655,7 @@ def record_verdict(
         verification_id=verification_id,
         title=clean_title,
         attributes=attributes,
+        agent_id=target_agent or None,
     )
 
     disarm(
@@ -584,6 +666,7 @@ def record_verdict(
         verification_id=verification_id,
         title=clean_title,
         machine=bool(attributes.get("premise_check.machine")),
+        agent_id=target_agent,
     )
 
     result: dict[str, Any] = {
@@ -658,7 +741,7 @@ def _read_reason(path: str) -> str:
     return Path(path).read_text(encoding="utf-8")
 
 
-def resolve_session_id(session_arg: str = "", claim_id: str = "") -> str:
+def resolve_session_id(session_arg: str = "", claim_id: str = "", agent_id: str = "") -> str:
     """Resolve active session ID from CLI arg, environment, or on-disk session state."""
     if session_arg and session_arg.strip():
         return session_arg.strip()
@@ -686,29 +769,40 @@ def resolve_session_id(session_arg: str = "", claim_id: str = "") -> str:
         except OSError:
             pass
 
-    from premise_check_gate import _state_dir
-
     state_dir = _state_dir()
-    if state_dir.is_dir():
-        state_files = list(state_dir.glob("*.json"))
-        # 1. Match claim_id in state
-        if claim_id:
-            for sfile in state_files:
-                try:
-                    data = json.loads(sfile.read_text(encoding="utf-8"))
-                    cid = data.get("claim_id")
-                    cids = data.get("claim_ids") or []
-                    judged = data.get("judged") or {}
-                    last_verdict = data.get("last_verdict") or {}
-                    if (
-                        claim_id == cid
-                        or claim_id in cids
-                        or claim_id in judged
-                        or claim_id == last_verdict.get("claim_id")
-                    ):
-                        return sfile.stem
-                except (json.JSONDecodeError, OSError):
-                    continue
+    if state_dir.is_dir() and claim_id:
+        canon_agent = _canonical_agent_id("", agent_id)
+        if canon_agent:
+            suffix = f".agent-{_safe_token(canon_agent, 'agent')}.json"
+            state_files = [p for p in state_dir.glob(f"*{suffix}") if p.is_file()]
+        else:
+            # Strict scoping: omitted --agent checks ONLY root slot files (never .agent-* or .parents.json)
+            state_files = [
+                p
+                for p in state_dir.glob("*.json")
+                if p.is_file() and not p.name.endswith(".parents.json") and ".agent-" not in p.name
+            ]
+        for sfile in state_files:
+            data = json.loads(sfile.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                raise ValueError(f"corrupt gate state in {sfile}: expected JSON object")
+            cid = data.get("claim_id")
+            cids = data.get("claim_ids") or []
+            judged = data.get("judged") or {}
+            last_verdict = data.get("last_verdict") or {}
+            if (
+                claim_id == cid
+                or claim_id in cids
+                or claim_id in judged
+                or claim_id == last_verdict.get("claim_id")
+            ):
+                explicit_sid = str(data.get("session_id") or "").strip()
+                if explicit_sid:
+                    return explicit_sid
+                stem = sfile.stem
+                if ".agent-" in stem:
+                    return stem.split(".agent-", 1)[0]
+                return stem
 
     return ""
 
@@ -808,10 +902,17 @@ def main(argv: list[str] | None = None) -> int:
         default=os.environ.get("AOPS_SESSION_ID", ""),
         help="Session id. Defaults to $AOPS_SESSION_ID.",
     )
+    parser.add_argument(
+        "--agent",
+        "--recipient",
+        dest="agent_id",
+        default="",
+        help="Recipient agent_id owning the armed gate slot (empty for root coordinator).",
+    )
 
     args = parser.parse_args(argv)
 
-    session_id = resolve_session_id(args.session, args.claim)
+    session_id = resolve_session_id(args.session, args.claim, args.agent_id)
     if not session_id:
         print(
             "premise_check_verdict: no session id ($AOPS_SESSION_ID unset, --session not given, and no session state available)",
@@ -842,6 +943,7 @@ def main(argv: list[str] | None = None) -> int:
             reason=text,
             title=args.title,
             judged_file=args.judged_file,
+            agent_id=args.agent_id or None,
         )
     except (OSError, ValueError, RuntimeError, ImportError) as exc:
         print(f"premise_check_verdict: {exc}", file=sys.stderr)

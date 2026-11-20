@@ -16,8 +16,6 @@ export const TOOL_TIMEOUT_MS = 30_000;
 
 /** Tools exempt from the deadline, each with the reason it can legitimately run past 30 s. */
 export const LONG_RUNNING_TOOLS: ReadonlySet<string> = new Set([
-  // Voice-out synthesis runs a child process with its own 60 s limit (bot.ts).
-  "reply",
   // File uploads: time scales with file size and the connection.
   "send_photo",
   "send_document",

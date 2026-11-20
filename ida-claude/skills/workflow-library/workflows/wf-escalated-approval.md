@@ -6,8 +6,8 @@ description: Hand a complete artifact over for an escalated explicit decision at
 id: wf-escalated-approval
 tags:
   - wf-template
-  - gate
   - approval
+  - workflow
 title: wf-escalated-approval
 type: template
 ---
@@ -20,11 +20,11 @@ Ends the current task at a decision that requires escalation for principal appro
 
 1. **Complete the artifact** -- the full artifact the decision is about, never a summary or abstract standing in for it. Attach the independent agent review verdicts for it.
 2. **File it on the record** -- route delivery through the record: state plainly what decision is being asked for with enough information to decide, proportionate evidence supporting it, and a reasoned recommendation stating what happens on approval. Hand back on the record; whichever agent one level up next reads the record decides what happens.
-3. **Structure the approval gate** -- do not release the task as `done`. Release the task as `partial` documenting what approval decision is needed in `reason`, without minting follow-up tasks. Implementation work is strictly blocked until the approval decision is recorded on the record. Stop.
+3. **Structure the approval decision boundary** -- do not release the task as `done`. Release the task as `partial` documenting what approval decision is needed in `reason`, without minting follow-up tasks. Implementation work is strictly blocked until the approval decision is recorded on the record. Stop.
 
 ## Composition
 
-Cut the chain here. Work that proceeds on approval goes in a separate task that depends on the approval decision (such as a route decision task for competing research alternatives or an unqueued PKB plan task where explicit principal plan approval was requested). Specifications preceding a build do not use this gate in Stage 1: they are reviewed by independent agents on the PKB and reach the user together with their implementation code on the single PR opened by Stage 2. Requested revisions go back to whichever step produced the artifact.
+Cut the chain here. Work that proceeds on approval goes in a separate task that depends on the approval decision (such as a route decision task for competing research alternatives or an unqueued PKB plan task where explicit principal plan approval was requested). Specifications preceding a build do not use this approval boundary in Stage 1: they are reviewed by independent agents on the PKB and reach the user together with their implementation code on the single PR opened by Stage 2. Requested revisions go back to whichever step produced the artifact.
 
 ## Output contract
 
@@ -33,4 +33,4 @@ Cut the chain here. Work that proceeds on approval goes in a separate task that 
 
 ## When to include
 
-Before any step that must not start on agent judgement alone: an irreversible or one-way-door action, competing research route alternatives, or a commitment the principal has reserved for themselves. Never include to gate a Stage 1 specification before its Stage 2 build.
+Before any step that must not start on agent judgement alone: an irreversible or one-way-door action, competing research route alternatives, or a commitment the principal has reserved for themselves. Never include to hold a Stage 1 specification for approval before its Stage 2 build.

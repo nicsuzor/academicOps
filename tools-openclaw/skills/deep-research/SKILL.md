@@ -22,6 +22,7 @@ Structure prompts for deep research tools and ingest outputs into the PKB.
 ## Prerequisites & Guardrails
 
 - Require `rclone` configured with a `gdrive` remote (`rclone lsd gdrive:`).
+- Gemini Deep Research accepts at most 10 file attachments per run; keep any source bundle for a Gemini run to 10 files or fewer.
 - Preserve raw outputs and Works Cited blocks verbatim without summarisation.
 - Transcribe diagrams and rasterized math via local vision; never send images to external OCR services.
 - Present transcription maps for user confirmation before final note creation.

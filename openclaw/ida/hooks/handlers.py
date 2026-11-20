@@ -21,6 +21,7 @@ from typing import Any
 
 from dispatch import (
     HookContext,
+    Kind,
     Result,
     _merge,
     _run_handler,
@@ -35,8 +36,10 @@ from hearsay_gate import (
     hearsay_arm,
     hearsay_handler,
     prompt_text,
+    record_pre_dispatch,
     should_arm_hearsay,
     subagent_pre_handback_check,
+    subagent_start_gate_notice,
 )
 from hearsay_gate import (
     is_peer_report as is_peer_report,
@@ -1156,7 +1159,11 @@ def pre_tool(ctx: HookContext) -> Result | None:
     res = subagent_pre_handback_check(ctx)
     if res is not None:
         return res
-    return _run_handler(hearsay_handler, ctx)
+    gate_res = _run_handler(hearsay_handler, ctx)
+    if gate_res is not None and gate_res.kind == Kind.REFUSE:
+        return gate_res
+    record_pre_dispatch(ctx)
+    return gate_res
 
 
 def post_tool(ctx: HookContext) -> Result | None:
@@ -1169,7 +1176,8 @@ def post_tool(ctx: HookContext) -> Result | None:
 
 def post_tool_batch(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical PostToolBatch."""
-    return _run_handler(rule_against_hearsay, ctx)
+    steps = (rule_against_hearsay, hearsay_arm)
+    return _merge([_run_handler(step, ctx) for step in steps])
 
 
 def post_tool_failure(ctx: HookContext) -> Result | None:
@@ -1179,7 +1187,8 @@ def post_tool_failure(ctx: HookContext) -> Result | None:
 
 def subagent_start(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical SubagentStart."""
-    return _run_handler(honest_output, ctx)
+    steps = (honest_output, subagent_start_gate_notice)
+    return _merge([_run_handler(step, ctx) for step in steps])
 
 
 def stop(ctx: HookContext) -> Result | None:

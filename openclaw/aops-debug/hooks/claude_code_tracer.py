@@ -663,6 +663,70 @@ def _subagent_name(agent_type: Any) -> str:
     return name.split(":", 1)[1] if ":" in name else name
 
 
+def _extract_payload_context_attrs(
+    data: dict | None,
+    state: dict | None = None,
+) -> dict[str, str]:
+    """Extract optional hook payload metadata (prompt.id, permission.mode, agent.type, session.title)."""
+    attrs: dict[str, str] = {}
+    ct = state.get("current_trace") if isinstance(state, dict) else None
+    ct_dict = ct if isinstance(ct, dict) else {}
+    d = data if isinstance(data, dict) else {}
+
+    prompt_id = d.get("prompt_id") or d.get("promptId") or ct_dict.get("prompt_id")
+    if prompt_id:
+        attrs["prompt.id"] = str(prompt_id)
+
+    perm_mode = d.get("permission_mode") or d.get("permissionMode")
+    if perm_mode:
+        attrs["permission.mode"] = str(perm_mode)
+
+    agent_type = d.get("agent_type") or d.get("agentType")
+    if agent_type:
+        attrs["agent.type"] = str(agent_type)
+
+    session_title = d.get("session_title") or d.get("sessionTitle")
+    if session_title:
+        attrs["session.title"] = str(session_title)
+
+    return attrs
+
+
+def classify_prompt_origin(
+    prompt_text: str,
+    *,
+    session_id: str | None = None,
+    is_system_message: bool = False,
+) -> tuple[str | None, str | None, str | None]:
+    """Classify a turn prompt's origin as ('handback'|'channel'|'system'|'user', handback_subagent_id, channel_source)."""
+    if not prompt_text:
+        return ("system", None, None) if is_system_message else (None, None, None)
+
+    m_hb = re.search(
+        r'<(?:agent-message|subagent-handback)[^>]*\b(?:from|agent|id)=["\']([^"\']+)["\']',
+        prompt_text,
+    )
+    if m_hb:
+        return "handback", m_hb.group(1), None
+
+    if "sender=" in prompt_text:
+        m_sender = re.search(r'\bsender=["\']?([^\s,>"\']+)["\']?', prompt_text)
+        if m_sender and m_sender.group(1) not in (session_id, "system"):
+            return "handback", m_sender.group(1), None
+
+    m_chan = re.search(r'<channel\b[^>]*\bsource=["\']([^"\']+)["\']', prompt_text)
+    if m_chan:
+        return "channel", None, m_chan.group(1)
+
+    if is_system_message or "<SYSTEM_MESSAGE>" in prompt_text:
+        return "system", None, None
+
+    if prompt_text.strip():
+        return "user", None, None
+
+    return None, None, None
+
+
 # ---------------------------------------------------------------------------
 # State file helpers
 # ---------------------------------------------------------------------------
@@ -1823,8 +1887,10 @@ def _build_and_export_spans(
     except Exception:
         host_name = ""
 
+    is_subagent = bool(parent_session_id or (agent_id and agent_id != session_id))
     resource_attrs = {
         "service.name": service_name,
+        "service.instance.id": session_id,
         "aops.surface": surface,
         "openinference.project.name": project_name,
         "project.name": project_name,
@@ -1836,14 +1902,14 @@ def _build_and_export_spans(
         resource_attrs["project.dir"] = project_dir
     if agent_id:
         resource_attrs["agent.id"] = agent_id
-        resource_attrs["subagent.id"] = agent_id
+        if is_subagent:
+            resource_attrs["subagent.id"] = agent_id
         if str(agent_id).startswith("task-"):
             resource_attrs["agent.task_id"] = str(agent_id)
     if parent_session_id:
         resource_attrs["parent.session_id"] = parent_session_id
     if task_id:
         resource_attrs["task.id"] = task_id
-        resource_attrs["tag.task_id"] = task_id
     if host_name:
         resource_attrs["host.name"] = host_name
     if username:
@@ -1912,7 +1978,8 @@ def _build_and_export_spans(
                     )
                 )
             )
-            tracer = provider.get_tracer("claude-code-tracer")
+            tracer_name = "agy-tracer" if surface == "agy" else "claude-code-tracer"
+            tracer = provider.get_tracer(tracer_name)
 
             ctx = None
             if parent_hex:
@@ -1956,7 +2023,8 @@ def _build_and_export_spans(
                 span.set_attribute("agent.name", agent_name)
             if agent_id:
                 span.set_attribute("agent.id", agent_id)
-                span.set_attribute("subagent.id", agent_id)
+                if is_subagent:
+                    span.set_attribute("subagent.id", agent_id)
                 if str(agent_id).startswith("task-"):
                     span.set_attribute("agent.task_id", str(agent_id))
             if parent_session_id:
@@ -1969,7 +2037,6 @@ def _build_and_export_spans(
             span.set_attribute("openinference.project.name", project_name)
             if task_id:
                 span.set_attribute("task.id", task_id)
-                span.set_attribute("tag.task_id", task_id)
             if host_name:
                 span.set_attribute("host.name", host_name)
             for gh_key, gh_value in github_attrs.items():
@@ -2336,6 +2403,7 @@ def _complete_turn(
     phoenix_session_id, agent_id, parent_session_id = _resolve_agent_and_parent_ids(state)
     cwd = state.get("cwd") or resolve_cwd(None, state)
     agent_name = state.get("agent_name") or resolve_agent_name()
+    is_subagent = bool(parent_session_id or (agent_id and agent_id != phoenix_session_id))
     root_attrs: dict[str, Any] = {
         "openinference.span.kind": "CHAIN",
         "session.id": phoenix_session_id,
@@ -2345,7 +2413,8 @@ def _complete_turn(
         root_attrs["user.id"] = username
     if agent_id:
         root_attrs["agent.id"] = agent_id
-        root_attrs["subagent.id"] = agent_id
+        if is_subagent:
+            root_attrs["subagent.id"] = agent_id
     if current_trace.get("handback_subagent_id"):
         hb_id = current_trace["handback_subagent_id"]
         root_attrs["subagent.id"] = hb_id
@@ -2353,13 +2422,21 @@ def _complete_turn(
         sub_rec = (state.get("subagents") or {}).get(hb_id)
         if sub_rec and sub_rec.get("agent_type"):
             root_attrs["subagent.name"] = _subagent_name(sub_rec["agent_type"])
+    if current_trace.get("prompt_origin"):
+        root_attrs["prompt.origin"] = current_trace["prompt_origin"]
+    if current_trace.get("channel_source"):
+        root_attrs["channel.source"] = current_trace["channel_source"]
+    for k, v in (current_trace.get("context_attrs") or {}).items():
+        root_attrs.setdefault(k, v)
     if parent_session_id:
         root_attrs["parent.session_id"] = parent_session_id
     if agent_name:
         root_attrs["agent.name"] = agent_name
     if cwd:
         root_attrs["cwd"] = cwd
-        root_attrs["project.dir"] = cwd
+        checkout_root = resolve_checkout_root(cwd)
+        if checkout_root:
+            root_attrs["project.dir"] = checkout_root
     if prompt_preview:
         root_attrs["input.value"] = prompt_preview
         root_attrs["input.mime_type"] = "text/plain"
@@ -2682,16 +2759,10 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
     if resolved_parent_id:
         state["parent_session_id"] = resolved_parent_id
 
-    handback_subagent_id = None
-    if prompt:
-        import re
-
-        m = re.search(
-            r'<(?:agent-message|subagent-handback)[^>]*\b(?:from|agent|id)=["\']([^"\']+)["\']',
-            prompt,
-        )
-        if m:
-            handback_subagent_id = m.group(1)
+    prompt_origin, handback_subagent_id, channel_source = classify_prompt_origin(
+        prompt, session_id=session_id
+    )
+    context_attrs = _extract_payload_context_attrs(data, state)
 
     pending_turn = state.pop("pending_turn_trace", None) or {}
     state["current_trace"] = {
@@ -2702,7 +2773,10 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
         "turn_number": turn_number,
         "prompt": prompt,
         "prompt_preview": _truncate(prompt) if prompt else "",
+        "prompt_origin": prompt_origin,
         "handback_subagent_id": handback_subagent_id,
+        "channel_source": channel_source,
+        "context_attrs": context_attrs,
         "human_count_at_start": human_count_at_start,
         "model_calls": [],
         "emitted_llm_span_count": 0,
@@ -3753,6 +3827,19 @@ def emit_debug_hook_span(
     attrs["description"] = desc
     if tool_name:
         attrs["tool.summary"] = desc
+
+    for k, v in _extract_payload_context_attrs(data, state).items():
+        attrs.setdefault(k, v)
+
+    prompt_text = data.get("prompt")
+    if isinstance(prompt_text, str) and prompt_text:
+        p_origin, p_hb, p_chan = classify_prompt_origin(prompt_text, session_id=session_id)
+        if p_origin:
+            attrs["prompt.origin"] = p_origin
+        if p_hb:
+            attrs["handback.subagent_id"] = p_hb
+        if p_chan:
+            attrs["channel.source"] = p_chan
 
     (_, _, _, _, _, _, SpanKind, _, _, _) = _otel_imports()
     surface = "agy" if client == "agy" else "claude-code"

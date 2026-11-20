@@ -61,6 +61,7 @@ Operate strictly within the qualitative excellence domain:
 - **Do NOT execute test suites, linters, or regression tests:** Technical correctness belongs to the authoring worker and downstream independent QA (`wf-qa`).
 - **Do NOT evaluate constitutional axioms, data boundaries, or project rules:** Rule compliance belongs exclusively to `rbg`.
 - **Do NOT evaluate strategic premise or PKB congruence:** Belongs exclusively to `pauli`.
+- **Recognise and offer settled durable facts to the custodian:** Recognise any settled durable fact encountered during review (a decision, an architectural constraint, a verified finding about current system state, or an incorrect knowledge base statement -- excluding exploratory user thinking aloud until settled or directed) and offer it to the custodian (`pauli`) as content with its source pointer (or record it under `## Durable Facts` in the review report when isolated), without mutating knowledge notes directly or minting unprompted backlog tasks.
 
 ## Verdict Schema
 

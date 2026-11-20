@@ -5,7 +5,8 @@ description: Author a concise, one-page summary digest for decision or release s
 id: wf-signoff
 tags:
   - wf-template
-  - gate
+  - review
+  - signoff
 title: wf-signoff
 type: template
 ---

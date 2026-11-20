@@ -236,6 +236,22 @@ export const MCP_TOOLS: ToolDefinition[] = [
     },
   },
   {
+    name: "list_threads",
+    description:
+      "List the forum topic threads known in a Telegram conversation with thread id, title and open or closed state. Telegram's Bot API has no list-topics method, so this is the plugin's own record of topics it created, or saw created, closed, reopened, renamed or posted in; topics that predate the record and have been silent since are missing.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        chat_id: { type: "integer", description: "Telegram chat ID (defaults to primary chat)" },
+        state: {
+          type: "string",
+          enum: ["all", "open", "closed"],
+          description: "Only return threads in this state (default: all)",
+        },
+      },
+    },
+  },
+  {
     name: "rename_thread",
     description:
       "Rename a Telegram forum topic and/or update its custom icon (editForumTopic). Cannot rename General topic #1; use edit_general_thread instead.",

@@ -32,7 +32,7 @@ Applies to all in-session and interactive work. Governs task creation boundaries
 
 3. **Seam verification**:
    - Handback and verification is required at all seams between agents.
-   - Every inter-agent report and handback must carry an Argdown argument in the correct format per the `premise-check` standard.
+   - Every inter-agent report and handback must carry an Argdown argument in the correct format per the `premise-check` standard, and any result that draws a `REVISE` verdict during review must be revised and reviewed again before handback.
 
 4. **Outer handover and dump**:
    - Only the user-facing coordinator runs the handover `/dump` sequence upon completion of the outer task.
@@ -45,5 +45,5 @@ Applies to all in-session and interactive work. Governs task creation boundaries
 - When proportionate to task stakes, risk, and blast radius, the brief specifies closing steps: logic check (`premise-check`) first, then compliance (`rbg`) and quality/requirements satisfaction (`marsha`) reviews.
 - The sub-coordinator evaluates the brief for effort calibration and ask fidelity; if ill-calibrated or containing unasked exclusions, the sub-coordinator returns the brief for rework.
 - On acceptance, the sub-coordinator runs `/q` first before substantial work (searching open and closed tasks to resume, reopen, or create the topic task), or routes to `wf-lookup` with zero task creation if the query is read-only. When work transitions to asynchronous container execution, the sub-coordinator places repo-scoped task(s) via `/q` and delegates directly to the dispatcher via `/dispatch` to launch containers running `/supervise` without pre-dispatch `/reify` in the interactive session.
-- If closing steps were specified, the sub-coordinator executes the reviews, resolves findings, and hands back the completed report with checked Argdown premises and `Relay:` lines.
+- If closing steps were specified, the sub-coordinator executes the reviews and resolves findings; any result that receives a `REVISE` verdict must be revised and sent back to the reviewer(s) to be reviewed again until it passes before handback, after which the sub-coordinator hands back the completed report with checked Argdown premises and `Relay:` lines.
 - The user-facing coordinator performs a final look over the handback before responding to the user.

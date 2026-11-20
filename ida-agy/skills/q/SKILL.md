@@ -19,7 +19,7 @@ Capture natural-language asks and situate them on the strategic graph: parented,
 2. **Multi-repository scoping**: When an incoming ask spans two or more repositories, create related repo-specific tasks (`type: "task"`, `project` set per repo; never pass `type: "epic"`):
    - Link tasks via `needs` when execution is sequential, or place under a shared cross-repo parent objective when parallel.
    - Create strictly one epic-sized task per repository, never splitting further at intake. In-container supervision decomposes in-repo execution workflows.
-3. **Affordable loss check**: Evaluate affordable loss before admitting commitments. If prospective downside or commitment cost violates affordable loss, flag as a priority ask for the user rather than admitting to the flow. Flow maths remains unpolluted by subjective risk gating.
+3. **Affordable loss check**: Evaluate affordable loss before admitting commitments. If prospective downside or commitment cost violates affordable loss, flag as a priority ask for the user rather than admitting to the flow. Flow maths remains unpolluted by subjective risk filtering.
 4. **Wire value-chain links under the Three-Purpose Taxonomy (ADR-0002)**: Add edges strictly per purpose, pushing weight links as far up the parent hierarchy as accurate:
    - **Weight Flow (`serves`, `supports`)**:
      - `serves`: Every minted non-bare task must wire a `serves` weight-flow link (`quantum`, `probability`, `effect`, `justification`, `set_by: "agent-proposed"`) pointing **either directly to a priced `target` node OR, more commonly, to an existing epic that adds weight (`serves`) to a priced `target`**, allowing the task to be valued down the chain. Avoid duplicate links to the same target already reached via that epic.
@@ -63,6 +63,7 @@ When invoked headlessly (e.g. correspondence sweep or `notes/mobile-captures/` i
 - Keep the user's exact words only in the referent the premise check reads (`## Ask` and equivalents); do not treat keeping exact words in PKB outputs as a goal.
 - Fault a restatement only for lost, added, or distorted meaning.
 - Link new messages to prior context, recompose asks into a clear logical structure, and cite message IDs as pointers.
+- Bound goals, deliverables, and acceptance criteria strictly to outcomes the assigned worker delivers and checks directly before releasing `done` -- exclude external post-exit acts (independent review, CI completion, PR merge, host deployment, user approval) unless that stage itself is the task's authorized unit of work, regardless of repository merge policy; separate dependent tasks carry those stages when required.
 - Leave ambiguity unresolved in the task; do not guess at intent.
 
 **Other sections**: Never duplicate structured frontmatter edges in prose or vice versa. Contextual citations, background references, and related artifacts are recorded exclusively as markdown `[[wikilinks]]` in the body (under `## Context` or `## Pointers`), which naturally provide structural clustering for graph physics and search without duplicating formal frontmatter weight edges.
