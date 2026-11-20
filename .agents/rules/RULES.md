@@ -77,13 +77,13 @@ Task titles and filenames must be brief, descriptive, and unambiguous:
 - **No person's name in titles or filenames:** A task title, note title, or filename must **never** contain a person's name or persona prefix (e.g., no `<name>: decision: ...`, `<name>-task-...`, `for-<name>.md`). Assignment belongs exclusively in the `assigned_to` or `assignee` frontmatter field.
 - **Filenames are kebab-case and purpose-driven:** All lowercase alphanumeric characters with hyphens, stating what the file contains or does.
 - **Task bodies are strictly concise:** Follow the canonical template in [`specs/meta/naming-and-decisions.md`](../../specs/meta/naming-and-decisions.md) (Goal, Deliverable, Scope, Acceptance criteria, Pointers). Never add narrative sections (`Background`, `References`, `Implementation Plan`) or prose task-to-task links.
-- **Parent/child is already an edge:** Setting `parent_id` links the hierarchy; do not redundantly wire edges between siblings/descendants of the parent without specific interactions. Tasks requiring review or follow-up must be structured either as a single task with internal subtasks (if single session) or as a dedicated epic with child tasks (if multi-session), never as loose siblings under an external parent.
+- **Parent/child is already an edge:** Setting `parent_id` links the hierarchy; do not redundantly wire edges between siblings/descendants of the parent without specific interactions. Tasks requiring review or follow-up must be structured either as a single task with internal subtasks (if single session) or as a composite parent task (`type: task`) with child tasks (if multi-session), never as loose siblings under an external parent.
 
 ## Three-Purpose Edge Taxonomy and Invariants
 
 Task graph edges follow the Three-Purpose Edge Taxonomy per [`specs/decisions/0002-distinguish-pkb-graph-edge-purposes-and-enforce-parsimony.md`](../../specs/decisions/0002-distinguish-pkb-graph-edge-purposes-and-enforce-parsimony.md):
 
-- **Single injection invariant**: Top-level deliverable tasks wire `serves` weight-flow links either directly to priced targets or to existing epics that `serves` priced targets, avoiding duplicate links to the same target; subtasks never carry redundant `serves` edges. Auxiliary tasks that directly reduce effort or raise success probability wire `supports` (forbidden for tracking tasks).
+- **Single injection invariant (Component-Weighting & Leaf-Inheritance Rule)**: Strategic Value Carriers -- enduring component/subsystem epics, multi-session initiative epics, and standalone major deliverables (freestanding commitments to external stakeholders belonging to no component or initiative epic) -- wire `serves` weight-flow links strictly to priced `target` nodes (never task-to-epic), priced at their full holistic weight (never as a remainder after child tasks). Child tasks, bugfixes, and subtasks carry zero `serves` edges and inherit worth via `parent` or `needs`. `supports` is retired.
 - **Prerequisites use `needs`**: Upward execution gating is declared exclusively via `needs: [<task_id>]`.
 - **Contextual references use `## Pointers`**: Soft references, cited documentation, and related artifacts live exclusively as markdown `[[wikilinks]]` in `## Pointers`. Duplicate frontmatter edges for body citations are prohibited.
 
@@ -92,7 +92,7 @@ Task graph edges follow the Three-Purpose Edge Taxonomy per [`specs/decisions/00
 Execution environments distinguish two worker modes:
 
 - **Plain leaf workers (`/pull`)**: A plain leaf worker executing a task operates strictly state-only: it may only mutate that task's own state (checking off acceptance criteria, recording verifiable evidence under `## Report`, transitioning status). Leaf workers never reify workflows, create child tasks, inspect or modify edges across other tasks, compute reverse graph dependencies, or mint follow-up verification tasks; unblocking, sequencing, and parent rollup belong exclusively to the graph engine, dispatcher, and background truth maintenance (`wf-reconcile`).
-- **Container coordinators (`/supervise`)**: A container coordinator claimed on a repository-scoped epic task enriches its claimed task by assembling workflows via `/reify` in-session, coordinates subagent fan-out and reviews with incremental `git push` checkpoints, and creates/wires repository-scoped follow-up tasks on the graph via `/q` solely when work explicitly cannot be completed in-session (different repository, different time, or workflow-mandated separate external agent/session).
+- **Container coordinators (`/supervise`)**: A container coordinator claimed on a repository-scoped epic task enriches its claimed task by assembling workflows via `/reify` in-session, coordinates subagent fan-out and reviews with incremental `git push` checkpoints, and creates/wires repository-scoped follow-up tasks on the graph via `/q` (parented under the governing component or initiative epic with `needs` prerequisites and zero leaf `serves` edges) solely when work explicitly cannot be completed in-session (different repository, different time, or workflow-mandated separate external agent/session).
 
 ## Recurring Jobs: Change-Only and Single-Flight
 
@@ -110,9 +110,9 @@ Subagent helpers are kept bounded through timely lifecycle management, batched o
 - **Batched operations**: Batch multi-item reads and mutations into single turns rather than serial round-trips.
 - **Active cache management**: Helpers must yield or complete before the 5-minute cache TTL expires; idling across cache invalidation boundaries is prohibited.
 
-## Bundled Pull Requests under Epics
+## Consolidated Feature-Branch Pull Requests
 
-When tasks execute under a parent task marked `bundle_pr: true` or under an active epic (`type: epic`), workers must commit directly to the designated epic branch (`polecat/<epic-id>` or `topic/<slug>`) and must not open detached pull requests against `dev`. All changes, test receipts, and review records bundle into the epic's single consolidated pull request for cohesive user review. If a standalone tracking pull request exists, it is marked superseded and closed upon consolidation.
+Related changes -- tasks executing under a composite parent task (`type: task` with children or `bundle_pr: true`), tasks modifying overlapping surfaces, or open pull requests grouped during a sweep -- gather on a shared feature branch (`bundle/<slug>` or `feat/<slug>`) and reach the user as a single consolidated pull request into `dev` ([`specs/workflows/pr-lifecycle.md`](../../specs/workflows/pr-lifecycle.md)). Each self-contained constituent branch (`polecat/<task-id>`) undergoes the three-lens diff review (strategic fit, compliance, quality) and, on `PASS`, is merged directly into the shared feature branch by the agent without waiting for user approval. Any superseded standalone donor pull request is closed immediately in the same step with a comment linking to the consolidated pull request. Pre-approval review on the consolidated pull request is a compliance description-only check (`wf-rbg`, "is this stupid?") without pre-approval rebase against `dev`; after user approval, the agent rebases onto `dev` and runs the full three-lens diff review over the combined diff before merging.
 
 ## Decisions Emerge from Graph Relationships, Not Standalone Tasks
 

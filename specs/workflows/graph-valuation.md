@@ -10,11 +10,10 @@ tags: [spec, workflow, valuation, ranking, densify, deadlines, intake, email, pk
 
 # Graph valuation: skills and agent logic for the flow rule
 
-**Home:** `specs/workflows/graph-valuation.md` in nicsuzor/academicOps. Skills and templates it
+**Home:** `specs/workflows/graph-valuation.md`. Skills and templates it
 changes are listed in §9.
 
-**Depends on:** the settled flow-rule spec,
-[`specs/flow-rule.md` in nicsuzor/mem](https://github.com/nicsuzor/mem/blob/main/specs/flow-rule.md).
+**Depends on:** the settled flow-rule specification (`specs/flow-rule.md` in the knowledge-base engine).
 That spec owns the maths, the edge fields and the scales. This spec owns everything an agent does
 around them: who writes which field, when, on what evidence, affordable loss assessment, decomposition probes,
 capital stock wiring, and valuation.
@@ -24,8 +23,8 @@ capital stock wiring, and valuation.
 _PKB Architecture & Prioritization Framework_. `FQn` are settled decisions in flow-rule §15.
 `Kn` are the workflow decisions settled in §12.
 
-**Status: settled (points 1–30 of spec_866ee53d).** This canonical specification governs how agents
-(Pauli, Ida) triage, capture, place, densify, and maintain the task graph under the settled flow model.
+**Status: settled (points 1–30).** This canonical specification governs how agents
+triage, capture, place, densify, and maintain the task graph under the settled flow model.
 
 ## 0. Executive Summary
 
@@ -52,13 +51,13 @@ before entering the graph. Flow maths is kept unpolluted by subjective risk gati
 
 **Three purposes of graph edges and edge parsimony (ADR-0002).** Edges serve three distinct, non-overlapping purposes:
 
-1. **Weight flow (Strategic valuation):** Injects worth from priced targets down through the graph (`serves` pointing directly to priced targets or to existing epics that `serves` priced targets, and `supports` where auxiliary work modifies difficulty or success probability). Both require explicit `quantum` and `probability`.
+1. **Weight flow (Strategic valuation via `serves`):** Injects worth from priced targets down through the graph (`serves` pointing strictly to priced `type: target` nodes on Strategic Value Carriers -- enduring component epics, multi-session initiative epics, and standalone major deliverables -- requiring explicit `quantum` and `probability`).
 2. **Sequencing of work (`needs` / execution prerequisite):** Defines strict temporal blocking (dependent $\to$ prerequisite). Purely Boolean execution gate; carries neither quantum nor probability.
 3. **Structural clustering, human understanding & strategic alignment:** Connects concepts, references, citations, and related artifacts. Represented exclusively as markdown `[[wikilinks]]` in the task body (`## Context`, `## Pointers`). Direct body references already act as clustering/interconnection edges in graph physics; duplicating them as formal frontmatter edges is strictly prohibited.
 
-**Project hierarchies and push-to-top rule.** Redundant child-to-ancestor links are prohibited. Weight links (`serves`) are pushed as far up the parent hierarchy chain as accurate (single injection at the deliverable level): a top-level deliverable task wires `serves` either directly to a priced `target` node or to an existing epic that `serves` a priced `target` (allowing valuation down the chain without duplicate links to the same target); subtasks inherit worth via closed-form induction. Weight links go exclusively to targets or target-serving epics; weight propagates to other nodes via real blocking (`needs`) and supporting (`supports`) tasks.
+**Component-Weighting & Leaf-Inheritance Rule (Single Injection Invariant).** Redundant child-to-ancestor links and task-to-epic `serves` links are prohibited. Weight links (`serves`) point strictly to `type: target` nodes and are authored exclusively on **Strategic Value Carriers**: (1) enduring component/subsystem epics (`status: ready`), (2) multi-session initiative epics, or (3) standalone major deliverables (freestanding commitments to external stakeholders belonging to no component or initiative epic). Differentiated child tasks, bugfixes, feature slices, refactors, config tweaks, and repo-scoped tasks under an epic carry **zero `serves` edges** and inherit worth via closed-form backward induction over `parent` ($V_{\text{parent}}(C_i) = V(E) \times (p_{\text{task}})^{k-1}$) and `needs`. At most one node along any `parent` chain wires `serves` to a given target, and epics are always priced at their full holistic component/initiative weight -- never as `"Remainder after the share its child tasks carry"` and never by summing child bugfix quanta.
 
-**Stricter semantics for `supports`.** Task $B$ `supports` task/target $A$ if and only if executing $B$ directly reduces the effort, cost, or difficulty of $A$, or increases $A$'s probability of success. A tracking or coordination task does NOT support the tasks it tracks (tracking makes zero difference to the tracked task's difficulty). A tracking task serves the strategic target of user understanding / observability and is confined to that target edge.
+**Retirement of `supports` and tracking-task boundaries.** `supports` / `soft_depends_on` is retired. A tracking or coordination task does NOT wire frontmatter edges to the tasks it tracks (tracking makes zero difference to the tracked task's difficulty; tracked tasks are referenced via markdown body `[[wikilinks]]`); when a standalone tracking initiative is valued, it serves the strategic target of user understanding / observability directly.
 
 **Decisions and empirical probes.** Competing architectural or design options stay inside the body of the scoping task or ADR until chosen. When chosen, only the selected option is reified into an actionable task under `parent: <task_id>`. Empirical probes are active investigative tasks (`classification: probe`) wired to the scoping task via standard `needs: [<probe_task_id>]`.
 
@@ -73,9 +72,29 @@ Marking it hard needs your word, or the rule below. Settled rule: a soft date th
 back twice becomes hard on the second push. The agent records why and tells you in one line, and one
 word from you reverses it.
 
-**Email.** Each message is placed against the graph before it becomes a task: what it would serve,
-and how much. A bcc circular with a date in it becomes a note or nothing, never an emergency. A
-sender's name adds no weight.
+**Email.** Each message undergoes mandatory source preparation before classification or intake:
+the full message body, thread history (`Re:`/`Fwd:`), and reachable non-banner attachments are
+fetched and read, recording a concise summary on the record (or stating the access boundary if behind
+an unreachable system or login). No sweep or intake path ever mints a task whose action for the
+principal is reading, opening, or checking an email, document, or link. Intake then applies a four-way
+obligation and triage gate:
+
+1. `noise` (automated notices, newsletters, broadcasts, calendar confirmations, CC observer copies)
+   creates nothing.
+2. `reference` (informational updates, granted approvals, outcomes, circulars, or forwarded threads
+   where the covering message asks nothing of the principal) updates existing gating tasks or knowledge
+   notes in place, creating zero user tasks.
+3. `opportunity` and unagreed work (invitations, offers, and inbound review, supervision, reference, or
+   collaboration asks where the principal was asked specifically rather than broadcast and has not yet
+   accepted the obligation; a calendar entry existing is not an agreed commitment) never becomes an
+   execution task for the principal; it is prepared on a single record (`status: review`, `assignee: user`,
+   `classification: opportunity` where applicable, `deadline_class: fake` by default unless accepted in
+   sent mail) with source summary, candidate options in the body (including decline or do nothing), and a
+   `[Recommended]` rationale so it reaches the principal solely as a decision.
+4. `action` (obligations the principal has already agreed to or requested) is prepared with agent
+   groundwork (`status: queued`) or a draft reply so any remaining step for the principal is a prepared
+   substantive action.
+   A sender's name adds no weight, and a stated date creates no deadline unless agreed to in sent mail.
 
 **How often you are asked.** One sitting a week of about twenty minutes: one link batch (up to 50 rows)
 or one pricing set (at most 10 targets). At most one other valuation question a day, sent in the daily
@@ -110,18 +129,15 @@ Redundant child-to-ancestor weight edges. Stored `alternative` and `settles` edg
 
 **Target.**
 
-- The three edge purposes are strictly distinguished: weight flow (`serves`/`supports`), sequencing
+- The three edge purposes are strictly distinguished: weight flow (`serves` -> `target`), sequencing
   (`needs`), and structural clustering (markdown body wikilinks without frontmatter duplication).
 - Target worth is estimated and written directly by agents with evidence on the open-ended continuous
   log scale ($W_t \in \mathbb{R}$, no cap), leaving `intent` untouched, with corrections made directly
   on the graph. Agents propose link values (`agent-proposed`), which are read at the default until
   calibrated (FR:474).
-- Weight links are pushed as far up the parent hierarchy as accurate (single injection invariant); top-level
-  tasks link to targets or target-serving epics; subtasks inherit worth via closed-form induction without
-  redundant child-to-ancestor weight links.
-- Stricter semantics for `supports`: tracking tasks link to user understanding targets, never to tracked tasks.
-- Weight requirements contract: target weight edges require probability and quantum; `needs` edges require neither;
-  `supports` requires weights when propagating value.
+- Under the Component-Weighting & Leaf-Inheritance Rule (single injection invariant), `serves` edges point strictly to `type: target` nodes and sit exclusively on Strategic Value Carriers (enduring component epics, multi-session initiative epics, and standalone major deliverables), priced at their full holistic weight; differentiated child tasks, bugfixes, and subtasks carry zero `serves` edges and inherit worth via closed-form `parent` and `needs` backward induction.
+- `supports` and task-to-epic `serves` are retired; tracking tasks reference tracked tasks via body `[[wikilinks]]` and never wire frontmatter edges to tracked tasks.
+- Weight requirements contract: target weight edges (`serves`) require probability and quantum; `needs` edges require neither.
 - Every categorical choice the flow rule moved out of the maths has exactly one agent owner here:
   deadline class, soft-to-hard, ripeness, triage, and human gates (S1, FR:422-433).
 
@@ -167,22 +183,18 @@ Covers U8, U9, U10, U11, S7, S24, S27, I7, I9.
    preferred: when an incoming ask can be handled inside an existing open epic-sized repo
    task as the same chunk of work, consolidate or merge into it rather than creating
    duplicate tasks.
-2. **Place (One-Task-per-Repo Rule).** Give the node its container. When a minted ask spans
-   two or more repositories, create related repo-specific tasks with strictly one task per
-   repository (never a monolithic multi-repo task). Under FQ1 this is a `part_of` edge if
-   the parent edge goes, or the parent field if it stays.
+2. **Place (Component Parenting & One-Task-per-Repo Rule).** Situate the task under its governing enduring component epic or multi-session initiative epic (`parent: <epic_id>`). If the ask belongs to a major architectural subsystem that lacks an enduring component epic, mint and weight the enduring component epic at architectural subsystem altitude first (`status: ready`, wired via `serves` to `type: target` nodes) and parent the task under it; minor isolated script or utility tweaks without a dedicated subsystem epic parent under the project's general infrastructure or root epic with zero leaf `serves` edges. When a minted ask spans two or more repositories, create related repo-specific tasks with strictly one task per repository (`project` set per repo) parented under the shared component or initiative epic with zero leaf `serves` edges (one-task-per-repo governs container execution isolation, while strategic valuation stays on the shared epic).
 3. **Affordable Loss Check (S24).** Agents (Pauli, Ida) evaluate affordable loss (Sarasvathy 2001)
    before admitting commitments. If prospective downside or commitment cost violates affordable loss,
    the agent flags it as a priority ask rather than admitting it to the flow. Flow maths
    remains unpolluted by subjective risk gating.
 4. **Wire what it serves under the Three-Purpose Taxonomy (ADR-0002).**
    Edges serve three distinct purposes. Agents must select the least mechanism required:
-   - **Purpose 1: Weight flow (`serves`, `supports`).**
-     - `serves`: Connects a top-level deliverable task directly to a priced `target` node ($W_t \in \mathbb{R}$) OR to an existing epic that `serves` a priced `target` (allowing valuation down the chain without duplicate links to the same target). Injects worth into the work graph.
-     - `supports`: Connects an auxiliary task to an upstream task or target when and only when executing the supporting task directly reduces the effort, risk, or difficulty of the supported node, or increases its probability of success.
-     - **Weight contract for flow edges:** Requires explicit `quantum` (word or float $0.0..=1.0$) and `probability` (word or float $0.0..=1.0$, default 1.00). Ask the quantum question: "If this were never done and everything else were, how much of the target/task would be lost?".
+   - **Purpose 1: Weight flow (`serves`).**
+     - `serves`: Connects a **Strategic Value Carrier** -- an enduring component/subsystem epic, a multi-session initiative epic, or a standalone major deliverable (a freestanding commitment to an external stakeholder belonging to no component or initiative epic) -- strictly to a priced `target` node ($W_t \in \mathbb{R}$, never task-to-epic). Injects worth into the work graph.
+     - **Weight contract for `serves` edges:** Requires explicit `quantum` (word or float $0.0..=1.0$) and `probability` (word or float $0.0..=1.0$, default 1.00). Ask the holistic quantum question for the component or initiative: "If this component or initiative were never done and everything else were, how much of the target would be lost?".
      - `effect: harms` when work endangers a target (S12, U13).
-     - `justification`: One sentence on what the work delivers to the target or how it assists the supported node.
+     - `justification`: One sentence on what the component epic, initiative epic, or standalone deliverable achieves for the target.
      - `set_by: agent-proposed`.
    - **Purpose 2: Work sequencing (`needs`).**
      - Points upward from a dependent task to its execution prerequisite task ($B \to A$).
@@ -191,16 +203,14 @@ Covers U8, U9, U10, U11, S7, S24, S27, I7, I9.
      - Connects concepts, references, parent contexts, tracking targets, and cited documentation.
      - Authored exclusively as markdown `[[wikilinks]]` in the task body (`## Context`, `## Pointers`, `## Report`).
      - **Zero frontmatter duplication:** Direct references in task bodies already act as clustering/interconnection edges in graph physics and semantic search. Anything cited in the body must **not** have duplicate formal frontmatter edges with weights.
-5. **Project hierarchies and push-to-top rule.**
-   - Weight links (`serves`) must be pushed as far up the parent hierarchy chain as they can go and still be accurate. Wire `serves` exclusively on the highest task defining the deliverable, pointing either directly to a priced `target` or to an existing epic that `serves` a priced `target`.
-   - Subtasks inherit worth from their composite parent via closed-form induction ($V(C_i) = V(E) \times (p_{\text{task}})^{k-1}$). Subtasks must **never** carry redundant `serves` links to targets already served by ancestors.
-   - Child-to-ancestor weight edges are strictly prohibited.
-   - Weight links go exclusively to targets or target-serving epics; weight propagates to other nodes via real blocking (`needs`) and supporting (`supports`) tasks.
-6. **Stricter semantics for `supports`.**
-   - Functional test: Task $B$ `supports` task/target $A$ if and only if executing $B$ causally changes $A$'s execution parameters (reduced effort, mitigated risk, higher success odds).
-   - **Tracking tasks do NOT support tracked tasks:** Creating a tracking task, observing progress, logging status, or assembling reports makes zero difference to the tracked task's difficulty or probability of completion.
-   - A tracking task serves the strategic target of user understanding (operational visibility, cognitive orientation). Its flow edge must be confined strictly to pointing at that user understanding target (via `serves` or `supports` to the target), never to the tracked tasks.
-   - Tracked tasks are referenced exclusively via markdown body wikilinks (`[[task_id]]`).
+5. **Component-Weighting & Leaf-Inheritance Rule (Single Injection Invariant).**
+   - `serves` edges point strictly to `type: target` nodes (never task-to-epic) and sit exclusively on Strategic Value Carriers (enduring component epics, multi-session initiative epics, and standalone major deliverables), with at most one node along any `parent` chain wiring `serves` to a given target.
+   - Differentiated child tasks, bugfixes, feature slices, refactors, config tweaks, QA/review tasks, and repo-scoped tasks under an epic carry **zero `serves` edges** and inherit worth from their composite parent via closed-form backward induction ($V_{\text{parent}}(C_i) = V(E) \times (p_{\text{task}})^{k-1}$) and `needs`.
+   - Epics are always priced at their full holistic component/initiative weight -- never as `"Remainder after the share its child tasks carry"` and never by summing child bugfix quanta.
+   - Child-to-ancestor and task-to-epic weight edges are strictly prohibited.
+6. **Retirement of `supports` and tracking-task boundaries.**
+   - `supports` / `soft_depends_on` is retired; soft contextual references live as markdown `[[wikilinks]]` in `## Pointers`, and execution prerequisites use `needs`.
+   - **Tracking tasks never wire frontmatter edges to tracked tasks:** Creating a tracking task, observing progress, logging status, or assembling reports makes zero difference to the tracked task's difficulty or probability of completion. Tracked tasks are referenced exclusively via markdown body wikilinks (`[[task_id]]`).
 7. **Capital Stock Hubs for Opening Futures (S27).** Foundational investments that expand future
    optionality (reputation, relationships, tool scaffolding, capital reserves) are wired directly
    to capital stock targets, avoiding speculative deep dependency trees.
@@ -220,36 +230,63 @@ Covers U8, U9, U10, U11, S7, S24, S27, I7, I9.
     `parent: <task_id>`. Empirical probes are active investigative tasks (`classification: probe`) wired to the
     scoping task via standard `needs: [<probe_task_id>]`. Stored `alternative` and `settles` edges are prohibited.
 13. **Do not write:**
-    - `intent` (FQ10), `severity` (FQ24), `stakeholder` as a weight (FQ25), target worth, `soft_depends_on`, or `supersedes` (FR:448).
+    - `intent` (FQ10), `severity` (FQ24), `stakeholder` as a weight (FQ25), target worth, `supports`, `soft_depends_on`, or `supersedes` (FR:448).
     - Stored `alternative` or `settles` edges.
     - Duplicate frontmatter edges for documents or tasks cited in markdown body wikilinks.
-    - `supports` edges from tracking/coordination tasks to the tasks they track.
-    - Redundant child-to-ancestor `serves` edges on decomposed subtasks.
+    - Frontmatter edges from tracking/coordination tasks to the tasks they track.
+    - Task-to-epic `serves` edges, leaf `serves` edges on child tasks under component or initiative epics, or `"Remainder after the share its child tasks carry"` epic weights.
     - `quantum` or `probability` on `needs` prerequisite edges.
 
-**Headless context** (mobile capture, email). The same steps, headless with no interactive prompt.
-Where the container or the targets cannot be identified, leave the input untouched for the next
-interactive pass. This matches the capture-intake contract (`specs/workflows/capture-intake.md`).
+**Headless context** (mobile capture, email). The same steps run headlessly with no interactive prompt,
+preceded by mandatory source preparation: sweeps fetch and read the full message body, thread history
+(`Re:`/`Fwd:`), and reachable non-banner attachments (or summarize reachable context and state the
+access boundary if an item sits behind an unreachable login), writing a concise summary on the record.
+No sweep or intake path ever mints a task whose action for the principal is reading, opening, or
+checking an email, document, or link. Capture triage evaluates obligation before placement: external asks
+or unagreed opportunities reach the principal solely as a prepared decision (`status: review`,
+`assignee: user`) with options in the body (including decline or do nothing) and a recommendation, or as
+an agent investigation probe (`classification: probe`), never as an accepted user execution task.
+Where the container or targets cannot be identified autonomously, leave the input untouched for the
+next interactive pass. This matches the capture-intake contract (`specs/workflows/capture-intake.md`).
 
 ## 4. R2 -- Email placement
 
 Covers U1, U15, S5, S7, and calibration case 1.
 
-The correspondence sweep (PKB-tier template `wf-email-sweep`) already captures unmatched inbound
-asks "through intake" (module C). This spec adds a placement judgment to that step:
+The correspondence sweep (PKB-tier template `wf-email-sweep`) captures unmatched inbound asks
+through intake (module C). This spec adds mandatory source preparation and an obligation and placement
+judgment to that step:
 
-1. **Classify first**: `noise`, `reference`, `action` or `opportunity`. This keeps the existing
-   classification (email triage guide) and adds `opportunity` for invitations and offers.
-2. **`noise`** gets nothing. **`reference`** becomes a knowledge note or nothing. A circular or bcc
-   message is `reference` unless it asks by name for something only they can give.
-3. **`action` and `opportunity`** go to `/q` in the headless context, carrying the message id. The
-   edges `/q` proposes cite the message in their justification.
-4. **Dates in the message** are captured `fake`. They become `soft` only where sent mail
-   accepts the date, and `hard` only through R5. A sender's own stated date ("by next Monday")
-   creates no pressure (U15).
-5. **The sender's name adds no worth** (FR:498). Who is waiting is context in the body, and moves
-   worth only through an edge to a priced target.
-6. **Strategic contacts.** Some senders bear on a target, for example institutional leadership
+1. **Mandatory source preparation before classification**: Sweeps fetch and read the full message
+   body, thread history (`Re:`/`Fwd:`), and reachable non-banner attachments (or summarize reachable
+   context and explicitly state the access boundary when an item sits behind an unreachable system or
+   login), writing a concise summary on the record. No sweep or intake path ever mints a task whose
+   action for the principal is reading, opening, or checking an email, document, or link.
+2. **Four-way obligation and triage gate**:
+   - **`noise`** (automated notices, newsletters, broadcasts, calendar auto-confirmations, CC observer
+     copies): creates nothing.
+   - **`reference`** (informational updates, approvals granted, project outcomes, circulars, or forwarded
+     action headers addressed to third parties where the covering message asks nothing of the
+     principal): updates any gating task or knowledge note in place and creates zero user tasks. A circular
+     or bcc message is `reference` unless it explicitly asks by name for something only the principal can provide.
+   - **`opportunity` / unagreed work** (invitations, offers, and inbound review, supervision, reference,
+     or collaboration asks where the principal was asked specifically rather than broadcast and has not yet
+     accepted the obligation; a calendar entry existing is not an agreed commitment): never minted as an
+     execution task for the principal. Prepared on a single record (`status: review`, `assignee: user`,
+     `classification: opportunity` where applicable, `deadline_class: fake` default unless accepted in
+     sent mail) with source summary, candidate options inside the body (including decline or do nothing), and
+     a `[Recommended]` rationale so it reaches the principal solely as a decision.
+   - **`action`** (obligations the principal has already agreed to or requested): prepared with agent
+     groundwork (`status: queued`) or a draft reply so any remaining step for the principal is a prepared
+     substantive action.
+3. **Headless intake routing**: `action` and `opportunity` records route through `/q` in the headless
+   context, carrying the message identifier. The edges `/q` proposes cite the message in their justification.
+4. **Dates in the message**: Captured as `deadline_class: fake`. They become `soft` only where sent mail
+   confirms explicit acceptance of the date, and `hard` only through R5. A sender's own stated deadline
+   ("by next Monday") creates no pressure (U15).
+5. **The sender's name adds no worth** (FR:498): Who is waiting is context recorded in the task body, and
+   moves worth strictly through an edge to a priced target.
+6. **Strategic contacts**: Some senders bear on a target, for example institutional leadership
    (calibration case 4). The agent proposes the edge to that target. If no target fits, it adds a
    one-line "no target fits" entry to the ask queue (R7). It never forces a mismatched target.
 
@@ -261,22 +298,18 @@ Covers S7, U20, FR:474, and FR:472.
 one batch and runs again only after the previous batch is answered or expires (R7).
 
 **Candidate pool.** Rows are drawn in this order. Pricing comes first, through R4, before any link
-batch. Densify evaluates only genuine weight flow edges (`serves`, and valid `supports` that causally
-alter an upstream task or target). Converting markdown body citations into frontmatter edges is strictly prohibited.
+batch. Densify evaluates only genuine `serves -> target` weight flow edges on Strategic Value Carriers. Converting markdown body citations into frontmatter edges or retaining `serves` on child tasks under an epic is strictly prohibited.
 
-1. Edges at `set_by: migrated` that await confirmation: 51 `supports` quanta and 83 `serves` words
-   on today's graph (FR:467-468).
+1. Edges at `set_by: migrated` that await confirmation on Strategic Value Carriers (FR:467-468).
 2. Edges at `set_by: agent-proposed`.
-3. Edges with no quantum, for which pauli drafts a proposal.
+3. Edges with no quantum on Strategic Value Carriers, for which pauli drafts a holistic proposal.
 
 **Ordering.** Each row's _reach_ is `|worth of the priced targets the edge leads to| × proposed
 strength`. It is read from the flow outputs' `stake` map (FR:604-610). Rows are sorted by reach,
 highest first, then by age of proposal. Reach is used only to order the rows. It is never shown as
 a value and never summed across tasks (FR:207).
 
-**Granularity before value.** Wire at the highest node where the answer is the same for everything
-beneath it. This carries over from the weight-repair template's rule. A row covering fungible
-siblings is one row for their container, not one row each.
+**Component-Weighting & Leaf-Inheritance Rule (Single Injection Invariant).** Wire `serves` strictly to `type: target` nodes and exclusively on Strategic Value Carriers (enduring component epics, multi-session initiative epics, and standalone major deliverables), with at most one node along any `parent` chain wiring `serves` to a given target. Differentiated child tasks, bugfixes, and subtasks under an epic carry **zero `serves` edges** and inherit worth via `parent` (or `needs`). Price epics at their full holistic component/initiative weight -- never as `"Remainder after the share its child tasks carry"` and never by summing child bugfix quanta. When encountering leaf `serves` edges on child tasks or remainder-priced epics, hoist the holistic component weight onto the parent epic and strip `serves` from the child tasks.
 
 **The batch table** (one message, at most 50 rows):
 
@@ -444,8 +477,7 @@ agents james, marsha, rbg, sara; and all tools-plugin skills.
 
 | Edge Purpose | Label / Representation | Target Node Type | Required Frontmatter Fields | Mathematical / Engine Behaviour |
 | :- | :- | :- | :- | :- |
-| **1. Weight Flow** | `serves` | `target` (priced) or target-serving epic | `to`, `quantum`, `probability`, `effect`, `justification`, `set_by` | Injects worth: $V(E) = W_t \times q \times p$. Pushed to top-level deliverable or target-serving epic. |
-| **1. Weight Flow** | `supports` | `target` or `task` | `to`, `quantum`, `probability`, `effect`, `justification`, `set_by` | Value modifier for auxiliary work causally reducing effort or raising success odds. Forbidden for tracking. |
+| **1. Weight Flow** | `serves` | `target` (priced) | `to`, `quantum`, `probability`, `effect`, `justification`, `set_by` | Injects worth: $V(E) = W_t \times q \times p$. Authored exclusively on Strategic Value Carriers (enduring component epics, multi-session initiative epics, standalone major deliverables) at full holistic weight; child tasks carry zero `serves` edges and inherit worth via `parent`. |
 | **2. Work Sequencing** | `needs` | `task` | `to` | Boolean execution prerequisite. Unblocks when prerequisite is `done`. Engine treats as $q=1.0, p=1.0$. Quantum and probability are NOT written. |
 | **3. Structural Clustering** | `[[node_id]]` | Any (task, note, spec) | None in frontmatter; written as markdown wikilinks in body | Natural clustering for graph physics and search. Zero frontmatter duplication. |
 
@@ -495,7 +527,7 @@ Each test can be checked by an observer reading the graph or a transcript.
 | A1 | `/q` writes only proposals | Run `/q` on three fixture asks. `get_task` on each new node shows every outgoing edge with `label`, `effect`, a justification and `set_by: agent-proposed`. None shows `set_by: user`, `intent`, `severity` or target worth. | S7, U9, R1 |
 | A2 | A bare idea carries nothing | `/q` on an idea that names no target. The node has a container and no other edge. Flow `gain` and `loss_averted` are both 0. | U9, I7 |
 | A3 | An opportunity is one node | Fingerprint every other node's fields before and after `/q` on an opportunity. Only the new node and its own edges differ. | U10, I9 |
-| A4 | The circular stays quiet | Replay calibration case 1 (the "Dear Friends" Copyright Plus forward) through R2. It is classed `reference`, or captured with `deadline_class: fake` and no edge above the default quantum. It is not in the top 50 under any display key. | U1, U15 |
+| A4 | The circular stays quiet | Replay calibration case 1 (the "Dear Friends" Copyright Plus forward) through R2. It is classed `reference`, updating existing notes in place with zero user tasks created, or captured with `deadline_class: fake` and no edge above the default quantum. It is not in the top 50 under any display key. | U1, U15 |
 | A5 | No worth from a sender | Two fixture emails, identical except the sender (a strategic contact versus an unknown). They produce identical edge proposals. | FR:498, U1 |
 | A6 | Densify batch shape | One `wf-densify` run produces one message with ≤ 50 rows, sorted by reach in descending order, each row carrying every column. | S7, U20 |
 | A7 | Densify writes proposals directly | One `wf-densify` run writes edge proposals as `agent-proposed` without pausing for sign-off. | U20, R3 |
@@ -513,9 +545,11 @@ Each test can be checked by an observer reading the graph or a transcript.
 | A19 | Every changed file changed as §9 says | Diff of the implementation PR against §9: every row is present, and no unlisted skill changed. | this spec |
 | A20 | Three edge purposes distinguished | Verify edge taxonomy distinguishes (1) weight flow to targets, (2) sequencing via `needs`, and (3) clustering via body wikilinks without frontmatter duplication. | ADR-0002, AC2 |
 | A21 | Zero duplicate frontmatter edges for body citations | Inspect tasks with markdown body citations (e.g. a task citing references in its body). Verify no duplicate frontmatter edges are authored for nodes cited in body prose. | ADR-0002, AC2 |
-| A22 | Project hierarchy single injection | Inspect subtasks under an epic or composite task. Verify subtasks carry no redundant child-to-ancestor `serves` links to targets already served by their parent. | ADR-0002, AC3 |
-| A23 | Strict supports semantics | Inspect tracking and coordination tasks (e.g. an operational tracking task). Verify they do not link `supports` to tracked tasks, and link only to user understanding targets. | ADR-0002, AC4 |
-| A24 | Weight contracts enforced | Verify `needs` edges carry neither quantum nor probability; verify target weight edges (`serves`) and `supports` carry explicit quantum and probability. | ADR-0002, AC5 |
+| A22 | Component-weighted single injection | Inspect child tasks and bugfixes under an enduring component or initiative epic. Verify child tasks carry zero `serves` edges and inherit worth via `parent`, while the parent epic carries the full holistic `serves -> target` weight. | ADR-0002, AC3 |
+| A23 | Tracking-task & retired `supports` boundaries | Inspect tracking and coordination tasks. Verify `supports` is retired and tracking tasks do not wire frontmatter edges to tracked tasks (referencing tracked tasks via body `[[wikilinks]]`). | ADR-0002, AC4 |
+| A24 | Weight contracts enforced | Verify `needs` edges carry neither quantum nor probability; verify `serves -> target` weight edges on Strategic Value Carriers carry explicit quantum and probability. | ADR-0002, AC5 |
+| A25 | Mandatory source preparation | Replay correspondence sweep on messages containing attachments, thread history, and external links. Verify sweeps fetch and read full bodies, threads, and reachable attachments, producing summaries on the record; verify zero tasks are minted whose action for the principal is reading, opening, or checking an email, document, or link. | R2.1 |
+| A26 | Four-way obligation gate | Replay fixture emails across four classes: (1) `noise` creates nothing; (2) `reference` updates existing notes or tasks in place with zero new user tasks; (3) unagreed `opportunity` creates a single record at `status: review`, `assignee: user` with summary, candidate options (including decline), and a recommendation; (4) agreed `action` creates a queued task prepared with agent groundwork or a draft reply. | R2.2 |
 
 ## 12. Settled decisions
 
@@ -535,8 +569,10 @@ All questions K1–K11 are settled under the product-grade workflow redesign:
 5. **K5: Re-pricing. Settled (§6):** Targets are re-confirmed after 180 days in a routine pricing sitting.
 6. **K6: Proposed hard dates. Settled (§7.1):** Agents propose `hard` on published evidence; it enters
    the priority ask queue if due within 14 days, otherwise waits for the weekly sitting.
-7. **K7: Email opportunity class. Settled (§4):** Invitations and offers become `opportunity` nodes
-   when they name something of indicated interest or that contributes to a known target.
+7. **K7: Email opportunity class. Settled (§4):** Invitations, offers, and unagreed inbound
+   collaboration asks reach the principal solely as decisions (`status: review`, `assignee: user`)
+   prepared with source summary, candidate options (including decline or do nothing), and recommendation,
+   never as execution tasks.
 8. **K8: Batch size. Settled (§5):** Batches are capped at 50 rows, ordered by reach.
 9. **K9: Pricing sitting size. Settled (§6):** Capped at 10 targets per sitting. Positive and negative
    targets are judged in the same sitting to maintain ratio consistency.
@@ -559,8 +595,8 @@ All questions K1–K11 are settled under the product-grade workflow redesign:
 - `blocks` edges in `/pull` and `/dump`.
 - The weight-repair template.
 - Duplicating markdown body citations as formal frontmatter edges with weights.
-- Wiring `supports` from tracking or coordination tasks to the tasks they track.
-- Authoring redundant child-to-ancestor `serves` weight edges on decomposed subtasks.
+- Wiring `supports` edges or task-to-epic `serves` edges.
+- Authoring leaf `serves` weight edges on child tasks or bugfixes under component or initiative epics, or pricing epics as `"Remainder after the share its child tasks carry"`.
 - Stating `quantum` or `probability` on `needs` prerequisite edges.
 - Authoring stored `alternative` and `settles` edges.
 
