@@ -14,13 +14,13 @@ Dispatched worker containers operate in two modes:
 
 ## 1. Verify Readiness & Satisfiability
 
-Read each named task (or ready children of a parent container). A task is ready when `status: queued`, no open `needs` dependencies remain, and no conflicting worker container is already running on the same subsystem artifacts.
+Read each named task (or ready children of a parent container). A task is ready when `status: queued`, no open `needs` dependencies remain, and no worker container is already running on the same task ID. If an unlinked task covers overlapping subsystem artifacts, start the handed worker and send the overlap to the supervisor as a clarification.
 
-Check acceptance criteria and composition state before launching:
+Check acceptance criteria and composition state before choosing a command, and always start a worker on the handed task:
 
-- **Unsatisfiable post-exit criteria**: If any criterion demands an external post-exit act outside the container's scope that neither `/ida:supervise` nor `/ida:pull` can produce and verify before releasing `done` (independent review, PR merge, host deployment, user approval), halt dispatch for that task and report its ID and unreachable criterion for task repair.
-- **Supervised (`/ida:supervise <task-id>`)**: Satisfiable tasks lacking `## Instructions` + `## Appendix: Sources` (and not `invoke /<skill>`), or composite/multi-stage tasks requiring supervision or fan-out.
-- **Leaf (`/ida:pull <task-id>`)**: Satisfiable single-skill directives (`invoke /<skill>`) or reified atomic leaf tasks (`## Instructions` + `## Appendix: Sources`).
+- **Gap or external post-exit criteria**: If a criterion appears unreachable before releasing `done` (independent review, PR merge, host deployment, user approval) or the task has a gap, start the worker on the handed task and send the gap to the supervisor as a clarification -- never refuse to dispatch.
+- **Supervised (`/ida:supervise <task-id>`)**: Tasks lacking `## Instructions` + `## Appendix: Sources` (and not `invoke /<skill>`), or composite/multi-stage tasks requiring supervision or fan-out.
+- **Leaf (`/ida:pull <task-id>`)**: Single-skill directives (`invoke /<skill>`) or reified atomic leaf tasks (`## Instructions` + `## Appendix: Sources`).
 
 ## 2. Launch Containers
 

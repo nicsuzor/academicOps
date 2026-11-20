@@ -23,7 +23,7 @@ Invoke `/hydrate` (via custodian when called by a non-custodian). Cite hydration
   2. _PKB_: PKB `type: "template"` with `project: null`.
   3. _Universal_: Core templates in `../workflow-library/workflows/*.md` enumerated and read via native file tools.
 - **Groundwork-first route decisions**: Settle unknowns (PKB first, then repository host and traces) and select recommended routes directly (`status: "queued"`). Close (`done`) already-shipped work once user-informed; set `status: "review"` (`assignee: "user"`) only when groundwork and a reasoned recommendation are recorded and the item genuinely waits on the user's decision or host action.
-- **Template interpretation**: Translate selected template stages into concise numbered imperative steps in `## Instructions` (never copy template prose). Invoke skills as `invoke /<skill-name>`; compose agent workflows rather than mechanical scripts for qualitative judgment. Halt and report if composition fails.
+- **Template interpretation**: Translate selected template stages into concise numbered imperative steps in `## Instructions` (never copy template prose). Invoke skills as `invoke /<skill-name>`; compose agent workflows rather than mechanical scripts for qualitative judgment. When composition has a gap, write nothing incomplete to the graph and ask the supervisor for clarification rather than declining the task.
 
 ## 3. Write Each Task
 
