@@ -8,6 +8,7 @@ description: "Format, select surfaces for, and manage Telegram interactions (mes
 Mobile cognitive load is the binding constraint: users read on a phone between commitments. Load this skill before your first reply and pick the native Bot API surface matching the message purpose.
 
 **Load references on demand before authoring:**
+
 - [references/formatting-and-widgets.md](references/formatting-and-widgets.md) — rich formatting, Mini App `detail`, widgets, inline reactions.
 - [references/rich-messages.md](references/rich-messages.md) — headings, `<table bordered striped compact>`, `<aside>`, math, `<tg-map>`, `tg://<type>?id=...` `media`, `<tg-thinking>` drafts.
 - [references/widgets.md](references/widgets.md) — Live Status trackers and custom HTML Widgets (`send_widget`, `edit_message_widget_data`, `answer_widget_query`).
@@ -54,7 +55,7 @@ Concise 1-2 line context or direct answer.
 ## Decisions, Buttons & Widget Queries
 
 - **Self-contained decisions:** Present one decision per message with a 2-line context summary, reasoned recommendation first (`recommended: true` / `(Recommended)`), and proportionate `pros`/`cons`/`detail`.
-- **`reply` markup:** Pass `binary_decision: true` (`[✅]`/`[❌]`) *only* for yes/no proposals, `buttons` (`{ label, callback_data | copy_text }`, 2D arrays / `button_layout` / `buttons_per_row`) for inline actions, and neither for plain notices. Pass `predefined_row: true` to pack `🔍`, `[🧐 Check]`, `[💡 Explain]`, `[🧾]`, and `[🙏]` onto row 1.
+- **`reply` markup:** Pass `binary_decision: true` (`[✅]`/`[❌]`) _only_ for yes/no proposals, `buttons` (`{ label, callback_data | copy_text }`, 2D arrays / `button_layout` / `buttons_per_row`) for inline actions, and neither for plain notices. Pass `predefined_row: true` to pack `🔍`, `[🧐 Check]`, `[💡 Explain]`, `[🧾]`, and `[🙏]` onto row 1.
 - **Action button events:**
   - `🧐 Check` (`logic_check`): Run `premise-check` on that message; reply `PASS`/`REVISE`/`FAIL` + reason.
   - `💡 Explain` (`explain`): Expand rationale and supporting evidence.
@@ -67,8 +68,8 @@ Concise 1-2 line context or direct answer.
 
 - **Handling:** Inbound messages auto-mark `👀`. Use reaction-only completion (`🫡`, `✍`, `🐳`) when no reply is owed. On `👎`, investigate, fix, or replan reported substance/blockers directly without asking the user to reword or classify; route `😡` to systemic diagnosis (`/learn`) and `🤔` to an immediate progress check.
 - **Shared legend (one meaning each; Telegram-validated):**
-  - *Lifecycle:* `👀` reading | `✍` saved to KB | `🐳` worker dispatched | `🕊` subagent dispatched | `🤔` awaiting user | `💔` blocked/failed | `🎉` completed with reply | `🫡` handled silently
-  - *Feedback:* `👎` substance defect | `👍` affirm | `🔥` breakthrough | `🤝` agree | `💯` aligned | `🏆` milestone | `🙏` thanks | `🤣` humor | `🤯` surprising | `😢` regret
+  - _Lifecycle:_ `👀` reading | `✍` saved to KB | `🐳` worker dispatched | `🕊` subagent dispatched | `🤔` awaiting user | `💔` blocked/failed | `🎉` completed with reply | `🫡` handled silently
+  - _Feedback:_ `👎` substance defect | `👍` affirm | `🔥` breakthrough | `🤝` agree | `💯` aligned | `🏆` milestone | `🙏` thanks | `🤣` humor | `🤯` surprising | `😢` regret
 
 ## Threads, Media, Voice & Commands
 
