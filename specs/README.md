@@ -60,6 +60,7 @@
 - [telegram/question-delivery.md](telegram/question-delivery.md) -- delivery guarantee for structured questions over Telegram, confirmed button rendering, dynamic bot resolution, and fast failure surfacing.
 - [telegram/reactions.md](telegram/reactions.md) -- Telegram reaction handling contract, platform-authoritative validation, and unified shared reaction legend across bot personas.
 - [telegram/reply-button-layout.md](telegram/reply-button-layout.md) -- reply button layout customization, consolidated predefined row, and tap acknowledgement specification.
+- [telegram/rich-messages-and-widgets.md](telegram/rich-messages-and-widgets.md) -- Bot API 10.1–10.4 Rich Messages and HTML Widgets across answers, reports, decisions, questions, live progress, and streaming rich drafts.
 - [telegram/shared-telegram-channel.md](telegram/shared-telegram-channel.md) -- shared Telegram channel transport, inbound update normalization, progressive-disclosure replies, asynchronous questions, and rich media, location, interactivity, draft streaming, and poll tools.
 - [telegram/shunt-handover.md](telegram/shunt-handover.md) -- single-command conversation handover from any session to Telegram across local, remote-control, and cloud environments.
 - [telegram/threaded-conversations.md](telegram/threaded-conversations.md) -- threaded Telegram conversations and topic message routing by default without configuration.

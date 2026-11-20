@@ -262,7 +262,7 @@ describe("Shared Telegram Channel Core & Specification Compliance", () => {
     const bot = new TelegramBotClient(config, broker, permRelay, () => {}, store);
     (bot as any).callApi = async (method: string, payload: Record<string, unknown>) => {
       apiCalls.push({ method, payload });
-      if (method === "sendMessage") {
+      if (method === "sendWidget" || method === "sendMessage") {
         return { ok: true, result: { message_id: ++msgIdCounter } };
       }
       return { ok: true, result: true };
@@ -296,12 +296,14 @@ describe("Shared Telegram Channel Core & Specification Compliance", () => {
 
     // Verified AC-3.1: Tool acknowledges immediately with question_ids and status "posted"
     expect(askResult.status).toBe("posted");
+    expect(askResult.presentation).toBe("widget");
     expect(askResult.question_ids.length).toBe(1);
     const qid = askResult.question_ids[0];
 
-    // Card was sent to Telegram
-    const sendCardCall = apiCalls.find((c) => c.method === "sendMessage");
+    // HTML Widget was sent to Telegram
+    const sendCardCall = apiCalls.find((c) => c.method === "sendWidget");
     expect(sendCardCall).toBeDefined();
+    expect(sendCardCall?.payload.allow_queries).toBe(true);
 
     // User taps option 0 on Telegram -> AC-3.2: delivered as continuation turn event
     const resolveRes = await broker.resolveAnswer(qid, 0);
