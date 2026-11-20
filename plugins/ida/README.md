@@ -39,8 +39,8 @@ Endpoints and credentials have no default values and must be supplied in the lau
 | Variable | Description |
 | - | - |
 | `PKB_MCP_URL` | HTTP endpoint URL for the Personal Knowledge Base MCP service |
-| `DISPATCHER_MCP_TOKEN_ID` | Cloudflare Access service token ID for hook PKB search and OTLP export |
-| `DISPATCHER_MCP_TOKEN_SECRET` | Cloudflare Access service token secret for hook PKB search and OTLP export |
+| `CF_ACCESS_CLIENT_ID` | Cloudflare Access service token client ID for hook PKB search and OTLP export |
+| `CF_ACCESS_CLIENT_SECRET` | Cloudflare Access service token client secret for hook PKB search and OTLP export |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP collector endpoint URL for OpenTelemetry span emission |
 | `AOPS_SESSION_ID` | Active session or conversation identifier for trace correlation and PKB operations |
 | `AOPS_SESSIONS` | Directory path for local session transcript and state correlation |

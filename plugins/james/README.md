@@ -45,7 +45,7 @@ flowchart TD
 | Skills | `decompose` | Expand situated objectives into dependency sub-graphs |
 | Skills | `hydrate` | Disambiguation index and semantic search across the knowledge base |
 | Skills | `remember` | Persist and consolidate durable knowledge into canonical notes |
-| Skills | `session-trace` | Query Phoenix OpenTelemetry traces, spans, and transcripts |
+| Skills | `phoenix` | Query Arize Phoenix OpenTelemetry traces, spans, and transcripts |
 | Skills | `learn` | Diagnose systemic framework faults and propose minimal workflow remedies |
 | Skills | `craft` | Authoring standard and quality gate for agent instructions and workflows |
 | Skills | `daily` | Generate and update daily notes and prompt sweep summaries |
@@ -59,20 +59,19 @@ flowchart TD
 
 ## How It Is Configured
 
-Packaged diagnostic scripts (`session-trace`) read the following environment variables (endpoints and credentials have no default values):
+Packaged diagnostic scripts (`phoenix`) read the following environment variables (endpoints and credentials have no default values):
 
 | Variable | Description |
 | - | - |
 | `PHOENIX_MCP_URL` | HTTP endpoint URL for the Arize Phoenix OpenTelemetry span store |
 | `PHOENIX_MCP_PROJECT` | Project namespace name within Arize Phoenix |
-| `DISPATCHER_MCP_TOKEN_ID` | Cloudflare Access service token ID for authenticated Phoenix queries |
-| `DISPATCHER_MCP_TOKEN_SECRET` | Cloudflare Access service token secret for authenticated Phoenix queries |
-| `AOPS_SESSIONS` | Directory path for local session metadata and trace correlation |
+| `CF_ACCESS_CLIENT_ID` | Cloudflare Access service token client ID for authenticated Phoenix queries |
+| `CF_ACCESS_CLIENT_SECRET` | Cloudflare Access service token client secret for authenticated Phoenix queries |
 
 ## What It Depends On
 
 - Python 3.11 or later
 - Personal Knowledge Base (`pkb` / `services`) MCP server configured in the client harness
-- Arize Phoenix OpenTelemetry tracing backend (for `session-trace` and `learn`)
+- Arize Phoenix OpenTelemetry tracing backend (for `phoenix` and `learn`)
 - GitHub CLI (`gh`) for repository pull request and issue workflows
 - Node.js and `@argdown/cli` (for standalone Argdown map validation in `argument-extraction`, `argument-audit`, and `argument-map`)
