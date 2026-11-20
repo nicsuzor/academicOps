@@ -25,6 +25,7 @@ Claim and execute an already-decomposed queued PKB task or single-skill task to 
 ### 3. Consolidate Findings
 
 - Write the handback proof `/dump` records under `## Report`: the `premise-check` `argdown` block, asked by the task's frozen ask IDs, with the basis of every load-bearing premise.
+- **Recognise and route settled durable facts**: Recognise any settled durable fact uncovered during task execution (a decision, an architectural constraint, a verified finding about current system state, or an incorrect knowledge base statement -- excluding exploratory user thinking aloud until settled or directed). Offer it to the knowledge base custodian (`pauli`) as content with its source pointer without mutating knowledge notes directly, or record it under `## Durable Facts` in the task record and handover summary when operating in an isolated or headless context where the custodian is unreachable.
 
 ### 4. Validate Against Criteria
 

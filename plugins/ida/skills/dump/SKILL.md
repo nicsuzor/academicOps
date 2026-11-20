@@ -43,10 +43,10 @@ If an ad-hoc or interactive session modified repository project files without an
 
 ### 3. Capture Durable Facts and Repair Contradictions
 
-1. **Durable Facts (Six-Month Threshold)**: Review decisions, constraints, and verified environment invariants learned during the session. If a fact holds enduring institutional value across a six-month horizon:
-   - In interactive sessions, offer the fact directly to the knowledge base custodian (`pauli`) as content.
-   - In headless or isolated worker sessions, record the facts under `## Durable Facts` in the task record and handover summary for custodian collection.
-2. **Knowledge Base Repair on Sight**: When encountering conflicting, incorrect, irrelevant, demonstrably false, or outdated knowledge base information during the session, report the contradiction and affected notes to the custodian (`pauli`) for on-sight correction and pruning.
+1. **Settled Durable Facts (Six-Month Threshold)**: Recognise any settled durable fact met or verified during the session (a user or architectural decision, a constraint, a verified finding about how a system works now, or an incorrect knowledge base statement) that holds enduring value across a six-month horizon, without mutating knowledge notes directly or minting unprompted backlog tasks. The user thinking aloud or exploring (an idea or a way of working) states no fact or decision: pass none on until the user settles it or directs capture.
+   - When the knowledge base custodian (`pauli`) is reachable in-session, offer the fact directly to `pauli` as content with its source pointer.
+   - In isolated or headless worker contexts where the custodian is unreachable, record the facts under `## Durable Facts` in the task record and handover summary for custodian collection.
+2. **Knowledge Base Repair on Sight**: When encountering conflicting, unnecessary, demonstrably false, or stale knowledge base information during the session, offer the correction and affected note pointers to the custodian (`pauli`) (or record under `## Durable Facts` when isolated) for immediate on-sight repair and retirement.
 
 ### 4. Release Claimed Tasks
 
@@ -116,7 +116,7 @@ Compile the overall session outcome with session traceability:
 2. **Summary**: Concise synthesis of findings, modifications, and outcomes.
 3. **Status & Safeguards**:
    - STATUS: <done | partial | failed | cancelled | in_progress>
-   - GATE: <the acceptance criterion id tested, and observed result against it>
+   - CRITERION: <the acceptance criterion id tested, and observed result against it>
    - CONFIDENCE: <high | med | low> + <what single check would falsify this>
    - CONFOUND CHECK: <did a clean-room/differential control run? result? -- or "NOT RUN">
 4. **Output**: <branch + commit SHA> | <PR or artifact link>

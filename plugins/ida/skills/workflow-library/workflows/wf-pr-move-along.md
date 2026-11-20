@@ -27,7 +27,7 @@ Drives an individual open pull request through its progression lifecycle: confir
    - Inspect the target repository for project-local PR rules, branch policies, or local finish templates.
    - The project's own policy strictly overrides universal defaults:
      - Target base branch is defined by project rules.
-     - Merge authority (such as autonomous merge on green, human sign-off gate, or release cut approval) is determined by project policy.
+     - Merge authority (such as autonomous merge on green, human sign-off requirement, or release cut approval) is determined by project policy.
      - When no project override exists, fallback to standard risk-tier governance: low-risk changes merge on independent verification; operational or high-risk changes require reviewer sign-off.
      - Pre-approval readiness: Before approval, a PR must be green and reviewed by independent agents; mergeability against the base branch is not required before approval. A worker PR opens as a draft (`gh pr create --draft`) and is marked ready for review (`gh pr ready`) only after the independent check passes and proportionate review by independent agents is posted to the PR thread, without waiting for approval.
 
@@ -44,7 +44,7 @@ Drives an individual open pull request through its progression lifecycle: confir
 4. **Verify Approval and Readiness**:
    - Check whether required approvals are recorded per project policy.
    - Before approval, a PR only requires green checks and proportionate review by independent agents posted to the PR; do not rebase or resolve merge conflicts before approval.
-   - If the PR is gated on external human approval, unmerged dependencies, or substantive author revisions, leave the PR open and record an explicit disposition reason.
+   - If the PR is awaiting external human approval, unmerged dependencies, or substantive author revisions, leave the PR open and record an explicit disposition reason.
 
 5. **Settle Merge Conflicts and Land**:
    - Once all approvals required for merge are filed (or for changes authorized for autonomous merge):
@@ -61,5 +61,5 @@ Drives an individual open pull request through its progression lifecycle: confir
 - Must not merge a pull request with failing or pending required checks.
 - Must not merge a pull request with an active changes-requested review.
 - Must not rebase or resolve merge conflicts before required approvals are recorded.
-- Must not bypass project-specific merge gates or approval requirements.
+- Must not bypass project-specific merge requirements or approval requirements.
 - Must not leave an unmerged pull request without a documented, checkable reason.

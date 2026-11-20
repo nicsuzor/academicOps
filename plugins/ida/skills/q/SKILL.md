@@ -19,7 +19,7 @@ Capture natural-language asks and situate them on the strategic graph: parented,
 2. **Multi-repository scoping**: When an incoming ask spans two or more repositories, create related repo-specific tasks (`type: "task"`, `project` set per repo; never pass `type: "epic"`):
    - Link tasks via `needs` when execution is sequential, or place under a shared cross-repo parent objective when parallel.
    - Create strictly one epic-sized task per repository, never splitting further at intake. In-container supervision decomposes in-repo execution workflows.
-3. **Affordable loss check**: Evaluate affordable loss before admitting commitments. If prospective downside or commitment cost violates affordable loss, flag as a priority ask for the user rather than admitting to the flow. Flow maths remains unpolluted by subjective risk gating.
+3. **Affordable loss check**: Evaluate affordable loss before admitting commitments. If prospective downside or commitment cost violates affordable loss, flag as a priority ask for the user rather than admitting to the flow. Flow maths remains unpolluted by subjective risk filtering.
 4. **Wire value-chain links under the Three-Purpose Taxonomy (ADR-0002)**: Add edges strictly per purpose, pushing weight links as far up the parent hierarchy as accurate:
    - **Weight Flow (`serves`, `supports`)**:
      - `serves`: Every minted non-bare task must wire a `serves` weight-flow link (`quantum`, `probability`, `effect`, `justification`, `set_by: "agent-proposed"`) pointing **either directly to a priced `target` node OR, more commonly, to an existing epic that adds weight (`serves`) to a priced `target`**, allowing the task to be valued down the chain. Avoid duplicate links to the same target already reached via that epic.
