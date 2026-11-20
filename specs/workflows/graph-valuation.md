@@ -36,8 +36,9 @@ wiring capital stock hubs, proposing values, handling dates, retiring dead oppor
 **The principal's role shrinks to direct corrections.**
 
 1. **Target pricing by agent estimation.** Agents work out the best approximate worth for each target
-   and write it directly to the graph on the bounded continuous scale ($W_t \in [-1.0, 1.0]$; positive
-   aspirations up to +1.00, core commitments around +0.70 to +0.80, and negative anti-targets down to -1.00)
+   and write it directly to the graph on the open-ended continuous log scale ($W_t \in \mathbb{R}$, no cap;
+   positive aspirations for gains, negative anti-targets for losses, using price ratios to express
+   relative value across fat-tailed outcomes)
    with one line of evidence, never set `intent`, and the principal corrects values directly on the graph.
 2. **Densify link values in batches of fifty.** Agents draft and write values for unvalued edges ordered
    by reach: how much of the target it delivers and how likely, with one sentence each, written as
@@ -111,8 +112,8 @@ Redundant child-to-ancestor weight edges. Stored `alternative` and `settles` edg
 
 - The three edge purposes are strictly distinguished: weight flow (`serves`/`supports`), sequencing
   (`needs`), and structural clustering (markdown body wikilinks without frontmatter duplication).
-- Target worth is estimated and written directly by agents with evidence on the bounded continuous
-  scale ($W_t \in [-1.0, 1.0]$), leaving `intent` untouched, with corrections made directly
+- Target worth is estimated and written directly by agents with evidence on the open-ended continuous
+  log scale ($W_t \in \mathbb{R}$, no cap), leaving `intent` untouched, with corrections made directly
   on the graph. Agents propose link values (`agent-proposed`), which are read at the default until
   calibrated (FR:474).
 - Weight links are pushed as far up the parent hierarchy as accurate (single injection invariant); top-level
@@ -177,7 +178,7 @@ Covers U8, U9, U10, U11, S7, S24, S27, I7, I9.
 4. **Wire what it serves under the Three-Purpose Taxonomy (ADR-0002).**
    Edges serve three distinct purposes. Agents must select the least mechanism required:
    - **Purpose 1: Weight flow (`serves`, `supports`).**
-     - `serves`: Connects a top-level deliverable task directly to a priced `target` node ($W_t \in [-1.0, 1.0]$) OR to an existing epic that `serves` a priced `target` (allowing valuation down the chain without duplicate links to the same target). Injects worth into the work graph.
+     - `serves`: Connects a top-level deliverable task directly to a priced `target` node ($W_t \in \mathbb{R}$) OR to an existing epic that `serves` a priced `target` (allowing valuation down the chain without duplicate links to the same target). Injects worth into the work graph.
      - `supports`: Connects an auxiliary task to an upstream task or target when and only when executing the supporting task directly reduces the effort, risk, or difficulty of the supported node, or increases its probability of success.
      - **Weight contract for flow edges:** Requires explicit `quantum` (word or float $0.0..=1.0$) and `probability` (word or float $0.0..=1.0$, default 1.00). Ask the quantum question: "If this were never done and everything else were, how much of the target/task would be lost?".
      - `effect: harms` when work endangers a target (S12, U13).
@@ -297,8 +298,8 @@ contradicting its own justification. The correction is written as `agent-propose
 
 Covers S14, S12, S16, S26, S27, U20, FR:377-391.
 
-- **Scale.** The bounded continuous scale within server-enforced engine bounds ($W_t \in [-1.0, 1.0]$).
-  Mirrored anchors for positive aspirations (+0.05 up to +1.00, with core commitments around +0.70 to +0.80 and top-tier moonshots at +1.00) and negative anti-targets (-0.05 down to -1.00 for ruinous catastrophe). These replace the standing-weight instrument's five positive-only anchors (FQ7, FQ28). Targets may also be configured as capital stock hubs (S27).
+- **Scale.** The open-ended continuous log scale ($W_t \in \mathbb{R}$, no cap; S26).
+  Positive targets carry positive worth and negative anti-targets carry negative worth, with price ratios expressing relative value across fat-tailed outcomes (for example, a moonshot at 10% odds competes with a sure thing at 90% odds when priced at ~9x, and at 2% odds when priced at ~45x). There is no upper or lower cap. These replace the standing-weight instrument's five positive-only anchors (FQ7, FQ28). Targets may also be configured as capital stock hubs (S27).
 - **Agent estimation and direct write.** pauli works out the best approximate worth for each unpriced target and one line of evidence. The evidence is what serves the target, how much open work sits behind it, and its old `severity` used only as a prompt (FR:391). pauli writes the estimated `worth` directly to the target node via `pkb.update_task` and leaves `intent` untouched. Corrections are made directly on the graph.
 - **Batches.** At most ten targets per run, outer bounds first: one Critical and one Low-or-Minor anchor evaluated first. Gain and loss targets are priced in the same pass, so their ratios are judged together (S16).
 - **Consistency pass**: Ordering is transitive, and the ratios are plausible ("about one Critical balances three Substantial"). This is the existing instrument's procedure, kept.
