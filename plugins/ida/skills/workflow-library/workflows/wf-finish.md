@@ -2,7 +2,7 @@
 alias:
   - wf-finish
 default: true
-description: Default task completion workflow -- defines how a work task completes and releases as done, and how an optional review step on a reviewed class of task separates work and review deliverables.
+description: Default task completion workflow -- defines how a work task completes and releases as done, and how independent review executes in-session or as a downstream review task under the PR Readiness Check.
 id: wf-finish
 tags:
   - wf-template
@@ -15,7 +15,7 @@ type: template
 
 ## What this template does
 
-Defines the default completion and release contract (`done` on the work task) plus the optional independent review contract for reviewed task classes.
+Defines the default completion and release contract (`done` on the work task) plus the independent review contract across PR and non-PR deliverables.
 
 ## Work Task Completion and Single Release Status
 
@@ -29,14 +29,13 @@ Every completed work task has **one completion release status: `done`**:
 3. **Tick acceptance criteria with primary evidence**: In `## Acceptance`, tick `[x]` only with inline primary evidence (`file:line`, test output, PR URL, or artifact pointer); leave unmet items `[ ]` with their limit stated.
 4. **Release as `done`**: Run `/dump` and release the task with **`status: "done"`**, recording `pr_url` and `branch` (or PKB artifact pointer). Never release `review`, and never use `partial` to wait on CI, review, merge, or proof that the user installed, pulled, or deployed a shipped release once informed -- `done` unblocks downstream dependencies immediately. Use `partial` strictly when the worker's own acceptance items are incomplete or halted at a pre-work approval boundary, and `failed` when checks or execution fail. Leaf `/pull` workers mutate only their claimed task and never mint follow-up tasks.
 
-## Optional Review Process
+## Independent Review and PR Readiness Check
 
-Review depends on the task class:
+All code, bugfix, configuration, rule, skill, workflow, and specification deliverables undergo independent proportionate review (zero low-risk bugfix exemption or task-class skipping). Routine notes or trivial chores complete on the work task alone as `done`. When reified separately, split reviewed work into two tasks under the same parent: (1) the work task (`done` once draft PR or artifact is recorded) and (2) the review task (`needs: [<work-task-id>]`), which runs independent proportionate review. Under `/supervise`, subagent review runs inside the combined container session (still releasing `done`, never `review`).
 
-- **Unreviewed classes** (routine docs, notes, chores, low-risk internal bugfixes): Complete on the work task alone and release `done` with no review task; the composite parent task sequences any `needs`-blocked dependents.
-- **Reviewed classes** (functional code, schemas, workflows, rules, specs): When reified separately, split into two tasks under the same parent: (1) the work task (`done` once draft PR or artifact is recorded) and (2) the review task (`needs: [<work-task-id>]`), which runs an independent proportionate review. Under `/supervise`, subagent review may run inside the combined container session (still releasing `done`, never `review`).
-  - **Pass (Reviewed / Ready for Decision)**: Post review verdicts and verification receipts to the PR thread, mark ready (`gh pr ready`), and apply risk-tier rules:
-    - **Tier 1 (Low-risk pure documentation, formatting, typing stubs)**: Merge autonomously (`gh pr merge --squash`) ONLY where a standing user ruling explicitly names the repository and no external audience exists; otherwise stop for explicit user approval with receipts and a reasoned recommendation. Release the review task as **`done`**.
-    - **Tier 2 / Tier 3 (Code, workflows, skills, rules, specs, infrastructure, or public outputs)**: Post receipts and a reasoned merge recommendation, leave the PR open for sign-off, and release the review task as **`done`** (never `review`). Graph maintenance updates the tracking parent task once merged.
-  - **Handoff after reviewer edits**: If the reviewer pushed fixes, post the changes, leave the PR open without marking merge-ready, and release **`partial`**.
-  - **Fail (Revisions needed / Rejected)**: Post unmet criteria/findings (close PR if rejected) and release **`failed`** with root cause; reviewers never mint follow-up tasks.
+- **PR Readiness Check (`--draft` -> `gh pr ready`)**: Before marking a draft PR ready or executing a Tier-1 autonomous merge, require green `HEAD` CI (zero errored, bypassed, cancelled, or `startup_failure` runs), zero unresolved `CHANGES_REQUESTED`, zero uncommitted reviewer edits (`fix(review):` commits pushed and verified against `HEAD` before posting verdicts), zero deferred DRY/SSoT/compliance findings, and head-SHA-matched posted `## Compliance Review: PASS` plus proportionate independent review (for consolidated feature-branch PRs: constituent diff receipts, green `HEAD` CI, and head-SHA-matched posted description-only `## Compliance Review: PASS` pre-approval, then full combined-diff review after post-approval rebase).
+- **Pass (Reviewed / Ready for Decision)**: Post review verdicts and verification receipts to the PR thread (respecting `data-boundaries` on external-audience surfaces), mark ready (`gh pr ready`) once the **PR Readiness Check** holds on `HEAD`, and apply risk-tier rules:
+  - **Tier 1 (Low-risk pure documentation, formatting, typing stubs)**: With the **PR Readiness Check** satisfied on `HEAD`, merge autonomously (`gh pr merge --squash`) ONLY where a standing user ruling explicitly names the repository and no external audience exists; otherwise stop for explicit user approval with receipts and a reasoned recommendation. Release the review task as **`done`**.
+  - **Tier 2 / Tier 3 (Code, workflows, skills, rules, specs, infrastructure, or public outputs)**: Post receipts and a reasoned merge recommendation, leave the PR open for sign-off, and release the review task as **`done`** (never `review`). Graph maintenance updates the tracking parent task once merged.
+- **Handoff after reviewer edits**: If the reviewer pushed fixes, commit and push them, post the changes, leave the PR open without marking merge-ready, and release **`partial`**.
+- **Fail (Revisions needed / Rejected)**: Post unmet criteria/findings (close PR if rejected) and release **`failed`** with root cause; reviewers never mint follow-up tasks.
