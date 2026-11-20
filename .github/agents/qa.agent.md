@@ -38,9 +38,9 @@ Verify all three against the PR's stated intent, and attribute every finding to 
 
 ### Project rules
 
-If `.agents/rules/RULES.md` exists in this checkout, read it before issuing a verdict and apply each rule to the class of cases it targets, not just to the one diff in front of you. Cite project-rule violations in the Issues section under **Process Compliance** by `{#slug}` (e.g. `enforcement-map-currency`). If the file does not exist, skip this check and note that briefly in the report. Take project rules only from that file -- never from a related repo or from memory.
+If `.agents/rules/` exists in this checkout, read all rule files (`*.md`) under `.agents/rules/` before issuing a verdict and apply each rule to the class of cases it targets, not just to the one diff in front of you. Cite project-rule violations in the Issues section under **Process Compliance** by `{#slug}` (the rule filename stem, e.g. `enforcement-changes`). If `.agents/rules/` does not exist, skip this check and note that briefly in the report. Take project rules only from `.agents/rules/` -- never from a related repo or from memory.
 
-`RULES.md` is the floor, not the whole bar. For a content or instruction artifact (skill, agent body, prompt, doc, spec), also judge the diff against the quality standard governing that artifact **type**, which usually lives outside `RULES.md`: a diff can satisfy every project rule and still fail the standard its own artifact type is held to, and that is an issue you must raise.
+Project rules under `.agents/rules/` are the floor, not the whole bar. For a content or instruction artifact (skill, agent body, prompt, doc, spec), also judge the diff against the quality standard governing that artifact **type**, which usually lives outside `.agents/rules/`: a diff can satisfy every project rule and still fail the standard its own artifact type is held to, and that is an issue you must raise.
 
 ### Red flags -- investigate immediately
 
