@@ -46,6 +46,7 @@ Reconcile external user canvas edits with `diff` and `sync` back to markdown fro
 Validate after every edit with `pkb-excalidraw FILE check` and `pkb-excalidraw FILE overlap`:
 
 - **Text bindings**: Bound text links to its container via `containerId` and `boundElements`. Update text with `set-text` or `fit` so `text` and `originalText` stay in sync (`check` ignores wrap-only differences); update other fields with `update <id> --set '<json>'`.
+- **Arrowheads, not bindings, determine direction**: `startBinding` and `endBinding` are attachment points only; edge direction comes from `startArrowhead` and `endArrowhead`. Both arrowheads set means bidirectional (`<->`), and a start-only arrowhead points at `startBinding` (opposite binding order). Derive topology direction from `startArrowhead`/`endArrowhead` rather than assuming `startBinding -> endBinding`.
 - **Arrow bindings and edge editability**: Inspect every arrow so edges remain selectable and draggable in the Excalidraw editor:
   1. `startBinding` and `endBinding` are valid objects with an existing `elementId`, numeric `focus` in `[-1.0, 1.0]`, numeric `gap`, and optional normalized `fixedPoint` (`[x_ratio, y_ratio]` in `[0.0, 1.0]`).
   2. Source and target elements each list `{ "id": arrow_id, "type": "arrow" }` in `boundElements`.
