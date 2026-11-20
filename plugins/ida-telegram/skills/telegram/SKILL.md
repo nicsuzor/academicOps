@@ -67,12 +67,19 @@ Every reply sent over Telegram automatically carries inline action buttons with 
 - **Act on semantic reactions:** When the user adds a 👎 reaction to a message (a `reaction` event whose `added` contains 👎), treat it as feedback on substance -- the failure or blocker the message reported -- not on how the message was written. Act directly on the reported failure (investigate, fix, unblock, or replan) without asking the user to classify the reaction or critique the wording. Negative user reactions (such as `😡`) route directly to systemic error diagnosis (`/learn`); thinking reactions (`🤔`) route to an immediate status investigation and report of current progress.
 - **Reaction-only completion:** Completed background work or handled requests requiring no user action or decision receive only a reaction update (such as `🫡`, `✍`, or `🐳`), eliminating chatter.
 - **Inbound message status:** The channel marks inbound messages with 👀 upon arrival.
-- **Shared reaction legend:** All bot personas share a single reaction legend with exactly one meaning per reaction and one reaction per state. Telegram authoritatively validates reactions; unsupported reactions surface platform errors directly.
-  - _Lifecycle states:_
+- **Shared reaction legend:** All bot personas share a single reaction legend with exactly one meaning per reaction and one reaction per state. Telegram authoritatively validates reactions against its `ReactionTypeEmoji` set (no bespoke plugin allowlist); unsupported reactions surface platform errors directly. Because Telegram's `ReactionTypeEmoji` set has no judge, gavel, or robot emoji, RBG uses `🗿` and `agy` uses `👾` (in-session) and `👻` (containerised synchronous).
+  - _Lifecycle and dispatched-holder states:_
     - `👀` inbound: message received and being read/assessed.
-    - `✍` captured: note, decision, intake, or task persisted to knowledge base.
-    - `🐳` dispatched (polecat): work briefed and dispatched to an isolated background worker (a polecat holds it).
-    - `🕊` dispatched (subagent): work delegated to an internal subagent (a subagent holds it).
+    - `✍` captured / Pauli durable-fact capture: note, decision, intake, or task persisted to knowledge base, or message sent to Pauli solely to extract durable facts.
+    - `🤓` dispatched (Pauli, other knowledge work): message held by Pauli for knowledge work other than durable-fact capture.
+    - `🗿` dispatched (RBG): message held by RBG for compliance or rule review.
+    - `👨‍💻` dispatched (James): message held by James for execution supervision or review arbitration.
+    - `💅` dispatched (Marsha): message held by Marsha for qualitative excellence review.
+    - `🤪` sub-Ida (self): a sub-Ida is judging or handling the message herself.
+    - `🐳` dispatched (Sara / polecat): work briefed and dispatched to Sara or an isolated background polecat worker.
+    - `👾` dispatched (agy, in-session): work held by an in-session `agy` run.
+    - `👻` dispatched (agy, containerised synchronous): work held by a containerised synchronous `agy` run.
+    - `🕊` dispatched (general-purpose subagent): used only when a sub-Ida hands off work to a general-purpose subagent.
     - `🤔` waiting: a question, choice, or clarification is pending user reply in chat.
     - `💔` blocked or failed: execution halted or hit an external blocker (reply details the refusal).
     - `🎉` completed: task answered or resolved with substantive reply.

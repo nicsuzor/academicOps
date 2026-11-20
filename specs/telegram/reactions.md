@@ -23,17 +23,23 @@ As an operator interacting with multiple bot personas across chat windows, I wan
 
 - **AC-2.1** Given an inbound user message, when the message arrives and advances through lifecycle milestones, then every bot persona updates the message reaction according to the unified lifecycle legend:
   - `👀` : Inbound message received and being read/assessed.
-  - `✍` : Captured: note, decision, intake, or task persisted to knowledge base.
-  - `👨‍💻` : Working locally (in-session): execution handled directly by the receiving persona in its active session (bot itself holds it).
-  - `🐳` : Dispatched (polecat): briefed and dispatched to an isolated background worker (a polecat holds it).
-  - `🕊` : Dispatched (subagent): delegated to an internal subagent (a subagent holds it).
-  - `🤝` : Dispatched (peer): briefed and handed off to an independent peer agent (a peer holds it, e.g. Sara or Pauli).
+  - `✍` : Captured / Pauli durable-fact capture: note, decision, intake, or task persisted to knowledge base, or message sent to Pauli solely to extract durable facts.
+  - `🤓` : Dispatched (Pauli, other knowledge work): message held by Pauli for knowledge work other than durable-fact capture.
+  - `🗿` : Dispatched (RBG): message held by RBG for compliance or rule review.
+  - `👨‍💻` : Dispatched (James): message held by James for execution supervision or review arbitration.
+  - `💅` : Dispatched (Marsha): message held by Marsha for qualitative excellence review.
+  - `🤪` : Sub-Ida (self): a sub-Ida is judging or handling the message herself.
+  - `🐳` : Dispatched (Sara / polecat): briefed and dispatched to Sara or an isolated background polecat worker.
+  - `👾` : Dispatched (agy, in-session): work held by an in-session `agy` run.
+  - `👻` : Dispatched (agy, containerised synchronous): work held by a containerised synchronous `agy` run.
+  - `🕊` : Dispatched (general-purpose subagent): used only when a sub-Ida hands off work to a general-purpose subagent.
+  - `🤝` : Dispatched (peer): briefed and handed off to an independent peer agent.
   - `👌` : Understood / addition taken on: acknowledged an addition, modification, or constraint taken on to existing work or direction.
   - `🤔` : Waiting: a question, choice, or clarification is pending user reply.
   - `💔` : Blocked or failed: execution halted or hit an external blocker (reply details the refusal).
   - `🎉` : Completed: task answered or resolved with substantive reply.
   - `🫡` : Acknowledged: request handled/completed where no substantive reply was owed.
-- **AC-2.2** Given work execution or delegation, when work is executed directly in-session, then all personas react with `👨‍💻` ("the bot holds it locally"); when work is handed to an isolated background worker, then all personas react with `🐳` ("a polecat holds it"); when work is delegated to an internal subagent, then all personas react with `🕊` ("a subagent holds it"); and when work is briefed and handed off to an independent peer agent, then all personas react with `🤝` ("a peer holds it").
+- **AC-2.2** Given work execution or delegation, when a sub-Ida handles it herself, then the persona reacts with `🤪`; when sent to Pauli solely for durable-fact capture, `✍`; when held by Pauli for other knowledge work, `🤓`; when held by RBG, `🗿`; when held by James, `👨‍💻`; when held by Marsha, `💅`; when handed to Sara or an isolated background worker, `🐳`; when held by an in-session `agy` run, `👾`; when held by a containerised synchronous `agy` run, `👻`; when a sub-Ida hands off to a general-purpose subagent, `🕊`; and when briefed and handed off to an independent peer agent, `🤝`.
 - **AC-2.3** Given communicative feedback or content-specific reactions, when an agent or operator reacts to message substance, then every reaction carries exactly one semantic meaning across all personas:
   - `👎` : Negative feedback on substance / report failure (prompts autonomous remediation).
   - `👍` : Affirmative confirmation or approval.
@@ -72,11 +78,17 @@ All agent personas operating over Telegram share a single reaction legend. Each 
 | Reaction | Category | State / Meaning | Transition / Usage Context |
 | :- | :- | :- | :- |
 | `👀` | Lifecycle | Inbound received | Automatically applied upon message arrival while reading and planning |
-| `✍` | Lifecycle | Captured | Applied when note, decision, intake, or task is persisted to knowledge base |
-| `👨‍💻` | Lifecycle | Working locally | Applied when work is executed directly by the receiving persona in-session (bot itself holds it) |
-| `🐳` | Lifecycle | Dispatched (polecat) | Applied when work is briefed and launched to an isolated background worker (a polecat holds it) |
-| `🕊` | Lifecycle | Dispatched (subagent) | Applied when work is delegated to an internal subagent (a subagent holds it) |
-| `🤝` | Lifecycle | Dispatched (peer) | Applied when work is briefed and handed off to an independent peer agent (a peer holds it, e.g. Sara or Pauli) |
+| `✍` | Lifecycle | Captured / Pauli durable-fact capture | Applied when note, decision, intake, or task is persisted to knowledge base, or when sent to Pauli solely to extract durable facts |
+| `🤓` | Lifecycle | Dispatched (Pauli, other knowledge work) | Applied when held by Pauli for knowledge work other than durable-fact capture |
+| `🗿` | Lifecycle | Dispatched (RBG) | Applied when held by RBG for compliance or rule review |
+| `👨‍💻` | Lifecycle | Dispatched (James) | Applied when held by James for execution supervision or review arbitration |
+| `💅` | Lifecycle | Dispatched (Marsha) | Applied when held by Marsha for qualitative excellence review |
+| `🤪` | Lifecycle | Sub-Ida (self) | Applied when a sub-Ida is judging or handling the message herself |
+| `🐳` | Lifecycle | Dispatched (Sara / polecat) | Applied when briefed and launched to Sara or an isolated background polecat worker |
+| `👾` | Lifecycle | Dispatched (agy, in-session) | Applied when held by an in-session `agy` run |
+| `👻` | Lifecycle | Dispatched (agy, containerised synchronous) | Applied when held by a containerised synchronous `agy` run |
+| `🕊` | Lifecycle | Dispatched (general-purpose subagent) | Applied only when a sub-Ida hands off work to a general-purpose subagent |
+| `🤝` | Lifecycle | Dispatched (peer) | Applied when work is briefed and handed off to an independent peer agent |
 | `👌` | Lifecycle | Understood / Addition taken on | Applied when acknowledging an addition, modification, or constraint taken on to active work |
 | `🤔` | Lifecycle | Waiting | Applied when a question, choice, or clarification is pending in chat |
 | `💔` | Lifecycle | Blocked / Failed | Applied when execution fails or an external blocker halts progress |
@@ -98,11 +110,18 @@ To prevent semantic collision:
 
 1. `🤝` is designated exclusively as the lifecycle state for peer dispatch ("a peer holds it", e.g. Sara or Pauli).
 2. Semantic agreement or consensus is expressed through `💯` ("aligned") or `👍` ("affirmation"), eliminating dual use of `🤝` for both lifecycle dispatch and semantic consensus.
-3. Every execution surface has a distinct holding reaction:
-   - `👨‍💻`: Local in-session execution (the bot persona itself holds it).
-   - `🕊`: Internal subagent delegation (a subagent holds it).
-   - `🐳`: Isolated background worker dispatch (a polecat holds it).
-   - `🤝`: Independent peer agent delegation (a peer holds it).
+3. Every agent kind and execution surface has a distinct holding reaction:
+   - `🤪`: Sub-Ida judging or handling it herself.
+   - `✍`: Pauli solely capturing durable facts (and persisted capture).
+   - `🤓`: Pauli on other knowledge work.
+   - `🗿`: RBG compliance/rule review (stone-faced bench; Telegram's `ReactionTypeEmoji` set has no judge or gavel emoji).
+   - `👨‍💻`: James execution supervision / review arbitration.
+   - `💅`: Marsha qualitative excellence review.
+   - `🐳`: Sara and isolated background polecat workers.
+   - `👾`: In-session `agy` run (Telegram's `ReactionTypeEmoji` set has no robot emoji).
+   - `👻`: Containerised synchronous `agy` run.
+   - `🕊`: General-purpose subagent hand-off from a sub-Ida only.
+   - `🤝`: Independent peer agent delegation.
 4. `👌` provides a dedicated acknowledgment for additions and mid-flight constraints taken on, distinct from initial receipt (`👀`) and complete acknowledgement where no reply was owed (`🫡`).
 
 #### Holding Reaction Lifetime and Bot Delegation Notices
