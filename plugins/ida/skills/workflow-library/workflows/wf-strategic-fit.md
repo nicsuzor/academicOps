@@ -2,7 +2,7 @@
 alias:
   - wf-strategic-fit
   - wf-fit-check
-description: Universal strategic-direction and congruence review -- evaluate candidate artifact, change, or proposal for core premise soundness, strategic direction, and congruence with the seamless web of existing PKB material (specifications, notes, prior art, parent objectives, parsimony, and lifecycle coherence), returning an explicit PASS, REVISE, or FAIL verdict.
+description: Universal strategic-direction and congruence review -- evaluate candidate artifact, change, or proposal for core premise soundness, strategic direction, and congruence with the seamless web of existing knowledge-base material (specifications, notes, prior art, parent objectives, parsimony, and lifecycle coherence), returning PASS, REVISE, or FAIL.
 id: wf-strategic-fit
 tags:
   - wf-template
@@ -16,31 +16,28 @@ type: template
 
 ## What this step does
 
-Universal strategic-direction and congruence review (`pauli`): evaluates the core premise, strategic direction, and congruence with the "seamless web" of existing material in the Personal Knowledge Base (PKB graph topology, prior art, existing specifications, topic notes, parent objectives, parsimony, and lifecycle coherence).
+Universal strategic-direction and congruence review: a strategic coherence reviewer evaluates core premise soundness, strategic direction, and congruence with the **seamless web** of existing knowledge-base material (graph topology, prior art, specifications, topic notes, parent objectives, parsimony, and lifecycle coherence).
 
 ## Input contract
 
-Draws its brief from the shared review briefing (supplied inline so the reviewer operates strictly on the PKB graph). Additional role-specific inputs:
-
-- **Graph context** -- parent objectives, active tasks, competing proposals or PRs, existing specifications, and relevant topic notes.
+Draws its brief from the shared review briefing (supplied inline for graph-level evaluation) plus graph context: parent objectives, active tasks, competing proposals or PRs, existing specifications, and relevant topic notes.
 
 ## Procedure
 
-1. **Question the core premise and strategic direction** -- ask whether the right question is being answered before evaluating the answer. Name the class of problem rather than just the instance, trace causal chains, distinguish what cannot be known in advance from what is merely unexamined, and separate fatal premise flaws from fixable gaps. Verify whether the artifact serves the claimed parent target and strategic direction in the PKB graph, flagging unrequested scope drift, specifications that invert the principal-agent relationship by casting an agent or persona as the user in user stories (`As an agent, I want...` instead of stating the human user requirement the agent capability serves), flawed reasoning (non-sequiturs, circular logic), untested load-bearing assumptions, overconfident claims, missing edge cases, and negative space (what should be here that isn't).
-2. **Maintain the seamless web (congruence with existing material and prior art)** -- evaluate alignment with existing specifications, architectural decisions, topic notes, and active sibling tasks under the parent epic in the PKB; surface silent contradictions, unacknowledged departures from settled design, or duplicated structures:
-   - **Documentation notes vs completed task evidence**: A PKB note stating that a behaviour exists proves only what the note says, not current working state. Before concluding that a problem or mechanism is obsolete, require a completed PKB task record (`status: done` with verification evidence); if it cannot be established definitively on the graph, report it as an **open question** rather than settled fact.
-   - **Authority of cited PRs or code**: Never treat a random reference to a PR or code snippet as authoritative on its own. Verify whether the change is merged/most recent, reflects current working behaviour, and is supported by an authoritative specification or decision record.
-3. **Parsimony, necessity, and lifecycle coherence** -- determine whether the mechanism should exist at all, or whether an existing tool, native capability, or competing proposal already solves the need more simply, and verify that task lifecycle dependencies do not deadlock downstream workflows.
-4. **Determine boundaries** -- operates strictly on the core premise, strategic direction, congruence with existing PKB material, and lifecycle coherence. Does not inspect code for axiom violations (the compliance role, `rbg`) and does not test whether the delivered implementation satisfies functional requirements at runtime (the quality role, `marsha`).
-5. **Issue verdict**: return an explicit `PASS`, `REVISE`, or `FAIL` verdict with specific, actionable guidance calibrated to the stakes.
+1. **Question the core premise and direction** -- verify the right problem is addressed, name the problem class, trace causal chains, separate fatal premise flaws from fixable gaps, and flag unrequested scope drift, principal-agent inversion in user stories (casting an agent as the user rather than stating the human user requirement), flawed reasoning, untested load-bearing assumptions, missing edge cases, and negative space.
+2. **Maintain the seamless web (congruence with prior art)** -- check alignment with existing specifications, architectural decisions, topic notes, and active sibling tasks; surface silent contradictions, unacknowledged departures, or duplicated structures:
+   - **Doc claims vs completed task evidence**: A note stating a behavior exists proves only what the note says, not current live state. Require a completed task record (`status: done` with verification evidence) before treating a mechanism or problem as settled/obsolete; otherwise record an **open question**.
+   - **Authority of cited PRs or code**: Verify cited PRs or snippets are merged/current and backed by an authoritative specification or decision record before treating them as settled design.
+3. **Check parsimony and lifecycle coherence** -- test whether existing tools, native capabilities, or competing proposals already meet the need more simply, and verify task dependencies do not deadlock downstream workflows.
+4. **Respect boundaries & issue verdict** -- judge strictly on core premise, strategic coherence, and graph congruence (leaving axiom compliance and runtime requirement verification to their respective review roles), returning one explicit verdict (`PASS`, `REVISE`, or `FAIL`).
 
 ## Output contract
 
-The structured review artifact (composed in standard Markdown sections for human readability, never programmatic JSON/YAML payloads) returning:
+Internal agent-to-agent review handbacks report **only** in clean Argdown prose per `premise-check` (leading with original ask and verdict, quoting deciding PKB or targeted `gh` evidence inline); structured Markdown (never programmatic JSON/YAML) applies strictly to published PR/issue or user-facing review artifacts. Every strategic-fit review covers:
 
 - **Verdict**: `PASS`, `REVISE`, or `FAIL`.
-- **Strategic direction & congruence assessment**: evaluation of core premise soundness, strategic alignment, congruence with the seamless web of existing specifications/notes/prior art, authority of cited changes, parsimony, and systemic coherence.
-- **Identified conflicts, missing elements, and open questions**: flawed reasoning, untested assumptions, negative space, contradictions with existing PKB material, competing proposals, unnecessary abstractions, lifecycle deadlocks, or unverified current-state questions (if any).
+- **Strategic direction & congruence assessment**: evaluation of premise soundness, alignment with the seamless web of specifications, notes, and prior art, authority of cited changes, parsimony, and lifecycle coherence.
+- **Identified conflicts, missing elements, and open questions**: flawed reasoning, untested assumptions, negative space, contradictions, unnecessary abstractions, lifecycle deadlocks, or unverified current-state questions.
 
 ## When to include
 

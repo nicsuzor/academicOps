@@ -36,7 +36,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-import report_argument as ra
 from dispatch import HookContext, Result, block, load_message_pair, refuse, warn
 
 try:
@@ -301,16 +300,6 @@ def _judged_path(session_id: str, claim_id: str, agent_id: str | None = None) ->
     return _state_dir() / f"{safe_session}{suffix}.{safe_claim}-{digest}.judged.txt"
 
 
-def _sync_top_level_block_expected(state: dict[str, Any]) -> None:
-    judged = state.get("judged") or {}
-    if any(
-        bool(entry.get("block_expected")) for entry in judged.values() if isinstance(entry, dict)
-    ):
-        state["block_expected"] = True
-    else:
-        state.pop("block_expected", None)
-
-
 _DISARMED_HISTORY_LIMIT = 200
 _HANDBACK_PREAMBLE = re.compile(r"^\[Subagent\s+hand-back\][^\n]*\n+", re.IGNORECASE)
 
@@ -319,6 +308,36 @@ _OUTER_PEER_ENVELOPE_RE = re.compile(
     r"^\s*<(cross-session-message|teammate-message|task-notification|subagent-handback|agent-message)\b[^>]*>(.*?)(?:</\1>\s*$|$)",
     re.DOTALL,
 )
+
+_NULL_CLAIM_BLOCK_RE = re.compile(
+    r"(?:`{3,}|~{3,})\s*argdown[ \t]*\n"
+    r"(?:\s*===[ \t]*\n\s*asks:\s*none[ \t]*\n\s*===[ \t]*\n+)?"
+    r"\s*\[no\s+claim\][ \t]*\n+"
+    r"\s*(?:`{3,}|~{3,})",
+    re.IGNORECASE,
+)
+_NULL_CLAIM_LINE_RE = re.compile(r"^\s*\[no\s+claim\]\s*$", re.IGNORECASE)
+
+
+def _is_null_claim(text: str | None) -> bool:
+    """True only when the entire unwrapped message body is the canonical [no claim] null form."""
+    if not text or not text.strip():
+        return False
+    norm = html.unescape(text).replace("\r\n", "\n").replace("\r", "\n").strip()
+    norm = _strip_peer_wrapper(norm).strip()
+    env_m = _OUTER_PEER_ENVELOPE_RE.match(norm)
+    if env_m:
+        tag = env_m.group(1)
+        inner = env_m.group(2).strip()
+        if tag == "task-notification":
+            res = extract_notification_result(inner)
+            if res is not None:
+                inner = res.strip()
+        norm = inner
+    norm = _HANDBACK_PREAMBLE.sub("", norm).strip()
+    if _NULL_CLAIM_BLOCK_RE.fullmatch(norm):
+        return True
+    return bool(_NULL_CLAIM_LINE_RE.fullmatch(norm))
 
 
 def _normalized_body_hash(text: str) -> str:
@@ -353,7 +372,6 @@ def _arm_locked(
     claim_id: str | None = None,
     judged_text: str | None = None,
     judged_ref: str | None = None,
-    block_expected: bool = False,
     agent_id: str | None = None,
     source_agent_id: str = "",
     caller_notified: bool | None = None,
@@ -378,7 +396,6 @@ def _arm_locked(
     if (
         judged_text is not None
         or judged_ref
-        or block_expected
         or source_agent_id
         or caller_notified is not None
         or armed_via
@@ -387,7 +404,6 @@ def _arm_locked(
         raw_prev = judged.get(cid)
         prev: dict[str, Any] = raw_prev if isinstance(raw_prev, dict) else {}
         entry: dict[str, Any] = {**prev, "ref": judged_ref or prev.get("ref") or cid}
-        entry["block_expected"] = bool(block_expected)
         if source_agent_id:
             entry["source_agent_id"] = source_agent_id
         if caller_notified is not None:
@@ -401,7 +417,6 @@ def _arm_locked(
             entry["body_sha256"] = _normalized_body_hash(judged_text)
         judged[cid] = entry
         state["judged"] = judged
-    _sync_top_level_block_expected(state)
     _save_state(session_id, state, agent_id=canon_agent)
 
 
@@ -410,7 +425,6 @@ def arm(
     claim_id: str | None = None,
     judged_text: str | None = None,
     judged_ref: str | None = None,
-    block_expected: bool = False,
     agent_id: str | None = None,
     source_agent_id: str = "",
     caller_notified: bool | None = None,
@@ -419,10 +433,9 @@ def arm(
     """Arm the hearsay check for a session recipient slot until a verdict disarms it.
 
     ``judged_text`` is the report the verdict will judge; it is stored beside
-    the state file so the recorder can cross-check the reason against its
-    ``argument`` block. ``judged_ref`` names where that text came from: the
-    tool-use id of a subagent result, the id of a peer envelope, or a task id.
-    ``block_expected`` records whether an Argdown block was required on this report.
+    the state file so the recorder can verify integrity and hash it into telemetry.
+    ``judged_ref`` names where that text came from: the tool-use id of a subagent
+    result, the id of a peer envelope, or a task id.
     """
     with _session_file_lock(session_id):
         _arm_locked(
@@ -430,7 +443,6 @@ def arm(
             claim_id=claim_id,
             judged_text=judged_text,
             judged_ref=judged_ref,
-            block_expected=block_expected,
             agent_id=agent_id,
             source_agent_id=source_agent_id,
             caller_notified=caller_notified,
@@ -463,6 +475,7 @@ def _disarm_locked(
     verification_id: str = "",
     title: str | None = None,
     machine: bool = False,
+    no_claim: bool = False,
     agent_id: str | None = None,
 ) -> None:
     """Locked core of disarm(); caller must hold _session_file_lock(session_id)."""
@@ -493,8 +506,6 @@ def _disarm_locked(
             disarmed.pop(oldest_key, None)
         state["disarmed_claims"] = disarmed
 
-    _sync_top_level_block_expected(state)
-
     if claim_ids:
         state["armed"] = True
         state["pending"] = True
@@ -516,7 +527,7 @@ def _disarm_locked(
         last_verdict["title"] = title
     if machine:
         last_verdict["machine"] = True
-    if verdict == "no-claim":
+    if verdict == "no-claim" or no_claim:
         last_verdict["no_claim"] = True
     state["last_verdict"] = last_verdict
     _save_state(session_id, state, agent_id=canon_agent)
@@ -530,6 +541,7 @@ def disarm(
     verification_id: str = "",
     title: str | None = None,
     machine: bool = False,
+    no_claim: bool = False,
     agent_id: str | None = None,
 ) -> None:
     """Disarm the hearsay check after a verdict is recorded."""
@@ -542,6 +554,7 @@ def disarm(
             verification_id=verification_id,
             title=title,
             machine=machine,
+            no_claim=no_claim,
             agent_id=agent_id,
         )
 
@@ -1423,8 +1436,7 @@ def extract_judged_content(ctx: HookContext) -> tuple[str, str] | None:
         return None
     fallback: tuple[str, str] | None = None
     for judged_text, judged_ref, _cid, _sender in items:
-        block_text = ra.extract_block(judged_text)
-        if block_text is not None and ra.is_null_form(block_text):
+        if _is_null_claim(judged_text):
             if fallback is None:
                 fallback = (judged_text, judged_ref)
             continue
@@ -1440,8 +1452,7 @@ def should_arm_hearsay(ctx: HookContext) -> bool:
         canon_agent = _canonical_agent_id(ctx.session_id, ctx.agent_id)
         slot_judged = _load_state(ctx.session_id, agent_id=canon_agent).get("judged") or {}
     for judged_text, judged_ref, _cid, _sender in items:
-        block_text = ra.extract_block(judged_text)
-        if block_text is not None and ra.is_null_form(block_text):
+        if _is_null_claim(judged_text):
             continue
         if ctx.event == "PostToolBatch" and judged_ref:
             body_sha = _normalized_body_hash(judged_text)
@@ -1761,61 +1772,41 @@ def _batch_handback_candidates(ctx: HookContext) -> list[tuple[str, str]]:
     return found
 
 
-def _entry_block_absent(entry: Any) -> bool:
-    if not isinstance(entry, dict):
-        return False
-    fname = entry.get("file")
-    if not isinstance(fname, str) or not fname:
-        return False
-    txt = (_state_dir() / fname).read_text(encoding="utf-8")
-    return ra.extract_block(txt) is None
-
-
 def _format_notice_pair(
-    items: list[tuple[str, bool, str]],
+    items: list[tuple[str, str]],
     hooks_dir: Path | None,
     *,
-    single_absent_user_fallback: str = "Premise-check gate armed by {claim_id} (no argument block supplied; send back for revision with instruction to load ida:premise-check).",
     single_armed_user_fallback: str = "Premise-check gate armed by {claim_id}.",
 ) -> Result:
     """Format arming notice preserving exact <=2 line single-claim contract and multi-claim list."""
     eff_dir = _hooks_base(hooks_dir)
+    agent_tmpl, user_tmpl = load_message_pair(eff_dir, "hearsay_armed")
     if len(items) == 1:
-        claim_id, is_absent, cmd = items[0]
-        tmpl_name = "hearsay_absent" if is_absent else "hearsay_armed"
-        agent_tmpl, user_tmpl = load_message_pair(eff_dir, tmpl_name)
+        claim_id, cmd = items[0]
         if not agent_tmpl:
-            if is_absent:
-                agent_tmpl = (
-                    "Premise-check gate armed by {claim_id}: no argument block supplied; "
-                    "send the message back for revision per the `premise-check` skill "
-                    "(an absent block cannot pass). Instruct the sender to load the skill "
-                    "(`ida:premise-check`) before resending.\n{command}"
-                )
-            else:
-                agent_tmpl = (
-                    "Premise-check gate armed by {claim_id}; if this is a direction, check in Argdown format "
-                    "that it derives from `## Ask` and refuse (`REVISE`) unverified caller method or template "
-                    "prescriptions before logging deliverables as a frozen acceptance checklist on a PKB task; "
-                    "record a verdict per the `premise-check` skill.\n{command}"
-                )
+            agent_tmpl = (
+                "Premise-check gate armed by {claim_id}. Direction brief: verify Turn-1 inputs, "
+                "`## Ask`, and satisfiability, flagging gaps or unverified prescriptions without "
+                "declining; disarm via `verdict.py --no-claim` (`PASS` before logging a frozen "
+                "acceptance checklist; `REVISE` pending clarification). Report: load "
+                "`ida:premise-check`, review on the record (zero de novo), and record appealable "
+                "reasons.\n{command}"
+            )
         inject = agent_tmpl.format(claim_id=claim_id, command=cmd)
-        fallback = single_absent_user_fallback if is_absent else single_armed_user_fallback
         user_msg = (
-            user_tmpl.format(claim_id=claim_id) if user_tmpl else fallback.format(claim_id=claim_id)
+            user_tmpl.format(claim_id=claim_id)
+            if user_tmpl
+            else single_armed_user_fallback.format(claim_id=claim_id)
         )
         return warn(inject, user_msg)
 
-    cids = ", ".join(cid for cid, _absent, _cmd in items)
-    any_absent = any(absent for _cid, absent, _cmd in items)
-    tmpl_name = "hearsay_absent" if any_absent else "hearsay_armed"
-    agent_tmpl, _user_tmpl = load_message_pair(eff_dir, tmpl_name)
+    cids = ", ".join(cid for cid, _cmd in items)
     first_line = (
         agent_tmpl.splitlines()[0]
         if agent_tmpl
-        else "Premise-check gate armed by {claim_id}; record a verdict per the `premise-check` skill."
+        else "Premise-check gate armed by {claim_id}; run formal compliance review on the face of the record and record appealable reasons per `ida:premise-check`."
     ).format(claim_id=cids, command="")
-    cmd_block = "\n".join(cmd for _cid, _absent, cmd in items)
+    cmd_block = "\n".join(cmd for _cid, cmd in items)
     inject = f"{first_line}\n{cmd_block}"
     user_msg = f"Premise-check gate armed by {len(items)} claims: {cids}."
     return warn(inject, user_msg)
@@ -1842,22 +1833,21 @@ def _apply_incoming_items(
     *,
     allow_dedup_notice: bool = False,
     emit_notice: bool = True,
-) -> list[tuple[str, bool, str]]:
-    """Process extracted reports against target_agent's slot; return notice tuples [(cid, absent, cmd)]."""
+) -> list[tuple[str, str]]:
+    """Process extracted reports against target_agent's slot; return notice tuples [(cid, cmd)]."""
     if not items:
         return []
     canon_target = _canonical_agent_id(ctx.session_id, target_agent)
-    notice_items: list[tuple[str, bool, str]] = []
+    notice_items: list[tuple[str, str]] = []
     batch_used: set[str] = set()
     traces_to_emit: list[tuple[str, str]] = []
 
     with _session_file_lock(ctx.session_id):
         for judged_text, judged_ref, base_cid, sender_id in items:
-            block_text = ra.extract_block(judged_text)
             body_sha = _normalized_body_hash(judged_text)
 
             # 1. Null form clears without blocking
-            if block_text is not None and ra.is_null_form(block_text):
+            if _is_null_claim(judged_text):
                 _disarm_locked(
                     ctx.session_id,
                     claim_id=base_cid,
@@ -1877,16 +1867,13 @@ def _apply_incoming_items(
                 if dedup is not None:
                     existing_cid, _entry = dedup
                     if allow_dedup_notice:
-                        is_absent = block_text is None
                         cmd = format_verdict_command(
                             existing_cid,
                             ctx.hooks_dir,
                             ctx.session_id,
-                            verdict="REVISE" if is_absent else "<PASS|REVISE|FAIL>",
-                            reason="no argument supplied" if is_absent else None,
                             agent_id=canon_target,
                         )
-                        notice_items.append((existing_cid, is_absent, cmd))
+                        notice_items.append((existing_cid, cmd))
                     continue
 
             # Dedup PostToolBatch vs PostToolUse by exact ref + sha; disambiguate same-description collisions
@@ -1906,7 +1893,6 @@ def _apply_incoming_items(
                 claim_id=cid,
                 judged_text=judged_text,
                 judged_ref=judged_ref,
-                block_expected=True,
                 agent_id=canon_target,
                 source_agent_id=sender_id,
                 caller_notified=emit_notice,
@@ -1915,16 +1901,13 @@ def _apply_incoming_items(
             traces_to_emit.append((cid, judged_ref))
 
             if emit_notice:
-                is_absent = block_text is None
                 cmd = format_verdict_command(
                     cid,
                     ctx.hooks_dir,
                     ctx.session_id,
-                    verdict="REVISE" if is_absent else "<PASS|REVISE|FAIL>",
-                    reason="no argument supplied" if is_absent else None,
                     agent_id=canon_target,
                 )
-                notice_items.append((cid, is_absent, cmd))
+                notice_items.append((cid, cmd))
 
     for cid, judged_ref in traces_to_emit:
         _emit_hearsay_trace(ctx, cid, judged_ref, target_agent_id=canon_target or None)
@@ -1938,7 +1921,7 @@ def _bridge_foreground_child(
     child_id: str,
     description_id: str,
     call_ref: str,
-) -> list[tuple[str, bool, str]]:
+) -> list[tuple[str, str]]:
     """Bridge silent SubagentHandback into foreground caller notice without double-arming."""
     if not child_id:
         return []
@@ -1965,7 +1948,7 @@ def _bridge_foreground_child(
         )
 
     # Check if child_id already armed caller_id earlier (e.g. via meta.json sidecar) and hasn't notified yet
-    bridged: list[tuple[str, bool, str]] = []
+    bridged: list[tuple[str, str]] = []
     with _session_file_lock(ctx.session_id):
         slot_state = _load_state(ctx.session_id, agent_id=caller_id)
         slot_judged = slot_state.get("judged") or {}
@@ -1974,12 +1957,9 @@ def _bridge_foreground_child(
                 continue
             if entry.get("caller_notified"):
                 continue
-            stored_text, _ = get_judged(ctx.session_id, cid, agent_id=caller_id)
-            is_absent = ra.extract_block(stored_text) is None
             _arm_locked(
                 ctx.session_id,
                 claim_id=cid,
-                block_expected=bool(entry.get("block_expected", True)),
                 agent_id=caller_id,
                 caller_notified=True,
             )
@@ -1987,11 +1967,9 @@ def _bridge_foreground_child(
                 cid,
                 ctx.hooks_dir,
                 ctx.session_id,
-                verdict="REVISE" if is_absent else "<PASS|REVISE|FAIL>",
-                reason="no argument supplied" if is_absent else None,
                 agent_id=caller_id,
             )
-            bridged.append((cid, is_absent, cmd))
+            bridged.append((cid, cmd))
     return bridged
 
 
@@ -2006,19 +1984,15 @@ def subagent_start_gate_notice(ctx: HookContext) -> Result | None:
     slot = _load_state(ctx.session_id, agent_id=canon_agent)
     if bool(slot.get("armed") or slot.get("pending")):
         pending_cids = slot.get("claim_ids") or ([slot["claim_id"]] if slot.get("claim_id") else [])
-        judged = slot.get("judged") or {}
-        items: list[tuple[str, bool, str]] = []
+        items: list[tuple[str, str]] = []
         for cid in pending_cids:
-            is_absent = _entry_block_absent(judged.get(cid))
             cmd = format_verdict_command(
                 cid,
                 ctx.hooks_dir,
                 ctx.session_id,
-                verdict="REVISE" if is_absent else "<PASS|REVISE|FAIL>",
-                reason="no argument supplied" if is_absent else None,
                 agent_id=canon_agent,
             )
-            items.append((cid, is_absent, cmd))
+            items.append((cid, cmd))
         if items:
             res = _format_notice_pair(items, ctx.hooks_dir)
             hint = f"Subagent agent_id for verdict commands: --agent {canon_agent}"
@@ -2157,7 +2131,6 @@ def hearsay_handler(ctx: HookContext) -> Result | None:
     pending_cids = state.get("claim_ids") or (
         [state["claim_id"]] if state.get("claim_id") else ["the pending report"]
     )
-    judged = state.get("judged") or {}
     action_desc = (
         "finishing the task or contacting the user/teammates"
         if ctx.event == "Stop"
@@ -2167,8 +2140,9 @@ def hearsay_handler(ctx: HookContext) -> Result | None:
     agent_tmpl, user_tmpl = load_message_pair(ctx.hooks_dir, "hearsay_blocked")
     if not agent_tmpl:
         agent_tmpl = (
-            "Premise-check gate armed by {claim_id} blocks {action_desc} on this agent's received report; "
-            "record a verdict per the `premise-check` skill.\n{command}"
+            "Premise-check gate armed by '{claim_id}' blocks {action_desc} on this agent's received report; "
+            "run formal compliance review on the face of the record (zero de novo fact-checking) "
+            "and record appealable reasons per `ida:premise-check`.\n{command}"
         )
 
     if len(pending_cids) == 1:
@@ -2182,19 +2156,10 @@ def hearsay_handler(ctx: HookContext) -> Result | None:
         )
     else:
         cids_str = ", ".join(pending_cids)
-        cmds: list[str] = []
-        for cid in pending_cids:
-            is_absent = _entry_block_absent(judged.get(cid))
-            cmds.append(
-                format_verdict_command(
-                    cid,
-                    ctx.hooks_dir,
-                    ctx.session_id,
-                    verdict="REVISE" if is_absent else "<PASS|REVISE|FAIL>",
-                    reason="no argument supplied" if is_absent else None,
-                    agent_id=canon_agent,
-                )
-            )
+        cmds: list[str] = [
+            format_verdict_command(cid, ctx.hooks_dir, ctx.session_id, agent_id=canon_agent)
+            for cid in pending_cids
+        ]
         reason = agent_tmpl.format(
             claim_id=cids_str, action_desc=action_desc, command="\n".join(cmds)
         )
@@ -2207,13 +2172,6 @@ def hearsay_handler(ctx: HookContext) -> Result | None:
         return block(reason, user_msg)
 
     return refuse(reason, user_msg)
-
-
-def _session_pointer_dir() -> Path:
-    override = os.environ.get("AOPS_SESSION_POINTER_DIR")
-    path = Path(override) if override else Path(tempfile.gettempdir()) / "aops_session_pointer"
-    path.mkdir(parents=True, exist_ok=True)
-    return path
 
 
 def _tracer_state_dir() -> Path:
@@ -2286,55 +2244,6 @@ def _is_subagent_conversation(ctx: HookContext) -> bool:
     if _has_subagent_marker(prompt):
         return True
     return False
-
-
-def subagent_pre_handback_check(ctx: HookContext) -> Result | None:
-    """Refuse subagent send_message in agy once per handback if argdown block is missing."""
-    if ctx.client != "agy" or ctx.event != "PreToolUse":
-        return None
-    tool = (ctx.tool or "").strip().lower()
-    if tool not in ("send_message", "sendmessage"):
-        return None
-    if not _is_subagent_conversation(ctx):
-        return None
-
-    safe_session = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", ctx.session_id or "unknown")
-    marker = _session_pointer_dir() / f"{safe_session}.prehandback_warned"
-
-    tool_input = (
-        ctx.tool_input
-        or (ctx.raw or {}).get("toolInput")
-        or (ctx.raw or {}).get("toolCall", {}).get("args")
-        or {}
-    )
-    msg = str(
-        tool_input.get("Message") or tool_input.get("message") or tool_input.get("content") or ""
-    )
-
-    has_block = ra.extract_block(msg) is not None or ra.is_null_form(msg) or "[no claim]" in msg
-    if has_block:
-        try:
-            marker.unlink(missing_ok=True)
-        except OSError:
-            pass
-        return None
-
-    if marker.is_file():
-        return None
-
-    try:
-        marker.write_text(datetime.now().astimezone().isoformat(), encoding="utf-8")
-    except OSError:
-        pass
-
-    recipient = str(tool_input.get("Recipient") or tool_input.get("recipient") or "caller")
-    refusal_msg = (
-        f"Your report to {recipient} omits a fenced `argdown` block. "
-        "Load the `premise-check` skill (`ida:premise-check`) now and append "
-        "a valid argdown block (or `[no claim]`) to your handback report before sending."
-    )
-    user_msg = f"Refused: subagent report to {recipient} missing fenced argdown block."
-    return refuse(refusal_msg, user_msg)
 
 
 # Backward compatibility aliases

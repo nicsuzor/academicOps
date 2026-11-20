@@ -1,8 +1,9 @@
 ---
 trigger: always_on
-description: Place all instructions, skills, specifications, state docs, and documentation files according to specs/meta/doc-taxonomy.md.
+description: Place docs, specs, and instructions per doc-taxonomy.md in kebab-case.
 ---
 
-## Documentation goes where the taxonomy says
+## Document taxonomy
 
-Any change to an instruction, skill, or documentation file complies with [`specs/meta/doc-taxonomy.md`](../../specs/meta/doc-taxonomy.md). Placement is not discretionary.
+- Follow `specs/meta/doc-taxonomy.md` for doc, spec, skill, and instruction placement.
+- Use kebab-case filenames without personal names or persona prefixes.

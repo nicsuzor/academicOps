@@ -26,6 +26,7 @@ one is covered.
 | Failed tasks from workers (e.g. QA or review failures) → next actions decided from parent epic | Built |
 | Multi-part task / open high-value-prompt tracking task → settle unknowns from PKB first, close shipped deliverables/releases the user knows about, itemize completed vs incomplete elements, and queue (`status: queued`) concrete next agent steps | Built |
 | Task in `review`: agent work tasks covered by a review/QA task, open PR, or complete evidence transition to `done` (and completed `done` work tasks with open PRs stay `done`, never moved to `review` awaiting merge); tasks with completed groundwork and recommendation waiting on the user's own decision stay in `status: review` (`assignee: user`) for `## With you` | Built |
+| Task held open solely to prove a post-release user act (installing, pulling, or deploying a release) once shipped and reported | Built -- transitioned to `done` |
 | Manual `gh issue close` with `state_reason: not_planned` or `duplicate` | Not built -- forward-issue leg, below |
 | PKB task done → GH issue comment/close beyond the native `Closes #N` commit convention | Not built -- reverse direction, M3 |
 

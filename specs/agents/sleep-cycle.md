@@ -104,7 +104,7 @@ faster than anyone clears them. On CI the mail and calendar servers are absent,
 so staleness verification degrades to flagging candidates -- never to guessing.
 
 **Age is not staleness.** The cycle must never cancel or delete a task on age or
-inactivity alone. Only irrelevance justifies cancellation, and that is a human
+inactivity alone. Enduring subsystem/component epics remain permanently active in `status: ready` as Strategic Value Carriers holding holistic `serves -> target` weights (while child tasks carry zero `serves` edges and inherit worth via `parent`), and are never closed on $k=0$ open children or demoted as `>14d` rot. Only irrelevance justifies cancellation, and that is a human
 judgment. The cycle surfaces candidates; it does not act on them.
 
 **Governance documents are never auto-updated.** Mechanical indices refresh in

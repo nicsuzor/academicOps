@@ -12,9 +12,9 @@ related: [[conceptual-review]], [[specs/workflows/workflow.md]]
 
 ## Purpose & Design Intent
 
-Strategic Review is the framework's primary multi-agent quality gate for intellectual artifacts -- including specifications, design proposals, research manuscripts, pull requests, and architecture changes.
+Strategic Review is the framework's primary multi-agent review process for intellectual artifacts -- including specifications, design proposals, research manuscripts, pull requests, and architecture changes.
 
-Its core design intent is to eliminate the failure mode of **self-grading** and **monolithic shallow critique** by establishing:
+Its core design intent is to eliminate **self-grading** and **monolithic shallow critique** through institutional separation of powers:
 
 1. **Separation of Author and Reviewer**: The agent authoring or executing work never grades its own deliverable.
 2. **Parallel Blind Review**: Independent specialized review personas (`rbg`, `pauli`, `marsha`) evaluate the artifact concurrently from distinct perspectives without contaminating each other's reasoning.
@@ -65,26 +65,27 @@ All three review roles draw their briefing from the shared review briefing and r
 
 Reviewers immediately apply and commit uncontroversial mechanical fixes (`fix(review): ...`) directly to the branch--such as language polish, scrubbing private identifiers or session trailers under `data-boundaries`, fixing dead links, or correcting formatting--and itemize them under `### Reviewer Self-Fixes Applied`. Uncontroversial self-fixes do not trigger a `REVISE` verdict if the artifact is otherwise sound; issues lacking a reasonably deterministic solution remain as itemized findings for worker revision.
 
-Each of the three review roles operates in a distinct domain with strictly non-overlapping duties:
+Each of the review branches operates in a distinct jurisdiction with strictly non-overlapping duties:
 
 - **`pauli` (Strategic Fit & Congruence; template `wf-strategic-fit`)**: Evaluates the core premise, strategic direction, objective alignment, and congruence with the "seamless web" of existing material in the PKB graph:
   - Questions the core premise, names the class of problem, and probes for flawed reasoning, untested load-bearing assumptions, negative space, and missing edge cases.
   - Situates the artifact against parent objectives, active sibling tasks, and existing PKB notes/tasks, testing whether it is needed or whether an existing tool, native mechanism, or competing proposal already covers it.
   - Checks for parsimony, precedent, duplication, and cross-task lifecycle coherence across the graph, verifying that documentation notes are not mistaken for proofs of current working state (requiring a completed task record with verification evidence or flagging an open question) and that cited PRs/code are authoritative (merged/most recent, reflecting current working behaviour, and backed by a spec or decision record).
   - Returns `PASS`, `REVISE`, or `FAIL`.
-  - **Boundary**: Operates strictly on the PKB graph from an inline briefing. Does not inspect repository source code for axiom violations (belongs to `rbg`), does not judge visual/prose aesthetics (belongs to `marsha`), and does not run tests or probes (belongs to author/QA).
-- **`rbg` (Compliance)**: Evaluates compliance with universal axioms, project-local rules, scope of delegated authority (_ultra vires_), permission/data boundaries, and the enforcement pyramid (`specs/enforcement/enforcement.md`):
+  - **Boundary**: Operates strictly on the PKB graph from an inline briefing. Does not inspect repository source code for axiom violations (belongs to `rbg`), does not judge visual/prose aesthetics (belongs to `marsha`), and does not run tests or probes (belongs to author and empirical QA `wf-qa`).
+- **`rbg` (Compliance; template `wf-rbg`)**: Adjudicates universal axioms, project-local rules, scope of delegated authority (_ultra vires_), _abdication_, permission/data boundaries, and the enforcement pyramid (`specs/enforcement/enforcement.md`):
   1. **Judge for Yourself**: Reaches verdicts from the request, artifact, and rules alone without reading prior reviews, PR comments, or prior task reports.
   2. **Judge Proportion First**: From the quoted originating request, sizes the smallest mechanism meeting the request across its class before reading artifact internals, rejecting unneeded machinery under `proportionate`.
-  3. **Apply Each Axiom to the Artifact**: Evaluates mechanisms by their runtime consequences, assesses whether the substantive decision requires qualitative judgment, and verifies that mechanisms do not violate axioms (such as delegating qualitative decisions to deterministic path/author/AST heuristics under `judgment-non-delegable`, or introducing silent fallback branches under `no-fallbacks`).
-  4. **Mechanisms Analysis**: Produces a structured `### Mechanisms` section explicitly evaluating each added mechanism's decision, necessity of judgment, and broken axioms before issuing a verdict.
-  - **Boundary**: Operates strictly by static semantic evaluation. Does not execute runtime tests, run test suites, or write scratch probe scripts (correctness testing belongs to authors and independent QA), does not evaluate qualitative taste or UX (belongs to `marsha`), and does not evaluate high-level PKB objective alignment or competing backlog options (belongs to `pauli`).
-- **`marsha` (Qualitative Excellence & Audience Resonance; template `verify`)**: Evaluates the live output artifact as its audience meets it against purpose and excellence standards:
+  3. **Apply Each Axiom to the Artifact**: Evaluates mechanisms by their runtime consequences, assesses whether the substantive decision requires qualitative judgment, and verifies that mechanisms do not violate axioms (such as delegating qualitative decisions to deterministic path/author/AST heuristics under `judgment-non-delegable`, or introducing silent fallback branches under `fail-fast` and `halt-on-failure`).
+  4. **Mechanisms Analysis**: Produces a structured `### Mechanisms` section explicitly evaluating each added mechanism's decision, necessity of judgment, and broken axioms before issuing a verdict (`## RBG Review: PASS | REVISE | FAIL`).
+  - **Boundary**: Operates strictly by static semantic adjudication. Does not execute runtime tests, run test suites, or write scratch probe scripts (correctness testing belongs to authors and empirical QA `wf-qa`), does not evaluate qualitative taste or UX (belongs to `marsha`), and does not evaluate high-level PKB objective alignment or competing backlog options (belongs to `pauli`).
+- **`marsha` (Qualitative Excellence & Audience Resonance; skill `verify`)**: Evaluates the live output artifact as its audience meets it against intended purpose and excellence standards:
   - Inspects live rendered outputs (rendered markdown, typeset PDFs, screenshots, UI).
-  - Assesses aesthetic grace, cognitive load, legibility, and audience empathy.
-  - Evaluates whether the deliverable is amazingly good for its intended audience or merely mediocre.
+  - Assesses aesthetic grace, cognitive load, legibility, audience empathy, and adherence to governing document-class quality without self-editing unless serialized and authorized.
+  - Evaluates whether the deliverable is **amazingly good** for its intended audience or merely mediocre.
   - Returns `PASS`, `REVISE`, or `FAIL`.
-  - **Boundary**: Never checks truth, fidelity, or factual claims (belongs to hearsay checker and `premise-check`), does not run test suites or correctness checks (belongs to author and independent QA), does not evaluate axioms or rules (belongs to `rbg`), and does not evaluate graph-level strategy (belongs to `pauli`).
+  - **Boundary**: Never conducts formal compliance reviews on the record (`premise-check`) or checks factual claims (trusts primary finders), does not run test suites or linters (belongs to author and empirical QA `wf-qa`), does not evaluate axioms or rules (belongs to `rbg`), and does not evaluate graph-level strategy (belongs to `pauli`).
+- **Empirical & Functional QA (`wf-qa`)**: When functional requirement satisfaction, test execution, live probing, or strict document-class/acceptance-criteria verification is required (e.g., code PRs, high-risk reviews, or standalone CI QA), empirical QA runs test suites, live probes, actual rendered output checks, and primary-material audits without modifying code, returning `PASS`, `REVISE`, or `FAIL` while leaving qualitative taste to `marsha`, axioms to `rbg`, and PKB strategy to `pauli`.
 
 ### 3. Lens Selection
 

@@ -11,7 +11,7 @@ Reconstruct what a text argues, preserving the author's framing while making eve
 
 - Extracting the logical structure of an academic paper, thesis chapter, legal judgment, policy report, or philosophical text
 - Converting unstructured prose or flat mind-maps into a hierarchical, non-flat Argdown model
-- Preparing a faithfully traced reconstruction before running `argument-audit` or `premise-check`
+- Preparing a faithfully traced reconstruction before running `argument-audit` or `argument-map`
 
 ## Procedure
 

@@ -39,23 +39,13 @@ import dispatch
 import hearsay_gate as hg
 import premise_check_gate as pcg
 import premise_check_verdict as pcv
-import report_argument as ra
-
-_ANY_BASIS = ra.load_vocabulary().basis[0].phrase
 
 
 def _pass_reason(claim_id: str) -> str:
-    """A PASS reason with all seven keyed lines, for judged text with no argdown block."""
-    return "\n".join(
-        [
-            f"Judged: {claim_id}; asks tg-1",
-            "Valid: (2) holds -- the cited rule yields (2) from (1)",
-            f"Supported: weakest {_ANY_BASIS} -- (1)",
-            "Answered: tg-1 ← (2)",
-            "Sufficient: (2) material; sufficiency obvious",
-            "Waived: block -- a prose report; its one step could still be judged",
-            "Relay: none",
-        ]
+    """A natural-language PASS reason for an armed claim."""
+    return (
+        f"PASS {claim_id}: the cited evidence supports the conclusion directly "
+        "and answers the stated ask."
     )
 
 
@@ -97,9 +87,15 @@ def _isolate_state(tmp_path, monkeypatch):
 class _StubTracer:
     """A minimal stand-in for claude_code_tracer, recording what it was asked to export."""
 
-    def __init__(self, config: dict[str, Any] | None, export_ok: bool = True):
+    def __init__(
+        self,
+        config: dict[str, Any] | None,
+        export_ok: bool = True,
+        raises: BaseException | None = None,
+    ):
         self._config = config
         self._export_ok = export_ok
+        self._raises = raises
         self.exported: list[dict[str, Any]] = []
 
     def discover_config(self):
@@ -134,6 +130,8 @@ class _StubTracer:
         }
 
     def _build_and_export_spans(self, *, config, session_id, username, span_records, **_kw):
+        if self._raises is not None:
+            raise self._raises
         self.exported.append(
             {
                 "config": config,
@@ -1204,42 +1202,33 @@ def test_claude_peer_report_without_invocation_num_still_arms_after_agy_guard():
     assert hg.is_armed(session_id) is True
 
 
-def test_absent_block_refuses_to_clear_gate_and_leaves_armed(monkeypatch):
+def test_prose_report_arms_uniformly_and_accepts_pass_with_natural_language_reason(monkeypatch):
     monkeypatch.setattr(
         pcv, "_import_claude_code_tracer", lambda: _StubTracer(config={"endpoint": "http://x"})
     )
-    session_id = "sess-absent-block"
-    prompt = '<cross-session-message from="twin-a">PR #12 is merged with no block.</cross-session-message>'
+    session_id = "sess-prose-report"
+    prompt = '<cross-session-message from="twin-a">PR #12 is merged; CI green on main.</cross-session-message>'
     ctx = _prompt_ctx(session_id, prompt)
     claim_id = pcg._derive_claim_id(ctx)
     res = pcg.premise_check_arm(ctx)
     assert res is not None
-    assert "no argument block supplied" in res.inject_text
-    assert "send" in res.inject_text.lower() and "back" in res.inject_text.lower()
-    assert "--verdict REVISE" in res.inject_text
+    assert "no argument block supplied" not in res.inject_text
+    assert "--verdict <PASS|REVISE|FAIL>" in res.inject_text
     assert pcg.is_armed(session_id) is True
 
-    # The gate refuses dispatch while armed awaiting return/verdict
+    # The gate refuses dispatch while armed awaiting verdict
     dispatch_res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
     assert dispatch_res is not None and dispatch_res.kind == dispatch.Kind.REFUSE
 
-    # Attempting to record PASS on an absent block is refused: gate stays shut
-    with pytest.raises(ValueError, match="absent block cannot pass"):
-        pcv.record_verdict(
-            session_id=session_id,
-            claim_id=claim_id,
-            verdict="PASS",
-            reason=_pass_reason(claim_id),
-        )
-    assert pcg.is_armed(session_id) is True
-
-    # Agent records REVISE to send back for resending, which clears the gate
-    pcv.record_verdict(
+    # Recording PASS with a natural-language reason clears the gate without mechanical block checks
+    result = pcv.record_verdict(
         session_id=session_id,
         claim_id=claim_id,
-        verdict="REVISE",
-        reason="no argument supplied",
+        verdict="PASS",
+        reason="The prose report states the merge and green CI cleanly; reasoning holds.",
     )
+    assert result["ok"] is True
+    assert result["verdict"] == "PASS"
     assert pcg.is_armed(session_id) is False
 
 
@@ -1247,7 +1236,6 @@ def test_null_form_clears_gate_with_no_agent_action():
     session_id = "sess-null-form"
     prompt = (
         '<cross-session-message from="twin-a">\n'
-        "Status notice.\n"
         "```argdown\n"
         "===\n"
         "asks: none\n"
@@ -1302,6 +1290,72 @@ def test_claim_none_does_not_pass_as_null_form():
     res = pcg.premise_check_arm(ctx)
     assert res is not None
     assert pcg.is_armed(session_id) is True
+
+
+def test_standalone_no_claim_auto_disarms_while_quoted_or_mixed_prose_arms():
+    """Standalone canonical [no claim] auto-disarms; substantive prose quoting or ending with [no claim] still arms."""
+    # 1. Standalone bare [no claim] notice auto-disarms
+    sess_null = "sess-bare-no-claim"
+    prompt_null = '<cross-session-message from="twin-a">\n[no claim]\n</cross-session-message>'
+    assert pcg.premise_check_arm(_prompt_ctx(sess_null, prompt_null)) is None
+    assert pcg.is_armed(sess_null) is False
+    assert pcg.get_state(sess_null)["last_verdict"]["verdict"] == "no-claim"
+
+    # 2. Standalone fenced argdown [no claim] without frontmatter also auto-disarms
+    sess_fenced = "sess-fenced-no-claim"
+    prompt_fenced = (
+        '<cross-session-message from="twin-a">\n'
+        "```argdown\n"
+        "[no claim]\n"
+        "```\n"
+        "</cross-session-message>"
+    )
+    assert pcg.premise_check_arm(_prompt_ctx(sess_fenced, prompt_fenced)) is None
+    assert pcg.is_armed(sess_fenced) is False
+    assert pcg.get_state(sess_fenced)["last_verdict"]["verdict"] == "no-claim"
+
+    # 3. Substantive report quoting an illustrative fenced argdown [no claim] block STILL arms the gate
+    sess_quoted_mid = "sess-quoted-block-mid"
+    prompt_quoted_mid = (
+        '<cross-session-message from="twin-a">\n'
+        "I audited the gate null-form documentation. Example block from the skill:\n"
+        "```argdown\n"
+        "===\n"
+        "asks: none\n"
+        "===\n\n"
+        "[no claim]\n"
+        "```\n"
+        "Therefore the documentation matches the gate behavior.\n"
+        "</cross-session-message>"
+    )
+    assert pcg.premise_check_arm(_prompt_ctx(sess_quoted_mid, prompt_quoted_mid)) is not None
+    assert pcg.is_armed(sess_quoted_mid) is True
+
+    # 4. Substantive report ending with a fenced argdown [no claim] block STILL arms the gate
+    sess_quoted_end = "sess-quoted-block-end"
+    prompt_quoted_end = (
+        '<cross-session-message from="twin-a">\n'
+        "All tests passed on main; here is the null form template:\n"
+        "```argdown\n"
+        "===\n"
+        "asks: none\n"
+        "===\n\n"
+        "[no claim]\n"
+        "```\n"
+        "</cross-session-message>"
+    )
+    assert pcg.premise_check_arm(_prompt_ctx(sess_quoted_end, prompt_quoted_end)) is not None
+    assert pcg.is_armed(sess_quoted_end) is True
+
+    # 5. Substantive prose mentioning [no claim] mid-sentence or on the last line STILL arms the gate
+    for tag, body in (
+        ("mid", "This report discusses [no claim] notices and concludes the gate still works."),
+        ("trailing", "Deployed to production and verified green.\n\n[no claim]"),
+    ):
+        sess = f"sess-prose-no-claim-{tag}"
+        prompt_prose = f'<cross-session-message from="twin-a">\n{body}\n</cross-session-message>'
+        assert pcg.premise_check_arm(_prompt_ctx(sess, prompt_prose)) is not None
+        assert pcg.is_armed(sess) is True
 
 
 @pytest.mark.parametrize(
@@ -1359,20 +1413,11 @@ answers:
 
     # Verdict records with verification id and disarms the gate
     tracer = _StubTracer(config={"endpoint": "http://x"})
-    reason = (
-        f"Judged: {claim_id}; asks tg-398\n"
-        "Valid: (2) holds -- rule\n"
-        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
-        "Answered: tg-398 <- (2)\n"
-        "Sufficient: (2) material\n"
-        "Waived: none\n"
-        "Relay: none"
-    )
     verdict_res = pcv.record_verdict(
         session_id=session_id,
         claim_id=claim_id,
         verdict="PASS",
-        reason=reason,
+        reason=_pass_reason(claim_id),
         tracer_mod=tracer,
     )
     assert verdict_res["ok"] is True
@@ -1410,20 +1455,11 @@ answers:
 
     # Verdict records with verification id and disarms the gate
     tracer = _StubTracer(config={"endpoint": "http://x"})
-    reason = (
-        "Judged: worker-report-1; asks tg-1\n"
-        "Valid: (2) holds -- rule\n"
-        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
-        "Answered: tg-1 <- (2)\n"
-        "Sufficient: (2) material\n"
-        "Waived: none\n"
-        "Relay: none"
-    )
     verdict_res = pcv.record_verdict(
         session_id=session_id,
         claim_id="worker-report-1",
         verdict="PASS",
-        reason=reason,
+        reason=_pass_reason("worker-report-1"),
         tracer_mod=tracer,
     )
     assert verdict_res["ok"] is True
@@ -1962,15 +1998,7 @@ answers:
 -- rule --
 (2) Outcome verified
 ```"""
-    reason = (
-        f"Judged: {{claim_id}}; asks {ask_id}\n"
-        "Valid: (2) holds -- rule\n"
-        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
-        f"Answered: {ask_id} <- (2)\n"
-        "Sufficient: (2) material\n"
-        "Waived: none\n"
-        "Relay: none"
-    )
+    reason = f"PASS {{claim_id}}: work completed per spec and verified for {ask_id}."
     return report_text, reason
 
 
@@ -2219,26 +2247,6 @@ _GLUED_RESULT_EXAMPLE = (
 )
 
 
-def test_gate_argument_block_reading_finds_block_when_closing_fence_glued_to_result():
-    """AC1/AC2: Feeds the task notification example with glued ```</result> closing fence.
-
-    The gate's argument-block reading must find the argdown block rather than
-    wrongly concluding that no argument block was supplied.
-    """
-    # 1. Direct argument-block reader:
-    block = ra.extract_block(_GLUED_RESULT_EXAMPLE)
-
-    # 2. Gate arm handler reading:
-    ctx = _prompt_ctx("sess-glued-result", _GLUED_RESULT_EXAMPLE)
-    res = pcg.premise_check_arm(ctx)
-
-    assert block is not None, (
-        f"exposes wrong 'no argument block' result from gate: {res.inject_text if res else ''}"
-    )
-    assert res is not None
-    assert "no argument block supplied" not in res.inject_text
-
-
 def test_issue_3181_verdict_pass_on_glued_task_notification_succeeds():
     """Issue #3181: Coordinator records PASS on a <task-notification> with glued ```</result>."""
     session_id = "sess-issue-3181"
@@ -2397,170 +2405,6 @@ def test_agy_subagent_preinvocation_delivers_honesty_reminder(tmp_path, monkeypa
     assert f"caller_session: {parent_sess}" in res.inject_text
 
 
-def test_agy_subagent_pretool_pre_handback_check(tmp_path, monkeypatch):
-    """Subagent send_message in agy is refused once if missing argdown block, but retries pass."""
-    pointer_dir = tmp_path / "pointer_dir"
-    tracer_dir = tmp_path / "tracer_dir"
-    monkeypatch.setenv("AOPS_SESSION_POINTER_DIR", str(pointer_dir))
-    monkeypatch.setenv("AOPS_TRACER_STATE_DIR", str(tracer_dir))
-
-    subagent_sess = "subagent-session-456"
-    parent_sess = "parent-session-888"
-
-    tracer_dir.mkdir(parents=True, exist_ok=True)
-    (tracer_dir / f"{subagent_sess}.json").write_text(
-        json.dumps({"phoenix_session_id": f"{parent_sess}/{subagent_sess}"})
-    )
-
-    # 1. Message missing argdown block is refused on first attempt
-    ctx_missing = dispatch.HookContext(
-        client="agy",
-        event="PreToolUse",
-        tool="send_message",
-        session_id=subagent_sess,
-        tool_input={"Recipient": parent_sess, "Message": "Here is my report without any block."},
-    )
-    res1 = hg.subagent_pre_handback_check(ctx_missing)
-    assert res1 is not None
-    assert res1.kind == dispatch.Kind.REFUSE
-    assert "omits a fenced `argdown` block" in res1.inject_text
-
-    # 2. Second attempt (retry) passes through to avoid deadlock
-    res2 = hg.subagent_pre_handback_check(ctx_missing)
-    assert res2 is None
-
-    # 3. Message WITH argdown block passes through and clears marker
-    ctx_with_block = dispatch.HookContext(
-        client="agy",
-        event="PreToolUse",
-        tool="send_message",
-        session_id=subagent_sess,
-        tool_input={
-            "Recipient": parent_sess,
-            "Message": "Here is my report.\n```argdown\n===\nasks: none\n===\n[no claim]\n```",
-        },
-    )
-    res3 = hg.subagent_pre_handback_check(ctx_with_block)
-    assert res3 is None
-    # Marker should be unlinked
-    marker = pointer_dir / f"{subagent_sess}.prehandback_warned"
-    assert not marker.exists()
-
-    # 4. Non-subagent (top-level caller) calling send_message is not refused
-    root_sess = "root-session-000"
-    (tracer_dir / f"{root_sess}.json").write_text(json.dumps({"phoenix_session_id": root_sess}))
-    ctx_root = dispatch.HookContext(
-        client="agy",
-        event="PreToolUse",
-        tool="send_message",
-        session_id=root_sess,
-        tool_input={"Recipient": subagent_sess, "Message": "Direction brief ## Ask"},
-    )
-    assert hg.subagent_pre_handback_check(ctx_root) is None
-
-
-def test_agy_subagent_pretool_pre_handback_check_multiturn_without_tracer(tmp_path, monkeypatch):
-    """Multi-turn agy subagent without tracer state still refuses missing argdown once via Turn 1 transcript."""
-    pointer_dir = tmp_path / "pointer_dir"
-    tracer_dir = tmp_path / "tracer_dir"
-    tracer_dir.mkdir(parents=True, exist_ok=True)
-    monkeypatch.setenv("AOPS_SESSION_POINTER_DIR", str(pointer_dir))
-    monkeypatch.setenv("AOPS_TRACER_STATE_DIR", str(tracer_dir))
-
-    sub_sess = "subagent-multiturn-no-tracer"
-    parent_sess = "parent-multiturn-000"
-    transcript = tmp_path / "transcript.jsonl"
-    transcript.write_text(
-        json.dumps(
-            {
-                "step_index": 0,
-                "type": "SYSTEM_MESSAGE",
-                "content": _agy_message(
-                    parent_sess,
-                    "<subagent_reminder>You are running as a subagent, invoked by a caller agent.</subagent_reminder>\nFix bug.",
-                ),
-            }
-        )
-        + "\n"
-        + json.dumps({"step_index": 1, "type": "PLANNER_RESPONSE", "content": "Initial check."})
-        + "\n"
-        + json.dumps(
-            {
-                "step_index": 2,
-                "type": "SYSTEM_MESSAGE",
-                "content": _agy_message(parent_sess, "Turn 2 follow-up without reminder tag."),
-            }
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-
-    # PreToolUse in agy carries stepIdx and omits invocationNum; Turn 2 lacks <subagent_reminder>
-    ctx_turn2_missing = dispatch.HookContext(
-        client="agy",
-        event="PreToolUse",
-        tool="send_message",
-        session_id=sub_sess,
-        transcript_path=str(transcript),
-        tool_input={"Recipient": parent_sess, "Message": "Turn 2 report with no argdown block."},
-        raw={
-            "conversationId": sub_sess,
-            "stepIdx": 5,
-            "transcriptPath": str(transcript),
-            "toolCall": {
-                "name": "send_message",
-                "args": {
-                    "Recipient": parent_sess,
-                    "Message": "Turn 2 report with no argdown block.",
-                },
-            },
-        },
-    )
-    res1 = hg.subagent_pre_handback_check(ctx_turn2_missing)
-    assert res1 is not None and res1.kind == dispatch.Kind.REFUSE
-
-    # Second attempt passes once-per-handback guard
-    assert hg.subagent_pre_handback_check(ctx_turn2_missing) is None
-
-    # A root session whose Turn 2 receives a subagent report quoting <subagent_reminder> is NOT a subagent
-    root_transcript = tmp_path / "root_transcript.jsonl"
-    root_transcript.write_text(
-        json.dumps(
-            {
-                "step_index": 0,
-                "type": "USER_INPUT",
-                "content": "<USER_REQUEST>Review hooks</USER_REQUEST>",
-            }
-        )
-        + "\n"
-        + json.dumps(
-            {
-                "step_index": 1,
-                "type": "SYSTEM_MESSAGE",
-                "content": _agy_message(
-                    sub_sess, "Report discussing <subagent_reminder> marker handling."
-                ),
-            }
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-    ctx_root_turn2 = dispatch.HookContext(
-        client="agy",
-        event="PreToolUse",
-        tool="send_message",
-        session_id="root-session-turn2",
-        transcript_path=str(root_transcript),
-        tool_input={"Recipient": sub_sess, "Message": "Next brief without block."},
-        raw={
-            "conversationId": "root-session-turn2",
-            "stepIdx": 5,
-            "transcriptPath": str(root_transcript),
-        },
-    )
-    assert hg.subagent_pre_handback_check(ctx_root_turn2) is None
-
-
 # ---------------------------------------------------------------------------
 # Multi-agent recipient isolation, metadata filtering, batch & handback plumbing
 # ---------------------------------------------------------------------------
@@ -2645,7 +2489,6 @@ def test_concurrent_agent_ids_isolate_gate_slots_and_prevent_cross_blocking_or_c
         claim_id="Audit module",
         judged_text=report_sub_b,
         judged_ref="toolu_b",
-        block_expected=True,
         agent_id="sub-b",
     )
     pcg.arm(
@@ -2653,7 +2496,6 @@ def test_concurrent_agent_ids_isolate_gate_slots_and_prevent_cross_blocking_or_c
         claim_id="Audit module",
         judged_text=report_root,
         judged_ref="toolu_root",
-        block_expected=True,
         agent_id="",
     )
     assert pcg.is_armed(session_id, agent_id="sub-b") is True
@@ -2697,7 +2539,6 @@ def test_resolve_session_id_ignores_agent_suffix_and_parents_file(monkeypatch):
         claim_id="claim-sub-resolve",
         judged_text=report_text,
         judged_ref="toolu_res",
-        block_expected=True,
         agent_id=sub_id,
     )
     # Write a coordination sidecar too, which must be ignored
@@ -2716,9 +2557,7 @@ def test_block_message_identifies_this_agent_and_keeps_two_line_contract():
     session_id = "sess-blk-agent"
     sub_id = "sub-coord-1"
     claim_id = "claim-sub-blk"
-    pcg.arm(
-        session_id, claim_id=claim_id, judged_text="pending", block_expected=True, agent_id=sub_id
-    )
+    pcg.arm(session_id, claim_id=claim_id, judged_text="pending", agent_id=sub_id)
 
     ctx = _agent_dispatch_ctx_for(session_id, agent_id=sub_id)
     res = pcg.premise_check_handler(ctx)
@@ -2735,40 +2574,6 @@ def test_block_message_identifies_this_agent_and_keeps_two_line_contract():
     assert (
         pcg.premise_check_handler(_agent_dispatch_ctx_for(session_id, agent_id="sub-other")) is None
     )
-
-
-def test_block_expected_does_not_leak_between_claims_in_same_slot():
-    """block_expected is scoped per claim entry, not shared top-level across claims in a slot."""
-    session_id = "sess-block-expected-per-claim"
-    pcg.arm(
-        session_id, claim_id="claim-with-block-req", judged_text="no block", block_expected=True
-    )
-    pcg.arm(
-        session_id,
-        claim_id="claim-optional-block",
-        judged_text="Status ping only",
-        block_expected=False,
-    )
-
-    tracer = _StubTracer(config={"endpoint": "http://x"})
-    res = pcv.record_verdict(
-        session_id=session_id,
-        claim_id="claim-optional-block",
-        verdict="PASS",
-        reason="Judged: claim-optional-block; no claim -- status ping",
-        tracer_mod=tracer,
-    )
-    assert res["ok"] is True and res["no_claim"] is True
-    assert pcg.is_armed(session_id) is True
-
-    with pytest.raises(ValueError, match="no argument block"):
-        pcv.record_verdict(
-            session_id=session_id,
-            claim_id="claim-with-block-req",
-            verdict="PASS",
-            reason=_pass_reason("claim-with-block-req"),
-            tracer_mod=tracer,
-        )
 
 
 def test_agent_post_tool_completion_metadata_without_report_body_does_not_arm_metadata_json():
@@ -3420,5 +3225,254 @@ def test_corrupt_sidecar_and_missing_snapshot_fail_loudly(tmp_path: Path):
     with pytest.raises(ValueError, match="corrupt sidecar metadata"):
         pcg._lookup_sidecar_tool_use_id(ctx, child_id)
 
+    pcg.arm(session_id, claim_id="claim-missing-snap", judged_text="stored text")
+    for snap in Path(pcg._state_dir()).glob("*.judged.txt"):
+        snap.unlink()
     with pytest.raises(FileNotFoundError):
-        pcg._entry_block_absent({"file": "does-not-exist.judged.txt"})
+        pcg.get_judged(session_id, "claim-missing-snap")
+
+
+# ---------------------------------------------------------------------------
+# Judged-ref capture, missing snapshot guards, task-read bypass, and overrides
+# ---------------------------------------------------------------------------
+
+
+def test_arm_on_subagent_result_stores_judged_text_and_tool_use_id():
+    report_text = "Subagent verified tests pass across all targets."
+    ctx = _prompt_ctx(
+        "s-arm-sub",
+        f'<task-notification id="toolu_0XYZ"><result>{report_text}</result></task-notification>',
+    )
+    assert pcg.premise_check_arm(ctx) is not None
+    claim_id = pcg.get_state("s-arm-sub")["claim_id"]
+    text, ref = pcg.get_judged("s-arm-sub", claim_id)
+    assert ref == "toolu_0XYZ"
+    assert text is not None and report_text in text
+
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    pcv.record_verdict(
+        session_id="s-arm-sub",
+        claim_id=claim_id,
+        verdict="PASS",
+        reason=_pass_reason(claim_id),
+        tracer_mod=tracer,
+    )
+    assert tracer.exported[0]["spans"][0]["attributes"]["premise_check.judged_ref"] == "toolu_0XYZ"
+    assert pcg.get_judged("s-arm-sub", claim_id) == (None, None)
+
+
+def test_arm_on_peer_message_uses_the_envelope_id_as_judged_ref():
+    report_text = "Peer checked deployment state and confirmed healthy."
+    prompt = f'<cross-session-message from="twin" id="msg-42">{report_text}</cross-session-message>'
+    pcg.premise_check_arm(_prompt_ctx("s-arm-peer", prompt))
+    text, ref = pcg.get_judged("s-arm-peer", "msg-42")
+    assert ref == "msg-42"
+    assert text is not None and report_text in text
+
+
+def test_get_judged_and_disarm_raise_when_stored_file_is_missing():
+    pcg.arm("s-gone", claim_id="CID", judged_text="stored body")
+    for path in Path(pcg._state_dir()).glob("*.judged.txt"):
+        path.unlink()
+    with pytest.raises(FileNotFoundError):
+        pcg.get_judged("s-gone", "CID")
+
+    pcg.arm("s-gone-2", claim_id="CID", judged_text="stored body")
+    for path in Path(pcg._state_dir()).glob("*.judged.txt"):
+        path.unlink()
+    with pytest.raises(FileNotFoundError):
+        pcg.disarm("s-gone-2", "CID", "REVISE", "r")
+
+
+def _task_body(with_verdict: bool = False, with_report: bool = True) -> str:
+    body = "## Goal\n\nDo the thing.\n\n"
+    if with_report:
+        body += "## Report\n\nCompleted the work and observed green tests.\n"
+    if with_verdict:
+        body += "\n## Premise-Check Verdict\n\nverdict-12345678 PASS\n"
+    return body
+
+
+def _task_read_ctx(tool: str, body: str, task_id: str, shape: str, agent: str = "ida:ida"):
+    record = {"id": task_id, "title": "Do the thing", "status": "review", "body": body}
+    if shape == "content_blocks":
+        response: Any = [{"type": "text", "text": json.dumps(record)}]
+    elif shape == "dict":
+        response = record
+    else:
+        response = json.dumps(record)
+    return dispatch.HookContext(
+        client="claude",
+        event="PostToolUse",
+        tool=tool,
+        session_id=f"s-task-{shape}",
+        agent_type=agent,
+        raw={"tool_input": {"id": task_id}, "tool_response": response},
+    )
+
+
+@pytest.mark.parametrize("shape", ["content_blocks", "dict", "json_text"])
+@pytest.mark.parametrize("tool", _POLICY["premise_check"]["task_read_tools"])
+def test_task_read_with_unverdicted_report_does_not_arm_while_bypassed(tool, shape):
+    ctx = _task_read_ctx(tool, _task_body(), "task_fixture_01", shape)
+    assert pcg.premise_check_arm(ctx) is None
+    assert pcg.is_armed(ctx.session_id) is False
+
+
+@pytest.mark.parametrize("client", ["claude", "agy"])
+def test_post_tool_entry_point_does_not_arm_on_task_read_while_bypassed(client):
+    handlers = _load_plugin_module("ida_handlers_arm_task_read", _HOOKS_DIR / "handlers.py")
+    record = {"id": "task_fixture_01", "body": _task_body()}
+    raw = {
+        "tool_name": _POLICY["premise_check"]["task_read_tools"][0],
+        "session_id": f"s-entry-{client}",
+        "agent_type": "ida:ida",
+        "tool_input": {"id": "task_fixture_01"},
+        "tool_response": [{"type": "text", "text": json.dumps(record)}],
+    }
+    ctx = dispatch.normalize(client, "PostToolUse", raw, _HOOKS_DIR)
+    handlers.post_tool(ctx)
+    assert pcg.is_armed(f"s-entry-{client}") is False
+
+
+@pytest.mark.parametrize("var", _POLICY["premise_check"]["override_vars"])
+def test_override_passes_an_armed_gate_with_no_span_and_no_count(monkeypatch, var):
+    session_id = f"s-ovr-{var}"
+    pcg.arm(session_id, claim_id="claim-ovr")
+    tracer = _StubTracer(
+        config={"endpoint": "http://x"}, raises=OSError("an export attempt would raise")
+    )
+    monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: tracer)
+    monkeypatch.setenv(var, "1")
+
+    assert pcg.premise_check_handler(_agent_dispatch_ctx(session_id)) is None
+    assert tracer.exported == []
+    assert "override_count" not in pcg.get_state(session_id)
+
+
+def test_override_on_a_disarmed_gate_is_not_counted(monkeypatch):
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: tracer)
+    monkeypatch.setenv(_POLICY["premise_check"]["override_vars"][0], "1")
+    assert pcg.premise_check_handler(_agent_dispatch_ctx("s-ovr-idle")) is None
+    assert tracer.exported == []
+    assert "override_count" not in pcg.get_state("s-ovr-idle")
+
+
+def test_armed_direction_brief_blocks_send_message_until_no_claim_verdict_disarms(
+    tmp_path: Path, monkeypatch
+):
+    """Armed peer/agy direction briefs refuse send_message until verdict.py --no-claim (REVISE or PASS) disarms."""
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: tracer)
+
+    # 1. Armed agy [Message] direction brief missing required inputs (even with trailing [no claim] block):
+    #    gate arms -> send_message refused -> verdict.py --verdict REVISE --no-claim disarms -> send_message allowed.
+    sess_revise = "sess-dir-brief-revise"
+    brief_missing_inputs = (
+        "Review the pending spec changes and report back.\n\n"
+        "```argdown\n"
+        "===\n"
+        "asks: none\n"
+        "===\n\n"
+        "[no claim]\n"
+        "```"
+    )
+    revise_dir = tmp_path / "revise_case"
+    revise_dir.mkdir(parents=True, exist_ok=True)
+    agy_ctx = _agy_turn_ctx(revise_dir, sess_revise, _agy_message(_AGY_PEER, brief_missing_inputs))
+    arm_rev = pcg.premise_check_arm(agy_ctx)
+    assert arm_rev is not None
+    assert pcg.is_armed(sess_revise) is True
+    assert "--no-claim" in arm_rev.inject_text
+    claim_rev = pcg.get_state(sess_revise)["claim_id"]
+
+    send_rev_ctx = dispatch.HookContext(
+        client="agy",
+        event="PreToolUse",
+        tool="send_message",
+        session_id=sess_revise,
+        agent_type="rbg:rbg",
+    )
+    refused_rev = pcg.premise_check_handler(send_rev_ctx)
+    assert refused_rev is not None and refused_rev.kind == dispatch.Kind.REFUSE
+
+    reason_rev = tmp_path / "revise_brief_reason.txt"
+    reason_rev.write_text(
+        "Turn-1 brief intake REVISE: target artifact path omitted from direction brief.",
+        encoding="utf-8",
+    )
+    rc_rev = pcv.main(
+        [
+            "--claim",
+            claim_rev,
+            "--verdict",
+            "REVISE",
+            "--no-claim",
+            "--reason-file",
+            str(reason_rev),
+            "--session",
+            sess_revise,
+        ]
+    )
+    assert rc_rev == 0
+    assert pcg.is_armed(sess_revise) is False
+    state_rev = pcg.get_state(sess_revise)["last_verdict"]
+    assert state_rev["verdict"] == "REVISE"
+    assert state_rev["no_claim"] is True
+    span_rev = tracer.exported[-1]["spans"][0]["attributes"]
+    assert span_rev["premise_check.verdict"] == "REVISE"
+    assert span_rev["premise_check.no_claim"] is True
+    assert pcg.premise_check_handler(send_rev_ctx) is None
+
+    # 2. Armed Claude Code peer direction brief passing Turn-1 intake:
+    #    gate arms -> send_message refused -> verdict.py --verdict PASS --no-claim disarms -> send_message allowed.
+    sess_pass = "sess-dir-brief-pass"
+    peer_brief = (
+        '<cross-session-message from="supervisor" id="brief-pass-1">\n'
+        "## Ask\nReview `specs/enforcement/evidence-contract.md` on branch feat/demo.\n"
+        "</cross-session-message>"
+    )
+    arm_pass = pcg.premise_check_arm(_prompt_ctx(sess_pass, peer_brief, agent_type="rbg:rbg"))
+    assert arm_pass is not None
+    assert pcg.is_armed(sess_pass) is True
+    claim_pass = pcg.get_state(sess_pass)["claim_id"]
+    assert claim_pass == "brief-pass-1"
+
+    send_pass_ctx = dispatch.HookContext(
+        client="claude",
+        event="PreToolUse",
+        tool="SendMessage",
+        session_id=sess_pass,
+        agent_type="rbg:rbg",
+    )
+    refused_pass = pcg.premise_check_handler(send_pass_ctx)
+    assert refused_pass is not None and refused_pass.kind == dispatch.Kind.REFUSE
+
+    reason_pass = tmp_path / "pass_brief_reason.txt"
+    reason_pass.write_text(
+        "Turn-1 direction brief intake PASS: target artifact and ask verified.",
+        encoding="utf-8",
+    )
+    rc_pass = pcv.main(
+        [
+            "--claim",
+            claim_pass,
+            "--verdict",
+            "PASS",
+            "--no-claim",
+            "--reason-file",
+            str(reason_pass),
+            "--session",
+            sess_pass,
+        ]
+    )
+    assert rc_pass == 0
+    assert pcg.is_armed(sess_pass) is False
+    state_pass = pcg.get_state(sess_pass)["last_verdict"]
+    assert state_pass["verdict"] == "PASS"
+    assert state_pass["no_claim"] is True
+    span_pass = tracer.exported[-1]["spans"][0]["attributes"]
+    assert span_pass["premise_check.verdict"] == "PASS"
+    assert span_pass["premise_check.no_claim"] is True
+    assert pcg.premise_check_handler(send_pass_ctx) is None

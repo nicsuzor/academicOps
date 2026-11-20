@@ -1,5 +1,5 @@
 ---
-description: Quick-fix delivery for simple, uncontroversial changes -- routes through the repository's shortened PR or merge process where available, exempt from post-hoc review when unit and destination tests pass.
+description: Shortened delivery workflow for isolated, uncontroversial changes -- keeps changes minimal while still requiring local verification, independent proportionate review, and explicit repository merge authority.
 id: wf-quick-fix
 tags:
   - wf-template
@@ -12,44 +12,22 @@ type: template
 
 ## What this template does
 
-Provides a shortened delivery route for simple, uncontroversial changes to a project, bypassing post-hoc review when fully verified by automated tests.
+Provides a compact delivery path for small, isolated, uncontroversial changes without skipping verification, independent proportionate review, or standing merge boundaries.
 
 ## Scope
 
-- **Eligible**: Simple, uncontroversial changes to a project -- such as isolated bugfixes, minor documentation repairs, small configuration updates, or tight, non-breaking edits.
-- **Ineligible**: Any change that is controversial, architectural, schema-altering, cross-cutting, security-sensitive, code that executes without automated test coverage, or altering established contracts.
+- **Eligible**: Isolated bugfixes, minor documentation repairs, small configuration updates, and tight non-breaking edits.
+- **Ineligible**: Controversial, architectural, schema-altering, cross-cutting, or security-sensitive changes; executable code lacking regression tests; or contract changes (route through standard task/PR composition instead).
 
-## Route Rule
+## Route and Merge Authority
 
-Route delivery through whichever shortened PR or merge process the destination repository offers and permits under its own project rules:
-
-- Takes whichever shortened route the repository provides -- such as an auto-merging pull request, a direct push to a development branch (e.g. `dev`), or a direct push to an unprotected default branch (e.g. `main`).
-- The route rule names no fixed mechanism; it adapts to the specific mechanism configured and permitted by the target repository's rules and branch protections.
-- Where a project's own rules prohibit a given mechanism (e.g. branch protection forbidding direct pushes to `main` or requiring linear history), the worker complies with the project's rules.
-
-## Review Exemption
-
-A quick fix is exempt from post-hoc review (independent follow-up QA tasks, manual sign-off, or multi-agent review passes) if and only if:
-
-1. **Unit tests**: Where the change touches code that executes, it carries unit tests covering the modified behaviour. Instruction text, configuration and docs get no tests; configuration -- values a program reads, such as settings, allowlists, policy entries, hostnames, environment and compose files, including such values written inside a script -- is not code that executes.
-2. **Green destination tests**: All test suites on the destination branch or target environment are confirmed green following the merge or rebase.
-
-If both conditions are met, the task concludes upon successful merge and verification without scheduling follow-up review.
-
-If destination tests fail after merge or rebase, the change has failed: set the task status to `failed` and record the failure evidence on the task record for escalation. This failure must be escalated, not repeated by the same agent.
-
-## Fallback
-
-Any change falling outside the eligible scope, code that executes lacking unit test coverage, failing local test verification prior to delivery, or where the destination repository offers no shortened route, falls back to the repository's standard delivery process: standard pull request into the development branch, full CI verification, and mandatory independent review.
+- **No low-risk review bypass**: Every change (bugfixes included) requires proportionate independent review and green checks on `HEAD` before marking ready (`gh pr ready`) or merging.
+- **Shortened merge boundary**: Merge autonomously (`gh pr merge --squash`) only when project rules authorize it AND a standing user ruling explicitly names the repository with zero external audience (`data-boundaries`, `exercise-authority` Exceptions 1-2). Otherwise leave the draft-then-ready PR open for explicit user approval with verification receipts and a reasoned recommendation.
+- **Post-merge test failure**: Never retry or mask failures; record logs, mark failed if checks regress, and escalate verbatim (`fail-fast`).
 
 ## Worker Completion Checklist
 
-1. Implement the minimal change, with unit tests where it touches code that executes; write no test for instruction text, configuration or docs.
-2. Verify automated test suite and linters pass locally.
-3. Deliver via the repository's permitted shortened route (e.g. auto-merging PR or direct push); if delivered via a worker pull request, open it as a draft (`gh pr create --draft`) and mark it ready for review (`gh pr ready`) only after the independent check passes, without waiting for approval.
-4. Verify all destination tests are green after merge or rebase. If destination tests fail, set the task status to `failed` and document the failure logs on the task record so it is escalated; do not repeat or retry the delivery within the same session.
-5. Record verifiable evidence on the task (test execution output, commit SHA or PR URL).
-6. Release the task:
-   - As `done` if destination tests pass green, without minting follow-up review tasks.
-   - As `failed` if destination tests fail after merge or rebase, escalating for triage.
-   - As standard handoff status (e.g. `partial` if blocked, or `done` if delivered via standard PR) if fallback to the standard delivery process was triggered prior to delivery. Never release as `review`.
+1. Implement the minimal fix (adding red-before-green tests for executable code; proving instruction or doc changes via live checks or lint).
+2. Confirm local tests, linters, and builds pass cleanly.
+3. Open a draft PR (`gh pr create --draft`), obtain independent proportionate review (`PASS`), satisfy head-SHA CI checks, and mark ready (`gh pr ready`) or merge strictly if an explicit standing user ruling covers the repository with zero external audience.
+4. Record primary evidence (test output, review links, commit SHA, PR URL) and release strictly per outcome (`done` when shipped/ready per contract, `failed` on failing checks; never `review`).

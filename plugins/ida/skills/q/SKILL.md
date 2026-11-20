@@ -1,77 +1,58 @@
 ---
 name: q
 type: command
-description: Capture natural-language asks and situate them on the graph as repo-scoped epic tasks, wire value-chain links, and consolidate similar work. Use for strategic intake, task capture, and situating new asks under governing epics. Exclude for starting containers on queued tasks (use /dispatch) or decomposing abstract objectives (use /decompose).
-allowed-tools: [Skill, AskUserQuestion, mcp__services__*]
+description: Capture natural-language asks and situate them on the task graph as repo-scoped tasks under governing component or initiative parents, wire value-chain links on Strategic Value Carriers, and consolidate similar work. Use for strategic intake, task capture, and situating new asks. Exclude for starting workers on queued tasks (use /dispatch) or decomposing abstract objectives (use /decompose).
+allowed-tools: [Skill, mcp__services__*]
 ---
 
 # /q -- Strategic Intake & Graph Placement
 
-Capture natural-language asks and situate them on the strategic graph: parented, connected, and valued at intake per `specs/workflows/graph-valuation.md`. The task dispatch pipeline is used for any durable deliverable -- including agent workflows, instruction updates, specifications, and code changes. Plans, designs, and decisions are captured directly on the task graph, never as markdown plan files in target repositories. Questions and lookups that can be answered in-turn are answered directly without queueing tasks.
+Situate natural-language asks on the task graph: parented, connected, and valued at intake. Use the task pipeline for any durable deliverable (workflows, instructions, specifications, code); capture plans, designs, and decisions on the graph rather than as plan files in repositories. Answer in-turn questions and lookups directly without queueing tasks.
 
-## Placement and Valuation
+## 1. Search, Hydrate, and Consolidate
 
-1. **Search and consolidate (mandatory across all invocations)**: Non-custodian callers delegate `/q` on Turn 1 as a single-purpose brief carrying only the verbatim ask and source identifiers -- running zero pre-delegation PKB, GitHub, or trace lookups in the parent context and never bundling `/q` with concurrent session or sweep work -- because the custodian (`pauli`) performs all intake groundwork in an isolated context. When searching for related or overlapping work, distill the input into 1-3 short (5-15 word) conceptual queries per topic facet (stripping conversational framing and negative or incidental IDs, never passing the raw verbatim prompt to `pkb_search`), and search both open and closed tasks in the PKB (`include_done: true`) as well as related targets before minting any task. Aggregating similar tasks is explicitly preferred: if an incoming ask (or its per-repo parts) can be distributed across one or more existing open epic-sized tasks and handled as the same chunk of work, fold and update those existing tasks rather than creating new tasks. Evaluate three outcomes:
-   - _Consolidate or resume an open task_: If an existing open or in-progress task covers the topic or repo scope, extend and update that task instead of creating a new one.
-   - _Reopen a closed task_: If a completed or closed task directly addresses the topic and requires follow-up, iteration, or expansion, reopen the closed task (setting `status: "queued"` or `"ready"`) to preserve continuity; if the deliverable or release has already shipped and the user is informed, close (`done`) the tracking and work tasks rather than holding them open to verify user-side installation or deployment.
-   - _Mint a new task_: Only if no matching open or closed task can absorb the ask, create a new task situated under the right parent container and wire what it serves. Perform groundwork first (settling unknowns from the PKB first, then live GitHub and traces) and set `status: "queued"` for the concrete next agent step so ready work dispatches rather than sitting in `inbox`; reserve `"ready"`/`"inbox"` strictly for held or externally blocked items, and set `status: "review"` (`assignee: "user"`) when agent groundwork and a reasoned recommendation are complete on the record and the item genuinely waits on the user's own decision.
-   - **Closed-loop delivery**: When a conversational ask requires reporting results back to the user on channel, create a closed-loop delivery task (`assignee: ida`, `needs: [<repo-task-id>]`) so conversational reporting triggers automatically after container execution completes.
-2. **Multi-repository scoping**: When an incoming ask spans two or more repositories, create related repo-specific tasks (`type: "task"`, `project` set per repo; never pass `type: "epic"`):
-   - Link tasks via `needs` when execution is sequential, or place under a shared cross-repo parent objective when parallel.
-   - Create strictly one epic-sized task per repository, never splitting further at intake. In-container supervision decomposes in-repo execution workflows.
-3. **Affordable loss check**: Evaluate affordable loss before admitting commitments. If prospective downside or commitment cost violates affordable loss, flag as a priority ask for the user rather than admitting to the flow. Flow maths remains unpolluted by subjective risk gating.
-4. **Wire value-chain links under the Three-Purpose Taxonomy (ADR-0002)**: Add edges strictly per purpose, pushing weight links as far up the parent hierarchy as accurate:
-   - **Weight Flow (`serves`, `supports`)**:
-     - `serves`: Every minted non-bare task must wire a `serves` weight-flow link (`quantum`, `probability`, `effect`, `justification`, `set_by: "agent-proposed"`) pointing **either directly to a priced `target` node OR, more commonly, to an existing epic that adds weight (`serves`) to a priced `target`**, allowing the task to be valued down the chain. Avoid duplicate links to the same target already reached via that epic.
-     - `supports`: Wire only when executing the task directly reduces effort/risk or increases the completion probability of an upstream task/target. Tracking/coordination tasks do NOT support tracked tasks; tracking tasks serve user understanding targets.
-     - **Weight fields**: `quantum` (words `all`..`none` or float 0.0..=1.0), `probability` (words `certain`..`impossible` or float 0.0..=1.0, default 1.00), `effect: helps` | `harms`, `justification`, `set_by: agent-proposed`.
-   - **Work Sequencing (`needs`)**:
-     - Wire from dependent to prerequisite task ($B \to A$).
-     - Boolean execution gate; carries **neither** quantum nor probability.
-   - **Structural Clustering (Body wikilinks)**:
-     - Contextual references and cited artifacts live exclusively as markdown `[[wikilinks]]` in the body (`## Context`, `## Pointers`). Direct body references already act as clustering/interconnection edges in graph physics; duplicate formal frontmatter edges are strictly prohibited.
-5. **Capital stock hubs**: Wire foundational investments that expand future optionality (reputation, relationships, tool scaffolding, capital reserves) directly to capital stock targets rather than inventing speculative multi-hop downstream chains.
-6. **A bare idea stays bare**: An idea with no clear link to anything priced gets its container and no other edge. Never invent a link to make it count.
-7. **Opportunity is one node plus its edges**: Mark opportunities as `classification: opportunity`. Adding it changes no other node's fields.
-8. **Dates**: Record any date as `due` with `deadline_class`:
-   - `fake`: Default for captured dates where no real loss lands on it.
-   - `soft`: Input carries the user's acceptance or sent mail agreeing to the date.
-   - `hard`: The user explicitly states the date is hard, or a published real-loss date proposed `hard`.
-     Never derive a date from urgency.
-9. **Effort**: Record `effort` duration string when the input states it or work is a known kind (read by the cliff lane).
-10. **Decisions and empirical probes**: An agent given a task or high-value prompt does the groundwork first (settling unknowns from the PKB first, then live GitHub and traces) and makes architectural or route decisions itself rather than leaving actionable work in `inbox`. A task that has options to choose between with no commitment to doing anything immediately beyond choosing keeps the choices and instructions inside the single task body. Competing options remain in the task body or ADR until chosen; when chosen, only the selected option is reified into an actionable task under `parent: <task_id>` at `status: "queued"`. Only when agent groundwork and option evaluation are complete (with a reasoned recommendation written in the body) and the choice genuinely waits on the user's own decision or host action is the task set to `status: "review"` (`assignee: "user"`) so it surfaces in the daily note's `## With you`. Empirical probes are active tasks (`classification: probe`) wired to the scoping task via standard `needs: [<probe_task_id>]`. Stored `alternative` and `settles` edges are prohibited.
-11. **Do not write**: `intent`, `severity`, `stakeholder` as a weight, target worth, `set_by: user`, `soft_depends_on`, `supersedes`, stored `alternative` or `settles` edges, duplicate frontmatter edges for body citations, `supports` edges from tracking tasks to tracked tasks, or redundant child-to-ancestor `serves` edges.
+1. **Custodian intake**: The PKB custodian (`pauli`) executes `/q` intake and related-work lookup via `/hydrate`. Non-custodian callers delegate `/q` on Turn 1 with only the verbatim ask and source identifiers, running zero pre-delegation lookups or bundled sweep work.
+2. **Search via hydrate**: Search open and closed tasks (`include_done: true`) plus related targets via `/hydrate` before minting any task.
+3. **Evaluate outcome**:
+   - _Consolidate or resume_: Extend an open or in-progress task covering the topic or repository scope rather than creating a duplicate.
+   - _Reopen or close_: Reopen a closed task needing follow-up (`queued` for directed work, or `ready` only when held at an external or explicit user-reserved boundary). If the deliverable already shipped and the user is informed, mark tracking and work tasks `done` rather than holding them open to verify user installation or deployment.
+   - _Mint a new task_: Create a task (`type: "task"`, never `type: "epic"`) parented under its governing enduring component parent (`status: "ready"`, weighted via `serves` to `type: target`) or multi-session initiative (`parent: <parent_id>`) with zero leaf `serves` edges.
+     - If an architectural subsystem lacks a component parent, create and weight it first; parent minor isolated tweaks under the project's general infrastructure parent with zero leaf `serves` edges.
+     - Do groundwork first (PKB, then live repository host and traces): set `status: "queued"` for ready agent work, reserve `ready`/`inbox` for held or blocked items, and set `status: "review"` (`assignee: "user"`) only after groundwork and a reasoned recommendation are recorded and an invariant boundary or explicitly user-reserved pre-action hold remains.
+4. **Closed-loop delivery**: When a conversational ask needs results reported back on channel, add a dependent delivery task (`assignee: ida`, `needs: [<repo-task-id>]`, zero `serves` edges). Executor responsibility ends once shipped and reported.
 
-## Headless Context (Email, Mobile Capture)
+## 2. Multi-Repository Scoping
 
-When invoked headlessly (e.g. correspondence sweep or `notes/mobile-captures/` intake):
+When an ask spans multiple repositories, create strictly one repo-scoped task (`type: "task"`, `project` set per repo) under the shared governing parent (`parent: <parent_id>`) with zero leaf `serves` edges, sequencing repos via `needs`. One task per repository governs isolated container execution (`/supervise`), while strategic valuation (`serves`) stays exclusively on the shared parent.
 
-1. **Read for homophones**: Treat voice-dictated captures as phonetic transcripts; resolve homophones in context before judging meaning or ambiguity.
-2. **Classify and route each capture**:
-   - **Task** (or **Expand** probe): If an existing task already carries the ask (verified in Step 1 via distilled conceptual query search through the custodian), fold the capture into that task (`update_body`) and `delete` the capture after the write succeeds. Otherwise, convert the capture into a task in place via `convert_document(id=<capture-id>, type="task", status="ready"|"inbox")` so the same file and ID move out of `notes/mobile-captures/` into `tasks/` with task frontmatter, then set the verb-led imperative `title`, `parent`, `project`, `classification` (`probe` for Expand), `links`, and task body via `update_task` and `update_body`. Do not create a replacement task or edit PKB files on disk to simulate conversion.
-   - **Note** (or **Expand** into an existing note): Synthesize into the target note (`update_body`) or create a canonical note (`create(type="knowledge", ...)`), then `delete` the capture only after the destination write succeeds.
-   - **Discard**: Delete the capture via `delete`.
-3. **Defer when uncertain**: Apply placement and valuation without prompting the user. If the classification, parent container, or target cannot be identified with confidence, or if `convert_document` fails, leave the capture note untouched in `notes/mobile-captures/` for the next interactive pass (`specs/workflows/capture-intake.md`). Do not guess.
+## 3. Value-Chain Links & Metadata
 
-## Task Body
+- **Affordable loss**: Flag commitments whose prospective downside violates affordable loss as a priority ask for the user rather than admitting them.
+- **Three-Purpose Taxonomy**:
+  - `serves`: Points strictly to priced `type: target` nodes (never task-to-task), authored exclusively on Strategic Value Carriers (enduring component parents, multi-session initiatives, or freestanding major external deliverables).
+    - Price holistically (`quantum`, `probability`, `effect: helps|harms`, `justification`, `set_by: agent-proposed`); child tasks carry zero `serves` edges and inherit worth via `parent` or `needs`.
+  - `needs`: Boolean execution dependency from dependent to prerequisite (no `quantum` or `probability`).
+  - Body wikilinks: Record contextual citations and pointers exclusively as markdown wikilinks under `## Context` or `## Pointers` (never duplicate them as formal frontmatter edges).
+- **Hubs, ideas, opportunities**: Link foundational capability investments directly to capital stock targets; leave bare ideas without invented links; tag unagreed offers as `classification: opportunity`.
+- **Dates & effort**: Record dates as `due` with `deadline_class` (`fake` default, `soft` if accepted, `hard` if explicitly hard or published real-loss; never from urgency). Record `effort` when stated or known.
+- **Groundwork & decisions**: User direction to perform, settle, or deliver work (including outcome-review phrasing) authorizes execution, route choices, and delivery (`status: "queued"` for concrete agent steps) rather than creating held goals or `status: "review"` tasks.
+  - Settle unknowns before filing; reserve pre-action holds or `status: "review"` (`assignee: "user"`) strictly for completed-groundwork items hitting an invariant boundary (external audience, unruled merge, unbounded cost) or an explicitly user-reserved hold/choice.
+  - Keep competing options inside one scoping task or ADR until chosen, reifying only the chosen route under `parent: <task_id>` at `status: "queued"`, and model unknowns as `classification: probe` (`needs: [<probe_task_id>]`).
+  - Never write `intent`, `severity`, `stakeholder`, target worth, `set_by: user`, `supports`, `soft_depends_on`, `supersedes`, stored `alternative`/`settles` edges, or leaf `serves` edges.
 
-**Title**: Write a concise, verb-led imperative (e.g. `Implement X`).
+## 4. Headless Intake (Email, Mobile Capture)
 
-**Description**: Synthesize the ask in a minimal task body:
+1. **Prepare sources**: Read full message/thread bodies, non-banner attachments, and reachable links (note unreachable access boundaries plainly; resolve voice homophones). Never mint user tasks to read, open, or check a source.
+2. **Classify obligation**:
+   - `noise` (automated notices, newsletters, CC copies): `delete`; create zero tasks.
+   - `reference` / FYI: Update an existing blocking task or topic note (`update_body`); create zero user tasks.
+   - `opportunity` / unagreed offer: Prepare one decision record (`status: "review"`, `assignee: "user"`, `classification: "opportunity"`, `deadline_class: "fake"` unless accepted) with summary, bold options inside the single body (`[Recommended]` rationale, draft reply, decline option).
+   - `action` / accepted commitment: Queue agent groundwork (`queued`) or prepared draft.
+3. **Route captures**: Fold duplicates into existing tasks (`update_body` then `delete`), convert in place via `convert_document(id=<capture-id>, type="task", status="ready"|"inbox")` then `update_task`/`update_body`, synthesize into a canonical note (`update_body` or `create(type="knowledge")`) before deleting, or `delete` discards. Leave uncertain captures untouched for interactive review.
 
-- Restate the user's terse, fragmented words into clear, complete tasks and notes, judged by fidelity to meaning and distinctions, not by wording.
-- Keep the user's exact words only in the referent the premise check reads (`## Ask` and equivalents); do not treat keeping exact words in PKB outputs as a goal.
-- Fault a restatement only for lost, added, or distorted meaning.
-- Link new messages to prior context, recompose asks into a clear logical structure, and cite message IDs as pointers.
-- Bound goals, deliverables, and acceptance criteria strictly to outcomes the assigned worker delivers and checks directly before releasing `done` -- exclude external post-exit acts (independent review, CI completion, PR merge, host deployment, user approval) unless that stage itself is the task's authorized unit of work, regardless of repository merge policy; separate dependent tasks carry those stages when required.
-- Leave ambiguity unresolved in the task; do not guess at intent.
+## 5. Task Body & Output
 
-**Other sections**: Never duplicate structured frontmatter edges in prose or vice versa. Contextual citations, background references, and related artifacts are recorded exclusively as markdown `[[wikilinks]]` in the body (under `## Context` or `## Pointers`), which naturally provide structural clustering for graph physics and search without duplicating formal frontmatter weight edges.
-
-## Output
-
-Return a reference to the task created or updated:
-
-```markdown
-- Captured [TASK-ID] - [TASK-TITLE] (under [PARENT-ID]: [PARENT-TITLE])
-```
+- **Title**: Concise verb-led imperative (e.g., `Implement X`).
+- **Body**: Restate terse asks faithfully by meaning and distinctions, preserving directed authorization; keep exact user words with message IDs only in `## Ask` as the immutable referent and leave unresolved ambiguity open.
+  - Bound `Goal`, `Acceptance`, and deliverables strictly to outcomes the assigned worker delivers and checks before releasing `done`, excluding external post-exit acts (review, CI, PR merge, host deployment, user approval) unless that stage itself is the task's authorized scope.
+- **Output**: `- Captured [TASK-ID] - [TASK-TITLE] (under [PARENT-ID]: [PARENT-TITLE])`

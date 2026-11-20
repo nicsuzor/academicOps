@@ -91,7 +91,10 @@ As a framework auditor investigating execution history, I want the session ident
   Omit `-- Next: ...` when no pre-existing follow-up task or resumption prompt applies.
 - **Headless / Isolated Worker Sessions**: Emit the consolidated project status in the structured handover block on the task record so automated daily sweeps absorb it without concurrent write contention.
 
-### 3. Handover Block Schema
+### 3. Handover Report Formats
+
+- **Task `## Report` and Non-User-Facing Final Handovers (workers, subagents, container coordinators)**: Written solely in clean, human-readable Argdown prose per `ida:premise-check` (no parallel prose summary bolted onto a trailing block), stating the task's original ask and acceptance criteria upfront and quoting deciding primary evidence inline (branch, commit SHA, PR/artifact link, test/control receipts), alongside task ID and release status (`done | partial | failed | cancelled | in_progress`), next step (`[[task-id]]` pointer | resumption prompt | none), durable facts, limitations, and any disclosed rule violations across as many clean blocks as needed.
+- **User-Facing Session Handover Directly to the User**: Concise Markdown handover block with session traceability:
 
 ```markdown
 ## Handover: <agent> <session-id / conversation-id>
@@ -100,13 +103,13 @@ As a framework auditor investigating execution history, I want the session ident
 2. **Summary**: Concise synthesis of findings, modifications, and outcomes.
 3. **Status & Safeguards**:
    - STATUS: <done | partial | failed | cancelled | in_progress>
-   - GATE: <the acceptance criterion id tested, and observed result against it>
+   - CRITERION: <the acceptance criterion id tested, and observed result against it>
    - CONFIDENCE: <high | med | low> + <what single check would falsify this>
    - CONFOUND CHECK: <did a clean-room/differential control run? result? -- or "NOT RUN">
 4. **Output**: <branch + commit SHA> | <PR or artifact link>
 5. **Next step**: <[[task-id]] pointer | Resumption prompt | None>
 6. **Durable Facts**: [None | List of durable facts offered to Pauli or recorded for collection]
-7. **Argument**: The `argdown` block recorded under the task's `## Report`.
+7. **Argument**: Pointer to the clean Argdown prose recorded under the task's `## Report` (when applicable).
 8. **Limitations**: Unresolved items, out-of-scope elements, and verbatim error outputs.
 9. **Rule Violations**: [None | Disclosed violations with rule citations and reasons]
 ```

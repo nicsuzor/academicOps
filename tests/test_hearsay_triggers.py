@@ -34,7 +34,6 @@ _PEER_REPORT_VALID = (
 
 _NULL_FORM_MSG = (
     '<cross-session-message from="twin-a">\n'
-    "Status ping.\n"
     "```argdown\n"
     "===\n"
     "asks: none\n"
@@ -308,14 +307,14 @@ def test_honesty_fires_on_subagent_start_and_not_on_receiving_events():
     assert handlers.honest_output(ctx_init) is None
 
 
-def test_post_tool_hearsay_arm_unifies_null_form_and_block_expected(tmp_path, monkeypatch):
-    """AC4: PostToolUse and UserPromptSubmit share null-form and block_expected handling."""
+def test_post_tool_hearsay_arm_handles_null_form_and_prose_reports_uniformly(tmp_path, monkeypatch):
+    """PostToolUse auto-disarms null-form notices (fenced or standalone [no claim]) and arms prose reports uniformly."""
     import hearsay_gate
     import premise_check_gate as pcg
 
     monkeypatch.setenv("AOPS_PREMISE_GATE_DIR", str(tmp_path / "gate"))
 
-    # 1. PostToolUse with null form clears gate with no-claim, should_arm_hearsay returns False
+    # 1. PostToolUse with fenced null form clears gate with no-claim, should_arm_hearsay returns False
     session_null = "s-post-null"
     pcg.clear_state(session_null)
     ctx_post_null = HookContext(
@@ -332,7 +331,7 @@ def test_post_tool_hearsay_arm_unifies_null_form_and_block_expected(tmp_path, mo
                 "content": [
                     {
                         "type": "text",
-                        "text": "Done.\n```argdown\n===\nasks: none\n===\n[no claim]\n```",
+                        "text": "```argdown\n===\nasks: none\n===\n[no claim]\n```",
                     }
                 ],
             },
@@ -345,36 +344,57 @@ def test_post_tool_hearsay_arm_unifies_null_form_and_block_expected(tmp_path, mo
     st_null = pcg.get_state(session_null)
     assert st_null.get("last_verdict", {}).get("verdict") == "no-claim"
 
-    # 2. PostToolUse with absent block arms with block_expected=True and warns to send back
-    session_absent = "s-post-absent"
-    pcg.clear_state(session_absent)
-    ctx_post_absent = HookContext(
+    # 2. PostToolUse with standalone [no claim] body also auto-disarms
+    session_bare_null = "s-post-bare-null"
+    pcg.clear_state(session_bare_null)
+    ctx_post_bare_null = HookContext(
         client="claude",
         event="PostToolUse",
         tool="Agent",
         agent_type="worker",
-        session_id=session_absent,
+        session_id=session_bare_null,
+        hooks_dir=IDA_HOOKS,
+        raw={
+            "tool_input": {"prompt": "ping"},
+            "tool_response": {
+                "status": "completed",
+                "content": [{"type": "text", "text": "[no claim]"}],
+            },
+        },
+    )
+    assert hearsay_gate.should_arm_hearsay(ctx_post_bare_null) is False
+    assert handlers.hearsay_arm(ctx_post_bare_null) is None
+    assert pcg.is_armed(session_bare_null) is False
+
+    # 3. PostToolUse with natural-language prose report (no fenced block) arms uniformly
+    session_prose = "s-post-prose"
+    pcg.clear_state(session_prose)
+    ctx_post_prose = HookContext(
+        client="claude",
+        event="PostToolUse",
+        tool="Agent",
+        agent_type="worker",
+        session_id=session_prose,
         hooks_dir=IDA_HOOKS,
         raw={
             "tool_input": {"prompt": "do work"},
             "tool_response": {
                 "status": "completed",
-                "content": [{"type": "text", "text": "Completed task without any block."}],
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Completed task and verified output directly from test run.",
+                    }
+                ],
             },
         },
     )
-    assert hearsay_gate.should_arm_hearsay(ctx_post_absent) is True
-    res_absent = handlers.hearsay_arm(ctx_post_absent)
-    assert res_absent is not None
-    assert "no argument block supplied" in res_absent.inject_text
-    assert (
-        "Instruct the sender to load the skill (`ida:premise-check`) before resending."
-        in res_absent.inject_text
-    )
-    assert "instruction to load ida:premise-check" in (res_absent.user_text or "")
-    assert pcg.is_armed(session_absent) is True
-    st_absent = pcg.get_state(session_absent)
-    assert st_absent.get("block_expected") is True
+    assert hearsay_gate.should_arm_hearsay(ctx_post_prose) is True
+    res_prose = handlers.hearsay_arm(ctx_post_prose)
+    assert res_prose is not None
+    assert "--verdict <PASS|REVISE|FAIL>" in res_prose.inject_text
+    assert "no argument block supplied" not in res_prose.inject_text
+    assert pcg.is_armed(session_prose) is True
 
 
 def test_agy_system_message_triggers_only_on_invocation_zero(tmp_path, monkeypatch):

@@ -1,128 +1,67 @@
 ---
 name: dump
-description: Session exit and handover -- execute an immediate emergency handover when invoked by the user, or a calm routine wrap-up when invoked by the agent at session end (committing work, minting retroactive tasks, capturing durable facts, releasing tasks, and emitting a final report). Use when the user runs /dump, or when completing work, resetting context, or transitioning environments. Exclude for in-session updates (use reconcile).
+description: Session exit and handover -- execute an immediate emergency handover when invoked by the user, or a calm routine wrap-up when invoked by the agent at session end (committing work, minting retroactive tasks, capturing durable facts, releasing tasks, and emitting a final report). Use when the user runs /dump, or when completing work, resetting context, or transitioning environments. Exclude for in-session updates (use /reconcile).
 ---
 
-# Dump -- Session Exit and Handover
+# /dump -- Session Exit and Handover
 
-Determine the invocation mode before acting:
+Determine invocation mode before acting:
 
-- **User-run `/dump` (Emergency Handover)**: Invoked when the user runs `/dump` (or `/ida:dump`) as a command in their prompt turn (not an informational question about `/dump`), **whatever wording, context, or trailing instructions accompany it**.
-- **Agent-run `/dump` (Routine Wrap-Up)**: Invoked on the agent's own initiative at session end (task completion via `/pull`, context reset, or environment transition).
-
-## Mode 1: User-Run `/dump` (Emergency Handover)
-
-1. **Stop immediately**: Halt all in-progress task execution at the exact point reached. Start **no further work** -- no new reviews, no new dispatches, no re-dispatches, no new test suites, and no remaining task steps.
-2. **Wind down active work**: If subagents or background tasks are running, immediately message each subagent (e.g. `send_message`) to finish its immediate turn and return its current state without starting another step, and kill active background tasks or timers (e.g. `manage_task: kill`).
-3. **Save current state and hand over**: Proceed directly through Steps 1–7 below for the work as it stands right now -- commit modified files (describing partial state), record durable facts under `## Durable Facts` (offering to `pauli` only if already active, without spawning a new subagent), update and release claimed PKB tasks as `partial` (or `done` only if all acceptance criteria were already verified before `/dump` was called), and emit the final handover report.
-
-## Mode 2: Agent-Run `/dump` (Routine Wrap-Up)
-
-Execute the calm, routine wrap-up across Steps 1–7 below.
+- **User-run `/dump` (Emergency Handover)**: Triggered when the user invokes `/dump` (or `/ida:dump`) as a command, regardless of accompanying text. Stop all task execution immediately (no new reviews, dispatches, tests, or remaining steps); instruct active subagents to finish their immediate turn and return current state; cancel active timers and background tasks; then execute Steps 1-7 on work as it stands (releasing `partial`, or `done` only if all criteria were already verified).
+- **Agent-run `/dump` (Routine Wrap-Up)**: Execute Steps 1-7 at session end (`/pull` completion, context reset, or environment transition).
 
 ## Procedure
 
 ### 1. Save and Push Work
 
-1. Stage specific modified files (never blanket `add -A`) and commit. If work is incomplete, describe what is partial in the commit message.
-2. Deliver commits only where the task's Output names. If Output says nothing is pushed or names only a PKB task or note, do not push. If Output names a branch or pull request, push commits to that remote branch (`git push`). Worker pull requests open as a draft (`gh pr create --draft`) and are marked ready for review (`gh pr ready`) only after the independent check passes and its review verdict is posted to the PR thread, without waiting for approval. Ephemeral container and session scratch paths (`<appDataDir>/brain/`, `/tmp/`, unpushed working trees) vanish on exit; persist non-git evaluation datasets, specimen tables, and reports in the PKB with durable pointers.
-3. For pull requests (`gh pr create --draft`), target the diverged base branch (e.g. `--base "${BASE_BRANCH:-${POLECAT_BASE_BRANCH}}"`).
-4. Record the branch name and commit SHA in the final report.
+Stage specific modified files (never `add -A`) and commit, noting partial state when incomplete. Push commits and open draft PRs (`gh pr create --draft` targeting the diverged base branch) only where `## Output` specifies; mark `gh pr ready` only after the independent check passes and its verdict is posted. Persist non-git evaluation datasets and reports in the PKB (ephemeral scratch paths vanish on exit). Record branch and commit SHA.
 
-### 2. Retroactive Tasks for Unparented Project Edits and Operational Faults
+### 2. Retroactive Tasks (Interactive Sessions Only)
 
-If an ad-hoc or interactive session modified repository project files without an assigned task, or diagnosed and fixed/recovered from a significant operational fault without modifying repository files, create a retroactive task on the knowledge graph before exit:
+When an interactive session edits repository files without an assigned task or recovers from a significant operational fault (outage, crashed daemon, credential failure, root-caused defect -- exempting routine health checks, status pings, and minor edits; file code bugs on GitHub issues), mint a retroactive task (`classification: chore|implementation`, parented to its project or operational epic, 5-section body: `Goal`, `Deliverable`, `Scope`, `Acceptance criteria`, `Pointers`) and release it `done` with SHA or health-check evidence. Isolated workers on assigned tasks never mint retroactive tasks: record containment breaches and release `partial` or `failed`.
 
-1. **Minting & Parentage**: Mint a task via task creation tools with `classification: chore` or `implementation`, linking `parent` to the relevant project or standing operational epic (preventing orphan root tasks). Provide a concise, verb-led imperative title (e.g. `Recover gateway from 502 outage`).
-2. **Canonical Body Format**: Format the body using the canonical 5-section concise template (`Goal`, `Deliverable`, `Scope`, `Acceptance criteria`, `Pointers`) per `synthesize-not-accrete`. Diagnostic logs and recovery checks belong in completion metadata (`status: done` release evidence); enduring architectural insights belong in durable topic notes offered to the knowledge base custodian (`pauli`).
-3. **Immediate Release**: Release the task immediately as `done` with completion evidence detailing touched files and commit SHA, or operational recovery actions and verified health check.
-4. **Significant Fault Threshold**: Covers service downtime/degradation (HTTP 500/502/503, inaccessible endpoints), crashed or leaking containerized services/daemons requiring manual restarts, authentication/credential failures, and latent defects diagnosed to root cause.
-5. **Routine Operations Exempt**: Status checks, health pings, inspecting healthy logs, ephemeral local container restarts during normal development without an underlying fault, routing sweeps, and conversational queries require no task. Minor user-directed edits not useful 30 days later require no task.
-6. **Bug Tracking Demarcation**: Retroactive tasks capture the operational recovery chore on the graph. Latent software defects or code bugs are filed on GitHub issues ("Bugs go on GitHub only").
-7. **Headless Workers**: Dispatched workers on assigned tasks are strictly bound to their task boundary; unparented edits or external faults are a containment breach under `fail-fast` -- record observations for handover and release `partial` or `failed` rather than minting unrelated retroactive tasks.
+### 3. Capture Durable Facts & Repair Contradictions
 
-### 3. Capture Durable Facts and Repair Contradictions
+Offer settled durable facts (decisions, constraints, verified current-state findings, or KB corrections on a 6-month horizon; exclude exploratory thinking aloud) directly to the custodian (`pauli`) with source pointers, or record them under `## Durable Facts` when isolated.
 
-1. **Durable Facts (Six-Month Threshold)**: Review decisions, constraints, and verified environment invariants learned during the session. If a fact holds enduring institutional value across a six-month horizon:
-   - In interactive sessions, offer the fact directly to the knowledge base custodian (`pauli`) as content.
-   - In headless or isolated worker sessions, record the facts under `## Durable Facts` in the task record and handover summary for custodian collection.
-2. **Knowledge Base Repair on Sight**: When encountering conflicting, incorrect, irrelevant, demonstrably false, or outdated knowledge base information during the session, report the contradiction and affected notes to the custodian (`pauli`) for on-sight correction and pruning.
+### 4. Release Claimed Tasks (Children First)
 
-### 4. Release Claimed Tasks
+1. Refetch current task state (`pkb_get_task`), update `## Report` solely in clean Argdown prose per `ida:premise-check` (leading with original ask/criteria and release outcome, quoting deciding evidence inline), and call `pkb_release_task` with `session_id`:
+   - `done`: Single completion status when all in-scope criteria have primary evidence in `## Report` and deliverables are delivered (draft PR opened with `pr_url`/`branch`, or PKB artifact recorded -- without waiting for CI, review, merge, or proof of user installation/deployment). Coordinators (`/supervise`) release `done` when in-session deliverables finish and out-of-session work is queued as follow-up tasks; leaf workers (`/pull`) satisfy all criteria directly.
+   - `partial`: Worker's own criteria or in-session subtasks remain unfinished (blocker, scope seam, missing tool, pre-work approval boundary), or task includes an unreachable post-exit criterion (finish reachable work, leave that item unticked, cite in `reason`).
+   - `failed`: Unrecoverable blocker or check failure.
+   - `cancelled`: Obsolete or invalidated.
+   - `in_progress`: Immediate active successor session continuing.
+   - Never set or release `review` (human hold only). Workers never write `## Premise-Check Verdict`.
 
-For each claimed task (releasing child tasks first):
+```markdown
+**Original Ask (`<task-id>/AC1`):** <Original acceptance criterion in full>
 
-1. **Refetch Current Task State**: Fetch the latest task state from the PKB (`pkb_get_task`) prior to applying updates or generating the report. This ensures fresh visibility into requirements, acceptance criteria to verify and tick, and the real-time completion status of subtasks.
-2. **Update Task Body and Report**: Update the task body so its `## Report` section records the outcome and the `premise-check` report argument (asked by the task's frozen ask ids).
-3. **Release via `pkb_release_task`**, passing the active `session_id` and setting status per the composed workflow's completion step:
+**Main Conclusion:** Task `<task-id>` (<title>) released as `<status>` on `<branch>` (`<commit-sha>`, `<pr-url or artifact>`).
 
-- `done` (the single completion release status for a finished work task): All in-scope acceptance criteria are met with verified primary evidence recorded in `## Report` (`file:line` citations, quoted output, counts, specimen runs, and the `premise-check` argument answering each `<task id>/AC<n>`).
-  - For a PR deliverable, push the branch, open the draft PR (`gh pr create --draft`), record `pr_url` and `branch`, and release as `done` without waiting for CI, review, or merge.
-  - For a container coordinator (`/supervise`), when all in-session deliverables and pull requests are completed and any remaining work was queued as explicit out-of-session follow-up tasks (different repository, later time, or separate external agent), release the claimed repo task as `done` and list the queued follow-up task IDs under `Next step`.
-  - For plain leaf workers (`/pull`), all acceptance criteria must be satisfied directly without delegating to child or follow-up tasks. An empty, template, or bare-assertion report is released as `partial`.
-- `partial`: The worker's own acceptance items remain unfinished (scope seam, external blocker, context reset, missing tool, or pre-work approval gate) OR internal in-session subtasks under `/supervise` remain incomplete. Document completed work, open items, and what remains unfinished in `reason` and `## Report`. Never release as `partial` because an external downstream check (review, QA, CI, or merge) remains to run, unless the claimed task's own checklist includes an unreachable post-exit criterion -- in that case, finish all reachable work, leave that item unticked, and cite the unreachable criterion in `reason`.
-- `failed`: Terminal failure, unrecoverable blocker, or check failure (such as a failed review or QA task). Document failure evidence and root cause.
-- `cancelled`: Task is obsolete or invalidated. Document reason.
-- `in_progress`: Use only if an active successor session is immediately continuing work.
-- `review`: Never set or release `review`. Reserved exclusively for manual human holds applied directly by the user.
+### Deliverable Verification
 
-Task report format (for `release_task` body update in `## Report` and session task summary):
+(1) <Atomic primary observation quoting deciding outputs, branch, commit SHA, PR URL, or test receipts inline>.
+(2) Rule compliance check: <none observed, or explicit rule violation disclosure with rule citation>.
+-- <Plain-prose warrant linking observations to criterion; name nearest plausible rival or exception and whether (1)-(2) rule it out or leave a qualifier.> --
+(3) So, <earned qualifier>, `<task-id>/AC1` is satisfied.
 
-````markdown
-### Task: <task-id> (<title>) -- <status>
+### Handover Context
 
-- **Update**: [1-3 sentences on work completed and remaining]
-- **Output**: [Branch, commit SHA, PR link, or artifact path]
-- **Rule Violations**: [None | List of violations with rule name, source, and explanation]
-- **Proof**:
-
-```argdown
-<the premise-check argdown block, asked by the task's ask ids>
+- **Limitations and uncertainties:** <untested edges or partial remainder, else none>.
+- **Durable facts:** <settled facts offered to custodian with pointers, else none>.
+- **Next step:** <task-id link | 2-4 sentence resumption prompt | none>.
 ```
-````
 
-The status above is the task's release status. PASS, REVISE and FAIL are the checker's verdict on this argument, recorded by whoever checks it under `## Premise-Check Verdict`; a worker never writes a verdict on its own report. If the release tool is unavailable, record the failure trace and list claimed task IDs in the final report.
+### 5. Consolidated Daily Note Updates
 
-### 5. Consolidated Daily Note Project Updates
+For touched projects (modified repo files, updated tasks, or major operational/empirical finds): interactive and coordinator sessions write one consolidated bullet per project under `## Today's work`: `- **<project>**: <10-20 word status/find> -- Next: <pointer or prompt>` (omit `-- Next:` when complete). Isolated workers emit these bullets in handover output to avoid write contention.
 
-Determine all projects touched during the session (modified files, updated tasks, or major operational finds without code changes):
+### 6. Next-Step Determination
 
-- **Triggers**: Projects touched are determined by (1) repository files modified, (2) claimed or retroactive tasks updated, or (3) major operational finds or service recoveries achieved without code changes.
-- **Major Find Threshold**: Remediating a significant service outage/fault, isolating root causes of systemic issues, or significant empirical discoveries that invalidate hypotheses or uncover critical risks. Routine commands, status queries, or pure triage sweeps are exempt. Shared service/daemon recoveries attribute to the relevant platform infrastructure project.
-- **Recording Format**:
-  - _Interactive / Coordinator Sessions_: Write exactly one consolidated bullet per touched project into the daily note under `## Today's work`:
-    `- **<project-name>**: <latest status or major find in 10-20 words> -- Next: <pointer or resumption prompt>`
-    If the completed recovery has no follow-up task or resumption prompt, omit the `-- Next: ...` suffix:
-    `- **<project-name>**: <latest status or major find in 10-20 words>`
-  - _Headless / Isolated Worker Sessions_: Emit the consolidated project status in the handover block on the record to prevent write contention; subsequent daily sweeps absorb them.
-
-### 6. Disciplined Next-Step Determination
-
-Workers never sequence work or invent speculative follow-ups ("park on a downward slope"):
-
-1. _Pre-Existing Dependent Work_: If an authorized follow-up task, child QA task, or review task already exists on the graph, provide an explicit pointer (`[[task-id]]` or URL).
-2. _Container Coordinator Follow-Ups (`/supervise`)_: When a container coordinator completes all in-session deliverables and has queued explicit out-of-session follow-up tasks on the graph (such as a different repository task, an `ida` channel delivery task, or a deferred sequential step), record those queued task IDs under `Next step`. Plain `/pull` leaf workers operate strictly state-only and never create or name follow-up tasks.
-3. _Interrupted Work_: If a task is released as `partial` or `in_progress` (context boundary, environment migration, user halt), provide a self-contained 2-4 sentence resumption prompt detailing current state, touched files, and exact starting instructions for a fresh agent.
-4. _Fully Completed Work_: If the task is `done` and no follow-up task exists on the graph, state `None`.
+Never invent speculative follow-ups: list pre-existing dependent task pointers, coordinator-queued out-of-session follow-up IDs, a self-contained 2-4 sentence resumption prompt if `partial`/`in_progress`, or `None` if `done`.
 
 ### 7. Emit Final Handover Report
 
-Compile the overall session outcome with session traceability:
-
-```markdown
-## Handover: <agent> <session-id / conversation-id>
-
-1. **Task**: <task-id and title, or "Ad-hoc / Retroactive: <id>">
-2. **Summary**: Concise synthesis of findings, modifications, and outcomes.
-3. **Status & Safeguards**:
-   - STATUS: <done | partial | failed | cancelled | in_progress>
-   - GATE: <the acceptance criterion id tested, and observed result against it>
-   - CONFIDENCE: <high | med | low> + <what single check would falsify this>
-   - CONFOUND CHECK: <did a clean-room/differential control run? result? -- or "NOT RUN">
-4. **Output**: <branch + commit SHA> | <PR or artifact link>
-5. **Next step**: <[[task-id]] pointer | Resumption prompt | None>
-6. **Durable Facts**: [None | List of durable facts offered to Pauli or recorded for collection]
-7. **Argument**: The `argdown` block recorded under the task's `## Report`.
-8. **Limitations**: Unresolved items, out-of-scope elements, and verbatim error outputs.
-9. **Rule Violations**: [None | Disclosed violations with rule citations and reasons]
-```
+- **Non-user-facing agents (workers, subagents, container coordinators)**: Report solely in clean Argdown prose per `ida:premise-check` covering task ID and release status (`done | partial | failed | cancelled | in_progress`), original ask and acceptance criteria with inline quoted primary evidence (branch, commit SHA, PR/artifact link, test/control receipts), limitations, durable facts, next step (`task-id` link | resumption prompt | none), and disclosed rule violations.
+- **User-facing handover directly to the user**: Present a concise Markdown handover covering task, status, outputs, verified evidence, next step, durable facts, limitations, and any disclosed rule violations.

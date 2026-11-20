@@ -11,6 +11,7 @@
 - [meta/doc-taxonomy.md](meta/doc-taxonomy.md) -- the five document kinds and where each lives.
 - [meta/writing-specs.md](meta/writing-specs.md) -- the spec template and the rules every spec follows.
 - [meta/naming-and-decisions.md](meta/naming-and-decisions.md) -- task naming, filename standards, and graph-relationship decision representation.
+- [glossary.md](glossary.md) -- canonical glossary of defined technical terms that agents must never use loosely.
 
 ## Agents
 
@@ -26,6 +27,7 @@
 - [agents/external-state-recheck.md](agents/external-state-recheck.md) -- targeted external-state verification and read-only GitHub query authority for the knowledge base custodian.
 - [agents/dump-session-wrapup.md](agents/dump-session-wrapup.md) -- dump skill invocation modes: user-run emergency handover vs. agent-run routine wrap-up, consolidated daily note project pointers, retroactive tasks, durable facts, and handover traceability.
 - [agents/dump-faults-and-finds.md](agents/dump-faults-and-finds.md) -- dump skill triggers for significant operational fault recoveries and major diagnostic findings without code changes.
+- [agents/offering-filing-and-retiring-pkb-facts.md](agents/offering-filing-and-retiring-pkb-facts.md) -- offering settled durable facts to the custodian, anti-sprawl canonical filing, unified four-category content retirement, and `/learn` fault task queueing.
 
 ## Enforcement
 
@@ -39,9 +41,6 @@
 - [enforcement/reviewer-class-standard-check.md](enforcement/reviewer-class-standard-check.md) -- reviewer class-standard verification across changed files in candidate changes.
 - [enforcement/coordinator-failure-enforcement.md](enforcement/coordinator-failure-enforcement.md) -- design enforcement moves and observable build criteria for five coordinator failure classes.
 - [enforcement/auto-mode-classifier.md](enforcement/auto-mode-classifier.md) -- Claude Code auto-mode classifier design and cost model.
-- [enforcement/handback-format-design.md](enforcement/handback-format-design.md) -- premise-check handback format design review: empirical sample, Toulmin structure preservation, and migration plan.
-- [enforcement/premise-check-rejection-load-instruction.md](enforcement/premise-check-rejection-load-instruction.md) -- premise-check load instructions in argument rejections and refusals across hearsay gate, verdict recorder, and checker surfaces.
-- [enforcement/premise-check-instruction-tuning.md](enforcement/premise-check-instruction-tuning.md) -- instruction and refusal message tuning to eliminate format errors across report sender and checker surfaces.
 
 ## Polecat
 
@@ -77,10 +76,10 @@
 - [workflows/plan-view.md](workflows/plan-view.md) -- formal plan view generation and redrawing on decomposed objectives.
 - [workflows/conceptual-review-workflow.md](workflows/conceptual-review-workflow.md) -- composable-lens multi-agent review of intellectual artifacts.
 - [workflows/default-dialectic-review.md](workflows/default-dialectic-review.md) -- dialectical multi-agent evaluation as the workflow library's default independent review stage.
-- [workflows/pr-lifecycle.md](workflows/pr-lifecycle.md) -- PR lifecycle workflows: sweep task queuing and move-along fan-out.
+- [workflows/pr-lifecycle.md](workflows/pr-lifecycle.md) -- pull request lifecycle and consolidated feature-branch workflow.
 - [workflows/research-decomposition.md](workflows/research-decomposition.md) -- research-specific decomposition primitives and sequencing.
 - [workflows/reconcile.md](workflows/reconcile.md) -- GitHub ↔ PKB task-graph reconciliation.
-- [workflows/strategic-review.md](workflows/strategic-review.md) -- design intent for the parallel-review-and-reconcile quality gate.
+- [workflows/strategic-review.md](workflows/strategic-review.md) -- design intent for the parallel-review-and-reconcile review workflow.
 - [workflows/graph-valuation.md](workflows/graph-valuation.md) -- how agents capture, value and maintain the graph under the flow rule: placement, densify batches, pricing, deadline classes, ripeness, and the budget for asking the user.
 
 ## Future

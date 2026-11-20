@@ -1,8 +1,11 @@
 ---
 trigger: always_on
-description: Rules are waived only by another rule or a direct user instruction; agents carry out direct user instructions without merit re-ruling and fix in-scope violations immediately.
+description: Rules waive only via rules or user orders; fix in-scope breaches.
 ---
 
-## Rule Waivers and Reservations
+## Rule waivers & breach disclosure
 
-A rule is waived only by another rule or a direct instruction from the user. A direct user instruction carries an immediate execution obligation and waives general policy within its scope; agents must carry it out as ordered without merit re-ruling or second-guessing. Instruction compliance is evaluated exclusively by `rbg` during compliance review against what the user asked (`cite-sources`). Agents must never waive a rule on their own guess, infer reservations from batch or third-party text mentioning the user, or leave known rule breaches in place as "the user's call". When an agent encounters content or behavior violating governing specifications or rules within its active custodial or task scope, it must fix the violation immediately. Out-of-scope defects are escalated under Mandatory Upward Reporting of Rule Violations.
+- Only rules or direct user orders waive a rule; execute user orders directly (`rbg` audits compliance).
+- Never waive by guess, infer reservations from indirect text, or leave breaches as "the user's call".
+- Fix in-scope breaches immediately; escalate others upward.
+- **Duty to report violations**: Disclose all rule violations -- committed during execution or discovered in examined material -- up the chain to supervisor and user with rule citations and reasons; never omit, downplay, or conceal a breach.

@@ -1,11 +1,13 @@
 ---
 name: argdown-toulmin
-description: The grammar and presentation standard for writing an argument as Chained Toulmin Argdown -- statements, numbered premises, warrants in the inference bar, chaining, relations, `{basis, pointer, source, reason}` metadata, diagnostic tags, granularity, layout, and parser validation. Load before writing, editing, or parsing any Argdown. Not a procedure for reconstructing, evaluating, or reporting an argument.
+description: The formal grammar and presentation standard for standalone `.argdown` documents in Chained Toulmin Argdown -- statements, numbered premises, warrants in the inference bar, chaining, relations, `{basis, pointer, source, reason}` metadata, diagnostic tags, granularity, layout, and `@argdown/cli` validation. Load before writing, editing, or parsing any standalone `.argdown` file (`argument-extraction`, `argument-audit`, `argument-map`). Exclude for inter-agent reports and handbacks (use `premise-check`).
 ---
 
 # Chained Toulmin Argdown
 
-How an argument is written. Every Argdown document follows this standard.
+How a standalone formal Argdown document is written. Every standalone `.argdown` file authored in `argument-extraction`, `argument-audit`, or `argument-map` follows this standard.
+
+Inter-agent reports, task handbacks, and formal compliance evaluations do **not** use this formal `.argdown` dialect; they follow [`../premise-check/SKILL.md`](../premise-check/SKILL.md) (clean, human-readable Argdown prose with inline quoted evidence and natural punctuation -- without `{metadata}` blocks, comma bans, underscore escaping, or CLI validation).
 
 ## Document
 
@@ -51,7 +53,7 @@ Attach a relation to the argument that concludes or first states the claim, neve
 - `source`: the verbatim quote (line breaks joined by single spaces, original markup kept) or the exact observed value. A derived intermediate conclusion has no `source` unless the text states it verbatim.
 - `reason`: for `"assumed"` only, the gap the item bridges. An assumed item has no `pointer` or `source`.
 
-For peer messages, task handbacks, and premise-check reports, citations and pointers are embedded directly inline in natural prose (e.g. `(path/to/file.py:42)`, `(run: exit_code = 0)`, `[[task-id]]`) rather than requiring lettered endnote tables (`notes:`, `^a`) or trailing metadata blocks. Consult [`../premise-check/SKILL.md`](../premise-check/SKILL.md) for source attribution authoring guidance.
+For inter-agent reports, task handbacks, and evaluations, omit `{metadata}` blocks and write clean, human-readable Argdown prose with inline quoted evidence and locations per [`../premise-check/SKILL.md`](../premise-check/SKILL.md).
 
 An `"observed"` or `"reported-by"` item quotes its deciding value or text (`status: MERGED`, `p = 0.004`) inline or in `source`, because a bare pointer shows only that something exists.
 
@@ -79,7 +81,7 @@ Tags go before the `{metadata}`. Each tag marks one kind of open issue:
 
 ## Presentation
 
-- Statement text is clear, direct, modern prose. In report handbacks (`dump`, `premise-check`), citations and locators appear directly inline with the claims they support. The author's own wording goes verbatim in `source`, not in the statement.
+- Statement text is clear, direct, modern prose. The author's own wording goes verbatim in `source`, not in the statement.
 - One blank line between arguments and around headings.
 
 ```argdown
@@ -110,10 +112,12 @@ model:
   +> [Main Claim]
 ```
 
-## Parser compliance
+## Parser compliance (standalone `.argdown` files only)
+
+These mechanical constraints apply strictly to standalone `.argdown` documents validated by `@argdown/cli` (`argument-extraction`, `argument-audit`, `argument-map`), never to inter-agent `premise-check` reports:
 
 - Keep each statement (`(1) [Title]: text #tag {metadata}`) on one line, or put its `{metadata}` alone on an indented continuation line. The parser rejects a tag after the metadata.
 - Write inference-bar text without commas, because the parser splits bar text on commas into separate rules.
 - Escape a literal underscore in statement text as `\_`, and keep unescaped `[` `]` `<` `>` out of statement prose. Escapes do not apply inside quoted `source` strings.
-- Validate standalone Argdown files (authored in `argument-extraction`, `argument-audit`, or `argument-map`) with `npx -y @argdown/cli json --logParserErrors --throwExceptions <file>.argdown <outdir>`. Handback receipts and handover reports (`dump`, `premise-check`) follow syntax rules directly without invoking an external parser CLI or writing test scripts. On a syntax error in standalone files, fix it from the parser message and retry, at most 3 times; if it still fails, halt and report the error.
+- Validate standalone Argdown files with `npx -y @argdown/cli json --logParserErrors --throwExceptions <file>.argdown <outdir>`. On a syntax error in standalone files, fix it from the parser message and retry, at most 3 times; if it still fails, halt and report the error.
 - Then read the JSON and confirm every argument appears with its premises and reaches the main conclusion, through a relation or a conclusion title reused as a premise.

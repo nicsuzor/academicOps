@@ -1,137 +1,67 @@
 ---
 name: field-test
-description: Procedural guide for validating a framework change end to end — audit the instruction surface, then prove the behaviour where it actually runs. Use when changing instructions, hooks, or execution plumbing; when certifying a release; or when a change has passed every static check and still needs to be believed. Prescribes goals and checks, not techniques — tools drift, obligations do not.
+description: Procedural guide for validating a framework change end to end -- audit the instruction surface, then prove the behaviour where it actually runs. Use when changing instructions, hooks, or execution plumbing; when certifying a release; or when a change has passed every static check and still needs to be believed. Prescribes goals and checks, not techniques -- tools drift, obligations do not.
 ---
 
-# Field-test — prove it where it runs
+# Field-Test -- Prove It Where It Runs
 
-Each phase states an obligation and the check that settles it. Get current
-mechanics — which harness, which flags, where today's logs live — from the
-tool's own help and the project's `debug` skill.
+Each phase states an obligation and the check that settles it. Obtain current harness mechanics (flags, log locations) from tool help and [`debug`](../debug/SKILL.md).
 
-## 0. Pre-register the claim — know what you are testing before any evidence exists
+## 0. Pre-register the claim
 
-- Before gathering evidence, write one sentence: what should be observably
-  different, on which surface, for whom.
-- Score every later result against that sentence, never against "the session
-  looked fine". A pass condition chosen after seeing the output measures nothing.
+- Before gathering evidence, write one sentence naming what should be observably different, on which surface, for whom. Score every result against that sentence, never post-hoc.
 
-## 1. Stand on verified ground — classify against documents that exist, as they are now
+## 1. Stand on verified ground
 
-- Open every document your judgment relies on before relying on it. A citation,
-  an index row, or a brief's pointer is a claim that the document exists, not
-  evidence.
-- A missing ground-truth document is a finding to report, and it narrows what you
-  may conclude. Never substitute a plausible reconstruction of what it probably
-  said.
+- Open every document your judgment relies on before citing it; a pointer or index row proves nothing by itself.
+- Report missing ground-truth documents as findings that narrow your conclusion; never reconstruct missing contents.
 
-## 2. Distrust reported absence — delegate the sweep, own the verdict
+## 2. Distrust reported absence
 
-- Fan searching and inventory out to other agents freely, then reproduce the
-  decisive evidence yourself before acting on any load-bearing claim.
-- Read "X does not exist" as scoped to what the reporter could see. A name can
-  resolve in a layer the reporter had no access to, so check every layer a name
-  can live in before deleting anything on the strength of its absence.
+- Delegate searching freely, then reproduce decisive claims yourself before acting on them.
+- Treat "X does not exist" as scoped to the reporter's visible layers; check every layer where a name can resolve before deleting anything.
 
-## 3. Prove the artifact, not the source — the deployable carries the change
+## 3. Prove the artifact, not the source
 
-- Build the real deliverable and confirm the change is present in the built
-  artifact: the thing that ships, not the tree you edited.
-- A cached build that looks rebuilt is evidence of nothing. Know how your build
-  proves freshness, and use that proof before certifying anything.
+- Build the real deployable deliverable, verify build freshness, and confirm the change exists in what ships rather than only in the edited tree.
 
 ## 4. Drive the changed path, live, on every surface
 
-- Walk the layers in order — structure, boot, a trivial interaction, then the
-  specific path your pre-registered sentence names — and stop at the first
-  failure: results from later layers are uninterpretable once an earlier one is
-  broken.
-- Repeat the whole walk once per client and per execution environment. A pass on
-  one surface is no evidence for another; asymmetric breakage is the common case,
-  not the edge case.
-- The driven path must run through what you touched. Exercising an arbitrary path
-  proves the machinery and says nothing about your change.
+- Walk layers in order (structure, boot, trivial interaction, changed path) and stop at the first failure.
+- Repeat once per client and execution environment; exercise the changed path directly rather than an arbitrary path.
 
-## 5. Judge from the authoritative record, not from rendered views
+## 5. Judge from authoritative records, not UIs
 
-- For each claim, name the channel that is authoritative for it — a transcript, a
-  structured log, an exit code — and judge from that. What a UI renders is
-  evidence of neither delivery nor non-delivery.
-- Where the claim is "event X happens", find the instrumented record of events
-  and count occurrences. Never infer runtime behaviour from reading source.
+- Name the authoritative channel per claim (transcript, structured log, exit code) and count instrumented events directly; never infer runtime behaviour from UI rendering or source code.
 
-## 6. Force the quiet failures — observe degradation degrading, loudly, from inside
+## 6. Force quiet failures
 
-- A mechanism that degrades rather than fails is presumed off until you have
-  observed it working in the deployed environment. Its degradation notice is the
-  only thing that makes the silent state findable, so confirm the notice fires
-  and that something reads it.
-- Re-check every value that crosses an isolation boundary — an address, a path,
-  an identity, anything that means "this machine" — from the far side: does it
-  still name the same thing there? Test reachability from inside the environment,
-  never only from where you launched it.
+- Presume degrading mechanisms off until observed working in the deployed environment and their degradation notice is confirmed read.
+- Re-check boundary-crossing paths, addresses, and identities from inside the target environment.
 
-## 7. Deletion has consumers — nothing surviving depends on what you removed
+## 7. Deletion has consumers
 
-- After any removal, sweep inbound references and repair each, then go further
-  and re-derive the behaviour of every surviving consumer. Reference checks
-  passing is not that: the characteristic regression is a contract that silently
-  became empty and still reads as valid.
-- Budget at least one blind run. A contextless agent, given only the revised
-  surface and a representative task, finds the dead end your checks cannot.
+- After removals, sweep and repair inbound references, re-derive surviving consumer behaviour for silently empty contracts, and run at least one blind task on a contextless agent.
 
-## 8. A tripped guard is information — about one of you
+## 8. A tripped guard is information
 
-- When your change trips an existing check, first ask what the check actually
-  tests. One that pins a copy of a setting or source text against the same
-  literal held in the test is drift dressed as a guard: replace the duplicate
-  with one shared source of truth, or delete the check outright.
-- Where the check does test behaviour, either your change is wrong or the check
-  states its intent too coarsely. Determine which, and fix that one in the open.
-  Rephrasing your change so the check stops seeing it is forbidden, and always
-  visible in review.
+- Check whether a tripped check tests live behaviour or pins a duplicate literal against source/config text; consolidate or delete literal-copy drift.
+- Where a check tests real behaviour, fix either the change or the check openly -- never rephrase around a check to hide from it.
 
-## 8b. Oddity defaults to drift, not design
+## 8b. Oddity defaults to drift
 
-- An exception, a special case, or an inconsistency in the existing surface is
-  more likely stale than intentional. The burden of proof sits on keeping it: an
-  exception earns its place with a stated necessity, or it goes.
-- "The carve-out is coherent" is not that proof — a rationale you can construct
-  after the fact is exactly what drift looks like from inside.
+- Treat unexplained special cases or inconsistencies as stale drift; keep an exception only with stated necessity, never a post-hoc rationale.
 
-## 9. Close the loop on the original observation
+## 9. Close the loop
 
-- "Fixed" means the originally-failing observation now passes. Re-run that exact
-  observation, in the environment where it failed, and record the before and
-  after with the cause.
-- File what you fixed and what you deliberately left, each with its evidence,
-  where the next session will find it.
+- Re-run the originally failing observation in its failing environment to prove it passes, and record before/after cause and deliberate omissions where the next session starts.
 
-## 10. Publish the grades where the next round starts
+## 10. Publish grades where the next round starts
 
-- Grade every component you drove against the real bar: **green** — observed
-  working end-to-end _and_ efficient and useful; **amber** — works, but with
-  caveats, pending operator action, or usefulness unproven; **unmarked** — not
-  field-tested. "Technically working" is not a grade. Repeated injections,
-  redundant token spend, and noise a user must wade through are amber findings
-  even when the mechanism functions.
-- **Mark the grades on the project's wired map** (the excalidraw file the
-  umbrella epic names). Convention: append-only badge elements placed beside the
-  component — green `✅` / amber `⚠` text, each badge dated and naming the PR it
-  came from — plus one legend stating the bar and that unmarked means untested.
-  Append with index keys after the current maximum, then verify the file
-  re-parses with element order preserved before leaving it: the map can pass
-  every referential check and still be unopenable, and an unopenable map is worse
-  than no marks.
-- **Stale badges lie.** On a later round, update or remove any badge your new
-  evidence supersedes before adding your own.
-- File one evidence record per finding — wins as well as friction — and put the
-  per-component grade table on the round's task record, which is the only surface
-  a cold session is guaranteed to read.
+- Grade each tested component: **green** (working end-to-end, efficient, useful), **amber** (works with caveats, redundant spend, or noise), or **unmarked** (not tested). Never downgrade a verified build/test-environment pass waiting for downstream user deployment.
+- Append dated `✅` / `⚠` badges naming the PR onto the umbrella epic's excalidraw map with a legend, advancing index keys past max and verifying element-preserving re-parse; supersede stale badges.
+- File one evidence record per finding and place the component grade table on the round's task record.
 
 ## Fitness test
 
-A stranger holding only your report can tell which claims were observed and on
-what channel, re-run each decisive check from what you cited, and state what
-remains unproven. A claim that cannot be traced to a channel named under §5 means
-the walk is not done.
+A stranger holding only your report can identify which claims were observed on which authoritative channel, re-run each decisive check from your citations, and see what remains unproven.
