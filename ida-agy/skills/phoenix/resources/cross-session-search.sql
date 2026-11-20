@@ -1,6 +1,7 @@
 -- Placeholders:
 --   <START_UTC>: Start UTC timestamp ISO-8601 (e.g. '2026-11-01T00:00:00Z')
 --   <END_UTC>: End UTC timestamp ISO-8601 (e.g. '2026-11-16T00:00:00Z')
+--   <CHUNK_START>, <CHUNK_END>: Small UTC window bounds (e.g. 30m-2h) for Query 5
 --   <SEARCH_TERM>: Pattern to match in input/output payloads (e.g. '%error%')
 --   <PARENT_SESSION_ID>: Full session UUID of the dispatching parent session
 --   <SPAN_ID>: 16-character hex span identifier
@@ -99,3 +100,36 @@ WHERE s.span_kind = 'CHAIN'
   AND LOWER(s.attributes->>'$.input.value') LIKE '<SEARCH_TERM>'
 ORDER BY s.start_time ASC
 LIMIT 50;
+
+-- === QUERY 5: Windowed cross-session user prompts, hook deduplication, and outbound replies ===
+-- Unlike QUERY 4 (which filters root CHAIN spans to plugin:ida-telegram with a search term),
+-- QUERY 5 sweeps all surfaces in a time chunk: non-debug root CHAIN turns (with paired
+-- input/output excerpts), server-side deduplicated aops-debug.UserPromptSubmit hook spans
+-- (collapsing repeated PreInvocation fires), and outbound reply/send_message TOOL spans.
+-- Keep WHERE free of s.attributes predicates and loop over small start_time chunks
+-- (e.g. 30m-2h, halving on timeout) so SQLite uses the start_time index (~0.3s/chunk).
+SELECT
+  CASE
+    WHEN s.span_kind = 'CHAIN' THEN 'turn'
+    WHEN s.name = 'aops-debug.UserPromptSubmit' THEN 'prompt_hook'
+    ELSE 'reply'
+  END AS kind,
+  s.attributes->>'$.session.id' AS sid,
+  MIN(s.span_id) AS span_id,
+  MIN(s.start_time) AS first_seen,
+  COUNT(*) AS cnt,
+  SUBSTR(COALESCE(s.attributes->>'$.input.value', ''), 1, 250) AS inp,
+  MAX(SUBSTR(COALESCE(s.attributes->>'$.output.value', ''), 1, 250)) AS outp
+FROM spans s
+WHERE s.start_time >= '<CHUNK_START>'
+  AND s.start_time < '<CHUNK_END>'
+  AND (
+    (s.span_kind = 'CHAIN' AND (s.parent_id IS NULL OR s.parent_id = '')
+     AND s.name NOT LIKE 'aops-debug.%'
+     AND s.name NOT LIKE 'The following is a <SYSTEM_MESSAGE>%')
+    OR s.name = 'aops-debug.UserPromptSubmit'
+    OR (s.span_kind = 'TOOL' AND (s.name = 'reply' OR s.name LIKE '%send_message%'))
+  )
+GROUP BY kind, sid, inp
+ORDER BY first_seen ASC
+LIMIT 500;

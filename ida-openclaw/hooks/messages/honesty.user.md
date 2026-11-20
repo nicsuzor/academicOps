@@ -1,1 +1,1 @@
-Reminded to use `premise-check` when replying to a peer message.
+Reminded to report in human-readable Argdown prose per `premise-check`.

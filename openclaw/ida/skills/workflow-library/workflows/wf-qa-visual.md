@@ -8,45 +8,31 @@ tags:
   - wf-template
   - qa
   - visual-qa
-title: wf-qa-visual
+title: Visual QA Evaluation
 type: template
 ---
 
 ## What this step does
 
-Fills the evaluate slot for rendered output for something a person looks at: how the evidence is captured,
-and how it is judged. Criteria assembly and the verdict contract belong to the parent and are not
-restated here. Do not dispatch it standalone -- without the parent there are no criteria to judge
-against.
-
-Iteration is not part of this workflow: the composing brief owns round caps and the separation
-between whoever revises and whoever judges.
+Fills the evaluation slot for rendered visual output: defines how visual evidence is captured and judged multimodally. Criteria assembly and overall verdict contracts belong to the parent review workflow and are not restated here; do not dispatch standalone without parent criteria. Iteration, round caps, and separation between author and judge belong to the composing brief.
 
 ## Capture
 
-Source code is not evidence of rendered state. Every criterion is decided against an image of the
-artifact as actually rendered, at the viewport the criteria are written for.
+Source code is not evidence of rendered state. Every criterion is decided against an image of the artifact as actually rendered at the viewport the criteria specify.
 
-- Capture a baseline before any change is drafted -- a criterion judged against a missing or stale
-  baseline is `UNMET`.
-- A capture harness's exit code does not establish that a capture happened. Confirm the image files
-  exist and are large enough to be a real render -- a blank or error page still writes a file and
-  still exits zero.
-- A capture that is missing, blank or truncated is a capture failure, not a visual failure. Halt and
-  report it as such, rather than sending someone to fix working code for a broken tool.
-
-Target URLs, viewports, view names and the capture command come from the instantiating task, never
-from this template.
+- Capture a baseline before any change is drafted; a criterion judged against a missing or stale baseline is `UNMET`.
+- A capture tool's zero exit code does not prove a valid render. Verify image files exist and are large enough to be real renders rather than blank or error pages.
+- A missing, blank, or truncated image is a capture failure, not a visual failure -- halt and report it rather than sending an author to fix working code for a broken tool.
+- Target URLs, viewports, view names, and capture commands come from the instantiating task, never from this template.
 
 ## Judge
 
-The evaluator must be able to ingest images -- one that can't is a capability failure: halt and say
-so, rather than falling back to reading the diff.
+The evaluator must ingest images directly; an evaluator without multimodal image capability is a capability failure -- halt and report it rather than falling back to reading diffs.
 
-- Judge every in-scope view together in one pass, so cross-view regressions are visible.
-- Re-judge criteria already met in earlier passes -- a fix to one view can break another.
+- Judge all in-scope views together in one pass so cross-view regressions are visible.
+- Re-judge criteria met in earlier passes, since fixing one view can break another.
 - Where criteria are silent, judge layout, alignment, hierarchy, contrast, and legibility.
 
-Evidence is a citation into the image -- the region or coordinates where the thing is or is not. A
-described code change, a passing test, or a diff imperceptible at the stated viewport decides
-nothing and leaves the criterion `UNMET`.
+## Evidence contract
+
+Evidence is a citation into the rendered image (region or coordinates showing where the criterion holds or fails). A described code change, a passing unit test, or a diff imperceptible at the stated viewport decides nothing and leaves the criterion `UNMET`.

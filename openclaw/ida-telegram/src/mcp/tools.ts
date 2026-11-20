@@ -129,7 +129,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
   {
     name: "ask_user",
     description:
-      "Post an asynchronous question to the user over Telegram or the Mini App with vertical choice buttons. Set mini_app_only: true (or chat: false) to queue questions in the Mini App without posting cards to chat. Pass detail on questions to attach fuller background opened via a Details button in the Mini App.",
+      "Post an asynchronous question or decision prompt to the user as an interactive HTML Widget (default in private chats; pass presentation: 'rich' for groups) with optional pros/cons, recommendation badge, Defer/Other actions, and Mini App Details sync.",
     inputSchema: {
       type: "object",
       properties: {
@@ -140,6 +140,11 @@ export const MCP_TOOLS: ToolDefinition[] = [
         },
         thread_id: { type: "integer", description: "Alias for message_thread_id" },
         turn_id: { type: "string", description: "Turn ID for correlating the async answer event" },
+        presentation: {
+          type: "string",
+          enum: ["widget", "rich"],
+          description: "Card surface: 'widget' (default HTML Widget) or 'rich' (Rich Message card for groups/topics).",
+        },
         mini_app_only: {
           type: "boolean",
           description: "If true, queues questions in the Mini App only without sending cards to Telegram chat.",
@@ -155,6 +160,12 @@ export const MCP_TOOLS: ToolDefinition[] = [
             properties: {
               question: { type: "string" },
               header: { type: "string" },
+              kind: {
+                type: "string",
+                enum: ["question", "decision"],
+                description: "Prompt framing: 'question' (default) or 'decision' (adds Confirm/Accept CTA).",
+              },
+              stakes: { type: "string", description: "Optional short stakes badge shown in card header" },
               options: {
                 type: "array",
                 items: {
@@ -162,14 +173,19 @@ export const MCP_TOOLS: ToolDefinition[] = [
                   properties: {
                     label: { type: "string" },
                     description: { type: "string" },
+                    recommended: { type: "boolean" },
+                    pros: { type: "array", items: { type: "string" } },
+                    cons: { type: "array", items: { type: "string" } },
                   },
                   required: ["label"],
                 },
               },
               multi_select: { type: "boolean", description: "Whether multiple options may be selected" },
               multiSelect: { type: "boolean", description: "Alias for multi_select" },
-              allow_custom: { type: "boolean", description: "Whether free-text responses are permitted" },
+              allow_custom: { type: "boolean", description: "Whether free-text responses are permitted (default true)" },
               allowOther: { type: "boolean", description: "Alias for allow_custom" },
+              allow_defer: { type: "boolean", description: "Whether a Defer button is included" },
+              allowDefer: { type: "boolean", description: "Alias for allow_defer" },
               mini_app_only: {
                 type: "boolean",
                 description: "If true, queues this question in the Mini App only without sending a card to chat.",
@@ -195,13 +211,16 @@ export const MCP_TOOLS: ToolDefinition[] = [
   },
   {
     name: "edit_message",
-    description: "Edit an existing Telegram message sent by the bot.",
+    description: "Edit an existing Telegram message (plain text or Rich Message markdown/html/blocks) sent by the bot.",
     inputSchema: {
       type: "object",
       properties: {
         chat_id: { type: "integer" },
         message_id: { type: "integer" },
         text: { type: "string" },
+        markdown: { type: "string", description: "Replacement Rich Message Markdown content" },
+        html: { type: "string", description: "Replacement Rich Message HTML content" },
+        blocks: { type: "array", description: "Replacement InputRichBlock[] array" },
         disable_link_preview: {
           type: "boolean",
           description: "Disable web page preview generation for links in the edited message",
@@ -210,8 +229,9 @@ export const MCP_TOOLS: ToolDefinition[] = [
           type: "object",
           description: "Telegram LinkPreviewOptions (is_disabled, url, prefer_small_media, prefer_large_media, show_above_text)",
         },
+        ...OUTBOUND_KEYBOARD_PROPS,
       },
-      required: ["message_id", "text"],
+      required: ["message_id"],
     },
   },
   {
@@ -801,7 +821,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
   {
     name: "send_message_draft",
     description:
-      "Stream a partial message draft to the user in the Telegram chat and active thread while generating a response (sendMessageDraft).",
+      "Stream a partial message draft to the user while generating a response (sendMessageDraft for plain Markdown text, or sendRichMessageDraft in private chats with markdown/html/blocks, <tg-thinking>, and can_stop).",
     inputSchema: {
       type: "object",
       properties: {
@@ -809,10 +829,130 @@ export const MCP_TOOLS: ToolDefinition[] = [
           type: "integer",
           description: "Non-zero integer identifier for the message draft being streamed",
         },
-        text: { type: "string", description: "Current draft text in Markdown" },
+        text: { type: "string", description: "Current draft text in ordinary Markdown" },
+        markdown: { type: "string", description: "Private-chat Rich Message draft in Markdown (supports <tg-thinking>)" },
+        html: { type: "string", description: "Private-chat Rich Message draft in HTML (supports <tg-thinking>)" },
+        blocks: { type: "array", description: "Private-chat Rich Message draft InputRichBlock[] array" },
+        is_rtl: { type: "boolean", description: "Right-to-left rendering hint for rich drafts" },
+        skip_entity_detection: { type: "boolean" },
+        can_stop: { type: "boolean", description: "Show user Stop control (emits stopped_message_generation)" },
+        keep_on_stop: { type: "boolean", description: "Keep draft visible when user taps Stop" },
         ...OUTBOUND_THREAD_ROUTING_PROPS,
       },
-      required: ["draft_id", "text"],
+      required: ["draft_id"],
+    },
+  },
+  {
+    name: "send_rich_message",
+    description:
+      "Send a structured Telegram Bot API 10.1-10.4 Rich Message (headings, <details>, native tables, math, <aside>, maps, media, in-body buttons) using mutually exclusive markdown, html, or blocks.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        markdown: { type: "string", description: "Rich Markdown content (<= 32768 chars)" },
+        html: { type: "string", description: "Rich HTML content (<= 32768 chars)" },
+        blocks: { type: "array", description: "InputRichBlock[] array (<= 500 blocks)" },
+        media: {
+          type: "array",
+          description: "Up to 50 media attachments referenced as tg://<type>?id=<id>",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string", description: "1-64 chars [A-Za-z0-9_-]" },
+              type: {
+                type: "string",
+                enum: ["photo", "video", "audio", "document", "animation", "voice", "voice_note"],
+              },
+              file: { type: "string", description: "Local path (multipart upload), file_id, or HTTPS URL" },
+              mime_type: { type: "string" },
+              duration: { type: "integer" },
+              performer: { type: "string" },
+              title: { type: "string" },
+              width: { type: "integer" },
+              height: { type: "integer" },
+              has_spoiler: { type: "boolean" },
+              supports_streaming: { type: "boolean" },
+              disable_content_type_detection: { type: "boolean" },
+            },
+            required: ["id", "type", "file"],
+          },
+        },
+        is_rtl: { type: "boolean" },
+        skip_entity_detection: { type: "boolean" },
+        quote_rich_texts: {
+          type: "array",
+          items: { type: "string" },
+          description: "Quoted rich text fragments via reply_parameters.quote_rich_texts",
+        },
+        feedback_buttons: {
+          type: "boolean",
+          description: "Attach 👍/👎 feedback buttons to reply_markup",
+        },
+        voice: {
+          type: "boolean",
+          description: "Synthesize and send spoken voice summary alongside the Rich Message (mirrors inbound voice when mirror mode is active)",
+        },
+        disable_notification: { type: "boolean" },
+        protect_content: { type: "boolean" },
+        message_effect_id: { type: "string" },
+        ...OUTBOUND_MESSAGE_ROUTING_PROPS,
+        ...OUTBOUND_KEYBOARD_PROPS,
+      },
+    },
+  },
+  {
+    name: "send_widget",
+    description:
+      "Send a custom Bot API 10.4 HTML Widget in private chats (<= 32768 B raw, <= 4096 B zlib-9 compressed, QuickJS Sandbox Profile 1).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        html: { type: "string", description: "Widget HTML/CSS/JS source (no NUL bytes, <= 4096 B compressed)" },
+        width: { type: "integer", description: "Logical pixel width (clamped 200..bubble max)" },
+        height: { type: "integer", description: "Fixed logical pixel height (clamped 50..600)" },
+        public_data: { type: "string", description: "Initial shared/forwardable widget state (<= 1024 B)" },
+        chat_data: { type: "string", description: "Initial message-specific mutable state JSON (<= 1024 B)" },
+        caption: { type: "string", description: "Notification/chat-list caption (0-1024 chars)" },
+        parse_mode: { type: "string" },
+        show_caption_above_media: { type: "boolean" },
+        allow_queries: {
+          type: "boolean",
+          description: "Allow TelegramWidget.request() queries back to bot (default false)",
+        },
+        is_shared: { type: "boolean" },
+        disable_notification: { type: "boolean" },
+        protect_content: { type: "boolean" },
+        message_effect_id: { type: "string" },
+        ...OUTBOUND_MESSAGE_ROUTING_PROPS,
+        ...OUTBOUND_KEYBOARD_PROPS,
+      },
+      required: ["html"],
+    },
+  },
+  {
+    name: "edit_message_widget_data",
+    description: "Silently update public_data or chat_data (<= 1024 B each) on an existing HTML Widget message (editMessageWidgetData).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        chat_id: { type: "integer", description: "Telegram chat ID (defaults to primary chat)" },
+        message_id: { type: "integer", description: "Target widget message ID" },
+        inline_message_id: { type: "string", description: "Target inline widget message ID" },
+        public_data: { type: "string", description: "Updated public_data (empty string clears; omit preserves)" },
+        chat_data: { type: "string", description: "Updated chat_data (empty string clears; omit preserves)" },
+      },
+    },
+  },
+  {
+    name: "answer_widget_query",
+    description: "Answer an interactive widget_query update within Telegram's 15-second budget (answerWidgetQuery).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        widget_query_id: { type: "string", description: "Unique widget_query ID from inbound update" },
+        data: { type: "string", description: "Response payload returned to TelegramWidget.request() (<= 1024 B)" },
+      },
+      required: ["widget_query_id"],
     },
   },
   {

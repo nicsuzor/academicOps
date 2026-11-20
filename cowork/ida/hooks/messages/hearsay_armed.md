@@ -1,2 +1,2 @@
-Premise-check gate armed by {claim_id}; if this is a direction, check that it derives from `## Ask` and refuse (`REVISE`) unverified caller method or template prescriptions before logging deliverables as a frozen acceptance checklist on a PKB task; load the `premise-check` skill (`ida:premise-check`) if not loaded this turn, and record a verdict per it.
+Premise-check gate armed by {claim_id}. Direction brief: verify Turn-1 inputs, `## Ask`, and satisfiability, flagging gaps or unverified prescriptions without declining; disarm via `verdict.py --no-claim` (`PASS` before logging a frozen acceptance checklist; `REVISE` pending clarification). Report: load `ida:premise-check`, review on the record (zero de novo), and record appealable reasons.
 {command}

@@ -1,53 +1,41 @@
 ---
 name: menu-proposal
-description: Review and recommend the shared native Telegram command menu in interactive sessions. Samples telemetry, inspects capabilities, converts hyphenated skill names to valid snake_case Telegram commands, presents an interactive proposal matrix, and codifies approved updates. Strictly excludes headless worker commands (/pull, /dump) per headless-workers.md. Use when an operator requests a menu review or update. Exclude for headless workers or non-Telegram commands.
+description: Review and recommend the shared native Telegram command menu in interactive sessions. Samples telemetry, discovers plugin capabilities, normalizes skill names to snake_case Telegram commands, presents a proposal matrix, and writes approved overrides. Excludes headless worker lifecycle commands (/pull, /dump). Use when asked to review or update the Telegram command menu; exclude for headless workers or non-Telegram commands.
 ---
 
 # Menu Proposal Workflow
 
-Review, customize, and allocate the native Telegram command menu for Ida.
+Review, customize, and allocate the shared native Telegram command menu for interactive sessions.
 
 ## Procedure
 
 ### 1. Sample Telemetry and Discover Capabilities
 
-1. **Sample recent invocations:** Query execution telemetry spans (or inspect recent session logs) for skill runs and menu taps across interactive sessions and subagents to gather empirical invocation frequencies.
-2. **Discover candidate skills and workflows:**
-   - Enumerate installed skills across plugins (`plugins/*/skills/`) and common workflow templates.
-   - Include operator-facing coordination skills (`reify`, `dispatch`, `reconcile`, `daily`).
-   - Strictly exclude reserved platform commands (`start`, `help`, `status`) and headless worker lifecycle commands (`pull`, `dump`).
-3. **Separate interactive menus from headless workers (`headless-workers.md`):**
-   - Telegram command menus exclusively serve interactive operator sessions. Headless worker lifecycle commands (`pull`, `dump`) must never appear on conversational menus or in candidate pools.
-   - Telegram command menus serve interactive operator dialogue; do not dispatch this workflow to headless workers.
-4. **Inspect current allocations:** Check whether an explicit custom override is set in `TELEGRAM_BOT_COMMANDS` in the channel's `$STATE_DIR/.env`, or if the instance uses the default menu generated from available skills at poller start.
+1. **Sample recent invocations**: Query execution telemetry spans for skill runs and menu taps across interactive sessions and subagents to gather empirical invocation frequencies.
+2. **Discover candidate skills and workflows**:
+   - Enumerate installed plugin skills and common workflow templates.
+   - Include user-facing coordination skills (`reify`, `dispatch`, `reconcile`, `daily`).
+   - Exclude reserved platform commands (`start`, `help`, `status`) and headless worker lifecycle commands (`pull`, `dump`), because Telegram menus serve interactive sessions only.
+3. **Inspect current allocations**: Check whether `TELEGRAM_BOT_COMMANDS` is set in the channel's `$STATE_DIR/.env`, or whether the instance uses the default menu generated from available skills at poller start.
 
-### 2. Synthesize Considered Recommendations
+### 2. Synthesize Recommendations
 
-Apply qualitative judgment to evaluate candidate commands for the shared menu:
+Evaluate candidate commands for the shared menu:
 
-- **Shared Menu Allocation:** Prioritize high-frequency operational triage, quick capture, decision walk-throughs, task queueing, disambiguation, daily briefings, and worker dispatch (e.g. `/decide`, `/q`, `/reconcile`, `/hydrate`, `/up`, `/reify`, `/dispatch`, `/daily`).
-- **Composite commands:** Propose single-tap composite commands where recurring multi-step patterns or common briefings are identified (such as `/daily`).
-- **Command identifier normalization & platform constraints:**
-  - Convert kebab-case skill and workflow names to valid Telegram command identifiers (`snake_case`) by replacing hyphens with underscores (e.g. `strategic-review` $\rightarrow$ `/strategic_review`, `argument-map` $\rightarrow$ `/argument_map`, `menu-proposal` $\rightarrow$ `/menu_proposal`, `peer-review` $\rightarrow$ `/peer_review`).
-  - Ensure all command identifiers strictly match `/^[a-z0-9_]{1,32}$/` (no hyphens, lowercase alphanumeric and underscores only, length 1–32).
-  - Descriptions must be 1–256 characters, and total registered commands must not exceed 100.
+- **Shared allocation**: Prioritize high-frequency operational triage, capture, decision walk-throughs, task queueing, disambiguation, daily briefings, and worker dispatch (e.g., `/decide`, `/q`, `/reconcile`, `/hydrate`, `/up`, `/reify`, `/dispatch`, `/daily`).
+- **Composite commands**: Propose single-tap composite commands where recurring multi-step patterns or common briefings appear (such as `/daily`).
+- **Platform constraints**: Convert kebab-case names to `snake_case` by replacing hyphens with underscores (e.g., `strategic-review` -> `/strategic_review`, `menu-proposal` -> `/menu_proposal`). Every identifier must match `/^[a-z0-9_]{1,32}$/`, carry a 1-256 character description, and stay within 100 total commands.
 
 ### 3. Present Proposal Matrix
 
-Present a scannable proposal table to the user in interactive operator sessions:
+Present a scannable proposal table to the user:
 
-- **Candidate pool summary:** Total candidates inspected and current allocations in the shared menu.
-- **Recommendation table:**
-  - `Command`: Normalized identifier matching `/^[a-z0-9_]{1,32}$/` with hyphens converted to underscores (e.g. `/reify`, `/strategic_review`).
-  - `Type`: `skill`, `workflow`, or `composite`.
-  - `Usage`: Empirical invocation count from recent telemetry.
-  - `Proposed Inclusion`: `[Include]`, `[Exclude]`, or `[Optional]`.
-  - `Description`: Clear functional summary.
-  - `Rationale`: Why this command fits the shared menu.
-- **Interactive options:** Present checkbox proposals or structured options allowing the user to approve recommendations or adjust allocations in free text.
+- **Candidate pool summary**: Total candidates inspected and current menu allocations.
+- **Recommendation table**: Columns for `Command`, `Type` (`skill`, `workflow`, or `composite`), `Usage` (telemetry count), `Proposed Inclusion` (`[Include]`, `[Exclude]`, or `[Optional]`), `Description`, and `Rationale`.
+- **Interactive options**: Provide selectable option buttons or checkbox choices so the user can approve the recommendations or adjust allocations.
 
-### 4. Codify Approved Allocations
+### 4. Codify and Verify Approved Allocations
 
-1. The default menu is generated from all available skills at poller start, while `TELEGRAM_BOT_COMMANDS` in the channel's `$STATE_DIR/.env` codifies an explicit custom override when requested by the operator. Write the approved custom override command list as a JSON array to `TELEGRAM_BOT_COMMANDS` in `$STATE_DIR/.env` for registration at the next poller start.
-2. Run test verification (`cd plugins/ida-telegram && bun test test/commands.test.ts`) to ensure command registration passes cleanly.
-3. Confirm updated menu to the user.
+1. Write the approved custom override list as a JSON array to `TELEGRAM_BOT_COMMANDS` in `$STATE_DIR/.env` so it registers on next poller start.
+2. Validate every entry in the written JSON array against Telegram constraints (`/^[a-z0-9_]{1,32}$/`, 1-256 char description, <= 100 commands, and no reserved or headless commands).
+3. Confirm the updated menu to the user.

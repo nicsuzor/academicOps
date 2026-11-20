@@ -289,7 +289,16 @@ describe("Threaded Conversations Support", () => {
         const method = String(url).split("/").pop() || "";
         const body = init?.body ? JSON.parse(String(init.body)) : {};
         apiCalls.push({ method, body });
-        return new Response(JSON.stringify({ ok: true, result: { message_id: 503 } }), { status: 200 });
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            result: {
+              message_id: 503,
+              ...(body.message_thread_id !== undefined ? { message_thread_id: body.message_thread_id } : {}),
+            },
+          }),
+          { status: 200 }
+        );
       }) as typeof fetch;
 
       try {
@@ -331,7 +340,7 @@ describe("Threaded Conversations Support", () => {
 
         expect(askRes?.result).toBeDefined();
 
-        const sendMsgCall = apiCalls.find((c) => c.method === "sendMessage");
+        const sendMsgCall = apiCalls.find((c) => c.method === "sendWidget");
         expect(sendMsgCall).toBeDefined();
         expect(sendMsgCall?.body.chat_id).toBe(12345678);
         expect(sendMsgCall?.body.message_thread_id).toBe(4242);

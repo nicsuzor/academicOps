@@ -1,29 +1,28 @@
 ---
-alias:
-  - wf-keep-analysis-data
-description: For long-running analyses whose data is somewhat difficult, slow or expensive to collect, save the intermediate data temporarily so it can be queried again; skip when collection is trivial.
+description: Persist intermediate datasets from slow, costly, or hard-to-reproduce analyses so follow-up queries and revised assumptions reuse saved data without re-collection.
 id: wf-keep-analysis-data
 tags:
   - wf-template
   - analysis
-title: wf-keep-analysis-data
+title: Intermediate Analysis Data Workflow
 type: template
 ---
 
 ## What this step does
 
-Keeps the intermediate data a long-running analysis collects, for a while, so a follow-up question or a changed assumption can be answered by querying the saved data instead of collecting it again.
+Preserves intermediate collected data from non-trivial analyses in a queryable store so follow-up questions or changed assumptions can reuse it instead of repeating expensive collection.
 
 ## Procedure
 
-1. **Judge the collection.** If the data was trivial to collect, skip this step. If it was somewhat difficult, slow or expensive to collect, continue.
-2. **Save the intermediate data** temporarily, somewhere the analysis can query it again.
-3. **Record where it is** in the task's result.
+1. **Assess collection cost**: Skip this step if collection is fast, cheap, and trivial to re-run; proceed when collection is slow, costly, rate-limited, or hard to reproduce.
+2. **Persist intermediate data**: Save the intermediate dataset in a queryable location while keeping raw source data immutable.
+3. **Record location**: Document the storage path, format, and scope in the task result so downstream analyses can query it directly.
 
 ## Output contract
 
-When the step applies: the intermediate data saved temporarily, and its location recorded in the task's result. When collection was trivial: nothing.
+- When collection is non-trivial: intermediate dataset saved in a queryable store with its location and scope recorded in the task result.
+- When collection is trivial: no additional artifact.
 
 ## When to include
 
-Long-running analyses only.
+Long-running, rate-limited, or resource-intensive empirical analyses.

@@ -60,6 +60,16 @@ async function main() {
         await bot.editMessage(chatId, messageId, text, replyMarkup || { inline_keyboard: [] });
       }
     },
+    editTelegramWidgetData: async (chatId: number, messageId: number, chatData: string) => {
+      if (bot) {
+        await bot.editMessageWidgetData({ chatId, messageId, chatData });
+      }
+    },
+    editTelegramReplyMarkup: async (chatId: number, messageId: number) => {
+      if (bot) {
+        await bot.editMessageReplyMarkup(chatId, messageId, []);
+      }
+    },
   };
 
   permRelay.onExpire((item) => {
@@ -233,6 +243,9 @@ export function createBridgeServer(
               const result = await broker.askUser({
                 question: q.question,
                 header: q.header,
+                kind: q.kind,
+                stakes: q.stakes,
+                presentation: q.presentation ?? req.presentation ?? "widget",
                 context: q.context,
                 detail: detailText,
                 detailsId,
@@ -241,6 +254,7 @@ export function createBridgeServer(
                 options: q.options,
                 multiSelect: q.multiSelect,
                 allowOther: q.allowOther,
+                allowDefer: q.allowDefer ?? q.allow_defer,
                 chatId: defaultChatId,
                 messageThreadId: effectiveThreadId,
                 turnId: q.turnId || q.turn_id || req.turn_id || req.turnId,
@@ -310,7 +324,12 @@ export function createBridgeServer(
             }
             const result = await broker.closeQuestion(questionId, reason);
             if (result && activeBot && result.question.chatId && result.question.messageId) {
-              await activeBot.editMessage(result.question.chatId, result.question.messageId, result.cardText, { inline_keyboard: [] });
+              await activeBot.settleQuestionMessage(
+                result.question,
+                result.cardText,
+                "closed",
+                result.channelEvent.reason
+              );
             }
             if (result && emitChannelNotification) {
               emitChannelNotification(`Question closed: ${result.channelEvent.reason}`, {
@@ -347,7 +366,12 @@ export function createBridgeServer(
             }
             const result = await broker.resolveAnswer(questionId, optionIndex !== undefined ? optionIndex : "other", choice);
             if (result && activeBot && result.question.chatId && result.question.messageId) {
-              await activeBot.editMessage(result.question.chatId, result.question.messageId, result.cardText, { inline_keyboard: [] });
+              await activeBot.settleQuestionMessage(
+                result.question,
+                result.cardText,
+                "answered",
+                result.channelEvent.choice
+              );
             }
             if (result && emitChannelNotification) {
               emitChannelNotification(`Question answered: ${result.channelEvent.choice}`, {

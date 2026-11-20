@@ -1,13 +1,13 @@
 ---
 name: diagram
-description: Draw, edit, and review diagrams -- Mermaid for version-controlled flowcharts, sequences, and architecture; Excalidraw for mind maps, concept maps, PKB graphs, and sketches. Covers layout routing, house palette, pkb-excalidraw CLI, SVG/PNG rendering, visual QA, fractional index validation, and PKB export/diff/sync. Not for plotting quantitative data or UI mockups.
+description: Draw, edit, and review diagrams -- Mermaid for version-controlled flowcharts, sequences, and architecture; Excalidraw for mind maps, concept maps, PKB graphs, and sketches. Covers layout routing, pkb-excalidraw CLI, SVG/PNG rendering, visual QA, and PKB sync. Not for plotting quantitative data or UI mockups.
 ---
 
 # Diagram
 
 Mermaid and Excalidraw diagramming standards, layout routing, and visual invariants.
 
-## Objective and layout routing
+## Objective and Layout Routing
 
 Identify the chart's core objective (the action or decision it enables) and reader context before drawing.
 
@@ -21,143 +21,34 @@ Identify the chart's core objective (the action or decision it enables) and read
 | "When does this happen?" | Timeline | Position strictly encodes chronological time. |
 | "What is central here?" | Radial / hub | Focal node centered with balanced spokes. |
 
-### Visual channel rules
+### Channel and Craft Rules
 
-- **Bind channels to real fields**: Derive weights, status, and structure from source data -- never author arbitrary hierarchies.
-- **One channel, one meaning**: Document encodings in a legend; unassigned channels remain uniform.
-- **Explicit omission**: Label truncated containers (e.g., "showing 3 of 12"); never invent category names for unselected items.
-- **Respect live files**: When editing an open diagram, diff against mtime/disk state to preserve external user edits.
+- **Bind channels to real fields**: Derive weights, status, and structure from source data; document encodings in a legend and keep unassigned channels uniform.
+- **Explicit omission and live edits**: Label truncated containers (e.g., "showing 3 of 12"); when editing an open file, diff against disk mtime to preserve external user edits.
+- **Single message and chunking**: One primary argument per chart (6--9 nodes per cluster, happy path along a straight spine); sub-processes get dedicated diagrams.
+- **Labels and shapes**: Terse, verb-first labels (3--9 words) stating current facts. Use rectangles for processes, diamonds for decisions, circles for terminals/actors, and ellipses for mind maps.
 
-## Craft rules
+## Mermaid Conventions
 
-- **Single message**: One primary argument per chart; sub-processes get dedicated diagrams.
-- **Chunking**: Limit clusters to 6--9 nodes; align happy path along a straight spine.
-- **Labels**: Terse, verb-first labels (3--9 words). State current facts, not change logs or historical commentary.
-- **Shapes**: Process (rectangles), decision (diamonds), terminal/actors (circles), mind maps (ellipses).
+- **Orientation and subgraphs**: Default to `LR` (`TD` only for wide fan-outs; `direction TB` inside subgraphs). Link subgraph to subgraph rather than internal nodes to external nodes.
+- **Scale and phases**: Past ~15 nodes or heavy cross-links, switch to ELK (`layout: elk`, `mergeEdges: true`, `nodePlacementStrategy: SIMPLE`). Group 10+ steps into numbered phases (`① ② ③`) colored start (green) -> work (gold) -> end (gray).
 
-## Mermaid conventions
+## Excalidraw Workflow
 
-- **Default orientation**: Use `LR`. Use `TD` only for wide fan-outs. In subgraphs, use `direction TB`.
-- **Subgraphs**: Link subgraph to subgraph, not internal nodes to external nodes.
-- **Scale**: Past ~15 nodes or heavy cross-links, switch to ELK (`layout: elk`, `mergeEdges: true`, `nodePlacementStrategy: SIMPLE`).
-- **Phases**: Group 10+ steps into numbered phases (① ② ③) colored start (green) -> work (gold) -> end (gray).
+Before editing or validating `.excalidraw` JSON, read [references/excalidraw-reference.md](references/excalidraw-reference.md).
 
-## Excalidraw conventions
+- **Use `pkb-excalidraw` first**: Prefer `pkb-excalidraw` over raw JSON edits because mutations refuse to save invalid files. When updating an existing canvas, edit in place (`move-elem`, `set-text`/`fit`, `update`, `delete-elem`) to preserve every `id` for `pkb excalidraw diff`/`sync`; never draw a parallel duplicate system alongside old elements.
+- **Hierarchies (nest first, arrow last)**: Use large unboxed headlines for top levels, plain panels for groups, columns for sub-groups, and packed small boxes for leaves. Draw labelled connectors only for moves between groups (grid-routed; curved 12% off-centre max 60 px; relax-then-repair free layouts; at most 5 colors bound to node kind).
+- **PKB note derivation**: When creating a PKB note from a canvas via `pkb.create`, pass the canvas's PKB-relative path as `source` (or set `parent` to a node in that directory).
 
-### Aesthetic defaults
+## Rendering and Visual QA
 
-| Property | Value | Rationale |
-| - | - | - |
-| `roughness` | `2` | Sketch aesthetic |
-| `fontFamily` | `1` (Virgil) | Hand-drawn typeface |
-| `fillStyle` | `"hachure"` | Sketch hatching |
-| `strokeStyle` | `"solid"` | Consistent hand-drawn stroke |
-| Background | White (`#ffffff`) | High contrast and printability |
-
-### Layered composition
-
-1. **Scenery**: Zones and boundaries (`--preset zone`).
-2. **Spine**: Focal landmarks and critical paths (`--preset hero`).
-3. **Satellites**: Standard operational nodes.
-4. **Annotations**: Contextual commentary (`--preset sticky`).
-5. **Connectors**: Solid flows or dashed telemetry (`--curved`, `--stroke-style dashed`).
-
-### Hierarchies: nest first, arrow last
-
-A tree (outline, taxonomy, claim structure, org chart) reads best when containment carries the hierarchy and arrows are rare. Rings, radii, sunbursts and evenly spaced fans read as spiderweb and hide the levels they were meant to show.
-
-- **Headlines, not boxes, for the top levels.** The root and each major group are one sentence in large type (two to three sizes above the leaves), with white space around it. Size carries rank; a reader sees the structure from across the room.
-- **Panels for groups, columns for sub-groups, small boxes for leaves.** Each group is a plain panel led by its headline; its sub-groups are columns inside it with their own headline; leaves pack beneath their column in reading order. Nesting replaces parent-child arrows entirely.
-- **Arrows only for moves between groups, each labelled.** Draw a connector only where one group hands something to another, and write the inference on it in words. Route by grid position: side to side between neighbours, over the top across a row, through the gap between rows, round the margin when rows are far apart.
-- **Uneven density on purpose.** Headline claims get room; detail is packed small. Even spacing is what makes a generated layout look mechanical.
-- **Size boxes to the text.** Wrap at `(width - 28) / (font * 0.62)` characters for Virgil and set widths to the longest line. The CLI render draws bound text unwrapped, so text fit is checked from the stored lines, not from the picture.
-- **Five colours at most**, bound to the kind of node. Finer status goes in the text as a prefix. Group identity goes on captions and borders, not fills.
-- **Free layouts (clusters, mind maps) need relax-then-repair.** Push overlapping boxes apart with a weak spring to each parent, then test every arrow's real polyline (both segments of a curved arrow) against every unrelated box and nudge offenders off the chord, re-relaxing each round. Curve arrows with a control point 12% of the chord off-centre, capped at 60 px.
-- **Generate from source data**, keep ids stable by slugging node titles, and validate with `pkb-excalidraw check` plus an own segment-versus-box check: the CLI `arrows-check` tests chords and reports false positives on routed or curved arrows.
-
-### CLI tools and invariants
-
-`pkb-excalidraw` is the preferred way to read and edit `.excalidraw` files; use it before reading or writing the JSON directly, because its mutations refuse to save a file that fails validation. Run `pkb-excalidraw --help` for the full command set. When creating a PKB note derived from an Excalidraw canvas (via `pkb.create`), pass the canvas's PKB-relative path as `source` (e.g. `<subproject>/<canvas>.excalidraw`), or set `parent` to a node whose file lives in that directory, so the home-directory placement rule files the note in that sub-project directory.
-
-```bash
-pkb-excalidraw FILE [summary | map | nodes | edges | style | check | overlap | arrows-check]
-pkb-excalidraw FILE add-node --type <type> --text "<text>" [--preset hero|sticky|zone] [--role <role>] [--at X,Y]
-pkb-excalidraw FILE connect --from <id1> --to <id2> [--label "<label>"] [--curved] [--stroke-style dashed] [--color <hex>]
-pkb-excalidraw FILE [set-text <id> "<text>" | fit <id> "<text>" | move-elem <id> --by DX,DY | delete-elem <id>]
-pkb-excalidraw FILE update <id> --set '{"strokeStyle": "dashed"}'
-pkb-excalidraw FILE screenshot [--out <path>] [--format svg|png] [--no-background]
-```
-
-- **Invariants**: Text binds to container (`containerId`/`boundElements`); arrows bind both ends (`startBinding`/`endBinding`).
-- Change text with `set-text` or `fit`, which update `text` and `originalText` together. Change any other property with `update <id> --set '<json>'`.
-- Validate after every edit with `pkb-excalidraw FILE check` and `pkb-excalidraw FILE overlap`. `check` does not flag line-wrap-only differences between `text` and `originalText`.
-- Requires `pkb-excalidraw` from `mem >= v0.3.101` or newer, which natively trims `connect` arrow endpoints to shape outlines and mints valid fractional index keys.
-- **Structural arrow binding check and edge editability**: Inspect every arrow against Excalidraw's element schema so edges remain interactively selectable and draggable in the Excalidraw editor:
-  1. `startBinding` and `endBinding` must be valid objects with `elementId` matching existing elements, numeric `focus` (between -1.0 and 1.0), numeric `gap`, and optional `fixedPoint` (`[x_ratio, y_ratio]` normalized between 0.0 and 1.0).
-  2. Reciprocal `boundElements`: The source and target elements must each list `{ "id": arrow_id, "type": "arrow" }` in `boundElements`.
-  3. Points envelope: `points` array must start at `[0, 0]`, with `width` and `height` matching the points' bounding box envelope.
-  4. Interactive edge editability: Ensure edges remain selectable and draggable by maintaining valid bindings, envelope-bounded points, and reciprocal `boundElements` backreferences.
-- **Structural fractional index check**: Validate every element's `index` key against Excalidraw's `fractional-indexing` schema:
-  1. Base-62 character set: Keys must consist only of base-62 digits (`0-9`, `A-Z`, `a-z`).
-  2. Integer head and length: For keys starting with lowercase `a-z`, integer part length is `head.charCodeAt(0) - 97 + 2` (e.g. `'a'` is 2 characters: `a0`--`az`; `'b'` is 3 characters: `b00`--`bzz`). For uppercase `A-Z`, integer part length is `90 - head.charCodeAt(0) + 2` (`'Z'` is 2 characters, `'A'` is 27 characters).
-  3. Reject trailing zeros in fractional part: The fractional part comprises all characters after the integer part (`index.slice(integerLength)`). If the fractional part is non-empty, its final character must NOT be `'0'`. Reject any key where `fractionalPart.endsWith('0')` (e.g. `a000`, `a00100`, `a0010100`).
-
-### Rendering and visual QA
-
-Every finished canvas must be rendered to vector SVG or PNG using `pkb-excalidraw` and pass visual inspection against the rendered image before presentation, handback, or release.
+Render every finished canvas and inspect the rendered image directly before presentation, handback, or release:
 
 ```bash
 pkb-excalidraw FILE screenshot --out <path>.svg --format svg
-# Or if a PNG deliverable is required:
-pkb-excalidraw FILE screenshot --out <path>.png --format png
+# Or when PNG is required: pkb-excalidraw FILE screenshot --out <path>.png --format png
 ```
 
-- **What the render shows**: `screenshot` draws the canvas's stored geometry: shape outlines, arrow points, and bound text as its stored lines. It names Virgil without embedding it and draws fills flat, so text in the image uses Virgil only where Virgil is installed. Judge arrow placement, overlaps, and crossings from the image directly; treat a label that sits close to its container edge as a possible overflow in Excalidraw.
-- **Visual verification**: Rendering via `pkb-excalidraw FILE screenshot` and visually inspecting the resulting image is mandatory to verify that arrowheads terminate outside shapes, labels fit within containers, and layouts are legible.
-- **Missing tool or converter**:
-  - If `pkb-excalidraw` is missing or fails to render, halt immediately and report the failure verbatim. Never substitute an ad-hoc or homemade renderer (such as manual SVG construction or custom canvas scripts); alternative renderers produce incorrect typography, drop bindings, and conceal layout defects.
-  - When `--format png` is requested without a system rasterizer (`resvg`, `rsvg-convert`, `magick`) on `PATH`, the tool outputs a notice and saves an SVG fallback to `<path>.svg`. Use this SVG render for visual QA. If a PNG image is explicitly required by acceptance criteria and no rasterizer exists, halt and surface the missing dependency.
-- **Visual QA criteria**:
-  Inspect the rendered image directly to verify:
-  1. **Arrowhead placement**: Arrows terminate cleanly at container boundaries; no arrowheads are buried inside boxes or cut across labels.
-  2. **Label overflow**: Text does not exceed container bounds, spill across borders, or wrap awkwardly across lines.
-  3. **Overlaps**: Text elements and shapes do not collide with or obscure neighbouring elements.
-  4. **Crossing arrows**: Connector polylines do not cut through unrelated boxes or labels.
-  5. **At-a-glance legibility**: Visual hierarchy is obvious, labels are readable at standard zoom, and flows are intuitive without clutter.
-
-### Editing an existing diagram
-
-When the diagram already exists and the ask changes the plan or state it shows, edit the existing elements in place so the delta is visible on the canvas:
-
-- **Moved** thing: `move-elem` the existing element.
-- **Renamed** thing: `set-text` or `fit` the existing element.
-- **Changed status**: set `strokeColor`/`backgroundColor` on the existing element to the palette role for its new state.
-- **Removed** thing: `delete-elem` it, and its bound text and arrows.
-- **Genuinely new** thing: `add-node` only for this.
-
-Keep the `id` of every surviving element. `pkb excalidraw diff` and `sync` match canvas elements to PKB nodes by `id`; a replaced element reads as a deletion plus an unrelated addition.
-
-**Anti-pattern -- the parallel system.** Do not draw a fresh set of elements beside the old ones to depict the new state. It leaves two contradictory versions on one canvas, hides what changed, and severs every `id` binding. Before adding any element, check whether an existing element already represents that thing; if one does, edit it.
-
-### PKB export and sync
-
-```bash
-pkb excalidraw export <output_path> [--focus <node_id>] [--hops <H>]
-pkb excalidraw diff <canvas_path> [--base <snapshot>] [--json]
-pkb excalidraw sync <canvas_path> [--base <snapshot>] [--dry-run]
-```
-
-Reconcile user canvas edits with `diff` and `sync` back to markdown frontmatter rather than clobbering.
-
-## Palette
-
-| Role | Hex | Role | Hex |
-| - | - | - | - |
-| Emphasis / headers | `#c9b458` (gold) | Error / blocked | `#ff6666` (soft red) |
-| Success / active | `#8fbc8f` (soft green) | Text / labels | `#1a1a1a` (primary dark) |
-| Active accent | `#76c893` (bright green) | De-emphasized text | `#888888` (muted) |
-| Info / links | `#7a9fbf` (soft blue) | Borders / arrows | `#404040` (charcoal) |
-| Warning / queued | `#ffa500` (orange) | Completed fills | `#252525` (surface) |
-
-- Maximum 4--6 colors per diagram.
-- Opacity: 10--35% for fills with `#1a1a1a` text; 4.5:1 minimum contrast.
+- **Fail-fast on missing renderer**: If `pkb-excalidraw` is missing or fails, halt and report verbatim -- never substitute ad-hoc SVG or canvas scripts. If `--format png` falls back to SVG because no system rasterizer (`resvg`, `rsvg-convert`, `magick`) is on `PATH`, inspect the SVG fallback unless PNG was explicitly required (then halt).
+- **Visual QA criteria**: Verify directly in the image that (1) arrowheads terminate cleanly outside shapes without crossing labels, (2) text fits within container bounds, (3) elements and labels do not overlap, (4) connector polylines avoid unrelated boxes and labels, and (5) visual hierarchy and flows read clearly at standard zoom.

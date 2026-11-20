@@ -38,7 +38,6 @@ from hearsay_gate import (
     prompt_text,
     record_pre_dispatch,
     should_arm_hearsay,
-    subagent_pre_handback_check,
     subagent_start_gate_notice,
 )
 from hearsay_gate import (
@@ -790,11 +789,12 @@ def _export_session_id(ctx: HookContext) -> bool:
 
 
 PREMISE_CHECK_POINTER = (
-    "Reports follow `premise-check`: written in its shape and checked on receipt."
-    " Load the skill (`ida:premise-check`) before writing or checking one;"
-    " its form is a restricted subset of Argdown."
-    " Every `send_message` / `SendMessage` report to a calling/peer agent"
-    " (and every foreground subagent return) must end with a fenced `argdown` block or `[no claim]`."
+    "Inter-agent reports and reviews follow `premise-check` (`ida:premise-check`)."
+    " Non-user-facing agents report only in clean, human-readable Argdown prose stating"
+    " the original ask upfront and quoting deciding evidence inline (or `[no claim]` for"
+    " claim-free notices). Evaluators run administrative-law formal compliance review"
+    " strictly on the face of the record -- zero de novo fact-checking -- and record"
+    " appealable natural-language reasons."
 )
 
 PKB_SESSION_POINTER = (
@@ -1156,9 +1156,6 @@ def pre_tool(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical PreToolUse."""
     _run_claude_tracer(ctx, "handle_pre_tool")
     agy_pre_tool(ctx)
-    res = subagent_pre_handback_check(ctx)
-    if res is not None:
-        return res
     gate_res = _run_handler(hearsay_handler, ctx)
     if gate_res is not None and gate_res.kind == Kind.REFUSE:
         return gate_res

@@ -1,37 +1,38 @@
 ---
-alias:
-  - wf-structural-map
-description: Reduce academic work to a four-part descriptive structural map (Aims / Methodology / Analytical theory / Contribution) without evaluation or rewriting.
+description: Extract a four-part descriptive structural map (Aims, Methodology, Analytical theory, Contribution) of academic work without evaluation or rewriting.
 id: wf-structural-map
 tags:
   - wf-template
   - process
   - structural-map
-title: wf-structural-map
+title: Descriptive Structural Map Workflow
 type: template
 ---
 
-# wf-structural-map -- Descriptive Four-Part Extraction
+## What this step does
 
-Reduces academic writing to a descriptive structural map reflecting what the text states about itself. Descriptive only: omit evaluation, critiques, or rewriting.
+Reduces an academic text to a four-part descriptive map reflecting only what the text states about itself. Descriptive only: omit evaluation, critique, and rewriting.
 
-## Output Structure
+## Output structure
 
-Four sections, up to four bullets each, lifting clauses verbatim from the source:
+Four sections, up to four bullets each, lifting key clauses verbatim from the source:
 
 1. **Aims**: Object of study and core research questions.
-2. **Methodology**: Empirical design, data sources, analytical methods, and defined scope boundaries.
+2. **Methodology**: Empirical design, data sources, analytical methods, and stated scope boundaries.
 3. **Analytical theory**: Conceptual framework, theoretical lens, and referenced intellectual traditions.
 4. **Contribution**: Claimed delta against existing literature (empirical, methodological, theoretical).
 
 ## Rules
 
-- **Extract, do not infer**: If an element is absent from the text, record `Not stated`.
-- **Preserve author's framing**: Document what the text claims rather than evaluating whether the claim is demonstrated.
-- **Ignore document sectioning**: Key elements often reside in the abstract or introduction rather than dedicated headings.
-- Single pass execution without interactive dialogue.
+- **Extract, do not infer**: Record `Not stated` if an element is absent from the text.
+- **Preserve framing**: Report what the text claims without judging whether claims are demonstrated.
+- **Search across sections**: Check abstracts and introductions as well as dedicated headings.
+- Execute in a single pass without interactive dialogue.
 
-## When to Include
+## Output contract
 
-Any request to read or summarise someone else's academic work descriptively, before or instead of
-evaluating it.
+A four-part descriptive map (Aims, Methodology, Analytical theory, Contribution) grounded verbatim in the source text with no evaluative commentary.
+
+## When to include
+
+Reading or summarizing another author's academic work descriptively prior to or instead of evaluating it.

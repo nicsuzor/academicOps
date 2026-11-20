@@ -1,43 +1,28 @@
 ---
 name: refresh-questions
-description: Sweep and refresh open questions in the Telegram Mini App by closing questions that are answered elsewhere, superseded, or asking for completed actions, and ensuring active open questions carry recommendations and context. Use when asked to refresh questions, sweep stale questions, or keep the Mini App decision queue current. Exclude for asking new questions or routine chat replies.
+description: Sweep and refresh open questions in the Telegram Mini App by closing questions answered elsewhere, superseded, or asking for completed actions, and ensuring active open questions carry recommendations and context. Use when asked to refresh questions, sweep stale questions, or keep the Mini App decision queue current. Exclude for asking new questions or routine chat replies.
 ---
 
 # Refresh Questions
 
-Keep open questions in the Telegram Mini App current by sweeping pending questions against external state, closing settled inquiries with verified reasons, and verifying that open questions supply actionable recommendations and decision context.
+Keep the Telegram Mini App decision queue current by closing settled inquiries with cited reasons and verifying that remaining open questions supply actionable recommendations and context.
 
 ## Workflow
 
-1. **Enumerate Unresolved Questions**:
-   - Fetch the active list of pending questions via `list_questions` or `GET /api/app/questions`.
-   - If no questions are pending, conclude with an empty sweep summary.
-
-2. **Evaluate External State per Question**:
-   - For each pending question, inspect external state across repositories, task graphs, communication channels, and asking sessions:
-     - _Completed Actions_: Check git commit logs, PR merge status, issue tracking, and system state for actions the question asked to approve or perform (such as a pull request merge or release deployment).
-     - _Answered Elsewhere_: Check recent channel communications, asking session execution traces, and peer agent turns for answers or directives already delivered on other surfaces.
-     - _Superseded or Obsolete_: Check whether subsequent questions, re-asks, or user steering instructions have replaced or rendered the decision moot.
-
-3. **Close Settled or Stale Questions**:
-   - Close each identified question via `close_question` or `POST /api/app/questions/close` (or `POST /api/app/questions/:id/close`), providing the required `question_id` and a mandatory, explicit `reason`.
-   - Support every closure reason with primary citations:
-     - Completed action: cite the exact merge commit SHA, PR number, or released tag.
-     - Answered elsewhere: cite the channel message, session identifier, or confirmed decision.
-     - Superseded: cite the newer question ID or direct user instruction.
-     - Obsolete: cite the changed prerequisite or condition that eliminated the question.
-
-4. **Verify Active Questions**:
-   - Do not answer questions or select subjective choices on the user's behalf.
-   - For any question remaining open, ensure it adheres to decision presentation standards:
-     - Provides an explicit recommendation marked first (`(Recommended)`).
-     - Supplies concise, self-contained context and rationale necessary to make an informed choice without requiring manual log lookups.
-
-5. **Record Sweep Report**:
-   - Summarize the disposition of every evaluated question: question ID, question text, outcome (`closed` or `kept`), stated reason, and primary citation.
-
-## Must Not
-
-- Must not answer questions, choose options, or guess user intent on the user's behalf.
-- Must not close a question without an explicit stated reason supported by primary citations.
-- Must not leave open decisions without a recommendation and context.
+1. **Enumerate unresolved questions**:
+   - Fetch pending questions via `list_questions` or `GET /api/app/questions`.
+   - If none are pending, return an empty sweep summary.
+2. **Evaluate external state per question**:
+   - _Completed actions_: Check git history, PR merge state, issue trackers, and system state for actions the question asked to approve or run.
+   - _Answered elsewhere_: Check recent channel messages, asking session traces, and peer turns for answers or directives already delivered on another surface.
+   - _Superseded or obsolete_: Check whether newer questions, re-asks, or changed prerequisites rendered the decision moot.
+3. **Close settled questions with primary citations**:
+   - Close each settled item via `close_question` or `POST /api/app/questions/close` (`POST /api/app/questions/:id/close`) with `question_id` and a mandatory `reason` backed by primary evidence:
+     - Completed action: merge commit SHA, PR number, or release tag.
+     - Answered elsewhere: channel message, session identifier, or recorded decision.
+     - Superseded or obsolete: newer question ID, direct user instruction, or changed prerequisite.
+4. **Verify active open questions**:
+   - Leave subjective choices and unanswered decisions open for the user -- never answer or guess intent on the user's behalf.
+   - Confirm each remaining open question lists an explicit `(Recommended)` option first and supplies self-contained context and rationale. Flag any active question missing either element.
+5. **Report sweep disposition**:
+   - Summarize every evaluated question with `question_id`, question text, outcome (`closed` or `kept`), stated reason, and primary citation.
