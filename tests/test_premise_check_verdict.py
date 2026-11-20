@@ -1,7 +1,8 @@
-"""Tests for premise-check verdict recording on task-record handbacks and consistency checks."""
+"""Tests for premise-check verdict recording, slot guards, and fail-closed OTel emission."""
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -18,17 +19,20 @@ if str(_HOOKS_DIR) not in sys.path:
 
 import hearsay_gate as hg
 import premise_check_verdict as pcv
-import report_argument as ra
-
-_ANY_BASIS = ra.load_vocabulary().basis[0].phrase
 
 
 class _StubTracer:
     """Minimal stub for claude_code_tracer."""
 
-    def __init__(self, config: dict[str, Any] | None = None, export_ok: bool = True):
-        self._config = config or {"endpoint": "http://localhost:4317"}
+    def __init__(
+        self,
+        config: dict[str, Any] | None = None,
+        export_ok: bool = True,
+        raises: BaseException | None = None,
+    ):
+        self._config = config
         self._export_ok = export_ok
+        self._raises = raises
         self.exported: list[dict[str, Any]] = []
 
     def discover_config(self):
@@ -63,6 +67,8 @@ class _StubTracer:
         }
 
     def _build_and_export_spans(self, *, config, session_id, username, span_records, **_kw):
+        if self._raises is not None:
+            raise self._raises
         self.exported.append(
             {
                 "config": config,
@@ -74,6 +80,12 @@ class _StubTracer:
         return self._export_ok
 
 
+def _configured_tracer(export_ok: bool = True, raises: BaseException | None = None) -> _StubTracer:
+    return _StubTracer(
+        config={"endpoint": "http://localhost:4317"}, export_ok=export_ok, raises=raises
+    )
+
+
 @pytest.fixture(autouse=True)
 def _isolate_state(tmp_path, monkeypatch):
     monkeypatch.setenv("AOPS_PREMISE_GATE_DIR", str(tmp_path / "gate_state"))
@@ -82,30 +94,18 @@ def _isolate_state(tmp_path, monkeypatch):
 
 
 def test_task_record_handback_refusal_when_unarmed_reproduction():
-    """AC1: Reproduce the refusal for a verdict on a handback read from a task record when unarmed.
-
-    When a supervisor evaluates a task-record handback without an incoming message/notification
-    arming the gate, record_verdict previously refused with 'no premise check is currently armed'.
-    """
-    tracer = _StubTracer()
+    """Task-record handback verdicts succeed on an unarmed session without arming the gate."""
+    tracer = _configured_tracer()
     session_id = "test-unarmed-session"
-    task_id = "aops_2bc1b139"
+    task_id = "task_fixture_01"
 
-    # Confirm gate is unarmed for this session
     assert not hg.is_armed(session_id)
 
-    # Calling record_verdict on a task record when unarmed raises before fix
     reason = (
-        f"Judged: {task_id}; asks tg-1\n"
-        "Valid: (2) fails #missing -- condition not met\n"
-        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
-        "Answered: tg-1 ← (2)\n"
-        "Sufficient: (2) material; low-stakes\n"
-        "Waived: block -- task handback review\n"
-        "Relay: none"
+        f"REVISE {task_id}: the report's conclusion asserts runtime verification, "
+        "but the cited premise only confirms static import."
     )
 
-    # This test directly exercises recording against a task ID on an unarmed session
     res = pcv.record_verdict(
         session_id=session_id,
         claim_id=task_id,
@@ -119,19 +119,14 @@ def test_task_record_handback_refusal_when_unarmed_reproduction():
 
 
 def test_task_record_handback_verdict_records_with_task_id_and_verification_id():
-    """AC2: A verdict on a task-record handback records with task id as claim id and a verification id."""
-    tracer = _StubTracer()
+    """Task-record handback verdict records task_id as claim_id and mints a verification_id."""
+    tracer = _configured_tracer()
     session_id = "supervisor-session-1"
-    task_id = "aops_8830b768"
+    task_id = "task_fixture_02"
 
     reason = (
-        f"Judged: {task_id}; asks aops_8830b768/AC1\n"
-        "Valid: (2) fails #undercut -- defect observed in runtime trace\n"
-        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
-        "Answered: aops_8830b768/AC1 ← (2)\n"
-        "Sufficient: (2) material; low-stakes\n"
-        "Waived: block -- reviewed from task record\n"
-        "Relay: none"
+        f"REVISE {task_id}: the defect observed in the runtime trace undercuts the claim "
+        "that AC1 was satisfied."
     )
 
     res = pcv.record_verdict(
@@ -153,75 +148,12 @@ def test_task_record_handback_verdict_records_with_task_id_and_verification_id()
     assert span["attributes"]["premise_check.claim_id"] == task_id
     assert span["attributes"]["premise_check.verification_id"] == res["verification_id"]
     assert span["attributes"]["premise_check.verdict"] == "REVISE"
-
-
-def test_task_record_handback_verdict_records_with_construct_drift():
-    """Defect tags #construct-drift and #method-gap are recognized and recorded in span attributes."""
-    tracer = _StubTracer()
-    session_id = "supervisor-session-construct-drift"
-    task_id = "aops_8830b769"
-
-    reason = (
-        f"Judged: {task_id}; asks aops_8830b769/AC1\n"
-        "Valid: (2) fails #construct-drift -- silent substitution of specified form\n"
-        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
-        "Answered: aops_8830b769/AC1 ← (2)\n"
-        "Sufficient: (2) material; low-stakes\n"
-        "Waived: block -- reviewed from task record\n"
-        "Relay: none"
-    )
-
-    res = pcv.record_verdict(
-        session_id=session_id,
-        claim_id=task_id,
-        verdict="REVISE",
-        reason=reason,
-        title="task record check construct drift",
-        tracer_mod=tracer,
-    )
-
-    assert res["ok"] is True
-    assert res["claim_id"] == task_id
-    assert res["verdict"] == "REVISE"
-    span = tracer.exported[0]["spans"][0]
-    assert span["attributes"]["premise_check.defect_tags"] == ["#construct-drift"]
-    assert span["attributes"]["premise_check.defect_tag_count"] == 1
-
-
-def test_revise_recorded_when_only_failure_is_insufficient_for_stakes():
-    """A sufficiency failure written on a Valid line records REVISE and its tag."""
-    tracer = _StubTracer()
-    task_id = "proj_0000abcd"
-
-    reason = (
-        f"Judged: {task_id}; asks {task_id}/AC1\n"
-        "Valid: (3) fails #insufficient-for-stakes -- the merge it authorises rests on "
-        "a worker's unchecked report that review passed\n"
-        "Supported: (2) worker reported, unchecked; cannot bear a merge\n"
-        f"Answered: {task_id}/AC1 ← (3)\n"
-        "Sufficient: (3) material; authorises a merge; sent back\n"
-        "Waived: none\n"
-        "Relay: none"
-    )
-
-    res = pcv.record_verdict(
-        session_id="supervisor-session-insufficient",
-        claim_id=task_id,
-        verdict="REVISE",
-        reason=reason,
-        title="sufficiency failure",
-        tracer_mod=tracer,
-    )
-
-    assert res["ok"] is True
-    assert res["verdict"] == "REVISE"
-    attrs = tracer.exported[0]["spans"][0]["attributes"]
-    assert attrs["premise_check.defect_tags"] == ["#insufficient-for-stakes"]
+    assert span["attributes"]["premise_check.reason_text"] == reason
 
 
 def test_non_task_claim_refused_when_unarmed():
-    """Non-task claim ids still refuse with 'no premise check is currently armed' when unarmed."""
-    tracer = _StubTracer()
+    """Non-task claim ids refuse with 'no premise check is currently armed' when unarmed."""
+    tracer = _configured_tracer()
     session_id = "unarmed-non-task"
     claim_id = "claim-12345678"
 
@@ -235,434 +167,264 @@ def test_non_task_claim_refused_when_unarmed():
         )
 
 
-def test_revise_refused_when_valid_entries_all_hold_and_no_unanswered_ask():
-    """AC5: premise_check_verdict.py refuses REVISE when Valid: is non-empty and all entries hold with no unanswered ask."""
-    tracer = _StubTracer()
-    session_id = "s-revise-check"
-    task_id = "aops_2bc1b139"
+@pytest.mark.parametrize(
+    ("verdict", "reason"),
+    [
+        (
+            "PASS",
+            "The premises support the conclusion directly; the change is reversible and low-stakes, "
+            "and every part of the ask is answered from observed outputs.",
+        ),
+        (
+            "REVISE",
+            "The reasoning is valid as stated, but the deliverable misses the edge case in scope; "
+            "revise to address empty inputs before resubmitting.",
+        ),
+        (
+            "FAIL",
+            "The conclusion depends on an unsupported assumption about upstream state that is "
+            "contradicted by the cited log excerpt.",
+        ),
+    ],
+)
+def test_free_form_natural_language_reasons_accepted_and_emit_flat_span_attributes(
+    verdict: str, reason: str
+):
+    """Free-form natural-language reasons are accepted for PASS/REVISE/FAIL on prose reports."""
+    tracer = _configured_tracer()
+    session_id = f"sess-freeform-{verdict}"
+    claim_id = f"claim-free-{verdict.lower()}"
+    judged_text = "Natural-language report without any fenced argdown block."
 
-    reason_all_hold = (
-        f"Judged: {task_id}; asks tg-1\n"
-        "Valid: (1) holds -- the rule yields (1)\n"
-        "Valid: (2) holds -- conclusion follows\n"
-        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
-        "Answered: tg-1 ← (2)\n"
-        "Sufficient: (2) material; low-stakes\n"
-        "Waived: block -- reviewed\n"
-        "Relay: none"
-    )
-
-    with pytest.raises(
-        ValueError, match=r"REVISE refused.*requires at least one failing inference step"
-    ):
-        pcv.record_verdict(
-            session_id=session_id,
-            claim_id=task_id,
-            verdict="REVISE",
-            reason=reason_all_hold,
-            tracer_mod=tracer,
-        )
-
-
-def test_fail_refused_when_valid_entries_all_hold_and_no_unanswered_ask():
-    """AC5: premise_check_verdict.py refuses FAIL when Valid: is non-empty and all entries hold with no unanswered ask."""
-    tracer = _StubTracer()
-    session_id = "s-fail-check"
-    task_id = "aops_2bc1b139"
-
-    reason_all_hold = (
-        f"Judged: {task_id}; asks tg-1\n"
-        "Valid: (1) holds -- the rule yields (1)\n"
-        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
-        "Answered: tg-1 ← (1)\n"
-        "Sufficient: (1) material; low-stakes\n"
-        "Waived: block -- reviewed\n"
-        "Relay: none"
-    )
-
-    with pytest.raises(
-        ValueError, match=r"FAIL refused.*requires at least one failing inference step"
-    ):
-        pcv.record_verdict(
-            session_id=session_id,
-            claim_id=task_id,
-            verdict="FAIL",
-            reason=reason_all_hold,
-            tracer_mod=tracer,
-        )
-
-
-def test_revise_allowed_when_valid_has_failing_step():
-    """AC5: REVISE is accepted when at least one Valid entry fails."""
-    tracer = _StubTracer()
-    session_id = "s-revise-fails"
-    task_id = "aops_2bc1b139"
-
-    reason_with_failure = (
-        f"Judged: {task_id}; asks tg-1\n"
-        "Valid: (1) holds -- step holds\n"
-        "Valid: (2) fails #missing -- condition not proven\n"
-        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
-        "Answered: tg-1 ← (2)\n"
-        "Sufficient: (2) material; low-stakes\n"
-        "Waived: block -- reviewed\n"
-        "Relay: none"
+    hg.arm(
+        session_id=session_id,
+        claim_id=claim_id,
+        judged_text=judged_text,
+        judged_ref="toolu_freeform",
     )
 
     res = pcv.record_verdict(
         session_id=session_id,
-        claim_id=task_id,
-        verdict="REVISE",
-        reason=reason_with_failure,
+        claim_id=claim_id,
+        verdict=verdict,
+        reason=reason,
         tracer_mod=tracer,
     )
+
     assert res["ok"] is True
-    assert res["verdict"] == "REVISE"
+    assert res["verdict"] == verdict
+    assert res["disarmed"] is True
+    assert res["no_claim"] is False
+    assert hg.is_armed(session_id) is False
 
-
-def test_revise_allowed_when_ask_unanswered():
-    """AC5: REVISE is accepted when Valid entries hold but an ask is unanswered."""
-    tracer = _StubTracer()
-    session_id = "s-revise-unans"
-    task_id = "aops_2bc1b139"
-
-    reason_unanswered_answered_key = (
-        f"Judged: {task_id}; asks tg-1\n"
-        "Valid: (1) holds -- step holds\n"
-        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
-        "Answered: tg-1 unanswered\n"
-        "Sufficient: (1) material; low-stakes\n"
-        "Waived: block -- reviewed\n"
-        "Relay: none"
-    )
-
-    res = pcv.record_verdict(
-        session_id=session_id,
-        claim_id=task_id,
-        verdict="REVISE",
-        reason=reason_unanswered_answered_key,
-        tracer_mod=tracer,
-    )
-    assert res["ok"] is True
-    assert res["verdict"] == "REVISE"
-
-    # Also test Ask: tg-1 -> unanswered syntax
-    reason_ask_arrow = (
-        f"Judged: {task_id}; asks tg-1\n"
-        "Valid: (1) holds -- step holds\n"
-        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
-        "Ask: tg-1 -> unanswered\n"
-        "Sufficient: (1) material; low-stakes\n"
-        "Waived: block -- reviewed\n"
-        "Relay: none"
-    )
-    res2 = pcv.record_verdict(
-        session_id=session_id,
-        claim_id=task_id,
-        verdict="REVISE",
-        reason=reason_ask_arrow,
-        tracer_mod=tracer,
-    )
-    assert res2["ok"] is True
-
-
-def test_revise_allowed_when_valid_empty():
-    """AC5: REVISE is accepted when Valid is empty (e.g. absent block return)."""
-    tracer = _StubTracer()
-    session_id = "s-revise-no-valid"
-    task_id = "aops_2bc1b139"
-
-    reason_no_valid = "no argument supplied; please supply argument block"
-
-    res = pcv.record_verdict(
-        session_id=session_id,
-        claim_id=task_id,
-        verdict="REVISE",
-        reason=reason_no_valid,
-        tracer_mod=tracer,
-    )
-    assert res["ok"] is True
-    assert res["verdict"] == "REVISE"
-
-
-def test_pass_refused_absent_block_instructs_load_premise_check():
-    """US-2 AC-2.1: Refusal on absent block instructs returning for revision and loading ida:premise-check."""
-    tracer = _StubTracer()
-    session_id = "s-absent-block-pass"
-    claim_id = "claim-absent-1"
-
-    hg.arm(
-        session_id=session_id,
-        claim_id=claim_id,
-        judged_text="Result text without an argdown block.",
-        judged_ref=claim_id,
-        block_expected=True,
-    )
-
-    reason = (
-        f"Judged: {claim_id}; asks tg-1\n"
-        "Valid: (1) holds -- ok\n"
-        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
-        "Answered: tg-1 ← (1)\n"
-        "Sufficient: (1) obvious\n"
-        "Waived: none\n"
-        "Relay: none"
-    )
-
-    with pytest.raises(ValueError) as excinfo:
-        pcv.record_verdict(
-            session_id=session_id,
-            claim_id=claim_id,
-            verdict="PASS",
-            reason=reason,
-            tracer_mod=tracer,
-        )
-
-    err = str(excinfo.value)
-    assert "PASS refused -- no argument block in judged text" in err
-    assert "Load the premise-check skill (`ida:premise-check`)" in err
-
-
-def test_pass_refused_unparsable_block_instructs_load_premise_check():
-    """US-2 AC-2.2: Refusal on syntax error in argdown block instructs loading ida:premise-check."""
-    tracer = _StubTracer()
-    session_id = "s-syntax-err-pass"
-    claim_id = "claim-syntax-1"
-
-    bad_argdown = (
-        "```argdown\n===\nasks: [aops_1234]\nanswers: invalid yaml\n===\n(1) Observation.\n```"
-    )
-
-    hg.arm(
-        session_id=session_id,
-        claim_id=claim_id,
-        judged_text=bad_argdown,
-        judged_ref=claim_id,
-        block_expected=True,
-    )
-
-    reason = (
-        f"Judged: {claim_id}; asks aops_1234\n"
-        "Valid: (1) holds -- ok\n"
-        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
-        "Answered: aops_1234 ← (1)\n"
-        "Sufficient: (1) obvious\n"
-        "Waived: none\n"
-        "Relay: none"
-    )
-
-    with pytest.raises(ValueError) as excinfo:
-        pcv.record_verdict(
-            session_id=session_id,
-            claim_id=claim_id,
-            verdict="PASS",
-            reason=reason,
-            tracer_mod=tracer,
-        )
-
-    err = str(excinfo.value)
-    assert f"PASS verdict refused for {claim_id}: could not parse argdown block:" in err
-    assert "instruct the sender to load `ida:premise-check` before resending" in err
-
-
-def test_pass_refused_zero_inference_lines_instructs_load_premise_check():
-    """US-2 AC-2.3: Refusal on 0 inference lines instructs loading ida:premise-check."""
-    tracer = _StubTracer()
-    session_id = "s-zero-inf-pass"
-    claim_id = "claim-zero-inf"
-
-    zero_inf_block = (
-        "```argdown\n"
-        "===\n"
-        "asks:\n"
-        "  q1: test\n"
-        "answers:\n"
-        "  q1: 1\n"
-        "===\n"
-        f"(1) Bare observation without inference. -- {_ANY_BASIS}\n"
-        "```"
-    )
-
-    hg.arm(
-        session_id=session_id,
-        claim_id=claim_id,
-        judged_text=zero_inf_block,
-        judged_ref=claim_id,
-        block_expected=True,
-    )
-
-    reason = (
-        f"Judged: {claim_id}; asks q1\n"
-        "Valid: (1) holds -- ok\n"
-        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
-        "Answered: q1 ← (1)\n"
-        "Sufficient: (1) obvious\n"
-        "Waived: none\n"
-        "Relay: none"
-    )
-
-    with pytest.raises(ValueError) as excinfo:
-        pcv.record_verdict(
-            session_id=session_id,
-            claim_id=claim_id,
-            verdict="PASS",
-            reason=reason,
-            tracer_mod=tracer,
-        )
-
-    err = str(excinfo.value)
-    assert "0 inference lines" in err
-    assert "instruct the author to load `ida:premise-check` before rewriting" in err
-
-
-def test_pass_refused_missing_keyed_lines_instructs_load_premise_check():
-    """US-2 AC-2.4: Refusal on missing reason keys instructs loading ida:premise-check."""
-    tracer = _StubTracer()
-    session_id = "s-missing-keys-pass"
-    claim_id = "claim-missing-keys"
-
-    valid_block = (
-        "```argdown\n"
-        "===\n"
-        "asks:\n"
-        "  q1: test\n"
-        "answers:\n"
-        "  q1: 2\n"
-        "===\n"
-        f"(1) Fact. -- {_ANY_BASIS}\n"
-        "-- rule. Unless: def; not tried. --\n"
-        "(2) So, conclusion.\n"
-        "```"
-    )
-
-    hg.arm(
-        session_id=session_id,
-        claim_id=claim_id,
-        judged_text=valid_block,
-        judged_ref=claim_id,
-        block_expected=True,
-    )
-
-    # Incomplete reason: omits Supported, Answered, Sufficient, Waived, Relay
-    incomplete_reason = f"Judged: {claim_id}; asks q1\nValid: (2) holds -- ok\n"
-
-    with pytest.raises(ValueError) as excinfo:
-        pcv.record_verdict(
-            session_id=session_id,
-            claim_id=claim_id,
-            verdict="PASS",
-            reason=incomplete_reason,
-            tracer_mod=tracer,
-        )
-
-    err = str(excinfo.value)
-    assert "missing keyed lines" in err
+    attrs = tracer.exported[0]["spans"][0]["attributes"]
+    assert attrs["premise_check.claim_id"] == claim_id
+    assert attrs["premise_check.verdict"] == verdict
+    assert attrs["premise_check.reason_text"] == reason
+    assert attrs["premise_check.verification_id"] == res["verification_id"]
+    assert attrs["premise_check.judged_ref"] == "toolu_freeform"
     assert (
-        "Load the skill (`ida:premise-check`) to inspect the required format before resubmitting."
-        in err
+        attrs["premise_check.judged_text_sha256"]
+        == hashlib.sha256(judged_text.encode()).hexdigest()
     )
+    assert attrs["premise_check.no_claim"] is False
+
+    # No attribute is both a leaf and a dotted prefix (Phoenix nests dotted keys).
+    keys = list(attrs)
+    assert not [k for k in keys if any(o.startswith(k + ".") for o in keys)]
 
 
-def test_revise_and_fail_refused_all_valid_instructs_load_premise_check():
-    """US-2 AC-2.5: Inconsistent REVISE/FAIL refusal instructs loading ida:premise-check."""
-    tracer = _StubTracer()
-    session_id = "s-inconsistent-revise"
-    task_id = "aops_2bc1b139"
+def test_explicit_no_claim_flag_sets_no_claim_while_prose_words_do_not(monkeypatch, tmp_path: Path):
+    """--no-claim / no_claim=True sets premise_check.no_claim; prose mentioning 'no claim' without the flag does not."""
+    tracer = _configured_tracer()
 
-    reason_all_hold = (
-        f"Judged: {task_id}; asks tg-1\n"
-        "Valid: (1) holds -- the rule yields (1)\n"
-        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
-        "Answered: tg-1 ← (1)\n"
-        "Sufficient: (1) material; low-stakes\n"
-        "Waived: block -- reviewed\n"
-        "Relay: none"
+    # 1. Explicit no_claim=True via record_verdict with ordinary natural-language reason
+    sess_flag = "sess-nc-explicit-flag"
+    hg.arm(sess_flag, claim_id="claim-nc-flag", judged_text="Acknowledged.", judged_ref="ref-1")
+    res_flag = pcv.record_verdict(
+        session_id=sess_flag,
+        claim_id="claim-nc-flag",
+        verdict="PASS",
+        reason="Routine coordination ping carrying no assertions to rely on.",
+        no_claim=True,
+        tracer_mod=tracer,
     )
+    assert res_flag["ok"] is True
+    assert res_flag["no_claim"] is True
+    assert hg.get_state(sess_flag)["last_verdict"]["no_claim"] is True
+    assert tracer.exported[0]["spans"][0]["attributes"]["premise_check.no_claim"] is True
 
-    for verdict in ("REVISE", "FAIL"):
-        with pytest.raises(ValueError) as excinfo:
-            pcv.record_verdict(
-                session_id=session_id,
-                claim_id=task_id,
-                verdict=verdict,
-                reason=reason_all_hold,
-                tracer_mod=tracer,
-            )
-        err = str(excinfo.value)
-        assert f"{verdict} refused -- reason has Valid entries that all hold" in err
-        assert (
-            "Load the premise-check skill (`ida:premise-check`) to inspect the required format before resubmitting."
-            in err
-        )
-
-
-def test_verdict_reports_missing_gate_storage_distinctly_when_judged_text_is_none():
-    """AC2: verdict.py / record_verdict reports missing gate storage distinctly when judged_text is None."""
-    tracer = _StubTracer()
-    session_id = "sess-missing-gate-storage"
-    task_id = "aops_8830b768"
-
-    reason = (
-        f"Judged: {task_id}; asks tg-1\n"
-        "Valid: (1) holds -- rule\n"
-        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
-        "Answered: tg-1 ← (1)\n"
-        "Sufficient: (1) material; low-stakes\n"
-        "Waived: none\n"
-        "Relay: none"
+    # 2. CLI --no-claim sets premise_check.no_claim=True cleanly
+    sess_cli = "sess-nc-cli-flag"
+    hg.arm(sess_cli, claim_id="claim-nc-cli", judged_text="Standing by.", judged_ref="ref-2")
+    monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: tracer)
+    reason_file = tmp_path / "nc_reason.txt"
+    reason_file.write_text("Status acknowledgement only.", encoding="utf-8")
+    rc = pcv.main(
+        [
+            "--claim",
+            "claim-nc-cli",
+            "--verdict",
+            "PASS",
+            "--no-claim",
+            "--reason-file",
+            str(reason_file),
+            "--session",
+            sess_cli,
+        ]
     )
+    assert rc == 0
+    assert hg.get_state(sess_cli)["last_verdict"]["no_claim"] is True
+    assert tracer.exported[1]["spans"][0]["attributes"]["premise_check.no_claim"] is True
 
-    with pytest.raises(ValueError) as excinfo:
-        pcv.record_verdict(
-            session_id=session_id,
-            claim_id=task_id,
+    # 3. Prose containing "no claim" or "[no claim]" WITHOUT --no-claim stays no_claim=False
+    for idx, prose_reason in enumerate(
+        (
+            "no claim: acknowledgement with no assertions to rely on",
+            "[no claim] routine coordination ping",
+            "Judged: claim-nc; no claim -- status acknowledgment only",
+        ),
+        start=1,
+    ):
+        sess_prose = f"sess-nc-prose-{idx}"
+        cid = f"claim-nc-prose-{idx}"
+        hg.arm(sess_prose, claim_id=cid, judged_text="Substantive report.", judged_ref=cid)
+        res_prose = pcv.record_verdict(
+            session_id=sess_prose,
+            claim_id=cid,
             verdict="PASS",
-            reason=reason,
+            reason=prose_reason,
             tracer_mod=tracer,
         )
+        assert res_prose["ok"] is True
+        assert res_prose["no_claim"] is False
+        assert "no_claim" not in hg.get_state(sess_prose)["last_verdict"]
+        assert tracer.exported[-1]["spans"][0]["attributes"]["premise_check.no_claim"] is False
 
-    err = str(excinfo.value)
-    assert "missing gate storage" in err.lower()
-    assert "no argument block in judged text" not in err
+
+def test_unarmed_task_record_pass_records_without_gate_storage_and_hashes_judged_file(
+    tmp_path: Path,
+):
+    """Out-of-band task PASS succeeds with or without --judged-file and hashes file content when given."""
+    tracer = _configured_tracer()
+    session_id = "sess-task-out-of-band"
+    task_id = "task_fixture_03"
+
+    res_no_file = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=task_id,
+        verdict="PASS",
+        reason="All stated task criteria follow from the recorded command outputs.",
+        tracer_mod=tracer,
+    )
+    assert res_no_file["ok"] is True
+    assert res_no_file["verdict"] == "PASS"
+    attrs_no_file = tracer.exported[0]["spans"][0]["attributes"]
+    assert attrs_no_file["premise_check.judged_text_sha256"] == ""
+
+    report_text = "Task handback prose: all checks passed cleanly."
+    judged_file = tmp_path / "handback.md"
+    judged_file.write_text(report_text, encoding="utf-8")
+
+    res_with_file = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=task_id,
+        verdict="PASS",
+        reason="Reviewed full handback file; reasoning supports completion.",
+        tracer_mod=tracer,
+        judged_file=str(judged_file),
+    )
+    assert res_with_file["ok"] is True
+    attrs_with_file = tracer.exported[1]["spans"][0]["attributes"]
+    assert (
+        attrs_with_file["premise_check.judged_text_sha256"]
+        == hashlib.sha256(report_text.encode()).hexdigest()
+    )
+
+
+@pytest.mark.parametrize(
+    "tracer",
+    [_configured_tracer(export_ok=False), _configured_tracer(raises=OSError("collector down"))],
+    ids=["unacknowledged", "raises"],
+)
+def test_failed_export_records_no_verdict_and_stays_armed(tracer: _StubTracer):
+    """Failed or raising OTel span export halts loudly, writes no last_verdict, and keeps gate armed."""
+    session_id = "sess-span-fail-check"
+    hg.arm(session_id, claim_id="claim-fail-1", judged_text="Report prose.", judged_ref="ref-1")
+
+    with pytest.raises(RuntimeError, match="span export failed"):
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id="claim-fail-1",
+            verdict="PASS",
+            reason="Reasoning holds from cited evidence.",
+            tracer_mod=tracer,
+        )
+    assert hg.is_armed(session_id) is True
+    assert "last_verdict" not in hg.get_state(session_id)
+
+
+def test_cli_exits_non_zero_when_export_fails_and_stays_armed(monkeypatch, tmp_path: Path):
+    """CLI exits non-zero and leaves gate armed when OTel export is unacknowledged."""
+    session_id = "sess-cli-export-fail"
+    hg.arm(session_id, claim_id="claim-cli-fail-1", judged_text="Report prose.")
+    monkeypatch.setattr(
+        pcv, "_import_claude_code_tracer", lambda: _configured_tracer(export_ok=False)
+    )
+    reason_file = tmp_path / "reason.txt"
+    reason_file.write_text("Reasoning holds from cited evidence.", encoding="utf-8")
+
+    rc = pcv.main(
+        [
+            "--claim",
+            "claim-cli-fail-1",
+            "--verdict",
+            "PASS",
+            "--reason-file",
+            str(reason_file),
+            "--session",
+            session_id,
+        ]
+    )
+    assert rc != 0
+    assert hg.is_armed(session_id) is True
+
+
+def test_unconfigured_tracing_records_no_verdict():
+    """Unconfigured OTel tracing raises RuntimeError and keeps gate armed."""
+    session_id = "sess-unconf-check"
+    hg.arm(session_id, claim_id="claim-unconf-1", judged_text="Report prose.")
+    tracer = _StubTracer(config=None)
+
+    with pytest.raises(RuntimeError, match="tracing is not configured"):
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id="claim-unconf-1",
+            verdict="PASS",
+            reason="Reasoning holds from cited evidence.",
+            tracer_mod=tracer,
+        )
+    assert tracer.exported == []
+    assert hg.is_armed(session_id) is True
 
 
 def test_verdict_accepts_judged_file_to_verify_and_record_pass(tmp_path: Path):
-    """AC2: verdict.py / record_verdict accepts --judged-file <path> to verify and record against report argdown block."""
-    tracer = _StubTracer()
+    """verdict.py / record_verdict accepts --judged-file <path> and hashes it into the span."""
+    tracer = _configured_tracer()
     session_id = "sess-judged-file-test"
     claim_id = "report-from-file"
 
-    report_content = """# Specimen Handback Report
-
-Here are the results of the subagent run.
-
-```argdown
-===
-asks:
-  tg-1: 1
-answers:
-  tg-1: 1
-===
-
-(1) The hotfix is verified on dev (run: exit_code = 0).
--- rule --
-(2) Hotfix holds.
-```
-"""
+    report_content = (
+        "# Specimen Handback Report\n\n"
+        "The hotfix was verified on dev with exit code 0 across all targeted tests.\n"
+    )
     judged_file = tmp_path / "report.md"
     judged_file.write_text(report_content, encoding="utf-8")
 
     reason = (
-        f"Judged: {claim_id}; asks tg-1\n"
-        "Valid: (2) holds -- rule\n"
-        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
-        "Answered: tg-1 ← (2)\n"
-        "Sufficient: (2) material; low-stakes\n"
-        "Waived: none\n"
-        "Relay: none"
+        "The report cites direct execution output confirming exit code 0; the conclusion holds."
     )
 
-    # Calling with judged_file allows PASS to verify against the file and disarm/record
     res = pcv.record_verdict(
         session_id=session_id,
         claim_id=claim_id,
@@ -675,7 +437,6 @@ answers:
     assert res["verdict"] == "PASS"
     assert res["verification_id"].startswith("verdict-")
 
-    # Also test CLI main invocation with --judged-file
     reason_file = tmp_path / "reason.txt"
     reason_file.write_text(reason, encoding="utf-8")
     with patch.object(pcv, "_import_claude_code_tracer", return_value=tracer):
@@ -722,10 +483,13 @@ def test_verdict_resolves_session_from_gate_state_when_unspecified(tmp_path, mon
     assert resolved == session_id
 
     # And main() should resolve the session and record the verdict
-    tracer = _StubTracer()
+    tracer = _configured_tracer()
     monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: tracer)
     reason_file = tmp_path / "reason.txt"
-    reason_file.write_text("no argument supplied; please supply argument block", encoding="utf-8")
+    reason_file.write_text(
+        "The report omits evidence for its main conclusion; revise to show supporting checks.",
+        encoding="utf-8",
+    )
 
     code = pcv.main(
         [
@@ -758,7 +522,7 @@ def test_verdict_reports_clear_diagnostic_when_no_session_or_state(tmp_path, mon
             "--verdict",
             "REVISE",
             "--reason",
-            "no argument supplied",
+            "missing evidence for the reported claim",
         ]
     )
     assert code == 1
@@ -772,7 +536,7 @@ def test_subagent_verdict_span_uses_root_phoenix_session_id_and_subagent_active_
     subagent's own state file (for current_trace) and exports the span under the root
     phoenix_session_id with agent_id and parent_session_id."""
     monkeypatch.delenv("AOPS_SESSION_ID", raising=False)
-    tracer = _StubTracer()
+    tracer = _configured_tracer()
     sub_session = "subagent-verdict-sess"
     root_session = "root-verdict-sess"
     sub_trace_id = "a" * 32
@@ -818,17 +582,8 @@ def test_subagent_verdict_span_uses_root_phoenix_session_id_and_subagent_active_
         claim_id=claim_id,
         judged_text="report",
         judged_ref=claim_id,
-        block_expected=False,
     )
-    reason = (
-        f"Judged: {claim_id}; asks tg-1\n"
-        "Valid: (2) fails #missing -- condition not met\n"
-        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
-        "Answered: tg-1 ← (2)\n"
-        "Sufficient: (2) material; low-stakes\n"
-        "Waived: block -- task handback review\n"
-        "Relay: none"
-    )
+    reason = "The report's second inference leaves out a necessary condition; revise to address it."
 
     res = pcv.record_verdict(
         session_id=sub_session,
@@ -848,94 +603,28 @@ def test_subagent_verdict_span_uses_root_phoenix_session_id_and_subagent_active_
     assert span["parent_span_id_hex"] == sub_root_span_id
 
 
-@pytest.mark.parametrize(
-    "prohibited",
-    ["reversible", "cheap to reverse", "engine output"],
-)
-def test_pass_refused_when_sufficient_contains_prohibited_term_for_answering_step(
-    tmp_path: Path, prohibited: str
-):
-    """Class 4: PASS is refused when Sufficient line for an answering step contains prohibited terms."""
-    tracer = _StubTracer()
-    session_id = f"sess-sufficient-{prohibited.replace(' ', '-')}"
-    claim_id = "report-sufficient-test"
-
-    report_content = """# Specimen Report
-```argdown
-===
-asks:
-  tg-1: 1
-answers:
-  tg-1: 2
-===
-
-(1) Data observed.
--- rule --
-(2) Conclusion reached.
-```
-"""
-    judged_file = tmp_path / "report.md"
-    judged_file.write_text(report_content, encoding="utf-8")
-
-    reason = (
-        f"Judged: {claim_id}; asks tg-1\n"
-        "Valid: (2) holds -- rule\n"
-        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
-        "Answered: tg-1 ← (2)\n"
-        f"Sufficient: (2) material; {prohibited}\n"
-        "Waived: none\n"
-        'Relay: "Conclusion reached." ← (2)'
-    )
-
-    with pytest.raises(
-        ValueError, match=rf"Sufficient line contains prohibited term\(s\) \({prohibited}\)"
-    ):
-        pcv.record_verdict(
-            session_id=session_id,
-            claim_id=claim_id,
-            verdict="PASS",
-            reason=reason,
-            tracer_mod=tracer,
-            judged_file=str(judged_file),
-        )
-
-
 def test_judged_file_rejects_disarmed_foreign_and_mismatched_claims_while_allowing_task_revise_pass(
     tmp_path: Path,
 ):
     """--judged-file blocks replay of disarmed, foreign-slot, mismatched, or unarmed gate claims, while task REVISE->PASS succeeds."""
-    tracer = _StubTracer()
+    tracer = _configured_tracer()
     session_id = "sess-judged-guards"
-    valid_report = (
-        "```argdown\n"
-        "===\nasks:\n  a1: ok?\nanswers:\n  a1: 2\n===\n"
-        "(1) Direct observation (`x=1`).\n"
-        "-- valid rule. Unless: none; ruled out. --\n"
-        "(2) So, answer holds.\n```"
-    )
+    valid_report = "Direct observation (`x=1`) establishes that the target invariant holds.\n"
     other_file = tmp_path / "other.md"
     other_file.write_text(valid_report.replace("x=1", "x=2"), encoding="utf-8")
     same_file = tmp_path / "same.md"
     same_file.write_text(valid_report, encoding="utf-8")
 
-    def _valid_reason(cid: str) -> str:
-        return (
-            f"Judged: {cid}; asks a1\n"
-            "Valid: (2) holds -- valid rule\n"
-            f"Supported: weakest {_ANY_BASIS} -- (1)\n"
-            "Answered: a1 ← (2)\n"
-            "Sufficient: (2) material; verification of report; obvious\n"
-            "Waived: none\n"
-            'Relay: "answer holds" ← (2)'
-        )
+    def _pass_reason(cid: str) -> str:
+        return f"PASS {cid}: the observation supports the stated answer directly."
 
     # 1. Already-disarmed gate claim cannot be masked or re-recorded via --judged-file
-    hg.arm(session_id, claim_id="claim-11112222", judged_text=valid_report, block_expected=True)
+    hg.arm(session_id, claim_id="claim-11112222", judged_text=valid_report)
     pcv.record_verdict(
         session_id=session_id,
         claim_id="claim-11112222",
         verdict="REVISE",
-        reason="Valid: (2) fails #missing -- needs fix",
+        reason="Missing supporting check for the main conclusion; revise.",
         tracer_mod=tracer,
     )
     with pytest.raises(ValueError, match="already disarmed|not armed"):
@@ -943,7 +632,7 @@ def test_judged_file_rejects_disarmed_foreign_and_mismatched_claims_while_allowi
             session_id=session_id,
             claim_id="claim-11112222",
             verdict="PASS",
-            reason=_valid_reason("claim-11112222"),
+            reason=_pass_reason("claim-11112222"),
             tracer_mod=tracer,
             judged_file=str(same_file),
         )
@@ -953,7 +642,6 @@ def test_judged_file_rejects_disarmed_foreign_and_mismatched_claims_while_allowi
         session_id,
         claim_id="claim-33334444",
         judged_text=valid_report,
-        block_expected=True,
         agent_id="sub-b",
     )
     with pytest.raises(ValueError, match="armed for.*sub-b|not.*sub-a|foreign|other agent"):
@@ -961,7 +649,7 @@ def test_judged_file_rejects_disarmed_foreign_and_mismatched_claims_while_allowi
             session_id=session_id,
             claim_id="claim-33334444",
             verdict="PASS",
-            reason=_valid_reason("claim-33334444"),
+            reason=_pass_reason("claim-33334444"),
             tracer_mod=tracer,
             judged_file=str(same_file),
             agent_id="sub-a",
@@ -974,7 +662,7 @@ def test_judged_file_rejects_disarmed_foreign_and_mismatched_claims_while_allowi
             session_id=session_id,
             claim_id="claim-33334444",
             verdict="PASS",
-            reason=_valid_reason("claim-33334444"),
+            reason=_pass_reason("claim-33334444"),
             tracer_mod=tracer,
             judged_file=str(other_file),
             agent_id="sub-b",
@@ -986,7 +674,7 @@ def test_judged_file_rejects_disarmed_foreign_and_mismatched_claims_while_allowi
             session_id=session_id,
             claim_id="claim-deadbeef",
             verdict="PASS",
-            reason=_valid_reason("claim-deadbeef"),
+            reason=_pass_reason("claim-deadbeef"),
             tracer_mod=tracer,
             judged_file=str(same_file),
         )
@@ -996,7 +684,7 @@ def test_judged_file_rejects_disarmed_foreign_and_mismatched_claims_while_allowi
         session_id=session_id,
         claim_id="task_a1b2c3d4",
         verdict="REVISE",
-        reason="Valid: (2) fails #missing -- expand evidence",
+        reason="Expand evidence for the task completion claim.",
         tracer_mod=tracer,
         judged_file=str(other_file),
     )
@@ -1005,7 +693,7 @@ def test_judged_file_rejects_disarmed_foreign_and_mismatched_claims_while_allowi
         session_id=session_id,
         claim_id="task_a1b2c3d4",
         verdict="PASS",
-        reason=_valid_reason("task_a1b2c3d4"),
+        reason=_pass_reason("task_a1b2c3d4"),
         tracer_mod=tracer,
         judged_file=str(same_file),
     )
@@ -1015,7 +703,7 @@ def test_judged_file_rejects_disarmed_foreign_and_mismatched_claims_while_allowi
         session_id=session_id,
         claim_id="report-out-of-band",
         verdict="REVISE",
-        reason="Valid: (2) fails #missing -- expand evidence",
+        reason="Expand evidence for the out-of-band report.",
         tracer_mod=tracer,
         judged_file=str(other_file),
     )
@@ -1024,7 +712,7 @@ def test_judged_file_rejects_disarmed_foreign_and_mismatched_claims_while_allowi
         session_id=session_id,
         claim_id="report-out-of-band",
         verdict="PASS",
-        reason=_valid_reason("report-out-of-band"),
+        reason=_pass_reason("report-out-of-band"),
         tracer_mod=tracer,
         judged_file=str(same_file),
     )
@@ -1033,25 +721,19 @@ def test_judged_file_rejects_disarmed_foreign_and_mismatched_claims_while_allowi
 
 def test_cli_agent_flag_binds_slot_and_rejects_mismatch(tmp_path: Path, monkeypatch, capsys):
     """CLI --agent/--recipient disarms strictly the targeted slot and refuses foreign --judged-file."""
-    tracer = _StubTracer()
+    tracer = _configured_tracer()
     monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: tracer)
     session_id = "sess-cli-agent"
-    valid_report = (
-        "```argdown\n===\nasks:\n  a1: ok?\nanswers:\n  a1: 2\n===\n"
-        "(1) Direct observation (`v=1`).\n-- rule. Unless: none; ruled out. --\n(2) So, holds.\n```"
-    )
+    valid_report = "Direct observation (`v=1`) establishes the claim."
     hg.arm(
         session_id,
         claim_id="claim-a1b2c3d4",
         judged_text=valid_report,
-        block_expected=True,
         agent_id="sub-x",
     )
     reason_file = tmp_path / "reason.txt"
     reason_file.write_text(
-        f"Judged: claim-a1b2c3d4; asks a1\nValid: (2) holds -- rule\n"
-        f"Supported: weakest {_ANY_BASIS} -- (1)\nAnswered: a1 ← (2)\n"
-        "Sufficient: (2) material; cli check; obvious\nWaived: none\nRelay: none\n",
+        "PASS claim-a1b2c3d4: the cited observation supports the conclusion directly.\n",
         encoding="utf-8",
     )
     wrong_file = tmp_path / "wrong.md"
@@ -1100,7 +782,7 @@ def test_cli_agent_flag_binds_slot_and_rejects_mismatch(tmp_path: Path, monkeypa
 def test_subagent_agent_flag_overrides_root_tracer_state_attribution(monkeypatch):
     """--agent attribution stamps recipient_agent_id and export agent_id even when root tracer state exists."""
     monkeypatch.delenv("AOPS_SESSION_ID", raising=False)
-    tracer = _StubTracer()
+    tracer = _configured_tracer()
     root_session = "root-attr-sess"
     sub_agent = "sub-x"
 
@@ -1131,18 +813,9 @@ def test_subagent_agent_flag_overrides_root_tracer_state_attribution(monkeypatch
         claim_id=claim_id,
         judged_text="report",
         judged_ref=claim_id,
-        block_expected=False,
         agent_id=sub_agent,
     )
-    reason = (
-        f"Judged: {claim_id}; asks tg-1\n"
-        "Valid: (2) fails #missing -- condition not met\n"
-        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
-        "Answered: tg-1 ← (2)\n"
-        "Sufficient: (2) material; low-stakes\n"
-        "Waived: block -- task handback review\n"
-        "Relay: none"
-    )
+    reason = "The report does not justify the claimed condition; send back for revision."
     res = pcv.record_verdict(
         session_id=root_session,
         claim_id=claim_id,

@@ -215,18 +215,12 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
       expect(editCall).toBeDefined();
       expect(editCall?.body.text).toContain("Selected: 🧐 Check logic ✅");
 
-      // 4. Ida's reply is a premise-check verdict with its reason
+      // 4. Ida's reply is a premise-check verdict with appealable natural-language reasons
       const verdictText = [
         "**Verdict: PASS**",
         "",
         ">! **Premise Check:**",
-        "> Judged: Conclusion follows from deduplication premise",
-        "> Valid: Passes deductive inference",
-        "> Supported: Supported by migration dry-run output",
-        "> Answered: Answers ask on deduplication effectiveness",
-        "> Sufficient: No unbacked high-stakes warrants",
-        "> Waived: None",
-        "> Relay: Verified for upstream reporting",
+        "> Evaluated on the face of the record against the deduplication ask. The conclusion follows validly from the dry-run migration output quoted inline, evidence is proportionate to the migration stakes with no plausible unruled rival explanation, and no standing rules are breached. Verified for upstream reporting.",
       ].join("\n");
 
       const verdictResp = await mcp.handleMessage({
@@ -248,8 +242,8 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
 
       const lastSendMessage = apiCalls.filter((c) => c.method === "sendMessage").pop();
       expect(lastSendMessage?.body.text).toContain("Verdict: PASS");
-      expect(lastSendMessage?.body.text).toContain("Judged");
-      expect(lastSendMessage?.body.text).toContain("Supported");
+      expect(lastSendMessage?.body.text).toContain("face of the record");
+      expect(lastSendMessage?.body.text).toContain("dry-run migration output");
       expect(lastSendMessage?.body.reply_parameters?.message_id).toBe(2003);
     } finally {
       globalThis.fetch = origFetch;

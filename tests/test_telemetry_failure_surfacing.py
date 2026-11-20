@@ -32,9 +32,6 @@ import evaluator_otel_trace
 import handlers
 import premise_check_gate
 import premise_check_verdict
-import report_argument as ra
-
-_ANY_BASIS = ra.load_vocabulary().basis[0].phrase
 
 
 @pytest.fixture(autouse=True)
@@ -374,13 +371,8 @@ def test_verdict_tracing_required_fails_closed_on_unconfigured(monkeypatch, caps
     assert premise_check_gate.is_armed(session_id)
 
     reason = (
-        f"Judged: {claim_id}; asks tg-1\n"
-        "Valid: (2) fails #missing -- condition not met\n"
-        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
-        "Answered: tg-1 ← (2)\n"
-        "Sufficient: (2) material\n"
-        "Waived: none\n"
-        "Relay: none"
+        f"FAIL {claim_id}: the report's conclusion relies on an unverified assumption "
+        "without supporting evidence."
     )
 
     with pytest.raises(RuntimeError) as exc:
@@ -414,13 +406,8 @@ def test_verdict_tracing_export_failure_fails_closed(monkeypatch, capsys):
     assert premise_check_gate.is_armed(session_id)
 
     reason = (
-        f"Judged: {claim_id}; asks tg-1\n"
-        "Valid: (2) fails #missing -- condition not met\n"
-        f"Supported: weakest {_ANY_BASIS} -- (1)\n"
-        "Answered: tg-1 ← (2)\n"
-        "Sufficient: (2) material\n"
-        "Waived: none\n"
-        "Relay: none"
+        f"FAIL {claim_id}: the cited run does not cover the stated scope; "
+        "evidence does not support the claim."
     )
 
     with (
