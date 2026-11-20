@@ -21,6 +21,11 @@ export interface TelegramMessage {
   from?: TelegramUser;
   text?: string;
   caption?: string;
+  is_topic_message?: boolean;
+  forum_topic_created?: { name: string };
+  forum_topic_edited?: { name?: string };
+  forum_topic_closed?: Record<string, never>;
+  forum_topic_reopened?: Record<string, never>;
   reply_to_message?: TelegramMessage;
   quote?: { text: string };
   photo?: Array<{ file_id: string; file_size?: number }>;
