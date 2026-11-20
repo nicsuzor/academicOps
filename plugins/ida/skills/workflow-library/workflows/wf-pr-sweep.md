@@ -51,7 +51,7 @@ Sweep execution runs via parallel fan-out: evaluate each PR independently and ag
        - If green, reviewed, but awaiting required approval: mark blocked on approval (do not queue conflict resolution or rebase).
        - If approved (or autonomous merge authorized) and merge conflicts exist: queue task to bring branch up to date with base and resolve merge conflicts.
        - If approved (or autonomous merge authorized) and clean: queue landing / merge task.
-     - Verify whether an existing open task covers this action by routing the related-work search to the custodian (`pauli`) or performing an exact PR/branch metadata lookup (never running broad semantic searches with raw text), and ensure it is set to `queued` status, or create a discrete follow-up task and set it to `queued` status.
+     - Verify whether an existing open task covers this action by routing the related-work search to the custodian (`pauli`) or performing an exact PR/branch metadata lookup, and ensure it is set to `queued` status, or create a discrete follow-up task and set it to `queued` status.
 
 4. **Compile Sweep Disposition Report and File Closed Summary Task**:
    - For every enumerated PR, record an explicit disposition:

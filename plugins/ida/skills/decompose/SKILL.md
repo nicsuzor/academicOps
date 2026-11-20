@@ -13,7 +13,7 @@ State what needs doing, never how. Decompose reads; it runs nothing. What the re
 ## Workflow
 
 1. **Reconnaissance**: Read the artefacts and the graph.
-   - Search the record or knowledge base using short (5-15 word) conceptual queries distilled from the objective (never the raw or verbatim ask) for how the relevant part of the domain or system already works; list what is settled before naming any unknown. What the record settles is not a node or probe; an unknown the record answers is not a node.
+   - Search the record or knowledge base (via `/hydrate` as the custodian) for how the relevant part of the domain or system already works; list what is settled before naming any unknown. What the record settles is not a node or probe; an unknown the record answers is not a node.
    - A premise is load-bearing when its falsity would change the graph's shape (which nodes exist, which forks are open). Record each one, what settled it, and what it showed.
    - Resolve every pointer between artefacts and graph both ways. One that no longer resolves is a finding.
    - A false load-bearing premise halts the run: record it and stop.
@@ -31,7 +31,7 @@ State what needs doing, never how. Decompose reads; it runs nothing. What the re
    - **Surface**: With the author in the session, surface forks in conversation, one per turn. Competing candidate options stay inside the body of the scoping task or ADR until chosen. When chosen, reify only the winning branch under `parent: <scoping_task_id>`. Downstream tasks depend on the reified implementation task via `needs`.
 5. **Collapse and merge before minting**: mint only what no existing node can carry.
    - **Collapse to session units**: two components one worker would do in one session against the same material are one node, unless the second must not run in that session (review, verification, merge), one gates on another party, or deciding between them changes the second.
-   - **Merge into what exists**: search the graph first (`done` tasks and templates included) using concise conceptual queries distilled from each candidate component rather than querying verbatim prompt text; extend an overlapping node instead of minting a sibling. Overlap with completed work cuts the candidate to what that work left unanswered, with contextual references as markdown `[[wikilinks]]` in `## Pointers`; if nothing is left, do not mint.
+   - **Merge into what exists**: search the graph first (`done` tasks and templates included, via `/hydrate` as the custodian); extend an overlapping node instead of minting a sibling. Overlap with completed work cuts the candidate to what that work left unanswered, with contextual references as markdown `[[wikilinks]]` in `## Pointers`; if nothing is left, do not mint.
    - **A first run is not a step**: the first execution of an existing node belongs to that node.
 6. **Wire the graph**: verb-led titles (`Implement X`), no personal names; `parent` for hierarchy, no redundant descendant edges; `needs: [<task_id>]` for prerequisites on waiting tasks; candidate options kept inside task bodies until chosen; contextual references as `[[wikilinks]]` under `## Pointers`; a convergence node where forks rejoin; slugged ids (`<slug>`). Wire edges per the Three-Purpose Taxonomy ([ADR-0002](../../../../specs/decisions/0002-distinguish-pkb-graph-edge-purposes-and-enforce-parsimony.md)).
 7. **Write or redraw the plan view**:

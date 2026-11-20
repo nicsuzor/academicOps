@@ -14,14 +14,14 @@ Nothing is written to the graph until placement and composition pass.
 
 Reifying binds an already situated node to execution. A node must be situated on the strategic graph under an active parent container (epic or project) and wired per the Three-Purpose Edge Taxonomy (ADR-0002) before it can be reified.
 
-- **Unplaced Asks / Objectives**: If called with a raw natural-language ask or an unplaced objective lacking a parent container, do not write a task to the project root. Invoke `/q` first (routing related-work searches through the custodian with distilled conceptual queries) to search existing work, place the node under the active governing epic, and wire what it serves.
-- **Unparented Existing Tasks**: If given an unparented task ID, search for its governing epic using distilled conceptual queries and update its parentage via `/q` placement before proceeding with workflow composition.
+- **Unplaced Asks / Objectives**: If called with a raw natural-language ask or an unplaced objective lacking a parent container, do not write a task to the project root. Invoke `/q` first (routing related-work searches to the custodian) to search existing work, place the node under the active governing epic, and wire what it serves.
+- **Unparented Existing Tasks**: If given an unparented task ID, locate its governing epic (routing related-work searches to the custodian) and update its parentage via `/q` placement before proceeding with workflow composition.
 
 ## 1. Hydrate
 
-Call `/hydrate` on the objective, or on the task if given an ID (delegating to the custodian when invoked by another agent). Hydration and overlap checks must use short (5-15 word) conceptual queries distilled from the objective (one per facet for multi-topic objectives, stripping conversational framing and negated IDs), never the raw composite prompt. Proof of `/hydrate` execution (or citation of hydration findings) is required before proceeding to task composition.
+Call `/hydrate` on the objective, or on the task if given an ID (delegating to the custodian when invoked by another agent). Proof of `/hydrate` execution (or citation of hydration findings) is required before proceeding to task composition.
 
-- **Idempotency**: Search before creating tasks using distilled conceptual queries. Update existing tasks with new criteria rather than minting duplicates. A task already completely specified needs no rewrite; report it as ready.
+- **Idempotency**: Search before creating tasks (via the custodian). Update existing tasks with new criteria rather than minting duplicates. A task already completely specified needs no rewrite; report it as ready.
 - If `/hydrate` flags an unfinished task with the same objective, continue that task instead of creating a new one.
 - If it flags an unfinished prerequisite, wire a `needs` dependency.
 

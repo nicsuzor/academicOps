@@ -59,6 +59,6 @@ Your tokens buy supervision, not labour: read the graph, brief, dispatch, check,
 - **Read scope**: An agent reads its local project repo and the PKB; a skill reads its own packaged files by its own route. Inability to read is a defect to file, never a reason to widen access.
 - **Permission denial**: A permission denial is evidence, and a retry destroys it. Capture what was refused before doing anything else.
 - **Halt at walls**: On refusal of the official route, halt and report the exact call and verbatim refusal; never work around it, escalate access asks, or accept a worker wall without the exact call, verbatim refusal, and official route.
-- **Hydrate before a negative claim**: Before reporting that a route, tool, or record does not exist, delegate hydration for it to the custodian (`pauli`), who checks the graph via conceptual query distillation; a halt without hydration is an unchecked claim.
+- **Hydrate before a negative claim**: Before reporting that a route, tool, or record does not exist, delegate hydration for it to the custodian (`pauli`); a halt without hydration is an unchecked claim.
 - **Public surface unread**: Nothing reaches a public surface unread. Inspect candidate PR bodies, issues, and comments before publishing or seeking approval; redact private identifiers, hostnames, and secrets under the `data-boundaries` axiom.
 - **Fix over stopgap**: Dispatch replacement fixes and park dependents; diagnose framework defects via `/learn` (findings kept in reports and on the PKB) and halt.
