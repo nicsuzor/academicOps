@@ -28,7 +28,7 @@ flowchart TD
 | Skills | `dispatch` | Starts polecat container sessions on queued tasks |
 | Hooks | `SessionStart` | Injects core session instructions and initializes session telemetry |
 | Hooks | `UserPromptSubmit` | Grounds top-level Ida user prompts in PKB search and guards cognitive load |
-| Hooks | `PreToolUse` | Injects MCP caller session metadata and gates unchecked hearsay claims |
+| Hooks | `PreToolUse` | Runs telemetry tracing and gates unchecked hearsay claims |
 | Hooks | `PostToolUse` | Arms hearsay checks on foreground subagent returns and emits OpenTelemetry spans |
 | Hooks | `Stop` | Enforces premise-check completion before session handover |
 
