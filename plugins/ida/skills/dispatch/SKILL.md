@@ -39,5 +39,5 @@ Output one line per dispatched task (title, ID, selected command `/ida:supervise
 
 When invoked in a later turn on container completion (`status`, `completion_evidence`, `pr_url` on the PKB task):
 
-- `done` (`exit_code=0`): Check the report per `ida:premise-check`, dispatch newly unblocked `needs` tasks, and trigger `/verify` or `/reconcile` as needed.
+- `done` (`exit_code=0`): Evaluate the report on the face of the record per `ida:premise-check` (zero _de novo_ fact-checking), dispatch newly unblocked `needs` tasks, and trigger `/verify` or `/reconcile` as needed.
 - `partial` or `failed` (`exit_code!=0`): Inspect the recorded failure reason and logs; route follow-ups on the graph or escalate per fail-fast.

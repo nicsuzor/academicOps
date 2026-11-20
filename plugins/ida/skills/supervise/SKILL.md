@@ -20,14 +20,14 @@ Supervise a repository-scoped composite task (`type: "task"`, never `type: "epic
 ## 2. Plan & Dialectical Review
 
 1. **Plan**: Record the execution plan on the PKB task. When altering agent behavior, evaluate lighter instruction or workflow options before proposing mechanical enforcement.
-2. **Review**: Dispatch a proportionate parallel subagent review across strategic alignment, compliance, and qualitative excellence lenses. Append a null `argdown` block (`asks: none` / `[no claim]`) to claim-free briefs.
-3. **Verify**: Check returned subagent arguments per `ida:premise-check` before acting on or relaying findings. Retire completed helpers and resolve blocking findings before implementation fan-out.
+2. **Review**: Dispatch a proportionate parallel subagent review across strategic alignment, compliance, and qualitative excellence lenses, supplying all required inputs and target artifacts on Turn 1 per `ida:premise-check`.
+3. **Verify**: Evaluate returned subagent Argdown reports on the face of the record per `ida:premise-check` (zero _de novo_ fact-checking) before acting on or relaying findings. Retire completed helpers and resolve blocking findings before implementation fan-out.
 
 ## 3. Calibrated Delegation & Incremental Checkpoints
 
-1. **Calibrated fan-out**: Delegate disjoint chunks to subagents matched by capability tier (`flagship` for complex architecture and multi-constraint synthesis; `mid-tier` for general coordination; `fast` for focused edits, template updates, and index sync). Delegate heavy reading and investigation where proportionate, taking back short cited answers so the supervisor context holds briefs, summaries, and decisions. Instruct subagents to return their final `ida:premise-check` report on exit without duplicate mid-turn status messages.
+1. **Calibrated fan-out**: Delegate disjoint chunks to subagents matched by capability tier (`flagship` for complex architecture and multi-constraint synthesis; `mid-tier` for general coordination; `fast` for focused edits, template updates, and index sync). Delegate heavy reading and investigation where proportionate, taking back short cited answers so the supervisor context holds briefs, summaries, and decisions. Instruct subagents to return their final report solely in clean Argdown prose per `ida:premise-check` on exit without duplicate mid-turn status messages.
 2. **Incremental checkpoint invariant**: After every chunk of subagent work:
-   - Verify handbacks via `ida:premise-check` and run formatters/linters on modified files.
+   - Evaluate handbacks on the face of the record per `ida:premise-check` (zero _de novo_ fact-checking) and run formatters/linters on modified files.
    - Stage and commit modified files scrubbed of private identifiers, PKB task/note/session IDs, `Task:` trailers, personal names, and private hostnames (`data-boundaries`).
    - Run `git push` immediately to survive container pre-emption, and update the PKB task record.
 
@@ -38,4 +38,4 @@ Supervise a repository-scoped composite task (`type: "task"`, never `type: "epic
 
 ## 5. Handover (`/dump`)
 
-Invoke `/dump` to record the `## Report` proof, `pr_url`, and `branch`. Release as `done` when all in-session deliverables and pull requests complete (and any out-of-session work is queued), or `partial` with blocking reasons if in-session work remains unfinished. Never hold a task in `partial` or mint follow-ups to verify user installation or deployment once shipped and reported.
+Invoke `/dump` to record `## Report` in clean Argdown prose per `ida:premise-check`, `pr_url`, and `branch`. Release as `done` when all in-session deliverables and pull requests complete (and any out-of-session work is queued), or `partial` with blocking reasons if in-session work remains unfinished. Never hold a task in `partial` or mint follow-ups to verify user installation or deployment once shipped and reported.

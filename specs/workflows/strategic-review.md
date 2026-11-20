@@ -84,7 +84,7 @@ Each of the review branches operates in a distinct jurisdiction with strictly no
   - Assesses aesthetic grace, cognitive load, legibility, audience empathy, and adherence to governing document-class quality without self-editing unless serialized and authorized.
   - Evaluates whether the deliverable is **amazingly good** for its intended audience or merely mediocre.
   - Returns `PASS`, `REVISE`, or `FAIL`.
-  - **Boundary**: Never checks truth, fidelity, or factual claims (belongs to hearsay checker and `premise-check`), does not run test suites or linters (belongs to author and empirical QA `wf-qa`), does not evaluate axioms or rules (belongs to `rbg`), and does not evaluate graph-level strategy (belongs to `pauli`).
+  - **Boundary**: Never conducts formal compliance reviews on the record (`premise-check`) or checks factual claims (trusts primary finders), does not run test suites or linters (belongs to author and empirical QA `wf-qa`), does not evaluate axioms or rules (belongs to `rbg`), and does not evaluate graph-level strategy (belongs to `pauli`).
 - **Empirical & Functional QA (`wf-qa`)**: When functional requirement satisfaction, test execution, live probing, or strict document-class/acceptance-criteria verification is required (e.g., code PRs, high-risk reviews, or standalone CI QA), empirical QA runs test suites, live probes, actual rendered output checks, and primary-material audits without modifying code, returning `PASS`, `REVISE`, or `FAIL` while leaving qualitative taste to `marsha`, axioms to `rbg`, and PKB strategy to `pauli`.
 
 ### 3. Lens Selection

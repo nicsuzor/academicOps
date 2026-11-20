@@ -36,9 +36,9 @@ As an operator tapping an action button on a message card, I want the card marke
 
 ### US-3 Multi-Level Argument Chain Answer Form
 
-As an operator requesting reasons behind a message, I want the agent's reply to provide a concise chat takeaway and a complete delegation tree in the reply's details holding verbatim Chained Toulmin Argdown arguments for every link in the delegation chain, so that I can audit exactly who argued what to whom without relying on post-hoc agent summaries.
+As an operator requesting reasons behind a message, I want the agent's reply to provide a concise chat takeaway and a complete delegation tree in the reply's details holding verbatim Argdown arguments for every link in the delegation chain, so that I can audit exactly who argued what to whom without relying on post-hoc agent summaries.
 
-- **AC-3.1 (Verbatim Arguments in Details)** Given a `reasons` event for a message, when the agent constructs the response, then the reply targets the queried message (`reply_to: message_id`), chat text stays within the ~100-word budget summarizing the takeaway and chain structure, and the `detail` parameter carries the complete delegation tree holding verbatim Chained Toulmin Argdown blocks for each available link of the chain.
+- **AC-3.1 (Verbatim Arguments in Details)** Given a `reasons` event for a message, when the agent constructs the response, then the reply targets the queried message (`reply_to: message_id`), chat text stays within the ~100-word budget summarizing the takeaway and chain structure, and the `detail` parameter carries the complete delegation tree holding verbatim Argdown argument blocks for each available link of the chain.
   - _Check_: `plugins/ida-telegram/test/message-actions.test.ts` (`AC3: Ida handles reasons event by returning multi-level verbatim argument chain in details`) asserts `storedDetail.markdown` contains the verbatim Argdown blocks.
 - **AC-3.2 (Sender, Recipient & Delegation Depth Nesting)** In the details argument chain, every link is explicitly labelled with who argued it and to whom (e.g. `Prime → User`, `Coordinator → Prime`, `Worker → Coordinator`) and formatted with hierarchical indentation or depth markers reflecting delegation nesting.
   - _Check_: `plugins/ida-telegram/test/message-actions.test.ts` (`AC3: Ida handles reasons event by returning multi-level verbatim argument chain in details`) asserts sender/recipient labels and delegation depth nesting across levels 1, 2, and 3.
@@ -85,9 +85,10 @@ As an operator requesting reasons behind a message, I want the agent's reply to 
 
 1. **Logic Check Answer Form:**
    - Reply to target message (`reply_to: message_id`).
-   - Chat text formatted as formal premise check verdict:
+   - Apply administrative-law formal compliance review strictly on the face of the record per `ida:premise-check` (zero _de novo_ fact-checking).
+   - Chat text formatted as formal premise-check verdict:
      - Headline: `**Verdict: PASS | REVISE | FAIL**`
-     - Expandable blockquote (`>!`): Keyed premise check lines (`Judged`, `Valid`, `Supported`, `Answered`, `Sufficient`, `Waived`, `Relay`).
+     - Expandable blockquote (`>!`): Clear, appealable natural-language administrative-law reasons explaining why the verdict holds or fails on the record.
 2. **Explain Answer Form:**
    - Reply to target message (`reply_to: message_id`).
    - Chat text expanding statement rationale, context, and operational implications within the ~100-word budget.
@@ -97,5 +98,5 @@ As an operator requesting reasons behind a message, I want the agent's reply to 
    - **Tier 3 (`detail` / Details Page):** Full verbatim argument chain:
      - Structure: Hierarchical delegation outline showing nesting depth (Level 1, Level 2, Level 3...).
      - Link Identity: Each node states `Sender → Recipient` (e.g. `Prime → User`, `Coordinator → Prime`, `Worker → Coordinator`).
-     - Verbatim Argdown: Attached Chained Toulmin Argdown blocks enclosed in `argdown ... ` verbatim as received from each agent or task report.
+     - Verbatim Argdown: Attached Argdown argument blocks verbatim as received from each agent or task report.
      - Missing Arguments: If an argument record was unrecorded or missing for any link in the chain, it is explicitly labelled `[Missing argument: no premise-check record found for ...]`, adhering to the honest epistemics axiom (`honest-epistemics.md`) and the explanations-not-reasons axiom (`explanations-not-reasons.md`).

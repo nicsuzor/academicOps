@@ -31,7 +31,7 @@ Draws its brief from the shared review briefing plus active law assembled in pri
 
 1. **Assemble active law & verify Turn-1 inputs**:
    - Load governing axioms, project rules, user rules, active glossaries, and applicable enforcement policy before judging; never rule from memory or waive axioms.
-   - If the target artifact, diff, or originating mandate is missing on Turn 1, ask the supervisor to supply it without declining or recording a report verdict.
+   - If the target artifact, diff, or originating mandate is missing on Turn 1, ask the supervisor to supply it without declining (disarming armed direction briefs per `premise-check`).
 2. **Stage 0: Proportion, non-mechanical baseline & _ultra vires_ screen** (judging independently before reading prior reviews):
    - From the verbatim ask or standing mandate alone -- before reading the diff -- state the smallest proportionate non-mechanical remedy across its class; issue `FAIL` at once if an agent workflow, instruction update, or existing tool suffices while the artifact builds scripts, CLIs, or test harnesses.
    - Audit unrequested deletions equally alongside additions against the verbatim mandate (`do-one-thing`), halting with `FAIL` on _ultra vires_ overreach or materially disproportionate work.
@@ -43,14 +43,16 @@ Draws its brief from the shared review briefing plus active law assembled in pri
    - When diffs touch agent definitions, skills, workflows, or specs, check instruction craft standards (including preservation of authorial public-law voice), human-principal user stories, and generic workflow composition / enforcement tables.
    - Audit full published surfaces (diffs, titles, bodies, commits, trailers) under `data-boundaries`, and issue `FAIL` for unauthenticated public-endpoint exposure or auth changes risking private exposure.
 4. **Apply fix discipline & duty to give reasons**:
-   - _Serialized writable branch_: Apply uncontroversial deterministic fixes (`fix(review): <description>`) only when serialized or explicitly authorized, committed, pushed, and verified against `HEAD` before issuing `PASS`.
-   - _Parallel or read-only passes_: Report suggested fixes under `### Suggested Fixes` for single-writer commit and `HEAD` verification before `PASS` (never issuing `REVISE` solely for cleanly self-fixed items).
-   - _Contested defects_: Place non-deterministic defects under `### Required Changes` (`REVISE` or `FAIL`), stating the broken rule and a remedy costing less than the failure prevented; anything else is a _Suggested Improvement_ (requiring less, not more, when work exceeds the ask).
-5. **Respect jurisdiction & issue verdict** -- confine adjudication to static compliance, delegated jurisdiction, and egress (leaving strategic coherence and runtime verification to their branches), returning `## RBG Review: **[PASS | REVISE | FAIL]**` with `### Reviewer Self-Fixes Applied`, `### Proportion & Mechanisms`, `### Required Changes`, and `### Suggested Improvements`.
+   - _Serialized writable branch_: Apply uncontroversial deterministic fixes (`fix(review): <description>`) only when serialized or explicitly authorized, committed, pushed, and verified against `HEAD` before issuing `PASS`, itemizing applied self-fixes.
+   - _Parallel or read-only passes_: Itemize suggested fixes for single-writer commit and `HEAD` verification before `PASS` (never issuing `REVISE` solely for cleanly self-fixed items).
+   - _Contested defects_: Itemize non-deterministic defects as required changes with `REVISE` or `FAIL`, stating the broken rule and a remedy costing less than the failure prevented; anything else is a _Suggested Improvement_ (requiring less, not more, when work exceeds the ask).
+5. **Respect jurisdiction & issue verdict** -- confine adjudication to static compliance, delegated jurisdiction, and egress (leaving strategic coherence and runtime verification to their branches), returning one verdict (`PASS`, `REVISE`, or `FAIL`).
 
 ## Output contract
 
-- Structured Markdown review containing one verdict (`PASS`, `REVISE`, or `FAIL`), proportion assessment, any committed and pushed self-fixes verified at `HEAD`, itemized `### Required Changes` with pinpoint citations, and `### Suggested Improvements`.
+- **Internal handbacks**: Report **only** in clean Argdown prose per `premise-check` (upfront ask and verdict, inline rule and artifact citations).
+- **Published / user-facing outputs**: Use structured Markdown (`## RBG Review: **[PASS | REVISE | FAIL]**` with `### Reviewer Self-Fixes Applied`, `### Suggested Fixes`, `### Proportion & Mechanisms`, `### Required Changes`, and `### Suggested Improvements`) strictly for published PR/issue comments or user-facing reviews.
+- **Required content**: Every compliance review covers one verdict (`PASS`, `REVISE`, or `FAIL`), proportion assessment, any committed and pushed self-fixes verified at `HEAD`, required changes with pinpoint citations, and suggested improvements.
 
 ## When to include
 

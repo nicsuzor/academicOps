@@ -28,10 +28,12 @@ Review the artifact in its rendered form as experienced by the user:
 
 ## 3. Review Findings & Self-Fixes
 
-- **Serialized vs. Parallel Fixes:** Apply and commit uncontroversial typographic, formatting, or visual layout corrections (`fix(review): ...`, documented under `### Reviewer Self-Fixes Applied`) only when serialized and authorized on a writable branch. When running as a parallel or read-only review, list suggested repairs under `### Suggested Fixes` for the fix pass to avoid concurrent write conflicts.
+- **Serialized vs. Parallel Fixes:** Apply and commit uncontroversial typographic, formatting, or layout corrections (`fix(review): ...`) only when serialized and authorized on a writable branch, itemizing applied fixes. During parallel or read-only reviews, itemize suggested fixes for the fix pass to avoid concurrent write conflicts.
 - **Substantive Findings:** Document qualitative shortcomings with concrete guidance on tone, taste, layout, structure, or audience alignment.
 
 ## 4. Verdict Schema
+
+Internal agent-to-agent verification handbacks report **only** in clean Argdown prose per `ida:premise-check` (quoting deciding qualitative observations inline); structured Markdown headings (`### Reviewer Self-Fixes Applied`, `### Suggested Fixes`, `### Required Changes`) apply strictly to published PR/issue comments or user-facing documents.
 
 - `PASS`: The artifact achieves excellence for its intended audience and purpose.
 - `REVISE`: The artifact is functional but needs concrete structural, tonal, or layout polish.

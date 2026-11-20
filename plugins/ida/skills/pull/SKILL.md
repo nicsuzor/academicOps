@@ -21,7 +21,7 @@ Claim and execute an already-decomposed queued PKB task or single-skill task to 
 
 ## 3. Consolidate Findings & Durable Facts
 
-- Write the handback proof under `## Report`: the `premise-check` `argdown` block asked by the task's frozen ask IDs, citing the basis of every load-bearing premise.
+- Write the handback under `## Report` solely in clean Argdown prose per `ida:premise-check`, stating the task's original ask and acceptance criteria upfront and quoting deciding primary evidence inline for every load-bearing claim.
 - Offer settled durable facts uncovered during work (decisions, architectural constraints, verified system-state facts, or KB corrections -- excluding exploratory thinking aloud) to the custodian (`pauli`) with source pointers, or record them under `## Durable Facts` on the task and handover when isolated.
 
 ## 4. Verify Criteria & Determine Status

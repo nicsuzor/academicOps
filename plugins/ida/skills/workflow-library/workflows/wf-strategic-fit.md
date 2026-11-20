@@ -33,7 +33,7 @@ Draws its brief from the shared review briefing (supplied inline for graph-level
 
 ## Output contract
 
-Structured Markdown review (never programmatic JSON/YAML) containing:
+Internal agent-to-agent review handbacks report **only** in clean Argdown prose per `premise-check` (leading with original ask and verdict, quoting deciding PKB or targeted `gh` evidence inline); structured Markdown (never programmatic JSON/YAML) applies strictly to published PR/issue or user-facing review artifacts. Every strategic-fit review covers:
 
 - **Verdict**: `PASS`, `REVISE`, or `FAIL`.
 - **Strategic direction & congruence assessment**: evaluation of premise soundness, alignment with the seamless web of specifications, notes, and prior art, authority of cited changes, parsimony, and lifecycle coherence.
