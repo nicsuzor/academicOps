@@ -60,16 +60,36 @@ Components come from three sources:
 
 ### Universal templates
 
-Universal baseline templates in `plugins/ida/skills/workflow-library/workflows/` include:
+The universal workflow library (`plugins/ida/skills/workflow-library/workflows/`) holds **28 templates**:
 
-- `wf-code-task-base`: Foundation for standard code-change tasks (test-first build, PR, independent review).
-- `wf-dispatch`: Direct worker dispatch workflow for headless execution and worker dispatch -- delegates directly to the dispatcher with no child task creation, no pull or dump ceremony, and handback with premise-check Argdown.
-- `wf-finish`: Universal fallback finish policy (PR into base development branch, QA review).
-- `wf-interactive`: Workflow governing all in-session and interactive work -- with strictly one outer task placed and claimed via `/q` by the internal sub-coordinator on behalf of the interactive session, delegation through the internal delegate, verification at all seams, and outer handover dump only.
-- `wf-lookup`: Lightweight lookup workflow for PKB reads, PKB writes, memory curation, and graph operations -- delegates directly to the custodian with no task creation, no pull or dump ceremony, and handback with premise-check Argdown.
-- `wf-quick-fix`: Shortened route for simple, uncontroversial project changes (repository-allowed shortened PR or merge route, review exemption when unit and destination tests pass).
+- `wf-code-task-base`: Foundation for code-change tasks executed via `/supervise` or `/pull`.
+- `wf-dialectical-review`: Universal default dialectical review workflow coordinating strategic coherence, compliance, and empirical verification perspectives.
+- `wf-dispatch`: Direct worker dispatch workflow for headless container execution without child task creation.
+- `wf-dispatch-queue`: Dispatch queue ranking ready tasks for user approval and container launch.
+- `wf-doc-base`: Foundation for tasks changing instruction text or repository documentation.
+- `wf-effectual-plan`: Explore strategic uncertainty, surface load-bearing assumptions, and propose bounded next steps.
+- `wf-escalated-approval`: Hand a complete artifact over for an escalated explicit decision while keeping dependent work blocked.
+- `wf-fact-check`: Verify factual, empirical, and citation-bearing claims against primary sources.
+- `wf-finish`: Default task completion and release workflow separating work and review deliverables where required.
+- `wf-interactive`: Workflow governing interactive sessions under one outer task claimed via `/q`.
+- `wf-keep-analysis-data`: Persist intermediate datasets from slow or costly analyses for reuse.
+- `wf-lookup`: Lightweight lookup workflow routing PKB reads, writes, curation, and graph operations to the custodian.
+- `wf-pr-move-along`: Drive an open pull request through checks, proportionate review, conflict settlement, and landing.
+- `wf-pr-sweep`: Sweep open pull requests across repositories in parallel, triage against merge policies, and queue next-step tasks.
+- `wf-qa`: Universal empirical QA verification against live tests, probes, rendered outputs, and governing standards.
+- `wf-qa-visual`: Capture and multimodally verify rendered visual outputs against criteria.
+- `wf-quick-fix`: Shortened delivery route for simple, uncontroversial changes.
+- `wf-rbg`: Universal compliance review against axioms, rules, authority scope, data boundaries, and enforcement hierarchy.
 - `wf-reconcile`: Universal graph reconciliation and task truth-maintenance procedure.
-- `wf-tdd`: Test-driven development red-green-refactor cycle.
+- `wf-research`: Investigate problem spaces, prior work, and trade-offs grounded in primary evidence.
+- `wf-research-and-implement`: Sequence grounded investigation, specification, independent review, and test-first implementation on one PR.
+- `wf-research-output`: Sequence an academic output from direction and audience through evidence, review, and release.
+- `wf-signoff`: Author a concise one-page summary digest for decision or release sign-off.
+- `wf-spec`: Author a complete technical specification before implementation.
+- `wf-strategic-fit`: Universal strategic-direction and PKB congruence review.
+- `wf-structural-map`: Extract a four-part descriptive structural map (Aims, Methodology, Analytical theory, Contribution) of academic work.
+- `wf-task-base`: Foundation for every task executed via `/supervise` or `/pull` (schema, placement, groundwork, and boundaries).
+- `wf-tdd`: Testing standards and red-green-refactor cycle for executable code changes.
 
 **How they go together is the composing agent's judgment, not a rule here.** Which components a task needs, how they combine, and how much process the work warrants are worked out at composition time, against the task in hand.
 
@@ -77,7 +97,7 @@ Universal baseline templates in `plugins/ida/skills/workflow-library/workflows/`
 
 1. **Outline, not script.** Enumerate the steps the class of work requires, each stated as an outcome the caller can recognise as met -- never the specific tool calls or prose that satisfy it this time. Several components must fit in one context window together; target ≲100 lines. Substance that outgrows that belongs in a skill the component points at -- a component orchestrates, a skill executes.
 2. **Name the blanks.** Every point where a step depends on something the caller supplies -- a lens, a depth, a sibling component, an artifact shape -- is stated as a blank in that step, not silently assumed.
-3. **No history or meta-commentary in the body.** A component states the current process only, per [`synthesize-not-accrete`](../../lib/axioms/synthesize-not-accrete.md) -- never why a step was added, what it replaced, or how the template evolved. That belongs in git.
+3. **No history or meta-commentary in the body.** A component states the current process only, per [`current-state-only`](../../.agents/rules/current-state-only.md) -- never why a step was added, what it replaced, or how the template evolved. That belongs in git.
 4. **Revisable.** Components are standardised work, not law: versioned, and improved from execution feedback.
 
 ## Existence, not registration

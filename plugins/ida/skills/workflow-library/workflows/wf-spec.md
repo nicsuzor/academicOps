@@ -1,46 +1,36 @@
 ---
-alias:
-  - wf-spec
-description: Author a comprehensive technical specification covering architecture, interfaces, acceptance criteria, and, for code that executes, test design before implementation.
+description: Author a complete technical specification covering user stories, architecture, interfaces, acceptance criteria, and verification design before implementation.
 id: wf-spec
 tags:
   - wf-template
   - spec
-title: wf-spec
+title: Technical Specification Workflow
 type: template
 ---
 
 ## What this step does
 
-Authors a complete, unambiguous technical specification grounded in the evidence available to it. Establishes system architecture, data models, public interfaces, observable acceptance criteria, and, for code that executes, integration test plans before any implementation code is written.
-
-## One PR, opened by the build
-
-- Stage 1 records its design, any drafted spec change, and its independent agent review verdicts in a PKB note the Stage 2 task points to. Stage 1 commits no plan or design file and opens no PR.
-- Stage 2 opens the PR into the base branch as a draft (`gh pr create --draft`), carrying the build and any spec change. The spec stays editable on that branch as the build teaches more.
-- The PR is marked ready for review (`gh pr ready`) only after the independent check passes and proportionate review on the build is posted to the PR thread by independent agents. That flip does not wait for approval: approval comes at the full review, and spec and feature merge together.
+Authors an unambiguous technical specification grounded in primary evidence -- establishing architecture, interfaces, falsifiable acceptance criteria, and verification plans before implementation begins.
 
 ## Procedure
 
-1. **Problem statement and user stories** -- define the problem and the human user stories it serves (`specs/meta/writing-specs.md`). Every user story must be written from the perspective of a human person whom the system serves (the user, researcher, operator, developer, or reader) -- never an agent, persona, worker, or internal component (`As an agent, I want...`). Agents do not want anything; an agent is given capabilities in order to fulfil human user requirements.
-2. **Architecture and data flow** -- describe the components and what each owns, and external integration points. Scan the architectural decision index (`specs/decisions/INDEX.md`) for settled trade-offs and historical constraints; where a significant architectural fork arises, author an Architectural Decision Record in `specs/decisions/` following the MADR standard.
-3. **Interface contracts** -- define data types, function signatures, schemas, or protocols with precision.
-4. **Acceptance criteria** -- formulate concrete, observable, and falsifiable acceptance criteria for completion.
-5. **Test and verification strategy** -- for code that executes, specify test cases (unit, integration, regression) validating each criterion; for any other criterion, how it is verified.
-6. **Rule-compliance review** -- obtain an independent agent review of the draft specification against governing axioms (proportionality, single source of truth, closure) and specification standards, and remediate any `REVISE` findings before delivery.
-7. **Submit and PR lifecycle** -- for a Stage 1 design or spec task preceding a build, record the drafted spec change and the independent agent review verdicts in a PKB note the Stage 2 task points to, open no PR, and release the task as `done` once independent agent review passes (or release as `partial` where an explicit user decision on competing design alternatives is required), never releasing as `review` and never putting a spec to the user for approval on its own. The Stage 2 build (or a bounded single-task change updating spec and code together) opens the single worker PR into the base branch as a draft (`gh pr create --draft`) carrying the build and any spec change, keeping the spec editable; the draft PR is marked ready for review (`gh pr ready`) only after the independent check passes and proportionate review by independent agents is posted to the PR thread, without waiting for approval; spec and feature reach the user on that single PR and merge together after full review.
+1. **Problem statement and human user stories**: Define the problem and write user stories strictly from the perspective of human users (`researcher`, `operator`, `developer`, `reader`), never agents, personas, or internal components.
+2. **Scope boundaries**: State explicit in-scope commitments and concrete out-of-scope exclusions up front to prevent scope drift.
+3. **Architecture, dependencies, and prior decisions**: Describe component ownership, data flow, dependencies, required error handling, and external integration points. Scan existing architectural decision records in the repository for settled constraints, and record a new ADR (e.g. MADR) when a significant architectural fork arises.
+4. **Interface contracts**: Define data types, function signatures, schemas, or protocols precisely.
+5. **Effort, risk, and mitigations**: Record proportionate complexity/effort drivers, failure modes, and concrete mitigations.
+6. **Acceptance criteria and verification**: Formulate acceptance criteria from the human principal's perspective -- combining a **persona paragraph and qualitative dimensions** with falsifiable checks -- mapping each criterion to integration/unit tests for executable code or observable verification checks otherwise.
+7. **Independent review**: Obtain an independent rule-compliance and proportionality review of the draft specification and resolve any `REVISE` findings before delivery.
+8. **Delivery and PR lifecycle**:
+   - _Stage 1 (design/spec preceding a build)_: Record the drafted spec change and independent review verdicts in a knowledge-base note referenced by the build task. Commit no standalone plan/design file, open no PR, and release as `done` once review passes (or `partial` if the user explicitly reserved a decision on competing alternatives -- never release as `review`).
+   - _Stage 2 or single-task build (spec + code together)_: Commit the editable spec alongside implementation on one draft PR onto the base branch, marking it ready for review only after independent verification passes and review verdicts are posted to the PR thread.
 
 ## Output contract
 
-A complete specification artifact (full spec, not a summary) that someone other than its author can judge, containing:
-
-- Problem statement and architectural design.
-- Concrete interface definitions and signatures.
-- Itemized acceptance criteria, each mapped to its test where code executes, or to its verification otherwise.
-- Independent agent rule-compliance review verdict (`PASS` or resolved `REVISE`).
-- For a Stage 1 design or spec task: the drafted spec change and the independent agent review verdicts recorded in a PKB note the Stage 2 task points to, with no PR opened.
-- For Stage 2 or bounded single-task builds: the complete spec committed on the feature branch together with implementation code on a single draft PR (`gh pr create --draft`), marked ready for review (`gh pr ready`) only after independent agent review passes and verdicts are posted to the PR thread.
+- Complete specification (problem statement, human user stories, explicit scope, architecture/dependencies/error handling, interface contracts, effort/risk mitigations, persona-grounded acceptance criteria with qualitative dimensions and verification mapping) verified by an independent review verdict (`PASS` or resolved `REVISE`).
+- For Stage 1: specification draft and review verdicts recorded in a knowledge-base note linked to the downstream build task, with no PR opened.
+- For Stage 2 or single-task build: complete spec and code committed on a single PR onto the base branch, marked ready once independent check and review verdicts are posted.
 
 ## When to include
 
-Any non-trivial feature, architectural overhaul, or integration where implementation without an agreed specification invites scope creep or architectural divergence.
+Non-trivial features, architectural changes, or integrations where building without an agreed specification invites scope drift or divergence.

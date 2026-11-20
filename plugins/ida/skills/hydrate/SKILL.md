@@ -1,6 +1,6 @@
 ---
 name: hydrate
-description: Fast disambiguation index--distill short conceptual queries from an ask, run parallel semantic searches, and return a concise shortlist of IDs with one-line snippets, flagging potential overlap with unfinished tasks; the PKB custodian (Pauli) runs it. Does not open bodies, synthesise, or write to the graph.
+description: Fast disambiguation index -- distill short conceptual queries from an ask, run parallel semantic searches, and return a concise shortlist of IDs with one-line snippets, flagging potential overlap with unfinished tasks; the PKB custodian (Pauli) runs it. Does not open bodies, synthesise, or write to the graph.
 ---
 
 # Hydrate

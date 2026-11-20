@@ -1,6 +1,9 @@
 ---
 trigger: always_on
+description: Forbid shell polling; use background dispatch and native notifications.
 ---
 
-- **No Shell Polling:** NEVER write `while`, `until`, or `sleep` loops in Bash to call tools, poll log files, wait for events, or monitor subagents.
-- **Checking Status:** Dispatch in the background instead, and use your harness's native functionality to get notified when it completes.
+## No shell polling
+
+- Never write `while`, `until`, or `sleep` loops to poll tools, logs, events, or subagents.
+- Dispatch async work in background and use native notifications.

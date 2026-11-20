@@ -4,46 +4,36 @@ id: wf-tdd
 tags:
   - wf-template
   - tdd
-title: wf-tdd
+title: Red-green-refactor TDD
 type: template
 ---
 
 ## What this step does
 
-Red-green-refactor development for a change to code that executes, where correctness is machine-checkable.
+Red-green-refactor development for changes to code that executes, where correctness is machine-checkable.
 
 ## Procedure
 
-1. **Name the defect** -- state the behaviour the change adds or fixes, and the plausible bug in that logic the test will catch. If the change touches no code that executes, or no plausible bug can be named, write no test: the acceptance evidence is a run or check reported on the task.
-2. **Red** -- write a failing test for ONE behavior, asserting on its public API or observable I/O -- never on internal state or a mock's call log. The expected value must be derived independently of the implementation (a worked example, a known-good fixture), not a literal about to be pasted into it or copied from its output.
-3. **Verify failure** -- run the test against the code before the change and capture the failure trace. It must fail on the assertion, not on a syntax, import, or fixture error. A test that passes immediately, or fails for the wrong reason, is not red: halt and rewrite it or drop it.
-4. **Green** -- minimal implementation to pass, nothing more.
-5. **Verify pass** -- run the test and cite the passing output; a claimed pass with no run is not verified.
-6. **Refactor** (optional) -- only while tests stay green; if it breaks a test, undo the refactor rather than pushing forward on a broken base.
-7. **Repeat** if acceptance criteria remain; otherwise commit.
+1. **Name the defect**: State the behavior added or fixed and the plausible bug the test will catch. If no executable code changes or no plausible bug exists, write no test; record a run or check as acceptance evidence instead.
+2. **Red**: Write one failing test for one behavior asserting on its public API or observable I/O (never internal state or mock call logs), with expected values derived independently of the implementation.
+3. **Verify failure**: Run the test before changing code and capture the failure trace; it must fail on the assertion rather than syntax, import, or fixture errors. Rewrite or drop any test that passes or fails for the wrong reason.
+4. **Green**: Implement the minimal code needed to pass, nothing more.
+5. **Verify pass**: Run the test and cite passing output.
+6. **Refactor (optional)**: Refactor only while tests remain green; revert immediately if a test breaks.
+7. **Repeat** until all acceptance criteria are covered, then commit with full suite green.
 
 ## Constraints (normative)
 
-- Tests check outputs, never contents. Never write unit tests for documentation or instruction files: text documents are not functions and produce no outputs, so we do not test them. For code, never write a test that asserts that code says a particular phrase or uses a particular variable, enum, constant, condition, or similar; assert observable outputs, never contents themselves.
-- One behavior per test, one behavior per cycle. Test before code.
-- Black-box only: assert inputs → output or observable effect through the public interface, never private helpers, internal state, call order, or a mock's call log.
-- Mutation check: introducing the named bug must turn the test red. A test that survives it guards nothing; drop it.
-- No tautologies -- never assert against a value the code under test produced, a literal inserted solely to satisfy the assertion, or a property that fails only if a library or language primitive (a copy, a glob, a parse) breaks.
-- No change-detector (mirror) tests -- never assert that an agent, skill, settings, config, or instruction file, a mapping, or a directory holds what it holds today: a string, tool name, or skill name it contains, an entry the same change added, a source-to-dist file inventory. Test what the code does with the file (it parses, a path it names resolves, its content drives an observable effect). If a value must be checked, read it live from its real source and compare it to a real, independently-produced outcome -- never restate the value as a second literal in the test.
-- Acceptance evidence is not a test: a one-off check that the change worked (a listing diff, a command's output, a fresh agent's run) goes in the PR and task report, and joins the suite only if it also guards code that executes against a plausible regression.
-- A change to instruction text alone owes no test: a run that follows the instruction proves it.
-- Configuration -- values a program reads, such as settings, allowlists, policy entries, hostnames, environment and compose files, including such values written inside a script -- is not code that executes. A change to configuration alone owes no test: the applied, live state proves it.
-- Hermetic and deterministic: no network, live services, wall clock, sleeps, unseeded randomness, or state shared between tests; use temp directories and fixtures. Test doubles only at process boundaries (network, model calls, clock), never on the unit under test.
-- Arrange-act-assert, named for the behaviour and its condition, with a failure message that says what broke.
-- At least 2-3 distinct cases per non-trivial behavior, including boundary and error conditions.
-- A bug fix's test reproduces the reported failure, red before the fix.
-- Never commit with a failing test, or a failing test without its implementation.
-- Never implement beyond the minimum needed to pass the current test.
+- **Outputs, never contents**: Assert observable outputs through the public interface (black-box), never phrasing, variable/enum names, private helpers, call order, or mock call logs. Write no unit tests for docs, instruction text (proved by an agent run), or configuration values (proved by applied live state).
+- **One behavior per test/cycle, test before code**: Include at least 2--3 distinct cases per non-trivial behavior (including boundary and error conditions); bugfixes must reproduce the reported failure red-before-fix.
+- **Mutation check, no tautologies, no mirror tests**: Introducing the named bug must turn the test red. Never assert against code-under-test outputs, tautological library primitives, or file/config/skill inventories; read any checked source live against an independent outcome.
+- **Acceptance evidence vs. suite**: One-off verification outputs belong in the PR and task report, joining the test suite only when guarding executable code against regression.
+- **Hermetic and deterministic**: No network, live services, wall clock, sleeps, unseeded randomness, or shared state; use temp directories and place test doubles strictly at process boundaries. Arrange-act-assert with descriptive failure messages. Never commit failing tests.
 
-## Output contract
+## Output Contract
 
-State which behaviors were covered by which tests and the defect each catches, the red failure trace for each as proof the test was genuine, confirmation the full suite is green (not just the new test -- refactor steps can regress siblings), and any refactor steps taken. If a cycle was abandoned or reworked mid-cycle, or no test was written because no executable behaviour changed, say so.
+State which behaviors each test covers, the defect caught, each red failure trace, confirmation the full suite is green, and any refactorings (or why no test was written if no executable behavior changed).
 
-## When to include
+## When to Include
 
-Any change to code that executes with machine-checkable correctness. Not for a change to instruction text, docs or specs alone, and not for verifying a criterion that holds without a change to executable code.
+Any change to code that executes with machine-checkable correctness (never for docs, specs, or instruction text alone).

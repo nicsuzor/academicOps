@@ -1,7 +1,7 @@
 ---
 title: Interactive in-session workflow
 type: template
-description: Workflow governing all in-session and interactive work -- with strictly one outer task placed and claimed via /q by the sub-coordinator, delegation through the internal delegate, verification at all seams, and outer handover dump only.
+description: Workflow governing interactive sessions -- one outer task placed and claimed via /q by the internal sub-coordinator, delegation through internal delegates, seam verification, and outer handover only.
 tags: [workflow, interactive, in-session, delegation]
 ---
 
@@ -9,41 +9,27 @@ tags: [workflow, interactive, in-session, delegation]
 
 ## Purpose and Scope
 
-Applies to all in-session and interactive work. Governs task creation boundaries, subagent delegation, inter-agent verification, and session completion ceremonies.
-
-## Applicability
-
-- **Governs interactive sessions**: This workflow governs any interactive session communicating directly with the user.
-- **Exemption for lookups and questions**: The requirement to create a task explicitly does not apply to pure lookup tasks or questions. The agent must handle pure lookups and questions directly without creating a task on the task graph and without executing `/dump` (`wf-lookup`).
+Governs direct user-facing interactive sessions: task creation boundaries, subagent delegation, inter-agent verification, and session completion. Pure read-only lookups, PKB/graph operations, and direct questions are exempt and execute directly without creating a task or running `/dump`.
 
 ## Execution Structure
 
 1. **Single outer task**:
-   - Requiring strictly one outer task on the task graph for the interactive topic.
-   - The outer task is placed and claimed via `/q` by the internal sub-coordinator (`sub-Ida`) on behalf of the interactive session before substantial work begins. The user-facing coordinator strictly delegates and verifies, creating no tasks directly.
-   - When an interactive request transitions to asynchronous container execution, Sub-Ida places repo-scoped task(s) via `/q` and dispatches directly via `/dispatch` to containers running `/supervise` without pre-dispatch `/reify` in the interactive session (container `/supervise` runs `/reify` in-session).
-   - Downstream workers and subagents below the sub-coordinator must never create additional tasks on the task graph for this work.
-
+   - Maintain at most one outer task on the task graph for the interactive topic, placed and claimed via `/q` by the internal sub-coordinator before substantial work begins. The user-facing coordinator strictly delegates and verifies without creating tasks directly.
+   - When transitioning to asynchronous worker containers, the internal sub-coordinator places repo-scoped tasks via `/q` and dispatches via `/dispatch` to `/supervise` without pre-dispatch `/reify` (containers run `/reify` in-session).
+   - Downstream workers and subagents never create additional tasks on the task graph for the session's work.
 2. **Delegation pipeline**:
-   - Middle steps are unspecified except that the user-facing coordinator delegates to an internal delegate first.
-   - Pre-creation checks for existing, related, or overlapping open work route directly to the custodian (`pauli`), who searches the PKB with short conceptual queries distilled from the ask (never the raw prompt), before an outer task is minted via `/q`.
-   - The internal delegate delegates through to the custodian, review supervisor, or dispatcher as appropriate for the work. Dispatched containers run `/supervise` for repo-scoped epic tasks or `/pull` for plain leaf tasks.
-   - No subagent or internal delegate may create child or auxiliary tasks on the task graph.
-
+   - The user-facing coordinator delegates first to an internal delegate.
+   - Pre-creation overlap checks route directly to the PKB custodian before an outer task is minted via `/q`.
+   - Internal delegates route work to the PKB custodian, review coordinator, or dispatcher as needed (`/supervise` for repo-scoped composite tasks; `/pull` for plain leaf tasks).
 3. **Seam verification**:
-   - Handback and verification is required at all seams between agents.
-   - Every inter-agent report and handback must carry an Argdown argument in the correct format per the `premise-check` standard, and any result that draws a `REVISE` verdict during review must be revised and reviewed again before handback.
+   - Every inter-agent report and handback requires verification at the seam and carries a `premise-check` Argdown argument; any result drawing `REVISE` during review must be revised and re-reviewed before handback.
+4. **Outer handover**:
+   - Only the user-facing coordinator runs `/dump` upon completing the outer task; subagents and internal delegates never execute `/dump` or release graph tasks.
 
-4. **Outer handover and dump**:
-   - Only the user-facing coordinator runs the handover `/dump` sequence upon completion of the outer task.
-   - Subagents and internal delegates do not execute `/dump` or release tasks on the graph.
+## Interactive Delegation Brief
 
-### Interactive Delegation to Sub-Coordinator
-
-- The user-facing coordinator formulates a concise brief quoting `## Ask` verbatim with message ID.
-- The coordinator asserts an effort claim stating the proportionate depth of work in natural language (e.g. "targeted one-file edit", "comprehensive multi-agent design", "lightweight inspection").
-- When proportionate to task stakes, risk, and blast radius, the brief specifies closing steps: logic check (`premise-check`) first, then compliance (`rbg`) and quality/requirements satisfaction (`marsha`) reviews.
-- The sub-coordinator evaluates the brief for effort calibration and ask fidelity; if ill-calibrated or containing unasked exclusions, the sub-coordinator returns the brief for rework.
-- On acceptance, the sub-coordinator runs `/q` first before substantial work (searching open and closed tasks to resume, reopen, or create the topic task), or routes to `wf-lookup` with zero task creation if the query is read-only. When work transitions to asynchronous container execution, the sub-coordinator places repo-scoped task(s) via `/q` and delegates directly to the dispatcher via `/dispatch` to launch containers running `/supervise` without pre-dispatch `/reify` in the interactive session.
-- If closing steps were specified, the sub-coordinator executes the reviews and resolves findings; any result that receives a `REVISE` verdict must be revised and sent back to the reviewer(s) to be reviewed again until it passes before handback, after which the sub-coordinator hands back the completed report with checked Argdown premises and `Relay:` lines.
-- The user-facing coordinator performs a final look over the handback before responding to the user.
+- The user-facing coordinator sends a concise brief quoting `## Ask` verbatim with message ID and asserting a natural-language effort claim stating proportionate depth (e.g., "targeted one-file edit", "comprehensive multi-agent design").
+- When warranted by stakes and blast radius, the brief specifies closing steps: logic verification (`premise-check`) first, then compliance and quality/requirements satisfaction reviews.
+- The internal sub-coordinator checks effort calibration and ask fidelity, returning miscalibrated or distorted briefs for rework.
+- On acceptance, the sub-coordinator runs `/q` before substantial work (or routes read-only/PKB queries through the direct lookup path with zero task creation), or queues and dispatches async container work via `/q` and `/dispatch`.
+- When closing reviews apply, the sub-coordinator executes them and resolves findings; any result drawing `REVISE` must be revised and re-reviewed until it passes before handback, after which the sub-coordinator hands back checked Argdown premises with `Relay:` lines for the user-facing coordinator's final review before responding to the user.

@@ -1,68 +1,54 @@
 ---
 title: Code task base
 type: template
-description: Foundation for code-change tasks executed via /ida:supervise (or /ida:pull for plain leaf tasks) -- by default in a single supervised container session combining reviewed design, test-first build, incremental push and draft PR, and independent multi-lens review ending in a verdict on the PR.
+description: Foundation for code-change tasks executed via /supervise (or /pull for plain leaf tasks) -- combines reviewed design, test-first build, incremental push and draft PR, and independent multi-lens review ending in a PR verdict.
 tags: [base, task, code, composite]
 ---
 
 - **GOAL:** <one sentence>
-- **ACCEPTANCE CRITERIA:** <one line each>
+- **ACCEPTANCE CRITERIA:** <one line each, observable outcomes>
   - <criterion>
   - <criterion>
 - [ ] **OUTPUT:** <repository and base branch the PR targets>
-- **REPORT:** Use /ida:dump to update your task. Do not append your observations as a log; update the prose to reflect current state and delete any content that is no longer relevant, true, or that reflects prior state or prior instructions. Update the ACCEPTANCE CRITERIA block: an item is ticked only with evidence of that item itself; any other item stays unticked with its limit stated. On the same line, provide a relevant extract of your evidence supporting your assertion, along with a citation for the source of the evidence.
+- **REPORT:** Update the task via `/dump` in place (current state only; tick `[x]` items only with inline primary evidence and citation).
 
-## One PR, opened by the build
+## Single PR, Opened by the Build
 
-- Under container supervision (`/supervise`), Stages 1--4 execute by default within a single combined repo-scoped task in one container session:
-  - Stage 1 conducts design and subagent dialectical review in-session (recording in a PKB note or design record without committing plan files or opening premature PRs).
-  - Stage 2 implements the build and any spec change on its constituent branch (`polecat/<task-id>`). The spec stays editable on that branch as the build teaches more.
-  - Stage 3/4 runs the three-lens diff review (strategic fit, rule compliance, and quality) on the constituent branch. On `PASS`, when related work shares a feature branch (`bundle/<slug>` or `feat/<slug>`), the agent merges the constituent branch directly into the shared feature branch without waiting for user approval, immediately closes any superseded standalone donor PR with a link to the consolidated PR, opens or updates the consolidated PR into the base branch, runs the compliance description-only check ("is this stupid?") on the consolidated PR, and marks it ready for review (`gh pr ready`) without pre-approval rebase. After user approval, the agent rebases the feature branch onto the base branch, runs the full three-lens diff review over the combined diff, and merges when green. For an isolated change with zero overlap or an authorized hotfix, the three-lens diff review posts directly to the standalone PR before marking it ready (`gh pr ready`).
-- For a reviewed class of task reified onto the graph as separate tasks (under `/pull` leaf execution or when explicitly split for a separate review session), reifying yields two tasks under the parent container: **(1) the work task** (Stages 2--3, which opens the draft PR via `gh pr create --draft`, records `pr_url` and `branch`, and releases with one completion status: **`done`**, never `review`) and **(2) the review task** (Stage 4, `needs: [<work-task-id>]`, which runs the independent review, merges into the shared feature branch or posts verdicts to the PR thread, marks the PR ready via `gh pr ready` once the check passes, and releases `done` on pass or `failed` on fail). Where a separate pre-build Stage 1 design task precedes the build, it records its design, drafted spec change, and review verdicts in a PKB note that the work task points to, committing no plan file and opening no PR.
+- **Combined `/supervise` execution (default)**: Stages 1--4 execute in one container session:
+  - _Stage 1 (Design)_: Run design and independent subagent review in-session, recording decisions in a PKB note (no committed plan files or premature PRs).
+  - _Stage 2 (Build)_: Implement code and any editable spec change on a constituent worker branch (no code-less spec PRs).
+  - _Stages 3--4 (Review & PR)_: Run three-lens diff review on the constituent branch.
+    - Merge clean constituent branches into the shared feature branch (`bundle/<slug>` or `feat/<slug>`), close absorbed donor PRs, post `## RBG Review: PASS`, and defer base rebase/combined review until approval; open standalone PRs only for zero-overlap fixes or authorized hotfixes.
+- **PR Readiness Check (`--draft` -> `gh pr ready`)**:
+  - Green `HEAD` CI (zero errored, bypassed, cancelled, or `startup_failure` runs) and zero unresolved `CHANGES_REQUESTED`.
+  - Zero uncommitted `fix(review):` edits (pushed and verified against `HEAD` before posting) and zero deferred DRY, SSoT, or compliance findings.
+  - Label-vs-confirmed-route consistency, plus head-SHA-matched posted `## RBG Review: PASS` and proportionate independent review (or constituent receipts + posted description-only `## RBG Review: PASS` pre-approval on consolidated PRs, then combined-diff review post-approval).
+- **Split execution** (only for separate repositories, execution windows, external sessions, or `/pull` leaf execution):
+  - _Pre-build Stage 1_: Record design, drafted spec change, and independent verdicts in a PKB note linked by the work task (no plan file or PR).
+  - _Work task (Stages 2--3)_: Open draft PR (`gh pr create --draft`), record `pr_url` and `branch`, and release **`done`** (never `review`).
+  - _Review task (`needs: [<work-task-id>]`)_: Verify PR, bundle or post verdicts, mark ready (`gh pr ready`) once **PR Readiness Check** holds, and release per verdict.
+- **No low-risk review bypass**: Every code change and bugfix undergoes independent proportionate review without low-risk exemptions or task-class skipping.
 
 ## Stages
 
-Under container supervision (`/supervise`), Stages 1--4 execute by default within a single combined repo-scoped task in one session, coordinating subagent fan-out and incremental git push checkpoints. When split across separate tasks (permitted only when explicitly requiring a different repository, different time, or separate external agent/session, or under `/pull` leaf execution), each stage operates within its assigned task boundaries.
+1. **Design** (skip for simple bugfixes or mechanical changes; never skip Stage 4 review):
+   - State expected behavior, **human user stories** (never `"As an agent..."`), and fit, ending with independent review.
+   - Cite or draft the governing spec (or record options in a PKB note) with no committed plan file, code-less PR, or spec-only user pause.
+2. **Build**:
+   - Read target files in full before editing; keep acceptance criteria observable and bounded to executor delivery (never line slices or post-release user acts).
+   - Build executable code **test-first** (red failure traces before implementation, green suite at end); prove non-executable changes with a live check reported in the PR.
+3. **Push and Draft PR**: Push checkpoints and open the draft PR (`gh pr create --draft`) when standalone (or land onto the shared feature branch), summarizing what changed and why without line-by-line diff trivia or private PKB/session trailers. Leaf `/pull` workers remain strictly state-only.
+4. **Independent Review and Verdict**: Run proportionate independent review by an agent authoring zero branch commits, verify pushed `fix(review):` commits at `HEAD`, and execute one verdict:
+   - **Rejected**: Close PR with review comment, mark implementation `cancelled`, release `failed`.
+   - **Revisions needed**: Post unmet criteria, leave PR open, release `failed` with root cause; mint no fix tasks.
+   - **Handoff after reviewer edits**: Commit/push changes, post them, leave PR open without marking merge-ready, release `partial`.
+   - **Reviewed / Ready for Decision**: Post review link and receipts, mark ready (`gh pr ready`), and apply approval/tier rules (`data-boundaries`, repo rules, standing user rulings) before merge -- never release `review`, nor hold in `partial` waiting on user installation once informed.
 
-1. **Design** -- for any change that needs the agent's judgment among alternative implementations; a simple bugfix or a mechanical change skips it. The design states how the feature is expected to work, the human user stories it serves (always from a human person's perspective, never "As an agent / custodian / worker, I want...", since agents are given capabilities only to fulfil human user requirements), and where the change sits in the wider project, and it ends in an independent check by an agent that did not write it:
-   - **The project keeps specs**: the design cites the spec that governs the behaviour and holds the change to it. Where no spec governs it, the spec is written first and reviewed by independent subagents; the reviewed spec is the design. In a combined `/supervise` session, the design is verified in-session; when split, Stage 1 records its design, any drafted spec change, and its independent agent review verdicts in a PKB note the Stage 2 task points to. Stage 1 commits no plan or design file, opens no PR, and never puts a spec to the user for approval on its own.
-   - **The project keeps no specs**: a plan naming the alternatives, the one chosen and why, and how it fits the project, checked by a different agent, recorded in a PKB task or note the build points to; no plan file is committed to the repository and no PR is opened.
-2. **Build** -- implement the acceptance criteria, full suite green at the end. Acceptance criteria define observable outcomes bounded to what the executor delivers (ending once shipped and reported) rather than mechanism prescriptions, `file:line` edits, or post-release user acts. Workers must read target files in full to understand surrounding architecture, conventions, and helper abstractions before executing edits; keyhole reads in isolation are prohibited. Carry the build and any drafted spec change onto the feature branch and open the PR into the base branch as a draft (`gh pr create --draft`); the spec stays editable on that branch as the build teaches more. A change to code that executes is built test-first: each changed behaviour's failing test captured before its code. A change that modifies no code that executes adds no test; a criterion it meets is proved by a run or check reported in the PR.
-3. **Push and file the PR** -- push to the feature branch with incremental checkpoints and open the worker PR into the base branch as a draft (`gh pr create --draft`). The PR goes ready for review (`gh pr ready`) only after the independent check passes and proportionate review on the build is posted to the PR thread by independent agents, without waiting for approval; spec and feature merge together after full review. The PR description explains what was done and the approach taken to do it, making the PR easy to read and understand; the diff is available for line-by-line inspection, so do not list every single change in detail. Summarize verification and follow project PR style or templates where defined. Dispatched leaf workers under `/pull` operate strictly under the worker state-only invariant: mutate only this task's own record and state, never inspect or modify edges across other tasks or mint follow-up verification tasks. Record the PR URL and branch on the task (releasing `done` to unblock Stage 4 when split across tasks).
-4. **Review and verdict** -- by an independent reviewing agent (or subagents) that did not write the code (coordinated in-session under `/supervise`, or in a separate task for plain `/pull` leaf execution). A review is required and a proportionate review is selected (defaults to the dialectic review, or a user-chosen substitute). When a review step is included, run independent agent review on the PR, push fixes for defects small enough to settle in place, and post the review verdicts to the PR on GitHub. Then reach exactly one verdict:
-   - **Rejected** -- the approach is wrong, the PR is out of proportion to what the task asks (see the `proportionate` axiom), or it cannot be salvaged: close the PR with the review as the closing comment, set the implementation task to `cancelled` with the reason, and release the task as `failed`.
-   - **Revisions needed** -- the review fails, criteria are unmet, or the PR needs more than in-place fixes: post the review citing unmet criteria and required changes to the PR, leave the PR open, and release the task as `failed` with documented failure evidence and root cause. Do not file fix tasks or follow-up tasks; the reconcile pass notes failed tasks and decides next actions from the parent epic.
-   - **Handoff for review** -- the reviewer pushed fixes or modified code on the PR: post the review and changes to the PR, leave the PR open, and release the task as `partial` with explanation on record; reviewers never file follow-up tasks. A reviewer that changes code or pushes fixes must never merge or mark merge-ready.
-   - **Reviewed / Ready for Decision** -- the review is clean with no reviewer code changes and checks are green: post a review summary or merge recommendation on the PR citing the green checks and the review, and mark the draft PR ready for review (`gh pr ready`). Confirm tier against the taxonomy: for verified Tier 1 PRs, bring the branch up to date with the base branch if needed, merge autonomously (`gh pr merge --squash`), and release the task as `done`. For Tier 2 or Tier 3 PRs, post receipts (including the link to the posted review and CI status receipts) and a reasoned recommendation, and leave the PR open for reviewer/principal sign-off, releasing the task as `done`. Mergeability against the base branch is not required before approval; bringing the PR up to date with its base and resolving conflicts happens after approval, just before merge. Do not release to `review` for a human merge decision, and never hold a task in `partial` or mint follow-up tasks waiting to prove the user installed, pulled, or deployed a shipped release once the user is informed.
+## Output Contract
 
-## Composition
+- **Combined `/supervise`**: Verified in-session design, draft-then-ready PR carrying build and any spec change, red-before-green test evidence for executable code, green full suite, **PR Readiness Check** satisfied on `HEAD`, review verdicts posted on the PR, `pr_url` recorded, and task released per risk tier.
+- **Split tasks**: Stage 1 PKB design/spec note with verdicts (no committed plan/PR); Stages 2--3 draft PR URL with red failure traces and green full suite; Stage 4 posted PR verdicts, **PR Readiness Check** verified on `HEAD`, and carried-out verdict release.
 
-Under container supervision (`/supervise`), multi-stage code workflows execute by default as a single combined repo-scoped task within one container session: the coordinator manages Stage 1 design review, Stage 2 test-first build, Stage 3 incremental push and draft PR (`gh pr create --draft`), and Stage 4 multi-lens review and PR readiness marking (`gh pr ready`) in-session.
+## When to Include
 
-Splitting into separate child/follow-up tasks is prohibited by default and permitted ONLY when a workflow step explicitly requires:
-
-1. _Different repository_: strictly one task per repository.
-2. _Different time_: a distinct external wait condition or execution window.
-3. _Different agent/session_: a workflow-mandated separate external agent or session (such as user-channel closed-loop reporting).
-
-Steps must never be placed as loose siblings under an external parent. When separate tasks are explicitly required:
-
-- Where Stage 1 applies, it records its design, any drafted spec change, and review verdicts in a PKB note the build task points to, committing no plan file and opening no PR.
-- Stages 2--3 form one task that opens the draft PR (`gh pr create --draft`) into the base branch, with the spec still editable.
-- Stage 4 is a child task that `needs` it, so a fresh agent worker picks it up, posts proportionate review verdicts to the PR thread, and marks the PR ready for review (`gh pr ready`) once the check passes, without waiting for approval.
-
-Plain leaf workers running under `/ida:pull` operate strictly state-only: mutate only the claimed task's own record, never inspect or modify edges across tasks, and never mint follow-up verification tasks.
-
-For a low-risk internal change, chiefly a bugfix, omit the separate Stage 4 verification run on the fix task. Where a blocked dependent exists waiting on the fix (prerequisite `needs` on the dependent task), the parent epic handles sequencing the dependent task's next run; no verification follow-up task is minted by workers.
-
-## Output contract
-
-- Combined `/supervise` task (default): the design verified in-session, the draft PR (`gh pr create --draft`) opened into the base branch carrying the build and any spec change (with the spec still editable), test evidence and red failure traces for code that executes, green full-suite verification, independent review verdicts posted to the PR thread, the PR marked ready for review (`gh pr ready`) with its URL on the task record, and the task released per the PR risk tier.
-- Split tasks (when explicitly required):
-  - Stage 1 task: the design -- the governing spec it cites, or the drafted spec change, or the plan -- and its independent agent review verdicts recorded in a PKB note the Stage 2 task points to. Stage 1 commits no plan or design file and opens no PR.
-  - Stage 2--3 task: the draft PR (`gh pr create --draft`) opened into the base branch carrying the build and any spec change (with the spec still editable); for each changed behaviour of code that executes, its test with the red failure trace; the evidence for each other criterion; a green full-suite run; and the draft PR URL recorded on the task record.
-  - Stage 4 task: the agent review verdicts posted on the PR, any in-place fix commits, and one verdict carried out -- PR closed and review task released as `failed` (implementation task `cancelled`), review task released as `failed` with unmet criteria and required changes documented on failure, or the draft PR marked ready for review (`gh pr ready`) and a merge recommendation posted with the review task released as `done`, merging spec and feature together after full review. Workers never file fix follow-up tasks.
-
-## When to include
-
-Any task whose deliverable is a change to code that executes in a repository. Use in place of the general task base when the work should arrive as a reviewed PR rather than a finished artifact.
+Any task delivering changes to code that executes in a repository as a reviewed PR.

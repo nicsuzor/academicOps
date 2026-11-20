@@ -52,7 +52,7 @@ The null form clears the premise-check gate with no agent action. When an expect
 
 ### Source Attribution Guidance
 
-Premises state clean natural assertions citing sources and locators directly inline (e.g. `(path/to/file.py:42)`, `(run: exit_code = 0)`, `[[task-id]]`). Trailing mechanical basis clauses (`-- <basis phrase>`) and endnote tables (`notes:`, `^a`) are dropped. Per [Human Readability First](../../../rbg/skills/axioms/human-readability-first.md), evidence categories provide authoring guidance for source attribution, evaluated by agentic comprehension rather than rigid mechanical formulas:
+Premises state clean natural assertions citing sources and locators directly inline (e.g. `(path/to/file.py:42)`, `(run: exit_code = 0)`, `[[task-id]]`). Trailing mechanical basis clauses (`-- <basis phrase>`) and endnote tables (`notes:`, `^a`) are dropped. Per `rbg:axioms` (`human-readability-first`), evidence categories provide authoring guidance for source attribution, evaluated by agentic comprehension rather than rigid mechanical formulas:
 
 | Category | Evidentiary Basis | Examples / Guidelines |
 | - | - | - |
@@ -64,7 +64,7 @@ Premises state clean natural assertions citing sources and locators directly inl
 
 ### Rules for the Block
 
-1. **The ask at the top**: Copy the asker's exact words under its immutable ID (`tg-<msg_id>`, `<task_id>/AC<n>`).
+1. **The ask at the top**: Copy the asker's exact words under its immutable ID (`<msg_id>`, `<task_id>/AC<n>`).
 2. **Raw empirical observations**: Premises stating observations quote deciding values inline (`exit_code = 0`, `status: MERGED`, and for failure or live-state claims, the observed version, commit, or state). They never state evaluative or generalising conclusions restating an acceptance criterion (such as "AC1 is met" or "behavior is correct"). Evaluative and generalising conclusions must sit below an inference bar as claims derived from those observations.
 3. **Numbered premises**: State claims in natural language, quoting deciding values and citing sources inline (e.g. `(path/to/file.py:42)`, `(run: exit_code = 0)`). Trailing mechanical basis clauses (`-- <basis phrase>`) are dropped.
 4. **Inline citations**: Citations and pointers live directly inline with the claims they support. Lettered endnote pointers (`^n`, `notes:`) are dropped.
@@ -79,11 +79,11 @@ Premises state clean natural assertions citing sources and locators directly inl
 
 When an incoming direction arrives from another agent:
 
-1. Verify that every instruction and requirement derives faithfully from `## Ask` (or active user directives).
-2. **Turn-1 required input verification**: Even when the incoming direction carries the null-form `argdown` block (`asks: none` / `[no claim]`) or clears the premise gate, verify on Turn 1 that all required inputs, parameters, task context, and target artifacts are present in the brief. If required inputs or target artifacts are omitted from the brief, immediately return `REVISE` via `send_message` specifying the missing inputs or artifacts, without executing `verdict.py` (do not run `verdict.py` or record a gate verdict for direction briefs; `verdict.py` is reserved exclusively for judging reports carrying evidence-backed claims).
-3. **No local transcript or debug log scraping**: Do not attempt to recover missing caller inputs or prompts by scraping local `.system_generated/logs/transcript*.jsonl` or `/tmp/aops_debug_hooks_*.jsonl` files. If past session context or execution traces are needed, query Arize Phoenix exclusively via `ida:phoenix`.
-4. Verify brief satisfiability: evaluate whether all demanded deliverables can be produced by your own role and route before terminating. Refuse (`REVISE`) directions demanding deliverables belonging to subsequent pipeline stages or unfulfillable by construction at your stopping point.
-5. Refuse (`REVISE`) unverified caller method or template prescriptions before logging deliverables, instructing the caller to load `ida:premise-check` before reformulating the direction. A caller may pass only `## Ask` (verbatim with ID), strategic fit/context, and the objective or skill invocation. _Exception_: In delegation briefs, an effort claim asserted by the caller in natural language and directions specifying proportionate closing steps (the logic check first, then compliance and quality reviews) are permissible and are judged for fit and fidelity rather than refused as caller method prescriptions.
+1. Verify that every instruction and requirement derives faithfully from `## Ask` (or active user directives), preserving the user's directed authorization without adding unrequested pre-execution approval holds or user-assigned decision tasks.
+2. **Turn-1 required input verification**: Even when the incoming direction carries the null-form `argdown` block (`asks: none` / `[no claim]`) or clears the premise gate, verify on Turn 1 that all required inputs, parameters, task context, and target artifacts are present in the brief. If required inputs or target artifacts are omitted from the brief, ask the supervisor via direct message to clarify or supply the missing inputs without executing `verdict.py` and without declining the task (do not run `verdict.py` or record a gate verdict for direction briefs; `verdict.py` is reserved exclusively for judging reports carrying evidence-backed claims).
+3. **No local transcript or debug log scraping**: Do not attempt to recover missing caller inputs or prompts by scraping local transcript or debug log files. If past session context or execution traces are needed, query Arize Phoenix exclusively via `ida:phoenix`.
+4. Check brief satisfiability: evaluate whether all demanded deliverables can be produced by your own role and route before terminating. If a direction demands deliverables belonging to subsequent pipeline stages or unfulfillable by construction at your stopping point, flag the gap to the supervisor as a clarification via direct message rather than declining or returning the task undone, and execute what lies within your role.
+5. Flag unverified caller method or template prescriptions to the supervisor as a clarification via direct message without declining or returning the task undone. A caller should pass `## Ask` (verbatim with ID), strategic fit/context, and the objective or skill invocation. _Exception_: In delegation briefs, an effort claim asserted by the caller in natural language and directions specifying proportionate closing steps (the logic check first, then compliance and quality reviews) are permissible and are judged for fit and fidelity.
 6. Once verified, log deliverables as a frozen `## Acceptance` checklist before work starts (recorded on the PKB task for tracked tasks; internal subagents and in-session delegates log deliverables in their in-turn brief/context and must not create additional tasks on the graph; pure lookups and questions require no task creation).
 
 ### Reports
@@ -111,7 +111,7 @@ In addition to the four inference tests, the checker examines the entire report 
 
 | Test | Passes when | Failure looks like |
 | - | - | - |
-| **Rule-Consistent** | The actions, omissions, and claims in the delivered work do not contradict standing axioms, project rules, or specifications. Disclosing an out-of-scope breach under Rule 4 is compliant escalation. | Report states or admits leaving a rule breach in place in its own deliverable, waives a rule without a higher rule or direct user directive, or describes an action forbidden by a standing rule. Record it as `Valid: (n) fails #conflict` on the step the breach touches. |
+| **Rule-Consistent** | The actions, omissions, and claims in the delivered work do not contradict standing axioms, project rules, or specifications, nor hold directed work for user approval or assign choices to the user (even citing a workflow template) outside external-audience, unruled-merge, unbounded-cost, or explicit user-hold boundaries. Disclosing an out-of-scope breach under Rule 4 is compliant escalation. | Report states or admits leaving a rule breach in place in its own deliverable, waives a rule without a higher rule or direct user directive, holds or routes directed work to user approval without an applicable boundary, or describes an action forbidden by a standing rule. Record it as `Valid: (n) fails #conflict` on the step the breach touches. |
 
 Run four tests on every inference line:
 

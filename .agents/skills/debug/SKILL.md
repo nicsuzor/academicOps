@@ -3,248 +3,51 @@ name: debug
 description: Drive and audit a real framework run -- choose an execution surface, dispatch a worker, spin up a polecat container under tmux for live interaction, and hand off to `phoenix` for what the run did. Use when asked to debug a polecat, investigate what broke a container or client mechanism (such as authentication, a token, or a service), run a polecat container interactively, attach to a polecat session, check container or session logs, or verify that a change to plugins, hooks, `lib/`, or skills actually fires inside a real container rather than merely being installed in the image. Covers both clients, `claude` and `agy`. Not the standard for scoring the run itself -- that is `dogfood`.
 ---
 
-# Driving a framework run
+# Driving a Framework Run
 
-The standard you hold while scoring a run is [`dogfood`](../dogfood/SKILL.md),
-"Supervising a trial". This file is how you drive one. Container mechanics and
-gotchas: [`specs/polecat/tmux-interactive-driving.md`](../../../specs/polecat/tmux-interactive-driving.md).
+Score runs under [`dogfood`](../dogfood/SKILL.md) ("Supervising a trial"). Container mechanics: [`specs/polecat/tmux-interactive-driving.md`](../../../specs/polecat/tmux-interactive-driving.md).
 
-## Choose a surface
+## Choose a Surface
 
-Pick the cheapest surface that answers the question, and name it in your report
-— a result is only interpretable against the surface that produced it.
+Pick the cheapest surface that answers the question and name it in your report (results are only interpretable against their surface):
 
-- **Headless `claude` or `agy`** for simple, low-risk work, with results
-  returned to your own shell. To watch a local agent read-only:
-  `agy --agent james --print "<prompt>"`
-- **A polecat container** when the work needs isolation. Driving one
-  interactively is the rest of this file.
-- **Headless polecat dispatch (`polecat_run_container` via `services` MCP or `scripts/polecat -t <id>`)**
-  for isolated task execution.
+- **Headless `claude` or `agy`**: Simple, low-risk local checks returning to your shell.
+- **Interactive polecat container (tmux)**: Isolated runs requiring live input or TUI observation.
+- **Headless polecat dispatch**: `polecat_run_container` via `services` MCP or `polecat -t <id>` for isolated task execution.
 
-Spawn independent agents from `Bash` in the background. Do not poll and do not
-sleep — go idle and read the result when the completion notification arrives.
+Spawn independent shell agents in the background without polling or sleeping; wait for completion notifications.
 
-## Dispatch so the run is worth scoring
+## Dispatch Invariants
 
-- **A dispatchable task is yours to produce.** Dispatch tasks that are fully
-  specified and `queued`. Nothing on the launch path reads the graph or checks
-  eligibility, so a task left at `inbox` is a defect in how you created it, not
-  in the launcher. Amend the launcher's own instructions only when the task
-  record genuinely cannot carry the fix.
-- **Build the image before you dispatch, never inside it.** A container runs the
-  framework baked into its image, not the tree you are sitting in, and nothing
-  on the launch path checks freshness. The loop is `make docker-build`, then
-  dispatch against the fresh image.
-- **Never create a git worktree.** Delegate into the worktree you are already
-  in, or into a container.
-- **`git status` is not a cleanliness check.** The framework runs from `dist/`,
-  which is gitignored. A worker that reverts tracked source and reports a clean
-  tree can still have left its probe in every built artifact and in the image.
-  Verify the surface that actually executes.
+- **Dispatch fully specified `queued` tasks**: The launch path skips graph and eligibility checks; leaving a task at `inbox` is a creation defect.
+- **Build before dispatching, never inside the container**: Containers run the baked image, not your working tree; run `make docker-build`, then dispatch.
+- **Never create a git worktree**: Delegate into your current worktree or into a container.
+- **Verify the executing surface, not `git status`**: `dist/` is gitignored, so a clean tree can still serve stale or modified build artifacts.
 
-## Hold the run's acceptance criteria on a tracking record
+## Tracking and Epistemics
 
-Search the PKB first for a current-state note on the surfaces you are about to
-test: which were last observed working, which failing, against which build. Read
-it as an observation with a date on it, not as fact — it was true of the build
-it names. Re-run the cells you will rely on, and when you finish rewrite that
-note rather than adding a second one beside it; a stale state note reads as
-current, so it is worse than none.
+- **Refresh current-state notes**: Search the PKB for a current-state note on target surfaces, treat it as a dated observation for its named build, re-run relied cells, and rewrite the note in place.
+- **Create a tracking task before return**: Link a parent in the PKB naming the dispatch, expected output, and acceptance criteria from `specs/` or the PKB (inability to locate a spec is itself a framework finding).
+- **Discriminate before scoring**: Name the observation separating your verdict from the rival explanation (file `undetermined` if absent). For broken-mechanism asks (auth, tokens, services), trace the full lifecycle -- prior failing logs/traces, token refresh, state transitions, and read-only mounts -- rather than treating a fresh startup check as refutation.
+- **Score tool records, never self-reports**: Verify execution via `ida:phoenix` spans, `agy` `transcript_full.jsonl` (`tool_calls`), or `claude` session JSONL (`tool_use`); agents can read stale files and report cached output as live calls.
+- **Audit on completion**: Claim the tracking record, assess outputs against acceptance criteria, audit and correct the worker's task state, and route significant lessons to `learn`.
 
-Before the worker returns, create a tracking task in the PKB, with a parent,
-naming what was dispatched, the output expected, and how you will test it
-against the acceptance criteria that apply. Find those criteria while the worker
-runs — a spec you cannot locate in `specs/` or the PKB within a few calls is
-itself a framework failure, and that is the finding.
+## Probes and Container Driving
 
-Before recording that anything passed or failed, name the observation that
-discriminates it from the alternative explanation; where none was made, file
-`undetermined` rather than a verdict. A silent agent is equally consistent with
-work finished and unreported. When asked what broke a mechanism (such as
-authentication, a token, or a service), examine why the mechanism stopped
-working across its full lifecycle — prior failing session logs and traces, token
-expiry and refresh, state transitions, and write-back persistence on read-only
-mounts — rather than testing only whether a fresh one-shot startup check
-succeeds. A passing one-shot startup probe eliminates only initial boot or login
-on current state; it does not refute a reported failure or satisfy the ask until
-the run examines why the token or mechanism stopped working.
+- Run probes once per client (`claude` and `agy`); one passing client does not verify the other.
+- Re-run an `agy` failure without `--agent` first: pass without `--agent` isolates the fault to the agent definition's `tools:` list (silent starvation to ten tools vs hard error in `agy-cli.log`).
+- If running local headless probes, launching/driving/tearing down a tmux polecat container, auditing `$AOPS_SESSIONS` logs, or locating inside-container transcripts, read [references/container-recipes.md](references/container-recipes.md) before executing commands.
+- If diagnosing a failure from any step, read [references/gotchas.md](references/gotchas.md) before improvising a fix.
 
-On completion: claim the record, review the output against those criteria, and
-write your assessment onto it. Check that the worker updated its own task
-honestly and correct the record where it did not, or reassign the work where the
-record cannot be corrected into a true one. Where the run produced a significant
-failure or an unexpected success, `learn` turns it into a lesson.
+## Validate a Dev Change
 
-## Probes
+Walk these layers in order after changing `plugins/*/hooks`, `lib/`, or skills; stop at the first failure, run twice (once per client), and quote verbatim excerpts in your report:
 
-Run probes once per client; a pass on one is no evidence for the other.
-
-**Re-run an agy failure without `--agent` before you believe it.** If a probe
-fails under `--agent <name>` and passes without it, the agent definition is
-broken, not the surface. The usual cause is the frontmatter `tools:` list, which
-fails in two directions:
-
-- **Absent or empty → silent starvation.** agy restricts the agent to ten
-  read-only tools and boots normally. Nothing errors; the agent simply has no
-  `write_to_file`, `run_command` or `invoke_subagent`, improvises, and reports a
-  plausible failure of its own. Make "list your own callable tools" step one of
-  any probe — a ten-name list is the tell.
-- **Naming a tool agy does not register → hard failure.** The pane shows only
-  `⚠ Agent execution terminated due to error.` with an error ID; the real
-  message is in `agy-cli.log`:
-  `failed to resolve components: unknown component: tool "<name>" not found in registry`.
-  One bad name kills the whole agent, so read that log before concluding
-  anything from the pane.
-
-**Never score a capability on what the agent says.** Ask an agent for a server's
-output and it will grep that output out of any file lying around — including the
-logs, task outputs and transcripts your own probing left behind — and report it
-as though it had made the call. Score the tool-call record instead: the session's Phoenix
-spans (`phoenix`), `tool_calls` in agy's
-`transcript_full.jsonl`, or `tool_use` in claude's session jsonl. That is what
-authoritative MCP verification checks.
-
-## Launch a container under tmux
-
-Write the invocation into a launch script rather than passing an inline command
-string to `tmux new-session`: inline commands break on shell expansion, nested
-quoting, and virtualenv path resolution (`uv run python`) inside `/bin/sh -c`.
-
-```bash
-CHECKOUT="$(git rev-parse --show-toplevel)"
-export TMUX_NAME="polecat-debug-$RANDOM"
-LAUNCH_SCRIPT="/tmp/launch-${TMUX_NAME}.sh"
-
-cat > "$LAUNCH_SCRIPT" <<EOF
-#!/usr/bin/env bash
-export POLECAT_IMAGE="${POLECAT_IMAGE:-polecat:latest}"
-
-# Run via the installer-supplied `polecat` host launcher on PATH:
-exec polecat -d "$CHECKOUT" -s "$TMUX_NAME" -i -- claude -p "call pkb get_status() and return results"
-EOF
-chmod +x "$LAUNCH_SCRIPT"
-
-tmux new-session -d -s "$TMUX_NAME" -x 220 -y 50 "$LAUNCH_SCRIPT"
-```
-
-- **Always place `--` before the agent's own flags and prompt**:
-
-  ```bash
-  polecat -d "$CHECKOUT" -s "$TMUX_NAME" -i -- claude -p "call pkb get_status() and return results"
-  polecat -d "$CHECKOUT" -s "$TMUX_NAME" -i -- agy -p "call pkb get_status() and return results"
-  ```
-
-- **Always pass `-x 220 -y 50`** to `tmux new-session`, so TUI headers, input
-  boxes, and status lines render without wrapping corruption.
-
-Client differences that change how you drive: `agy` needs `$GEMINI_CONFIG_DIR`
-staged with an `antigravity-oauth-token`, renders
-`⚠ Verifying your account...` for 2–3 s before its header plan name
-(`username (Google AI Ultra)`) appears, writes its logs to files rather than
-stdout, and requires an explicit `-i`/`--prompt-interactive` or `-p`/`--print`
-where `claude` accepts a positional prompt. Both take `--agent <name>`
-(`@aops:james` for `claude`, `james` for `agy`).
-
-## Drive it
-
-```bash
-# Readiness: poll the pane. claude — wait for the '❯' prompt box.
-# agy — wait 2-3s for the auth race to clear and the plan name to render.
-tmux capture-pane -t "$TMUX_NAME" -p -S -2000
-
-# Send prompt text with -l (literal), so tmux does not parse it as keys.
-tmux send-keys -t "$TMUX_NAME" -l "your prompt text here"
-tmux send-keys -t "$TMUX_NAME" Enter
-
-# TUI menu navigation (e.g. AskUserQuestion)
-tmux send-keys -t "$TMUX_NAME" Down Down Enter
-```
-
-`capture-pane` reflects what an attached user sees. It is an ephemeral buffer
-that dies with the tmux session, so capture anything you intend to cite.
-
-Teardown — container cleanup is automatic with `--rm`:
-
-```bash
-tmux send-keys -t "$TMUX_NAME" -l "/exit"; tmux send-keys -t "$TMUX_NAME" Enter
-sleep 2   # let the client flush its transcript buffer through the bind-mount
-tmux kill-session -t "$TMUX_NAME" 2>/dev/null || true
-```
-
-## Telemetry
-
-What a run actually did -- its tool calls, model output, errors, latencies and token
-spend -- is read from the Phoenix span store with the `phoenix` skill in the `ida`
-plugin (`ida:phoenix`). It generates a concise session outline (`<slug>.outline.md`) with
-built-in durations and costs, and executes declarative query templates via Phoenix MCP.
-
-## Host filesystem audit
-
-Container artifacts land at
-`$AOPS_SESSIONS/logs/<YYYYMMDD>/<session-id>/workspace/`.
-
-```bash
-SESS_DIR="$AOPS_SESSIONS/logs/$(date +%Y%m%d)/$TMUX_NAME/workspace"
-jq '{schema_version, exit_code, agent_exit_code, final_task_status, task_guard_outcome}' "$SESS_DIR/run.json"
-jq -c '.' "$SESS_DIR/polecat-session-hooks.jsonl" | head -n 10
-```
-
-Pass assertions: `run.json` has `.schema_version == 1` and `.exit_code == 0`.
-Every `polecat-session-hooks.jsonl` line conforms to the
-five-field schema `ts` (ISO 8601, microsecond UTC), `client` (`claude`|`agy`),
-`event`, `session_id`, `tool`.
-
-## Read durable state from inside a container
-
-`$AOPS_SESSIONS` is never forwarded into a single-repository container, so every
-path above names a host directory you cannot reach. What you can reach is each
-client's own state root:
-
-| Whose conversation | Where it lands inside the container |
-| - | - |
-| Yours, under `claude` | `$CLAUDE_CONFIG_DIR/projects/<slugified-cwd>/<session-uuid>.jsonl`, else `~/.claude/projects/...` |
-| A worker you spawned via `Agent` | `<the same project dir>/<your-session-uuid>/subagents/agent-*.jsonl`, with a `.meta.json` beside it naming the agent that ran |
-| An `agy` worker you launched | `~/.gemini/antigravity-cli/brain/<conversation-id>/.system_generated/logs/transcript.jsonl` and `transcript_full.jsonl` |
-
-`$AOPS_SESSION_STATE_DIR` names the host-mounted directory, so
-`polecat-session-hooks.jsonl` sits beside your own transcript and is readable
-live. `run.json` is not there: the host writes it after the container exits.
-
-List all of them, newest first, tagged by client, kind, agent, and parent
-session — `--kind subagent` narrows to workers, `--json` makes it
-machine-readable:
-
-```bash
-PYTHONPATH="$(git rev-parse --show-toplevel)/lib/py" uv run python -m transcripts.discovery --kind subagent
-```
-
-Then read the JSONL each row names. A worker's `tool_use` records are what you
-score its claims against; its own report is not evidence that anything ran.
-
-## Validate a dev change
-
-Run this after modifying `plugins/*/hooks`, `lib/`, or skills. Walk the layers in
-order and stop at the first failure. Run the whole walk twice, once per client.
-Quote verbatim excerpts from `capture-pane`, session logs, and Phoenix output in
-your report.
-
-1. **Pre-flight** — confirm `_log_fire` and `_load_handlers` in
-   `lib/hooks/dispatch.py` are not returning early.
-2. **§0 image freshness** — verify container image freshness against the `Dockerfile` it was built from.
-3. **§1 structural** — confirm plugins are installed in the container image.
-4. **§2 boot signals** — `claude`: banner and `❯` box render inside
-   `/workspace`. `agy`: the 2–3 s auth race clears and the plan name renders.
-5. **§3 first prompt** — send a prompt (e.g. `"call pkb get_status() and return
-   results"`) and **assert the model output string or the tool-call record** in
-   the pane or transcript. A rendered prompt box is not proof of success.
-6. **§4 exercise the changed path** — invoke the specific changed skill, hook,
-   or tool call and capture the execution output.
-7. **§5 audit** -- pull the session's spans with `phoenix` and assert `TOOL`
-   spans exist with `status_code != 'ERROR'`. Then the host filesystem audit above.
-8. **§6 teardown** — `/exit`, `sleep 2`, kill the session.
-
-## Diagnostic gotchas
-
-Read [`references/gotchas.md`](references/gotchas.md) for the symptom → cause
-→ fix table before improvising a fix to any of the failures above.
+1. **Pre-flight**: Confirm `_log_fire` and `_load_handlers` in `lib/hooks/dispatch.py` do not return early.
+2. **Image freshness**: Verify the container image is fresh against its `Dockerfile`.
+3. **Structural**: Confirm plugins are installed in the container image.
+4. **Boot signals**: `claude` renders banner and `❯` in `/workspace`; `agy` clears the 2-3 s auth race and renders its plan name.
+5. **First prompt**: Send a tool-calling prompt and assert the model output or tool-call record in the pane or transcript.
+6. **Exercise changed path**: Invoke the modified skill, hook, or tool call and capture execution output.
+7. **Audit**: Verify non-error `TOOL` spans via `ida:phoenix` and run the host filesystem audit (`run.json` and `polecat-session-hooks.jsonl`).
+8. **Teardown**: Send `/exit`, wait for transcript flush (`sleep 2`), and kill the tmux session.
