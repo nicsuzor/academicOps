@@ -23,7 +23,7 @@ Load only the resource needed for the task from `resources/`:
 - For keyset-pageable, column-projected chronological steps: read `resources/session-outline.sql`.
 - For task-level spend rollups or ranking top sessions by USD spend over a window: read `resources/cost-by-task.sql`.
 - For spend per harness (`aops.surface`) and model over a long window (a week), with nested cache keys (`llm.token_count.prompt_details.cache_read` / `.cache_write`): read `resources/spend-by-harness-model.sql`, or run `uv run python "${CLAUDE_SKILL_DIR:-plugins/ida/skills/phoenix}/scripts/phoenix_token_cost.py" --since <time> --by harness-model` (server-side sums in adaptive time chunks, halved on timeout, deduped on `llm.message.id`). Keep `--by session` (default) or `--by task` to a few hours because they download every span in the window. Prices are comparable list prices per million tokens (per-call long-context tiers do not apply in `--by harness-model` rollups); if you need client-specific emitter or model-alias mapping details, read `resources/span-store.md` before computing totals.
-- For cross-session text/tool/error searches, subagent session discovery, or single-span payload drill-down: read `resources/cross-session-search.sql`.
+- For cross-session text/tool/error searches, windowed user-prompt and reply sweeps, subagent session discovery, or single-span payload drill-down: read `resources/cross-session-search.sql`.
 
 Note: Phoenix holds nothing before 2026-11-12 01:39 UTC, so older windows return empty chunks.
 
