@@ -15,6 +15,7 @@ import {
   type InputRichMessageSpec,
   type RichMediaInputItem,
 } from "../telegram/rich-message.js";
+import { formatWidgetFallbackMarkdown, isWidgetNotAllowedError } from "../telegram/widgets.js";
 import { splitVoiceTier2Quotes } from "../telegram/voice.js";
 import { TurnManager } from "./turn-manager.js";
 
@@ -140,6 +141,8 @@ export interface OutboundAskUserResult {
   question_ids: string[];
   status: "posted" | "failed";
   presentation?: "widget" | "rich";
+  fallback_from?: "widget";
+  fallback_reason?: string;
   message: string;
 }
 
@@ -383,6 +386,8 @@ export class SharedTelegramChannelCore {
 
     const postedIds: string[] = [];
     const usedPresentations = new Set<"widget" | "rich">();
+    let fallbackFrom: "widget" | undefined;
+    let fallbackReason: string | undefined;
     for (const q of questions) {
       const multiSelect = q.multi_select !== undefined ? q.multi_select : q.multiSelect;
       const allowOther = q.allow_custom !== undefined ? q.allow_custom : q.allowOther;
@@ -391,9 +396,6 @@ export class SharedTelegramChannelCore {
       const isMiniAppOnly = Boolean(
         topMiniAppOnly || q.mini_app_only || q.miniapp_only || q.miniAppOnly || q.chat === false
       );
-      if (!isMiniAppOnly) {
-        usedPresentations.add(presentation);
-      }
       const effectiveThreadId = (q.message_thread_id ?? q.messageThreadId ?? q.thread_id ?? q.threadId ?? topThreadId) ?? this.bot?.getLastThreadId(defaultChatId);
       const detailText = q.detail ?? q.details ?? topDetail;
       let detailsId = q.detailsId ?? q.details_id;
@@ -447,7 +449,18 @@ export class SharedTelegramChannelCore {
               message: `Question delivery failed: ${errorMsg}`,
             };
           }
+          if (sendRes.presentation) {
+            usedPresentations.add(sendRes.presentation);
+          } else if (!sendRes.fallbackFrom) {
+            usedPresentations.add(presentation);
+          }
+          if (sendRes.fallbackFrom) {
+            fallbackFrom = sendRes.fallbackFrom;
+            fallbackReason = sendRes.fallbackReason;
+          }
         }
+      } else if (!isMiniAppOnly) {
+        usedPresentations.add(presentation);
       }
     }
 
@@ -457,6 +470,12 @@ export class SharedTelegramChannelCore {
         postedIds.length === 1
           ? `Question ${postedIds[0]} queued in Mini App (mini_app_only: true; no chat cards sent). The user will see it upon opening the Mini App.`
           : `Questions ${postedIds.join(", ")} queued in Mini App (mini_app_only: true; no chat cards sent). The user will see them upon opening the Mini App.`;
+    } else if (fallbackFrom) {
+      const targetSurface = usedPresentations.has("rich") ? "Rich Message" : "standard message";
+      message =
+        postedIds.length === 1
+          ? `Question ${postedIds[0]} posted as ${targetSurface} fallback (Telegram rejected widget: ${fallbackReason}). Do not assume an answer; continue other work or end your turn.`
+          : `Questions ${postedIds.join(", ")} posted with ${targetSurface} fallback (Telegram rejected widget: ${fallbackReason}). Do not assume an answer; continue other work or end your turn.`;
     } else {
       message =
         postedIds.length === 1
@@ -475,6 +494,7 @@ export class SharedTelegramChannelCore {
       question_ids: postedIds,
       status: "posted",
       ...(resolvedPresentation ? { presentation: resolvedPresentation } : {}),
+      ...(fallbackFrom ? { fallback_from: fallbackFrom, fallback_reason: fallbackReason } : {}),
       message,
     };
   }
@@ -1548,6 +1568,37 @@ export class SharedTelegramChannelCore {
       inlineKeyboard: this.extractInlineKeyboard(args),
     });
     if (!res.ok) {
+      if (isWidgetNotAllowedError(res)) {
+        const markdown = formatWidgetFallbackMarkdown({
+          caption,
+          chatData: typeof args.chat_data === "string" ? args.chat_data : undefined,
+          publicData: typeof args.public_data === "string" ? args.public_data : undefined,
+          html: args.html,
+        });
+        const richRes = await this.bot.sendRichMessage({
+          chatId,
+          richMessage: { markdown },
+          messageThreadId: this.extractExplicitThreadId(args),
+          replyTo,
+          disableNotification: typeof args.disable_notification === "boolean" ? args.disable_notification : undefined,
+          protectContent: typeof args.protect_content === "boolean" ? args.protect_content : undefined,
+          messageEffectId: typeof args.message_effect_id === "string" ? args.message_effect_id : undefined,
+          inlineKeyboard: this.extractInlineKeyboard(args),
+        });
+        if (richRes.ok) {
+          this.store.recordTurn("out", caption && caption.trim() ? caption : "Interactive widget (Rich Message fallback)");
+          return {
+            success: true,
+            fallback: true,
+            fallback_from: "widget",
+            presentation: "rich",
+            fallback_reason: res.description,
+            note: `Widget rejected by Telegram (${res.description}); sent as Rich Message fallback.`,
+            message_id: richRes.result?.message_id,
+            ...(richRes.effectiveThreadId !== undefined ? { message_thread_id: richRes.effectiveThreadId } : {}),
+          };
+        }
+      }
       return { success: false, error: res.description || "Failed to send widget" };
     }
     this.store.recordTurn("out", caption && caption.trim() ? caption : "Interactive widget");

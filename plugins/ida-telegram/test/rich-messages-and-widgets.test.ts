@@ -643,8 +643,8 @@ describe("Bot API 10.1-10.4 Rich Messages and HTML Widgets", () => {
     });
     expect(events.some((e) => e.meta.question_id === qMultiId && e.meta.choice === "Spec, Tests")).toBe(true);
 
-    // Group chat default ask_user fails loudly (no silent downgrade)
-    const grpFail = await mcp.handleMessage({
+    // Group chat default ask_user falls back to Rich Message explicitly when Telegram rejects widgets
+    const grpFallback = await mcp.handleMessage({
       jsonrpc: "2.0",
       id: 22,
       method: "tools/call",
@@ -653,8 +653,14 @@ describe("Bot API 10.1-10.4 Rich Messages and HTML Widgets", () => {
         arguments: { chat_id: -100999, questions: [{ question: "Proceed?", options: [{ label: "Yes" }] }] },
       },
     });
-    expect((grpFail?.result as any)?.isError).toBe(true);
-    expect(String((grpFail?.result as any)?.content?.[0]?.text)).toContain("private chats");
+    expect((grpFallback?.result as any)?.isError).toBeUndefined();
+    const parsedGrp = JSON.parse((grpFallback?.result as any)?.content?.[0]?.text);
+    expect(parsedGrp.status).toBe("posted");
+    expect(parsedGrp.presentation).toBe("rich");
+    expect(parsedGrp.fallback_from).toBe("widget");
+    expect(parsedGrp.fallback_reason).toContain("private chats");
+    expect(parsedGrp.message).toContain("Rich Message fallback");
+    expect(apiCalls.some((c) => c.method === "sendRichMessage" && c.payload.chat_id === -100999)).toBe(true);
 
     // Explicit presentation: "rich" succeeds via sendRichMessage in group
     const grpRich = await mcp.handleMessage({
@@ -948,5 +954,131 @@ describe("Bot API 10.1-10.4 Rich Messages and HTML Widgets", () => {
       { getElementById: (id: string) => stEls[id] || null }
     );
     expect(stEls.rf.className).toBe("bt");
+  });
+
+  test("private chat with topics INPUT_MEDIA_WIDGET_NOT_ALLOWED falls back to Rich Message for ask_user decisions and send_widget status trackers", async () => {
+    const { config, store, broker, permRelay } = makeEnv({ ALLOWED_USER_IDS: "8860530746" });
+    store.updateChatState(8860530746, { activeThreadId: 6622, topicsEnabled: true });
+    const apiCalls: Array<{ method: string; payload: any }> = [];
+    const events: Array<{ content: string; meta: Record<string, string> }> = [];
+    const bot = new TelegramBotClient(config, broker, permRelay, (c, m) => events.push({ content: c, meta: m }), store);
+    bot.setTopicsEnabled(8860530746, true);
+    (bot as any).callApi = async (method: string, payload: any) => {
+      apiCalls.push({ method, payload });
+      if (method === "sendWidget" && payload.message_thread_id !== undefined) {
+        return { ok: false, error_code: 400, description: "Bad Request: INPUT_MEDIA_WIDGET_NOT_ALLOWED" };
+      }
+      return {
+        ok: true,
+        result: {
+          message_id: 1780 + apiCalls.length,
+          chat: { id: payload.chat_id, type: "private" },
+          ...(payload.message_thread_id !== undefined ? { message_thread_id: payload.message_thread_id } : {}),
+        },
+      };
+    };
+    const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
+
+    // 1. ask_user decision in private chat with topics (chat_id 8860530746, thread 6622)
+    const askRes = await mcp.handleMessage({
+      jsonrpc: "2.0",
+      id: 501,
+      method: "tools/call",
+      params: {
+        name: "ask_user",
+        arguments: {
+          chat_id: 8860530746,
+          message_thread_id: 6622,
+          questions: [
+            {
+              kind: "decision",
+              header: "Deployment",
+              question: "Roll out widget fallback?",
+              allow_defer: true,
+              options: [
+                { label: "Ship it", description: "Deploy to dev", recommended: true, pros: ["Unblocks chat"], cons: ["Needs live check"] },
+                { label: "Hold", description: "Wait for review" },
+              ],
+            },
+          ],
+        },
+      },
+    });
+    expect((askRes?.result as any)?.isError).toBeUndefined();
+    const parsedAsk = JSON.parse((askRes?.result as any).content[0].text);
+    expect(parsedAsk.status).toBe("posted");
+    expect(parsedAsk.presentation).toBe("rich");
+    expect(parsedAsk.fallback_from).toBe("widget");
+    expect(parsedAsk.fallback_reason).toContain("INPUT_MEDIA_WIDGET_NOT_ALLOWED");
+    expect(parsedAsk.message).toContain("Rich Message fallback");
+
+    const qid = parsedAsk.question_ids[0];
+    expect(broker.getQuestion(qid)?.presentation).toBe("rich");
+
+    const richAskCall = apiCalls.find((c) => c.method === "sendRichMessage" && c.payload.message_thread_id === 6622);
+    expect(richAskCall).toBeDefined();
+    expect(richAskCall!.payload.rich_message.markdown).toContain("Roll out widget fallback?");
+    expect(richAskCall!.payload.reply_markup.inline_keyboard.flat().some((b: any) => b.callback_data === `q:${qid}:0:0`)).toBe(true);
+
+    // Tapping an inline button settles via editMessageReplyMarkup (not editMessageWidgetData)
+    await (bot as any).handleUpdate({
+      update_id: 9901,
+      callback_query: {
+        id: "cb_fallback_1",
+        from: { id: 8860530746, is_bot: false, first_name: "Nic" },
+        data: `q:${qid}:0:0`,
+        message: {
+          message_id: richAskCall!.payload ? 1782 : 0,
+          message_thread_id: 6622,
+          date: 1,
+          chat: { id: 8860530746, type: "private" },
+          rich_message: { markdown: richAskCall!.payload.rich_message.markdown },
+        },
+      },
+    });
+    expect(apiCalls.some((c) => c.method === "editMessageReplyMarkup")).toBe(true);
+    expect(apiCalls.some((c) => c.method === "editMessageWidgetData")).toBe(false);
+    expect(events.some((e) => e.meta.event === "question_answered" && e.meta.question_id === qid && e.meta.choice === "Ship it")).toBe(true);
+
+    // 2. send_widget status tracker in the same private chat with topics
+    const widgetRes = await mcp.handleMessage({
+      jsonrpc: "2.0",
+      id: 502,
+      method: "tools/call",
+      params: {
+        name: "send_widget",
+        arguments: {
+          chat_id: 8860530746,
+          message_thread_id: 6622,
+          caption: "Build Pipeline",
+          chat_data: JSON.stringify({
+            t: "Build Pipeline",
+            s: "running",
+            pct: 50,
+            steps: [
+              { l: "Lint", s: "done" },
+              { l: "Tests", s: "running" },
+            ],
+            note: "Running unit suite",
+          }),
+          html: "<div>Pipeline</div>",
+        },
+      },
+    });
+    expect((widgetRes?.result as any)?.isError).toBeUndefined();
+    const parsedWidget = JSON.parse((widgetRes?.result as any).content[0].text);
+    expect(parsedWidget.success).toBe(true);
+    expect(parsedWidget.fallback).toBe(true);
+    expect(parsedWidget.fallback_from).toBe("widget");
+    expect(parsedWidget.presentation).toBe("rich");
+    expect(parsedWidget.fallback_reason).toContain("INPUT_MEDIA_WIDGET_NOT_ALLOWED");
+    expect(parsedWidget.message_thread_id).toBe(6622);
+
+    const richStatusCall = apiCalls.filter((c) => c.method === "sendRichMessage").pop();
+    expect(richStatusCall).toBeDefined();
+    expect(richStatusCall!.payload.rich_message.markdown).toContain("Build Pipeline");
+    expect(richStatusCall!.payload.rich_message.markdown).toContain("50%");
+    expect(richStatusCall!.payload.rich_message.markdown).toContain("✅ Lint (done)");
+    expect(richStatusCall!.payload.rich_message.markdown).toContain("⏳ Tests (running)");
   });
 });

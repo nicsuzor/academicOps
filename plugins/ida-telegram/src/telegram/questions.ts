@@ -466,7 +466,7 @@ export class QuestionBroker {
     return { cardText, channelEvent, question: q };
   }
 
-  public setPresentation(id: string, presentation: "widget" | "rich") {
+  public setPresentation(id: string, presentation?: "widget" | "rich") {
     const q = this.questions.get(id);
     if (q) {
       q.presentation = presentation;
