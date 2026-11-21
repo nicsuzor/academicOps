@@ -129,7 +129,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
   {
     name: "ask_user",
     description:
-      "Post an asynchronous question or decision prompt to the user as an interactive HTML Widget (default in private chats; pass presentation: 'rich' for groups) with optional pros/cons, recommendation badge, Defer/Other actions, and Mini App Details sync.",
+      "Post an asynchronous question or decision prompt to the user as an interactive HTML Widget (default; falls back to 'rich' if Telegram rejects widgets in the chat, or pass presentation: 'rich' explicitly) with optional pros/cons, recommendation badge, Defer/Other actions, and Mini App Details sync.",
     inputSchema: {
       type: "object",
       properties: {

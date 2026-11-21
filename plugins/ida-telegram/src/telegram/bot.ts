@@ -15,6 +15,7 @@ import {
   buildQuestionWidget,
   buildSettledWidgetChatData,
   formatQuestionRichMarkdown,
+  isWidgetNotAllowedError,
   validateWidgetData,
   validateWidgetHtml,
 } from "./widgets.js";
@@ -941,7 +942,17 @@ export class TelegramBotClient {
     qid: string,
     card: { text: string; buttons: Array<{ text: string; callbackData?: string; web_app?: { url: string } }> },
     messageThreadId?: number
-  ) {
+  ): Promise<{
+    ok: boolean;
+    messageId?: number;
+    result?: any;
+    presentation?: "widget" | "rich";
+    fallbackFrom?: "widget";
+    fallbackReason?: string;
+    description?: string;
+    error_code?: number;
+    error?: string;
+  }> {
     const formatted = formatMarkdownToEntities(card.text);
     const inline_keyboard = card.buttons.map((b) => {
       if (b.web_app) {
@@ -956,6 +967,8 @@ export class TelegramBotClient {
     const effectiveReplyTo = effectiveThreadId === undefined ? this.getLastInboundMessageId(chatId) : undefined;
     const storedQ = this.broker.getQuestion(qid);
     const presentation = storedQ?.presentation ?? "widget";
+    let fallbackFrom: "widget" | undefined;
+    let fallbackReason: string | undefined;
 
     if (storedQ && presentation === "widget") {
       try {
@@ -987,19 +1000,24 @@ export class TelegramBotClient {
           if (this.store) {
             this.store.setLastCard(chatId, widgetRes.result.message_id, built.caption);
           }
-          return { ok: true, messageId: widgetRes.result.message_id, result: widgetRes.result };
+          return { ok: true, messageId: widgetRes.result.message_id, result: widgetRes.result, presentation: "widget" };
         }
-        return {
-          ok: false,
-          description: widgetRes?.description || "Telegram sendWidget failed",
-          error_code: widgetRes?.error_code,
-        };
+        if (isWidgetNotAllowedError(widgetRes)) {
+          fallbackFrom = "widget";
+          fallbackReason = widgetRes?.description || "INPUT_MEDIA_WIDGET_NOT_ALLOWED";
+        } else {
+          return {
+            ok: false,
+            description: widgetRes?.description || "Telegram sendWidget failed",
+            error_code: widgetRes?.error_code,
+          };
+        }
       } catch (err) {
         return { ok: false, error: err instanceof Error ? err.message : String(err) };
       }
     }
 
-    if (storedQ && presentation === "rich") {
+    if (storedQ && (presentation === "rich" || fallbackFrom === "widget")) {
       const markdown = formatQuestionRichMarkdown({
         id: storedQ.id,
         question: storedQ.question,
@@ -1024,13 +1042,21 @@ export class TelegramBotClient {
         if (this.store) {
           this.store.setLastCard(chatId, richRes.result.message_id, card.text);
         }
-        return { ok: true, messageId: richRes.result.message_id, result: richRes.result };
+        return {
+          ok: true,
+          messageId: richRes.result.message_id,
+          result: richRes.result,
+          presentation: "rich",
+          ...(fallbackFrom ? { fallbackFrom, fallbackReason } : {}),
+        };
       }
-      return {
-        ok: false,
-        description: richRes?.description || "Telegram sendRichMessage failed",
-        error_code: richRes?.error_code,
-      };
+      if (!fallbackFrom) {
+        return {
+          ok: false,
+          description: richRes?.description || "Telegram sendRichMessage failed",
+          error_code: richRes?.error_code,
+        };
+      }
     }
 
     const payload: Record<string, unknown> = {
@@ -1048,13 +1074,21 @@ export class TelegramBotClient {
     try {
       const res = await this.callApi("sendMessage", payload);
       if (res?.ok && res?.result?.message_id) {
+        if (fallbackFrom) {
+          this.broker.setPresentation(qid, undefined);
+        }
         this.broker.setMessageId(qid, res.result.message_id);
         this.recordMessageThread(res.result.message_id, effectiveThreadId);
         if (this.store) {
           this.store.setLastCard(chatId, res.result.message_id, card.text);
         }
         this.recordMessageExcerpt(res.result.message_id, formatted.plainText);
-        return { ok: true, messageId: res.result.message_id, result: res.result };
+        return {
+          ok: true,
+          messageId: res.result.message_id,
+          result: res.result,
+          ...(fallbackFrom ? { fallbackFrom, fallbackReason } : {}),
+        };
       }
       this.recordMessageExcerpt(res?.result?.message_id, formatted.plainText);
 
@@ -1073,13 +1107,21 @@ export class TelegramBotClient {
         reply_markup: { inline_keyboard },
       });
       if (fallbackRes?.ok && fallbackRes?.result?.message_id) {
+        if (fallbackFrom) {
+          this.broker.setPresentation(qid, undefined);
+        }
         this.broker.setMessageId(qid, fallbackRes.result.message_id);
         this.recordMessageThread(fallbackRes.result.message_id, effectiveThreadId);
         if (this.store) {
           this.store.setLastCard(chatId, fallbackRes.result.message_id, card.text);
         }
         this.recordMessageExcerpt(fallbackRes.result.message_id, formatted.plainText);
-        return { ok: true, messageId: fallbackRes.result.message_id, result: fallbackRes.result };
+        return {
+          ok: true,
+          messageId: fallbackRes.result.message_id,
+          result: fallbackRes.result,
+          ...(fallbackFrom ? { fallbackFrom, fallbackReason } : {}),
+        };
       }
       const errorMsg = fallbackRes?.description || fallbackRes?.error || res?.description || res?.error || "Telegram sendMessage returned non-ok or missing message_id";
       this.broker.markDeliveryFailed(qid, errorMsg);

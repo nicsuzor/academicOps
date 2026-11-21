@@ -330,3 +330,83 @@ export function formatQuestionRichMarkdown(input: WidgetPromptInput): string {
   }
   return parts.join("\n\n");
 }
+
+export function isWidgetNotAllowedError(
+  res?: { error_code?: number; description?: string; error?: string } | null
+): boolean {
+  const msg = String(res?.description || res?.error || "");
+  return /INPUT_MEDIA_WIDGET_NOT_ALLOWED|WIDGET_NOT_ALLOWED|widgets?\b.*\bonly in private chats\b/i.test(msg);
+}
+
+export function formatWidgetFallbackMarkdown(options: {
+  caption?: string;
+  chatData?: string;
+  publicData?: string;
+  html?: string;
+}): string {
+  const parts: string[] = [];
+  const caption = options.caption?.trim();
+  if (caption) {
+    parts.push(`**${caption}**`);
+  }
+
+  const rawData = options.chatData ?? options.publicData;
+  if (rawData) {
+    try {
+      const parsed = JSON.parse(rawData) as Record<string, unknown>;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        const lines: string[] = [];
+        const title = typeof parsed.t === "string" ? parsed.t.trim() : "";
+        const status = typeof parsed.s === "string" ? parsed.s.trim() : "";
+        const pct = typeof parsed.pct === "number" ? `${parsed.pct}%` : "";
+        if (title && title !== caption) lines.push(`**${title}**`);
+        if (status || pct) {
+          lines.push([status ? `Status: **${status}**` : "", pct ? `Progress: **${pct}**` : ""].filter(Boolean).join(" · "));
+        }
+        if (Array.isArray(parsed.steps)) {
+          for (const step of parsed.steps) {
+            if (step && typeof step === "object") {
+              const s = step as Record<string, unknown>;
+              const lbl = String(s.l ?? s.label ?? s.name ?? "").trim();
+              const st = String(s.s ?? s.status ?? "").trim();
+              if (lbl) {
+                const icon = st === "done" || st === "completed" ? "✅" : st === "failed" ? "❌" : st === "running" || st === "in_progress" ? "⏳" : "•";
+                lines.push(`${icon} ${lbl}${st ? ` (${st})` : ""}`);
+              }
+            }
+          }
+        }
+        if (typeof parsed.note === "string" && parsed.note.trim()) {
+          lines.push(parsed.note.trim());
+        }
+        if (lines.length > 0) {
+          parts.push(lines.join("\n"));
+        } else {
+          parts.push(`\`\`\`json\n${JSON.stringify(parsed, null, 2)}\n\`\`\``);
+        }
+      } else {
+        parts.push(String(rawData));
+      }
+    } catch {
+      parts.push(rawData);
+    }
+  }
+
+  if (parts.length === 0 && options.html) {
+    const stripped = options.html
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (stripped) {
+      parts.push(stripped.length > 1000 ? `${stripped.slice(0, 997)}...` : stripped);
+    }
+  }
+
+  if (parts.length === 0) {
+    parts.push("Interactive widget");
+  }
+
+  return parts.join("\n\n");
+}
