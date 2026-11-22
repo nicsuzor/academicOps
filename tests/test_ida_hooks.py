@@ -845,3 +845,90 @@ def test_dispatch_normalize_env_session_id_precedence(monkeypatch: pytest.Monkey
 
     monkeypatch.delenv("ANTIGRAVITY_CONVERSATION_ID")
     assert normalize("agy", "PreToolUse", agy_raw, IDA_HOOKS).session_id == "stdin-agy"
+
+
+def test_dispatch_headless_handlers_delivers_honesty_and_premise_check_once(
+    tmp_path: Path, staged_hooks: Path
+):
+    """Modular --handlers headless_handlers delivers honesty.md + premise-check once per conversation without PKB_MCP_URL."""
+    skill_dir = tmp_path / "skills" / "premise-check"
+    skill_dir.mkdir(parents=True)
+    shutil.copy2(
+        REPO_ROOT / "plugins" / "ida" / "skills" / "premise-check" / "SKILL.md",
+        skill_dir / "SKILL.md",
+    )
+
+    pointer_dir = tmp_path / "pointers"
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if k not in ("PKB_MCP_URL", "ANTIGRAVITY_CONVERSATION_ID", "AOPS_SESSION_ID")
+    }
+    env["AOPS_SESSION_POINTER_DIR"] = str(pointer_dir)
+    payload = json.dumps({"conversationId": "headless-conv-1"})
+
+    first = subprocess.run(
+        [
+            sys.executable,
+            str(staged_hooks / "dispatch.py"),
+            "agy",
+            "PreInvocation",
+            "--handlers",
+            "headless_handlers",
+        ],
+        input=payload,
+        text=True,
+        capture_output=True,
+        env=env,
+        check=False,
+    )
+    assert first.returncode == 0, first.stderr
+    rendered = json.loads(first.stdout)
+    steps = rendered.get("injectSteps", [])
+    combined = "\n".join(
+        str(s.get("ephemeralMessage") or (s.get("systemMessage") or {}).get("systemMessage") or "")
+        for s in steps
+    )
+    expected_honesty, _ = load_message_pair(staged_hooks, "honesty")
+    assert expected_honesty in combined
+    assert "# Premise Check" in combined
+    assert "PKB_MCP_URL" not in combined
+    assert "ida Plugin Core" not in combined
+
+    second = subprocess.run(
+        [
+            sys.executable,
+            str(staged_hooks / "dispatch.py"),
+            "agy",
+            "PreInvocation",
+            "--handlers",
+            "headless_handlers",
+        ],
+        input=payload,
+        text=True,
+        capture_output=True,
+        env=env,
+        check=False,
+    )
+    assert second.returncode == 0, second.stderr
+    assert second.stdout.strip() == ""
+
+
+def test_dispatch_rejects_invalid_handlers_module_name(staged_hooks: Path):
+    """dispatch.py fails closed on non-identifier --handlers module names."""
+    res = subprocess.run(
+        [
+            sys.executable,
+            str(staged_hooks / "dispatch.py"),
+            "agy",
+            "PreInvocation",
+            "--handlers",
+            "../evil",
+        ],
+        input="{}",
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert res.returncode != 0
+    assert "invalid handlers module name" in res.stderr

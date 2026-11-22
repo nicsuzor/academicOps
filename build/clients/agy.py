@@ -59,6 +59,16 @@ def adapt(build_dir: Path, ctx: BuildContext) -> None:
     # an empty one.
     if manifests.get("hooks"):
         _write_json(build_dir / "hooks.json", _to_agy_hooks(manifests["hooks"], ctx))
+    if manifests.get("headless-hooks"):
+        _write_json(
+            build_dir / "headless-hooks.json",
+            _to_agy_hooks(
+                manifests["headless-hooks"],
+                ctx,
+                hook_name=f"{ctx.plugin.marketplace_name}-headless",
+                source_name="manifest/headless-hooks.json",
+            ),
+        )
 
     # Same rule as hooks: no servers means no file, not an empty one.
     servers = (manifests.get("mcp") or {}).get("mcpServers") or {}
@@ -80,7 +90,13 @@ def adapt(build_dir: Path, ctx: BuildContext) -> None:
             )
 
 
-def _to_agy_hooks(hooks_config: dict, ctx: BuildContext) -> dict:
+def _to_agy_hooks(
+    hooks_config: dict,
+    ctx: BuildContext,
+    *,
+    hook_name: str | None = None,
+    source_name: str = "manifest/hooks.template.json",
+) -> dict:
     """Reshape a Claude Code hook config into agy's `hooks.json` schema.
 
     Templates are written once, in Claude Code's shape — a `hooks` wrapper
@@ -112,11 +128,11 @@ def _to_agy_hooks(hooks_config: dict, ctx: BuildContext) -> dict:
             spec[event] = [_handler(hook) for entry in entries for hook in entry.get("hooks", [])]
         else:
             raise BuildError(
-                f"{ctx.plugin.directory}: manifest/hooks.template.json wires {event!r} "
+                f"{ctx.plugin.directory}: {source_name} wires {event!r} "
                 f"for client=agy, which has no such hook event. agy fires only "
                 f"{', '.join((*_GROUPED_EVENTS, *_FLAT_EVENTS))}."
             )
-    return {ctx.plugin.marketplace_name: spec}
+    return {hook_name or ctx.plugin.marketplace_name: spec}
 
 
 def _checked_mcp(servers: dict, ctx: BuildContext) -> dict:

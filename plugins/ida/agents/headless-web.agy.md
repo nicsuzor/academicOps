@@ -10,7 +10,11 @@ tools:
 inheritMcp: false
 inheritCustomizations: false
 excludeDefaultComponents: true
+skills:
+  - ../skills/premise-check
+hooks:
+  - ../headless-hooks.json
 ---
 
-Answer directly and concisely with no preamble. Cite source URLs for web claims.
-Do not call `finish` on plain-text requests; only call `finish` when a structured JSON schema requires returning a JSON object.
+Return only the final answer with no preamble or intermediate step logs, formatted as clean `premise-check` Argdown prose citing source URLs inline.
+Do not call `finish` on plain-text requests; only call `finish` when a structured JSON schema is active (placing the Argdown argument inside any reasoning field the schema defines).

@@ -688,9 +688,28 @@ def test_agy_only_agent_preserves_low_context_frontmatter_and_omits_other_client
         "inheritMcp: false\n"
         "inheritCustomizations: false\n"
         "excludeDefaultComponents: true\n"
+        "skills:\n"
+        "  - ../skills/premise-check\n"
+        "hooks:\n"
+        "  - ../headless-hooks.json\n"
         "---\n\n"
         "Answer directly.\n"
     )
+
+    headless_hooks_manifest = {
+        "hooks": {
+            "PreInvocation": [
+                {
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": 'uv run --project "${AGY_PLUGIN_ROOT}" python "${AGY_PLUGIN_ROOT}/hooks/dispatch.py" agy PreInvocation --handlers headless_handlers',
+                        }
+                    ]
+                }
+            ]
+        }
+    }
 
     def make_tree(name: str) -> Path:
         root = tmp_path / name
@@ -712,7 +731,7 @@ def test_agy_only_agent_preserves_low_context_frontmatter_and_omits_other_client
             ),
             client="agy",
             version=VERSION,
-            manifests={"plugin": {"name": "ida"}},
+            manifests={"plugin": {"name": "ida"}, "headless-hooks": headless_hooks_manifest},
         ),
     )
 
@@ -726,7 +745,19 @@ def test_agy_only_agent_preserves_low_context_frontmatter_and_omits_other_client
     assert fm["inheritMcp"] is False
     assert fm["inheritCustomizations"] is False
     assert fm["excludeDefaultComponents"] is True
+    assert fm["skills"] == ["../skills/premise-check"]
+    assert fm["hooks"] == ["../headless-hooks.json"]
     assert fm["tools"] == ["finish"]
+
+    built_headless_hooks = agy_dir / "headless-hooks.json"
+    assert built_headless_hooks.is_file()
+    hh_data = json.loads(built_headless_hooks.read_text(encoding="utf-8"))
+    assert "ida-headless" in hh_data
+    cmd = hh_data["ida-headless"]["PreInvocation"][0]["command"]
+    assert (
+        cmd
+        == "uv run --project . python hooks/dispatch.py agy PreInvocation --handlers headless_handlers"
+    )
 
     for client_name, adapt_fn in (("claude", adapt_claude), ("openclaw", adapt_openclaw)):
         client_dir = make_tree(f"{client_name}-plugin")
@@ -742,11 +773,12 @@ def test_agy_only_agent_preserves_low_context_frontmatter_and_omits_other_client
                 ),
                 client=client_name,
                 version=VERSION,
-                manifests={"plugin": {"name": "ida"}},
+                manifests={"plugin": {"name": "ida"}, "headless-hooks": {}},
             ),
         )
         assert not (client_dir / "agents" / "headless-bare.md").exists()
         assert not (client_dir / "agents" / "headless-bare.agy.md").exists()
+        assert not (client_dir / "headless-hooks.json").exists()
 
 
 def test_agent_tools_serialised_as_yaml_list(built):

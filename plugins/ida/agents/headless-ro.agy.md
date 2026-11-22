@@ -11,8 +11,12 @@ tools:
   - finish
 inheritMcp: false
 inheritCustomizations: false
+skills:
+  - ../skills/premise-check
+hooks:
+  - ../headless-hooks.json
 ---
 
-Answer directly and concisely with no preamble.
+Return only the final answer with no preamble or intermediate step logs, formatted as clean `premise-check` Argdown prose citing `file:line` evidence inline.
 Read named file paths or targeted line ranges directly. Use read-only search or listing tools only when a path is omitted; if a file cannot be located with the exposed read-only tools, report that rather than guessing paths.
-Do not call `finish` on plain-text requests; only call `finish` when a structured JSON schema requires returning a JSON object.
+Do not call `finish` on plain-text requests; only call `finish` when a structured JSON schema is active (placing the Argdown argument inside any reasoning field the schema defines).

@@ -247,11 +247,18 @@ def _log_fire(ctx: HookContext) -> None:
         pass
 
 
-def _load_handlers(event: str, hooks_dir: Path) -> list[Handler]:
-    handlers_path = hooks_dir / "handlers.py"
+def _validate_handlers_module(module_name: str) -> str:
+    if not module_name or not module_name.isidentifier():
+        raise ValueError(f"aops hooks: invalid handlers module name {module_name!r}")
+    return module_name
+
+
+def _load_handlers(event: str, hooks_dir: Path, module_name: str = "handlers") -> list[Handler]:
+    module_name = _validate_handlers_module(module_name)
+    handlers_path = hooks_dir / f"{module_name}.py"
     if not handlers_path.exists():
         return []
-    spec = importlib.util.spec_from_file_location("handlers", handlers_path)
+    spec = importlib.util.spec_from_file_location(module_name, handlers_path)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"aops hooks: failed to load {handlers_path} (no spec)")
     module = importlib.util.module_from_spec(spec)
@@ -639,9 +646,23 @@ def _instrument_otel_events(ctx: HookContext) -> None:
 
 def main(argv: list[str]) -> int:
     if len(argv) < 3:
-        print("usage: dispatch.py <client> <event>", file=sys.stderr)
+        print("usage: dispatch.py <client> <event> [--handlers <module>]", file=sys.stderr)
         return 1
     client, wire_event = argv[1], argv[2]
+    handlers_module = "handlers"
+    extra = argv[3:]
+    idx = 0
+    while idx < len(extra):
+        arg = extra[idx]
+        if arg == "--handlers" and idx + 1 < len(extra):
+            handlers_module = _validate_handlers_module(extra[idx + 1])
+            idx += 2
+        elif arg.startswith("--handlers="):
+            handlers_module = _validate_handlers_module(arg.split("=", 1)[1])
+            idx += 1
+        else:
+            print(f"dispatch: unknown argument {arg!r}", file=sys.stderr)
+            return 1
 
     raw: dict[str, Any] = {}
     if not sys.stdin.isatty():
@@ -664,7 +685,7 @@ def main(argv: list[str]) -> int:
     if event is None:
         # Plugins with a wildcard ("*") handler (e.g. aops-debug) observe client
         # wire events even when no canonical hook name exists for them.
-        if not _handlers_for_client(_load_handlers("*", hooks_dir), client):
+        if not _handlers_for_client(_load_handlers("*", hooks_dir, handlers_module), client):
             return 0
         event = wire_event
 
@@ -676,7 +697,7 @@ def main(argv: list[str]) -> int:
     _log_fire(ctx)
     _instrument_otel_events(ctx)
 
-    kept_handlers = _handlers_for_client(_load_handlers(event, hooks_dir), client)
+    kept_handlers = _handlers_for_client(_load_handlers(event, hooks_dir, handlers_module), client)
 
     results = [_run_handler(h, ctx) for h in kept_handlers]
     result = _merge(results)

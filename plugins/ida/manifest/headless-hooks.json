@@ -1,0 +1,54 @@
+{
+  "manifestVersion": "1.0",
+  "name": "ida-headless",
+  "clients": {
+    "__base__": {},
+    "claude": {},
+    "agy": {
+      "hooks": {
+        "PreInvocation": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy PreInvocation --handlers headless_handlers"
+              }
+            ]
+          }
+        ],
+        "PreToolUse": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy PreToolUse --handlers headless_handlers"
+              }
+            ],
+            "matcher": "*"
+          }
+        ],
+        "PostToolUse": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy PostToolUse --handlers headless_handlers"
+              }
+            ],
+            "matcher": "*"
+          }
+        ],
+        "Stop": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy Stop --handlers headless_handlers"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

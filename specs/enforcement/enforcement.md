@@ -91,7 +91,7 @@ Prompt hydration (`search_the_pkb`, detailed in [`specs/agents/prompt-hydration.
 
 ### Plugin startup delivery channel (JIT injection)
 
-Every plugin runs a `SessionStart` hook that injects a plugin-scoped `CORE.md` (at most 20 lines) into ambient session context, providing concise guidance for that plugin's features without extraneous or agent-specific text ([`specs/agents/startup-core-routing.md`](../agents/startup-core-routing.md)). In `ida`, `SessionStart` (and the initial `PreInvocation` on `agy`) also delivers the session metadata line alongside concise pointers for `premise-check` and explicit caller `session_id` attribution on instrumented MCP calls without rewriting tool inputs in `PreToolUse`.
+Every plugin runs a `SessionStart` hook that injects a plugin-scoped `CORE.md` (at most 20 lines) into ambient session context, providing concise guidance for that plugin's features without extraneous or agent-specific text ([`specs/agents/startup-core-routing.md`](../agents/startup-core-routing.md)). In `ida`, `SessionStart` (and the initial `PreInvocation` on `agy`) also delivers the session metadata line alongside concise pointers for `premise-check` and explicit caller `session_id` attribution on instrumented MCP calls without rewriting tool inputs in `PreToolUse`. Isolated low-context `agy` headless profiles (`plugins/ida/agents/headless-*.agy.md`) opt out of ambient startup via `inheritCustomizations: false` and wire `headless-hooks.json` (`plugins/ida/hooks/headless_handlers.py`) to inject only `messages/honesty.md` and `skills/premise-check/SKILL.md` once on first `PreInvocation` alongside OTel tracing ([`evidence-contract-enforcement.md`](evidence-contract-enforcement.md)).
 
 ## Proportionality and force of intervention
 
