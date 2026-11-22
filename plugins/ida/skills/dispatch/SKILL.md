@@ -5,7 +5,7 @@ description: Start isolated worker containers on queued repo-scoped tasks or rea
 
 # /dispatch -- Start Worker Containers on Queued Tasks
 
-The task record is the whole message to the isolated worker container; dispatch ready tasks without rewriting them. Use the task pipeline for durable deliverables (workflows, instructions, specifications, code); answer questions and lookups in-turn without queueing or dispatching containers.
+The task record is the whole message to the isolated worker container; dispatch existing `status: queued` tasks without rewriting them or creating PKB tasks. Use the task pipeline for durable deliverables (workflows, instructions, specifications, code); pure lookups, direct questions, and bounded point checks or calculations (zero repository edits, batch sweeps, or builds/tests) stay with interactive delegates rather than queueing or dispatching worker containers.
 
 Dispatched worker containers operate in two modes:
 
@@ -15,6 +15,8 @@ Dispatched worker containers operate in two modes:
 ## 1. Verify Readiness & Satisfiability
 
 Read each named task (or ready children of a parent container). A task is ready when `status: queued`, no open `needs` dependencies remain, and no worker container is already running on the same task ID. If an unlinked task covers overlapping subsystem artifacts, start the handed worker and send the overlap to the supervisor as a clarification.
+
+If a handed brief lacks a required Turn-1 `task_id` in `status: queued` (or required `repo` for repository-scoped work) -- including un-tasked lookup or point-calculation requests -- do not create a PKB task, invent a repository, or launch `/ida:pull` on an un-reified task; ask the supervisor to supply the missing `queued` task ID without declining handed work.
 
 Check acceptance criteria and composition state before choosing a command, and start a worker on the handed task unless a constitutional halt binds (`closure`, `data-boundaries`, or `exercise-authority` Exceptions 1-4):
 
