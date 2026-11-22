@@ -153,3 +153,4 @@ Graph density means meaningful semantic and causal connectivity, not redundant c
 6. **Mandatory Search, Consolidation & One-Task-per-Repo Rule at Intake (`/q`):**
    - Always search open and closed tasks (`include_done: true`) before creating. Aggregating similar work into existing open composite or repo-scoped tasks as the same chunk of work is mandatory over minting duplicate tasks.
    - When a minted ask spans two or more repositories, create related repo-specific tasks with strictly one task per repository (never a monolithic multi-repo task).
+7. **Child Tasks Only Under Tasks:** Parenting under a task expresses one relationship only -- a direct, separate step of its parent task. Notes and other non-task node types are never created under a task; link them via `[[wikilink]]` or `source` instead.
