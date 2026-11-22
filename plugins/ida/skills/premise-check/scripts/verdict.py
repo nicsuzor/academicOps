@@ -9,8 +9,8 @@ from pathlib import Path
 # Resolve hooks directory from either source tree or packaged distribution
 _HERE = Path(__file__).resolve()
 _CANDIDATES = [
-    _HERE.parents[3] / "hooks",  # plugins/ida/hooks/
-    _HERE.parents[2] / "hooks",  # distribution layout dist/ida-*/hooks/
+    _HERE.parents[3] / "hooks",  # plugins/ida/hooks/ or packaged dist/ida-*/hooks/
+    _HERE.parents[2] / "hooks",  # flattened layout hooks/
 ]
 
 _HOOKS_DIR = None

@@ -3874,6 +3874,31 @@ def emit_debug_hook_span(
     )
 
 
+def prepare_tracer_data(ctx: Any) -> dict[str, Any]:
+    """Normalize a ``HookContext`` into the payload dict expected by tracer handlers."""
+    data = dict(ctx.raw)
+    if ctx.session_id:
+        data.setdefault("session_id", ctx.session_id)
+        data.setdefault("conversationId", ctx.session_id)
+    if ctx.cwd:
+        data.setdefault("cwd", ctx.cwd)
+    if ctx.agent_type:
+        data.setdefault("agent_type", ctx.agent_type)
+    if ctx.agent_id:
+        data.setdefault("agent_id", ctx.agent_id)
+    if getattr(ctx, "prompt_id", None):
+        data.setdefault("prompt_id", ctx.prompt_id)
+    if ctx.tool:
+        data.setdefault("tool_name", ctx.tool)
+    if "toolName" in data and "tool_name" not in data:
+        data["tool_name"] = data["toolName"]
+    if "toolInput" in data and "tool_input" not in data:
+        data["tool_input"] = data["toolInput"]
+    if "toolResponse" in data and "tool_response" not in data:
+        data["tool_response"] = data["toolResponse"]
+    return data
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------

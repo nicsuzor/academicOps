@@ -9,10 +9,13 @@ Everything here is current state. Nothing here is history.
 lib/                    Shared source, never shipped as-is. Most of it is injected
                         into plugin build trees; the rest feeds the image build.
   agy/                  Shared config for the agy client.
-  hooks/                Hook runtime shared by every plugin that hooks
-                        (dispatch.py).
+  hooks/                Hook runtime and shared hook modules/messages injected
+                        at build time (dispatch.py, claude_code_tracer.py,
+                        agy_tracer.py, token_extractor.py, messages/honesty.*).
   py/                   Shared Python helpers, including the transcript
                         pipeline (`py/transcripts/`).
+  skills/               Shared skills injected into multiple plugins at build
+                        time (e.g. `premise-check/`).
   telemetry/            Shared observability config, injected into whichever
                         plugin ships a given skill's references.
 build/                  Build system: stages, client adapters, marketplace
@@ -24,8 +27,11 @@ plugins/                Plugin sources. Only what a client needs.
   ida/                  ida -- the interactive face, and the only agent that
                         talks to the user; james, marsha, sara and pauli
                         (the custodian for PKB graph, planning, and all knowledge
-                        tasks); PKB, workflow, review and premise-check skills;
-                        session, PKB-search, tracing and premise-check hooks.
+                        tasks); PKB, workflow, review, agy, and premise-check
+                        skills; session, PKB-search, tracing and premise-check
+                        hooks.
+  agy-headless/         Isolated low-context headless Antigravity (agy) agent
+                        profiles and agent-scoped Argdown handback hooks.
   rbg/                  Rule enforcement: the rbg agent, the axioms skill,
                         an advisory turn-by-turn evaluator plus a stop-side
                         rule-check gate.
@@ -48,7 +54,8 @@ source of truth for the built plugin set.
 
 | Directory | Owns |
 | - | - |
-| `plugins/ida` | ida (`plugins/ida/agents/ida.md`) -- the interactive face and the only agent that talks to the user; james, marsha, sara, and pauli (`plugins/ida/agents/pauli.md`) -- the knowledge base custodian for memory, planning, decomposition, graph writes, and every knowledge task (questions, finding things, web, GitHub, read-only code inspections, and config lookups); capture, memory, decomposition, dispatch, workflow-library, review, and premise-check skills; session, PKB-search, tracing, and premise-check hooks. |
+| `plugins/ida` | ida (`plugins/ida/agents/ida.md`) -- the interactive face and the only agent that talks to the user; james, marsha, sara, and pauli (`plugins/ida/agents/pauli.md`) -- the knowledge base custodian for memory, planning, decomposition, graph writes, and every knowledge task (questions, finding things, web, GitHub, read-only code inspections, and config lookups); capture, memory, decomposition, dispatch, agy, workflow-library, review, and premise-check skills; session, PKB-search, tracing, and premise-check hooks. |
+| `plugins/agy-headless` | Isolated low-context headless `agy` agent profiles (`plugins/agy-headless/agents/headless-*.agy.md`, `clients = ["agy"]`) and agent-scoped opt-in hooks (`agent-hooks.json`) delivering `CORE.md`, `honesty.md`, `premise-check`, and `agy_tracer` without ambient session overhead. |
 | `plugins/rbg` | Rule enforcement: the rbg agent (`plugins/rbg/agents/rbg.md`), the `axioms` skill whose files are the axioms (`plugins/rbg/skills/axioms/`), an advisory turn-by-turn evaluator plus a stop-side rule-check gate. |
 | `plugins/tools` | Domain research skills (data analysis, document conversion, diagramming, peer review, project scaffolding). |
 | `plugins/aops-debug` | Debug plugin that dumps raw hook payloads. |
@@ -80,6 +87,7 @@ Plugin hooks never rewrite or inject MCP tool-call inputs; agents pass
 | Plugin | Events registered | What it's for |
 | - | - | - |
 | `ida` | Claude Code: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PostToolBatch`, `SubagentStart`, `Stop`, `SubagentStop`, `StopFailure`, `PermissionRequest`, `PermissionDenied`, `Notification`, `PreCompact`, `PostCompact`, `SessionEnd`. agy: `SessionStart`, `PreInvocation` (canonical `UserPromptSubmit`), `PreToolUse`, `PostToolUse`, `Stop` | Session setup and `SessionStart` pointers; OTel tracing (`SubagentStop` tracer-only); `SubagentStart` uniform `honesty.md` reminders with recipient `--agent` and armed-claim context; `UserPromptSubmit` PKB prompt grounding ([prompt hydration](agents/prompt-hydration.md)) and incoming report reminders (`hearsay.md`); recipient-scoped `(session_id, agent_id)` `hearsay_gate` (`premise_check_gate`) arming across `UserPromptSubmit`, `PostToolUse`, and `PostToolBatch`, enforced per agent on `PreToolUse` and `Stop` (see [evidence contract enforcement](enforcement/evidence-contract-enforcement.md)). |
+| `agy-headless` | agy (`agent-hooks.json`, opt-in via agent frontmatter `hooks:`): `SessionStart`, `PreInvocation` (canonical `UserPromptSubmit`), `PreToolUse`, `PostToolUse`, `Stop` | Isolated low-context headless `agy` execution: `SessionStart` injects `CORE.md`, `honesty.md`, and `premise-check/SKILL.md` once per conversation without requiring `PKB_MCP_URL` or ambient workspace rules; `PreInvocation`, `PreToolUse`, `PostToolUse`, and `Stop` delegate to shared `agy_tracer` OTel tracing. |
 | `rbg` | `PreToolUse`, `Stop`, `SubagentStop` (declared, unwired) | Rule-compliance evaluation and the stop-side rule-check gate, as designed. `HANDLERS` in `plugins/rbg/hooks/handlers.py` currently has every entry commented out, so this pillar ships no live hook today. |
 
 `plugins/tools` and `plugins/aops-debug` ship no hooks or a debug-only
@@ -89,7 +97,7 @@ passthrough respectively; see each plugin's own README.
 
 `build/build.py` assembles `dist/<plugin>-<client>` for each plugin and
 client. Stages, in order: **inject** (copy each plugin's declared `lib/`
-content into its build tree, per `manifest/plugin.toml`'s `[[shared]]`
+content into its build tree, per `build/marketplace.toml`'s `shared`
 entries), **render manifests** (merge each `manifest/*.template.json`'s
 `clients.__base__` with its `clients.<client>` section), **adapt to client**
 (client-specific transforms in `build/clients/`), and **package** (tar per
@@ -120,6 +128,8 @@ A client adapter is the only place a client-specific workaround may live.
 - `manifest/plugin.json` -> `plugin.json`
 - `manifest/hooks.json` -> `hooks.json`, reshaped from the Claude Code hook
   schema
+- `manifest/agent-hooks.json` -> `agent-hooks.json`, reshaped with the same
+  schema for agent-scoped opt-in hooks loaded via frontmatter `hooks:`
 - `manifest/mcp.json` -> `mcp_config.json`
 
 An agent's `tools:` list is translated into agy's accepted vocabulary through

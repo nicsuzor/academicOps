@@ -14,6 +14,29 @@ directory = "ida"
 name = "ida"
 description = "The strategic face, and the only agent that speaks to the user."
 category = "productivity"
+shared = [
+  { src = "lib/hooks/agy_tracer.py", dst = "hooks/agy_tracer.py" },
+  { src = "lib/hooks/token_extractor.py", dst = "hooks/token_extractor.py" },
+  { src = "lib/hooks/messages/honesty.md", dst = "hooks/messages/honesty.md" },
+  { src = "lib/hooks/messages/honesty.user.md", dst = "hooks/messages/honesty.user.md" },
+  { src = "lib/skills/premise-check/SKILL.md", dst = "skills/premise-check/SKILL.md" },
+  { src = "lib/skills/premise-check/references/critique-guide.md", dst = "skills/premise-check/references/critique-guide.md" },
+]
+
+[[plugins]]
+directory = "agy-headless"
+name = "agy-headless"
+description = "Isolated low-context headless Antigravity (agy) agent profiles and Argdown handback hooks."
+category = "productivity"
+# Headless agy profiles and agent-scoped agy hooks exist only for the agy client.
+clients = ["agy"]
+shared = [
+  { src = "lib/hooks/agy_tracer.py", dst = "hooks/agy_tracer.py" },
+  { src = "lib/hooks/token_extractor.py", dst = "hooks/token_extractor.py" },
+  { src = "lib/hooks/messages/honesty.md", dst = "hooks/messages/honesty.md" },
+  { src = "lib/skills/premise-check/SKILL.md", dst = "bundled-skills/premise-check/SKILL.md" },
+  { src = "lib/skills/premise-check/references/critique-guide.md", dst = "bundled-skills/premise-check/references/critique-guide.md" },
+]
 
 [[plugins]]
 directory = "rbg"

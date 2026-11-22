@@ -2389,12 +2389,19 @@ def test_agy_subagent_preinvocation_delivers_honesty_reminder(tmp_path, monkeypa
         )
     )
 
+    staged_hooks = tmp_path / "hooks"
+    (staged_hooks / "messages").mkdir(parents=True)
+    for msg in (Path("lib/hooks/messages")).glob("*.md"):
+        (staged_hooks / "messages" / msg.name).write_text(
+            msg.read_text(encoding="utf-8"), encoding="utf-8"
+        )
+
     ctx = dispatch.HookContext(
         client="agy",
         event="PreInvocation",
         session_id=subagent_sess,
         agent_type="james",
-        hooks_dir=Path("plugins/ida/hooks"),
+        hooks_dir=staged_hooks,
     )
 
     res = agy_session_pointer(ctx)

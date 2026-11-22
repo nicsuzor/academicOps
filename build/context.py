@@ -10,6 +10,15 @@ CLIENTS: tuple[str, ...] = ("claude", "agy", "openclaw")
 
 
 @dataclass(frozen=True)
+class SharedAsset:
+    """One shared file or directory under `lib/` injected into a plugin build."""
+
+    src: str  # repo-relative path under lib/
+    dst: str  # plugin-relative destination path
+    clients: tuple[str, ...] = CLIENTS
+
+
+@dataclass(frozen=True)
 class Plugin:
     """A plugin discovered under plugins/<directory>, with its marketplace identity.
 
@@ -23,6 +32,7 @@ class Plugin:
     category: str
     source_dir: Path  # plugins/<directory>
     clients: tuple[str, ...] = CLIENTS  # the clients this plugin ships for
+    shared: tuple[SharedAsset, ...] = ()  # lib/ assets injected at build time
 
 
 @dataclass

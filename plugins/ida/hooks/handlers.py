@@ -953,36 +953,11 @@ def rule_against_hearsay(ctx: HookContext) -> Result | None:
     return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
 
 
-def _prepare_tracer_data(ctx: HookContext) -> dict[str, Any]:
-    """Extract and normalize payload dictionary for claude_code_tracer."""
-    data = dict(ctx.raw)
-    if ctx.session_id:
-        data.setdefault("session_id", ctx.session_id)
-        data.setdefault("conversationId", ctx.session_id)
-    if ctx.cwd:
-        data.setdefault("cwd", ctx.cwd)
-    if ctx.agent_type:
-        data.setdefault("agent_type", ctx.agent_type)
-    if ctx.agent_id:
-        data.setdefault("agent_id", ctx.agent_id)
-    if getattr(ctx, "prompt_id", None):
-        data.setdefault("prompt_id", ctx.prompt_id)
-    if ctx.tool:
-        data.setdefault("tool_name", ctx.tool)
-    if "toolName" in data and "tool_name" not in data:
-        data["tool_name"] = data["toolName"]
-    if "toolInput" in data and "tool_input" not in data:
-        data["tool_input"] = data["toolInput"]
-    if "toolResponse" in data and "tool_response" not in data:
-        data["tool_response"] = data["toolResponse"]
-    return data
-
-
 def _run_claude_tracer(ctx: HookContext, handler_name: str) -> None:
     if claude_code_tracer is None or ctx.client != "claude":
         return
     try:
-        data = _prepare_tracer_data(ctx)
+        data = claude_code_tracer.prepare_tracer_data(ctx)
         config = claude_code_tracer.discover_config(data)
         if config is not None:
             getattr(claude_code_tracer, handler_name)(data, config)
@@ -991,54 +966,26 @@ def _run_claude_tracer(ctx: HookContext, handler_name: str) -> None:
 
 
 def agy_user_prompt_submit(ctx: HookContext) -> Result | None:
-    if agy_tracer is None or ctx.client != "agy":
-        return None
-    try:
-        data = _prepare_tracer_data(ctx)
-        config = agy_tracer.discover_config(data)
-        if config is not None:
-            agy_tracer.handle_pre_invocation(data, config)
-    except Exception as exc:
-        log.warning("agy_user_prompt_submit tracer failed: %s", exc)
+    if agy_tracer is not None:
+        agy_tracer.pre_invocation_hook(ctx)
     return None
 
 
 def agy_pre_tool(ctx: HookContext) -> Result | None:
-    if agy_tracer is None or ctx.client != "agy":
-        return None
-    try:
-        data = _prepare_tracer_data(ctx)
-        config = agy_tracer.discover_config(data)
-        if config is not None:
-            agy_tracer.handle_pre_tool(data, config)
-    except Exception as exc:
-        log.warning("agy_pre_tool tracer failed: %s", exc)
+    if agy_tracer is not None:
+        agy_tracer.pre_tool_hook(ctx)
     return None
 
 
 def agy_post_tool(ctx: HookContext) -> Result | None:
-    if agy_tracer is None or ctx.client != "agy":
-        return None
-    try:
-        data = _prepare_tracer_data(ctx)
-        config = agy_tracer.discover_config(data)
-        if config is not None:
-            agy_tracer.handle_post_tool(data, config)
-    except Exception as exc:
-        log.warning("agy_post_tool tracer failed: %s", exc)
+    if agy_tracer is not None:
+        agy_tracer.post_tool_hook(ctx)
     return None
 
 
 def agy_stop(ctx: HookContext) -> Result | None:
-    if agy_tracer is None or ctx.client != "agy":
-        return None
-    try:
-        data = _prepare_tracer_data(ctx)
-        config = agy_tracer.discover_config(data)
-        if config is not None:
-            agy_tracer.handle_stop(data, config)
-    except Exception as exc:
-        log.warning("agy_stop tracer failed: %s", exc)
+    if agy_tracer is not None:
+        agy_tracer.stop_hook(ctx)
     return None
 
 

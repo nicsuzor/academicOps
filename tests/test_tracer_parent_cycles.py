@@ -22,9 +22,9 @@ from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-IDA_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
-if str(IDA_HOOKS) not in sys.path:
-    sys.path.insert(0, str(IDA_HOOKS))
+LIB_HOOKS = REPO_ROOT / "lib" / "hooks"
+if str(LIB_HOOKS) not in sys.path:
+    sys.path.insert(0, str(LIB_HOOKS))
 
 import claude_code_tracer as cct
 

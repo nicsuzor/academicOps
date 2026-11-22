@@ -14,9 +14,11 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 IDA_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
+LIB_HOOKS = REPO_ROOT / "lib" / "hooks"
 
-if str(IDA_HOOKS) not in sys.path:
-    sys.path.insert(0, str(IDA_HOOKS))
+for _p in (LIB_HOOKS, IDA_HOOKS):
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
 
 import importlib.util
 
@@ -30,10 +32,15 @@ from dispatch import HookContext, Kind, load_message_pair  # type: ignore[import
 
 @pytest.fixture
 def staged_hooks(tmp_path: Path) -> Path:
-    """A plugin hooks/ directory assembled with dispatch.py and handlers.py."""
+    """A plugin hooks/ directory assembled with dispatch.py, handlers.py, and shared lib/ files."""
     hooks = tmp_path / "hooks"
     shutil.copytree(IDA_HOOKS, hooks, ignore=shutil.ignore_patterns("__pycache__"))
-    shutil.copy2(REPO_ROOT / "lib" / "hooks" / "dispatch.py", hooks / "dispatch.py")
+    for name in ("dispatch.py", "claude_code_tracer.py", "agy_tracer.py", "token_extractor.py"):
+        shutil.copy2(LIB_HOOKS / name, hooks / name)
+    msgs_dir = hooks / "messages"
+    msgs_dir.mkdir(parents=True, exist_ok=True)
+    for msg in (LIB_HOOKS / "messages").glob("*.md"):
+        shutil.copy2(msg, msgs_dir / msg.name)
     return hooks
 
 
@@ -417,18 +424,18 @@ def test_agent_messages_get_hearsay_and_arm_gate_without_hydration(peer_prompt):
 @pytest.mark.parametrize(
     "agent", ["ida:ida", "ida:sara", "aops:james", "worker", "pauli", "marsha", "rbg", ""]
 )
-def test_honest_output_fires_on_subagent_start_for_all_agents(agent: str):
+def test_honest_output_fires_on_subagent_start_for_all_agents(staged_hooks: Path, agent: str):
     """When a subagent starts on SubagentStart, honesty.md fires for all agents."""
     ctx = HookContext(
         client="claude",
         event="SubagentStart",
         agent_type=agent,
-        hooks_dir=IDA_HOOKS,
+        hooks_dir=staged_hooks,
         raw={"agent_id": "sub-1", "agent_type": agent},
     )
     res = handlers.honest_output(ctx)
     assert res is not None
-    expected_inject, expected_user = load_message_pair(IDA_HOOKS, "honesty")
+    expected_inject, expected_user = load_message_pair(staged_hooks, "honesty")
     assert res.inject_text == expected_inject
     assert res.user_text == expected_user
 
@@ -847,88 +854,80 @@ def test_dispatch_normalize_env_session_id_precedence(monkeypatch: pytest.Monkey
     assert normalize("agy", "PreToolUse", agy_raw, IDA_HOOKS).session_id == "stdin-agy"
 
 
-def test_dispatch_headless_handlers_delivers_honesty_and_premise_check_once(
-    tmp_path: Path, staged_hooks: Path
+def test_agy_headless_plugin_session_start_delivers_honesty_and_premise_check_without_pkb(
+    tmp_path: Path,
 ):
-    """Modular --handlers headless_handlers delivers honesty.md + premise-check once per conversation without PKB_MCP_URL."""
-    skill_dir = tmp_path / "skills" / "premise-check"
-    skill_dir.mkdir(parents=True)
-    shutil.copy2(
-        REPO_ROOT / "plugins" / "ida" / "skills" / "premise-check" / "SKILL.md",
-        skill_dir / "SKILL.md",
-    )
+    """The separate agy-headless plugin delivers CORE.md, honesty.md, and premise-check on SessionStart unconditionally without PKB_MCP_URL."""
+    from build.build import build_all
 
-    pointer_dir = tmp_path / "pointers"
+    dist_root = tmp_path / "dist"
+    build_all(
+        REPO_ROOT,
+        dist_root,
+        clients=("agy",),
+        plugins=["agy-headless"],
+        version="0.0.0.dev0",
+    )
+    plugin_dir = dist_root / "agy-headless-agy"
+    assert (plugin_dir / "agent-hooks.json").is_file()
+    assert not (plugin_dir / "hooks.json").exists()
+    assert not (plugin_dir / "skills" / "premise-check").exists()
+    assert not (plugin_dir / "bundled-skills" / "premise-check" / "scripts" / "verdict.py").exists()
+    assert not (plugin_dir / "hooks" / "messages" / "honesty.user.md").exists()
+    assert (plugin_dir / "bundled-skills" / "premise-check" / "SKILL.md").is_file()
+
     env = {
         k: v
         for k, v in os.environ.items()
         if k not in ("PKB_MCP_URL", "ANTIGRAVITY_CONVERSATION_ID", "AOPS_SESSION_ID")
     }
-    env["AOPS_SESSION_POINTER_DIR"] = str(pointer_dir)
     payload = json.dumps({"conversationId": "headless-conv-1"})
 
-    first = subprocess.run(
-        [
-            sys.executable,
-            str(staged_hooks / "dispatch.py"),
-            "agy",
-            "PreInvocation",
-            "--handlers",
-            "headless_handlers",
-        ],
+    session_start = subprocess.run(
+        [sys.executable, str(plugin_dir / "hooks" / "dispatch.py"), "agy", "SessionStart"],
         input=payload,
         text=True,
         capture_output=True,
         env=env,
+        cwd=str(plugin_dir),
         check=False,
     )
-    assert first.returncode == 0, first.stderr
-    rendered = json.loads(first.stdout)
+    assert session_start.returncode == 0, session_start.stderr
+    rendered = json.loads(session_start.stdout)
     steps = rendered.get("injectSteps", [])
     combined = "\n".join(
         str(s.get("ephemeralMessage") or (s.get("systemMessage") or {}).get("systemMessage") or "")
         for s in steps
     )
-    expected_honesty, _ = load_message_pair(staged_hooks, "honesty")
+    expected_honesty, _ = load_message_pair(plugin_dir / "hooks", "honesty")
     assert expected_honesty in combined
+    assert "# agy-headless Plugin Core" in combined
     assert "# Premise Check" in combined
     assert "PKB_MCP_URL" not in combined
     assert "ida Plugin Core" not in combined
 
-    second = subprocess.run(
-        [
-            sys.executable,
-            str(staged_hooks / "dispatch.py"),
-            "agy",
-            "PreInvocation",
-            "--handlers",
-            "headless_handlers",
-        ],
+    pre_inv = subprocess.run(
+        [sys.executable, str(plugin_dir / "hooks" / "dispatch.py"), "agy", "PreInvocation"],
         input=payload,
         text=True,
         capture_output=True,
         env=env,
+        cwd=str(plugin_dir),
         check=False,
     )
-    assert second.returncode == 0, second.stderr
-    assert second.stdout.strip() == ""
+    assert pre_inv.returncode == 0, pre_inv.stderr
+    assert pre_inv.stdout.strip() == ""
 
-
-def test_dispatch_rejects_invalid_handlers_module_name(staged_hooks: Path):
-    """dispatch.py fails closed on non-identifier --handlers module names."""
-    res = subprocess.run(
-        [
-            sys.executable,
-            str(staged_hooks / "dispatch.py"),
-            "agy",
-            "PreInvocation",
-            "--handlers",
-            "../evil",
-        ],
-        input="{}",
+    # Fail-fast check: deleting required CORE.md surfaces FileNotFoundError instead of silent fallback.
+    (plugin_dir / "CORE.md").unlink()
+    missing_core = subprocess.run(
+        [sys.executable, str(plugin_dir / "hooks" / "dispatch.py"), "agy", "SessionStart"],
+        input=payload,
         text=True,
         capture_output=True,
+        env=env,
+        cwd=str(plugin_dir),
         check=False,
     )
-    assert res.returncode != 0
-    assert "invalid handlers module name" in res.stderr
+    assert "FileNotFoundError" in missing_core.stderr
+    assert "CORE.md" in missing_core.stderr

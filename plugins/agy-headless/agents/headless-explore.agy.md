@@ -1,6 +1,6 @@
 ---
 name: headless-explore
-description: Low-context read-only exploration and reasoning headless agent for multi-file investigation, read-only shell queries, web cross-checks, and Argdown handbacks without write access.
+description: Low-context read-only exploration and reasoning headless agent for multi-file investigation, read-only shell queries, web cross-checks, and Argdown or structured JSON output without write access.
 mainAgent: true
 subagent: false
 tools:
@@ -15,9 +15,9 @@ tools:
 inheritMcp: false
 inheritCustomizations: false
 skills:
-  - ../skills/premise-check
+  - ../bundled-skills/premise-check
 hooks:
-  - ../headless-hooks.json
+  - ../agent-hooks.json
 ---
 
 Return only the final answer with no preamble or intermediate step logs, formatted as clean `premise-check` Argdown prose citing `file:line`, command outputs, or source URLs inline.

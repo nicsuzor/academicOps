@@ -84,6 +84,7 @@ The following table inventories current session startup hook registration across
 | `plugins/tools` | No (no hooks registered in manifest) | None. | Register `SessionStart` hook in manifest to inject `plugins/tools/CORE.md` (max 20 lines). |
 | `plugins/aops-debug` | Yes (`Claude Code`: `dispatch.py claude SessionStart`; `agy`: `SessionStart`) | Executes `dump_payload` to write raw payload to temp file and emit debug trace; injects zero text into session context. | Retain debug tracing; inject `plugins/aops-debug/CORE.md` (max 20 lines). |
 | `plugins/ida-telegram` | No (`PreToolUse` for `AskUserQuestion` only) | None. | Register `SessionStart` hook to inject `plugins/ida-telegram/CORE.md` (max 20 lines). |
+| `plugins/agy-headless` | Yes (`agy` opt-in `agent-hooks.json`: `dispatch.py agy SessionStart`) | Injects `plugins/agy-headless/CORE.md`, `lib/hooks/messages/honesty.md`, and `lib/skills/premise-check/SKILL.md` for isolated headless profiles without touching ambient sessions. | Retain agent-scoped `SessionStart` delivery with `CORE.md` (max 20 lines). |
 
 #### Justification of Draft Plugin `CORE.md` Files Against the Four Tests
 
@@ -102,6 +103,7 @@ Every plugin's draft `CORE.md` is evaluated against the four tests for startup i
 | `plugins/tools` | 7 | Routes research pipeline tasks (analysis, transformations, plotting, publishing, diagramming) to specialized domain skills. | Pointers to `tools:analyst`, `tools:dbt`, `tools:streamlit`, `tools:python-viz`, `tools:pdf`, and `tools:diagram` exist and run. | Does not duplicate skill bodies or library options. | High-density routing pointers without implementation instructions. |
 | `plugins/aops-debug` | 5 | Informs executing agents that diagnostic telemetry and payload logging are active with zero behavioral side-effects. | Telemetry endpoints and temp file logging match `handlers.py`. | Does not repeat OTel configuration or tracer internals. | 3 brief lines defining role and zero-side-effect invariant. |
 | `plugins/ida-telegram` | 7 | Informs agents of Telegram channel constraints: mandatory startup skill loading, expandable blockquote progressive disclosure, broker-routed user questions, and applying reaction/status emoji to all messages. | Pointers to `AskUserQuestion` broker and `ida-telegram:telegram` skill are operational. | Does not repeat bot setup, authentication tokens, or web app internals. | Essential channel invariants only. |
+| `plugins/agy-headless` | 3 | Directs isolated headless `agy` profiles to return answer-only `premise-check` Argdown prose with inline evidence without requiring ambient workspace or PKB hooks. | Matches `plugins/agy-headless/hooks/handlers.py` `SessionStart` delivery of `CORE.md`, `honesty.md`, and `premise-check`. | Does not duplicate `premise-check` doctrine or agent profile tool lists. | Single concise directive scoped strictly to isolated headless handbacks. |
 
 ### Outcome-Level Build Criteria
 

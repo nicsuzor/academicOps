@@ -11,9 +11,9 @@ inheritMcp: false
 inheritCustomizations: false
 excludeDefaultComponents: true
 skills:
-  - ../skills/premise-check
+  - ../bundled-skills/premise-check
 hooks:
-  - ../headless-hooks.json
+  - ../agent-hooks.json
 ---
 
 Return only the final answer with no preamble or intermediate step logs, formatted as clean `premise-check` Argdown prose citing source URLs inline.

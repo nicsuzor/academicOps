@@ -5,7 +5,7 @@ description: Run a low-context headless Antigravity (agy) agent from Claude Code
 
 # /agy -- Low-Context Headless Antigravity Invocation
 
-Invoke `agy` headlessly from Claude Code using isolated custom agent profiles (`inheritCustomizations: false`, `inheritMcp: false`) that load only `premise-check` and its modular headless handback hook (`headless-hooks.json`) while stripping MCP schemas, workspace rules, other plugins, and slash-command tables. By default (`--output-format json` reading `.response` or `.structured_output`, or `--output-format text`), `agy` returns **only the final answer** -- never intermediate tool logs or thinking prose -- formatted as clean `premise-check` Argdown prose. If already inside an `agy` session, use native tools directly. Route repository writes or work over 5 minutes (10-minute ceiling) to `/dispatch`.
+Invoke `agy` headlessly from Claude Code using the `agy-headless` plugin's isolated custom agent profiles (`inheritCustomizations: false`, `inheritMcp: false`), which load only `premise-check` and its dedicated `SessionStart` handback hook (`agent-hooks.json`) while stripping MCP schemas, workspace rules, other plugins, and slash-command tables. By default (`--output-format json` reading `.response` or `.structured_output`, or `--output-format text`), `agy` returns **only the final answer** -- never intermediate tool logs or thinking prose -- formatted as clean `premise-check` Argdown prose. If already inside an `agy` session, use native tools directly. Route repository writes or work over 5 minutes (10-minute ceiling) to `/dispatch`.
 
 ## 1. Choose a Low-Context Agent Profile
 
@@ -26,8 +26,8 @@ Apply these startup flags on every local headless call:
 
 - `--sandbox`: Mandatory. Never pass `--dangerously-skip-permissions` or `--mode accept-edits` on local runs.
 - `--disable-slash-commands`: Mandatory. Strips slash-command routing and stops leading `/` paths or diffs from misfiring as CLI directives. Do not combine with `--mode plan` (ignored while slash commands are disabled).
-- `--model <model>`: Pin an explicit model from `agy models` matching the required capability tier (`fast`, `mid-tier`, or `flagship`).
-- `--effort <level>`: Optional reasoning-effort control (`low`, `medium`, `high`, `xhigh`, `max`); pair `mid-tier` models with `--effort medium` or `--effort high` on `headless-explore` for open-ended investigation or multi-step reasoning.
+- `--model <model>`: Pin an explicit model from `agy models` matching the required capability tier (`fast`, `mid-tier`, or `flagship`) and desired reasoning effort.
+- `--effort <level>`: Optional reasoning-effort override (`low`, `medium`, `high`, `xhigh`, `max`) only for models supporting adjustable effort; when `agy models` lists effort-suffixed entries, pick that entry via `--model` without adding `--effort`.
 - `--print-timeout <duration>`: Bound every call (default `5m`, hard ceiling `10m`) and set the caller's shell timeout slightly higher so `agy` terminates cleanly.
 - `-p` / `--print`: Always place last as a single quoted string. Because `agy -p` does not consume stdin directly, embed piped content into `-p`.
 
@@ -46,9 +46,9 @@ DIFF="$(git diff --staged)"
   -p "$(printf 'Audit this diff for breaking changes.\n\n---\n%s' "$DIFF")")
 
 # Flexible mid-tier exploration and reasoning (add --add-dir /abs/path if reading outside cwd)
-agy --sandbox --agent headless-explore --model "<mid-tier-model>" --effort medium \
+agy --sandbox --agent headless-explore --model "<mid-tier-model>" \
   --disable-slash-commands --print-timeout 5m --output-format json \
-  -p "Investigate how hook dispatch normalizes client events across build/ and lib/. State the flow, key invariants, and any edge cases with file:line citations."
+  -p "Investigate how hook dispatch normalizes client events across the repository. State the flow, key invariants, and any edge cases with file:line citations."
 ```
 
 ## 3. Pre-Flight JSON Schema Validation & Output Checks
@@ -70,7 +70,7 @@ agy --sandbox --agent headless-explore --model "<mid-tier-model>" --effort mediu
 
 ## 4. Avoid Repeated Spawn Taxes
 
-- **Sequential follow-ups**: Save `.conversation_id` from `--output-format json` and pass `--conversation <id>` (or `-c`) on follow-up calls within the cache TTL to reuse the warm prefix cache (the modular handback hook fires once per conversation and is not re-injected on resumed turns).
+- **Sequential follow-ups**: Save `.conversation_id` from `--output-format json` and pass `--conversation <id>` (or `-c`) on follow-up calls within the cache TTL to reuse the warm prefix cache (the `agy-headless` `SessionStart` hook fires once per conversation and is not re-injected on resumed turns).
 - **Batch prompts**: Keep one persistent headless process open with `--input-format stream-json --output-format stream-json` (omitting `-p`), writing one NDJSON user message to stdin after each prior turn's `result` event.
 
 ## 5. Verify & Fail Fast

@@ -187,7 +187,13 @@ def _build_dirs(dist_root: Path) -> list[tuple[str, str, Path]]:
 
 def _hooks_config(client: str, build_dir: Path) -> dict:
     path = build_dir / _HOOKS_JSON_PATH[client]
-    return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+    if path.is_file():
+        return json.loads(path.read_text(encoding="utf-8"))
+    if client == "agy":
+        agent_hooks = build_dir / "agent-hooks.json"
+        if agent_hooks.is_file():
+            return json.loads(agent_hooks.read_text(encoding="utf-8"))
+    return {}
 
 
 def _hook_handlers(client: str, build_dir: Path) -> list[tuple[str, dict]]:
@@ -1053,8 +1059,8 @@ def test_registered_handler_events_are_exactly_the_wired_events(dist_root):
 
 
 def _declared_hook_plugins() -> set[str]:
-    """Every marketplace plugin whose own manifest/hooks.template.json
-    declares at least one hook for at least one client.
+    """Every marketplace plugin whose own manifest/hooks*.json or
+    manifest/agent-hooks.json declares at least one hook for at least one client.
 
     Read from each plugin's source manifest, independently of the built
     `dist_root` the test below checks against — a plugin renamed, added, or
@@ -1062,17 +1068,18 @@ def _declared_hook_plugins() -> set[str]:
     """
     declared = set()
     for name in _marketplace_names():
-        manifest = _REPO_ROOT / "plugins" / name / "manifest" / "hooks.json"
-        if not manifest.is_file():
-            manifest = _REPO_ROOT / "plugins" / name / "manifest" / "hooks.template.json"
-        if not manifest.is_file():
-            continue
-        config = json.loads(manifest.read_text(encoding="utf-8"))
-        if any(
-            isinstance(spec, dict) and spec.get("hooks")
-            for spec in config.get("clients", {}).values()
-        ):
-            declared.add(name)
+        manifest_dir = _REPO_ROOT / "plugins" / name / "manifest"
+        for filename in ("hooks.json", "hooks.template.json", "agent-hooks.json"):
+            manifest = manifest_dir / filename
+            if not manifest.is_file():
+                continue
+            config = json.loads(manifest.read_text(encoding="utf-8"))
+            if any(
+                isinstance(spec, dict) and spec.get("hooks")
+                for spec in config.get("clients", {}).values()
+            ):
+                declared.add(name)
+                break
     return declared
 
 

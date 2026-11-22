@@ -102,7 +102,7 @@ def test_claude_code_tracer_create_exporter_raises_on_failure():
     """_create_exporter does not fall back to Console exporter or None when HTTP exporter fails."""
     import sys
 
-    sys.path.insert(0, str(REPO_ROOT / "plugins" / "ida" / "hooks"))
+    sys.path.insert(0, str(REPO_ROOT / "lib" / "hooks"))
     import claude_code_tracer
 
     with patch(
@@ -132,7 +132,7 @@ def test_dispatch_load_handlers_raises_on_spec_or_exec_failure(tmp_path):
     """_load_handlers raises RuntimeError if handlers.py cannot be loaded, instead of returning []."""
     import sys
 
-    sys.path.insert(0, str(REPO_ROOT / "plugins" / "ida" / "hooks"))
+    sys.path.insert(0, str(REPO_ROOT / "lib" / "hooks"))
     import dispatch
 
     broken_handlers = tmp_path / "handlers.py"
@@ -161,7 +161,7 @@ def test_premise_check_gate_load_state_raises_on_corrupt_json(tmp_path, monkeypa
     """_load_state raises json.JSONDecodeError on corrupt JSON state instead of returning {}."""
     import sys
 
-    sys.path.insert(0, str(REPO_ROOT / "plugins" / "ida" / "hooks"))
+    sys.path.insert(0, str(REPO_ROOT / "lib" / "hooks"))
     import premise_check_gate
 
     monkeypatch.setenv("AOPS_PREMISE_GATE_DIR", str(tmp_path))
