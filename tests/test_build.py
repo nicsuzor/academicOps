@@ -669,6 +669,86 @@ def test_resolve_client_agents_unknown_client_raises(tmp_path):
         resolve_client_agents(agents_dir, "unknown")
 
 
+def test_agy_only_agent_preserves_low_context_frontmatter_and_omits_other_clients(tmp_path):
+    import yaml
+
+    from build.clients.agy import adapt as adapt_agy
+    from build.clients.claude import adapt as adapt_claude
+    from build.clients.openclaw import adapt as adapt_openclaw
+    from build.context import BuildContext, Plugin
+
+    source_agent = (
+        "---\n"
+        "name: headless-bare\n"
+        "description: Minimal zero-workspace headless agent.\n"
+        "mainAgent: true\n"
+        "subagent: false\n"
+        "tools:\n"
+        "  - finish\n"
+        "inheritMcp: false\n"
+        "inheritCustomizations: false\n"
+        "excludeDefaultComponents: true\n"
+        "---\n\n"
+        "Answer directly.\n"
+    )
+
+    def make_tree(name: str) -> Path:
+        root = tmp_path / name
+        agents_dir = root / "agents"
+        agents_dir.mkdir(parents=True)
+        (agents_dir / "headless-bare.agy.md").write_text(source_agent, encoding="utf-8")
+        return root
+
+    agy_dir = make_tree("agy-plugin")
+    adapt_agy(
+        agy_dir,
+        BuildContext(
+            plugin=Plugin(
+                directory="agy-plugin",
+                marketplace_name="ida",
+                description="desc",
+                category="productivity",
+                source_dir=agy_dir,
+            ),
+            client="agy",
+            version=VERSION,
+            manifests={"plugin": {"name": "ida"}},
+        ),
+    )
+
+    built_agent = agy_dir / "agents" / "headless-bare.md"
+    assert built_agent.is_file()
+    assert not (agy_dir / "agents" / "headless-bare.agy.md").exists()
+    fm = yaml.safe_load(built_agent.read_text(encoding="utf-8").split("---", 2)[1])
+    assert fm["name"] == "headless-bare"
+    assert fm["mainAgent"] is True
+    assert fm["subagent"] is False
+    assert fm["inheritMcp"] is False
+    assert fm["inheritCustomizations"] is False
+    assert fm["excludeDefaultComponents"] is True
+    assert fm["tools"] == ["finish"]
+
+    for client_name, adapt_fn in (("claude", adapt_claude), ("openclaw", adapt_openclaw)):
+        client_dir = make_tree(f"{client_name}-plugin")
+        adapt_fn(
+            client_dir,
+            BuildContext(
+                plugin=Plugin(
+                    directory=f"{client_name}-plugin",
+                    marketplace_name="ida",
+                    description="desc",
+                    category="productivity",
+                    source_dir=client_dir,
+                ),
+                client=client_name,
+                version=VERSION,
+                manifests={"plugin": {"name": "ida"}},
+            ),
+        )
+        assert not (client_dir / "agents" / "headless-bare.md").exists()
+        assert not (client_dir / "agents" / "headless-bare.agy.md").exists()
+
+
 def test_agent_tools_serialised_as_yaml_list(built):
     claude_raw = (built / "fixture-alpha-claude" / "agents" / "alpha-agent.md").read_text()
     agy_raw = (built / "fixture-alpha-agy" / "agents" / "alpha-agent.md").read_text()
