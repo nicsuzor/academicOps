@@ -9,9 +9,9 @@ Mobile cognitive load is the binding constraint: users read on a phone between c
 
 **Load references on demand before authoring:**
 
-- [references/formatting-and-widgets.md](references/formatting-and-widgets.md) — rich formatting, Mini App `detail`, widgets, inline reactions.
-- [references/rich-messages.md](references/rich-messages.md) — headings, `<table bordered striped compact>`, `<aside>`, math, `<tg-map>`, `tg://<type>?id=...` `media`, `<tg-thinking>` drafts.
-- [references/widgets.md](references/widgets.md) — Live Status trackers and custom HTML Widgets (`send_widget`, `edit_message_widget_data`, `answer_widget_query`).
+- [references/formatting-and-widgets.md](references/formatting-and-widgets.md) -- rich formatting, Mini App `detail`, widgets, inline reactions.
+- [references/rich-messages.md](references/rich-messages.md) -- headings, `<table bordered striped compact>`, `<aside>`, math, `<tg-map>`, `tg://<type>?id=...` `media`, `<tg-thinking>` drafts.
+- [references/widgets.md](references/widgets.md) -- Live Status trackers and custom HTML Widgets (`send_widget`, `edit_message_widget_data`, `answer_widget_query`).
 
 ## Message-Kind Selection Matrix
 
@@ -48,9 +48,9 @@ Concise 1-2 line context or direct answer.
 ## Presentation, Length & Delivery Rules
 
 - **Two-tier length budget:** Keep plain `reply` <= ~100 words. Structured replies (`#` headings, bold lead-in bullets, `>!` expandable receipts, `||spoilers||`, tables, code) may use up to `maxChatChars` (`4000`) to keep takeaways whole; Markdown maps directly to UTF-16 entities without MarkdownV2 escaping. Write functional summaries (how each change fixes its target) with zero prose walls.
-- **Mini App `detail` (`reply` / `ask_user`):** Keep takeaways in chat; put deep context, long logs, and code in `detail` (rendered as phone-width Markdown: `##` per topic, one idea per `-` bullet or short paragraph, bold lead phrases only). Never wrap the entire `detail` page in `>!` or `>`—reserve quotes for short section receipts.
+- **Mini App `detail` (`reply` / `ask_user`):** Keep takeaways in chat; put deep context, long logs, and code in `detail` (rendered as phone-width Markdown: `##` per topic, one idea per `-` bullet or short paragraph, bold lead phrases only). Never wrap the entire `detail` page in `>!` or `>`--reserve quotes for short section receipts.
 - **Identifiers, time & anchoring:** Gloss every task, PR, issue, commit, session, or message ID in plain language with a clickable URL when available. Use local 24-hour `HH:MM` time. Pass `reply_to` when referencing messages > 2–3 turns back or replying outside a forum thread.
-- **Routing & multi-bot hygiene:** Deliver once on the designated bot without echoing others. For off-Telegram requests, suppress progress updates and send only a 1–2 line completion summary. Route knowledge lookups to the knowledge custodian, reserving task/code dispatch for execution work. Never block or assume user answers—continue other ready work or end the turn until broker resumption wakes you.
+- **Routing & multi-bot hygiene:** Deliver once on the designated bot without echoing others. For off-Telegram requests, suppress progress updates and send only a 1–2 line completion summary. Route knowledge lookups to the knowledge custodian, reserving task/code dispatch for execution work. Never block or assume user answers--continue other ready work or end the turn until broker resumption wakes you.
 
 ## Decisions, Buttons & Widget Queries
 
@@ -73,7 +73,7 @@ Concise 1-2 line context or direct answer.
 
 ## Threads, Media, Voice & Commands
 
-- **Threads:** Inbound `meta.message_thread_id` confines outbound replies, edits, cards, voice, and reactions automatically; pass `message_thread_id` to post elsewhere, or `reply_to` when unthreaded (avoiding unopenable `# General`). Manage topics via `list_threads({ state?: "all" | "open" | "closed" })`, `create_thread`, `rename_thread`, `close_thread`, `reopen_thread`, `delete_thread`, `unpin_all_thread_messages`, and General `#1` tools (`edit_general_thread`, etc.); update cognitive anchors when focus shifts. Because Telegram lacks a list-topics API, `list_threads` reflects plugin-seen state only (`unknown` / `null` name = only a post observed)—check `note` before claiming a thread is the only open one.
+- **Threads:** Give each topic its own thread, moving to a new thread on a subject change even when a message arrives in another topic's thread, and pass each new thread's messages to a fresh sub-coordinator. Rename newly created threads to a short descriptive title on the first reply, record each topic's thread ID and message IDs in a PKB lookup table against its topic task, and match returning messages through that table first. Close (`close_thread`) a thread only on the user's explicit done signal (such as `🙏` or a closing reply), even when more work on the topic is due later -- never auto-close solely for inactivity. Inbound `meta.message_thread_id` confines outbound replies, edits, cards, voice, and reactions automatically; pass `message_thread_id` to post elsewhere, or `reply_to` when unthreaded (avoiding unopenable `# General`). Manage topics via `list_threads({ state?: "all" | "open" | "closed" })`, `create_thread`, `rename_thread`, `close_thread`, `reopen_thread`, `delete_thread`, `unpin_all_thread_messages`, and General `#1` tools (`edit_general_thread`, etc.); update cognitive anchors when focus shifts. Because Telegram lacks a list-topics API, `list_threads` reflects plugin-seen state only (`unknown` / `null` name = only a post observed) -- check `note` before claiming a thread is the only open one.
 - **Message ops & media:** Ops: `pin_message`, `unpin_message`, `unpin_all_messages`, `forward_messages`, `copy_messages`, `delete_messages` (`<= 48h`), `edit_message_reply_markup`. Standalone sends: `send_photo`, `send_document`, `send_video`, `send_animation`, `send_audio`, `send_video_note`, `send_media_group` (`2–10`), `send_location`, `send_venue`, `send_contact`, `send_dice`, `send_chat_action`, `send_poll`, `stop_poll`. Prefer `send_rich_message` with `media` URIs when text and visuals belong together.
 - **Voice:** Resolve dictated homophones in context (noting residual ambiguity). On `transcript_error` or TTS failure, report the error verbatim and escalate immediately without silent fallback. Mirror voice via `voice: true` / `VOICE_REPLIES=mirror` (`reply`, `send_rich_message`).
 - **Bot commands:** Bare `meta.command` (underscores → hyphens) invokes the matching skill on the replied-to message or active topic (or asks what to target), forwarding `meta.args` if present.

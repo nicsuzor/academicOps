@@ -1,6 +1,6 @@
 ---
 name: phoenix
-description: Query Arize Phoenix telemetry efficiently -- read built-in token and cost totals via GraphQL/SQL without whole-span fetches, generate condensed <slug>.outline.md session outlines from lean column projections, profile tool and upstream MCP calls, search across sessions, and inspect targeted spans, datasets, annotations, or prompts. Use when investigating session activity, decisions, bottlenecks, or token spend. Exclude for live container driving or tmux attachment (use debug); never falls back to local .jsonl logs.
+description: Query Arize Phoenix telemetry efficiently -- read built-in token and cost totals via GraphQL/SQL without whole-span fetches, diagnose token spend and context-bloat root causes, generate condensed <slug>.outline.md session outlines from lean column projections, profile tool and upstream MCP calls, search across sessions, and inspect targeted spans, datasets, annotations, or prompts. Use when investigating session activity, decisions, bottlenecks, quota burn, or token spend. Exclude for live container driving or tmux attachment (use debug); never falls back to local .jsonl logs.
 ---
 
 # Phoenix Telemetry & Session Outlines
@@ -26,6 +26,7 @@ Load only the resource needed for the task from `resources/`:
   - Read `resources/spend-by-harness-model.sql`, or run `uv run python "${CLAUDE_SKILL_DIR:-plugins/ida/skills/phoenix}/scripts/phoenix_token_cost.py" --since <time> --by harness-model` (server-side sums in adaptive time chunks, deduped on `llm.message.id`).
   - Keep `--by session` (default) or `--by task` to a few hours because they download every span in the window. Prices are comparable list prices per million tokens (per-call long-context tiers do not apply in `--by harness-model` rollups); read `resources/span-store.md` for emitter/model-alias mapping details.
 - For cross-session text/tool/error searches, windowed user-prompt and reply sweeps, subagent session discovery, or single-span payload drill-down: read `resources/cross-session-search.sql`.
+- For diagnosing why sessions burn tokens or quota (spawn tax, incremental context growth, cold-cache re-bills, warm-cache drag, tool payload bloat, and instruction/hook root causes): read `resources/token-diagnostics.md` before analyzing.
 
 Note: Phoenix holds nothing before 2026-11-12 01:39 UTC, so older windows return empty chunks.
 

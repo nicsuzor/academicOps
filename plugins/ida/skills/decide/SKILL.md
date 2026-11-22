@@ -35,5 +35,5 @@ Hold the ordered list in memory and present exactly one card per turn:
 On each reply:
 
 1. **Record immediately**: Write the timestamped decision to the item's record (update task markdown body, frontmatter, or release status).
-2. **Advance or converse**: On a clear decision, advance to `Decision N+1 of M`. If the user asks a question or raises uncertainty, pause the stepper immediately and converse naturally.
+2. **Advance or converse**: On a clear decision, advance to `Decision N+1 of M`. When the user defers a complex decision ("decide later"), have `pauli` `/decompose` it one step (one option per node). If the user asks a question or raises uncertainty, pause the stepper immediately and converse naturally.
 3. **Wrap-up**: After `Decision M of M`, emit a one-line receipt summarizing recorded decisions and updated tasks.

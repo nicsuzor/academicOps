@@ -5,7 +5,7 @@ description: Drive and audit a real framework run -- choose an execution surface
 
 # Driving a Framework Run
 
-Score runs under [`dogfood`](../dogfood/SKILL.md) ("Supervising a trial"). Container mechanics: [`specs/polecat/tmux-interactive-driving.md`](../../../specs/polecat/tmux-interactive-driving.md).
+Score runs under the `dogfood` skill ("Supervising a trial"). Container mechanics: [`specs/polecat/tmux-interactive-driving.md`](../../../specs/polecat/tmux-interactive-driving.md).
 
 ## Choose a Surface
 
