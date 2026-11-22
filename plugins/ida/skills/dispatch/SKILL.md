@@ -16,7 +16,7 @@ Dispatched worker containers operate in two modes:
 
 Read each named task (or ready children of a parent container). A task is ready when `status: queued`, no open `needs` dependencies remain, and no worker container is already running on the same task ID. If an unlinked task covers overlapping subsystem artifacts, start the handed worker and send the overlap to the supervisor as a clarification.
 
-If a handed brief lacks a required Turn-1 `task_id` in `status: queued` (or required `repo` for repository-scoped work) -- including un-tasked lookup or point-calculation requests -- do not create a PKB task, invent a repository, or launch `/ida:pull` on an un-reified task; ask the supervisor to supply the missing `queued` task ID without declining handed work.
+If a handed brief lacks a required Turn-1 `task_id` in `status: queued` (or required `repo` for repository-scoped work) -- including un-tasked lookup or point-calculation requests -- do not create a PKB task, invent a repository, or launch `/ida:pull` on an un-reified task; ask the supervisor to supply the missing `queued` task ID or `repo` without declining handed work.
 
 Check acceptance criteria and composition state before choosing a command, and start a worker on the handed task unless a constitutional halt binds (`closure`, `data-boundaries`, or `exercise-authority` Exceptions 1-4):
 
