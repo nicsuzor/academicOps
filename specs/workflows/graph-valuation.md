@@ -448,7 +448,7 @@ keeps pauli's rule "never raise the same non-blocking concern twice"
 | `plugins/ida/skills/workflow-library/workflows/wf-reconcile.md` | Adds deadline upkeep (R5) and source-stated retirement (R6). :49 reserved fields add `deadline_class: hard` and target worth. |
 | `plugins/ida/skills/decide/SKILL.md` | Draws open items from the daily note (which carries ask queue items from reconcile per R7). |
 | `plugins/ida/skills/decompose/SKILL.md` | ADR-0002: Three-Purpose Taxonomy. Competing options stay inside task bodies; probes wire `needs`; contextual citations in `## Pointers`. |
-| `plugins/ida/skills/reify/SKILL.md`, `plugins/ida/skills/dispatch/SKILL.md` | `depends_on` becomes `needs` in :20, :43, :79-80 and dispatch :14. Readiness keeps its meaning (FR:517). |
+| `plugins/ida/skills/reify/SKILL.md`, `plugins/sara/skills/dispatch/SKILL.md` | `depends_on` becomes `needs` in :20, :43, :79-80 and dispatch :14. Readiness keeps its meaning (FR:517). |
 | `plugins/ida/skills/pull/SKILL.md`, `plugins/ida/skills/dump/SKILL.md` | "wire directed `blocks` edges" becomes "wire a `needs` edge from the blocked task" (FR:334). |
 | `plugins/ida/skills/workflow-library/SKILL.md` and templates `wf-escalated-approval`, `wf-research-and-implement`, `wf-code-task-base`, `wf-finish` | `depends_on` becomes `needs` in the skill and the first three templates. The parent in `wf-finish` follows FQ1. |
 | New universal template `wf-densify` (in `plugins/ida/skills/workflow-library/workflows/`) | R3 as an outline: pool, ordering, granularity, table, reply grammar, exit criteria. |

@@ -20,7 +20,7 @@ Before dispatching reviewers, load the artifact, its originating request, availa
 
 - **Proportionality**: Match depth, rounds, primary-material scope, and capability tier to risk, blast radius, and reversibility:
   - _High-stakes / architectural_: Deeper refinement, multi-round dialectical cross-examination, highest-capability reasoning tier.
-  - _Low-stakes / routine / reversible_: Fast single-pass sanity check at mid-tier capability.
+  - _Low-stakes / routine / reversible_: Fast single-pass sanity check at `fast` capability (escalating to `mid-tier` only when needed).
 - **Altitude & genre fit**: Fix the target abstraction level and apply only the standard matching the artifact's genre (never apply task-handback rules to non-task artifacts).
 
 ### 2. Parallel Specialist Dispatch

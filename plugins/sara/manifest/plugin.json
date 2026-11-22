@@ -1,0 +1,22 @@
+{
+  "manifestVersion": "1.0",
+  "name": "sara",
+  "clients": {
+    "__base__": {
+      "name": "sara",
+      "description": "Headless worker dispatcher and polecat queue orchestration.",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "license": "MIT",
+      "keywords": [
+        "academicOps",
+        "sara",
+        "dispatch",
+        "polecat"
+      ]
+    },
+    "claude": {},
+    "agy": {}
+  }
+}

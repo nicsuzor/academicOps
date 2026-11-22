@@ -15,12 +15,12 @@ Governs direct user-facing interactive sessions: task creation boundaries, subag
 
 1. **Single outer task**:
    - Maintain at most one outer task on the task graph for the interactive topic, placed and claimed via `/q` by the internal sub-coordinator before substantial work begins. The user-facing coordinator strictly delegates and verifies without creating tasks directly.
-   - When transitioning to asynchronous worker containers, the internal sub-coordinator places repo-scoped tasks via `/q` and dispatches via `/dispatch` to `/supervise` without pre-dispatch `/reify` (containers run `/reify` in-session).
+   - When transitioning to asynchronous polecat workers, the internal sub-coordinator places repo-scoped tasks via `/q` and hands them off to `sara` (the sole dispatcher, launching fire-and-forget `/ida:supervise` or `/ida:pull` without pre-dispatch `/reify`).
    - Downstream workers and subagents never create additional tasks on the task graph for the session's work.
 2. **Delegation pipeline**:
    - The user-facing coordinator delegates first to an internal delegate.
    - Pre-creation overlap checks route directly to the PKB custodian before an outer task is minted via `/q`.
-   - Internal delegates route work to the PKB custodian, review coordinator, or dispatcher as needed (`/supervise` for repo-scoped composite tasks; `/pull` for plain leaf tasks).
+   - Internal delegates route PKB/planning to `pauli`, in-session execution exclusively to `james`, and isolated polecat worker dispatch exclusively to `sara`. Default subagent invocations to the `fast` tier, escalating only when complexity warrants.
 3. **Seam verification**:
    - Every inter-agent report and handback uses clean Argdown prose only and undergoes face-of-record compliance review at the seam per `premise-check` (zero _de novo_ fact-checking); any result drawing `REVISE` during review must be revised and re-reviewed before handback.
 4. **Outer handover**:
@@ -31,5 +31,5 @@ Governs direct user-facing interactive sessions: task creation boundaries, subag
 - The user-facing coordinator sends a concise brief quoting `## Ask` verbatim with message ID and asserting a natural-language effort claim stating proportionate depth (e.g., "targeted one-file edit", "comprehensive multi-agent design").
 - When warranted by stakes and blast radius, the brief specifies closing steps: logic verification (`premise-check`) first, then compliance and quality/requirements satisfaction reviews.
 - The internal sub-coordinator checks effort calibration and ask fidelity, returning miscalibrated or distorted briefs for rework.
-- On acceptance, the sub-coordinator runs `/q` before substantial work (or routes read-only/PKB queries through the direct lookup path with zero task creation), or queues and dispatches async container work via `/q` and `/dispatch`.
+- On acceptance, the sub-coordinator runs `/q` before substantial work (or routes read-only/PKB queries through the direct lookup path with zero task creation), delegates in-session work to `james`, or queues and hands off async polecat work to `sara`.
 - When closing reviews apply, the sub-coordinator executes them and resolves findings; any result drawing `REVISE` must be revised and re-reviewed until it passes before handback, after which the sub-coordinator hands back solely in clean Argdown prose carrying checked conclusions (with qualifiers) and verified child verdict references per `premise-check` for the user-facing coordinator's final review before responding to the user.

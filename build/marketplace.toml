@@ -16,6 +16,12 @@ description = "The strategic face, and the only agent that speaks to the user."
 category = "productivity"
 
 [[plugins]]
+directory = "sara"
+name = "sara"
+description = "Headless worker dispatcher and polecat queue orchestration."
+category = "productivity"
+
+[[plugins]]
 directory = "rbg"
 name = "rbg"
 description = "Automatic in-session rule enforcement."

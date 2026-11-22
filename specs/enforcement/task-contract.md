@@ -45,7 +45,7 @@ this contract does not restate.
 
 - **Premise judgment** -- no longer a standalone gate at `claim_task`. The
   assessment happens earlier, in [`/q`](../../plugins/ida/skills/q/SKILL.md), which places and values
-  repo-scoped tasks per [R1](../workflows/graph-valuation.md#3-r1----placement-at-intake-q) under governing component or initiative epics with zero leaf `serves` edges (reserving `serves -> target` links for Strategic Value Carriers). Dispatch surfaces ([`/dispatch`](../../plugins/ida/skills/dispatch/SKILL.md)) trust that rather than re-judging the premise themselves; reification moves into the container, where `/supervise` runs `/reify` in-session at execution time.
+  repo-scoped tasks per [R1](../workflows/graph-valuation.md#3-r1----placement-at-intake-q) under governing component or initiative epics with zero leaf `serves` edges (reserving `serves -> target` links for Strategic Value Carriers). Dispatch surfaces ([`/dispatch`](../../plugins/sara/skills/dispatch/SKILL.md)) trust that rather than re-judging the premise themselves; reification moves into the container, where `/supervise` runs `/reify` in-session at execution time.
 - **Task-binding invariant** -- no mutating work without a task bound to the
   session via `claim_task`, never an environment variable naming the task.
   One session claims exactly one task, possibly multiple subtasks of it. In

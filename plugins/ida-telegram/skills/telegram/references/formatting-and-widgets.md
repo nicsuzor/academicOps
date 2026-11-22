@@ -58,7 +58,6 @@ Telegram validates reactions authoritatively against its `ReactionTypeEmoji` set
 | `🤪` | Self-handled | Handled directly by the active session agent |
 | `🐳` | Dispatched (background worker) | Briefed and dispatched to an isolated background worker |
 | `👾` | Dispatched (in-session client) | Held by an interactive in-session client run |
-| `👻` | Dispatched (synchronous container) | Held by a containerised synchronous run |
 | `🕊` | Dispatched (subagent) | Handed off to a general-purpose subagent |
 | `🤔` | Waiting | Question, choice, or clarification pending user reply in chat |
 | `💔` | Blocked / failed | Execution halted or hit external blocker (reply details refusal) |

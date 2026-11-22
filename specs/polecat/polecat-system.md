@@ -35,7 +35,7 @@ The container launcher (`scripts/polecat`) and worker image are maintained outsi
 - [[plugins/ida/skills/pull/SKILL.md]] -- worker-side: claim, execute, record, hand
   over -- what a seeded `/ida:pull <task-id>` prompt actually does once inside the
   container as the fast-path for already-decomposed leaf tasks
-- [[plugins/ida/skills/dispatch/SKILL.md]] -- coordinator-side: the dispatch skill that starts
+- [[plugins/sara/skills/dispatch/SKILL.md]] -- coordinator-side: the dispatch skill that starts
   polecat workers on queued tasks via the Docker MCP server (`polecat_run_container`) or the
   host launcher (`scripts/polecat`)
 - [[.agents/skills/debug/SKILL.md]] -- the operational skill for driving a

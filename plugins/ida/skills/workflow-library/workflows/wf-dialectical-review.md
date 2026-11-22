@@ -29,7 +29,7 @@ Universal review workflow grounded in separation of powers: a coordinator sets *
 Every branch receives the same neutrally framed briefing, quoting the commissioning mandate, governing genre standard, and acceptance criteria cleanly before the target artifact, PR, or diff without priming toward a verdict:
 
 1. **Originating Request & Governing Standard (Read First, Neutral Framing)**: Verbatim mandate with source ID, genre standard (e.g., spec standard, instruction craft, or acceptance criteria -- never applying task checklists to non-task artifacts), and explicit requirements (or `"NONE AVAILABLE"`), placed before any PR or diff pointer.
-2. **Coordinator Calibration**: Proportionality tier (single-pass sanity check with `mid-tier` capability for low-stakes routine work vs. multi-round dialectical deliberation with `flagship` capability and primary-material audit for high-stakes or high-risk work) and target abstraction altitude.
+2. **Coordinator Calibration**: Proportionality tier (single-pass sanity check defaulting to `fast` capability for low-stakes routine work, escalating to `mid-tier` or `flagship` with multi-round dialectical deliberation and primary-material audit for high-stakes or high-risk work) and target abstraction altitude.
 3. **Target Artifact**: Repository, PR/artifact pointer, branch and head commit, and diff or content reference.
 4. **Branch Jurisdictions & Fix Discipline**:
    - **Strategic coherence reviewer**: Evaluates core premise, problem class, parsimony, lifecycle coherence, and congruence with the **seamless web** of knowledge-base records, specifications, topic notes, parent objectives, and active sibling work from an inline graph brief.

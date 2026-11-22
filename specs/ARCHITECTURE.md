@@ -48,7 +48,8 @@ source of truth for the built plugin set.
 
 | Directory | Owns |
 | - | - |
-| `plugins/ida` | ida (`plugins/ida/agents/ida.md`) -- the interactive face and the only agent that talks to the user; james, marsha, sara, and pauli (`plugins/ida/agents/pauli.md`) -- the knowledge base custodian for memory, planning, decomposition, graph writes, and every knowledge task (questions, finding things, web, GitHub, read-only code inspections, and config lookups); capture, memory, decomposition, dispatch, workflow-library, review, and premise-check skills; session, PKB-search, tracing, and premise-check hooks. |
+| `plugins/ida` | ida (`plugins/ida/agents/ida.md`) -- the interactive face and the only agent that talks to the user; james (`plugins/ida/agents/james.md`) -- sole in-session executor and review supervisor; marsha (`plugins/ida/agents/marsha.md`); and pauli (`plugins/ida/agents/pauli.md`) -- the knowledge base custodian for memory, planning, decomposition, graph writes, and knowledge tasks; capture, memory, decomposition, agy, workflow-library, review, and premise-check skills; session, PKB-search, tracing, and premise-check hooks. |
+| `plugins/sara` | Sole headless worker dispatcher: the sara agent (`plugins/sara/agents/sara.md`), `dispatch` (`plugins/sara/skills/dispatch/SKILL.md`), and `dispatch-queue` (`plugins/sara/skills/dispatch-queue/SKILL.md`) for fire-and-forget polecat container orchestration. |
 | `plugins/rbg` | Rule enforcement: the rbg agent (`plugins/rbg/agents/rbg.md`), the `axioms` skill whose files are the axioms (`plugins/rbg/skills/axioms/`), an advisory turn-by-turn evaluator plus a stop-side rule-check gate. |
 | `plugins/tools` | Domain research skills (data analysis, document conversion, diagramming, peer review, project scaffolding). |
 | `plugins/aops-debug` | Debug plugin that dumps raw hook payloads. |
