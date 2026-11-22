@@ -179,7 +179,7 @@ jobs:
             /plugins/ida/skills/workflow-library/workflows/wf-qa.md \
             /.github/agents/shared-error-handling.md \
             /.github/agents/qa.agent.md \
-            /lib/hooks/claude_code_tracer.py \
+            /plugins/ida/hooks/claude_code_tracer.py \
             /scripts/ci_otel_hooks.py && cd ..
           if [ ! -f .aops/plugins/ida/skills/workflow-library/workflows/wf-qa.md ] || [ ! -f .aops/.github/agents/qa.agent.md ] || [ ! -f .aops/.github/agents/shared-error-handling.md ]; then
             echo "::error::QA prompt files were not materialised by sparse-checkout" >&2

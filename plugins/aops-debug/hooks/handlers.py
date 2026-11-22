@@ -16,14 +16,16 @@ from typing import Any
 
 _HERE = Path(__file__).resolve()
 _HOOKS_DIR = _HERE.parent
+_IDA_HOOKS_DIR = _HOOKS_DIR.parent.parent / "ida" / "hooks"
 for _parent in _HERE.parents:
     _lib_hooks = _parent / "lib" / "hooks"
     if (_lib_hooks / "dispatch.py").is_file():
         if str(_lib_hooks) not in sys.path:
             sys.path.insert(0, str(_lib_hooks))
         break
-if _HOOKS_DIR.is_dir() and str(_HOOKS_DIR) not in sys.path:
-    sys.path.insert(0, str(_HOOKS_DIR))
+for _p in (_HOOKS_DIR, _IDA_HOOKS_DIR):
+    if _p.is_dir() and str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
 
 from dispatch import HookContext, Result, warn
 

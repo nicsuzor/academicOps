@@ -5,7 +5,7 @@ description: Run a low-context headless Antigravity (agy) agent from Claude Code
 
 # /agy -- Low-Context Headless Antigravity Invocation
 
-Invoke `agy` headlessly from Claude Code using the `agy-headless` plugin's isolated custom agent profiles (`inheritCustomizations: false`, `inheritMcp: false`), which load only `premise-check` and its dedicated `SessionStart` handback hook (`agent-hooks.json`) while stripping MCP schemas, workspace rules, other plugins, and slash-command tables. By default (`--output-format json` reading `.response` or `.structured_output`, or `--output-format text`), `agy` returns **only the final answer** -- never intermediate tool logs or thinking prose -- formatted as clean `premise-check` Argdown prose. If already inside an `agy` session, use native tools directly. Route repository writes or work over 5 minutes (10-minute ceiling) to `/dispatch`.
+Invoke `agy` headlessly from Claude Code using isolated custom agent profiles (`inheritCustomizations: false`, `inheritMcp: false`) that preload only `premise-check` (`preloadSkills: [premise-check]`) with zero hooks, stripping MCP schemas, workspace rules, other plugins, and slash-command tables. By default (`--output-format json` reading `.response` or `.structured_output`, or `--output-format text`), `agy` returns **only the final answer** -- never intermediate tool logs or thinking prose -- formatted as clean `premise-check` Argdown prose. If already inside an `agy` session, use native tools directly. Route repository writes or work over 5 minutes (10-minute ceiling) to `/dispatch`.
 
 ## 1. Choose a Low-Context Agent Profile
 
@@ -13,8 +13,8 @@ Always pass `--agent <profile>` so `agy` never boots a full default session:
 
 | Profile | Capabilities | Default tier & working directory |
 | :- | :- | :- |
-| `headless-bare` | Zero file or web tools (`finish` only; excludes default prompt components) | `fast`; clean dir outside repos (e.g. `/tmp`) |
-| `headless-web` | Grounded web search (`search_web`, `read_url_content`, `finish`; excludes default prompt components) | `fast`; clean dir outside repos (e.g. `/tmp`) |
+| `headless-bare` | Zero file or web tools (`finish` only) | `fast`; clean dir outside repos (e.g. `/tmp`) |
+| `headless-web` | Grounded web search (`search_web`, `read_url_content`, `finish`) | `fast`; clean dir outside repos (e.g. `/tmp`) |
 | `headless-ro` | Read-only named local files (`view_file`, `grep_search`, `find_by_name`, `list_dir`, `finish`) | `fast`; target dir (`--add-dir <abs_path>` if needed) |
 | `headless-explore` | Read-only exploration & multi-step reasoning (read-only `run_command`, file reads, web search, `finish`; zero write tools) | `mid-tier`; target dir (`--add-dir <abs_path>` if needed) |
 
@@ -70,7 +70,7 @@ agy --sandbox --agent headless-explore --model "<mid-tier-model>" \
 
 ## 4. Avoid Repeated Spawn Taxes
 
-- **Sequential follow-ups**: Save `.conversation_id` from `--output-format json` and pass `--conversation <id>` (or `-c`) on follow-up calls within the cache TTL to reuse the warm prefix cache (the `agy-headless` `SessionStart` hook fires once per conversation and is not re-injected on resumed turns).
+- **Sequential follow-ups**: Save `.conversation_id` from `--output-format json` and pass `--conversation <id>` (or `-c`) on follow-up calls within the cache TTL to reuse the warm prefix cache.
 - **Batch prompts**: Keep one persistent headless process open with `--input-format stream-json --output-format stream-json` (omitting `-p`), writing one NDJSON user message to stdin after each prior turn's `result` event.
 
 ## 5. Verify & Fail Fast

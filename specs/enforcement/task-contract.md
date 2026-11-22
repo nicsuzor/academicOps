@@ -87,7 +87,7 @@ this contract does not restate.
   `/dump` for the final handover and for logging results at the end of every
   job, whatever its release status (`done`, `partial`, `failed`,
   `cancelled`, or `in_progress`), and `/dump`'s `release_task` body update
-  includes a report argument (per [`premise-check`](../../lib/skills/premise-check/SKILL.md))
+  includes a report argument (per [`premise-check`](../../plugins/ida/skills/premise-check/SKILL.md))
   whose conclusion answers each original direction given or question posed by
   its ask id. A worker whose deliverable is a PR opens the PR as a draft (`gh pr create --draft`), releases its task `done` once the draft PR is open with branch and `pr_url` recorded and local tests verified, and exits; releasing `done` immediately unblocks dependent follow-ups (QA, review, deploy) on the task graph, and the PR goes ready for review (`gh pr ready`) only after the independent check passes; `partial` is reserved strictly for the worker's own unfinished acceptance items, never for waiting to prove the user installed, pulled, or deployed a shipped release. Only silent, undisclosed
   abandonment is garbage-collected (H10): incentive-first, this machinery is the

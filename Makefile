@@ -62,11 +62,9 @@ build-cowork:
 # manifest error surfaces here instead of at install or first use.
 build-test: build
 	@for p in $(PLUGIN_NAMES); do \
-		if [ -d "$(DIST)/$$p-claude" ]; then \
-			command claude plugin validate "$(DIST)/$$p-claude" \
-				&& echo "✓ claude $$p validated" \
-				|| { echo "x claude $$p validate failed" >&2; exit 1; }; \
-		fi; \
+		command claude plugin validate "$(DIST)/$$p-claude" \
+			&& echo "✓ claude $$p validated" \
+			|| { echo "x claude $$p validate failed" >&2; exit 1; }; \
 		if [ -d "$(DIST)/cowork/$$p" ]; then \
 			command claude plugin validate "$(DIST)/cowork/$$p" \
 				&& echo "✓ cowork $$p validated" \
@@ -106,9 +104,7 @@ install-dev: build clean-plugins
 		command claude plugin uninstall $$p@academicOps >/dev/null 2>&1 || true; \
 		command claude plugin uninstall aops-$$p@$(LOCAL_MARKETPLACE) >/dev/null 2>&1 || true; \
 		command claude plugin uninstall aops-$$p@academicOps >/dev/null 2>&1 || true; \
-		if [ -d "$(DIST)/$$p-claude" ]; then \
-			$(call claude_install,$$p,$(LOCAL_MARKETPLACE)); \
-		fi; \
+		$(call claude_install,$$p,$(LOCAL_MARKETPLACE)); \
 	done
 	@mkdir -p ~/.gemini/config/plugins
 	@for p in $(PLUGIN_NAMES); do \

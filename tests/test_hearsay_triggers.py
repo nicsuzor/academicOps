@@ -11,11 +11,9 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 IDA_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
-LIB_HOOKS = REPO_ROOT / "lib" / "hooks"
 
-for _p in (LIB_HOOKS, IDA_HOOKS):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
+if str(IDA_HOOKS) not in sys.path:
+    sys.path.insert(0, str(IDA_HOOKS))
 
 import handlers  # type: ignore[import-not-found]
 from dispatch import HookContext, Kind  # type: ignore[import-not-found]
@@ -280,15 +278,8 @@ def test_hearsay_arm_emits_otel_trace_on_incoming_message(tmp_path, monkeypatch)
         mock_emit.assert_called_once()
 
 
-def test_honesty_fires_on_subagent_start_and_not_on_receiving_events(tmp_path: Path):
+def test_honesty_fires_on_subagent_start_and_not_on_receiving_events():
     """Honesty (writing the report) fires on SubagentStart; receiving events only fire hearsay."""
-    staged = tmp_path / "hooks"
-    (staged / "messages").mkdir(parents=True)
-    for msg in (LIB_HOOKS / "messages").glob("*.md"):
-        (staged / "messages" / msg.name).write_text(
-            msg.read_text(encoding="utf-8"), encoding="utf-8"
-        )
-
     # 1. SubagentStart delivers honesty.md via warn (Kind.ADVISE)
     ctx_start = HookContext(
         client="claude",
@@ -296,7 +287,7 @@ def test_honesty_fires_on_subagent_start_and_not_on_receiving_events(tmp_path: P
         agent_id="sub-alpha",
         agent_type="worker",
         session_id="s-sub-alpha",
-        hooks_dir=staged,
+        hooks_dir=IDA_HOOKS,
         raw={"agent_id": "sub-alpha"},
     )
     res_start = handlers.subagent_start(ctx_start)
@@ -310,7 +301,7 @@ def test_honesty_fires_on_subagent_start_and_not_on_receiving_events(tmp_path: P
         agent_id="sub-beta",
         agent_type="worker",
         session_id="s-sub-beta",
-        hooks_dir=staged,
+        hooks_dir=IDA_HOOKS,
         raw={"agent_id": "sub-beta", "prompt": "Implement AC1"},
     )
     assert handlers.honest_output(ctx_init) is None

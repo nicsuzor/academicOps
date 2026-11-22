@@ -41,7 +41,6 @@ from claude_code_tracer import (
     _session_lock,
     _truncate,
     classify_prompt_origin,
-    prepare_tracer_data,
     report_unconfigured_tracer_if_needed,
     resolve_agent_name,
     resolve_client_agent_name,
@@ -1079,36 +1078,3 @@ def handle_stop(data: dict, config: dict) -> None:
         )
 
         _end_turn_agy(session_id, state)
-
-
-def _dispatch_agy_hook(ctx: Any, handler: Any, label: str) -> None:
-    if getattr(ctx, "client", None) != "agy":
-        return None
-    try:
-        data = prepare_tracer_data(ctx)
-        config = discover_config(data)
-        if config is not None:
-            handler(data, config)
-    except Exception as exc:
-        log.warning("%s tracer failed: %s", label, exc)
-    return None
-
-
-def pre_invocation_hook(ctx: Any) -> None:
-    """Dispatch hook wrapper for agy PreInvocation (canonical UserPromptSubmit)."""
-    return _dispatch_agy_hook(ctx, handle_pre_invocation, "agy_user_prompt_submit")
-
-
-def pre_tool_hook(ctx: Any) -> None:
-    """Dispatch hook wrapper for agy PreToolUse."""
-    return _dispatch_agy_hook(ctx, handle_pre_tool, "agy_pre_tool")
-
-
-def post_tool_hook(ctx: Any) -> None:
-    """Dispatch hook wrapper for agy PostToolUse."""
-    return _dispatch_agy_hook(ctx, handle_post_tool, "agy_post_tool")
-
-
-def stop_hook(ctx: Any) -> None:
-    """Dispatch hook wrapper for agy Stop."""
-    return _dispatch_agy_hook(ctx, handle_stop, "agy_stop")

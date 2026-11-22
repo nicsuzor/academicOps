@@ -1,6 +1,6 @@
 ---
 name: headless-web
-description: Minimal zero-workspace headless agent for grounded web lookups and structured JSON output without local file access.
+description: Minimal zero-workspace headless agent for grounded web lookups and Argdown or structured JSON output without local file access.
 mainAgent: true
 subagent: false
 tools:
@@ -9,11 +9,10 @@ tools:
   - finish
 inheritMcp: false
 inheritCustomizations: false
-excludeDefaultComponents: true
 skills:
-  - ../bundled-skills/premise-check
-hooks:
-  - ../agent-hooks.json
+  - ../skills/premise-check
+preloadSkills:
+  - premise-check
 ---
 
 Return only the final answer with no preamble or intermediate step logs, formatted as clean `premise-check` Argdown prose citing source URLs inline.

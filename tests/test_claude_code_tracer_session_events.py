@@ -25,9 +25,9 @@ from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
 from opentelemetry.trace import StatusCode
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-LIB_HOOKS = REPO_ROOT / "lib" / "hooks"
-if str(LIB_HOOKS) not in sys.path:
-    sys.path.insert(0, str(LIB_HOOKS))
+IDA_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
+if str(IDA_HOOKS) not in sys.path:
+    sys.path.insert(0, str(IDA_HOOKS))
 
 import claude_code_tracer as cct
 import dispatch
@@ -1063,7 +1063,7 @@ def _stage_aops_debug_hooks(tmp_path: Path) -> Path:
         hooks_dir / "handlers.py",
     )
     shutil.copy2(REPO_ROOT / "lib" / "hooks" / "dispatch.py", hooks_dir / "dispatch.py")
-    shutil.copy2(LIB_HOOKS / "claude_code_tracer.py", hooks_dir / "claude_code_tracer.py")
+    shutil.copy2(IDA_HOOKS / "claude_code_tracer.py", hooks_dir / "claude_code_tracer.py")
     return hooks_dir
 
 

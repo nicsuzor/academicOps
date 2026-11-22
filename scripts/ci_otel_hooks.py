@@ -2,7 +2,7 @@
 """Trace a claude-code-action run to Phoenix with the ida Claude Code tracer.
 
 Writes a Claude Code settings file for claude-code-action's ``settings`` input.
-The settings register ``lib/hooks/claude_code_tracer.py`` as the hooks
+The settings register ``plugins/ida/hooks/claude_code_tracer.py`` as the hooks
 for every traced event, and nothing else from the ida plugin, so a CI agent is
 traced without inheriting ida's gates.
 
@@ -41,7 +41,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-TRACER_RELPATH = Path("lib") / "hooks" / "claude_code_tracer.py"
+TRACER_RELPATH = Path("plugins") / "ida" / "hooks" / "claude_code_tracer.py"
 DEFAULT_PROJECT = "academicOps"
 
 # Versions locked in uv.lock; the tracer needs nothing else.

@@ -1,18 +1,15 @@
 """Antigravity (agy) client adapter.
 
-- manifest/plugin.json      -> plugin.json
-- manifest/hooks.json       -> hooks.json, reshaped from the Claude Code hook
+- manifest/plugin.json  -> plugin.json
+- manifest/hooks.json   -> hooks.json, reshaped from the Claude Code hook
   config the templates are written in into agy's own schema, and with
   `${AGY_PLUGIN_ROOT}/...` script paths rewritten plugin-root-relative. See
   `_to_agy_hooks` for the schema and where it is documented.
-- manifest/agent-hooks.json -> agent-hooks.json, using the same schema transform
-  for agent-scoped opt-in hooks loaded via agent frontmatter `hooks:` rather
-  than ambient plugin hook discovery.
-- manifest/mcp.json         -> mcp_config.json
-- commands/<name>.md        -> skills/cmd-<name>/SKILL.md, frontmatter
+- manifest/mcp.json     -> mcp_config.json
+- commands/<name>.md    -> skills/cmd-<name>/SKILL.md, frontmatter
   `type: command` rewritten to `type: skill`; the commands/ dir itself is
   dropped (agy has no commands/ concept).
-- agents/<name>.md          -> agents/<name>.md (agy's own read format)
+- agents/<name>.md      -> agents/<name>.md (agy's own read format)
 - axioms with `trigger: always_on` -> rules/<source_file>
 """
 
@@ -62,15 +59,6 @@ def adapt(build_dir: Path, ctx: BuildContext) -> None:
     # an empty one.
     if manifests.get("hooks"):
         _write_json(build_dir / "hooks.json", _to_agy_hooks(manifests["hooks"], ctx))
-    if manifests.get("agent-hooks"):
-        _write_json(
-            build_dir / "agent-hooks.json",
-            _to_agy_hooks(
-                manifests["agent-hooks"],
-                ctx,
-                source_name="manifest/agent-hooks.json",
-            ),
-        )
 
     # Same rule as hooks: no servers means no file, not an empty one.
     servers = (manifests.get("mcp") or {}).get("mcpServers") or {}
@@ -92,12 +80,7 @@ def adapt(build_dir: Path, ctx: BuildContext) -> None:
             )
 
 
-def _to_agy_hooks(
-    hooks_config: dict,
-    ctx: BuildContext,
-    *,
-    source_name: str = "manifest/hooks.template.json",
-) -> dict:
+def _to_agy_hooks(hooks_config: dict, ctx: BuildContext) -> dict:
     """Reshape a Claude Code hook config into agy's `hooks.json` schema.
 
     Templates are written once, in Claude Code's shape — a `hooks` wrapper
@@ -129,7 +112,7 @@ def _to_agy_hooks(
             spec[event] = [_handler(hook) for entry in entries for hook in entry.get("hooks", [])]
         else:
             raise BuildError(
-                f"{ctx.plugin.directory}: {source_name} wires {event!r} "
+                f"{ctx.plugin.directory}: manifest/hooks.template.json wires {event!r} "
                 f"for client=agy, which has no such hook event. agy fires only "
                 f"{', '.join((*_GROUPED_EVENTS, *_FLAT_EVENTS))}."
             )

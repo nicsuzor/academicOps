@@ -669,7 +669,8 @@ def test_resolve_client_agents_unknown_client_raises(tmp_path):
         resolve_client_agents(agents_dir, "unknown")
 
 
-def test_agy_only_agent_preserves_low_context_frontmatter_and_omits_other_clients(tmp_path):
+def test_agy_only_headless_agent_preserves_isolation_and_preload_frontmatter(tmp_path):
+    """`.agy.md` headless profiles preserve isolation/preload frontmatter for agy and drop on Claude/OpenClaw."""
     import yaml
 
     from build.clients.agy import adapt as adapt_agy
@@ -687,29 +688,13 @@ def test_agy_only_agent_preserves_low_context_frontmatter_and_omits_other_client
         "  - finish\n"
         "inheritMcp: false\n"
         "inheritCustomizations: false\n"
-        "excludeDefaultComponents: true\n"
         "skills:\n"
-        "  - ../bundled-skills/premise-check\n"
-        "hooks:\n"
-        "  - ../agent-hooks.json\n"
+        "  - ../skills/premise-check\n"
+        "preloadSkills:\n"
+        "  - premise-check\n"
         "---\n\n"
         "Answer directly.\n"
     )
-
-    agent_hooks_manifest = {
-        "hooks": {
-            "SessionStart": [
-                {
-                    "hooks": [
-                        {
-                            "type": "command",
-                            "command": 'uv run --project "${AGY_PLUGIN_ROOT}" python "${AGY_PLUGIN_ROOT}/hooks/dispatch.py" agy SessionStart',
-                        }
-                    ]
-                }
-            ]
-        }
-    }
 
     def make_tree(name: str) -> Path:
         root = tmp_path / name
@@ -724,14 +709,14 @@ def test_agy_only_agent_preserves_low_context_frontmatter_and_omits_other_client
         BuildContext(
             plugin=Plugin(
                 directory="agy-plugin",
-                marketplace_name="agy-headless",
+                marketplace_name="ida",
                 description="desc",
                 category="productivity",
                 source_dir=agy_dir,
             ),
             client="agy",
             version=VERSION,
-            manifests={"plugin": {"name": "agy-headless"}, "agent-hooks": agent_hooks_manifest},
+            manifests={"plugin": {"name": "ida"}},
         ),
     )
 
@@ -744,18 +729,10 @@ def test_agy_only_agent_preserves_low_context_frontmatter_and_omits_other_client
     assert fm["subagent"] is False
     assert fm["inheritMcp"] is False
     assert fm["inheritCustomizations"] is False
-    assert fm["excludeDefaultComponents"] is True
-    assert fm["skills"] == ["../bundled-skills/premise-check"]
-    assert fm["hooks"] == ["../agent-hooks.json"]
+    assert fm["skills"] == ["../skills/premise-check"]
+    assert fm["preloadSkills"] == ["premise-check"]
     assert fm["tools"] == ["finish"]
-
-    built_agent_hooks = agy_dir / "agent-hooks.json"
-    assert built_agent_hooks.is_file()
-    assert not (agy_dir / "hooks.json").exists()
-    ah_data = json.loads(built_agent_hooks.read_text(encoding="utf-8"))
-    assert "agy-headless" in ah_data
-    cmd = ah_data["agy-headless"]["SessionStart"][0]["command"]
-    assert cmd == "uv run --project . python hooks/dispatch.py agy SessionStart"
+    assert "hooks" not in fm
 
     for client_name, adapt_fn in (("claude", adapt_claude), ("openclaw", adapt_openclaw)):
         client_dir = make_tree(f"{client_name}-plugin")
@@ -764,71 +741,18 @@ def test_agy_only_agent_preserves_low_context_frontmatter_and_omits_other_client
             BuildContext(
                 plugin=Plugin(
                     directory=f"{client_name}-plugin",
-                    marketplace_name="agy-headless",
+                    marketplace_name="ida",
                     description="desc",
                     category="productivity",
                     source_dir=client_dir,
                 ),
                 client=client_name,
                 version=VERSION,
-                manifests={"plugin": {"name": "agy-headless"}, "agent-hooks": {}},
+                manifests={"plugin": {"name": "ida"}},
             ),
         )
         assert not (client_dir / "agents" / "headless-bare.md").exists()
         assert not (client_dir / "agents" / "headless-bare.agy.md").exists()
-        assert not (client_dir / "agent-hooks.json").exists()
-
-
-def test_shared_assets_injected_from_lib_and_reject_duplicate_copies(tmp_path):
-    """Declared `shared` entries copy from `lib/` at build time and fail fast on duplicate copies."""
-    import subprocess
-
-    proj = tmp_path / "repo"
-    (proj / "lib" / "shared-skill").mkdir(parents=True)
-    (proj / "lib" / "shared-skill" / "SKILL.md").write_text("# Shared\n", encoding="utf-8")
-    (proj / "plugins" / "alpha" / "manifest").mkdir(parents=True)
-    (proj / "plugins" / "alpha" / "manifest" / "plugin.json").write_text(
-        json.dumps({"manifestVersion": "1.0", "name": "alpha", "clients": {"__base__": {}}}),
-        encoding="utf-8",
-    )
-    mp = proj / "build" / "marketplace.toml"
-    mp.parent.mkdir(parents=True)
-    mp.write_text(
-        'name = "test"\ndescription = "test"\n[owner]\nname = "Test"\nemail = "t@example.com"\n'
-        '[[plugins]]\ndirectory = "alpha"\nname = "alpha"\ndescription = "alpha"\n'
-        'category = "productivity"\nclients = ["agy"]\n'
-        'shared = [{ src = "lib/shared-skill", dst = "bundled-skills/shared-skill" }]\n',
-        encoding="utf-8",
-    )
-    subprocess.run(["git", "init", "-q", str(proj)], check=True)
-    subprocess.run(
-        [
-            "git",
-            "-C",
-            str(proj),
-            "-c",
-            "user.name=Test",
-            "-c",
-            "user.email=test@example.com",
-            "commit",
-            "-q",
-            "--allow-empty",
-            "-m",
-            "init",
-        ],
-        check=True,
-    )
-
-    dist = tmp_path / "dist"
-    build_all(proj, dist, marketplace_path=mp, clients=("agy",), version=VERSION)
-    assert (dist / "alpha-agy" / "bundled-skills" / "shared-skill" / "SKILL.md").is_file()
-
-    # Placing a duplicate copy inside plugins/alpha must fail the build.
-    dup = proj / "plugins" / "alpha" / "bundled-skills" / "shared-skill"
-    dup.mkdir(parents=True)
-    (dup / "SKILL.md").write_text("# Duplicate\n", encoding="utf-8")
-    with pytest.raises(BuildError, match="duplicate copy"):
-        build_all(proj, dist, marketplace_path=mp, clients=("agy",), version=VERSION)
 
 
 def test_agent_tools_serialised_as_yaml_list(built):

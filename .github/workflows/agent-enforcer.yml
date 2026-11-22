@@ -186,7 +186,7 @@ jobs:
             /.github/agents/shared-error-handling.md \
             /.github/agents/enforcer.agent.md \
             /scripts/ci/reap-agent-processes.sh \
-            /lib/hooks/claude_code_tracer.py \
+            /plugins/ida/hooks/claude_code_tracer.py \
             /scripts/ci_otel_hooks.py \
             /scripts/ci/reconcile-enforcer-reviews.sh && cd ..
           if [ ! -f .aops/plugins/rbg/agents/rbg.md ] || [ ! -f .aops/.github/agents/enforcer.agent.md ] || [ ! -f .aops/.github/agents/shared-error-handling.md ]; then

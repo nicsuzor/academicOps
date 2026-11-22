@@ -60,47 +60,6 @@ def load_marketplace_toml(path: Path) -> dict[str, Any]:
                     f"{path}: [[plugins]] '{entry['directory']}' has clients {listed!r}; "
                     f"expected a non-empty list drawn from {list(CLIENTS)}"
                 )
-        if "shared" in entry:
-            shared_entries = entry["shared"]
-            if not isinstance(shared_entries, list):
-                raise BuildError(
-                    f"{path}: [[plugins]] '{entry['directory']}' shared must be a list"
-                )
-            for item in shared_entries:
-                if not isinstance(item, dict):
-                    raise BuildError(
-                        f"{path}: [[plugins]] '{entry['directory']}' shared entry must be a table: {item!r}"
-                    )
-                src = item.get("src")
-                dst = item.get("dst")
-                if (
-                    not isinstance(src, str)
-                    or not src.startswith("lib/")
-                    or ".." in Path(src).parts
-                ):
-                    raise BuildError(
-                        f"{path}: [[plugins]] '{entry['directory']}' shared src must be under 'lib/': {src!r}"
-                    )
-                if (
-                    not isinstance(dst, str)
-                    or not dst
-                    or Path(dst).is_absolute()
-                    or ".." in Path(dst).parts
-                ):
-                    raise BuildError(
-                        f"{path}: [[plugins]] '{entry['directory']}' shared dst must be plugin-relative: {dst!r}"
-                    )
-                if "clients" in item:
-                    item_clients = item["clients"]
-                    if (
-                        not isinstance(item_clients, list)
-                        or not item_clients
-                        or any(client not in CLIENTS for client in item_clients)
-                    ):
-                        raise BuildError(
-                            f"{path}: [[plugins]] '{entry['directory']}' shared '{src}' has clients "
-                            f"{item_clients!r}; expected a non-empty list drawn from {list(CLIENTS)}"
-                        )
     return data
 
 

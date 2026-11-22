@@ -14,11 +14,9 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PKB_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
-LIB_HOOKS = REPO_ROOT / "lib" / "hooks"
 
-for _p in (LIB_HOOKS, PKB_HOOKS):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
+if str(PKB_HOOKS) not in sys.path:
+    sys.path.insert(0, str(PKB_HOOKS))
 
 import importlib.util
 

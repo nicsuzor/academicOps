@@ -382,7 +382,7 @@ jobs:
           cd .aops && git sparse-checkout set --no-cone \
             /.github/agents/shared-error-handling.md \
             /.github/agents/mechanic.agent.md \
-            /lib/hooks/claude_code_tracer.py \
+            /plugins/ida/hooks/claude_code_tracer.py \
             /scripts/ci_otel_hooks.py && cd ..
           if [ ! -f .aops/.github/agents/mechanic.agent.md ] || [ ! -f .aops/.github/agents/shared-error-handling.md ]; then
             echo "::error::Mechanic prompt files were not materialised by sparse-checkout" >&2

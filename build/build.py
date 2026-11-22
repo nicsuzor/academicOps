@@ -26,7 +26,7 @@ from typing import Any
 from build.clients import agy as agy_client
 from build.clients import claude as claude_client
 from build.clients import openclaw as openclaw_client
-from build.context import CLIENTS, BuildContext, Plugin, SharedAsset
+from build.context import CLIENTS, BuildContext, Plugin
 from build.errors import BuildError
 from build.manifest import merge_one_level, render_template, template_stem
 from build.marketplace import (
@@ -67,14 +67,6 @@ def discover_plugins(
         source_dir = project_root / "plugins" / directory
         if not source_dir.exists():
             raise BuildError(f"plugin source missing: {source_dir} (declared as '{directory}')")
-        shared_assets = tuple(
-            SharedAsset(
-                src=item["src"],
-                dst=item["dst"],
-                clients=tuple(item.get("clients", CLIENTS)),
-            )
-            for item in declared[directory].get("shared", [])
-        )
         plugins.append(
             Plugin(
                 directory=directory,
@@ -83,7 +75,6 @@ def discover_plugins(
                 category=declared[directory]["category"],
                 source_dir=source_dir,
                 clients=tuple(declared[directory].get("clients", CLIENTS)),
-                shared=shared_assets,
             )
         )
     return plugins
@@ -101,7 +92,7 @@ def _stage_plugin(plugin: Plugin, stage_dir: Path, version: str) -> None:
     plugin_pyproject = plugin.source_dir / "pyproject.toml"
     plugin_uvlock = plugin.source_dir / "uv.lock"
 
-    shared_tracer = repo_root / "lib" / "hooks" / "claude_code_tracer.py"
+    shared_tracer = repo_root / "plugins" / "ida" / "hooks" / "claude_code_tracer.py"
     staged_hooks_dir = stage_dir / "hooks"
     staged_tracer = staged_hooks_dir / "claude_code_tracer.py"
     if staged_hooks_dir.is_dir() and shared_tracer.is_file() and not staged_tracer.exists():
@@ -171,30 +162,6 @@ def _package(build_dir: Path, client: str, dist_root: Path) -> Path:
     return archive_path
 
 
-def _inject_shared(plugin: Plugin, client: str, build_dir: Path, repo_root: Path) -> None:
-    """Inject declared shared assets from `lib/` into a plugin client build.
-
-    Fails fast on missing source assets or duplicate plugin-local copies.
-    """
-    for asset in plugin.shared:
-        if client not in asset.clients:
-            continue
-        src_path = repo_root / asset.src
-        if not src_path.exists():
-            raise BuildError(f"{plugin.directory}: shared asset missing: {src_path}")
-        dst_path = build_dir / asset.dst
-        if dst_path.exists():
-            raise BuildError(
-                f"{plugin.directory}: duplicate copy at {asset.dst}; remove the plugin-local copy "
-                f"and rely on {asset.src}"
-            )
-        if src_path.is_dir():
-            shutil.copytree(src_path, dst_path, ignore=ignore())
-        else:
-            dst_path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src_path, dst_path)
-
-
 def _build_plugin_client(
     plugin: Plugin,
     client: str,
@@ -209,7 +176,6 @@ def _build_plugin_client(
     if build_dir.exists():
         shutil.rmtree(build_dir)
     shutil.copytree(stage_dir, build_dir, ignore=ignore())
-    _inject_shared(plugin, client, build_dir, plugin.source_dir.parent.parent)
 
     manifests = _render_manifests(plugin, client, version, owner)  # stage 3
     ctx = BuildContext(plugin=plugin, client=client, version=version, manifests=manifests)

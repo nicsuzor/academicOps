@@ -10,10 +10,10 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-LIB_HOOKS = REPO_ROOT / "lib" / "hooks"
+IDA_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
 
-if str(LIB_HOOKS) not in sys.path:
-    sys.path.insert(0, str(LIB_HOOKS))
+if str(IDA_HOOKS) not in sys.path:
+    sys.path.insert(0, str(IDA_HOOKS))
 
 import claude_code_tracer
 from opentelemetry.sdk.resources import Resource

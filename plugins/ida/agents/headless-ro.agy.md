@@ -1,6 +1,6 @@
 ---
 name: headless-ro
-description: Minimal read-only headless agent for inspecting named local files and emitting text or structured JSON without write, shell, or web access.
+description: Minimal read-only headless agent for inspecting named local files and emitting Argdown or structured JSON output without write, shell, or web access.
 mainAgent: true
 subagent: false
 tools:
@@ -12,9 +12,9 @@ tools:
 inheritMcp: false
 inheritCustomizations: false
 skills:
-  - ../bundled-skills/premise-check
-hooks:
-  - ../agent-hooks.json
+  - ../skills/premise-check
+preloadSkills:
+  - premise-check
 ---
 
 Return only the final answer with no preamble or intermediate step logs, formatted as clean `premise-check` Argdown prose citing `file:line` evidence inline.

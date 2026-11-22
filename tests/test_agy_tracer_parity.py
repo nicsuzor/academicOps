@@ -5,9 +5,9 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
-LIB_HOOKS = Path(__file__).resolve().parent.parent / "lib" / "hooks"
-if str(LIB_HOOKS) not in sys.path:
-    sys.path.insert(0, str(LIB_HOOKS))
+HOOKS_DIR = Path(__file__).resolve().parent.parent / "plugins" / "ida" / "hooks"
+if str(HOOKS_DIR) not in sys.path:
+    sys.path.insert(0, str(HOOKS_DIR))
 
 import agy_tracer
 
