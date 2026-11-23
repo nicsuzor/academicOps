@@ -12,16 +12,7 @@ Arize Phoenix persists OpenTelemetry traces, spans, evaluations, and datasets.
 
 ## Executing via `phoenix_execute`
 
-`phoenix_execute` runs a **Python** async sandbox where upstream Phoenix tools are invoked via `await call_tool('<toolName>', {...})`:
-
-```python
-schema = await call_tool("describeSqlSchema", {})
-res = await call_tool("executeSql", {"sql": sql})
-gql = await call_tool("executeGraphqlQuery", {"query": query, "variables": {...}})
-```
-
-- Always check `if "error" in res:` before reading `res["rows"]` (`executeSql` returns an error envelope dictionary rather than raising).
-- When `phoenix_execute` is itself called through a JS MCP code-mode portal (`portal_codemode_execute`), keep the JS wrapper thin and return compact payloads (< 20 KB; portals truncate responses around ~24 KB). For multi-chunk sweeps, loop sequentially in Python inside `phoenix_execute` (keeping total wall time under the portal's ~60s timeout) rather than firing concurrent heavy SQL scans that contend on SQLite.
+`phoenix_execute` runs a **Python** async sandbox calling upstream tools via `await call_tool('<toolName>', {...})` (`describeSqlSchema`, `executeSql`, `executeGraphqlQuery`, `getSpans`). Always check `if "error" in res:` before reading `res["rows"]`. For multi-chunk sweeps, loop sequentially inside `phoenix_execute` (keeping total wall time under ~60s) rather than firing concurrent heavy SQL scans that contend on SQLite, and keep portal returns < 20 KB.
 
 ## Session Grouping vs Trace ID
 

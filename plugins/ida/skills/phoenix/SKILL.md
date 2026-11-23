@@ -10,13 +10,15 @@ Query Arize Phoenix telemetry, audit built-in token spend and tool usage on the 
 ## 1. Core Query Discipline
 
 - **Authenticated MCP perimeter**: Execute all reads via `phoenix_execute` (or structured Phoenix MCP tools). Surface errors verbatim; never fall back to local `.jsonl` files, invent default URLs, or guess project names.
-- **`phoenix_execute` sandbox syntax**: `phoenix_execute` runs **Python** where upstream Phoenix tools are invoked with `await call_tool('<toolName>', {...})` -- for example:
+- **`phoenix_execute` sandbox syntax**: `phoenix_execute` runs **Python** where upstream Phoenix tools are invoked via `await call_tool('<toolName>', {...})`:
   ```python
-  return await call_tool('describeSqlSchema', {})
-  return await call_tool('executeSql', {'sql': sql})
-  return await call_tool('executeGraphqlQuery', {'query': gql, 'variables': {...}})
+  # pick one:
+  res = await call_tool('describeSqlSchema', {})
+  res = await call_tool('executeSql', {'sql': sql})
+  res = await call_tool('executeGraphqlQuery', {'query': gql, 'variables': {...}})
+  return res
   ```
-  When invoked through a JS MCP code-mode portal, keep the outer JS wrapper thin and keep returned payloads compact (< 20 KB, since portals truncate around ~24 KB).
+  `executeSql` returns an error dictionary rather than raising -- always check `if 'error' in res:` before reading `res['rows']`. Keep sequential chunk loops inside one `phoenix_execute` call under ~60s total wall time; when invoked through a JS MCP code-mode portal, keep returned payloads compact (< 20 KB, since portals truncate around ~24 KB).
 - **Dialect and schema awareness**: Run `describeSqlSchema()` before writing custom SQL so queries match the active SQL dialect (SQLite vs PostgreSQL) and allowlisted schema (`spans.trace_id` and `spans.project_name` do not exist -- join `project_sessions -> projects -> traces -> spans`).
 - **SQL bounds, materialization & pagination**:
   - Keep every SQL statement strictly <= 2,048 UTF-8 bytes and never select raw `s.attributes` or `s.events` blobs in list, cost, or outline queries.

@@ -9,6 +9,7 @@
 -- Stop paging when len(rows) < 25 -- do NOT rely on row_count_is_partial, which reflects only
 -- the server's 500-row cap. Tool output_excerpt is omitted (NULL) because outlines render tool
 -- calls as single-line bullets; use Query 3 in cross-session-search.sql for targeted drill-down.
+-- Truncated excerpts end with '...' so outline rendering can snap them back to word boundaries.
 -- Sort collected rows by start_time when rendering turns.
 SELECT
   s.id AS span_rowid,
@@ -28,9 +29,9 @@ SELECT
   sc.prompt_tokens,
   sc.completion_tokens,
   ROUND(sc.total_cost, 6) AS total_cost,
-  CASE WHEN s.span_kind = 'LLM' THEN SUBSTR(s.attributes->>'$.llm.reasoning', 1, 600) ELSE NULL END AS reasoning_excerpt,
-  SUBSTR(s.attributes->>'$.input.value', 1, 350) AS input_excerpt,
-  CASE WHEN s.span_kind IN ('CHAIN', 'AGENT', 'LLM') THEN SUBSTR(s.attributes->>'$.output.value', 1, 600) ELSE NULL END AS output_excerpt
+  CASE WHEN s.span_kind <> 'LLM' THEN NULL WHEN LENGTH(s.attributes->>'$.llm.reasoning') > 600 THEN SUBSTR(s.attributes->>'$.llm.reasoning', 1, 597) || '...' ELSE s.attributes->>'$.llm.reasoning' END AS reasoning_excerpt,
+  CASE WHEN LENGTH(s.attributes->>'$.input.value') > 350 THEN SUBSTR(s.attributes->>'$.input.value', 1, 347) || '...' ELSE s.attributes->>'$.input.value' END AS input_excerpt,
+  CASE WHEN s.span_kind NOT IN ('CHAIN', 'AGENT', 'LLM') THEN NULL WHEN LENGTH(s.attributes->>'$.output.value') > 600 THEN SUBSTR(s.attributes->>'$.output.value', 1, 597) || '...' ELSE s.attributes->>'$.output.value' END AS output_excerpt
 FROM project_sessions ps
 JOIN projects p ON p.id = ps.project_id
 JOIN traces t ON t.project_session_rowid = ps.id
