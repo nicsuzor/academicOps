@@ -28,9 +28,12 @@ Invoke `/hydrate` (via custodian when called by a non-custodian). Cite hydration
 
 ## 3. Write Each Task
 
-- **Combined body & two-task reviewed classes**: Default to one repo-scoped task body (50-150 words atomic, <=300 words composite, `## Ask` aside). Under `/supervise`, keep planning, in-session reviews, fan-out, and verification inside the single session. For task classes requiring independent graph-tracked review, mint two child tasks: (1) work task (delivers artifact or opens draft PR via `gh pr create --draft`, records evidence, releases `done`) and (2) review task (`needs: [<work_task_id>]`, runs review, marks `gh pr ready`, releases `done` or `failed`). Unreviewed classes yield only the work task releasing `done`.
+- **Combined body & two-task reviewed classes**: Default to one repo-scoped task body (50-150 words atomic, <=300 words composite, `## Ask` aside). Under `/supervise`, keep planning, in-session reviews, fan-out, and verification inside the single session. For task classes requiring independent graph-tracked review, mint two child tasks:
+  1. **Work task**: Delivers artifact or opens draft PR (`gh pr create --draft`), records evidence, and releases `done`.
+  2. **Review task** (`needs: [<work_task_id>]`): Runs independent review, marks `gh pr ready`, and releases `done` or `failed`.
+     Unreviewed classes yield only the work task releasing `done`.
 - **Splitting conditions**: Split beyond the work+review pair only when a workflow step explicitly requires (1) a different repository (one task per repo), (2) a different time/external wait, or (3) a workflow-mandated separate agent/session (such as independent review or closed-loop channel delivery via `needs`).
-- **Topology**: Pass `type: "task"` (never `type: "epic"`), wire sequencing via `needs`, keep `serves -> target` exclusively on Strategic Value Carriers (zero leaf `serves` edges), cite pointers as markdown wikilinks under `## Pointers`, and set `status: "queued"`.
+- **Topology**: Pass `type: "task"` (never `type: "epic"`), wire sequencing via `needs`, keep `serves -> target` exclusively on Strategic Value Carriers (zero leaf `serves` edges), cite pointers as PKB links (wikilinks) under `## Pointers`, and set `status: "queued"`.
 
 Fill the canonical structure:
 

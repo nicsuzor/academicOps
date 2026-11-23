@@ -62,8 +62,8 @@ that do not emit a reader-facing academic output. This table is the vocabulary.
 | **lit-review** | Systematic examination of existing work | `learn` |
 | **methodology** | Design and justify analytical approach | `task` |
 | **ethics** | IRB, consent, data governance | `task` + approval boundary |
-| **readonly-proof** | Build needed infrastructure/analysis interfaces, prove live read-only on existing data, lock partitioned API contract, and file proof package | `task` |
-| **collection-signoff** | Hard prerequisite checkpoint and decision boundary reviewing the filed proof package to unblock new data collection | `task` + decision boundary |
+| **readonly-proof** | Build and prove pipeline live read-only; lock API contract | `task` |
+| **collection-signoff** | User decision boundary before new data collection | `task` + decision boundary |
 | **data-collection** | Gathering primary or secondary data | `task` |
 | **analysis** | Running the actual analysis | `task` |
 | **writing** | Manuscript, presentation, or report | `task` |
