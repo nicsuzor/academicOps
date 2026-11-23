@@ -517,9 +517,198 @@ def test_peer_message_prompt_yields_single_user_prompt_submit_output(
     )
     assert proc.returncode == 0, proc.stderr
     data = json.loads(proc.stdout)
-    system_message = data.get("systemMessage", "")
-    assert "\n" not in system_message
-    assert system_message == "Premise-check gate armed by claim-59204fc6."
+    assert "systemMessage" not in data
+    additional_context = data.get("hookSpecificOutput", {}).get("additionalContext", "")
+    assert "Premise-check gate armed by claim-59204fc6." in additional_context
+
+
+@pytest.mark.integration
+def test_premise_gate_outputs_match_hydration_agent_only_format_on_claude_and_agy(
+    staged_hooks: Path, tmp_path: Path
+):
+    """Premise-check gate emits agent-only JSON without user-facing systemMessage across Claude Code and agy."""
+    import os
+
+    gate_dir = tmp_path / "gate"
+    ptr_dir = tmp_path / "ptr"
+    tracer_dir = tmp_path / "tracer"
+    gate_dir.mkdir(parents=True, exist_ok=True)
+    ptr_dir.mkdir(parents=True, exist_ok=True)
+    tracer_dir.mkdir(parents=True, exist_ok=True)
+
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if not k.startswith(("OTEL_", "GENAI_", "BETA_TRACING_")) and k != "PKB_MCP_URL"
+    }
+    env.update(
+        {
+            "HOME": str(tmp_path),
+            "AOPS_PREMISE_GATE_DIR": str(gate_dir),
+            "AOPS_SESSION_POINTER_DIR": str(ptr_dir),
+            "AOPS_TRACER_STATE_DIR": str(tracer_dir),
+        }
+    )
+
+    # 1. Claude Code UserPromptSubmit (arm) -> matches search_the_pkb shape (hookSpecificOutput, no systemMessage)
+    claude_sid = "sess-parity-claude"
+    peer_prompt = '<cross-session-message from="twin-a" id="claim-parity-1">Checked.\n```argdown\n(1) p -- src\n-- w --\n(2) c\n```\n</cross-session-message>'
+    arm_proc = subprocess.run(
+        [sys.executable, str(staged_hooks / "dispatch.py"), "claude", "UserPromptSubmit"],
+        input=json.dumps(
+            {
+                "hook_event_name": "UserPromptSubmit",
+                "agent_type": "ida:ida",
+                "session_id": claude_sid,
+                "prompt": peer_prompt,
+            }
+        ),
+        text=True,
+        capture_output=True,
+        timeout=15,
+        cwd=str(staged_hooks),
+        env=env,
+    )
+    assert arm_proc.returncode == 0, arm_proc.stderr
+    arm_data = json.loads(arm_proc.stdout)
+    assert "systemMessage" not in arm_data
+    assert arm_data["hookSpecificOutput"]["hookEventName"] == "UserPromptSubmit"
+    assert "claim-parity-1" in arm_data["hookSpecificOutput"]["additionalContext"]
+
+    # 2. Claude Code PreToolUse (refuse Dump) -> permissionDecision deny, no systemMessage, tool-specific action_desc
+    refuse_proc = subprocess.run(
+        [sys.executable, str(staged_hooks / "dispatch.py"), "claude", "PreToolUse"],
+        input=json.dumps(
+            {
+                "hook_event_name": "PreToolUse",
+                "agent_type": "ida:ida",
+                "session_id": claude_sid,
+                "tool_name": "Dump",
+                "tool_input": {},
+            }
+        ),
+        text=True,
+        capture_output=True,
+        timeout=15,
+        cwd=str(staged_hooks),
+        env=env,
+    )
+    assert refuse_proc.returncode == 0, refuse_proc.stderr
+    refuse_data = json.loads(refuse_proc.stdout)
+    assert "systemMessage" not in refuse_data
+    assert refuse_data["hookSpecificOutput"]["permissionDecision"] == "deny"
+    assert (
+        "blocks handing over the session;"
+        in refuse_data["hookSpecificOutput"]["permissionDecisionReason"]
+    )
+
+    # 3. Claude Code Stop (block) -> decision block, no systemMessage
+    stop_proc = subprocess.run(
+        [sys.executable, str(staged_hooks / "dispatch.py"), "claude", "Stop"],
+        input=json.dumps(
+            {
+                "hook_event_name": "Stop",
+                "agent_type": "ida:ida",
+                "session_id": claude_sid,
+            }
+        ),
+        text=True,
+        capture_output=True,
+        timeout=15,
+        cwd=str(staged_hooks),
+        env=env,
+    )
+    assert stop_proc.returncode == 0, stop_proc.stderr
+    stop_data = json.loads(stop_proc.stdout)
+    assert "systemMessage" not in stop_data
+    assert stop_data["decision"] == "block"
+    assert "blocks finishing the task or contacting the user/teammates;" in stop_data["reason"]
+
+    # 4. agy PreInvocation (arm) -> injectSteps ephemeralMessage only, zero systemMessage
+    agy_sid = "sess-parity-agy"
+    transcript = tmp_path / "agy_transcript.jsonl"
+    transcript.write_text(
+        json.dumps(
+            {
+                "step_index": 0,
+                "type": "SYSTEM_MESSAGE",
+                "content": (
+                    "[Message] timestamp=2026-11-23T00:00:00Z sender=peer-uuid-parity "
+                    "priority=MESSAGE_PRIORITY_HIGH content=Report ready."
+                ),
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    agy_arm = subprocess.run(
+        [sys.executable, str(staged_hooks / "dispatch.py"), "agy", "PreInvocation"],
+        input=json.dumps(
+            {
+                "conversationId": agy_sid,
+                "invocationNum": 0,
+                "transcriptPath": str(transcript),
+                "workspacePaths": [str(tmp_path)],
+            }
+        ),
+        text=True,
+        capture_output=True,
+        timeout=15,
+        cwd=str(staged_hooks),
+        env=env,
+    )
+    assert agy_arm.returncode == 0, agy_arm.stderr
+    agy_arm_data = json.loads(agy_arm.stdout)
+    steps = agy_arm_data.get("injectSteps", [])
+    assert steps and all("systemMessage" not in step for step in steps)
+    assert any("Premise-check gate armed by" in step.get("ephemeralMessage", "") for step in steps)
+
+    # 5. agy PreToolUse (refuse AskUserQuestion) -> decision deny, zero systemMessage
+    agy_refuse = subprocess.run(
+        [sys.executable, str(staged_hooks / "dispatch.py"), "agy", "PreToolUse"],
+        input=json.dumps(
+            {
+                "conversationId": agy_sid,
+                "toolCall": {"name": "AskUserQuestion", "args": {}},
+                "workspacePaths": [str(tmp_path)],
+            }
+        ),
+        text=True,
+        capture_output=True,
+        timeout=15,
+        cwd=str(staged_hooks),
+        env=env,
+    )
+    assert agy_refuse.returncode == 0, agy_refuse.stderr
+    agy_refuse_data = json.loads(agy_refuse.stdout)
+    assert "systemMessage" not in agy_refuse_data
+    assert agy_refuse_data["decision"] == "deny"
+    assert "blocks asking the user a question;" in agy_refuse_data["reason"]
+
+    # 6. agy Stop (block degrades to advisory) -> ephemeralMessage only, zero systemMessage
+    agy_stop = subprocess.run(
+        [sys.executable, str(staged_hooks / "dispatch.py"), "agy", "Stop"],
+        input=json.dumps(
+            {
+                "conversationId": agy_sid,
+                "workspacePaths": [str(tmp_path)],
+            }
+        ),
+        text=True,
+        capture_output=True,
+        timeout=15,
+        cwd=str(staged_hooks),
+        env=env,
+    )
+    assert agy_stop.returncode == 0, agy_stop.stderr
+    agy_stop_data = json.loads(agy_stop.stdout)
+    stop_steps = agy_stop_data.get("injectSteps", [])
+    assert stop_steps and all("systemMessage" not in step for step in stop_steps)
+    assert any(
+        "blocks finishing the task or contacting the user/teammates;"
+        in step.get("ephemeralMessage", "")
+        for step in stop_steps
+    )
 
 
 def test_session_start_raises_when_pkb_mcp_url_unset(monkeypatch: pytest.MonkeyPatch):

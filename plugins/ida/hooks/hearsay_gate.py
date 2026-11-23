@@ -2054,12 +2054,10 @@ def _batch_handback_candidates(ctx: HookContext) -> list[tuple[str, str]]:
 def _format_notice_pair(
     items: list[tuple[str, str]],
     hooks_dir: Path | None,
-    *,
-    single_armed_user_fallback: str = "Premise-check gate armed by {claim_id}.",
 ) -> Result:
-    """Format arming notice preserving exact <=2 line single-claim contract and multi-claim list."""
+    """Format agent-only arming notice preserving <=2 line single-claim contract and multi-claim list."""
     eff_dir = _hooks_base(hooks_dir)
-    agent_tmpl, user_tmpl = load_message_pair(eff_dir, "hearsay_armed")
+    agent_tmpl, _ = load_message_pair(eff_dir, "hearsay_armed")
     if len(items) == 1:
         claim_id, cmd = items[0]
         if not agent_tmpl:
@@ -2072,12 +2070,7 @@ def _format_notice_pair(
                 "reasons.\n{command}"
             )
         inject = agent_tmpl.format(claim_id=claim_id, command=cmd)
-        user_msg = (
-            user_tmpl.format(claim_id=claim_id)
-            if user_tmpl
-            else single_armed_user_fallback.format(claim_id=claim_id)
-        )
-        return warn(inject, user_msg)
+        return warn(inject)
 
     claim_label = f"{len(items)} claims ({', '.join(cid for cid, _cmd in items)})"
     first_line = (
@@ -2087,8 +2080,7 @@ def _format_notice_pair(
     ).format(claim_id=claim_label, command="")
     cmd_block = "\n".join(cmd for _cid, cmd in items)
     inject = f"{first_line}\n{cmd_block}"
-    user_msg = f"Premise-check gate armed by {claim_label}."
-    return warn(inject, user_msg)
+    return warn(inject)
 
 
 def _record_channel_hit(
@@ -2321,7 +2313,7 @@ def subagent_start_gate_notice(ctx: HookContext) -> Result | None:
         if items:
             res = _format_notice_pair(items, ctx.hooks_dir)
             hint = f"Subagent agent_id for verdict commands: --agent {canon_agent}"
-            return warn(f"{hint}\n{res.inject_text}", res.user_text or "")
+            return warn(f"{hint}\n{res.inject_text}")
 
     hint = f"Subagent agent_id for verdict commands: --agent {canon_agent}"
     return warn(hint)
@@ -2438,6 +2430,39 @@ def hearsay_arm(ctx: HookContext) -> Result | None:
     return _format_notice_pair(notice_items, ctx.hooks_dir)
 
 
+_USER_QUESTION_TOOLS = frozenset(
+    {
+        "askuserquestion",
+        "askquestion",
+        "ask_user_question",
+        "ask_question",
+        "ask_user",
+    }
+)
+
+_BLOCKED_TOOL_ACTION_DESCS: dict[str, str] = {
+    **{name.lower(): "dispatching a subagent" for name in _DISPATCH_TOOLS},
+    "sendmessage": "sending an agent message",
+    "send_message": "sending an agent message",
+    "subagenthandback": "delivering a subagent handback",
+    "subagent_handback": "delivering a subagent handback",
+    "dump": "handing over the session",
+    **{name: "asking the user a question" for name in _USER_QUESTION_TOOLS},
+}
+
+
+def _blocked_action_desc(ctx: HookContext) -> str:
+    """Return a plain-language action phrase for the blocked event or tool."""
+    if ctx.event == "Stop":
+        return "finishing the task or contacting the user/teammates"
+    base = _tool_base_lower(ctx.tool)
+    if base in _BLOCKED_TOOL_ACTION_DESCS:
+        return _BLOCKED_TOOL_ACTION_DESCS[base]
+    if is_channel_reply_tool(ctx.tool):
+        return "sending a channel reply"
+    return "performing this action"
+
+
 def hearsay_handler(ctx: HookContext) -> Result | None:
     """PreToolUse/Stop handler: refuse the next restricted action while recipient slot is armed."""
     if ctx.event == "PreToolUse" and not _is_blocked_tool(ctx.tool):
@@ -2460,13 +2485,9 @@ def hearsay_handler(ctx: HookContext) -> Result | None:
     pending_cids = state.get("claim_ids") or (
         [state["claim_id"]] if state.get("claim_id") else ["the pending report"]
     )
-    action_desc = (
-        "finishing the task or contacting the user/teammates"
-        if ctx.event == "Stop"
-        else "dispatching another subagent or message"
-    )
+    action_desc = _blocked_action_desc(ctx)
 
-    agent_tmpl, user_tmpl = load_message_pair(ctx.hooks_dir, "hearsay_blocked")
+    agent_tmpl, _ = load_message_pair(ctx.hooks_dir, "hearsay_blocked")
     if not agent_tmpl:
         agent_tmpl = (
             "Premise-check gate armed by {claim_id} on this agent's received report blocks "
@@ -2480,11 +2501,6 @@ def hearsay_handler(ctx: HookContext) -> Result | None:
         claim_id = pending_cids[0]
         cmd = format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id, agent_id=canon_agent)
         reason = agent_tmpl.format(claim_id=claim_id, action_desc=action_desc, command=cmd)
-        user_msg = (
-            user_tmpl.format(claim_id=claim_id)
-            if user_tmpl
-            else f"Blocked: premise-check verdict pending on {claim_id}."
-        )
     else:
         cids_str = ", ".join(pending_cids)
         cmds: list[str] = [
@@ -2495,15 +2511,14 @@ def hearsay_handler(ctx: HookContext) -> Result | None:
         reason = agent_tmpl.format(
             claim_id=claim_label, action_desc=action_desc, command="\n".join(cmds)
         )
-        user_msg = f"Blocked: premise-check verdicts pending on {claim_label}."
 
     if mode == "warn":
-        return warn(reason, user_msg)
+        return warn(reason)
 
     if ctx.event == "Stop":
-        return block(reason, user_msg)
+        return block(reason)
 
-    return refuse(reason, user_msg)
+    return refuse(reason)
 
 
 def _tracer_state_dir() -> Path:
