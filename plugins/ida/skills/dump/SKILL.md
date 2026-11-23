@@ -22,7 +22,7 @@ When an interactive session edits repository files without an assigned task or r
 
 ### 3. Capture Durable Facts & Repair Contradictions
 
-Offer settled durable facts (decisions, constraints, verified current-state findings, or KB corrections on a 6-month horizon; exclude exploratory thinking aloud) directly to the custodian (`pauli`) with source pointers, or include them as sourced premises inside `### Handover Disposition` when isolated.
+Offer settled durable facts (decisions, constraints, verified current-state findings, or KB corrections on a 6-month horizon; exclude exploratory thinking aloud) directly to the custodian (`pauli`) with source pointers, or record them under `## Durable Facts` on the task record and include them as sourced premises inside `### Handover Disposition` when isolated.
 
 ### 4. Release Claimed Tasks (Children First)
 
@@ -41,19 +41,22 @@ Offer settled durable facts (decisions, constraints, verified current-state find
 
 ### Deliverable Verification
 
-(1) <Atomic primary observation quoting deciding outputs, branch, commit SHA, PR URL, or test receipts inline>.
-(2) Rule compliance check: <none observed, or explicit rule violation disclosure with rule citation>.
--- <Plain-prose warrant linking observations to criterion; name nearest plausible rival, limitation, or exception and whether (1)-(2) rule it out or leave a qualifier.> --
-(3) So, <earned qualifier>, `<task-id>/AC1` is satisfied.
+(1) <Atomic deliverable observation quoting branch, commit SHA, PR URL, or persisted artifact inline>.
+(2) <Separate atomic verification observation quoting deciding command output, count, or test receipt inline>.
+(3) Rule compliance check: <none observed, or explicit rule violation disclosure with rule citation>.
+-- <Plain-prose warrant linking observations to criterion; name nearest plausible rival, limitation, or exception and whether (1)-(3) rule it out or leave a qualifier.> --
+(4) So, <earned qualifier>, `<task-id>/AC1` is satisfied.
 
 ### Handover Disposition
 
 (1) Durable facts for custodian (`pauli`): <settled facts with primary pointers, or none>.
 (2) Next step: <pre-existing task-id pointer | 2-4 sentence resumption prompt | none>.
 (3) Daily-note project line (isolated workers only): `<project>: <10-20 word status/find> [-- Next: <pointer or prompt>]`.
--- Releasing `<task-id>` as `<status>` requires recording durable facts, next-step pickup state, and (when isolated) the daily-note line without mutating shared notes concurrently; omit (3) when the daily note is updated directly. --
+-- Releasing `<task-id>` as `<status>` requires recording durable facts, next-step pickup state, and (when isolated) the daily-note line without mutating shared notes concurrently. --
 (4) So `<task-id>` hands over cleanly under status `<status>`.
 ```
+
+Omit premise `(3)` in `### Handover Disposition` when the daily note is updated directly.
 
 ### 5. Consolidated Daily Note Updates
 

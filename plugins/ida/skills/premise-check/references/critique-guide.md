@@ -80,16 +80,19 @@ Notice how each relayed finding stands as its own numbered premise citing both `
 
 ### Relayed Diagnostic Findings
 
-(1) Production traces (`2026-10-12`, `n = 1,420`, via `verdict-84a1c2e0` PASS) showed p95 latency rose from `420 ms` (`9d0e11b`) to `4,850 ms`, with all `> 1,500 ms` spans (`n = 89`) hitting HTTP 429 retries under unchanged `60/min` partner headers.
-(2) Dispatch-rate telemetry (`2026-10-12` vs. `2026-10-11`, via `verdict-84a1c2e0` PASS) showed peak incoming volume stayed flat (`18/min` vs. `19/min`).
-(3) `git diff 9d0e11b..c81f4a2 -- worker/pool.py:34-48` (via `verdict-84a1c2e0` PASS) raised `worker_concurrency` (`4` -> `16`) and replaced jittered exponential backoff with fixed `0.5s` retries.
-(4) Bounded search (`grep -rn "429\|retry_delay\|worker_concurrency" worker/`, via `verdict-84a1c2e0` PASS) found `0` other outbound dispatchers outside `worker/pool.py`.
-(5) `docs/worker-sla.md:14` (via `verdict-84a1c2e0` PASS) mandates p95 latency under `500 ms`, jittered exponential backoff, and concurrency `<= 8` unless a client-side token bucket is deployed.
-(6) Bounded search (`grep -rn "token_bucket\|RateLimiter" worker/`, via `verdict-84a1c2e0` PASS) returned `0` token-bucket matches in `worker/`.
-(7) `docs/partner-api.md:22` (via `verdict-84a1c2e0` PASS) exposes only per-minute quota headers, leaving sub-minute partner burst throttling unobservable.
-(8) `verdict-84a1c2e0` (PASS) disclosed no rule violations.
--- Verified child claims carrying individual primary locators, verdict ID, and original qualifiers relay upward without de novo source re-inspection, provided each fact stands on its own source so no unsourced assumption rides inside another statement and every caveat travels intact. Here (1)-(8) preserve each primary source separately, (8) discloses zero rule violations, and both the unobservable sub-minute caveat in (7) and pending staging verification against the `500 ms` SLO in (5) are preserved below. --
-(9) So `worker/pool.py:34-48` should revert to `worker_concurrency = 4` and jittered exponential backoff, followed by staging load verification against the `500 ms` p95 SLO, noting the unobservable sub-minute partner throttle caveat.
+(1) Production traces (`2026-10-12`, `n = 1,420`, via `verdict-84a1c2e0` PASS) showed p95 latency rose to `4,850 ms` from `420 ms` on baseline `9d0e11b` (`2026-10-11`, `n = 1,388`).
+(2) Grouping the `1,420` spans on `2026-10-12` by HTTP status (via `verdict-84a1c2e0` PASS) isolated 100% of `> 1,500 ms` spans (`n = 89`) to HTTP 429 retries.
+(3) Downstream partner headers (`2026-10-11` and `2026-10-12`, via `verdict-84a1c2e0` PASS) logged `X-RateLimit-Limit: 60/min` unchanged across both windows.
+(4) Dispatch-rate telemetry (`2026-10-12` vs. `2026-10-11`, via `verdict-84a1c2e0` PASS) showed peak incoming volume stayed flat (`18/min` vs. `19/min`).
+(5) `git diff 9d0e11b..c81f4a2 -- worker/pool.py:34-48` (via `verdict-84a1c2e0` PASS) raised `worker_concurrency` from `4` to `16`.
+(6) The same diff (`worker/pool.py:34-48`, via `verdict-84a1c2e0` PASS) replaced jittered exponential backoff with a fixed `0.5s` retry sleep.
+(7) Bounded search (`grep -rn "429\|retry_delay\|worker_concurrency" worker/`, via `verdict-84a1c2e0` PASS) found `0` other outbound dispatchers outside `worker/pool.py`.
+(8) `docs/worker-sla.md:14` (via `verdict-84a1c2e0` PASS) mandates p95 latency under `500 ms`, jittered exponential backoff, and concurrency `<= 8` unless a client-side token bucket is deployed.
+(9) Bounded search (`grep -rn "token_bucket\|RateLimiter" worker/`, via `verdict-84a1c2e0` PASS) returned `0` token-bucket matches in `worker/`.
+(10) `docs/partner-api.md:22` (via `verdict-84a1c2e0` PASS) exposes only per-minute quota headers, leaving sub-minute partner burst throttling unobservable.
+(11) `verdict-84a1c2e0` (PASS) disclosed no rule violations.
+-- Verified child claims carrying individual primary locators, verdict ID, and original qualifiers relay upward without de novo source re-inspection, provided each fact stands on its own source so no unsourced assumption rides inside another statement and every caveat travels intact. Here (1)-(11) preserve each primary source separately, (11) discloses zero rule violations, and both the unobservable sub-minute caveat in (10) and pending staging verification against the `500 ms` SLO in (8) are preserved below. --
+(12) So `worker/pool.py:34-48` should revert to `worker_concurrency = 4` and jittered exponential backoff, followed by staging load verification against the `500 ms` p95 SLO, noting the unobservable sub-minute partner throttle caveat.
 ```
 
 ## Realistic Subtle Defects & Minimal Remand Cures

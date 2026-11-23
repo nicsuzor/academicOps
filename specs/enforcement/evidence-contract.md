@@ -88,14 +88,14 @@ flowchart TD
     Ask(["User Ask"]) --> Brief["1. Brief & Turn-1 Intake<br/>(Derive, verify inputs & satisfiability)"]
     Brief -->|Missing Inputs| BriefClarify["Ask Supervisor in Prose Argdown Without Declining<br/>(If armed: --verdict REVISE --no-claim hold token first)"]
     Brief -->|Ready or Flag & Execute| BriefClear["Flag Unreachable/Prescriptions if Any & Disarm if Armed<br/>(--verdict PASS --no-claim) & Freeze Acceptance Checklist"]
-    BriefClear --> Author["2. Author Argdown Report<br/>(Upfront ask/conclusion, inline primary quotes)"]
+    BriefClear --> Author["2. Author Prose Argdown Message<br/>(Upfront ask/conclusion, atomic sourced premises)"]
     Author --> Gate{"3. Arrival Gate<br/>(Standalone [no claim]?)"}
     Gate -->|Yes| AutoClear["Auto-Disarm<br/>(no-claim)"]
     Gate -->|No| Hold["Hold Recipient Slot<br/>(session_id, agent_id)"]
     Hold --> Review["4. Formal Compliance Review<br/>(Face of record, zero de novo)"]
     Review -->|PASS / REVISE / FAIL| Record["5. verdict.py & OTel Span<br/>(Fail-closed export, disarm slot)"]
     Record -->|REVISE| Author
-    Record -->|PASS| Relay["6. Upward Relay<br/>(Checked reasoning, qualifiers, verdict ID)"]
+    Record -->|PASS| Relay["6. Upward Relay<br/>(Atomic sourced premises, qualifiers, verdict ID)"]
 ```
 
 ### Prohibition on _de novo_ factual checking
@@ -112,5 +112,5 @@ flowchart TD
 - **Load-bearing claim:** A claim the reader would act on, or that a conclusion rests on.
 - **Pointer:** An inline locator a reader can open (`path:line`, commit SHA, exact command and exit code, span ID, PR/task ID, or URL). Commands count as evidence only when deciding output or exit code is quoted inline.
 - **Ask ID:** Immutable identifier an ask travels under (`tg-<message id>`, `<task id>/AC<n>`).
-- **Report format:** Clean, human-readable Argdown prose per [`premise-check`](../../plugins/ida/skills/premise-check/SKILL.md) (distinct from standalone formal `.argdown` files governed by [`argdown-toulmin`](../../plugins/ida/skills/argdown-toulmin/SKILL.md)).
+- **Message format:** Unfenced prose Argdown blocks with atomic sourced premises per [`premise-check`](../../plugins/ida/skills/premise-check/SKILL.md) (distinct from standalone formal `.argdown` files governed by [`argdown-toulmin`](../../plugins/ida/skills/argdown-toulmin/SKILL.md)).
 - **Task-record handback:** A worker's Argdown report under `## Report` on a task record, evaluated via `verdict.py` with the task ID as `--claim` (and `--judged-file` when out-of-band) and recorded under `## Premise-Check Verdict`.

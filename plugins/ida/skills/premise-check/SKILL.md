@@ -13,14 +13,19 @@ Inter-agent review is administrative-law judicial review on the face of the reco
 
 ## Writing Agent-to-Agent Communication
 
-**Every agent-to-agent message** -- briefs, directions, handbacks, reports, reviews, clarifications, remands, and peer replies -- consists **strictly and exclusively** of unfenced prose Argdown blocks. Emit zero non-Argdown prose anywhere (no conversational framing, parallel summaries, trailing commentary, loose Markdown bullets, or wrapping the message in one code fence). Direct replies to the user and published PR/issue comments or human-facing deliverables remain Markdown.
+**Every agent-to-agent message** -- briefs, directions, handbacks, reports, reviews, clarifications, remands, and peer replies -- consists **exclusively** of unfenced prose Argdown blocks. Emit zero non-Argdown prose (no conversational framing, parallel summaries, loose Markdown bullets, or wrapping the message in one code fence). Direct replies to the user and published PR/issue comments or human-facing deliverables remain Markdown.
 
 1. **Ask and conclusion first**: Lead with the full original ask (with ask/task ID) and bottom-line conclusion with earned qualifier.
-2. **Break out every premise as its own sourced claim**: Put exactly one atomic factual assertion, assumption, or relayed finding in each numbered premise, carrying its own stated source (inline quote + locator, bounded search, or checked verdict ID + underlying primary locator). Never bundle multiple claims or smuggle an unattributed background assertion inside another statement via subordinate clauses, parentheticals, appositives, or omnibus relays (`"The same checked report found X and Y"`). Any unverified or assumed premise must stand as its own numbered claim explicitly marked assumed/unverified.
-3. **Independent titled blocks & inline primary evidence**: Split distinct questions, deliverables, or layers (observation -> pattern -> diagnosis -> recommendation) into titled sections restarting at `(1)`. Quote deciding output, exit code, count, SHA, or passage inline with locator (`<path>:<line>`, command/exit, PR URL, bounded search) plus version/timestamp for live state. Observations stay above `-- ... --`; evaluations sit below.
+2. **Break out every premise as its own sourced claim**:
+   - Put one atomic factual assertion, assumption, or relayed finding per numbered premise, carrying its own stated source (inline quote + locator, bounded search, or checked verdict ID + primary locator).
+   - Never bundle claims or smuggle an unattributed assertion via subordinate clauses, parentheticals, appositives, or omnibus relays (`"The same checked report found X and Y"`); mark any assumed premise explicitly as its own numbered claim.
+3. **Independent titled blocks & inline primary evidence**:
+   - Split distinct questions, deliverables, or layers (observation -> pattern -> diagnosis -> recommendation) into titled sections restarting at `(1)`.
+   - Quote deciding output, exit code, count, SHA, or passage inline with locator plus version/timestamp for live state; observations stay above `-- ... --`, evaluations below.
 4. **Plain-prose warrants and exceptions**: In `-- ... --`, state the inference rule and nearest rival/exception, noting whether premises rule it out or leave a qualifier. Chain with `So`, use plain punctuation (no closed vocabularies/endnotes), and never smuggle facts into bars.
-5. **Non-report messages & method pairing**: Briefs, clarifications, and remands use the same compact prose Argdown block (premises citing the ask, missing input, or defect with locators; warrant stating why the route, clarification, or remand follows). Pair ask-specified methods, forms, mediums (canvas, diagram, map, code, spec), designs, or values beside what was done and note departures.
-6. **Empty acknowledgements (`[no claim]`)**: Use a bare standalone `[no claim]` line (sole message content, zero accompanying prose) strictly for claim-free acknowledgements.
+5. **Non-report messages**: Briefs, clarifications, and remands use the same compact prose Argdown block (premises citing the ask, missing input, or defect with locators; warrant stating why the route, clarification, or remand follows).
+6. **Method and medium pairing**: Pair ask-specified methods, forms, mediums (canvas, diagram, map, code, spec), designs, or values beside what was done and note departures.
+7. **Empty acknowledgements (`[no claim]`)**: Use a bare standalone `[no claim]` line (sole message content, zero accompanying prose) strictly for claim-free acknowledgements.
 
 ```markdown
 **Original Ask (`<ask_id>`):** <Original ask in full>
@@ -39,20 +44,23 @@ If drafting complex, multi-hop, or contested messages, read `references/critique
 
 ## Checking an Incoming Direction Brief
 
-1. **Turn-1 inputs and derivation**: Verify `## Ask` derivation (preserving user authorization without unrequested approval holds or user-assigned choices) and required inputs, task IDs, and artifacts.
-   - If required inputs are missing, request them from the supervisor in a prose Argdown block without declining.
+1. **Turn-1 inputs and derivation**: Verify `## Ask` derivation (preserving user authorization without unrequested approval holds or user-assigned choices) and required inputs, task IDs, and artifacts. If required inputs are missing, request them from the supervisor in a prose Argdown block without declining.
 2. **Phoenix traces only**: Never scrape local transcript or debug log files; query Arize Phoenix via `ida:phoenix`.
 3. **Satisfiability and method bounds**: If demands exceed your stopping point (later stages, external merges) or add unverified caller method/template prescriptions outside `## Ask`, context, and objective, flag them to the supervisor in a prose Argdown block without declining, and execute your role.
-4. **Disarming armed briefs & freezing deliverables**: Skip `verdict.py` if unarmed. If armed, disarm via `verdict.py --no-claim` first -- `--verdict REVISE --no-claim` as a clarification-hold gate token when waiting on missing inputs, or `--verdict PASS --no-claim` when ready or flagging-and-executing -- then log verified deliverables as a frozen `## Acceptance` checklist before work (PKB task if tracked; in-turn context for subagents; none for lookups).
+4. **Disarming armed briefs & freezing deliverables**:
+   - Skip `verdict.py` if unarmed; if armed, disarm first via `verdict.py --no-claim` (`--verdict REVISE --no-claim` as a clarification-hold gate token when waiting on missing inputs; `--verdict PASS --no-claim` when ready or flagging-and-executing).
+   - Log verified deliverables as a frozen `## Acceptance` checklist before work (PKB task if tracked; in-turn context for subagents; none for lookups).
 
 ## Reviewing a Message (Active Critique Protocol)
 
 Accept single, atomic primary observations carrying their own inline quote and locator as given, and run five checks on the face of the record:
 
-1. **Decompose premises & raw evidence first**: Unpack every premise clause by clause before reading conclusions. Reject any bundled/compound premise or embedded assertion, assumption, or background claim lacking its own stated primary source or checked-verdict provenance (including omnibus relays like `"The same checked report found X and Y"`), any non-Argdown inter-agent prose, secondary summary substitution on live state, and unversioned failures.
-2. **Gap Test**: Audit both embedded claims inside premises and every new noun, quantifier, population, or exclusive (`"all"`, `"only"`, `"never"`) between premises and conclusion. Catch missing bridges, circular warrants, proxy-to-construct jumps, `n=1` leaps, observation-surface overreach, and silent medium/method swaps.
+1. **Decompose premises & raw evidence first**:
+   - Unpack every premise clause by clause before reading conclusions; reject any bundled premise or embedded assertion lacking its own primary source or checked-verdict provenance (including omnibus relays like `"The same checked report found X and Y"`).
+   - Reject non-Argdown inter-agent prose, secondary summary substitution on live state, and unversioned failures.
+2. **Gap Test**: Audit embedded claims inside premises and every new noun, quantifier, population, or exclusive (`"all"`, `"only"`, `"never"`) between premises and conclusion. Catch missing bridges, circular warrants, proxy-to-construct jumps, `n=1` leaps, observation-surface overreach, and silent medium/method swaps.
 3. **Contrast Test**: Build the simplest rival world where quoted evidence holds yet the conclusion is false (beyond the writer's exception). Reject open user deferrals (`"their call"`) and stakes laundering (`"low-stakes"`, `"reversible"`, `"obvious"`, engine output as authority) on stakes-bearing claims.
-4. **Ask, authority, and rules**: Verify ask coverage (or proved unreachability), delegated authority (no _ultra vires_), non-waivable rule compliance (no unrequested user approval holds outside invariant boundaries; disclosing out-of-scope breaches is compliant), and substantive relays (`verdict-...` carries each checked claim's source, qualifiers, and disclosed breaches -- never bare `"passed verdict-X"` stubs).
+4. **Ask, authority, and rules**: Verify ask coverage (or proved unreachability), delegated authority (no _ultra vires_), non-waivable rule compliance (no unrequested approval holds; disclosing out-of-scope breaches is compliant), and substantive relays (`verdict-...` carries each checked claim's source, qualifiers, and disclosed breaches -- never bare `"passed verdict-X"` stubs).
 5. **3-way remand triage**: On defect, remand (`REVISE`/`FAIL`) in a prose Argdown block naming the minimal cure -- (a) **narrow qualifier**, (b) **break out bundled/embedded premises or supply missing bridge/warrant**, or (c) **gather missing primary evidence**.
 
 If judging complex, contested, or multi-hop messages, read `references/critique-guide.md` before ruling for defect patterns, edge cases, and reason exemplars.
