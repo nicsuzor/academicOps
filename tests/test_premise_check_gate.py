@@ -4123,15 +4123,49 @@ def test_named_subagent_agent_message_dedups_with_handback_via_registered_name()
 
 
 def test_multi_claim_block_lists_all_pending_claims_and_policy_markers():
-    """Multi-claim block emits commands for every pending claim and policy-defined indicators."""
+    """Multi-claim arm and block notices use consistent count labeling and list every claim command."""
+    import handlers
+
     session_id = "sess-multi-blk"
-    pcg.arm(session_id, claim_id="Audit auth module", judged_text="first")
-    pcg.arm(session_id, claim_id="Verify hook routing", judged_text="second")
+    batch_res = handlers.post_tool_batch(
+        dispatch.HookContext(
+            client="claude",
+            event="PostToolBatch",
+            session_id=session_id,
+            agent_type="ida:ida",
+            hooks_dir=_HOOKS_DIR,
+            tool_calls=(
+                {
+                    "tool_name": "Agent",
+                    "tool_use_id": "call-m1",
+                    "tool_input": {"description": "Audit auth module"},
+                    "tool_response": {
+                        "status": "completed",
+                        "content": [{"type": "text", "text": "Auth finding one."}],
+                    },
+                },
+                {
+                    "tool_name": "Agent",
+                    "tool_use_id": "call-m2",
+                    "tool_input": {"description": "Verify hook routing"},
+                    "tool_response": {
+                        "status": "completed",
+                        "content": [{"type": "text", "text": "Hook finding two."}],
+                    },
+                },
+            ),
+        )
+    )
+    assert batch_res is not None
+    expected_label = "2 claims (Audit auth module, Verify hook routing)"
+    assert expected_label in batch_res.inject_text
+    assert expected_label in (batch_res.user_text or "")
 
     blk = pcg.premise_check_handler(_agent_dispatch_ctx_for(session_id, tool="SendMessage"))
     assert blk is not None and blk.kind == dispatch.Kind.REFUSE
     lines = blk.inject_text.splitlines()
     assert lines[0].startswith(_POLICY["premise_check"]["armed_indicator"])
+    assert expected_label in lines[0]
+    assert expected_label in (blk.user_text or "")
     assert _POLICY["premise_check"]["no_claim_flag"] in lines[0]
-    assert "'Audit auth module, Verify hook routing'" not in lines[0]
     assert _claims_from_notice(blk) == ["Audit auth module", "Verify hook routing"]

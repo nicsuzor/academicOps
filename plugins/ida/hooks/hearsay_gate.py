@@ -2062,15 +2062,15 @@ def _format_notice_pair(
         )
         return warn(inject, user_msg)
 
-    cids = ", ".join(cid for cid, _cmd in items)
+    claim_label = f"{len(items)} claims ({', '.join(cid for cid, _cmd in items)})"
     first_line = (
         agent_tmpl.splitlines()[0]
         if agent_tmpl
         else "Premise-check gate armed by {claim_id}; run formal compliance review on the face of the record and record appealable reasons per `ida:premise-check`."
-    ).format(claim_id=cids, command="")
+    ).format(claim_id=claim_label, command="")
     cmd_block = "\n".join(cmd for _cid, cmd in items)
     inject = f"{first_line}\n{cmd_block}"
-    user_msg = f"Premise-check gate armed by {len(items)} claims: {cids}."
+    user_msg = f"Premise-check gate armed by {claim_label}."
     return warn(inject, user_msg)
 
 
@@ -2482,7 +2482,7 @@ def hearsay_handler(ctx: HookContext) -> Result | None:
         reason = agent_tmpl.format(
             claim_id=claim_label, action_desc=action_desc, command="\n".join(cmds)
         )
-        user_msg = f"Blocked: premise-check verdicts pending on {cids_str}."
+        user_msg = f"Blocked: premise-check verdicts pending on {claim_label}."
 
     if mode == "warn":
         return warn(reason, user_msg)
