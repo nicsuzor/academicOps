@@ -50,18 +50,14 @@ As an operator requesting reasons behind a message, I want the agent's reply to 
 ### 1. Inline Action Buttons Configuration (US-1)
 
 1. **Button Construction:**
-   - Every reply sent via `reply` attaches default message action buttons unless explicitly disabled with `actions: false`:
+   - Messages sent via `send_rich_message` may attach message action buttons via `buttons` or `<tg-button-row>`:
      1. `{ text: "🧐 Check", callback_data: "logic_check" }`
      2. `{ text: "💡 Explain", callback_data: "explain" }`
      3. `{ text: "🧾", callback_data: "reasons" }`
-   - When `binary_decision: true` is passed on `reply` (and `actions !== false`), binary recommendation buttons are appended to the action row:
-     4. `{ text: "✅", callback_data: "accept_recommendation" }`
-     5. `{ text: "❌", callback_data: "decline_recommendation" }`
-   - When `binary_decision` is `false` or omitted, `[✅]` and `[❌]` are not attached. Multi-option decisions pass labelled option buttons in `buttons` with the recommended option highlighted instead; messages with no decision pass neither.
-2. **Layout Placement:**
-   - **Default Layout (`predefined_row: false` or omitted):** Details (`🔍`) sits on the same row as the active predefined action buttons (`[🔍, 🧐 Check, 💡 Explain, 🧾]` plus `[✅, ❌]` when `binary_decision: true`), below caller buttons if present, or on row 0 if no caller buttons are present.
-   - **Consolidated Layout (`predefined_row: true`):** Active action buttons join `🔍`, `🔍 Review diff`, and feedback buttons on a single top row (row 0) above caller buttons.
-   - **Suppression:** Setting `actions: false` removes all action and binary recommendation buttons.
+     4. `{ text: "🙏", callback_data: "thanks" }`
+     5. `{ text: "✅", callback_data: "accept_recommendation" }`
+     6. `{ text: "❌", callback_data: "decline_recommendation" }`
+   - Multi-option decisions pass labelled option buttons in `buttons` with the recommended option highlighted instead; plain notices pass no action buttons.
 
 ### 2. Callback Ingestion & In-Place Selection (US-2)
 

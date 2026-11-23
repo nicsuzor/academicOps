@@ -40,80 +40,6 @@ const OUTBOUND_KEYBOARD_PROPS: Record<string, unknown> = {
 
 export const MCP_TOOLS: ToolDefinition[] = [
   {
-    name: "reply",
-    description:
-      "Send a message to the user over Telegram with progressive disclosure, expandable blockquotes, thread routing, and Details button.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        chat_id: { type: "integer", description: "Telegram chat ID (defaults to primary chat)" },
-        message_thread_id: {
-          type: "integer",
-          description: "Telegram forum topic / thread ID (defaults to active thread when in a topics chat)",
-        },
-        thread_id: { type: "integer", description: "Alias for message_thread_id" },
-        text: { type: "string", description: "Markdown text for chat (tier 1 and 2)" },
-        detail: { type: "string", description: "Optional deep markdown for Details page (tier 3)" },
-        details: { type: "string", description: "Alias for detail" },
-        buttons: {
-          type: "array",
-          description:
-            "Inline option buttons, one per row. Attach one per answer whenever the reply asks the user a question, recommendation first; a tap arrives as a button_tap channel event.",
-          items: {
-            type: "object",
-            properties: {
-              label: { type: "string" },
-              callback_data: { type: "string" },
-              url: { type: "string" },
-              web_app: { type: "string" },
-              copy_text: {
-                description: "Text (or { text }) copied to the user's clipboard when the button is tapped",
-              },
-            },
-            required: ["label"],
-          },
-        },
-        binary_decision: {
-          type: "boolean",
-          description:
-            "Attach binary up/down recommendation buttons ([✅] and [❌]). Set true only when the message carries a binary yes/no decision (e.g. proposing an obvious next step). For multi-option decisions, leave false and provide labelled buttons in 'buttons' with the recommended option highlighted. Defaults to false.",
-        },
-        voice: { type: "boolean", description: "Send tier 1 as a spoken voice note" },
-        reply_to: { type: "integer", description: "Telegram message ID to reply to" },
-        reply_to_message_id: { type: "integer", description: "Alias for reply_to" },
-        quote: {
-          type: "string",
-          description: "Optional Markdown substring of the replied-to message to quote in reply_parameters",
-        },
-        quote_position: {
-          type: "integer",
-          description: "Optional UTF-16 offset of the quoted substring in the original message",
-        },
-        disable_link_preview: {
-          type: "boolean",
-          description: "Disable web page preview generation for links in the message",
-        },
-        link_preview_options: {
-          type: "object",
-          description: "Telegram LinkPreviewOptions (is_disabled, url, prefer_small_media, prefer_large_media, show_above_text)",
-        },
-        message_effect_id: {
-          type: "string",
-          description: "Optional unique identifier of the message effect to be added to the message",
-        },
-        review: {
-          type: "object",
-          description: "Attach PR diff review card",
-          properties: {
-            repo: { type: "string" },
-            pr: { type: "integer" },
-          },
-        },
-      },
-      required: ["text"],
-    },
-  },
-  {
     name: "react",
     description: "Set an emoji reaction on a Telegram message.",
     inputSchema: {
@@ -211,24 +137,17 @@ export const MCP_TOOLS: ToolDefinition[] = [
   },
   {
     name: "edit_message",
-    description: "Edit an existing Telegram message (plain text or Rich Message markdown/html/blocks) sent by the bot.",
+    description: "Edit an existing Telegram Rich Message (markdown, html, or blocks) sent by the bot.",
     inputSchema: {
       type: "object",
       properties: {
         chat_id: { type: "integer" },
         message_id: { type: "integer" },
-        text: { type: "string" },
         markdown: { type: "string", description: "Replacement Rich Message Markdown content" },
         html: { type: "string", description: "Replacement Rich Message HTML content" },
         blocks: { type: "array", description: "Replacement InputRichBlock[] array" },
-        disable_link_preview: {
-          type: "boolean",
-          description: "Disable web page preview generation for links in the edited message",
-        },
-        link_preview_options: {
-          type: "object",
-          description: "Telegram LinkPreviewOptions (is_disabled, url, prefer_small_media, prefer_large_media, show_above_text)",
-        },
+        is_rtl: { type: "boolean" },
+        skip_entity_detection: { type: "boolean" },
         ...OUTBOUND_KEYBOARD_PROPS,
       },
       required: ["message_id"],
@@ -557,7 +476,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
       type: "object",
       properties: {
         photo: { type: "string", description: "Local file path, Telegram file_id, or HTTP(S) URL for the photo" },
-        caption: { type: "string", description: "Optional Markdown caption" },
+        caption: { type: "string", description: "Optional caption" },
         has_spoiler: { type: "boolean", description: "Cover the photo with a spoiler animation" },
         show_caption_above_media: {
           type: "boolean",
@@ -577,7 +496,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
       type: "object",
       properties: {
         document: { type: "string", description: "Local file path, Telegram file_id, or HTTP(S) URL for the document" },
-        caption: { type: "string", description: "Optional Markdown caption" },
+        caption: { type: "string", description: "Optional caption" },
         disable_content_type_detection: {
           type: "boolean",
           description: "Disable server-side content type detection for uploaded files",
@@ -596,7 +515,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
       type: "object",
       properties: {
         video: { type: "string", description: "Local file path, Telegram file_id, or HTTP(S) URL for the video" },
-        caption: { type: "string", description: "Optional Markdown caption" },
+        caption: { type: "string", description: "Optional caption" },
         duration: { type: "integer", description: "Duration of the video in seconds" },
         width: { type: "integer", description: "Video width in pixels" },
         height: { type: "integer", description: "Video height in pixels" },
@@ -623,7 +542,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
           type: "string",
           description: "Local file path, Telegram file_id, or HTTP(S) URL for the animation",
         },
-        caption: { type: "string", description: "Optional Markdown caption" },
+        caption: { type: "string", description: "Optional caption" },
         duration: { type: "integer", description: "Duration of the animation in seconds" },
         width: { type: "integer", description: "Animation width in pixels" },
         height: { type: "integer", description: "Animation height in pixels" },
@@ -660,7 +579,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
                 type: "string",
                 description: "Local file path, Telegram file_id, or HTTP(S) URL for the item",
               },
-              caption: { type: "string", description: "Optional Markdown caption for this item" },
+              caption: { type: "string", description: "Optional caption for this item" },
               has_spoiler: { type: "boolean", description: "Optional spoiler flag for photo/video/animation items" },
               show_caption_above_media: {
                 type: "boolean",
@@ -683,7 +602,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
       type: "object",
       properties: {
         audio: { type: "string", description: "Local file path, Telegram file_id, or HTTP(S) URL for the audio file" },
-        caption: { type: "string", description: "Optional Markdown caption" },
+        caption: { type: "string", description: "Optional caption" },
         duration: { type: "integer", description: "Duration of the audio in seconds" },
         performer: { type: "string", description: "Performer of the audio track" },
         title: { type: "string", description: "Track title" },
@@ -821,7 +740,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
   {
     name: "send_message_draft",
     description:
-      "Stream a partial message draft to the user while generating a response (sendMessageDraft for plain Markdown text, or sendRichMessageDraft in private chats with markdown/html/blocks, <tg-thinking>, and can_stop).",
+      "Stream a partial Rich Message draft to the user while generating a response in private chats (sendRichMessageDraft with markdown/html/blocks, <tg-thinking>, and can_stop).",
     inputSchema: {
       type: "object",
       properties: {
@@ -829,7 +748,6 @@ export const MCP_TOOLS: ToolDefinition[] = [
           type: "integer",
           description: "Non-zero integer identifier for the message draft being streamed",
         },
-        text: { type: "string", description: "Current draft text in ordinary Markdown" },
         markdown: { type: "string", description: "Private-chat Rich Message draft in Markdown (supports <tg-thinking>)" },
         html: { type: "string", description: "Private-chat Rich Message draft in HTML (supports <tg-thinking>)" },
         blocks: { type: "array", description: "Private-chat Rich Message draft InputRichBlock[] array" },
@@ -985,7 +903,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
         },
         explanation: {
           type: "string",
-          description: "Optional Markdown explanation shown when a user answers a quiz poll (0-200 characters)",
+          description: "Optional explanation shown when a user answers a quiz poll (0-200 characters)",
         },
         open_period: {
           type: "integer",

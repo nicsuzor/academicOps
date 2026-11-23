@@ -53,8 +53,8 @@ As a user tracking background progress or interacting with live views inside cha
 | Tool | Bot API Backing | Core Inputs & Validation Bounds | Return Payload |
 | :- | :- | :- | :- |
 | `send_rich_message` | `sendRichMessage` | Exactly one of `markdown` \| `html` \| `blocks` (`<= 32,768` bytes/chars, `<= 500` blocks); optional `media` (`<= 50`, `id` regex), `is_rtl`, `skip_entity_detection`, `quote_rich_texts`, `voice`, `feedback_buttons`, `buttons`, thread routing. | `{ success: true, message_id, message_thread_id?, voice_message_id?, voice_sent?, voice_error? }` |
-| `send_message_draft` | `sendMessageDraft` / `sendRichMessageDraft` | Non-zero integer `draft_id`; mutually exclusive `text` \| `markdown` \| `html` \| `blocks`; private-chat rich mode (`can_stop?`, `keep_on_stop?`); rejects `media` on drafts. | `{ success: true, draft_id, message_thread_id? }` |
-| `edit_message` | `editMessageText` | `message_id`; `text` OR mutually exclusive `markdown` \| `html` \| `blocks` (`rich_message`); optional `buttons`. | `{ success: true }` |
+| `send_message_draft` | `sendRichMessageDraft` | Non-zero integer `draft_id`; mutually exclusive `markdown` \| `html` \| `blocks`; private-chat rich mode (`can_stop?`, `keep_on_stop?`); rejects `media` on drafts. | `{ success: true, draft_id, message_thread_id? }` |
+| `edit_message` | `editMessageText` | `message_id`; mutually exclusive `markdown` \| `html` \| `blocks` (`rich_message`); optional `buttons`. | `{ success: true }` |
 | `send_widget` | `sendWidget` | `html` (`1–32,768` bytes, no NUL, `<= 4,096 B` zlib-9), `width?`, `height?`, `public_data?`/`chat_data?` (`<= 1,024 B`), `caption?`, `allow_queries?` (default `false`), routing, `buttons?`. | `{ success: true, message_id, message_thread_id? }` |
 | `edit_message_widget_data` | `editMessageWidgetData` | `message_id` (or `inline_message_id`), `public_data?` (`<= 1,024 B`), `chat_data?` (`<= 1,024 B`). | `{ success: true, updated?: true, not_modified?: true }` |
 | `answer_widget_query` | `answerWidgetQuery` | `widget_query_id` (required), `data?` (`<= 1,024 B`). | `{ success: true, answered: true }` |

@@ -154,16 +154,16 @@ describe("Tool call deadline for basically-instant tools", () => {
         jsonrpc: "2.0",
         id: 10,
         method: "tools/call",
-        params: { name: "reply", arguments: { text: "hello" } },
+        params: { name: "send_rich_message", arguments: { markdown: "hello" } },
       });
       const replyTimeoutPayload = JSON.parse(
         ((replyTimeoutRes?.result as { content: Array<{ text: string }> }).content[0].text)
       );
       expect(replyTimeoutPayload.success).toBe(false);
-      expect(replyTimeoutPayload.error).toContain("sendMessage");
+      expect(replyTimeoutPayload.error).toContain("sendRichMessage");
       expect(replyTimeoutPayload.error).toContain("timed out");
 
-      // 2. Bot API error response is preserved verbatim on reply and close_thread
+      // 2. Bot API error response is preserved verbatim on send_rich_message and close_thread
       globalThis.fetch = (async () =>
         new Response(
           JSON.stringify({ ok: false, error_code: 400, description: "Bad Request: TOPIC_NOT_MODIFIED" }),
@@ -186,7 +186,7 @@ describe("Tool call deadline for basically-instant tools", () => {
         jsonrpc: "2.0",
         id: 12,
         method: "tools/call",
-        params: { name: "reply", arguments: { text: "hello" } },
+        params: { name: "send_rich_message", arguments: { markdown: "hello" } },
       });
       const replyApiErrPayload = JSON.parse(
         ((replyApiErrRes?.result as { content: Array<{ text: string }> }).content[0].text)

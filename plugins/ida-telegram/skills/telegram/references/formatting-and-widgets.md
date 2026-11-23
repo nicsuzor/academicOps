@@ -1,27 +1,13 @@
-# Telegram Formatting, Widgets, Reactions, and Tools Reference
+# Telegram Buttons, Reactions, Details, and Tools Reference
 
-Bot API entity mapping, Mini App Details layout, action-button events, shared reaction legend, and topic/media tool contracts.
+Inline keyboard options, Mini App Details layout, action-button events, shared reaction legend, and topic/media tool contracts.
 
-## Native Markdown to UTF-16 Entities
-
-Write standard and extended Markdown directly -- formatting converts to native Telegram UTF-16 entities without escaping MarkdownV2 characters.
-
-| Construct | Syntax | Rendering / Notes |
-| - | - | - |
-| Inline styles | `**bold**`, `*italic*`, `__underline__` / `<u>`, `~~strike~~`, `\|\|spoiler\|\|` | Supports nested inline formatting |
-| Code | `` `inline` ``, fenced ` ```lang ` | Preserves monospace formatting |
-| Headings | `#` ATX headings | Rendered as bold headers |
-| Tables | Standard Markdown pipe tables | Monospace `pre` (`<= 36` cols) or stacked bullet cards (`> 36` cols) |
-| Quotes | `>` ordinary, `>!` expandable | `>!` renders collapsed by default for receipts/evidence |
-| Links & emoji | `[label](https://...)`, `![emoji](tg://emoji?id=<id>)` | Custom Telegram emoji by ID |
-
-**Reply widget parameters**:
+## Inline Keyboard & Quote Parameters
 
 - `copy_text`: `{ label, copy_text }` inline buttons for one-tap clipboard copy of commands or identifiers.
-- `quote` (with optional `quote_position`): quote a specific Markdown-formatted excerpt of the replied-to message.
-- `disable_link_preview` / `link_preview_options`: control inline URL previews; `show_caption_above_media` on media sends; `message_effect_id` when appropriate.
+- `quote_rich_texts`: pass quoted rich text fragments in `send_rich_message` (`reply_parameters.quote_rich_texts`).
+- `show_caption_above_media` on media sends; `message_effect_id` on `send_rich_message` and `send_widget` when appropriate.
 - `button_layout`, `buttons_per_row`, or 2D button arrays: compact multi-row option layouts on mobile.
-- `predefined_row: true`: consolidate all active system actions (`🔍`, `[🧐 Check]`, `[💡 Explain]`, `[🧾]`, `[🙏]`, and `[✅]`/`[❌]` when `binary_decision: true`) onto a single header row above custom buttons.
 
 ## Mini App Details (`detail`) Layout
 
@@ -33,7 +19,7 @@ The Mini App renders `detail` as a phone-width Markdown page:
 
 ## Message Action Button Events
 
-Every reply carries `[🧐 Check]`, `[💡 Explain]`, `[🧾]`, and `[🙏]` unless `actions: false` is passed; `[✅]` and `[❌]` attach only when `binary_decision: true`.
+Messages carrying action callback buttons (`logic_check`, `explain`, `reasons`, `thanks`, `accept_recommendation`, `decline_recommendation`) emit the corresponding channel events when tapped:
 
 | Button | Event | Required Handling |
 | - | - | - |
@@ -71,5 +57,5 @@ Feedback reactions: `👎` (substance defect/reported failure), `👍` (affirmat
 
 - **Topic tools**: `create_thread({ name })` (custom icons via `get_forum_topic_icon_stickers`; auto-activates the new thread), `rename_thread`, `close_thread`, `reopen_thread`, `unpin_all_thread_messages`, `delete_thread`, `list_threads({ state?: "all" | "open" | "closed" })`. Standard tools reject `message_thread_id: 1`; manage `#1` via `edit_general_thread`, `close_general_thread`, `reopen_general_thread`, `hide_general_thread`, `unhide_general_thread`, and `unpin_all_general_thread_messages`.
 - **Message management**: `pin_message` (`disable_notification: true` by default), `unpin_message`, `unpin_all_messages`, `forward_messages` / `copy_messages` (1--100 messages per call), `delete_messages` (48-hour window), `edit_message_reply_markup` (`buttons: []` to clear).
-- **Rich media, location, drafts & polls**: `send_photo`, `send_document`, `send_video`, `send_animation`, `send_audio`, `send_video_note` (local path, `file_id`, or URL; optional Markdown `caption`, `has_spoiler`, `buttons`), `send_media_group` (2--10 items), `send_location`, `send_venue`, `send_contact`, `send_dice` (`🎲`, `🎯`, `🏀`, `⚽`, `🎳`, `🎰`), `send_chat_action`, `send_message_draft` (non-zero `draft_id`), `send_poll` (2--12 options, optional `type: "quiz"` + `correct_option_id` + Markdown `explanation`) / `stop_poll`. Use `ask_user` when selection must resume the agent turn.
+- **Rich media, location, drafts & polls**: `send_photo`, `send_document`, `send_video`, `send_animation`, `send_audio`, `send_video_note` (local path, `file_id`, or URL; optional `caption`, `has_spoiler`, `buttons`), `send_media_group` (2--10 items), `send_location`, `send_venue`, `send_contact`, `send_dice` (`🎲`, `🎯`, `🏀`, `⚽`, `🎳`, `🎰`), `send_chat_action`, `send_message_draft` (non-zero `draft_id`, Rich drafts in private chats), `send_poll` (2--12 options, optional `type: "quiz"` + `correct_option_id` + `explanation`) / `stop_poll`. Use `ask_user` when selection must resume the agent turn.
 - **Reviews & focus**: Attach diff review metadata when presenting a PR or branch; update the live cognitive anchor when primary focus shifts or work is delegated.

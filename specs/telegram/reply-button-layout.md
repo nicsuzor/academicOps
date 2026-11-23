@@ -50,7 +50,7 @@ As an operator tapping a custom option button on an agent reply card (such as a 
   3. Caller option buttons are removed from the card's inline keyboard while preserving active predefined buttons (such as `🔍 Details`, `🔍 Review diff`, feedback buttons, or action buttons).
   4. An inbound event is dispatched to the active agent session with `event: "button_tap"`, `content: "tapped <label>"`, `callback_prefix`, `payload`, `label`, and target message identity.
   - _Check_: `plugins/ida-telegram/test/reply-buttons.test.ts` (`AC3: defect check: tapping caller-supplied reply button acknowledges callback, marks card, preserves Details button, and delivers event to session`).
-- **AC-4.2 (Universal Callback Acknowledgement Across All Button Families)** Every callback-button family emitted by the plugin (`reply` caller buttons, predefined action buttons `logic_check`/`explain`/`reasons`, recommendation buttons `accept_recommendation`/`decline_recommendation`, feedback buttons `fb:*`, question buttons `q:*`, and permission buttons `perm:*`) immediately acknowledges incoming callback queries via `answerCallbackQuery`. Client-side WebApp buttons (`web_app` for Details, Review diff, Mini App review, and caller Mini Apps) are exempt because Telegram handles WebApps client-side without emitting `callback_query` updates.
+- **AC-4.2 (Universal Callback Acknowledgement Across All Button Families)** Every callback-button family emitted by the plugin (`send_rich_message` caller buttons, predefined action buttons `logic_check`/`explain`/`reasons`/`thanks`, recommendation buttons `accept_recommendation`/`decline_recommendation`, feedback buttons `fb:*`, question buttons `q:*`, and permission buttons `perm:*`) immediately acknowledges incoming callback queries via `answerCallbackQuery`. Client-side WebApp buttons (`web_app` for Details, Review diff, Mini App review, and caller Mini Apps) are exempt because Telegram handles WebApps client-side without emitting `callback_query` updates.
   - _Check_: `plugins/ida-telegram/test/reply-buttons.test.ts` (`AC4: defect check: every callback-button family emitted by the plugin acknowledges callback query immediately`).
 
 ## Design
@@ -58,7 +58,7 @@ As an operator tapping a custom option button on an agent reply card (such as a 
 ### 1. Custom Button Layouts (US-1)
 
 1. **Input Flexibility:**
-   The `reply` tool accepts buttons in either of two structures:
+   `send_rich_message`, `edit_message`, `send_widget`, and outbound media/poll tools accept `buttons` in either of two structures:
    - **2D Grid Array (`buttons: ReplyButtonOption[][]`):** The caller directly defines each row as an array of button objects.
    - **Flat Array (`buttons: ReplyButtonOption[]`):** Sliced into rows using layout parameters:
      - `button_layout: number[]` specifies the explicit button count for each successive row (e.g. `[3, 3, 2]`). Any remaining buttons are placed in subsequent rows following the last specified count or 1.
@@ -95,9 +95,9 @@ As an operator tapping a custom option button on an agent reply card (such as a 
 ### 3. Recommendation Action Buttons (US-3)
 
 1. **Decision-Fit Attachment and Suppression:**
-   - Binary decision replies (`binary_decision: true` on `reply`) attach `[✅]` (callback `accept_recommendation`) and `[❌]` (callback `decline_recommendation`) alongside `[🧐 Check]`, `[💡 Explain]`, and `[🧾]` unless `actions: false` is passed. Details (`🔍`) sits on the same row.
-   - Replies with no decision (`binary_decision` omitted or `false`, no `buttons`) attach zero recommendation buttons.
-   - Multi-option decision replies (`buttons` supplied with the recommended option highlighted, `binary_decision` omitted or `false`) attach the labelled option rows and zero `[✅]`/`[❌]` buttons.
+   - Binary decision cards may attach `[✅]` (callback `accept_recommendation`) and `[❌]` (callback `decline_recommendation`) via `buttons` on `send_rich_message` (or use `ask_user` with `kind: "decision"`).
+   - Messages with no decision attach zero recommendation buttons.
+   - Multi-option decision cards (`buttons` supplied with the recommended option highlighted) attach the labelled option rows and zero `[✅]`/`[❌]` buttons.
 
 2. **In-Place Card Update & Filtering:**
    When an operator taps either button:
@@ -130,7 +130,7 @@ As an operator tapping a custom option button on an agent reply card (such as a 
      - `meta`: `event: "button_tap"`, `callback_id`, `callback_prefix`, `payload`, `label`, `target_message_id`, `chat_id`, `user_id`, and `message_thread_id` / `thread_id` when inside a forum thread.
 
 4. **Universal Callback Acknowledgement Contract:**
-   All callback-button families emitted by the plugin (`reply` caller buttons, predefined action buttons, recommendation buttons, feedback buttons, question cards, and permission cards) immediately acknowledge incoming callback queries via `answerCallbackQuery`. Client-side WebApp buttons (`web_app` for Details, Review diff, Mini App review, and caller Mini Apps) are exempt because Telegram handles WebApps client-side without emitting `callback_query` updates.
+   All callback-button families emitted by the plugin (`send_rich_message` caller buttons, predefined action buttons, recommendation buttons, feedback buttons, question cards, and permission cards) immediately acknowledge incoming callback queries via `answerCallbackQuery`. Client-side WebApp buttons (`web_app` for Details, Review diff, Mini App review, and caller Mini Apps) are exempt because Telegram handles WebApps client-side without emitting `callback_query` updates.
 
 5. **Verification Checks:**
    - Checked by `plugins/ida-telegram/test/reply-buttons.test.ts` (AC3 for caller-supplied button tap, card marking, Details preservation, and session delivery; AC4 for immediate acknowledgement across all emitted callback-button families).

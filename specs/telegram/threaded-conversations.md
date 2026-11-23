@@ -31,14 +31,14 @@ As an operator communicating with an agent inside a specific Telegram forum topi
 
 As an operator interacting with an agent inside a forum topic, I want every outbound response (reply text, spoken voice note, question card, custom-answer prompt, message edit, and emoji reaction) to remain confined to that topic automatically without requiring configuration flags, so that messages never leak into the General topic or clutter other channels.
 
-- **AC-2.1** Given an active conversation in a Telegram thread, when the agent invokes `reply` (text or `voice: true`), `ask_user`, or when the operator taps `✏️ Other` on a question card without an explicit thread override, then the outbound message, voice note, or prompt is sent with `message_thread_id` matching the active thread.
+- **AC-2.1** Given an active conversation in a Telegram thread, when the agent invokes `send_rich_message` (text or `voice: true`), `ask_user`, or when the operator taps `✏️ Other` on a question card without an explicit thread override, then the outbound message, voice note, or prompt is sent with `message_thread_id` matching the active thread.
 - **AC-2.2** Given an incoming or existing message in a Telegram thread, when `react` or `edit_message` is invoked, then the reaction or in-place text update applies directly to that message within the thread.
 
 ### US-3 Unthreaded Chats Backward Compatibility
 
 As an operator using direct messages (private chats) or regular unthreaded group chats, I want standard unthreaded behaviour preserved without synthetic thread IDs or invalid API parameters.
 
-- **AC-3.1** Given a message arriving in an unthreaded chat (no `message_thread_id`), when the update is processed and the agent calls `reply` or `ask_user`, then `meta.message_thread_id` and `meta.thread_id` are absent on the inbound event and outbound API requests omit `message_thread_id`.
+- **AC-3.1** Given a message arriving in an unthreaded chat (no `message_thread_id`), when the update is processed and the agent calls `send_rich_message` or `ask_user`, then `meta.message_thread_id` and `meta.thread_id` are absent on the inbound event and outbound API requests omit `message_thread_id`.
 
 ### US-4 Thread Renaming via Tool Call
 
@@ -51,8 +51,8 @@ As an operator interacting with an agent in a forum topic or thread, I want the 
 
 As an operator interacting with an agent in a chat where no thread is defined (after a restart, or when writing messages outside any topic in a topics-enabled chat), I want outbound replies to attach to my inbound message rather than landing in an unopenable General `#` topic, active thread memory preserved across restarts, and sends that land in an unexpected thread caught as errors.
 
-- **AC-5.1** Given a message arriving outside any thread in a chat (no `message_thread_id`), when the agent calls `reply` without specifying a thread or reply parameter, then the outbound request sets `reply_parameters.message_id` to that inbound message ID and omits `message_thread_id`, and the tool result reports `message_thread_id` whenever a thread was used.
-- **AC-5.2** Given a process restart or reconnect, when the channel initializes, then active thread, last inbound message, and topics-enabled state per chat are restored from durable state; if a topics-enabled chat has neither an active thread nor an inbound reply target, or if Telegram delivers an unthreaded send into an unexpected thread (`message_thread_id: 1`), `reply` returns `{ success: false, error: "..." }`.
+- **AC-5.1** Given a message arriving outside any thread in a chat (no `message_thread_id`), when the agent calls `send_rich_message` without specifying a thread or reply parameter, then the outbound request sets `reply_parameters.message_id` to that inbound message ID and omits `message_thread_id`, and the tool result reports `message_thread_id` whenever a thread was used.
+- **AC-5.2** Given a process restart or reconnect, when the channel initializes, then active thread, last inbound message, and topics-enabled state per chat are restored from durable state; if a topics-enabled chat has neither an active thread nor an inbound reply target, or if Telegram delivers an unthreaded send into an unexpected thread (`message_thread_id: 1`), `send_rich_message` returns `{ success: false, error: "..." }`.
 
 ### US-6 Thread Creation via Tool Call
 
@@ -67,7 +67,7 @@ As an operator conversing with an agent in the main chat or an existing thread, 
 
 - Inbound events originating inside a forum topic include `meta.message_thread_id` and `meta.thread_id` as stringified integers. Events outside a thread omit both fields.
 - Per-chat routing state tracks the active `message_thread_id`, the most recent inbound `message_id` and its thread context, and whether the chat has forum topics enabled. State is persisted across restarts.
-- Outbound `reply` and `ask_user` calls resolve their target thread in priority order: (1) explicit `message_thread_id` / `thread_id` tool argument, (2) thread indexed for an explicit `reply_to` message, (3) active thread for the chat, or (4) when unthreaded, attaching `reply_parameters.message_id` to the last inbound message ID without `message_thread_id`.
+- Outbound `send_rich_message` and `ask_user` calls resolve their target thread in priority order: (1) explicit `message_thread_id` / `thread_id` tool argument, (2) thread indexed for an explicit `reply_to` message, (3) active thread for the chat, or (4) when unthreaded, attaching `reply_parameters.message_id` to the last inbound message ID without `message_thread_id`.
 
 ### 2. Thread Creation and Renaming Tool Contracts
 
