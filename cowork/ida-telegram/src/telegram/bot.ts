@@ -1,6 +1,5 @@
 import { PluginConfig } from "../config.js";
 import { resolveBotCommands } from "./commands.js";
-import { FormattedMessage, formatMarkdownToEntities } from "./format.js";
 import { parseInboundUpdate, TelegramCallbackQuery, TelegramMessage, TelegramUpdate } from "./inbound.js";
 import { QuestionBroker, StoredQuestion, matchOptionIndex } from "./questions.js";
 import { FeedbackManager } from "./feedback.js";
@@ -73,14 +72,6 @@ export interface ReplyButtonOption {
   web_app?: string;
   copy_text?: string | { text: string };
   row?: number;
-}
-
-export interface LinkPreviewOptions {
-  is_disabled?: boolean;
-  url?: string;
-  prefer_small_media?: boolean;
-  prefer_large_media?: boolean;
-  show_above_text?: boolean;
 }
 
 export type ReplyButtonInput = ReplyButtonOption | string;
@@ -180,38 +171,6 @@ export function buildInlineKeyboardRows(
   return callerRows;
 }
 
-export interface SendReplyOptions {
-  chatId: number;
-  messageThreadId?: number;
-  formatted: FormattedMessage;
-  detailsId?: string;
-  buttons?: ReplyButtonsInput;
-  buttonLayout?: number[] | number;
-  buttonsPerRow?: number;
-  predefinedRow?: boolean;
-  voice?: boolean;
-  replyTo?: number;
-  quote?: string;
-  quotePosition?: number;
-  linkPreviewOptions?: LinkPreviewOptions;
-  messageEffectId?: string;
-  feedback?: boolean;
-  review?: { repo: string; pr?: number };
-  actions?: boolean;
-  binary_decision?: boolean;
-}
-
-export interface SendReplyResult {
-  ok?: boolean;
-  success?: boolean;
-  messageId: number;
-  messageThreadId?: number;
-  error?: string;
-  voiceSent?: boolean;
-  voiceMessageId?: number;
-  voiceError?: string;
-}
-
 export class TelegramBotClient {
   private config: PluginConfig;
   private broker: QuestionBroker;
@@ -265,7 +224,12 @@ export class TelegramBotClient {
     }
 
     this.permRelay.setEditCardCallback(async (chatId, messageId, text, replyMarkup) => {
-      await this.editMessage(chatId, messageId, text, replyMarkup || { inline_keyboard: [] });
+      await this.callApi("editMessageText", {
+        chat_id: chatId,
+        message_id: messageId,
+        text,
+        reply_markup: replyMarkup || { inline_keyboard: [] },
+      });
     });
   }
 
@@ -515,434 +479,12 @@ export class TelegramBotClient {
     }
   }
 
-  public async sendReply(opts: SendReplyOptions): Promise<SendReplyResult | null> {
-    const {
-      chatId,
-      formatted,
-      detailsId,
-      buttons,
-      buttonLayout,
-      buttonsPerRow,
-      predefinedRow,
-      voice,
-      replyTo,
-      feedback,
-      review,
-      actions,
-      binary_decision,
-    } = opts;
-
-    const effectiveThreadId =
-      opts.messageThreadId ??
-      (replyTo ? this.getMessageThread(replyTo) : undefined) ??
-      this.getLastThreadId(chatId);
-
-    const effectiveReplyTo =
-      replyTo ??
-      (effectiveThreadId === undefined ? this.getLastInboundMessageId(chatId) : undefined);
-
-    const isTopicsChat = this.isTopicsEnabled(chatId);
-    if (
-      isTopicsChat &&
-      opts.messageThreadId === undefined &&
-      effectiveThreadId === undefined &&
-      effectiveReplyTo === undefined
-    ) {
-      return {
-        ok: false,
-        success: false,
-        messageId: 0,
-        error: "Active thread is not defined for topics-enabled chat: specify message_thread_id or reply_to, or wait for an inbound message",
-      };
-    }
-
-    const verifyThread = (resultMsg: any): { ok: boolean; error?: string } => {
-      const actualThreadId = resultMsg?.message_thread_id;
-      const expectedThreadId =
-        opts.messageThreadId ??
-        (replyTo ? this.getMessageThread(replyTo) : undefined) ??
-        this.getLastInboundThreadId(chatId);
-
-      if (expectedThreadId !== undefined && actualThreadId !== undefined && actualThreadId !== expectedThreadId) {
-        return {
-          ok: false,
-          error: `Outbound thread mismatch: message landed in thread ${actualThreadId} but expected ${expectedThreadId}`,
-        };
-      }
-      if (expectedThreadId === undefined && actualThreadId !== undefined) {
-        return {
-          ok: false,
-          error: `Outbound thread mismatch: message landed in thread ${actualThreadId} but expected unthreaded`,
-        };
-      }
-      return { ok: true };
-    };
-
-    // Build inline keyboard
-    const inlineKeyboard: Array<Array<Record<string, unknown>>> = [];
-
-    // Build custom caller button rows (AC1)
-    const callerRows = buildInlineKeyboardRows(buttons, buttonLayout, buttonsPerRow);
-
-    const miniAppBaseUrl = this.config.miniAppUrl.replace(/\/+$/, "");
-
-    const detailsBtn: Record<string, unknown> | undefined = detailsId
-      ? {
-          text: "🔍",
-          web_app: {
-            url: buildMiniAppUrl(this.config.miniAppUrl, {
-              d: detailsId,
-              instance: this.config.instance,
-            }),
-          },
-        }
-      : undefined;
-
-    const feedbackBtns: Array<Record<string, unknown>> = [];
-    if (feedback === true) {
-      feedbackBtns.push({ text: "👍", callback_data: "fb:up" });
-      feedbackBtns.push({ text: "👎", callback_data: "fb:down" });
-    }
-
-    const reviewBtn: Record<string, unknown> | undefined = review
-      ? {
-          text: `🔍 Review diff (${review.repo}#${review.pr || ""})`,
-          web_app: {
-            url: buildMiniAppUrl(this.config.miniAppUrl, {
-              tab: "review",
-              instance: this.config.instance,
-            }),
-          },
-        }
-      : undefined;
-
-    const actionBtns: Array<Record<string, unknown>> = [];
-    if (actions !== false) {
-      actionBtns.push({ text: "🧐 Check", callback_data: "logic_check" });
-      actionBtns.push({ text: "💡 Explain", callback_data: "explain" });
-      actionBtns.push({ text: "🧾", callback_data: "reasons" });
-      actionBtns.push({ text: "🙏", callback_data: "thanks" });
-
-      // Attach tick/cross buttons ONLY if binary_decision is explicitly true
-      if (binary_decision === true) {
-        actionBtns.push({ text: "✅", callback_data: "accept_recommendation" });
-        actionBtns.push({ text: "❌", callback_data: "decline_recommendation" });
-      }
-    }
-
-    if (predefinedRow === true) {
-      // AC2: All predefined buttons sit together on the first row above caller's rows
-      const predefinedFirstRow: Array<Record<string, unknown>> = [];
-      if (detailsBtn) predefinedFirstRow.push(detailsBtn);
-      if (reviewBtn) predefinedFirstRow.push(reviewBtn);
-      if (feedbackBtns.length > 0) predefinedFirstRow.push(...feedbackBtns);
-      if (actionBtns.length > 0) predefinedFirstRow.push(...actionBtns);
-
-      if (predefinedFirstRow.length > 0) {
-        inlineKeyboard.push(predefinedFirstRow);
-      }
-      for (const row of callerRows) {
-        inlineKeyboard.push(row);
-      }
-    } else {
-      // Default: Caller rows first, then consolidated predefined rows below
-      for (const row of callerRows) {
-        inlineKeyboard.push(row);
-      }
-
-      if (feedbackBtns.length > 0) {
-        inlineKeyboard.push(feedbackBtns);
-      }
-
-      if (reviewBtn) {
-        inlineKeyboard.push([reviewBtn]);
-      }
-
-      const predefinedDefaultRow: Array<Record<string, unknown>> = [];
-      if (detailsBtn) {
-        predefinedDefaultRow.push(detailsBtn);
-      }
-      if (actionBtns.length > 0) {
-        predefinedDefaultRow.push(...actionBtns);
-      }
-      if (predefinedDefaultRow.length > 0) {
-        inlineKeyboard.push(predefinedDefaultRow);
-      }
-    }
-
-    let voiceError: string | undefined;
-
-    // Check voice out (FR-7)
-    if (voice) {
-      if (!this.config.voiceSpeakCmd) {
-        voiceError = "VOICE_SPEAK_CMD is not configured";
-      } else {
-        const stamp = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-        const tempText = join(tmpdir(), `voice_out_${stamp}.txt`);
-        const tempOgg = join(tmpdir(), `voice_out_${stamp}.ogg`);
-        try {
-          const spoken = prepareVoiceText(formatted.plainText);
-          if (!existsSync(this.config.stateDir)) {
-            mkdirSync(this.config.stateDir, { recursive: true });
-          }
-          writeFileSync(tempText, spoken, "utf-8");
-
-          await execFileAsync(this.config.voiceSpeakCmd, [tempText, tempOgg], {
-            timeout: 60000,
-            cwd: this.config.stateDir,
-            env: { ...process.env, ...(this.config.env || {}) },
-          });
-
-          if (!existsSync(tempOgg)) {
-            throw new Error(`TTS script did not produce output file: ${tempOgg}`);
-          }
-          const oggBuffer = readFileSync(tempOgg);
-          if (oggBuffer.byteLength === 0) {
-            throw new Error(`TTS script produced an empty audio file: ${tempOgg}`);
-          }
-
-          // FR-7.3: If caption fits under 1024 UTF-16 code units, attach caption and entities to sendVoice.
-          // Otherwise send voice first, then send text message separately.
-          if (formatted.plainText.length <= 1024) {
-            const voiceRes = await this.callVoiceApi(chatId, oggBuffer, {
-              caption: formatted.plainText,
-              captionEntities: formatted.entities,
-              replyTo: effectiveReplyTo,
-              messageThreadId: effectiveThreadId,
-              inlineKeyboard,
-            });
-            if (voiceRes?.ok && voiceRes?.result) {
-              const check = verifyThread(voiceRes.result);
-              if (!check.ok) {
-                return {
-                  ok: false,
-                  success: false,
-                  messageId: voiceRes.result.message_id,
-                  error: check.error,
-                };
-              }
-              this.recordMessageThread(voiceRes.result.message_id, effectiveThreadId);
-              this.recordMessageExcerpt(voiceRes.result.message_id, formatted.plainText);
-              return {
-                ok: true,
-                success: true,
-                messageId: voiceRes.result.message_id,
-                messageThreadId: voiceRes.result.message_thread_id ?? effectiveThreadId,
-                voiceSent: true,
-              };
-            }
-            throw new Error(voiceRes?.description || "Telegram sendVoice API call failed");
-          } else {
-            const voiceRes = await this.callVoiceApi(chatId, oggBuffer, {
-              replyTo: effectiveReplyTo,
-              messageThreadId: effectiveThreadId,
-            });
-            if (!voiceRes?.ok || !voiceRes?.result) {
-              throw new Error(voiceRes?.description || "Telegram sendVoice API call failed");
-            }
-            const voiceMessageId: number = voiceRes.result.message_id;
-            this.recordMessageThread(voiceMessageId, effectiveThreadId);
-
-            const textPayload: Record<string, unknown> = {
-              chat_id: chatId,
-              text: formatted.plainText,
-              entities: formatted.entities,
-            };
-            if (effectiveThreadId !== undefined) {
-              textPayload.message_thread_id = effectiveThreadId;
-            }
-            if (effectiveReplyTo !== undefined) {
-              textPayload.reply_parameters = { message_id: effectiveReplyTo };
-            }
-            if (inlineKeyboard.length > 0) {
-              textPayload.reply_markup = { inline_keyboard: inlineKeyboard };
-            }
-
-            let textRes = await this.callApi("sendMessage", textPayload);
-            if (!textRes?.ok || !textRes?.result) {
-              textRes = await this.callApi("sendMessage", {
-                chat_id: chatId,
-                ...(effectiveThreadId !== undefined ? { message_thread_id: effectiveThreadId } : {}),
-                ...(effectiveReplyTo !== undefined ? { reply_parameters: { message_id: effectiveReplyTo } } : {}),
-                text: formatted.plainText,
-                reply_markup: inlineKeyboard.length > 0 ? { inline_keyboard: inlineKeyboard } : undefined,
-              });
-            }
-
-            const check = verifyThread(textRes?.result || voiceRes.result);
-            if (!check.ok) {
-              return {
-                ok: false,
-                success: false,
-                messageId: textRes?.result?.message_id ?? voiceMessageId,
-                error: check.error,
-              };
-            }
-
-            const finalMessageId = textRes?.result?.message_id ?? voiceMessageId;
-            this.recordMessageThread(finalMessageId, effectiveThreadId);
-            this.recordMessageExcerpt(finalMessageId, formatted.plainText);
-            return {
-              ok: true,
-              success: true,
-              messageId: finalMessageId,
-              messageThreadId: textRes?.result?.message_thread_id ?? voiceRes.result?.message_thread_id ?? effectiveThreadId,
-              voiceMessageId,
-              voiceSent: true,
-            };
-          }
-        } catch (e) {
-          voiceError = e instanceof Error ? e.message : String(e);
-          console.error("Voice TTS failed, falling back to text:", e);
-        } finally {
-          try {
-            if (existsSync(tempText)) unlinkSync(tempText);
-            if (existsSync(tempOgg)) unlinkSync(tempOgg);
-          } catch {
-            // Ignore temp cleanup errors
-          }
-        }
-      }
-    }
-
-    const payload: Record<string, unknown> = {
-      chat_id: chatId,
-      text: formatted.plainText,
-      entities: formatted.entities,
-    };
-
-    if (effectiveThreadId !== undefined) {
-      payload.message_thread_id = effectiveThreadId;
-    }
-
-    if (effectiveReplyTo) {
-      const replyParams: Record<string, unknown> = { message_id: effectiveReplyTo };
-      if (typeof opts.quote === "string" && opts.quote.trim().length > 0) {
-        const formattedQuote = formatMarkdownToEntities(opts.quote);
-        replyParams.allow_sending_without_reply = true;
-        replyParams.quote = formattedQuote.plainText;
-        if (formattedQuote.entities.length > 0) {
-          replyParams.quote_entities = formattedQuote.entities;
-        }
-        if (typeof opts.quotePosition === "number") {
-          replyParams.quote_position = opts.quotePosition;
-        }
-      }
-      payload.reply_parameters = replyParams;
-    }
-
-    if (opts.linkPreviewOptions) {
-      payload.link_preview_options = opts.linkPreviewOptions;
-    }
-
-    if (opts.messageEffectId) {
-      payload.message_effect_id = opts.messageEffectId;
-    }
-
-    if (inlineKeyboard.length > 0) {
-      payload.reply_markup = { inline_keyboard: inlineKeyboard };
-    }
-
-    const res = await this.callApi("sendMessage", payload);
-    if (res.ok && res.result) {
-      const check = verifyThread(res.result);
-      if (!check.ok) {
-        return {
-          ok: false,
-          success: false,
-          messageId: res.result.message_id,
-          error: check.error,
-        };
-      }
-      this.recordMessageThread(res.result.message_id, effectiveThreadId);
-      if (this.store && inlineKeyboard.length > 0) {
-        this.store.setLastCard(chatId, res.result.message_id, formatted.plainText);
-      }
-      this.recordMessageExcerpt(res.result.message_id, formatted.plainText);
-      if (voice) {
-        return {
-          ok: true,
-          success: true,
-          messageId: res.result.message_id,
-          messageThreadId: res.result.message_thread_id ?? effectiveThreadId,
-          voiceSent: false,
-          voiceError,
-        };
-      }
-      return {
-        ok: true,
-        success: true,
-        messageId: res.result.message_id,
-        messageThreadId: res.result.message_thread_id ?? effectiveThreadId,
-      };
-    }
-
-    if (res?.error_code === 408) {
-      return {
-        ok: false,
-        success: false,
-        messageId: 0,
-        error: res.description || "Telegram sendMessage timed out",
-      };
-    }
-
-    // If Telegram rejects formatted entities, resend once as plain text per FR-1.5
-    const fallbackRes = await this.callApi("sendMessage", {
-      chat_id: chatId,
-      ...(effectiveThreadId !== undefined ? { message_thread_id: effectiveThreadId } : {}),
-      ...(effectiveReplyTo !== undefined ? { reply_parameters: { message_id: effectiveReplyTo } } : {}),
-      text: formatted.plainText,
-      reply_markup: inlineKeyboard.length > 0 ? { inline_keyboard: inlineKeyboard } : undefined,
-    });
-
-    if (fallbackRes.ok && fallbackRes.result) {
-      const check = verifyThread(fallbackRes.result);
-      if (!check.ok) {
-        return {
-          ok: false,
-          success: false,
-          messageId: fallbackRes.result.message_id,
-          error: check.error,
-        };
-      }
-      this.recordMessageThread(fallbackRes.result.message_id, effectiveThreadId);
-      if (this.store && inlineKeyboard.length > 0) {
-        this.store.setLastCard(chatId, fallbackRes.result.message_id, formatted.plainText);
-      }
-      this.recordMessageExcerpt(fallbackRes.result.message_id, formatted.plainText);
-      if (voice) {
-        return {
-          ok: true,
-          success: true,
-          messageId: fallbackRes.result.message_id,
-          messageThreadId: fallbackRes.result.message_thread_id ?? effectiveThreadId,
-          voiceSent: false,
-          voiceError,
-        };
-      }
-      return {
-        ok: true,
-        success: true,
-        messageId: fallbackRes.result.message_id,
-        messageThreadId: fallbackRes.result.message_thread_id ?? effectiveThreadId,
-      };
-    }
-
-    return {
-      ok: false,
-      success: false,
-      messageId: 0,
-      error: fallbackRes?.description || res?.description || "Telegram sendMessage failed",
-    };
-  }
-
   public async sendQuestionCard(
     chatId: number,
     qid: string,
     card: { text: string; buttons: Array<{ text: string; callbackData?: string; web_app?: { url: string } }> },
     messageThreadId?: number
   ) {
-    const formatted = formatMarkdownToEntities(card.text);
     const inline_keyboard = card.buttons.map((b) => {
       if (b.web_app) {
         return [{ text: b.text, web_app: b.web_app }];
@@ -953,11 +495,13 @@ export class TelegramBotClient {
       return [{ text: b.text, callback_data: b.callbackData }];
     });
     const effectiveThreadId = messageThreadId ?? this.getLastThreadId(chatId);
-    const effectiveReplyTo = effectiveThreadId === undefined ? this.getLastInboundMessageId(chatId) : undefined;
     const storedQ = this.broker.getQuestion(qid);
-    const presentation = storedQ?.presentation ?? "widget";
+    if (!storedQ) {
+      return { ok: false, error: `Unknown question ${qid}`, description: `Unknown question ${qid}` };
+    }
+    const presentation = storedQ.presentation ?? "widget";
 
-    if (storedQ && presentation === "widget") {
+    if (presentation === "widget") {
       try {
         const built = buildQuestionWidget({
           id: storedQ.id,
@@ -989,106 +533,55 @@ export class TelegramBotClient {
           }
           return { ok: true, messageId: widgetRes.result.message_id, result: widgetRes.result };
         }
+        const errMsg = widgetRes?.description || "Telegram sendWidget failed";
+        this.broker.markDeliveryFailed(qid, errMsg);
         return {
           ok: false,
-          description: widgetRes?.description || "Telegram sendWidget failed",
+          error: errMsg,
+          description: errMsg,
           error_code: widgetRes?.error_code,
         };
       } catch (err) {
-        return { ok: false, error: err instanceof Error ? err.message : String(err) };
+        const errMsg = err instanceof Error ? err.message : String(err);
+        this.broker.markDeliveryFailed(qid, errMsg);
+        return { ok: false, error: errMsg, description: errMsg };
       }
     }
 
-    if (storedQ && presentation === "rich") {
-      const markdown = formatQuestionRichMarkdown({
-        id: storedQ.id,
-        question: storedQ.question,
-        header: storedQ.header,
-        context: storedQ.context,
-        kind: storedQ.kind,
-        stakes: storedQ.stakes,
-        multiSelect: storedQ.multiSelect,
-        allowOther: storedQ.allowOther,
-        allowDefer: storedQ.allowDefer,
-        options: storedQ.options,
-      });
-      const richRes = await this.sendRichMessage({
-        chatId,
-        richMessage: { markdown },
-        inlineKeyboard: inline_keyboard,
-        messageThreadId: effectiveThreadId,
-      });
-      if (richRes?.ok && richRes?.result?.message_id) {
-        this.broker.setPresentation(qid, "rich");
-        this.broker.setMessageId(qid, richRes.result.message_id);
-        if (this.store) {
-          this.store.setLastCard(chatId, richRes.result.message_id, card.text);
-        }
-        return { ok: true, messageId: richRes.result.message_id, result: richRes.result };
+    const markdown = formatQuestionRichMarkdown({
+      id: storedQ.id,
+      question: storedQ.question,
+      header: storedQ.header,
+      context: storedQ.context,
+      kind: storedQ.kind,
+      stakes: storedQ.stakes,
+      multiSelect: storedQ.multiSelect,
+      allowOther: storedQ.allowOther,
+      allowDefer: storedQ.allowDefer,
+      options: storedQ.options,
+    });
+    const richRes = await this.sendRichMessage({
+      chatId,
+      richMessage: { markdown },
+      inlineKeyboard: inline_keyboard,
+      messageThreadId: effectiveThreadId,
+    });
+    if (richRes?.ok && richRes?.result?.message_id) {
+      this.broker.setPresentation(qid, "rich");
+      this.broker.setMessageId(qid, richRes.result.message_id);
+      if (this.store) {
+        this.store.setLastCard(chatId, richRes.result.message_id, card.text);
       }
-      return {
-        ok: false,
-        description: richRes?.description || "Telegram sendRichMessage failed",
-        error_code: richRes?.error_code,
-      };
+      return { ok: true, messageId: richRes.result.message_id, result: richRes.result };
     }
-
-    const payload: Record<string, unknown> = {
-      chat_id: chatId,
-      text: formatted.plainText,
-      entities: formatted.entities,
-      reply_markup: { inline_keyboard },
+    const errMsg = richRes?.description || "Telegram sendRichMessage failed";
+    this.broker.markDeliveryFailed(qid, errMsg);
+    return {
+      ok: false,
+      error: errMsg,
+      description: errMsg,
+      error_code: richRes?.error_code,
     };
-    if (effectiveThreadId !== undefined) {
-      payload.message_thread_id = effectiveThreadId;
-    }
-    if (effectiveReplyTo !== undefined) {
-      payload.reply_parameters = { message_id: effectiveReplyTo };
-    }
-    try {
-      const res = await this.callApi("sendMessage", payload);
-      if (res?.ok && res?.result?.message_id) {
-        this.broker.setMessageId(qid, res.result.message_id);
-        this.recordMessageThread(res.result.message_id, effectiveThreadId);
-        if (this.store) {
-          this.store.setLastCard(chatId, res.result.message_id, card.text);
-        }
-        this.recordMessageExcerpt(res.result.message_id, formatted.plainText);
-        return { ok: true, messageId: res.result.message_id, result: res.result };
-      }
-      this.recordMessageExcerpt(res?.result?.message_id, formatted.plainText);
-
-      if (res?.error_code === 408) {
-        const errorMsg = res.description || "Telegram sendMessage timed out";
-        this.broker.markDeliveryFailed(qid, errorMsg);
-        return { ok: false, error: errorMsg, description: errorMsg };
-      }
-
-      // If Telegram rejects formatted entities, resend once as plain text per FR-1.5
-      const fallbackRes = await this.callApi("sendMessage", {
-        chat_id: chatId,
-        ...(effectiveThreadId !== undefined ? { message_thread_id: effectiveThreadId } : {}),
-        ...(effectiveReplyTo !== undefined ? { reply_parameters: { message_id: effectiveReplyTo } } : {}),
-        text: formatted.plainText,
-        reply_markup: { inline_keyboard },
-      });
-      if (fallbackRes?.ok && fallbackRes?.result?.message_id) {
-        this.broker.setMessageId(qid, fallbackRes.result.message_id);
-        this.recordMessageThread(fallbackRes.result.message_id, effectiveThreadId);
-        if (this.store) {
-          this.store.setLastCard(chatId, fallbackRes.result.message_id, card.text);
-        }
-        this.recordMessageExcerpt(fallbackRes.result.message_id, formatted.plainText);
-        return { ok: true, messageId: fallbackRes.result.message_id, result: fallbackRes.result };
-      }
-      const errorMsg = fallbackRes?.description || fallbackRes?.error || res?.description || res?.error || "Telegram sendMessage returned non-ok or missing message_id";
-      this.broker.markDeliveryFailed(qid, errorMsg);
-      return { ok: false, error: errorMsg, description: errorMsg };
-    } catch (err) {
-      const errorMsg = String(err);
-      this.broker.markDeliveryFailed(qid, errorMsg);
-      return { ok: false, error: errorMsg, description: errorMsg };
-    }
   }
 
   public async sendPermissionCard(
@@ -1162,52 +655,20 @@ export class TelegramBotClient {
     return res;
   }
 
-  public async editMessage(
+  public async editCardText(
     chatId: number,
     messageId: number,
     text: string,
-    replyMarkup?: Record<string, unknown>,
-    linkPreviewOptions?: LinkPreviewOptions
-  ) {
-    const formatted = formatMarkdownToEntities(text);
-    let res = await this.callApi("editMessageText", {
+    replyMarkup?: Record<string, unknown>
+  ): Promise<any> {
+    const res = await this.callApi("editMessageText", {
       chat_id: chatId,
       message_id: messageId,
-      text: formatted.plainText,
-      entities: formatted.entities,
+      text,
       reply_markup: replyMarkup,
-      ...(linkPreviewOptions ? { link_preview_options: linkPreviewOptions } : {}),
     });
-
-    if (!res?.ok && res?.description?.includes("no text in the message to edit")) {
-      res = await this.callApi("editMessageCaption", {
-        chat_id: chatId,
-        message_id: messageId,
-        caption: formatted.plainText,
-        caption_entities: formatted.entities,
-        reply_markup: replyMarkup,
-      });
-
-      if (!res?.ok && formatted.entities && formatted.entities.length > 0) {
-        res = await this.callApi("editMessageCaption", {
-          chat_id: chatId,
-          message_id: messageId,
-          caption: formatted.plainText,
-          reply_markup: replyMarkup,
-        });
-      }
-    } else if (!res?.ok && formatted.entities && formatted.entities.length > 0) {
-      res = await this.callApi("editMessageText", {
-        chat_id: chatId,
-        message_id: messageId,
-        text: formatted.plainText,
-        reply_markup: replyMarkup,
-        ...(linkPreviewOptions ? { link_preview_options: linkPreviewOptions } : {}),
-      });
-    }
-
     if (res?.ok) {
-      this.recordMessageExcerpt(messageId, formatted.plainText);
+      this.recordMessageExcerpt(messageId, text);
     }
     return res;
   }
@@ -1580,6 +1041,13 @@ export class TelegramBotClient {
             )}`,
           };
         }
+      } else if (effectiveThreadId === undefined && msg?.message_thread_id !== undefined) {
+        return {
+          ok: false,
+          description: `Thread delivery verification failed: expected unthreaded message, got message_thread_id=${String(
+            msg.message_thread_id
+          )}`,
+        };
       }
       if (typeof msg?.message_id === "number") {
         this.recordMessageThread(msg.message_id, effectiveThreadId);
@@ -1633,13 +1101,8 @@ export class TelegramBotClient {
       payload.reply_markup = { inline_keyboard: options.inlineKeyboard };
     }
 
-    let formattedCaption: FormattedMessage | undefined;
     if (options.caption !== undefined && options.mediaField !== "video_note") {
-      formattedCaption = formatMarkdownToEntities(options.caption);
-      payload.caption = formattedCaption.plainText;
-      if (formattedCaption.entities.length > 0) {
-        payload.caption_entities = formattedCaption.entities;
-      }
+      payload.caption = options.caption;
     }
 
     const files: Array<{ fieldName: string; filePath: string }> = [];
@@ -1649,23 +1112,13 @@ export class TelegramBotClient {
       payload[options.mediaField] = options.media;
     }
 
-    let res = await this.callMultipartOrJsonApi(options.method, payload, files);
-    if (
-      !res?.ok &&
-      formattedCaption &&
-      formattedCaption.entities.length > 0 &&
-      /entit|parse/i.test(String(res?.description || ""))
-    ) {
-      const retryPayload = { ...payload };
-      delete retryPayload.caption_entities;
-      res = await this.callMultipartOrJsonApi(options.method, retryPayload, files);
-    }
+    const res = await this.callMultipartOrJsonApi(options.method, payload, files);
 
     return this.finalizeSentMessageResult(
       options.chatId,
       res,
       routing.effectiveThreadId,
-      formattedCaption?.plainText || `[${options.mediaField}]`
+      options.caption || `[${options.mediaField}]`
     );
   }
 
@@ -1700,11 +1153,7 @@ export class TelegramBotClient {
         entry.media = item.media;
       }
       if (item.caption !== undefined) {
-        const formatted = formatMarkdownToEntities(item.caption);
-        entry.caption = formatted.plainText;
-        if (formatted.entities.length > 0) {
-          entry.caption_entities = formatted.entities;
-        }
+        entry.caption = item.caption;
       }
       if (item.has_spoiler !== undefined) {
         entry.has_spoiler = item.has_spoiler;
@@ -1801,7 +1250,6 @@ export class TelegramBotClient {
   public async sendMessageDraft(options: {
     chatId: number;
     draftId: number;
-    text?: string;
     markdown?: string;
     html?: string;
     blocks?: Array<Record<string, unknown>>;
@@ -1812,80 +1260,39 @@ export class TelegramBotClient {
     messageThreadId?: number;
   }): Promise<{ ok: boolean; effectiveThreadId?: number; description?: string; error_code?: number }> {
     const routing = this.resolveOutboundThreadAndReply(options.chatId, options.messageThreadId, undefined, false);
-    const isRich =
-      options.markdown !== undefined || options.html !== undefined || options.blocks !== undefined;
-
-    if (isRich) {
-      if (options.text !== undefined) {
-        return { ok: false, description: "Provide either text or one of markdown, html, blocks on send_message_draft" };
-      }
-      if (options.chatId < 0) {
-        return { ok: false, description: "Rich message drafts are restricted to private chats (chat_id > 0)" };
-      }
-      const check = validateRichMessageContent({
-        markdown: options.markdown,
-        html: options.html,
-        blocks: options.blocks,
-        allowMedia: false,
-      });
-      if (!check.ok) {
-        return { ok: false, description: check.error };
-      }
-      const richMessage: Record<string, unknown> = {};
-      if (options.markdown !== undefined) richMessage.markdown = options.markdown;
-      if (options.html !== undefined) richMessage.html = options.html;
-      if (options.blocks !== undefined) richMessage.blocks = options.blocks;
-      if (options.isRtl !== undefined) richMessage.is_rtl = options.isRtl;
-      if (options.skipEntityDetection !== undefined) richMessage.skip_entity_detection = options.skipEntityDetection;
-
-      const payload: Record<string, unknown> = {
-        chat_id: options.chatId,
-        draft_id: options.draftId,
-        rich_message: richMessage,
-      };
-      if (routing.effectiveThreadId !== undefined) payload.message_thread_id = routing.effectiveThreadId;
-      if (options.canStop !== undefined) payload.can_stop = options.canStop;
-      if (options.keepOnStop !== undefined) payload.keep_on_stop = options.keepOnStop;
-
-      const res = await this.callApi("sendRichMessageDraft", payload);
-      if (!res?.ok) {
-        return {
-          ok: false,
-          description: res?.description || "Telegram sendRichMessageDraft failed",
-          error_code: res?.error_code,
-        };
-      }
-      return { ok: true, effectiveThreadId: routing.effectiveThreadId };
+    if (options.chatId < 0) {
+      return { ok: false, description: "Rich message drafts are restricted to private chats (chat_id > 0)" };
     }
-
-    if (typeof options.text !== "string" || options.text.trim().length === 0) {
-      return { ok: false, description: "send_message_draft requires non-empty text or rich content" };
+    const check = validateRichMessageContent({
+      markdown: options.markdown,
+      html: options.html,
+      blocks: options.blocks,
+      allowMedia: false,
+    });
+    if (!check.ok) {
+      return { ok: false, description: check.error };
     }
+    const richMessage: Record<string, unknown> = {};
+    if (options.markdown !== undefined) richMessage.markdown = options.markdown;
+    if (options.html !== undefined) richMessage.html = options.html;
+    if (options.blocks !== undefined) richMessage.blocks = options.blocks;
+    if (options.isRtl !== undefined) richMessage.is_rtl = options.isRtl;
+    if (options.skipEntityDetection !== undefined) richMessage.skip_entity_detection = options.skipEntityDetection;
 
-    const formatted = formatMarkdownToEntities(options.text);
     const payload: Record<string, unknown> = {
       chat_id: options.chatId,
       draft_id: options.draftId,
-      text: formatted.plainText,
+      rich_message: richMessage,
     };
-    if (formatted.entities.length > 0) {
-      payload.entities = formatted.entities;
-    }
-    if (routing.effectiveThreadId !== undefined) {
-      payload.message_thread_id = routing.effectiveThreadId;
-    }
+    if (routing.effectiveThreadId !== undefined) payload.message_thread_id = routing.effectiveThreadId;
+    if (options.canStop !== undefined) payload.can_stop = options.canStop;
+    if (options.keepOnStop !== undefined) payload.keep_on_stop = options.keepOnStop;
 
-    let res = await this.callApi("sendMessageDraft", payload);
-    if (!res?.ok && formatted.entities.length > 0 && /entit|parse/i.test(String(res?.description || ""))) {
-      const retryPayload = { ...payload };
-      delete retryPayload.entities;
-      res = await this.callApi("sendMessageDraft", retryPayload);
-    }
-
+    const res = await this.callApi("sendRichMessageDraft", payload);
     if (!res?.ok) {
       return {
         ok: false,
-        description: res?.description || "Telegram sendMessageDraft failed",
+        description: res?.description || "Telegram sendRichMessageDraft failed",
         error_code: res?.error_code,
       };
     }
@@ -1958,9 +1365,10 @@ export class TelegramBotClient {
 
     const shouldVoice =
       options.voice ??
-      (this.config.voiceReplies === "mirror" &&
-        (this.lastInboundWasVoiceByChat.get(options.chatId) ??
-          Boolean(this.store?.getChatState(options.chatId)?.lastInboundVoice)));
+      (this.config.voiceReplies === "always" ||
+        (this.config.voiceReplies === "mirror" &&
+          (this.lastInboundWasVoiceByChat.get(options.chatId) ??
+            Boolean(this.store?.getChatState(options.chatId)?.lastInboundVoice))));
 
     let voiceMessageId: number | undefined;
     let voiceError: string | undefined;
@@ -2141,11 +1549,7 @@ export class TelegramBotClient {
       });
       return;
     }
-    if (question.presentation === "rich") {
-      await this.editMessageReplyMarkup(question.chatId, question.messageId, []);
-      return;
-    }
-    await this.editMessage(question.chatId, question.messageId, cardText, { inline_keyboard: [] });
+    await this.editMessageReplyMarkup(question.chatId, question.messageId, []);
   }
 
   public async stopPoll(options: {
@@ -2321,12 +1725,21 @@ export class TelegramBotClient {
     const originalText = rawText.includes("\n\nSelected: ")
       ? rawText.split("\n\nSelected: ")[0]
       : rawText;
-    await this.editMessage(
-      cb.message.chat.id,
-      cb.message.message_id,
-      `${originalText}\n\nSelected: ${label} ✅`,
-      { inline_keyboard: remainingRows }
-    );
+    const updatedText = `${originalText}\n\nSelected: ${label} ✅`;
+    const res = await this.callApi("editMessageText", {
+      chat_id: cb.message.chat.id,
+      message_id: cb.message.message_id,
+      text: updatedText,
+      reply_markup: { inline_keyboard: remainingRows },
+    });
+    if (!res?.ok && res?.description?.includes("no text in the message to edit")) {
+      await this.callApi("editMessageCaption", {
+        chat_id: cb.message.chat.id,
+        message_id: cb.message.message_id,
+        caption: updatedText,
+        reply_markup: { inline_keyboard: remainingRows },
+      });
+    }
   }
 
   private async handleUpdate(update: TelegramUpdate) {
@@ -2763,12 +2176,12 @@ export class TelegramBotClient {
             callback_query_id: cb.id,
             text: "Permission already resolved or expired.",
           });
-          await this.editMessage(
-            cb.message.chat.id,
-            cb.message.message_id,
-            `${cb.message.text}\n\n*Already resolved or expired.*`,
-            { inline_keyboard: [] }
-          );
+          await this.callApi("editMessageText", {
+            chat_id: cb.message.chat.id,
+            message_id: cb.message.message_id,
+            text: `${cb.message.text}\n\nAlready resolved or expired.`,
+            reply_markup: { inline_keyboard: [] },
+          });
           return;
         }
 
@@ -2776,12 +2189,12 @@ export class TelegramBotClient {
         this.permRelay.resolve(permId, decision);
 
         const outcomeText = decision === "allow" ? "Allowed via Telegram ✅" : "Denied ❌";
-        await this.editMessage(
-          cb.message.chat.id,
-          cb.message.message_id,
-          `${cb.message.text}\n\n*${outcomeText}*`,
-          { inline_keyboard: [] }
-        );
+        await this.callApi("editMessageText", {
+          chat_id: cb.message.chat.id,
+          message_id: cb.message.message_id,
+          text: `${cb.message.text}\n\n${outcomeText}`,
+          reply_markup: { inline_keyboard: [] },
+        });
         return;
       }
 

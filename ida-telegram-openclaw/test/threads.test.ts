@@ -135,7 +135,16 @@ describe("Threaded Conversations Support", () => {
         const method = String(url).split("/").pop() || "";
         const body = init?.body ? (typeof init.body === "string" ? JSON.parse(init.body) : init.body) : {};
         apiCalls.push({ method, body });
-        return new Response(JSON.stringify({ ok: true, result: { message_id: 501 } }), { status: 200 });
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            result: {
+              message_id: 501,
+              ...(body?.message_thread_id !== undefined ? { message_thread_id: body.message_thread_id } : {}),
+            },
+          }),
+          { status: 200 }
+        );
       }) as typeof fetch;
 
       try {
@@ -158,15 +167,15 @@ describe("Threaded Conversations Support", () => {
         // Clear initial reaction call from handleUpdate
         apiCalls.length = 0;
 
-        // 2. Outbound reply call with NO thread configuration
+        // 2. Outbound send_rich_message call with NO thread configuration
         const replyRes = await mcp.handleMessage({
           jsonrpc: "2.0",
           id: 1,
           method: "tools/call",
           params: {
-            name: "reply",
+            name: "send_rich_message",
             arguments: {
-              text: "Here is my response in thread.",
+              markdown: "Here is my response in thread.",
             },
           },
         });
@@ -174,7 +183,7 @@ describe("Threaded Conversations Support", () => {
         const parsedResult = JSON.parse((replyRes?.result as any)?.content?.[0]?.text || "{}");
         expect(parsedResult.success).toBe(true);
 
-        const sendMsgCall = apiCalls.find((c) => c.method === "sendMessage");
+        const sendMsgCall = apiCalls.find((c) => c.method === "sendRichMessage");
         expect(sendMsgCall).toBeDefined();
         expect(sendMsgCall?.body.chat_id).toBe(12345678);
         expect(sendMsgCall?.body.message_thread_id).toBe(4242);
@@ -220,7 +229,16 @@ describe("Threaded Conversations Support", () => {
           body = JSON.parse(String(init.body));
         }
         apiCalls.push({ method, body });
-        return new Response(JSON.stringify({ ok: true, result: { message_id: 502 } }), { status: 200 });
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            result: {
+              message_id: 502,
+              ...(body?.message_thread_id !== undefined ? { message_thread_id: Number(body.message_thread_id) } : {}),
+            },
+          }),
+          { status: 200 }
+        );
       }) as typeof fetch;
 
       try {
@@ -248,9 +266,9 @@ describe("Threaded Conversations Support", () => {
           id: 2,
           method: "tools/call",
           params: {
-            name: "reply",
+            name: "send_rich_message",
             arguments: {
-              text: "Spoken update.",
+              markdown: "Spoken update.",
               voice: true,
             },
           },
@@ -540,7 +558,7 @@ describe("Threaded Conversations Support", () => {
             name: "edit_message",
             arguments: {
               message_id: 107,
-              text: "Edited content in thread",
+              markdown: "Edited content in thread",
             },
           },
         });
@@ -552,7 +570,7 @@ describe("Threaded Conversations Support", () => {
         expect(editCall).toBeDefined();
         expect(editCall?.body.chat_id).toBe(12345678);
         expect(editCall?.body.message_id).toBe(107);
-        expect(editCall?.body.text).toBe("Edited content in thread");
+        expect(editCall?.body.rich_message).toEqual({ markdown: "Edited content in thread" });
       } finally {
         globalThis.fetch = origFetch;
         rmSync(stateDir, { recursive: true, force: true });
@@ -674,20 +692,20 @@ describe("Threaded Conversations Support", () => {
         await (bot as any).handleUpdate(unthreadedUpdate);
         apiCalls.length = 0;
 
-        // 2. Outbound reply call
+        // 2. Outbound send_rich_message call
         await mcp.handleMessage({
           jsonrpc: "2.0",
           id: 10,
           method: "tools/call",
           params: {
-            name: "reply",
+            name: "send_rich_message",
             arguments: {
-              text: "Unthreaded reply",
+              markdown: "Unthreaded reply",
             },
           },
         });
 
-        const sendMsgCall = apiCalls.find((c) => c.method === "sendMessage");
+        const sendMsgCall = apiCalls.find((c) => c.method === "sendRichMessage");
         expect(sendMsgCall).toBeDefined();
         expect(sendMsgCall?.body.message_thread_id).toBeUndefined();
       } finally {
@@ -1005,15 +1023,15 @@ describe("Threaded Conversations Support", () => {
 
         apiCalls.length = 0;
 
-        // 2. Outbound reply call with no thread configuration
+        // 2. Outbound send_rich_message call with no thread configuration
         const replyRes = await mcp.handleMessage({
           jsonrpc: "2.0",
           id: 41,
           method: "tools/call",
           params: {
-            name: "reply",
+            name: "send_rich_message",
             arguments: {
-              text: "Reply to message outside topic",
+              markdown: "Reply to message outside topic",
             },
           },
         });
@@ -1021,7 +1039,7 @@ describe("Threaded Conversations Support", () => {
         const parsed = JSON.parse((replyRes?.result as any)?.content?.[0]?.text || "{}");
         expect(parsed.success).toBe(true);
 
-        const sendCall = apiCalls.find((c) => c.method === "sendMessage");
+        const sendCall = apiCalls.find((c) => c.method === "sendRichMessage");
         expect(sendCall).toBeDefined();
         // Must attach to message 115 via reply_parameters and omit message_thread_id
         expect(sendCall?.body.reply_parameters?.message_id).toBe(115);
@@ -1049,7 +1067,16 @@ describe("Threaded Conversations Support", () => {
         const method = String(url).split("/").pop() || "";
         const body = init?.body ? (typeof init.body === "string" ? JSON.parse(init.body) : init.body) : {};
         apiCalls.push({ method, body });
-        return new Response(JSON.stringify({ ok: true, result: { message_id: 502 } }), { status: 200 });
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            result: {
+              message_id: 502,
+              ...(body?.message_thread_id !== undefined ? { message_thread_id: Number(body.message_thread_id) } : {}),
+            },
+          }),
+          { status: 200 }
+        );
       }) as typeof fetch;
 
       try {
@@ -1080,15 +1107,15 @@ describe("Threaded Conversations Support", () => {
 
         apiCalls.length = 0;
 
-        // Session 2: Send reply after restart without specifying thread
+        // Session 2: Send rich message after restart without specifying thread
         const replyRes = await mcp2.handleMessage({
           jsonrpc: "2.0",
           id: 51,
           method: "tools/call",
           params: {
-            name: "reply",
+            name: "send_rich_message",
             arguments: {
-              text: "Sending after restart",
+              markdown: "Sending after restart",
             },
           },
         });
@@ -1096,7 +1123,7 @@ describe("Threaded Conversations Support", () => {
         const parsed = JSON.parse((replyRes?.result as any)?.content?.[0]?.text || "{}");
         expect(parsed.success).toBe(true);
 
-        const sendCall = apiCalls.find((c) => c.method === "sendMessage");
+        const sendCall = apiCalls.find((c) => c.method === "sendRichMessage");
         expect(sendCall).toBeDefined();
         expect(sendCall?.body.message_thread_id).toBe(4242);
         expect(parsed.message_thread_id).toBe(4242);
@@ -1157,9 +1184,9 @@ describe("Threaded Conversations Support", () => {
           id: 61,
           method: "tools/call",
           params: {
-            name: "reply",
+            name: "send_rich_message",
             arguments: {
-              text: "Attempted reply",
+              markdown: "Attempted reply",
             },
           },
         });
@@ -1167,7 +1194,7 @@ describe("Threaded Conversations Support", () => {
         const parsed = JSON.parse((replyRes?.result as any)?.content?.[0]?.text || "{}");
         // Check #3463: MUST be caught as failure rather than reported as success!
         expect(parsed.success).toBe(false);
-        expect(parsed.error).toContain("mismatch");
+        expect(parsed.error).toContain("Thread delivery verification failed");
       } finally {
         globalThis.fetch = origFetch;
         rmSync(stateDir, { recursive: true, force: true });
@@ -1195,23 +1222,23 @@ describe("Threaded Conversations Support", () => {
         const bot = new TelegramBotClient(config, broker, permRelay, () => {}, store);
         const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
 
-        // Attempt reply without message_thread_id, with no active thread and no inbound message
+        // Attempt send_rich_message without message_thread_id, with no active thread and no inbound message
         const replyRes = await mcp.handleMessage({
           jsonrpc: "2.0",
           id: 70,
           method: "tools/call",
           params: {
-            name: "reply",
+            name: "send_rich_message",
             arguments: {
               chat_id: 12345678,
-              text: "Blind send in topics chat",
+              markdown: "Blind send in topics chat",
             },
           },
         });
 
         const parsed = JSON.parse((replyRes?.result as any)?.content?.[0]?.text || "{}");
         expect(parsed.success).toBe(false);
-        expect(parsed.error).toContain("Active thread is not defined");
+        expect(parsed.error).toContain("requires message_thread_id");
       } finally {
         rmSync(stateDir, { recursive: true, force: true });
       }
@@ -1267,9 +1294,9 @@ describe("Threaded Conversations Support", () => {
           id: 81,
           method: "tools/call",
           params: {
-            name: "reply",
+            name: "send_rich_message",
             arguments: {
-              text: "Observability reply",
+              markdown: "Observability reply",
             },
           },
         });
@@ -1375,15 +1402,15 @@ describe("Threaded Conversations Support", () => {
 
         apiCalls.length = 0;
 
-        // 3. Subsequent reply without thread parameter lands in thread 7777
+        // 3. Subsequent send_rich_message without thread parameter lands in thread 7777
         const replyRes = await mcp.handleMessage({
           jsonrpc: "2.0",
           id: 21,
           method: "tools/call",
           params: {
-            name: "reply",
+            name: "send_rich_message",
             arguments: {
-              text: "Carrying on inside the new thread.",
+              markdown: "Carrying on inside the new thread.",
             },
           },
         });
@@ -1391,7 +1418,7 @@ describe("Threaded Conversations Support", () => {
         const replyParsed = JSON.parse((replyRes?.result as any)?.content?.[0]?.text || "{}");
         expect(replyParsed.success).toBe(true);
 
-        const sendMsgCall = apiCalls.find((c) => c.method === "sendMessage");
+        const sendMsgCall = apiCalls.find((c) => c.method === "sendRichMessage");
         expect(sendMsgCall).toBeDefined();
         expect(sendMsgCall?.body.chat_id).toBe(12345678);
         expect(sendMsgCall?.body.message_thread_id).toBe(7777);

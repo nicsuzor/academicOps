@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
-import { normalizeReaction } from "../src/telegram/format.js";
+import { normalizeReaction } from "../src/telegram/reactions.js";
 import { TelegramBotClient } from "../src/telegram/bot.js";
 import { QuestionBroker } from "../src/telegram/questions.js";
 import { PermissionRelay } from "../src/mcp/permissions.js";

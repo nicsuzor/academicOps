@@ -9,7 +9,7 @@ flowchart LR
     User["User on Telegram / Mini App"] -->|"Message, Voice, Reaction, Widget Query, Stop"| Poller["Primary Poller & Auth Guard"]
     Poller -->|"Normalized Channel Event"| Agent["Primary Agent Session"]
     Hook["PreToolUse: AskUserQuestion"] -->|"Local IPC Socket"| Broker["Question Broker & Store"]
-    Agent -->|"reply, send_rich_message, send_message_draft, edit_message"| Out["Telegram Bot API 10.1-10.4"]
+    Agent -->|"send_rich_message, send_message_draft, edit_message"| Out["Telegram Bot API 10.1-10.4"]
     Agent -->|"ask_user, send_widget, edit_message_widget_data, answer_widget_query"| Out
     Agent -->|"Media, Polls, Threads, Reactions"| Out
     Out -->|"Rich Message, HTML Widget, Voice, Thread Action"| User
@@ -26,7 +26,7 @@ flowchart LR
 
 | Kind | Name | Purpose |
 | :- | :- | :- |
-| Skill | `telegram` | Guides message-kind selection across plain replies, streaming Rich drafts, Rich Messages, HTML Widgets, interactive buttons, reactions, threads, voice, and bot commands. |
+| Skill | `telegram` | Guides message-kind selection across Rich Messages, streaming Rich drafts, HTML Widgets, interactive buttons, reactions, threads, voice, and bot commands. |
 | Skill | `menu-proposal` | Reviews telemetry and available skills to propose and configure the native Telegram bot command menu. |
 | Skill | `refresh-questions` | Sweeps pending Mini App questions against external state, closes settled items with cited reasons, and checks recommendation context. |
 | Hook | `SessionStart` | Runs startup readiness notice for the Telegram channel environment. |
@@ -48,7 +48,6 @@ Variables load from the environment and `$STATE_DIR/.env` (environment variables
 | `STATE_DIR` | Persistent directory for chat state, questions, details, inbox audio, and `.env`. | `~/.claude/channels/telegram` |
 | `SOCKET_PATH` | Unix domain socket path for `AskUserQuestion` IPC bridge. | `$STATE_DIR/bridge.sock` |
 | `PORT` | Loopback HTTP port (`127.0.0.1`) for the Mini App API server. | `8093` |
-| `MAX_CHAT_CHARS` | Character threshold for splitting plain `reply` overflow into Details pages. | `4000` |
 | `VOICE_REPLIES` | Outbound voice synthesis policy (`off`, `mirror`, or `always`). | `mirror` |
 | `VOICE_TRANSCRIBE_CMD` | Executable used to transcribe inbound voice notes. | Resolves `transcribe.sh` from `$STATE_DIR` or standard bin paths. |
 | `VOICE_SPEAK_CMD` | Executable used to synthesize outbound OGG/Opus voice replies. | Resolves bundled `scripts/speak.sh` or `$STATE_DIR/speak.sh`. |

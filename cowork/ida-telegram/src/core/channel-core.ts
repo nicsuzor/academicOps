@@ -4,68 +4,16 @@ import { QuestionBroker } from "../telegram/questions.js";
 import {
   TelegramBotClient,
   buildInlineKeyboardRows,
-  type LinkPreviewOptions,
   type ReplyButtonsInput,
 } from "../telegram/bot.js";
 import { PermissionRelay } from "../mcp/permissions.js";
-import { processReplyOverflow } from "../telegram/overflow.js";
-import { formatMarkdownToEntities, normalizeReaction } from "../telegram/format.js";
+import { normalizeReaction } from "../telegram/reactions.js";
 import {
   extractRichMessageText,
   type InputRichMessageSpec,
   type RichMediaInputItem,
 } from "../telegram/rich-message.js";
-import { splitVoiceTier2Quotes } from "../telegram/voice.js";
 import { TurnManager } from "./turn-manager.js";
-
-export interface OutboundReplyParams {
-  text: string;
-  chat_id?: number;
-  reply_to?: number;
-  reply_to_message_id?: number;
-  replyToMessageId?: number;
-  quote?: string;
-  quote_position?: number;
-  quotePosition?: number;
-  link_preview_options?: LinkPreviewOptions;
-  linkPreviewOptions?: LinkPreviewOptions;
-  disable_link_preview?: boolean;
-  disableLinkPreview?: boolean;
-  message_effect_id?: string;
-  messageEffectId?: string;
-  voice?: boolean;
-  detail?: string;
-  details?: string;
-  buttons?: any;
-  button_layout?: number[] | number;
-  buttonLayout?: number[] | number;
-  buttons_per_row?: number;
-  buttonsPerRow?: number;
-  predefined_row?: boolean;
-  predefinedRow?: boolean;
-  feedback?: boolean;
-  actions?: boolean;
-  binary_decision?: boolean;
-  message_thread_id?: number;
-  messageThreadId?: number;
-  thread_id?: number;
-  threadId?: number;
-  review?: { repo: string; pr?: number; base?: string; head?: string };
-}
-
-export interface OutboundReplyResult {
-  success: boolean;
-  error?: string;
-  message_id?: number;
-  messageId?: number;
-  voice_message_id?: number;
-  voiceMessageId?: number;
-  voiceSent?: boolean;
-  voiceError?: string;
-  detailsId?: string;
-  details_id?: string;
-  preview?: string;
-}
 
 export interface OutboundReactParams {
   message_id: number;
@@ -145,7 +93,6 @@ export interface OutboundAskUserResult {
 
 export interface OutboundEditMessageParams {
   message_id: number;
-  text?: string;
   markdown?: string;
   html?: string;
   blocks?: Array<Record<string, unknown>>;
@@ -155,10 +102,6 @@ export interface OutboundEditMessageParams {
   button_layout?: number[] | number;
   buttons_per_row?: number;
   chat_id?: number;
-  link_preview_options?: LinkPreviewOptions;
-  linkPreviewOptions?: LinkPreviewOptions;
-  disable_link_preview?: boolean;
-  disableLinkPreview?: boolean;
 }
 
 export interface OutboundEditMessageResult {
@@ -197,146 +140,6 @@ export class SharedTelegramChannelCore {
 
   public getDefaultChatId(): number {
     return this.config.allowFrom[0] || 0;
-  }
-
-  private resolveLinkPreviewOptions(
-    linkPreviewOptions?: LinkPreviewOptions,
-    disableLinkPreview?: boolean
-  ): LinkPreviewOptions | undefined {
-    if (linkPreviewOptions && typeof linkPreviewOptions === "object") {
-      return {
-        ...linkPreviewOptions,
-        ...(disableLinkPreview !== undefined ? { is_disabled: Boolean(disableLinkPreview) } : {}),
-      };
-    }
-    if (disableLinkPreview !== undefined) {
-      return { is_disabled: Boolean(disableLinkPreview) };
-    }
-    return undefined;
-  }
-
-  /**
-   * Outbound tool contract: reply
-   * Formats with rich typography (expandable blockquotes),
-   * splits at whole-paragraph boundaries at 4,000 chars with continuation notices,
-   * synthesizes voice when requested or mirrored.
-   */
-  public async reply(params: OutboundReplyParams): Promise<OutboundReplyResult> {
-    const text = params.text || "";
-    const detail = params.detail ?? params.details;
-    const chatId = params.chat_id || this.getDefaultChatId();
-    const replyTo = params.reply_to ?? params.reply_to_message_id ?? params.replyToMessageId;
-    const linkPreviewOptions = this.resolveLinkPreviewOptions(
-      params.link_preview_options ?? params.linkPreviewOptions,
-      params.disable_link_preview ?? params.disableLinkPreview
-    );
-    const messageEffectId = params.message_effect_id ?? params.messageEffectId;
-    const quote = typeof params.quote === "string" ? params.quote : undefined;
-    const quotePosition = params.quote_position ?? params.quotePosition;
-
-    // Check voice reply
-    let isVoice = false;
-    if (typeof params.voice === "boolean") {
-      isVoice = params.voice;
-    } else if (this.config.voiceReplies === "always") {
-      isVoice = true;
-    } else if (this.config.voiceReplies === "mirror" && this.bot?.isLastInboundVoice(chatId)) {
-      isVoice = true;
-    }
-
-    let effectiveText = text;
-    let effectiveDetail = detail;
-    if (isVoice) {
-      const { tier1Text, tier2Quotes } = splitVoiceTier2Quotes(text);
-      if (tier2Quotes) {
-        effectiveText = tier1Text;
-        effectiveDetail = detail ? `${tier2Quotes}\n\n---\n\n${detail}` : tier2Quotes;
-      }
-    }
-
-    // 1. Process paragraph overflow at 4,000 chars
-    const overflowRes = processReplyOverflow({
-      text: effectiveText,
-      detail: effectiveDetail,
-      maxChatChars: this.config.maxChatChars || 4000,
-    });
-
-    let detailsId: string | undefined;
-    if (overflowRes.combinedDetail) {
-      detailsId = this.store.storeDetails(overflowRes.combinedDetail);
-    }
-
-    if (params.review?.repo) {
-      this.store.addReview(params.review);
-    }
-    this.store.recordTurn("out", overflowRes.chatText);
-
-    // 2. Format rich typography and entities
-    const formatted = formatMarkdownToEntities(overflowRes.chatText);
-
-    // 3. Deliver to Telegram
-    if (this.bot) {
-      const sendRes = await this.bot.sendReply({
-        chatId,
-        formatted,
-        detailsId,
-        buttons: params.buttons,
-        buttonLayout: params.buttonLayout ?? params.button_layout,
-        buttonsPerRow: params.buttonsPerRow ?? params.buttons_per_row,
-        predefinedRow: params.predefinedRow ?? params.predefined_row,
-        voice: isVoice,
-        replyTo,
-        quote,
-        quotePosition,
-        linkPreviewOptions,
-        messageEffectId,
-        feedback: params.feedback,
-        actions: params.actions,
-        binary_decision: params.binary_decision,
-        messageThreadId: params.message_thread_id ?? params.messageThreadId ?? params.thread_id ?? params.threadId,
-        review: params.review,
-      });
-
-      if (!sendRes || sendRes.ok === false || sendRes.success === false) {
-        return {
-          success: false,
-          error: sendRes?.error || "Failed to deliver reply",
-          message_id: sendRes?.messageId,
-          messageId: sendRes?.messageId,
-        };
-      }
-
-      const out: OutboundReplyResult & { message_thread_id?: number } = {
-        success: true,
-        messageId: sendRes.messageId,
-        message_id: sendRes.messageId,
-        message_thread_id: sendRes.messageThreadId,
-      };
-      if (detailsId !== undefined) {
-        out.detailsId = detailsId;
-        out.details_id = detailsId;
-      }
-      if (sendRes?.voiceSent !== undefined) {
-        out.voiceSent = sendRes.voiceSent;
-      }
-      if (sendRes?.voiceMessageId !== undefined) {
-        out.voiceMessageId = sendRes.voiceMessageId;
-        out.voice_message_id = sendRes.voiceMessageId;
-      }
-      if (sendRes?.voiceError !== undefined) {
-        out.voiceError = sendRes.voiceError;
-      }
-      return out;
-    }
-
-    return {
-      success: true,
-      preview: formatted.plainText,
-      detailsId,
-      ...(detailsId !== undefined ? { details_id: detailsId } : {}),
-      message_id: 0,
-      messageId: 0,
-    };
   }
 
   /**
@@ -481,60 +284,36 @@ export class SharedTelegramChannelCore {
 
   /**
    * Outbound tool contract: edit_message
-   * Modifies the text or rich_message of an agent-sent message.
+   * Modifies the rich_message of an agent-sent message.
    */
   public async editMessage(params: OutboundEditMessageParams): Promise<OutboundEditMessageResult> {
     const chatId = params.chat_id || this.getDefaultChatId();
     const messageId = params.message_id;
-    const hasRich =
-      params.markdown !== undefined || params.html !== undefined || params.blocks !== undefined;
     const inlineKeyboard = this.extractInlineKeyboard(params as unknown as Record<string, unknown>);
 
-    if (hasRich) {
-      if (params.text !== undefined) {
-        return {
-          success: false,
-          error: "Provide either text or one of markdown, html, blocks on edit_message",
-        };
-      }
-      if (!this.bot) {
-        return { success: false, error: "Telegram bot client is not available" };
-      }
-      const res = await this.bot.editRichMessage({
-        chatId,
-        messageId,
-        richMessage: {
-          markdown: params.markdown,
-          html: params.html,
-          blocks: params.blocks,
-          is_rtl: params.is_rtl,
-          skip_entity_detection: params.skip_entity_detection,
-        },
-        ...(inlineKeyboard.length > 0 ? { inlineKeyboard } : {}),
-      });
-      if (!res?.ok) {
-        return { success: false, error: res?.description || "Failed to edit rich message" };
-      }
-      return { success: true };
+    if ((params as unknown as Record<string, unknown>).text !== undefined) {
+      return {
+        success: false,
+        error: "edit_message only supports Rich Messages (provide one of markdown, html, or blocks; plain text is not supported)",
+      };
     }
-
-    if (typeof params.text !== "string") {
-      return { success: false, error: "edit_message requires text or one of markdown, html, blocks" };
+    if (!this.bot) {
+      return { success: false, error: "Telegram bot client is not available" };
     }
-    const text = params.text;
-    const linkPreviewOptions = this.resolveLinkPreviewOptions(
-      params.link_preview_options ?? params.linkPreviewOptions,
-      params.disable_link_preview ?? params.disableLinkPreview
-    );
-
-    if (this.bot) {
-      await this.bot.editMessage(
-        chatId,
-        messageId,
-        text,
-        inlineKeyboard.length > 0 ? { inline_keyboard: inlineKeyboard } : undefined,
-        linkPreviewOptions
-      );
+    const res = await this.bot.editRichMessage({
+      chatId,
+      messageId,
+      richMessage: {
+        markdown: params.markdown,
+        html: params.html,
+        blocks: params.blocks,
+        is_rtl: params.is_rtl,
+        skip_entity_detection: params.skip_entity_detection,
+      },
+      ...(inlineKeyboard.length > 0 ? { inlineKeyboard } : {}),
+    });
+    if (!res?.ok) {
+      return { success: false, error: res?.description || "Failed to edit rich message" };
     }
     return { success: true };
   }
@@ -1435,23 +1214,22 @@ export class SharedTelegramChannelCore {
       return { success: false, error: "Telegram bot client is not available" };
     }
     const draftId = args.draft_id as number;
-    const text = typeof args.text === "string" ? args.text : undefined;
-    const isRich =
-      args.markdown !== undefined || args.html !== undefined || args.blocks !== undefined;
     if (typeof draftId !== "number" || !Number.isInteger(draftId) || draftId === 0) {
       return { success: false, error: "send_message_draft requires a non-zero integer draft_id" };
     }
     if (args.media !== undefined) {
       return { success: false, error: "Draft messages do not support media attachments" };
     }
-    if (!isRich && (!text || !text.trim())) {
-      return { success: false, error: "send_message_draft requires non-empty text or rich content" };
+    if (args.text !== undefined) {
+      return {
+        success: false,
+        error: "send_message_draft only supports Rich Message drafts (provide one of markdown, html, or blocks)",
+      };
     }
     const chatId = (args.chat_id as number) || this.getDefaultChatId();
     const res = await this.bot.sendMessageDraft({
       chatId,
       draftId,
-      text,
       markdown: typeof args.markdown === "string" ? args.markdown : undefined,
       html: typeof args.html === "string" ? args.html : undefined,
       blocks: Array.isArray(args.blocks) ? (args.blocks as Array<Record<string, unknown>>) : undefined,
@@ -1654,14 +1432,11 @@ export class SharedTelegramChannelCore {
       fields.correct_option_id = cid;
     }
     if (typeof args.explanation === "string" && args.explanation.trim()) {
-      const formattedExp = formatMarkdownToEntities(args.explanation);
-      if (formattedExp.plainText.length > 200) {
+      const trimmedExp = args.explanation.trim();
+      if (trimmedExp.length > 200) {
         return { success: false, error: "Poll explanation must be at most 200 characters" };
       }
-      fields.explanation = formattedExp.plainText;
-      if (formattedExp.entities.length > 0) {
-        fields.explanation_entities = formattedExp.entities;
-      }
+      fields.explanation = trimmedExp;
     }
     if (typeof args.open_period === "number") {
       fields.open_period = args.open_period;
@@ -1737,9 +1512,6 @@ export class SharedTelegramChannelCore {
     const type = msg._toolName || msg.type || msg.name;
 
     switch (type) {
-      case "reply":
-        return (await this.reply(msg as unknown as OutboundReplyParams)) as unknown as Record<string, unknown>;
-
       case "react":
         return (await this.react(msg as unknown as OutboundReactParams)) as unknown as Record<string, unknown>;
 

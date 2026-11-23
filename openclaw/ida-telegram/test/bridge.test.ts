@@ -133,7 +133,7 @@ describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration
       },
       editTelegramCard: async (chatId: number, messageId: number, text: string, replyMarkup?: any) => {
         editedCards.push({ chatId, messageId, text, replyMarkup });
-        await bot.editMessage(chatId, messageId, text, replyMarkup || { inline_keyboard: [] });
+        await bot.editCardText(chatId, messageId, text, replyMarkup || { inline_keyboard: [] });
       },
     };
 

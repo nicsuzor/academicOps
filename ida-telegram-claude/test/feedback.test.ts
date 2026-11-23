@@ -22,7 +22,7 @@ describe("Feedback: vote buttons default and opt-in", () => {
     }
   });
 
-  test("a reply call with no feedback argument sends a message with no vote buttons", async () => {
+  test("a send_rich_message call with no feedback_buttons argument sends a message with no vote buttons", async () => {
     const config = loadConfig({
       MINI_APP_URL: "https://ida.example.test",
       TELEGRAM_BOT_TOKEN: "test-token",
@@ -54,10 +54,10 @@ describe("Feedback: vote buttons default and opt-in", () => {
         id: 1,
         method: "tools/call",
         params: {
-          name: "reply",
+          name: "send_rich_message",
           arguments: {
             chat_id: 1111111111,
-            text: "**Default feedback test**: No feedback arg specified.",
+            markdown: "**Default feedback test**: No feedback_buttons arg specified.",
           },
         },
       });
@@ -74,7 +74,7 @@ describe("Feedback: vote buttons default and opt-in", () => {
     }
   });
 
-  test("feedback: true still attaches the buttons", async () => {
+  test("feedback_buttons: true attaches the buttons", async () => {
     const config = loadConfig({
       MINI_APP_URL: "https://ida.example.test",
       TELEGRAM_BOT_TOKEN: "test-token",
@@ -106,11 +106,11 @@ describe("Feedback: vote buttons default and opt-in", () => {
         id: 2,
         method: "tools/call",
         params: {
-          name: "reply",
+          name: "send_rich_message",
           arguments: {
             chat_id: 1111111111,
-            text: "**Opt-in feedback test**: feedback true specified.",
-            feedback: true,
+            markdown: "**Opt-in feedback test**: feedback_buttons true specified.",
+            feedback_buttons: true,
           },
         },
       });
@@ -127,7 +127,7 @@ describe("Feedback: vote buttons default and opt-in", () => {
     }
   });
 
-  test("feedback: false does not attach vote buttons", async () => {
+  test("feedback_buttons: false does not attach vote buttons", async () => {
     const config = loadConfig({
       MINI_APP_URL: "https://ida.example.test",
       TELEGRAM_BOT_TOKEN: "test-token",
@@ -159,11 +159,11 @@ describe("Feedback: vote buttons default and opt-in", () => {
         id: 3,
         method: "tools/call",
         params: {
-          name: "reply",
+          name: "send_rich_message",
           arguments: {
             chat_id: 1111111111,
-            text: "**Explicit false feedback test**.",
-            feedback: false,
+            markdown: "**Explicit false feedback test**.",
+            feedback_buttons: false,
           },
         },
       });

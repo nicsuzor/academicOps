@@ -106,11 +106,10 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
         id: 1,
         method: "tools/call",
         params: {
-          name: "reply",
+          name: "send_rich_message",
           arguments: {
             chat_id: 1111111111,
-            text: "**This is a voice reply.**\n• First bullet with `code`.\n>! Tier 2 evidence quote that goes behind Details.",
-            detail: "## Tier 3 Detail\nExtra context.",
+            markdown: "**This is a voice reply.**\n• First bullet with `code`.\n<details><summary>Evidence</summary>Tier 2 evidence quote that goes behind Details.</details>",
             voice: true,
           },
         },
@@ -120,37 +119,21 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
       const parsedResult = JSON.parse(toolText);
 
       expect(parsedResult.success).toBe(true);
-      expect(parsedResult.voiceSent).toBe(true);
-      expect(parsedResult.messageId).toBe(1850);
-      expect(parsedResult.detailsId).toBeDefined();
+      expect(parsedResult.voice_sent).toBe(true);
+      expect(parsedResult.message_id).toBe(1850);
+      expect(parsedResult.voice_message_id).toBe(1850);
 
-      // Should have called sendVoice and NOT sendMessage
-      expect(apiCalls.map((c) => c.method)).toEqual(["sendVoice"]);
-      const voiceCall = apiCalls[0];
+      // Should have called sendRichMessage and sendVoice
+      expect(apiCalls.map((c) => c.method)).toEqual(["sendRichMessage", "sendVoice"]);
+      const voiceCall = apiCalls[1];
       expect(voiceCall.isMultipart).toBe(true);
       expect(voiceCall.body.chat_id).toBe("1111111111");
       expect(voiceCall.body.voice.text).toBe("OggS-fake-opus-audio");
 
-      // speak.sh received the Tier 1 text as a file at $1
+      // speak.sh received the extracted prose without <details>
       const spokenInput = readFileSync(capturedTextPath, "utf-8");
       expect(spokenInput).toContain("This is a voice reply.");
       expect(spokenInput).not.toContain("Tier 2 evidence quote");
-
-      // Caption has Tier 1 text only (no Tier 2 quote) with entities
-      expect(voiceCall.body.caption).toContain("This is a voice reply.");
-      expect(voiceCall.body.caption).not.toContain("Tier 2 evidence quote");
-      const captionEntities = JSON.parse(voiceCall.body.caption_entities);
-      expect(captionEntities.some((e: any) => e.type === "bold")).toBe(true);
-
-      // Inline keyboard has the Details button
-      const replyMarkup = JSON.parse(voiceCall.body.reply_markup);
-      const flatButtons = replyMarkup.inline_keyboard.flat();
-      expect(flatButtons.some((b: any) => b.text === "🔍")).toBe(true);
-
-      // Details page contains both the relocated Tier 2 quote and Tier 3 detail
-      const storedDetail = store.getDetails(parsedResult.detailsId);
-      expect(storedDetail?.markdown).toContain("Tier 2 evidence quote that goes behind Details.");
-      expect(storedDetail?.markdown).toContain("## Tier 3 Detail");
     } finally {
       globalThis.fetch = origFetch;
       rmSync(stateDir, { recursive: true, force: true });
@@ -220,10 +203,10 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
         id: 2,
         method: "tools/call",
         params: {
-          name: "reply",
+          name: "send_rich_message",
           arguments: {
             chat_id: 1111111111,
-            text: longTier1,
+            markdown: longTier1,
             voice: true,
             buttons: [{ label: "Go ahead (Recommended)" }, { label: "Hold" }],
           },
@@ -232,14 +215,13 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
 
       const parsedResult = JSON.parse((resp?.result as any)?.content?.[0]?.text || "{}");
       expect(parsedResult.success).toBe(true);
-      expect(parsedResult.voiceSent).toBe(true);
-      expect(parsedResult.voiceMessageId).toBe(1901);
-      expect(parsedResult.messageId).toBe(1902);
+      expect(parsedResult.voice_sent).toBe(true);
+      expect(parsedResult.message_id).toBe(1901);
+      expect(parsedResult.voice_message_id).toBe(1902);
 
-      expect(apiCalls.map((c) => c.method)).toEqual(["sendVoice", "sendMessage"]);
-      expect(apiCalls[0].body.caption).toBeUndefined();
-      expect(apiCalls[1].body.text).toContain("Headline: ");
-      expect(apiCalls[1].body.reply_markup).toBeDefined();
+      expect(apiCalls.map((c) => c.method)).toEqual(["sendRichMessage", "sendVoice"]);
+      expect(apiCalls[0].body.rich_message?.markdown).toContain("Headline");
+      expect(apiCalls[0].body.reply_markup).toBeDefined();
     } finally {
       globalThis.fetch = origFetch;
       rmSync(stateDir, { recursive: true, force: true });
@@ -298,10 +280,10 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
         id: 3,
         method: "tools/call",
         params: {
-          name: "reply",
+          name: "send_rich_message",
           arguments: {
             chat_id: 1111111111,
-            text: "**This is a voice reply.**",
+            markdown: "**This is a voice reply.**",
             voice: true,
           },
         },
@@ -309,11 +291,11 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
 
       const parsedResult = JSON.parse((resp?.result as any)?.content?.[0]?.text || "{}");
       expect(parsedResult.success).toBe(true);
-      expect(parsedResult.voiceSent).toBe(false);
-      expect(typeof parsedResult.voiceError).toBe("string");
-      expect(parsedResult.voiceError.length).toBeGreaterThan(0);
-      expect(parsedResult.messageId).toBe(1850);
-      expect(apiCalls.map((c) => c.method)).toEqual(["sendMessage"]);
+      expect(parsedResult.voice_sent).toBeUndefined();
+      expect(typeof parsedResult.voice_error).toBe("string");
+      expect(parsedResult.voice_error.length).toBeGreaterThan(0);
+      expect(parsedResult.message_id).toBe(1850);
+      expect(apiCalls.map((c) => c.method)).toEqual(["sendRichMessage"]);
     } finally {
       globalThis.fetch = origFetch;
       rmSync(stateDir, { recursive: true, force: true });
@@ -399,16 +381,16 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
         id: 10,
         method: "tools/call",
         params: {
-          name: "reply",
+          name: "send_rich_message",
           arguments: {
             chat_id: 1111111111,
-            text: "**Mirrored voice answer.**",
+            markdown: "**Mirrored voice answer.**",
           },
         },
       });
       const res1 = JSON.parse((mirrorVoiceResp?.result as any)?.content?.[0]?.text || "{}");
-      expect(res1.voiceSent).toBe(true);
-      expect(apiCalls.map((c) => c.method)).toEqual(["sendVoice"]);
+      expect(res1.voice_sent).toBe(true);
+      expect(apiCalls.map((c) => c.method)).toEqual(["sendRichMessage", "sendVoice"]);
 
       // 3. Simulate inbound plain text message from the user
       await (bot as any).handleUpdate({
@@ -424,22 +406,22 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
 
       apiCalls.length = 0;
 
-      // 4. Reply with `voice` omitted -> should mirror text and call sendMessage
+      // 4. Reply with `voice` omitted -> should mirror text and call sendRichMessage only
       const mirrorTextResp = await mcp.handleMessage({
         jsonrpc: "2.0",
         id: 11,
         method: "tools/call",
         params: {
-          name: "reply",
+          name: "send_rich_message",
           arguments: {
             chat_id: 1111111111,
-            text: "**Mirrored text answer.**",
+            markdown: "**Mirrored text answer.**",
           },
         },
       });
       const res2 = JSON.parse((mirrorTextResp?.result as any)?.content?.[0]?.text || "{}");
-      expect(res2.voiceSent).toBeUndefined();
-      expect(apiCalls.map((c) => c.method)).toEqual(["sendMessage"]);
+      expect(res2.voice_sent).toBeUndefined();
+      expect(apiCalls.map((c) => c.method)).toEqual(["sendRichMessage"]);
     } finally {
       globalThis.fetch = origFetch;
       rmSync(stateDir, { recursive: true, force: true });
@@ -617,7 +599,6 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
     const { PluginStore } = await import("../src/store.js");
     const { QuestionBroker } = await import("../src/telegram/questions.js");
     const { PermissionRelay } = await import("../src/mcp/permissions.js");
-    const { formatMarkdownToEntities } = await import("../src/telegram/format.js");
     const { mkdtempSync, rmSync, writeFileSync, mkdirSync, chmodSync } = await import("node:fs");
     const { join } = await import("node:path");
     const { tmpdir } = await import("node:os");
@@ -678,15 +659,14 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
         () => {}
       );
 
-      const formatted = formatMarkdownToEntities("Voice reply from installed plugin");
-      const res = await bot.sendReply({
+      const res = await bot.sendRichMessage({
         chatId: 1111111111,
-        formatted,
+        richMessage: { markdown: "Voice reply from installed plugin" },
         voice: true,
       });
 
       expect(res).not.toBeNull();
-      expect(res?.voiceSent).toBe(true);
+      expect(res?.voiceMessageId).toBe(3193);
       expect(res?.voiceError).toBeUndefined();
 
       // Verify that unresolvable bare command reproduces "Executable not found in $PATH"
@@ -704,12 +684,12 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
         new PermissionRelay(),
         () => {}
       );
-      const resUnresolvable = await unresolvableBot.sendReply({
+      const resUnresolvable = await unresolvableBot.sendRichMessage({
         chatId: 1111111111,
-        formatted,
+        richMessage: { markdown: "Voice reply from installed plugin" },
         voice: true,
       });
-      expect(resUnresolvable?.voiceSent).toBe(false);
+      expect(resUnresolvable?.voiceMessageId).toBeUndefined();
       expect(resUnresolvable?.voiceError).toContain("nonexistent-speak.sh");
     } finally {
       globalThis.fetch = origFetch;
@@ -1019,10 +999,10 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
         id: 99,
         method: "tools/call",
         params: {
-          name: "reply",
+          name: "send_rich_message",
           arguments: {
             chat_id: 1111111111,
-            text: "**Voice out credential test.**\n• Bullet one.",
+            markdown: "**Voice out credential test.**\n• Bullet one.",
             voice: true,
           },
         },
@@ -1030,10 +1010,10 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
 
       const parsedResult = JSON.parse(((resp?.result as any)?.content?.[0]?.text as string) || "{}");
       expect(parsedResult.success).toBe(true);
-      expect(parsedResult.voiceSent).toBe(true);
-      expect(parsedResult.voiceError).toBeUndefined();
-      expect(apiCalls.map((c) => c.method)).toEqual(["sendVoice"]);
-      expect(apiCalls[0].body.voice.text).toBe("OggS-gemini-tts-audio");
+      expect(parsedResult.voice_sent).toBe(true);
+      expect(parsedResult.voice_error).toBeUndefined();
+      expect(apiCalls.map((c) => c.method)).toEqual(["sendRichMessage", "sendVoice"]);
+      expect(apiCalls[1].body.voice.text).toBe("OggS-gemini-tts-audio");
     } finally {
       globalThis.fetch = origFetch;
       rmSync(stateDir, { recursive: true, force: true });

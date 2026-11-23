@@ -109,7 +109,7 @@ describe("Rich media, location, interactivity, draft streaming, and poll tools",
         );
       }
 
-      if (method === "sendChatAction" || method === "sendMessageDraft") {
+      if (method === "sendChatAction" || method === "sendMessageDraft" || method === "sendRichMessageDraft") {
         return new Response(JSON.stringify({ ok: true, result: true }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
@@ -244,12 +244,12 @@ describe("Rich media, location, interactivity, draft streaming, and poll tools",
     }
   });
 
-  test("single-media tools route to default chat and active thread, format Markdown captions, and support inline buttons", async () => {
+  test("single-media tools route to default chat and active thread, pass captions, and support inline buttons", async () => {
     const { mcp } = createHarness(777, 88);
 
     const photoRes = await callMcpTool(mcp, "send_photo", {
       photo: "https://example.com/chart.png",
-      caption: "Here is **bold** summary",
+      caption: "Here is summary",
       has_spoiler: true,
       buttons: [{ label: "Open", callback_data: "open_chart" }],
     });
@@ -263,8 +263,8 @@ describe("Rich media, location, interactivity, draft streaming, and poll tools",
     expect(apiCalls[0].body.chat_id).toBe(777);
     expect(apiCalls[0].body.message_thread_id).toBe(88);
     expect(apiCalls[0].body.photo).toBe("https://example.com/chart.png");
-    expect(apiCalls[0].body.caption).toBe("Here is bold summary");
-    expect(apiCalls[0].body.caption_entities).toEqual([{ type: "bold", offset: 8, length: 4 }]);
+    expect(apiCalls[0].body.caption).toBe("Here is summary");
+    expect(apiCalls[0].body.caption_entities).toBeUndefined();
     expect(apiCalls[0].body.has_spoiler).toBe(true);
     expect(apiCalls[0].body.reply_markup).toEqual({
       inline_keyboard: [[{ text: "Open", callback_data: "open_chart" }]],
@@ -272,7 +272,7 @@ describe("Rich media, location, interactivity, draft streaming, and poll tools",
 
     const docRes = await callMcpTool(mcp, "send_document", {
       document: "file_id_doc_1",
-      caption: "Report `v1`",
+      caption: "Report v1",
       disable_content_type_detection: true,
     });
     expect(docRes.isError).toBeUndefined();
@@ -336,7 +336,7 @@ describe("Rich media, location, interactivity, draft streaming, and poll tools",
 
     const res = await callMcpTool(mcp, "send_photo", {
       photo: localPhoto,
-      caption: "Local **plot**",
+      caption: "Local plot",
     });
     expect(res.isError).toBeUndefined();
     expect(res.payload).toEqual({
@@ -350,7 +350,7 @@ describe("Rich media, location, interactivity, draft streaming, and poll tools",
     expect(apiCalls[0].body.message_thread_id).toBe(42);
     expect(apiCalls[0].body.photo).toBe("[Blob:14]");
     expect(apiCalls[0].body.caption).toBe("Local plot");
-    expect(apiCalls[0].body.caption_entities).toEqual([{ type: "bold", offset: 6, length: 4 }]);
+    expect(apiCalls[0].body.caption_entities).toBeUndefined();
   });
 
   test("send_media_group sends 2-10 album items with captions and local file attachments, and rejects invalid item counts", async () => {
@@ -360,8 +360,8 @@ describe("Rich media, location, interactivity, draft streaming, and poll tools",
 
     const okRes = await callMcpTool(mcp, "send_media_group", {
       media: [
-        { type: "photo", media: localDoc, caption: "Slide **one**", has_spoiler: true },
-        { type: "photo", media: "https://example.com/slide2.png", caption: "Slide *two*" },
+        { type: "photo", media: localDoc, caption: "Slide one", has_spoiler: true },
+        { type: "photo", media: "https://example.com/slide2.png", caption: "Slide two" },
       ],
     });
     expect(okRes.isError).toBeUndefined();
@@ -380,14 +380,12 @@ describe("Rich media, location, interactivity, draft streaming, and poll tools",
         type: "photo",
         media: "attach://file_0",
         caption: "Slide one",
-        caption_entities: [{ type: "bold", offset: 6, length: 3 }],
         has_spoiler: true,
       },
       {
         type: "photo",
         media: "https://example.com/slide2.png",
         caption: "Slide two",
-        caption_entities: [{ type: "italic", offset: 6, length: 3 }],
       },
     ]);
 
@@ -485,7 +483,7 @@ describe("Rich media, location, interactivity, draft streaming, and poll tools",
 
     const draftRes = await callMcpTool(mcp, "send_message_draft", {
       draft_id: 9001,
-      text: "Drafting **response**...",
+      markdown: "Drafting **response**...",
     });
     expect(draftRes.isError).toBeUndefined();
     expect(draftRes.payload).toEqual({
@@ -493,18 +491,17 @@ describe("Rich media, location, interactivity, draft streaming, and poll tools",
       draft_id: 9001,
       message_thread_id: 12,
     });
-    expect(apiCalls[1].method).toBe("sendMessageDraft");
+    expect(apiCalls[1].method).toBe("sendRichMessageDraft");
     expect(apiCalls[1].body).toEqual({
       chat_id: 654,
       draft_id: 9001,
-      text: "Drafting response...",
-      entities: [{ type: "bold", offset: 9, length: 8 }],
+      rich_message: { markdown: "Drafting **response**..." },
       message_thread_id: 12,
     });
 
     const zeroDraft = await callMcpTool(mcp, "send_message_draft", {
       draft_id: 0,
-      text: "Invalid draft id",
+      markdown: "Invalid draft id",
     });
     expect(zeroDraft.isError).toBe(true);
     expect(zeroDraft.payload.success).toBe(false);
@@ -520,7 +517,7 @@ describe("Rich media, location, interactivity, draft streaming, and poll tools",
       allows_multiple_answers: false,
       type: "quiz",
       correct_option_id: 0,
-      explanation: "Always test on **Staging** first",
+      explanation: "Always test on Staging first",
     });
     expect(pollRes.isError).toBeUndefined();
     expect(pollRes.payload).toEqual({
@@ -538,7 +535,7 @@ describe("Rich media, location, interactivity, draft streaming, and poll tools",
     expect(apiCalls[0].body.type).toBe("quiz");
     expect(apiCalls[0].body.correct_option_id).toBe(0);
     expect(apiCalls[0].body.explanation).toBe("Always test on Staging first");
-    expect(apiCalls[0].body.explanation_entities).toEqual([{ type: "bold", offset: 15, length: 7 }]);
+    expect(apiCalls[0].body.explanation_entities).toBeUndefined();
 
     const badPoll = await callMcpTool(mcp, "send_poll", {
       question: "Only one option?",
@@ -589,24 +586,14 @@ describe("Rich media, location, interactivity, draft streaming, and poll tools",
     expect(apiCalls[0].body.message_thread_id).toBeUndefined();
   });
 
-  test("inherits thread from reply_to message, retries plain caption on entity parse error, and surfaces Telegram API errors verbatim", async () => {
+  test("inherits thread from reply_to message and surfaces Telegram API errors verbatim", async () => {
     const { bot, mcp } = createHarness(444, 10);
     bot.recordMessageThread(701, 99);
 
-    let rejectEntitiesOnce = true;
     const baseFetch = globalThis.fetch;
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input.toString();
       const method = url.split("/").pop() || "";
-      if (method === "sendPhoto" && rejectEntitiesOnce) {
-        rejectEntitiesOnce = false;
-        const body = typeof init?.body === "string" ? JSON.parse(init.body) : {};
-        apiCalls.push({ method, body });
-        return new Response(
-          JSON.stringify({ ok: false, error_code: 400, description: "Bad Request: can't parse entities" }),
-          { status: 400, headers: { "Content-Type": "application/json" } },
-        );
-      }
       if (method === "stopPoll") {
         const body = typeof init?.body === "string" ? JSON.parse(init.body) : {};
         apiCalls.push({ method, body });
@@ -620,7 +607,7 @@ describe("Rich media, location, interactivity, draft streaming, and poll tools",
 
     const photoRes = await callMcpTool(mcp, "send_photo", {
       photo: "file_id_thread_inherit",
-      caption: "Retry **caption**",
+      caption: "Thread caption",
       reply_to: 701,
     });
     expect(photoRes.isError).toBeUndefined();
@@ -629,12 +616,9 @@ describe("Rich media, location, interactivity, draft streaming, and poll tools",
       message_id: 500,
       message_thread_id: 99,
     });
-    expect(apiCalls.length).toBe(2);
+    expect(apiCalls.length).toBe(1);
     expect(apiCalls[0].body.message_thread_id).toBe(99);
-    expect(apiCalls[0].body.caption_entities).toBeDefined();
-    expect(apiCalls[1].body.message_thread_id).toBe(99);
-    expect(apiCalls[1].body.caption).toBe("Retry caption");
-    expect(apiCalls[1].body.caption_entities).toBeUndefined();
+    expect(apiCalls[0].body.caption).toBe("Thread caption");
 
     const stopErr = await callMcpTool(mcp, "stop_poll", {
       message_id: 500,

@@ -35,7 +35,7 @@ describe("Dashboard Cutover and Standalone Retirement (§5 of mini-app-dashboard
     }
   });
 
-  test("AC2: Details button on fresh reply from each Ida with a bot carries a dash.suzor.com URL with instance parameter", async () => {
+  test("AC2: Details button on ask_user card from each Ida with a bot carries a dash.suzor.com URL with instance parameter", async () => {
     const tmp = mkdtempSync(join(tmpdir(), "cutover-reply-"));
     try {
       for (const instance of ["prime", "actual", "audre"]) {
@@ -56,19 +56,21 @@ describe("Dashboard Cutover and Standalone Retirement (§5 of mini-app-dashboard
         let sentPayload: any = null;
         const bot = new TelegramBotClient(config, broker, permRelay, () => {}, store);
         bot.callApi = async (method: string, payload: any) => {
-          if (method === "sendMessage") {
+          if (method === "sendWidget" || method === "sendRichMessage") {
             sentPayload = payload;
             return { ok: true, result: { message_id: 100 } };
           }
           return { ok: true, result: {} };
         };
 
-        const longText = "Summary of work.\n\n" + "x".repeat(1500);
-        await bot.sendReply({
-          chatId: 12345,
-          formatted: { plainText: longText, entities: [] },
+        const qRes = await broker.askUser({
+          question: "Approve deployment?",
+          options: [{ label: "Yes" }, { label: "No" }],
           detailsId: `d_${instance}_123`,
+          chatId: 12345,
         });
+        const card = broker.renderQuestionCard(qRes.questionId, config.miniAppUrl, config.instance)!;
+        await bot.sendQuestionCard(12345, qRes.questionId, card);
 
         expect(sentPayload).not.toBeNull();
         const inlineKeyboard = sentPayload.reply_markup.inline_keyboard;
@@ -88,7 +90,7 @@ describe("Dashboard Cutover and Standalone Retirement (§5 of mini-app-dashboard
     }
   });
 
-  test("AC1 & AC-5.4: Review diff button carries dash.suzor.com URL with instance parameter", async () => {
+  test("AC1 & AC-5.4: Review button on permission card carries dash.suzor.com URL with instance parameter", async () => {
     const tmp = mkdtempSync(join(tmpdir(), "cutover-review-"));
     try {
       const config = loadConfig({
@@ -113,14 +115,10 @@ describe("Dashboard Cutover and Standalone Retirement (§5 of mini-app-dashboard
         return { ok: true, result: {} };
       };
 
-      await bot.sendReply({
-        chatId: 12345,
-        formatted: { plainText: "Check this PR", entities: [] },
-        review: { repo: "nicsuzor/academicOps", pr: 3348 },
-      });
+      await bot.sendPermissionCard("perm_1", "Bash", { command: "git status" });
 
       const inlineKeyboard = sentPayload.reply_markup.inline_keyboard;
-      const reviewBtn = inlineKeyboard.flat().find((b: any) => b.text.includes("Review diff"));
+      const reviewBtn = inlineKeyboard.flat().find((b: any) => b.text.includes("Review in Mini App"));
       expect(reviewBtn).toBeDefined();
       expect(reviewBtn.web_app.url).toBe("https://dash.suzor.com/app/index.html?instance=prime&tab=review");
     } finally {

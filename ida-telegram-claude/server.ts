@@ -57,7 +57,7 @@ async function main() {
     },
     editTelegramCard: async (chatId: number, messageId: number, text: string, replyMarkup?: Record<string, unknown>) => {
       if (bot) {
-        await bot.editMessage(chatId, messageId, text, replyMarkup || { inline_keyboard: [] });
+        await bot.editCardText(chatId, messageId, text, replyMarkup || { inline_keyboard: [] });
       }
     },
     editTelegramWidgetData: async (chatId: number, messageId: number, chatData: string) => {

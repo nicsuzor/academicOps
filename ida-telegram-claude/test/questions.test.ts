@@ -183,17 +183,15 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     expect(card1Payload.html as string).toContain("Value model weight");
     expect(card1Payload.html as string).toContain("Prioritizes due-within-48h tasks immediately");
 
-    // 2. Send a result card with custom action buttons and PR review via `reply`
+    // 2. Send a result card with custom action buttons via `send_rich_message`
     await mcp.handleMessage({
       jsonrpc: "2.0",
       id: 2,
       method: "tools/call",
       params: {
-        name: "reply",
+        name: "send_rich_message",
         arguments: {
-          text: "**PR #418 ready to merge** — `polecat/demo_00000003` passes all 40 tests.\n>! Changed `questions.ts`, `bot.ts`, `server.ts`.",
-          detail: "## Full Diff Summary\n- Fixed batch truncation\n- Added entity formatting",
-          review: { repo: "nicsuzor/academicOps", pr: 418 },
+          markdown: "**PR #418 ready to merge** — `polecat/demo_00000003` passes all 40 tests.\n<details><summary>Files</summary>Changed `questions.ts`, `bot.ts`, `server.ts`.</details>",
           buttons: [
             { label: "Merge PR #418 (Recommended)", callback_data: "decide:pr418:merge" },
             { label: "Hold for manual check", callback_data: "decide:pr418:hold" },
@@ -203,12 +201,9 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     });
 
     const resultCardCall = apiCalls[apiCalls.length - 1];
-    expect(resultCardCall.method).toBe("sendMessage");
+    expect(resultCardCall.method).toBe("sendRichMessage");
     const resultKb = (resultCardCall.payload.reply_markup as any).inline_keyboard as Array<Array<any>>;
-    // Custom decision buttons appear on the result card alongside Details and Review diff buttons
     expect(resultKb.flat().some((b) => b.text === "Merge PR #418 (Recommended)" && b.callback_data === "decide:pr418:merge")).toBe(true);
-    expect(resultKb.flat().some((b) => b.text === "🔍")).toBe(true);
-    expect(resultKb.flat().some((b) => b.text.includes("🔍 Review diff"))).toBe(true);
 
     // 3. Resolve Card 1 (single-select tap on option 0)
     const pendingBefore = broker.getPendingQuestions();
@@ -1072,15 +1067,16 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     };
 
     const emittedEvents: Array<{ content: string; meta: Record<string, unknown> }> = [];
-    const editedCards: Array<{ chatId: number; messageId: number; text: string }> = [];
+    const editedCards: Array<{ chatId?: number; messageId?: number; chatData?: string }> = [];
 
     const bot = new TelegramBotClient(config, broker, permRelay, (content, meta) => {
       emittedEvents.push({ content, meta });
     }, store);
 
-    (bot as any).editMessage = async (chatId: number, messageId: number, text: string) => {
-      editedCards.push({ chatId, messageId, text });
-      return true;
+    (bot as any).callApi = async () => ({ ok: true, result: true });
+    (bot as any).editMessageWidgetData = async (opts: { chatId?: number; messageId?: number; chatData?: string }) => {
+      editedCards.push(opts);
+      return { ok: true, updated: true };
     };
 
     // 1. Post a question that sends a card to Telegram with messageId 601
@@ -1088,6 +1084,7 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       question: "Which items should go to Sara and Pauli?",
       options: [{ label: "Both items" }, { label: "Sara only" }],
       chatId: 999,
+      presentation: "widget",
     });
     const qid = postRes.questionId;
     broker.setMessageId(qid, 601);
@@ -1132,8 +1129,8 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       },
     });
 
-    // 3. The question card in Telegram was edited to show resolved answer
-    expect(editedCards.some((c) => c.messageId === 601 && c.text.includes("Selected: Both items ✅"))).toBe(true);
+    // 3. The question card in Telegram was settled to show resolved answer
+    expect(editedCards.some((c) => c.messageId === 601 && (c.chatData || "").includes("Both items"))).toBe(true);
 
     // 4. Question must leave the outstanding list in broker and Mini App
     expect(broker.getPendingQuestions().some((q) => q.id === qid)).toBe(false);
@@ -1839,9 +1836,8 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     }
   });
 
-  test("AC1.3: sendReply falls back to plain text send when formatted entities are rejected, while sendQuestionCard never downgrades failed sendWidget silently", async () => {
+  test("AC1.3: sendQuestionCard never downgrades failed sendWidget silently", async () => {
     const { TelegramBotClient } = await import("../src/telegram/bot.js");
-    const { formatMarkdownToEntities } = await import("../src/telegram/format.js");
 
     const config = {
       botToken: "test-token",
@@ -1866,14 +1862,6 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       if (method === "sendWidget") {
         return { ok: false, description: "Bad Request: widget rejected" };
       }
-      // First sendMessage with entities fails
-      if (method === "sendMessage" && payload.entities) {
-        return { ok: false, description: "Bad Request: can't parse entities" };
-      }
-      // Fallback sendMessage without entities succeeds
-      if (method === "sendMessage" && !payload.entities) {
-        return { ok: true, result: { message_id: 88888 } };
-      }
       return { ok: true };
     };
 
@@ -1886,17 +1874,5 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     const widgetFailRes = await bot.sendQuestionCard(999, q.questionId, card);
     expect(widgetFailRes.ok).toBe(false);
     expect(calls.some((c) => c.method === "sendMessage")).toBe(false);
-
-    calls.length = 0;
-    const replyRes = await bot.sendReply({
-      chatId: 999,
-      formatted: formatMarkdownToEntities("**Bold** reply"),
-      buttons: [{ label: "Continue", callback_data: "cont:1" }],
-    });
-    expect(replyRes.ok).toBe(true);
-    expect(replyRes.messageId).toBe(88888);
-    expect(calls.length).toBe(2);
-    expect(calls[1].payload.entities).toBeUndefined();
-    expect(calls[1].payload.reply_markup.inline_keyboard.length).toBeGreaterThanOrEqual(1);
   });
 });
