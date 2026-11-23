@@ -789,12 +789,12 @@ def _export_session_id(ctx: HookContext) -> bool:
 
 
 PREMISE_CHECK_POINTER = (
-    "Inter-agent reports and reviews follow `premise-check` (`ida:premise-check`)."
-    " Non-user-facing agents report only in clean, human-readable Argdown prose stating"
-    " the original ask upfront and quoting deciding evidence inline (or `[no claim]` for"
-    " claim-free notices). Evaluators run administrative-law formal compliance review"
-    " strictly on the face of the record -- zero de novo fact-checking -- and record"
-    " appealable natural-language reasons."
+    "All agent-to-agent communication follows `premise-check` (`ida:premise-check`)."
+    " Write every inter-agent message solely in unfenced prose Argdown blocks stating"
+    " the original ask upfront and breaking out every premise as its own sourced claim"
+    " (or bare `[no claim]` for an empty acknowledgement). Evaluators unpack premises"
+    " for embedded unsourced assertions on the face of the record -- zero de novo"
+    " fact-checking -- and record appealable natural-language reasons."
 )
 
 PKB_SESSION_POINTER = (

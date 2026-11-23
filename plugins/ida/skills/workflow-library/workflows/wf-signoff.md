@@ -23,9 +23,9 @@ Produces a concise, one-page summary on the record when a full task (leaf or com
 
 ## Output contract
 
-The sign-off brief must:
+User-facing sign-off deliverables use readable prose; agent-to-agent handbacks of the sign-off brief use unfenced prose Argdown blocks only per `premise-check`. The sign-off brief must:
 
-- Fit on one page/screen in readable prose (not a raw bullet dump of every subtask).
+- Fit on one page/screen concisely (not a raw bullet dump of every subtask).
 - State what was delivered and link directly to it (PR, doc ID, or artifact).
 - Ground every load-bearing claim ("works", "complete", "matches spec") in resolving evidence -- command output, `file:line`, or a linked prior verdict -- never an unlinked claim unless explicitly marked `"unverified"`.
 - State plainly what was omitted or could not be verified, if anything.
