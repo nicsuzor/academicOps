@@ -54,13 +54,13 @@ Components come from three sources:
 
 | Source | Where |
 | - | - |
-| Project | PKB documents carrying `type: template` and the task's `project`, id `<project>-<slug>` |
+| Project | PKB documents carrying `type: template` and non-null `project` matching the task's `project` (determine the shadowed slug by stripping an optional `<project>-` or `<project>_` prefix from `id` when present; otherwise use `id` directly) |
 | Universal | `plugins/ida/skills/workflow-library/workflows/*.md` |
-| Personal knowledge base | PKB documents carrying `type: template` and no `project` |
+| Personal knowledge base | PKB documents carrying `type: template` with no `project` (absent or `null`) |
 
 ### Universal templates
 
-The universal workflow library (`plugins/ida/skills/workflow-library/workflows/`) holds **28 templates**:
+The universal workflow library (`plugins/ida/skills/workflow-library/workflows/`) holds **30 templates**:
 
 - `wf-code-task-base`: Foundation for code-change tasks executed via `/supervise` or `/pull`.
 - `wf-dialectical-review`: Universal default dialectical review workflow coordinating strategic coherence, compliance, and empirical verification perspectives.
@@ -81,9 +81,11 @@ The universal workflow library (`plugins/ida/skills/workflow-library/workflows/`
 - `wf-quick-fix`: Shortened delivery route for simple, uncontroversial changes.
 - `wf-rbg`: Universal compliance review against axioms, rules, authority scope, data boundaries, and enforcement hierarchy.
 - `wf-reconcile`: Universal graph reconciliation and task truth-maintenance procedure.
-- `wf-research`: Investigate problem spaces, prior work, and trade-offs grounded in primary evidence.
-- `wf-research-and-implement`: Sequence grounded investigation, specification, independent review, and test-first implementation on one PR.
-- `wf-research-output`: Sequence an academic output from direction and audience through evidence, review, and release.
+- `wf-research`: Investigate problem spaces, retrieved personal/project preferences, constraints, and options fast-to-MVP with comparative trade-offs and flow-on MADRs.
+- `wf-research-and-implement`: Sequence software or engineering capability builds requiring grounded investigation, specification, independent review, route selection, and test-first implementation delivered on one PR; excludes empirical research-data pipelines preceding data collection.
+- `wf-research-output`: Sequence an academic output from direction and comparative MADRs through tentative empirical read-only proof, collection sign-off, evidence, review, and release.
+- `wf-research-project`: Sequence an empirical or computational research project from exploration and MADRs through tracked read-only proof, an API contract, sign-off, and data execution.
+- `wf-research-prove-readonly`: Build and prove a research pipeline live read-only on existing data under tentative approval, delivering MADRs and a partitioned data-to-analysis API contract.
 - `wf-signoff`: Author a concise one-page summary digest for decision or release sign-off.
 - `wf-spec`: Author a complete technical specification before implementation.
 - `wf-strategic-fit`: Universal strategic-direction and PKB congruence review.

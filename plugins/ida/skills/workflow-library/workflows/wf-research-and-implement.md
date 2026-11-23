@@ -1,5 +1,5 @@
 ---
-description: Sequence asks requiring grounded investigation, specification, independent review, route selection, and test-first implementation delivered on one PR.
+description: Sequence software or engineering capability builds requiring grounded investigation, specification, independent review, route selection, and test-first implementation delivered on one PR; excludes empirical research-data pipelines preceding data collection.
 id: wf-research-and-implement
 tags:
   - wf-template
@@ -36,4 +36,4 @@ Structure either as a single task with subtasks (one continuous session) or as a
 
 ## When to include
 
-Asks to research, design, and build a capability where the design must be verified before implementation effort is committed.
+Software or engineering capability builds delivered on pull requests where grounded investigation and an independently reviewed specification must precede implementation. Exclude empirical or computational research-data pipelines preceding new data collection or generation.
