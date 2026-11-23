@@ -35,7 +35,7 @@ Containers start asynchronously; assume execution proceeds unless an immediate l
 
 ## 3. Report and Stop (Fire-and-Forget)
 
-Output one line per dispatched task (title, ID, selected command `/ida:supervise` or `/ida:pull`, launched) and end your turn immediately. Never wait for container completion, block on event streams, or spin in shell polling or `sleep` loops; completed returns are picked up asynchronously on a periodic timer (Section 4).
+Report each dispatched task (title, ID, selected command `/ida:supervise` or `/ida:pull`, launched) as atomic sourced premises in a compact prose Argdown block per `ida:premise-check` and end your turn immediately. Never wait for container completion, block on event streams, or spin in shell polling or `sleep` loops; completed returns are picked up asynchronously on a periodic timer (Section 4).
 
 ## 4. Pull and Handle Completed Tasks (Timer Sweep)
 

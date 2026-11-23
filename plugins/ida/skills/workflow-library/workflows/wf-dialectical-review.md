@@ -26,7 +26,7 @@ Universal review workflow grounded in separation of powers: a coordinator sets *
 
 ## Shared Review Briefing
 
-Every branch receives the same neutrally framed briefing, quoting the commissioning mandate, governing genre standard, and acceptance criteria cleanly before the target artifact, PR, or diff without priming toward a verdict:
+Every branch receives the same neutrally framed briefing in unfenced prose Argdown blocks per `premise-check`, quoting the commissioning mandate, governing genre standard, and acceptance criteria cleanly before the target artifact, PR, or diff without priming toward a verdict:
 
 1. **Originating Request & Governing Standard (Read First, Neutral Framing)**: Verbatim mandate with source ID, genre standard (e.g., spec standard, instruction craft, or acceptance criteria -- never applying task checklists to non-task artifacts), and explicit requirements (or `"NONE AVAILABLE"`), placed before any PR or diff pointer.
 2. **Coordinator Calibration**: Proportionality tier (single-pass sanity check with `mid-tier` capability for low-stakes routine work vs. multi-round dialectical deliberation with `flagship` capability and primary-material audit for high-stakes or high-risk work) and target abstraction altitude.
@@ -58,7 +58,7 @@ Every branch receives the same neutrally framed briefing, quoting the commission
 
 ## Output contract
 
-- **Format boundary**: Internal review handbacks report **only** in clean Argdown prose per `premise-check` (upfront ask and verdict, inline deciding evidence); Markdown headings (`### Reviewer Self-Fixes Applied`, `### Suggested Fixes`, `### Required Changes`) and tables apply strictly to published PR/issue or user-facing summaries.
+- **Format boundary**: All internal agent-to-agent review messages (briefings, cross-examinations, and handbacks) use unfenced prose Argdown blocks only per `premise-check` (upfront ask and verdict, atomic sourced premises); Markdown headings (`### Reviewer Self-Fixes Applied`, `### Suggested Fixes`, `### Required Changes`) and tables apply strictly to published PR/issue or user-facing summaries.
 - **Required content**: Every unified review covers calibration, itemized self-fixes (verified at `HEAD`), suggested fixes, required changes, reconciled findings with open questions, and one overall verdict (`PASS`, `REVISE`, or `FAIL`), persisted to the task or review record.
 
 ## When to include

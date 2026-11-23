@@ -18,6 +18,12 @@ if str(IDA_HOOKS) not in sys.path:
 import handlers  # type: ignore[import-not-found]
 from dispatch import HookContext, Kind  # type: ignore[import-not-found]
 
+
+@pytest.fixture(autouse=True)
+def _isolate_gate_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AOPS_PREMISE_GATE_DIR", str(tmp_path / "gate"))
+
+
 _PEER_REPORT_VALID = (
     '<cross-session-message from="twin-a">\n'
     "Check complete.\n"
@@ -447,4 +453,210 @@ def test_agy_system_message_triggers_only_on_invocation_zero(tmp_path, monkeypat
     assert hearsay_gate.should_arm_hearsay(ctx_1) is False
     assert handlers.rule_against_hearsay(ctx_1) is None
     assert handlers.hearsay_arm(ctx_1) is None
+    assert pcg.is_armed(session_id) is False
+
+
+def _claims_from_result(result) -> list[str]:
+    import shlex
+
+    claims: list[str] = []
+    for line in result.inject_text.splitlines()[1:]:
+        tokens = shlex.split(line)
+        if "--claim" in tokens:
+            claims.append(tokens[tokens.index("--claim") + 1])
+    return claims
+
+
+def test_waiting_task_notification_suppresses_should_arm_and_hearsay_reminder():
+    """Waiting <task-notification> never triggers should_arm_hearsay, rule_against_hearsay, or hearsay_arm."""
+    import hearsay_gate
+
+    ctx_wait = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        agent_type="ida:ida",
+        session_id="s-trigger-wait",
+        hooks_dir=IDA_HOOKS,
+        raw={
+            "prompt": (
+                "<task-notification>\n<task-id>a-wait</task-id>\n<status>running</status>\n"
+                "<result>This agent has not reported yet: it is waiting on its own background work "
+                "and will deliver its report through SubagentHandback when that finishes.</result>\n"
+                "</task-notification>"
+            )
+        },
+    )
+    assert hearsay_gate.should_arm_hearsay(ctx_wait) is False
+    assert handlers.rule_against_hearsay(ctx_wait) is None
+    assert handlers.hearsay_arm(ctx_wait) is None
+
+
+def test_active_unnotified_handback_triggers_should_arm_hearsay_once():
+    """Unnotified SubagentHandback allows UserPromptSubmit notice once, then suppresses duplicates."""
+    import hearsay_gate
+
+    session_id = "s-trigger-active-hb"
+    child_id = "child-active-trigger"
+    report = (
+        "```argdown\n===\nasks:\n  t1: check\nanswers:\n  t1: 2\n===\n"
+        "(1) Obs `a:1`\n-- Rule --\n(2) Done.\n```"
+    )
+    handlers.post_tool(
+        HookContext(
+            client="claude",
+            event="PostToolUse",
+            tool="Agent",
+            agent_type="ida:ida",
+            session_id=session_id,
+            hooks_dir=IDA_HOOKS,
+            raw={
+                "tool_use_id": "tu_spawn",
+                "tool_input": {"description": "Check"},
+                "tool_response": {"isAsync": True, "status": "async_launched", "agentId": child_id},
+            },
+        )
+    )
+    handlers.post_tool(
+        HookContext(
+            client="claude",
+            event="PostToolUse",
+            tool="SubagentHandback",
+            agent_id=child_id,
+            agent_type="worker",
+            session_id=session_id,
+            hooks_dir=IDA_HOOKS,
+            raw={
+                "agent_id": child_id,
+                "tool_use_id": "tu_hb",
+                "tool_input": {"message": report},
+                "tool_response": {"success": True},
+            },
+        )
+    )
+    wrapped = (
+        f'<agent-message from="{child_id}">\n'
+        "[Subagent hand-back] The report follows:\n"
+        + "\n".join(f"  {line}" for line in report.splitlines())
+        + "\n</agent-message>"
+    )
+    ctx_ups = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        agent_type="ida:ida",
+        session_id=session_id,
+        hooks_dir=IDA_HOOKS,
+        raw={"prompt": wrapped},
+    )
+    assert hearsay_gate.should_arm_hearsay(ctx_ups) is True
+    notice = handlers.hearsay_arm(ctx_ups)
+    assert notice is not None and len(_claims_from_result(notice)) == 1
+    assert hearsay_gate.should_arm_hearsay(ctx_ups) is False
+    assert handlers.rule_against_hearsay(ctx_ups) is None
+
+
+def test_post_verdict_delayed_agent_message_suppresses_should_arm_and_hearsay_reminder():
+    """Judging an active SubagentHandback suppresses delayed <agent-message> triggers."""
+    import hearsay_gate
+    import premise_check_gate as pcg
+    import premise_check_verdict as pcv
+
+    session_id = "s-trigger-post-verdict"
+    child_id = "child-verdict-trigger"
+    report = (
+        "```argdown\n===\nasks:\n  t1: check\nanswers:\n  t1: 2\n===\n"
+        "(1) Obs `a:1`\n-- Rule --\n(2) Done.\n```"
+    )
+    handlers.post_tool(
+        HookContext(
+            client="claude",
+            event="PostToolUse",
+            tool="Agent",
+            agent_type="ida:ida",
+            session_id=session_id,
+            hooks_dir=IDA_HOOKS,
+            raw={
+                "tool_use_id": "tu_spawn2",
+                "tool_input": {"description": "Check"},
+                "tool_response": {"isAsync": True, "status": "async_launched", "agentId": child_id},
+            },
+        )
+    )
+    handlers.post_tool(
+        HookContext(
+            client="claude",
+            event="PostToolUse",
+            tool="SubagentHandback",
+            agent_id=child_id,
+            agent_type="worker",
+            session_id=session_id,
+            hooks_dir=IDA_HOOKS,
+            raw={
+                "agent_id": child_id,
+                "tool_use_id": "tu_hb2",
+                "tool_input": {"message": report},
+                "tool_response": {"success": True},
+            },
+        )
+    )
+    blk = handlers.pre_tool(
+        HookContext(
+            client="claude",
+            event="PreToolUse",
+            tool="SendMessage",
+            agent_type="ida:ida",
+            session_id=session_id,
+            hooks_dir=IDA_HOOKS,
+        )
+    )
+    assert blk is not None
+    cid = _claims_from_result(blk)[0]
+
+    class _Tracer:
+        def discover_config(self):
+            return {"endpoint": "http://x"}
+
+        def _new_trace_id(self):
+            return "1" * 32
+
+        def _new_span_id(self):
+            return "2" * 16
+
+        def _load_state(self, _session_id):
+            return {}
+
+        def _truncate(self, value: str, *_a, **_kw) -> str:
+            return value
+
+        def _build_tool_span_record(self, **kwargs):
+            return {"attributes": {}}
+
+        def _build_and_export_spans(self, **_kwargs):
+            return True
+
+    res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=cid,
+        verdict="PASS",
+        reason=f"Formal PASS {cid}: direct observation warrants conclusion.",
+        tracer_mod=_Tracer(),
+    )
+    assert res["ok"] is True
+
+    wrapped = (
+        f'<agent-message from="{child_id}">\n'
+        "[Subagent hand-back] The report follows:\n"
+        + "\n".join(f"  {line}" for line in report.splitlines())
+        + "\n</agent-message>"
+    )
+    ctx_ups = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        agent_type="ida:ida",
+        session_id=session_id,
+        hooks_dir=IDA_HOOKS,
+        raw={"prompt": wrapped},
+    )
+    assert hearsay_gate.should_arm_hearsay(ctx_ups) is False
+    assert handlers.rule_against_hearsay(ctx_ups) is None
+    assert handlers.hearsay_arm(ctx_ups) is None
     assert pcg.is_armed(session_id) is False

@@ -1,1 +1,1 @@
-Reminded to report in human-readable Argdown prose per `premise-check`.
+Reminded to write all agent-to-agent messages solely in prose Argdown blocks with atomic sourced premises per `premise-check`.

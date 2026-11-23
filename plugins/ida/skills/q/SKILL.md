@@ -56,4 +56,4 @@ When an ask spans multiple repositories, create strictly one repo-scoped task (`
 - **Title**: Concise verb-led imperative (e.g., `Implement X`).
 - **Body**: Restate terse asks faithfully by meaning and distinctions, preserving directed authorization; keep exact user words with message IDs only in `## Ask` as the immutable referent and leave unresolved ambiguity open.
   - Bound `Goal`, `Acceptance`, and deliverables strictly to outcomes the assigned worker delivers and checks before releasing `done`, excluding external post-exit acts (review, CI, PR merge, host deployment, user approval) unless that stage itself is the task's authorized scope.
-- **Output**: `- Captured [TASK-ID] - [TASK-TITLE] (under [PARENT-ID]: [PARENT-TITLE])`
+- **Output**: Return captured `[TASK-ID]`, `[TASK-TITLE]`, and parent (`[PARENT-ID]: [PARENT-TITLE]`) in a compact prose Argdown block per `ida:premise-check` when replying to another agent (or `- Captured [TASK-ID] - [TASK-TITLE] (under [PARENT-ID]: [PARENT-TITLE])` only when replying directly to the user).
