@@ -12,7 +12,7 @@ Claim and execute an already-decomposed queued PKB task or single-skill task to 
 - Claim the assigned task via `pkb_claim_task` (`assignee` set to your agent or role). Look up assigned tasks strictly by exact ID or title (`pkb_get_task`) rather than running exploratory semantic searches; if unreachable, halt or query the custodian (`pauli`).
 - Mutate only the claimed task's own fields and checklist: never reify workflows, create child tasks, or mint follow-ups.
 - Verify deliverables as a frozen `## Acceptance` checklist on the task before starting work.
-- Coordinators use `/pull` strictly for lightweight documentation, synthesis, or coordination without test suites or large codebase sweeps; dispatch implementation, sweeps, and test runs to isolated worker containers via `/dispatch`.
+- Execute the claimed task in this session; `/pull` never launches worker containers. Coordinators outside a worker container use `/pull` only for lightweight documentation, synthesis, or coordination without test suites or large codebase sweeps.
 
 ## 2. Execute Work
 
