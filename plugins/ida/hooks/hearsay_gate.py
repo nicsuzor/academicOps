@@ -35,7 +35,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 from dispatch import HookContext, Result, block, load_message_pair, refuse, warn
 
@@ -324,7 +324,7 @@ _NULL_CLAIM_BLOCK_RE = re.compile(
 _NULL_CLAIM_LINE_RE = re.compile(r"^\s*\[no\s+claim\]\s*$", re.IGNORECASE)
 
 
-def _unwrap_and_dedent_handback(text: str | None) -> str:
+def _normalize_peer_body(text: str | None) -> str:
     """Unwrap peer/handback transport framing before dedenting, un-neutralizing <\\, and trimming."""
     raw = html.unescape(text or "").replace("\r\n", "\n").replace("\r", "\n")
     channel_m = re.match(r"^\s*<channel\b[^>]*>(.*)</channel>\s*$", raw, re.DOTALL)
@@ -373,14 +373,14 @@ def _is_null_claim(text: str | None) -> bool:
     """True only when the entire unwrapped message body is the canonical [no claim] null form."""
     if not text or not text.strip():
         return False
-    norm = _unwrap_and_dedent_handback(text)
+    norm = _normalize_peer_body(text)
     if _NULL_CLAIM_BLOCK_RE.fullmatch(norm):
         return True
     return bool(_NULL_CLAIM_LINE_RE.fullmatch(norm))
 
 
 def _normalized_body_hash(text: str) -> str:
-    norm = _unwrap_and_dedent_handback(text)
+    norm = _normalize_peer_body(text)
     return hashlib.sha256(norm.encode("utf-8")).hexdigest()
 
 
@@ -1400,7 +1400,17 @@ def _call_description_id(tool_input: Any, call_id: str) -> str:
     return str(call_id or "")[:80]
 
 
-def _extract_judged_items_with_channel(ctx: HookContext) -> list[tuple[str, str, str, str, str]]:
+class IncomingItem(NamedTuple):
+    """One delivered report candidate awaiting arming or dedup against a recipient slot."""
+
+    judged_text: str
+    judged_ref: str
+    base_cid: str
+    sender: str
+    channel: str
+
+
+def _extract_judged_items_with_channel(ctx: HookContext) -> list[IncomingItem]:
     """Extract (judged_text, judged_ref, base_claim_id, sender_id, channel) candidates."""
     if ctx.event == "UserPromptSubmit":
         if not is_peer_report(ctx):
@@ -1418,9 +1428,9 @@ def _extract_judged_items_with_channel(ctx: HookContext) -> list[tuple[str, str,
                 return []
             cid = _derive_claim_id(ctx)
             ref = _envelope_id(text.strip()) or cid
-            return [(judged_text, ref, cid, "", "user_prompt")]
+            return [IncomingItem(judged_text, ref, cid, "", "user_prompt")]
 
-        items: list[tuple[str, str, str, str, str]] = []
+        items: list[IncomingItem] = []
         for env_text, tag, attrs, inner in envelopes:
             judged_text, sender_id = _unpack_envelope(env_text, tag, attrs, inner)
             if (
@@ -1439,7 +1449,7 @@ def _extract_judged_items_with_channel(ctx: HookContext) -> list[tuple[str, str,
             cid = _claim_id_from_envelope(env_text, attrs)
             ref = _envelope_id(env_text) or cid
             channel = "task_notification" if tag == "task-notification" else "user_prompt"
-            items.append((judged_text, ref, cid, sender_id, channel))
+            items.append(IncomingItem(judged_text, ref, cid, sender_id, channel))
         return items
 
     if ctx.event == "PostToolUse":
@@ -1455,12 +1465,12 @@ def _extract_judged_items_with_channel(ctx: HookContext) -> list[tuple[str, str,
         )
         base_cid = _call_description_id(_tool_input(ctx), call_id) or _derive_claim_id(ctx)
         ref = call_id or base_cid
-        return [(judged_text, ref, base_cid, sender_id, "agent_result")]
+        return [IncomingItem(judged_text, ref, base_cid, sender_id, "agent_result")]
 
     if ctx.event == "PostToolBatch":
         if ctx.client == "agy":
             return []
-        batch_items: list[tuple[str, str, str, str, str]] = []
+        batch_items: list[IncomingItem] = []
         for call in ctx.tool_calls:
             if call.get("tool_name") not in _DISPATCH_TOOLS:
                 continue
@@ -1475,7 +1485,7 @@ def _extract_judged_items_with_channel(ctx: HookContext) -> list[tuple[str, str,
             base_cid = _call_description_id(tool_input, call_id)
             ref = call_id or base_cid
             sender_id = str(resp.get("agentId") or resp.get("agent_id") or "")
-            batch_items.append((judged_text, ref, base_cid, sender_id, "agent_result"))
+            batch_items.append(IncomingItem(judged_text, ref, base_cid, sender_id, "agent_result"))
         return batch_items
 
     return []
@@ -1523,16 +1533,23 @@ def _is_failed_tool_response(ctx: HookContext | None, resp: Any) -> bool:
 
 def _find_channel_match(
     entries: dict[str, Any],
+    *,
     body_sha256: str,
     canon_sender: str,
     judged_ref: str,
     base_cid: str,
     channel: str,
     parents: dict[str, Any],
-    *,
     require_active: bool = False,
 ) -> tuple[str, dict[str, Any]] | None:
-    """Match an active or un-superseded disarmed claim for a delivery channel pair."""
+    """Match an active or un-superseded disarmed claim for a delivery channel pair.
+
+    A delivery pairs with an entry carrying the same normalized digest when any holds:
+    the delivery reference was already seen on that entry; the canonical senders agree;
+    or (active entries only) a `UserPromptSubmit` envelope with a known sender meets an
+    entry armed by a foreground return that carried no sender and has not yet been seen
+    on the prompt channel.
+    """
     has_unique_ref = bool(judged_ref and judged_ref != base_cid)
     for cid, entry in entries.items():
         if not isinstance(entry, dict):
@@ -1547,14 +1564,14 @@ def _find_channel_match(
         )
         unique_ref_match = bool(has_unique_ref and judged_ref in seen_refs)
         sender_match = bool(esender and canon_sender and esender == canon_sender)
-        legacy_ups_match = bool(
+        senderless_return_match = bool(
             require_active
             and channel == "user_prompt"
             and canon_sender
             and not esender
             and not (entry.get("seen_channels") or {}).get("user_prompt")
         )
-        if unique_ref_match or sender_match or legacy_ups_match:
+        if unique_ref_match or sender_match or senderless_return_match:
             return cid, entry
     return None
 
@@ -1614,12 +1631,12 @@ def should_arm_hearsay(ctx: HookContext) -> bool:
         canon_sender = _resolve_sender_id(parents, raw_sender)
         active = _find_channel_match(
             slot_judged,
-            body_sha,
-            canon_sender,
-            judged_ref,
-            base_cid,
-            channel,
-            parents,
+            body_sha256=body_sha,
+            canon_sender=canon_sender,
+            judged_ref=judged_ref,
+            base_cid=base_cid,
+            channel=channel,
+            parents=parents,
             require_active=True,
         )
         if active is not None:
@@ -1637,12 +1654,12 @@ def should_arm_hearsay(ctx: HookContext) -> bool:
             if (
                 _find_channel_match(
                     slot_disarmed,
-                    body_sha,
-                    canon_sender,
-                    judged_ref,
-                    base_cid,
-                    channel,
-                    parents,
+                    body_sha256=body_sha,
+                    canon_sender=canon_sender,
+                    judged_ref=judged_ref,
+                    base_cid=base_cid,
+                    channel=channel,
+                    parents=parents,
                     require_active=False,
                 )
                 is not None
@@ -1994,22 +2011,22 @@ def _batch_handback_candidates(ctx: HookContext) -> list[tuple[str, str]]:
                 bcid = build_id("claim", msg)
                 already_active = _find_channel_match(
                     slot_judged,
-                    bsha,
-                    child_id,
-                    bref,
-                    bcid,
-                    "post_tool_use",
-                    parents,
+                    body_sha256=bsha,
+                    canon_sender=child_id,
+                    judged_ref=bref,
+                    base_cid=bcid,
+                    channel="post_tool_use",
+                    parents=parents,
                     require_active=True,
                 )
                 already_disarmed = _find_channel_match(
                     slot_disarmed,
-                    bsha,
-                    child_id,
-                    bref,
-                    bcid,
-                    "post_tool_use",
-                    parents,
+                    body_sha256=bsha,
+                    canon_sender=child_id,
+                    judged_ref=bref,
+                    base_cid=bcid,
+                    channel="post_tool_use",
+                    parents=parents,
                     require_active=False,
                 )
                 if already_active is not None:
@@ -2091,12 +2108,11 @@ def _record_channel_hit(
 
 def _apply_incoming_items(
     ctx: HookContext,
-    items: list[tuple[str, str, str, str]] | list[tuple[str, str, str, str, str]],
+    items: list[IncomingItem],
     target_agent: str,
     *,
     allow_dedup_notice: bool = False,
     emit_notice: bool = True,
-    default_channel: str = "",
 ) -> list[tuple[str, str]]:
     """Process extracted reports against target_agent's slot; return notice tuples [(cid, cmd)]."""
     if not items:
@@ -2108,12 +2124,7 @@ def _apply_incoming_items(
 
     with _session_file_lock(ctx.session_id):
         parents = _load_parents(ctx.session_id)
-        for item in items:
-            if len(item) == 5:
-                judged_text, judged_ref, base_cid, raw_sender, channel = item
-            else:
-                judged_text, judged_ref, base_cid, raw_sender = item
-                channel = default_channel
+        for judged_text, judged_ref, base_cid, raw_sender, channel in items:
             body_sha = _normalized_body_hash(judged_text)
             canon_sender = _resolve_sender_id(parents, raw_sender)
 
@@ -2136,12 +2147,12 @@ def _apply_incoming_items(
             # 2. Symmetric dedup against already-active claim in target slot
             active_match = _find_channel_match(
                 slot_judged,
-                body_sha,
-                canon_sender,
-                judged_ref,
-                base_cid,
-                channel,
-                parents,
+                body_sha256=body_sha,
+                canon_sender=canon_sender,
+                judged_ref=judged_ref,
+                base_cid=base_cid,
+                channel=channel,
+                parents=parents,
                 require_active=True,
             )
             if active_match is not None:
@@ -2168,12 +2179,12 @@ def _apply_incoming_items(
             # 3. Suppress delayed twin or repeated same-sender delivery if already disarmed (until resume)
             disarmed_match = _find_channel_match(
                 slot_disarmed,
-                body_sha,
-                canon_sender,
-                judged_ref,
-                base_cid,
-                channel,
-                parents,
+                body_sha256=body_sha,
+                canon_sender=canon_sender,
+                judged_ref=judged_ref,
+                base_cid=base_cid,
+                channel=channel,
+                parents=parents,
                 require_active=False,
             )
             if disarmed_match is not None:
@@ -2251,7 +2262,7 @@ def _bridge_foreground_child(
         base_cid = description_id or build_id("claim", msg)
         return _apply_incoming_items(
             ctx,
-            [(msg, ref, base_cid, child_id, "post_tool_use")],
+            [IncomingItem(msg, ref, base_cid, child_id, "post_tool_use")],
             caller_id,
             emit_notice=True,
         )
@@ -2349,7 +2360,7 @@ def hearsay_arm(ctx: HookContext) -> Result | None:
         base_cid = build_id("claim", msg)
         _apply_incoming_items(
             ctx,
-            [(msg, tuid, base_cid, child_id, "post_tool_use")],
+            [IncomingItem(msg, tuid, base_cid, child_id, "post_tool_use")],
             resolved_caller,
             emit_notice=False,
         )
@@ -2377,7 +2388,7 @@ def hearsay_arm(ctx: HookContext) -> Result | None:
         base_cid = build_id("claim", msg)
         _apply_incoming_items(
             ctx,
-            [(msg, tuid, base_cid, caller_id, "post_tool_use")],
+            [IncomingItem(msg, tuid, base_cid, caller_id, "post_tool_use")],
             target,
             emit_notice=False,
         )
@@ -2458,9 +2469,11 @@ def hearsay_handler(ctx: HookContext) -> Result | None:
     agent_tmpl, user_tmpl = load_message_pair(ctx.hooks_dir, "hearsay_blocked")
     if not agent_tmpl:
         agent_tmpl = (
-            "Premise-check gate armed by {claim_id} blocks {action_desc}; clear a direction brief "
-            "with `verdict.py --no-claim`, or review a received report formally on the face of the "
-            "record (zero de novo fact-checking) per `ida:premise-check`.\n{command}"
+            "Premise-check gate armed by {claim_id} on this agent's received report blocks "
+            "{action_desc}; load `ida:premise-check`, review a report formally on the face of the "
+            "record (zero de novo fact-checking) and record appealable reasons, or for a direction "
+            "brief add `--no-claim` to the command below (`PASS` when ready, `REVISE` pending "
+            "clarification).\n{command}"
         )
 
     if len(pending_cids) == 1:

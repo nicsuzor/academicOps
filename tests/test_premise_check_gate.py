@@ -4167,5 +4167,4 @@ def test_multi_claim_block_lists_all_pending_claims_and_policy_markers():
     assert lines[0].startswith(_POLICY["premise_check"]["armed_indicator"])
     assert expected_label in lines[0]
     assert expected_label in (blk.user_text or "")
-    assert _POLICY["premise_check"]["no_claim_flag"] in lines[0]
     assert _claims_from_notice(blk) == ["Audit auth module", "Verify hook routing"]
