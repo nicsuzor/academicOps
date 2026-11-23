@@ -76,20 +76,20 @@ that do not emit a reader-facing academic output. This table is the vocabulary.
 flowchart LR
     probe["probe"] --> litreview["lit-review"]
     litreview --> methodology["methodology"]
+    probe -.soft.-> methodology
+    collaboration[["collaboration<br/>(approval boundary)"]] --> methodology
+    methodology --> ethics[["ethics<br/>(approval boundary)"]]
     methodology --> pilot["pilot"]
-    methodology --> ethics{{"ethics (approval boundary)"}}
-    methodology -.tentative.-> readonlyproof["readonly-proof (+ API contract)"]
+    methodology -.tentative.-> readonlyproof["readonly-proof<br/>(+ API contract)"]
     pilot -.soft.-> readonlyproof
-    readonlyproof --> signoff(["collection-signoff (decision boundary)"])
+    readonlyproof --> signoff{"collection-signoff<br/>(decision)"}
+    collaboration -.soft.-> signoff
     ethics --> datacollection["data-collection"]
     signoff --> datacollection
     pilot -.soft.-> datacollection
     datacollection --> analysis["analysis"]
-    analysis --> writing["writing"]
-    probe -.soft.-> methodology
     litreview -.soft.-> analysis
-    collaboration{{"collaboration (approval boundary)"}} --> methodology
-    collaboration -.soft.-> signoff
+    analysis --> writing["writing"]
 ```
 
 - **probe → lit-review → methodology** is the discovery sequence: establish tractability, survey
