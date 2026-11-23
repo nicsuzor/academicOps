@@ -153,7 +153,7 @@ The surfaces touched by this design correspond to the following entry in [`specs
 
 | Rule | Mechanism | Severity | Detail |
 | :- | :- | :- | :- |
-| [Skill Rule: Telegram Shared Reaction Legend](../../plugins/ida-telegram/skills/telegram/SKILL.md) -- Bot personas share a unified reaction legend with Telegram API error propagation replacing static allowlists. | instructions, structural | imperative, protection | `plugins/ida-telegram/skills/telegram/SKILL.md:50-75`, `specs/telegram/reactions.md:20-140`, `plugins/ida-telegram/src/telegram/format.ts:340-375`, `plugins/ida-telegram/test/reactions.test.ts:72-120` |
+| [Skill Rule: Telegram Shared Reaction Legend](../../plugins/ida-telegram/skills/telegram/SKILL.md) -- Bot personas share a unified reaction legend with Telegram API error propagation replacing static allowlists. | instructions, structural | imperative, protection | `plugins/ida-telegram/skills/telegram/SKILL.md:50-75`, `specs/telegram/reactions.md:20-140`, `plugins/ida-telegram/src/telegram/reactions.ts:1-25`, `plugins/ida-telegram/test/reactions.test.ts:72-120` |
 
 #### Proportionality Pass (`specs/enforcement/enforcement.md`)
 

@@ -44,7 +44,7 @@ As a user delegating background work or diagnosing a failed turn, I want complet
 
 As a user on Telegram, I want the agent to send photos, documents, videos, animations, multi-item albums, audio, circular video notes, locations, venues, contacts, animated dice, chat activity indicators, streaming message drafts, and interactive or quiz polls in the active chat and thread, and to close open polls when voting concludes, so that rich artifacts, structured choices, and progress updates arrive in the right conversation context without leaving Telegram.
 
-- **AC-5.1** Given the agent invokes any outbound media, location, contact, dice, chat-action, message-draft, or poll send tool (`send_photo`, `send_document`, `send_video`, `send_animation`, `send_media_group`, `send_audio`, `send_video_note`, `send_location`, `send_venue`, `send_contact`, `send_dice`, `send_chat_action`, `send_message_draft`, `send_poll`), when `chat_id` or `message_thread_id` (`thread_id`) is omitted, then the channel routes the call to the default chat and active thread (or thread inferred from `reply_to`) using the same routing contract as `reply`, and attaches `reply_parameters` to the latest inbound message when sending a message in an unthreaded chat.
+- **AC-5.1** Given the agent invokes any outbound media, location, contact, dice, chat-action, message-draft, or poll send tool (`send_photo`, `send_document`, `send_video`, `send_animation`, `send_media_group`, `send_audio`, `send_video_note`, `send_location`, `send_venue`, `send_contact`, `send_dice`, `send_chat_action`, `send_message_draft`, `send_poll`), when `chat_id` or `message_thread_id` (`thread_id`) is omitted, then the channel routes the call to the default chat and active thread (or thread inferred from `reply_to`) using the same routing contract as `send_rich_message`, and attaches `reply_parameters` to the latest inbound message when sending a message in an unthreaded chat.
 - **AC-5.2** Given a media tool receives a local file path that exists on disk, when the channel dispatches the request, then it uploads the file as multipart form data; when given a Telegram `file_id` or HTTP(S) URL, it passes the reference directly in the request payload, formatting any Markdown caption or poll explanation into Telegram message entities with plain-text fallback on entity rejection.
 - **AC-5.3** Given the agent invokes `send_media_group`, `send_message_draft`, `send_poll`, or `stop_poll`, when the channel validates and dispatches the call, then it enforces protocol bounds before calling Telegram (2–10 items for `send_media_group`, non-zero integer `draft_id` for `send_message_draft`, 1–300 character question and 2–12 options of 1–100 characters for `send_poll`, and required `message_id` for `stop_poll`) and surfaces any local or Telegram error verbatim with `{ success: false, error }`.
 
@@ -69,7 +69,7 @@ The lifecycle separates update ingestion and turn dispatch from tool execution:
 
 1. **Inbound Ingestion:** The channel poller receives Telegram updates, authenticates the sender against authorized identifiers, places an immediate receipt reaction (`👀`), transcribes voice audio or stores attachments, and packages the data into a normalized inbound event.
 2. **Turn Dispatch:** Events queue serially per chat. When the channel dispatches an event, it supplies the persisted session identifier to preserve conversational continuity. If a turn is active and auto-interrupt is enabled, the channel cancels the running turn and launches a replacement turn incorporating the new message.
-3. **Outbound Execution:** During turn execution, the agent calls transport tools (`reply`, `react`, `ask_user`, `edit_message`). For questions, the channel renders interactive buttons and returns immediately so the turn finishes cleanly. When the user later taps an option, the callback arrives as a new inbound event triggering the next turn.
+3. **Outbound Execution:** During turn execution, the agent calls transport tools (`send_rich_message`, `react`, `ask_user`, `edit_message`). For questions, the channel renders interactive buttons and returns immediately so the turn finishes cleanly. When the user later taps an option, the callback arrives as a new inbound event triggering the next turn.
 
 ### Shared channel core and dual transport boundary
 
@@ -84,23 +84,22 @@ Separating the protocol engine from transport adaptation ensures that parsing, f
 
 Every supported runtime invokes the core tools:
 
-#### `reply`
+#### `send_rich_message`
 
-Sends an agent response to the Telegram chat with rich typography, expandable blockquotes, paragraph overflow splitting, thread routing parameters (`message_thread_id`, `thread_id`), and optional voice notes.
+Sends a structured Bot API 10.1-10.4 Rich Message (mutually exclusive `markdown`, `html`, or `blocks`), supporting up to 32,768 UTF-8 characters, 500 blocks, 50 media attachments, thread routing parameters (`message_thread_id`, `thread_id`), `quote_rich_texts`, `feedback_buttons`, and optional spoken `voice` summary.
 
 - **Parameters:**
-  - `text` (string, required): Response body formatted in Markdown.
+  - `markdown`, `html`, `blocks` (mutually exclusive, one required): Rich Message body.
+  - `media` (array, optional): Up to 50 media attachments (`{ id, type, file, ... }`) referenced as `tg://<type>?id=<id>`.
   - `chat_id` (integer, optional): Telegram chat identifier; defaults to the chat that initiated the session.
-  - `message_thread_id` (integer, optional): Telegram message thread ID (for forum supergroups or topics-enabled chats; defaults to active thread).
-  - `thread_id` (integer, optional): Alias for `message_thread_id`.
-  - `reply_to`, `reply_to_message_id` (integer, optional): Message identifier to quote or reply to.
-  - `quote` (string, optional): Markdown substring of the replied-to message to quote via `reply_parameters` (`quote` and `quote_entities`), with optional `quote_position` (integer).
+  - `message_thread_id`, `thread_id` (integer, optional): Telegram message thread ID (defaults to active thread).
+  - `reply_to`, `reply_to_message_id` (integer, optional): Message identifier to reply to.
+  - `quote_rich_texts` (array of strings, optional): Quoted rich text fragments via `reply_parameters.quote_rich_texts`.
   - `buttons` (array, optional): Custom inline buttons (`{ label, callback_data?, url?, web_app?, copy_text? }`).
-  - `disable_link_preview` (boolean, optional) / `link_preview_options` (object, optional): Controls link preview rendering (`LinkPreviewOptions`).
+  - `feedback_buttons` (boolean, optional): Attach `👍`/`👎` feedback buttons.
   - `message_effect_id` (string, optional): Unique identifier of a Telegram message effect to attach.
-  - `voice` (boolean, optional): When true, generates and sends spoken audio for top-level summary text.
-  - `detail` (string, optional): Supplementary Markdown content linked when overflow occurs.
-- **Returns:** Object with `message_id` (integer), `message_thread_id` (integer when sent in a thread), and optional `voice_message_id` (integer); or `{ success: false, error: string }` if delivery or thread verification fails.
+  - `voice` (boolean, optional): When true (or when `VOICE_REPLIES=mirror` / `always`), synthesizes and sends spoken audio alongside the Rich Message.
+- **Returns:** Object with `success` (boolean), `message_id` (integer), `message_thread_id` (integer when sent in a thread), and optional `voice_message_id` / `voice_sent` / `voice_error`; or `{ success: false, error: string }` if delivery or thread verification fails.
 
 #### `react`
 
@@ -126,12 +125,11 @@ Posts a non-blocking interactive question card to Telegram. The tool records the
 
 #### `edit_message`
 
-Modifies the plain text or rich content (`rich_message`) of a message previously sent by the agent.
+Modifies the rich content (`rich_message`) of a message previously sent by the agent.
 
 - **Parameters:**
   - `message_id` (integer, required): Message identifier to modify.
-  - `text` (string, optional): Replacement Markdown text (mutually exclusive with rich inputs).
-  - `markdown`, `html`, `blocks` (optional): Replacement `InputRichMessage` content (`rich_message`).
+  - `markdown`, `html`, `blocks` (mutually exclusive, one required): Replacement `InputRichMessage` content (`rich_message`).
   - `chat_id` (integer, optional): Telegram chat identifier.
   - `buttons`, `button_layout`, `buttons_per_row` (optional): Updated inline keyboard buttons.
 - **Returns:** Object with `success` (boolean).
@@ -142,20 +140,20 @@ All fourteen outbound send tools (`send_photo`, `send_document`, `send_video`, `
 
 | Tool | Required parameters | Key optional parameters | Returns |
 | - | - | - | - |
-| `send_photo` | `photo` (string) | `caption` (Markdown), `has_spoiler` (boolean), `disable_notification` (boolean) | `{ success: true, message_id, message_thread_id? }` |
-| `send_document` | `document` (string) | `caption` (Markdown), `disable_content_type_detection` (boolean), `disable_notification` (boolean) | `{ success: true, message_id, message_thread_id? }` |
-| `send_video` | `video` (string) | `caption` (Markdown), `duration`, `width`, `height` (integers), `has_spoiler`, `supports_streaming`, `disable_notification` (booleans) | `{ success: true, message_id, message_thread_id? }` |
-| `send_animation` | `animation` (string) | `caption` (Markdown), `duration`, `width`, `height` (integers), `has_spoiler`, `disable_notification` (booleans) | `{ success: true, message_id, message_thread_id? }` |
+| `send_photo` | `photo` (string) | `caption` (string), `has_spoiler` (boolean), `disable_notification` (boolean) | `{ success: true, message_id, message_thread_id? }` |
+| `send_document` | `document` (string) | `caption` (string), `disable_content_type_detection` (boolean), `disable_notification` (boolean) | `{ success: true, message_id, message_thread_id? }` |
+| `send_video` | `video` (string) | `caption` (string), `duration`, `width`, `height` (integers), `has_spoiler`, `supports_streaming`, `disable_notification` (booleans) | `{ success: true, message_id, message_thread_id? }` |
+| `send_animation` | `animation` (string) | `caption` (string), `duration`, `width`, `height` (integers), `has_spoiler`, `disable_notification` (booleans) | `{ success: true, message_id, message_thread_id? }` |
 | `send_media_group` | `media` (array of 2–10 items: `{ type: "photo" \| "video" \| "document" \| "animation" \| "audio", media: string, caption?: string, has_spoiler?: boolean }`) | `disable_notification` (boolean) | `{ success: true, message_ids: integer[], message_thread_id? }` |
-| `send_audio` | `audio` (string) | `caption` (Markdown), `duration` (integer), `performer`, `title` (strings), `disable_notification` (boolean) | `{ success: true, message_id, message_thread_id? }` |
+| `send_audio` | `audio` (string) | `caption` (string), `duration` (integer), `performer`, `title` (strings), `disable_notification` (boolean) | `{ success: true, message_id, message_thread_id? }` |
 | `send_video_note` | `video_note` (string) | `duration`, `length` (integers), `disable_notification` (boolean) | `{ success: true, message_id, message_thread_id? }` |
 | `send_location` | `latitude` (number, -90..90), `longitude` (number, -180..180) | `horizontal_accuracy` (number), `live_period`, `heading`, `proximity_alert_radius` (integers), `disable_notification` (boolean) | `{ success: true, message_id, message_thread_id? }` |
 | `send_venue` | `latitude` (-90..90), `longitude` (-180..180), `title` (string), `address` (string) | `foursquare_id`, `foursquare_type`, `google_place_id`, `google_place_type` (strings), `disable_notification` (boolean) | `{ success: true, message_id, message_thread_id? }` |
 | `send_contact` | `phone_number` (string), `first_name` (string) | `last_name`, `vcard` (strings), `disable_notification` (boolean) | `{ success: true, message_id, message_thread_id? }` |
 | `send_dice` | _(none)_ | `emoji` (`"🎲" \| "🎯" \| "🏀" \| "⚽" \| "🎳" \| "🎰"`), `disable_notification` (boolean) | `{ success: true, message_id, value?: integer, emoji?: string, message_thread_id? }` |
 | `send_chat_action` | `action` (`"typing" \| "upload_photo" \| "record_video" \| "upload_video" \| "record_voice" \| "upload_voice" \| "upload_document" \| "choose_sticker" \| "find_location" \| "record_video_note" \| "upload_video_note"`) | _(chat and thread routing)_ | `{ success: true, message_thread_id? }` |
-| `send_message_draft` | `draft_id` (non-zero integer), `text` OR `markdown`/`html`/`blocks` | `can_stop`, `keep_on_stop`, thread routing (`rich` draft mode private chats only) | `{ success: true, draft_id, message_thread_id? }` |
-| `send_poll` | `question` (string, 1–300 chars), `options` (array of 2–12 strings or `{ text: string }` items, 1–100 chars each) | `is_anonymous`, `allows_multiple_answers`, `is_closed`, `disable_notification` (booleans), `type` (`"regular" \| "quiz"`), `correct_option_id` (0-based integer), `explanation` (Markdown, 0–200 chars), `open_period` (5–600s), `close_date` (integer) | `{ success: true, message_id, poll_id?: string, message_thread_id? }` |
+| `send_message_draft` | `draft_id` (non-zero integer), `markdown`/`html`/`blocks` | `can_stop`, `keep_on_stop`, thread routing (private chats only) | `{ success: true, draft_id, message_thread_id? }` |
+| `send_poll` | `question` (string, 1–300 chars), `options` (array of 2–12 strings or `{ text: string }` items, 1–100 chars each) | `is_anonymous`, `allows_multiple_answers`, `is_closed`, `disable_notification` (booleans), `type` (`"regular" \| "quiz"`), `correct_option_id` (0-based integer), `explanation` (string, 0–200 chars), `open_period` (5–600s), `close_date` (integer) | `{ success: true, message_id, poll_id?: string, message_thread_id? }` |
 | `stop_poll` | `message_id` (integer) | `chat_id` (integer), `buttons`, `button_layout`, `buttons_per_row` | `{ success: true, message_id, poll?: object, message_thread_id? }` |
 
 ### State and invariants

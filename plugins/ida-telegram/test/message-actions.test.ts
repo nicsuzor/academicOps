@@ -13,125 +13,6 @@ import { tmpdir } from "node:os";
 describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
   const allowFrom = [1111111111];
 
-  test("reply attaches [🧐 Check logic], [💡 Explain], and [🧾 Reasons] buttons by default", async () => {
-    const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-actions-def-"));
-    const config = loadConfig({
-      MINI_APP_URL: "https://ida.example.test",
-      TELEGRAM_BOT_TOKEN: "test-token",
-      IDA_TELEGRAM_ROLE: "primary",
-      ALLOWED_USER_IDS: "1111111111",
-      STATE_DIR: stateDir,
-      VOICE_REPLIES: "off",
-    });
-
-    const store = new PluginStore(config.stateDir);
-    const broker = new QuestionBroker(config.stateDir);
-    const permRelay = new PermissionRelay();
-
-    const apiCalls: Array<{ method: string; body: any }> = [];
-    const origFetch = globalThis.fetch;
-    globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
-      const method = String(url).split("/").pop() || "";
-      const body = init?.body ? JSON.parse(String(init.body)) : {};
-      apiCalls.push({ method, body });
-      return new Response(JSON.stringify({ ok: true, result: { message_id: 2001 } }), { status: 200 });
-    }) as typeof fetch;
-
-    try {
-      const bot = new TelegramBotClient(config, broker, permRelay, () => {});
-      const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
-
-      const resp = await mcp.handleMessage({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "tools/call",
-        params: {
-          name: "reply",
-          arguments: {
-            chat_id: 1111111111,
-            text: "**Key finding:** The database migration completed with 0 errors.",
-          },
-        },
-      });
-
-      const parsedResult = JSON.parse((resp?.result as any)?.content?.[0]?.text || "{}");
-      expect(parsedResult.success).toBe(true);
-      expect(parsedResult.messageId).toBe(2001);
-
-      expect(apiCalls.length).toBe(1);
-      expect(apiCalls[0].method).toBe("sendMessage");
-
-      const kb = apiCalls[0].body.reply_markup?.inline_keyboard || [];
-      const flatButtons = kb.flat();
-      const logicCheckBtn = flatButtons.find((b: any) => b.text === "🧐 Check");
-      const explainBtn = flatButtons.find((b: any) => b.text === "💡 Explain");
-      const reasonsBtn = flatButtons.find((b: any) => b.text === "🧾");
-
-      expect(logicCheckBtn).toBeDefined();
-      expect(logicCheckBtn.callback_data).toBe("logic_check");
-      expect(explainBtn).toBeDefined();
-      expect(explainBtn.callback_data).toBe("explain");
-      expect(reasonsBtn).toBeDefined();
-      expect(reasonsBtn.callback_data).toBe("reasons");
-      const thanksBtn = flatButtons.find((b: any) => b.text === "🙏");
-      expect(thanksBtn?.callback_data).toBe("thanks");
-    } finally {
-      globalThis.fetch = origFetch;
-      rmSync(stateDir, { recursive: true, force: true });
-    }
-  });
-
-  test("reply with actions: false suppresses action buttons", async () => {
-    const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-actions-off-"));
-    const config = loadConfig({
-      MINI_APP_URL: "https://ida.example.test",
-      TELEGRAM_BOT_TOKEN: "test-token",
-      IDA_TELEGRAM_ROLE: "primary",
-      ALLOWED_USER_IDS: "1111111111",
-      STATE_DIR: stateDir,
-      VOICE_REPLIES: "off",
-    });
-
-    const store = new PluginStore(config.stateDir);
-    const broker = new QuestionBroker(config.stateDir);
-    const permRelay = new PermissionRelay();
-
-    const apiCalls: Array<{ method: string; body: any }> = [];
-    const origFetch = globalThis.fetch;
-    globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
-      const method = String(url).split("/").pop() || "";
-      const body = init?.body ? JSON.parse(String(init.body)) : {};
-      apiCalls.push({ method, body });
-      return new Response(JSON.stringify({ ok: true, result: { message_id: 2002 } }), { status: 200 });
-    }) as typeof fetch;
-
-    try {
-      const bot = new TelegramBotClient(config, broker, permRelay, () => {});
-      const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
-
-      await mcp.handleMessage({
-        jsonrpc: "2.0",
-        id: 2,
-        method: "tools/call",
-        params: {
-          name: "reply",
-          arguments: {
-            chat_id: 1111111111,
-            text: "System notification without action buttons.",
-            actions: false,
-          },
-        },
-      });
-
-      expect(apiCalls.length).toBe(1);
-      const kb = apiCalls[0].body.reply_markup?.inline_keyboard || [];
-      expect(kb.flat()).toEqual([]);
-    } finally {
-      globalThis.fetch = origFetch;
-      rmSync(stateDir, { recursive: true, force: true });
-    }
-  });
-
   test("AC1: pressing logic-check button delivers request naming message and Ida replies with premise-check verdict", async () => {
     const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-ac1-"));
     const config = loadConfig({
@@ -170,10 +51,10 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
         id: 10,
         method: "tools/call",
         params: {
-          name: "reply",
+          name: "send_rich_message",
           arguments: {
             chat_id: 1111111111,
-            text: messageText,
+            markdown: messageText,
           },
         },
       });
@@ -228,10 +109,10 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
         id: 11,
         method: "tools/call",
         params: {
-          name: "reply",
+          name: "send_rich_message",
           arguments: {
             chat_id: 1111111111,
-            text: verdictText,
+            markdown: verdictText,
             reply_to: 2003,
           },
         },
@@ -240,10 +121,10 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
       const parsedVerdict = JSON.parse((verdictResp?.result as any)?.content?.[0]?.text || "{}");
       expect(parsedVerdict.success).toBe(true);
 
-      const lastSendMessage = apiCalls.filter((c) => c.method === "sendMessage").pop();
-      expect(lastSendMessage?.body.text).toContain("Verdict: PASS");
-      expect(lastSendMessage?.body.text).toContain("face of the record");
-      expect(lastSendMessage?.body.text).toContain("dry-run migration output");
+      const lastSendMessage = apiCalls.filter((c) => c.method === "sendRichMessage").pop();
+      expect(lastSendMessage?.body.rich_message?.markdown).toContain("Verdict: PASS");
+      expect(lastSendMessage?.body.rich_message?.markdown).toContain("face of the record");
+      expect(lastSendMessage?.body.rich_message?.markdown).toContain("dry-run migration output");
       expect(lastSendMessage?.body.reply_parameters?.message_id).toBe(2003);
     } finally {
       globalThis.fetch = origFetch;
@@ -289,10 +170,10 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
         id: 20,
         method: "tools/call",
         params: {
-          name: "reply",
+          name: "send_rich_message",
           arguments: {
             chat_id: 1111111111,
-            text: messageText,
+            markdown: messageText,
           },
         },
       });
@@ -341,10 +222,10 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
         id: 21,
         method: "tools/call",
         params: {
-          name: "reply",
+          name: "send_rich_message",
           arguments: {
             chat_id: 1111111111,
-            text: explanationText,
+            markdown: explanationText,
             reply_to: 2004,
           },
         },
@@ -353,9 +234,9 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
       const parsedExplain = JSON.parse((explainResp?.result as any)?.content?.[0]?.text || "{}");
       expect(parsedExplain.success).toBe(true);
 
-      const lastSendMessage = apiCalls.filter((c) => c.method === "sendMessage").pop();
-      expect(lastSendMessage?.body.text).toContain("Detailed Explanation");
-      expect(lastSendMessage?.body.text).toContain("Deferring non-critical dependencies");
+      const lastSendMessage = apiCalls.filter((c) => c.method === "sendRichMessage").pop();
+      expect(lastSendMessage?.body.rich_message?.markdown).toContain("Detailed Explanation");
+      expect(lastSendMessage?.body.rich_message?.markdown).toContain("Deferring non-critical dependencies");
       expect(lastSendMessage?.body.reply_parameters?.message_id).toBe(2004);
     } finally {
       globalThis.fetch = origFetch;
@@ -394,17 +275,17 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
       });
       const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
 
-      // 1. Ida sends a message with default action buttons
+      // 1. Ida sends a message with action buttons
       const messageText = "**Finding:** The pipeline verified 14 invariant properties.";
       await mcp.handleMessage({
         jsonrpc: "2.0",
         id: 30,
         method: "tools/call",
         params: {
-          name: "reply",
+          name: "send_rich_message",
           arguments: {
             chat_id: 1111111111,
-            text: messageText,
+            markdown: messageText,
           },
         },
       });
@@ -492,17 +373,17 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
       });
       const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
 
-      // 1. Ida sends a message with default action buttons
+      // 1. Ida sends a message with action buttons
       const messageText = "**Finding:** The pipeline verified 14 invariant properties.";
       await mcp.handleMessage({
         jsonrpc: "2.0",
         id: 30,
         method: "tools/call",
         params: {
-          name: "reply",
+          name: "send_rich_message",
           arguments: {
             chat_id: 1111111111,
-            text: messageText,
+            markdown: messageText,
           },
         },
       });
@@ -678,17 +559,17 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
         "• Full verbatim Toulmin argdown arguments are attached in Details.",
       ].join("\n");
 
-      // Ida replies with reply_to: 2005, summary in text, and full argument chain in detail
+      // Ida replies with reply_to: 2005, summary and collapsed <details> argument chain in Rich Message
+      const fullMarkdown = `${chatSummaryText}\n\n<details>\n<summary>Argument Chain</summary>\n\n${reasonsDetail}\n\n</details>`;
       const resp = await mcp.handleMessage({
         jsonrpc: "2.0",
         id: 31,
         method: "tools/call",
         params: {
-          name: "reply",
+          name: "send_rich_message",
           arguments: {
             chat_id: 1111111111,
-            text: chatSummaryText,
-            detail: reasonsDetail,
+            markdown: fullMarkdown,
             reply_to: 2005,
           },
         },
@@ -697,41 +578,29 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
       const parsedResp = JSON.parse((resp?.result as any)?.content?.[0]?.text || "{}");
       expect(parsedResp.success).toBe(true);
 
-      const lastSendMessage = apiCalls.filter((c) => c.method === "sendMessage").pop();
+      const lastSendMessage = apiCalls.filter((c) => c.method === "sendRichMessage").pop();
       expect(lastSendMessage?.body.reply_parameters?.message_id).toBe(2005);
-      expect(lastSendMessage?.body.text).toContain("Reasons for message 2005");
-
-      // Verify Details button attached
-      const flatBtns = (lastSendMessage?.body.reply_markup?.inline_keyboard || []).flat();
-      const detailsBtn = flatBtns.find((b: any) => b.text === "🔍");
-      expect(detailsBtn).toBeDefined();
-
-      // Retrieve and verify details content from store
-      const detailsUrl = detailsBtn.web_app.url;
-      const detailsIdMatch = detailsUrl.match(/[?&]d=([^&]+)/);
-      const detailsId = detailsIdMatch ? detailsIdMatch[1] : undefined;
-      expect(detailsId).toBeDefined();
-      const storedDetail = store.getDetails(detailsId!);
-      expect(storedDetail).toBeDefined();
+      const sentMarkdown = lastSendMessage?.body.rich_message?.markdown as string;
+      expect(sentMarkdown).toContain("Reasons for message 2005");
 
       // Verbatim Argdowns present
-      expect(storedDetail?.markdown).toContain(primeArgdown);
-      expect(storedDetail?.markdown).toContain(saraArgdown);
-      expect(storedDetail?.markdown).toContain(rbgArgdown);
+      expect(sentMarkdown).toContain(primeArgdown);
+      expect(sentMarkdown).toContain(saraArgdown);
+      expect(sentMarkdown).toContain(rbgArgdown);
 
       // Senders and recipients labeled per link
-      expect(storedDetail?.markdown).toContain("Level 1: Ida Prime → Test User");
-      expect(storedDetail?.markdown).toContain("Level 2: Sara → Ida Prime");
-      expect(storedDetail?.markdown).toContain("Level 3: Worker (rbg) → Sara");
+      expect(sentMarkdown).toContain("Level 1: Ida Prime → Test User");
+      expect(sentMarkdown).toContain("Level 2: Sara → Ida Prime");
+      expect(sentMarkdown).toContain("Level 3: Worker (rbg) → Sara");
 
       // Delegation depth nesting
-      expect(storedDetail?.markdown).toContain("Level 1:");
-      expect(storedDetail?.markdown).toContain("Level 2:");
-      expect(storedDetail?.markdown).toContain("Level 3:");
-      expect(storedDetail?.markdown).toContain("Level 4:");
+      expect(sentMarkdown).toContain("Level 1:");
+      expect(sentMarkdown).toContain("Level 2:");
+      expect(sentMarkdown).toContain("Level 3:");
+      expect(sentMarkdown).toContain("Level 4:");
 
       // Missing argument explicitly named and never paraphrased
-      expect(storedDetail?.markdown).toContain(missingLinkText);
+      expect(sentMarkdown).toContain(missingLinkText);
     } finally {
       globalThis.fetch = origFetch;
       rmSync(stateDir, { recursive: true, force: true });

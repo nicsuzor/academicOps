@@ -206,48 +206,6 @@ describe("Shared Telegram Channel Core & Specification Compliance", () => {
     expect(turn2Result.sessionId).toBe("sess_persistent_1");
   });
 
-  // --- AC2: Progressive-disclosure replies, reactions, and voice responses ---
-
-  test("AC-2.1: Formats rich typography with expandable blockquotes and splits replies at whole-paragraph boundaries at 1,200 chars with continuation notice", async () => {
-    const config = createTestConfig({ maxChatChars: 1200 });
-    const store = new PluginStore(testStateDir);
-    const broker = new QuestionBroker(testStateDir);
-    const permRelay = new PermissionRelay(testStateDir);
-
-    const core = new SharedTelegramChannelCore({
-      config,
-      store,
-      broker,
-      bot: null,
-      permRelay,
-    });
-
-    const p1 = "First paragraph summarizing the core findings of the analysis with **bold emphasis** and `inline code`.";
-    const p2 = ">! Expandable details blockquote with crucial intermediate evidence.";
-    const p3 = "A".repeat(1200) + " Third long paragraph detailing statistical distributions.";
-    const p4 = "Fourth paragraph with concluding recommendations.";
-    const fullMarkdown = `${p1}\n\n${p2}\n\n${p3}\n\n${p4}`;
-
-    expect(fullMarkdown.length).toBeGreaterThan(1200);
-
-    const res = await core.reply({
-      text: fullMarkdown,
-      chat_id: authorizedChatId,
-    });
-
-    expect(res.success).toBe(true);
-    // Verified: Paragraph overflow split under 1200 characters with continuation notice
-    expect(res.preview).toBeDefined();
-    expect(res.preview?.length).toBeLessThanOrEqual(1200);
-    expect(res.preview).toContain("… continued in Details");
-    expect(res.detailsId).toBeDefined();
-
-    // Stored details preserves remaining paragraphs
-    const details = store.getDetails(res.detailsId!);
-    expect(details).not.toBeNull();
-    expect(details?.markdown).toContain(p4);
-  });
-
   // --- AC3: Asynchronous interactive questions ---
 
   test("AC-3.1 & AC-3.2: Posts non-blocking question cards acknowledging immediately, and resolves choices into continuation turns", async () => {
@@ -413,15 +371,17 @@ describe("Shared Telegram Channel Core & Specification Compliance", () => {
 
   // --- AC5: Four outbound transport tools adhering to parameter and return schemas ---
 
-  test("AC5: StdioMcpServer exposes the four outbound transport tools adhering to parameter and return schemas", async () => {
+  test("AC5: StdioMcpServer exposes the outbound transport tools adhering to parameter and return schemas", async () => {
     const config = createTestConfig();
     const store = new PluginStore(testStateDir);
     const broker = new QuestionBroker(testStateDir);
     const permRelay = new PermissionRelay(testStateDir);
+    const bot = new TelegramBotClient(config, broker, permRelay, () => {}, store);
+    (bot as any).callApi = async () => ({ ok: true, result: { message_id: 123 } });
 
-    const mcp = new StdioMcpServer(config, store, broker, null, permRelay);
+    const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
 
-    // 1. tools/list exposes reply, react, ask_user, edit_message
+    // 1. tools/list exposes send_rich_message, react, ask_user, edit_message and omits reply
     const listRes = await mcp.handleMessage({
       jsonrpc: "2.0",
       id: 1,
@@ -429,20 +389,21 @@ describe("Shared Telegram Channel Core & Specification Compliance", () => {
     });
 
     const toolNames = (listRes?.result as any)?.tools?.map((t: any) => t.name);
-    expect(toolNames).toContain("reply");
+    expect(toolNames).not.toContain("reply");
+    expect(toolNames).toContain("send_rich_message");
     expect(toolNames).toContain("react");
     expect(toolNames).toContain("ask_user");
     expect(toolNames).toContain("edit_message");
 
-    // 2. reply tool call returns message_id
+    // 2. send_rich_message tool call returns message_id
     const replyRes = await mcp.handleMessage({
       jsonrpc: "2.0",
       id: 2,
       method: "tools/call",
       params: {
-        name: "reply",
+        name: "send_rich_message",
         arguments: {
-          text: "Simple reply text",
+          markdown: "Simple rich message",
         },
       },
     });
@@ -498,7 +459,7 @@ describe("Shared Telegram Channel Core & Specification Compliance", () => {
         name: "edit_message",
         arguments: {
           message_id: 123,
-          text: "Updated text",
+          markdown: "Updated rich text",
         },
       },
     });

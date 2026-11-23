@@ -91,7 +91,6 @@ describe("Inbound completeness: Updates routing and parsing", () => {
     const { TelegramBotClient } = await import("../src/telegram/bot.js");
     const { QuestionBroker } = await import("../src/telegram/questions.js");
     const { PermissionRelay } = await import("../src/mcp/permissions.js");
-    const { formatMarkdownToEntities } = await import("../src/telegram/format.js");
     const { mkdtempSync, rmSync } = await import("node:fs");
     const { join } = await import("node:path");
     const { tmpdir } = await import("node:os");
@@ -123,9 +122,9 @@ describe("Inbound completeness: Updates routing and parsing", () => {
       });
       (bot as any).callApi = async () => ({ ok: true, result: { message_id: 500 } });
 
-      await bot.sendReply({
+      await bot.sendRichMessage({
         chatId: 12345678,
-        formatted: formatMarkdownToEntities("Deployment finished cleanly on hospital."),
+        richMessage: { markdown: "Deployment finished cleanly on hospital." },
       });
 
       await (bot as any).handleUpdate({

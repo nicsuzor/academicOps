@@ -74,11 +74,10 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           id: 1,
           method: "tools/call",
           params: {
-            name: "reply",
+            name: "send_rich_message",
             arguments: {
               chat_id: allowFrom,
-              text: "Please select an option from the grid:",
-              actions: false,
+              markdown: "Please select an option from the grid:",
               buttons: eightButtons2D,
             },
           },
@@ -109,11 +108,10 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           id: 2,
           method: "tools/call",
           params: {
-            name: "reply",
+            name: "send_rich_message",
             arguments: {
               chat_id: allowFrom,
-              text: "Available skills:",
-              actions: false,
+              markdown: "Available skills:",
               buttons: eightButtonsFlat,
               button_layout: [3, 3, 2],
             },
@@ -149,11 +147,10 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           id: 3,
           method: "tools/call",
           params: {
-            name: "reply",
+            name: "send_rich_message",
             arguments: {
               chat_id: allowFrom,
-              text: "Choose an item:",
-              actions: false,
+              markdown: "Choose an item:",
               buttons: eightButtonsFlat,
               buttons_per_row: 4,
             },
@@ -185,11 +182,10 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           id: 4,
           method: "tools/call",
           params: {
-            name: "reply",
+            name: "send_rich_message",
             arguments: {
               chat_id: allowFrom,
-              text: "Vertical list:",
-              actions: false,
+              markdown: "Vertical list:",
               buttons: eightButtonsFlat,
             },
           },
@@ -210,330 +206,6 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
     });
   });
 
-  describe("AC2: Consolidated predefined buttons on the first row", () => {
-    test("defect check: Details alone sits on the first row with predefined_row: true", async () => {
-      const { mcp, apiCalls, cleanup } = setupTest();
-      try {
-        const resp = await mcp.handleMessage({
-          jsonrpc: "2.0",
-          id: 5,
-          method: "tools/call",
-          params: {
-            name: "reply",
-            arguments: {
-              chat_id: allowFrom,
-              text: "Short summary with deep detail.",
-              detail: "# Deeper analysis\nDetailed content here.",
-              actions: false,
-              predefined_row: true,
-            },
-          },
-        });
-
-        const parsedResult = JSON.parse((resp?.result as any)?.content?.[0]?.text || "{}");
-        expect(parsedResult.success).toBe(true);
-
-        const kb = apiCalls[0].body.reply_markup?.inline_keyboard || [];
-        expect(kb.length).toBe(1);
-        expect(kb[0].length).toBe(1);
-        expect(kb[0][0].text).toBe("🔍");
-        expect(kb[0][0].web_app).toBeDefined();
-      } finally {
-        cleanup();
-      }
-    });
-
-    test("defect check: Details with Check logic, Explain, and Reasons all sit together on row 0 with predefined_row: true", async () => {
-      const { mcp, apiCalls, cleanup } = setupTest();
-      try {
-        const resp = await mcp.handleMessage({
-          jsonrpc: "2.0",
-          id: 6,
-          method: "tools/call",
-          params: {
-            name: "reply",
-            arguments: {
-              chat_id: allowFrom,
-              text: "Summary text for chat.",
-              detail: "Deep detail here.",
-              actions: true,
-              predefined_row: true,
-            },
-          },
-        });
-
-        const parsedResult = JSON.parse((resp?.result as any)?.content?.[0]?.text || "{}");
-        expect(parsedResult.success).toBe(true);
-
-        const kb = apiCalls[0].body.reply_markup?.inline_keyboard || [];
-        expect(kb.length).toBe(1);
-        expect(kb[0].length).toBe(5);
-        expect(kb[0][0].text).toBe("🔍");
-        expect(kb[0][1].text).toBe("🧐 Check");
-        expect(kb[0][2].text).toBe("💡 Explain");
-        expect(kb[0][3].text).toBe("🧾");
-      } finally {
-        cleanup();
-      }
-    });
-
-    test("defect check: predefined buttons sit on row 0 above caller's multi-row buttons with predefined_row: true", async () => {
-      const { mcp, apiCalls, cleanup } = setupTest();
-      try {
-        const eightButtons2D = [
-          [
-            { label: "B1", callback_data: "b1" },
-            { label: "B2", callback_data: "b2" },
-            { label: "B3", callback_data: "b3" },
-            { label: "B4", callback_data: "b4" },
-          ],
-          [
-            { label: "B5", callback_data: "b5" },
-            { label: "B6", callback_data: "b6" },
-            { label: "B7", callback_data: "b7" },
-            { label: "B8", callback_data: "b8" },
-          ],
-        ];
-
-        const resp = await mcp.handleMessage({
-          jsonrpc: "2.0",
-          id: 7,
-          method: "tools/call",
-          params: {
-            name: "reply",
-            arguments: {
-              chat_id: allowFrom,
-              text: "Grid with predefined row:",
-              detail: "More details",
-              actions: true,
-              predefined_row: true,
-              buttons: eightButtons2D,
-            },
-          },
-        });
-
-        const parsedResult = JSON.parse((resp?.result as any)?.content?.[0]?.text || "{}");
-        expect(parsedResult.success).toBe(true);
-
-        const kb = apiCalls[0].body.reply_markup?.inline_keyboard || [];
-        // Row 0: Predefined row [Details, Check logic, Explain, Reasons]
-        // Row 1: Caller row 1 [B1, B2, B3, B4]
-        // Row 2: Caller row 2 [B5, B6, B7, B8]
-        expect(kb.length).toBe(3);
-        expect(kb[0].map((b: any) => b.text)).toEqual([
-          "🔍",
-          "🧐 Check",
-          "💡 Explain",
-          "🧾",
-          "🙏",
-        ]);
-        expect(kb[1].map((b: any) => b.text)).toEqual(["B1", "B2", "B3", "B4"]);
-        expect(kb[2].map((b: any) => b.text)).toEqual(["B5", "B6", "B7", "B8"]);
-      } finally {
-        cleanup();
-      }
-    });
-
-    test("defect check: without predefined_row, Details and actions sit together on a single row below caller buttons", async () => {
-      const { mcp, apiCalls, cleanup } = setupTest();
-      try {
-        const resp = await mcp.handleMessage({
-          jsonrpc: "2.0",
-          id: 8,
-          method: "tools/call",
-          params: {
-            name: "reply",
-            arguments: {
-              chat_id: allowFrom,
-              text: "Default layout without predefined_row:",
-              detail: "More details",
-              actions: true,
-              buttons: [{ label: "Caller Button", callback_data: "caller_1" }],
-            },
-          },
-        });
-
-        const parsedResult = JSON.parse((resp?.result as any)?.content?.[0]?.text || "{}");
-        expect(parsedResult.success).toBe(true);
-
-        const kb = apiCalls[0].body.reply_markup?.inline_keyboard || [];
-        // Default behaviour:
-        // Row 0: Caller buttons ([Caller Button])
-        // Row 1: Predefined row ([🔍, 🧐 Check, 💡 Explain, 🧾])
-        expect(kb.length).toBe(2);
-        expect(kb[0].map((b: any) => b.text)).toEqual(["Caller Button"]);
-        expect(kb[1].map((b: any) => b.text)).toEqual([
-          "🔍",
-          "🧐 Check",
-          "💡 Explain",
-          "🧾",
-          "🙏",
-        ]);
-      } finally {
-        cleanup();
-      }
-    });
-
-    test("AC1: whatever suppresses or relocates Explain (actions: false, predefined_row) does the same to Reasons", async () => {
-      const { mcp, apiCalls, cleanup } = setupTest();
-      try {
-        // Case 1: actions: false suppresses both Explain and Reasons
-        await mcp.handleMessage({
-          jsonrpc: "2.0",
-          id: 9,
-          method: "tools/call",
-          params: {
-            name: "reply",
-            arguments: {
-              chat_id: allowFrom,
-              text: "Actions false text",
-              detail: "Detail text",
-              actions: false,
-              predefined_row: true,
-            },
-          },
-        });
-
-        const kbOff = apiCalls[0].body.reply_markup?.inline_keyboard || [];
-        const flatOff = kbOff.flat();
-        expect(flatOff.find((b: any) => b.text === "💡 Explain")).toBeUndefined();
-        expect(flatOff.find((b: any) => b.text === "🧾")).toBeUndefined();
-        expect(flatOff.find((b: any) => b.callback_data === "reasons")).toBeUndefined();
-        expect(flatOff.find((b: any) => b.text === "🔍")).toBeDefined();
-
-        // Case 2: default actions (actions: true) attaches both Explain and Reasons to predefined row
-        await mcp.handleMessage({
-          jsonrpc: "2.0",
-          id: 10,
-          method: "tools/call",
-          params: {
-            name: "reply",
-            arguments: {
-              chat_id: allowFrom,
-              text: "Actions true text",
-              actions: true,
-              predefined_row: false,
-            },
-          },
-        });
-
-        const kbOn = apiCalls[1].body.reply_markup?.inline_keyboard || [];
-        const actionRow = kbOn[0];
-        expect(actionRow.map((b: any) => b.text)).toEqual([
-          "🧐 Check",
-          "💡 Explain",
-          "🧾",
-          "🙏",
-        ]);
-      } finally {
-        cleanup();
-      }
-    });
-  });
-
-  describe("Compact action buttons and default single-row Details (AC1, AC2, AC3)", () => {
-    test("AC1: binary_decision reply keyboard has Reasons, Accept, Decline and Details carrying no label text beside icon", async () => {
-      const { mcp, apiCalls, cleanup } = setupTest();
-      try {
-        await mcp.handleMessage({
-          jsonrpc: "2.0",
-          id: 101,
-          method: "tools/call",
-          params: {
-            name: "reply",
-            arguments: {
-              chat_id: allowFrom,
-              text: "Binary decision reply message",
-              detail: "Deep detail payload",
-              binary_decision: true,
-            },
-          },
-        });
-
-        const kb = apiCalls[0].body.reply_markup?.inline_keyboard || [];
-        const flatButtons = kb.flat();
-
-        const reasonsBtn = flatButtons.find((b: any) => b.callback_data === "reasons");
-        const acceptBtn = flatButtons.find((b: any) => b.callback_data === "accept_recommendation");
-        const declineBtn = flatButtons.find((b: any) => b.callback_data === "decline_recommendation");
-        const detailsBtn = flatButtons.find((b: any) => b.web_app !== undefined);
-
-        expect(reasonsBtn).toBeDefined();
-        expect(reasonsBtn.text).toBe("🧾");
-        expect(acceptBtn).toBeDefined();
-        expect(acceptBtn.text).toBe("✅");
-        expect(declineBtn).toBeDefined();
-        expect(declineBtn.text).toBe("❌");
-        expect(detailsBtn).toBeDefined();
-        expect(detailsBtn.text).toBe("🔍");
-      } finally {
-        cleanup();
-      }
-    });
-
-    test("AC2: Check logic and Explain carry concise labels readable at phone width", async () => {
-      const { mcp, apiCalls, cleanup } = setupTest();
-      try {
-        await mcp.handleMessage({
-          jsonrpc: "2.0",
-          id: 102,
-          method: "tools/call",
-          params: {
-            name: "reply",
-            arguments: {
-              chat_id: allowFrom,
-              text: "Default reply message",
-            },
-          },
-        });
-
-        const kb = apiCalls[0].body.reply_markup?.inline_keyboard || [];
-        const flatButtons = kb.flat();
-
-        const checkBtn = flatButtons.find((b: any) => b.callback_data === "logic_check");
-        const explainBtn = flatButtons.find((b: any) => b.callback_data === "explain");
-
-        expect(checkBtn).toBeDefined();
-        expect(checkBtn.text).toBe("🧐 Check");
-        expect(explainBtn).toBeDefined();
-        expect(explainBtn.text).toBe("💡 Explain");
-      } finally {
-        cleanup();
-      }
-    });
-
-    test("AC3: Details sits on the same row as other predefined buttons in the default reply keyboard", async () => {
-      const { mcp, apiCalls, cleanup } = setupTest();
-      try {
-        await mcp.handleMessage({
-          jsonrpc: "2.0",
-          id: 103,
-          method: "tools/call",
-          params: {
-            name: "reply",
-            arguments: {
-              chat_id: allowFrom,
-              text: "Default reply message",
-              detail: "Deep detail payload",
-            },
-          },
-        });
-
-        const kb = apiCalls[0].body.reply_markup?.inline_keyboard || [];
-        expect(kb.length).toBe(1);
-        expect(kb[0].map((b: any) => b.text)).toEqual([
-          "🔍",
-          "🧐 Check",
-          "💡 Explain",
-          "🧾",
-          "🙏",
-        ]);
-      } finally {
-        cleanup();
-      }
-    });
-  });
-
   describe("AC3: Caller-supplied reply button tap acknowledgement (US-4)", () => {
     test("AC3: defect check: tapping caller-supplied reply button acknowledges callback, marks card, preserves Details button, and delivers event to session", async () => {
       const { bot, mcp, emittedEvents, apiCalls, cleanup } = setupTest();
@@ -544,12 +216,10 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           id: 20,
           method: "tools/call",
           params: {
-            name: "reply",
+            name: "send_rich_message",
             arguments: {
               chat_id: allowFrom,
-              text: messageText,
-              detail: "Deep audit details for the pending item.",
-              actions: false,
+              markdown: messageText,
               buttons: [
                 { label: "Run learn on example", callback_data: "laundry_learn" },
                 { label: "Capture trace only", callback_data: "laundry_cap" },
@@ -839,8 +509,8 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
     });
   });
 
-  describe("Advanced Telegram Bot API formatting & interactive options (copy_text, quote, link_preview_options)", () => {
-    test("supports copy_text inline keyboard buttons, formatted quote replies, link_preview_options, and message_effect_id", async () => {
+  describe("Advanced Telegram Bot API interactive options (copy_text, quote_rich_texts, message_effect_id)", () => {
+    test("supports copy_text inline keyboard buttons, quote_rich_texts, and message_effect_id on send_rich_message", async () => {
       const { mcp, apiCalls, cleanup } = setupTest();
       try {
         const resp = await mcp.handleMessage({
@@ -848,16 +518,13 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
           id: 901,
           method: "tools/call",
           params: {
-            name: "reply",
+            name: "send_rich_message",
             arguments: {
               chat_id: allowFrom,
-              text: "**Updated status** with ||spoiler|| and [docs](https://example.com)",
+              markdown: "**Updated status** with ||spoiler|| and [docs](https://example.com)",
               reply_to_message_id: 42,
-              quote: "specific **quoted** part",
-              quote_position: 10,
-              disable_link_preview: true,
+              quote_rich_texts: ["specific **quoted** part"],
               message_effect_id: "5104841245755180586",
-              actions: false,
               buttons: [
                 { label: "📋 Copy cmd", copy_text: "bun test" },
                 { label: "📋 Copy token", copy_text: { text: "tok_abc" } },
@@ -872,13 +539,9 @@ describe("Reply Button Layout and Predefined Row (AC1, AC2)", () => {
 
         const body = apiCalls[0].body;
         expect(body.message_effect_id).toBe("5104841245755180586");
-        expect(body.link_preview_options).toEqual({ is_disabled: true });
         expect(body.reply_parameters).toEqual({
           message_id: 42,
-          allow_sending_without_reply: true,
-          quote: "specific quoted part",
-          quote_entities: [{ type: "bold", offset: 9, length: 6 }],
-          quote_position: 10,
+          quote_rich_texts: ["specific **quoted** part"],
         });
 
         const kb = body.reply_markup?.inline_keyboard || [];

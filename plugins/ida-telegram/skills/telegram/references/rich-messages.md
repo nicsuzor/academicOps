@@ -4,7 +4,7 @@ Use `send_rich_message`, `send_message_draft` (private chats), and `edit_message
 
 ## Format Selection & Constraints
 
-- Provide **exact exclusivity**: supply exactly one of `markdown`, `html`, or `blocks`. Mixing formats or combining `text` with `markdown`/`html`/`blocks` on `edit_message` or `send_message_draft` rejects locally.
+- Provide **exact exclusivity**: supply exactly one of `markdown`, `html`, or `blocks`. Mixing formats rejects locally.
 - Rich formatting compiles natively on Telegram's renderer: write standard Markdown or Rich HTML directly; never manually escape MarkdownV2 punctuation.
 - Media attachments (`media`): up to `50` items (`{ id, type, file, mime_type?, duration?, performer?, title?, width?, height?, has_spoiler?, supports_streaming?, disable_content_type_detection? }`). Every `id` matches `[A-Za-z0-9_-]{1,64}` and is unique. Local filesystem `file` paths upload transparently over multipart `FormData`; HTTPS URLs and Telegram `file_id` pass by reference. Allowed `type` values: `photo`, `video`, `audio`, `document`, `animation`, `voice` / `voice_note` (normalized to `voice_note`).
 - `quote_rich_texts`: pass exact quoted snippets from a target Rich Message under `reply_parameters.quote_rich_texts` when replying to a specific passage.
@@ -31,10 +31,10 @@ Use `send_rich_message`, `send_message_draft` (private chats), and `edit_message
 
 Use `send_message_draft` with a consistent non-zero integer `draft_id` when streaming incremental answers in private chats (`chat_id > 0`):
 
-- Pass `markdown`, `html`, or `blocks` instead of `text` to invoke `sendRichMessageDraft`.
+- Pass `markdown`, `html`, or `blocks` to invoke `sendRichMessageDraft`.
 - Wrap internal reasoning progress in `<tg-thinking>Checking repository state...</tg-thinking>` above partial output; strip or exclude transient thinking blocks from final `send_rich_message`.
 - Set `can_stop: true` (`keep_on_stop` optional) to expose Telegram's Stop button. Pressing Stop delivers `event: "stopped_message_generation"` (`draft_id`, `message_thread_id`); halt generation cleanly without overwriting.
-- Private-chat Rich drafts forbid `media` attachments and group chats (`chat_id < 0`). Keep `text` plain Markdown when drafting in groups.
+- Private-chat Rich drafts forbid `media` attachments and group chats (`chat_id < 0`).
 - Finalize by calling `send_rich_message` with the finished body (`draft_id` disappears automatically when replaced or finalized).
 
 ## Editing & Callbacks on Rich Messages
