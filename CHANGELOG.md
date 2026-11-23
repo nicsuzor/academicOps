@@ -1,5 +1,44 @@
 # Changelog
 
+## [1.12.0](https://github.com/nicsuzor/academicOps/compare/v1.11.0...v1.12.0) (2026-11-23)
+
+### Features
+
+- **ida:** add low-context agy skill and hookless headless profiles ([0c3b94d](https://github.com/nicsuzor/academicOps/commit/0c3b94d68eed552b221a90a07fdc88bca5a023fd))
+- **ida:** add low-context headless agy skill and agent profiles ([ad72547](https://github.com/nicsuzor/academicOps/commit/ad7254739a36e230f8e84b6af4a134127efcc9e9))
+- **ida:** modularize headless argdown handback hook and add exploration profile ([d3fe65b](https://github.com/nicsuzor/academicOps/commit/d3fe65b7a3b86ff0508debc05dab7b5ef5c44858))
+- **phoenix:** overhaul query templates and remove legacy token-cost script ([026fe80](https://github.com/nicsuzor/academicOps/commit/026fe80bd0ff99270c9299f0a048879f601a0612))
+- **phoenix:** overhaul query templates and remove legacy token-cost script ([fc425fb](https://github.com/nicsuzor/academicOps/commit/fc425fbf639ae358daeb541b79c47daab224d5fb))
+
+### Bug Fixes
+
+- **ida,rbg:** drop agent-specific routing from CORE.md ([94de175](https://github.com/nicsuzor/academicOps/commit/94de175f57260e2df183932aaff0cb63bd2f775a))
+- **ida,rbg:** remove agent-specific routing from shared instruction text ([1bc1ad1](https://github.com/nicsuzor/academicOps/commit/1bc1ad122bf24c9032cb9d5f61850b296518ad0b))
+- **ida:** drop container-dispatch routing from worker-visible text ([a1379d5](https://github.com/nicsuzor/academicOps/commit/a1379d524ea8e0fe9362957e4c54c534fa0611a7))
+- **ida:** eliminate twin premise-gate claims and handback pointer false arms ([b210cc0](https://github.com/nicsuzor/academicOps/commit/b210cc07700c96d635b5e4e38849da4284528d08))
+- **ida:** prevent twin premise-gate claims and false pointer arming ([1dbffeb](https://github.com/nicsuzor/academicOps/commit/1dbffebe252f7968b86986e9129960069e219ce0))
+- **premise-check,agents:** break out embedded premises and restrict all agent-to-agent messages to Argdown blocks ([78585c0](https://github.com/nicsuzor/academicOps/commit/78585c0343d9c7b713971887596278be483f31f4))
+- **premise-check,skills:** break out embedded premises and restrict all agent-to-agent communication to Argdown blocks ([6ce191a](https://github.com/nicsuzor/academicOps/commit/6ce191a1a844b7b9166b5336a8d310e60c7cffb6))
+- **review:** address strategic-review findings on phoenix skill ([00e80aa](https://github.com/nicsuzor/academicOps/commit/00e80aabf5b14301221cf232228ec0ca78d4133a))
+- **review:** address three-lens review of premise-gate hotfix ([3af0c5a](https://github.com/nicsuzor/academicOps/commit/3af0c5ab86d62c5bdb5305df5373f859e2cba193))
+- **review:** split multi-hop relay exemplar, unpack dense skill bullets, restore task Durable Facts, and sync headings ([b1ff083](https://github.com/nicsuzor/academicOps/commit/b1ff083f12d67a6ee2dc1f15e4a786ed0ad614b4))
+- **skills,workflows:** remove confounding non-Argdown output instructions across peer skills and review workflows ([874cc1d](https://github.com/nicsuzor/academicOps/commit/874cc1d406829dbd8429805d2096d639bd3e3e57))
+
+### Code Refactoring
+
+- **agy-headless:** extract separate agy plugin with lib/ staging and unconditional hooks ([03f0227](https://github.com/nicsuzor/academicOps/commit/03f0227f392ee8b1526e0d80ef20467b0dccefc2))
+- **ida:** simplify low-context agy skill to hookless preloadSkills profiles ([9b84a46](https://github.com/nicsuzor/academicOps/commit/9b84a46d4677adfc30c3806cd3cddf6ff46cff4a))
+
+### Documentation
+
+- clarify child tasks are only direct separate steps; no non-task nodes under tasks ([fb0a053](https://github.com/nicsuzor/academicOps/commit/fb0a0531d0ecd3fd4c84359c1711cd1fff165971))
+- clarify child tasks are only direct separate steps; no non-task nodes under tasks ([7fcb30a](https://github.com/nicsuzor/academicOps/commit/7fcb30ab9405c4e69253fe90d3056c3e6ec7b262))
+- **specs:** sync evidence contract and enforcement scope with atomic premises and Argdown-only inter-agent communication ([17557ab](https://github.com/nicsuzor/academicOps/commit/17557ab0fa05fee615d5029c1675aed025a5fed8))
+
+### Tests
+
+- **premise-check:** load honesty.md dynamically instead of hardcoding retired prose literal ([f1ab9c0](https://github.com/nicsuzor/academicOps/commit/f1ab9c019510c0488aca4939de0c14b4c9639925))
+
 ## [1.11.0](https://github.com/nicsuzor/academicOps/compare/v1.10.0...v1.11.0) (2026-11-20)
 
 ### Features
