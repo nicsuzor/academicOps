@@ -3478,8 +3478,22 @@ def test_armed_direction_brief_blocks_send_message_until_no_claim_verdict_disarm
     assert pcg.premise_check_handler(send_pass_ctx) is None
 
 
+def _claims_from_notice(result: dispatch.Result) -> list[str]:
+    """Extract --claim values from a hook notice/refusal Result's verdict commands."""
+    claims: list[str] = []
+    for line in result.inject_text.splitlines()[1:]:
+        tokens = shlex.split(line)
+        if "--claim" in tokens:
+            claims.append(tokens[tokens.index("--claim") + 1])
+    return claims
+
+
 def _wrap_claude_handback(
-    sender: str, raw_report: str, *, with_harness_warning: bool = True
+    sender: str,
+    raw_report: str,
+    *,
+    with_harness_warning: bool = True,
+    envelope_id: str = "",
 ) -> str:
     """Wrap raw report text like Claude Code <agent-message> handback delivery."""
     escaped = raw_report.replace("<", "<\\")
@@ -3489,8 +3503,9 @@ def _wrap_claude_handback(
         if with_harness_warning
         else ""
     )
+    id_attr = f' id="{envelope_id}"' if envelope_id else ""
     return (
-        f'<agent-message from="{sender}">\n'
+        f'<agent-message from="{sender}"{id_attr}>\n'
         "[Subagent hand-back] The text below is a subagent's message to you, "
         "sent via SubagentHandback.\n"
         "The report follows:\n"
@@ -3516,8 +3531,8 @@ def test_indented_harness_wrapped_handback_dedups_both_orders_and_unblocks(
         "(2) So, fix holds.\n"
         "```"
     )
-    traces: list[str] = []
-    monkeypatch.setattr(hg, "_emit_hearsay_trace", lambda ctx, cid, ref, **_kw: traces.append(cid))
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    monkeypatch.setattr(hg, "claude_code_tracer", tracer)
 
     assert (
         handlers.post_tool(
@@ -3551,11 +3566,14 @@ def test_indented_harness_wrapped_handback_dedups_both_orders_and_unblocks(
         assert ups_res is not None
         assert handlers.post_tool(hb_ctx) is None
 
-    state = pcg.get_state(session_id)
-    assert len(state["claim_ids"]) == 1
-    assert len(traces) == 1
-    claim_id = state["claim_ids"][0]
-    assert claim_id in ups_res.inject_text
+    notice_claims = _claims_from_notice(ups_res)
+    blk = pcg.premise_check_handler(_agent_dispatch_ctx_for(session_id, tool="SendMessage"))
+    assert blk is not None and blk.kind == dispatch.Kind.REFUSE
+    blocked_claims = _claims_from_notice(blk)
+    assert len(notice_claims) == 1
+    assert blocked_claims == notice_claims
+    assert len(tracer.exported) == 1
+    claim_id = notice_claims[0]
 
     res = pcv.record_verdict(
         session_id=session_id,
@@ -3572,16 +3590,29 @@ def test_indented_harness_wrapped_handback_dedups_both_orders_and_unblocks(
 
 
 def test_indented_null_claim_agent_message_auto_disarms():
-    """Indented [no claim] wrapped in <agent-message> + [harness: ...] auto-disarms without arming."""
+    """Indented [no claim] wrapped in <agent-message> + [harness: ...] auto-disarms a matching claim."""
     import handlers
 
     session_id = "sess-indented-null"
-    null_report = "```argdown\n===\nasks: none\n===\n\n[no claim]\n```"
-    ups_ctx = _prompt_ctx(session_id, _wrap_claude_handback("child-null", null_report))
+    pre_arm = handlers.user_prompt_submit(
+        _prompt_ctx(
+            session_id,
+            '<cross-session-message from="worker-1" id="claim-null-target">Preliminary status report.</cross-session-message>',
+        )
+    )
+    assert pre_arm is not None
+    assert pcg.is_armed(session_id) is True
 
+    null_report = "```argdown\n===\nasks: none\n===\n\n[no claim]\n```"
+    ups_ctx = _prompt_ctx(
+        session_id,
+        _wrap_claude_handback("worker-1", null_report, envelope_id="claim-null-target"),
+    )
     assert handlers.user_prompt_submit(ups_ctx) is None
     assert pcg.is_armed(session_id) is False
-    assert pcg.get_state(session_id).get("last_verdict", {}).get("verdict") == "no-claim"
+    assert (
+        pcg.premise_check_handler(_agent_dispatch_ctx_for(session_id, tool="SendMessage")) is None
+    )
 
 
 @pytest.mark.parametrize("first_channel", ["handback", "prompt"])
@@ -3614,10 +3645,13 @@ def test_delayed_twin_arrival_after_verdict_disarm_does_not_rearm_or_block(first
 
     if first_channel == "handback":
         handlers.post_tool(hb_ctx)
-        claim_id = pcg.get_state(session_id)["claim_id"]
+        blk = pcg.premise_check_handler(_agent_dispatch_ctx_for(session_id, tool="SendMessage"))
+        assert blk is not None
+        claim_id = _claims_from_notice(blk)[0]
     else:
-        assert handlers.user_prompt_submit(ups_ctx) is not None
-        claim_id = pcg.get_state(session_id)["claim_id"]
+        ups_res = handlers.user_prompt_submit(ups_ctx)
+        assert ups_res is not None
+        claim_id = _claims_from_notice(ups_res)[0]
 
     res = pcv.record_verdict(
         session_id=session_id,
@@ -3629,7 +3663,7 @@ def test_delayed_twin_arrival_after_verdict_disarm_does_not_rearm_or_block(first
     assert res["ok"] is True
     assert pcg.is_armed(session_id) is False
 
-    # Now the delayed twin arrives after disarm
+    # Delayed twin arrival after disarm must neither notify nor re-arm
     if first_channel == "handback":
         assert handlers.user_prompt_submit(ups_ctx) is None
     else:
@@ -3658,7 +3692,7 @@ def test_resumed_subagent_identical_body_arms_distinct_claim_after_verdict():
             tool_use_id="toolu_res_spawn",
         )
     )
-    # Turn 1 delivery + verdict
+    # Turn 1 delivery + single-claim check + verdict
     handlers.post_tool(
         _post_tool_ctx_for(
             session_id,
@@ -3669,11 +3703,13 @@ def test_resumed_subagent_identical_body_arms_distinct_claim_after_verdict():
             tool_use_id="toolu_res_hb1",
         )
     )
-    handlers.user_prompt_submit(
+    ups_res = handlers.user_prompt_submit(
         _prompt_ctx(session_id, _wrap_claude_handback(child_id, report_text))
     )
-    assert len(pcg.get_state(session_id)["claim_ids"]) == 1
-    cid1 = pcg.get_state(session_id)["claim_id"]
+    assert ups_res is not None
+    cids1 = _claims_from_notice(ups_res)
+    assert len(cids1) == 1
+    cid1 = cids1[0]
     assert (
         pcv.record_verdict(
             session_id=session_id,
@@ -3684,6 +3720,7 @@ def test_resumed_subagent_identical_body_arms_distinct_claim_after_verdict():
         )["ok"]
         is True
     )
+    assert pcg.is_armed(session_id) is False
 
     # Resume child cleanly via SendMessage
     handlers.post_tool(
@@ -3707,8 +3744,11 @@ def test_resumed_subagent_identical_body_arms_distinct_claim_after_verdict():
         )
     )
     assert pcg.is_armed(session_id) is True
-    cid2 = pcg.get_state(session_id)["claim_id"]
-    assert cid2 != cid1
+    blk2 = pcg.premise_check_handler(_agent_dispatch_ctx_for(session_id, tool="SendMessage"))
+    assert blk2 is not None
+    cids2 = _claims_from_notice(blk2)
+    assert len(cids2) == 1
+    assert cids2[0] != cid1
 
 
 def test_foreground_agent_text_dedups_silent_handback_and_notifies_once():
@@ -3719,7 +3759,6 @@ def test_foreground_agent_text_dedups_silent_handback_and_notifies_once():
     child_id = "child-fg-text"
     report_text, reason_tmpl = _valid_report_argdown("ask-fg-text")
 
-    # Silent child SubagentHandback while caller runs foreground Agent
     assert (
         handlers.post_tool(
             _post_tool_ctx_for(
@@ -3745,9 +3784,7 @@ def test_foreground_agent_text_dedups_silent_handback_and_notifies_once():
         )
         is None
     )
-    cid = pcg.get_state(session_id)["claim_id"]
 
-    # Foreground Agent returns with full report text -> notifies once, keeps same single claim
     fg_res = handlers.post_tool(
         _post_tool_ctx_for(
             session_id,
@@ -3762,15 +3799,19 @@ def test_foreground_agent_text_dedups_silent_handback_and_notifies_once():
         )
     )
     assert fg_res is not None
-    assert cid in fg_res.inject_text
-    assert pcg.get_state(session_id)["claim_ids"] == [cid]
+    cids = _claims_from_notice(fg_res)
+    assert len(cids) == 1
+    cid = cids[0]
 
     # Duplicate prompt arrival for already-notified active claim does not double-emit or double-arm
-    ups_res = handlers.user_prompt_submit(
-        _prompt_ctx(session_id, _wrap_claude_handback(child_id, report_text))
+    assert (
+        handlers.user_prompt_submit(
+            _prompt_ctx(session_id, _wrap_claude_handback(child_id, report_text))
+        )
+        is None
     )
-    assert ups_res is None
-    assert pcg.get_state(session_id)["claim_ids"] == [cid]
+    blk = pcg.premise_check_handler(_agent_dispatch_ctx_for(session_id, tool="SendMessage"))
+    assert blk is not None and _claims_from_notice(blk) == [cid]
 
     assert (
         pcv.record_verdict(
@@ -3785,8 +3826,8 @@ def test_foreground_agent_text_dedups_silent_handback_and_notifies_once():
     assert pcg.is_armed(session_id) is False
 
 
-def test_failed_subagent_handback_does_not_arm_and_retry_arms_once():
-    """Failed PostToolUse(SubagentHandback) leaves gate unarmed; subsequent retry arms normally."""
+def test_failed_subagent_handback_leaves_caller_unarmed_until_retry_succeeds():
+    """Failed PostToolUse(SubagentHandback) leaves caller unarmed; successful retry arms cleanly."""
     import handlers
 
     session_id = "sess-failed-hb"
@@ -3820,21 +3861,6 @@ def test_failed_subagent_handback_does_not_arm_and_retry_arms_once():
         pcg.premise_check_handler(_agent_dispatch_ctx_for(session_id, tool="SendMessage")) is None
     )
 
-    # Failed SendMessage also leaves unarmed / does not crash or register
-    assert (
-        handlers.post_tool(
-            _post_tool_ctx_for(
-                session_id,
-                tool_input={"to": child_id, "message": "stale"},
-                tool_response={"success": False, "is_error": True},
-                tool="SendMessage",
-                tool_use_id="toolu_fail_sm",
-            )
-        )
-        is None
-    )
-
-    # Successful retry arms cleanly
     assert (
         handlers.post_tool(
             _post_tool_ctx_for(
@@ -3851,11 +3877,109 @@ def test_failed_subagent_handback_does_not_arm_and_retry_arms_once():
     assert pcg.is_armed(session_id) is True
 
 
-def test_task_notification_waiting_and_long_pointer_do_not_arm_while_agent_message_quoting_pointer_arms():
-    """<task-notification> waiting/delivered handback pointers stay unarmed, whereas quoting them in a report arms."""
+def test_failed_sendmessage_does_not_arm_peer_subagent():
+    """Failed peer PostToolUse(SendMessage) must not silently arm target subagent slot."""
     import handlers
 
-    long_sender = "worker-" + ("x" * 150)
+    session_id = "sess-failed-peer-sm"
+    sender_id = "sub-sender-fail"
+    target_id = "sub-target-fail"
+    report_text, _ = _valid_report_argdown("ask-sm-fail")
+
+    for cid in (sender_id, target_id):
+        handlers.post_tool(
+            _post_tool_ctx_for(
+                session_id,
+                tool_input={"description": f"spawn {cid}"},
+                tool_response={"isAsync": True, "status": "async_launched", "agentId": cid},
+                tool="Agent",
+                tool_use_id=f"toolu_spawn_{cid}",
+            )
+        )
+
+    assert (
+        handlers.post_tool(
+            _post_tool_ctx_for(
+                session_id,
+                tool_input={"to": target_id, "message": report_text},
+                tool_response={"success": False, "is_error": True},
+                tool="SendMessage",
+                agent_id=sender_id,
+                tool_use_id="toolu_failed_peer_sm",
+            )
+        )
+        is None
+    )
+    assert pcg.is_armed(session_id, agent_id=target_id) is False
+
+
+def test_failed_sendmessage_does_not_supersede_prior_disarmed_claim():
+    """Failed caller SendMessage must not supersede prior disarmed claim to let delayed twins re-arm."""
+    import handlers
+
+    session_id = "sess-failed-sm-supersede"
+    child_id = "child-sm-sup"
+    report_text, reason_tmpl = _valid_report_argdown("ask-sm-sup")
+
+    handlers.post_tool(
+        _post_tool_ctx_for(
+            session_id,
+            tool_input={"description": "Worker"},
+            tool_response={"isAsync": True, "status": "async_launched", "agentId": child_id},
+            tool="Agent",
+            tool_use_id="toolu_sm_sup_spawn",
+        )
+    )
+    handlers.post_tool(
+        _post_tool_ctx_for(
+            session_id,
+            tool_input={"message": report_text},
+            tool_response={"success": True},
+            tool="SubagentHandback",
+            agent_id=child_id,
+            tool_use_id="toolu_sm_sup_hb1",
+        )
+    )
+    blk = pcg.premise_check_handler(_agent_dispatch_ctx_for(session_id, tool="SendMessage"))
+    assert blk is not None
+    cid1 = _claims_from_notice(blk)[0]
+    assert (
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id=cid1,
+            verdict="PASS",
+            reason=reason_tmpl.format(claim_id=cid1),
+            tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
+        )["ok"]
+        is True
+    )
+
+    assert (
+        handlers.post_tool(
+            _post_tool_ctx_for(
+                session_id,
+                tool_input={"to": child_id, "message": "follow-up"},
+                tool_response={"success": False, "is_error": True},
+                tool="SendMessage",
+                tool_use_id="toolu_sm_sup_fail",
+            )
+        )
+        is None
+    )
+    # Delayed twin arrival still must not re-arm when SendMessage failed
+    assert (
+        handlers.user_prompt_submit(
+            _prompt_ctx(session_id, _wrap_claude_handback(child_id, report_text))
+        )
+        is None
+    )
+    assert pcg.is_armed(session_id) is False
+
+
+def test_task_notification_waiting_pointer_leaves_gate_unarmed():
+    """Interim <task-notification> waiting on SubagentHandback leaves gate unarmed."""
+    import handlers
+
     waiting_notif = (
         "<task-notification>\n"
         "<task-id>agent-wait-1</task-id>\n"
@@ -3864,6 +3988,15 @@ def test_task_notification_waiting_and_long_pointer_do_not_arm_while_agent_messa
         "and will deliver its report through SubagentHandback when that finishes.</result>\n"
         "</task-notification>"
     )
+    assert handlers.user_prompt_submit(_prompt_ctx("sess-notif-wait", waiting_notif)) is None
+    assert pcg.is_armed("sess-notif-wait") is False
+
+
+def test_task_notification_long_sender_delivered_pointer_leaves_gate_unarmed():
+    """<task-notification> delivered SubagentHandback pointer with long sender leaves gate unarmed."""
+    import handlers
+
+    long_sender = "worker-" + ("x" * 150)
     long_delivered_notif = (
         "<task-notification>\n"
         "<task-id>agent-long-1</task-id>\n"
@@ -3872,21 +4005,22 @@ def test_task_notification_waiting_and_long_pointer_do_not_arm_while_agent_messa
         "(its SubagentHandback call). Read it there; it is not repeated here.</result>\n"
         "</task-notification>"
     )
-
-    assert handlers.user_prompt_submit(_prompt_ctx("sess-notif-wait", waiting_notif)) is None
-    assert pcg.is_armed("sess-notif-wait") is False
-
     assert handlers.user_prompt_submit(_prompt_ctx("sess-notif-long", long_delivered_notif)) is None
     assert pcg.is_armed("sess-notif-long") is False
 
-    # Genuine report inside <agent-message> quoting pointer text MUST still arm
+
+def test_agent_message_quoting_pointer_prose_still_arms_gate():
+    """Genuine report inside <agent-message> quoting pointer prose still arms the gate."""
+    import handlers
+
     quoted_report = (
         "Root cause report: `<task-notification>` emitted "
         "`This agent has not reported yet: it is waiting on its own background work and will "
         "deliver its report through SubagentHandback when that finishes.` instead of a report."
     )
     quoted_msg = _wrap_claude_handback("child-reporter", quoted_report, with_harness_warning=False)
-    assert handlers.user_prompt_submit(_prompt_ctx("sess-quote-pointer", quoted_msg)) is not None
+    res = handlers.user_prompt_submit(_prompt_ctx("sess-quote-pointer", quoted_msg))
+    assert res is not None and len(_claims_from_notice(res)) == 1
     assert pcg.is_armed("sess-quote-pointer") is True
 
 
@@ -3902,8 +4036,9 @@ def test_repeated_task_notification_same_sender_suppressed_until_resume():
         f"<result>{report_text}</result>\n</task-notification>"
     )
 
-    assert handlers.user_prompt_submit(_prompt_ctx(session_id, notif)) is not None
-    cid1 = pcg.get_state(session_id)["claim_id"]
+    first_res = handlers.user_prompt_submit(_prompt_ctx(session_id, notif))
+    assert first_res is not None
+    cid1 = _claims_from_notice(first_res)[0]
     assert (
         pcv.record_verdict(
             session_id=session_id,
@@ -3915,11 +4050,9 @@ def test_repeated_task_notification_same_sender_suppressed_until_resume():
         is True
     )
 
-    # Delayed/repeated delivery with same sender and body leaves gate disarmed
     assert handlers.user_prompt_submit(_prompt_ctx(session_id, notif)) is None
     assert pcg.is_armed(session_id) is False
 
-    # Resuming via Agent(resume=task_id) allows new result delivery cleanly
     assert (
         handlers.post_tool(
             _post_tool_ctx_for(
@@ -3932,19 +4065,21 @@ def test_repeated_task_notification_same_sender_suppressed_until_resume():
         )
         is None
     )
-    assert handlers.user_prompt_submit(_prompt_ctx(session_id, notif)) is not None
+    second_res = handlers.user_prompt_submit(_prompt_ctx(session_id, notif))
+    assert second_res is not None
+    cids2 = _claims_from_notice(second_res)
+    assert len(cids2) == 1 and cids2[0] != cid1
     assert pcg.is_armed(session_id) is True
-    assert pcg.get_state(session_id)["claim_id"] != cid1
 
 
-def test_named_subagent_agent_message_dedups_against_handback_and_multi_claim_block_no_singular_quotes():
-    """Named subagent <agent-message from='name'> matches SubagentHandback agentId, and block omits plural quotes."""
+def test_named_subagent_agent_message_dedups_with_handback_via_registered_name():
+    """Named subagent <agent-message from='name'> matches SubagentHandback agentId via spawn registry."""
     import handlers
 
     session_id = "sess-named-dedup"
     child_id = "agent-named-uuid"
     child_name = "worker-alpha"
-    report_text, _ = _valid_report_argdown("ask-named")
+    report_text, reason_tmpl = _valid_report_argdown("ask-named")
 
     handlers.post_tool(
         _post_tool_ctx_for(
@@ -3965,7 +4100,6 @@ def test_named_subagent_agent_message_dedups_against_handback_and_multi_claim_bl
             tool_use_id="toolu_named_hb",
         )
     )
-    cid = pcg.get_state(session_id)["claim_id"]
 
     ups_res = handlers.user_prompt_submit(
         _prompt_ctx(
@@ -3973,13 +4107,31 @@ def test_named_subagent_agent_message_dedups_against_handback_and_multi_claim_bl
         )
     )
     assert ups_res is not None
-    assert pcg.get_state(session_id)["claim_ids"] == [cid]
+    notice_cids = _claims_from_notice(ups_res)
+    assert len(notice_cids) == 1
+    assert (
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id=notice_cids[0],
+            verdict="PASS",
+            reason=reason_tmpl.format(claim_id=notice_cids[0]),
+            tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
+        )["ok"]
+        is True
+    )
+    assert pcg.is_armed(session_id) is False
 
-    # Multi-claim block formatting omits singular quotes around combined IDs and notes --no-claim
-    pcg.arm(session_id, claim_id="claim-second", judged_text="second")
+
+def test_multi_claim_block_lists_all_pending_claims_and_policy_markers():
+    """Multi-claim block emits commands for every pending claim and policy-defined indicators."""
+    session_id = "sess-multi-blk"
+    pcg.arm(session_id, claim_id="Audit auth module", judged_text="first")
+    pcg.arm(session_id, claim_id="Verify hook routing", judged_text="second")
+
     blk = pcg.premise_check_handler(_agent_dispatch_ctx_for(session_id, tool="SendMessage"))
     assert blk is not None and blk.kind == dispatch.Kind.REFUSE
     lines = blk.inject_text.splitlines()
     assert lines[0].startswith(_POLICY["premise_check"]["armed_indicator"])
-    assert f"'{cid}, claim-second'" not in lines[0]
-    assert "--no-claim" in lines[0]
+    assert _POLICY["premise_check"]["no_claim_flag"] in lines[0]
+    assert "'Audit auth module, Verify hook routing'" not in lines[0]
+    assert _claims_from_notice(blk) == ["Audit auth module", "Verify hook routing"]

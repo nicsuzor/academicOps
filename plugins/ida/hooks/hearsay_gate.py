@@ -327,6 +327,8 @@ _NULL_CLAIM_LINE_RE = re.compile(r"^\s*\[no\s+claim\]\s*$", re.IGNORECASE)
 def _unwrap_and_dedent_handback(text: str | None) -> str:
     """Unwrap peer/handback transport framing before dedenting, un-neutralizing <\\, and trimming."""
     raw = html.unescape(text or "").replace("\r\n", "\n").replace("\r", "\n")
+    channel_m = re.match(r"^\s*<channel\b[^>]*>(.*)</channel>\s*$", raw, re.DOTALL)
+    unwrapped = channel_m.group(1).strip("\r\n") if channel_m else raw
     stripped_outer = _strip_peer_wrapper(raw)
     env_m = _OUTER_PEER_ENVELOPE_RE.match(stripped_outer)
     if env_m:
@@ -353,7 +355,7 @@ def _unwrap_and_dedent_handback(text: str | None) -> str:
                 pass
         norm = inner
     else:
-        norm = raw.strip("\r\n")
+        norm = unwrapped.strip("\r\n")
 
     norm, sub_count = _HANDBACK_PREAMBLE.subn("", norm, count=1)
     had_preamble = sub_count > 0
@@ -2476,8 +2478,9 @@ def hearsay_handler(ctx: HookContext) -> Result | None:
             format_verdict_command(cid, ctx.hooks_dir, ctx.session_id, agent_id=canon_agent)
             for cid in pending_cids
         ]
+        claim_label = f"{len(pending_cids)} claims ({cids_str})"
         reason = agent_tmpl.format(
-            claim_id=cids_str, action_desc=action_desc, command="\n".join(cmds)
+            claim_id=claim_label, action_desc=action_desc, command="\n".join(cmds)
         )
         user_msg = f"Blocked: premise-check verdicts pending on {cids_str}."
 
