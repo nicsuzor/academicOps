@@ -1,10 +1,11 @@
 """Claude Code client adapter.
 
-- manifest/plugin.json  -> .claude-plugin/plugin.json
-- manifest/hooks.json   -> hooks/hooks.json (the ONLY path Claude Code reads —
+- manifest/plugin.json    -> .claude-plugin/plugin.json
+- manifest/hooks.json     -> hooks/hooks.json (the ONLY path Claude Code reads —
   a root-level hooks.json is silently ignored)
-- manifest/mcp.json     -> .mcp.json
-- axioms with `trigger: always_on` -> axioms.jsonl, one JSON object per line
+- manifest/mcp.json       -> .mcp.json
+- manifest/auto-mode.json -> auto-mode.json (curated autoMode classifier rules)
+- axioms with `trigger: always_on` -> axioms.jsonl and rules/*.md
 """
 
 import json
@@ -44,6 +45,9 @@ def adapt(build_dir: Path, ctx: BuildContext) -> None:
     if "mcp" in manifests:
         mcp_str = json.dumps(manifests["mcp"]).replace("${PLUGIN_ROOT}", "${CLAUDE_PLUGIN_ROOT}")
         _write_json(build_dir / ".mcp.json", json.loads(mcp_str))
+
+    if manifests.get("auto-mode"):
+        _write_json(build_dir / "auto-mode.json", manifests["auto-mode"])
 
     _adapt_agents(build_dir)
 
