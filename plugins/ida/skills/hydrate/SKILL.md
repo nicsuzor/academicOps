@@ -21,18 +21,4 @@ $ARGUMENTS
 2. **Search with distilled conceptual queries**: Never pass raw or verbatim prompts to `pkb_search`. Formulate 1-3 concise conceptual queries (5-15 words) per facet or term expressing the substantive system behavior, architectural mechanism, or domain intent (avoiding incidental hyphens, underscores, or digits unless targeting a known literal symbol), and run them in parallel using PKB semantic search.
    - Budget approximately six calls; stop when two consecutive queries return no new results.
 3. **Filter to a shortlist**: Retain only hits that directly affect caller planning. Discard generic vocabulary matches.
-4. **Emit flat shortlist**: Group by kind (tasks, knowledge, terms), omitting empty kinds:
-   ```markdown
-   - `<id>` -- <what it is, <=12 words> -- <relevance to ask>
-   ```
-   If a search yields nothing, state the exact queries and scope: `no prior task (PKB search: '...', 0 hits)`.
-
-### Possible Overlap Flag
-
-If an **incomplete task** appears to cover ground shared with the ask, lead with it at the top:
-
-```markdown
-**Possible overlap** -- decide before creating anything new:
-
-- `<id>` [<status>] -- <title> -- overlaps on <shared scope or touched files>
-```
+4. **Emit flat shortlist in prose Argdown (`ida:premise-check`)**: Return agent-to-agent results solely as unfenced prose Argdown blocks -- lead with any **overlapping incomplete task** in `Main Conclusion` and premise `(1)`, then put one flat, scannable line per retained match (`<id> [<kind/status>] -- <what it is, <=12 words> -- <relevance>; query '<q>'`) or bounded zero-hit query (`0 hits for PKB search '<q>'`) as its own numbered premise so every ID and negative claim carries its exact query source.

@@ -34,17 +34,16 @@ State what needs doing, never how. Decompose reads and runs nothing; what the re
    - Select the user-named `plan-view` template, or discover the single `plan-view`-tagged template with `default: true` (halt loudly if missing, untagged, or ambiguous; never hardcode template IDs).
    - Replace any existing `## Plan` section on the objective's top-level task with the stage strip, Mermaid dependency flowchart, workflow template colour legend, and descendant summary table -- showing planned process and structural dependencies only (no status, assignee, progress, or metrics).
 
-## Output Schema
+## Output Contract
 
-```
-- Expanded [PARENT-ID] into N components, F forks, P probes; C collapsed, M merged
-- Premises: <premise> -- held | false | probe TASK-ID; unresolved pointers: <list | none>
-- Capabilities: <need> -- recorded on <executor> | absent | probe TASK-ID
-- Plan view: written | redrawn on [PARENT-ID] via <template-slug>
-- [TASK-ID] - [TITLE] (fork: <branch> | probe for: <fork-id> | -)
-- Merged into [EXISTING-ID]: <candidate> (collapsed | overlap | first run)
-- Halted on: <unresolved blocker> [if applicable]
-```
+Return these fields to calling agents solely in prose Argdown blocks per `ida:premise-check` (one atomic sourced claim per premise; Markdown applies only to direct user replies):
+
+- Expanded `[PARENT-ID]` counts (`N` components, `F` forks, `P` probes; `C` collapsed, `M` merged)
+- Premises (`<premise> -- held | false | probe TASK-ID`) and unresolved pointers (`<list | none>`)
+- Capabilities (`<need> -- recorded on <executor> | absent | probe TASK-ID`)
+- Plan view status (`written | redrawn on [PARENT-ID] via <template-slug>`)
+- Minted nodes (`[TASK-ID] - [TITLE] (fork | probe | -)`) and merged candidates (`[EXISTING-ID]: <candidate> (collapsed | overlap | first run)`)
+- Halted blocker (`<unresolved blocker>`, if applicable)
 
 ## Constraints
 
