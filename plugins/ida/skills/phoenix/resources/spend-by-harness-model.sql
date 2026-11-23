@@ -1,22 +1,43 @@
--- Spend by harness and model over a long window (a week). Never aggregate LLM spans over
--- a day or week in one executeSql: it times out (MCP error -32001, ~60 s), and an
--- unwindowed ORDER BY start_time never returns. Sum on the server in small start_time
--- chunks (ids and sums only, never payload columns) and add chunks up in the caller; a
--- 6-hour chunk can still time out under heavy traffic, so halve it and retry.
--- Harness is attributes->>'aops.surface' (claude-code, agy). Duplicate LLM spans share
--- llm.message.id: group on it so they count once (spans without one, such as Gemini,
--- fall back to span_id).
--- Cache keys are nested: llm.token_count.prompt_details.cache_read / .cache_write (the
--- older llm.prompt_details.cache_read does not exist and sums to NULL/0). `prompt`
--- already includes both cache counts: fresh input = prompt - cache_read - cache_write.
--- Ready-made loop: scripts/phoenix_token_cost.py --since <t> --by harness-model
-SELECT h, m, COUNT(*) n, SUM(p) p, SUM(o) o, SUM(cr) cr, SUM(cw) cw FROM (
-  SELECT attributes->>'aops.surface' h, attributes->>'llm.model_name' m,
-         MAX(attributes->>'llm.token_count.prompt') p,
-         MAX(attributes->>'llm.token_count.completion') o,
-         MAX(attributes->>'llm.token_count.prompt_details.cache_read') cr,
-         MAX(attributes->>'llm.token_count.prompt_details.cache_write') cw
-  FROM spans WHERE span_kind='LLM'
-    AND start_time >= '<CHUNK_START>+00:00' AND start_time < '<CHUNK_END>+00:00'
-  GROUP BY COALESCE(attributes->>'llm.message.id', span_id)
-) GROUP BY h, m
+-- Placeholders:
+--   <CHUNK_START>, <CHUNK_END>: ISO-8601 UTC chunk bounds (e.g. '2026-11-22T00:00:00Z').
+--
+-- Never aggregate LLM spans over a full week in one executeSql call: it hits the ~30-60s timeout.
+-- Run either query in a sequential Python loop inside phoenix_execute (halving chunks on timeout)
+-- and sum the returned groups in the caller.
+
+-- === QUERY 1: Token sums by surface (aops.surface) and model (2h-6h chunks, deduped) ===
+-- Duplicate LLM spans share llm.message.id (spans without one fall back to span_id).
+-- Cache keys are nested: llm.token_count.prompt_details.cache_read / .cache_write.
+-- `prompt` already includes both cache counts: fresh_input = prompt - cache_read - cache_write.
+SELECT h, m, COUNT(*) AS calls, SUM(p) AS prompt, SUM(o) AS output, SUM(cr) AS cache_read, SUM(cw) AS cache_write
+FROM (
+  SELECT
+    attributes->>'$.aops.surface' AS h,
+    attributes->>'$.llm.model_name' AS m,
+    MAX(CAST(attributes->>'$.llm.token_count.prompt' AS INTEGER)) AS p,
+    MAX(CAST(attributes->>'$.llm.token_count.completion' AS INTEGER)) AS o,
+    MAX(CAST(attributes->>'$.llm.token_count.prompt_details.cache_read' AS INTEGER)) AS cr,
+    MAX(CAST(attributes->>'$.llm.token_count.prompt_details.cache_write' AS INTEGER)) AS cw
+  FROM spans
+  WHERE span_kind = 'LLM'
+    AND start_time >= '<CHUNK_START>'
+    AND start_time < '<CHUNK_END>'
+  GROUP BY COALESCE(attributes->>'$.llm.message.id', span_id)
+)
+GROUP BY h, m;
+
+-- === QUERY 2: Built-in USD spend & token rollup by model (1-day chunks, zero JSON reads) ===
+-- Uses Phoenix's built-in span_costs and generative_models tables (no hardcoded price tables).
+-- Fast (~2s per 24h chunk); check the 'unpriced' row if any spans lack a matched generative_models row.
+SELECT
+  COALESCE(gm.name, 'unpriced') AS model,
+  COUNT(*) AS spans,
+  ROUND(SUM(sc.prompt_tokens), 0) AS prompt_tokens,
+  ROUND(SUM(sc.completion_tokens), 0) AS completion_tokens,
+  ROUND(SUM(sc.total_cost), 4) AS cost_usd
+FROM span_costs sc
+LEFT JOIN generative_models gm ON gm.id = sc.model_id
+WHERE sc.span_start_time >= '<CHUNK_START>'
+  AND sc.span_start_time < '<CHUNK_END>'
+GROUP BY 1
+ORDER BY cost_usd DESC;

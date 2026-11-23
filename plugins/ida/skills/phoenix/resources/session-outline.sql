@@ -5,28 +5,32 @@
 --   <TRACE_ID>: 32-character hex trace identifier
 
 -- === QUERY 1: Keyset-pageable chronological step query for session outline ===
--- Page by primary key s.id ASC (LIMIT 25 keeps each page < 20 KB); sort collected rows by start_time when rendering turns.
+-- Page by primary key s.id ASC (LIMIT 25 keeps each page ~10-15 KB, safely under portal caps).
+-- Stop paging when len(rows) < 25 -- do NOT rely on row_count_is_partial, which reflects only
+-- the server's 500-row cap. Tool output_excerpt is omitted (NULL) because outlines render tool
+-- calls as single-line bullets; use Query 3 in cross-session-search.sql for targeted drill-down.
+-- Sort collected rows by start_time when rendering turns.
 SELECT
   s.id AS span_rowid,
   s.span_id,
   s.parent_id,
   t.trace_id,
   s.span_kind,
-  SUBSTR(s.name, 1, 160) AS name,
+  SUBSTR(s.name, 1, 120) AS name,
   s.status_code,
-  SUBSTR(s.status_message, 1, 240) AS status_msg,
+  SUBSTR(s.status_message, 1, 200) AS status_msg,
   s.start_time,
   CASE WHEN s.span_kind = 'LLM' AND s.latency_ms <= 1.5 THEN NULL ELSE ROUND(s.latency_ms, 1) END AS latency_ms,
   COALESCE(gm.name, s.attributes->>'$.llm.model_name', s.attributes->>'$.gen_ai.request.model') AS model,
   COALESCE(s.attributes->>'$.agent.name', s.attributes->>'$.subagent.type', s.attributes->>'$.service.name') AS actor,
   COALESCE(s.attributes->>'$.tool.name', s.attributes->>'$.ToolName') AS tool_name,
-  SUBSTR(COALESCE(s.attributes->>'$.tool.summary', s.attributes->>'$.toolSummary'), 1, 180) AS tool_summary,
+  SUBSTR(COALESCE(s.attributes->>'$.tool.summary', s.attributes->>'$.toolSummary'), 1, 140) AS tool_summary,
   sc.prompt_tokens,
   sc.completion_tokens,
   ROUND(sc.total_cost, 6) AS total_cost,
-  CASE WHEN LENGTH(s.attributes->>'$.llm.reasoning') > 900 THEN SUBSTR(s.attributes->>'$.llm.reasoning', 1, 897) || '...' ELSE s.attributes->>'$.llm.reasoning' END AS reasoning_excerpt,
-  CASE WHEN LENGTH(s.attributes->>'$.input.value') > 450 THEN SUBSTR(s.attributes->>'$.input.value', 1, 447) || '...' ELSE s.attributes->>'$.input.value' END AS input_excerpt,
-  CASE WHEN LENGTH(s.attributes->>'$.output.value') > 800 THEN SUBSTR(s.attributes->>'$.output.value', 1, 797) || '...' ELSE s.attributes->>'$.output.value' END AS output_excerpt
+  CASE WHEN s.span_kind = 'LLM' THEN SUBSTR(s.attributes->>'$.llm.reasoning', 1, 600) ELSE NULL END AS reasoning_excerpt,
+  SUBSTR(s.attributes->>'$.input.value', 1, 350) AS input_excerpt,
+  CASE WHEN s.span_kind IN ('CHAIN', 'AGENT', 'LLM') THEN SUBSTR(s.attributes->>'$.output.value', 1, 600) ELSE NULL END AS output_excerpt
 FROM project_sessions ps
 JOIN projects p ON p.id = ps.project_id
 JOIN traces t ON t.project_session_rowid = ps.id

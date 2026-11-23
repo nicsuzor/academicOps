@@ -9,29 +9,36 @@ Query Arize Phoenix telemetry, audit built-in token spend and tool usage on the 
 
 ## 1. Core Query Discipline
 
-- **Execute reads via authenticated Phoenix MCP**: Use `phoenix_execute` (calling `executeGraphqlQuery`, `executeSql`, and `describeSqlSchema`) and structured Phoenix MCP tools. Surface errors verbatim; never fall back to local `.jsonl` files, invent default URLs, or guess project names.
+- **Authenticated MCP perimeter**: Execute all reads via `phoenix_execute` (or structured Phoenix MCP tools). Surface errors verbatim; never fall back to local `.jsonl` files, invent default URLs, or guess project names.
+- **`phoenix_execute` sandbox syntax**: `phoenix_execute` runs **Python** where upstream Phoenix tools are invoked with `await call_tool('<toolName>', {...})` -- for example:
+  ```python
+  return await call_tool('describeSqlSchema', {})
+  return await call_tool('executeSql', {'sql': sql})
+  return await call_tool('executeGraphqlQuery', {'query': gql, 'variables': {...}})
+  ```
+  When invoked through a JS MCP code-mode portal, keep the outer JS wrapper thin and keep returned payloads compact (< 20 KB, since portals truncate around ~24 KB).
 - **Dialect and schema awareness**: Run `describeSqlSchema()` before writing custom SQL so queries match the active SQL dialect (SQLite vs PostgreSQL) and allowlisted schema (`spans.trace_id` and `spans.project_name` do not exist -- join `project_sessions -> projects -> traces -> spans`).
-- **Query size & payload bounds**: Keep every SQL query <= 2,048 UTF-8 bytes, bound cross-session scans on indexed `s.start_time`, and never select raw `s.attributes` or `s.events` blobs in list, cost, or outline queries. Keep code-mode returns compact (< 20 KB) by paging outline batches (`LIMIT 25` on `s.id > <cursor_id>`), and write local files with native file tools.
+- **SQL bounds, materialization & pagination**:
+  - Keep every SQL statement strictly <= 2,048 UTF-8 bytes and never select raw `s.attributes` or `s.events` blobs in list, cost, or outline queries.
+  - Bound cross-session scans on indexed `s.start_time`. Before applying `LIKE` or `LOWER` to `s.attributes`, narrow indexed `s.start_time` + `s.span_kind` (and `parent_id`/`name` filters) inside a `WITH ... AS MATERIALIZED (...)` CTE so SQLite does not parse JSON blobs across every span in the window.
+  - Run heavy cross-session SQL scans sequentially rather than concurrently to avoid SQLite contention timeouts.
+  - When keyset-paging with SQL `LIMIT N` on `s.id > <cursor_id>`, stop when `len(rows) < N` (not on `!row_count_is_partial`, which reflects only the server's 500-row cap).
 
 ## 2. Routing to Declarative Resources
 
 Load only the resource needed for the task from `resources/`:
 
-- For identifier resolution (`session.id` UUID, 6-8 char slug, 32-hex `trace_id`, or `task.id`), dual-emitter deduplication, client-specific span storage/emitter details, and subagent correlation: read `resources/span-store.md` before querying.
-- For project-level spend (token totals, cost summaries, top models) or single-session cost: read `resources/session-costs.graphql` (`GetProjectCosts`, `GetSessionCosts` -- one operation per call, zero span fetches).
-- For per-model spend (deduplicating dual-emitted model spans) or per-tool / upstream MCP service call counts, latencies, errors, and payload bytes: read `resources/session-audit.sql`.
-- For keyset-pageable, column-projected chronological steps: read `resources/session-outline.sql`.
-- For task-level spend rollups or ranking top sessions by USD spend over a window: read `resources/cost-by-task.sql`.
-- For spend per harness (`aops.surface`) and model over a long window (a week), with nested cache keys (`llm.token_count.prompt_details.cache_read` / `.cache_write`):
-  - Read `resources/spend-by-harness-model.sql`, or run `uv run python "${CLAUDE_SKILL_DIR:-plugins/ida/skills/phoenix}/scripts/phoenix_token_cost.py" --since <time> --by harness-model` (server-side sums in adaptive time chunks, deduped on `llm.message.id`).
-  - Keep `--by session` (default) or `--by task` to a few hours because they download every span in the window. Prices are comparable list prices per million tokens (per-call long-context tiers do not apply in `--by harness-model` rollups); read `resources/span-store.md` for emitter/model-alias mapping details.
-- For cross-session text/tool/error searches, windowed user-prompt and reply sweeps, subagent session discovery, or single-span payload drill-down: read `resources/cross-session-search.sql`.
-
-Note: Phoenix holds nothing before 2026-11-12 01:39 UTC, so older windows return empty chunks.
+- **Schema, dialect, identifiers & subagent correlation**: read `resources/span-store.md` before writing custom SQL (`session.id`, slug, `trace_id`, `task.id`, allowed SQLite functions, dual-emitter deduplication).
+- **Project or single-session built-in cost**: read `resources/session-costs.graphql` (`GetProjectCosts`, `GetSessionCosts` -- one operation per call, zero span fetches).
+- **Session model spend & tool/MCP latency profile**: read `resources/session-audit.sql` (deduplicates dual-emitted model spans and aggregates tool/MCP calls, latencies, errors, and payload bytes).
+- **Session outline steps**: read `resources/session-outline.sql` (keyset-pageable, column-projected chronological steps omitting raw tool output JSON, plus slug/`trace_id` resolution).
+- **Task spend rollups & top sessions by USD**: read `resources/cost-by-task.sql` (uses built-in `span_costs`).
+- **Multi-day spend by surface & model**: read `resources/spend-by-harness-model.sql` (server-side chunked sums with `llm.message.id` deduplication, plus zero-JSON daily `span_costs` rollups).
+- **Cross-session prompt, error, tool-argument, subagent & single-span lookups**: read `resources/cross-session-search.sql` (`MATERIALIZED` user-prompt and tool-argument searches, error search, windowed sweeps, subagent discovery, and Query 3 single-span payload drill-down).
 
 ## 3. Generating & Persisting `<slug>.outline.md`
 
-Generate a single condensed outline `<slug>.outline.md` using the layout below (no full-payload transcript variant):
+Generate a single condensed outline `<slug>.outline.md` using the layout below (no full-payload transcript variant) and write local files with native file tools:
 
 1. **Top-level heading & session header**: `# Session Outline: <slug>`, followed by session ID, project, UTC start/end timestamps, wall duration, turn/model/tool/error counts, token breakdown (`input`, `cache_read`, `cache_write`, `output`), USD cost (`session-costs.graphql` or `session-audit.sql`), subagent labels, and Phoenix redirect (`/redirects/sessions/<session_id>`) when known.
 2. **`## Overview` executive summary tables**:
