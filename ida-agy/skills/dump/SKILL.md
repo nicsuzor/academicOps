@@ -22,11 +22,11 @@ When an interactive session edits repository files without an assigned task or r
 
 ### 3. Capture Durable Facts & Repair Contradictions
 
-Offer settled durable facts (decisions, constraints, verified current-state findings, or KB corrections on a 6-month horizon; exclude exploratory thinking aloud) directly to the custodian (`pauli`) with source pointers, or record them under `## Durable Facts` when isolated.
+Offer settled durable facts (decisions, constraints, verified current-state findings, or KB corrections on a 6-month horizon; exclude exploratory thinking aloud) directly to the custodian (`pauli`) with source pointers, or record them under `## Durable Facts` on the task record and include them as sourced premises inside `### Handover Disposition` when isolated.
 
 ### 4. Release Claimed Tasks (Children First)
 
-1. Refetch current task state (`pkb_get_task`), update `## Report` solely in clean Argdown prose per `ida:premise-check` (leading with original ask/criteria and release outcome, quoting deciding evidence inline), and call `pkb_release_task` with `session_id`:
+1. Refetch current task state (`pkb_get_task`), update `## Report` solely in unfenced prose Argdown blocks per `ida:premise-check` (leading with original ask/criteria and release outcome, breaking out every deciding observation as its own sourced numbered premise), and call `pkb_release_task` with `session_id`:
    - `done`: Single completion status when all in-scope criteria have primary evidence in `## Report` and deliverables are delivered (draft PR opened with `pr_url`/`branch`, or PKB artifact recorded -- without waiting for CI, review, merge, or proof of user installation/deployment). Coordinators (`/supervise`) release `done` when in-session deliverables finish and out-of-session work is queued as follow-up tasks; leaf workers (`/pull`) satisfy all criteria directly.
    - `partial`: Worker's own criteria or in-session subtasks remain unfinished (blocker, scope seam, missing tool, pre-work approval boundary), or task includes an unreachable post-exit criterion (finish reachable work, leave that item unticked, cite in `reason`).
    - `failed`: Unrecoverable blocker or check failure.
@@ -37,25 +37,30 @@ Offer settled durable facts (decisions, constraints, verified current-state find
 ```markdown
 **Original Ask (`<task-id>/AC1`):** <Original acceptance criterion in full>
 
-**Main Conclusion:** Task `<task-id>` (<title>) released as `<status>` on `<branch>` (`<commit-sha>`, `<pr-url or artifact>`).
+**Main Conclusion:** Task `<task-id>` (<title>) released as `<status>` on `<branch>` (`<commit-sha>`, `<pr-url or artifact>`), subject to <limitations or none>.
 
 ### Deliverable Verification
 
-(1) <Atomic primary observation quoting deciding outputs, branch, commit SHA, PR URL, or test receipts inline>.
-(2) Rule compliance check: <none observed, or explicit rule violation disclosure with rule citation>.
--- <Plain-prose warrant linking observations to criterion; name nearest plausible rival or exception and whether (1)-(2) rule it out or leave a qualifier.> --
-(3) So, <earned qualifier>, `<task-id>/AC1` is satisfied.
+(1) <Atomic deliverable observation quoting branch, commit SHA, PR URL, or persisted artifact inline>.
+(2) <Separate atomic verification observation quoting deciding command output, count, or test receipt inline>.
+(3) Rule compliance check: <none observed, or explicit rule violation disclosure with rule citation>.
+-- <Plain-prose warrant linking observations to criterion; name nearest plausible rival, limitation, or exception and whether (1)-(3) rule it out or leave a qualifier.> --
+(4) So, <earned qualifier>, `<task-id>/AC1` is satisfied.
 
-### Handover Context
+### Handover Disposition
 
-- **Limitations and uncertainties:** <untested edges or partial remainder, else none>.
-- **Durable facts:** <settled facts offered to custodian with pointers, else none>.
-- **Next step:** <task-id link | 2-4 sentence resumption prompt | none>.
+(1) Durable facts for custodian (`pauli`): <settled facts with primary pointers, or none>.
+(2) Next step: <pre-existing task-id pointer | 2-4 sentence resumption prompt | none>.
+(3) Daily-note project line (isolated workers only): `<project>: <10-20 word status/find> [-- Next: <pointer or prompt>]`.
+-- Releasing `<task-id>` as `<status>` requires recording durable facts, next-step pickup state, and (when isolated) the daily-note line without mutating shared notes concurrently. --
+(4) So `<task-id>` hands over cleanly under status `<status>`.
 ```
+
+Omit premise `(3)` in `### Handover Disposition` when the daily note is updated directly.
 
 ### 5. Consolidated Daily Note Updates
 
-For touched projects (modified repo files, updated tasks, or major operational/empirical finds): interactive and coordinator sessions write one consolidated bullet per project under `## Today's work`: `- **<project>**: <10-20 word status/find> -- Next: <pointer or prompt>` (omit `-- Next:` when complete). Isolated workers emit these bullets in handover output to avoid write contention.
+For touched projects (modified repo files, updated tasks, or major operational/empirical finds): interactive and coordinator sessions write one consolidated bullet per project under `## Today's work`: `- **<project>**: <10-20 word status/find> -- Next: <pointer or prompt>` (omit `-- Next:` when complete). Isolated workers carry that line as a numbered premise inside `### Handover Disposition` to avoid write contention.
 
 ### 6. Next-Step Determination
 
@@ -63,5 +68,5 @@ Never invent speculative follow-ups: list pre-existing dependent task pointers, 
 
 ### 7. Emit Final Handover Report
 
-- **Non-user-facing agents (workers, subagents, container coordinators)**: Report solely in clean Argdown prose per `ida:premise-check` covering task ID and release status (`done | partial | failed | cancelled | in_progress`), original ask and acceptance criteria with inline quoted primary evidence (branch, commit SHA, PR/artifact link, test/control receipts), limitations, durable facts, next step (`task-id` link | resumption prompt | none), and disclosed rule violations.
+- **Agent-to-agent handovers (workers, subagents, container coordinators)**: Report solely in unfenced prose Argdown blocks per `ida:premise-check` covering task ID and release status (`done | partial | failed | cancelled | in_progress`), original ask and acceptance criteria with atomic sourced primary evidence (branch, commit SHA, PR/artifact link, test/control receipts), limitations, durable facts, next step (`task-id` link | resumption prompt | none), isolated-worker daily-note line, and disclosed rule violations.
 - **User-facing handover directly to the user**: Present a concise Markdown handover covering task, status, outputs, verified evidence, next step, durable facts, limitations, and any disclosed rule violations.

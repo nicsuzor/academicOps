@@ -29,22 +29,21 @@ State what needs doing, never how. Decompose reads and runs nothing; what the re
 5. **Collapse and merge before minting**:
    - **Collapse to session units**: Combine two components one worker would execute in one session against the same material into one node, unless they must run separately (review, verification, merge), wait on external approval, or choosing one alters the other.
    - **Merge into existing work**: Search the graph via `ida:hydrate` (`done` tasks and templates included) and extend overlapping nodes instead of minting siblings. Trim candidates overlapping completed work to what remains unanswered, linking context with `[[wikilinks]]` under `## Pointers`; mint nothing if nothing remains. A node's first execution belongs to that node.
-6. **Wire the graph**: Use verb-led titles (`Implement X`), no personal names, slugged IDs (`<slug>`), and edges per the Three-Purpose Taxonomy: `parent` for hierarchy (no redundant descendant edges), `needs: [<task_id>]` for execution prerequisites, zero `serves` edges on decomposed children (`serves` stays exclusively on the parent Strategic Value Carrier pointing strictly to `type: target` nodes), `[[wikilinks]]` under `## Pointers` for context, and a convergence node where forks rejoin.
+6. **Wire the graph**: Use verb-led titles (`Implement X`), no personal names, slugged IDs (`<slug>`), and edges per the Three-Purpose Taxonomy: `parent` for hierarchy (under a task, exclusively for child tasks that are direct, separate steps of that parent task -- never notes or other non-task nodes; no redundant descendant edges), `needs: [<task_id>]` for execution prerequisites, zero `serves` edges on decomposed children (`serves` stays exclusively on the parent Strategic Value Carrier pointing strictly to `type: target` nodes), `[[wikilinks]]` under `## Pointers` for context, and a convergence node where forks rejoin.
 7. **Write or redraw the plan view**:
    - Select the user-named `plan-view` template, or discover the single `plan-view`-tagged template with `default: true` (halt loudly if missing, untagged, or ambiguous; never hardcode template IDs).
    - Replace any existing `## Plan` section on the objective's top-level task with the stage strip, Mermaid dependency flowchart, workflow template colour legend, and descendant summary table -- showing planned process and structural dependencies only (no status, assignee, progress, or metrics).
 
-## Output Schema
+## Output Contract
 
-```
-- Expanded [PARENT-ID] into N components, F forks, P probes; C collapsed, M merged
-- Premises: <premise> -- held | false | probe TASK-ID; unresolved pointers: <list | none>
-- Capabilities: <need> -- recorded on <executor> | absent | probe TASK-ID
-- Plan view: written | redrawn on [PARENT-ID] via <template-slug>
-- [TASK-ID] - [TITLE] (fork: <branch> | probe for: <fork-id> | -)
-- Merged into [EXISTING-ID]: <candidate> (collapsed | overlap | first run)
-- Halted on: <unresolved blocker> [if applicable]
-```
+Return these fields to calling agents solely in prose Argdown blocks per `ida:premise-check` (one atomic sourced claim per premise; Markdown applies only to direct user replies):
+
+- Expanded `[PARENT-ID]` counts (`N` components, `F` forks, `P` probes; `C` collapsed, `M` merged)
+- Premises (`<premise> -- held | false | probe TASK-ID`) and unresolved pointers (`<list | none>`)
+- Capabilities (`<need> -- recorded on <executor> | absent | probe TASK-ID`)
+- Plan view status (`written | redrawn on [PARENT-ID] via <template-slug>`)
+- Minted nodes (`[TASK-ID] - [TITLE] (fork | probe | -)`) and merged candidates (`[EXISTING-ID]: <candidate> (collapsed | overlap | first run)`)
+- Halted blocker (`<unresolved blocker>`, if applicable)
 
 ## Constraints
 

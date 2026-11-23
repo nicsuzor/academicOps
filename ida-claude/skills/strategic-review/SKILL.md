@@ -39,7 +39,7 @@ Every reviewer judges proportion within its lens: whether the artifact builds mo
 - **Dialectical rounds**:
   - Evaluate specialist reviews strictly on the face of the record per `ida:premise-check` (zero _de novo_ factual re-checking of primary sources; remand unsupported or conflicting factual claims to the reviewer).
   - Verify warrants on the record: documentation (`README.md`, knowledge notes) proves only what the text says, not live working state (require completed verification evidence or quoted live state, else mark an open question); cited PRs or code are authoritative only if shown current and backed by a specification or decision record.
-  - When reviewers clash (e.g. compliance vs. strategic parsimony), cross-examine them directly with each other's critiques to force defense, concession, or synthesis without softening tension; intervene immediately on altitude drift.
+  - When reviewers clash (e.g. compliance vs. strategic parsimony), cross-examine them directly in prose Argdown blocks per `ida:premise-check` with each other's critiques to force defense, concession, or synthesis without softening tension; intervene immediately on altitude drift.
 
 ### 4. Reconcile Findings
 
@@ -54,7 +54,7 @@ Compile calibration (chosen tier, rounds, target altitude), itemized self-fixes,
 
 ### 5. Action and Reporting
 
-- **Internal handbacks**: Return agent-to-agent review handbacks solely in clean Argdown prose per `ida:premise-check` (covering calibration, applied/suggested fixes, required changes, reconciled findings, and overall verdict).
+- **Internal agent-to-agent messages**: Send all briefings, cross-examinations, and review handbacks solely in unfenced prose Argdown blocks per `ida:premise-check` (covering calibration, applied/suggested fixes, required changes, reconciled findings, and overall verdict).
 - **Published / user-facing outputs**: Use structured Markdown (`### Reviewer Self-Fixes Applied`, `### Suggested Fixes`, `### Required Changes`, and the synthesis table) strictly for published PR/issue comments (`comment`) or user-facing outputs.
 - **`comment` / `fix`**: Verify `data-boundaries` against destination visibility before posting comments or pushing commits (`fix` applies straightforward mechanical remedies).
 - Record the final verdict and evidence on the artifact's task record.

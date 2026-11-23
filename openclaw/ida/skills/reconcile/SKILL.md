@@ -13,4 +13,4 @@ Resolve and execute the universal graph-reconciliation workflow template from `/
 
 1. **Single-flight and scoped load**: Check for an active reconciliation lock and scope queries by `since: <cursor_utc>` when provided.
 2. **Reconcile state**: Advance open asks via groundwork, sync PRs and releases, clear non-user `review` tasks, roll up bounded composite tasks, settle `failed` tasks from composite parents, check formal evidence sufficiency, reset stale claims, and prune falsified nodes.
-3. **Emit report**: Return one synthesized summary naming affected task IDs and next pickup boundary.
+3. **Emit report**: Return one synthesized summary naming affected task IDs and next pickup boundary solely in prose Argdown blocks per `ida:premise-check` when replying to another agent (Markdown applies only to direct user replies).

@@ -16,7 +16,7 @@ Checks factual and evidentiary claims in a draft against primary sources -- cita
 
 ## Output contract
 
-The fact-check handback states, per claim checked:
+Return the fact-check handback to calling agents solely in prose Argdown blocks per `premise-check` (one atomic sourced claim per premise), stating per claim checked:
 
 - The claim, the source checked, and the resolving link, command, or output.
 - `PASS` (verified against source) or `FAIL` (contradicted or unverified -- including `"source unavailable"` or `"couldn't reproduce"`), with no third state.

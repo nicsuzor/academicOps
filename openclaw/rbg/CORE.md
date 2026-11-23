@@ -4,4 +4,3 @@
 - **Universal Baseline**: Universal axioms form the inviolable constitutional baseline governing all operations; narrower rules may add obligations but never weaken or override an axiom.
 - **Scope of Authority**: Operate strictly within delegated jurisdiction; acting beyond assigned scope (_ultra vires_) is prohibited.
 - **Fail-Fast**: Halt verbatim on infrastructure failures, missing dependencies, or unconfirmed defaults; workarounds and silent fallbacks are prohibited.
-- **Compliance Review**: Route compliance adjudication to `rbg`, evaluating artifacts independently against axioms, project rules, data boundaries, and the enforcement pyramid.

@@ -1,13 +1,13 @@
 ---
 name: argdown-toulmin
-description: The formal grammar and presentation standard for standalone `.argdown` documents in Chained Toulmin Argdown -- statements, numbered premises, warrants in the inference bar, chaining, relations, `{basis, pointer, source, reason}` metadata, diagnostic tags, granularity, layout, and `@argdown/cli` validation. Load before writing, editing, or parsing any standalone `.argdown` file (`argument-extraction`, `argument-audit`, `argument-map`). Exclude for inter-agent reports and handbacks (use `premise-check`).
+description: The formal grammar and presentation standard for standalone `.argdown` documents in Chained Toulmin Argdown -- statements, numbered premises, warrants in the inference bar, chaining, relations, `{basis, pointer, source, reason}` metadata, diagnostic tags, granularity, layout, and `@argdown/cli` validation. Load before writing, editing, or parsing any standalone `.argdown` file (`argument-extraction`, `argument-audit`, `argument-map`). Exclude for agent-to-agent communication and handbacks (use `premise-check`).
 ---
 
 # Chained Toulmin Argdown
 
 How a standalone formal Argdown document is written. Every standalone `.argdown` file authored in `argument-extraction`, `argument-audit`, or `argument-map` follows this standard.
 
-Inter-agent reports, task handbacks, and formal compliance evaluations do **not** use this formal `.argdown` dialect; they follow [`../premise-check/SKILL.md`](../premise-check/SKILL.md) (clean, human-readable Argdown prose with inline quoted evidence and natural punctuation -- without `{metadata}` blocks, comma bans, underscore escaping, or CLI validation).
+Agent-to-agent communication, task handbacks, and formal compliance evaluations do **not** use this formal `.argdown` dialect; they follow [`../premise-check/SKILL.md`](../premise-check/SKILL.md) (unfenced prose Argdown blocks with every premise broken out as its own sourced claim and natural punctuation -- without `{metadata}` blocks, comma bans, underscore escaping, or CLI validation).
 
 ## Document
 
@@ -53,7 +53,7 @@ Attach a relation to the argument that concludes or first states the claim, neve
 - `source`: the verbatim quote (line breaks joined by single spaces, original markup kept) or the exact observed value. A derived intermediate conclusion has no `source` unless the text states it verbatim.
 - `reason`: for `"assumed"` only, the gap the item bridges. An assumed item has no `pointer` or `source`.
 
-For inter-agent reports, task handbacks, and evaluations, omit `{metadata}` blocks and write clean, human-readable Argdown prose with inline quoted evidence and locations per [`../premise-check/SKILL.md`](../premise-check/SKILL.md).
+For agent-to-agent communication, task handbacks, and evaluations, omit `{metadata}` blocks and write unfenced prose Argdown blocks with every premise broken out as its own sourced claim per [`../premise-check/SKILL.md`](../premise-check/SKILL.md).
 
 An `"observed"` or `"reported-by"` item quotes its deciding value or text (`status: MERGED`, `p = 0.004`) inline or in `source`, because a bare pointer shows only that something exists.
 
@@ -114,7 +114,7 @@ model:
 
 ## Parser compliance (standalone `.argdown` files only)
 
-These mechanical constraints apply strictly to standalone `.argdown` documents validated by `@argdown/cli` (`argument-extraction`, `argument-audit`, `argument-map`), never to inter-agent `premise-check` reports:
+These mechanical constraints apply strictly to standalone `.argdown` documents validated by `@argdown/cli` (`argument-extraction`, `argument-audit`, `argument-map`), never to agent-to-agent `premise-check` messages:
 
 - Keep each statement (`(1) [Title]: text #tag {metadata}`) on one line, or put its `{metadata}` alone on an indented continuation line. The parser rejects a tag after the metadata.
 - Write inference-bar text without commas, because the parser splits bar text on commas into separate rules.
