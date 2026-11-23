@@ -3476,3 +3476,695 @@ def test_armed_direction_brief_blocks_send_message_until_no_claim_verdict_disarm
     assert span_pass["premise_check.verdict"] == "PASS"
     assert span_pass["premise_check.no_claim"] is True
     assert pcg.premise_check_handler(send_pass_ctx) is None
+
+
+def _claims_from_notice(result: dispatch.Result) -> list[str]:
+    """Extract --claim values from a hook notice/refusal Result's verdict commands."""
+    claims: list[str] = []
+    for line in result.inject_text.splitlines()[1:]:
+        tokens = shlex.split(line)
+        if "--claim" in tokens:
+            claims.append(tokens[tokens.index("--claim") + 1])
+    return claims
+
+
+def _wrap_claude_handback(
+    sender: str,
+    raw_report: str,
+    *,
+    with_harness_warning: bool = True,
+    envelope_id: str = "",
+) -> str:
+    """Wrap raw report text like Claude Code <agent-message> handback delivery."""
+    escaped = raw_report.replace("<", "<\\")
+    indented = "\n".join(f"  {line}" for line in escaped.splitlines())
+    harness_line = (
+        "  [harness: subagent output matched instruction-shaped pattern(s): ignore previous]\n"
+        if with_harness_warning
+        else ""
+    )
+    id_attr = f' id="{envelope_id}"' if envelope_id else ""
+    return (
+        f'<agent-message from="{sender}"{id_attr}>\n'
+        "[Subagent hand-back] The text below is a subagent's message to you, "
+        "sent via SubagentHandback.\n"
+        "The report follows:\n"
+        f"{harness_line}{indented}\n"
+        "</agent-message>"
+    )
+
+
+@pytest.mark.parametrize("arrival_order", ["handback_first", "prompt_first"])
+def test_indented_harness_wrapped_handback_dedups_both_orders_and_unblocks(
+    arrival_order: str, monkeypatch
+):
+    """Indented, harness-annotated, <-escaped <agent-message> matches SubagentHandback in both arrival orders."""
+    import handlers
+
+    session_id = f"sess-indented-dedup-{arrival_order}"
+    child_id = "child-indented-1"
+    report_text = (
+        "Verified <tag> behavior across runs.\n\n"
+        "```argdown\n"
+        "(1) Direct observation `path:1` with <check>.\n"
+        "-- Pattern check --\n"
+        "(2) So, fix holds.\n"
+        "```"
+    )
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    monkeypatch.setattr(hg, "claude_code_tracer", tracer)
+
+    assert (
+        handlers.post_tool(
+            _post_tool_ctx_for(
+                session_id,
+                tool_input={"description": "Run check"},
+                tool_response={"isAsync": True, "status": "async_launched", "agentId": child_id},
+                tool="Agent",
+                tool_use_id="toolu_spawn_indent",
+            )
+        )
+        is None
+    )
+
+    hb_ctx = _post_tool_ctx_for(
+        session_id,
+        tool_input={"message": report_text},
+        tool_response={"success": True, "message": "Report delivered to your caller."},
+        tool="SubagentHandback",
+        agent_id=child_id,
+        tool_use_id="toolu_hb_indent",
+    )
+    ups_ctx = _prompt_ctx(session_id, _wrap_claude_handback(child_id, report_text))
+
+    if arrival_order == "handback_first":
+        assert handlers.post_tool(hb_ctx) is None
+        ups_res = handlers.user_prompt_submit(ups_ctx)
+        assert ups_res is not None
+    else:
+        ups_res = handlers.user_prompt_submit(ups_ctx)
+        assert ups_res is not None
+        assert handlers.post_tool(hb_ctx) is None
+
+    notice_claims = _claims_from_notice(ups_res)
+    blk = pcg.premise_check_handler(_agent_dispatch_ctx_for(session_id, tool="SendMessage"))
+    assert blk is not None and blk.kind == dispatch.Kind.REFUSE
+    blocked_claims = _claims_from_notice(blk)
+    assert len(notice_claims) == 1
+    assert blocked_claims == notice_claims
+    assert len(tracer.exported) == 1
+    claim_id = notice_claims[0]
+
+    res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=claim_id,
+        verdict="PASS",
+        reason=_pass_reason(claim_id),
+        tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
+    )
+    assert res["ok"] is True
+    assert pcg.is_armed(session_id) is False
+    assert (
+        pcg.premise_check_handler(_agent_dispatch_ctx_for(session_id, tool="SendMessage")) is None
+    )
+
+
+def test_indented_null_claim_agent_message_auto_disarms():
+    """Indented [no claim] wrapped in <agent-message> + [harness: ...] auto-disarms a matching claim."""
+    import handlers
+
+    session_id = "sess-indented-null"
+    pre_arm = handlers.user_prompt_submit(
+        _prompt_ctx(
+            session_id,
+            '<cross-session-message from="worker-1" id="claim-null-target">Preliminary status report.</cross-session-message>',
+        )
+    )
+    assert pre_arm is not None
+    assert pcg.is_armed(session_id) is True
+
+    null_report = "```argdown\n===\nasks: none\n===\n\n[no claim]\n```"
+    ups_ctx = _prompt_ctx(
+        session_id,
+        _wrap_claude_handback("worker-1", null_report, envelope_id="claim-null-target"),
+    )
+    assert handlers.user_prompt_submit(ups_ctx) is None
+    assert pcg.is_armed(session_id) is False
+    assert (
+        pcg.premise_check_handler(_agent_dispatch_ctx_for(session_id, tool="SendMessage")) is None
+    )
+
+
+@pytest.mark.parametrize("first_channel", ["handback", "prompt"])
+def test_delayed_twin_arrival_after_verdict_disarm_does_not_rearm_or_block(first_channel: str):
+    """Judging the first-arriving handback channel prevents the slower twin channel from re-arming."""
+    import handlers
+
+    session_id = f"sess-post-verdict-twin-{first_channel}"
+    child_id = "child-twin-post"
+    report_text, reason_tmpl = _valid_report_argdown("ask-twin")
+
+    handlers.post_tool(
+        _post_tool_ctx_for(
+            session_id,
+            tool_input={"description": "Twin test"},
+            tool_response={"isAsync": True, "status": "async_launched", "agentId": child_id},
+            tool="Agent",
+            tool_use_id="toolu_twin_spawn",
+        )
+    )
+    hb_ctx = _post_tool_ctx_for(
+        session_id,
+        tool_input={"message": report_text},
+        tool_response={"success": True, "message": "Report delivered to your caller."},
+        tool="SubagentHandback",
+        agent_id=child_id,
+        tool_use_id="toolu_twin_hb",
+    )
+    ups_ctx = _prompt_ctx(session_id, _wrap_claude_handback(child_id, report_text))
+
+    if first_channel == "handback":
+        handlers.post_tool(hb_ctx)
+        blk = pcg.premise_check_handler(_agent_dispatch_ctx_for(session_id, tool="SendMessage"))
+        assert blk is not None
+        claim_id = _claims_from_notice(blk)[0]
+    else:
+        ups_res = handlers.user_prompt_submit(ups_ctx)
+        assert ups_res is not None
+        claim_id = _claims_from_notice(ups_res)[0]
+
+    res = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=claim_id,
+        verdict="PASS",
+        reason=reason_tmpl.format(claim_id=claim_id),
+        tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
+    )
+    assert res["ok"] is True
+    assert pcg.is_armed(session_id) is False
+
+    # Delayed twin arrival after disarm must neither notify nor re-arm
+    if first_channel == "handback":
+        assert handlers.user_prompt_submit(ups_ctx) is None
+    else:
+        assert handlers.post_tool(hb_ctx) is None
+
+    assert pcg.is_armed(session_id) is False
+    assert (
+        pcg.premise_check_handler(_agent_dispatch_ctx_for(session_id, tool="SendMessage")) is None
+    )
+
+
+def test_resumed_subagent_identical_body_arms_distinct_claim_after_verdict():
+    """Resuming a child via SendMessage allows a subsequent identical-body SubagentHandback to arm cleanly."""
+    import handlers
+
+    session_id = "sess-resume-identical"
+    child_id = "child-resume-1"
+    report_text, reason_tmpl = _valid_report_argdown("ask-res-1")
+
+    handlers.post_tool(
+        _post_tool_ctx_for(
+            session_id,
+            tool_input={"description": "Initial"},
+            tool_response={"isAsync": True, "status": "async_launched", "agentId": child_id},
+            tool="Agent",
+            tool_use_id="toolu_res_spawn",
+        )
+    )
+    # Turn 1 delivery + single-claim check + verdict
+    handlers.post_tool(
+        _post_tool_ctx_for(
+            session_id,
+            tool_input={"message": report_text},
+            tool_response={"success": True},
+            tool="SubagentHandback",
+            agent_id=child_id,
+            tool_use_id="toolu_res_hb1",
+        )
+    )
+    ups_res = handlers.user_prompt_submit(
+        _prompt_ctx(session_id, _wrap_claude_handback(child_id, report_text))
+    )
+    assert ups_res is not None
+    cids1 = _claims_from_notice(ups_res)
+    assert len(cids1) == 1
+    cid1 = cids1[0]
+    assert (
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id=cid1,
+            verdict="PASS",
+            reason=reason_tmpl.format(claim_id=cid1),
+            tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
+        )["ok"]
+        is True
+    )
+    assert pcg.is_armed(session_id) is False
+
+    # Resume child cleanly via SendMessage
+    handlers.post_tool(
+        _post_tool_ctx_for(
+            session_id,
+            tool_input={"to": child_id, "message": "[no claim]"},
+            tool_response={"success": True, "resumedAgentId": child_id},
+            tool="SendMessage",
+            tool_use_id="toolu_res_sm",
+        )
+    )
+    # Resumed child submits identical report text on Turn 2
+    handlers.post_tool(
+        _post_tool_ctx_for(
+            session_id,
+            tool_input={"message": report_text},
+            tool_response={"success": True},
+            tool="SubagentHandback",
+            agent_id=child_id,
+            tool_use_id="toolu_res_hb2",
+        )
+    )
+    assert pcg.is_armed(session_id) is True
+    blk2 = pcg.premise_check_handler(_agent_dispatch_ctx_for(session_id, tool="SendMessage"))
+    assert blk2 is not None
+    cids2 = _claims_from_notice(blk2)
+    assert len(cids2) == 1
+    assert cids2[0] != cid1
+
+
+def test_foreground_agent_text_dedups_silent_handback_and_notifies_once():
+    """Foreground PostToolUse(Agent) carrying text promotes silent SubagentHandback notice once without twin."""
+    import handlers
+
+    session_id = "sess-fg-text-dedup"
+    child_id = "child-fg-text"
+    report_text, reason_tmpl = _valid_report_argdown("ask-fg-text")
+
+    assert (
+        handlers.post_tool(
+            _post_tool_ctx_for(
+                session_id,
+                tool_input={"description": "FG task"},
+                tool_response={"status": "async_launched", "agentId": child_id},
+                tool="Agent",
+                tool_use_id="toolu_fg_pre",
+            )
+        )
+        is None
+    )
+    assert (
+        handlers.post_tool(
+            _post_tool_ctx_for(
+                session_id,
+                tool_input={"message": report_text},
+                tool_response={"success": True},
+                tool="SubagentHandback",
+                agent_id=child_id,
+                tool_use_id="toolu_fg_hb",
+            )
+        )
+        is None
+    )
+
+    fg_res = handlers.post_tool(
+        _post_tool_ctx_for(
+            session_id,
+            tool_input={"description": "FG task"},
+            tool_response={
+                "status": "completed",
+                "agentId": child_id,
+                "content": [{"type": "text", "text": report_text}],
+            },
+            tool="Agent",
+            tool_use_id="toolu_fg_ret",
+        )
+    )
+    assert fg_res is not None
+    cids = _claims_from_notice(fg_res)
+    assert len(cids) == 1
+    cid = cids[0]
+
+    # Duplicate prompt arrival for already-notified active claim does not double-emit or double-arm
+    assert (
+        handlers.user_prompt_submit(
+            _prompt_ctx(session_id, _wrap_claude_handback(child_id, report_text))
+        )
+        is None
+    )
+    blk = pcg.premise_check_handler(_agent_dispatch_ctx_for(session_id, tool="SendMessage"))
+    assert blk is not None and _claims_from_notice(blk) == [cid]
+
+    assert (
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id=cid,
+            verdict="PASS",
+            reason=reason_tmpl.format(claim_id=cid),
+            tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
+        )["ok"]
+        is True
+    )
+    assert pcg.is_armed(session_id) is False
+
+
+def test_failed_subagent_handback_leaves_caller_unarmed_until_retry_succeeds():
+    """Failed PostToolUse(SubagentHandback) leaves caller unarmed; successful retry arms cleanly."""
+    import handlers
+
+    session_id = "sess-failed-hb"
+    child_id = "child-fail-1"
+    report_text, _ = _valid_report_argdown("ask-fail")
+
+    handlers.post_tool(
+        _post_tool_ctx_for(
+            session_id,
+            tool_input={"description": "Fail test"},
+            tool_response={"isAsync": True, "status": "async_launched", "agentId": child_id},
+            tool="Agent",
+            tool_use_id="toolu_fail_spawn",
+        )
+    )
+    assert (
+        handlers.post_tool(
+            _post_tool_ctx_for(
+                session_id,
+                tool_input={"message": report_text},
+                tool_response={"success": False, "error": "permission denied"},
+                tool="SubagentHandback",
+                agent_id=child_id,
+                tool_use_id="toolu_fail_hb",
+            )
+        )
+        is None
+    )
+    assert pcg.is_armed(session_id) is False
+    assert (
+        pcg.premise_check_handler(_agent_dispatch_ctx_for(session_id, tool="SendMessage")) is None
+    )
+
+    assert (
+        handlers.post_tool(
+            _post_tool_ctx_for(
+                session_id,
+                tool_input={"message": report_text},
+                tool_response={"success": True, "message": "Report delivered."},
+                tool="SubagentHandback",
+                agent_id=child_id,
+                tool_use_id="toolu_ok_hb",
+            )
+        )
+        is None
+    )
+    assert pcg.is_armed(session_id) is True
+
+
+def test_failed_sendmessage_does_not_arm_peer_subagent():
+    """Failed peer PostToolUse(SendMessage) must not silently arm target subagent slot."""
+    import handlers
+
+    session_id = "sess-failed-peer-sm"
+    sender_id = "sub-sender-fail"
+    target_id = "sub-target-fail"
+    report_text, _ = _valid_report_argdown("ask-sm-fail")
+
+    for cid in (sender_id, target_id):
+        handlers.post_tool(
+            _post_tool_ctx_for(
+                session_id,
+                tool_input={"description": f"spawn {cid}"},
+                tool_response={"isAsync": True, "status": "async_launched", "agentId": cid},
+                tool="Agent",
+                tool_use_id=f"toolu_spawn_{cid}",
+            )
+        )
+
+    assert (
+        handlers.post_tool(
+            _post_tool_ctx_for(
+                session_id,
+                tool_input={"to": target_id, "message": report_text},
+                tool_response={"success": False, "is_error": True},
+                tool="SendMessage",
+                agent_id=sender_id,
+                tool_use_id="toolu_failed_peer_sm",
+            )
+        )
+        is None
+    )
+    assert pcg.is_armed(session_id, agent_id=target_id) is False
+
+
+def test_failed_sendmessage_does_not_supersede_prior_disarmed_claim():
+    """Failed caller SendMessage must not supersede prior disarmed claim to let delayed twins re-arm."""
+    import handlers
+
+    session_id = "sess-failed-sm-supersede"
+    child_id = "child-sm-sup"
+    report_text, reason_tmpl = _valid_report_argdown("ask-sm-sup")
+
+    handlers.post_tool(
+        _post_tool_ctx_for(
+            session_id,
+            tool_input={"description": "Worker"},
+            tool_response={"isAsync": True, "status": "async_launched", "agentId": child_id},
+            tool="Agent",
+            tool_use_id="toolu_sm_sup_spawn",
+        )
+    )
+    handlers.post_tool(
+        _post_tool_ctx_for(
+            session_id,
+            tool_input={"message": report_text},
+            tool_response={"success": True},
+            tool="SubagentHandback",
+            agent_id=child_id,
+            tool_use_id="toolu_sm_sup_hb1",
+        )
+    )
+    blk = pcg.premise_check_handler(_agent_dispatch_ctx_for(session_id, tool="SendMessage"))
+    assert blk is not None
+    cid1 = _claims_from_notice(blk)[0]
+    assert (
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id=cid1,
+            verdict="PASS",
+            reason=reason_tmpl.format(claim_id=cid1),
+            tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
+        )["ok"]
+        is True
+    )
+
+    assert (
+        handlers.post_tool(
+            _post_tool_ctx_for(
+                session_id,
+                tool_input={"to": child_id, "message": "follow-up"},
+                tool_response={"success": False, "is_error": True},
+                tool="SendMessage",
+                tool_use_id="toolu_sm_sup_fail",
+            )
+        )
+        is None
+    )
+    # Delayed twin arrival still must not re-arm when SendMessage failed
+    assert (
+        handlers.user_prompt_submit(
+            _prompt_ctx(session_id, _wrap_claude_handback(child_id, report_text))
+        )
+        is None
+    )
+    assert pcg.is_armed(session_id) is False
+
+
+def test_task_notification_waiting_pointer_leaves_gate_unarmed():
+    """Interim <task-notification> waiting on SubagentHandback leaves gate unarmed."""
+    import handlers
+
+    waiting_notif = (
+        "<task-notification>\n"
+        "<task-id>agent-wait-1</task-id>\n"
+        "<status>running</status>\n"
+        "<result>This agent has not reported yet: it is waiting on its own background work "
+        "and will deliver its report through SubagentHandback when that finishes.</result>\n"
+        "</task-notification>"
+    )
+    assert handlers.user_prompt_submit(_prompt_ctx("sess-notif-wait", waiting_notif)) is None
+    assert pcg.is_armed("sess-notif-wait") is False
+
+
+def test_task_notification_long_sender_delivered_pointer_leaves_gate_unarmed():
+    """<task-notification> delivered SubagentHandback pointer with long sender leaves gate unarmed."""
+    import handlers
+
+    long_sender = "worker-" + ("x" * 150)
+    long_delivered_notif = (
+        "<task-notification>\n"
+        "<task-id>agent-long-1</task-id>\n"
+        "<status>completed</status>\n"
+        f'<result>This agent\'s report was delivered to you as a message from "{long_sender}" '
+        "(its SubagentHandback call). Read it there; it is not repeated here.</result>\n"
+        "</task-notification>"
+    )
+    assert handlers.user_prompt_submit(_prompt_ctx("sess-notif-long", long_delivered_notif)) is None
+    assert pcg.is_armed("sess-notif-long") is False
+
+
+def test_agent_message_quoting_pointer_prose_still_arms_gate():
+    """Genuine report inside <agent-message> quoting pointer prose still arms the gate."""
+    import handlers
+
+    quoted_report = (
+        "Root cause report: `<task-notification>` emitted "
+        "`This agent has not reported yet: it is waiting on its own background work and will "
+        "deliver its report through SubagentHandback when that finishes.` instead of a report."
+    )
+    quoted_msg = _wrap_claude_handback("child-reporter", quoted_report, with_harness_warning=False)
+    res = handlers.user_prompt_submit(_prompt_ctx("sess-quote-pointer", quoted_msg))
+    assert res is not None and len(_claims_from_notice(res)) == 1
+    assert pcg.is_armed("sess-quote-pointer") is True
+
+
+def test_repeated_task_notification_same_sender_suppressed_until_resume():
+    """Repeated <task-notification> from same task-id does not re-arm after verdict until resumed."""
+    import handlers
+
+    session_id = "sess-notif-repeat"
+    task_id = "agent-bg-repeat"
+    report_text, reason_tmpl = _valid_report_argdown("ask-notif-rep")
+    notif = (
+        f"<task-notification>\n<task-id>{task_id}</task-id>\n<status>completed</status>\n"
+        f"<result>{report_text}</result>\n</task-notification>"
+    )
+
+    first_res = handlers.user_prompt_submit(_prompt_ctx(session_id, notif))
+    assert first_res is not None
+    cid1 = _claims_from_notice(first_res)[0]
+    assert (
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id=cid1,
+            verdict="PASS",
+            reason=reason_tmpl.format(claim_id=cid1),
+            tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
+        )["ok"]
+        is True
+    )
+
+    assert handlers.user_prompt_submit(_prompt_ctx(session_id, notif)) is None
+    assert pcg.is_armed(session_id) is False
+
+    assert (
+        handlers.post_tool(
+            _post_tool_ctx_for(
+                session_id,
+                tool_input={"description": "Resume bg", "resume": task_id},
+                tool_response={"isAsync": True, "status": "async_launched", "agentId": task_id},
+                tool="Agent",
+                tool_use_id="toolu_resume_bg",
+            )
+        )
+        is None
+    )
+    second_res = handlers.user_prompt_submit(_prompt_ctx(session_id, notif))
+    assert second_res is not None
+    cids2 = _claims_from_notice(second_res)
+    assert len(cids2) == 1 and cids2[0] != cid1
+    assert pcg.is_armed(session_id) is True
+
+
+def test_named_subagent_agent_message_dedups_with_handback_via_registered_name():
+    """Named subagent <agent-message from='name'> matches SubagentHandback agentId via spawn registry."""
+    import handlers
+
+    session_id = "sess-named-dedup"
+    child_id = "agent-named-uuid"
+    child_name = "worker-alpha"
+    report_text, reason_tmpl = _valid_report_argdown("ask-named")
+
+    handlers.post_tool(
+        _post_tool_ctx_for(
+            session_id,
+            tool_input={"description": "Named worker", "name": child_name},
+            tool_response={"isAsync": True, "status": "async_launched", "agentId": child_id},
+            tool="Agent",
+            tool_use_id="toolu_named_spawn",
+        )
+    )
+    handlers.post_tool(
+        _post_tool_ctx_for(
+            session_id,
+            tool_input={"message": report_text},
+            tool_response={"success": True},
+            tool="SubagentHandback",
+            agent_id=child_id,
+            tool_use_id="toolu_named_hb",
+        )
+    )
+
+    ups_res = handlers.user_prompt_submit(
+        _prompt_ctx(
+            session_id, _wrap_claude_handback(child_name, report_text, with_harness_warning=False)
+        )
+    )
+    assert ups_res is not None
+    notice_cids = _claims_from_notice(ups_res)
+    assert len(notice_cids) == 1
+    assert (
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id=notice_cids[0],
+            verdict="PASS",
+            reason=reason_tmpl.format(claim_id=notice_cids[0]),
+            tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
+        )["ok"]
+        is True
+    )
+    assert pcg.is_armed(session_id) is False
+
+
+def test_multi_claim_block_lists_all_pending_claims_and_policy_markers():
+    """Multi-claim arm and block notices use consistent count labeling and list every claim command."""
+    import handlers
+
+    session_id = "sess-multi-blk"
+    batch_res = handlers.post_tool_batch(
+        dispatch.HookContext(
+            client="claude",
+            event="PostToolBatch",
+            session_id=session_id,
+            agent_type="ida:ida",
+            hooks_dir=_HOOKS_DIR,
+            tool_calls=(
+                {
+                    "tool_name": "Agent",
+                    "tool_use_id": "call-m1",
+                    "tool_input": {"description": "Audit auth module"},
+                    "tool_response": {
+                        "status": "completed",
+                        "content": [{"type": "text", "text": "Auth finding one."}],
+                    },
+                },
+                {
+                    "tool_name": "Agent",
+                    "tool_use_id": "call-m2",
+                    "tool_input": {"description": "Verify hook routing"},
+                    "tool_response": {
+                        "status": "completed",
+                        "content": [{"type": "text", "text": "Hook finding two."}],
+                    },
+                },
+            ),
+        )
+    )
+    assert batch_res is not None
+    expected_label = "2 claims (Audit auth module, Verify hook routing)"
+    assert expected_label in batch_res.inject_text
+    assert expected_label in (batch_res.user_text or "")
+
+    blk = pcg.premise_check_handler(_agent_dispatch_ctx_for(session_id, tool="SendMessage"))
+    assert blk is not None and blk.kind == dispatch.Kind.REFUSE
+    lines = blk.inject_text.splitlines()
+    assert lines[0].startswith(_POLICY["premise_check"]["armed_indicator"])
+    assert expected_label in lines[0]
+    assert expected_label in (blk.user_text or "")
+    assert _claims_from_notice(blk) == ["Audit auth module", "Verify hook routing"]
