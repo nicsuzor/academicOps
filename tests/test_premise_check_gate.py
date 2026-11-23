@@ -2400,7 +2400,8 @@ def test_agy_subagent_preinvocation_delivers_honesty_reminder(tmp_path, monkeypa
     res = agy_session_pointer(ctx)
     assert res is not None
     # Must contain honesty reminder and premise-check pointer
-    assert "Your reply to this message is a report" in res.inject_text
+    expected_honesty, _ = dispatch.load_message_pair(Path("plugins/ida/hooks"), "honesty")
+    assert expected_honesty in res.inject_text
     assert "ida:premise-check" in res.inject_text
     assert f"caller_session: {parent_sess}" in res.inject_text
 
