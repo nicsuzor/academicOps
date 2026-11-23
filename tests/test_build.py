@@ -1255,3 +1255,24 @@ def test_unknown_client_in_marketplace_is_a_hard_error(tmp_path):
 def test_empty_client_list_in_marketplace_is_a_hard_error(tmp_path):
     with pytest.raises(BuildError, match="clients"):
         load_marketplace_toml(_fixture_marketplace(tmp_path, "[]"))
+
+
+def test_rbg_auto_mode_manifest_emitted_for_claude_only(tmp_path):
+    """Curated Claude Code autoMode rules ship in rbg-claude/auto-mode.json
+    and are not emitted to agy."""
+    dist_root = tmp_path / "dist"
+    build_all(
+        PROJECT_ROOT,
+        dist_root,
+        marketplace_path=REAL_MARKETPLACE,
+        clients=("claude", "agy"),
+        plugins=["rbg"],
+        version=VERSION,
+    )
+    claude_auto_mode = dist_root / "rbg-claude" / "auto-mode.json"
+    assert claude_auto_mode.is_file()
+    data = json.loads(claude_auto_mode.read_text(encoding="utf-8"))
+    assert data["allow"]
+    assert data["soft_deny"]
+    assert data["hard_deny"]
+    assert not (dist_root / "rbg-agy" / "auto-mode.json").exists()

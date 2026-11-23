@@ -108,6 +108,7 @@ A client adapter is the only place a client-specific workaround may live.
 - `manifest/plugin.json` -> `.claude-plugin/plugin.json`
 - `manifest/hooks.json` -> `hooks/hooks.json` (the only path Claude Code reads)
 - `manifest/mcp.json` -> `.mcp.json`
+- `manifest/auto-mode.json` -> `auto-mode.json` (curated `autoMode` classifier rules)
 
 `build/clients/openclaw.py`:
 

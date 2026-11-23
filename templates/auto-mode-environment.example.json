@@ -1,0 +1,15 @@
+{
+  "autoMode": {
+    "environment": [
+      "$defaults",
+      "**Organization**: <your-organization-or-personal-account>",
+      "**Source control**: Trusted repositories include the session repo plus all repositories under <your-github-org-or-user> and any explicitly designated repos (such as <org>/<repo>); work inside these repos is inside the trust boundary, while repositories outside them reach an external audience and require explicit user approval per item.",
+      "**Repository visibility**: Treat public repositories under <your-github-org-or-user> (for example public framework repos) as public destinations subject to strict scrubbing of private hosts, personal domains, deployment-only agent names, live telemetry endpoints, and PKB note/task/session IDs. Treat private repositories under <your-github-org-or-user> as private.",
+      "**Trusted internal domains**: <your-pkb-mcp-domain>, <your-otel-domain>, <your-tailnet-domain>",
+      "**Key internal services**: The `services` MCP portal (`portal_codemode_search`, `portal_codemode_execute`) fronts user-owned internal services inside the trust boundary: `pkb` (private knowledge base -- agents routinely read, search, create, update, claim, and release notes and tasks here), `phoenix` (internal OpenTelemetry/Arize trace store for read-only diagnostics), `polecat` (container worker orchestration), and `email` (mailbox reads, searches, and internal draft creation only -- outbound email sending is categorically prohibited). Internal OpenTelemetry collector (<your-otel-url>) is internal observability infrastructure.",
+      "**Internal agent coordination**: `SendMessage` targets prefixed `bridge:session_*` are internal agent sessions belonging to the user's own crew, not external recipients.",
+      "**Designated worktree root**: $POLECAT_HOME/worktrees is an authorized local workspace directory outside the active repository for git worktrees and clones.",
+      "**Host containment**: On developer machines, omit or adjust this entry; inside polecat or cloud containers, declare container isolation, egress allow-list, and which cloud project or cluster identity (if any) the worker is authorized to operate."
+    ]
+  }
+}
