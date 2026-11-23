@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.13.0](https://github.com/nicsuzor/academicOps/compare/v1.12.0...v1.13.0) (2026-11-23)
+
+
+### Features
+
+* **ida:** stamp origin and pull unhandled completions on timer in /dispatch ([abdea3b](https://github.com/nicsuzor/academicOps/commit/abdea3b6ab98170e10a02749a346d9e70280e137))
+* **rbg:** add positive autoMode allow rules and hard_deny outbound email ban ([a46d929](https://github.com/nicsuzor/academicOps/commit/a46d92900069b9426f8b6f275904856fc5cd08d7))
+* **rbg:** curate Claude Code autoMode classifier ruleset and decouple from always-on axiom slogans ([e2a9fc3](https://github.com/nicsuzor/academicOps/commit/e2a9fc36f369f5db3cb80e199a6eea434e731f0b))
+* **rbg:** decouple Claude Code autoMode rules from always-on axiom slogans ([f9933fb](https://github.com/nicsuzor/academicOps/commit/f9933fb3fdb72364eb03d005666bb4f157411e1f))
+
+
+### Bug Fixes
+
+* **agy:** collapse to single headless-bare profile and fix PR [#3734](https://github.com/nicsuzor/academicOps/issues/3734) review bugs ([0279c53](https://github.com/nicsuzor/academicOps/commit/0279c53aed14d3baf4e313f9f1d2a0a97219cca9))
+* **agy:** collapse to single headless-bare profile and fix PR [#3734](https://github.com/nicsuzor/academicOps/issues/3734) review bugs ([68dbbb8](https://github.com/nicsuzor/academicOps/commit/68dbbb804f2b74ec2f9bc57815b2abe47d87209d))
+
+
+### Code Refactoring
+
+* **ida-telegram:** remove legacy text reply and entity formatting path ([d90215f](https://github.com/nicsuzor/academicOps/commit/d90215f935e718bd4538d4146616a20c7d70d992))
+* **ida-telegram:** remove legacy text reply and entity formatting path ([d5c5e16](https://github.com/nicsuzor/academicOps/commit/d5c5e16a0f7f8a20bf092bf1be4ae3bf801a3268))
+
 ## [1.12.0](https://github.com/nicsuzor/academicOps/compare/v1.11.0...v1.12.0) (2026-11-23)
 
 ### Features
