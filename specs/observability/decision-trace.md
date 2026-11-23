@@ -50,7 +50,8 @@ As a developer or operator running Arize Phoenix across local or hosted environm
   - `session-outline.sql` -- keyset-pageable, column-projected chronological step query for one session, returning scalar timing, model, token, built-in cost, tool summary, and bounded prompt/reply/argument excerpts while excluding bulky attribute and event blobs.
   - `session-audit.sql` -- server-side aggregation of model spend (with dual-emitter deduplication) and tool / upstream MCP call counts, latencies, errors, and payload sizes.
   - `cost-by-task.sql` -- server-side token and built-in cost rollups grouped by task identifier and model, plus fast session-spend ranking directly from `span_costs` over a bounded UTC window.
-  - `cross-session-search.sql` -- time-bounded server-side prompt, tool, error, subagent-correlation, and single-span detail lookups.
+  - `spend-by-harness-model.sql` -- chunked server-side token sums grouped by surface and model (deduplicated on `llm.message.id`), plus daily built-in `span_costs` rollups by model with zero JSON reads.
+  - `cross-session-search.sql` -- time-bounded server-side error, `MATERIALIZED` user-prompt and tool-argument searches, windowed prompt/reply sweeps, subagent-correlation, and single-span detail lookups.
   - `span-store.md` -- identifier shapes, session-vs-trace grouping rules, dual-emitter and subagent correlation semantics, and query size bounds.
 - **Decision-trace workflow**: `plugins/ida/skills/workflow-library/workflows/trace-decision.md` defines the input/output contract (`<slug>.outline.md` persisted durably plus an answer anchored to `#t<turn>-<step>`).
 
