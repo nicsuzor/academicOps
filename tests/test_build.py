@@ -1274,4 +1274,5 @@ def test_rbg_auto_mode_manifest_emitted_for_claude_only(tmp_path):
     data = json.loads(claude_auto_mode.read_text(encoding="utf-8"))
     assert data["allow"]
     assert data["soft_deny"]
+    assert data["hard_deny"]
     assert not (dist_root / "rbg-agy" / "auto-mode.json").exists()
