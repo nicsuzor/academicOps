@@ -4192,8 +4192,10 @@ def test_multi_claim_block_lists_all_pending_claims_and_policy_markers():
         ("PreToolUse", "reply", "sending a channel reply"),
         ("PreToolUse", "telegram_reply", "sending a channel reply"),
         ("PreToolUse", "telegram_send_message", "sending a channel reply"),
+        ("PreToolUse", "mcp__telegram__send_message", "sending a channel reply"),
         ("PreToolUse", "discord_reply", "sending a channel reply"),
         ("PreToolUse", "discord_send_message", "sending a channel reply"),
+        ("PreToolUse", "mcp__discord__send_message", "sending a channel reply"),
     ],
 )
 def test_hearsay_handler_derives_action_desc_from_blocked_tool(

@@ -2447,7 +2447,6 @@ _BLOCKED_TOOL_ACTION_DESCS: dict[str, str] = {
     "subagenthandback": "delivering a subagent handback",
     "subagent_handback": "delivering a subagent handback",
     "dump": "handing over the session",
-    **{name: "asking the user a question" for name in _USER_QUESTION_TOOLS},
 }
 
 
@@ -2456,11 +2455,11 @@ def _blocked_action_desc(ctx: HookContext) -> str:
     if ctx.event == "Stop":
         return "finishing the task or contacting the user/teammates"
     base = _tool_base_lower(ctx.tool)
-    if base in _BLOCKED_TOOL_ACTION_DESCS:
-        return _BLOCKED_TOOL_ACTION_DESCS[base]
+    if base in _USER_QUESTION_TOOLS:
+        return "asking the user a question"
     if is_channel_reply_tool(ctx.tool):
         return "sending a channel reply"
-    return "performing this action"
+    return _BLOCKED_TOOL_ACTION_DESCS.get(base, "performing this action")
 
 
 def hearsay_handler(ctx: HookContext) -> Result | None:
