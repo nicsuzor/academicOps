@@ -43,9 +43,9 @@ making further routing decisions:
 
 - **Fast-Path**: If the task already carries a composed workflow (`## Instructions` and `## Appendix: Sources`) or requires invoking a single skill (`invoke /<skill>`), skip redundant re-composition and proceed directly to planning.
 - **3-Tier Resolution**:
-  1. `Project`: PKB documents carrying `type: template` and the task's `project`, id `<project>-<slug>`.
-  2. `PKB`: PKB documents carrying `type: template` and no `project`.
-  3. `Universal`: Built-in templates in `plugins/ida/skills/workflow-library/workflows/wf-*.md`.
+  1. `Project`: PKB documents carrying `type: template` whose frontmatter `project` matches the task's `project` (determine the shadowed slug by stripping an optional `<project>-` or `<project>_` prefix from `id` when present; otherwise use `id` directly).
+  2. `PKB`: PKB documents carrying `type: template` with no `project` (absent or `null`).
+  3. `Universal`: Built-in templates in `plugins/ida/skills/workflow-library/workflows/*.md`.
 
 Selection is interpretive, not mechanical: `/reify` reads the template and generates steps for the specific request. A plan that instructs the main agent to go read a workflow file has failed -- the whole cost saving is that the reading already happened.
 

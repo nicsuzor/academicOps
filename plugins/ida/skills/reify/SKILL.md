@@ -19,17 +19,21 @@ Invoke `/hydrate` (via custodian when called by a non-custodian). Cite hydration
 
 - **Single-skill fast-path**: When a task's sole work is `invoke /<skill>`, skip template resolution and report ready.
 - **Three-tier resolution** (`Project > PKB > Universal`; higher tiers shadow completely, never merge across tiers):
-  1. _Project_: PKB `type: "template"` with `project: "<project>"` (strip `<project>-` prefix to get the shadowing slug; ignore foreign projects).
-  2. _PKB_: PKB `type: "template"` with `project: null`.
+  - List PKB `type: "template"` IDs via `pkb_list_documents` (`limit >= 200`), then batch-read `pkb_get_document(..., detail: "summary")` to inspect `frontmatter.project`, `frontmatter.description`, and opening step summaries in one pass.
+  1. _Project_: `frontmatter.project` matches the task's `project` (determine the shadowed slug by stripping an optional `<project>-` or `<project>_` prefix from `id` when present; otherwise use `id` directly; ignore foreign projects).
+  2. _PKB_: `frontmatter.project` is absent or `null`.
   3. _Universal_: Core templates in `../workflow-library/workflows/*.md` enumerated and read via native file tools.
 - **User direction & groundwork-first decisions**: User direction to perform, settle, or deliver work counts as approval across design, architecture, and delivery (`status: "queued"` for agent steps; `done` for already-shipped work once user-informed). Settle unknowns (PKB first, then repository host and traces) and select recommended routes directly without adding class-based holds; set `status: "review"` (`assignee: "user"`) with a recorded recommendation only when groundwork is complete and the work hits an invariant boundary (external audience, unruled merge, unbounded cost) or an explicitly user-reserved pre-action hold/choice.
 - **Template interpretation**: Translate selected template stages into concise numbered imperative steps in `## Instructions` (never copy template prose). Invoke skills as `invoke /<skill-name>`; compose agent workflows rather than mechanical scripts for qualitative judgment. When composition has a gap, write nothing incomplete to the graph and ask the supervisor for clarification rather than declining the task.
 
 ## 3. Write Each Task
 
-- **Combined body & two-task reviewed classes**: Default to one repo-scoped task body (50-150 words atomic, <=300 words composite, `## Ask` aside). Under `/supervise`, keep planning, in-session reviews, fan-out, and verification inside the single session. For task classes requiring independent graph-tracked review, mint two child tasks: (1) work task (delivers artifact or opens draft PR via `gh pr create --draft`, records evidence, releases `done`) and (2) review task (`needs: [<work_task_id>]`, runs review, marks `gh pr ready`, releases `done` or `failed`). Unreviewed classes yield only the work task releasing `done`.
+- **Combined body & two-task reviewed classes**: Default to one repo-scoped task body (50-150 words atomic, <=300 words composite, `## Ask` aside). Under `/supervise`, keep planning, in-session reviews, fan-out, and verification inside the single session. For task classes requiring independent graph-tracked review, mint two child tasks:
+  1. **Work task**: Delivers artifact or opens draft PR (`gh pr create --draft`), records evidence, and releases `done`.
+  2. **Review task** (`needs: [<work_task_id>]`): Runs independent review, marks `gh pr ready`, and releases `done` or `failed`.
+     Unreviewed classes yield only the work task releasing `done`.
 - **Splitting conditions**: Split beyond the work+review pair only when a workflow step explicitly requires (1) a different repository (one task per repo), (2) a different time/external wait, or (3) a workflow-mandated separate agent/session (such as independent review or closed-loop channel delivery via `needs`).
-- **Topology**: Pass `type: "task"` (never `type: "epic"`), wire sequencing via `needs`, keep `serves -> target` exclusively on Strategic Value Carriers (zero leaf `serves` edges), cite pointers as markdown wikilinks under `## Pointers`, and set `status: "queued"`.
+- **Topology**: Pass `type: "task"` (never `type: "epic"`), wire sequencing via `needs`, keep `serves -> target` exclusively on Strategic Value Carriers (zero leaf `serves` edges), cite pointers as PKB links (wikilinks) under `## Pointers`, and set `status: "queued"`.
 
 Fill the canonical structure:
 

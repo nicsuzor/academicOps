@@ -51,55 +51,74 @@ research review selects 3–4 plus self-consistency as a background check.
 ## Primitives
 
 Semantic labels on existing task types. No new task types, no schema changes.
-The universal composite `wf-research-output` (`plugins/ida/skills/workflow-library/workflows/`)
-carries these as stages by contract; it is the operational home, this table the vocabulary.
+The universal academic-output composite template (`plugins/ida/skills/workflow-library/workflows/`)
+carries these as adaptable functional phases by contract (never fixed stage numbers); it is the
+generalized operational home, while an empirical pipeline-only composite covers pipeline builds
+that do not emit a reader-facing academic output. This table is the vocabulary.
 
 | Primitive | Purpose | Maps to |
 | - | - | - |
 | **probe** | Resolve an unknown before planning further | `learn` |
 | **lit-review** | Systematic examination of existing work | `learn` |
 | **methodology** | Design and justify analytical approach | `task` |
-| **ethics** | IRB, consent, data governance | `task` + gate |
+| **ethics** | IRB, consent, data governance | `task` + approval boundary |
+| **readonly-proof** | Build and prove pipeline live read-only; lock API contract | `task` |
+| **collection-signoff** | User decision boundary before new data collection | `task` + decision boundary |
 | **data-collection** | Gathering primary or secondary data | `task` |
 | **analysis** | Running the actual analysis | `task` |
 | **writing** | Manuscript, presentation, or report | `task` |
 | **pilot** | Small-scale test of feasibility | `task` |
-| **collaboration** | Gate requiring another person's input | `task` + gate |
+| **collaboration** | Boundary requiring another person's input | `task` + approval boundary |
 
 ### Default sequencing
 
 ```mermaid
-graph LR
-    probe --> litreview[lit-review]
-    litreview --> methodology
-    methodology --> pilot
-    methodology --> ethics
-    ethics --> datacollection[data-collection]
-    pilot -.soft.-> datacollection
-    datacollection --> analysis
-    analysis --> writing
+flowchart LR
+    probe["probe"] --> litreview["lit-review"]
+    litreview --> methodology["methodology"]
     probe -.soft.-> methodology
+    collaboration[["collaboration<br/>(approval boundary)"]] --> methodology
+    methodology --> ethics[["ethics<br/>(approval boundary)"]]
+    methodology --> pilot["pilot"]
+    methodology -.tentative.-> readonlyproof["readonly-proof<br/>(+ API contract)"]
+    pilot -.soft.-> readonlyproof
+    readonlyproof --> signoff{"collection-signoff<br/>(decision)"}
+    collaboration -.soft.-> signoff
+    ethics --> datacollection["data-collection"]
+    signoff --> datacollection
+    pilot -.soft.-> datacollection
+    datacollection --> analysis["analysis"]
     litreview -.soft.-> analysis
-    collaboration --> methodology
+    analysis --> writing["writing"]
 ```
 
 - **probe → lit-review → methodology** is the discovery sequence: establish tractability, survey
-  existing work, then design the approach informed by what exists.
-- **ethics is a HARD gate before data-collection.** Non-negotiable, and often gated on external
-  approval with unpredictable timelines. Treating ethics as a parallel task is a failure.
+  existing work, then design the approach informed by what exists. `methodology` frames initial
+  choices and concise comparative MADRs _for_ tentative continuation; `readonly-proof` proceeds
+  only when user build direction satisfies tentative continuation, otherwise cutting at a tentative
+  pre-build approval boundary.
+- **readonly-proof → collection-signoff → data-collection is a HARD prerequisite checkpoint and decision boundary for empirical/computational pipelines.**
+  `readonly-proof` builds needed infrastructure and initial analysis/report interfaces on existing
+  data (tracked new resources only, zero existing edits, zero simulated writes), proves the pipeline
+  live read-only with real analysis, locks a partitioned data-to-analysis API contract (live-proven
+  paths vs. inferred data-phase assumptions), and files the complete proof package. `collection-signoff`
+  is the user decision boundary reviewing that filed package before unblocking `data-collection`;
+  collecting or generating new data beforehand is a failure.
+- **ethics is a HARD prerequisite before data-collection.** Non-negotiable, and often contingent on
+  external approval with unpredictable timelines. Treating ethics as a parallel task is a failure.
 - **pilot → data-collection is soft** unless the pilot could invalidate the approach entirely. A
   pilot testing whether participants understand the instrument is soft; a pilot testing whether
   the data source contains the expected variables is hard.
-- **collaboration gates can appear anywhere**, but typically block methodology (co-investigator
-  agreement on design) or writing (co-author approval).
+- **collaboration boundaries can appear anywhere**, but typically block methodology (co-investigator
+  agreement on design), `collection-signoff`, or writing (co-author approval).
 - **lit-review has a soft dependency on analysis.** Findings may reveal connections to work not
   identified initially, or contradict studies assumed to support the hypothesis.
 
 Deviate where the project shape demands it:
 
-- **Secondary data**: no data-collection; analysis depends on methodology plus a data-access
-  probe that validates the dataset contains the expected variables under appropriate terms.
-- **Theoretical**: no data-collection or analysis; substitute a conceptual-development primitive
+- **Empirical pipeline-only build**: no reader-facing `writing`; runs `probe → methodology → readonly-proof → collection-signoff → data-collection → analysis`.
+- **Secondary data**: no `data-collection`; a data-access `probe` validates variables and terms before `methodology`, followed by `readonly-proof` and `analysis`.
+- **Theoretical**: no `data-collection` or `analysis`; substitute a conceptual-development primitive
   (mapped to `task`), giving probe → lit-review → methodology → conceptual-development → writing.
 - **Replication**: methodology is mostly fixed by the original study; the probe targets
   reproduction feasibility -- data access, computational requirements, original authors'
