@@ -7,35 +7,27 @@ description: Start isolated worker containers on queued repo-scoped tasks or rea
 
 The task record is the whole message to the isolated worker container; dispatch ready tasks without rewriting them. Use the task pipeline for durable deliverables (workflows, instructions, specifications, code); answer questions and lookups in-turn without queueing or dispatching containers.
 
-Dispatched worker containers operate in two modes:
-
-- **Supervised container (`/ida:supervise <task-id>`)**: Default for repo-scoped tasks queued by `/q`, un-reified multi-stage tasks, or composite tasks needing coordination and fan-out. Launches the lead executor (`james`) calibrated by complexity tier; runs `/reify` in session if un-reified and leaves follow-ups only for out-of-session work.
-- **Leaf container (`/ida:pull <task-id>`)**: Fast-path execution for already-decomposed leaf tasks or single-skill directives without re-reifying, strictly state-only on the claimed task.
+Every dispatched worker container runs `/ida:pull <task_id>` against the task record.
 
 ## 1. Verify Readiness & Satisfiability
 
 Read each named task (or ready children of a parent container). A task is ready when `status: queued`, no open `needs` dependencies remain, and no worker container is already running on the same task ID. If an unlinked task covers overlapping subsystem artifacts, start the handed worker and send the overlap to the supervisor as a clarification.
 
-Check acceptance criteria and composition state before choosing a command, and start a worker on the handed task unless a constitutional halt binds (`closure`, `data-boundaries`, or `exercise-authority` Exceptions 1-4):
+Start a worker on the handed task unless a constitutional halt binds (`closure`, `data-boundaries`, or `exercise-authority` Exceptions 1-4):
 
 - **Gap or external post-exit criteria**: If a criterion appears unreachable before releasing `done` (independent review, PR merge, host deployment, user approval) or the task has a gap outside those constitutional halts, start the worker on the handed task and send the gap to the supervisor as a clarification -- never decline handed work.
-- **Supervised (`/ida:supervise <task-id>`)**: Tasks lacking `## Instructions` + `## Appendix: Sources` (and not `invoke /<skill>`), or composite/multi-stage tasks requiring supervision or fan-out.
-- **Leaf (`/ida:pull <task-id>`)**: Single-skill directives (`invoke /<skill>`) or reified atomic leaf tasks (`## Instructions` + `## Appendix: Sources`).
 
 ## 2. Stamp Origin & Launch Containers
 
 Stamp `origin_agent` on each ready PKB task (`pkb_update_task`) with the originating coordinator's stable handle before launching its container so returning work routes back to its owner without a completion race.
 
-Launch one isolated worker container per ready task in parallel via the project's dispatch pathway:
-
-- Supervised tasks: launch lead executor (`james`) calibrated to task complexity with `/ida:supervise <task-id>`.
-- Reified leaf or single-skill tasks: launch worker container with `/ida:pull <task-id>`.
+Launch one isolated worker container per ready task in parallel via `polecat_run_container`, passing `task_id`, `repo`, `image`, and `dispatcher` only (which runs `/ida:pull <task_id>`). Never pass `command` or a custom prompt, even if exposed by the tool schema; custom prompts are allowed only in crew containers launched manually by the user.
 
 Containers start asynchronously; assume execution proceeds unless an immediate launch error returns (on failure, halt and report task ID and error verbatim).
 
 ## 3. Report and Stop (Fire-and-Forget)
 
-Report each dispatched task (title, ID, selected command `/ida:supervise` or `/ida:pull`, launched) as atomic sourced premises in a compact prose Argdown block per `ida:premise-check` and end your turn immediately. Never wait for container completion, block on event streams, or spin in shell polling or `sleep` loops; completed returns are picked up asynchronously on a periodic timer (Section 4).
+Report each dispatched task (title, ID, `/ida:pull <task_id>`, launched) as atomic sourced premises in a compact prose Argdown block per `ida:premise-check` and end your turn immediately. Never wait for container completion, block on event streams, or spin in shell polling or `sleep` loops; completed returns are picked up asynchronously on a periodic timer (Section 4).
 
 ## 4. Pull and Handle Completed Tasks (Timer Sweep)
 
