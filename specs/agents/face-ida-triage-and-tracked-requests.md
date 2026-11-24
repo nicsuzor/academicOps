@@ -5,7 +5,7 @@ status: ready
 
 # Face-Ida Triage and Tracked-Request Workflow
 
-This specification defines the consolidated workflow and triage contract for the user-facing agent persona ("Face Ida"). It replaces scattered, contradictory instructions regarding in-session handling, delegation, and ask tracking. Under this architecture, the user-facing agent never executes substantive work directly, delegates every request to an internal subagent twin ("Sub-Ida"), and performs an explicit upfront triage decision in clean Argdown prose per `premise-check` evaluating whether an ask can be resolved ad-hoc in-session or requires an asynchronously tracked task. Tracked requests flow exclusively through the standard intake and dispatch pipeline (`/q` -> `/dispatch`), which dispatches repo-scoped epic tasks directly to polecat containers running `/supervise` (where `/reify` executes in-session at execution time), ensuring verified results are returned to the user through dedicated delivery tasks assigned to the user-facing agent where channel reporting is required, while retiring ad-hoc task tracking via the legacy tracking command.
+This specification defines the consolidated workflow and triage contract for the user-facing agent persona ("Face Ida"). It replaces scattered, contradictory instructions regarding in-session handling, delegation, and ask tracking. Under this architecture, the user-facing agent never executes substantive work directly, delegates every request to an internal subagent twin ("Sub-Ida"), and performs an explicit upfront triage decision in clean Argdown prose per `premise-check` evaluating whether an ask can be resolved ad-hoc in-session or requires an asynchronously tracked task. Tracked requests flow exclusively through the standard intake and dispatch pipeline (`/q` -> `/dispatch`), which dispatches repo-scoped epic tasks directly to polecat containers running `/pull` (where `/reify` executes in-session at execution time), ensuring verified results are returned to the user through dedicated delivery tasks assigned to the user-facing agent where channel reporting is required, while retiring ad-hoc task tracking via the legacy tracking command.
 
 ## User stories
 
@@ -33,14 +33,14 @@ As a researcher, I want delegated triage classifications verified against the or
   - Then when in-session execution requires task tracking, strictly one outer task is placed and claimed via `/q` solely by the internal sub-coordinator on behalf of the session, downstream delegates never create additional child tasks, and only the user-facing coordinator runs the session handover dump sequence.
 - **AC-2.3** Given a validated `tracked task` request, when Sub-Ida executes, then Sub-Ida routes the request through the intake (`/q`) and dispatch (`/dispatch`) pipeline. `/q` places repo-scoped tasks on the graph (strictly one per repo, consolidated across open and closed tasks, situated under their governing component or initiative epic with zero leaf `serves` edges while Strategic Value Carriers wire `serves` directly to priced targets). To maintain single-assignee boundaries and ensure headless workers never hold user delivery obligations:
   - Where user channel reporting or interactive delivery is required, `/q` wires a closed-loop terminal delivery task assigned to the user-facing agent (`assignee: ida`, dependent on the worker task or epic) to deliver the completed artifact to the user.
-  - `/dispatch` dispatches repo-scoped epic tasks directly to polecat containers running `/supervise`, where `/reify` executes inside the container to compose workflows onto a single combined task body at execution time.
+  - `/dispatch` dispatches repo-scoped epic tasks directly to polecat containers running `/pull`, where `/reify` executes inside the container to compose workflows onto a single combined task body at execution time.
 - **AC-2.4** Given a completed subagent report, when the user-facing agent receives it, then the agent runs administrative-law formal compliance review on the face of the record per `premise-check` (zero _de novo_ fact-checking), relays strictly checked conclusions with their qualifiers, applies attention-protection brevity rules (bottom-line first, at most 3 bullets unless detail was requested), and communicates the result or task confirmation to the user.
 
 ### US-3 Retirement of Legacy `/mine` Ask Tracking
 
 As a user, I want all tracked requests to flow through the unified intake and reification pipeline instead of the legacy `/mine` ask-tracking command, so that all persistent tasks share uniform graph placement, valuation, and delivery semantics.
 
-- **AC-3.1** Given any user request requiring asynchronous tracking, when captured, then it is routed through the standard intake (`/q`) and dispatch (`/dispatch`) pipeline (with `/supervise` running `/reify` in-container) rather than being filed as an ad-hoc tracked task via `/mine <ask>`.
+- **AC-3.1** Given any user request requiring asynchronous tracking, when captured, then it is routed through the standard intake (`/q`) and dispatch (`/dispatch`) pipeline (with `/pull` running `/reify` in-container) rather than being filed as an ad-hoc tracked task via `/mine <ask>`.
 - **AC-3.2** Given task tracking and sweeping:
   - The `/mine` skill is deleted outright from the repository;
   - Task sweeping is handled by standard truth maintenance (`/reconcile`) and scheduled daily review (`/decide` / `/daily`), which surface delivery tasks assigned to the user-facing agent.
@@ -77,7 +77,7 @@ flowchart TD
     InSessionExec --> TwinReport["Return Premise-Check Report to Face-Ida"]
     TwinReport --> FaceRelay["Face-Ida Verifies Logic & Communication Rules<br/>--> Relays Answer to User (<= 3 bullets)"]
     
-    ExecuteBranch -- "tracked task" --> Pipeline["Standard Tracking Pipeline:<br/>1. /q (Intake, One Task per Repo, ida Delivery Task if needed)<br/>2. /dispatch (Direct Dispatch to Polecat running /supervise)"]
+    ExecuteBranch -- "tracked task" --> Pipeline["Standard Tracking Pipeline:<br/>1. /q (Intake, One Task per Repo, ida Delivery Task if needed)<br/>2. /dispatch (Direct Dispatch to Polecat running /pull)"]
     Pipeline --> TaskReport["Return Task ID & Status Report to Face-Ida"]
     TaskReport --> FaceConfirm["Face-Ida Confirms Task ID & Title to User"]
 ```
@@ -94,7 +94,7 @@ The triage choice is strictly bounded:
 2. **`tracked task`**:
    - **Definition**: Any request that cannot be answered immediately in-session, requires persistent tracking across turns or sessions, modifies repository code or configurations, executes long-running background tasks, or spans multiple sub-tasks.
    - **Examples**: PR reviews and sweeps across multiple repositories; building or refactoring tools; comparing CI test suites; generating complex analytical datasets; any multi-file code change.
-   - **Execution Surface**: Handled by Sub-Ida via `/q` -> `/dispatch` (dispatching to polecats running `/supervise`).
+   - **Execution Surface**: Handled by Sub-Ida via `/q` -> `/dispatch` (dispatching to polecats running `/pull`).
 
 #### 2.2 Delegation Payload Format
 
@@ -125,23 +125,23 @@ Upon receiving the delegation message, Sub-Ida (`ida:ida`):
 
 ### 3. Tracked Request Lifecycle and Closed-Loop Delivery
 
-Tracked requests flow through the streamlined `/q` -> `/dispatch` pipeline. Interactive sessions handle triage and capture, while task reification is moved out of interactive coordinators into polecat containers executing `/supervise`:
+Tracked requests flow through the streamlined `/q` -> `/dispatch` pipeline. Interactive sessions handle triage and capture, while task reification is moved out of interactive coordinators into polecat containers executing `/pull`:
 
 1. **Intake (`/q`)**:
    Sub-Ida captures the request onto the strategic task graph under the governing component or initiative epic, enforcing the one-task-per-repo rule and mandatory consolidation search (`include_done: true`), with zero leaf `serves` edges on child tasks (reserving `serves -> target` links for Strategic Value Carriers). To enforce the **Dropped Means Not Delivered** invariant within the single-assignee task model:
    - Headless workers cannot hold user delivery obligations.
    - Where user channel reporting is required, `/q` ensures an explicit delivery task node assigned to the user-facing agent (`assignee: ida`, `needs: [<worker-tasks>]`) exists.
 2. **Dispatch (`/dispatch`)**:
-   Sub-Ida dispatches ready repo-scoped epic tasks directly to polecat containers running `/supervise` under `james` on a coordinator model calibrated to task complexity and importance.
-3. **Container Supervision & Reification (`/supervise`)**:
-   Inside the isolated container session, `james` claims the task, runs `/reify` in-session to compose workflows from the 3-tier template library onto a single combined task body by default, coordinates subagents with incremental `git push` checkpoints, and delivers in-session pull requests and artifacts.
+   Sub-Ida dispatches ready repo-scoped epic tasks directly to polecat containers running `/pull` calibrated to task complexity and importance.
+3. **Container Execution & Reification (`/pull`)**:
+   Inside the isolated container session, the worker claims the task, runs `/reify` in-session if needed to compose workflows from the 3-tier template library onto a single combined task body by default, coordinates subagents with incremental `git push` checkpoints, and delivers in-session pull requests and artifacts.
 4. **Delivery to User**:
    When the working task completes, any dependent return task assigned to `ida` becomes unblocked. The user-facing agent (or scheduled daily triage) processes the result, checks the premise, and communicates the deliverable to the user on the originating channel.
 
 ### 4. Retirement and Deletion of `/mine`
 
 1. **Unified Intake Over Dedicated Tracking**:
-   User requests requiring persistent tracking are processed exclusively through the unified `/q` -> `/dispatch` pipeline (with container supervision running `/supervise` and `/reify`), with explicit return-to-user tasks assigned to `ida` where channel delivery is required.
+   User requests requiring persistent tracking are processed exclusively through the unified `/q` -> `/dispatch` pipeline (with container execution running `/pull` and `/reify`), with explicit return-to-user tasks assigned to `ida` where channel delivery is required.
 2. **Supersession of Bare Sweeps**:
    The bare sweep form (`/mine` without arguments), which previously scanned for `ida-tracked` tags and unparented tasks, is superseded by standard truth maintenance (`/reconcile`) and scheduled daily note triage (`/decide` and `/daily`). Because all tracked asks now carry explicit return-to-user tasks assigned to `ida`, they are naturally surfaced during regular reconciliation passes without requiring a dedicated tracking tag or separate CLI command.
 3. **Outright Deletion**:
@@ -149,7 +149,7 @@ Tracked requests flow through the streamlined `/q` -> `/dispatch` pipeline. Inte
 
 ## Regulatory Experiment Record
 
-- **Hypothesis:** Requiring the user-facing agent to perform explicit upfront triage (`ad-hoc in-session` vs `tracked task` supported by a Toulmin Argdown reasons block), delegate all substantive work to Sub-Ida, verify the triage justification before execution, and route tracked requests through `/q` -> `/dispatch` with dedicated return-to-user delivery tasks assigned to `ida` and container supervision under `/supervise` running `/reify` (retiring `/mine <ask>`) will eliminate dropped user requests, maintain the non-execution boundary, and provide uniform graph valuation without parallel ad-hoc tracking tags.
+- **Hypothesis:** Requiring the user-facing agent to perform explicit upfront triage (`ad-hoc in-session` vs `tracked task` supported by a Toulmin Argdown reasons block), delegate all substantive work to Sub-Ida, verify the triage justification before execution, and route tracked requests through `/q` -> `/dispatch` with dedicated return-to-user delivery tasks assigned to `ida` and container execution under `/pull` running `/reify` (retiring `/mine <ask>`) will eliminate dropped user requests, maintain the non-execution boundary, and provide uniform graph valuation without parallel ad-hoc tracking tags.
 - **What moved:**
   - Deleted legacy `/mine` skill outright; task sweeping handled via `/reconcile` and daily review (`/decide`, `/daily`).
   - Replaced ambiguous ask routing in `plugins/ida/agents/ida.md` with the consolidated Face-Ida triage contract (ad-hoc vs tracked classification, Toulmin Argdown reasons block, Sub-Ida twin verification).

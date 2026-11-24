@@ -14,10 +14,8 @@ Polecat runs one agent CLI invocation inside an isolated Docker container, on an
 isolated git clone, so dispatched work never touches the caller's own checkout or
 host credentials. It is a single command -- `polecat run` -- not a task-claiming
 service: task lifecycle (claim, work, record, hand over) is the invoked agent's own
-job, driven either by a container coordinator (`james`) running `/ida:supervise <task-id>`
-inside an `agy` session on a coordinator model calibrated to task complexity and
-importance for repo-scoped epic tasks, or by a seeded `/ida:pull <task-id>` prompt
-running `pull` as the fast-path for already-decomposed leaf tasks.
+job, driven by a seeded `/ida:pull <task-id>` prompt inside an `agy` session
+calibrated to task complexity and importance.
 
 This file is the umbrella. The individual designs are
 [base-ref resolution](spec-base-ref-resolution.md),
@@ -31,10 +29,10 @@ This file is the umbrella. The individual designs are
 
 The container launcher (`scripts/polecat`) and worker image are maintained outside this repository and supplied by the installer, together with the Docker MCP server (`polecat_run_container`) registered behind the `services` portal.
 
-- [[plugins/ida/skills/supervise/SKILL.md]] -- container coordinator-side: claims the repo-scoped epic task, reifies workflows onto a combined task body, coordinates subagents with incremental git checkpoints, delivers in-session outputs and pull requests, and queues out-of-session follow-ups -- what a seeded `/ida:supervise <task-id>` prompt does inside the container
-- [[plugins/ida/skills/pull/SKILL.md]] -- worker-side: claim, execute, record, hand
-  over -- what a seeded `/ida:pull <task-id>` prompt actually does once inside the
-  container as the fast-path for already-decomposed leaf tasks
+- [[plugins/ida/skills/pull/SKILL.md]] -- worker-side: claim, assemble via `/reify` if needed,
+  execute (coordinating subagents with incremental git checkpoints), record, and
+  hand over via `/dump` -- what a seeded `/ida:pull <task-id>` prompt does inside
+  the container
 - [[plugins/ida/skills/dispatch/SKILL.md]] -- coordinator-side: the dispatch skill that starts
   polecat workers on queued tasks via the Docker MCP server (`polecat_run_container`) or the
   host launcher (`scripts/polecat`)
@@ -94,10 +92,8 @@ The container launcher (`scripts/polecat`) and worker image are maintained outsi
    missing image is a hard failure with an actionable message.
 8. Builds the inner command from `AGENT_CMD` (`claude`, `agy`, `shell`/`bash`,
    `sleep`, or any other passthrough binary). With `--task <id>` and no explicit
-   prompt: launches the container coordinator (`james`) inside an `agy` session on
-   a `coordinator` model calibrated to task complexity and importance, seeded with
-   `/ida:supervise <task-id>` for repo-scoped epic tasks; or seeds `/ida:pull <task-id>`
-   for already-decomposed leaf tasks. Every dispatch without `-i` runs headless
+   prompt: launches an `agy` session calibrated to task complexity and importance,
+   seeded with `/ida:pull <task-id>`. Every dispatch without `-i` runs headless
    (`--print`), whatever the host's stdin is, so the container exits when the agent's
    loop completes rather than idling forever; `-i` is the only way into the interactive UI.
    An `agy` dispatch also gets an optional `--print-timeout`: `polecat.yaml`'s `timeout`
@@ -184,8 +180,7 @@ stdout, quiet by default. There is no `start`, `finish`, `crew`, `nuke`, `swarm`
 `list`, `init`, or `sync` subcommand, no bare-mirror registry under a `.repos/`
 directory, no workspace that survives past a single invocation, and no claiming,
 PR-filing, or status-setting performed by the CLI itself. Those either don't exist
-or are the invoked agent's own job, driven by the `supervise` skill (for repo-scoped
-epic tasks) or `pull` skill (for already-decomposed leaf tasks) against the PKB
+or are the invoked agent's own job, driven by the `pull` skill against the PKB
 task graph from inside the container. There is no UDS socket push or interactive
 session injection of completion strings (such as `[polecat-exit]`); completion
 events are retrieved from the durable queue or observability spans by

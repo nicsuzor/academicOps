@@ -10,8 +10,8 @@ workflow, execution steps and guardrails -- so any worker can pull it and execut
 without gathering context again.
 
 Reification works on one node at the moment it is next to run (the micro
-altitude of the planning pipeline). `/reify` runs inside container supervision
-(`/supervise`) or on explicit planning request. In supervised epic execution,
+altitude of the planning pipeline). `/reify` runs inside `/pull`
+or on explicit planning request. In container execution,
 the lead executor (`james`) runs `/reify` to bind the claimed task to an executor
 and composed workflow from the template library at execution time, avoiding premature
 reification and stale tasks on the graph. A node whose prerequisites are outside
@@ -68,9 +68,9 @@ Step inlining is interpretive, not mechanical transcription:
 
 ## Task Splitting, Two-Task Reviewed Classes, and Out-of-Session Boundaries
 
-`/reify` writes a single combined repo-scoped task body by default under container supervision (`/supervise`), where subagent dialectical review, testing, incremental `git push` checkpoints, and PR verification execute in-session.
+`/reify` writes a single combined repo-scoped task body by default under `/pull`, where subagent dialectical review, testing, incremental `git push` checkpoints, and PR verification execute in-session.
 
-When a class of task has an independent review process reified onto the task graph (rather than folded into a single-session `/supervise` run), reifying it yields **two separate tasks** under the parent container:
+When a class of task has an independent review process reified onto the task graph (rather than folded into a single-session `/pull` run), reifying it yields **two separate tasks** under the parent container:
 
 1. **The work task**: Completes the deliverable, opens the draft PR (`gh pr create --draft`) or records the PKB artifact, ticks met acceptance criteria with primary evidence, and releases with one completion status: **`done`** (never `review`).
 2. **The review task** (`needs: [<work_task_id>]`): Unblocks when the work task is `done`, runs the independent proportionate review, posts verdicts to the PR thread, marks the draft PR ready (`gh pr ready`), and releases `done` on pass or `failed` on fail.

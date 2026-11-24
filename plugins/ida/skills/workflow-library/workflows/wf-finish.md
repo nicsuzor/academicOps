@@ -30,13 +30,13 @@ Every completed work task has **one completion release status: `done`**:
 3. **Tick acceptance criteria with primary evidence**: In `## Acceptance`, tick `[x]` only with inline primary evidence (`file:line`, test output, PR URL, or artifact pointer); leave unmet items `[ ]` with their limit stated.
 4. **Release as `done`**: Run `/dump` and release the task with **`status: "done"`**, recording `pr_url` and `branch` (or PKB artifact pointer):
    - Never release `review`, and never use `partial` to wait on CI, review, merge, or proof the user installed, pulled, or deployed a shipped release once informed (`done` unblocks downstream work at once).
-   - Use `partial` strictly when the worker's own acceptance items remain unfinished or hit an approval boundary, and `failed` when checks fail. Leaf `/pull` workers mutate only their claimed task and mint no follow-ups.
+   - Use `partial` strictly when the worker's own acceptance items remain unfinished or hit an approval boundary, and `failed` when checks fail. Mint follow-ups only when work crosses an out-of-session boundary.
 
 ## Independent Review and PR Readiness Check
 
 Every code, bugfix, configuration, rule, skill, workflow, and spec deliverable undergoes independent proportionate review (zero low-risk bypass); routine notes or chores complete on the work task alone as `done`.
 
-- **Review topology**: Under `/supervise`, subagent review runs in-session (releasing `done`, never `review`). When split onto the graph, mint two tasks under the same parent: (1) the work task (`done` once draft PR or artifact lands) and (2) the review task (`needs: [<work-task-id>]`).
+- **Review topology**: When run in-session, subagent review completes before release (releasing `done`, never `review`). When split onto the graph, mint two tasks under the same parent: (1) the work task (`done` once draft PR or artifact lands) and (2) the review task (`needs: [<work-task-id>]`).
 - **PR Readiness Check (`--draft` -> `gh pr ready`)**: Require before marking ready or merging:
   - Green `HEAD` CI (zero errored, bypassed, cancelled, or `startup_failure` runs) and zero unresolved `CHANGES_REQUESTED`.
   - Zero uncommitted reviewer edits (`fix(review):` commits pushed and matched to `HEAD` before verdicts post) and zero deferred DRY/SSoT/compliance findings.

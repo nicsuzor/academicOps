@@ -1,6 +1,6 @@
 ---
 name: dispatch
-description: Start isolated worker containers on queued repo-scoped tasks or ready leaf tasks without rewriting them, stamping origin ownership on dispatch, and pull unhandled worker completions on a timer. Use for headless worker container dispatch and periodic completion sweeps. Exclude for intake and task placement (use /q) or interactive queue selection (use /dispatch-queue).
+description: Start isolated worker containers on queued tasks via /ida:pull without rewriting them, stamping origin ownership on dispatch, and pull unhandled worker completions on a timer. Use for headless worker container dispatch and periodic completion sweeps. Exclude for intake and task placement (use /q) or interactive queue selection (use /dispatch-queue).
 ---
 
 # /dispatch -- Dispatch Worker Containers & Pull Completions

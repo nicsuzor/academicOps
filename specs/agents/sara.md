@@ -34,7 +34,7 @@ polecats take work that runs, measures, tests, or builds. The task dispatch
 pipeline covers all durable deliverables (code, workflows, instructions, specs).
 For durable deliverables, routing is a cadence-and-placement choice over one unified
 worker contract ([[specs/enforcement/task-contract.md]]); the orchestrator dispatches
-repo-scoped epic tasks directly to polecats running `/supervise` (or leaf tasks via `/pull`),
+tasks directly to polecats running `/pull`,
 or picks in-session subagents for inline research and synthesis.
 
 Placement heuristics:
@@ -108,12 +108,8 @@ that set without extensions (`partial` and `failed` are part of it).
 
 - [[specs/polecat/polecat-system.md]] -- Isolated task workspaces and the delivery
   guarantees the supervisor dispatches onto
-- [[plugins/ida/skills/supervise/SKILL.md]] -- The container supervisor: claims the
-  repo-scoped epic task, reifies workflows onto a combined task body, coordinates
-  subagents with incremental git checkpoints, delivers in-session outputs, and
-  queues out-of-session follow-ups
-- [[plugins/ida/skills/pull/SKILL.md]] -- The operative skill: claiming a leaf unit,
-  working it, and carrying it to a terminal state
+- [[plugins/ida/skills/pull/SKILL.md]] -- The operative skill: claiming a task,
+  reifying workflows if needed, coordinating subagents, carrying work to a terminal state, and handing over via `/dump`
 - [[plugins/aops/skills/polecat/SKILL.md]] -- The launcher that puts a worker in front of a unit.
   It launches containers; it makes no eligibility or ordering decision about which
   of an epic's children go next.
