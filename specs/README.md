@@ -44,7 +44,7 @@
 
 ## Polecat
 
-- [polecat/polecat-system.md](polecat/polecat-system.md) -- one isolated container + isolated clone per invocation, running /supervise for epic tasks or /pull for leaf tasks.
+- [polecat/polecat-system.md](polecat/polecat-system.md) -- one isolated container + isolated clone per invocation, running /pull.
 - [polecat/tmux-interactive-driving.md](polecat/tmux-interactive-driving.md) -- driving a polecat container interactively via tmux.
 - [polecat/spec-partial-work-tight-loop-delivery.md](polecat/spec-partial-work-tight-loop-delivery.md) -- the `partial` terminal state and partial-work doctrine.
 - [polecat/spec-base-ref-resolution.md](polecat/spec-base-ref-resolution.md) -- how `resolve_isolated_workspace()` picks the commit a worker's isolated clone diverges from.

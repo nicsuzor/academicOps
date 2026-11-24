@@ -14,10 +14,10 @@ Work moves through four stages. Each runs, then stops; no stage fires the next.
 | - | - | - | - |
 | 1. Capture | `/q` | one ask | Situate an ask on the graph -- placing repo-scoped tasks (strictly one per repo, consolidated across open and closed tasks, situated under governing component or initiative epics with zero leaf `serves` edges while Strategic Value Carriers wire `serves` directly to priced targets), valued at intake per [R1](graph-valuation.md#3-r1----placement-at-intake-q). |
 | 2. Expand | `/decompose` | one objective (optional) | Expand an objective into an abstract graph of sub-objectives at objective altitude, decision branches, prerequisites, and alternate paths, each a node bound to no executor. Reads the record first and stops at the first unknown before implementation detail. |
-| 3. Dispatch | `/dispatch` | ready tasks | Start polecat containers directly on queued repo-scoped tasks (seeded with `/ida:supervise <task-id>`), or dispatch already-decomposed leaf tasks via `/ida:pull <task-id>`. Writes no tasks. |
-| 4. Supervise & Reify | `/supervise` (running `/reify`) | one claimed container task | Inside the container at execution time, lead executor (`james`) claims the task, runs `/reify` to compose workflows from the 3-tier library onto a single combined task body by default, coordinates subagents with incremental `git push` checkpoints, and delivers in-session pull requests. |
+| 3. Dispatch | `/dispatch` | ready tasks | Start polecat containers directly on queued tasks via `/ida:pull <task-id>`. Writes no tasks. |
+| 4. Execute & Reify | `/pull` (running `/reify` if needed) | one claimed container task | Inside the container at execution time, the worker claims the task, runs `/reify` if needed to compose workflows from the 3-tier library onto a single combined task body by default, coordinates subagents with incremental `git push` checkpoints, and delivers in-session pull requests. |
 
-The PKB custodian (Pauli) runs Stage 1 (`/q`), optional Stage 2 (`/decompose`), and `/strategize`. Stage 3 belongs to the dispatcher (`/dispatch`). Stage 4 belongs to container supervision (`/supervise`), where the lead executor (`james`) runs `/reify` in-session.
+The PKB custodian (Pauli) runs Stage 1 (`/q`), optional Stage 2 (`/decompose`), and `/strategize`. Stage 3 belongs to the dispatcher (`/dispatch`). Stage 4 belongs to container execution (`/pull`), where the worker runs `/reify` in-session if needed.
 
 The stages are operative instructions and live in `plugins/ida/skills/`. This spec does not restate them.
 
@@ -29,13 +29,13 @@ Three planning skills sit above dispatch, told apart by the object each works on
 | - | - | - | - |
 | Macro | `/strategize` | the graph as a whole | Direction: which objectives exist, how they intersect, which assumptions are load-bearing, what to do next. Thinking time; no tasks are written. Converged asks go to `/q`, adopted objectives to `/decompose`. |
 | Meso | `/decompose` | one objective | Sub-objectives, forks and probes as nodes bound to no executor, expanded as far as reliable inference reaches now (optional expansion). |
-| Micro / Container Execution | `/supervise` (with `/reify`) | one claimed task | The executing task: the node bound to an executor class and a workflow composed in-session from templates current at execution time on a single combined task body. |
+| Micro / Container Execution | `/pull` (with `/reify`) | one claimed task | The executing task: the node bound to an executor class and a workflow composed in-session from templates current at execution time on a single combined task body. |
 
 The three are timed differently, for opposite reasons:
 
 - **Decompose early (when needed).** No objective is independent; its sub-objectives are what other objectives' tasks intersect with. A task minted elsewhere (a meeting, a submission, a collaboration) can account for a decomposed part only once that part exists on the graph, so an objective is expanded as soon as it is captured, to what can reliably be inferred at that point, and stops at the first unknown.
 - **Dispatch directly on repo-scoped epics.** Interactive coordinators capture and dispatch directly via `/q` -> `/dispatch` without pre-dispatch task reification, avoiding multi-task coordination overhead in conversational sessions.
-- **Reify late inside the container.** A reified task fixes the executor and the workflow, and both change with circumstances. A dispatchable task that sits on the graph goes stale. In the supervised epic-dispatch architecture, task reification is moved out of interactive coordinators into the polecat container: `/reify` runs inside `/supervise` at execution time, composing templates onto a single combined repo-scoped task body.
+- **Reify late inside the container.** A reified task fixes the executor and the workflow, and both change with circumstances. A dispatchable task that sits on the graph goes stale. In the unified dispatch architecture, task reification is moved out of interactive coordinators into the polecat container: `/reify` runs inside `/pull` at execution time when needed, composing templates onto a single combined repo-scoped task body.
 
 The boundary that separates meso from micro is executor binding: a decomposed node says what must become true and names no executor or workflow; a reified task says who runs it and how. Personal Knowledge Base queries, memory curation, and graph operations route directly to the custodian, while general web searches, filesystem lookups, and repo investigations route to internal subagents, and work that runs, measures, tests, or builds something passes through to polecats.
 
@@ -62,7 +62,7 @@ Components come from three sources:
 
 The universal workflow library (`plugins/ida/skills/workflow-library/workflows/`) holds **28 templates**:
 
-- `wf-code-task-base`: Foundation for code-change tasks executed via `/supervise` or `/pull`.
+- `wf-code-task-base`: Foundation for code-change tasks executed via `/pull`.
 - `wf-dialectical-review`: Universal default dialectical review workflow coordinating strategic coherence, compliance, and empirical verification perspectives.
 - `wf-dispatch`: Direct worker dispatch workflow for headless container execution without child task creation.
 - `wf-dispatch-queue`: Dispatch queue ranking ready tasks for user approval and container launch.
@@ -88,7 +88,7 @@ The universal workflow library (`plugins/ida/skills/workflow-library/workflows/`
 - `wf-spec`: Author a complete technical specification before implementation.
 - `wf-strategic-fit`: Universal strategic-direction and PKB congruence review.
 - `wf-structural-map`: Extract a four-part descriptive structural map (Aims, Methodology, Analytical theory, Contribution) of academic work.
-- `wf-task-base`: Foundation for every task executed via `/supervise` or `/pull` (schema, placement, groundwork, and boundaries).
+- `wf-task-base`: Foundation for every task executed via `/pull` (schema, placement, groundwork, and boundaries).
 - `wf-tdd`: Testing standards and red-green-refactor cycle for executable code changes.
 
 **How they go together is the composing agent's judgment, not a rule here.** Which components a task needs, how they combine, and how much process the work warrants are worked out at composition time, against the task in hand.
