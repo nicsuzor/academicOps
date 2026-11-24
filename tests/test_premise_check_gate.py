@@ -1573,16 +1573,14 @@ def test_arm_handler_returns_two_line_prompt_note_and_no_message_text():
     assert res is not None
     assert res.kind == dispatch.Kind.ADVISE
     assert len(res.inject_text.splitlines()) <= 2
-    assert res.user_text is not None and len(res.user_text.splitlines()) == 1
+    assert res.user_text is None
     assert claim_id in res.inject_text
     assert "premise-check" in res.inject_text
     assert "PR #12 is merged." not in res.inject_text
-    assert "PR #12 is merged." not in res.user_text
     cmd = pcg.format_verdict_command(claim_id, ctx.hooks_dir, session_id)
     assert res.inject_text.splitlines()[1] == cmd
     assert "--verdict <PASS|REVISE|FAIL>" in res.inject_text
     assert "--verdict PASS" not in res.inject_text
-    assert cmd not in res.user_text
 
 
 def test_stop_block_message_is_two_lines_pointing_to_skill():
@@ -1600,7 +1598,7 @@ def test_stop_block_message_is_two_lines_pointing_to_skill():
     assert res is not None
     assert res.kind == dispatch.Kind.BLOCK
     assert len(res.inject_text.splitlines()) == 2
-    assert res.user_text is not None and len(res.user_text.splitlines()) == 1
+    assert res.user_text is None
     assert claim in res.inject_text
     assert "premise-check" in res.inject_text
     cmd = pcg.format_verdict_command(claim, stop_ctx.hooks_dir, session_id)
@@ -2571,7 +2569,7 @@ def test_block_message_identifies_this_agent_and_keeps_two_line_contract():
     assert lines[1] == pcg.format_verdict_command(
         claim_id, ctx.hooks_dir, session_id, agent_id=sub_id
     )
-    assert res.user_text is not None and len(res.user_text.splitlines()) == 1
+    assert res.user_text is None
     assert (
         pcg.premise_check_handler(_agent_dispatch_ctx_for(session_id, agent_id="sub-other")) is None
     )
@@ -2715,7 +2713,7 @@ def test_post_tool_batch_multiple_agent_results_arms_all_claims_and_handles_same
     assert len(state["claim_ids"]) == 3
     for cid in state["claim_ids"]:
         assert cid in arm_res.inject_text
-    assert arm_res.user_text is not None and len(arm_res.user_text.splitlines()) == 1
+    assert arm_res.user_text is None
 
     tracer = _StubTracer(config={"endpoint": "http://x"})
     for cid, tmpl in zip(state["claim_ids"], (tmpl1, tmpl2, tmpl3), strict=True):
@@ -4160,12 +4158,150 @@ def test_multi_claim_block_lists_all_pending_claims_and_policy_markers():
     assert batch_res is not None
     expected_label = "2 claims (Audit auth module, Verify hook routing)"
     assert expected_label in batch_res.inject_text
-    assert expected_label in (batch_res.user_text or "")
+    assert batch_res.user_text is None
 
     blk = pcg.premise_check_handler(_agent_dispatch_ctx_for(session_id, tool="SendMessage"))
     assert blk is not None and blk.kind == dispatch.Kind.REFUSE
     lines = blk.inject_text.splitlines()
     assert lines[0].startswith(_POLICY["premise_check"]["armed_indicator"])
     assert expected_label in lines[0]
-    assert expected_label in (blk.user_text or "")
+    assert blk.user_text is None
     assert _claims_from_notice(blk) == ["Audit auth module", "Verify hook routing"]
+
+
+@pytest.mark.parametrize(
+    ("event", "tool", "expected_desc"),
+    [
+        ("Stop", "", "finishing the task or contacting the user/teammates"),
+        ("PreToolUse", "Agent", "dispatching a subagent"),
+        ("PreToolUse", "Task", "dispatching a subagent"),
+        ("PreToolUse", "invoke_subagent", "dispatching a subagent"),
+        ("PreToolUse", "SendMessage", "sending an agent message"),
+        ("PreToolUse", "send_message", "sending an agent message"),
+        ("PreToolUse", "mcp__services__send_message", "sending an agent message"),
+        ("PreToolUse", "SubagentHandback", "delivering a subagent handback"),
+        ("PreToolUse", "subagent_handback", "delivering a subagent handback"),
+        ("PreToolUse", "mcp__ida__SubagentHandback", "delivering a subagent handback"),
+        ("PreToolUse", "Dump", "handing over the session"),
+        ("PreToolUse", "dump", "handing over the session"),
+        ("PreToolUse", "AskUserQuestion", "asking the user a question"),
+        ("PreToolUse", "AskQuestion", "asking the user a question"),
+        ("PreToolUse", "ask_user_question", "asking the user a question"),
+        ("PreToolUse", "ask_question", "asking the user a question"),
+        ("PreToolUse", "ask_user", "asking the user a question"),
+        ("PreToolUse", "reply", "sending a channel reply"),
+        ("PreToolUse", "telegram_reply", "sending a channel reply"),
+        ("PreToolUse", "telegram_send_message", "sending a channel reply"),
+        ("PreToolUse", "mcp__telegram__send_message", "sending a channel reply"),
+        ("PreToolUse", "discord_reply", "sending a channel reply"),
+        ("PreToolUse", "discord_send_message", "sending a channel reply"),
+        ("PreToolUse", "mcp__discord__send_message", "sending a channel reply"),
+    ],
+)
+def test_hearsay_handler_derives_action_desc_from_blocked_tool(
+    event: str, tool: str, expected_desc: str
+):
+    """hearsay_handler describes the blocked tool action instead of hardcoding subagent dispatch."""
+    session_id = f"sess-action-{event}-{tool or 'stop'}"
+    claim_id = "claim-act-01"
+    pcg.arm(session_id, claim_id=claim_id, judged_text="pending")
+
+    ctx = dispatch.HookContext(
+        client="claude",
+        event=event,
+        tool=tool,
+        session_id=session_id,
+        agent_type="ida:ida",
+        hooks_dir=_HOOKS_DIR,
+    )
+    res = pcg.premise_check_handler(ctx)
+    assert res is not None
+    expected_kind = dispatch.Kind.BLOCK if event == "Stop" else dispatch.Kind.REFUSE
+    assert res.kind is expected_kind
+    assert res.user_text is None
+    assert f"blocks {expected_desc};" in res.inject_text
+    assert "dispatching another subagent or message" not in res.inject_text
+
+
+def test_hearsay_handler_unknown_gated_tool_uses_generic_action_desc(monkeypatch):
+    """Unmapped gated tools receive an explicit generic description, not subagent-dispatch text."""
+    session_id = "sess-unknown-tool"
+    claim_id = "claim-unk-01"
+    pcg.arm(session_id, claim_id=claim_id, judged_text="pending")
+
+    monkeypatch.setattr(hg, "_GATED_TOOLS", frozenset({*hg._GATED_TOOLS, "MysteryGatedTool"}))
+    ctx = dispatch.HookContext(
+        client="claude",
+        event="PreToolUse",
+        tool="MysteryGatedTool",
+        session_id=session_id,
+        agent_type="ida:ida",
+        hooks_dir=_HOOKS_DIR,
+    )
+    res = pcg.premise_check_handler(ctx)
+    assert res is not None and res.kind is dispatch.Kind.REFUSE
+    assert res.user_text is None
+    assert "blocks performing this action;" in res.inject_text
+    assert "dispatching another subagent or message" not in res.inject_text
+    assert "dispatching a subagent" not in res.inject_text
+
+
+def test_hearsay_handler_multi_claim_and_warn_mode_preserve_tool_action_desc_and_agent_only(
+    monkeypatch,
+):
+    """Multi-claim and warn-mode blocks derive tool action_desc and emit zero user_text."""
+    session_id = "sess-multi-warn"
+    pcg.arm(session_id, claim_id="claim-m1", judged_text="report 1")
+    pcg.arm(session_id, claim_id="claim-m2", judged_text="report 2")
+
+    refuse_res = pcg.premise_check_handler(
+        dispatch.HookContext(
+            client="claude",
+            event="PreToolUse",
+            tool="Dump",
+            session_id=session_id,
+            agent_type="ida:ida",
+            hooks_dir=_HOOKS_DIR,
+        )
+    )
+    assert refuse_res is not None and refuse_res.kind is dispatch.Kind.REFUSE
+    assert refuse_res.user_text is None
+    assert "blocks handing over the session;" in refuse_res.inject_text
+    assert "2 claims (claim-m1, claim-m2)" in refuse_res.inject_text
+
+    monkeypatch.setenv("PREMISE_CHECK_GATE_MODE", "warn")
+    warn_res = pcg.premise_check_handler(
+        dispatch.HookContext(
+            client="claude",
+            event="PreToolUse",
+            tool="AskUserQuestion",
+            session_id=session_id,
+            agent_type="ida:ida",
+            hooks_dir=_HOOKS_DIR,
+        )
+    )
+    assert warn_res is not None and warn_res.kind is dispatch.Kind.ADVISE
+    assert warn_res.user_text is None
+    assert "blocks asking the user a question;" in warn_res.inject_text
+
+
+def test_subagent_start_gate_notice_is_agent_only_with_pending_claims():
+    """SubagentStart gate reminder injects --agent hint and armed claims with zero user_text."""
+    session_id = "sess-sub-start-agent-only"
+    sub_id = "sub-agent-99"
+    pcg.arm(session_id, claim_id="claim-sub-1", judged_text="pending", agent_id=sub_id)
+
+    ctx = dispatch.HookContext(
+        client="claude",
+        event="SubagentStart",
+        session_id=session_id,
+        agent_id=sub_id,
+        agent_type="ida:james",
+        hooks_dir=_HOOKS_DIR,
+        raw={"agent_id": sub_id},
+    )
+    res = hg.subagent_start_gate_notice(ctx)
+    assert res is not None and res.kind is dispatch.Kind.ADVISE
+    assert res.user_text is None
+    assert f"--agent {sub_id}" in res.inject_text
+    assert "claim-sub-1" in res.inject_text
