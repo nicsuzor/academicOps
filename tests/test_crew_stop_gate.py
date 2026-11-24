@@ -1,4 +1,4 @@
-"""Behavioural tests for rbg's rule channel (turn-by-turn check and stop gate).
+"""Behavioural tests for crew's rule channel (turn-by-turn check and stop gate).
 
 Every case here runs the *real* shipped `dispatch.py` as a subprocess with a
 synthetic hook payload on stdin, against a plugin directory staged the way
@@ -26,27 +26,27 @@ import pytest
 pytestmark = pytest.mark.integration
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-RBG_HOOKS = REPO_ROOT / "plugins" / "rbg" / "hooks"
+CREW_HOOKS = REPO_ROOT / "plugins" / "crew" / "hooks"
 POLICY_FILE = REPO_ROOT / "tests" / "policy.toml"
 
 _policy = tomllib.loads(POLICY_FILE.read_text(encoding="utf-8"))
 
-RULE_CHECK_TEXT = (RBG_HOOKS / "messages" / "rule-check.md").read_text(encoding="utf-8").strip()
+RULE_CHECK_TEXT = (CREW_HOOKS / "messages" / "rule-check.md").read_text(encoding="utf-8").strip()
 
 # Loaded from tests/policy.toml to support Policy-as-Code
-STOP_EVENTS = tuple(_policy["rbg"]["stop_gate"]["stop_events"])
+STOP_EVENTS = tuple(_policy["crew"]["stop_gate"]["stop_events"])
 
 
-def _require_rbg_enabled():
+def _require_crew_enabled():
     if not STOP_EVENTS:
-        pytest.skip("rbg stop_gate handlers are disabled by policy")
+        pytest.skip("crew stop_gate handlers are disabled by policy")
 
 
 @pytest.fixture
 def staged(tmp_path) -> Path:
     """A plugin `hooks/` directory assembled with dispatch.py and handlers.py."""
     hooks = tmp_path / "hooks"
-    shutil.copytree(RBG_HOOKS, hooks, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(CREW_HOOKS, hooks, ignore=shutil.ignore_patterns("__pycache__"))
     return hooks
 
 
@@ -106,7 +106,7 @@ def test_the_continuation_stop_is_silent(staged, event):
 
 def test_the_guard_is_in_the_runtime_not_the_handler(staged):
     """A handler that forgot the check would still be guarded. Proven by
-    removing rbg's handlers entirely: a marked stop stays silent even with a
+    removing crew's handlers entirely: a marked stop stays silent even with a
     handler registry that could not possibly have checked anything."""
     (staged / "handlers.py").rename(staged / "handlers.py.bak")
     try:
@@ -134,7 +134,7 @@ def test_an_empty_message_file_lets_the_stop_through(staged, content):
     than not blocking. `load_message_pair` returns "" for a missing file, which
     is a fine default for an advisory and a bad one for a disposition, so the
     handler checks rather than trusting it."""
-    _require_rbg_enabled()
+    _require_crew_enabled()
     (staged / "messages" / "rule-check.md").write_text(content, encoding="utf-8")
     proc = fire(staged, "claude", "Stop", {"session_id": "s1"})
     assert proc.returncode == 0
@@ -143,7 +143,7 @@ def test_an_empty_message_file_lets_the_stop_through(staged, content):
 
 
 def test_a_deleted_message_file_lets_the_stop_through(staged):
-    _require_rbg_enabled()
+    _require_crew_enabled()
     (staged / "messages" / "rule-check.md").unlink()
     proc = fire(staged, "claude", "Stop", {"session_id": "s1"})
     assert proc.returncode == 0
@@ -195,7 +195,7 @@ def test_agy_gets_an_advisory_and_never_a_block(staged):
     """agy's `PostInvocation` maps to canonical `Stop`, so `rule_check` does run
     there — but agy has no blockable event and its response contract carries no
     disposition field. The text has to arrive as advice or not at all."""
-    _require_rbg_enabled()
+    _require_crew_enabled()
     out = parsed(fire(staged, "agy", "PostInvocation", {"conversationId": "c1"}))
     assert out == {"injectSteps": [{"ephemeralMessage": RULE_CHECK_TEXT}]}
     assert "decision" not in out
@@ -240,7 +240,7 @@ def test_pretooluse_with_no_evaluator_is_a_clean_no_op(staged):
     assert proc.stdout.strip() == ""
 
 
-def test_every_rbg_handler_refuses_nothing_and_blocks_only_on_a_stop(staged):
+def test_every_crew_handler_refuses_nothing_and_blocks_only_on_a_stop(staged):
     """Behavioural counterpart to the source guard: fire every registered
     handler on its own event and check the disposition that comes out."""
     events = json.loads(

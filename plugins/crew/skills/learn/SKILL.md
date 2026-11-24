@@ -8,7 +8,7 @@ description: Diagnose systemic root causes of framework faults from session exec
 Diagnose systemic failure classes in the framework from Arize Phoenix execution traces (or `gh` PR diffs, review comments, check runs, and instructions solely for non-traced CI / CI-workflow runs), verify `out-<session_slug>` persistence, and execute or persist minimally effective remedies before escalating to framework enforcement issues.
 
 - **Scope**: Framework faults only (including local workflow, rule, or instruction defects surfaced in third-party repos), never third-party repo bugs, external tools, models, or services.
-- **Executor**: The PKB custodian (`pauli`) runs this skill inside an isolated container in `project: aops` with access to framework governance documents and `rbg:axioms`.
+- **Executor**: The PKB custodian (`pauli`) runs this skill inside an isolated container in `project: aops` with access to framework governance documents and `crew:axioms`.
 
 ## Protocol
 

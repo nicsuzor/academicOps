@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "name": "rbg",
+  "name": "crew",
   "clients": {
     "__base__": {},
     "claude": {

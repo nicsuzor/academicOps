@@ -155,7 +155,7 @@ def test_clean_settings(tmp_path):
         )
     )
 
-    dist_plugins = {"ida", "rbg", "tools"}
+    dist_plugins = {"ida", "crew", "tools"}
     clean_settings(settings_dir, dist_plugins)
 
     updated = json.loads(settings_file.read_text())

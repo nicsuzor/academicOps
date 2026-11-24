@@ -36,7 +36,7 @@ def built(tmp_path_factory) -> Path:
 
 @pytest.fixture(scope="module")
 def built_orchestrate(tmp_path_factory) -> Path:
-    """The real ida plugin, not a fixture — its agents carry the
+    """The real ida and crew plugins, not fixtures — their agents carry the
     per-client frontmatter semantics these tests assert."""
     dist_root = tmp_path_factory.mktemp("build-dist-ida")
     build_all(
@@ -44,7 +44,7 @@ def built_orchestrate(tmp_path_factory) -> Path:
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
         clients=CLIENTS,
-        plugins=["ida"],
+        plugins=["ida", "crew"],
         version=VERSION,
     )
     return dist_root
@@ -410,11 +410,11 @@ def test_agent_no_tools_key_semantics(built_orchestrate):
 
     accepted_tools, _ = load_tool_config()
 
-    claude_agent = built_orchestrate / "ida-claude" / "agents" / "marsha.md"
+    claude_agent = built_orchestrate / "crew-claude" / "agents" / "marsha.md"
     claude_fm = yaml.safe_load(claude_agent.read_text().split("---")[1])
     assert "tools" not in claude_fm
 
-    agy_agent = built_orchestrate / "ida-agy" / "agents" / "marsha.md"
+    agy_agent = built_orchestrate / "crew-agy" / "agents" / "marsha.md"
     agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
     assert agy_fm["tools"] == accepted_tools
 
@@ -425,10 +425,10 @@ def test_agy_agent_carries_source_color_through_unmodified(built_orchestrate):
     file, not restated, so this only fails if the build actually changes it."""
     import yaml
 
-    source_marsha = PROJECT_ROOT / "plugins" / "ida" / "agents" / "marsha.md"
+    source_marsha = PROJECT_ROOT / "plugins" / "crew" / "agents" / "marsha.md"
     source_fm = yaml.safe_load(source_marsha.read_text().split("---")[1])
 
-    agy_marsha = built_orchestrate / "ida-agy" / "agents" / "marsha.md"
+    agy_marsha = built_orchestrate / "crew-agy" / "agents" / "marsha.md"
     agy_marsha_fm = yaml.safe_load(agy_marsha.read_text().split("---")[1])
     assert agy_marsha_fm["color"] == source_fm["color"]
 
@@ -1171,8 +1171,8 @@ def test_empty_client_list_in_marketplace_is_a_hard_error(tmp_path):
         load_marketplace_toml(_fixture_marketplace(tmp_path, "[]"))
 
 
-def test_rbg_auto_mode_manifest_emitted_for_claude_only(tmp_path):
-    """Curated Claude Code autoMode rules ship in rbg-claude/auto-mode.json
+def test_crew_auto_mode_manifest_emitted_for_claude_only(tmp_path):
+    """Curated Claude Code autoMode rules ship in crew-claude/auto-mode.json
     and are not emitted to agy."""
     dist_root = tmp_path / "dist"
     build_all(
@@ -1180,13 +1180,13 @@ def test_rbg_auto_mode_manifest_emitted_for_claude_only(tmp_path):
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
         clients=("claude", "agy"),
-        plugins=["rbg"],
+        plugins=["crew"],
         version=VERSION,
     )
-    claude_auto_mode = dist_root / "rbg-claude" / "auto-mode.json"
+    claude_auto_mode = dist_root / "crew-claude" / "auto-mode.json"
     assert claude_auto_mode.is_file()
     data = json.loads(claude_auto_mode.read_text(encoding="utf-8"))
     assert data["allow"]
     assert data["soft_deny"]
     assert data["hard_deny"]
-    assert not (dist_root / "rbg-agy" / "auto-mode.json").exists()
+    assert not (dist_root / "crew-agy" / "auto-mode.json").exists()

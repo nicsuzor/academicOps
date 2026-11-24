@@ -238,6 +238,6 @@ seedling they chose to develop, or an existing plan needing restructuring.
 ## Related
 
 - [[specs/workflows/conceptual-review-workflow.md]] -- the review layer this spec instantiates
-- [[plugins/ida/agents/pauli.md]] -- strategic planning; specialised here for research
+- [[plugins/crew/agents/pauli.md]] -- strategic planning; specialised here for research
 - [[specs/polecat/polecat-system.md]] -- execution layer; consumes decomposed task graphs
 - PKB task-graph MCP tools (`mcp__services__*`) -- structured task-graph output

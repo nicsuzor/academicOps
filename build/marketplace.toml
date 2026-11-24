@@ -16,9 +16,9 @@ description = "The strategic face, and the only agent that speaks to the user."
 category = "productivity"
 
 [[plugins]]
-directory = "rbg"
-name = "rbg"
-description = "Automatic in-session rule enforcement."
+directory = "crew"
+name = "crew"
+description = "The crew (james, pauli, marsha), the axioms, and automatic in-session rule enforcement."
 category = "productivity"
 
 [[plugins]]

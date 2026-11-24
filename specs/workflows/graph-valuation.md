@@ -115,7 +115,7 @@ Redundant child-to-ancestor weight edges. Stored `alternative` and `settles` edg
   (`plugins/ida/skills/q/SKILL.md:18`). It also defaults `intent` to 3
   (`plugins/ida/skills/q/SKILL.md:24`).
 - pauli authors "target severity magnitude vs contributing edge weight probability"
-  (`plugins/ida/agents/pauli.md:104`).
+  (`plugins/crew/agents/pauli.md:104`).
 - Over-dense linking: ambiguous prohibitions on body interconnections led agents to duplicate every
   markdown body wikilink as a formal frontmatter edge with weights.
 - Tracking tasks authored frontmatter `supports` links to every task they tracked,
@@ -428,7 +428,7 @@ placements, "no target fits", proposed hard dates further out, and pricing for n
 are ordered by reach (§5) and drained only through the channels above. An item over budget waits.
 It never escalates by repetition, and an unanswered item is not re-asked in the same week. This
 keeps pauli's rule "never raise the same non-blocking concern twice"
-(`plugins/ida/agents/pauli.md:117`).
+(`plugins/crew/agents/pauli.md:117`).
 
 **Expected load.**
 
@@ -441,7 +441,7 @@ keeps pauli's rule "never raise the same non-blocking concern twice"
 | File | Change |
 | - | - |
 | `plugins/ida/skills/q/SKILL.md` | Steps 4-6 are replaced by R1. Description :4 changes from "wire contributes_to/depends_on" to "wire what it serves, propose values". :18 becomes the FR §5.1 edge contract with `set_by: agent-proposed`. :19 keeps `needs` and drops `soft_depends_on` and `supersedes`. :23 keeps effort and adds dates with class (R5). :24: the default `intent` of 3 is removed, and the line goes entirely if FQ10 drops the field. A headless context is added (R1). |
-| `plugins/ida/agents/pauli.md` | :104 "two-axis model (target severity magnitude vs contributing edge weight probability)" becomes: pauli drafts link proposals and estimates target prices directly, leaving intent untouched. :23 "carry … severity magnitude" becomes "carry worth". |
+| `plugins/crew/agents/pauli.md` | :104 "two-axis model (target severity magnitude vs contributing edge weight probability)" becomes: pauli drafts link proposals and estimates target prices directly, leaving intent untouched. :23 "carry … severity magnitude" becomes "carry worth". |
 | `plugins/ida/agents/ida.md` | Adds that valuation asks reach the attention queue through routine notice and the digest (R7). Governed by the one decision or question per message rule at :76. |
 | `plugins/ida/skills/remember/SKILL.md` | :22 "carry only graph weights and severity" becomes "carry only worth". :37 "a wikilink … is a real graph edge" is qualified as not read by the flow, pending FQ23. :45 `/pkb:q` becomes `/ida:q`. |
 | `plugins/ida/skills/remember/references/consolidation.md` | Adds a weekly densify stage that runs `wf-densify` (R3). |
@@ -587,7 +587,7 @@ All questions K1–K11 are settled under the product-grade workflow redesign:
 - `/q` wires `soft_depends_on` and `supersedes` at intake (`plugins/ida/skills/q/SKILL.md:19`).
 - `contributes_to` "quantum and certainty" with no field contract
   (`plugins/ida/skills/q/SKILL.md:18`).
-- pauli authors target severity and the "two-axis model" (`plugins/ida/agents/pauli.md:104`).
+- pauli authors target severity and the "two-axis model" (`plugins/crew/agents/pauli.md:104`).
 - The seven-word `stated_weight` vocabulary as the only link value (weight-repair template;
   `specs/meta/naming-and-decisions.md:150`; `.agents/skills/triage/SKILL.md:219-220`).
 - Five positive-only standing-weight anchors.

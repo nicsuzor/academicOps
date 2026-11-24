@@ -201,8 +201,8 @@ def test_normalize_resolves_agent_from_aliases_and_env(
     assert normalize("claude", "Stop", {"agentType": "ida:ida"}, hooks_dir).agent_type == "ida:ida"
     assert normalize("claude", "Stop", {"agentName": "ida"}, hooks_dir).agent_type == "ida"
     assert (
-        normalize("claude", "Stop", {"subagentType": "ida:pauli"}, hooks_dir).agent_type
-        == "ida:pauli"
+        normalize("claude", "Stop", {"subagentType": "crew:pauli"}, hooks_dir).agent_type
+        == "crew:pauli"
     )
     assert normalize("claude", "Stop", {"subagentName": "pauli"}, hooks_dir).agent_type == "pauli"
     assert normalize("claude", "Stop", {"agentId": "sub-1"}, hooks_dir).agent_id == "sub-1"

@@ -22,14 +22,13 @@ templates/              Build-time file templates, GitHub Actions workflow
 scripts/                Repo tooling, not shipped in any plugin.
 plugins/                Plugin sources. Only what a client needs.
   ida/                  ida -- the interactive face, and the only agent that
-                        talks to the user; james, marsha, sara and pauli
-                        (the custodian for PKB graph, planning, and all knowledge
-                        tasks); PKB, workflow, review, agy, and premise-check
-                        skills; session, PKB-search, tracing and premise-check
-                        hooks.
-  rbg/                  Rule enforcement: the rbg agent, the axioms skill,
-                        an advisory turn-by-turn evaluator plus a stop-side
-                        rule-check gate.
+                        talks to the user; sara; PKB, workflow, review, agy,
+                        and premise-check skills; session, PKB-search, tracing
+                        and premise-check hooks.
+  crew/                 The crew: james, marsha and pauli (the custodian for
+                        PKB graph, planning, and all knowledge tasks); the
+                        axioms skill; an advisory turn-by-turn evaluator plus
+                        a stop-side rule-check gate.
   tools/                Domain research skills.
   aops-debug/           Debug plugin that dumps raw hook payloads.
   ida-telegram/         Ida's custom Telegram channel and Mini App plugin.
@@ -49,8 +48,8 @@ source of truth for the built plugin set.
 
 | Directory | Owns |
 | - | - |
-| `plugins/ida` | ida (`plugins/ida/agents/ida.md`) -- the interactive face and the only agent that talks to the user; james, marsha, sara, and pauli (`plugins/ida/agents/pauli.md`) -- the knowledge base custodian for memory, planning, decomposition, graph writes, and every knowledge task (questions, finding things, web, GitHub, read-only code inspections, and config lookups); capture, memory, decomposition, dispatch, agy, workflow-library, review, and premise-check skills; session, PKB-search, tracing, and premise-check hooks. |
-| `plugins/rbg` | Rule enforcement: the rbg agent (`plugins/rbg/agents/rbg.md`), the `axioms` skill whose files are the axioms (`plugins/rbg/skills/axioms/`), an advisory turn-by-turn evaluator plus a stop-side rule-check gate. |
+| `plugins/ida` | ida (`plugins/ida/agents/ida.md`) -- the interactive face and the only agent that talks to the user; sara (`plugins/ida/agents/sara.md`); capture, memory, decomposition, dispatch, agy, workflow-library, review, and premise-check skills; session, PKB-search, tracing, and premise-check hooks. |
+| `plugins/crew` | The crew: james (`plugins/crew/agents/james.md`), marsha (`plugins/crew/agents/marsha.md`), and pauli (`plugins/crew/agents/pauli.md`) -- the knowledge base custodian for memory, planning, decomposition, graph writes, and every knowledge task (questions, finding things, web, GitHub, read-only code inspections, and config lookups); the `axioms` skill whose files are the axioms (`plugins/crew/skills/axioms/`); an advisory turn-by-turn evaluator plus a stop-side rule-check gate. |
 | `plugins/tools` | Domain research skills (data analysis, document conversion, diagramming, peer review, project scaffolding). |
 | `plugins/aops-debug` | Debug plugin that dumps raw hook payloads. |
 | `plugins/ida-telegram` | Ida's custom Telegram channel and Mini App plugin: stdio MCP channel server, progressive disclosure with expandable blockquotes, async question broker, feedback trace collection, Mini App (Details, Review, Questions, Anchor), voice notes, and role-gated polling. |
@@ -81,7 +80,7 @@ Plugin hooks never rewrite or inject MCP tool-call inputs; agents pass
 | Plugin | Events registered | What it's for |
 | - | - | - |
 | `ida` | Claude Code: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PostToolBatch`, `SubagentStart`, `Stop`, `SubagentStop`, `StopFailure`, `PermissionRequest`, `PermissionDenied`, `Notification`, `PreCompact`, `PostCompact`, `SessionEnd`. agy: `SessionStart`, `PreInvocation` (canonical `UserPromptSubmit`), `PreToolUse`, `PostToolUse`, `Stop` | Session setup and `SessionStart` pointers; OTel tracing (`SubagentStop` tracer-only); `SubagentStart` uniform `honesty.md` reminders with recipient `--agent` and armed-claim context; `UserPromptSubmit` PKB prompt grounding ([prompt hydration](agents/prompt-hydration.md)) and incoming report reminders (`hearsay.md`); recipient-scoped `(session_id, agent_id)` `hearsay_gate` (`premise_check_gate`) arming across `UserPromptSubmit`, `PostToolUse`, and `PostToolBatch`, enforced per agent on `PreToolUse` and `Stop` (see [evidence contract enforcement](enforcement/evidence-contract-enforcement.md)). |
-| `rbg` | `PreToolUse`, `Stop`, `SubagentStop` (declared, unwired) | Rule-compliance evaluation and the stop-side rule-check gate, as designed. `HANDLERS` in `plugins/rbg/hooks/handlers.py` currently has every entry commented out, so this pillar ships no live hook today. |
+| `crew` | `SessionStart`; `PreToolUse`, `Stop`, `SubagentStop` (declared, unwired) | `SessionStart` injects the plugin's `CORE.md`. Rule-compliance evaluation and the stop-side rule-check gate, as designed: their entries in `HANDLERS` in `plugins/crew/hooks/handlers.py` are commented out, so the plugin ships no live rule hook today. |
 
 `plugins/tools` and `plugins/aops-debug` ship no hooks or a debug-only
 passthrough respectively; see each plugin's own README.

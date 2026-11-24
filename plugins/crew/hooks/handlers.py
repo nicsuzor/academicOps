@@ -1,9 +1,9 @@
-"""rbg's rule checks: one per surface, each scoped to the clients that have it.
+"""crew's rule checks: one per surface, each scoped to the clients that have it.
 
 ``evaluate`` is the ``PreToolUse`` turn-by-turn check. It loads the
 rule set across scopes (rules.py) and asks a Reflexes evaluator — a small language
 model, remote or locally hosted (evaluator.py) — whether the tool call matches
-each live rule. The judgment is the model's; rbg only composes the question and
+each live rule. The judgment is the model's; crew only composes the question and
 reports what came back. Nothing about a rule's meaning is decided by matching
 text against a pattern.
 
@@ -26,7 +26,7 @@ to ``manifest/hooks.template.json`` — which declares these stop hooks ``async`
 — not to this handler (specs/ARCHITECTURE.md, Hooks).
 The disposition is legal because the thing being judged is whether the check has
 happened at all, which is a fact about the session rather than a reading of a
-rule. Registered on both ``Stop`` and ``SubagentStop``, rbg's rule check applies
+rule. Registered on both ``Stop`` and ``SubagentStop``, crew's rule check applies
 equally to the face and to a stopping worker, so both events are wired.
 
 One hook invocation is one process (dispatch.py runs, does its job, exits), so
@@ -99,7 +99,7 @@ def _combine_sinks(*sinks):
 def evaluate(ctx: HookContext) -> Result | None:
     """Ask the evaluator whether this tool call matches any live rule.
 
-    No evaluator configured is a clean no-op — rbg has nothing to ask with,
+    No evaluator configured is a clean no-op — crew has nothing to ask with,
     which is not a failure of the session. Nothing matched is a no-op too. Only
     a rule the model actually flagged produces an advisory, and the advisory
     hands back the rule's own text so the agent can correct its own course.
@@ -177,7 +177,7 @@ def evaluate(ctx: HookContext) -> Result | None:
     outage = None
     if failures:
         detail = (
-            f"rbg: the rule evaluator did not answer for {len(failures)} of "
+            f"crew: the rule evaluator did not answer for {len(failures)} of "
             f"{len(policies)} rules, so those rules are not being checked"
         )
         print("DEGRADED: ", detail, "; ".join(failures), file=sys.stderr)
@@ -279,7 +279,7 @@ def rule_check(ctx: HookContext) -> Result | None:
         # instruction, and blocking would cost the agent a turn to be told
         # nothing — worse than not blocking. Fail open and say why.
         print(
-            "DEGRADED: rbg: hooks/messages/rule-check.md is missing or empty, so the stop-side "
+            "DEGRADED: crew: hooks/messages/rule-check.md is missing or empty, so the stop-side "
             "rule check cannot be asked for; letting the stop through",
             file=sys.stderr,
         )
@@ -300,7 +300,7 @@ def session_start(ctx: HookContext) -> Result | None:
     return None
 
 
-# TEMPORARY (2026-08-08, v0.7.1) — rbg's hooks are deliberately unregistered.
+# TEMPORARY (2026-08-08, v0.7.1) — crew's hooks are deliberately unregistered.
 # Re-enable by uncommenting; do not delete the entries.
 HANDLERS = {
     "SessionStart": [session_start],

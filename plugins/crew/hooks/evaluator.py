@@ -2,7 +2,7 @@
 
 cope asks a small language model whether a tool call matches a rule. The
 question, the answer shape, and the error semantics are the Reflexes evaluator
-contract (SPEC.md §4; see plugins/rbg/README.md for where to find it): given a
+contract (SPEC.md §4; see plugins/crew/README.md for where to find it): given a
 ``policy`` (the rule's own markdown, frontmatter stripped) and ``content`` (the
 tool call), return a ``label`` of 0 or 1, optionally with a ``confidence`` and a
 reason. One policy, one verdict — so a match names the rule it matched, which is
@@ -70,7 +70,7 @@ from dispatch import load_message_pair
 #: Plugin-local by design — see ``claim_once``. Each ``kind`` gets its own
 #: subdirectory, so two notices that both recur every tool call cannot silence
 #: one another by racing for the same marker.
-_ONCE_MARKER_ROOT = "aops-rbg-once"
+_ONCE_MARKER_ROOT = "aops-crew-once"
 
 #: Wire protocols ``COPE_EVALUATOR_PROTOCOL`` accepts.
 PROTOCOLS = ("cope", "openai")

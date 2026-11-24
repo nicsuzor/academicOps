@@ -16,11 +16,11 @@ from opentelemetry.sdk.trace.export import SpanExportResult
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 IDA_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
-RBG_HOOKS = REPO_ROOT / "plugins" / "rbg" / "hooks"
+CREW_HOOKS = REPO_ROOT / "plugins" / "crew" / "hooks"
 SCRIPTS_DIR = REPO_ROOT / "scripts"
 
 # Make sure IDA_HOOKS is first in sys.path so handlers imports from ida
-for p in (str(SCRIPTS_DIR), str(RBG_HOOKS), str(IDA_HOOKS)):
+for p in (str(SCRIPTS_DIR), str(CREW_HOOKS), str(IDA_HOOKS)):
     if p in sys.path:
         sys.path.remove(p)
     sys.path.insert(0, p)
@@ -140,12 +140,12 @@ def test_unconfigured_ci_emits_notice(capsys, tmp_path):
     assert settings == base
 
 
-def test_unconfigured_rbg_evaluator_emits_notice(capsys, tmp_path):
-    """AC-4.1: rbg-evaluator emits notice on stderr once when unconfigured."""
+def test_unconfigured_crew_evaluator_emits_notice(capsys, tmp_path):
+    """AC-4.1: crew-evaluator emits notice on stderr once when unconfigured."""
     ctx = dispatch.HookContext(
         client="claude",
         event="PreToolUse",
-        session_id="test-rbg-1",
+        session_id="test-crew-1",
         tool="Bash",
     )
     eval_config = MagicMock()
@@ -160,7 +160,7 @@ def test_unconfigured_rbg_evaluator_emits_notice(capsys, tmp_path):
     )
     assert sink is None
     captured = capsys.readouterr()
-    assert "NOTICE: rbg evaluator OTel tracing unconfigured" in captured.err
+    assert "NOTICE: crew evaluator OTel tracing unconfigured" in captured.err
 
 
 # ==============================================================================

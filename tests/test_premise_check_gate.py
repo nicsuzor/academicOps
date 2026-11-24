@@ -2623,7 +2623,7 @@ def test_foreground_subagent_handback_plus_metadata_agent_return_bridges_notice_
         tool_response={"success": True, "message": "Report delivered to your caller."},
         tool="SubagentHandback",
         agent_id=child_id,
-        agent_type="ida:pauli",
+        agent_type="crew:pauli",
         tool_use_id="toolu_hb_fg",
     )
     # Must stay silent for the child itself
@@ -2838,7 +2838,7 @@ def test_subcoordinator_async_and_sendmessage_resumed_child_handback_arms_subcoo
         tool_response={"success": True, "message": "Report delivered to your caller."},
         tool="SubagentHandback",
         agent_id=child_id,
-        agent_type="ida:pauli",
+        agent_type="crew:pauli",
         tool_use_id="toolu_hb1",
     )
     assert handlers.post_tool(hb1_ctx) is None

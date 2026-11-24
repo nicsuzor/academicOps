@@ -658,7 +658,7 @@ def _subagent_id(data: dict) -> str | None:
 
 
 def _subagent_name(agent_type: Any) -> str:
-    """Agent name from a subagent's type, without its plugin prefix ('ida:james' -> 'james')."""
+    """Agent name from a subagent's type, without its plugin prefix ('crew:james' -> 'james')."""
     name = str(agent_type or "").strip()
     return name.split(":", 1)[1] if ":" in name else name
 

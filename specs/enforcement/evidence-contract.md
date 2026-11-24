@@ -76,7 +76,7 @@ As the user, I want my directions to reach a worker as I gave them, so that an a
 
 As the user, I want diagnoses and evaluations to trace causes to runtime evidence rather than agent self-reports, so that failure analyses address actual mechanisms rather than rationalised stories.
 
-- An agent's self-explanation of why it acted is post-hoc hearsay ([`explanations-not-reasons`](../../plugins/rbg/skills/axioms/explanations-not-reasons.md)) and never taken at face value.
+- An agent's self-explanation of why it acted is post-hoc hearsay ([`explanations-not-reasons`](../../plugins/crew/skills/axioms/explanations-not-reasons.md)) and never taken at face value.
 - Diagnoses and evaluations establish causes from external runtime evidence (traces, diffs, inputs, environment state, reproduced runs); Phoenix spans prove execution rather than logical entailment.
 
 ## Design

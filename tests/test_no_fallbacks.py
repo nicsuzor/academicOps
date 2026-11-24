@@ -29,7 +29,7 @@ def test_rules_load_raises_on_unreadable_rule_file(tmp_path):
     """When a rule file cannot be read, load() raises OSError rather than returning DEGRADED."""
     import sys
 
-    sys.path.insert(0, str(REPO_ROOT / "plugins" / "rbg" / "hooks"))
+    sys.path.insert(0, str(REPO_ROOT / "plugins" / "crew" / "hooks"))
     import rules
 
     rules_dir = tmp_path / "rules"
@@ -49,7 +49,7 @@ def test_evaluator_timeout_raises_on_invalid_number(monkeypatch):
     """When COPE_EVALUATOR_TIMEOUT is non-numeric, _timeout raises ValueError rather than defaulting."""
     import sys
 
-    sys.path.insert(0, str(REPO_ROOT / "plugins" / "rbg" / "hooks"))
+    sys.path.insert(0, str(REPO_ROOT / "plugins" / "crew" / "hooks"))
     import evaluator
 
     monkeypatch.setenv("COPE_EVALUATOR_TIMEOUT", "not-a-number")
@@ -61,7 +61,7 @@ def test_evaluator_timeout_raises_on_non_positive_number(monkeypatch):
     """When COPE_EVALUATOR_TIMEOUT is non-positive, _timeout raises ValueError rather than defaulting."""
     import sys
 
-    sys.path.insert(0, str(REPO_ROOT / "plugins" / "rbg" / "hooks"))
+    sys.path.insert(0, str(REPO_ROOT / "plugins" / "crew" / "hooks"))
     import evaluator
 
     monkeypatch.setenv("COPE_EVALUATOR_TIMEOUT", "-5")
@@ -73,7 +73,7 @@ def test_evaluator_emit_does_not_swallow_sink_exception():
     """When on_outcome raises, evaluator.check does not swallow it with pass."""
     import sys
 
-    sys.path.insert(0, str(REPO_ROOT / "plugins" / "rbg" / "hooks"))
+    sys.path.insert(0, str(REPO_ROOT / "plugins" / "crew" / "hooks"))
     import evaluator
 
     config = evaluator.Config(
@@ -93,7 +93,7 @@ def test_evaluator_emit_does_not_swallow_sink_exception():
                 config=config,
                 policies=[("p1", "policy text")],
                 content="test",
-                hooks_dir=REPO_ROOT / "plugins" / "rbg" / "hooks",
+                hooks_dir=REPO_ROOT / "plugins" / "crew" / "hooks",
                 on_outcome=failing_sink,
             )
 

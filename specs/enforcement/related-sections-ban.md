@@ -59,7 +59,7 @@ Six distinct surfaces generate or modify PKB body content today. An evaluation o
 
 | Writing Surface | Primary Agents & Tools | Governing Mechanism Today | Current Severity | Observed Failure Mode |
 | - | - | - | - | - |
-| **Planning & Reification** | Pauli (`reify`, `decompose`, graph upkeep) | `instructions` (`plugins/ida/agents/pauli.md:63`) | imperative | Instruction stated an absolute ban ("never link tasks") rather than the user's calibrated rule (no related sections; link only when discussing; MoCs exempt); did not reach other agents. |
+| **Planning & Reification** | Pauli (`reify`, `decompose`, graph upkeep) | `instructions` (`plugins/crew/agents/pauli.md:63`) | imperative | Instruction stated an absolute ban ("never link tasks") rather than the user's calibrated rule (no related sections; link only when discussing; MoCs exempt); did not reach other agents. |
 | **Direct Task Creation & Intake** | Ida, front agents (`q`, `portal_codemode_execute` -> `create_task`) | Unenforced (no instruction, no rule in `.agents/rules/RULES.md`) | none | Ida created tasks with `## Context` lines listing "Related: [[]], [[]]" linking parents already wired as edges (#3337). |
 | **Worker Release Reports** | Polecat workers, James (`/dump`, `/pull`, `wf-finish`, `update_body`, `release_task`) | Unenforced / scoped away (`specs/enforcement/task-contract.md:65`) | none | `task-contract.md` scoped the ban strictly to capture-time brevity (50-150 words). Workers compiled 17-link "Private Cross-Reference Indexes" in release reports (#3337) because the evidence contract demanded citations and lacked reach boundaries. |
 | **Durable Knowledge Capture** | All agents (`remember`, `daily`, `create`, `update_body`) | Unenforced | none | No rule barred "related notes" sections in captured topic notes or daily notes. |
@@ -71,7 +71,7 @@ Six distinct surfaces generate or modify PKB body content today. An evaluation o
 In accordance with `specs/enforcement/enforcement-map.md`, the rule is entered into `specs/ENFORCEMENT-MAP.md` as an escalated multi-carrier rule combining universal project-rule instructions with mandatory reviewer verification:
 
 ```markdown
-| [Rule: Ban on Related Sections in PKB Bodies](enforcement/related-sections-ban.md) -- PKB graph density comes from header edges; dedicated related tasks or notes sections in bodies are prohibited. | instructions, process | imperative, required gate | `.agents/rules/RULES.md:70`, `.agents/rules/pkb-body-linking.md:1-25`, `specs/enforcement/task-contract.md:65-75`, `plugins/ida/agents/pauli.md:63`, `plugins/ida/skills/dump/SKILL.md:20`, `wf-dialectical-review.md:35` |
+| [Rule: Ban on Related Sections in PKB Bodies](enforcement/related-sections-ban.md) -- PKB graph density comes from header edges; dedicated related tasks or notes sections in bodies are prohibited. | instructions, process | imperative, required gate | `.agents/rules/RULES.md:70`, `.agents/rules/pkb-body-linking.md:1-25`, `specs/enforcement/task-contract.md:65-75`, `plugins/crew/agents/pauli.md:63`, `plugins/ida/skills/dump/SKILL.md:20`, `wf-dialectical-review.md:35` |
 ```
 
 ### 3. Evidence for the Move
@@ -111,7 +111,7 @@ The one-step move implements the rule across four synchronized areas:
    - Declares the standing rule for all agents: PKB graph density comes from header edges. Dedicated "Related Tasks" or "Related Notes" sections are forbidden across all bodies. Bodies link another node only where it is substantively discussed; MoCs and indexes link in body by definition.
 2. **Task Contract Invariant (`specs/enforcement/task-contract.md`):**
    - Extends the brevity invariant to explicitly govern the full lifecycle through release: release reports (`## Report`) and evidence citations must cite primary factual sources for claims, and are forbidden from assembling aggregate cross-reference lists or consulted-node inventories.
-3. **Pauli Persona Alignment (`plugins/ida/agents/pauli.md`):**
+3. **Pauli Persona Alignment (`plugins/crew/agents/pauli.md`):**
    - Replaces the overly rigid "never link tasks" phrasing with the user's exact specification: header edges carry density, bodies link nodes only where discussed in text, MoCs link in body by definition, and dedicated related sections are strictly banned.
 4. **Release and Reporting Skills (`plugins/ida/skills/dump/SKILL.md`, `plugins/ida/skills/premise-check/SKILL.md`):**
    - Explicitly instructs workers that reporting evidence requires citing specific supporting facts, forbidding the compilation of related-work lists or basis catalogs.
@@ -124,7 +124,7 @@ The implementation worker on Stage 2 must satisfy the following verifiable crite
 
 1. **Project Rule Declaration:** A dedicated project-local rule file `.agents/rules/pkb-body-linking.md` is authored with `trigger: always_on`, and referenced in `.agents/rules/RULES.md`, stating the ban on dedicated related sections and the discussion/index exceptions.
 2. **Task Contract Harmonization:** `specs/enforcement/task-contract.md` carries an updated task body and evidence invariant explicitly barring related-work cross-reference sections across both capture bodies and release reports.
-3. **Pauli Persona Calibration:** `plugins/ida/agents/pauli.md` accurately reflects the user's rule and exception definitions.
+3. **Pauli Persona Calibration:** `plugins/crew/agents/pauli.md` accurately reflects the user's rule and exception definitions.
 4. **Release Reporting Guidelines:** `plugins/ida/skills/dump/SKILL.md` and `plugins/ida/skills/premise-check/SKILL.md` instruct workers that basis citations are strictly direct claim evidence, barring aggregate cross-reference lists.
 5. **Enforcement Register Update:** `specs/ENFORCEMENT-MAP.md` is updated with the new 4-column row complying with the concision and schema rules of `specs/enforcement/enforcement-map.md`.
 6. **Review Lens Integration:** Review templates (`wf-dialectical-review.md`, `wf-qa.md`) include verification of the related-sections ban in artifact checks.

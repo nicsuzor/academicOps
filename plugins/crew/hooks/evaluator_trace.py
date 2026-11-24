@@ -64,7 +64,7 @@ _ENV_PATH = "COPE_EVALUATOR_TRACE_PATH"
 #: ``evaluator.claim_once`` uses, and for the same reason: one hook
 #: invocation is one process, so the fact "this session has swept before"
 #: cannot live in memory between calls.
-_WARM_MARKER_DIR = "aops-rbg-trace-warm"
+_WARM_MARKER_DIR = "aops-crew-trace-warm"
 
 
 @dataclass(frozen=True)

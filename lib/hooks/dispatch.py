@@ -215,7 +215,7 @@ TO_CANONICAL = {
         # SubagentStop covers "one invocation step finished, possibly not
         # the last" — agy has no wire event at that granularity mapped here,
         # and no currently-live handler (across aops-debug, orchestrate,
-        # rbg, ida) depends on receiving it, so it is a no-op rather than a
+        # crew, ida) depends on receiving it, so it is a no-op rather than a
         # guess at some other canonical event.
         "PostInvocation": None,
         "PreToolUse": "PreToolUse",
@@ -560,12 +560,12 @@ _OTEL_TRACE_ENV = "COPE_EVALUATOR_OTEL_TRACE_PATH"
 def _get_evaluator_otel_trace():
     """The OTel emitter, when the plugin this dispatch ships inside provides it.
 
-    `evaluator_otel_trace` ships in rbg. This file is shared into every
+    `evaluator_otel_trace` ships in crew. This file is shared into every
     plugin's `hooks/` directory, and the entry point puts this module's own
     directory on `sys.path`, so the import below resolves against whichever
-    plugin this copy is shipping inside — rbg's, in the builds checked. That
+    plugin this copy is shipping inside — crew's, in the builds checked. That
     is a file reading its own plugin's directory, not another plugin's. The
-    traversal to `plugins/rbg/hooks` that used to sit here named another
+    traversal to another plugin's `hooks/` that used to sit here named another
     plugin by path, and in the `dist/<name>-<client>/` layout resolved to
     nothing, leaving the instrumentation a silent no-op.
 
@@ -583,7 +583,7 @@ def _get_evaluator_otel_trace():
         if os.environ.get(_OTEL_TRACE_ENV):
             print(
                 f"aops hooks: {_OTEL_TRACE_ENV} is set but evaluator_otel_trace is not "
-                "importable here — OTel instrumentation ships with rbg, and this "
+                "importable here — OTel instrumentation ships with crew, and this "
                 "dispatch is running inside a plugin that does not carry it.",
                 file=sys.stderr,
             )

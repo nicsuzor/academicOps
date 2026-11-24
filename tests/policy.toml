@@ -2,19 +2,19 @@
 # This file centralizes architectural invariants, enforcement levels, and message
 # requirements so they can be modified without altering the test code itself.
 
-[rbg.stop_gate]
-# Events that the RBG stop gate will block on. Currently empty because rbg hooks are disabled.
+[crew.stop_gate]
+# Events that the crew stop gate will block on. Currently empty because crew hooks are disabled.
 stop_events = []
 
-[rbg.inject_ruleset]
+[crew.inject_ruleset]
 # The UserPromptSubmit/PreInvocation rule set injector is currently disabled
 enabled = false
 
 [hooks.messages]
 # Messages that ship with no .user.md because they have no second reader
-no_user_counterpart = { "rbg: ruleset" = "agy-only injection; agy has no user channel", "rbg: classifier-prompt" = "evaluator request payload, never injected into a session" }
+no_user_counterpart = { "crew: ruleset" = "agy-only injection; agy has no user channel", "crew: classifier-prompt" = "evaluator request payload, never injected into a session" }
 # Messages that ship user-blind and SHOULD NOT (defect list)
-known_user_blind = { "rbg: rule-check" = "stop-side block with no line for the person; needs the pair, not [0]" }
+known_user_blind = { "crew: rule-check" = "stop-side block with no line for the person; needs the pair, not [0]" }
 
 [hooks.degraded_capability]
 # Keys in tool response that indicate degraded capability failure
@@ -40,11 +40,11 @@ valid_statuses = [
   "failed",
 ]
 
-[rbg.evaluate]
+[crew.evaluate]
 # The PreToolUse rule evaluator (cope) is currently disabled
 enabled = false
 
-[rbg.rules]
+[crew.rules]
 user_rules_env = "COPE_USER_RULES_DIR"
 
 [ida]

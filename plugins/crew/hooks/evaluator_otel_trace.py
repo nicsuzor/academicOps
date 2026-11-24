@@ -54,7 +54,7 @@ whether its own span could be recorded.
 
 **Field mapping**, one rule evaluation to one span:
 
-- ``rule_slug`` -> the span name (``rbg.rule_evaluation.<slug>``) and a
+- ``rule_slug`` -> the span name (``crew.rule_evaluation.<slug>``) and a
   ``rule_slug`` attribute.
 - ``label``, ``confidence``, ``reason``, ``error`` -> attributes; ``error``
   also sets the span status to ``ERROR`` (``OK`` when there is none).
@@ -73,7 +73,7 @@ whether its own span could be recorded.
   rather than recomputing the same cold/warm marker twice.
 - ``session_id``, ``client``, ``event``, ``tool``, ``content`` -> attributes,
   unchanged.
-- resource ``service.name`` -> fixed to ``rbg-evaluator``, identifying every
+- resource ``service.name`` -> fixed to ``crew-evaluator``, identifying every
   span this module emits regardless of whatever ``OTEL_RESOURCE_ATTRIBUTES``
   or ``OTEL_SERVICE_NAME`` an operator has set for Claude Code's own native
   export.
@@ -119,8 +119,8 @@ from dispatch import HookContext
 #: destination, not an alternative toggle for the same one.
 _ENV_PATH = "COPE_EVALUATOR_OTEL_TRACE_PATH"
 
-_TRACER_NAME = "academicops.rbg.evaluator"
-_RESOURCE_SERVICE_NAME = "rbg-evaluator"
+_TRACER_NAME = "academicops.crew.evaluator"
+_RESOURCE_SERVICE_NAME = "crew-evaluator"
 
 
 @dataclass(frozen=True)
@@ -344,7 +344,7 @@ def record_tool_plumbing_error(
         span.set_status(Status(StatusCode.ERROR, description=msg))
         span.end(end_time=time.time_ns())
     except Exception as exc:
-        print(f"rbg otel trace: error recording tool plumbing error: {exc!r}", file=sys.stderr)
+        print(f"crew otel trace: error recording tool plumbing error: {exc!r}", file=sys.stderr)
         raise
 
 
@@ -404,7 +404,7 @@ def record_agent_idle_timeout(
             span.set_status(Status(StatusCode.OK))
         span.end(end_time=time.time_ns())
     except Exception as exc:
-        print(f"rbg otel trace: error recording agent idle/timeout: {exc!r}", file=sys.stderr)
+        print(f"crew otel trace: error recording agent idle/timeout: {exc!r}", file=sys.stderr)
         raise
 
 
@@ -459,7 +459,7 @@ def record_send_message(
         span.end(end_time=time.time_ns())
         return new_traceparent
     except Exception as exc:
-        print(f"rbg otel trace: error recording SendMessage: {exc!r}", file=sys.stderr)
+        print(f"crew otel trace: error recording SendMessage: {exc!r}", file=sys.stderr)
         raise
 
 
@@ -516,7 +516,7 @@ def record_subagent_stop(
             span.set_status(Status(StatusCode.OK))
         span.end(end_time=time.time_ns())
     except Exception as exc:
-        print(f"rbg otel trace: error recording SubagentStop: {exc!r}", file=sys.stderr)
+        print(f"crew otel trace: error recording SubagentStop: {exc!r}", file=sys.stderr)
         raise
 
 
@@ -560,7 +560,7 @@ def sink_for(
     if config is None:
         if not _SINK_UNCONFIGURED_WARNED:
             print(
-                "NOTICE: rbg evaluator OTel tracing unconfigured (COPE_EVALUATOR_OTEL_TRACE_PATH unset).",
+                "NOTICE: crew evaluator OTel tracing unconfigured (COPE_EVALUATOR_OTEL_TRACE_PATH unset).",
                 file=sys.stderr,
             )
             _SINK_UNCONFIGURED_WARNED = True
@@ -571,7 +571,7 @@ def sink_for(
 
         tracer = _get_tracer(config)
     except Exception as exc:
-        print(f"rbg otel trace: error initializing tracer: {exc!r}", file=sys.stderr)
+        print(f"crew otel trace: error initializing tracer: {exc!r}", file=sys.stderr)
         raise
 
     if sweep_id is None:
@@ -611,7 +611,7 @@ def sink_for(
         start_ns = end_ns - max(int(outcome.latency_s * 1_000_000_000), 0)
         try:
             span = tracer.start_span(
-                f"rbg.rule_evaluation.{outcome.slug}",
+                f"crew.rule_evaluation.{outcome.slug}",
                 context=parent_ctx,
                 start_time=start_ns,
                 attributes=attrs,
@@ -624,7 +624,7 @@ def sink_for(
         except Exception as exc:
             if not reported_failure:
                 print(
-                    f"rbg otel trace: could not emit span to {config.path}: {exc!r}",
+                    f"crew otel trace: could not emit span to {config.path}: {exc!r}",
                     file=sys.stderr,
                 )
                 reported_failure = True

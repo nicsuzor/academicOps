@@ -34,10 +34,10 @@ claude plugin marketplace update academicOps || true
 claude plugin install ida@academicOps
 claude plugin install aops-debug@academicOps
 claude plugin install tools@academicOps
-claude plugin install rbg@academicOps
+claude plugin install crew@academicOps
 
 # Disable claude.ai-synced copies so plugins are not loaded twice
-for p in ida rbg tools aops-debug; do
+for p in ida crew tools aops-debug; do
   claude plugin disable "${p}@synced" 2>/dev/null || true
 done
 

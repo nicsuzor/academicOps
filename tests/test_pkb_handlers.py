@@ -24,7 +24,7 @@ handlers_spec = importlib.util.spec_from_file_location("pkb_handlers", PKB_HOOKS
 assert handlers_spec is not None and handlers_spec.loader is not None
 handlers = importlib.util.module_from_spec(handlers_spec)
 # Deliberately NOT registered as sys.modules["handlers"]: that name collides
-# with plugins/rbg/hooks/handlers.py, which tests/test_cope.py imports under
+# with plugins/crew/hooks/handlers.py, which tests/test_cope.py imports under
 # the bare name "handlers". Under pytest-xdist, whichever module registers
 # that slot first wins it for every test in the worker, so a bare "handlers"
 # registration here causes test_cope.py's handlers.evaluate(...) calls to
@@ -1442,7 +1442,7 @@ def test_post_mcp_search_uses_root_phoenix_session_id_and_subagents_skip_hydrati
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("PKB_MCP_URL", http_mcp_server.url)
 
-    for agent_type, agent_id in (("ida:pauli", ""), ("ida:ida", "sub-1"), ("ida:ida", "")):
+    for agent_type, agent_id in (("crew:pauli", ""), ("ida:ida", "sub-1"), ("ida:ida", "")):
         ctx = HookContext(
             client="claude",
             event="UserPromptSubmit",
@@ -1473,7 +1473,7 @@ def test_post_mcp_search_uses_root_phoenix_session_id_and_subagents_skip_hydrati
 
 @pytest.mark.parametrize(
     "agent_type",
-    ["", "pauli", "ida:pauli", "sara", "ida:sara", "james", "aops:james", "rbg", "marsha"],
+    ["", "pauli", "crew:pauli", "sara", "ida:sara", "james", "aops:james", "rbg", "marsha"],
 )
 def test_search_the_pkb_skips_non_ida_and_unnamed_sessions(agent_type: str, tmp_path: Path):
     """Non-ida and unnamed sessions make zero PKB calls on both claude and agy."""

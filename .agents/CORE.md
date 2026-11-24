@@ -6,7 +6,7 @@ This repository holds the `academicOps` (`aops`) framework.
 
 - Architecture, plugin layout, hooks, and build stages: [`specs/ARCHITECTURE.md`](../specs/ARCHITECTURE.md) (read before scoping changes; never restate it)
 - Design specifications: [`specs/README.md`](../specs/README.md)
-- Project-local rules: [`.agents/rules/`](rules/) (applied on top of [`plugins/rbg/skills/axioms/`](../plugins/rbg/skills/axioms/))
+- Project-local rules: [`.agents/rules/`](rules/) (applied on top of [`plugins/crew/skills/axioms/`](../plugins/crew/skills/axioms/))
 
 ## Repository Constraints
 

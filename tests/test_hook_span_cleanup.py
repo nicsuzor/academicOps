@@ -192,7 +192,7 @@ def test_payload_context_attributes_attached_when_present(isolated_state, export
         "prompt": "Hello",
         "prompt_id": "prompt-abc-123",
         "permission_mode": "bypassPermissions",
-        "agent_type": "ida:james",
+        "agent_type": "crew:james",
         "session_title": "Hook tracing cleanup",
     }
     with patch("claude_code_tracer._session_lock"):
@@ -207,7 +207,7 @@ def test_payload_context_attributes_attached_when_present(isolated_state, export
     span = exporter.spans[0]
     assert span.attributes.get("prompt.id") == "prompt-abc-123"
     assert span.attributes.get("permission.mode") == "bypassPermissions"
-    assert span.attributes.get("agent.type") == "ida:james"
+    assert span.attributes.get("agent.type") == "crew:james"
     assert span.attributes.get("session.title") == "Hook tracing cleanup"
 
 

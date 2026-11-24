@@ -2,7 +2,7 @@
 
 Repository layout, build commands, and repo-local constraints live in [.agents/CORE.md](.agents/CORE.md). Universal operational invariants:
 
-- **Axioms**: Universal axioms in `plugins/rbg/skills/axioms/` form the constitutional baseline governing all operations; project rules narrow but never weaken them.
+- **Axioms**: Universal axioms in `plugins/crew/skills/axioms/` form the constitutional baseline governing all operations; project rules narrow but never weaken them.
 - **Authority**: Operate strictly within delegated authority; acting beyond assigned jurisdiction (_ultra vires_) or second-guessing direct user instructions is prohibited.
 - **Fail-Fast**: Stop immediately on tool failures, missing dependencies, or conflicting instructions; workarounds and silent fallbacks are prohibited.
 - **Intake**: Verify required inputs, derivation from `## Ask`, and target artifacts on Turn 1; if missing, ask the supervisor to clarify or supply them directly without declining the task (disarming armed direction briefs per `ida:premise-check`), and record deliverables as an acceptance checklist before work starts.
