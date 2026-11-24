@@ -2,22 +2,19 @@
 
 ## [1.13.1](https://github.com/nicsuzor/academicOps/compare/v1.13.0...v1.13.1) (2026-11-24)
 
-
 ### Bug Fixes
 
-* **hooks:** make premise-check gate notices agent-only and derive blocked action_desc ([25181b5](https://github.com/nicsuzor/academicOps/commit/25181b522d1a8c9d1a8f75581892c00642694c9a))
-* **ida:** dispatch polecats by task_id with /ida:pull only ([1a22cde](https://github.com/nicsuzor/academicOps/commit/1a22cde10f65f4e5de190cc35de35f77db5ef86e))
-* **review:** prioritize channel-reply action_desc over send_message lookup ([f37211c](https://github.com/nicsuzor/academicOps/commit/f37211ca9709450cd2535388bd493ccee8508b94))
-
+- **hooks:** make premise-check gate notices agent-only and derive blocked action_desc ([25181b5](https://github.com/nicsuzor/academicOps/commit/25181b522d1a8c9d1a8f75581892c00642694c9a))
+- **ida:** dispatch polecats by task_id with /ida:pull only ([1a22cde](https://github.com/nicsuzor/academicOps/commit/1a22cde10f65f4e5de190cc35de35f77db5ef86e))
+- **review:** prioritize channel-reply action_desc over send_message lookup ([f37211c](https://github.com/nicsuzor/academicOps/commit/f37211ca9709450cd2535388bd493ccee8508b94))
 
 ### Code Refactoring
 
-* **ida:** merge supervise into pull and add proportionate fan-out to james ([5b4d2ac](https://github.com/nicsuzor/academicOps/commit/5b4d2ac2405ce8ea42b598a60d357f476ed60115))
-
+- **ida:** merge supervise into pull and add proportionate fan-out to james ([5b4d2ac](https://github.com/nicsuzor/academicOps/commit/5b4d2ac2405ce8ea42b598a60d357f476ed60115))
 
 ### Documentation
 
-* **specs:** sync enforcement specs and map for agent-only gate notices ([e6532ef](https://github.com/nicsuzor/academicOps/commit/e6532efa65d89dfee4505ba73fcc848dc4d47339))
+- **specs:** sync enforcement specs and map for agent-only gate notices ([e6532ef](https://github.com/nicsuzor/academicOps/commit/e6532efa65d89dfee4505ba73fcc848dc4d47339))
 
 ## [1.13.0](https://github.com/nicsuzor/academicOps/compare/v1.12.0...v1.13.0) (2026-11-23)
 
