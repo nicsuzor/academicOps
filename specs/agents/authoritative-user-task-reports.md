@@ -94,7 +94,7 @@ Per `specs/enforcement/enforcement-map.md § 3`, single-carrier prompt and perso
 
 | Rule | Mechanism | Severity | Detail |
 | :- | :- | :- | :- |
-| [Axiom: Durable Capture](../plugins/crew/skills/axioms/durable-capture.md) -- Capture knowledge not verdicts, and update existing documents in the knowledge base rather than creating duplicates. | instructions, JIT injection, process | imperative, warning, required gate | `plugins/crew/skills/axioms/durable-capture.md:9`, `plugins/crew/agents/pauli.md:47,54`, `plugins/ida/skills/remember/SKILL.md:10-70`, `plugins/ida/skills/q/SKILL.md:12-65`, `plugins/ida/skills/dump/SKILL.md:15-55`, `plugins/ida/hooks/handlers.py:594-638` (`search_the_pkb`), `wf-reconcile.md:1-55` |
+| [Axiom: Durable Capture](../plugins/crew/skills/axioms/durable-capture.md) -- Capture knowledge not verdicts, and update existing documents in the knowledge base rather than creating duplicates. | instructions, JIT injection, process | imperative, warning, required gate | `plugins/crew/skills/axioms/durable-capture.md:9`, `plugins/crew/agents/pauli.md:47,54`, `plugins/crew/skills/remember/SKILL.md:10-70`, `plugins/crew/skills/q/SKILL.md:12-65`, `plugins/crew/skills/dump/SKILL.md:15-55`, `plugins/ida/hooks/handlers.py:594-638` (`search_the_pkb`), `wf-reconcile.md:1-55` |
 | [Project Rule: Current State Only](../.agents/rules/current-state-only.md) -- Maintain current state only across the repository. Do not preserve backwards compatibility or maintain history in instructions or code. | instructions, process | imperative, required gate | `.agents/rules/current-state-only.md:1-20`, `plugins/crew/agents/pauli.md:46-47`, `plugins/rbg/agents/rbg.md:16-44`, `.github/PULL_REQUEST_TEMPLATE.md:1-40` |
 
 ## Outcome-Level Build Criteria

@@ -1039,7 +1039,7 @@ def test_post_mcp_search_does_not_initialize_on_404_or_generic_400():
         "/pull",
         "/status",
         "/cmd   ",
-        "/ida:pull",
+        "/crew:pull",
         "/",
     ],
 )
@@ -1112,7 +1112,7 @@ def test_channel_wrapped_human_prompts_send_full_text_up_to_8kb():
 
 
 def test_slash_command_with_arg_sends_arg_whole_up_to_8kb():
-    """AC2: /cmd <arg> prompts send <arg> whole up to 8 KB, while /pull and /ida:pull skip hydration."""
+    """AC2: /cmd <arg> prompts send <arg> whole up to 8 KB, while /pull and /crew:pull skip hydration."""
     arg_500 = "y" * 500
     prompt = f"/cmd {arg_500}"
     ctx = HookContext(
@@ -1128,7 +1128,7 @@ def test_slash_command_with_arg_sends_arg_whole_up_to_8kb():
         args, _ = mock_search.call_args
         assert args[0] == arg_500
 
-    for pull_prompt in ("/pull", "/pull work-item-1", "/ida:pull", "/ida:pull work-item-1"):
+    for pull_prompt in ("/pull", "/pull work-item-1", "/crew:pull", "/crew:pull work-item-1"):
         ctx_pull = HookContext(
             client="claude",
             event="UserPromptSubmit",
@@ -1473,7 +1473,7 @@ def test_post_mcp_search_uses_root_phoenix_session_id_and_subagents_skip_hydrati
 
 @pytest.mark.parametrize(
     "agent_type",
-    ["", "pauli", "crew:pauli", "sara", "ida:sara", "james", "aops:james", "rbg", "marsha"],
+    ["", "pauli", "crew:pauli", "sara", "sara:sara", "james", "aops:james", "rbg", "marsha"],
 )
 def test_search_the_pkb_skips_non_ida_and_unnamed_sessions(agent_type: str, tmp_path: Path):
     """Non-ida and unnamed sessions make zero PKB calls on both claude and agy."""

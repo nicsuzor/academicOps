@@ -488,7 +488,7 @@ def test_skill_prompt_counts_as_a_turn(tracer_env, exporter):
     _real_prompted_turn(tracer_env, "one", 0)
     _real_prompted_turn(
         tracer_env,
-        "<command-message>ida:pull</command-message>\n<command-name>/ida:pull</command-name>\n"
+        "<command-message>crew:pull</command-message>\n<command-name>/crew:pull</command-name>\n"
         "<command-args>aops_0a08acad</command-args>",
         1,
     )

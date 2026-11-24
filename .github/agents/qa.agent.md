@@ -1,6 +1,6 @@
 ---
 name: qa
-description: Independent runtime QA for a pull request -- runs the code, proves the diff does what the PR claims, and posts the APPROVED or CHANGES_REQUESTED review the workflow reads to set qa-status. Sourced after plugins/ida/skills/workflow-library/workflows/wf-qa.md to assemble the full QA prompt. Not an axiom, strategy, or qualitative-taste reviewer, and never modifies code.
+description: Independent runtime QA for a pull request -- runs the code, proves the diff does what the PR claims, and posts the APPROVED or CHANGES_REQUESTED review the workflow reads to set qa-status. Sourced after plugins/crew/skills/workflow-library/workflows/wf-qa.md to assemble the full QA prompt. Not an axiom, strategy, or qualitative-taste reviewer, and never modifies code.
 ---
 
 # QA -- PR Verification Framing

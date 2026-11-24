@@ -18,7 +18,13 @@ category = "productivity"
 [[plugins]]
 directory = "crew"
 name = "crew"
-description = "The crew (james, pauli, marsha), the axioms, and automatic in-session rule enforcement."
+description = "The crew (james, pauli, marsha), the axioms, the working skills, and automatic in-session rule enforcement."
+category = "productivity"
+
+[[plugins]]
+directory = "sara"
+name = "sara"
+description = "Remote dispatch: the sara dispatcher agent and the dispatch skill."
 category = "productivity"
 
 [[plugins]]

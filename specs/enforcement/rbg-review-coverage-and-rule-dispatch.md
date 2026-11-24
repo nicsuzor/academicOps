@@ -94,7 +94,7 @@ The rules and surfaces touched by the observed defect classes have specific curr
 | **Name the Process, Not the Actor** | instructions, process | imperative, required gate | `specs/ENFORCEMENT-MAP.md:13`, `.agents/rules/process-not-actor.md:1-13`, `specs/meta/writing-specs.md:21-28` |
 | **Use the Native Mechanism** | instructions, structural | imperative, protection | `.agents/rules/use-native-mechanism.md:1-13`, `plugins/crew/skills/axioms/no-over-engineering.md:1-20` |
 | **Enforcement Map Boundary & Schema** | instructions, process | imperative, required gate | `specs/ENFORCEMENT-MAP.md:7`, `specs/enforcement/enforcement-map.md:20-55`, `specs/enforcement/enforcement.md:23-42` |
-| **Decisions Emerge from Graph Relationships** | instructions, process | advisory, routing | `specs/ENFORCEMENT-MAP.md:22`, `.agents/rules/RULES.md:85-102`, `plugins/ida/skills/decompose/SKILL.md:28-36` |
+| **Decisions Emerge from Graph Relationships** | instructions, process | advisory, routing | `specs/ENFORCEMENT-MAP.md:22`, `.agents/rules/RULES.md:85-102`, `plugins/crew/skills/decompose/SKILL.md:28-36` |
 | **Document Taxonomy Placement** | instructions, process | imperative, required gate | `specs/ENFORCEMENT-MAP.md:59`, `specs/meta/doc-taxonomy.md:1-100`, `.agents/rules/RULES.md:28-34` |
 
 ### 4. One-Step Fix per Defect Class (Least Invasive First)
@@ -151,7 +151,7 @@ flowchart TD
 
 - **Level of Intervention**: `instructions` (`advisory` → `imperative`).
 - **Remedy**:
-  1. In `plugins/ida/skills/decompose/SKILL.md` and `.agents/rules/RULES.md` ("Decisions Emerge from Graph Relationships"), add explicit guidance: tasks containing option choices without immediate implementation commitments must remain as single actionable decision tasks containing the choice options and evaluation instructions, rather than minting speculative subtasks.
+  1. In `plugins/crew/skills/decompose/SKILL.md` and `.agents/rules/RULES.md` ("Decisions Emerge from Graph Relationships"), add explicit guidance: tasks containing option choices without immediate implementation commitments must remain as single actionable decision tasks containing the choice options and evaluation instructions, rather than minting speculative subtasks.
   2. In RBG review, evaluate proposed task graph modifications against premature subtask decomposition.
 - **Outcome-Level Criteria**: 100% of open design questions presenting alternative options are structured as single decision tasks, with 0 uncommitted speculative subtasks minted.
 

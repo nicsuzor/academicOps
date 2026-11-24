@@ -7,7 +7,7 @@ description: Session exit and handover -- execute an immediate emergency handove
 
 Determine invocation mode before acting:
 
-- **User-run `/dump` (Emergency Handover)**: Triggered when the user invokes `/dump` (or `/ida:dump`) as a command, regardless of accompanying text. Stop all task execution immediately (no new reviews, dispatches, tests, or remaining steps); instruct active subagents to finish their immediate turn and return current state; cancel active timers and background tasks; then execute Steps 1-7 on work as it stands (releasing `partial`, or `done` only if all criteria were already verified).
+- **User-run `/dump` (Emergency Handover)**: Triggered when the user invokes `/dump` (or `/crew:dump`) as a command, regardless of accompanying text. Stop all task execution immediately (no new reviews, dispatches, tests, or remaining steps); instruct active subagents to finish their immediate turn and return current state; cancel active timers and background tasks; then execute Steps 1-7 on work as it stands (releasing `partial`, or `done` only if all criteria were already verified).
 - **Agent-run `/dump` (Routine Wrap-Up)**: Execute Steps 1-7 at session end (`/pull` completion, context reset, or environment transition).
 
 ## Procedure

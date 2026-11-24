@@ -46,7 +46,7 @@ _PEER_REPORT = '<cross-session-message from="twin-a">PR #12 merged</cross-sessio
 _USER_MESSAGE = '<channel source="plugin:telegram:telegram" user="tester">ship it</channel>'
 
 
-@pytest.mark.parametrize("agent", ["ida:ida", "ida:sara"])
+@pytest.mark.parametrize("agent", ["ida:ida", "sara:sara"])
 def test_hearsay_fires_on_a_peer_report(agent):
     ctx = HookContext(
         client="claude",
@@ -64,7 +64,7 @@ def test_hearsay_fires_on_a_peer_report(agent):
     assert res.user_text == expected_user
 
 
-@pytest.mark.parametrize("agent", ["ida:ida", "ida:sara", "sara"])
+@pytest.mark.parametrize("agent", ["ida:ida", "sara:sara", "sara"])
 @pytest.mark.parametrize("bg_val", [None, False, "false"])
 def test_hearsay_fires_on_foreground_subagent_post_tool_use(agent, bg_val):
     tool_input = {"description": "foreground subagent"}
@@ -415,7 +415,7 @@ def test_agent_messages_get_hearsay_and_arm_gate_without_hydration(peer_prompt):
 
 
 @pytest.mark.parametrize(
-    "agent", ["ida:ida", "ida:sara", "aops:james", "worker", "pauli", "marsha", "rbg", ""]
+    "agent", ["ida:ida", "sara:sara", "aops:james", "worker", "pauli", "marsha", "rbg", ""]
 )
 def test_honest_output_fires_on_subagent_start_for_all_agents(agent: str):
     """When a subagent starts on SubagentStart, honesty.md fires for all agents."""

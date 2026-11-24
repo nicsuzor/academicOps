@@ -14,7 +14,7 @@ Work moves through four stages. Each runs, then stops; no stage fires the next.
 | - | - | - | - |
 | 1. Capture | `/q` | one ask | Situate an ask on the graph -- placing repo-scoped tasks (strictly one per repo, consolidated across open and closed tasks, situated under governing component or initiative epics with zero leaf `serves` edges while Strategic Value Carriers wire `serves` directly to priced targets), valued at intake per [R1](graph-valuation.md#3-r1----placement-at-intake-q). |
 | 2. Expand | `/decompose` | one objective (optional) | Expand an objective into an abstract graph of sub-objectives at objective altitude, decision branches, prerequisites, and alternate paths, each a node bound to no executor. Reads the record first and stops at the first unknown before implementation detail. |
-| 3. Dispatch | `/dispatch` | ready tasks | Start polecat containers directly on queued tasks via `/ida:pull <task-id>`. Writes no tasks. |
+| 3. Dispatch | `/dispatch` | ready tasks | Start polecat containers directly on queued tasks via `/crew:pull <task-id>`. Writes no tasks. |
 | 4. Execute & Reify | `/pull` (running `/reify` if needed) | one claimed container task | Inside the container at execution time, the worker claims the task, runs `/reify` if needed to compose workflows from the 3-tier library onto a single combined task body by default, coordinates subagents with incremental `git push` checkpoints, and delivers in-session pull requests. |
 
 The PKB custodian (Pauli) runs Stage 1 (`/q`), optional Stage 2 (`/decompose`), and `/strategize`. Stage 3 belongs to the dispatcher (`/dispatch`). Stage 4 belongs to container execution (`/pull`), where the worker runs `/reify` in-session if needed.
@@ -55,12 +55,12 @@ Components come from three sources:
 | Source | Where |
 | - | - |
 | Project | PKB documents carrying `type: template` and the task's `project`, id `<project>-<slug>` |
-| Universal | `plugins/ida/skills/workflow-library/workflows/*.md` |
+| Universal | `plugins/crew/skills/workflow-library/workflows/*.md` |
 | Personal knowledge base | PKB documents carrying `type: template` and no `project` |
 
 ### Universal templates
 
-The universal workflow library (`plugins/ida/skills/workflow-library/workflows/`) holds **28 templates**:
+The universal workflow library (`plugins/crew/skills/workflow-library/workflows/`) holds **28 templates**:
 
 - `wf-code-task-base`: Foundation for code-change tasks executed via `/pull`.
 - `wf-dialectical-review`: Universal default dialectical review workflow coordinating strategic coherence, compliance, and empirical verification perspectives.

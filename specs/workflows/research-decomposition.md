@@ -25,9 +25,9 @@ What the `/q` → `/decompose` → `/brief` pipeline and the conceptual review w
 domain is academic research: domain primitives, sequencing rules, review lenses, and two
 maturity-gated modes. It replaces no stage of that pipeline and restates none of them.
 
-- `plugins/ida/skills/q/SKILL.md` -- placement and valuation
-- `plugins/ida/skills/decompose/SKILL.md` -- assumption sorting, fork ranking, probe design
-- `plugins/ida/skills/q/SKILL.md` -- process composition, placement, and sizing; cuts to the primitives
+- `plugins/crew/skills/q/SKILL.md` -- placement and valuation
+- `plugins/crew/skills/decompose/SKILL.md` -- assumption sorting, fork ranking, probe design
+- `plugins/crew/skills/q/SKILL.md` -- process composition, placement, and sizing; cuts to the primitives
   below and records review obligations as acceptance criteria on the task body
 - `specs/workflows/conceptual-review-workflow.md` -- the review layer; runs the lenses below in
   place of its general registry, with its critique protocol, convergence rules, and formality
@@ -51,7 +51,7 @@ research review selects 3–4 plus self-consistency as a background check.
 ## Primitives
 
 Semantic labels on existing task types. No new task types, no schema changes.
-The universal composite `wf-research-output` (`plugins/ida/skills/workflow-library/workflows/`)
+The universal composite `wf-research-output` (`plugins/crew/skills/workflow-library/workflows/`)
 carries these as stages by contract; it is the operational home, this table the vocabulary.
 
 | Primitive | Purpose | Maps to |

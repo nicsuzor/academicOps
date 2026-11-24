@@ -22,13 +22,15 @@ templates/              Build-time file templates, GitHub Actions workflow
 scripts/                Repo tooling, not shipped in any plugin.
 plugins/                Plugin sources. Only what a client needs.
   ida/                  ida -- the interactive face, and the only agent that
-                        talks to the user; sara; PKB, workflow, review, agy,
-                        and premise-check skills; session, PKB-search, tracing
-                        and premise-check hooks.
+                        talks to the user; agy and premise-check skills;
+                        session, PKB-search, tracing and premise-check hooks.
   crew/                 The crew: james, marsha and pauli (the custodian for
                         PKB graph, planning, and all knowledge tasks); the
-                        axioms skill; an advisory turn-by-turn evaluator plus
-                        a stop-side rule-check gate.
+                        axioms skill and the working skills (supervise, pull,
+                        reify, dump, workflow-library, review, capture,
+                        memory, planning, argument); an advisory turn-by-turn
+                        evaluator plus a stop-side rule-check gate.
+  sara/                 Remote dispatch: the sara agent and dispatch skill.
   tools/                Domain research skills.
   aops-debug/           Debug plugin that dumps raw hook payloads.
   ida-telegram/         Ida's custom Telegram channel and Mini App plugin.
@@ -48,8 +50,9 @@ source of truth for the built plugin set.
 
 | Directory | Owns |
 | - | - |
-| `plugins/ida` | ida (`plugins/ida/agents/ida.md`) -- the interactive face and the only agent that talks to the user; sara (`plugins/ida/agents/sara.md`); capture, memory, decomposition, dispatch, agy, workflow-library, review, and premise-check skills; session, PKB-search, tracing, and premise-check hooks. |
-| `plugins/crew` | The crew: james (`plugins/crew/agents/james.md`), marsha (`plugins/crew/agents/marsha.md`), and pauli (`plugins/crew/agents/pauli.md`) -- the knowledge base custodian for memory, planning, decomposition, graph writes, and every knowledge task (questions, finding things, web, GitHub, read-only code inspections, and config lookups); the `axioms` skill whose files are the axioms (`plugins/crew/skills/axioms/`); an advisory turn-by-turn evaluator plus a stop-side rule-check gate. |
+| `plugins/ida` | ida (`plugins/ida/agents/ida.md`) -- the interactive face and the only agent that talks to the user; the agy and premise-check skills; session, PKB-search, tracing, and premise-check hooks. |
+| `plugins/sara` | Remote dispatch: sara (`plugins/sara/agents/sara.md`) and the `dispatch` skill (`plugins/sara/skills/dispatch/`). No hooks. |
+| `plugins/crew` | The crew: james (`plugins/crew/agents/james.md`), marsha (`plugins/crew/agents/marsha.md`), and pauli (`plugins/crew/agents/pauli.md`) -- the knowledge base custodian for memory, planning, decomposition, graph writes, and every knowledge task (questions, finding things, web, GitHub, read-only code inspections, and config lookups); the `axioms` skill whose files are the axioms (`plugins/crew/skills/axioms/`); the working skills (`plugins/crew/skills/`: supervise, pull, reify, dump, q, decompose, strategize, remember, learn, phoenix, craft, verify, strategic-review, workflow-library, argdown-toulmin, and the argument skills); an advisory turn-by-turn evaluator plus a stop-side rule-check gate. |
 | `plugins/tools` | Domain research skills (data analysis, document conversion, diagramming, peer review, project scaffolding). |
 | `plugins/aops-debug` | Debug plugin that dumps raw hook payloads. |
 | `plugins/ida-telegram` | Ida's custom Telegram channel and Mini App plugin: stdio MCP channel server, progressive disclosure with expandable blockquotes, async question broker, feedback trace collection, Mini App (Details, Review, Questions, Anchor), voice notes, and role-gated polling. |

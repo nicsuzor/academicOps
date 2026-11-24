@@ -99,9 +99,9 @@ jobs:
 
             ## Instructions
             Read the unified memory skill for quality assessment guidance and knowledge standards:
-              ${{ github.workspace }}/_aops/plugins/ida/skills/remember/SKILL.md
-              ${{ github.workspace }}/_aops/plugins/ida/skills/remember/references/quality.md
-              ${{ github.workspace }}/_aops/plugins/ida/skills/remember/references/consolidation.md
+              ${{ github.workspace }}/_aops/plugins/crew/skills/remember/SKILL.md
+              ${{ github.workspace }}/_aops/plugins/crew/skills/remember/references/quality.md
+              ${{ github.workspace }}/_aops/plugins/crew/skills/remember/references/consolidation.md
 
             ## Process
 

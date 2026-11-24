@@ -118,8 +118,8 @@ jobs:
           prompt: |
             You are the Sleep Cycle consolidation agent running in maintenance mode.
             Read the remember skill and consolidation reference for full instructions:
-              ${{ github.workspace }}/_aops/plugins/ida/skills/remember/SKILL.md
-              ${{ github.workspace }}/_aops/plugins/ida/skills/remember/references/consolidation.md
+              ${{ github.workspace }}/_aops/plugins/crew/skills/remember/SKILL.md
+              ${{ github.workspace }}/_aops/plugins/crew/skills/remember/references/consolidation.md
 
             Work through the consolidation stages in order (Stages 1 through 9) as
             defined in the "Cycle Stages" section of consolidation.md.
@@ -164,7 +164,7 @@ jobs:
             - **Output**: Mechanical work (dedup, index refresh, graph maintenance)
               commits directly to main. Knowledge work (new notes, synthesis, MOCs)
               commits to a branch `sleep/consolidation-$(date +%Y-%m-%d-%H%M)` and
-              creates a PR. The PR is reviewed by /ida:verify before merging.
+              creates a PR. The PR is reviewed by /crew:verify before merging.
             - Write a summary of what you did to $GITHUB_STEP_SUMMARY. Include:
               - **Sub-agent halt count (FIRST LINE if non-zero)** with phase + missing tool for each
               - Phase completion status

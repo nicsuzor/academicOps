@@ -45,7 +45,7 @@ If drafting complex, multi-hop, or contested messages, read `references/critique
 ## Checking an Incoming Direction Brief
 
 1. **Turn-1 inputs and derivation**: Verify `## Ask` derivation (preserving user authorization without unrequested approval holds or user-assigned choices) and required inputs, task IDs, and artifacts. If required inputs are missing, request them from the supervisor in a prose Argdown block without declining.
-2. **Phoenix traces only**: Never scrape local transcript or debug log files; query Arize Phoenix via `ida:phoenix`.
+2. **Phoenix traces only**: Never scrape local transcript or debug log files; query Arize Phoenix via `crew:phoenix`.
 3. **Satisfiability and method bounds**: If demands exceed your stopping point (later stages, external merges) or add unverified caller method/template prescriptions outside `## Ask`, context, and objective, flag them to the supervisor in a prose Argdown block without declining, and execute your role.
 4. **Disarming armed briefs & freezing deliverables**:
    - Skip `verdict.py` if unarmed; if armed, disarm first via `verdict.py --no-claim` (`--verdict REVISE --no-claim` as a clarification-hold gate token when waiting on missing inputs; `--verdict PASS --no-claim` when ready or flagging-and-executing).

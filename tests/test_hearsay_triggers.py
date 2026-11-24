@@ -90,7 +90,7 @@ def test_hearsay_gate_module_and_naming_compatibility():
 
 @pytest.mark.parametrize(
     "agent",
-    ["ida:ida", "ida:sara", "aops:james", "james", "worker", "pauli", "rbg", "marsha"],
+    ["ida:ida", "sara:sara", "aops:james", "james", "worker", "pauli", "rbg", "marsha"],
 )
 def test_hearsay_fires_uniformly_across_all_agents(agent: str):
     """AC4: Hooks fire on all agents whenever event conditions match, without persona distinction."""

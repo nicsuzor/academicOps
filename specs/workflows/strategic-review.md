@@ -23,7 +23,7 @@ Its core design intent is to eliminate **self-grading** and **monolithic shallow
 
 ## Implementation Architecture
 
-The workflow is implemented operationally via `plugins/ida/skills/strategic-review/SKILL.md` and the default review workflow, and supervised by `james`:
+The workflow is implemented operationally via `plugins/crew/skills/strategic-review/SKILL.md` and the default review workflow, and supervised by `james`:
 
 ```
       [ James: Upfront Proportionality & Altitude Calibration ]

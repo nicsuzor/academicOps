@@ -686,7 +686,7 @@ _SPAWN_ACKS = {
             "agentId": "asara-mini-0000000000000001",
             "teammate_id": "sara-mini@session-x",
             "agent_id": "asara-mini-0000000000000001",
-            "agent_type": "ida:sara",
+            "agent_type": "sara:sara",
             "name": "sara-mini",
             "team_name": "session-x",
         },
@@ -1070,7 +1070,7 @@ def test_agy_preinvocation_captures_send_message_without_transcript_lag(tmp_path
         client="agy",
         event="UserPromptSubmit",
         session_id=session_id,
-        agent_type="ida:sara",
+        agent_type="sara:sara",
         transcript_path=str(transcript_full),
         raw={
             "invocationNum": 0,
@@ -1105,7 +1105,7 @@ def test_agy_preinvocation_captures_send_message_without_transcript_lag(tmp_path
         client="agy",
         event="UserPromptSubmit",
         session_id=session_id,
-        agent_type="ida:sara",
+        agent_type="sara:sara",
         transcript_path=str(transcript_full),
         raw={
             "invocationNum": 0,
@@ -1494,7 +1494,7 @@ def test_users_message_does_not_disarm_a_pending_check():
     assert pcg.is_armed(session_id) is True
 
 
-@pytest.mark.parametrize("agent_type", ["ida:sara", "sara"])
+@pytest.mark.parametrize("agent_type", ["sara:sara", "sara"])
 def test_sara_is_gated_like_ida(agent_type):
     session_id = f"sess-{agent_type}"
     pcg.premise_check_arm(

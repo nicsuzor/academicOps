@@ -68,7 +68,7 @@ As the user, I want partial delivery, inability, and unreachability to be accept
 As the user, I want my directions to reach a worker as I gave them, so that an agent in the chain cannot add to what I asked.
 
 - Relayed directions cite the original ask and derive faithfully from it (judged by meaning and distinctions, not harmless rewording), demanding only what the recipient can hold when it stops. Dispatchers compose briefs from the ask and task record without inspecting primary sources.
-- Recipients verify Turn-1 required inputs, derivation, and brief satisfiability before logging a frozen acceptance checklist, never declining handed work or scraping local JSONL transcripts/debug logs (Arize Phoenix via `ida:phoenix` only).
+- Recipients verify Turn-1 required inputs, derivation, and brief satisfiability before logging a frozen acceptance checklist, never declining handed work or scraping local JSONL transcripts/debug logs (Arize Phoenix via `crew:phoenix` only).
 - On omitted required inputs, ask the supervisor in a prose Argdown block without declining (skip `verdict.py` if unarmed; if armed, disarm first via `verdict.py --claim <id> --verdict REVISE --no-claim --reason-file <path>` as a gate-disarm token for a clarification hold).
 - On unreachable demands or unverified caller prescriptions, flag them to the supervisor in a prose Argdown block without declining and execute the assigned role; disarm ready or flag-and-execute armed briefs via `verdict.py --claim <id> --verdict PASS --no-claim --reason-file <path>` (skip `verdict.py` when unarmed).
 
@@ -112,5 +112,5 @@ flowchart TD
 - **Load-bearing claim:** A claim the reader would act on, or that a conclusion rests on.
 - **Pointer:** An inline locator a reader can open (`path:line`, commit SHA, exact command and exit code, span ID, PR/task ID, or URL). Commands count as evidence only when deciding output or exit code is quoted inline.
 - **Ask ID:** Immutable identifier an ask travels under (`tg-<message id>`, `<task id>/AC<n>`).
-- **Message format:** Unfenced prose Argdown blocks with atomic sourced premises per [`premise-check`](../../plugins/ida/skills/premise-check/SKILL.md) (distinct from standalone formal `.argdown` files governed by [`argdown-toulmin`](../../plugins/ida/skills/argdown-toulmin/SKILL.md)).
+- **Message format:** Unfenced prose Argdown blocks with atomic sourced premises per [`premise-check`](../../plugins/ida/skills/premise-check/SKILL.md) (distinct from standalone formal `.argdown` files governed by [`argdown-toulmin`](../../plugins/crew/skills/argdown-toulmin/SKILL.md)).
 - **Task-record handback:** A worker's Argdown report under `## Report` on a task record, evaluated via `verdict.py` with the task ID as `--claim` (and `--judged-file` when out-of-band) and recorded under `## Premise-Check Verdict`.

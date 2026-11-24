@@ -1,6 +1,6 @@
 ---
 name: "argument-map"
-description: "Build a reviewable map of a text's argument (thesis chapter, paper, submission, judgment, policy, or an author's own mind map). Gives a charitable reconstruction with every gap tagged, a list of what the argument still needs, and a readable overview page. Use for \"map the argument\", \"what does this argument still need\", \"show me how the chapter hangs together\", or for weaving an author's new notes or diagrams into an existing map. Not for plain extraction without assessment (use ida:argument-extraction), for a formal sufficiency audit without a page (use ida:argument-audit), or for mind maps and concept maps with no inferential structure (use tools:diagram)."
+description: "Build a reviewable map of a text's argument (thesis chapter, paper, submission, judgment, policy, or an author's own mind map). Gives a charitable reconstruction with every gap tagged, a list of what the argument still needs, and a readable overview page. Use for \"map the argument\", \"what does this argument still need\", \"show me how the chapter hangs together\", or for weaving an author's new notes or diagrams into an existing map. Not for plain extraction without assessment (use crew:argument-extraction), for a formal sufficiency audit without a page (use crew:argument-audit), or for mind maps and concept maps with no inferential structure (use tools:diagram)."
 ---
 
 # Argument Map
@@ -18,7 +18,7 @@ Produce three deliverables:
 
 ## Reconstruct & Integrate
 
-- **Grammar & extraction**: Extract first with `ida:argument-extraction`, then write and validate against `ida:argdown-toulmin` (grammar, metadata, relations, tags, parser validation).
+- **Grammar & extraction**: Extract first with `crew:argument-extraction`, then write and validate against `crew:argdown-toulmin` (grammar, metadata, relations, tags, parser validation).
 - **Match the text's structure**: Lead with the thesis, followed by one Argdown section per part in the text's order.
 - **Reconstruct charitably at supportable strength**: Supply unstated premises and warrants needed for validity as assumed items. When wording overstates the evidence (e.g. "veto" where evidence shows "sometimes limits"), narrow the label, preserve verbatim text in `source`, and record the narrowed reading as a decision.
 - **Tag open items & preserve author calls**: Define the tag legend in frontmatter (`#conflict` covers out-of-thesis branches too; preserve author categories as tags). Tag conflicts, scope choices, and cut-offs and state the question raised rather than deciding them for the author.
@@ -29,7 +29,7 @@ Produce three deliverables:
 Rebuild Excalidraw canvases, SVGs, and the overview page from the canonical Argdown source or PKB note:
 
 ```bash
-python3 "${CLAUDE_SKILL_DIR:-plugins/ida/skills/argument-map}/scripts/render.py" <source-path-or-note-id> [--out <dir>]
+python3 "${CLAUDE_SKILL_DIR:-plugins/crew/skills/argument-map}/scripts/render.py" <source-path-or-note-id> [--out <dir>]
 ```
 
 The rebuild runs through four stages:

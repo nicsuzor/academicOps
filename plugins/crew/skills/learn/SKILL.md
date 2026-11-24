@@ -13,12 +13,12 @@ Diagnose systemic failure classes in the framework from Arize Phoenix execution 
 ## Protocol
 
 1. **Retrieve execution record and persist outline**:
-   - **Traced sessions (`ida:phoenix` only)**: Query OpenTelemetry spans via `ida:phoenix` or read `out-<session_slug>` alongside framework governance docs; if spans exist without a note, save `out-<session_slug>` via `pkb_create` (`type: "note"`, `title: "Outline: <session_slug> (<summary>)"`, `slug: "out-<session_slug>"`, `tags: ["phoenix", "outline", "learn"]`).
+   - **Traced sessions (`crew:phoenix` only)**: Query OpenTelemetry spans via `crew:phoenix` or read `out-<session_slug>` alongside framework governance docs; if spans exist without a note, save `out-<session_slug>` via `pkb_create` (`type: "note"`, `title: "Outline: <session_slug> (<summary>)"`, `slug: "out-<session_slug>"`, `tags: ["phoenix", "outline", "learn"]`).
    - **Strict trace boundary**: Never inspect repo source code or scrape local transcript/debug log files; if Phoenix spans are unavailable on a traced session, halt immediately and report.
    - **Non-traced CI / CI-workflow runs**: Solely when execution ran on a non-traced CI surface emitting no OTel spans, inspect PR diffs, review comments, check runs, and instructions via `gh`.
 2. **Diagnose systemic framework cause (active voice, hearsay-free)**:
    - **Framework defect, never agent fault**: An agent's action is an intermediate trace event, never the root cause. Name the specific acting role in active voice (passive voice is forbidden), quote the exact instruction, workflow, contract, or tool gap that led them to act, and state the framework defect.
-   - **Traces over hearsay**: Treat agent explanations as hearsay (`explanations-not-reasons`). Re-read primary user words and anchor on observed spans (`ida:phoenix`) or `gh` CI artifacts.
+   - **Traces over hearsay**: Treat agent explanations as hearsay (`explanations-not-reasons`). Re-read primary user words and anchor on observed spans (`crew:phoenix`) or `gh` CI artifacts.
    - **Workflow compliance vs missing rules**: Diagnose skipped or misapplied workflow steps as workflow compliance or unclear wording, never propose per-workflow enforcement rules or map rows.
    - **Auth failures are configuration failures**: Stop immediately on login/auth failures and report as a configuration failure; file no issue and post no comment.
 3. **Generalise the instance**: Even if already fixed, state both:

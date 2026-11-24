@@ -1,13 +1,13 @@
 ---
 name: dispatch
-description: Start isolated worker containers on queued tasks via /ida:pull without rewriting them, stamping origin ownership on dispatch, and pull unhandled worker completions on a timer. Use for headless worker container dispatch and periodic completion sweeps. Exclude for intake and task placement (use /q) or interactive queue selection (use /dispatch-queue).
+description: Start isolated worker containers on queued tasks via /crew:pull without rewriting them, stamping origin ownership on dispatch, and pull unhandled worker completions on a timer. Use for headless worker container dispatch and periodic completion sweeps. Exclude for intake and task placement (use /q) or interactive queue selection (use /dispatch-queue).
 ---
 
 # /dispatch -- Dispatch Worker Containers & Pull Completions
 
 The task record is the whole message to the isolated worker container; dispatch ready tasks without rewriting them. Use the task pipeline for durable deliverables (workflows, instructions, specifications, code); answer questions and lookups in-turn without queueing or dispatching containers.
 
-Every dispatched worker container runs `/ida:pull <task_id>` against the task record.
+Every dispatched worker container runs `/crew:pull <task_id>` against the task record.
 
 ## 1. Verify Readiness & Satisfiability
 
@@ -21,13 +21,13 @@ Start a worker on the handed task unless a constitutional halt binds (`closure`,
 
 Stamp `origin_agent` on each ready PKB task (`pkb_update_task`) with the originating coordinator's stable handle before launching its container so returning work routes back to its owner without a completion race.
 
-Launch one isolated worker container per ready task in parallel via `polecat_run_container`, passing `task_id`, `repo`, `image`, and `dispatcher` only (which runs `/ida:pull <task_id>`). Never pass `command` or a custom prompt, even if exposed by the tool schema; custom prompts are allowed only in crew containers launched manually by the user.
+Launch one isolated worker container per ready task in parallel via `polecat_run_container`, passing `task_id`, `repo`, `image`, and `dispatcher` only (which runs `/crew:pull <task_id>`). Never pass `command` or a custom prompt, even if exposed by the tool schema; custom prompts are allowed only in crew containers launched manually by the user.
 
 Containers start asynchronously; assume execution proceeds unless an immediate launch error returns (on failure, halt and report task ID and error verbatim).
 
 ## 3. Report and Stop (Fire-and-Forget)
 
-Report each dispatched task (title, ID, `/ida:pull <task_id>`, launched) as atomic sourced premises in a compact prose Argdown block per `ida:premise-check` and end your turn immediately. Never wait for container completion, block on event streams, or spin in shell polling or `sleep` loops; completed returns are picked up asynchronously on a periodic timer (Section 4).
+Report each dispatched task (title, ID, `/crew:pull <task_id>`, launched) as atomic sourced premises in a compact prose Argdown block per `ida:premise-check` and end your turn immediately. Never wait for container completion, block on event streams, or spin in shell polling or `sleep` loops; completed returns are picked up asynchronously on a periodic timer (Section 4).
 
 ## 4. Pull and Handle Completed Tasks (Timer Sweep)
 

@@ -30,5 +30,5 @@ Write and consolidate knowledge notes under `synthesize-not-accrete`: state curr
 
 ## Routing & Consolidation
 
-- **Routing**: Route incidents and friction to `/learn` (`ida:learn`), new asks or decisions to `/q`, or an `inbox` node when an owning skill cannot run.
+- **Routing**: Route incidents and friction to `/learn` (`crew:learn`), new asks or decisions to `/q`, or an `inbox` node when an owning skill cannot run.
 - **Consolidation**: Read [consolidation.md](references/consolidation.md) and [quality.md](references/quality.md) before running a consolidation cycle. Synthesise underlying principles across sources rather than concatenating bullets, and repair drifted tasks by persisting durable facts to destination notes first before slimming the task body.

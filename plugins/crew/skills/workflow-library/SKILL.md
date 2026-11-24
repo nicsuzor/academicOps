@@ -23,8 +23,8 @@ A project template ID is `<project>-<slug>`; strip `<project>-` to determine the
 
 - **list**: Enumerate all templates live across all three tiers and emit **slug | tier | coverage | status**. Show project scope as `Project (<name>)`; extract coverage from frontmatter `description` (or first sentence of `## What this step does`); exclude dated instances (`-*-\d{8}-*`) and `status: cancelled`; flag shadowed slugs and missing coverage lines.
 - **view**: Resolve a template slug in precedence order and output the winning content, shadowed tiers, or near-misses.
-- **new**: Check existing coverage first, select destination tier (Project PKB with `project: <project>`, PKB with `project: null`, or Universal under `workflows/`), and author per `ida:craft` workflow-template standards.
-- **edit**: Update templates in place per `ida:craft` workflow-template standards. Edit Universal files directly; for PKB nodes, update only the markdown body below the closing `---` to avoid frontmatter duplication.
+- **new**: Check existing coverage first, select destination tier (Project PKB with `project: <project>`, PKB with `project: null`, or Universal under `workflows/`), and author per `crew:craft` workflow-template standards.
+- **edit**: Update templates in place per `crew:craft` workflow-template standards. Edit Universal files directly; for PKB nodes, update only the markdown body below the closing `---` to avoid frontmatter duplication.
 - **retire**: Verify no unfulfilled governing tasks remain on the PKB, delete the file or PKB node, and name the superseding workflow in the commit or release message.
 
 ## Constraints

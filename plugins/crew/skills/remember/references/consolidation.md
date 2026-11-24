@@ -1,6 +1,6 @@
 # Knowledge Extraction and Consolidation Cycle
 
-Consolidation synthesises episodic records into durable knowledge under custodian curation (`ida:remember`), preserving offered/filed/retired PKB facts and maintaining graph data quality.
+Consolidation synthesises episodic records into durable knowledge under custodian curation (`crew:remember`), preserving offered/filed/retired PKB facts and maintaining graph data quality.
 
 ## Safety Controls
 

@@ -5,7 +5,7 @@ status: ready
 
 # Agent-assisted Phoenix querying and session outlines
 
-Anyone working in a project where the framework's plugins are installed can ask what a past session did, how an agent reached a decision, or where time and token spend went, and receive a concise, verifiable answer backed by Arize Phoenix telemetry without pulling raw span archives into model context. The `/phoenix` skill in `plugins/ida/skills/phoenix/` equips agents with reusable GraphQL and SQL templates and outline-generation instructions, serving as the agent-assisted complement to [cross-surface observability](observability.md).
+Anyone working in a project where the framework's plugins are installed can ask what a past session did, how an agent reached a decision, or where time and token spend went, and receive a concise, verifiable answer backed by Arize Phoenix telemetry without pulling raw span archives into model context. The `/phoenix` skill in `plugins/crew/skills/phoenix/` equips agents with reusable GraphQL and SQL templates and outline-generation instructions, serving as the agent-assisted complement to [cross-surface observability](observability.md).
 
 ## User experience flow
 
@@ -32,7 +32,7 @@ As a user working in a project where the framework's plugins are installed, I wa
 As a user monitoring token spend and operational bottlenecks, I want cost summaries, session audits, and cross-session searches computed directly by the trace store from its built-in pricing and structured telemetry fields, so that investigations finish in a few turns without whole-span fetches or brittle client-side parsers.
 
 - **AC-2.1** Given a project, session, or UTC time window, when token usage or spend is requested, then the agent reads Phoenix's built-in cost and token totals (deduplicating dual-emitted model calls when multiple emitters cover the same session) rather than paging spans or maintaining custom model price tables.
-- **AC-2.2** Given a session or bounded UTC time window, when a session audit, per-call-type tool and MCP profile, or cross-session search is requested, then the agent executes declarative query templates from `plugins/ida/skills/phoenix/resources/` that aggregate call counts, latencies, error counts, and payload byte sizes on the server from structured telemetry fields, without hardcoded server lists or regular-expression parsing of code-mode payloads.
+- **AC-2.2** Given a session or bounded UTC time window, when a session audit, per-call-type tool and MCP profile, or cross-session search is requested, then the agent executes declarative query templates from `plugins/crew/skills/phoenix/resources/` that aggregate call counts, latencies, error counts, and payload byte sizes on the server from structured telemetry fields, without hardcoded server lists or regular-expression parsing of code-mode payloads.
 
 ### US-3 Operate portably across Phoenix deployments
 
@@ -44,8 +44,8 @@ As a developer or operator running Arize Phoenix across local or hosted environm
 
 ### Skill and template layout
 
-- **Skill router and instructions**: `plugins/ida/skills/phoenix/SKILL.md` defines query efficiency rules, identifier resolution, outline generation, durable persistence, and single-span drill-down.
-- **Declarative query templates**: `plugins/ida/skills/phoenix/resources/` ships portable, configuration-neutral templates executed through the Phoenix MCP `phoenix_execute` tool (`executeGraphqlQuery` and `executeSql`):
+- **Skill router and instructions**: `plugins/crew/skills/phoenix/SKILL.md` defines query efficiency rules, identifier resolution, outline generation, durable persistence, and single-span drill-down.
+- **Declarative query templates**: `plugins/crew/skills/phoenix/resources/` ships portable, configuration-neutral templates executed through the Phoenix MCP `phoenix_execute` tool (`executeGraphqlQuery` and `executeSql`):
   - `session-costs.graphql` -- single-operation project and per-session built-in token and cost summaries (`GetProjectCosts` via `costSummary` and `GetSessionCosts` via `tokenUsage`, `costSummary`, and per-token-type `costDetailSummaryEntries`).
   - `session-outline.sql` -- keyset-pageable, column-projected chronological step query for one session, returning scalar timing, model, token, built-in cost, tool summary, and bounded prompt/reply/argument excerpts while excluding bulky attribute and event blobs.
   - `session-audit.sql` -- server-side aggregation of model spend (with dual-emitter deduplication) and tool / upstream MCP call counts, latencies, errors, and payload sizes.
@@ -53,7 +53,7 @@ As a developer or operator running Arize Phoenix across local or hosted environm
   - `spend-by-harness-model.sql` -- chunked server-side token sums grouped by surface and model (deduplicated on `llm.message.id`), plus daily built-in `span_costs` rollups by model with zero JSON reads.
   - `cross-session-search.sql` -- time-bounded server-side error, `MATERIALIZED` user-prompt and tool-argument searches, windowed prompt/reply sweeps, subagent-correlation, and single-span detail lookups.
   - `span-store.md` -- identifier shapes, session-vs-trace grouping rules, dual-emitter and subagent correlation semantics, and query size bounds.
-- **Decision-trace workflow**: `plugins/ida/skills/workflow-library/workflows/trace-decision.md` defines the input/output contract (`<slug>.outline.md` persisted durably plus an answer anchored to `#t<turn>-<step>`).
+- **Decision-trace workflow**: `plugins/crew/skills/workflow-library/workflows/trace-decision.md` defines the input/output contract (`<slug>.outline.md` persisted durably plus an answer anchored to `#t<turn>-<step>`).
 
 ### Session outline document contract (`<slug>.outline.md`)
 

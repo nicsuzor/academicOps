@@ -14,7 +14,7 @@ Polecat runs one agent CLI invocation inside an isolated Docker container, on an
 isolated git clone, so dispatched work never touches the caller's own checkout or
 host credentials. It is a single command -- `polecat run` -- not a task-claiming
 service: task lifecycle (claim, work, record, hand over) is the invoked agent's own
-job, driven by a seeded `/ida:pull <task-id>` prompt inside an `agy` session
+job, driven by a seeded `/crew:pull <task-id>` prompt inside an `agy` session
 calibrated to task complexity and importance.
 
 This file is the umbrella. The individual designs are
@@ -29,11 +29,11 @@ This file is the umbrella. The individual designs are
 
 The container launcher (`scripts/polecat`) and worker image are maintained outside this repository and supplied by the installer, together with the Docker MCP server (`polecat_run_container`) registered behind the `services` portal.
 
-- [[plugins/ida/skills/pull/SKILL.md]] -- worker-side: claim, assemble via `/reify` if needed,
+- [[plugins/crew/skills/pull/SKILL.md]] -- worker-side: claim, assemble via `/reify` if needed,
   execute (coordinating subagents with incremental git checkpoints), record, and
-  hand over via `/dump` -- what a seeded `/ida:pull <task-id>` prompt does inside
+  hand over via `/dump` -- what a seeded `/crew:pull <task-id>` prompt does inside
   the container
-- [[plugins/ida/skills/dispatch/SKILL.md]] -- coordinator-side: the dispatch skill that starts
+- [[plugins/sara/skills/dispatch/SKILL.md]] -- coordinator-side: the dispatch skill that starts
   polecat workers on queued tasks via the Docker MCP server (`polecat_run_container`) or the
   host launcher (`scripts/polecat`)
 - [[.agents/skills/debug/SKILL.md]] -- the operational skill for driving a
@@ -93,7 +93,7 @@ The container launcher (`scripts/polecat`) and worker image are maintained outsi
 8. Builds the inner command from `AGENT_CMD` (`claude`, `agy`, `shell`/`bash`,
    `sleep`, or any other passthrough binary). With `--task <id>` and no explicit
    prompt: launches an `agy` session calibrated to task complexity and importance,
-   seeded with `/ida:pull <task-id>`. Every dispatch without `-i` runs headless
+   seeded with `/crew:pull <task-id>`. Every dispatch without `-i` runs headless
    (`--print`), whatever the host's stdin is, so the container exits when the agent's
    loop completes rather than idling forever; `-i` is the only way into the interactive UI.
    An `agy` dispatch also gets an optional `--print-timeout`: `polecat.yaml`'s `timeout`

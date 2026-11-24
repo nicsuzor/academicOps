@@ -108,7 +108,7 @@ that set without extensions (`partial` and `failed` are part of it).
 
 - [[specs/polecat/polecat-system.md]] -- Isolated task workspaces and the delivery
   guarantees the supervisor dispatches onto
-- [[plugins/ida/skills/pull/SKILL.md]] -- The operative skill: claiming a task,
+- [[plugins/crew/skills/pull/SKILL.md]] -- The operative skill: claiming a task,
   reifying workflows if needed, coordinating subagents, carrying work to a terminal state, and handing over via `/dump`
 - [[plugins/aops/skills/polecat/SKILL.md]] -- The launcher that puts a worker in front of a unit.
   It launches containers; it makes no eligibility or ordering decision about which
