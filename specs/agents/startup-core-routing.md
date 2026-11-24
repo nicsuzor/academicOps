@@ -83,7 +83,7 @@ The following table inventories current session startup hook registration across
 | `plugins/crew` | No (hooks registered for `PreToolUse`, `Stop`, `SubagentStop`, and `PreInvocation` only; currently unwired) | None (0 hooks firing). | Wire `SessionStart` hook to inject `plugins/crew/CORE.md` (max 20 lines). |
 | `plugins/tools` | No (no hooks registered in manifest) | None. | Register `SessionStart` hook in manifest to inject `plugins/tools/CORE.md` (max 20 lines). |
 | `plugins/aops-debug` | Yes (`Claude Code`: `dispatch.py claude SessionStart`; `agy`: `SessionStart`) | Executes `dump_payload` to write raw payload to temp file and emit debug trace; injects zero text into session context. | Retain debug tracing; inject `plugins/aops-debug/CORE.md` (max 20 lines). |
-| `plugins/ida-telegram` | No (`PreToolUse` for `AskUserQuestion` only) | None. | Register `SessionStart` hook to inject `plugins/ida-telegram/CORE.md` (max 20 lines). |
+| `plugins/ida-telegram` | Yes (`SessionStart` only) | `plugins/ida-telegram/CORE.md`. | Keep `CORE.md` at 20 lines or fewer. |
 
 #### Justification of Draft Plugin `CORE.md` Files Against the Four Tests
 
@@ -101,7 +101,7 @@ Every plugin's draft `CORE.md` is evaluated against the four tests for startup i
 | `plugins/crew` | 7 | Establishes the 3-tier rule hierarchy (Axioms → Project Rules → PKB User Rules), authority boundaries, and fail-fast invariant for all agents. | References to `crew:axioms`, `.agents/rules/`, and `type: rule` match active runtime loaders. | Does not duplicate axiom bodies or test configurations. | Concise constraints and routing to `rbg` compliance review. |
 | `plugins/tools` | 7 | Routes research pipeline tasks (analysis, transformations, plotting, publishing, diagramming) to specialized domain skills. | Pointers to `tools:analyst`, `tools:dbt`, `tools:streamlit`, `tools:python-viz`, `tools:pdf`, and `tools:diagram` exist and run. | Does not duplicate skill bodies or library options. | High-density routing pointers without implementation instructions. |
 | `plugins/aops-debug` | 5 | Informs executing agents that diagnostic telemetry and payload logging are active with zero behavioral side-effects. | Telemetry endpoints and temp file logging match `handlers.py`. | Does not repeat OTel configuration or tracer internals. | 3 brief lines defining role and zero-side-effect invariant. |
-| `plugins/ida-telegram` | 7 | Informs agents of Telegram channel constraints: mandatory startup skill loading, expandable blockquote progressive disclosure, broker-routed user questions, and applying reaction/status emoji to all messages. | Pointers to `AskUserQuestion` broker and `ida-telegram:telegram` skill are operational. | Does not repeat bot setup, authentication tokens, or web app internals. | Essential channel invariants only. |
+| `plugins/ida-telegram` | 3 | Tells agents in a Telegram-connected session to load the telegram skill before the first reply and to ask questions only through `ask_user`. | Pointers to the `ask_user` tool and `ida-telegram:telegram` skill are operational. | Does not repeat the formatting, reaction, and status rules the telegram skill owns. | One line. |
 
 ### Outcome-Level Build Criteria
 
