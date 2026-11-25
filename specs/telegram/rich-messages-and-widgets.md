@@ -13,7 +13,7 @@ This specification defines native Telegram Bot API 10.1–10.4 Rich Message and 
 flowchart LR
     Agent["Conversational Agent"] -->|"Answer / Report"| Rich["send_rich_message & edit_message"]
     Agent -->|"Live Reasoning"| Draft["send_message_draft (thinking blocks)"]
-    Agent -->|"Question / Decision"| Ask["ask_user (HTML Widget default)"]
+    Agent -->|"Question / Decision"| Ask["ask_user (Rich Message default)"]
     Agent -->|"Live Status / Bespoke UI"| Widget["send_widget & edit_message_widget_data"]
     Rich -->|"Tables, Details, Media, Maps, Actions"| User["User on Telegram"]
     Draft -->|"Live Stream / Stop Signal"| User
@@ -38,7 +38,7 @@ As a user reading complex answers or reports on a phone, I want responses delive
 
 As a user making choices or answering multi-part prompts from my phone, I want calm, height-safe interactive cards inside the chat bubble with optional rationale, recommendation highlights, and non-pushy `Defer` and `Other` exits that lock visibly in place when resolved, so I can act quickly without button truncation or notification clutter.
 
-- **AC-2.1 (Widget Default & Decision Metadata):** Given `ask_user` invoked without explicit `presentation: "rich"`, the channel sends a Profile-1 HTML Widget (`sendWidget`) backed by the persistent question broker (`q:<qid>:`), supporting single-select, client-side multi-select bitmasks (`q:<qid>:m:<base36>`), optional `kind: "decision"` metadata (`stakes`, `recommended`, `pros`/`cons` expandable drawers, `allowDefer`, `allowOther` defaulting `true`), mobile viewport pagination above 2–3 options (`<= 560px` height), and a concise 1-line notification `caption`; if `sendWidget` fails in a group context, the channel fails fast verbatim without silent downgrade unless `presentation: "rich"` is requested explicitly.
+- **AC-2.1 (Rich Message Default, Explicit Widget, & Decision Metadata):** Given `ask_user` invoked without `presentation`, the channel sends a Rich Message card (`sendRichMessage`) backed by the persistent question broker (`q:<qid>:`), supporting single-select, multi-select, optional `kind: "decision"` metadata (`stakes`, `recommended`, `pros`/`cons` expandable drawers, `allowDefer`, `allowOther` defaulting `true`). When `presentation: "widget"` is explicitly requested, the channel sends a Profile-1 HTML Widget (`sendWidget`) with client-side multi-select bitmasks (`q:<qid>:m:<base36>`), mobile viewport pagination above 2–3 options (`<= 560px` height), and a concise 1-line notification `caption`; if `sendWidget` fails, the channel fails fast verbatim with Telegram's error without silent downgrade.
 - **AC-2.2 (State Lock within Timeout & Cross-Surface Synchronization):** Given an authorized user taps a brokered widget choice (`q:<qid>:opt:<i>`, `q:<qid>:m:<mask>`, `q:<qid>:defer`, or `q:<qid>:other`), submits via the Mini App dashboard, or settles by chat reply, then the channel acknowledges `answerWidgetQuery` within Telegram's `15s` window, updates the widget silently in place via `editMessageWidgetData` (`chat_data` lock/awaiting state with local 24h `HH:MM` timestamp), and emits the settled question event to the agent.
 
 ### US-3 Custom Live HTML Widgets & Pre-Flight Validation
@@ -58,7 +58,7 @@ As a user tracking background progress or interacting with live views inside cha
 | `send_widget` | `sendWidget` | `html` (`1–32,768` bytes, no NUL, `<= 4,096 B` zlib-9), `width?`, `height?`, `public_data?`/`chat_data?` (`<= 1,024 B`), `caption?`, `allow_queries?` (default `false`), routing, `buttons?`. | `{ success: true, message_id, message_thread_id? }` |
 | `edit_message_widget_data` | `editMessageWidgetData` | `message_id` (or `inline_message_id`), `public_data?` (`<= 1,024 B`), `chat_data?` (`<= 1,024 B`). | `{ success: true, updated?: true, not_modified?: true }` |
 | `answer_widget_query` | `answerWidgetQuery` | `widget_query_id` (required), `data?` (`<= 1,024 B`). | `{ success: true, answered: true }` |
-| `ask_user` | `sendWidget` / `sendRichMessage` | Defaults `presentation` to `"widget"` (explicit `"rich"` option); supports `kind` (`"question" \| "decision"`), `stakes`, `allowOther`, `allowDefer`, option `recommended`/`pros`/`cons`. | `{ question_ids, status: "posted", presentation?, message }` |
+| `ask_user` | `sendRichMessage` / `sendWidget` | Defaults `presentation` to `"rich"` (explicit `"widget"` option); supports `kind` (`"question" \| "decision"`), `stakes`, `allowOther`, `allowDefer`, option `recommended`/`pros`/`cons`. | `{ question_ids, status: "posted", presentation?, message }` |
 
 ## Invariants and security boundaries
 
