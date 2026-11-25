@@ -559,6 +559,7 @@ describe("Bot API 10.1-10.4 Rich Messages and HTML Widgets", () => {
       params: {
         name: "ask_user",
         arguments: {
+          presentation: "widget",
           questions: [
             {
               kind: "decision",
@@ -611,7 +612,7 @@ describe("Bot API 10.1-10.4 Rich Messages and HTML Widgets", () => {
     };
     const mcp = new StdioMcpServer(config, store, broker, bot, permRelay);
 
-    // Multi-select default widget
+    // Multi-select explicit widget
     const msRes = await mcp.handleMessage({
       jsonrpc: "2.0",
       id: 21,
@@ -619,6 +620,7 @@ describe("Bot API 10.1-10.4 Rich Messages and HTML Widgets", () => {
       params: {
         name: "ask_user",
         arguments: {
+          presentation: "widget",
           questions: [
             {
               question: "Pick layers",
@@ -643,14 +645,14 @@ describe("Bot API 10.1-10.4 Rich Messages and HTML Widgets", () => {
     });
     expect(events.some((e) => e.meta.question_id === qMultiId && e.meta.choice === "Spec, Tests")).toBe(true);
 
-    // Group chat default ask_user fails loudly (no silent downgrade)
+    // Group chat explicit presentation: "widget" fails loudly (no silent downgrade)
     const grpFail = await mcp.handleMessage({
       jsonrpc: "2.0",
       id: 22,
       method: "tools/call",
       params: {
         name: "ask_user",
-        arguments: { chat_id: -100999, questions: [{ question: "Proceed?", options: [{ label: "Yes" }] }] },
+        arguments: { chat_id: -100999, presentation: "widget", questions: [{ question: "Proceed?", options: [{ label: "Yes" }] }] },
       },
     });
     expect((grpFail?.result as any)?.isError).toBe(true);

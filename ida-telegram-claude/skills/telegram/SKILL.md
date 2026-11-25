@@ -20,8 +20,7 @@ Mobile cognitive load is the binding constraint: users read on a phone between c
 | Casual / Ack (`1–3` lines) | `send_rich_message` or reaction-only | Short Rich Markdown; react only (`🫡`, `✍`, `🐳`, `🎉`) when no prose is needed. |
 | Streaming Draft (private) | `send_message_draft` | Reuse non-zero `draft_id`; pass `markdown`/`html`/`blocks` (`<tg-thinking>`, `can_stop: true`). Private chats only; finalize via `send_rich_message`. |
 | Answer / Analysis / Report | `send_rich_message` | Headline → bullets/tables → `<details>` receipts → `<footer>`. One major conclusion per message. |
-| Question / Decision (private) | `ask_user` (Widget default) | Option cards (`kind: "decision"`, `stakes`, `recommended`/`pros`/`cons`, `allow_defer`). Set `mini_app_only: true` if non-urgent. Async only. |
-| Question / Decision (`chat_id < 0`) | `ask_user` (`presentation: "rich"`) | Groups forbid widgets; pass `presentation: "rich"`, or `send_poll` for simple tallies without broker resumption. |
+| Question / Decision | `ask_user` (Rich Message default) | Option cards (`kind: "decision"`, `stakes`, `recommended`/`pros`/`cons`, `allow_defer`). Set `mini_app_only: true` if non-urgent, or `send_poll` for simple tallies without broker resumption. Async only. |
 | Live Multi-Step Status | `send_widget` + `edit_message_widget_data` | Send compact Profile-1 HTML once; stream `chat_data` (`<= 1,024 B`). Never spam follow-up status messages. |
 | Correction / Late Links | `edit_message` | Patch existing `markdown`/`html`/`blocks` to append PRs, branches, IDs, or outcomes instead of reposting. |
 

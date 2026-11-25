@@ -55,7 +55,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
   {
     name: "ask_user",
     description:
-      "Post an asynchronous question or decision prompt to the user as an interactive HTML Widget (default in private chats; pass presentation: 'rich' for groups) with optional pros/cons, recommendation badge, Defer/Other actions, and Mini App Details sync.",
+      "Post an asynchronous question or decision prompt to the user as an interactive Rich Message card (default; pass presentation: 'widget' for an HTML Widget) with optional pros/cons, recommendation badge, Defer/Other actions, and Mini App Details sync.",
     inputSchema: {
       type: "object",
       properties: {
@@ -69,7 +69,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
         presentation: {
           type: "string",
           enum: ["widget", "rich"],
-          description: "Card surface: 'widget' (default HTML Widget) or 'rich' (Rich Message card for groups/topics).",
+          description: "Card surface: 'rich' (default Rich Message card) or 'widget' (HTML Widget).",
         },
         mini_app_only: {
           type: "boolean",

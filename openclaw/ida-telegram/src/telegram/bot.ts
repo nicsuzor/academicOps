@@ -499,7 +499,7 @@ export class TelegramBotClient {
     if (!storedQ) {
       return { ok: false, error: `Unknown question ${qid}`, description: `Unknown question ${qid}` };
     }
-    const presentation = storedQ.presentation ?? "widget";
+    const presentation = storedQ.presentation ?? "rich";
 
     if (presentation === "widget") {
       try {

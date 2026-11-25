@@ -358,7 +358,7 @@ describe("Threaded Conversations Support", () => {
 
         expect(askRes?.result).toBeDefined();
 
-        const sendMsgCall = apiCalls.find((c) => c.method === "sendWidget");
+        const sendMsgCall = apiCalls.find((c) => c.method === "sendRichMessage");
         expect(sendMsgCall).toBeDefined();
         expect(sendMsgCall?.body.chat_id).toBe(12345678);
         expect(sendMsgCall?.body.message_thread_id).toBe(4242);

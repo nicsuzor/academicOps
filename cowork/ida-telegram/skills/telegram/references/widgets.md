@@ -1,6 +1,6 @@
 # Telegram HTML Widgets Reference (Bot API 10.4, Profile 1)
 
-Use `send_widget`, `edit_message_widget_data`, and `answer_widget_query` in private chats (`chat_id > 0`) for Live Status trackers, progress panels, and structured multi-field interactions (`ask_user` handles Questions and Decisions automatically via its built-in widget). Group chats (`chat_id < 0`) do not support HTML Widgets; never silently downgrade a widget call there.
+Use `send_widget`, `edit_message_widget_data`, and `answer_widget_query` in private chats (`chat_id > 0`) for Live Status trackers, progress panels, and structured multi-field interactions (`ask_user` defaults to Rich Message cards and also supports `presentation: "widget"`). Group chats (`chat_id < 0`) do not support HTML Widgets; never silently downgrade a widget call there.
 
 ## Sandbox Profile 1 & Hard Quotas
 

@@ -125,7 +125,7 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     // Stub callApi to capture outbound Telegram payloads
     (bot as any).callApi = async (method: string, payload: Record<string, unknown>) => {
       apiCalls.push({ method, payload });
-      if (method === "sendWidget" || method === "sendMessage") {
+      if (method === "sendWidget" || method === "sendRichMessage" || method === "sendMessage") {
         return { ok: true, result: { message_id: ++nextMessageId } };
       }
       return { ok: true, result: true };
@@ -173,15 +173,15 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       },
     });
 
-    const sentWidgets = apiCalls.filter((c) => c.method === "sendWidget");
-    // Must render 3 separate Telegram HTML Widgets (one per decision in batch)
-    expect(sentWidgets.length).toBe(3);
+    const sentRichCards = apiCalls.filter((c) => c.method === "sendRichMessage");
+    // Must render 3 separate Telegram Rich Message cards (one per decision in batch), not widgets
+    expect(sentRichCards.length).toBe(3);
+    expect(apiCalls.filter((c) => c.method === "sendWidget").length).toBe(0);
 
-    // Card 1 widget must contain header, question, option descriptions, and allow_queries=true
-    const card1Payload = sentWidgets[0].payload;
-    expect(card1Payload.allow_queries).toBe(true);
-    expect(card1Payload.html as string).toContain("Value model weight");
-    expect(card1Payload.html as string).toContain("Prioritizes due-within-48h tasks immediately");
+    // Card 1 Rich Message must contain header, question, and option descriptions
+    const card1Payload = sentRichCards[0].payload as { rich_message?: { markdown?: string } };
+    expect(card1Payload.rich_message?.markdown).toContain("Value model weight");
+    expect(card1Payload.rich_message?.markdown).toContain("Prioritizes due-within-48h tasks immediately");
 
     // 2. Send a result card with custom action buttons via `send_rich_message`
     await mcp.handleMessage({
@@ -1555,9 +1555,9 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     const permRelay = new PermissionRelay();
 
     const bot = new TelegramBotClient(config as any, broker, permRelay, () => {});
-    // Simulate Telegram sendWidget/sendMessage failing
+    // Simulate Telegram sendWidget/sendRichMessage/sendMessage failing
     (bot as any).callApi = async (method: string) => {
-      if (method === "sendWidget" || method === "sendMessage") {
+      if (method === "sendWidget" || method === "sendRichMessage" || method === "sendMessage") {
         return { ok: false, description: "Bad Request: chat not found" };
       }
       return { ok: true };
@@ -1860,19 +1860,155 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     (bot as any).callApi = async (method: string, payload: any) => {
       calls.push({ method, payload });
       if (method === "sendWidget") {
-        return { ok: false, description: "Bad Request: widget rejected" };
+        return { ok: false, error_code: 400, description: "Bad Request: INPUT_MEDIA_WIDGET_NOT_ALLOWED" };
       }
-      return { ok: true };
+      return { ok: true, result: { message_id: 777 } };
     };
 
     const q = await broker.askUser({
       question: "No silent fallback question?",
       options: [{ label: "OK" }],
+      presentation: "widget",
       chatId: 999,
     });
     const card = broker.renderQuestionCard(q.questionId)!;
     const widgetFailRes = await bot.sendQuestionCard(999, q.questionId, card);
     expect(widgetFailRes.ok).toBe(false);
-    expect(calls.some((c) => c.method === "sendMessage")).toBe(false);
+    expect(widgetFailRes.error).toContain("INPUT_MEDIA_WIDGET_NOT_ALLOWED");
+    expect(calls.some((c) => c.method === "sendRichMessage" || c.method === "sendMessage")).toBe(false);
+  });
+
+  test("ask_user with no presentation defaults to Rich Message, mirrored AskUserQuestion defaults to Rich Message, and explicit widget rejection has no fallback", async () => {
+    const { StdioMcpServer } = await import("../src/mcp/server.js");
+    const { TelegramBotClient } = await import("../src/telegram/bot.js");
+    const { PluginStore } = await import("../src/store.js");
+    const { PermissionRelay } = await import("../src/mcp/permissions.js");
+    const { SharedTelegramChannelCore } = await import("../src/core/channel-core.js");
+    const { spawn } = await import("node:child_process");
+    const { createServer } = await import("node:net");
+
+    const config = {
+      botToken: "test-token",
+      allowFrom: [999],
+      stateDir: testStateDir,
+      socketPath: join(testStateDir, "rich_default_hook.sock"),
+      port: 0,
+      miniAppUrl: "https://ida.example.ts.net",
+      isPrimary: true,
+      maxChatChars: 1200,
+      voiceReplies: "off" as const,
+      botCommands: [],
+    };
+
+    const store = new PluginStore(testStateDir);
+    const broker = new QuestionBroker(testStateDir);
+    const permRelay = new PermissionRelay(testStateDir);
+    const apiCalls: Array<{ method: string; payload: any }> = [];
+    let msgId = 1000;
+
+    const bot = new TelegramBotClient(config as any, broker, permRelay, () => {}, store);
+    (bot as any).callApi = async (method: string, payload: any) => {
+      apiCalls.push({ method, payload });
+      if (method === "sendWidget") {
+        return { ok: false, error_code: 400, description: "Bad Request: INPUT_MEDIA_WIDGET_NOT_ALLOWED" };
+      }
+      if (method === "sendRichMessage" || method === "sendMessage") {
+        return { ok: true, result: { message_id: ++msgId } };
+      }
+      return { ok: true, result: true };
+    };
+
+    const mcp = new StdioMcpServer(config as any, store, broker, bot, permRelay);
+
+    // 1. Direct ask_user with no presentation sends Rich Message, not widget
+    const directRes = await mcp.handleMessage({
+      jsonrpc: "2.0",
+      id: 201,
+      method: "tools/call",
+      params: {
+        name: "ask_user",
+        arguments: {
+          questions: [{ question: "Default card surface?", options: [{ label: "Rich" }, { label: "Widget" }] }],
+        },
+      },
+    });
+    const directParsed = JSON.parse((directRes?.result as any).content[0].text);
+    expect(directParsed.status).toBe("posted");
+    expect(directParsed.presentation).toBe("rich");
+    expect(apiCalls.filter((c) => c.method === "sendRichMessage").length).toBe(1);
+    expect(apiCalls.filter((c) => c.method === "sendWidget").length).toBe(0);
+
+    // 2. Console AskUserQuestion mirrored via hook -> IPC socket -> ChannelCore also sends Rich Message
+    apiCalls.length = 0;
+    const core = new SharedTelegramChannelCore({ config: config as any, store, broker, bot, permRelay });
+    const ipcServer = createServer((socket) => {
+      let buf = "";
+      socket.on("data", (d) => {
+        buf += d.toString();
+        const nl = buf.indexOf("\n");
+        if (nl !== -1) {
+          const msg = JSON.parse(buf.slice(0, nl));
+          core.handleIpcMessage(msg).then((res) => {
+            socket.write(JSON.stringify(res) + "\n");
+            socket.end();
+          });
+        }
+      });
+    });
+    await new Promise<void>((resolve) => ipcServer.listen(config.socketPath, resolve));
+
+    try {
+      const hookPath = join(import.meta.dir, "..", "hooks", "ask-user-question.js");
+      await new Promise<void>((resolve, reject) => {
+        const proc = spawn("node", [hookPath], {
+          env: {
+            ...process.env,
+            IDA_TELEGRAM_ROLE: "primary",
+            STATE_DIR: testStateDir,
+            SOCKET_PATH: config.socketPath,
+          },
+        });
+        let stderr = "";
+        proc.stderr.on("data", (d) => (stderr += d.toString()));
+        proc.on("error", reject);
+        proc.on("close", (code) => (code === 0 ? resolve() : reject(new Error(`Hook exited ${code}: ${stderr}`))));
+        proc.stdin.write(
+          JSON.stringify({
+            tool_name: "AskUserQuestion",
+            turn_id: "turn_mirror_1",
+            tool_input: {
+              questions: [{ question: "Mirrored question?", options: [{ label: "Yes" }, { label: "No" }] }],
+            },
+          }) + "\n"
+        );
+        proc.stdin.end();
+      });
+
+      expect(apiCalls.filter((c) => c.method === "sendRichMessage").length).toBe(1);
+      expect(apiCalls.filter((c) => c.method === "sendWidget").length).toBe(0);
+    } finally {
+      ipcServer.close();
+    }
+
+    // 3. Explicit widget request rejected by Telegram fails with Telegram's error and zero fallback
+    apiCalls.length = 0;
+    const widgetRes = await mcp.handleMessage({
+      jsonrpc: "2.0",
+      id: 202,
+      method: "tools/call",
+      params: {
+        name: "ask_user",
+        arguments: {
+          presentation: "widget",
+          questions: [{ question: "Force widget?", options: [{ label: "Try" }] }],
+        },
+      },
+    });
+    const widgetParsed = JSON.parse((widgetRes?.result as any).content[0].text);
+    expect((widgetRes?.result as any)?.isError).toBe(true);
+    expect(widgetParsed.success).toBe(false);
+    expect(widgetParsed.error).toContain("INPUT_MEDIA_WIDGET_NOT_ALLOWED");
+    expect(apiCalls.filter((c) => c.method === "sendWidget").length).toBe(1);
+    expect(apiCalls.filter((c) => c.method === "sendRichMessage" || c.method === "sendMessage").length).toBe(0);
   });
 });

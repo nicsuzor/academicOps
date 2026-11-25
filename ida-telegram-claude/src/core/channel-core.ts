@@ -178,7 +178,7 @@ export class SharedTelegramChannelCore {
     );
     const topThreadId = (params.message_thread_id ?? params.messageThreadId ?? params.thread_id ?? params.threadId) as number | undefined;
     const topDetail = params.detail ?? params.details;
-    const topPresentation = params.presentation ?? "widget";
+    const topPresentation = params.presentation ?? "rich";
 
     if (questions.length === 0) {
       throw new Error("No questions provided");
