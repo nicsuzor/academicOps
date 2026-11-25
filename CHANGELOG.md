@@ -2,10 +2,9 @@
 
 ## [1.13.2](https://github.com/nicsuzor/academicOps/compare/v1.13.1...v1.13.2) (2026-11-25)
 
-
 ### Bug Fixes
 
-* **ida-telegram:** default ask_user to Rich Message card without widget fallback ([8f0d1e9](https://github.com/nicsuzor/academicOps/commit/8f0d1e9a3039be979a8d37568e4ab712d576cdde))
+- **ida-telegram:** default ask_user to Rich Message card without widget fallback ([8f0d1e9](https://github.com/nicsuzor/academicOps/commit/8f0d1e9a3039be979a8d37568e4ab712d576cdde))
 
 ## [1.13.1](https://github.com/nicsuzor/academicOps/compare/v1.13.0...v1.13.1) (2026-11-24)
 
