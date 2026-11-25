@@ -1,23 +1,24 @@
 ---
 name: pull
-description: Claim and execute an already-decomposed queued PKB task or single-skill task to completion without re-reifying, record verified results, and hand over via /dump. Use for fast-path worker execution of leaf tasks. Exclude for composite tasks needing workflow composition and multi-agent fan-out (use /supervise).
+description: Claim a PKB task, do the job it specifies to completion, record verified evidence under ## Report, and hand over via /dump. Use as the single worker entry point for any task.
 ---
 
-# /pull -- Fast-Path Task Execution
+# /pull -- Task Execution
 
-Claim and execute an already-decomposed queued PKB task or single-skill task to completion without re-reifying, record verified evidence under `## Report`, and invoke `/dump` to hand over. Dispatched leaf workers operate strictly under the state-only invariant.
+Claim a PKB task, do the job it specifies, record verified evidence under `## Report`, and invoke `/dump` to hand over.
 
-## 1. Claim Task
+## 1. Claim & Assemble
 
-- Claim the assigned task via `pkb_claim_task` (`assignee` set to your agent or role). Look up assigned tasks strictly by exact ID or title (`pkb_get_task`) rather than running exploratory semantic searches; if unreachable, halt or query the custodian (`pauli`).
-- Mutate only the claimed task's own fields and checklist: never reify workflows, create child tasks, or mint follow-ups.
-- Verify deliverables as a frozen `## Acceptance` checklist on the task before starting work.
-- Execute the claimed task in this session; `/pull` never launches worker containers. Coordinators outside a worker container use `/pull` only for lightweight documentation, synthesis, or coordination without test suites or large codebase sweeps.
+- Claim the assigned task via `pkb_claim_task` (`assignee` set to your agent or role), looking it up by exact ID or title (`pkb_get_task`); if invoked on an untracked directive without a task ID, place it via `/q` first, then claim it.
+- Verify deliverables as a frozen `## Acceptance` checklist before starting work. If the task lacks `## Instructions` and `## Appendix: Sources` (and is not `invoke /<skill>`), compose its workflow in-session via `/reify`.
+- Keep the PKB task updated after major stages so progress survives container pre-emption.
 
-## 2. Execute Work
+## 2. Do the Job
 
-- Deliver stated outcomes directly, sequencing steps in session and escalating failures upstream without hidden workarounds.
-- **Whole-file inspection**: Read each target file in full before editing so architecture, conventions, and helpers are understood; narrow line-slice reads without whole-file context are prohibited (line numbers are advisory pointers only).
+- Execute the task end-to-end in-session, coordinating subagents in parallel where helpful and reading each target file in full before editing.
+- Commit and push scrubbed work incrementally (`data-boundaries`: no private PKB, task, or session IDs, `Task:` trailers, personal names, or private hostnames) so work survives pre-emption.
+- Escalate blocking infrastructure or tool failures verbatim without hidden workarounds.
+- Deliver everything executable in-session (tests, linters, builds, draft PR, or durable PKB artifact). Queue a dependent follow-up via `/q` (under the governing parent with `needs` edges and zero leaf `serves` edges) only when work requires a different repository, a different execution window or external wait, or a separate external agent or session.
 
 ## 3. Consolidate Findings & Durable Facts
 
@@ -28,10 +29,10 @@ Claim and execute an already-decomposed queued PKB task or single-skill task to 
 
 Verify every criterion against primary evidence (`file:line`, quoted output, counts, PR URL, or test run). Tick (`[x]`) only items directly evidenced; leave others unticked (`[ ]`) with limits stated.
 
-- `done`: All in-scope criteria are met with evidence in `## Report` and delivered where `Output` names (draft PR opened via `gh pr create --draft` with `pr_url` and `branch`, or durable PKB artifact pointer -- never ephemeral scratch paths). Exit without waiting for CI, review, merge, or proof of user installation/deployment.
-- `partial`: Worker's own items remain unfinished (blocker, missing tool, scope seam, missing evidence, or pre-work approval boundary), or the task checklist contains an unreachable post-exit criterion (complete reachable work, leave that item unticked, and cite it in `reason`).
+- `done`: All in-scope criteria are met with evidence in `## Report` and delivered where `Output` names (draft PR opened via `gh pr create --draft` with `pr_url` and `branch`, or durable PKB artifact pointer -- never ephemeral scratch paths), and any out-of-session follow-up is queued. Exit without waiting for CI, review, merge, or proof of user installation or deployment.
+- `partial`: In-session criteria remain unfinished (blocker, missing tool, scope seam, missing evidence, or pre-work approval boundary), or the task checklist contains an unreachable post-exit criterion (complete reachable work, leave that item unticked, and cite it in `reason`).
 - `failed`: Check or review task fails; document failure evidence and root cause.
-- Never set `review`, and never create or name speculative follow-up tasks (`/reconcile` settles partial and failed tasks from the parent).
+- Never set `review`, and never create speculative follow-up tasks (`/reconcile` settles partial and failed tasks from the parent).
 
 ## 5. Handover (`/dump`)
 

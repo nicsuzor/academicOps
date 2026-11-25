@@ -1,7 +1,7 @@
 ---
 title: Task base
 type: template
-description: Foundation for every task executed via /supervise (repo-scoped composite tasks) or /pull (plain leaf tasks) -- defines the canonical task schema, structural placement, groundwork rule, post-release boundary, and container boundary.
+description: Foundation for every task executed via /pull -- defines the canonical task schema, structural placement, groundwork rule, post-release boundary, and container boundary.
 tags: [base, task]
 ---
 
@@ -14,7 +14,6 @@ tags: [base, task]
 
 ## Placement and Execution
 
-- **Single combined task by default**: Structure repo-scoped work requiring design, build, PR, or verification as one combined task under `/supervise`. Split into child or follow-up tasks ONLY when a step requires a different repository, different execution window, or separate external agent/session; never place loose siblings under an external parent.
-- **State-only leaf workers**: Plain leaf workers under `/pull` mutate only their claimed task's own record and never inspect cross-task edges or mint follow-up tasks.
+- **Single combined task by default**: Structure repo-scoped work requiring design, build, PR, or verification as one combined task under `/pull`. Split into child or follow-up tasks ONLY when a step requires a different repository, different execution window, or separate external agent/session; never place loose siblings under an external parent.
 - **Groundwork first**: Read target files in full before editing (no keyhole reads) and settle unknowns from the PKB before escalating. Treat user direction to perform, settle, or deliver work as approval for design and route decisions; release as `partial` (or route to `status: review`, `assignee: user`) with evaluated options and a reasoned recommendation strictly for invariant boundaries (external audience, unruled merge, unbounded cost) or explicit user-reserved pre-action holds (never `review` for agent work, and never class-based holds).
 - **Container boundary**: A refusal at or beyond the container boundary is a halt, never a workaround; in-container sandbox refusals are not walls.

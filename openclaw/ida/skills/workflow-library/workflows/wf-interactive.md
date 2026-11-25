@@ -15,12 +15,12 @@ Governs direct user-facing interactive sessions: task creation boundaries, subag
 
 1. **Single outer task**:
    - Maintain at most one outer task on the task graph for the interactive topic, placed and claimed via `/q` by the internal sub-coordinator before substantial work begins. The user-facing coordinator strictly delegates and verifies without creating tasks directly.
-   - When transitioning to asynchronous worker containers, the internal sub-coordinator places repo-scoped tasks via `/q` and dispatches via `/dispatch` to `/supervise` without pre-dispatch `/reify` (containers run `/reify` in-session).
+   - When transitioning to asynchronous worker containers, the internal sub-coordinator places repo-scoped tasks via `/q` and dispatches via `/dispatch` (running `/ida:pull`) without pre-dispatch `/reify`.
    - Downstream workers and subagents never create additional tasks on the task graph for the session's work.
 2. **Delegation pipeline**:
    - The user-facing coordinator delegates first to an internal delegate.
    - Pre-creation overlap checks route directly to the PKB custodian before an outer task is minted via `/q`.
-   - Internal delegates route work to the PKB custodian, review coordinator, or dispatcher as needed (`/supervise` for repo-scoped composite tasks; `/pull` for plain leaf tasks).
+   - Internal delegates route work to the PKB custodian, review coordinator, or dispatcher as needed.
 3. **Seam verification**:
    - Every agent-to-agent message (delegation briefs, clarifications, reports, and handbacks) uses unfenced prose Argdown blocks only with atomic sourced premises and undergoes face-of-record compliance review at the seam per `premise-check` (zero _de novo_ fact-checking); any result drawing `REVISE` during review must be revised and re-reviewed before handback.
 4. **Outer handover**:

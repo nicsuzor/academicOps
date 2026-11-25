@@ -27,7 +27,7 @@ Offer settled durable facts (decisions, constraints, verified current-state find
 ### 4. Release Claimed Tasks (Children First)
 
 1. Refetch current task state (`pkb_get_task`), update `## Report` solely in unfenced prose Argdown blocks per `ida:premise-check` (leading with original ask/criteria and release outcome, breaking out every deciding observation as its own sourced numbered premise), and call `pkb_release_task` with `session_id`:
-   - `done`: Single completion status when all in-scope criteria have primary evidence in `## Report` and deliverables are delivered (draft PR opened with `pr_url`/`branch`, or PKB artifact recorded -- without waiting for CI, review, merge, or proof of user installation/deployment). Coordinators (`/supervise`) release `done` when in-session deliverables finish and out-of-session work is queued as follow-up tasks; leaf workers (`/pull`) satisfy all criteria directly.
+   - `done`: Single completion status when all in-scope criteria have primary evidence in `## Report` and deliverables are delivered (draft PR opened with `pr_url`/`branch`, or PKB artifact recorded -- without waiting for CI, review, merge, or proof of user installation/deployment). Workers release `done` when in-session deliverables finish and any out-of-session work is queued as follow-up tasks.
    - `partial`: Worker's own criteria or in-session subtasks remain unfinished (blocker, scope seam, missing tool, pre-work approval boundary), or task includes an unreachable post-exit criterion (finish reachable work, leave that item unticked, cite in `reason`).
    - `failed`: Unrecoverable blocker or check failure.
    - `cancelled`: Obsolete or invalidated.
