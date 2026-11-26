@@ -11,6 +11,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import re
 import sys
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field, fields
@@ -685,6 +686,203 @@ def main(argv: list[str]) -> int:
     if output:
         print(json.dumps(output))
     return 0
+
+
+_AGY_USER_REQUEST = re.compile(r"<USER_REQUEST>\s*(.*)\s*</USER_REQUEST>", re.DOTALL)
+_AGY_MESSAGE = re.compile(
+    r"\[Message\][^\n]*?\bsender=(\S+)[^\n]*?\bcontent=(.*?)\s*(?:</SYSTEM_MESSAGE>\s*)?$",
+    re.DOTALL,
+)
+
+
+def _tracer_state_dir() -> Path:
+    env_dir = (
+        os.environ.get("AOPS_TRACER_STATE_DIR")
+        or os.environ.get("TRACER_STATE_DIR")
+        or os.environ.get("AOPS_TRACER_DIR")
+    )
+    if env_dir:
+        return Path(env_dir)
+    return Path.home() / ".claude" / "tracer"
+
+
+def _is_session_start_or_harness_injection(content: str) -> bool:
+    """True if a SYSTEM_MESSAGE is a SessionStart hook message or harness banner."""
+    s = content.lower()
+    return "injected by a sessionstart hook" in s or (
+        "session:" in s and "host:" in s and "cwd:" in s
+    )
+
+
+def _agy_candidate_transcripts(ctx: HookContext) -> list[Path]:
+    raw_path = ctx.transcript_path or ctx.raw.get("transcriptPath")
+    candidates: list[Path] = []
+    if raw_path:
+        p = Path(raw_path)
+        if p.is_file():
+            candidates.append(p)
+        parent = p.parent
+        for alt_name in ("transcript.jsonl", "transcript_full.jsonl"):
+            alt_path = parent / alt_name
+            if alt_path.is_file() and alt_path not in candidates:
+                candidates.append(alt_path)
+    return candidates
+
+
+def _read_all_agy_entries(ctx: HookContext) -> list[dict[str, Any]]:
+    candidates = _agy_candidate_transcripts(ctx)
+    if not candidates:
+        return []
+    entries_by_index: dict[int, dict[str, Any]] = {}
+    fallback_entries: list[dict[str, Any]] = []
+
+    for path in candidates:
+        try:
+            with open(path, encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        entry = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if not isinstance(entry, dict):
+                        continue
+                    step_idx = entry.get("step_index")
+                    if isinstance(step_idx, int):
+                        existing = entries_by_index.get(step_idx)
+                        if existing is None:
+                            entries_by_index[step_idx] = entry
+                        elif "content" in existing.get(
+                            "truncated_fields", []
+                        ) and "content" not in entry.get("truncated_fields", []):
+                            entries_by_index[step_idx] = entry
+                    else:
+                        fallback_entries.append(entry)
+        except OSError:
+            continue
+
+    if entries_by_index:
+        return [entries_by_index[idx] for idx in sorted(entries_by_index.keys())]
+    return fallback_entries
+
+
+def _agy_turn_start(ctx: HookContext) -> dict[str, Any] | None:
+    inv = (ctx.raw or {}).get("invocationNum", 0)
+    if inv is not None and inv != 0:
+        return None
+    entries = _read_all_agy_entries(ctx)
+    if not entries:
+        return None
+    for entry in reversed(entries):
+        entry_type = entry.get("type")
+        if entry_type == "USER_INPUT":
+            return entry
+        if entry_type == "SYSTEM_MESSAGE":
+            content = str(entry.get("content") or "")
+            if _is_session_start_or_harness_injection(content):
+                continue
+            return entry
+    return None
+
+
+def agy_arrival(content: str) -> str:
+    """The report or direction an agy SYSTEM_MESSAGE delivers, or '' when it delivers none."""
+    m = _AGY_MESSAGE.search(content)
+    if not m:
+        return ""
+    sender, body = m.group(1), m.group(2).strip()
+    if sender == "system" or "/" in sender:
+        return ""
+    return body
+
+
+def _agy_user_prompt(ctx: HookContext) -> str:
+    """The user's text for an agy turn, read from the turn's transcript."""
+    turn_start = _agy_turn_start(ctx)
+    if not turn_start:
+        return ""
+    if turn_start.get("type") == "USER_INPUT":
+        content = str(turn_start.get("content") or "").strip()
+        m = _AGY_USER_REQUEST.search(content)
+        return (m.group(1) if m else content).strip()
+    if turn_start.get("type") == "SYSTEM_MESSAGE":
+        content = str(turn_start.get("content") or "").strip()
+        arrival = agy_arrival(content)
+        if arrival:
+            return arrival
+    return ""
+
+
+def prompt_text(ctx: HookContext) -> str:
+    """Extract prompt text canonically across Claude Code and agy."""
+    prompt = ctx.raw.get("prompt")
+    if prompt is None and hasattr(ctx, "prompt"):
+        prompt = ctx.prompt
+    if isinstance(prompt, dict):
+        prompt = prompt.get("text") or prompt.get("content") or ""
+    text = str(prompt or "").strip()
+    if not text and ctx.client == "agy":
+        text = _agy_user_prompt(ctx)
+    return text
+
+
+def _has_subagent_marker(text: str) -> bool:
+    return "<subagent_reminder>" in text or "invoked by a caller agent" in text
+
+
+def _initial_agy_turn_content(ctx: HookContext) -> str:
+    """Content of the first non-harness turn-start entry in an agy transcript."""
+    for entry in _read_all_agy_entries(ctx):
+        entry_type = entry.get("type")
+        if entry_type == "USER_INPUT":
+            return str(entry.get("content") or "")
+        if entry_type == "SYSTEM_MESSAGE":
+            content = str(entry.get("content") or "")
+            if _is_session_start_or_harness_injection(content):
+                continue
+            return content
+    return ""
+
+
+def _is_subagent_conversation(ctx: HookContext) -> bool:
+    """True if ctx is an agy subagent conversation invoked by a caller agent."""
+    raw = ctx.raw or {}
+    if (
+        raw.get("caller_id")
+        or raw.get("parent_conversation_id")
+        or raw.get("is_subagent")
+        or raw.get("caller_session")
+    ):
+        return True
+    if ctx.session_id:
+        try:
+            tracer_file = _tracer_state_dir() / f"{ctx.session_id}.json"
+            if tracer_file.is_file():
+                tdata = json.loads(tracer_file.read_text(encoding="utf-8"))
+                phx_sid = tdata.get("phoenix_session_id")
+                if phx_sid:
+                    phx_root = str(phx_sid).split("/", 1)[0]
+                    if phx_root and phx_root != ctx.session_id:
+                        return True
+                if tdata.get("parent_session_id") or tdata.get("caller_session_id"):
+                    return True
+        except Exception:
+            pass
+    if ctx.client == "agy" and ctx.event == "PreToolUse":
+        direct_prompt = raw.get("prompt")
+        if direct_prompt is None and hasattr(ctx, "prompt"):
+            direct_prompt = ctx.prompt
+        if isinstance(direct_prompt, dict):
+            direct_prompt = direct_prompt.get("text") or direct_prompt.get("content") or ""
+        if _has_subagent_marker(str(direct_prompt or "")):
+            return True
+        return _has_subagent_marker(_initial_agy_turn_content(ctx))
+    prompt = prompt_text(ctx) or ""
+    if _has_subagent_marker(prompt):
+        return True
+    return False
 
 
 if __name__ == "__main__":

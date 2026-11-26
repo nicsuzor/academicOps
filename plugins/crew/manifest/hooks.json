@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "name": "ida",
+  "name": "crew",
   "clients": {
     "__base__": {},
     "claude": {
@@ -56,26 +56,6 @@
               }
             ],
             "matcher": "*"
-          }
-        ],
-        "PostToolBatch": [
-          {
-            "hooks": [
-              {
-                "type": "command",
-                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude PostToolBatch"
-              }
-            ]
-          }
-        ],
-        "SubagentStart": [
-          {
-            "hooks": [
-              {
-                "type": "command",
-                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude SubagentStart"
-              }
-            ]
           }
         ],
         "Stop": [

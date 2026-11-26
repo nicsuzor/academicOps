@@ -30,12 +30,12 @@ flowchart TD
 
 | Component | File | Purpose |
 | - | - | - |
-| `PreToolUse` / `PreInvocation` | `hooks/dispatch.py` | Registered; runs turn/tool checks (Claude Code) or injects rule roster (agy) once re-enabled. Currently does nothing. |
-| `Stop` / `SubagentStop` | `hooks/dispatch.py` | Registered; prompts rule verification before final handback once re-enabled. Currently does nothing. |
-| Evaluation Handler | `hooks/handlers.py` | Disabled. Evaluates tool calls against rules and injects advisories. |
-| Stop Handler | `hooks/handlers.py` | Disabled. Dispatches `rule-check.md` once per turn chain. |
-| Evaluator Client | `hooks/evaluator.py` | HTTP client for `cope` and `openai` wire protocols. |
-| Rule Loader | `hooks/rules.py` | Merges three rule scopes (`trigger: always_on`). |
+| `PreToolUse` / `PreInvocation` | `cope_hooks_disabled/dispatch.py` | Disabled. Ran turn/tool checks (Claude Code) or injected rule roster (agy). |
+| `Stop` / `SubagentStop` | `cope_hooks_disabled/dispatch.py` | Disabled. Prompted rule verification before final handback. |
+| Evaluation Handler | `cope_hooks_disabled/handlers.py` | Disabled. Evaluates tool calls against rules and injects advisories. |
+| Stop Handler | `cope_hooks_disabled/handlers.py` | Disabled. Dispatches `rule-check.md` once per turn chain. |
+| Evaluator Client | `cope_hooks_disabled/evaluator.py` | HTTP client for `cope` and `openai` wire protocols. |
+| Rule Loader | `cope_hooks_disabled/rules.py` | Merges three rule scopes (`trigger: always_on`). |
 | Messages | `hooks/messages/*.md` | Templates for advisories, prompts, and stop checks. |
 
 ## Rule Scopes
@@ -81,7 +81,7 @@ Point the agent environment at `COPE_EVALUATOR_URL=http://127.0.0.1:8099/v1/labe
 
 ## Dependencies
 
-- `hooks/dispatch.py`: Hook dispatcher runtime.
+- `hooks/handlers.py`: Hook dispatcher runtime (`lib/hooks/dispatch.py` staged at build).
 - `agents/`: the james, pauli and marsha agents.
 - `skills/axioms/`: the `axioms` skill; its files are the baseline axioms.
 - External or local Reflexes/CoPE or OpenAI-compatible classifier endpoint.

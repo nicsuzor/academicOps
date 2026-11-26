@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-"""ida hook handlers."""
+"""crew hook handlers."""
 
 
 import json
@@ -20,32 +20,17 @@ from pathlib import Path
 from typing import Any
 
 from dispatch import (
+    _AGY_USER_REQUEST,
     HookContext,
-    Kind,
     Result,
+    _agy_turn_start,
+    _is_subagent_conversation,
     _merge,
     _run_handler,
-    load_message_pair,
+    prompt_text,
     refuse,
     warn,
 )
-from hearsay_gate import (
-    _AGY_USER_REQUEST,
-    _agy_turn_start,
-    _is_subagent_conversation,
-    hearsay_arm,
-    hearsay_handler,
-    prompt_text,
-    record_pre_dispatch,
-    should_arm_hearsay,
-    subagent_start_gate_notice,
-)
-from hearsay_gate import (
-    is_peer_report as is_peer_report,
-)
-
-premise_check_arm = hearsay_arm
-premise_check_handler = hearsay_handler
 
 Handler = Callable[[HookContext], Result | None]
 
@@ -166,14 +151,6 @@ def is_ida(ctx: HookContext | str | None, *extra_targets: str) -> bool:
 
 _is_ida = is_ida
 _is_agent = is_agent
-
-
-def honest_output(ctx: HookContext) -> Result | None:
-    """Remind subagents on SubagentStart to write reports in premise-check shape."""
-    if ctx.event != "SubagentStart" or ctx.raw.get("background_tasks"):
-        return None
-
-    return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
 
 
 def _cap_output(out: str) -> str:
@@ -788,15 +765,6 @@ def _export_session_id(ctx: HookContext) -> bool:
     return True
 
 
-PREMISE_CHECK_POINTER = (
-    "All agent-to-agent communication follows `premise-check` (`ida:premise-check`)."
-    " Write every inter-agent message solely in unfenced prose Argdown blocks stating"
-    " the original ask upfront and breaking out every premise as its own sourced claim"
-    " (or bare `[no claim]` for an empty acknowledgement). Evaluators unpack premises"
-    " for embedded unsourced assertions on the face of the record -- zero de novo"
-    " fact-checking -- and record appealable natural-language reasons."
-)
-
 PKB_SESSION_POINTER = (
     "Pass active `session_id` (`caller_session` when shown, else `session:` or client"
     " session env) explicitly on all `pkb_*` and instrumented `services` proxy MCP calls;"
@@ -809,7 +777,7 @@ def session_start(ctx: HookContext) -> Result | None:
     metadata = _format_session_metadata(ctx)
     parts = [
         metadata,
-        f"{PREMISE_CHECK_POINTER}\n{PKB_SESSION_POINTER}",
+        PKB_SESSION_POINTER,
     ]
     core_path = (
         ctx.hooks_dir.parent
@@ -913,7 +881,7 @@ def agy_session_pointer(ctx: HookContext) -> Result | None:
             f.write(datetime.now().astimezone().isoformat())
     except (FileExistsError, OSError):
         return None
-    pointer_text = f"{PREMISE_CHECK_POINTER}\n{PKB_SESSION_POINTER}"
+    pointer_text = PKB_SESSION_POINTER
     try:
         tracer_file = _tracer_state_dir() / f"{ctx.session_id}.json"
         if tracer_file.is_file():
@@ -923,34 +891,13 @@ def agy_session_pointer(ctx: HookContext) -> Result | None:
                 phx_root = str(phx_sid).split("/", 1)[0]
                 if phx_root and phx_root != ctx.session_id:
                     pointer_text = (
-                        f"{PREMISE_CHECK_POINTER}\n{PKB_SESSION_POINTER}\n"
+                        f"{PKB_SESSION_POINTER}\n"
                         f"caller_session: {phx_root} | agent_id: {ctx.session_id}"
                     )
     except Exception:
         pass
 
-    if _is_subagent_conversation(ctx):
-        hooks_dir = (
-            ctx.hooks_dir
-            if ctx.hooks_dir and str(ctx.hooks_dir) != "."
-            else Path(__file__).resolve().parent
-        )
-        honesty_agent, honesty_user = load_message_pair(hooks_dir, "honesty")
-        if honesty_agent:
-            pointer_text = f"{honesty_agent}\n\n{pointer_text}"
-        return warn(pointer_text, honesty_user or pointer_text)
-
     return warn(pointer_text)
-
-
-honesty_on_peer_message = honest_output
-
-
-def rule_against_hearsay(ctx: HookContext) -> Result | None:
-    """Remind agents that an incoming peer report or foreground subagent return is hearsay."""
-    if not should_arm_hearsay(ctx):
-        return None
-    return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
 
 
 def _prepare_tracer_data(ctx: HookContext) -> dict[str, Any]:
@@ -1146,8 +1093,6 @@ def user_prompt_submit(ctx: HookContext) -> Result | None:
     steps = (
         agy_session_pointer,
         search_the_pkb,
-        rule_against_hearsay,
-        hearsay_arm,
     )
     return _merge([_run_handler(step, ctx) for step in steps])
 
@@ -1156,25 +1101,14 @@ def pre_tool(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical PreToolUse."""
     _run_claude_tracer(ctx, "handle_pre_tool")
     agy_pre_tool(ctx)
-    gate_res = _run_handler(hearsay_handler, ctx)
-    if gate_res is not None and gate_res.kind == Kind.REFUSE:
-        return gate_res
-    record_pre_dispatch(ctx)
-    return gate_res
+    return None
 
 
 def post_tool(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical PostToolUse."""
     _run_claude_tracer(ctx, "handle_post_tool")
     agy_post_tool(ctx)
-    steps = (hearsay_arm, telemetry_diagnostic_handler)
-    return _merge([_run_handler(step, ctx) for step in steps])
-
-
-def post_tool_batch(ctx: HookContext) -> Result | None:
-    """Single entry-point handler for canonical PostToolBatch."""
-    steps = (rule_against_hearsay, hearsay_arm)
-    return _merge([_run_handler(step, ctx) for step in steps])
+    return _run_handler(telemetry_diagnostic_handler, ctx)
 
 
 def post_tool_failure(ctx: HookContext) -> Result | None:
@@ -1182,23 +1116,16 @@ def post_tool_failure(ctx: HookContext) -> Result | None:
     return _run_handler(telemetry_diagnostic_handler, ctx)
 
 
-def subagent_start(ctx: HookContext) -> Result | None:
-    """Single entry-point handler for canonical SubagentStart."""
-    steps = (honest_output, subagent_start_gate_notice)
-    return _merge([_run_handler(step, ctx) for step in steps])
-
-
 def stop(ctx: HookContext) -> Result | None:
     """Single entry-point handler for canonical Stop."""
     _run_claude_tracer(ctx, "handle_stop")
     agy_stop(ctx)
-    steps = (hearsay_handler, telemetry_diagnostic_handler)
-    return _merge([_run_handler(step, ctx) for step in steps])
+    return _run_handler(telemetry_diagnostic_handler, ctx)
 
 
 def subagent_stop(ctx: HookContext) -> Result | None:
     _run_claude_tracer(ctx, "handle_subagent_stop")
-    return _run_handler(hearsay_arm, ctx)
+    return None
 
 
 def stop_failure(ctx: HookContext) -> Result | None:
@@ -1242,8 +1169,6 @@ HANDLERS: dict[str, list] = {
     "PreToolUse": [pre_tool],
     "PostToolUse": [post_tool],
     "PostToolUseFailure": [post_tool_failure],
-    "PostToolBatch": [post_tool_batch],
-    "SubagentStart": [subagent_start],
     "Stop": [stop],
     "SubagentStop": [subagent_stop],
     "StopFailure": [stop_failure],
