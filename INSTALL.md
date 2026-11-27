@@ -13,9 +13,10 @@
 claude mcp add --transport http --scope user services <your PKB MCP endpoint>
 
 # 2. Install plugins from the marketplace:
-claude plugin marketplace add nicsuzor/academicOps@dist
+claude plugin marketplace add nicsuzor/academicOps
 claude plugin install ida@academicOps
 claude plugin install crew@academicOps
+claude plugin install sara@academicOps   # optional: remote dispatch to polecat containers
 claude plugin install tools@academicOps
 ```
 
@@ -25,7 +26,7 @@ The `services` MCP server is installed at user level across all surfaces, never 
 - **Claude Code Cloud / Cowork**: The claude.ai account connector named `services`.
 - **Antigravity (agy)**: Configured in user-level MCP settings (`~/.gemini/antigravity-cli/settings.json` or `~/.gemini/antigravity-cli/mcp/services.json`).
 
-Plugins install with no `--config`: `ida-telegram` and `aops-debug` install the same way as `ida`, `crew` and `tools`.
+Plugins install with no `--config`: `ida-telegram` and `aops-debug` install the same way as `ida`, `crew`, `sara` and `tools`.
 
 Nothing else has a default. Set the environment variables each plugin needs
 before first use -- the per-surface list is in
@@ -118,13 +119,13 @@ environment, then `$STATE_DIR/.env`) unless noted. Every other surface: not set.
 | - | - | - |
 | `TELEGRAM_BOT_TOKEN` | `loadConfig`; `server.ts` starts the bot only when set | required |
 | `MINI_APP_URL`, else `IDA_WEB_URL` -- the Mini App's public URL; `loadConfig` throws without it | `loadConfig` | required |
-| `IDA_TELEGRAM_ROLE` -- `primary` on the one instance that polls | `loadConfig`; `src/role.ts` `checkRole` | required |
+| `IDA_TELEGRAM_ROLE` -- `primary` on the one instance that polls | `loadConfig`; `plugins/ida-telegram/src/role.ts` `checkRole` | required |
 | `ALLOWED_USER_IDS`, else `TELEGRAM_ALLOW_FROM` | `loadConfig` | required |
 | `STATE_DIR` | `loadConfig` | optional |
 | `CF_ACCESS_TEAM_DOMAIN` (or `CF_ACCESS_TEAM_NAME`), `CF_ACCESS_AUD`, `CF_ACCESS_ALLOWED_EMAILS`, `CF_ACCESS_CERTS_URL`, `CF_ACCESS_KEYS` (or `CF_ACCESS_PUBKEY`) -- Mini App access check | `loadConfig` | optional |
 | `IDA_BRIDGE_TOKEN`, else `BRIDGE_TOKEN` | `loadConfig` | optional |
 | `VOICE_REPLIES`, `VOICE_TRANSCRIBE_CMD`, `VOICE_SPEAK_CMD` | `loadConfig` | optional |
-| `GEMINI_API_KEY`, `GEMINI_TTS_VOICE` -- Gemini voice replies | `scripts/speak-gemini.py` | optional |
+| `GEMINI_API_KEY`, `GEMINI_TTS_VOICE` -- Gemini voice replies | `plugins/ida-telegram/scripts/speak-gemini.py` | optional |
 | `TELEGRAM_API_BASE_URL`, `MAX_CHAT_CHARS`, `PORT`, `IDA_NAME` (or `INSTANCE_NAME`, `INSTANCE_ID`), `TELEGRAM_BOT_COMMANDS`, `TELEGRAM_AUTO_INTERRUPT`, `GITHUB_TOKEN` | `loadConfig` | optional |
 
 ### Other plugins

@@ -15,7 +15,8 @@
 
 ## Agents
 
-- [agents/sara.md](agents/sara.md) -- the supervisor: delegate-and-verify orchestration process.
+- [agents/james.md](agents/james.md) -- the supervisor: delegate-and-verify orchestration, and routing work between the session and polecats.
+- [agents/sara.md](agents/sara.md) -- the dispatcher: launches polecat containers on reified tasks and does nothing else.
 - [agents/reify.md](agents/reify.md) -- binding a node to an executor and composed three-tier workflow just before dispatch, in a crew session, or in planning.
 - [agents/prompt-hydration.md](agents/prompt-hydration.md) -- prompt hydration.
 - [agents/sleep-cycle.md](agents/sleep-cycle.md) -- the periodic consolidation agent.

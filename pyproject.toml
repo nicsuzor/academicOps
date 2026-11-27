@@ -208,6 +208,7 @@ exclude = [
   "**/venv",
   "plugins.disabled",
   "plugins.disabled/**",
+  "plugins/crew/cope_hooks_disabled/", # Disabled rule-check hooks, kept unwired
   "plugins/*/agents/", # Exclude non-code agent configs
   "plugins/*/commands/", # Exclude command specs
   "plugins/*/skills/", # Exclude skill definitions (markdown/YAML)

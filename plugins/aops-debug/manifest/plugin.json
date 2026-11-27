@@ -2,6 +2,19 @@
   "manifestVersion": "1.0",
   "name": "aops-debug",
   "clients": {
-    "__base__": {}
+    "__base__": {
+      "name": "aops-debug",
+      "description": "Debug plugin that dumps raw hook payloads.",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "license": "MIT",
+      "keywords": [
+        "academicOps",
+        "aops",
+        "debug",
+        "hooks"
+      ]
+    }
   }
 }

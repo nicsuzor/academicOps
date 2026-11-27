@@ -1,0 +1,126 @@
+---
+id: supervisor-spec
+title: Supervisor Architecture
+type: spec
+description: What the supervisor is, how it routes work between the session and polecats, and its contract
+status: ready
+tier: polecat
+depends_on: [polecat-system]
+tags: [spec, polecat, architecture, supervisor, routing]
+---
+
+# Supervisor Architecture
+
+The supervisor is the framework's delegate-and-verify process: it selects or creates
+work, dispatches it to workers, evaluates the results, and persists state across invocations.
+It operates at every scale -- a single epic, a multi-epic release, or conversational
+orchestration of background workers -- using the same discipline at each. The lead
+executor (`james`) runs it. Launching a container is a separate, narrower process,
+the dispatcher ([[specs/agents/sara.md]]), which makes no routing decision.
+
+## User Story
+
+As a researcher delegating work to agents, I want a single supervision process I
+invoke -- never hand-rolled -- that decides for me when a piece of work should run as a
+quick local subagent in my session and when it should be dispatched as a polecat
+(isolated workspace, background, full lifecycle), and that guarantees every delegated
+piece of work leaves a trace I can inspect -- a task record, a transcript, and a
+recorded verdict -- so that work is proven before it is trusted and nothing is ever
+fire-and-forgotten.
+
+## Routing: Surface and Cadence
+
+Work is done in the session or sent to a polecat, with no third route. Inside the
+session the supervisor hands every bounded subtask it can to a cheap generic
+subagent: pure reading and editing subtasks run on the fast model tier, and stronger
+tiers are kept for judgment-heavy, ambiguous, or high-risk work.
+
+Knowledge tasks (questions, finding things, web research, GitHub lookups, read-only
+code inspections, and configuration lookups) route to the custodian (`pauli`);
+polecats take work that runs, measures, tests, or builds. The task dispatch
+pipeline covers all durable deliverables (code, workflows, instructions, specs).
+For durable deliverables, routing is a cadence-and-placement choice over one unified
+worker contract ([[specs/enforcement/task-contract.md]]); the supervisor has the
+custodian reify the task and hands it to the dispatcher, which launches a polecat
+seeded with the full task as the prompt, or picks in-session subagents for inline
+research and synthesis. A session without the dispatcher installed does all its work
+in-session.
+
+Placement heuristics:
+
+- **Isolation**: repo-scoped work that mutates files benefits from a **polecat**'s
+  isolated workspace and branch; the pull request or commit branch is the
+  code-surface instance of the deliverable, not a routing determinant.
+- **Review steps**: carry a pauli-specified lens set at decomposition, and run per the assembled
+  workflow (see [[specs/workflows/workflow.md]]).
+- **Findings returned inline**: research or synthesis whose output the current
+  conversation needs suits a **local subagent** (a wait-cadence choice).
+- **User in the loop (preference, not a rule)**: route inline via `/pull` when a
+  blocking judgment call is known up-front; otherwise a background worker
+  legitimately attempts everything derivable and hands back `partial` with the
+  refused decisions surfaced.
+- **Not dispatchable**: missing inputs or blockers -- record a block note and defer.
+
+Weighing expected duration/effort in the routing decision is a target
+requirement, not yet implemented.
+
+## Observability Guarantee
+
+Every delegation MUST leave an inspectable trace; nothing is fire-and-forgotten:
+
+- **Task record**: every dispatch is recorded on a PKB task (status, assignee,
+  dispatch note, and on completion the evidence + output URL -- the PR URL where
+  the deliverable produces a pull request, or the verified artifact link).
+- **Transcript**: the worker's run is retained and locatable (polecat lifecycle
+  events at `$POLECAT_HOME/transcripts/<task-id>.jsonl`; session transcripts under
+  `$AOPS_SESSIONS`). Where a surface does not yet persist transcripts automatically,
+  this is a target requirement, not yet enforced.
+- **Completion record**: container termination is recorded by the Docker exit
+  listener, emitted as OpenTelemetry `polecat.container.exit` spans, and queued in
+  `polecat_events`. There is no UDS socket push into supervisor sessions; completion
+  events are delivered to the supervisor via the dashboard daemon bridge.
+- **Verdict**: the supervisor's evaluation outcome is recorded on the task or epic
+  ledger, so any later reader can see what was accepted and why.
+
+## When It's Invoked
+
+Supervision covers:
+
+- Epic-level orchestration (one PKB epic -- an epic is just a task with children --
+  state in the epic body)
+- Portfolio/release supervision (many epics, state in the release task body)
+- Conversational orchestration of background workers (e.g. "don't get involved
+  yourself, make sure it gets done")
+
+State lives entirely in the task body, so any instance can resume from where a prior one left off.
+
+## Status Lifecycle
+
+```
+queued → in_progress → done (deliverable accepted)
+                │
+                ├→ [review retired from worker release; manual human hold only]
+                ├→ partial (terminal: chunk handed back, remainder carried by
+                │           continue tasks -- see
+                │           [[specs/polecat/spec-partial-work-tight-loop-delivery.md]] §4)
+                └→ failed (terminal: execution aborted, invalid premise, or unrecoverable error)
+```
+
+`done` means the deliverable was accepted -- evidence + output URL recorded on the
+PKB task; a merged PR is the code-surface instance of this.
+
+The canonical status set is the PKB taxonomy's, mirrored in this repository
+at [[tests/policy.toml]] under `[aops.taxonomy]`. The supervisor uses
+that set without extensions (`partial` and `failed` are part of it).
+
+## Related
+
+- [[specs/polecat/polecat-system.md]] -- Isolated task workspaces and the delivery
+  guarantees the supervisor dispatches onto
+- [[plugins/crew/skills/reify/SKILL.md]] -- Composes a task's instructions just before
+  dispatch; a polecat receives them as its prompt and runs no framework skill
+- [[plugins/crew/skills/pull/SKILL.md]] -- The operative skill in a session with the crew installed: claiming a task,
+  reifying workflows if needed, coordinating subagents, carrying work to a terminal state, and handing over via `/dump`
+- [[specs/agents/sara.md]] -- The dispatcher that puts a worker in front of a unit.
+  It launches containers; it makes no eligibility or ordering decision about which
+  of an epic's children go next.

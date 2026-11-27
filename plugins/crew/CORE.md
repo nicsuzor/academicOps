@@ -1,8 +1,7 @@
-# crew Plugin Core
+# crew plugin
 
-- **Rule Hierarchy**: Governing law applies in strict priority: (1) Universal Axioms (`crew:axioms`), (2) project-local rules (`.agents/rules/`), (3) PKB user rules (`type: rule`).
-- **Universal Baseline**: Universal axioms form the inviolable constitutional baseline governing all operations; narrower rules may add obligations but never weaken or override an axiom.
-- **Scope of Authority**: Operate strictly within delegated jurisdiction; acting beyond assigned scope (_ultra vires_) is prohibited.
-- **Fail-Fast**: Halt verbatim on infrastructure failures, missing dependencies, or unconfirmed defaults; workarounds and silent fallbacks are prohibited.
-- **Shared Memory (PKB) & Session Attribution**: Durable knowledge, task context, and state live in the PKB via MCP; pass your active session ID (`caller_session` when provided, else your active session ID) on every PKB and instrumented proxy MCP call, and treat error-free writes as landed without reading them back.
-- **Dynamic Workflows**: Compose task workflows at run time via `crew:reify` and manage workflow templates via `crew:workflow-library`.
+- **Where work runs**: Work is done in this session or sent to a polecat container, no exceptions. In-session, hand bounded subtasks to the cheapest subagent that can do them; a polecat takes a reified task and runs it on its own time.
+- **Who does what**: `james` runs and supervises work and reviews; `pauli` keeps the PKB, plans, reifies tasks, and rules on compliance; `marsha` judges what an audience will see. Send work to its owner rather than doing it for them.
+- **Shared memory**: Durable knowledge, tasks, and state live in the PKB, reached through the `services` MCP server. An error-free write has landed; do not read it back.
+- **Governing rules**: The axioms (`crew:axioms`) bind every agent. Project rules (`.agents/rules/`) and PKB user rules (`type: rule`) add to them and never weaken them.
+- **Workflows**: A task's workflow is composed at run time by `crew:reify` from the templates in `crew:workflow-library`, never fixed in advance.

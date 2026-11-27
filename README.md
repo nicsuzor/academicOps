@@ -10,18 +10,18 @@ Academics are going to use AI to improve their productivity. The longer-term bet
 
 academicOps is a streamlined suite of six plugins for Claude Code and Antigravity built around **4 core pillars** and **session telemetry**:
 
-1. **Prompt Situation (`aops`):** Intercepts incoming prompts and grounds them in strategic history from the PKB.
-2. **Workflow Composition (`aops`):** Selects appropriate risk-matched review and QA assurance levels for the task.
-3. **Containerized Execution & Dispatch (`orchestrate`):** Dispatches tasks to safe, isolated Docker containers (`polecat`), writing results back to the PKB task record, committing changes, and pushing.
-4. **Dual-Layer Rule Enforcement (`crew`):** Runs a turn-by-turn local model evaluator on tool calls, advisory only; plus a stop gate that withholds the stop once per chain, directing the agent to verify rule compliance (`axioms/` + project + local rules) and present checkable evidence before handing back.
+1. **Prompt Situation (`crew`):** Intercepts incoming prompts and grounds them in strategic history from the PKB.
+2. **Workflow Composition (`crew`):** Selects appropriate risk-matched review and QA assurance levels for the task.
+3. **Containerized Execution & Dispatch (`sara`):** Dispatches tasks to safe, isolated Docker containers (`polecat`), writing results back to the PKB task record, committing changes, and pushing.
+4. **Dual-Layer Rule Enforcement (`crew`):** Runs a turn-by-turn local model evaluator on tool calls, advisory only; plus a stop gate that withholds the stop once per chain, directing the agent to verify rule compliance (`axioms/` + project + local rules) and present checkable evidence before handing back. Both hooks are currently disabled; their sources sit unwired in `plugins/crew/cope_hooks_disabled/`.
 
 ## How It Works
 
 ```mermaid
 flowchart TD
-    U([User Prompt]) --> P1["<b>1. Ground & Situate</b><br/>(aops / UserPromptSubmit)<br/>Grounds prompt in PKB history"]
-    P1 --> P2["<b>2. Compose Workflow</b><br/>(aops / workflow)<br/>Selects risk-matched QA assurance depth"]
-    P2 --> P3["<b>3. Dispatch & Containerize</b><br/>(orchestrate / polecat)<br/>Runs isolated in Docker container,<br/>updates PKB, commits & pushes"]
+    U([User Prompt]) --> P1["<b>1. Ground & Situate</b><br/>(crew / UserPromptSubmit)<br/>Grounds prompt in PKB history"]
+    P1 --> P2["<b>2. Compose Workflow</b><br/>(crew / reify)<br/>Selects risk-matched QA assurance depth"]
+    P2 --> P3["<b>3. Dispatch & Containerize</b><br/>(sara / polecat)<br/>Runs isolated in Docker container,<br/>updates PKB, commits & pushes"]
     
     subgraph Enforcement["<b>4. Dual-Layer Rule Enforcement</b>"]
         E1["<b>Layer 1: Turn-by-Turn COPE</b><br/>(crew / PreToolUse)<br/>Parallel local model checks tool calls -- advisory"]
@@ -45,17 +45,19 @@ flowchart TD
 
 Every hook across the plugins is deterministic, lightweight, and single-purpose. The table below details when each hook fires, which plugin owns it, what context it requires, what payload it injects, and **WHY** it exists:
 
-| Plugin | Canonical Event | Target Client | Required Context / Env | Injected Payload / Action | WHY (Purpose & Rationale) |
-| :- | :- | :- | :- | :- | :- |
-| `ida` | `UserPromptSubmit` | Both (Claude Code & AGY) | `PKB_MCP_URL`, plus credential: `CF_ACCESS_CLIENT_ID` + `CF_ACCESS_CLIENT_SECRET` (the launcher picks which service token fills the pair; [INSTALL.md](INSTALL.md#prompt-hydration-credentials)) | Strategic context search instructions & relevant PKB history. | **Pillar 1 (Situation):** Ground every user prompt in historical knowledge and prior decisions before acting. |
-| `crew` | `PreToolUse` | Claude Code | `COPE_EVALUATOR_*` (Local Reflexes LLM model) | Parallel rule compliance advisory with matched rule text & reasoning. | **Pillar 4 (Enforcement L1):** Non-blocking, turn-by-turn evaluation of tool calls against active rules via a fast local model. |
-| `crew` | `UserPromptSubmit` | AGY (`PreInvocation`) | Live rule set files | Summary roster of active rules for the turn. | Provides rule visibility on surfaces that lack tool-call interception. |
-| `orchestrate` | `PostToolBatch` | Claude Code | none | Non-blocking reminder carrying the handback doctrine: a subagent's report is second-hand, so expect proof with it and send back anything without proof. Emits nothing unless the batch contains an `Agent` call. | Binds the **receiver** the instant a synchronous report lands. Verifying, re-running, or completing the work on the worker's behalf is never the receiver's job. |
-| `orchestrate` | `Stop` / `SubagentStop` | Both | none | Blocking reminder (`block`) carrying the same handback doctrine plus the worker-side register: name what you did not do, Observed vs Reported, "changed, unverified" until the originally-failing behaviour is observed passing. Fires blocking so the harness sets `stop_hook_active` to prevent repeat injections. | Binds the **worker** at its own stop -- the last moment its report can still carry the evidence, since a returned result cannot be amended after it lands. |
-| `aops` | `Stop` | Claude Code (ida face) | none | Advisory quiet gate: strip the reply down to load-bearing content before speaking to the person. | Face-scoped by its event. `SubagentStop` is deliberately not wired -- it fires on a stopping subagent's own context, which sends no reply to the person. |
-| `crew` | `Stop` / `SubagentStop` | Both | `stop_hook_active` / `background_tasks` checks | Blocks once per stop-chain (`decision: "block"`), directing the agent to invoke the rule checker (`axioms` + project + local rules) and present checkable evidence before stopping. Silent on the continuation stop and while background work runs. Advisory-only on AGY. | **Pillar 4 (Enforcement L2):** Every turn ends with a rule-compliance review. The hook obliges the check; it never runs or grades it. |
-| `ts` | `SessionStart` | Claude Code | `CLAUDE_CODE_REMOTE=true`, `TS_AUTHKEY` | Launches background `tailscale up` for remote connectivity. | Enables remote session access over Tailnet. |
-| `ts` | `SessionEnd` | Claude Code | `TS_SESSION_SYNC_HOST` | Transmits session log bundle to remote sync host. | Secures session history after termination. |
+| Plugin | Event | Client | What it does | Why |
+| :- | :- | :- | :- | :- |
+| `crew` | `SessionStart` | Both | Injects session metadata, crew's `CORE.md`, and the workspace `.agents/CORE.md`; moves credentials into `CLAUDE_ENV_FILE`. | Every agent starts knowing where it is and what the shared rules are. |
+| `crew` | `UserPromptSubmit` (agy: `PreInvocation`) | Both | Searches the PKB with the user's prompt and injects the relevant history, on top-level `ida` sessions only. Needs `PKB_MCP_URL` and the `CF_ACCESS_CLIENT_ID` + `CF_ACCESS_CLIENT_SECRET` pair ([INSTALL.md](INSTALL.md#prompt-hydration-credentials)). | **Pillar 1 (Situation):** grounds each user prompt in what is already known. |
+| `crew` | Every other lifecycle event it registers | Both | Emits OpenTelemetry spans. | The only plugin that traces a session live. |
+| `ida` | `SessionStart` | Both | Injects ida's `CORE.md` and the pointer to `premise-check`. | Every report between agents is written and checked the same way. |
+| `ida` | `UserPromptSubmit`, `PostToolUse`, `PostToolBatch`, `SubagentStop` | Both (agy: a subset) | Arms the recipient's gate when a report from another agent arrives. | A report is second-hand until it is checked. |
+| `ida` | `PreToolUse`, `Stop` | Both | Holds the recipient's next dispatch, message, or stop until it records a verdict on the report. | Unchecked claims cannot be relayed onward. |
+| `ida` | `SubagentStart` | Claude Code | Reminds the starting subagent to report honestly. | Binds the worker before it writes its report. |
+| `sara`, `tools`, `ida-telegram` | `SessionStart` | Both (`ida-telegram`: Claude Code) | Injects the plugin's `CORE.md`. | Tells agents what the plugin offers. |
+| `aops-debug` | Every event | Both | Writes the raw hook payload to a temp file. | Debugging only; changes nothing. |
+
+The full event list per plugin is in [`specs/ARCHITECTURE.md`](specs/ARCHITECTURE.md).
 
 ## Telemetry & OTEL Tracing Architecture
 
@@ -74,20 +76,21 @@ Install what you need -- plugins are separately installable and loosely coupled:
 
 | Plugin | Owns |
 | - | - |
-| `aops` | pauli. Memory, effectual planning, workflow composition, PKB MCP client config; ida, the interactive face. |
-| `orchestrate` | james, dispatch; marsha, QA; the review skills; the handback hooks; the polecat container launcher. |
-| `crew` | james, pauli, marsha; the axioms skill; automatic in-session rule enforcement, via turn-by-turn `PreToolUse` hook and a `Stop`/`SubagentStop` rule-check gate. |
-| `tools` | Domain research skills (analyst, peer-review, pdf, extract, diagram, etc.). |
-| `ts` | Tailscale bring-up for remote sessions. |
+| `ida` | ida, the interactive face and the only agent that talks to you; the `premise-check` and `argdown-toulmin` skills; the hooks that hold an agent until it has checked a report it received. |
+| `crew` | james, pauli, and marsha; the axioms; the working skills (intake, planning, reify, pull, review, memory); session setup, PKB prompt grounding, and tracing. |
+| `sara` | Polecat dispatch and nothing else: sara launches isolated containers on tasks that are ready to run. |
+| `tools` | Domain research skills (analyst, peer-review, pdf, diagram, and the rest). |
+| `ida-telegram` | Ida's Telegram channel and Mini App. |
 | `aops-debug` | Debug plugin that dumps raw hook payloads. |
 
 ## Install
 
 ```bash
 claude mcp add --transport http --scope user services <your PKB MCP endpoint>
-claude plugin marketplace add nicsuzor/academicOps@dist
+claude plugin marketplace add nicsuzor/academicOps
 claude plugin install ida@academicOps
 claude plugin install crew@academicOps
+claude plugin install sara@academicOps
 claude plugin install tools@academicOps
 ```
 
@@ -98,15 +101,14 @@ Requirements: Claude Code (or Antigravity), and Docker if you want polecat's con
 
 ## Where work runs
 
-When `orchestrate` dispatches a unit, it picks one of three surfaces by the size and cost of the work:
+Work is done in the session or sent to a polecat. There is no third route.
 
 | Surface | When it is picked | What it does |
 | :- | :- | :- |
-| **In-session subagent** | Small units | Runs in this session, cheapest model per effort type; commits and pushes. |
-| **Isolated async agent** | Substantial, or has subtasks | Own branch or worktree; pushes before reclaim. No return path by design. |
-| **Polecat container** | Substantial, implementation, or cost-sensitive | Docker container running `agy` on a calibrated model, headless, with no plugins and no PKB access, seeded with the task's reified instructions as its prompt. |
+| **In-session** | Anything the conversation needs back inline | Runs in this session. Bounded subtasks go to cheap subagents; reading and editing run on the fast model tier. |
+| **Polecat container** | Work that runs, measures, tests, or builds on its own time | Docker container, headless, with no plugins and no PKB access, seeded with the full reified task as its prompt. Needs the `sara` plugin. |
 
-Asynchronous work writes its result to the task record and pushes its branch; nothing waits on it.
+A polecat's result is written to the task record and its branch is pushed; nothing waits on it.
 
 ## Developing academicOps itself
 

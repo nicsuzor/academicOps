@@ -4,7 +4,18 @@
   "clients": {
     "__base__": {
       "name": "crew",
-      "description": "The crew (james, pauli, marsha), the axioms skill, the working skills (supervise, pull, reify, dump, workflow-library and the rest), and advisory in-session rule enforcement: a small language model judges each tool call against the rule set (axioms, project rules, user rules) over the Reflexes evaluator contract."
+      "description": "The crew (james, pauli, marsha), the axioms skill, the working skills (pull, reify, dump, q, workflow-library and the rest), session setup, PKB prompt grounding, and OpenTelemetry tracing hooks.",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "license": "MIT",
+      "keywords": [
+        "academicOps",
+        "aops",
+        "crew",
+        "axioms",
+        "workflows"
+      ]
     },
     "claude": {},
     "agy": {}

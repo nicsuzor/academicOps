@@ -577,7 +577,7 @@ def _get_evaluator_otel_trace():
     so that case says so on stderr instead of disappearing.
     """
     try:
-        import evaluator_otel_trace
+        import evaluator_otel_trace  # pyright: ignore[reportMissingImports]
 
         return evaluator_otel_trace
     except ImportError:
