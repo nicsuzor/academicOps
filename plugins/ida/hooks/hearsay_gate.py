@@ -1490,7 +1490,7 @@ def _extract_judged_items_with_channel(ctx: HookContext) -> list[IncomingItem]:
             ref = _envelope_id(text.strip()) or cid
             return [IncomingItem(judged_text, ref, cid, "", "user_prompt")]
 
-        items: list[IncomingItem] = []
+        items = []
         for env_text, tag, attrs, inner in envelopes:
             judged_text, sender_id = _unpack_envelope(env_text, tag, attrs, inner)
             if (

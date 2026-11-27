@@ -763,3 +763,29 @@ def test_null_claim_thread_report_does_not_arm():
         raw={"prompt": _thread_wake("[no claim]")},
     )
     assert hearsay_gate.should_arm_hearsay(ctx) is False
+
+
+def test_agy_peer_report_in_user_request_is_detected(tmp_path: Path):
+    """An agy turn whose USER_REQUEST wraps a cross-session message is a peer report."""
+    import hearsay_gate  # type: ignore[import-not-found]
+
+    peer = '<USER_REQUEST>\n<cross-session-message from="worker-1">report</cross-session-message>\n</USER_REQUEST>'
+    transcript = tmp_path / "transcript.jsonl"
+    transcript.write_text(
+        json.dumps({"step_index": 0, "type": "USER_INPUT", "content": peer}) + "\n",
+        encoding="utf-8",
+    )
+    ctx = HookContext(
+        client="agy",
+        event="UserPromptSubmit",
+        raw={
+            "conversationId": "c1",
+            "transcriptPath": str(transcript),
+            "initialNumSteps": 1,
+            "invocationNum": 0,
+        },
+        hooks_dir=IDA_HOOKS,
+        cwd="/workspace",
+        agent_type="ida:ida",
+    )
+    assert hearsay_gate.is_peer_report(ctx) is True

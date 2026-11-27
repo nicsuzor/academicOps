@@ -818,7 +818,7 @@ def test_shipped_crew_hook_can_never_emit_a_blocking_decision(dist_root, stub_ev
 
     Scoped to `PreToolUse`. crew's `Stop`/`SubagentStop` gate does carry a
     disposition, and legitimately: what it withholds is the stop, not the tool
-    call. Its coverage is tests/test_crew_stop_gate.py."""
+    call."""
     _require_evaluate_enabled()
     build_dir = dist_root / "crew-claude"
     proc = _run_shipped_hook(
@@ -886,7 +886,7 @@ def test_every_axiom_is_live_in_the_built_clients(pristine_dist, tmp_path, monke
 
     monkeypatch.delenv("COPE_USER_RULES_DIR", raising=False)
     spec = importlib.util.spec_from_file_location(
-        "crew_rules", _REPO_ROOT / "plugins" / "crew" / "hooks" / "rules.py"
+        "crew_rules", _REPO_ROOT / "plugins" / "crew" / "cope_hooks_disabled" / "rules.py"
     )
     assert spec is not None and spec.loader is not None
     rules = importlib.util.module_from_spec(spec)

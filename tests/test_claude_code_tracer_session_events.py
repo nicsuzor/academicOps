@@ -25,13 +25,25 @@ from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
 from opentelemetry.trace import StatusCode
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-IDA_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
-if str(IDA_HOOKS) not in sys.path:
-    sys.path.insert(0, str(IDA_HOOKS))
+LIB_HOOKS = REPO_ROOT / "lib" / "hooks"
+CREW_HOOKS = REPO_ROOT / "plugins" / "crew" / "hooks"
+# Appended, never inserted at the front: crew's handlers.py must not shadow
+# the ida handlers.py other test modules import under the bare name. The
+# directory is needed on the path so crew's handlers can import agy_tracer.
+if str(CREW_HOOKS) not in sys.path:
+    sys.path.append(str(CREW_HOOKS))
 
 import claude_code_tracer as cct
 import dispatch
-import handlers
+
+# crew wires every hook event to the shared tracer.
+_handlers_spec = importlib.util.spec_from_file_location(
+    "tracer_events_crew_handlers", CREW_HOOKS / "handlers.py"
+)
+assert _handlers_spec is not None and _handlers_spec.loader is not None
+handlers = importlib.util.module_from_spec(_handlers_spec)
+sys.modules["tracer_events_crew_handlers"] = handlers
+_handlers_spec.loader.exec_module(handlers)
 
 CONFIG = {"endpoint": "http://collector.invalid:4318", "project_name": "test"}
 SESSION = "sess-session-events"
@@ -1063,7 +1075,7 @@ def _stage_aops_debug_hooks(tmp_path: Path) -> Path:
         hooks_dir / "handlers.py",
     )
     shutil.copy2(REPO_ROOT / "lib" / "hooks" / "dispatch.py", hooks_dir / "dispatch.py")
-    shutil.copy2(IDA_HOOKS / "claude_code_tracer.py", hooks_dir / "claude_code_tracer.py")
+    shutil.copy2(LIB_HOOKS / "claude_code_tracer.py", hooks_dir / "claude_code_tracer.py")
     return hooks_dir
 
 
@@ -1284,8 +1296,8 @@ def test_claude_code_handback_turn_names_subagent(tracer_env, exporter, monkeypa
     assert turn_root.attributes.get("subagent.id") == sub_agent_id
 
 
-def test_ida_handlers_do_not_emit_debug_spans(tracer_env, exporter, monkeypatch, tmp_path):
-    """ida handlers emit zero aops-debug.* spans across claude and agy hook events while real
+def test_crew_handlers_do_not_emit_debug_spans(tracer_env, exporter, monkeypatch, tmp_path):
+    """crew handlers emit zero aops-debug.* spans across claude and agy hook events while real
     session, turn, LLM, and tool tracing remains active."""
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://collector.invalid:4318")
     monkeypatch.delenv("PKB_MCP_URL", raising=False)

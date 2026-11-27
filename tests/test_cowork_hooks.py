@@ -1,4 +1,4 @@
-"""The ida hooks do nothing in a Claude Cowork session.
+"""Plugin hooks do nothing in a Claude Cowork session.
 
 Cowork, in the Claude desktop app, lacks the environment ``SessionStart``
 needs. So the hook entry point -- ``dispatch.py`` -- exits silently, emitting
@@ -25,18 +25,16 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-IDA_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
+# crew owns SessionStart metadata, the control signal that hooks still run
+# outside Cowork, and handles every event exercised here.
+CREW_HOOKS = REPO_ROOT / "plugins" / "crew" / "hooks"
 
 
 def _staged_dispatch(tmp_path: Path) -> Path:
     hooks = tmp_path / "staged_hooks"
-    shutil.copytree(IDA_HOOKS, hooks, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(CREW_HOOKS, hooks, ignore=shutil.ignore_patterns("__pycache__"))
     shutil.copy2(REPO_ROOT / "lib" / "hooks" / "dispatch.py", hooks / "dispatch.py")
     return hooks / "dispatch.py"
-
-
-if str(IDA_HOOKS) not in sys.path:
-    sys.path.insert(0, str(IDA_HOOKS))
 
 
 COWORK_ENVS = [

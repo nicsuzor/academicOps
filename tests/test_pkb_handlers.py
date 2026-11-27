@@ -1,4 +1,4 @@
-"""Tests for the UserPromptSubmit / PKB-search hook in plugins/ida/hooks/handlers.py."""
+"""Tests for the UserPromptSubmit / PKB-search hook in plugins/crew/hooks/handlers.py."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from unittest.mock import patch
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-PKB_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
+PKB_HOOKS = REPO_ROOT / "plugins" / "crew" / "hooks"
 
 if str(PKB_HOOKS) not in sys.path:
     sys.path.insert(0, str(PKB_HOOKS))
@@ -101,7 +101,7 @@ def test_run_pkb_search_caps_oversized_output():
 
 @pytest.mark.integration
 def test_dispatch_claude_userpromptsubmit_end_to_end(staged_hooks: Path):
-    """End-to-end dispatch for Claude Code UserPromptSubmit: no fallback on user prompt without PKB, honesty on peer report."""
+    """End-to-end dispatch for Claude Code UserPromptSubmit: crew emits nothing without PKB, for a user prompt or a peer report."""
     proc_user = subprocess.run(
         [
             sys.executable,
@@ -144,18 +144,12 @@ def test_dispatch_claude_userpromptsubmit_end_to_end(staged_hooks: Path):
         cwd=str(staged_hooks),
     )
     assert proc_peer.returncode == 0
-    assert proc_peer.stdout.strip(), "hook produced empty stdout on peer report"
-    data = json.loads(proc_peer.stdout)
-    specific = data.get("hookSpecificOutput", {})
-    assert specific.get("hookEventName") == "UserPromptSubmit"
-    content = specific.get("additionalContext", "")
-    expected_inject, _ = load_message_pair(staged_hooks, "hearsay")
-    assert expected_inject in content
+    assert proc_peer.stdout.strip() == ""
 
 
 @pytest.mark.integration
 def test_dispatch_agy_preinvocation_end_to_end(staged_hooks: Path):
-    """End-to-end dispatch for AGY PreInvocation: no fallback on user prompt without PKB, hearsay on peer report."""
+    """End-to-end dispatch for AGY PreInvocation: crew emits nothing without PKB, for a user prompt or a peer report."""
     proc_user = subprocess.run(
         [
             sys.executable,
@@ -198,12 +192,7 @@ def test_dispatch_agy_preinvocation_end_to_end(staged_hooks: Path):
         cwd=str(staged_hooks),
     )
     assert proc_peer.returncode == 0
-    assert proc_peer.stdout.strip(), "hook produced empty stdout on peer report"
-    data = json.loads(proc_peer.stdout)
-    steps = data.get("injectSteps", [])
-    assert len(steps) > 0
-    expected_inject, _ = load_message_pair(staged_hooks, "hearsay")
-    assert any(expected_inject in step.get("ephemeralMessage", "") for step in steps)
+    assert proc_peer.stdout.strip() == ""
 
 
 @pytest.mark.parametrize(
@@ -362,7 +351,9 @@ def test_dispatch_http_failure_surfaces_error_in_hook_output(staged_hooks: Path)
     # The failure must be reported in stderr naming the handler and error
     assert "search_the_pkb" in proc.stderr
     # The output must NOT be the honesty message
-    expected_honesty, _ = load_message_pair(staged_hooks, "honesty")
+    # honesty.md ships with ida; crew must never substitute it for the failure.
+    expected_honesty, _ = load_message_pair(REPO_ROOT / "plugins" / "ida" / "hooks", "honesty")
+    assert expected_honesty
     data = json.loads(proc.stdout)
     content = data.get("hookSpecificOutput", {}).get("additionalContext", "")
     assert expected_honesty not in content
@@ -509,13 +500,6 @@ def test_agy_user_input_with_embedded_user_request_closing_tag(tmp_path: Path):
     with patch.object(handlers, "_run_pkb_search", return_value="1. hit") as mock_search:
         handlers.search_the_pkb(_agy_ctx(transcript))
     mock_search.assert_called_once_with(typed, cwd="/workspace", session_id="c1")
-
-
-def test_agy_peer_report_is_detected_by_is_peer_report(tmp_path: Path):
-    peer = '<USER_REQUEST>\n<cross-session-message from="worker-1">report</cross-session-message>\n</USER_REQUEST>'
-    transcript = _agy_transcript(tmp_path, {"step_index": 0, "type": "USER_INPUT", "content": peer})
-    ctx = _agy_ctx(transcript)
-    assert handlers.is_peer_report(ctx) is True
 
 
 def test_agy_user_input_without_wrapper_is_used_whole(tmp_path: Path):

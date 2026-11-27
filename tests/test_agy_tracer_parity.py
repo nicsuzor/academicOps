@@ -5,9 +5,11 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
-HOOKS_DIR = Path(__file__).resolve().parent.parent / "plugins" / "ida" / "hooks"
+HOOKS_DIR = Path(__file__).resolve().parent.parent / "plugins" / "crew" / "hooks"
+# Appended, never inserted at the front: this directory also holds a
+# handlers.py, and other test modules import ida's under the bare name.
 if str(HOOKS_DIR) not in sys.path:
-    sys.path.insert(0, str(HOOKS_DIR))
+    sys.path.append(str(HOOKS_DIR))
 
 import agy_tracer
 
