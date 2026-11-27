@@ -22,7 +22,8 @@ Source code is not evidence of rendered state. Every criterion is decided agains
 
 - Capture a baseline before any change is drafted; a criterion judged against a missing or stale baseline is `UNMET`.
 - A capture tool's zero exit code does not prove a valid render. Verify image files exist and are large enough to be real renders rather than blank or error pages.
-- A missing, blank, or truncated image is a capture failure, not a visual failure -- halt and report it rather than sending an author to fix working code for a broken tool.
+- A missing, blank, or truncated image from a broken capture tool is a capture failure, not a visual failure -- halt and report it rather than sending an author to fix working code for a broken tool. An image that faithfully shows the real artifact broken or unusable is evidence, judged like any other.
+- Capture the real artifact (`wf-qa`, **The real artifact**), never a stand-in rendered for the review. If it cannot be reached, halt and report the response verbatim.
 - Target URLs, viewports, view names, and capture commands come from the instantiating task, never from this template.
 
 ## Judge
