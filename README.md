@@ -104,7 +104,7 @@ When `orchestrate` dispatches a unit, it picks one of three surfaces by the size
 | :- | :- | :- |
 | **In-session subagent** | Small units | Runs in this session, cheapest model per effort type; commits and pushes. |
 | **Isolated async agent** | Substantial, or has subtasks | Own branch or worktree; pushes before reclaim. No return path by design. |
-| **Polecat container** | Substantial, implementation, or cost-sensitive | Docker container running `agy`, seeded with the task id, running `/pull` on a calibrated model, headless. |
+| **Polecat container** | Substantial, implementation, or cost-sensitive | Docker container running `agy` on a calibrated model, headless, with no plugins and no PKB access, seeded with the task's reified instructions as its prompt. |
 
 Asynchronous work writes its result to the task record and pushes its branch; nothing waits on it.
 

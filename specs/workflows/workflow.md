@@ -14,10 +14,12 @@ Work moves through four stages. Each runs, then stops; no stage fires the next.
 | - | - | - | - |
 | 1. Capture | `/q` | one ask | Situate an ask on the graph -- placing repo-scoped tasks (strictly one per repo, consolidated across open and closed tasks, situated under governing component or initiative epics with zero leaf `serves` edges while Strategic Value Carriers wire `serves` directly to priced targets), valued at intake per [R1](graph-valuation.md#3-r1----placement-at-intake-q). |
 | 2. Expand | `/decompose` | one objective (optional) | Expand an objective into an abstract graph of sub-objectives at objective altitude, decision branches, prerequisites, and alternate paths, each a node bound to no executor. Reads the record first and stops at the first unknown before implementation detail. |
-| 3. Dispatch | `/dispatch` | ready tasks | Start polecat containers directly on queued tasks via `/crew:pull <task-id>`. Writes no tasks. |
-| 4. Execute & Reify | `/pull` (running `/reify` if needed) | one claimed container task | Inside the container at execution time, the worker claims the task, runs `/reify` if needed to compose workflows from the 3-tier library onto a single combined task body by default, coordinates subagents with incremental `git push` checkpoints, and delivers in-session pull requests. |
+| 3. Reify | `/reify` | one task about to be dispatched | Just before dispatch, the crew binds the task to its executor and composes workflows from the 3-tier library onto a single combined task body by default, written as instructions a worker can complete without further knowledge from the PKB. |
+| 4. Dispatch | `/dispatch` | ready, reified tasks | Start polecat containers on queued tasks, each seeded with its task's instructions as the prompt. Writes no tasks. |
 
-The PKB custodian (Pauli) runs Stage 1 (`/q`), optional Stage 2 (`/decompose`), and `/strategize`. Stage 3 belongs to the dispatcher (`/dispatch`). Stage 4 belongs to container execution (`/pull`), where the worker runs `/reify` in-session if needed.
+The PKB custodian (Pauli) runs Stage 1 (`/q`), optional Stage 2 (`/decompose`), and `/strategize`. Stage 3 (`/reify`) belongs to the crew, which holds the PKB and the template library. Stage 4 belongs to the dispatcher (`/dispatch`).
+
+Execution is not a stage of the pipeline: it happens in the polecat container ([polecat-system.md](../polecat/polecat-system.md)), which has no plugins and no PKB access. The worker runs no `/pull`, `/reify`, or `/dump`, claims nothing, and writes no task status. It does the work in its one repository with incremental `git push` checkpoints and delivers pull requests; on exit the dispatch service records its final output message on the task and uploads the session log. A session with the crew installed (a crew container, Claude Code on the web, a laptop) claims and executes a task itself via `/pull`, running `/reify` in-session if needed.
 
 The stages are operative instructions and live in `plugins/ida/skills/`. This spec does not restate them.
 
@@ -29,13 +31,12 @@ Three planning skills sit above dispatch, told apart by the object each works on
 | - | - | - | - |
 | Macro | `/strategize` | the graph as a whole | Direction: which objectives exist, how they intersect, which assumptions are load-bearing, what to do next. Thinking time; no tasks are written. Converged asks go to `/q`, adopted objectives to `/decompose`. |
 | Meso | `/decompose` | one objective | Sub-objectives, forks and probes as nodes bound to no executor, expanded as far as reliable inference reaches now (optional expansion). |
-| Micro / Container Execution | `/pull` (with `/reify`) | one claimed task | The executing task: the node bound to an executor class and a workflow composed in-session from templates current at execution time on a single combined task body. |
+| Micro | `/reify` | one task about to run | The executing task: the node bound to an executor class and a workflow composed from templates current at dispatch time on a single combined task body. |
 
-The three are timed differently, for opposite reasons:
+Decomposition and reification are timed differently, for opposite reasons:
 
 - **Decompose early (when needed).** No objective is independent; its sub-objectives are what other objectives' tasks intersect with. A task minted elsewhere (a meeting, a submission, a collaboration) can account for a decomposed part only once that part exists on the graph, so an objective is expanded as soon as it is captured, to what can reliably be inferred at that point, and stops at the first unknown.
-- **Dispatch directly on repo-scoped epics.** Interactive coordinators capture and dispatch directly via `/q` -> `/dispatch` without pre-dispatch task reification, avoiding multi-task coordination overhead in conversational sessions.
-- **Reify late inside the container.** A reified task fixes the executor and the workflow, and both change with circumstances. A dispatchable task that sits on the graph goes stale. In the unified dispatch architecture, task reification is moved out of interactive coordinators into the polecat container: `/reify` runs inside `/pull` at execution time when needed, composing templates onto a single combined repo-scoped task body.
+- **Reify late, just before dispatch, on the crew's side.** A reified task fixes the executor and the workflow, and both change with circumstances. A dispatchable task that sits on the graph goes stale, so `/reify` runs at the last moment before `/dispatch`: `/q` -> `/reify` -> `/dispatch`. It cannot run later than that, because the polecat container has no plugins and no PKB access; the instructions it is dispatched with are everything the worker gets, and they are written to be completed without further knowledge from the PKB.
 
 The boundary that separates meso from micro is executor binding: a decomposed node says what must become true and names no executor or workflow; a reified task says who runs it and how. Personal Knowledge Base queries, memory curation, and graph operations route directly to the custodian, while general web searches, filesystem lookups, and repo investigations route to internal subagents, and work that runs, measures, tests, or builds something passes through to polecats.
 

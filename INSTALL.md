@@ -42,9 +42,8 @@ No value is given here; every one is the installer's choice.
 **Surfaces.** _Laptop_ is Claude Code on the user's own machine (CLI or the
 desktop app's Code tab). _Telegram_ is an interactive Ida session carrying the
 `ida-telegram` channel. _Crew container_ is a long-lived container running the
-crew with the user's directions. _Polecat_ is a headless worker container
-running `agy` with `/crew:pull <task-id>`. _Web_ is Claude Code on the web.
-_agy_ is an interactive Antigravity session. A crew container that carries the
+crew with the user's directions. _Web_ is Claude Code on the web, which runs
+the crew. _agy_ is an interactive Antigravity session. A crew container that carries the
 Telegram channel takes the Telegram column too. In a Cowork session the hooks
 do nothing (see [`specs/ARCHITECTURE.md`](specs/ARCHITECTURE.md#hooks)), so
 none of this applies there.
@@ -56,55 +55,59 @@ without it. _not set_: leave it unset on that surface.
 **Live tracing is crew's.** The OTel tracing hooks ship only in the `crew`
 plugin (`plugins/crew/hooks/handlers.py`, span pipeline
 `lib/hooks/claude_code_tracer.py`, agy spans `plugins/crew/hooks/agy_tracer.py`).
-Telegram and crew containers need live traces, because they carry the user's
-directions and the responses to them. Polecat workers do not: their logs are
-harvested and uploaded when they finish, so they run with no trace endpoint.
-The tracer defaults to `block` -- refusing `SessionStart` when no endpoint is
-set -- whenever `POLECAT_TASK`, `POLECAT_TARGET_TASK` or `AOPS_CONTAINER` is
-set (`lib/hooks/claude_code_tracer.py`, `get_telemetry_failure_mode`), so a
-polecat launch must set `AOPS_TELEMETRY_FAILURE_MODE=warn`.
+Every surface that runs the crew is traced live, because it carries the user's
+directions and the responses to them. The tracer behaves the same on every
+surface: a missing endpoint or a failed export warns, unless
+`AOPS_TELEMETRY_FAILURE_MODE=block` is set, in which case `SessionStart`
+refuses (`lib/hooks/claude_code_tracer.py`, `get_telemetry_failure_mode`).
+
+**Polecat containers have no column.** A polecat is a headless worker
+container with strictly limited permissions: it installs no plugins, has no
+PKB access, and receives its instructions as its prompt. No hook runs there,
+so nothing below is read there. When the container exits, the dispatch service
+records the final output on the task and uploads the whole session log to the
+trace store in one batch.
 
 ### Tracing (crew)
 
-| Variable | Read at | Laptop | Telegram | Crew container | Polecat | Web | agy |
-| - | - | - | - | - | - | - | - |
-| `GENAI_ENGINE_TRACE_ENDPOINT`, else `OTEL_EXPORTER_OTLP_ENDPOINT`, else `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` -- OTLP collector; first one set wins | `lib/hooks/claude_code_tracer.py` `discover_config`, `is_telemetry_configured`; `plugins/crew/hooks/handlers.py` `_format_session_metadata` | optional | required | required | not set | optional | optional |
-| `GENAI_ENGINE_TRACE_PROTOCOL`, else `OTEL_EXPORTER_OTLP_PROTOCOL`, else `OTEL_EXPORTER_OTLP_TRACES_PROTOCOL` | `lib/hooks/claude_code_tracer.py` `discover_config` | optional | optional | optional | not set | optional | optional |
-| `CF_ACCESS_CLIENT_ID`, `CF_ACCESS_CLIENT_SECRET` -- one Cloudflare Access pair, sent as headers on OTLP export and on the PKB search (both halves or neither) | `lib/hooks/claude_code_tracer.py` `_cf_access_headers`; `plugins/crew/hooks/handlers.py` `_resolve_mcp_headers` | required | required | required | optional | optional | required |
-| `AOPS_TELEMETRY_FAILURE_MODE` -- `block` or `warn` | `lib/hooks/claude_code_tracer.py` `get_telemetry_failure_mode`; `plugins/crew/hooks/handlers.py` `session_start` | optional | optional | optional | required (`warn`) | optional | optional |
-| `AOPS_CONTAINER` -- marks a container; turns on `block` | `lib/hooks/claude_code_tracer.py` `get_telemetry_failure_mode` | not set | not set | required | optional | not set | not set |
-| `OTEL_SERVICE_NAME` | `lib/hooks/claude_code_tracer.py` `_build_and_export_spans`; `plugins/crew/hooks/handlers.py` `_format_session_metadata` | optional | optional | optional | not set | optional | optional |
-| `PHOENIX_PROJECT_NAME` | `lib/hooks/claude_code_tracer.py` `resolve_project_name` | optional | optional | optional | not set | optional | optional |
-| `BETA_TRACING_ENDPOINT` -- shown in the `SessionStart` banner only; the tracer never exports to it | `plugins/crew/hooks/handlers.py` `_format_session_metadata` | optional | optional | optional | not set | optional | not set |
-| `OTEL_SPAN_ATTRIBUTE_VALUE_LENGTH_LIMIT` | `lib/hooks/claude_code_tracer.py` `_MAX_ATTR_BYTES` | optional | optional | optional | not set | optional | optional |
-| `HTTPS_PROXY` / `ALL_PROXY`; `REQUESTS_CA_BUNDLE` / `CURL_CA_BUNDLE` / `SSL_CERT_FILE`; `OTEL_EXPORTER_OTLP_CERTIFICATE` / `OTEL_EXPORTER_OTLP_TRACES_CERTIFICATE` -- egress proxy and CA for OTLP export | `lib/hooks/claude_code_tracer.py` `_proxy_http_kwargs` | optional | optional | optional | not set | optional | optional |
-| `AOPS_TRACER_STATE_DIR`, else `TRACER_STATE_DIR`, else `AOPS_TRACER_DIR` -- per-session tracer state | `lib/hooks/claude_code_tracer.py` `_tracer_state_dir`; `lib/hooks/dispatch.py` `_tracer_state_dir` | optional | optional | optional | optional | optional | optional |
-| `AOPS_AGENT_NAME` -- agent name when the payload has none | `lib/hooks/claude_code_tracer.py` `resolve_agent_name` | optional | optional | optional | optional | optional | optional |
-| `AOPS_TASK_ID`, `POLECAT_TARGET_TASK`, `POLECAT_TASK`, `GENAI_ENGINE_TASK_ID` -- task id on spans; the two `POLECAT_*` also turn on `block` | `lib/hooks/claude_code_tracer.py` `discover_config`, `get_telemetry_failure_mode` | not set | not set | optional | required | not set | not set |
-| `ANTIGRAVITY_APP_DATA_DIR` -- where agy token counts are read from | `plugins/crew/hooks/token_extractor.py` (Gemini conversation db lookup) | not set | not set | optional | optional | not set | optional |
+| Variable | Read at | Laptop | Telegram | Crew container | Web | agy |
+| - | - | - | - | - | - | - |
+| `GENAI_ENGINE_TRACE_ENDPOINT`, else `OTEL_EXPORTER_OTLP_ENDPOINT`, else `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` -- OTLP collector; first one set wins | `lib/hooks/claude_code_tracer.py` `discover_config`, `is_telemetry_configured`; `plugins/crew/hooks/handlers.py` `_format_session_metadata` | optional | required | required | required | optional |
+| `GENAI_ENGINE_TRACE_PROTOCOL`, else `OTEL_EXPORTER_OTLP_PROTOCOL`, else `OTEL_EXPORTER_OTLP_TRACES_PROTOCOL` | `lib/hooks/claude_code_tracer.py` `discover_config` | optional | optional | optional | optional | optional |
+| `CF_ACCESS_CLIENT_ID`, `CF_ACCESS_CLIENT_SECRET` -- one Cloudflare Access pair, sent as headers on OTLP export and on the PKB search (both halves or neither) | `lib/hooks/claude_code_tracer.py` `_cf_access_headers`; `plugins/crew/hooks/handlers.py` `_resolve_mcp_headers` | required | required | required | optional | required |
+| `AOPS_TELEMETRY_FAILURE_MODE` -- `block` or `warn` | `lib/hooks/claude_code_tracer.py` `get_telemetry_failure_mode`; `plugins/crew/hooks/handlers.py` `session_start` | optional | optional | optional | optional | optional |
+| `OTEL_SERVICE_NAME` | `lib/hooks/claude_code_tracer.py` `_build_and_export_spans`; `plugins/crew/hooks/handlers.py` `_format_session_metadata` | optional | optional | optional | optional | optional |
+| `PHOENIX_PROJECT_NAME` | `lib/hooks/claude_code_tracer.py` `resolve_project_name` | optional | optional | optional | optional | optional |
+| `BETA_TRACING_ENDPOINT` -- shown in the `SessionStart` banner only; the tracer never exports to it | `plugins/crew/hooks/handlers.py` `_format_session_metadata` | optional | optional | optional | optional | not set |
+| `OTEL_SPAN_ATTRIBUTE_VALUE_LENGTH_LIMIT` | `lib/hooks/claude_code_tracer.py` `_MAX_ATTR_BYTES` | optional | optional | optional | optional | optional |
+| `HTTPS_PROXY` / `ALL_PROXY`; `REQUESTS_CA_BUNDLE` / `CURL_CA_BUNDLE` / `SSL_CERT_FILE`; `OTEL_EXPORTER_OTLP_CERTIFICATE` / `OTEL_EXPORTER_OTLP_TRACES_CERTIFICATE` -- egress proxy and CA for OTLP export | `lib/hooks/claude_code_tracer.py` `_proxy_http_kwargs` | optional | optional | optional | optional | optional |
+| `AOPS_TRACER_STATE_DIR`, else `TRACER_STATE_DIR`, else `AOPS_TRACER_DIR` -- per-session tracer state | `lib/hooks/claude_code_tracer.py` `_tracer_state_dir`; `lib/hooks/dispatch.py` `_tracer_state_dir` | optional | optional | optional | optional | optional |
+| `AOPS_AGENT_NAME` -- agent name when the payload has none | `lib/hooks/claude_code_tracer.py` `resolve_agent_name` | optional | optional | optional | optional | optional |
+| `AOPS_TASK_ID`, `GENAI_ENGINE_TASK_ID` -- task id on spans | `lib/hooks/claude_code_tracer.py` `discover_config` | not set | not set | optional | not set | not set |
+| `ANTIGRAVITY_APP_DATA_DIR` -- where agy token counts are read from | `plugins/crew/hooks/token_extractor.py` (Gemini conversation db lookup) | not set | not set | optional | not set | optional |
 
 ### PKB, sessions and credentials (crew)
 
-| Variable | Read at | Laptop | Telegram | Crew container | Polecat | Web | agy |
-| - | - | - | - | - | - | - | - |
-| `PKB_MCP_URL` -- PKB MCP endpoint; `SessionStart` raises without it | `plugins/crew/hooks/handlers.py` `_format_session_metadata`, `_run_pkb_search` | required | required | required | required | required | required |
-| `PKB_MCP_TOOL_PREFIX` | `plugins/crew/hooks/handlers.py` `_post_mcp_search` | optional | optional | optional | optional | optional | optional |
-| `AOPS_SESSIONS` -- sessions directory; `polecat.yaml` read from it | `lib/hooks/claude_code_tracer.py` `_load_polecat_config`; `plugins/crew/hooks/handlers.py` `_BASIC_VARS` | optional | optional | optional | optional | optional | optional |
-| `POLECAT_HOME` -- worktree root named in crew's auto-mode rules; no hook reads it | `plugins/crew/manifest/auto-mode.json` | optional | optional | optional | not set | optional | not set |
-| `AOPS_BOT_GH_TOKEN` -- moved into `CLAUDE_ENV_FILE` at `SessionStart`; redacted from spans | `plugins/crew/hooks/handlers.py` `_BASIC_VARS`; `lib/hooks/claude_code_tracer.py` (redaction) | optional | optional | optional | optional | optional | optional |
-| `AOPS_GIT_CONFIG_GLOBAL` -- becomes session-scoped `GIT_CONFIG_GLOBAL` | `plugins/crew/hooks/handlers.py` `_isolate_credentials` | optional | optional | optional | optional | optional | not set |
-| `AOPS_SURFACE` -- surface tag on PKB search requests | `plugins/crew/hooks/handlers.py` `_resolve_surface` | optional | optional | optional | optional | optional | optional |
-| `AOPS_IMAGE_PLUGINS_VERSION`, `AOPS_IMAGE_STALE`, `AOPS_IMAGE_STALENESS_WARNING` -- baked-image metadata | `plugins/crew/hooks/handlers.py` `_resolve_plugin_version`, `session_start` | not set | not set | optional | optional | not set | not set |
-| `AOPS_SESSION_POINTER_DIR` | `plugins/crew/hooks/handlers.py`, `plugins/ida/hooks/handlers.py` `_session_pointer_dir` | optional | optional | optional | optional | optional | optional |
-| `AOPS_HOOK_LOG_PATH` -- hook fire log | `lib/hooks/dispatch.py` `_log_fire` | optional | optional | optional | optional | optional | optional |
-| `AOPS_SESSION_ID` -- written by `SessionStart` into `CLAUDE_ENV_FILE` | `plugins/crew/hooks/handlers.py`, `plugins/ida/hooks/handlers.py` `_export_session_id`; read by `lib/hooks/claude_code_tracer.py` `resolve_session_id` | not set | not set | not set | not set | not set | not set |
+| Variable | Read at | Laptop | Telegram | Crew container | Web | agy |
+| - | - | - | - | - | - | - |
+| `PKB_MCP_URL` -- PKB MCP endpoint; `SessionStart` raises without it | `plugins/crew/hooks/handlers.py` `_format_session_metadata`, `_run_pkb_search` | required | required | required | required | required |
+| `PKB_MCP_TOOL_PREFIX` | `plugins/crew/hooks/handlers.py` `_post_mcp_search` | optional | optional | optional | optional | optional |
+| `AOPS_SESSIONS` -- sessions directory; `polecat.yaml` read from it | `lib/hooks/claude_code_tracer.py` `_load_polecat_config`; `plugins/crew/hooks/handlers.py` `_BASIC_VARS` | optional | optional | optional | optional | optional |
+| `POLECAT_HOME` -- worktree root named in crew's auto-mode rules; no hook reads it | `plugins/crew/manifest/auto-mode.json` | optional | optional | optional | optional | not set |
+| `AOPS_BOT_GH_TOKEN` -- moved into `CLAUDE_ENV_FILE` at `SessionStart`; redacted from spans | `plugins/crew/hooks/handlers.py` `_BASIC_VARS`; `lib/hooks/claude_code_tracer.py` (redaction) | optional | optional | optional | optional | optional |
+| `AOPS_GIT_CONFIG_GLOBAL` -- becomes session-scoped `GIT_CONFIG_GLOBAL` | `plugins/crew/hooks/handlers.py` `_isolate_credentials` | optional | optional | optional | optional | not set |
+| `AOPS_SURFACE` -- surface tag on PKB search requests | `plugins/crew/hooks/handlers.py` `_resolve_surface` | optional | optional | optional | optional | optional |
+| `AOPS_IMAGE_PLUGINS_VERSION`, `AOPS_IMAGE_STALE`, `AOPS_IMAGE_STALENESS_WARNING` -- baked-image metadata | `plugins/crew/hooks/handlers.py` `_resolve_plugin_version`, `session_start` | not set | not set | optional | not set | not set |
+| `AOPS_SESSION_POINTER_DIR` | `plugins/crew/hooks/handlers.py`, `plugins/ida/hooks/handlers.py` `_session_pointer_dir` | optional | optional | optional | optional | optional |
+| `AOPS_HOOK_LOG_PATH` -- hook fire log | `lib/hooks/dispatch.py` `_log_fire` | optional | optional | optional | optional | optional |
+| `AOPS_SESSION_ID` -- written by `SessionStart` into `CLAUDE_ENV_FILE` | `plugins/crew/hooks/handlers.py`, `plugins/ida/hooks/handlers.py` `_export_session_id`; read by `lib/hooks/claude_code_tracer.py` `resolve_session_id` | not set | not set | not set | not set | not set |
 
 ### Premise-check gate (ida)
 
-| Variable | Read at | Laptop | Telegram | Crew container | Polecat | Web | agy |
-| - | - | - | - | - | - | - | - |
-| `PREMISE_CHECK_GATE_MODE`, else `PREMISE_CHECK_MODE` | `plugins/ida/hooks/hearsay_gate.py` `hearsay_handler` | optional | optional | optional | optional | optional | optional |
-| `AOPS_PREMISE_CHECK_DIR`, else `AOPS_PREMISE_GATE_DIR` -- gate state | `plugins/ida/hooks/hearsay_gate.py` `_state_dir` | optional | optional | optional | optional | optional | optional |
+| Variable | Read at | Laptop | Telegram | Crew container | Web | agy |
+| - | - | - | - | - | - | - |
+| `PREMISE_CHECK_GATE_MODE`, else `PREMISE_CHECK_MODE` | `plugins/ida/hooks/hearsay_gate.py` `hearsay_handler` | optional | optional | optional | optional | optional |
+| `AOPS_PREMISE_CHECK_DIR`, else `AOPS_PREMISE_GATE_DIR` -- gate state | `plugins/ida/hooks/hearsay_gate.py` `_state_dir` | optional | optional | optional | optional | optional |
 
 ### Telegram channel (ida-telegram)
 
@@ -126,10 +129,10 @@ environment, then `$STATE_DIR/.env`) unless noted. Every other surface: not set.
 
 ### Other plugins
 
-| Variable | Read at | Laptop | Telegram | Crew container | Polecat | Web | agy |
-| - | - | - | - | - | - | - | - |
-| `ACA_DATA` -- user data root (signature image for `pdf`) | `plugins/tools/skills/pdf/scripts/generate_pdf.py` | optional | optional | optional | optional | optional | optional |
-| `COPE_EVALUATOR_OTEL_TRACE_PATH` -- the rule evaluator's OTel file; the evaluator is not wired | `lib/hooks/dispatch.py` `_get_evaluator_otel_trace` | not set | not set | not set | not set | not set | not set |
+| Variable | Read at | Laptop | Telegram | Crew container | Web | agy |
+| - | - | - | - | - | - | - |
+| `ACA_DATA` -- user data root (signature image for `pdf`) | `plugins/tools/skills/pdf/scripts/generate_pdf.py` | optional | optional | optional | optional | optional |
+| `COPE_EVALUATOR_OTEL_TRACE_PATH` -- the rule evaluator's OTel file; the evaluator is not wired | `lib/hooks/dispatch.py` `_get_evaluator_otel_trace` | not set | not set | not set | not set | not set |
 
 The client sets these itself; never set them by hand: `CLAUDE_PLUGIN_ROOT`,
 `AGY_PLUGIN_ROOT`, `CLAUDE_ENV_FILE`, `CLAUDE_PROJECT_DIR`,
@@ -150,7 +153,7 @@ service-token pair, named after the HTTP headers it becomes:
 
 - `CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET` -- sent as
   `CF-Access-Client-Id` and `CF-Access-Client-Secret` on PKB/MCP calls and on
-  OTLP trace export. The launching context (interactive shell, polecat
+  OTLP trace export. The launching context (interactive shell, crew
   container, launchd, CI) decides which stored service token fills the pair;
   least privilege is the launcher's job (for example, a worker container gets
   a token without polecat dispatch access). Nothing reads the token from

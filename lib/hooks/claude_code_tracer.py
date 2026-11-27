@@ -358,22 +358,14 @@ def resolve_agent_name(
 
 
 def get_telemetry_failure_mode() -> str:
-    """Return the active telemetry failure mode: 'block' or 'warn'.
+    """Return the telemetry failure mode: 'block' when
+    AOPS_TELEMETRY_FAILURE_MODE says so, otherwise 'warn'.
 
-    Default is 'block' in autonomous container dispatch workers (e.g. polecats)
-    where complete trace capture is non-negotiable, and 'warn' in interactive
-    local sessions and CI runners.
+    The mode is the same on every surface; nothing here detects where the
+    session runs.
     """
     mode = os.environ.get("AOPS_TELEMETRY_FAILURE_MODE", "").strip().lower()
-    if mode in ("block", "warn"):
-        return mode
-    if (
-        os.environ.get("POLECAT_TASK")
-        or os.environ.get("POLECAT_TARGET_TASK")
-        or os.environ.get("AOPS_CONTAINER")
-    ):
-        return "block"
-    return "warn"
+    return "block" if mode == "block" else "warn"
 
 
 def is_telemetry_configured() -> bool:
@@ -493,8 +485,6 @@ def discover_config(data: dict | None = None) -> dict | None:
     task_id_candidates.extend(
         [
             os.environ.get("AOPS_TASK_ID"),
-            os.environ.get("POLECAT_TARGET_TASK"),
-            os.environ.get("POLECAT_TASK"),
             os.environ.get("GENAI_ENGINE_TASK_ID"),
         ]
     )

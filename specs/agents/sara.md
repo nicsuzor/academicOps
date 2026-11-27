@@ -34,7 +34,7 @@ polecats take work that runs, measures, tests, or builds. The task dispatch
 pipeline covers all durable deliverables (code, workflows, instructions, specs).
 For durable deliverables, routing is a cadence-and-placement choice over one unified
 worker contract ([[specs/enforcement/task-contract.md]]); the orchestrator dispatches
-tasks directly to polecats running `/pull`,
+reified tasks to polecats, each seeded with its task's instructions as the prompt,
 or picks in-session subagents for inline research and synthesis.
 
 Placement heuristics:
@@ -108,7 +108,9 @@ that set without extensions (`partial` and `failed` are part of it).
 
 - [[specs/polecat/polecat-system.md]] -- Isolated task workspaces and the delivery
   guarantees the supervisor dispatches onto
-- [[plugins/crew/skills/pull/SKILL.md]] -- The operative skill: claiming a task,
+- [[plugins/crew/skills/reify/SKILL.md]] -- Composes a task's instructions just before
+  dispatch; a polecat receives them as its prompt and runs no framework skill
+- [[plugins/crew/skills/pull/SKILL.md]] -- The operative skill in a session with the crew installed: claiming a task,
   reifying workflows if needed, coordinating subagents, carrying work to a terminal state, and handing over via `/dump`
 - [[plugins/aops/skills/polecat/SKILL.md]] -- The launcher that puts a worker in front of a unit.
   It launches containers; it makes no eligibility or ordering decision about which

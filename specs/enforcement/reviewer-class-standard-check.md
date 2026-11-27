@@ -7,7 +7,7 @@ tags: [enforcement, marsha, review, class-spec, doc-taxonomy]
 
 # Reviewer Class-Standard Verification
 
-This specification establishes the requirement and procedure for empirical QA (`wf-qa`), static compliance (`rbg`), and qualitative excellence (`marsha` / `verify`) reviewers -- each within its non-overlapping jurisdiction -- to evaluate every file modified by a change against the governing standard for its document taxonomy class, alongside overall feature specifications and task acceptance criteria. It eliminates the systemic failure mode where multi-file changes pass review because feature criteria and test suites pass, while touched files introduce out-of-class bloat, unneeded system details, or architectural violations.
+This specification establishes the requirement and procedure for empirical QA (`wf-qa`), static compliance (`wf-rbg`), and qualitative excellence (`marsha` / `verify`) reviewers -- each within its non-overlapping jurisdiction -- to evaluate every file modified by a change against the governing standard for its document taxonomy class, alongside overall feature specifications and task acceptance criteria. It eliminates the systemic failure mode where multi-file changes pass review because feature criteria and test suites pass, while touched files introduce out-of-class bloat, unneeded system details, or architectural violations.
 
 ## User stories
 
@@ -33,7 +33,7 @@ As a framework contributor reading review feedback, I want review handbacks to i
 
 ### 1. Upfront Review Procedure
 
-When empirical QA (`wf-qa`), static compliance (`wf-rbg`), or qualitative taste (`verify`) initiates an evaluation within its jurisdiction, the upfront check executes before evaluating overall deliverable polish, line-by-line repo changes, or (for `wf-qa` only; `marsha` and `rbg` never execute test suites) running test suites:
+When empirical QA (`wf-qa`), static compliance (`wf-rbg`), or qualitative taste (`verify`) initiates an evaluation within its jurisdiction, the upfront check executes before evaluating overall deliverable polish, line-by-line repo changes, or (for `wf-qa` only; the compliance and qualitative reviews never execute test suites) running test suites:
 
 1. **Diff enumeration**: The reviewer extracts all modified files from the diff (`git diff --name-only` or candidate PR file list).
 2. **Taxonomy classification**: Each modified file is mapped to its document taxonomy class per `specs/meta/doc-taxonomy.md`:

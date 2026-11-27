@@ -83,6 +83,6 @@ The framework encompasses eight distinct telemetry emitters across client sessio
 
 Telemetry failure handling is governed by `AOPS_TELEMETRY_FAILURE_MODE=block|warn`:
 
-- **Autonomous container workers (`block`)**: In autonomous container dispatch workers (where `POLECAT_TASK`, `POLECAT_TARGET_TASK`, or `AOPS_CONTAINER` is set, or when explicitly set to `block`), complete trace capture is non-negotiable. Telemetry errors and unconfigured endpoints halt execution or refuse commands.
-- **Interactive sessions and CI (`warn`)**: In interactive local sessions and CI runners (default `warn`), missing configuration and export errors emit prominent warnings to standard error and inject diagnostic notices into session context without halting tool execution.
+- **One rule on every surface**: The mode is `warn` unless `AOPS_TELEMETRY_FAILURE_MODE=block` is set; no hook detects which surface it runs on. Under `warn`, missing configuration and export errors emit prominent warnings to standard error and inject diagnostic notices into session context without halting tool execution. Under `block`, telemetry errors and unconfigured endpoints halt execution or refuse commands.
+- **Polecat containers (no tracer)**: Polecat containers carry no plugins, so no tracing hook runs inside them and no failure mode applies. The dispatch service uploads the whole session log to the trace store in one batch when the container exits.
 - **Report Verification Gate**: Premise-check verdict recording strictly requires remote span export to Phoenix; any failure to export a span leaves the gate armed to prevent untraced handbacks.

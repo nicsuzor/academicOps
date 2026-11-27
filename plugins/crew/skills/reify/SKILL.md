@@ -1,11 +1,11 @@
 ---
 name: reify
-description: Bind a situated node or directive to its executor and composed workflow on a combined task body. Use in-session during /pull or on planning requests to resolve templates across project, PKB, and universal tiers. Exclude for expanding objectives into sub-objectives (use /decompose) or starting workers on written tasks (use /dispatch).
+description: Bind a situated node or directive to its executor and composed workflow on a combined task body. Use just before dispatching a task to a worker container, in-session during /pull, or on planning requests to resolve templates across project, PKB, and universal tiers. Exclude for expanding objectives into sub-objectives (use /decompose) or starting workers on written tasks (use /dispatch).
 ---
 
 # /reify -- Compose Dispatchable Workflow
 
-Bind one situated node or directive to an executor class and current workflow templates inside `/pull` or on an explicit planning request (`pauli` or lead executor). Given a parent container, reify only children ready to run. Write nothing to the graph until placement and composition pass; answer in-turn lookups without a task.
+Bind one situated node or directive to an executor class and current workflow templates just before `/dispatch` sends it to a worker container, inside `/pull`, or on an explicit planning request (`pauli` or lead executor). Given a parent container, reify only children ready to run. Write nothing to the graph until placement and composition pass; answer in-turn lookups without a task.
 
 ## 0. Verify Placement (`/q` Precondition)
 
@@ -24,6 +24,7 @@ Invoke `/hydrate` (via custodian when called by a non-custodian). Cite hydration
   3. _Universal_: Core templates in `../workflow-library/workflows/*.md` enumerated and read via native file tools.
 - **User direction & groundwork-first decisions**: User direction to perform, settle, or deliver work counts as approval across design, architecture, and delivery (`status: "queued"` for agent steps; `done` for already-shipped work once user-informed). Settle unknowns (PKB first, then repository host and traces) and select recommended routes directly without adding class-based holds; set `status: "review"` (`assignee: "user"`) with a recorded recommendation only when groundwork is complete and the work hits an invariant boundary (external audience, unruled merge, unbounded cost) or an explicitly user-reserved pre-action hold/choice.
 - **Template interpretation**: Translate selected template stages into concise numbered imperative steps in `## Instructions` (never copy template prose). Invoke skills as `invoke /<skill-name>`; compose agent workflows rather than mechanical scripts for qualitative judgment. When composition has a gap, write nothing incomplete to the graph and ask the supervisor for clarification rather than declining the task.
+- **Worker-container executor**: A dispatched worker container has no plugins and no PKB access; the task's instructions arrive as its whole prompt. Write every step out in full with zero `invoke /<skill>` steps, zero PKB lookups, and zero claim, status, or release steps; put every fact the work depends on in `## Context`; and set `## Report` to the worker's final output message, which the dispatch service records on the task.
 
 ## 3. Write Each Task
 
@@ -60,7 +61,7 @@ Fill the canonical structure:
 
 ## Report
 
-[ Handback contract; default /dump with evidence per acceptance criterion. ]
+[ Handback contract; default /dump with evidence per acceptance criterion (worker container: final output message with that evidence). ]
 
 ## Appendix: Sources
 

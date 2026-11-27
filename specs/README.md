@@ -16,7 +16,7 @@
 ## Agents
 
 - [agents/sara.md](agents/sara.md) -- the supervisor: delegate-and-verify orchestration process.
-- [agents/reify.md](agents/reify.md) -- binding a node to an executor and composed three-tier workflow inside container supervision or planning.
+- [agents/reify.md](agents/reify.md) -- binding a node to an executor and composed three-tier workflow just before dispatch, in a crew session, or in planning.
 - [agents/prompt-hydration.md](agents/prompt-hydration.md) -- prompt hydration.
 - [agents/sleep-cycle.md](agents/sleep-cycle.md) -- the periodic consolidation agent.
 - [agents/ida-interaction-rules.md](agents/ida-interaction-rules.md) -- presentation standards, conversational pacing, subagent delegation boundaries, and channel hygiene for Ida.
@@ -44,7 +44,7 @@
 
 ## Polecat
 
-- [polecat/polecat-system.md](polecat/polecat-system.md) -- one isolated container + isolated clone per invocation, running /pull.
+- [polecat/polecat-system.md](polecat/polecat-system.md) -- one isolated container + isolated clone per invocation, with no plugins and no PKB access.
 - [polecat/tmux-interactive-driving.md](polecat/tmux-interactive-driving.md) -- driving a polecat container interactively via tmux.
 - [polecat/spec-partial-work-tight-loop-delivery.md](polecat/spec-partial-work-tight-loop-delivery.md) -- the `partial` terminal state and partial-work doctrine.
 - [polecat/spec-base-ref-resolution.md](polecat/spec-base-ref-resolution.md) -- how `resolve_isolated_workspace()` picks the commit a worker's isolated clone diverges from.

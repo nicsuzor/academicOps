@@ -77,8 +77,9 @@ directory in place, so the cache only ever reflects whatever the last
 There is no automatic refresh on `git pull`, `git merge`, or `git checkout`.
 `make install-dev` is run by hand to rebuild `dist/` and refresh the local
 plugin cache whenever plugin definitions, instructions, or dependencies change.
-In a `polecat` container, plugin content is baked into the image at build time
+In a crew container, plugin content is baked into the image at build time
 (`Dockerfile`, `AOPS_DIST_SOURCE`), and rebuilding the image is the refresh path.
+A `polecat` container carries no plugins.
 
 ## 2. Release path (`dev` → `main` → publish)
 

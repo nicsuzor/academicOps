@@ -17,7 +17,7 @@ Strategic Review is the framework's primary multi-agent review process for intel
 Its core design intent is to eliminate **self-grading** and **monolithic shallow critique** through institutional separation of powers:
 
 1. **Separation of Author and Reviewer**: The agent authoring or executing work never grades its own deliverable.
-2. **Parallel Blind Review**: Independent specialized review personas (`rbg`, `pauli`, `marsha`) evaluate the artifact concurrently from distinct perspectives without contaminating each other's reasoning.
+2. **Parallel Blind Review**: Independent specialized review lenses (strategic fit, compliance, quality) evaluate the artifact concurrently as separate invocations from distinct perspectives without contaminating each other's reasoning.
 3. **Structured Synthesis & Reconciliation**: A single lead persona (`james`) reconciles multi-perspective findings into one actionable verdict rather than dumping a disjointed committee transcript on the user. A `FAIL` from any expert reviewer makes the combined verdict `FAIL`, and the consolidating agent never downgrades or softens it; addressing an over-harsh reviewer is the user's job to review that reviewer agent.
 4. **Mandatory Write-Back**: The review verdict, synthesis table, and underlying evidence are persistently attached to the reviewed artifact's task record or pull request.
 
@@ -33,7 +33,7 @@ The workflow is implemented operationally via `plugins/crew/skills/strategic-rev
                                   │
         ┌─────────────────────────┼─────────────────────────┐
         ▼                         ▼                         ▼
-[ pauli: Strategic ]     [ rbg: Compliance ]       [ marsha: Quality & ]
+[ pauli: Strategic ]     [ pauli: Compliance ]     [ marsha: Quality & ]
 [   Congruence     ]     [ (Axioms & Rules) ]      [   Requirements    ]
         │                         │                         │
         └─────────────────────────┼─────────────────────────┘
@@ -72,20 +72,20 @@ Each of the review branches operates in a distinct jurisdiction with strictly no
   - Situates the artifact against parent objectives, active sibling tasks, and existing PKB notes/tasks, testing whether it is needed or whether an existing tool, native mechanism, or competing proposal already covers it.
   - Checks for parsimony, precedent, duplication, and cross-task lifecycle coherence across the graph, verifying that documentation notes are not mistaken for proofs of current working state (requiring a completed task record with verification evidence or flagging an open question) and that cited PRs/code are authoritative (merged/most recent, reflecting current working behaviour, and backed by a spec or decision record).
   - Returns `PASS`, `REVISE`, or `FAIL`.
-  - **Boundary**: Operates strictly on the PKB graph from an inline briefing. Does not inspect repository source code for axiom violations (belongs to `rbg`), does not judge visual/prose aesthetics (belongs to `marsha`), and does not run tests or probes (belongs to author and empirical QA `wf-qa`).
-- **`rbg` (Compliance; template `wf-rbg`)**: Adjudicates universal axioms, project-local rules, scope of delegated authority (_ultra vires_), _abdication_, permission/data boundaries, and the enforcement pyramid (`specs/enforcement/enforcement.md`):
+  - **Boundary**: Operates strictly on the PKB graph from an inline briefing. Does not inspect repository source code for axiom violations (belongs to the compliance lens), does not judge visual/prose aesthetics (belongs to the quality lens), and does not run tests or probes (belongs to author and empirical QA `wf-qa`).
+- **Compliance (`pauli`, a separate invocation briefed for this lens only; template `wf-rbg`)**: Adjudicates universal axioms, project-local rules, scope of delegated authority (_ultra vires_), _abdication_, permission/data boundaries, and the enforcement pyramid (`specs/enforcement/enforcement.md`):
   1. **Judge for Yourself**: Reaches verdicts from the request, artifact, and rules alone without reading prior reviews, PR comments, or prior task reports.
   2. **Judge Proportion First**: From the quoted originating request, sizes the smallest mechanism meeting the request across its class before reading artifact internals, rejecting unneeded machinery under `proportionate`.
   3. **Apply Each Axiom to the Artifact**: Evaluates mechanisms by their runtime consequences, assesses whether the substantive decision requires qualitative judgment, and verifies that mechanisms do not violate axioms (such as delegating qualitative decisions to deterministic path/author/AST heuristics under `judgment-non-delegable`, or introducing silent fallback branches under `fail-fast` and `halt-on-failure`).
   4. **Mechanisms Analysis**: Produces a structured `### Mechanisms` section explicitly evaluating each added mechanism's decision, necessity of judgment, and broken axioms before issuing a verdict (`## RBG Review: PASS | REVISE | FAIL`).
-  - **Boundary**: Operates strictly by static semantic adjudication. Does not execute runtime tests, run test suites, or write scratch probe scripts (correctness testing belongs to authors and empirical QA `wf-qa`), does not evaluate qualitative taste or UX (belongs to `marsha`), and does not evaluate high-level PKB objective alignment or competing backlog options (belongs to `pauli`).
+  - **Boundary**: Operates strictly by static semantic adjudication. Does not execute runtime tests, run test suites, or write scratch probe scripts (correctness testing belongs to authors and empirical QA `wf-qa`), does not evaluate qualitative taste or UX (belongs to the quality lens), and does not evaluate high-level PKB objective alignment or competing backlog options (belongs to the strategic-fit lens).
 - **`marsha` (Qualitative Excellence & Audience Resonance; skill `verify`)**: Evaluates the live output artifact as its audience meets it against intended purpose and excellence standards:
   - Inspects live rendered outputs (rendered markdown, typeset PDFs, screenshots, UI).
   - Assesses aesthetic grace, cognitive load, legibility, audience empathy, and adherence to governing document-class quality without self-editing unless serialized and authorized.
   - Evaluates whether the deliverable is **amazingly good** for its intended audience or merely mediocre.
   - Returns `PASS`, `REVISE`, or `FAIL`.
-  - **Boundary**: Never conducts formal compliance reviews on the record (`premise-check`) or checks factual claims (trusts primary finders), does not run test suites or linters (belongs to author and empirical QA `wf-qa`), does not evaluate axioms or rules (belongs to `rbg`), and does not evaluate graph-level strategy (belongs to `pauli`).
-- **Empirical & Functional QA (`wf-qa`)**: When functional requirement satisfaction, test execution, live probing, or strict document-class/acceptance-criteria verification is required (e.g., code PRs, high-risk reviews, or standalone CI QA), empirical QA runs test suites, live probes, actual rendered output checks, and primary-material audits without modifying code, returning `PASS`, `REVISE`, or `FAIL` while leaving qualitative taste to `marsha`, axioms to `rbg`, and PKB strategy to `pauli`.
+  - **Boundary**: Never conducts formal compliance reviews on the record (`premise-check`) or checks factual claims (trusts primary finders), does not run test suites or linters (belongs to author and empirical QA `wf-qa`), does not evaluate axioms or rules (belongs to the compliance lens), and does not evaluate graph-level strategy (belongs to the strategic-fit lens).
+- **Empirical & Functional QA (`wf-qa`)**: When functional requirement satisfaction, test execution, live probing, or strict document-class/acceptance-criteria verification is required (e.g., code PRs, high-risk reviews, or standalone CI QA), empirical QA runs test suites, live probes, actual rendered output checks, and primary-material audits without modifying code, returning `PASS`, `REVISE`, or `FAIL` while leaving qualitative taste, axioms, and PKB strategy to their own lenses.
 
 ### 3. Lens Selection
 
@@ -99,7 +99,7 @@ All individual reviewers and the reconciled synthesis return verdicts using the 
 - **REVISE**: Substantial rework required within the accepted scope (for issues with no deterministic fix).
 - **FAIL**: Fundamental defect in premise, compliance, authority (_ultra vires_), missing specifications/criteria, simulated output renders, or disproportionate work.
 
-A `FAIL` from any individual reviewer (`pauli`, `rbg`, `marsha`) makes the combined reconciled verdict `FAIL`. The consolidating agent never downgrades or softens an expert reviewer's `FAIL` (e.g. to `REVISE` or `PASS`). If an expert reviewer is judged too harsh, that is the user's responsibility to fix by reviewing that reviewer agent, not the consolidating agent's job to soften.
+A `FAIL` from any individual lens (strategic fit, compliance, or quality) makes the combined reconciled verdict `FAIL`. The consolidating agent never downgrades or softens an expert reviewer's `FAIL` (e.g. to `REVISE` or `PASS`). If an expert reviewer is judged too harsh, that is the user's responsibility to fix by reviewing that reviewer agent, not the consolidating agent's job to soften.
 
 ### 5. Mandatory Return Channel
 

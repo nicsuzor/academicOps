@@ -10,7 +10,7 @@ tags: [spec, polecat, failure-detection, auth, task-guard, observability]
 
 # Polecat Silent Failure Detection: Launch Preflight & Exit Guarantees
 
-Polecat worker containers execute headlessly with `detach=True` and `auto_remove=True` (`docker run -d --rm`), so a worker that fails to authenticate at startup, crashes before claiming its task, or exits while the PKB MCP transport is degraded vanishes without surfacing an error unless launch preflight, exit-time task guarding, durable exit-record harvesting, and reconciliation checks are enforced across every lifecycle boundary.
+Polecat worker containers execute headlessly with `detach=True` and `auto_remove=True` (`docker run -d --rm`), so a worker that fails to authenticate at startup, crashes before starting on its task, or exits while the PKB MCP transport is degraded vanishes without surfacing an error unless launch preflight, exit-time task guarding, durable exit-record harvesting, and reconciliation checks are enforced across every lifecycle boundary. The worker itself has no plugins and no PKB access ([polecat-system.md](polecat-system.md)): it runs no `/pull` or `/dump` and never claims or releases its task, so every task-record read and write in this spec belongs to the dispatch service outside the container.
 
 ## User stories
 
@@ -24,7 +24,7 @@ As a dispatching supervisor, I want polecat launch and container boot to verify 
 
 ### US-2 Post-launch startup liveness and claim verification
 
-As a dispatching supervisor, I want container dispatch to verify that a newly started worker survives its initial boot and claims its assigned task within the startup grace window, so that a container that exits during startup or drops its `/crew:pull` seed prompt is detected immediately rather than disappearing under `auto_remove=True`.
+As a dispatching supervisor, I want container dispatch to verify that a newly started worker survives its initial boot and starts on its assigned task within the startup grace window, so that a container that exits during startup or drops its seeded instructions is detected immediately rather than disappearing under `auto_remove=True`.
 
 - **AC-2.1** Given a detached container launch for a target task, when the startup grace window elapses, then the launcher or healthcheck verifies that the container has not exited prematurely and that the target task has transitioned out of `queued` (or that an active session transcript has been created), surfacing a launch failure if the container died or failed to claim its task.
 
@@ -192,7 +192,7 @@ The table below lists every lifecycle point across the deployment's dotfiles rep
    - On container exit (`on_exit`), `polecat-entrypoint.sh` inspects `final_status` of `TARGET_TASK`:
      - **`done` / `partial` / `cancelled` / `failed`**: The worker released its own task cleanly; `task_guard_outcome="worker_released"`.
      - **`in_progress`**: The worker claimed the task but exited without releasing it. The task guard calls `release_task(TARGET_TASK, status="partial", reason=f"Headless polecat runner exited (code {exit_code}) with task still in_progress; logs: /data/sessions/logs/{date}/{TARGET_TASK}/")`, sets `exit_code=1`, and records `task_guard_outcome="guard_released_from_in_progress"`.
-     - **`queued` / `ready`**: The worker container exited before `/crew:pull` even claimed `TARGET_TASK` (e.g. startup crash, auth failure, or dropped prompt). The task guard claims and immediately releases `TARGET_TASK` as `partial` (or updates `status="partial"` with `reason=f"Polecat worker exited (code {exit_code}) before claiming task; logs: /data/sessions/logs/{date}/{TARGET_TASK}/"`), sets `exit_code=1`, and records `task_guard_outcome="guard_released_from_queued"`.
+     - **`queued` / `ready`**: The worker container exited before any work on `TARGET_TASK` was recorded (e.g. startup crash, auth failure, or dropped prompt). The task guard claims and immediately releases `TARGET_TASK` as `partial` (or updates `status="partial"` with `reason=f"Polecat worker exited (code {exit_code}) before claiming task; logs: /data/sessions/logs/{date}/{TARGET_TASK}/"`), sets `exit_code=1`, and records `task_guard_outcome="guard_released_from_queued"`.
      - **`error: ...` (or `release` failure after all retries)**: The PKB MCP server remained unreachable across all backoff retries. The entrypoint sets `exit_code=1` and writes `task_guard_outcome="mcp_unreachable"` with the verbatim error into `run.json`.
 3. **Durable `run.json` and Latest-Run Transcript Harvest (`/usr/local/bin/harvest-session-logs.sh`)**:
    - `harvest-session-logs.sh` copies both `agy` logs/transcripts (`~/.gemini/antigravity-cli/{log,brain}`) and `claude` transcripts (`~/.claude/projects/`).

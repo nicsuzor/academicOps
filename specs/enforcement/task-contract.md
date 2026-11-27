@@ -45,7 +45,7 @@ this contract does not restate.
 
 - **Premise judgment** -- no longer a standalone gate at `claim_task`. The
   assessment happens earlier, in [`/q`](../../plugins/crew/skills/q/SKILL.md), which places and values
-  repo-scoped tasks per [R1](../workflows/graph-valuation.md#3-r1----placement-at-intake-q) under governing component or initiative epics with zero leaf `serves` edges (reserving `serves -> target` links for Strategic Value Carriers). Dispatch surfaces ([`/dispatch`](../../plugins/sara/skills/dispatch/SKILL.md)) trust that rather than re-judging the premise themselves; reification moves into the container, where `/pull` runs `/reify` in-session at execution time when needed.
+  repo-scoped tasks per [R1](../workflows/graph-valuation.md#3-r1----placement-at-intake-q) under governing component or initiative epics with zero leaf `serves` edges (reserving `serves -> target` links for Strategic Value Carriers). Dispatch surfaces ([`/dispatch`](../../plugins/sara/skills/dispatch/SKILL.md)) trust that rather than re-judging the premise themselves. The crew reifies each task ([`/reify`](../../plugins/crew/skills/reify/SKILL.md)) just before dispatch; a polecat container has no plugins and no PKB access, and receives the reified instructions as its prompt.
 - **Task-binding invariant** -- no mutating work without a task bound to the
   session via `claim_task`, never an environment variable naming the task.
   One session claims exactly one task, possibly multiple subtasks of it. In
@@ -53,9 +53,10 @@ this contract does not restate.
 - **Consolidated feature-branch PR invariant** -- related work (tasks under a composite parent task, tasks touching overlapping surfaces, or open pull requests grouped in a sweep) gathers on a shared feature branch (`bundle/<slug>` or `feat/<slug>`) and reaches the maintainer as one consolidated pull request into `dev` ([`pr-lifecycle.md`](../workflows/pr-lifecycle.md)). Self-contained changes on constituent `polecat/<slug>` branches undergo the three-lens diff review (strategic fit, rule compliance, and quality) and, on `PASS`, are merged directly into the shared feature branch by the agent without waiting for user approval. Any superseded standalone donor pull request is closed immediately in the same step with a comment linking to the consolidated pull request. Pre-approval review on the consolidated pull request is a compliance description-only check (`wf-rbg`, "is this stupid?"), and the full three-lens combined-diff review runs after user approval and rebase against `dev`.
 - **Claim at launch** -- a dispatch whose loss would matter beyond its own
   session has its claim written to the graph before the worker starts: who it
-  went to, under which session and surface, and when. The worker's own
-  `claim_task` still happens from inside its session and is what moves the
-  status; the launch-time record exists so that a worker which died before ever
+  went to, under which session and surface, and when. A worker in a session
+  with the crew installed still calls `claim_task` from inside its session, and
+  that is what moves the status; a polecat worker has no PKB access and never
+  claims. The launch-time record exists so that a worker which died before ever
   claiming is legible as an unanswered dispatch rather than as work nobody
   picked up. **Cheap read-only probes and pure lookups are exempt** -- nothing is lost by running
   one again, so claiming for them buys graph noise instead of recoverability. Pure

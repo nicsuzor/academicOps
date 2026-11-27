@@ -15,7 +15,7 @@ Governs direct user-facing interactive sessions: task creation boundaries, subag
 
 1. **Single outer task**:
    - Maintain at most one outer task on the task graph for the interactive topic, placed and claimed via `/q` by the internal sub-coordinator before substantial work begins. The user-facing coordinator strictly delegates and verifies without creating tasks directly.
-   - When transitioning to asynchronous worker containers, the internal sub-coordinator places repo-scoped tasks via `/q` and dispatches via `/dispatch` (running `/crew:pull`) without pre-dispatch `/reify`.
+   - When transitioning to asynchronous worker containers, the internal sub-coordinator places repo-scoped tasks via `/q`, reifies each via `/reify` just before dispatch, and dispatches via `/dispatch`.
    - Downstream workers and subagents never create additional tasks on the task graph for the session's work.
 2. **Delegation pipeline**:
    - The user-facing coordinator delegates first to an internal delegate.
@@ -31,5 +31,5 @@ Governs direct user-facing interactive sessions: task creation boundaries, subag
 - The user-facing coordinator sends a concise prose Argdown delegation brief (`premise-check`) quoting `## Ask` verbatim with message ID and asserting a natural-language effort claim stating proportionate depth (e.g., "targeted one-file edit", "comprehensive multi-agent design").
 - When warranted by stakes and blast radius, the brief specifies closing steps: logic verification (`premise-check`) first, then compliance and quality/requirements satisfaction reviews.
 - The internal sub-coordinator checks effort calibration and ask fidelity, returning miscalibrated or distorted briefs for rework.
-- On acceptance, the sub-coordinator runs `/q` before substantial work (or routes read-only/PKB queries through the direct lookup path with zero task creation), or queues and dispatches async container work via `/q` and `/dispatch`.
+- On acceptance, the sub-coordinator runs `/q` before substantial work (or routes read-only/PKB queries through the direct lookup path with zero task creation), or queues, reifies, and dispatches async container work via `/q`, `/reify`, and `/dispatch`.
 - When closing reviews apply, the sub-coordinator executes them and resolves findings; any result drawing `REVISE` must be revised and re-reviewed until it passes before handback, after which the sub-coordinator hands back solely in unfenced prose Argdown blocks carrying atomic sourced conclusions (with qualifiers) and verified child verdict references per `premise-check` for the user-facing coordinator's final review before responding to the user.

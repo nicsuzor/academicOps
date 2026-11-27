@@ -1,6 +1,6 @@
 ---
 name: pull
-description: Claim a PKB task, do the job it specifies to completion, record verified evidence under ## Report, and hand over via /dump. Use as the single worker entry point for any task.
+description: Claim a PKB task, do the job it specifies to completion, record verified evidence under ## Report, and hand over via /dump. Use as the task entry point in any session with crew installed; dispatched worker containers have no plugins and never run it.
 ---
 
 # /pull -- Task Execution

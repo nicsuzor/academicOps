@@ -24,7 +24,7 @@ Situate natural-language asks on the task graph: parented, connected, and valued
 
 ## 2. Multi-Repository Scoping
 
-When an ask spans multiple repositories, create strictly one repo-scoped task (`type: "task"`, `project` set per repo) under the shared governing parent (`parent: <parent_id>`) with zero leaf `serves` edges, sequencing repos via `needs`. One task per repository governs isolated container execution (`/pull`), while strategic valuation (`serves`) stays exclusively on the shared parent.
+When an ask spans multiple repositories, create strictly one repo-scoped task (`type: "task"`, `project` set per repo) under the shared governing parent (`parent: <parent_id>`) with zero leaf `serves` edges, sequencing repos via `needs`. One task per repository governs isolated container execution, while strategic valuation (`serves`) stays exclusively on the shared parent.
 
 ## 3. Value-Chain Links & Metadata
 

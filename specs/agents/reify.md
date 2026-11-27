@@ -10,11 +10,14 @@ workflow, execution steps and guardrails -- so any worker can pull it and execut
 without gathering context again.
 
 Reification works on one node at the moment it is next to run (the micro
-altitude of the planning pipeline). `/reify` runs inside `/pull`
-or on explicit planning request. In container execution,
-the lead executor (`james`) runs `/reify` to bind the claimed task to an executor
-and composed workflow from the template library at execution time, avoiding premature
-reification and stale tasks on the graph. A node whose prerequisites are outside
+altitude of the planning pipeline). `/reify` runs on the crew's side just before
+`/dispatch`, inside `/pull`, or on explicit planning request. A polecat container
+has no plugins and no PKB access, so the crew binds the task to its executor and
+composes its workflow from the template library at the last moment before dispatch,
+avoiding premature reification and stale tasks on the graph, and writes the result as
+instructions the worker can complete without further knowledge from the PKB: the
+polecat receives them as its prompt. In a session with the crew installed,
+the lead executor (`james`) runs `/reify` inside `/pull` on the task it claimed. A node whose prerequisites are outside
 the graph's control stays unreified until they clear. Expanding an objective into
 the nodes themselves is the preceding stage (decomposition), which binds nothing
 to an executor. On explicit planning requests, the PKB custodian (`pauli`) can also
@@ -60,11 +63,11 @@ Task bodies are strictly concise: 50-150 words for atomic tasks, and up to 300 w
 
 Step inlining is interpretive, not mechanical transcription:
 
-- Workflow templates (`wf-*`) cannot be invoked by workers. Each composed template stage, obligation, and quality gate is interpreted into a concise numbered imperative step in Instructions.
+- Workflow templates (`wf-*`) cannot be invoked by workers, and a polecat worker cannot invoke skills or read the PKB either: a task reified for a polecat carries every step and every needed fact in its own body, with no `invoke /<skill>` step and no claim, status, or release step. Each composed template stage, obligation, and quality gate is interpreted into a concise numbered imperative step in Instructions.
 - Inlining distills the required outcome or verification checkpoint for each stage; it omits narrative prose, rationale, background explanations, and implementation methods the worker can determine for itself.
 - Every composed template stage and finish obligation is represented as a concrete step so no required process or gate is lost, while staying strictly within the 300-word ceiling for composite workflows (or 150 words for atomic tasks).
 - Outcome-oriented criteria: Reified tasks define observable end-state conditions and verification criteria rather than implementation mechanisms. Line numbers, line ranges, and narrow code slice prescriptions are strictly forbidden in `Goal`, `Acceptance criteria`, and `Execution steps` / `Instructions`.
-- Combined single-session task body by default: `/reify` writes a single combined repo-scoped task body by default, keeping design, subagent dialectical review, build, incremental `git push` checkpoints, and PR verification inside the single supervised container session rather than mandating separate Stage 1 Design / Stage 2 Build / QA child tasks.
+- Combined single-session task body by default: `/reify` writes a single combined repo-scoped task body by default, keeping design, subagent dialectical review, build, incremental `git push` checkpoints, and PR verification inside the single supervised session rather than mandating separate Stage 1 Design / Stage 2 Build / QA child tasks.
 
 ## Task Splitting, Two-Task Reviewed Classes, and Out-of-Session Boundaries
 

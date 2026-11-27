@@ -25,7 +25,7 @@ As an operator interacting with multiple bot personas across chat windows, I wan
   - `👀` : Inbound message received and being read/assessed.
   - `✍` : Captured / Pauli durable-fact capture: note, decision, intake, or task persisted to knowledge base, or message sent to Pauli solely to extract durable facts.
   - `🤓` : Dispatched (Pauli, other knowledge work): message held by Pauli for knowledge work other than durable-fact capture.
-  - `🗿` : Dispatched (RBG): message held by RBG for compliance or rule review.
+  - `🗿` : Dispatched (compliance): message held for compliance or rule review.
   - `👨‍💻` : Dispatched (James): message held by James for execution supervision or review arbitration.
   - `💅` : Dispatched (Marsha): message held by Marsha for qualitative excellence review.
   - `🤪` : Sub-Ida (self): a sub-Ida is judging or handling the message herself.
@@ -39,7 +39,7 @@ As an operator interacting with multiple bot personas across chat windows, I wan
   - `💔` : Blocked or failed: execution halted or hit an external blocker (reply details the refusal).
   - `🎉` : Completed: task answered or resolved with substantive reply.
   - `🫡` : Acknowledged: request handled/completed where no substantive reply was owed.
-- **AC-2.2** Given work execution or delegation, when a sub-Ida handles it herself, then the persona reacts with `🤪`; when sent to Pauli solely for durable-fact capture, `✍`; when held by Pauli for other knowledge work, `🤓`; when held by RBG, `🗿`; when held by James, `👨‍💻`; when held by Marsha, `💅`; when handed to Sara or an isolated background worker, `🐳`; when held by an in-session `agy` run, `👾`; when held by a containerised synchronous `agy` run, `👻`; when a sub-Ida hands off to a general-purpose subagent, `🕊`; and when briefed and handed off to an independent peer agent, `🤝`.
+- **AC-2.2** Given work execution or delegation, when a sub-Ida handles it herself, then the persona reacts with `🤪`; when sent to Pauli solely for durable-fact capture, `✍`; when held by Pauli for other knowledge work, `🤓`; when held for compliance or rule review, `🗿`; when held by James, `👨‍💻`; when held by Marsha, `💅`; when handed to Sara or an isolated background worker, `🐳`; when held by an in-session `agy` run, `👾`; when held by a containerised synchronous `agy` run, `👻`; when a sub-Ida hands off to a general-purpose subagent, `🕊`; and when briefed and handed off to an independent peer agent, `🤝`.
 - **AC-2.3** Given communicative feedback or content-specific reactions, when an agent or operator reacts to message substance, then every reaction carries exactly one semantic meaning across all personas:
   - `👎` : Negative feedback on substance / report failure (prompts autonomous remediation).
   - `👍` : Affirmative confirmation or approval.
@@ -80,7 +80,7 @@ All agent personas operating over Telegram share a single reaction legend. Each 
 | `👀` | Lifecycle | Inbound received | Automatically applied upon message arrival while reading and planning |
 | `✍` | Lifecycle | Captured / Pauli durable-fact capture | Applied when note, decision, intake, or task is persisted to knowledge base, or when sent to Pauli solely to extract durable facts |
 | `🤓` | Lifecycle | Dispatched (Pauli, other knowledge work) | Applied when held by Pauli for knowledge work other than durable-fact capture |
-| `🗿` | Lifecycle | Dispatched (RBG) | Applied when held by RBG for compliance or rule review |
+| `🗿` | Lifecycle | Dispatched (compliance) | Applied when held for compliance or rule review |
 | `👨‍💻` | Lifecycle | Dispatched (James) | Applied when held by James for execution supervision or review arbitration |
 | `💅` | Lifecycle | Dispatched (Marsha) | Applied when held by Marsha for qualitative excellence review |
 | `🤪` | Lifecycle | Sub-Ida (self) | Applied when a sub-Ida is judging or handling the message herself |
@@ -114,7 +114,7 @@ To prevent semantic collision:
    - `🤪`: Sub-Ida judging or handling it herself.
    - `✍`: Pauli solely capturing durable facts (and persisted capture).
    - `🤓`: Pauli on other knowledge work.
-   - `🗿`: RBG compliance/rule review (stone-faced bench; Telegram's `ReactionTypeEmoji` set has no judge or gavel emoji).
+   - `🗿`: Compliance/rule review (stone-faced bench; Telegram's `ReactionTypeEmoji` set has no judge or gavel emoji).
    - `👨‍💻`: James execution supervision / review arbitration.
    - `💅`: Marsha qualitative excellence review.
    - `🐳`: Sara and isolated background polecat workers.

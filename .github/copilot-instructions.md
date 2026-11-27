@@ -85,7 +85,7 @@ Ruff and basedpyright are enforced separately, by `make lint` / CI, not by pre-c
 
 ## PR Review Pipeline
 
-PRs are reviewed by automated agents (enforcer/rbg + qa/marsha in Stage 1, mechanic in
+PRs are reviewed by automated agents (enforcer + qa in Stage 1, mechanic in
 Stage 2 after the human Environment-gate approval). The pipeline runs on PR open/push.
 Write clear PR descriptions explaining what changed and why -- the agents use this to
 evaluate scope compliance.

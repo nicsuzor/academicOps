@@ -61,7 +61,7 @@ Six distinct surfaces generate or modify PKB body content today. An evaluation o
 | - | - | - | - | - |
 | **Planning & Reification** | Pauli (`reify`, `decompose`, graph upkeep) | `instructions` (`plugins/crew/agents/pauli.md:63`) | imperative | Instruction stated an absolute ban ("never link tasks") rather than the user's calibrated rule (no related sections; link only when discussing; MoCs exempt); did not reach other agents. |
 | **Direct Task Creation & Intake** | Ida, front agents (`q`, `portal_codemode_execute` -> `create_task`) | Unenforced (no instruction, no rule in `.agents/rules/RULES.md`) | none | Ida created tasks with `## Context` lines listing "Related: [[]], [[]]" linking parents already wired as edges (#3337). |
-| **Worker Release Reports** | Polecat workers, James (`/dump`, `/pull`, `wf-finish`, `update_body`, `release_task`) | Unenforced / scoped away (`specs/enforcement/task-contract.md:65`) | none | `task-contract.md` scoped the ban strictly to capture-time brevity (50-150 words). Workers compiled 17-link "Private Cross-Reference Indexes" in release reports (#3337) because the evidence contract demanded citations and lacked reach boundaries. |
+| **Worker Release Reports** | Crew workers, James (`/dump`, `/pull`, `wf-finish`, `update_body`, `release_task`) | Unenforced / scoped away (`specs/enforcement/task-contract.md:65`) | none | `task-contract.md` scoped the ban strictly to capture-time brevity (50-150 words). Workers compiled 17-link "Private Cross-Reference Indexes" in release reports (#3337) because the evidence contract demanded citations and lacked reach boundaries. |
 | **Durable Knowledge Capture** | All agents (`remember`, `daily`, `create`, `update_body`) | Unenforced | none | No rule barred "related notes" sections in captured topic notes or daily notes. |
 | **Sibling Defect Capture** | All agents (via `## Pointers` in task templates) | `doctrine only` (`specs/meta/naming-and-decisions.md:86`) | none | Minimal template `## Pointers` accepted unconstrained sibling task cross-links (#3337). |
 | **Substrate / MCP Level** | Upstream PKB server (`create`, `create_task`, `update_body`) | Unenforced (no mechanical validation on body headings) | none | Server accepts any body text without validation. |
@@ -99,7 +99,7 @@ Following `specs/enforcement/enforcement.md`, intervention is calibrated to the 
    - Mechanical filters cannot distinguish between a prohibited "Related tasks" list, an authorized substantive prose discussion of a dependency, and an index node.
    - Substrate modifications in the PKB server represent heavier intervention that is premature before universal instructions and review gates are deployed.
 5. **`process` (`required gate`) (Selected as Companion Review Lens):**
-   - Reviewers (`marsha`, `rbg`, `pauli`) evaluate candidate changes, task bodies, and release handbacks against the related-sections ban during dialectical review and QA workflows (`wf-dialectical-review`, `wf-qa`, `wf-strategic-fit`).
+   - Review lenses (quality, compliance, strategic fit) evaluate candidate changes, task bodies, and release handbacks against the related-sections ban during dialectical review and QA workflows (`wf-dialectical-review`, `wf-qa`, `wf-strategic-fit`).
 6. **`post-hoc` (`observability`) (Retained):**
    - Phoenix span traces and graph audit queries monitor PKB write payloads to measure compliance across sessions.
 

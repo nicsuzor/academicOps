@@ -1,6 +1,6 @@
 ---
 name: strategic-review
-description: Modular multi-agent dialectical review of any artifact (specification, design, plan, document, PR) supervised by James. Calibrates proportionality and altitude upfront, deploys Pauli (strategic direction, core premise, and congruence with existing material), RBG (compliance and scope of authority), and Marsha (qualitative taste and audience resonance across rendered outputs against purpose and genre standards, never linters or functional QA) in parallel, directs serialized self-fixes when authorized, drives dialectical deliberation when warranted, and reconciles findings into PASS, REVISE, or FAIL. Pass comment or fix flags to write results back.
+description: Modular multi-agent dialectical review of any artifact (specification, design, plan, document, PR) supervised by James. Calibrates proportionality and altitude upfront, deploys Pauli (strategic direction, core premise, and congruence with existing material; and, as a separate invocation, compliance and scope of authority) and Marsha (qualitative taste and audience resonance across rendered outputs against purpose and genre standards, never linters or functional QA) in parallel, directs serialized self-fixes when authorized, drives dialectical deliberation when warranted, and reconciles findings into PASS, REVISE, or FAIL. Pass comment or fix flags to write results back.
 ---
 
 # Strategic Review
@@ -25,10 +25,10 @@ Before dispatching reviewers, load the artifact, its originating request, availa
 
 ### 2. Parallel Specialist Dispatch
 
-Dispatch all three reviewers concurrently in one turn using a shared briefing (originating request, governing genre standard, and requirements before the artifact or diff), returning `PASS`, `REVISE`, or `FAIL`:
+Dispatch all three lenses concurrently in one turn as separate invocations using a shared briefing (originating request, governing genre standard, and requirements before the artifact or diff), returning `PASS`, `REVISE`, or `FAIL`:
 
-- **Rule compliance** (`rbg`): Axiom, rule, authority, and enforcement-pyramid compliance.
-- **Strategic fit** (`pauli`): Core premise, strategic direction, and PKB congruence (with an inline brief).
+- **Rule compliance** (`pauli`, briefed for the compliance lens only, per `wf-rbg`): Axiom, rule, authority, and enforcement-pyramid compliance.
+- **Strategic fit** (`pauli`, a second invocation that never sees the compliance review): Core premise, strategic direction, and PKB congruence (with an inline brief).
 - **Quality** (`marsha`): Qualitative taste and audience resonance across live rendered outputs against purpose and genre standards per `verify` (never linters or functional QA).
 
 Every reviewer judges proportion within its lens: whether the artifact builds more machinery than needed and whether each requested change justifies its cost. Apply and commit uncontroversial fixes (`fix(review): <description>`) only when serialized and authorized on a writable branch (e.g. `fix` mode), itemizing applied fixes; during parallel read-only dispatch, itemize suggested fixes instead.

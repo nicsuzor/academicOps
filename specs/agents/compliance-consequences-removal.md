@@ -54,7 +54,7 @@ In accordance with `specs/enforcement/enforcement.md`, this change evaluates enf
 | 2 | `instructions` (`imperative` / `absolute`) | **Adopted.** Removing the affirmative instruction from `plugins/ida/agents/ida.md` directly eliminates the behavior at Level 2. Per `specs/enforcement/enforcement.md`, changes to Ida's instructions are made on the user's direction without needing heavier mechanisms. This is the least-invasive, most proportionate intervention. |
 | 3 | `JIT injection` | **Rejected.** Prompt injection hooks to suppress volunteered notes would introduce unnecessary token overhead and execution friction for a behavior resolved by instruction removal. |
 | 4 | `structural` | **Rejected.** Output filtering or regex blocking of compliance keywords violates `human-readability-first` and `judgment-non-delegable`. |
-| 5 | `process` | **Adopted for verification.** Standard PR review lenses (`rbg`, `marsha`) verify that candidate changes adhere to the removal without leaving stray references. |
+| 5 | `process` | **Adopted for verification.** Standard PR review lenses (compliance, quality) verify that candidate changes adhere to the removal without leaving stray references. |
 | 6 | `post-hoc` | **Adopted for observation.** Natural session execution observes conversational turns to verify that Ida no longer volunteers compliance notes unasked. |
 
 ### Evidence for the Move
