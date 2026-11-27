@@ -12,11 +12,11 @@ without gathering context again.
 Reification works on one node at the moment it is next to run (the micro
 altitude of the planning pipeline). `/reify` runs on the crew's side just before
 `/dispatch`, inside `/pull`, or on explicit planning request. A polecat container
-has no plugins and no PKB access, so the crew binds the task to its executor and
+has no plugins and no PKB access, so the PKB custodian (`pauli`) binds the task to its executor and
 composes its workflow from the template library at the last moment before dispatch,
 avoiding premature reification and stale tasks on the graph, and writes the result as
 instructions the worker can complete without further knowledge from the PKB: the
-polecat receives them as its prompt. In a session with the crew installed,
+polecat receives the full task as its prompt. In a session with the crew installed,
 the lead executor (`james`) runs `/reify` inside `/pull` on the task it claimed. A node whose prerequisites are outside
 the graph's control stays unreified until they clear. Expanding an objective into
 the nodes themselves is the preceding stage (decomposition), which binds nothing

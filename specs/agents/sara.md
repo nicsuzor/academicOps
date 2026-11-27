@@ -34,7 +34,7 @@ polecats take work that runs, measures, tests, or builds. The task dispatch
 pipeline covers all durable deliverables (code, workflows, instructions, specs).
 For durable deliverables, routing is a cadence-and-placement choice over one unified
 worker contract ([[specs/enforcement/task-contract.md]]); the orchestrator dispatches
-reified tasks to polecats, each seeded with its task's instructions as the prompt,
+reified tasks to polecats, each seeded with the full task as the prompt,
 or picks in-session subagents for inline research and synthesis.
 
 Placement heuristics:

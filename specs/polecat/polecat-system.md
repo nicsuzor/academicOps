@@ -14,11 +14,11 @@ Polecat runs one agent CLI invocation inside an isolated Docker container, on an
 isolated git clone, so dispatched work never touches the caller's own checkout or
 host credentials. It is a single command -- `polecat run` -- not a task-claiming
 service. A polecat container has strictly limited permissions: it installs no
-framework plugins and has no PKB access. The worker receives the task's
-instructions as its prompt, in an `agy` session calibrated to task complexity and
-importance, and does the work in its one repository. Task lifecycle is the
-dispatch service's job: when the container exits, it records the worker's final
-output message on the PKB task and uploads the whole session log to the trace
+framework plugins and has no PKB access. The worker receives the full task as its
+prompt, in an `agy` session calibrated to task complexity and importance, and does
+the work in its one repository. Task lifecycle is the polecat service's job: as
+each container is reaped, it writes the completed task to the PKB, with the
+worker's final output message, and uploads the whole session log to the trace
 store in one batch. The crew, which claims tasks and reviews work, runs in crew
 containers, not in polecats.
 
@@ -94,14 +94,15 @@ The container launcher (`scripts/polecat`) and worker image are maintained outsi
 8. Builds the inner command from `AGENT_CMD` (`claude`, `agy`, `shell`/`bash`,
    `sleep`, or any other passthrough binary). With `--task <id>` and no explicit
    prompt: launches an `agy` session calibrated to task complexity and importance,
-   seeded with the task's instructions, which name the task id. Every dispatch without `-i` runs headless
+   seeded with the full task, which names the task id. Every dispatch without `-i` runs headless
    (`--print`), whatever the host's stdin is, so the container exits when the agent's
    loop completes rather than idling forever; `-i` is the only way into the interactive UI.
    An `agy` dispatch also gets an optional `--print-timeout`: `polecat.yaml`'s `timeout`
    supplies that value on _every_ headless dispatch.
 9. On completion, verifies delivery before reporting success (Guarantee 3), then
-   writes `run.json`. The dispatch service records the worker's final output
-   message on the PKB task and uploads the session log to the trace store.
+   writes `run.json`. As the container is reaped, the polecat service writes the
+   completed task to the PKB, with the worker's final output message, and uploads
+   the session log to the trace store.
 
 ## Guarantees
 
@@ -126,15 +127,16 @@ The container launcher (`scripts/polecat`) and worker image are maintained outsi
    the task id, retries the whole dispatch once if absent, and on a second miss
    fails loudly naming the task and the session directory.
 
-   The worker cannot write task status, so a failed run never leaves a false
-   `done` behind: status changes only when the crew accepts the recorded handback.
+   The worker cannot write task status. The polecat service writes it when the
+   container is reaped, so a run that `run` refused to report as successful is
+   never written as `done`.
 4. **No registry drift.** `run` never pulls the image; it fails loudly if the
    named image isn't already present locally.
 5. **No framework plugins.** The image carries no framework plugins and no mount
    registers a marketplace, so no framework skill, agent or hook runs in a
    polecat.
-6. **Instructions come from the prompt and the workspace.** The task's
-   instructions arrive as the prompt. Project skills, `CLAUDE.md` and project
+6. **Instructions come from the prompt and the workspace.** The full task
+   arrives as the prompt. Project skills, `CLAUDE.md` and project
    rules reach the agent from the mounted workspace, and `rules_dir` mounts a host
    rule directory; the workspace clone tracks the host repo's `HEAD`, so a
    committed change to host-side instruction files is live in the next `run`
@@ -171,7 +173,7 @@ stdout, quiet by default. There is no `start`, `finish`, `crew`, `nuke`, `swarm`
 `list`, `init`, or `sync` subcommand, no bare-mirror registry under a `.repos/`
 directory, no workspace that survives past a single invocation, and no claiming,
 PR-filing, or status-setting performed by the CLI itself. Those either don't exist
-or belong to the dispatch service and the crew, outside the container. There is no UDS socket push or interactive
+or belong to the polecat service and the crew, outside the container. There is no UDS socket push or interactive
 session injection of completion strings (such as `[polecat-exit]`); completion
 events are retrieved from the durable queue or observability spans by
 higher-level services.

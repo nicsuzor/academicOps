@@ -15,7 +15,7 @@ Governs direct user-facing interactive sessions: task creation boundaries, subag
 
 1. **Single outer task**:
    - Maintain at most one outer task on the task graph for the interactive topic, placed and claimed via `/q` by the internal sub-coordinator before substantial work begins. The user-facing coordinator strictly delegates and verifies without creating tasks directly.
-   - When transitioning to asynchronous worker containers, the internal sub-coordinator places repo-scoped tasks via `/q`, reifies each via `/reify` just before dispatch, and dispatches via `/dispatch`.
+   - When transitioning to asynchronous worker containers, the internal sub-coordinator places repo-scoped tasks via `/q`, has the custodian (`pauli`) reify each via `/reify` just before dispatch, and hands them to the dispatcher via `/dispatch`.
    - Downstream workers and subagents never create additional tasks on the task graph for the session's work.
 2. **Delegation pipeline**:
    - The user-facing coordinator delegates first to an internal delegate.

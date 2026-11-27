@@ -33,8 +33,8 @@ As a researcher, I want delegated triage classifications verified against the or
   - Then when in-session execution requires task tracking, strictly one outer task is placed and claimed via `/q` solely by the internal sub-coordinator on behalf of the session, downstream delegates never create additional child tasks, and only the user-facing coordinator runs the session handover dump sequence.
 - **AC-2.3** Given a validated `tracked task` request, when Sub-Ida executes, then Sub-Ida routes the request through the intake (`/q`) and dispatch (`/dispatch`) pipeline. `/q` places repo-scoped tasks on the graph (strictly one per repo, consolidated across open and closed tasks, situated under their governing component or initiative epic with zero leaf `serves` edges while Strategic Value Carriers wire `serves` directly to priced targets). To maintain single-assignee boundaries and ensure headless workers never hold user delivery obligations:
   - Where user channel reporting or interactive delivery is required, `/q` wires a closed-loop terminal delivery task assigned to the user-facing agent (`assignee: ida`, dependent on the worker task or epic) to deliver the completed artifact to the user.
-  - `/reify` runs on the crew's side just before dispatch, composing workflows onto a single combined task body as instructions a worker can complete without further knowledge from the PKB.
-  - `/dispatch` dispatches the reified repo-scoped epic tasks to polecat containers, which have no plugins and no PKB access and receive the task's instructions as their prompt.
+  - The custodian (`pauli`) runs `/reify` just before Sub-Ida hands the task to the dispatcher, composing workflows onto a single combined task body as instructions a worker can complete without further knowledge from the PKB.
+  - `/dispatch` dispatches the reified repo-scoped epic tasks to polecat containers, which have no plugins and no PKB access and receive the full task as their prompt.
 - **AC-2.4** Given a completed subagent report, when the user-facing agent receives it, then the agent runs administrative-law formal compliance review on the face of the record per `premise-check` (zero _de novo_ fact-checking), relays strictly checked conclusions with their qualifiers, applies attention-protection brevity rules (bottom-line first, at most 3 bullets unless detail was requested), and communicates the result or task confirmation to the user.
 
 ### US-3 Retirement of Legacy `/mine` Ask Tracking
@@ -95,7 +95,7 @@ The triage choice is strictly bounded:
 2. **`tracked task`**:
    - **Definition**: Any request that cannot be answered immediately in-session, requires persistent tracking across turns or sessions, modifies repository code or configurations, executes long-running background tasks, or spans multiple sub-tasks.
    - **Examples**: PR reviews and sweeps across multiple repositories; building or refactoring tools; comparing CI test suites; generating complex analytical datasets; any multi-file code change.
-   - **Execution Surface**: Handled by Sub-Ida via `/q` -> `/reify` -> `/dispatch` (dispatching to polecats seeded with the reified instructions).
+   - **Execution Surface**: Handled by Sub-Ida via `/q` -> `/reify` -> `/dispatch` (dispatching to polecats seeded with the full reified task).
 
 #### 2.2 Delegation Payload Format
 
@@ -133,11 +133,11 @@ Tracked requests flow through the `/q` -> `/reify` -> `/dispatch` pipeline. Tria
    - Headless workers cannot hold user delivery obligations.
    - Where user channel reporting is required, `/q` ensures an explicit delivery task node assigned to the user-facing agent (`assignee: ida`, `needs: [<worker-tasks>]`) exists.
 2. **Reification (`/reify`)**:
-   Just before dispatch, the crew composes workflows from the 3-tier template library onto a single combined task body by default, written as instructions the worker can complete without further knowledge from the PKB.
+   Just before dispatch, the custodian (`pauli`) composes workflows from the 3-tier template library onto a single combined task body by default, written as instructions the worker can complete without further knowledge from the PKB.
 3. **Dispatch (`/dispatch`)**:
-   Sub-Ida dispatches ready, reified repo-scoped epic tasks to polecat containers calibrated to task complexity and importance, each seeded with its task's instructions as the prompt.
+   Sub-Ida dispatches ready, reified repo-scoped epic tasks to polecat containers calibrated to task complexity and importance, each seeded with the full task as the prompt.
 4. **Container Execution**:
-   Inside the isolated container the worker runs no `/pull`, `/reify`, or `/dump`, claims nothing, and writes no task status. It follows its instructions in its one repository with incremental `git push` checkpoints and delivers pull requests and artifacts; on exit the dispatch service records its final output message on the task.
+   Inside the isolated container the worker runs no `/pull`, `/reify`, or `/dump`, claims nothing, and writes no task status. It follows its instructions in its one repository with incremental `git push` checkpoints and delivers pull requests and artifacts; as the container is reaped, the polecat service writes the completed task to the PKB.
 5. **Delivery to User**:
    When the working task completes, any dependent return task assigned to `ida` becomes unblocked. The user-facing agent (or scheduled daily triage) processes the result, checks the premise, and communicates the deliverable to the user on the originating channel.
 

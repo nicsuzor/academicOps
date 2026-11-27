@@ -63,7 +63,7 @@ TUI renders.
 Swap the inner command for other surfaces: `polecat -d "$CHECKOUT" -s "$TMUX_NAME" -i -- claude`,
 or `polecat -d "$CHECKOUT" -s "$TMUX_NAME" -i -- zsh` for a plain container shell with no agent.
 A bare no-prompt launch exercises a different code path than a real
-task dispatch, which seeds the task's instructions as the prompt -- reproduce with a representative prompt first, and drop
+task dispatch, which seeds the full task as the prompt -- reproduce with a representative prompt first, and drop
 it only once the symptom is confirmed to reproduce either way.
 
 `agy` gates its ready prompt behind a folder-trust dialog for any workspace not
