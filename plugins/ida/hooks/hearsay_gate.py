@@ -823,6 +823,30 @@ def _strip_peer_wrapper(text: str) -> str:
     return s
 
 
+# A Claude projects coordinator receives a thread session's report as a harness wake:
+# ``<wake reason="thread-activity">`` wrapping the triggering ``<message from="agent">``.
+# Human, system and quiet wakes carry no agent message and never match.
+_THREAD_WAKE_RE = re.compile(r"^<wake\b[^>]*\breason=[\"']thread-activity[\"']")
+_WAKE_MESSAGE_RE = re.compile(r"<message\b([^>]*)>(.*?)</message>", re.DOTALL)
+
+
+def thread_reports(text: str) -> list[tuple[str, str]]:
+    """Return (attrs, body) for each triggering agent message in a thread-activity wake."""
+    s = _strip_peer_wrapper(text or "").lstrip()
+    if not _THREAD_WAKE_RE.match(s):
+        return []
+    items: list[tuple[str, str]] = []
+    for m in _WAKE_MESSAGE_RE.finditer(s):
+        attrs = m.group(1)
+        if re.search(r'\bfrom=["\']agent["\']', attrs) and re.search(
+            r'\btrigger=["\']true["\']', attrs
+        ):
+            body = html.unescape(m.group(2)).strip()
+            if body:
+                items.append((attrs, body))
+    return items
+
+
 def is_peer_report(ctx: HookContext) -> bool:
     """True when an incoming prompt is another agent's report or direction, not the user's message."""
     if ctx.client == "agy":
@@ -833,7 +857,7 @@ def is_peer_report(ctx: HookContext) -> bool:
     text = _strip_peer_wrapper(raw).lstrip()
     if not text:
         return False
-    return text.startswith(_PEER_ENVELOPES)
+    return text.startswith(_PEER_ENVELOPES) or bool(thread_reports(text))
 
 
 def is_foreground_dispatch(ctx: HookContext) -> bool:
@@ -1420,6 +1444,21 @@ def _extract_judged_items_with_channel(ctx: HookContext) -> list[IncomingItem]:
             turn_start = _agy_turn_start(ctx)
             if turn_start:
                 text = agy_arrival(str(turn_start.get("content") or ""))
+        threads = thread_reports(text)
+        if threads:
+            items: list[IncomingItem] = []
+            for attrs, body in threads:
+                if not carries_report(body):
+                    continue
+                sender_m = re.search(r'\bauthor-id=["\']([^"\']+)["\']', attrs)
+                id_m = re.search(r'(?<![\w-])id=["\']([A-Za-z0-9_\-.:@]+)["\']', attrs)
+                cid = id_m.group(1) if id_m else build_id("claim", body)
+                items.append(
+                    IncomingItem(
+                        body, cid, cid, sender_m.group(1) if sender_m else "", "user_prompt"
+                    )
+                )
+            return items
         stripped = _strip_peer_wrapper(text).strip()
         envelopes = _split_peer_envelopes(stripped)
         if not envelopes:

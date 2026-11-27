@@ -1,6 +1,7 @@
 ---
 status: "accepted"
 date: 2026-11-20
+amended: 2026-11-27
 decision-makers: ["user"]
 ---
 
@@ -38,3 +39,10 @@ Core architectural principles adopted:
 - Good, because inter-agent prose becomes directly readable by humans and higher auditors, and strict zero-_de-novo_ review stops coordinators from drifting into redundant source inspection.
 - Bad, because mechanical span telemetry attributes previously derived by parsing seven-line reasons (`defect_tag_count`, `weakest_basis_term`, `waived_items`, `inference_count`) are retired; longitudinal quality audits now inspect verdict distributions, remand rates, and recorded natural-language reasons directly.
 - Bad, because substantive rigor relies on agentic compliance with `premise-check` instructions and independent review rather than deterministic syntax checks, requiring ongoing telemetry monitoring for rubber-stamping.
+
+## Amendment (2026-11-27): thread reports arm the gate
+
+Observed traces showed that a Claude projects coordinator receives a thread session's report as a `UserPromptSubmit` harness wake (`<wake reason="thread-activity">` wrapping the thread's `<message from="agent">`), not as any tool call or result, so a coordinator-side `PostToolUse` rule never sees it, a thread-side `PostToolUse` fires only after the report is already posted, and a thread-side `PreToolUse` hold would leave the thread judging its own report. The gate's arming envelopes therefore extend to that wake: each triggering agent message in a thread-activity wake arms the coordinator's slot exactly as a subagent hand-back does, and human, system and quiet wakes arm nothing. This widens what counts as an incoming peer report under principle 4; it changes no other part of this decision.
+
+- Good, because thread reports now face the same recipient-side check as subagent hand-backs before the coordinator relays them, at the one point every report demonstrably passes through.
+- Bad, because detection depends on the projects harness keeping its wake markup (`reason="thread-activity"`, `from="agent"`, `trigger="true"`); a change there silently disarms it until the matcher follows.

@@ -8,7 +8,7 @@ This directory contains the immutable Architectural Decision Records (ADRs) for 
 | :- | :- | :- | :- | :- |
 | [ADR-0001](0001-use-madr-for-architectural-decisions.md) | 2026-11-08 | Use MADR for Architectural Decisions | Accepted | Track git-local rationale separately from specs without external PKB dependencies. |
 | [ADR-0002](0002-distinguish-pkb-graph-edge-purposes-and-enforce-parsimony.md) | 2026-11-09 | Distinguish PKB Graph Edge Purposes and Enforce Parsimony | Accepted | Separate weight flow (`serves`), sequencing (`needs`), and clustering (body wikilinks); enforce single-injection component weighting with zero leaf `serves` edges and retire `supports`. |
-| [ADR-0003](0003-retire-mechanical-premise-check-parser-and-adopt-administrative-law-review.md) | 2026-11-20 | Retire Mechanical Premise-Check Parser and Adopt Administrative-Law Review | Accepted | Retire mechanical parser; adopt formal administrative-law compliance review. |
+| [ADR-0003](0003-retire-mechanical-premise-check-parser-and-adopt-administrative-law-review.md) | 2026-11-20 | Retire Mechanical Premise-Check Parser and Adopt Administrative-Law Review | Accepted (amended 2026-11-27) | Retire mechanical parser; adopt formal review; thread reports arm the gate. |
 
 ## Guidance for Agents
 
