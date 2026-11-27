@@ -24,7 +24,7 @@ description: Index of academicOps axioms.
 | `halt-on-failure` | Halt on failure and report verbatim without workarounds, fallbacks, or bypasses. | always_on |
 | `honest-epistemics` | Tailor claims strictly to available evidence. | always_on |
 | `human-readability-first` | Future readability by human reviewers comes before mechanical parsing of text agents write. | always_on |
-| `judgment-non-delegable` | Never hand qualitative judgment to mechanical processes. | always_on |
+| `judgment-non-delegable` | Never hand qualitative judgment to mechanical processes or fake numeric proxies. | always_on |
 | `no-over-engineering` | Give hard tasks to capable agents with clear instructions and tools, never to a mechanical substitute (script, engine, or fixed procedure). | always_on |
 | `proportionate` | Meet the request with the least code, prose, or mechanism needed; spend on a risk in proportion to its likelihood and consequence. | always_on |
 | `reasons` | Give written, human-readable Argdown reasons and appealable evaluation records for every claim you rely on or communicate, so decisions can be audited on the record. | always_on |
