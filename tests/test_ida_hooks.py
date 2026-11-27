@@ -417,7 +417,10 @@ def test_peer_message_prompt_yields_single_user_prompt_submit_output(
     data = json.loads(proc.stdout)
     system_message = data.get("systemMessage", "")
     assert "\n" not in system_message
-    assert system_message == "Premise-check gate armed by claim-59204fc6."
+    assert system_message == (
+        "Premise-check gate armed by claim-59204fc6 "
+        "(source_agent_id=uds:/tmp/cc-socks/118.sock, delivering_tool=cross-session-message)."
+    )
 
 
 def test_session_start_raises_when_pkb_mcp_url_unset(monkeypatch: pytest.MonkeyPatch):

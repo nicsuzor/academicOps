@@ -211,6 +211,8 @@ def emit_hearsay_span(
     judged_ref: str | None = None,
     attributes: dict[str, Any] | None = None,
     config: dict[str, Any] | None = None,
+    source_agent_id: str | None = None,
+    delivering_tool: str | None = None,
 ) -> bool:
     """Ship one TOOL span for this hearsay check via claude_code_tracer's pipeline."""
     attrs: dict[str, Any] = {
@@ -222,15 +224,30 @@ def emit_hearsay_span(
     if judged_ref:
         attrs["hearsay.judged_ref"] = judged_ref
         attrs["premise_check.judged_ref"] = judged_ref
+    if source_agent_id:
+        attrs["hearsay.source_agent_id"] = source_agent_id
+        attrs["premise_check.source_agent_id"] = source_agent_id
+    if delivering_tool:
+        attrs["hearsay.delivering_tool"] = delivering_tool
+        attrs["premise_check.delivering_tool"] = delivering_tool
     if attributes:
         attrs.update(attributes)
+
+    output_data: dict[str, Any] = {
+        "status": "armed",
+        "claim_id": claim_id,
+    }
+    if source_agent_id:
+        output_data["source_agent_id"] = source_agent_id
+    if delivering_tool:
+        output_data["delivering_tool"] = delivering_tool
 
     _export_tool_span(
         tracer_mod,
         session_id,
         "hearsay_check",
         {"claim_id": claim_id, "event": event},
-        {"status": "armed"},
+        output_data,
         attrs,
         config,
     )

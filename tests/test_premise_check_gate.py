@@ -2103,3 +2103,110 @@ def test_issue_3182_task_notification_unwraps_result_in_judged_text():
     assert "<usage>" not in judged_text
     assert "<task-id>" not in judged_text
     assert judged_text.startswith("I dispatched the fix to a worker.")
+
+
+def test_multiple_handbacks_arming_notice_identifies_claim_sender_and_tool():
+    """Each arming notice names claim_id, source_agent_id, and delivering_tool when several handbacks arm."""
+    session_id = "sess-multi-handbacks"
+    report_camus, _ = _valid_report_argdown("tg-camus")
+    report_sara, _ = _valid_report_argdown("tg-sara")
+    report_pauli, _ = _valid_report_argdown("tg-pauli")
+
+    cases = [
+        (
+            _prompt_ctx(
+                session_id,
+                f'<subagent-handback from="fanout-camus">\n{report_camus}\n</subagent-handback>',
+            ),
+            "fanout-camus",
+            "subagent-handback",
+        ),
+        (
+            _prompt_ctx(
+                session_id,
+                f'<teammate-message teammate_id="fanout-sara">\n{report_sara}\n</teammate-message>',
+            ),
+            "fanout-sara",
+            "teammate-message",
+        ),
+        (
+            dispatch.HookContext(
+                client="claude",
+                event="PostToolUse",
+                tool="Agent",
+                session_id=session_id,
+                agent_type="ida:ida",
+                hooks_dir=_HOOKS_DIR,
+                raw={
+                    "tool_input": {"description": "audit pauli"},
+                    "tool_response": {
+                        "status": "completed",
+                        "agentId": "fanout-pauli",
+                        "content": [{"type": "text", "text": report_pauli}],
+                    },
+                    "tool_use_id": "toolu_pauli",
+                },
+            ),
+            "fanout-pauli",
+            "Agent",
+        ),
+        (
+            _prompt_ctx(
+                session_id,
+                '<agent-message from="fanout-rbg">Completed without argdown block.</agent-message>',
+            ),
+            "fanout-rbg",
+            "agent-message",
+        ),
+    ]
+
+    seen_claims: list[str] = []
+    for ctx, expected_sender, expected_tool in cases:
+        res = pcg.premise_check_arm(ctx)
+        assert res is not None
+        claim_id = pcg.get_state(session_id)["claim_id"]
+        seen_claims.append(claim_id)
+        for text in (res.inject_text, res.user_text or ""):
+            assert claim_id in text
+            assert f"source_agent_id={expected_sender}" in text
+            assert f"delivering_tool={expected_tool}" in text
+
+    assert len(set(seen_claims)) == len(cases)
+    assert pcg.get_state(session_id)["claim_ids"] == seen_claims
+
+
+def test_arming_span_output_records_claim_sender_and_tool(monkeypatch):
+    """Hook span output for arming records claim_id, source_agent_id, and delivering_tool."""
+    session_id = "sess-arm-span-output"
+    report_text, _ = _valid_report_argdown("tg-span")
+    prompt = f'<subagent-handback from="fanout-camus">\n{report_text}\n</subagent-handback>'
+    ctx = _prompt_ctx(session_id, prompt)
+    expected_claim_id = pcg._derive_claim_id(ctx)
+
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+    built_calls: list[dict[str, Any]] = []
+    orig_build = tracer._build_tool_span_record
+
+    def _capture_build(**kwargs):
+        built_calls.append(kwargs)
+        return orig_build(**kwargs)
+
+    import hearsay_gate as hg
+
+    tracer._build_tool_span_record = _capture_build  # type: ignore[method-assign]
+    monkeypatch.setattr(hg, "claude_code_tracer", tracer)
+
+    res = pcg.premise_check_arm(ctx)
+    assert res is not None
+    assert len(tracer.exported) == 1
+    assert len(built_calls) == 1
+    assert built_calls[0]["tool_name"] == "hearsay_check"
+    assert built_calls[0]["tool_response"] == {
+        "status": "armed",
+        "claim_id": expected_claim_id,
+        "source_agent_id": "fanout-camus",
+        "delivering_tool": "subagent-handback",
+    }
+    attrs = tracer.exported[0]["spans"][0]["attributes"]
+    assert attrs["hearsay.source_agent_id"] == "fanout-camus"
+    assert attrs["hearsay.delivering_tool"] == "subagent-handback"
