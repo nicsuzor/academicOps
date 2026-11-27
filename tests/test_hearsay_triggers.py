@@ -555,7 +555,7 @@ def test_active_unnotified_handback_triggers_should_arm_hearsay_once():
 
 
 def test_post_verdict_delayed_agent_message_suppresses_should_arm_and_hearsay_reminder():
-    """Judging an active SubagentHandback suppresses delayed <agent-message> triggers."""
+    """Judging a delivered foreground return suppresses a delayed <agent-message> twin, while unseen async SubagentHandback never pre-arms Root."""
     import hearsay_gate
     import premise_check_gate as pcg
     import premise_check_verdict as pcv
@@ -598,18 +598,39 @@ def test_post_verdict_delayed_agent_message_suppresses_should_arm_and_hearsay_re
             },
         )
     )
-    blk = handlers.pre_tool(
+    # Before delivery to Root, SendMessage must remain unblocked
+    assert (
+        handlers.pre_tool(
+            HookContext(
+                client="claude",
+                event="PreToolUse",
+                tool="SendMessage",
+                agent_type="ida:ida",
+                session_id=session_id,
+                hooks_dir=IDA_HOOKS,
+            )
+        )
+        is None
+    )
+
+    # Foreground metadata-only completion delivers buffered handback to Root
+    fg_notice = handlers.post_tool(
         HookContext(
             client="claude",
-            event="PreToolUse",
-            tool="SendMessage",
+            event="PostToolUse",
+            tool="Agent",
             agent_type="ida:ida",
             session_id=session_id,
             hooks_dir=IDA_HOOKS,
+            raw={
+                "tool_use_id": "tu_fg2",
+                "tool_input": {"description": "Check"},
+                "tool_response": {"status": "completed", "agentId": child_id},
+            },
         )
     )
-    assert blk is not None
-    cid = _claims_from_result(blk)[0]
+    assert fg_notice is not None
+    cid = _claims_from_result(fg_notice)[0]
 
     class _Tracer:
         def discover_config(self):
