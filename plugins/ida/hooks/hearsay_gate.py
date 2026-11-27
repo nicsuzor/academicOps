@@ -1823,6 +1823,8 @@ def _record_single_post_dispatch_locked(
             _register_parent_locked(parents, child_id, caller_id, name=sub_name, overwrite=True)
         target_resume = resumed or (child_id if ti.get("resume") else "")
         if target_resume:
+            canon_resumed = _resolve_sender_id(parents, target_resume) or target_resume
+            (parents.get("handbacks") or {}).pop(canon_resumed, None)
             _supersede_disarmed_claims_locked(session_id, caller_id, target_resume)
     elif _tool_base_lower(tool_name) in ("sendmessage", "send_message"):
         resumed = str(
@@ -1837,6 +1839,9 @@ def _record_single_post_dispatch_locked(
             if revived:
                 _register_parent_locked(parents, revived, caller_id, overwrite=False)
         if resumed:
+            canon_resumed = _resolve_sender_id(parents, resumed) or resumed
+            if (parents.get("subagent_parents") or {}).get(canon_resumed) == caller_id:
+                (parents.get("handbacks") or {}).pop(canon_resumed, None)
             _supersede_disarmed_claims_locked(session_id, caller_id, resumed)
 
 
@@ -1933,15 +1938,68 @@ def _resolve_handback_caller(ctx: HookContext, child_id: str) -> str | None:
 
 
 def _buffer_unresolved_handback(
-    session_id: str, child_id: str, message: str, judged_ref: str
+    session_id: str,
+    child_id: str,
+    message: str,
+    judged_ref: str,
+    *,
+    resolved_caller: str | None = None,
 ) -> None:
+    """Buffer a root-bound or caller-unresolved SubagentHandback until arrival on the caller."""
     with _session_file_lock(session_id):
         parents = _load_parents(session_id)
-        parents.setdefault("handbacks", {})[child_id] = {
+        ref = judged_ref or child_id
+        if resolved_caller == "":
+            canon_child = _resolve_sender_id(parents, child_id) or child_id
+            body_sha = _normalized_body_hash(message)
+            base_cid = build_id("claim", message)
+            root_state = _load_state(session_id, agent_id="")
+            root_judged = root_state.get("judged") or {}
+            active_match = _find_channel_match(
+                root_judged,
+                body_sha256=body_sha,
+                canon_sender=canon_child,
+                judged_ref=ref,
+                base_cid=base_cid,
+                channel="post_tool_use",
+                parents=parents,
+                require_active=True,
+            )
+            if active_match is not None:
+                ecid, entry = active_match
+                _record_channel_hit(entry, "post_tool_use", ref, ecid)
+                root_judged[ecid] = entry
+                root_state["judged"] = root_judged
+                _save_state(session_id, root_state, agent_id="")
+                return
+            root_disarmed = root_state.get("disarmed_claims") or {}
+            disarmed_match = _find_channel_match(
+                root_disarmed,
+                body_sha256=body_sha,
+                canon_sender=canon_child,
+                judged_ref=ref,
+                base_cid=base_cid,
+                channel="post_tool_use",
+                parents=parents,
+                require_active=False,
+            )
+            if disarmed_match is not None:
+                dcid, dentry = disarmed_match
+                _record_channel_hit(dentry, "post_tool_use", ref, dcid)
+                root_disarmed[dcid] = dentry
+                root_state["disarmed_claims"] = root_disarmed
+                _save_state(session_id, root_state, agent_id="")
+                return
+        handbacks = parents.setdefault("handbacks", {})
+        handbacks.pop(child_id, None)
+        handbacks[child_id] = {
             "message": message,
-            "ref": judged_ref or child_id,
+            "ref": ref,
             "recorded_at": _now(),
         }
+        while len(handbacks) > 100:
+            oldest = next(iter(handbacks))
+            handbacks.pop(oldest, None)
         _save_parents(session_id, parents)
 
 
@@ -2119,6 +2177,23 @@ def _apply_incoming_items(
         for judged_text, judged_ref, base_cid, raw_sender, channel in items:
             body_sha = _normalized_body_hash(judged_text)
             canon_sender = _resolve_sender_id(parents, raw_sender)
+            matched_hb_ref = ""
+            handbacks = parents.get("handbacks")
+            if canon_sender and isinstance(handbacks, dict) and canon_sender in handbacks:
+                hb_owner = (parents.get("subagent_parents") or {}).get(canon_sender)
+                hb_entry = handbacks.get(canon_sender)
+                if (
+                    (hb_owner is None or hb_owner == canon_target)
+                    and isinstance(hb_entry, dict)
+                    and (
+                        _normalized_body_hash(str(hb_entry.get("message") or "")) == body_sha
+                        or (judged_ref and hb_entry.get("ref") == judged_ref)
+                    )
+                ):
+                    popped = handbacks.pop(canon_sender, None)
+                    if isinstance(popped, dict):
+                        matched_hb_ref = str(popped.get("ref") or "")
+                    _save_parents(ctx.session_id, parents)
 
             # 1. Null form clears without blocking
             if _is_null_claim(judged_text):
@@ -2150,6 +2225,8 @@ def _apply_incoming_items(
             if active_match is not None:
                 existing_cid, entry = active_match
                 _record_channel_hit(entry, channel, judged_ref, existing_cid)
+                if matched_hb_ref and channel != "post_tool_use":
+                    _record_channel_hit(entry, "post_tool_use", matched_hb_ref, existing_cid)
                 should_notify = (emit_notice or allow_dedup_notice) and not bool(
                     entry.get("caller_notified")
                 )
@@ -2182,6 +2259,8 @@ def _apply_incoming_items(
             if disarmed_match is not None:
                 disarmed_cid, dentry = disarmed_match
                 _record_channel_hit(dentry, channel, judged_ref, disarmed_cid)
+                if matched_hb_ref and channel != "post_tool_use":
+                    _record_channel_hit(dentry, "post_tool_use", matched_hb_ref, disarmed_cid)
                 slot_disarmed[disarmed_cid] = dentry
                 slot_state["disarmed_claims"] = slot_disarmed
                 _save_state(ctx.session_id, slot_state, agent_id=canon_target)
@@ -2210,6 +2289,15 @@ def _apply_incoming_items(
                 armed_via=ctx.event,
                 seen_channel=channel,
             )
+            if matched_hb_ref and channel != "post_tool_use":
+                armed_state = _load_state(ctx.session_id, agent_id=canon_target)
+                armed_judged = armed_state.get("judged") or {}
+                armed_entry = armed_judged.get(cid)
+                if isinstance(armed_entry, dict):
+                    _record_channel_hit(armed_entry, "post_tool_use", matched_hb_ref, cid)
+                    armed_judged[cid] = armed_entry
+                    armed_state["judged"] = armed_judged
+                    _save_state(ctx.session_id, armed_state, agent_id=canon_target)
             traces_to_emit.append((cid, judged_ref))
 
             if emit_notice:
@@ -2346,8 +2434,10 @@ def hearsay_arm(ctx: HookContext) -> Result | None:
             return None
         resolved_caller = _resolve_handback_caller(ctx, child_id)
         tuid = _tool_use_id(ctx) or child_id
-        if resolved_caller is None:
-            _buffer_unresolved_handback(ctx.session_id, child_id, msg, tuid)
+        if not resolved_caller:
+            _buffer_unresolved_handback(
+                ctx.session_id, child_id, msg, tuid, resolved_caller=resolved_caller
+            )
             return None
         base_cid = build_id("claim", msg)
         _apply_incoming_items(
