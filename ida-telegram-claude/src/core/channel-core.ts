@@ -1506,7 +1506,7 @@ export class SharedTelegramChannelCore {
   }
 
   /**
-   * Dispatches IPC requests across local Unix domain socket bridge.
+   * Dispatches an outbound tool call by name.
    */
   public async handleIpcMessage(msg: Record<string, unknown>): Promise<Record<string, unknown>> {
     const type = msg._toolName || msg.type || msg.name;
@@ -1773,7 +1773,7 @@ export class SharedTelegramChannelCore {
         return await this.stopPoll(msg);
 
       default:
-        throw new Error(`Unsupported IPC tool: ${String(type)}`);
+        throw new Error(`Unsupported tool: ${String(type)}`);
     }
   }
 }

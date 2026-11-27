@@ -15,7 +15,6 @@ export interface PluginConfig {
   voiceSpeakCmd: string;
   port: number;
   stateDir: string;
-  socketPath: string;
   githubToken?: string;
   miniAppUrl: string;
   instance?: string;
@@ -72,7 +71,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
     .map((s) => parseInt(s.trim(), 10))
     .filter((n) => !isNaN(n));
 
-  const socketPath = mergedEnv.SOCKET_PATH || join(stateDir, "bridge.sock");
   const miniAppUrl = (mergedEnv.MINI_APP_URL || mergedEnv.IDA_WEB_URL || "").trim().replace(/\/+$/, "");
   if (!miniAppUrl) {
     throw new Error(
@@ -179,7 +177,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
     voiceSpeakCmd,
     port: parseInt(mergedEnv.PORT || "8093", 10),
     stateDir,
-    socketPath,
     githubToken: mergedEnv.GITHUB_TOKEN,
     miniAppUrl,
     instance: (mergedEnv.IDA_NAME || mergedEnv.INSTANCE_NAME || mergedEnv.INSTANCE_ID || "").trim() || undefined,

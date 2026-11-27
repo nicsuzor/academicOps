@@ -87,7 +87,6 @@ describe("Review: Permission diffs and PR reviews", () => {
       voiceSpeakCmd: "",
       port: 0,
       stateDir,
-      socketPath: join(stateDir, "hook.sock"),
       miniAppUrl: "https://ida.example.ts.net",
       botCommands: [],
     };
@@ -223,7 +222,6 @@ describe("Review: Permission diffs and PR reviews", () => {
             voiceSpeakCmd: "",
             port: 8093,
             stateDir,
-            socketPath: join(stateDir, "hook.sock"),
             botCommands: [],
           },
           sessionSecret,
@@ -255,7 +253,6 @@ describe("Review: Permission diffs and PR reviews", () => {
             voiceSpeakCmd: "",
             port: 8093,
             stateDir,
-            socketPath: join(stateDir, "hook.sock"),
             botCommands: [],
           },
           sessionSecret,

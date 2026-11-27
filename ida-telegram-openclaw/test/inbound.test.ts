@@ -109,7 +109,6 @@ describe("Inbound completeness: Updates routing and parsing", () => {
         voiceSpeakCmd: "",
         port: 0,
         stateDir,
-        socketPath: join(stateDir, "hook.sock"),
         miniAppUrl: "https://ida.example.test",
         botCommands: [],
       };
@@ -423,7 +422,6 @@ describe("Inbound completeness: Updates routing and parsing", () => {
       voiceSpeakCmd: "",
       port: 8093,
       stateDir,
-      socketPath: join(stateDir, "hook.sock"),
       miniAppUrl: "https://ida.example.ts.net",
       botCommands: [],
     };
@@ -639,7 +637,6 @@ describe("Inbound completeness: Updates routing and parsing", () => {
       voiceSpeakCmd: "",
       port: 8093,
       stateDir,
-      socketPath: join(stateDir, "hook.sock"),
       miniAppUrl: "https://ida.example.ts.net",
       botCommands: [],
     };

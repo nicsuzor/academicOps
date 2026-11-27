@@ -274,6 +274,7 @@ def _load_parents(session_id: str) -> dict[str, Any]:
         "known_subagents": [],
         "known_subagent_names": {},
         "pending_spawns": {},
+        "pending_spawn_names": {},
         "handbacks": {},
     }
 
@@ -314,6 +315,38 @@ _OUTER_PEER_ENVELOPE_RE = re.compile(
     re.DOTALL,
 )
 
+_HANDBACK_POINTER = re.compile(
+    r"^(?:"
+    r"(?:this|the)\s+(?:agent(?:'s)?\s+)?report was delivered to you as a message from\s+\S[^\n]*?\(its SubagentHandback call\)[^\n]*"
+    r"|this agent has not reported yet:[^\n]*?\bSubagentHandback\b[^\n]*"
+    r")$",
+    re.IGNORECASE,
+)
+
+
+def _is_handback_pointer_text(text: str | None) -> bool:
+    """True when text is a single-line SubagentHandback delivered/waiting pointer stub."""
+    s = (text or "").strip()
+    if not s or "\n" in s:
+        return False
+    return bool(_HANDBACK_POINTER.match(s))
+
+
+def _unpack_teammate_idle_json(inner: str) -> tuple[bool, str]:
+    """Return (is_idle_notification, extracted_result) for a teammate JSON payload."""
+    stripped = inner.strip()
+    if not (stripped.startswith("{") and stripped.endswith("}")):
+        return False, ""
+    try:
+        parsed = json.loads(stripped)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return False, ""
+    if not isinstance(parsed, dict) or parsed.get("type") != "idle_notification":
+        return False, ""
+    res = parsed.get("result")
+    return True, res.strip() if isinstance(res, str) else ""
+
+
 _NULL_CLAIM_BLOCK_RE = re.compile(
     r"(?:`{3,}|~{3,})\s*argdown[ \t]*\n"
     r"(?:\s*===[ \t]*\n\s*asks:\s*none[ \t]*\n\s*===[ \t]*\n+)?"
@@ -338,21 +371,10 @@ def _normalize_peer_body(text: str | None) -> str:
             res = extract_notification_result(inner)
             if res is not None:
                 inner = res.strip("\r\n")
-        elif (
-            tag == "teammate-message"
-            and inner.strip().startswith("{")
-            and inner.strip().endswith("}")
-        ):
-            try:
-                parsed = json.loads(inner.strip())
-                if (
-                    isinstance(parsed, dict)
-                    and parsed.get("type") == "idle_notification"
-                    and "result" in parsed
-                ):
-                    inner = str(parsed["result"]).strip("\r\n")
-            except (json.JSONDecodeError, TypeError, ValueError):
-                pass
+        elif tag == "teammate-message":
+            is_idle, idle_res = _unpack_teammate_idle_json(inner)
+            if is_idle:
+                inner = idle_res
         norm = inner
     else:
         norm = unwrapped.strip("\r\n")
@@ -823,6 +845,30 @@ def _strip_peer_wrapper(text: str) -> str:
     return s
 
 
+# A Claude projects coordinator receives a thread session's report as a harness wake:
+# ``<wake reason="thread-activity">`` wrapping the triggering ``<message from="agent">``.
+# Human, system and quiet wakes carry no agent message and never match.
+_THREAD_WAKE_RE = re.compile(r"^<wake\b[^>]*\breason=[\"']thread-activity[\"']")
+_WAKE_MESSAGE_RE = re.compile(r"<message\b([^>]*)>(.*?)</message>", re.DOTALL)
+
+
+def thread_reports(text: str) -> list[tuple[str, str]]:
+    """Return (attrs, body) for each triggering agent message in a thread-activity wake."""
+    s = _strip_peer_wrapper(text or "").lstrip()
+    if not _THREAD_WAKE_RE.match(s):
+        return []
+    items: list[tuple[str, str]] = []
+    for m in _WAKE_MESSAGE_RE.finditer(s):
+        attrs = m.group(1)
+        if re.search(r'\bfrom=["\']agent["\']', attrs) and re.search(
+            r'\btrigger=["\']true["\']', attrs
+        ):
+            body = html.unescape(m.group(2)).strip()
+            if body:
+                items.append((attrs, body))
+    return items
+
+
 def is_peer_report(ctx: HookContext) -> bool:
     """True when an incoming prompt is another agent's report or direction, not the user's message."""
     if ctx.client == "agy":
@@ -833,7 +879,7 @@ def is_peer_report(ctx: HookContext) -> bool:
     text = _strip_peer_wrapper(raw).lstrip()
     if not text:
         return False
-    return text.startswith(_PEER_ENVELOPES)
+    return text.startswith(_PEER_ENVELOPES) or bool(thread_reports(text))
 
 
 def is_foreground_dispatch(ctx: HookContext) -> bool:
@@ -1199,32 +1245,49 @@ def extract_notification_result(text: str) -> str | None:
 
 
 _NOTIFICATION_RESULT = re.compile(r"<result>(.*?)</result>", re.DOTALL)
-_HANDBACK_POINTER = re.compile(
-    r"^(?:"
-    r"(?:this|the)\s+(?:agent(?:'s)?\s+)?report was delivered to you as a message from\s+\S[^\n]*?\(its SubagentHandback call\)"
-    r"|this agent has not reported yet:[^\n]*?\bSubagentHandback\b"
-    r")",
-    re.IGNORECASE,
-)
+
+
+def _is_dispatch_pointer_only(resp: Any) -> bool:
+    """True when an Agent/Task completion response points to an out-of-band SubagentHandback message."""
+    if not isinstance(resp, dict):
+        return False
+    text = _response_text(resp)
+    if _is_handback_pointer_text(text):
+        return True
+    return resp.get("handback") == "send" and not text.strip()
+
+
+def _should_bridge_foreground_dispatch(caller_id: str, resp: Any) -> bool:
+    """True when foreground PostToolUse/PostToolBatch should bridge a silent/handback child report."""
+    if not (isinstance(resp, dict) and resp.get("status") == "completed"):
+        return False
+    if _is_dispatch_pointer_only(resp):
+        return bool(caller_id)
+    return not _response_text(resp).strip()
 
 
 def carries_report(text: str) -> bool:
-    """False when an arrival only announces or points at a report.
+    """False when an arrival only announces, idles, or points at a report.
 
     A task notification carries a report in its ``<result>``; one without (a
     background command finishing) carries none. Hand-back delivered/waiting pointer
-    notices inside a task notification's ``<result>`` point at the SubagentHandback
-    message and arm nothing.
+    notices and resultless teammate ``idle_notification`` JSON payloads arm nothing.
     """
     body = _strip_peer_wrapper(text).lstrip()
-    if not body:
+    if not body or _is_handback_pointer_text(body):
         return False
     if body.startswith("<task-notification"):
         result = extract_notification_result(body)
         if not result or not result.strip():
             return False
-        if _HANDBACK_POINTER.search(result.strip()):
+        if _is_handback_pointer_text(result):
             return False
+    elif body.startswith("<teammate-message"):
+        env_m = _OUTER_PEER_ENVELOPE_RE.match(body)
+        if env_m:
+            is_idle, idle_res = _unpack_teammate_idle_json(env_m.group(2))
+            if is_idle and (not idle_res or _is_handback_pointer_text(idle_res)):
+                return False
     return True
 
 
@@ -1294,18 +1357,9 @@ def _unpack_envelope(env_text: str, tag: str, attrs: str, inner: str) -> tuple[s
     sender_m = re.search(r'\b(?:from|teammate_id|sender)=["\']([^"\']+)["\']', attrs)
     sender_id = sender_m.group(1).strip() if sender_m else ""
     if tag == "teammate-message":
-        stripped_inner = inner.strip()
-        if stripped_inner.startswith("{") and stripped_inner.endswith("}"):
-            try:
-                data = json.loads(stripped_inner)
-                if (
-                    isinstance(data, dict)
-                    and data.get("type") == "idle_notification"
-                    and "result" in data
-                ):
-                    return str(data["result"]), sender_id
-            except (json.JSONDecodeError, TypeError, ValueError):
-                pass
+        is_idle, idle_res = _unpack_teammate_idle_json(inner)
+        if is_idle:
+            return idle_res, sender_id
     elif tag == "task-notification":
         if not sender_id:
             tid_m = re.search(r"<task-id>([^<]+)</task-id>", inner)
@@ -1337,18 +1391,9 @@ def _extract_judged_text(prompt: str) -> str:
     if match:
         tag = match.group(1)
         if tag == "teammate-message":
-            inner = match.group(3).strip()
-            if inner.startswith("{") and inner.endswith("}"):
-                try:
-                    data = json.loads(inner)
-                    if (
-                        isinstance(data, dict)
-                        and data.get("type") == "idle_notification"
-                        and "result" in data
-                    ):
-                        return str(data["result"])
-                except (json.JSONDecodeError, TypeError, ValueError):
-                    pass
+            is_idle, idle_res = _unpack_teammate_idle_json(match.group(3))
+            if is_idle:
+                return idle_res
         elif tag == "task-notification":
             inner = match.group(3)
             result_match = extract_notification_result(inner)
@@ -1420,6 +1465,21 @@ def _extract_judged_items_with_channel(ctx: HookContext) -> list[IncomingItem]:
             turn_start = _agy_turn_start(ctx)
             if turn_start:
                 text = agy_arrival(str(turn_start.get("content") or ""))
+        threads = thread_reports(text)
+        if threads:
+            items: list[IncomingItem] = []
+            for attrs, body in threads:
+                if not carries_report(body):
+                    continue
+                sender_m = re.search(r'\bauthor-id=["\']([^"\']+)["\']', attrs)
+                id_m = re.search(r'(?<![\w-])id=["\']([A-Za-z0-9_\-.:@]+)["\']', attrs)
+                cid = id_m.group(1) if id_m else build_id("claim", body)
+                items.append(
+                    IncomingItem(
+                        body, cid, cid, sender_m.group(1) if sender_m else "", "user_prompt"
+                    )
+                )
+            return items
         stripped = _strip_peer_wrapper(text).strip()
         envelopes = _split_peer_envelopes(stripped)
         if not envelopes:
@@ -1430,12 +1490,12 @@ def _extract_judged_items_with_channel(ctx: HookContext) -> list[IncomingItem]:
             ref = _envelope_id(text.strip()) or cid
             return [IncomingItem(judged_text, ref, cid, "", "user_prompt")]
 
-        items: list[IncomingItem] = []
+        items = []
         for env_text, tag, attrs, inner in envelopes:
             judged_text, sender_id = _unpack_envelope(env_text, tag, attrs, inner)
             if (
                 not carries_report(env_text)
-                if tag == "task-notification"
+                if tag in ("task-notification", "teammate-message")
                 else not carries_report(judged_text)
             ):
                 continue
@@ -1456,14 +1516,19 @@ def _extract_judged_items_with_channel(ctx: HookContext) -> list[IncomingItem]:
         if not is_foreground_dispatch(ctx):
             return []
         resp = _tool_response(ctx)
+        if _is_dispatch_pointer_only(resp):
+            return []
         judged_text = _response_text(resp)
         if not judged_text.strip() or not carries_report(judged_text):
             return []
         call_id = _tool_use_id(ctx)
+        ti_dict = _tool_input(ctx)
         sender_id = (
-            str(resp.get("agentId") or resp.get("agent_id") or "") if isinstance(resp, dict) else ""
+            str(resp.get("agentId") or resp.get("agent_id") or ti_dict.get("name") or "").strip()
+            if isinstance(resp, dict)
+            else str(ti_dict.get("name") or "").strip()
         )
-        base_cid = _call_description_id(_tool_input(ctx), call_id) or _derive_claim_id(ctx)
+        base_cid = _call_description_id(ti_dict, call_id) or _derive_claim_id(ctx)
         ref = call_id or base_cid
         return [IncomingItem(judged_text, ref, base_cid, sender_id, "agent_result")]
 
@@ -1477,14 +1542,19 @@ def _extract_judged_items_with_channel(ctx: HookContext) -> list[IncomingItem]:
             resp = call.get("tool_response") or call.get("toolResponse")
             if not (isinstance(resp, dict) and resp.get("status") == "completed"):
                 continue
+            if _is_dispatch_pointer_only(resp):
+                continue
             judged_text = _response_text(resp)
             if not judged_text.strip() or not carries_report(judged_text):
                 continue
             call_id = str(call.get("tool_use_id") or call.get("id") or "")
-            tool_input = call.get("tool_input") or call.get("toolInput") or {}
-            base_cid = _call_description_id(tool_input, call_id)
+            raw_ti = call.get("tool_input") or call.get("toolInput") or {}
+            ti_dict = raw_ti if isinstance(raw_ti, dict) else {}
+            base_cid = _call_description_id(ti_dict, call_id)
             ref = call_id or base_cid
-            sender_id = str(resp.get("agentId") or resp.get("agent_id") or "")
+            sender_id = str(
+                resp.get("agentId") or resp.get("agent_id") or ti_dict.get("name") or ""
+            ).strip()
             batch_items.append(IncomingItem(judged_text, ref, base_cid, sender_id, "agent_result"))
         return batch_items
 
@@ -1518,7 +1588,13 @@ def _resolve_sender_id(parents: dict[str, Any], raw_sender: str) -> str:
         return ""
     names_map = parents.get("known_subagent_names") or {}
     mapped = names_map.get(sender)
-    return str(mapped).strip() if mapped else sender
+    if mapped:
+        return str(mapped).strip()
+    if "@" in sender:
+        bare = sender.split("@", 1)[0].strip()
+        if bare and bare in names_map:
+            return str(names_map[bare]).strip()
+    return sender
 
 
 def _is_failed_tool_response(ctx: HookContext | None, resp: Any) -> bool:
@@ -1546,9 +1622,8 @@ def _find_channel_match(
 
     A delivery pairs with an entry carrying the same normalized digest when any holds:
     the delivery reference was already seen on that entry; the canonical senders agree;
-    or (active entries only) a `UserPromptSubmit` envelope with a known sender meets an
-    entry armed by a foreground return that carried no sender and has not yet been seen
-    on the prompt channel.
+    or a senderless foreground ``agent_result`` and a named envelope/handback copy meet
+    symmetrically (at most once per channel pair).
     """
     has_unique_ref = bool(judged_ref and judged_ref != base_cid)
     for cid, entry in entries.items():
@@ -1562,41 +1637,60 @@ def _find_channel_match(
         seen_refs = entry.get("seen_refs") or (
             [entry["ref"]] if entry.get("ref") and entry.get("ref") != cid else []
         )
+        seen_channels = entry.get("seen_channels") or {}
         unique_ref_match = bool(has_unique_ref and judged_ref in seen_refs)
         sender_match = bool(esender and canon_sender and esender == canon_sender)
-        senderless_return_match = bool(
-            require_active
-            and channel == "user_prompt"
+        senderless_to_named_match = bool(
+            channel in ("user_prompt", "task_notification", "post_tool_use")
             and canon_sender
             and not esender
-            and not (entry.get("seen_channels") or {}).get("user_prompt")
+            and seen_channels.get("agent_result")
+            and not seen_channels.get(channel)
         )
-        if unique_ref_match or sender_match or senderless_return_match:
+        named_to_senderless_match = bool(
+            channel == "agent_result"
+            and not canon_sender
+            and esender
+            and not seen_channels.get("agent_result")
+        )
+        if (
+            unique_ref_match
+            or sender_match
+            or senderless_to_named_match
+            or named_to_senderless_match
+        ):
             return cid, entry
     return None
+
+
+def _iter_dispatch_calls(ctx: HookContext) -> list[tuple[dict[str, Any], dict[str, Any], str]]:
+    """Collect (tool_input, tool_response, tool_use_id) for non-failed dispatch tool events."""
+    raw_calls: list[tuple[Any, Any, str, HookContext | None]] = []
+    if ctx.event == "PostToolUse" and ctx.tool in _DISPATCH_TOOLS:
+        raw_calls.append((_tool_input(ctx), _tool_response(ctx), _tool_use_id(ctx), ctx))
+    elif ctx.event == "PostToolBatch" and ctx.client != "agy":
+        for c in ctx.tool_calls:
+            if isinstance(c, dict) and c.get("tool_name") in _DISPATCH_TOOLS:
+                raw_calls.append(
+                    (
+                        c.get("tool_input") or c.get("toolInput") or {},
+                        c.get("tool_response") or c.get("toolResponse") or {},
+                        str(c.get("tool_use_id") or c.get("id") or ""),
+                        None,
+                    )
+                )
+    out: list[tuple[dict[str, Any], dict[str, Any], str]] = []
+    for ti, tr, tuid, call_ctx in raw_calls:
+        if _is_failed_tool_response(call_ctx, tr):
+            continue
+        out.append((ti if isinstance(ti, dict) else {}, tr if isinstance(tr, dict) else {}, tuid))
+    return out
 
 
 def _in_flight_resume_ids(ctx: HookContext) -> set[str]:
     """Collect resumed subagent IDs from non-failed dispatch calls in PostToolUse/PostToolBatch."""
     resumed: set[str] = set()
-    calls: list[tuple[str, Any, Any]] = []
-    if ctx.event == "PostToolUse" and ctx.tool in _DISPATCH_TOOLS:
-        calls.append((ctx.tool, _tool_input(ctx), _tool_response(ctx)))
-    elif ctx.event == "PostToolBatch" and ctx.client != "agy":
-        for c in ctx.tool_calls:
-            if isinstance(c, dict) and c.get("tool_name") in _DISPATCH_TOOLS:
-                calls.append(
-                    (
-                        str(c.get("tool_name") or ""),
-                        c.get("tool_input") or c.get("toolInput") or {},
-                        c.get("tool_response") or c.get("toolResponse") or {},
-                    )
-                )
-    for _tool, ti, tr in calls:
-        if _is_failed_tool_response(ctx if ctx.event == "PostToolUse" else None, tr):
-            continue
-        ti_dict = ti if isinstance(ti, dict) else {}
-        tr_dict = tr if isinstance(tr, dict) else {}
+    for ti_dict, tr_dict, _tuid in _iter_dispatch_calls(ctx):
         rid = str(
             ti_dict.get("resume")
             or tr_dict.get("resumedAgentId")
@@ -1608,6 +1702,39 @@ def _in_flight_resume_ids(ctx: HookContext) -> set[str]:
     return resumed
 
 
+def _with_inflight_aliases(ctx: HookContext, parents: dict[str, Any]) -> dict[str, Any]:
+    """Return parents with in-flight dispatch name/teammate_id aliases overlaid in memory."""
+    dispatch_calls = _iter_dispatch_calls(ctx)
+    if not dispatch_calls:
+        return parents
+    names_map = dict(parents.get("known_subagent_names") or {})
+    pending_names = parents.get("pending_spawn_names") or {}
+    changed = False
+    for ti_dict, tr_dict, tuid in dispatch_calls:
+        child_id = str(tr_dict.get("agentId") or tr_dict.get("agent_id") or "").strip()
+        if not child_id:
+            continue
+        aliases = (
+            pending_names.get(tuid, ""),
+            ti_dict.get("name", ""),
+            tr_dict.get("name", ""),
+            tr_dict.get("teammate_id", ""),
+        )
+        for raw_alias in aliases:
+            alias = str(raw_alias or "").strip()
+            if not alias:
+                continue
+            names_map[alias] = child_id
+            changed = True
+            if "@" in alias:
+                bare = alias.split("@", 1)[0].strip()
+                if bare and bare not in names_map:
+                    names_map[bare] = child_id
+    if not changed:
+        return parents
+    return {**parents, "known_subagent_names": names_map}
+
+
 def should_arm_hearsay(ctx: HookContext) -> bool:
     """Shared trigger predicate: True when an incoming event should fire hearsay notice/arming."""
     items = _extract_judged_items_with_channel(ctx)
@@ -1616,7 +1743,7 @@ def should_arm_hearsay(ctx: HookContext) -> bool:
     slot_disarmed: dict[str, Any] = {}
     if ctx.session_id and (items or (ctx.event == "PostToolBatch" and ctx.client != "agy")):
         canon_agent = _canonical_agent_id(ctx.session_id, ctx.agent_id)
-        parents = _load_parents(ctx.session_id)
+        parents = _with_inflight_aliases(ctx, _load_parents(ctx.session_id))
         slot_state = _load_state(ctx.session_id, agent_id=canon_agent)
         slot_judged = slot_state.get("judged") or {}
         slot_disarmed = slot_state.get("disarmed_claims") or {}
@@ -1729,6 +1856,7 @@ def _register_parent_locked(
     caller_id: str,
     *,
     name: str = "",
+    names: tuple[str, ...] | list[str] = (),
     overwrite: bool = False,
 ) -> None:
     if not child_id:
@@ -1737,8 +1865,16 @@ def _register_parent_locked(
     known = parents.setdefault("known_subagents", [])
     if child_id not in known:
         known.append(child_id)
-    if name:
-        parents.setdefault("known_subagent_names", {})[name] = child_id
+    names_map = parents.setdefault("known_subagent_names", {})
+    for raw_alias in (name, *names):
+        alias = str(raw_alias or "").strip()
+        if not alias:
+            continue
+        names_map[alias] = child_id
+        if "@" in alias:
+            bare = alias.split("@", 1)[0].strip()
+            if bare and bare not in names_map:
+                names_map[bare] = child_id
     if child_id == caller_id:
         return
     if _is_ancestor(sub_parents, caller_id, child_id):
@@ -1759,6 +1895,7 @@ def record_pre_dispatch(ctx: HookContext) -> None:
     if not tuid:
         return
     caller_id = _canonical_agent_id(ctx.session_id, ctx.agent_id)
+    sub_name = str(_tool_input(ctx).get("name") or "").strip()
     with _session_file_lock(ctx.session_id):
         parents = _load_parents(ctx.session_id)
         if caller_id:
@@ -1766,10 +1903,14 @@ def record_pre_dispatch(ctx: HookContext) -> None:
             if caller_id not in known:
                 known.append(caller_id)
         pending = parents.setdefault("pending_spawns", {})
+        pending_names = parents.setdefault("pending_spawn_names", {})
         pending[tuid] = caller_id
+        if sub_name:
+            pending_names[tuid] = sub_name
         while len(pending) > 100:
             oldest = next(iter(pending))
             pending.pop(oldest, None)
+            pending_names.pop(oldest, None)
         _save_parents(ctx.session_id, parents)
 
 
@@ -1812,17 +1953,28 @@ def _record_single_post_dispatch_locked(
     ti = tool_input if isinstance(tool_input, dict) else {}
     tr = tool_response if isinstance(tool_response, dict) else {}
     if tool_name in _DISPATCH_TOOLS:
+        pre_name = ""
         if tool_use_id:
             parents.get("pending_spawns", {}).pop(tool_use_id, None)
+            pre_name = str(
+                parents.get("pending_spawn_names", {}).pop(tool_use_id, "") or ""
+            ).strip()
         resumed = str(
             ti.get("resume") or tr.get("resumedAgentId") or tr.get("revivedAgentId") or ""
         ).strip()
         child_id = str(tr.get("agentId") or tr.get("agent_id") or "").strip()
         if child_id:
-            sub_name = str(ti.get("name") or "").strip()
-            _register_parent_locked(parents, child_id, caller_id, name=sub_name, overwrite=True)
+            aliases = [
+                pre_name,
+                str(ti.get("name") or "").strip(),
+                str(tr.get("name") or "").strip(),
+                str(tr.get("teammate_id") or "").strip(),
+            ]
+            _register_parent_locked(parents, child_id, caller_id, names=aliases, overwrite=True)
         target_resume = resumed or (child_id if ti.get("resume") else "")
         if target_resume:
+            canon_resumed = _resolve_sender_id(parents, target_resume) or target_resume
+            (parents.get("handbacks") or {}).pop(canon_resumed, None)
             _supersede_disarmed_claims_locked(session_id, caller_id, target_resume)
     elif _tool_base_lower(tool_name) in ("sendmessage", "send_message"):
         resumed = str(
@@ -1837,6 +1989,9 @@ def _record_single_post_dispatch_locked(
             if revived:
                 _register_parent_locked(parents, revived, caller_id, overwrite=False)
         if resumed:
+            canon_resumed = _resolve_sender_id(parents, resumed) or resumed
+            if (parents.get("subagent_parents") or {}).get(canon_resumed) == caller_id:
+                (parents.get("handbacks") or {}).pop(canon_resumed, None)
             _supersede_disarmed_claims_locked(session_id, caller_id, resumed)
 
 
@@ -1926,23 +2081,137 @@ def _resolve_handback_caller(ctx: HookContext, child_id: str) -> str | None:
         tuid = _lookup_sidecar_tool_use_id(ctx, child_id)
         if tuid and tuid in (parents.get("pending_spawns") or {}):
             caller = str(parents["pending_spawns"][tuid])
-            _register_parent_locked(parents, child_id, caller, overwrite=True)
+            pre_name = str((parents.get("pending_spawn_names") or {}).get(tuid, "") or "").strip()
+            _register_parent_locked(parents, child_id, caller, name=pre_name, overwrite=True)
             _save_parents(ctx.session_id, parents)
             return caller
     return None
 
 
 def _buffer_unresolved_handback(
-    session_id: str, child_id: str, message: str, judged_ref: str
+    session_id: str,
+    child_id: str,
+    message: str,
+    judged_ref: str,
+    *,
+    resolved_caller: str | None = None,
 ) -> None:
+    """Buffer a root-bound or caller-unresolved SubagentHandback until arrival on the caller."""
     with _session_file_lock(session_id):
         parents = _load_parents(session_id)
-        parents.setdefault("handbacks", {})[child_id] = {
+        ref = judged_ref or child_id
+        if resolved_caller == "":
+            canon_child = _resolve_sender_id(parents, child_id) or child_id
+            body_sha = _normalized_body_hash(message)
+            base_cid = build_id("claim", message)
+            root_state = _load_state(session_id, agent_id="")
+            root_judged = root_state.get("judged") or {}
+            active_match = _find_channel_match(
+                root_judged,
+                body_sha256=body_sha,
+                canon_sender=canon_child,
+                judged_ref=ref,
+                base_cid=base_cid,
+                channel="post_tool_use",
+                parents=parents,
+                require_active=True,
+            )
+            if active_match is not None:
+                ecid, entry = active_match
+                _record_channel_hit(entry, "post_tool_use", ref, ecid)
+                root_judged[ecid] = entry
+                root_state["judged"] = root_judged
+                _save_state(session_id, root_state, agent_id="")
+                return
+            root_disarmed = root_state.get("disarmed_claims") or {}
+            disarmed_match = _find_channel_match(
+                root_disarmed,
+                body_sha256=body_sha,
+                canon_sender=canon_child,
+                judged_ref=ref,
+                base_cid=base_cid,
+                channel="post_tool_use",
+                parents=parents,
+                require_active=False,
+            )
+            if disarmed_match is not None:
+                dcid, dentry = disarmed_match
+                _record_channel_hit(dentry, "post_tool_use", ref, dcid)
+                root_disarmed[dcid] = dentry
+                root_state["disarmed_claims"] = root_disarmed
+                _save_state(session_id, root_state, agent_id="")
+                return
+        handbacks = parents.setdefault("handbacks", {})
+        handbacks.pop(child_id, None)
+        handbacks[child_id] = {
             "message": message,
-            "ref": judged_ref or child_id,
+            "ref": ref,
             "recorded_at": _now(),
         }
+        while len(handbacks) > 100:
+            oldest = next(iter(handbacks))
+            handbacks.pop(oldest, None)
         _save_parents(session_id, parents)
+
+
+def _reconcile_buffered_root_handback(session_id: str, child_id: str) -> None:
+    """Drop a buffered root handback if it already matches an active or disarmed root claim."""
+    if not session_id or not child_id:
+        return
+    with _session_file_lock(session_id):
+        parents = _load_parents(session_id)
+        handbacks = parents.get("handbacks")
+        if not isinstance(handbacks, dict) or child_id not in handbacks:
+            return
+        hb = handbacks.get(child_id)
+        if not isinstance(hb, dict):
+            return
+        msg = str(hb.get("message") or "")
+        if not msg.strip():
+            return
+        ref = str(hb.get("ref") or child_id)
+        body_sha = _normalized_body_hash(msg)
+        base_cid = build_id("claim", msg)
+        root_state = _load_state(session_id, agent_id="")
+        root_judged = root_state.get("judged") or {}
+        active_match = _find_channel_match(
+            root_judged,
+            body_sha256=body_sha,
+            canon_sender=child_id,
+            judged_ref=ref,
+            base_cid=base_cid,
+            channel="post_tool_use",
+            parents=parents,
+            require_active=True,
+        )
+        if active_match is not None:
+            ecid, entry = active_match
+            handbacks.pop(child_id, None)
+            _record_channel_hit(entry, "post_tool_use", ref, ecid)
+            root_judged[ecid] = entry
+            root_state["judged"] = root_judged
+            _save_parents(session_id, parents)
+            _save_state(session_id, root_state, agent_id="")
+            return
+        root_disarmed = root_state.get("disarmed_claims") or {}
+        disarmed_match = _find_channel_match(
+            root_disarmed,
+            body_sha256=body_sha,
+            canon_sender=child_id,
+            judged_ref=ref,
+            base_cid=base_cid,
+            channel="post_tool_use",
+            parents=parents,
+            require_active=False,
+        )
+        if disarmed_match is not None:
+            dcid, dentry = disarmed_match
+            handbacks.pop(child_id, None)
+            _record_channel_hit(dentry, "post_tool_use", ref, dcid)
+            root_disarmed[dcid] = dentry
+            root_state["disarmed_claims"] = root_disarmed
+            _save_parents(session_id, parents)
+            _save_state(session_id, root_state, agent_id="")
 
 
 def _resolve_sendmessage_target(
@@ -1980,7 +2249,7 @@ def _resolve_sendmessage_target(
 
 
 def _batch_handback_candidates(ctx: HookContext) -> list[tuple[str, str]]:
-    """Return [(child_id, description_or_call_id)] for metadata-only completed calls with buffered handbacks."""
+    """Return [(child_id, description_or_call_id)] for foreground calls with bridged handbacks."""
     if not ctx.session_id:
         return []
     caller_id = _canonical_agent_id(ctx.session_id, ctx.agent_id)
@@ -1994,9 +2263,7 @@ def _batch_handback_candidates(ctx: HookContext) -> list[tuple[str, str]]:
         if not isinstance(call, dict) or call.get("tool_name") not in _DISPATCH_TOOLS:
             continue
         resp = call.get("tool_response") or call.get("toolResponse")
-        if not (isinstance(resp, dict) and resp.get("status") == "completed"):
-            continue
-        if _response_text(resp).strip():
+        if not isinstance(resp, dict) or not _should_bridge_foreground_dispatch(caller_id, resp):
             continue
         child_id = str(resp.get("agentId") or resp.get("agent_id") or "").strip()
         if not child_id:
@@ -2039,7 +2306,40 @@ def _batch_handback_candidates(ctx: HookContext) -> list[tuple[str, str]]:
             and not e.get("caller_notified")
             for e in slot_judged.values()
         )
-        if has_buffered or has_existing:
+        has_hr = False
+        if not has_buffered and not has_existing and caller_id and _is_dispatch_pointer_only(resp):
+            hr = resp.get("handbackReport")
+            if isinstance(hr, dict):
+                hr_msg = str(hr.get("text") or "")
+                if hr_msg.strip() and not _is_null_claim(hr_msg):
+                    hsha = _normalized_body_hash(hr_msg)
+                    href = str(hr.get("toolUseId") or call.get("tool_use_id") or child_id)
+                    hcid = build_id("claim", hr_msg)
+                    already_active = _find_channel_match(
+                        slot_judged,
+                        body_sha256=hsha,
+                        canon_sender=child_id,
+                        judged_ref=href,
+                        base_cid=hcid,
+                        channel="agent_result",
+                        parents=parents,
+                        require_active=True,
+                    )
+                    already_disarmed = _find_channel_match(
+                        slot_disarmed,
+                        body_sha256=hsha,
+                        canon_sender=child_id,
+                        judged_ref=href,
+                        base_cid=hcid,
+                        channel="agent_result",
+                        parents=parents,
+                        require_active=False,
+                    )
+                    if already_active is not None:
+                        has_hr = not already_active[1].get("caller_notified")
+                    elif already_disarmed is None:
+                        has_hr = True
+        if has_buffered or has_existing or has_hr:
             found.append(
                 (
                     child_id,
@@ -2119,6 +2419,23 @@ def _apply_incoming_items(
         for judged_text, judged_ref, base_cid, raw_sender, channel in items:
             body_sha = _normalized_body_hash(judged_text)
             canon_sender = _resolve_sender_id(parents, raw_sender)
+            matched_hb_ref = ""
+            handbacks = parents.get("handbacks")
+            if canon_sender and isinstance(handbacks, dict) and canon_sender in handbacks:
+                hb_owner = (parents.get("subagent_parents") or {}).get(canon_sender)
+                hb_entry = handbacks.get(canon_sender)
+                if (
+                    (hb_owner is None or hb_owner == canon_target)
+                    and isinstance(hb_entry, dict)
+                    and (
+                        _normalized_body_hash(str(hb_entry.get("message") or "")) == body_sha
+                        or (judged_ref and hb_entry.get("ref") == judged_ref)
+                    )
+                ):
+                    popped = handbacks.pop(canon_sender, None)
+                    if isinstance(popped, dict):
+                        matched_hb_ref = str(popped.get("ref") or "")
+                    _save_parents(ctx.session_id, parents)
 
             # 1. Null form clears without blocking
             if _is_null_claim(judged_text):
@@ -2149,7 +2466,11 @@ def _apply_incoming_items(
             )
             if active_match is not None:
                 existing_cid, entry = active_match
+                if canon_sender and not entry.get("source_agent_id"):
+                    entry["source_agent_id"] = canon_sender
                 _record_channel_hit(entry, channel, judged_ref, existing_cid)
+                if matched_hb_ref and channel != "post_tool_use":
+                    _record_channel_hit(entry, "post_tool_use", matched_hb_ref, existing_cid)
                 should_notify = (emit_notice or allow_dedup_notice) and not bool(
                     entry.get("caller_notified")
                 )
@@ -2181,7 +2502,11 @@ def _apply_incoming_items(
             )
             if disarmed_match is not None:
                 disarmed_cid, dentry = disarmed_match
+                if canon_sender and not dentry.get("source_agent_id"):
+                    dentry["source_agent_id"] = canon_sender
                 _record_channel_hit(dentry, channel, judged_ref, disarmed_cid)
+                if matched_hb_ref and channel != "post_tool_use":
+                    _record_channel_hit(dentry, "post_tool_use", matched_hb_ref, disarmed_cid)
                 slot_disarmed[disarmed_cid] = dentry
                 slot_state["disarmed_claims"] = slot_disarmed
                 _save_state(ctx.session_id, slot_state, agent_id=canon_target)
@@ -2210,6 +2535,15 @@ def _apply_incoming_items(
                 armed_via=ctx.event,
                 seen_channel=channel,
             )
+            if matched_hb_ref and channel != "post_tool_use":
+                armed_state = _load_state(ctx.session_id, agent_id=canon_target)
+                armed_judged = armed_state.get("judged") or {}
+                armed_entry = armed_judged.get(cid)
+                if isinstance(armed_entry, dict):
+                    _record_channel_hit(armed_entry, "post_tool_use", matched_hb_ref, cid)
+                    armed_judged[cid] = armed_entry
+                    armed_state["judged"] = armed_judged
+                    _save_state(ctx.session_id, armed_state, agent_id=canon_target)
             traces_to_emit.append((cid, judged_ref))
 
             if emit_notice:
@@ -2233,6 +2567,7 @@ def _bridge_foreground_child(
     child_id: str,
     description_id: str,
     call_ref: str,
+    resp: Any = None,
 ) -> list[tuple[str, str]]:
     """Bridge silent SubagentHandback into foreground caller notice without double-arming."""
     if not child_id:
@@ -2287,7 +2622,24 @@ def _bridge_foreground_child(
                 agent_id=caller_id,
             )
             bridged.append((cid, cmd))
-    return bridged
+    if bridged:
+        return bridged
+
+    # Non-root subagent coordinators without UserPromptSubmit fall back to handbackReport if no claim exists yet
+    if caller_id and _is_dispatch_pointer_only(resp) and isinstance(resp, dict):
+        hr = resp.get("handbackReport")
+        if isinstance(hr, dict):
+            hr_text = str(hr.get("text") or "")
+            if hr_text.strip():
+                hr_ref = str(hr.get("toolUseId") or call_ref or child_id)
+                base_cid = description_id or build_id("claim", hr_text)
+                return _apply_incoming_items(
+                    ctx,
+                    [IncomingItem(hr_text, hr_ref, base_cid, child_id, "agent_result")],
+                    caller_id,
+                    emit_notice=True,
+                )
+    return []
 
 
 def subagent_start_gate_notice(ctx: HookContext) -> Result | None:
@@ -2336,7 +2688,7 @@ def hearsay_arm(ctx: HookContext) -> Result | None:
 
     tool_base = _tool_base_lower(ctx.tool)
 
-    # 1. SubagentHandback PostToolUse: child sends report silently into caller's gate slot
+    # 1. SubagentHandback PostToolUse: subagent callers arm silently; Root/unresolved callers buffer until delivery
     if ctx.event == "PostToolUse" and tool_base in ("subagenthandback", "subagent_handback"):
         if _is_failed_tool_response(ctx, _tool_response(ctx)):
             return None
@@ -2346,8 +2698,10 @@ def hearsay_arm(ctx: HookContext) -> Result | None:
             return None
         resolved_caller = _resolve_handback_caller(ctx, child_id)
         tuid = _tool_use_id(ctx) or child_id
-        if resolved_caller is None:
-            _buffer_unresolved_handback(ctx.session_id, child_id, msg, tuid)
+        if not resolved_caller:
+            _buffer_unresolved_handback(
+                ctx.session_id, child_id, msg, tuid, resolved_caller=resolved_caller
+            )
             return None
         base_cid = build_id("claim", msg)
         _apply_incoming_items(
@@ -2396,34 +2750,43 @@ def hearsay_arm(ctx: HookContext) -> Result | None:
         emit_notice=True,
     )
 
-    # 4. Foreground bridge when metadata-only PostToolUse(Agent) / PostToolBatch omits report body
+    # 4. Foreground bridge when PostToolUse(Agent) / PostToolBatch omits or pointer-stubs report body
     if ctx.event == "PostToolUse" and ctx.tool in _DISPATCH_TOOLS:
         resp = _tool_response(ctx)
-        if (
-            isinstance(resp, dict)
-            and resp.get("status") == "completed"
-            and not _response_text(resp).strip()
-        ):
-            child_id = str(resp.get("agentId") or resp.get("agent_id") or "").strip()
+        child_id = (
+            str(resp.get("agentId") or resp.get("agent_id") or "").strip()
+            if isinstance(resp, dict)
+            else ""
+        )
+        if _should_bridge_foreground_dispatch(caller_id, resp):
             desc_id = _call_description_id(_tool_input(ctx), _tool_use_id(ctx))
             notice_items.extend(
-                _bridge_foreground_child(ctx, caller_id, child_id, desc_id, _tool_use_id(ctx))
+                _bridge_foreground_child(
+                    ctx, caller_id, child_id, desc_id, _tool_use_id(ctx), resp=resp
+                )
             )
+        elif not caller_id and _is_dispatch_pointer_only(resp) and child_id:
+            _reconcile_buffered_root_handback(ctx.session_id, child_id)
     elif ctx.event == "PostToolBatch" and ctx.client != "agy":
         for call in ctx.tool_calls:
             if not isinstance(call, dict) or call.get("tool_name") not in _DISPATCH_TOOLS:
                 continue
             resp = call.get("tool_response") or call.get("toolResponse")
-            if not (isinstance(resp, dict) and resp.get("status") == "completed"):
-                continue
-            if _response_text(resp).strip():
-                continue
-            child_id = str(resp.get("agentId") or resp.get("agent_id") or "").strip()
-            call_id = str(call.get("tool_use_id") or call.get("id") or "")
-            desc_id = _call_description_id(call.get("tool_input") or call.get("toolInput"), call_id)
-            notice_items.extend(
-                _bridge_foreground_child(ctx, caller_id, child_id, desc_id, call_id)
+            child_id = (
+                str(resp.get("agentId") or resp.get("agent_id") or "").strip()
+                if isinstance(resp, dict)
+                else ""
             )
+            if _should_bridge_foreground_dispatch(caller_id, resp):
+                call_id = str(call.get("tool_use_id") or call.get("id") or "")
+                desc_id = _call_description_id(
+                    call.get("tool_input") or call.get("toolInput"), call_id
+                )
+                notice_items.extend(
+                    _bridge_foreground_child(ctx, caller_id, child_id, desc_id, call_id, resp=resp)
+                )
+            elif not caller_id and _is_dispatch_pointer_only(resp) and child_id:
+                _reconcile_buffered_root_handback(ctx.session_id, child_id)
 
     if not notice_items:
         return None

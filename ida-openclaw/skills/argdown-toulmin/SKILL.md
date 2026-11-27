@@ -7,7 +7,7 @@ description: The formal grammar and presentation standard for standalone `.argdo
 
 How a standalone formal Argdown document is written. Every standalone `.argdown` file authored in `argument-extraction`, `argument-audit`, or `argument-map` follows this standard.
 
-Agent-to-agent communication, task handbacks, and formal compliance evaluations do **not** use this formal `.argdown` dialect; they follow [`../premise-check/SKILL.md`](../premise-check/SKILL.md) (unfenced prose Argdown blocks with every premise broken out as its own sourced claim and natural punctuation -- without `{metadata}` blocks, comma bans, underscore escaping, or CLI validation).
+Agent-to-agent communication, task handbacks, and formal compliance evaluations do **not** use this formal `.argdown` dialect; they follow `ida:premise-check` (unfenced prose Argdown blocks with every premise broken out as its own sourced claim and natural punctuation -- without `{metadata}` blocks, comma bans, underscore escaping, or CLI validation).
 
 ## Document
 
@@ -53,7 +53,7 @@ Attach a relation to the argument that concludes or first states the claim, neve
 - `source`: the verbatim quote (line breaks joined by single spaces, original markup kept) or the exact observed value. A derived intermediate conclusion has no `source` unless the text states it verbatim.
 - `reason`: for `"assumed"` only, the gap the item bridges. An assumed item has no `pointer` or `source`.
 
-For agent-to-agent communication, task handbacks, and evaluations, omit `{metadata}` blocks and write unfenced prose Argdown blocks with every premise broken out as its own sourced claim per [`../premise-check/SKILL.md`](../premise-check/SKILL.md).
+For agent-to-agent communication, task handbacks, and evaluations, omit `{metadata}` blocks and write unfenced prose Argdown blocks with every premise broken out as its own sourced claim per `ida:premise-check`.
 
 An `"observed"` or `"reported-by"` item quotes its deciding value or text (`status: MERGED`, `p = 0.004`) inline or in `source`, because a bare pointer shows only that something exists.
 

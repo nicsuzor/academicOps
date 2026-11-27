@@ -403,7 +403,6 @@ describe("Mini App Tabs (specification FR-4.3 to FR-4.7)", () => {
       voiceSpeakCmd: "",
       port: 0,
       stateDir: testStateDir,
-      socketPath: join(testStateDir, "bridge.sock"),
       githubToken: "ghp_test_readonly_token",
       miniAppUrl: "https://ida.example.ts.net",
       botCommands: [],

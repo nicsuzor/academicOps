@@ -5,14 +5,12 @@ import { PluginStore } from "../src/store.js";
 import { QuestionBroker } from "../src/telegram/questions.js";
 import { PermissionRelay } from "../src/mcp/permissions.js";
 import { TelegramBotClient } from "../src/telegram/bot.js";
-import { ContainerGateway } from "../src/gateway.js";
 import { PluginConfig } from "../src/config.js";
 import { MCP_TOOLS } from "../src/mcp/tools.js";
 import { StdioMcpServer } from "../src/mcp/server.js";
 import { rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { createConnection } from "node:net";
 
 describe("Shared Telegram Channel Core & Specification Compliance", () => {
   const testStateDir = join(tmpdir(), "ida-tg-shared-" + Math.random().toString(36).substring(7));
@@ -39,7 +37,6 @@ describe("Shared Telegram Channel Core & Specification Compliance", () => {
       voiceSpeakCmd: "",
       port: 0,
       stateDir: testStateDir,
-      socketPath: join(testStateDir, "bridge.sock"),
       miniAppUrl: "https://ida.example.ts.net",
       botCommands: [],
       autoInterrupt: true,
@@ -465,43 +462,5 @@ describe("Shared Telegram Channel Core & Specification Compliance", () => {
     });
     const editParsed = JSON.parse((editRes?.result as any)?.content[0]?.text);
     expect(editParsed.success).toBe(true);
-  });
-
-  // --- Container Gateway Transport ---
-
-  test("Container Gateway starts IPC bridge socket and handles outbound tool calls", async () => {
-    const socketPath = join(testStateDir, "gw_bridge.sock");
-    const config = createTestConfig({ socketPath, botToken: "" });
-    const gateway = new ContainerGateway({ config });
-
-    await gateway.start();
-
-    // Send IPC tool call over Unix domain socket
-    const ipcResponse = await new Promise<string>((resolve, reject) => {
-      const client = createConnection(socketPath, () => {
-        const payload = {
-          type: "ask_user",
-          questions: [
-            {
-              question: "Ready to proceed?",
-              options: [{ label: "Proceed" }, { label: "Cancel" }],
-            },
-          ],
-        };
-        client.write(JSON.stringify(payload) + "\n");
-      });
-
-      client.on("data", (data) => {
-        resolve(data.toString());
-        client.end();
-      });
-      client.on("error", reject);
-    });
-
-    const parsed = JSON.parse(ipcResponse.trim());
-    expect(parsed.status).toBe("posted");
-    expect(parsed.question_ids.length).toBe(1);
-
-    gateway.stop();
   });
 });

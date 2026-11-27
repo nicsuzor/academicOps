@@ -1,0 +1,16 @@
+{
+  "name": "crew",
+  "description": "The crew (james, pauli, marsha), the axioms skill, the working skills (pull, reify, dump, q, workflow-library and the rest), session setup, PKB prompt grounding, and OpenTelemetry tracing hooks.",
+  "author": {
+    "name": "Nicolas Suzor"
+  },
+  "license": "MIT",
+  "keywords": [
+    "academicOps",
+    "aops",
+    "crew",
+    "axioms",
+    "workflows"
+  ],
+  "version": "1.14.0-beta.1"
+}

@@ -7,7 +7,7 @@ import { rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
+describe("Questions are never assumed: Asynchronous Broker", () => {
   const testStateDir = join(tmpdir(), "ida-telegram-q-test-" + Math.random().toString(36).substring(7));
 
   afterEach(() => {
@@ -99,7 +99,6 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       botToken: "test-token",
       allowFrom: [999],
       stateDir: testStateDir,
-      socketPath: join(testStateDir, "hook.sock"),
       port: 0,
       miniAppUrl: "https://ida.example.ts.net",
       isPrimary: true,
@@ -356,7 +355,6 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
         botToken: "test-token",
         allowFrom: [999],
         stateDir: testStateDir,
-        socketPath: join(testStateDir, "hook.sock"),
         port: 8093,
         miniAppUrl: "https://ida.example.ts.net",
         isPrimary: true,
@@ -384,76 +382,6 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     expect(editedCards[0].text).toContain("Selected: Ship now (Recommended) ✅");
   });
 
-  test("PreToolUse hook on AskUserQuestion posts question to socket and returns a decision Claude Code accepts (block / permissionDecision deny)", async () => {
-    const { createServer } = await import("node:net");
-    const { spawn } = await import("node:child_process");
-    const { mkdirSync } = await import("node:fs");
-
-    mkdirSync(testStateDir, { recursive: true });
-    const socketPath = join(testStateDir, "bridge.sock");
-    let receivedSocketReq: any = null;
-
-    const server = createServer((client) => {
-      let buf = "";
-      client.on("data", (chunk) => {
-        buf += chunk.toString();
-        if (buf.includes("\n")) {
-          receivedSocketReq = JSON.parse(buf.trim());
-          client.write(JSON.stringify({ status: "ok", questionId: "q_hook123", questionIds: ["q_hook123"] }) + "\n");
-        }
-      });
-    });
-
-    await new Promise<void>((resolve) => server.listen(socketPath, () => resolve()));
-
-    try {
-      const hookScript = join(import.meta.dir, "..", "hooks", "ask-user-question.js");
-      const stdout = await new Promise<string>((resolve, reject) => {
-        const proc = spawn("node", [hookScript], {
-          env: {
-            ...process.env,
-            IDA_TELEGRAM_ROLE: "primary",
-            STATE_DIR: testStateDir,
-            SOCKET_PATH: socketPath,
-          },
-        });
-        let out = "";
-        proc.stdout.on("data", (d) => (out += d.toString()));
-        proc.on("error", reject);
-        proc.on("close", () => resolve(out));
-        proc.stdin.write(
-          JSON.stringify({
-            tool_name: "AskUserQuestion",
-            turn_id: "turn_hook_42",
-            tool_input: {
-              questions: [
-                {
-                  question: "Proceed with deployment?",
-                  options: [{ label: "Yes (Recommended)" }, { label: "No" }],
-                },
-              ],
-            },
-          }) + "\n"
-        );
-        proc.stdin.end();
-      });
-
-      expect(receivedSocketReq).not.toBeNull();
-      expect(receivedSocketReq.type).toBe("ask_user");
-
-      const parsed = JSON.parse(stdout.trim());
-      // Claude Code PreToolUse rejects decision: "deny"; valid top-level decisions are "approve" | "block"
-      expect(["approve", "block"]).toContain(parsed.decision);
-      expect(parsed.decision).toBe("block");
-      expect(parsed.reason).toContain("q_hook123");
-      expect(parsed.reason).toContain("posted to the user over Telegram");
-      expect(parsed.reason).not.toContain("Nic");
-      expect(parsed.hookSpecificOutput?.permissionDecision).toBe("deny");
-    } finally {
-      server.close();
-    }
-  });
-
   test("emits answered questions as question_answered carrying turn_id", async () => {
     const { StdioMcpServer } = await import("../src/mcp/server.js");
     const { TelegramBotClient } = await import("../src/telegram/bot.js");
@@ -466,7 +394,6 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       role: "primary",
       allowFrom: [999],
       stateDir: testStateDir,
-      socketPath: join(testStateDir, "hook.sock"),
       port: 0,
       miniAppUrl: "https://ida.example.ts.net",
       isPrimary: true,
@@ -553,7 +480,6 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       maxChatChars: 1200,
       port: 8093,
       stateDir: testStateDir,
-      socketPath: join(testStateDir, "sock.sock"),
       voiceReplies: "off" as const,
       botCommands: [],
     };
@@ -625,7 +551,6 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
         botToken: "test-token",
         allowFrom: [999],
         stateDir: testStateDir,
-        socketPath: join(testStateDir, "hook.sock"),
         port: 8093,
         miniAppUrl: "https://ida.example.ts.net",
         isPrimary: true,
@@ -693,7 +618,6 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
         botToken: "test-token",
         allowFrom: [999],
         stateDir: testStateDir,
-        socketPath: join(testStateDir, "hook.sock"),
         port: 8093,
         miniAppUrl: "https://ida.example.ts.net",
         isPrimary: true,
@@ -771,7 +695,6 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
         botToken: "test-token",
         allowFrom: [999],
         stateDir: testStateDir,
-        socketPath: join(testStateDir, "hook.sock"),
         port: 8093,
         miniAppUrl: "https://ida.example.ts.net",
         isPrimary: true,
@@ -803,7 +726,6 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       botToken: "test-token",
       allowFrom: [999],
       stateDir: testStateDir,
-      socketPath: join(testStateDir, "hook.sock"),
       port: 0,
       miniAppUrl: "https://ida.example.ts.net",
       isPrimary: true,
@@ -890,82 +812,6 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     expect(broker.getPendingQuestions().length).toBe(2);
   });
 
-  test("socket server handles ask_user with mini_app_only: true and detail, routing to Mini App without chat cards", async () => {
-    const { createConnection } = await import("node:net");
-    const { createBridgeServer } = await import("../server.js");
-    const { QuestionBroker } = await import("../src/telegram/questions.js");
-    const { TelegramBotClient } = await import("../src/telegram/bot.js");
-    const { PluginStore } = await import("../src/store.js");
-    const { PermissionRelay } = await import("../src/mcp/permissions.js");
-
-    const socketPath = join(testStateDir, "test_server.sock");
-    const config = {
-      botToken: "test-token",
-      apiBaseUrl: "https://api.telegram.org",
-      role: "primary",
-      isPrimary: true,
-      allowFrom: [999],
-      maxChatChars: 1200,
-      port: 8094,
-      stateDir: testStateDir,
-      socketPath,
-      voiceReplies: "off" as const,
-      botCommands: [],
-      miniAppUrl: "https://ida.example.ts.net",
-    };
-
-    const store = new PluginStore(testStateDir);
-    const broker = new QuestionBroker(testStateDir);
-    const permRelay = new PermissionRelay();
-    const sentCards: any[] = [];
-    const bot = new TelegramBotClient(config as any, broker, permRelay, () => {});
-    (bot as any).sendQuestionCard = async (chatId: number, qid: string, card: any) => {
-      sentCards.push({ chatId, qid, card });
-    };
-
-    const server = createBridgeServer(config as any, broker, bot);
-    await new Promise<void>((resolve) => server.listen(socketPath, () => resolve()));
-
-    try {
-      const client = createConnection(socketPath);
-      const resPromise = new Promise<string>((resolve) => {
-        client.on("data", (d) => resolve(d.toString()));
-      });
-
-      client.write(
-        JSON.stringify({
-          type: "ask_user",
-          mini_app_only: true,
-          questions: [
-            {
-              question: "Socket question for Mini App only?",
-              header: "Socket Header",
-              detail: "Deep socket background detail",
-              options: [{ label: "Yes" }, { label: "No" }],
-            },
-          ],
-        }) + "\n"
-      );
-
-      const rawRes = await resPromise;
-      const res = JSON.parse(rawRes.trim());
-      expect(res.status).toBe("ok");
-
-      // Verify no question cards sent to chat
-      expect(sentCards.length).toBe(0);
-
-      // Verify question is pending in broker with detail and mini_app_only
-      const pending = broker.getPendingQuestions();
-      const socketQ = pending.find((q) => q.question === "Socket question for Mini App only?");
-      expect(socketQ).toBeDefined();
-      expect(socketQ!.detail).toBe("Deep socket background detail");
-      expect((socketQ as any).mini_app_only).toBe(true);
-      expect(socketQ!.detailsId).toBeDefined();
-    } finally {
-      server.close();
-    }
-  });
-
   test("AC2: a question answered in the asking session leaves the outstanding list", async () => {
     const { StdioMcpServer } = await import("../src/mcp/server.js");
     const { handleApiRequest } = await import("../src/web/routes.js");
@@ -979,7 +825,6 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       botToken: "test-token",
       allowFrom: [999],
       stateDir: testStateDir,
-      socketPath: join(testStateDir, "hook.sock"),
       port: 8093,
       miniAppUrl: "https://ida.example.ts.net",
       isPrimary: true,
@@ -1055,7 +900,6 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       botToken: "test-token",
       allowFrom: [999],
       stateDir: testStateDir,
-      socketPath: join(testStateDir, "hook.sock"),
       port: 8093,
       miniAppUrl: "https://ida.example.ts.net",
       isPrimary: true,
@@ -1157,7 +1001,6 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       botToken: "test-token",
       allowFrom: [999],
       stateDir: testStateDir,
-      socketPath: join(testStateDir, "hook.sock"),
       port: 8093,
       miniAppUrl: "https://ida.example.ts.net",
       isPrimary: true,
@@ -1203,263 +1046,10 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     expect(found.status).toBe("pending");
   });
 
-  test("AC1: a test in which a question's delivery fails shows the failure surfaced to the asking agent", async () => {
-    const { createBridgeServer } = await import("../server.js");
-    const { spawn } = await import("node:child_process");
-    const { mkdirSync, unlinkSync, existsSync } = await import("node:fs");
-
-    mkdirSync(testStateDir, { recursive: true });
-    const socketPath = join(testStateDir, "ac1_delivery_fail.sock");
-    if (existsSync(socketPath)) unlinkSync(socketPath);
-
-    const broker = new QuestionBroker(testStateDir);
-    const channelEvents: Array<{ content: string; meta: Record<string, unknown> }> = [];
-
-    // Mock bot whose delivery to Telegram fails
-    const mockBot = {
-      getLastThreadId: () => undefined,
-      sendQuestionCard: async (chatId: number, qid: string) => {
-        broker.markDeliveryFailed(qid, "Bad Request: chat not found");
-        return { ok: false, error: "Bad Request: chat not found" };
-      },
-    } as any;
-
-    const config = {
-      botToken: "test-token",
-      allowFrom: [999],
-      stateDir: testStateDir,
-      socketPath,
-      port: 8093,
-      miniAppUrl: "https://ida.example.test",
-      isPrimary: true,
-      maxChatChars: 1200,
-      voiceTranscribeCmd: "",
-      voiceSpeakCmd: "",
-      voiceReplies: "off" as const,
-      botCommands: [],
-      instance: "prime",
-    };
-
-    const server = createBridgeServer(
-      config as any,
-      broker,
-      mockBot,
-      (content, meta) => {
-        channelEvents.push({ content, meta });
-      }
-    );
-
-    await new Promise<void>((resolve) => server.listen(socketPath, () => resolve()));
-
-    try {
-      const hookScript = join(import.meta.dir, "..", "hooks", "ask-user-question.js");
-      const { stdout, stderr, exitCode } = await new Promise<{ stdout: string; stderr: string; exitCode: number | null }>((resolve) => {
-        const proc = spawn("node", [hookScript], {
-          env: {
-            ...process.env,
-            IDA_TELEGRAM_ROLE: "primary",
-            STATE_DIR: testStateDir,
-            SOCKET_PATH: socketPath,
-          },
-        });
-        let out = "";
-        let err = "";
-        proc.stdout.on("data", (d) => (out += d.toString()));
-        proc.stderr.on("data", (d) => (err += d.toString()));
-        proc.on("close", (code) => resolve({ stdout: out, stderr: err, exitCode: code }));
-        proc.stdin.write(
-          JSON.stringify({
-            tool_name: "AskUserQuestion",
-            turn_id: "turn_ac1_fail",
-            tool_input: {
-              questions: [
-                {
-                  question: "Undelivered question?",
-                  options: [{ label: "Yes" }, { label: "No" }],
-                },
-              ],
-            },
-          }) + "\n"
-        );
-        proc.stdin.end();
-      });
-
-      expect(exitCode).not.toBe(0);
-      expect(stderr).toContain("Bad Request: chat not found");
-      expect(stdout).not.toContain("posted to the user over Telegram");
-      expect(channelEvents.some((e) => e.meta.event === "question_delivery_failed")).toBe(true);
-
-      const pending = broker.getPendingQuestions();
-      expect(pending.some((q) => q.question === "Undelivered question?")).toBe(false);
-    } finally {
-      server.close();
-      if (existsSync(socketPath)) unlinkSync(socketPath);
-    }
-  });
-
-  test("PreToolUse hook surfaces delivery failure when bridge socket returns malformed or non-JSON data", async () => {
-    const { createServer } = await import("node:net");
-    const { spawn } = await import("node:child_process");
-    const { mkdirSync, unlinkSync, existsSync } = await import("node:fs");
-
-    mkdirSync(testStateDir, { recursive: true });
-    const socketPath = join(testStateDir, "malformed_hook.sock");
-    if (existsSync(socketPath)) unlinkSync(socketPath);
-
-    const server = createServer((client) => {
-      client.on("data", () => {
-        client.write("MALFORMED_NON_JSON_RESPONSE\n");
-      });
-    });
-
-    await new Promise<void>((resolve) => server.listen(socketPath, () => resolve()));
-
-    try {
-      const hookScript = join(import.meta.dir, "..", "hooks", "ask-user-question.js");
-      const { stdout, stderr, exitCode } = await new Promise<{ stdout: string; stderr: string; exitCode: number | null }>((resolve) => {
-        const proc = spawn("node", [hookScript], {
-          env: {
-            ...process.env,
-            IDA_TELEGRAM_ROLE: "primary",
-            STATE_DIR: testStateDir,
-            SOCKET_PATH: socketPath,
-          },
-        });
-        let out = "";
-        let err = "";
-        proc.stdout.on("data", (d) => (out += d.toString()));
-        proc.stderr.on("data", (d) => (err += d.toString()));
-        proc.on("close", (code) => resolve({ stdout: out, stderr: err, exitCode: code }));
-        proc.stdin.write(
-          JSON.stringify({
-            tool_name: "AskUserQuestion",
-            turn_id: "turn_malformed_test",
-            tool_input: {
-              questions: [
-                {
-                  question: "Question with broken socket?",
-                  options: [{ label: "Yes" }, { label: "No" }],
-                },
-              ],
-            },
-          }) + "\n"
-        );
-        proc.stdin.end();
-      });
-
-      expect(exitCode).not.toBe(0);
-      expect(stderr).toContain("failed to parse socket response");
-      expect(stdout).not.toContain("posted to the user over Telegram");
-    } finally {
-      server.close();
-      if (existsSync(socketPath)) unlinkSync(socketPath);
-    }
-  });
-
-  test("AC2: a delivered question raises no such signal", async () => {
-    const { createBridgeServer } = await import("../server.js");
-    const { spawn } = await import("node:child_process");
-    const { mkdirSync, unlinkSync, existsSync } = await import("node:fs");
-
-    mkdirSync(testStateDir, { recursive: true });
-    const socketPath = join(testStateDir, "ac2_delivery_ok.sock");
-    if (existsSync(socketPath)) unlinkSync(socketPath);
-
-    const broker = new QuestionBroker(testStateDir);
-    const channelEvents: Array<{ content: string; meta: Record<string, unknown> }> = [];
-
-    // Mock bot whose delivery to Telegram succeeds
-    const mockBot = {
-      getLastThreadId: () => undefined,
-      sendQuestionCard: async (chatId: number, qid: string) => {
-        broker.setMessageId(qid, 54321);
-        return { ok: true, messageId: 54321, result: { message_id: 54321 } };
-      },
-    } as any;
-
-    const config = {
-      botToken: "test-token",
-      allowFrom: [999],
-      stateDir: testStateDir,
-      socketPath,
-      port: 8093,
-      miniAppUrl: "https://ida.example.test",
-      isPrimary: true,
-      maxChatChars: 1200,
-      voiceTranscribeCmd: "",
-      voiceSpeakCmd: "",
-      voiceReplies: "off" as const,
-      botCommands: [],
-      instance: "prime",
-    };
-
-    const server = createBridgeServer(
-      config as any,
-      broker,
-      mockBot,
-      (content, meta) => {
-        channelEvents.push({ content, meta });
-      }
-    );
-
-    await new Promise<void>((resolve) => server.listen(socketPath, () => resolve()));
-
-    try {
-      const hookScript = join(import.meta.dir, "..", "hooks", "ask-user-question.js");
-      const stdout = await new Promise<string>((resolve, reject) => {
-        const proc = spawn("node", [hookScript], {
-          env: {
-            ...process.env,
-            IDA_TELEGRAM_ROLE: "primary",
-            STATE_DIR: testStateDir,
-            SOCKET_PATH: socketPath,
-          },
-        });
-        let out = "";
-        proc.stdout.on("data", (d) => (out += d.toString()));
-        proc.on("error", reject);
-        proc.on("close", () => resolve(out));
-        proc.stdin.write(
-          JSON.stringify({
-            tool_name: "AskUserQuestion",
-            turn_id: "turn_ac2_ok",
-            tool_input: {
-              questions: [
-                {
-                  question: "Delivered question?",
-                  options: [{ label: "Yes" }, { label: "No" }],
-                },
-              ],
-            },
-          }) + "\n"
-        );
-        proc.stdin.end();
-      });
-
-      const parsed = JSON.parse(stdout.trim());
-      expect(parsed.decision).toBe("block");
-      // Succeeded delivery reports posted to user and raises no failure signal
-      expect(parsed.reason).toContain("posted to the user over Telegram");
-      expect(parsed.reason).not.toContain("Failed to deliver");
-      expect(channelEvents.some((e) => e.meta.event === "question_delivery_failed")).toBe(false);
-
-      const pending = broker.getPendingQuestions();
-      const found = pending.find((q) => q.question === "Delivered question?");
-      expect(found).toBeDefined();
-      expect(found?.messageId).toBe(54321);
-      expect(found?.status).toBe("pending");
-    } finally {
-      server.close();
-      if (existsSync(socketPath)) unlinkSync(socketPath);
-    }
-  });
-
-  test("AC1 & AC2: reproduces vanished buttons when bridge server captures null bot at startup, and verifies fix delivers card with buttons and messageId", async () => {
-    const { createConnection } = await import("node:net");
-    const { createBridgeServer } = await import("../server.js");
+  test("AC1 & AC2: channel core created before the bot delivers the card with buttons and messageId once the bot is attached", async () => {
+    const { SharedTelegramChannelCore } = await import("../src/core/channel-core.js");
     const { TelegramBotClient } = await import("../src/telegram/bot.js");
 
-    const socketPath = join(testStateDir, "repro_bridge.sock");
     const config = {
       botToken: "test-token",
       apiBaseUrl: "https://api.telegram.org",
@@ -1469,7 +1059,6 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       maxChatChars: 1200,
       port: 8095,
       stateDir: testStateDir,
-      socketPath,
       voiceReplies: "off" as const,
       botCommands: [],
       miniAppUrl: "https://ida.example.ts.net",
@@ -1480,58 +1069,40 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     const permRelay = new PermissionRelay();
     const sentCards: any[] = [];
 
-    // Simulate startup sequence in server.ts:
-    // bot starts as null, server is created with getter/bot, bot is instantiated shortly after
-    let bot: TelegramBotClient | null = null;
+    // server.ts creates the channel core with no bot, then attaches the bot once it exists
+    const channelCore = new SharedTelegramChannelCore({ config: config as any, store, broker, bot: null, permRelay });
 
-    // Passing getter (() => bot) so createBridgeServer resolves live bot instance dynamically
-    const server = createBridgeServer(config as any, broker, (() => bot) as any);
-    await new Promise<void>((resolve) => server.listen(socketPath, () => resolve()));
-
-    // Bot is instantiated after server starts listening (exact server.ts startup lifecycle)
-    bot = new TelegramBotClient(config as any, broker, permRelay, () => {});
+    const bot = new TelegramBotClient(config as any, broker, permRelay, () => {});
     (bot as any).sendQuestionCard = async (chatId: number, qid: string, card: any) => {
       sentCards.push({ chatId, qid, card });
       broker.setMessageId(qid, 42001);
       return { ok: true, result: { message_id: 42001 } };
     };
 
-    try {
-      const client = createConnection(socketPath);
-      const resPromise = new Promise<string>((resolve) => {
-        client.on("data", (d) => resolve(d.toString()));
-      });
+    channelCore.bot = bot;
 
-      client.write(
-        JSON.stringify({
-          type: "ask_user",
-          questions: [
-            {
-              question: "Confirm deployment of fix for vanished buttons?",
-              header: "Deployment Question",
-              options: [{ label: "Approve (Recommended)" }, { label: "Reject" }],
-            },
-          ],
-        }) + "\n"
-      );
+    const res: any = await channelCore.handleIpcMessage({
+      type: "ask_user",
+      questions: [
+        {
+          question: "Confirm deployment of fix for vanished buttons?",
+          header: "Deployment Question",
+          options: [{ label: "Approve (Recommended)" }, { label: "Reject" }],
+        },
+      ],
+    });
+    expect(res.status).toBe("posted");
 
-      const rawRes = await resPromise;
-      const res = JSON.parse(rawRes.trim());
-      expect(res.status).toBe("ok");
+    // Verify chat card WAS sent and buttons are present
+    expect(sentCards.length).toBe(1);
+    expect(sentCards[0].chatId).toBe(999);
+    expect(sentCards[0].card.buttons.length).toBeGreaterThanOrEqual(2);
+    expect(sentCards[0].card.buttons[0].text).toContain("Approve (Recommended)");
 
-      // Verify chat card WAS sent and buttons are present
-      expect(sentCards.length).toBe(1);
-      expect(sentCards[0].chatId).toBe(999);
-      expect(sentCards[0].card.buttons.length).toBeGreaterThanOrEqual(2);
-      expect(sentCards[0].card.buttons[0].text).toContain("Approve (Recommended)");
-
-      // Verify messageId was recorded on the stored question
-      const storedQ = broker.getQuestion(res.questionId);
-      expect(storedQ).toBeDefined();
-      expect(storedQ!.messageId).toBe(42001);
-    } finally {
-      server.close();
-    }
+    // Verify messageId was recorded on the stored question
+    const storedQ = broker.getQuestion(res.questionId);
+    expect(storedQ).toBeDefined();
+    expect(storedQ!.messageId).toBe(42001);
   });
 
   test("AC2: ask_user returns error and does not report question posted when Telegram API fails", async () => {
@@ -1541,7 +1112,6 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       botToken: "test-token",
       allowFrom: [999],
       stateDir: testStateDir,
-      socketPath: join(testStateDir, "err_hook.sock"),
       port: 0,
       miniAppUrl: "https://ida.example.ts.net",
       isPrimary: true,
@@ -1607,7 +1177,6 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       botToken: "test-token",
       allowFrom: [999],
       stateDir: testStateDir,
-      socketPath: join(testStateDir, "mcp_test.sock"),
       port: 8093,
       miniAppUrl: "https://ida.example.test",
       isPrimary: true,
@@ -1736,106 +1305,6 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
     expect(stuckDoc?.deliveryError).toContain("no Telegram messageId");
   });
 
-  test("AC2: PreToolUse hook on AskUserQuestion fails fast when socket does not exist or connection fails", async () => {
-    const { spawn } = await import("node:child_process");
-    const { mkdirSync } = await import("node:fs");
-
-    mkdirSync(testStateDir, { recursive: true });
-    const missingSocketPath = join(testStateDir, "nonexistent.sock");
-    const hookScript = join(import.meta.dir, "..", "hooks", "ask-user-question.js");
-
-    const { stderr, exitCode } = await new Promise<{ stderr: string; exitCode: number | null }>((resolve) => {
-      const proc = spawn("node", [hookScript], {
-        env: {
-          ...process.env,
-          IDA_TELEGRAM_ROLE: "primary",
-          STATE_DIR: testStateDir,
-          SOCKET_PATH: missingSocketPath,
-        },
-      });
-      let stderrData = "";
-      proc.stderr.on("data", (d) => (stderrData += d.toString()));
-      proc.on("close", (code) => resolve({ stderr: stderrData, exitCode: code }));
-      proc.stdin.write(
-        JSON.stringify({
-          tool_name: "AskUserQuestion",
-          turn_id: "turn_missing_sock",
-          tool_input: {
-            questions: [{ question: "Missing socket test?", options: [{ label: "OK" }] }],
-          },
-        }) + "\n"
-      );
-      proc.stdin.end();
-    });
-
-    expect(exitCode).not.toBe(0);
-    expect(stderr).toContain("Telegram bridge socket not found");
-  });
-
-  test("AC2: PreToolUse hook on AskUserQuestion fails fast on socket delivery error instead of claiming delivery", async () => {
-    const { createServer } = await import("node:net");
-    const { spawn } = await import("node:child_process");
-    const { mkdirSync } = await import("node:fs");
-
-    mkdirSync(testStateDir, { recursive: true });
-    const socketPath = join(testStateDir, "err_bridge.sock");
-
-    // Server returns an error response indicating delivery failure
-    const server = createServer((client) => {
-      let buf = "";
-      client.on("data", (chunk) => {
-        buf += chunk.toString();
-        if (buf.includes("\n")) {
-          client.write(JSON.stringify({ status: "error", error: "Failed to deliver question card over Telegram: chat not found" }) + "\n");
-        }
-      });
-    });
-
-    await new Promise<void>((resolve) => server.listen(socketPath, () => resolve()));
-
-    try {
-      const hookScript = join(import.meta.dir, "..", "hooks", "ask-user-question.js");
-      const { stdout, stderr, exitCode } = await new Promise<{ stdout: string; stderr: string; exitCode: number | null }>((resolve) => {
-        const proc = spawn("node", [hookScript], {
-          env: {
-            ...process.env,
-            IDA_TELEGRAM_ROLE: "primary",
-            STATE_DIR: testStateDir,
-            SOCKET_PATH: socketPath,
-          },
-        });
-        let stdoutData = "";
-        let stderrData = "";
-        proc.stdout.on("data", (d) => (stdoutData += d.toString()));
-        proc.stderr.on("data", (d) => (stderrData += d.toString()));
-        proc.on("close", (code) => resolve({ stdout: stdoutData, stderr: stderrData, exitCode: code }));
-        proc.stdin.write(
-          JSON.stringify({
-            tool_name: "AskUserQuestion",
-            turn_id: "turn_err_99",
-            tool_input: {
-              questions: [
-                {
-                  question: "Failing question test",
-                  options: [{ label: "Option 1" }],
-                },
-              ],
-            },
-          }) + "\n"
-        );
-        proc.stdin.end();
-      });
-
-      // Hook must fail fast (exit non-zero) and surface error on stderr
-      expect(exitCode).not.toBe(0);
-      expect(stderr).toContain("Failed to deliver question card over Telegram");
-      // Must NOT claim question was posted to user
-      expect(stdout).not.toContain("posted to the user over Telegram");
-    } finally {
-      server.close();
-    }
-  });
-
   test("AC1.3: sendQuestionCard never downgrades failed sendWidget silently", async () => {
     const { TelegramBotClient } = await import("../src/telegram/bot.js");
 
@@ -1843,7 +1312,6 @@ describe("Questions are never assumed: Asynchronous Broker and Hook", () => {
       botToken: "test-token",
       allowFrom: [999],
       stateDir: testStateDir,
-      socketPath: join(testStateDir, "fallback_hook.sock"),
       port: 0,
       miniAppUrl: "https://ida.example.ts.net",
       isPrimary: true,

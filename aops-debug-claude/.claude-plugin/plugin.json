@@ -5,5 +5,11 @@
     "name": "Nicolas Suzor"
   },
   "license": "MIT",
-  "version": "1.13.2"
+  "keywords": [
+    "academicOps",
+    "aops",
+    "debug",
+    "hooks"
+  ],
+  "version": "1.14.0-beta.1"
 }

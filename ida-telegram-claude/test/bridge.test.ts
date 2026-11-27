@@ -87,7 +87,6 @@ describe("Mini App Channel Bridge (specs/telegram/mini-app-dashboard-integration
       voiceSpeakCmd: "",
       port: 0,
       stateDir: testStateDir,
-      socketPath: join(testStateDir, "bridge.sock"),
       githubToken: "ghp_test_readonly_token",
       miniAppUrl: "https://ida.example.ts.net",
       botCommands: [],

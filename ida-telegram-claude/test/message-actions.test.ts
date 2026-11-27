@@ -498,7 +498,7 @@ describe("Message Actions: Logic Check and Explain Buttons (AC1, AC2)", () => {
         "answers:",
         "  sara-sub-1: 3",
         "notes:",
-        "  b: plugins/rbg/skills/axioms/reasons.md",
+        "  b: plugins/crew/skills/axioms/reasons.md",
         "===",
         "",
         "(1) RBG review judged the compliance axioms satisfied. -- rule audit ^b",

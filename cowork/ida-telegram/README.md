@@ -8,7 +8,7 @@ Connects Telegram chats, forum topics, voice notes, Bot API 10.1-10.4 Rich Messa
 flowchart LR
     User["User on Telegram / Mini App"] -->|"Message, Voice, Reaction, Widget Query, Stop"| Poller["Primary Poller & Auth Guard"]
     Poller -->|"Normalized Channel Event"| Agent["Primary Agent Session"]
-    Hook["PreToolUse: AskUserQuestion"] -->|"Local IPC Socket"| Broker["Question Broker & Store"]
+    Agent -->|"ask_user"| Broker["Question Broker & Store"]
     Agent -->|"send_rich_message, send_message_draft, edit_message"| Out["Telegram Bot API 10.1-10.4"]
     Agent -->|"ask_user, send_widget, edit_message_widget_data, answer_widget_query"| Out
     Agent -->|"Media, Polls, Threads, Reactions"| Out
@@ -18,7 +18,7 @@ flowchart LR
     MiniApp["Loopback Mini App Server (/api/app/*)"] -->|"SSE Updates & Actions"| User
 ```
 
-- **Role gating:** Only the primary instance (`IDA_TELEGRAM_ROLE=primary`) registers tools, acquires the host polling lock, exposes the loopback Mini App API, and relays `AskUserQuestion` hook calls; non-primary instances remain inert.
+- **Role gating:** Only the primary instance (`IDA_TELEGRAM_ROLE=primary`) registers tools, acquires the host polling lock, and exposes the loopback Mini App API; non-primary instances remain inert.
 - **Channel transport:** Inbound Telegram updates from allowlisted user IDs mark arrival with `👀`, transcribe voice notes or fetch attachments, and deliver events into the agent turn queue. Outbound answers and reports use Rich Messages (`send_rich_message`) or private-chat streaming drafts (`send_message_draft`), while interactive questions and decisions default to Profile-1 HTML Widgets (`ask_user`) synchronized with the Mini App API.
 - **Tool deadlines:** Every MCP tool enforces a 30-second execution deadline and 25-second Bot API request timeout except file-upload tools (`send_photo`, `send_document`, `send_video`, `send_animation`, `send_media_group`, `send_audio`, `send_video_note`, and `send_rich_message` when uploading existing local files via multipart form data).
 
@@ -30,7 +30,6 @@ flowchart LR
 | Skill | `menu-proposal` | Reviews telemetry and available skills to propose and configure the native Telegram bot command menu. |
 | Skill | `refresh-questions` | Sweeps pending Mini App questions against external state, closes settled items with cited reasons, and checks recommendation context. |
 | Hook | `SessionStart` | Runs startup readiness notice for the Telegram channel environment. |
-| Hook | `PreToolUse` (`AskUserQuestion`) | Intercepts interactive question tool calls in primary sessions and posts them through the Telegram question broker over the local Unix socket. |
 | MCP Server | `ida-telegram` | Exposes outbound messaging, Rich Message, HTML Widget, media, poll, thread, reaction, and question tools alongside `notifications/claude/channel` inbound events and permission relays. |
 | HTTP API | Mini App backend (`/api/app/*`) | Loopback server backing Details pages, tool permission approvals, PR diff review actions, interactive Question settlements, Anchor status, and session stop signals via SSE. |
 
@@ -42,11 +41,10 @@ Variables load from the environment and `$STATE_DIR/.env` (environment variables
 | :- | :- | :- |
 | `MINI_APP_URL` (`IDA_WEB_URL`) | Public HTTPS URL reaching the plugin Mini App server. | Required; fails to start if unset (no default). |
 | `TELEGRAM_BOT_TOKEN` | Telegram Bot API token for polling and outbound calls. | Required for live Telegram connectivity; empty disables polling. |
-| `IDA_TELEGRAM_ROLE` | Enables primary poller, MCP tools, HTTP server, and hooks when set to `primary`. | Unset (inert non-primary mode). |
+| `IDA_TELEGRAM_ROLE` | Enables primary poller, MCP tools, and HTTP server when set to `primary`. | Unset (inert non-primary mode). |
 | `ALLOWED_USER_IDS` (`TELEGRAM_ALLOW_FROM`) | Space- or comma-separated authorized Telegram numeric user IDs. | Empty list (drops all updates). |
 | `TELEGRAM_API_BASE_URL` | Custom Bot API endpoint base URL. | `https://api.telegram.org` |
 | `STATE_DIR` | Persistent directory for chat state, questions, details, inbox audio, and `.env`. | `~/.claude/channels/telegram` |
-| `SOCKET_PATH` | Unix domain socket path for `AskUserQuestion` IPC bridge. | `$STATE_DIR/bridge.sock` |
 | `PORT` | Loopback HTTP port (`127.0.0.1`) for the Mini App API server. | `8093` |
 | `VOICE_REPLIES` | Outbound voice synthesis policy (`off`, `mirror`, or `always`). | `mirror` |
 | `VOICE_TRANSCRIBE_CMD` | Executable used to transcribe inbound voice notes. | Resolves `transcribe.sh` from `$STATE_DIR` or standard bin paths. |

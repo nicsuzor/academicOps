@@ -1,0 +1,16 @@
+{
+  "name": "sara",
+  "description": "Polecat dispatch only: the sara dispatcher agent and the dispatch skill that launches isolated polecat containers on reified tasks.",
+  "author": {
+    "name": "Nicolas Suzor"
+  },
+  "license": "MIT",
+  "keywords": [
+    "academicOps",
+    "aops",
+    "sara",
+    "dispatch",
+    "polecat"
+  ],
+  "version": "1.14.0-beta.1"
+}

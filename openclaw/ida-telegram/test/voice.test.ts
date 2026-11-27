@@ -65,7 +65,6 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
       voiceSpeakCmd: speakScript,
       port: 8093,
       stateDir,
-      socketPath: join(stateDir, "hook.sock"),
       miniAppUrl: "https://ida.example.ts.net",
       botCommands: [],
     };
@@ -167,7 +166,6 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
       voiceSpeakCmd: speakScript,
       port: 8093,
       stateDir,
-      socketPath: join(stateDir, "hook.sock"),
       miniAppUrl: "https://ida.example.ts.net",
       botCommands: [],
     };
@@ -253,7 +251,6 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
       voiceSpeakCmd: missingSpeakScript,
       port: 8093,
       stateDir,
-      socketPath: join(stateDir, "hook.sock"),
       miniAppUrl: "https://ida.example.ts.net",
       botCommands: [],
     };
@@ -333,7 +330,6 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
       voiceSpeakCmd: speakScript,
       port: 8093,
       stateDir,
-      socketPath: join(stateDir, "hook.sock"),
       miniAppUrl: "https://ida.example.ts.net",
       botCommands: [],
     };
@@ -454,7 +450,6 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
       voiceSpeakCmd: "",
       port: 8093,
       stateDir,
-      socketPath: join(stateDir, "hook.sock"),
       miniAppUrl: "https://ida.example.ts.net",
       botCommands: [],
     };
