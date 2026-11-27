@@ -92,7 +92,11 @@ def _stage_plugin(plugin: Plugin, stage_dir: Path, version: str) -> None:
     plugin_pyproject = plugin.source_dir / "pyproject.toml"
     plugin_uvlock = plugin.source_dir / "uv.lock"
 
-    shared_tracer = repo_root / "plugins" / "crew" / "hooks" / "claude_code_tracer.py"
+    # The OTel span pipeline is shared code (crew's lifecycle tracing, ida's
+    # premise-check verdict spans, aops-debug's raw-payload debug spans), so it
+    # lives in lib/hooks/ and is injected like dispatch.py. Only crew registers
+    # the lifecycle tracing hooks.
+    shared_tracer = repo_root / "lib" / "hooks" / "claude_code_tracer.py"
     staged_hooks_dir = stage_dir / "hooks"
     staged_tracer = staged_hooks_dir / "claude_code_tracer.py"
     if staged_hooks_dir.is_dir() and shared_tracer.is_file() and not staged_tracer.exists():
