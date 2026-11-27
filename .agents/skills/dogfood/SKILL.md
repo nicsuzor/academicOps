@@ -16,7 +16,7 @@ description: Standing experiment protocol for the academicOps project -- every p
 ## Modes (Pick One)
 
 1. **`live-trial`** (default): Work normally. File an evidence record when the framework helps or hurts (misleading instruction, unhelpful check or guard, helpful contract, missing context) without fixing inline. Propose fixes after finishing; apply only with express user approval.
-2. **`instruction-test`** (blind delegated execution): Give a contextless agent only the instruction and task (no coaching; redirect rather than restart). Record a failure hypothesis before reading output, score against acceptance criteria, and have an independent agent score blind. After edits, run >=2 blind runs per condition.
+2. **`instruction-test`** (blind delegated execution): Give a contextless agent only the instruction and a real task (an ask recorded in the trace store, never one written for the test; no coaching; redirect rather than restart). Record a failure hypothesis before reading output, score against acceptance criteria, and have an independent agent score blind. After edits, run >=2 blind runs per condition.
 3. **`mechanism-trial`** (new runtime boundary guard, hook, evaluator, or classifier): Pre-register hypothesis, promote criteria, kill criteria, and review date on the task record before enabling; remove once past review date without evidence.
 4. **`planning-eval`**: Read [references/decomposition-eval.md](references/decomposition-eval.md) before scoring decomposition/planning quality; gold-standard pairs are single-use.
 
@@ -31,6 +31,7 @@ description: Standing experiment protocol for the academicOps project -- every p
 ## Invariants
 
 - **Hypothesis before observation**: Write expectations down before inspecting outputs.
+- **Real inputs, traced runs**: Trials run on real recorded asks and are judged from their own traces; a claim about how the framework performs beyond those runs comes only from the observed-trace store, never from synthetic, constructed or simulated runs.
 - **No verdict from absence**: Name the discriminating observation before scoring pass/fail; otherwise file `undetermined`.
 - **Named surface binds**: Run on the specified client, container, agent, or tier; verify blockers before halting, and never swap surfaces silently.
 - **Record before remedy**: File unedited evidence first; three cited recurrences justify a runtime mechanism (fewer justify at most a text edit).
