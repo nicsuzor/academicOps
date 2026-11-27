@@ -1,40 +1,41 @@
 ---
 name: verify
-description: "Universal qualitative verification procedure evaluating qualitative taste, genre standards, audience empathy, and purpose satisfaction across live rendered multimodal outputs (never linters or functional QA)."
+description: "Universal qualitative verification procedure evaluating qualitative excellence, audience empathy, and purpose fit across live rendered multimodal outputs when an audience-facing artifact is produced (exclude non-build lookups/diagnostics, linters, fact-checking, and functional QA)."
 ---
 
 # Verify
 
-Universal qualitative verification procedure evaluating qualitative taste, genre fit, and audience resonance across live rendered multimodal outputs (never linters, schema checks, or functional QA).
+Universal qualitative verification procedure evaluating qualitative excellence, audience resonance, and purpose fit across live rendered multimodal outputs when an audience-facing artifact was built (never non-build lookups/diagnostics, linters, schema checks, primary-source fact-checking, or functional QA).
 
-## 1. Upfront Genre & Audience Alignment
+## 1. Scope, Audience & Contextual Standard
 
 Before inspecting details:
 
-1. **Identify Artifact Genre:** Determine the governing standard for the artifact's genre (e.g., `craft` for agent instructions, specification standards for specs, visual design standards for UI/plots, publication standards for manuscripts).
-2. **Identify Audience & Purpose:** Define who reads or uses this artifact, their cognitive state, and the outcome it must achieve.
-3. **Set Proportionality Bar:**
-   - _Routine / Low-Risk:_ Fast single-pass sanity check; low bar.
-   - _High-Stakes / Public:_ Comprehensive aesthetic and cognitive audit.
+1. **Confirm Audience-Facing Artifact:** Verify an audience-facing deliverable exists (document, specification, instruction file, plot, PDF, UI). Skip `verify` on non-build lookups, diagnostics, or pure plumbing with no audience-facing output.
+2. **Define Audience, Purpose & Contextual Standard:** Identify who meets the artifact, their cognitive context, and the outcome it serves. Apply any standard set by the user; otherwise evaluate against what is reasonable and appropriate for the audience, medium, and purpose in all the circumstances (e.g., `craft` for agent instructions, specification clarity, visual/cognitive clarity for plots/UI, scholarly polish for manuscripts -- never a rigid genre lookup table).
+3. **Direct Qualitative Judgment & Proportionality:**
+   - _Internal / Routine / Defeasible:_ Brisk scannability and clarity check, deferring to reasonable stylistic and structural discretion.
+   - _Public / High-Stakes:_ Uncompromising aesthetic, structural, and cognitive critique.
+   - Evaluate qualitative standards directly with appealable reasons; never invent or demand arbitrary numeric cutoffs, quotas, or countable proxies in place of qualitative judgment (`judgment-non-delegable`).
 
 ## 2. Live Rendered Multimodal Inspection
 
-Review the artifact in its rendered form as experienced by the user:
+Inspect the artifact in its rendered form as its audience meets it (never raw markup alone):
 
-1. **Rendered View:** Inspect the compiled document, rendered markdown layout, generated PDF, or UI screenshot (1920x1080).
-2. **Legibility & Hierarchy:** Verify typographic scale matches semantic importance; check contrast, whitespace, and line lengths.
-3. **Audience Empathy:** Does the artifact respect the reader's attention? For a time-pressed reader, is it scannable at a glance? For a technical reader, is it direct and unambiguous?
-4. **Floor vs. Ceiling:** Answer explicitly: _Is this genuinely excellent for its purpose, or merely passable?_
+1. **Rendered View:** Inspect the compiled document, rendered markdown layout, generated PDF, plot, or UI screenshot at a representative viewport.
+2. **Legibility & Hierarchy:** Verify typographic and visual hierarchy matches semantic importance across contrast, whitespace, and density.
+3. **Audience Empathy:** Check whether a time-pressed reader can scan key claims at a glance and a technical reader finds direct, unambiguous structure.
+4. **Excellence vs. Mere Compliance:** Judge whether the artifact is genuinely excellent for its audience and purpose in all the circumstances while respecting reasonable authorial discretion.
 
 ## 3. Review Findings & Self-Fixes
 
-- **Serialized vs. Parallel Fixes:** Apply and commit uncontroversial typographic, formatting, or layout corrections (`fix(review): ...`) only when serialized and authorized on a writable branch, itemizing applied fixes. During parallel or read-only reviews, itemize suggested fixes for the fix pass to avoid concurrent write conflicts.
-- **Substantive Findings:** Document qualitative shortcomings with concrete guidance on tone, taste, layout, structure, or audience alignment.
+- **Serialized vs. Parallel Fixes:** Apply and commit uncontroversial typographic, formatting, or layout corrections (`fix(review): ...`) only when serialized and authorized on a writable branch, itemizing applied fixes. During parallel or read-only reviews, itemize suggested fixes for the fix pass.
+- **Material Defects vs. Taste Preferences:** Separate material structural, tonal, or visual defects for the audience and purpose from mere reviewer phrasing or stylistic preferences within reasonable authorial discretion (which never warrant `REVISE` or `FAIL`).
 
 ## 4. Verdict Schema
 
-Internal agent-to-agent verification handbacks report **only** in clean Argdown prose per `ida:premise-check` (quoting deciding qualitative observations inline); structured Markdown headings (`### Reviewer Self-Fixes Applied`, `### Suggested Fixes`, `### Required Changes`) apply strictly to published PR/issue comments or user-facing documents.
+Internal agent-to-agent verification handbacks report **solely** in unfenced prose Argdown blocks per `ida:premise-check` (quoting deciding qualitative observations inline and reporting once when inspection completes; halt verbatim on any guard or harness refusal); structured Markdown headings (`### Reviewer Self-Fixes Applied`, `### Suggested Fixes`, `### Required Changes`) apply strictly to published PR/issue comments or user-facing documents.
 
-- `PASS`: The artifact achieves excellence for its intended audience and purpose.
-- `REVISE`: The artifact is functional but needs concrete structural, tonal, or layout polish.
-- `FAIL`: The artifact fails its purpose, exhibits severe cognitive clutter or visual unreadability, or lacks a governing standard or purpose.
+- `PASS`: Achieves genuine excellence for its audience and purpose in all the circumstances (clarity, elegance, cognitive ease), respecting reasonable authorial discretion.
+- `REVISE`: Material structural, tonal, or presentation defects for its audience and purpose (never mere phrasing or stylistic preference).
+- `FAIL`: Fails its intended purpose, applies a standard inappropriate in the circumstances, or suffers severe visual or cognitive clutter.
