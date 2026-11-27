@@ -69,6 +69,7 @@ The universal workflow library (`plugins/crew/skills/workflow-library/workflows/
 - `wf-dispatch-queue`: Dispatch queue ranking ready tasks for user approval and container launch.
 - `wf-doc-base`: Foundation for tasks changing instruction text or repository documentation.
 - `wf-effectual-plan`: Explore strategic uncertainty, surface load-bearing assumptions, and propose bounded next steps.
+- `wf-empirical-review`: Review how agents, workflows, checks or tools perform only on the observed-trace store of real sessions; never synthetic or constructed runs, reported figures or earlier audits.
 - `wf-escalated-approval`: Hand a complete artifact over for an escalated explicit decision while keeping dependent work blocked.
 - `wf-fact-check`: Verify factual, empirical, and citation-bearing claims against primary sources.
 - `wf-finish`: Default task completion and release workflow separating work and review deliverables where required.

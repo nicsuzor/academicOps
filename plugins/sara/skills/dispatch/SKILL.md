@@ -21,7 +21,7 @@ Start a worker on the handed task unless a constitutional halt binds (`closure`,
 
 Stamp `origin_agent` on each ready PKB task (`pkb_update_task`) with the originating coordinator's stable handle before launching its container so returning work routes back to its owner without a completion race.
 
-Launch one isolated worker container per ready task in parallel via `polecat_run_container`, passing `task_id`, `repo`, `image`, and `dispatcher` only (the polecat service seeds the worker's prompt with the full task). Never pass `command` or a custom prompt, even if exposed by the tool schema; custom prompts are allowed only in crew containers launched manually by the user.
+Launch one isolated worker container per ready task in parallel via `polecat_run_container`, passing `task_id`, `repo`, `dispatcher`, and the deployment's required `environment` settings only (omit `image` unless overriding the server default; the polecat service seeds the worker's prompt with the full task). Never pass `command` or a custom prompt, even if exposed by the tool schema; custom prompts are allowed only in crew containers launched manually by the user.
 
 Containers start asynchronously; assume execution proceeds unless an immediate launch error returns (on failure, halt and report task ID and error verbatim).
 
