@@ -73,6 +73,7 @@
 ## Workflows
 
 - [workflows/workflow.md](workflows/workflow.md) -- the four-stage planning and execution pipeline (capture, expand, reify, dispatch) and three-tier template resolution.
+- [workflows/in-session-workflow-execution.md](workflows/in-session-workflow-execution.md) -- synchronous in-session workflow assembly from three-tier templates, runtime workflow sovereignty, role split, and execution across interactive, crew, and polecat surfaces (draft).
 - [workflows/default-planning.md](workflows/default-planning.md) -- repository specs for academicOps design changes and PKB task plans for general work.
 - [workflows/plan-view.md](workflows/plan-view.md) -- formal plan view generation and redrawing on decomposed objectives.
 - [workflows/conceptual-review-workflow.md](workflows/conceptual-review-workflow.md) -- composable-lens multi-agent review of intellectual artifacts.
