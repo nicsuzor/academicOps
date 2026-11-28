@@ -1,5 +1,5 @@
 ---
-description: Explore strategic uncertainty, surface load-bearing assumptions, and propose bounded high-information next steps without executing them.
+description: "Planning: explore strategic uncertainty, surface load-bearing assumptions, and propose bounded high-information next steps without executing them."
 id: wf-effectual-plan
 tags:
   - wf-template

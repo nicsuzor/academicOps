@@ -2,35 +2,25 @@
 alias:
   - wf-escalated-approval
   - wf-approval
-description: Hand a complete artifact over for an escalated explicit decision at a point the work must not cross on agent judgment; structures approval so dependent work remains blocked until approval is recorded.
+description: "Worker: stop at a real approval boundary -- external audience, a merge no ruling covers, unbounded cost, an outside party's approval, or a hold the user reserved -- leaving the finished artifact on the record."
 id: wf-escalated-approval
 tags:
   - wf-template
   - approval
-  - workflow
-title: Escalated Approval Boundary
+title: Approval boundary
 type: template
 ---
 
 ## What this step does
 
-Ends the current task when directed work reaches a reserved principal jurisdiction or constitutional approval boundary that must not proceed on agent or delegated authority alone: external-audience transmission, unruled repository merge, unbounded reach or cost lacking scope/volume/cost confirmation, external-party approval, or a specific hold explicitly reserved by the user. A proportionate independent agent review is required. The worker files the complete artifact and its independent review verdicts on the formal record and releases the task as `partial`, documenting the required decision in `reason` without minting follow-up tasks so dependent work remains blocked until approval is entered on the record. Nothing beyond this jurisdictional boundary executes in the same task.
+Ends the task at a point the work must not cross on agent authority. Nothing beyond the boundary runs in this task.
 
 ## Procedure
 
-1. **Complete the artifact** -- place the full artifact under decision on the record (never a summary standing in for it) alongside its independent agent review verdicts.
-2. **State the question & reasons** -- state plainly what reserved decision is sought with sufficient context, proportionate supporting evidence, and a reasoned recommendation explaining what proceeds upon approval; return on the record for upstream routing.
-3. **Enforce the boundary** -- never release as `done` while reserved approval is pending. Release as `partial` recording the pending decision in `reason`, without minting follow-up tasks. Stop.
-
-## Composition
-
-Cut the composition chain at this reserved approval boundary. Post-approval execution belongs in a separate downstream task wired as blocked by this decision (for an explicit user-reserved hold or confirmed external-party, unruled-merge, or unbounded-cost boundary); never insert this cut by task class on user-directed work. Requested revisions return to the producing step. Specifications preceding an implementation build are reviewed independently on the record and reach the user alongside their implementation deliverable rather than holding standalone for approval before the build.
-
-## Output contract
-
-- Complete artifact and attached independent review verdicts filed on the record.
-- Task released as `partial` with the required approval decision documented in `reason`, leaving dependent work blocked until approval is recorded.
+1. Finish the artifact up to the boundary and put it where the task's Output names.
+2. In the report, name the decision needed and recommend an answer.
+3. End `partial`, with the decision in the reason. Mint no follow-up task; whoever picks up the record routes it.
 
 ## When to include
 
-Before an operation reaching a boundary that must not start on user direction alone: external-audience transmission, an unruled repository merge, an operation with unbounded reach or cost lacking explicit prior approval naming scope, volume, and cost (or expanding beyond approved scope), an external-party approval, or a specific hold or choice explicitly reserved by the user prior to execution. Never include by task class (complexity, new components, or competing alternatives) or to hold a pre-build specification for approval standalone.
+Only at one of the boundaries above. Never by task class (size, novelty, competing options), and never to hold a spec for approval before its build.

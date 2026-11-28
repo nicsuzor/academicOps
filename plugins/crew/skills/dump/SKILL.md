@@ -14,7 +14,7 @@ Determine invocation mode before acting:
 
 ### 1. Save and Push Work
 
-Stage specific modified files (never `add -A`) and commit, noting partial state when incomplete. Push commits and open draft PRs (`gh pr create --draft` targeting the diverged base branch) only where `## Output` specifies; mark `gh pr ready` only after the independent check passes and its verdict is posted. Persist non-git evaluation datasets and reports in the PKB (ephemeral scratch paths vanish on exit). Record branch and commit SHA.
+Stage specific modified files (never `add -A`) and commit, noting partial state when incomplete. Push commits and open draft PRs (`gh pr create --draft` targeting the diverged base branch) only where `## Output` specifies. Persist non-git evaluation datasets and reports in the PKB (ephemeral scratch paths vanish on exit). Record branch and commit SHA.
 
 ### 2. Retroactive Tasks (Interactive Sessions Only)
 

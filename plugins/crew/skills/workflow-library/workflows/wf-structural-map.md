@@ -1,5 +1,5 @@
 ---
-description: Extract a four-part descriptive structural map (Aims, Methodology, Analytical theory, Contribution) of academic work without evaluation or rewriting.
+description: "Worker: extract a four-part descriptive structural map (Aims, Methodology, Analytical theory, Contribution) of academic work without evaluation or rewriting."
 id: wf-structural-map
 tags:
   - wf-template
@@ -27,7 +27,7 @@ Four sections, up to four bullets each, lifting key clauses verbatim from the so
 - **Extract, do not infer**: Record `Not stated` if an element is absent from the text.
 - **Preserve framing**: Report what the text claims without judging whether claims are demonstrated.
 - **Search across sections**: Check abstracts and introductions as well as dedicated headings.
-- Execute in a single pass without interactive dialogue.
+- Execute in a single pass.
 
 ## Output contract
 
