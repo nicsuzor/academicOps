@@ -55,5 +55,5 @@ Generate a single condensed outline `<slug>.outline.md` using the layout below (
 
 ### Durable Persistence & Targeted Drill-Down
 
-- **Durable persistence**: Save `<slug>.outline.md` to durable storage (knowledge note `out-<slug>` with `~/...` host paths sanitized, or committed to a designated repository path) -- never leave only in ephemeral scratch.
+- **Durable persistence**: Save `<slug>.outline.md` to the durable destination specified by the composed workflow and task (for example, a PKB knowledge note with `~/...` host paths sanitized, or a designated repository path) rather than leaving it only in ephemeral scratch.
 - **Targeted drill-down**: When answering a decision question requires untruncated payload text at step `#t<n>-<m>`, execute Query 3 in `resources/cross-session-search.sql` for that `span_id` only and cite `#t<n>-<m>`.

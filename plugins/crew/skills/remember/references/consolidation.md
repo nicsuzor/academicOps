@@ -1,6 +1,6 @@
 # Knowledge Extraction and Consolidation Cycle
 
-Consolidation synthesises episodic records into durable knowledge under custodian curation (`crew:remember`), preserving offered/filed/retired PKB facts and maintaining graph data quality.
+Consolidation synthesises episodic records into durable knowledge, preserving offered, filed, and retired PKB facts and maintaining graph data quality under the composed workflow.
 
 ## Safety Controls
 
@@ -52,9 +52,9 @@ Audit generated notes for: (1) duplicate canonical/narrow pairs, (2) title-encod
 1. **Baseline**: Run `pkb.status` and `pkb.get_stats`; record document count and index freshness.
 2. **Mine transcripts**: Process unmined transcripts (up to 15 per cycle) into current-state topic notes without modifying transcript bodies or recording `sources:` / `mined:` provenance arrays.
 3. **Consolidate knowledge**: Extract durable content from daily notes, meeting notes, and closed tasks into canonical topic notes per the extraction method. Create `type: index` navigation notes for clusters of 5+ notes (no `moc` type); delete episodic notes once persisted at the destination.
-4. **Reconcile data quality**: Inspect `find_duplicates(mode="both")` candidates semantically before merging; delegate staleness sweeps to `/reconcile`; reclassify informational tasks or reposition via `/q`.
+4. **Reconcile data quality**: Inspect `find_duplicates(mode="both")` candidates semantically before merging; surface stale items and reclassify or reposition misplaced tasks as governed by the composed workflow.
 5. **Sweep orphans**: Review tag-orphan notes via `pkb.get_consolidation_cluster` and parentless/projectless tasks via `pkb.batch_update(orphan=true, dry_run=true)`.
-6. **Process refiles**: Reposition `refile`-flagged tasks via `/q` under their governing epic with zero leaf `serves` edges, then clear the flag.
+6. **Process refiles**: Reposition `refile`-flagged tasks under their governing parent with zero leaf `serves` edges as governed by the composed workflow, then clear the flag.
 7. **Maintain graph**: Run `pkb.refresh_graph` and compare `pkb.status` against baseline.
 8. **Calibrate graph edges (weekly)**: Review Strategic Value Carriers ordered by reach and draft holistic `serves -> target` link proposals; hoist any residual leaf `serves` edges onto parent component epics and strip `serves` from child tasks.
 9. **Audit output**: Confirm all new or updated notes satisfy extraction checks and the defect checklist.

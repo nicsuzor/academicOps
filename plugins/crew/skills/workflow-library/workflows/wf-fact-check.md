@@ -16,7 +16,7 @@ Checks that claims are true: citations resolve, numbers match their source, desc
 
 ## Output contract
 
-Per claim checked: the claim, the source and what it showed, and `PASS` or `FAIL` (contradicted or unverifiable counts as `FAIL`). Then a count: checked, passed, failed. Where defects are clearly fixable without ambiguity, fix them in place if write permissions and instructions permit; otherwise state the exact fix. Working notes stay on the task, never in the artifact under review.
+Per claim checked: the claim, the source and what it showed, and `PASS` or `FAIL` (contradicted or unverifiable counts as `FAIL`). Then a count: checked, passed, failed. Where defects are clearly fixable without ambiguity, fix them in place if write permissions and instructions permit; otherwise state the exact fix. Working notes go where the composed workflow and task specify, never in the artifact under review.
 
 ## When to include
 

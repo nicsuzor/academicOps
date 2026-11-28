@@ -5,7 +5,7 @@ description: Formally audit and stress-test a scholarly, legal, policy, or quali
 
 # Argument Audit
 
-Evaluate whether a scholarly, qualitative, mixed-methods, or policy argument is formally made out by stress-testing its **Chained Toulmin** structure against five diagnostic checks: **Term & Scope Alignment**, **Method-to-Construct Validity**, **Warrant & Backing Fit**, **The Contrast Test (Rival Explanations)**, and **Macro-Remedy Coherence**. Read `crew:argdown-toulmin` first: it sets the grammar, metadata, tags, granularity levels, and parser validation.
+Evaluate whether a scholarly, qualitative, mixed-methods, or policy argument is formally made out by stress-testing its **Chained Toulmin** structure against five diagnostic checks: **Term & Scope Alignment**, **Method-to-Construct Validity**, **Warrant & Backing Fit**, **The Contrast Test (Rival Explanations)**, and **Macro-Remedy Coherence**. Follow the `argdown-toulmin` Chained Toulmin Argdown grammar specification (and any guidance provided by the composed workflow) for grammar, metadata, tags, granularity levels, and parser validation.
 
 ## When to Use
 
@@ -84,4 +84,4 @@ Deliver two outputs:
    - **Option 2 - Bridge via Theory / Literature (Citation fix)**: Supply the unstated warrant or behavioural bridge from existing scholarship.
    - **Option 3 - Empirical / Methodological Check (Data fix)**: Run a specific cross-tab, hold a confounder constant, or audit a subsample to defeat an `_> #unanswered` rival explanation.
 
-When saving an audit to a PKB note (via `pkb.create`), pass the audited artefact's PKB-relative path as `source` (or parent to a node whose file lives in that sub-project directory) so the note lands in that sub-project directory under the home-directory placement rule.
+Persist the audit output where the composed workflow and task specify; when saving to a PKB note (via `pkb.create`), pass the audited artefact's PKB-relative path as `source` (or parent to a node whose file lives in that sub-project directory) so the note lands in that sub-project directory.

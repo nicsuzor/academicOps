@@ -39,11 +39,11 @@ Before editing or validating `.excalidraw` JSON, read [references/excalidraw-ref
 
 - **Use `pkb-excalidraw` first**: Prefer `pkb-excalidraw` over raw JSON edits because mutations refuse to save invalid files. When updating an existing canvas, edit in place (`move-elem`, `set-text`/`fit`, `update`, `delete-elem`) to preserve every `id` for `pkb excalidraw diff`/`sync`; never draw a parallel duplicate system alongside old elements.
 - **Hierarchies (nest first, arrow last)**: Use large unboxed headlines for top levels, plain panels for groups, columns for sub-groups, and packed small boxes for leaves. Draw labelled connectors only for moves between groups (grid-routed; curved 12% off-centre max 60 px; relax-then-repair free layouts; at most 5 colors bound to node kind).
-- **PKB note derivation**: When creating a PKB note from a canvas via `pkb.create`, pass the canvas's PKB-relative path as `source` (or set `parent` to a node in that directory).
+- **Output persistence & PKB note derivation**: Save canvases and derived outputs where the composed workflow and task specify; when creating a PKB note from a canvas via `pkb.create`, pass the canvas's PKB-relative path as `source` (or set `parent` to a node in that directory).
 
 ## Rendering and Visual QA
 
-Render every finished canvas and inspect the rendered image directly before presentation, handback, or release:
+Render every finished canvas and inspect the rendered image directly when visual verification is part of the workflow or task:
 
 ```bash
 pkb-excalidraw FILE screenshot --out <path>.svg --format svg

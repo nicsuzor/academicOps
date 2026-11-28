@@ -11,7 +11,7 @@ type: template
 
 ## What this step does
 
-Facilitates strategic exploration under uncertainty to produce an effectual planning brief. Inventories available means, surfaces load-bearing untested assumptions, and proposes one or two bounded, high-information probes without executing them. Executed as a graph-wide strategic pass by a strategic custodian; produces a planning brief for downstream intake and decomposition, never an execution task.
+Facilitates strategic exploration under uncertainty to produce an effectual planning brief. Inventories available means, surfaces load-bearing untested assumptions, and proposes one or two bounded, high-information probes without executing them. Executed as a graph-wide strategic pass by the role the composed workflow assigns; produces a planning brief routed where the composed workflow specifies, never an execution task.
 
 ## Procedure
 
@@ -28,7 +28,7 @@ A planning brief containing:
 
 - Inventory of current means, capacities, and fixed constraints.
 - Matrix of load-bearing assumptions, epistemic dependencies, and cheap probes.
-- One or two recommended next steps with information-value rationale, stopping conditions, and intake/decomposition handoff points (with no in-session execution).
+- One or two recommended next steps with information-value rationale, stopping conditions, and the handoff points the composed workflow specifies (with no in-session execution).
 
 ## When to include
 

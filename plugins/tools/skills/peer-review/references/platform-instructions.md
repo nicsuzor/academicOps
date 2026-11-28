@@ -8,11 +8,11 @@ tags: [reference, peer-review, platforms]
 
 ## Platform Specifics
 
-- **ARC RMS**: Complete CoI checks immediately upon notification. Enforce character count minimums and maximums locally before submission. Inspect proposal PDF rendering directly. Retain email confirmation for task archives.
+- **ARC RMS**: Complete CoI checks immediately upon notification. Enforce character count minimums and maximums locally before submission. Inspect proposal PDF rendering directly. Retain email confirmation where the composed workflow and task specify.
 - **ERC (EvalAccess)**: Focus on scientific relevance and groundbreaking nature. Reward high-risk, ambitious methodology unless unmitigated.
 - **SNSF mySNF**: Weight scientific relevance heavily. Account for opportunity-adjusted track record and career interruptions.
 - **NHMRC Sapphire**: Approach and methodology criteria typically dominate; follow scheme-specific scoring scales.
-- **Archiving**: Download and archive a copy of the final submitted assessment in `${ACA_DATA}/reviews/{scheme}/{appid}/`.
+- **Archiving**: Download and archive a copy of the final submitted assessment where the composed workflow and task specify (defaulting to `${ACA_DATA}/reviews/{scheme}/{appid}/` when `${ACA_DATA}` is configured).
 
 ## Integrity & Foreign Affiliations
 

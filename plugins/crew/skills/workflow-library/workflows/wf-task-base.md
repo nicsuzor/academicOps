@@ -7,13 +7,13 @@ tags: [base, task]
 
 ## What this step does
 
-Sets the minimum every task needs. Add nothing to a task that its ask or another selected template does not require: the work is reviewed separately once it is handed back, so the task carries no review, sign-off, approval or delivery steps of its own.
+Sets the minimum every task needs. Add nothing to a task that its ask or composed workflow does not require: review, sign-off, approval, or delivery steps run only when the composed workflow includes them, and output goes where the composed workflow and task specify.
 
 ## Task shape
 
 - **Goal**: one sentence naming the end state.
 - **Acceptance**: observable outcomes the worker itself delivers, one line each; never line numbers, mechanisms, or acts after hand-back (review, CI, merge, deployment, someone reading it).
-- **Output**: where the result goes. One of: the answer itself, in the final report; commits on the working branch; a file at a shared location the task names. Never only in the container's own scratch space.
+- **Output**: where the composed workflow and task specify (for example: the answer itself, in the final report; commits on the working branch; a file at a shared location the task names). Never only in the container's own scratch space.
 - **Report**: the final message states what was done and, for each acceptance item, the evidence (output, path, commit) or why it is unmet.
 
 ## Rules

@@ -20,16 +20,16 @@ Read existing project context before taking analytical actions to prevent duplic
 
 ## Pre-action discovery summary
 
-Before writing code or models, summarize the context to the user:
+Before writing code or models, establish and summarize the context (presenting to the user in interactive workflows, or recording in task context in headless workflows):
 
 - Substantive focus and active research questions.
 - Data sources, locations, and access patterns.
 - Inventory of existing models by layer (staging, intermediate, marts).
 - Transformation and presentation engines in use.
-- Ask for user direction on the specific task.
+- In interactive workflows, ask for user direction on the specific task; in headless workflows, proceed per task instructions.
 
 ## Ambiguous or incomplete context
 
 - **Empty or unmanaged repository**: Propose scaffolding baseline documentation (`instructions/research-documentation.md`) before running ad-hoc queries.
 - **Mature repository**: Adopt existing naming conventions and style patterns over generic defaults.
-- **Conflicting patterns**: Clarify with the researcher which pattern is authoritative, then record the decision.
+- **Conflicting patterns**: Clarify with the researcher in interactive workflows (or follow task/workflow instructions in headless workflows) which pattern is authoritative, then record the decision.

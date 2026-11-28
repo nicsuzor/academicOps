@@ -17,7 +17,7 @@ Sorts open pull requests by what each needs next. It decides; it does not do the
 
 1. **List**: open PRs in the target repositories, leaving out work-in-progress drafts and automated release PRs.
 2. **Classify each** against the repository's merge rules: needs review, needs its feedback addressed, ready and awaiting approval, or approved (or covered by a ruling) and ready to land.
-3. **Queue**: for each PR that needs agent work, find its open task by PR or branch, or create one. A PR awaiting approval is recorded as such, with its review summary and a recommendation, never handed to the user as something to read.
+3. **Queue**: for each PR that needs agent work, find its open task by PR or branch, or record and queue the next step where the composed workflow and task specify. A PR awaiting approval is recorded as such, with its review summary and a recommendation, never handed to the user as something to read.
 4. **Report** a disposition for every PR listed.
 
 ## Must not

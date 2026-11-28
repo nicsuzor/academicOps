@@ -3,12 +3,12 @@ title: Exploratory Analysis
 type: note
 category: instruction
 permalink: analyst-chunk-exploratory-analysis
-description: Pattern for iterative data exploration yielding to user guidance at each step.
+description: Pattern for iterative data exploration with interactive checkpoints or task-driven progression.
 ---
 
 # Exploratory Analysis
 
-Exploratory analysis investigates patterns and relationships in clean data. For data quality issues (missing values, unexpected nulls, join defects), switch to the data investigation workflow and produce reusable scripts in `analyses/`.
+Exploratory analysis investigates patterns and relationships in clean data. For data quality issues (missing values, unexpected nulls, join defects), isolate them with reusable investigation scripts in the project's analysis directory (default `analyses/` unless the project or composed workflow specifies otherwise).
 
 ## Iterative exploration workflow
 
@@ -23,9 +23,9 @@ Exploratory analysis investigates patterns and relationships in clean data. For 
    df = conn.execute("SELECT * FROM fct_cases").df()
    print(df.describe())
    ```
-2. **Stop and report**: Share findings with the user. Ask: _"What would you like to explore?"_
+2. **Report findings**: Record and share summary findings. In interactive workflows, stop and ask the user what to explore next; in headless workflows, proceed per task instructions.
 3. **Generate a single visualization or model**: Render output and interpret findings.
-4. **Stop and discuss**: Confirm next question with user before proceeding.
+4. **Confirm next step**: In interactive workflows, confirm the next question with the user before proceeding; in headless workflows, continue per task instructions and record the rationale.
 
 ## Discipline checklist
 

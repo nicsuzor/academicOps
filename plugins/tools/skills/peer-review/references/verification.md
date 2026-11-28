@@ -6,7 +6,7 @@ tags: [reference, peer-review, verification]
 
 # Verification
 
-Adversarial verification validates draft claims against the source document. Execute as a contextless sub-agent or an explicit serial cold re-read.
+Adversarial verification validates draft claims against the source document. Execute in the isolation or execution mode directed by the composed workflow (such as a contextless sub-agent or explicit cold re-read).
 
 ## Six Core Techniques
 
@@ -43,4 +43,4 @@ Conclude with a summary verdict (e.g., "0 BLOCKER, 2 FIX, 1 NIT -- ready after f
 
 - **Triage**: Address all verification findings; do not discard items silently.
 - **Minimal edits**: Apply surgical edits to preserve surrounding verified context.
-- **Boundary rule**: Verification attaches strictly to committed artifacts. Any subsequent text regeneration (voice pass, polishing) requires re-verification of the diff.
+- **Boundary rule**: Verification attaches to the verified artifact snapshot; if text is regenerated afterward (voice pass, polishing), re-verify as the composed workflow directs.

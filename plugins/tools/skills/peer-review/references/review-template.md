@@ -6,7 +6,7 @@ tags: [template, peer-review]
 
 # Generic Review Template
 
-Populate with criteria, weights, and character limits fetched from the active round handbook. Maintain a single living draft versioned in git history.
+Populate with criteria, weights, and character limits fetched from the active round handbook. Maintain a single living draft using the location and versioning mechanism the composed workflow and task specify.
 
 ```markdown
 # {SCHEME} {ROUND} Assessment

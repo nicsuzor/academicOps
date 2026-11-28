@@ -8,7 +8,7 @@ description: Required documentation hierarchy, prohibited ad-hoc files, and data
 
 # Research Project Documentation Structure
 
-Maintain a fixed documentation layout so project context, methods, and evidence remain discoverable and versioned without ad-hoc document sprawl.
+Adopt the project's documentation layout (using the default hierarchy below when none is established) so project context, methods, and evidence remain discoverable without ad-hoc document sprawl, overridden by whatever layout and destination the project and composed workflow specify.
 
 ## Directory hierarchy
 
@@ -27,7 +27,7 @@ project_root/
 └── output/ or _book/       # Build artifacts only (gitignored, expendable)
 ```
 
-Do not generate ad-hoc analysis reports, weekly summary markdowns, or temporary notes files. Place all durable context into the designated structures above or in code comments and commits.
+Do not generate ad-hoc analysis reports, weekly summary markdowns, or temporary notes files. Place all durable context into the destination specified by the project and composed workflow (or the default structures above and code comments).
 
 ## Data directory separation (critical)
 
@@ -38,4 +38,4 @@ Never place data inside build output directories (`output/`, `_book/`, `_site/`,
 
 ## Currency standard
 
-Documentation reflects the actual current codebase. Never leave `TODO` or `TK` placeholders in committed research documentation. When code diverges from documentation, update documentation in the same commit.
+Documentation reflects the actual current codebase. Never leave `TODO` or `TK` placeholders in committed research documentation. When code diverges from documentation, update documentation as directed by the composed workflow (for example, in the same commit).

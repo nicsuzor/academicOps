@@ -8,7 +8,7 @@ description: Structure, currency, and completion criteria for a research project
 
 # METHODOLOGY.md
 
-Every empirical project maintains a root `METHODOLOGY.md` explaining the research design, theoretical framing, and epistemological choices so reviewers can evaluate validity without inspecting code. Technical implementation details belong in `methods/` (see `instructions/methods-vs-methodology.md`).
+Maintain a scholarly methodology document (by default `METHODOLOGY.md` at project root, unless the project or composed workflow specifies another layout or destination) explaining the research design, theoretical framing, and epistemological choices so readers can evaluate validity without inspecting code. Place technical implementation details in the project's methods directory (default `methods/`; see `instructions/methods-vs-methodology.md`).
 
 ## Template skeleton
 
@@ -42,5 +42,5 @@ Every empirical project maintains a root `METHODOLOGY.md` explaining the researc
 
 ## Currency and completion standard
 
-- **Continuous currency**: Update immediately whenever questions, variables, units of analysis, or analytical strategies change. Record reasons in git commit messages.
+- **Continuous currency**: Update immediately whenever questions, variables, units of analysis, or analytical strategies change, recording updates where the project and composed workflow specify.
 - **Completion test**: A peer reviewer must be able to evaluate design validity, inferential threats, and generalizability solely from this document. If understanding the design requires inspecting source code, the methodology file is incomplete.

@@ -1,11 +1,11 @@
 ---
 name: strategize
-description: Reason at strategic altitude across the whole graph -- effectuation, altitude, reversibility, hypothesis structuring, information-value prioritisation, and bounded proposals. Use for "plan this", "help me think through", "what should I do next", or "is this plan still right"; the PKB custodian (Pauli) runs it. Exclude for expanding one objective into sub-objectives (use decompose) or writing one node's dispatchable task (use reify).
+description: Reason at strategic altitude across the whole graph -- effectuation, altitude, reversibility, hypothesis structuring, information-value prioritisation, and bounded proposals. Use for "plan this", "help me think through", "what should I do next", or "is this plan still right". Exclude expanding one objective into sub-objectives or binding one node to an executor and workflow.
 ---
 
 # Strategize
 
-Lenses for thinking at the user's altitude when a question is strategic rather than operational. **Object: the graph as a whole** -- which objectives exist, how they intersect, what assumptions they rest on, and what to do next. The PKB custodian (Pauli) runs this skill; facilitate, propose, and stop without executing or writing tasks.
+Lenses for thinking at the user's altitude when a question is strategic rather than operational. **Object: the graph as a whole** -- which objectives exist, how they intersect, what assumptions they rest on, and what to do next. Facilitate, propose, and stop without executing or writing tasks.
 
 ## Effectuation and Non-Predictive Control
 
@@ -48,4 +48,4 @@ A step earns a probe only when both hold: the node or its unblocking cone has ou
 
 ## Bounded Proposals and Hand-off
 
-Offer at most one or two high-value options, each with a concise rationale and falsification criterion -- never an open-ended menu. Stop without executing: capture adopted asks with `/q` and expand adopted objectives with `/decompose`.
+Offer at most one or two high-value options, each with a concise rationale and falsification criterion -- never an open-ended menu. Stop without executing; the composed workflow decides how adopted asks and objectives are captured and expanded.

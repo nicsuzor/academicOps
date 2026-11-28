@@ -22,7 +22,7 @@ Writes the specification a build will follow, grounded in the existing code and 
 
 ## Output contract
 
-The specification, committed on the working branch alongside the build when the same task builds it, otherwise saved where the task names.
+The specification, placed where the composed workflow and task specify.
 
 ## When to include
 

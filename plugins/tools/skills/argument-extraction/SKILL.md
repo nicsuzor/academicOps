@@ -5,7 +5,7 @@ description: Extract and reconstruct the argument a text or draft makes -- main 
 
 # Argument Extraction
 
-Reconstruct what a text argues, preserving the author's framing while making every inference step, warrant, and source trace explicit, without editorialising. Read `crew:argdown-toulmin` before drafting: it sets the grammar, metadata, tags, granularity levels, layout, and parser validation.
+Reconstruct what a text argues, preserving the author's framing while making every inference step, warrant, and source trace explicit, without editorialising. Follow the `argdown-toulmin` Chained Toulmin Argdown grammar specification (and any guidance provided by the composed workflow) for grammar, metadata, tags, granularity levels, layout, and parser validation.
 
 ## When to Use
 
@@ -42,4 +42,4 @@ Give every stated premise and stated warrant its `{basis, pointer, source}`, quo
 
 ### 6. Validate
 
-Run the parser and the JSON structure check. Deliver only a source that passes both.
+Run the `argdown-toulmin` parser and JSON structure check. Deliver only a source that passes both.

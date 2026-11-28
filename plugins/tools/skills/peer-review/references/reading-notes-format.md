@@ -13,7 +13,7 @@ Reading notes organize application facts and reviewer hunches for efficient eval
 
 ## Location
 
-`${ACA_DATA}/reviews/{scheme}/{appid}/YYYYMMDD-reading-notes.md`
+Save where the composed workflow and task specify (defaulting to `${ACA_DATA}/reviews/{scheme}/{appid}/YYYYMMDD-reading-notes.md` when `${ACA_DATA}` is configured).
 
 ## Template
 

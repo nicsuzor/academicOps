@@ -8,7 +8,7 @@ description: Organise, document, conclude, and retire exploratory experimental w
 
 # Experiment logging
 
-Isolate exploratory work (testing approaches, validating measures, chasing anomalies) under `experiments/` so future readers understand what was attempted, what was found, and the final outcome.
+Isolate exploratory work (testing approaches, validating measures, chasing anomalies) under the project's experiment directory (default `experiments/` unless the project and composed workflow specify another layout and destination) so future readers understand what was attempted, what was found, and the final outcome.
 
 ## Directory structure
 
@@ -45,8 +45,8 @@ Create at the start of each experiment and keep current:
 
 Conclude experiments by recording final status and findings:
 
-- **Succeeded**: Promote durable code to production homes (`methods/`, dbt models, dashboard layer). Record destination in the README, commit as historical record, and link from production docs.
-- **Failed**: Document reasons for failure to prevent repeated attempts; commit findings as a negative result.
-- **Stale**: Move unmaintained exploratory work to `experiments/_archive/`.
+- **Succeeded**: Promote durable code to the production homes specified by the project and composed workflow (by default `methods/`, transformation models, or presentation layer). Record the destination in the experiment README and link from production docs.
+- **Failed**: Document reasons for failure as a negative result where the project and composed workflow specify to prevent repeated attempts.
+- **Stale**: Move or archive unmaintained exploratory work per project and composed workflow conventions (default `experiments/_archive/`).
 
 Keep production code tested and documented per `instructions/research-documentation.md`; retain only genuine prototypes and negative results in `experiments/`.
