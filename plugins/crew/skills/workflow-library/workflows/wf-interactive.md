@@ -22,7 +22,7 @@ Governs direct user-facing interactive sessions: task creation boundaries, subag
    - Pre-creation overlap checks route directly to the PKB custodian before an outer task is minted via `/q`.
    - Internal delegates route work to the PKB custodian, review coordinator, or dispatcher as needed.
 3. **Seam verification**:
-   - Every agent-to-agent message (delegation briefs, clarifications, reports, and handbacks) uses unfenced prose Argdown blocks only with atomic sourced premises and undergoes face-of-record compliance review at the seam per `premise-check` (zero _de novo_ fact-checking); any result drawing `REVISE` during review must be revised and re-reviewed before handback.
+   - Inter-agent messages follow `premise-check` (judicial review on the message alone, zero outside substantive checks; proportionate depth, material remands only); resolve and re-check any material `REVISE` before handback.
 4. **Outer handover**:
    - Only the user-facing coordinator runs `/dump` upon completing the outer task; subagents and internal delegates never execute `/dump` or release graph tasks.
 
