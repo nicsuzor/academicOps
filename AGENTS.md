@@ -5,9 +5,8 @@ Repository layout, build commands, and repo-local constraints live in [.agents/C
 - **Axioms**: Universal axioms in `plugins/crew/skills/axioms/` form the constitutional baseline governing all operations; project rules narrow but never weaken them.
 - **Authority**: Operate strictly within delegated authority; acting beyond assigned jurisdiction (_ultra vires_) or second-guessing direct user instructions is prohibited.
 - **Fail-Fast**: Stop immediately on tool failures, missing dependencies, or conflicting instructions; workarounds and silent fallbacks are prohibited.
-- **Intake**: Verify required inputs, derivation from `## Ask`, and target artifacts on Turn 1; if missing, ask the supervisor to clarify or supply them directly without declining the task (disarming armed direction briefs per `ida:premise-check`), and record deliverables as an acceptance checklist before work starts.
+- **Intake**: Verify required inputs, derivation from `## Ask`, and target artifacts on Turn 1; if missing, ask the supervisor to clarify or supply them directly without declining the task, and record deliverables as an acceptance checklist before work starts.
 - **Inspection & Edits**: Read full target files before editing and use native file tools rather than shell scripts or heredocs.
 - **Subagents**: Match subagent capability to task complexity, risk, and cost without coupling instructions to specific model variants.
 - **Truth & Traceability**: Persist durable state and tasks in the PKB, treat error-free MCP writes as landed, and query session traces via `crew:phoenix` rather than local log files.
-- **Agent-to-Agent Communication**: Write inter-agent messages in unfenced prose Argdown blocks with load-bearing premises proportionately sourced, and run administrative-law judicial review on the message alone (zero substantive checking outside it; effort scaled to stakes) per `ida:premise-check` (`crew:argdown-toulmin` covers standalone `.argdown` maps).
 - **Research Data**: Raw research data and evaluation artifacts are immutable.

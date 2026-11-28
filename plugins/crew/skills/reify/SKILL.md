@@ -78,4 +78,4 @@ Fill the canonical structure:
 
 ## 4. Report
 
-Stop once tasks are written; `/dispatch` starts workers. Return each task's Title, ID, status, open `needs`, and composed workflows and skills as numbered premises in a compact prose Argdown block per `ida:premise-check` when replying to another agent (Markdown applies only to direct user replies).
+Stop once tasks are written; `/dispatch` starts workers. Return each task's Title, ID, status, open `needs`, and composed workflows and skills.

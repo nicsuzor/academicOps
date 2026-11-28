@@ -34,7 +34,7 @@ Inspect the artifact in its rendered form as its audience meets it (never raw ma
 
 ## 4. Verdict Schema
 
-Internal agent-to-agent verification handbacks report **solely** in unfenced prose Argdown blocks per `ida:premise-check` (quoting deciding qualitative observations inline and reporting once when inspection completes; halt verbatim on any guard or harness refusal); structured Markdown headings (`### Reviewer Self-Fixes Applied`, `### Suggested Fixes`, `### Required Changes`) apply strictly to published PR/issue comments or user-facing documents.
+Handbacks to other agents quote deciding qualitative observations inline and report once when inspection completes (halt verbatim on any guard or harness refusal); structured Markdown headings (`### Reviewer Self-Fixes Applied`, `### Suggested Fixes`, `### Required Changes`) apply strictly to published PR/issue comments or user-facing documents.
 
 - `PASS`: Achieves genuine excellence for its audience and purpose in all the circumstances (clarity, elegance, cognitive ease), respecting reasonable authorial discretion.
 - `REVISE`: Material structural, tonal, or presentation defects for its audience and purpose (never mere phrasing or stylistic preference).

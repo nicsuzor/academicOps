@@ -28,7 +28,7 @@ An independent adjudicator tests the work against the law that governs it, witho
 
 ## Output contract
 
-One verdict with required changes and suggestions, each citing the rule and the place in the work. Internal handbacks in prose Argdown per `premise-check`.
+One verdict with required changes and suggestions, each citing the rule and the place in the work.
 
 ## When to include
 

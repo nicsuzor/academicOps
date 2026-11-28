@@ -36,7 +36,7 @@ State what needs doing, never how. Decompose reads and runs nothing; what the re
 
 ## Output Contract
 
-Return these fields to calling agents solely in prose Argdown blocks per `ida:premise-check` (one atomic sourced claim per premise; Markdown applies only to direct user replies):
+Return these fields to calling agents:
 
 - Expanded `[PARENT-ID]` counts (`N` components, `F` forks, `P` probes; `C` collapsed, `M` merged)
 - Premises (`<premise> -- held | false | probe TASK-ID`) and unresolved pointers (`<list | none>`)
