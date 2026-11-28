@@ -45,7 +45,8 @@ PREMISE_CHECK_POINTER = (
     " Write inter-agent messages in unfenced prose Argdown blocks stating the ask upfront"
     " and sourcing load-bearing premises proportionately (or bare `[no claim]` when claim-free)."
     " Run judicial review on the message alone -- zero substantive checking outside it --"
-    " scaling effort and reasons to what turns on it and remanding only material defects."
+    " scaling effort and reasons to what turns on it, accepting unambiguous fixes directly with"
+    " `AMENDED`, and remanding only remaining material defects."
 )
 
 

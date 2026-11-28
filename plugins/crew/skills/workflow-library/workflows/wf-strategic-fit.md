@@ -21,6 +21,7 @@ Tests the premise and direction of a proposal or change against the knowledge ba
 1. Question the premise: is this the right problem, and does the reasoning hold. User stories name a human user, never an agent.
 2. Check it against existing specs, decisions, notes and sibling work for contradictions or duplication. A note saying something exists proves only what the note says.
 3. Ask whether something existing already meets the need more simply.
+4. Where defects are clearly fixable without ambiguity, fix them in place if write permissions and instructions permit; otherwise suggest the exact fix.
 
 ## Output contract
 

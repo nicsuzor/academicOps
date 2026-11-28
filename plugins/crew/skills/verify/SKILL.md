@@ -29,7 +29,7 @@ Inspect the artifact in its rendered form as its audience meets it (never raw ma
 
 ## 3. Review Findings & Self-Fixes
 
-- **Serialized vs. Parallel Fixes:** Apply and commit uncontroversial typographic, formatting, or layout corrections (`fix(review): ...`) only when serialized and authorized on a writable branch, itemizing applied fixes. During parallel or read-only reviews, itemize suggested fixes for the fix pass.
+- **Fix-in-place vs. exact suggested fixes:** Where defects are clearly fixable without ambiguity -- if permissions and instructions permit (such as serialized review on a writable branch) -- apply and commit them in place (`fix(review): ...`), itemizing applied fixes rather than returning `REVISE`. Where write permissions are absent or instructions bar direct edits (such as parallel read-only passes), suggest the exact fix.
 - **Material Defects vs. Taste Preferences:** Separate material structural, tonal, or visual defects for the audience and purpose from mere reviewer phrasing or stylistic preferences within reasonable authorial discretion (which never warrant `REVISE` or `FAIL`).
 
 ## 4. Verdict Schema

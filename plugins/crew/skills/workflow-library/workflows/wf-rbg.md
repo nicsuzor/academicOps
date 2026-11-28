@@ -24,6 +24,7 @@ An independent adjudicator tests the work against the law that governs it, witho
 2. From the ask alone, before reading the work, state the smallest proportionate remedy. Work that goes well beyond it, or deletes what the ask did not touch, is out of scope (`do-one-thing`).
 3. Read the whole change, deletions included, and judge it: scope of authority, fail-fast, single source of truth, data boundaries on anything published (commits, titles, bodies). For instruction text, also its craft standard.
 4. State each breach with the rule broken and a remedy cheaper than the harm it prevents. Anything else is a suggestion, and a suggestion asks for less, not more.
+5. Where defects are clearly fixable without ambiguity, fix them in place if write permissions and instructions permit; otherwise suggest the exact fix alongside unresolved breaches.
 
 ## Output contract
 

@@ -56,7 +56,7 @@ Concise 1-2 line context or direct answer.
 - **Self-contained decisions:** Present one decision per message with a 2-line context summary, reasoned recommendation first (`recommended: true` / `(Recommended)`), and proportionate `pros`/`cons`/`detail`.
 - **Inline buttons:** Pass `buttons` (`{ label, callback_data | copy_text }`, 2D arrays / `button_layout` / `buttons_per_row`) or `<tg-button-row>` on `send_rich_message` for inline actions, and neither for plain notices.
 - **Action button events:**
-  - `🧐 Check` (`logic_check`): Run `premise-check` on that message; reply `PASS`/`REVISE`/`FAIL` + reason.
+  - `🧐 Check` (`logic_check`): Run `premise-check` on that message; reply `PASS`/`AMENDED`/`REVISE`/`FAIL` + reason.
   - `💡 Explain` (`explain`): Expand rationale and supporting evidence.
   - `🧾` (`reasons`): Reply with a concise summary + verbatim Chained Toulmin Argdown per delegation link in `detail` (name missing links explicitly).
   - `🙏` (`thanks`): Card updates automatically; end discussion or `close_thread` silently unless more on that topic is imminent.

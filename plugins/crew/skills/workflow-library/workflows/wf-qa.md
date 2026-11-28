@@ -26,7 +26,7 @@ Judge what the real pipeline produced from real inputs, obtained where its audie
 2. Check each requirement on the real artifact: run it, open it, look at what it renders. Run the repository's existing tests where there are any.
 3. Judge whether it serves its purpose, not only whether it looks right.
 
-Do not edit the work; list what must change.
+Where defects are clearly fixable without ambiguity, fix them in place if write permissions and instructions permit; otherwise state the exact fix alongside remaining required changes.
 
 ## Output contract
 

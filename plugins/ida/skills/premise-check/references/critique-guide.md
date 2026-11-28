@@ -4,7 +4,7 @@ Worked exemplars, defect patterns with 3-way remand cures, edge-case rulings, an
 
 ## Defect Taxonomy (Plain-English Classes)
 
-**Materiality rule:** Every remand cure below (outside non-waivable authority or standing-rule breaches) applies only when curing the defect could change what is relayed or done next. Immaterial slips receive `PASS` with a brief non-blocking note omitted from upward relays.
+**Materiality & amendment rule:** Every remand cure below (outside non-waivable authority or standing-rule breaches requiring sender rework) applies only when curing the defect could change what is relayed or done next and cannot be fixed without ambiguity on the record. Where every defect is clearly fixable without ambiguity from the record, accept with `AMENDED` and correct the claim directly rather than remanding. Immaterial slips receive `PASS` with a brief non-blocking note omitted from upward relays.
 
 | Defect Class | What It Looks Like on the Record | Minimal Remand Cure |
 | - | - | - |
@@ -27,6 +27,7 @@ Worked exemplars, defect patterns with 3-way remand cures, edge-case rulings, an
 ## Edge-Case Rulings & Proportionality Standards
 
 - **Proportional effort & materiality**: Scale checking depth, evidentiary detail, and verdict reasons to stakes (doing less on low-stakes, read-only, or cheaply redone work). Immaterial slips receive `PASS` with a brief non-blocking note omitted from relays.
+- **Unambiguous deterministic amendment (`AMENDED`)**: Where every defect is clearly fixable without ambiguity from what is already on the message (such as narrowing an overstated qualifier or scoping a claim to the subset already established in its own premises), accept with `AMENDED`, amend the claim directly so it is fully accurate, record the original defect and resulting amended claim in the reason, and relay the amended claim without remanding to the sender. Never invent facts or check outside sources to amend (closed-record bounds still hold); reserve `REVISE` for missing evidence, unruled rivals, or non-deterministic defects requiring sender judgment.
 - **Severability & partial relay**: Because `verdict.py` records one token per claim, sever multi-part messages explicitly: dropping an unneeded weak part gets `PASS` naming strictly the supported relayable subset; remanding or rejecting a materially defective part gets `REVISE`/`FAIL`, optionally naming clean independent parts with scope bounds (preventing rework on remand and allowing those independently verified parts to relay separately, while never relaying failed or remanded claims).
 - **Closed record & suspected invention**: The record is the message under review and nothing outside it. Never rely on, consult, or test against anything outside the message (in-context state, prior unrelated turns, harness state/telemetry, tool logs, external sources, or other agents) to verify truth, confirm execution, or authenticate values, and never escalate receipt precision as an anti-fabrication proxy at any stakes level. Separately verify ask coverage against the originating ask and catch unexplained material contradictions across the same sender's own successive submissions on an unchanged claim in an active remand. Without a material facial defect, `PASS` on the message alone without commissioning ad-hoc fact-checkers (deliverable QA and `/learn` sit outside `premise-check`).
 - **Relaying senders pass remands down**: When a relaying sender receives an evidentiary `REVISE` or `FAIL`, it passes the remand down to the originating agent (or dispatches a fresh worker if exited or discredited by facial contradiction) rather than opening primary sources itself.
@@ -130,6 +131,19 @@ Judicial review passes on the message alone (zero substantive checking outside i
 - Remediation & Compliance: Premises (1)-(4) anchor the revert in docs/worker-sla.md:14, confirm 0 token buckets, note pending staging verification, and answer AC1-AC2 with zero bundled unsourced premises or rule breaches.
 
 Relayable checked conclusions: worker/pool.py:34-48 (c81f4a2) caused the p95 429 spike (subject to unobservable sub-minute limits); reverting to worker_concurrency=4 and jittered backoff is the lowest-risk fix, pending staging confirmation under 500 ms.
+```
+
+### Example AMENDED Reason (`--reason` / `--reason-file`)
+
+```text
+AMENDED on claim-5c2a81d0 (ask task-31/AC1: verify unit test suite status after refactor).
+
+Accepted with deterministic amendment on the message alone (zero substantive checking outside it):
+- Quantifier Drift: Conclusion states "all tests pass", whereas premise (1) quotes pytest running only tests/auth/ and tests/billing/ (48 passed).
+- Amendment applied: Narrowed claim to "tests/auth/ and tests/billing/ pass (48 passed); remaining test directories unrun".
+- No outside facts added; remaining grounds hold.
+
+Relayable amended conclusion: tests/auth/ and tests/billing/ pass (48 passed); other test directories were not run in this check.
 ```
 
 ### Example REVISE (Remand) Reason (`--reason-file`)

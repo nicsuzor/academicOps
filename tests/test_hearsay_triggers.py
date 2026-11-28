@@ -398,7 +398,7 @@ def test_post_tool_hearsay_arm_handles_null_form_and_prose_reports_uniformly(tmp
     assert hearsay_gate.should_arm_hearsay(ctx_post_prose) is True
     res_prose = handlers.hearsay_arm(ctx_post_prose)
     assert res_prose is not None
-    assert "--verdict <PASS|REVISE|FAIL>" in res_prose.inject_text
+    assert "--verdict <PASS|AMENDED|REVISE|FAIL>" in res_prose.inject_text
     assert "no argument block supplied" not in res_prose.inject_text
     assert pcg.is_armed(session_prose) is True
 

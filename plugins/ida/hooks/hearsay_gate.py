@@ -950,7 +950,7 @@ def format_verdict_command(
     claim_id: str,
     hooks_dir: Path | None = None,
     session_id: str = "",
-    verdict: str = "<PASS|REVISE|FAIL>",
+    verdict: str = "<PASS|AMENDED|REVISE|FAIL>",
     reason: str | None = None,
     agent_id: str | None = None,
 ) -> str:
@@ -2366,7 +2366,7 @@ def _format_notice_pair(
                 "satisfiability; disarm via `verdict.py --no-claim` (`PASS` before frozen "
                 "acceptance checklist; `REVISE` if clarifying). Report: load `ida:premise-check`, "
                 "run judicial review on the message alone (zero substantive checks; proportionate "
-                "depth, material remands only), record reasons.\n{command}"
+                "depth, accept unambiguous fixes with `AMENDED`, material remands only), record reasons.\n{command}"
             )
         inject = agent_tmpl.format(claim_id=claim_id, command=cmd)
         return warn(inject)
@@ -2375,7 +2375,7 @@ def _format_notice_pair(
     first_line = (
         agent_tmpl.splitlines()[0]
         if agent_tmpl
-        else "Premise-check gate armed by {claim_id}; run judicial review on the message alone (zero substantive checks; effort proportionate to stakes) and record appealable reasons per `ida:premise-check`."
+        else "Premise-check gate armed by {claim_id}; run judicial review on the message alone (zero substantive checks; effort proportionate to stakes, accept unambiguous fixes with `AMENDED`) and record appealable reasons per `ida:premise-check`."
     ).format(claim_id=claim_label, command="")
     cmd_block = "\n".join(cmd for _cid, cmd in items)
     inject = f"{first_line}\n{cmd_block}"
@@ -2853,8 +2853,9 @@ def hearsay_handler(ctx: HookContext) -> Result | None:
         agent_tmpl = (
             "Premise-check gate armed by {claim_id} blocks {action_desc}; load "
             "`ida:premise-check`, run judicial review on the message alone (zero substantive "
-            "checks; proportionate depth, material remands only; never bypass) and record "
-            "reasons, or for a brief add `--no-claim` below (`PASS`/`REVISE`).\n{command}"
+            "checks; proportionate depth, accept unambiguous fixes with `AMENDED`, material "
+            "remands only; never bypass) and record reasons, or for a brief add `--no-claim` "
+            "below (`PASS`/`REVISE`).\n{command}"
         )
 
     if len(pending_cids) == 1:

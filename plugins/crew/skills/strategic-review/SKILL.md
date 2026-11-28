@@ -32,7 +32,7 @@ Dispatch the warranted specialist lenses concurrently in one turn as separate in
 - **Strategic fit** (`pauli`, a second invocation that never sees the compliance review): Core premise, strategic direction, and PKB congruence (with an inline brief).
 - **Quality** (`marsha`, _when an audience-facing artifact was built_): Qualitative excellence and audience resonance across live rendered outputs per `verify` (evaluating qualitative standards directly with reasons; never linters, functional QA, or fake numeric proxies).
 
-Every reviewer judges proportion within its lens: whether the artifact builds more machinery than needed, whether each requested change justifies its cost, and whether discretionary design, structure, or phrasing choices within the author's remit are reasonable (bounded-reasonableness deference protects choices that are not clearly wrong). Apply and commit uncontroversial fixes (`fix(review): <description>`) only when serialized and authorized on a writable branch (e.g. `fix` mode), itemizing applied fixes; during parallel read-only dispatch, itemize suggested fixes instead.
+Every reviewer judges proportion within its lens: whether the artifact builds more machinery than needed, whether each requested change justifies its cost, and whether discretionary design, structure, or phrasing choices within the author's remit are reasonable (bounded-reasonableness deference protects choices that are not clearly wrong). Where defects are clearly fixable without ambiguity, reviewers with write permissions and no conflicting instruction restriction apply and commit the fixes in place directly (`fix(review): <description>`), itemizing applied fixes; reviewers who cannot edit directly (read-only instructions, missing write permissions, or parallel read-only dispatch) suggest the exact fix for the coordinator or fix pass to apply.
 
 ### 3. Dialectical Deliberation _(Proportional to Stakes)_
 
@@ -51,7 +51,7 @@ Compile calibration (chosen tier, rounds, contextual standard, target altitude),
 | - | - | - | - |
 
 - Collapse concordant findings across reviewers while preserving each reviewer's verdict; where they differ, state the adopted disposition and why (recording reasons whenever an out-of-jurisdiction, taste-loop, fake-proxy, or wrong-standard finding is struck). Keep `pauli`'s strategic congruence verdict distinct even when concordant.
-- Do not issue `REVISE` solely for items already resolved cleanly by authorized self-fixes or mere phrasing preferences.
+- Do not issue `REVISE` solely for unambiguous items already resolved cleanly in place, nor bounce exact deterministic fixes back when the reviewer or coordinator has permission and compliant instructions to commit them directly, nor over mere phrasing preferences.
 - **Overall verdict**: Any valid substantive specialist `FAIL` within jurisdiction forces `FAIL` (never downgrade or soften a valid substantive in-jurisdiction `FAIL`). Any remaining material `REVISE` forces `REVISE`. Otherwise `PASS`.
 
 ### 5. Action and Reporting

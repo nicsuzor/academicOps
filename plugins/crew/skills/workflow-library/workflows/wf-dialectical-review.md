@@ -38,7 +38,7 @@ Every reviewer gets the same neutral brief, in prose Argdown per `premise-check`
 2. **Review**: run the lenses independently and wait for all of them.
 3. **Reconcile**: judge each handback on the message alone per `premise-check` (zero outside substantive checks; proportionate depth, material remands only). Strike findings outside a lens's remit, preferences about phrasing or layout, and demands for a standard inappropriate to the work. A valid in-remit FAIL stands.
 
-Reviewers do not edit the work or mint tasks; they state required changes.
+Where defects are clearly fixable without ambiguity, reviewers with write permissions and no conflicting instruction restriction apply and commit them in place (itemizing applied fixes); otherwise they suggest the exact fix alongside remaining required changes. Never mint tasks.
 
 ## Output contract
 
