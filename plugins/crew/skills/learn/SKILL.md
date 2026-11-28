@@ -38,7 +38,7 @@ Diagnose systemic failure classes in the framework from Arize Phoenix execution 
 
 ## Output
 
-Return findings to calling agents solely in prose Argdown blocks per `ida:premise-check` (reserving Markdown for persisted PKB/issue artifacts or direct user replies), covering these content layers:
+Return findings to calling agents covering these content layers:
 
 - **Session outline / Target surface**: Persisted session outline location (e.g., `[[out-<session_slug>]]` when directed) or CI/PR reference.
 - **Evidence**: Session/conversation ID, relevant OTel span IDs (or `gh` PR/CI excerpts), and tool/error/latency excerpts.

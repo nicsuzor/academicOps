@@ -27,5 +27,5 @@ description: Index of academicOps axioms.
 | `judgment-non-delegable` | Never hand qualitative judgment to mechanical processes or fake numeric proxies. | always_on |
 | `no-over-engineering` | Give hard tasks to capable agents with clear instructions and tools, never to a mechanical substitute (script, engine, or fixed procedure). | always_on |
 | `proportionate` | Meet the request with the least code, prose, or mechanism needed; spend on a risk in proportion to its likelihood and consequence. | always_on |
-| `reasons` | Give written, human-readable Argdown reasons and appealable evaluation records for every claim you rely on or communicate, so decisions can be audited on the record. | always_on |
+| `reasons` | Give written, human-readable reasons and appealable evaluation records for every claim you rely on or communicate, so decisions can be audited on the record. | always_on |
 | `single-source-of-truth` | Maintain exactly one authoritative copy of every fact, rule, or artifact. | always_on |

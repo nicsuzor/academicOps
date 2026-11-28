@@ -1,7 +1,7 @@
 ---
 title: Interactive session
 type: template
-description: "Crew: how an interactive session is run -- the composed workflow decides task tracking, role assignment, seam checks, output placement, and handover."
+description: "Crew: how an interactive session is run -- the composed workflow decides task tracking, role assignment, output placement, and handover."
 tags: [workflow, interactive, in-session, delegation]
 ---
 
@@ -13,8 +13,7 @@ Governs a session with the user on the other end. The composed workflow decides 
 
 1. **Task tracking and placement**: the composed workflow decides whether an outer task is opened, who creates or claims it, where outputs are placed, and whether any work is prepared for worker containers.
 2. **Role assignment**: the composed workflow decides delegation and role routing rather than fixing an internal chain.
-3. **Seam review**: any inter-agent seam checks, review depth, and remediation loops run only as the composed workflow specifies.
-4. **Handover**: session close and release follow the composed workflow and the session's release mechanism.
+3. **Handover**: session close and release follow the composed workflow and the session's release mechanism.
 
 ## The brief
 

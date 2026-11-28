@@ -39,7 +39,6 @@ Every reviewer judges proportion within its lens: whether the artifact builds mo
 
 - **Fast path**: For single-pass checks with no fatal blockers or cross-lens contradictions, proceed directly to reconciliation.
 - **Dialectical rounds**:
-  - Run proportionate judicial review on handbacks on the message alone (zero outside substantive checks; material remands only).
   - Screen jurisdiction and standards: reject reviewer findings that act outside jurisdiction, police layout or phrasing preferences within reasonable authorial discretion, demand fake numeric proxies for qualitative judgment, or impose a standard of proof inappropriate in the circumstances.
   - Verify warrants on the record: documentation (`README.md`, knowledge notes) proves only what the text says, not live working state (require completed verification evidence or quoted live state, else mark an open question); cited PRs or code are authoritative only if shown current and backed by a specification or decision record.
   - When valid in-jurisdiction findings clash (e.g. compliance vs. strategic parsimony), cross-examine reviewers directly with sourced reasons to force defense, concession, or synthesis without softening tension; intervene immediately on altitude drift.

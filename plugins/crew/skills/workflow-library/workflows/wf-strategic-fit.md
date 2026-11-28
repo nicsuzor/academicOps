@@ -25,7 +25,7 @@ Tests the premise and direction of a proposal or change against the knowledge ba
 
 ## Output contract
 
-One verdict with the conflicts, gaps and open questions found, in prose Argdown per `premise-check`.
+One verdict with the conflicts, gaps and open questions found.
 
 ## When to include
 
