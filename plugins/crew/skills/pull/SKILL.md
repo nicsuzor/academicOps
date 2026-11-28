@@ -10,15 +10,15 @@ Claim a PKB task, do the job it specifies, record verified evidence under `## Re
 ## 1. Claim & Assemble
 
 - Claim the assigned task via `pkb_claim_task` (`assignee` set to your agent or role), looking it up by exact ID or title (`pkb_get_task`); if invoked on an untracked directive without a task ID, place it via `/q` first, then claim it.
-- Verify deliverables as a frozen `## Acceptance` checklist before starting work. If the task lacks `## Instructions` and `## Appendix: Sources` (and is not `invoke /<skill>`), compose its workflow in-session via `/reify`.
+- Verify deliverables as a frozen `## Acceptance` checklist before starting work. If the task lacks `## Instructions` and `## Appendix: Sources` (and is not `invoke /<skill>`), compose its workflow in-session via `/reify`. Do the steps the task names and nothing more: add no review, test, approval, sign-off or delivery step of your own, because handed-back work is reviewed separately.
 - Keep the PKB task updated after major stages so progress survives container pre-emption.
 
 ## 2. Do the Job
 
 - Execute the task end-to-end in-session, coordinating subagents in parallel where helpful and reading each target file in full before editing.
-- Commit and push scrubbed work incrementally (`data-boundaries`: no private PKB, task, or session IDs, `Task:` trailers, personal names, or private hostnames) so work survives pre-emption.
+- Commit scrubbed work incrementally (`data-boundaries`: no private PKB, task, or session IDs, `Task:` trailers, personal names, or private hostnames) so work survives pre-emption; push or open a pull request only when the task's `Output` names one.
 - Escalate blocking infrastructure or tool failures verbatim without hidden workarounds.
-- Deliver everything executable in-session (tests, linters, builds, draft PR, or durable PKB artifact). Queue a dependent follow-up via `/q` (under the governing parent with `needs` edges and zero leaf `serves` edges) only when work requires a different repository, a different execution window or external wait, or a separate external agent or session.
+- Run only the checks the task or repository calls for. Queue a dependent follow-up via `/q` (under the governing parent with `needs` edges and zero leaf `serves` edges) only when work requires a different repository, a different execution window or external wait, or a separate external agent or session.
 
 ## 3. Consolidate Findings & Durable Facts
 
@@ -29,7 +29,7 @@ Claim a PKB task, do the job it specifies, record verified evidence under `## Re
 
 Verify every criterion against primary evidence (`file:line`, quoted output, counts, PR URL, or test run). Tick (`[x]`) only items directly evidenced; leave others unticked (`[ ]`) with limits stated.
 
-- `done`: All in-scope criteria are met with evidence in `## Report` and delivered where `Output` names (draft PR opened via `gh pr create --draft` with `pr_url` and `branch`, or durable PKB artifact pointer -- never ephemeral scratch paths), and any out-of-session follow-up is queued. Exit without waiting for CI, review, merge, or proof of user installation or deployment.
+- `done`: All in-scope criteria are met with evidence in `## Report` and delivered where `Output` names (the report, the working branch, a shared location, or a PR with `pr_url` and `branch` when `Output` names one -- never ephemeral scratch paths), and any out-of-session follow-up is queued. Exit without waiting for CI, review, merge, or proof of user installation or deployment.
 - `partial`: In-session criteria remain unfinished (blocker, missing tool, scope seam, missing evidence, or pre-work approval boundary), or the task checklist contains an unreachable post-exit criterion (complete reachable work, leave that item unticked, and cite it in `reason`).
 - `failed`: Check or review task fails; document failure evidence and root cause.
 - Never set `review`, and never create speculative follow-up tasks (`/reconcile` settles partial and failed tasks from the parent).

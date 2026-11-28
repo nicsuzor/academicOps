@@ -1,39 +1,37 @@
 ---
 alias:
   - wf-qa-visual
-description: Fills evaluate slot for rendered output -- capture artifact images and judge multimodally against criteria.
+description: "Review: how to capture and judge rendered visual output inside a quality review."
 id: wf-qa-visual
 status: ready
 tags:
   - wf-template
   - qa
   - visual-qa
-title: Visual QA Evaluation
+title: Visual quality check
 type: template
 ---
 
 ## What this step does
 
-Fills the evaluation slot for rendered visual output: defines how visual evidence is captured and judged multimodally. Criteria assembly and overall verdict contracts belong to the parent review workflow and are not restated here; do not dispatch standalone without parent criteria. Iteration, round caps, and separation between author and judge belong to the composing brief.
+Fills the quality review's check for anything visual. The criteria and the verdict belong to the review it sits in.
 
 ## Capture
 
-Source code is not evidence of rendered state. Every criterion is decided against an image of the artifact as actually rendered at the viewport the criteria specify.
-
-- Capture a baseline before any change is drafted; a criterion judged against a missing or stale baseline is `UNMET`.
-- A capture tool's zero exit code does not prove a valid render. Verify image files exist and are large enough to be real renders rather than blank or error pages.
-- A missing, blank, or truncated image from a broken capture tool is a capture failure, not a visual failure -- halt and report it rather than sending an author to fix working code for a broken tool. An image that faithfully shows the real artifact broken or unusable is evidence, judged like any other.
-- Capture the real artifact (`wf-qa`, **The real artifact**), never a stand-in rendered for the review. If it cannot be reached, halt and report the response verbatim.
-- Target URLs, viewports, view names, and capture commands come from the instantiating task, never from this template.
+- Judge an image of the real artifact as rendered at the viewport the criteria name, never the source code.
+- Check the image is a real render, not a blank or error page. A broken capture tool is a tool failure to report, not a defect in the work.
+- Targets, viewports and capture commands come from the task.
 
 ## Judge
 
-The evaluator must ingest images directly; an evaluator without multimodal image capability is a capability failure -- halt and report it rather than falling back to reading diffs.
+- Look at the images directly; an evaluator that cannot read images stops and says so.
+- Judge all views together, so a fix in one that breaks another shows.
+- Where criteria are silent, judge layout, hierarchy, contrast and legibility.
 
-- Judge all in-scope views together in one pass so cross-view regressions are visible.
-- Re-judge criteria met in earlier passes, since fixing one view can break another.
-- Where criteria are silent, judge layout, alignment, hierarchy, contrast, and legibility.
+## Evidence
 
-## Evidence contract
+Cite the region of the image where each criterion holds or fails.
 
-Evidence is a citation into the rendered image (region or coordinates showing where the criterion holds or fails). A described code change, a passing unit test, or a diff imperceptible at the stated viewport decides nothing and leaves the criterion `UNMET`.
+## When to include
+
+Inside a quality review of rendered output.
