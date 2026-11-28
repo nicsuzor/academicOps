@@ -26,8 +26,10 @@ Worked exemplars, defect patterns with 3-way remand cures, edge-case rulings, an
 
 ## Edge-Case Rulings & Proportionality Standards
 
-- **Proportional effort, materiality & severability**: Scale checking depth, evidentiary detail, and verdict reasons to stakes (doing less on low-stakes, read-only, or cheaply redone work). Immaterial slips get `PASS` with a brief non-blocking note omitted from relays. Because `verdict.py` records one token per claim, sever multi-part messages explicitly: dropping an unneeded weak part gets `PASS` naming strictly the supported relayable subset; remanding or rejecting a materially defective part gets `REVISE`/`FAIL`, optionally noting independent clean severable parts with scope bounds (never relaying failed claims).
-- **Closed record, suspected invention & relaying remands**: The record is the message under review and nothing outside it. Never rely on, consult, or test against anything outside the message (including in-context state, prior unrelated turns, harness state/telemetry, tool logs, external sources, or other agents) to verify truth, confirm execution, or authenticate values, and never escalate receipt precision as an anti-fabrication proxy at any stakes level. Separately verify ask coverage against the originating ask and catch unexplained material contradictions across the same sender's own successive submissions on an unchanged claim in an active remand. Without a material facial defect, `PASS` on the message alone without commissioning ad-hoc fact-checkers (substantive deliverable verification belongs to planned acceptance review/QA and systemic fabrication audits to `/learn` outside `premise-check`). A relaying sender passes evidentiary remands down to the originating agent (or a fresh worker if exited or discredited by facial contradiction) rather than opening primary sources itself.
+- **Proportional effort & materiality**: Scale checking depth, evidentiary detail, and verdict reasons to stakes (doing less on low-stakes, read-only, or cheaply redone work). Immaterial slips receive `PASS` with a brief non-blocking note omitted from relays.
+- **Severability & partial relay**: Because `verdict.py` records one token per claim, sever multi-part messages explicitly: dropping an unneeded weak part gets `PASS` naming strictly the supported relayable subset; remanding or rejecting a materially defective part gets `REVISE`/`FAIL`, optionally naming clean independent parts with scope bounds (preventing rework on remand and allowing those independently verified parts to relay separately, while never relaying failed or remanded claims).
+- **Closed record & suspected invention**: The record is the message under review and nothing outside it. Never rely on, consult, or test against anything outside the message (in-context state, prior unrelated turns, harness state/telemetry, tool logs, external sources, or other agents) to verify truth, confirm execution, or authenticate values, and never escalate receipt precision as an anti-fabrication proxy at any stakes level. Separately verify ask coverage against the originating ask and catch unexplained material contradictions across the same sender's own successive submissions on an unchanged claim in an active remand. Without a material facial defect, `PASS` on the message alone without commissioning ad-hoc fact-checkers (deliverable QA and `/learn` sit outside `premise-check`).
+- **Relaying senders pass remands down**: When a relaying sender receives an evidentiary `REVISE` or `FAIL`, it passes the remand down to the originating agent (or dispatches a fresh worker if exited or discredited by facial contradiction) rather than opening primary sources itself.
 - **Standard of proof in all the circumstances**: Setting the standard of proof is always the principal's choice. Where unset, the writer applies (and justifies where non-obvious) a standard reasonable and appropriate in all the circumstances, and the checker judges whether the conclusion is supported without demanding certainty where none exists. Unjustified hand-waves (`"obvious"`, engine output as authority) fail on contested, non-obvious, or stakes-bearing conclusions; routine or obvious warrants pass without ceremony on low-stakes steps.
 - **Legitimate discretion & layout neutrality**: Judgment within remit that is not clearly wrong passes under administrative-law judicial review. Never substitute phrasing/design preferences or remand over Argdown layout, numbering, or scaffolding unless support relations are ambiguous.
 - **Authorized pauses & partial handovers**: At a principal-requested pause, handover, or user-reserved choice, open-question premises qualifying settled conclusions satisfy ask coverage without violating `exercise-authority`.
@@ -121,10 +123,12 @@ PASS on claim-3b7e20c1 (ask task-19: list hooks referencing retry_delay). Judici
 
 ```text
 PASS on claim-84a1c2e0 (asks task-42/AC1 and task-42/AC2).
+
 Judicial review passes on the message alone (zero substantive checking outside it):
 - Latency Pattern Isolation: Premises (1)-(4) quote trace windows, n=1,420 vs. n=1,388, p95/median splits, 429 isolation (89/89 > 1,500 ms), and unchanged partner quota; inference narrows the spike to 429 retries.
 - Root Cause & Rival Check: Premises (1)-(6) separate diff changes (worker/pool.py:34-48), peak rates (19/min vs. 18/min), bounded grep, and per-minute header limits (docs/partner-api.md:22). Contrast Test rules out bursts and other dispatchers while qualifying sub-minute limits.
 - Remediation & Compliance: Premises (1)-(4) anchor the revert in docs/worker-sla.md:14, confirm 0 token buckets, note pending staging verification, and answer AC1-AC2 with zero bundled unsourced premises or rule breaches.
+
 Relayable checked conclusions: worker/pool.py:34-48 (c81f4a2) caused the p95 429 spike (subject to unobservable sub-minute limits); reverting to worker_concurrency=4 and jittered backoff is the lowest-risk fix, pending staging confirmation under 500 ms.
 ```
 
@@ -132,9 +136,11 @@ Relayable checked conclusions: worker/pool.py:34-48 (c81f4a2) caused the p95 429
 
 ```text
 REVISE on claim-91d0f4a2 (ask task-55/AC1: confirm checkout migration 014 succeeded with zero customer impact).
+
 Remanded to the originating agent on the message alone (zero substantive checking outside it):
 - Construct / Proxy Drift: Premises (1)-(2) quote only 0 app.log errors and HTTP 200 on /health, proving liveness rather than checkout integrity or customer impact.
 - Unruled Rival: A broken checkout write path or silent validation drop leaves /health 200 and app.log clean; nothing on the record rules this out.
 - Minimal cure: Load ida:premise-check and either (a) narrow strictly to service liveness, or (c) quote primary post-migration checkout completion counts against baseline in prose Argdown blocks.
+
 Relayable checked conclusions: none.
 ```

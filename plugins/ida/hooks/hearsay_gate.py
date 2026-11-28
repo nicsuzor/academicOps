@@ -2365,7 +2365,7 @@ def _format_notice_pair(
                 "Premise-check gate armed by {claim_id}. Brief: check Turn-1 inputs, `## Ask`, "
                 "satisfiability; disarm via `verdict.py --no-claim` (`PASS` before frozen "
                 "acceptance checklist; `REVISE` if clarifying). Report: load `ida:premise-check`, "
-                "run judicial review on message alone (zero substantive checks; proportionate "
+                "run judicial review on the message alone (zero substantive checks; proportionate "
                 "depth, material remands only), record reasons.\n{command}"
             )
         inject = agent_tmpl.format(claim_id=claim_id, command=cmd)
@@ -2852,9 +2852,9 @@ def hearsay_handler(ctx: HookContext) -> Result | None:
     if not agent_tmpl:
         agent_tmpl = (
             "Premise-check gate armed by {claim_id} blocks {action_desc}; load "
-            "`ida:premise-check`, run judicial review on message alone (zero substantive checks; "
-            "proportionate depth, material remands only; never bypass) and record reasons, or "
-            "for a brief add `--no-claim` below (`PASS`/`REVISE`).\n{command}"
+            "`ida:premise-check`, run judicial review on the message alone (zero substantive "
+            "checks; proportionate depth, material remands only; never bypass) and record "
+            "reasons, or for a brief add `--no-claim` below (`PASS`/`REVISE`).\n{command}"
         )
 
     if len(pending_cids) == 1:
