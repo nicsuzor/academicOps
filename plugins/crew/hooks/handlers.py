@@ -11,8 +11,8 @@ import secrets
 import shlex
 import socket
 import sys
-import tempfile
 import urllib.error
+import urllib.parse
 import urllib.request
 from collections.abc import Callable
 from datetime import datetime
@@ -25,7 +25,6 @@ from dispatch import (
     Result,
     _agy_turn_start,
     _is_subagent_conversation,
-    _merge,
     _run_handler,
     prompt_text,
     refuse,
@@ -336,6 +335,36 @@ def _resolve_surface(ctx: HookContext | None = None) -> str:
     return "claude-code"
 
 
+def _format_w3c_baggage(entries: dict[str, str]) -> str:
+    """Format non-empty entries as a W3C Baggage header/metadata string."""
+    parts: list[str] = []
+    for key, val in entries.items():
+        cleaned = val.strip()
+        if cleaned:
+            parts.append(f"{key}={urllib.parse.quote(cleaned, safe='')}")
+    return ",".join(parts)
+
+
+def _with_codemode_off(mcp_url: str) -> str:
+    """Append ``codemode=off`` on HTTPS portal URLs when no codemode query param is set."""
+    parsed = urllib.parse.urlsplit(mcp_url)
+    if parsed.scheme != "https":
+        return mcp_url
+    query_pairs = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+    if any(k == "codemode" for k, _ in query_pairs):
+        return mcp_url
+    query_pairs.append(("codemode", "off"))
+    return urllib.parse.urlunsplit(
+        (
+            parsed.scheme,
+            parsed.netloc,
+            parsed.path,
+            urllib.parse.urlencode(query_pairs),
+            parsed.fragment,
+        )
+    )
+
+
 def _post_mcp_search(
     mcp_url: str,
     query: str,
@@ -401,6 +430,19 @@ def _post_mcp_search(
                     "Could not update prompt_id in tracer file for session %s: %s", sess_id, exc
                 )
 
+    resolved_agent_id = (agent_id or "").strip()
+    if not resolved_agent_id and sess_id and root_sess_id and sess_id != root_sess_id:
+        resolved_agent_id = sess_id
+
+    baggage_entries: dict[str, str] = {}
+    if root_sess_id:
+        baggage_entries["session.id"] = root_sess_id
+    if resolved_agent_id:
+        baggage_entries["agent.id"] = resolved_agent_id
+    if pid:
+        baggage_entries["prompt.id"] = pid
+    baggage_val = _format_w3c_baggage(baggage_entries)
+
     prefix = os.environ.get("PKB_MCP_TOOL_PREFIX", "pkb_")
     tool_name = f"{prefix}search"
     req_headers: dict[str, str] = {
@@ -410,12 +452,25 @@ def _post_mcp_search(
         "MCP-Protocol-Version": "2026-07-28",
         "Mcp-Method": "tools/call",
         "Mcp-Name": tool_name,
-        "x-session-id": root_sess_id,
         "traceparent": tp,
     }
+    if baggage_val:
+        req_headers["baggage"] = baggage_val
     if headers:
         for k, v in headers.items():
             req_headers[k] = v
+
+    meta: dict[str, Any] = {
+        "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+        "io.modelcontextprotocol/clientCapabilities": {},
+        "io.modelcontextprotocol/clientInfo": {
+            "name": "academicOps",
+            "version": "0.10",
+        },
+        "traceparent": tp,
+    }
+    if baggage_val:
+        meta["baggage"] = baggage_val
 
     payload = {
         "jsonrpc": "2.0",
@@ -427,22 +482,15 @@ def _post_mcp_search(
                 "query": query,
                 "limit": limit,
                 "detail": detail,
-                "session_id": root_sess_id,
             },
-            "_meta": {
-                "io.modelcontextprotocol/protocolVersion": "2026-07-28",
-                "io.modelcontextprotocol/clientCapabilities": {},
-                "io.modelcontextprotocol/clientInfo": {
-                    "name": "academicOps",
-                    "version": "0.10",
-                },
-            },
+            "_meta": meta,
         },
     }
     data_bytes = json.dumps(payload).encode("utf-8")
+    target_url = _with_codemode_off(mcp_url)
 
     def _execute_post(hdrs: dict[str, str]) -> tuple[int, str]:
-        req = urllib.request.Request(mcp_url, data=data_bytes, headers=hdrs, method="POST")
+        req = urllib.request.Request(target_url, data=data_bytes, headers=hdrs, method="POST")
         try:
             with urllib.request.urlopen(req, timeout=_SEARCH_TIMEOUT_SECONDS) as resp:
                 status = resp.status if hasattr(resp, "status") else resp.getcode()
@@ -765,20 +813,10 @@ def _export_session_id(ctx: HookContext) -> bool:
     return True
 
 
-PKB_SESSION_POINTER = (
-    "Pass active `session_id` (`caller_session` when shown, else `session:` or client"
-    " session env) explicitly on all `pkb_*` and instrumented `services` proxy MCP calls;"
-    " hooks never inject it."
-)
-
-
 def session_start(ctx: HookContext) -> Result | None:
     """Handle SessionStart for Claude Code and SessionStart for agy."""
     metadata = _format_session_metadata(ctx)
-    parts = [
-        metadata,
-        PKB_SESSION_POINTER,
-    ]
+    parts = [metadata]
     core_path = (
         ctx.hooks_dir.parent
         if ctx.hooks_dir and str(ctx.hooks_dir) != "."
@@ -839,65 +877,10 @@ def session_start(ctx: HookContext) -> Result | None:
         user_parts.insert(0, "Credentials isolated.")
     _export_session_id(ctx)
 
-    if ctx.session_id:
-        safe_session = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", ctx.session_id)
-        marker = _session_pointer_dir() / f"{safe_session}.delivered"
-        try:
-            with marker.open("w", encoding="utf-8") as f:
-                f.write(datetime.now().astimezone().isoformat())
-        except OSError as exc:
-            log.warning("Could not write session pointer marker %s: %s", marker, exc)
-
     if ws_core := _get_workspace_core_md(ctx):
         parts.append(ws_core)
 
     return warn("\n\n".join(parts), "\n\n".join(user_parts))
-
-
-def _session_pointer_dir() -> Path:
-    override = os.environ.get("AOPS_SESSION_POINTER_DIR")
-    path = Path(override) if override else Path(tempfile.gettempdir()) / "aops_session_pointer"
-    path.mkdir(parents=True, exist_ok=True)
-    return path
-
-
-def agy_session_pointer(ctx: HookContext) -> Result | None:
-    """Deliver the session-start pointer on agy, once per conversation.
-
-    The agy hooks are wired without SessionStart, so the pointer rides on the
-    first PreInvocation that reaches this conversation. ``invocationNum``
-    restarts at 0 on every turn and ``initialNumSteps`` starts above 1 in IDE
-    conversations, so neither marks the first one; a marker file keyed by the
-    conversation id does.
-    """
-    if ctx.client != "agy" or not ctx.session_id:
-        return None
-    safe_session = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", ctx.session_id)
-    marker = _session_pointer_dir() / f"{safe_session}.delivered"
-    if marker.exists():
-        return None
-    try:
-        with marker.open("x", encoding="utf-8") as f:
-            f.write(datetime.now().astimezone().isoformat())
-    except (FileExistsError, OSError):
-        return None
-    pointer_text = PKB_SESSION_POINTER
-    try:
-        tracer_file = _tracer_state_dir() / f"{ctx.session_id}.json"
-        if tracer_file.is_file():
-            tdata = json.loads(tracer_file.read_text(encoding="utf-8"))
-            phx_sid = tdata.get("phoenix_session_id")
-            if phx_sid:
-                phx_root = str(phx_sid).split("/", 1)[0]
-                if phx_root and phx_root != ctx.session_id:
-                    pointer_text = (
-                        f"{PKB_SESSION_POINTER}\n"
-                        f"caller_session: {phx_root} | agent_id: {ctx.session_id}"
-                    )
-    except Exception:
-        pass
-
-    return warn(pointer_text)
 
 
 def _prepare_tracer_data(ctx: HookContext) -> dict[str, Any]:
@@ -1090,11 +1073,7 @@ def user_prompt_submit(ctx: HookContext) -> Result | None:
 
     _run_claude_tracer(ctx, "handle_user_prompt_submit")
     agy_user_prompt_submit(ctx)
-    steps = (
-        agy_session_pointer,
-        search_the_pkb,
-    )
-    return _merge([_run_handler(step, ctx) for step in steps])
+    return _run_handler(search_the_pkb, ctx)
 
 
 def pre_tool(ctx: HookContext) -> Result | None:
