@@ -1,6 +1,6 @@
 [project]
 name = "sara"
-version = "1.14.0-beta.1"
+version = "1.14.0"
 description = "Polecat dispatch only: the sara dispatcher agent and the dispatch skill."
 requires-python = ">=3.11"
 dependencies = [
